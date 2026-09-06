@@ -1230,6 +1230,43 @@ test_g17p_eot_block_store(void)
    free(part.binary);
    ralloc_free(b.shader);
 
+   /* Exact Quake WBOIT tile layout: native builtin EOT mask3 stores an
+    * RGBA16F block at byte0 and scalar R8 at byte8. */
+   nir_builder mrt = nir_builder_init_simple_shader(
+      MESA_SHADER_COMPUTE, &agx_nir_options, "G17P WBOIT MRT EOT");
+   coords = nir_trim_vector(&mrt, nir_load_global_invocation_id(&mrt, 32), 2);
+   nir_image_store_block_agx(
+      &mrt, nir_imm_intN_t(&mrt, 0, 16), nir_imm_int(&mrt, 0), coords,
+      .format = PIPE_FORMAT_R16_FLOAT,
+      .image_dim = GLSL_SAMPLER_DIM_2D, .explicit_coord = true);
+   nir_image_store_block_agx(
+      &mrt, nir_imm_intN_t(&mrt, 1, 16), nir_imm_int(&mrt, 8), coords,
+      .format = PIPE_FORMAT_R8_UNORM, .image_dim = GLSL_SAMPLER_DIM_2D,
+      .explicit_coord = true);
+   agx_preprocess_nir(mrt.shader);
+   memset(&part, 0, sizeof(part));
+   const bool mrt_compiled = agx_compile_shader_nir(mrt.shader, &key, &part);
+   static const uint8_t expected_mrt[] = {
+      0x1c,0x9c,0x10,0x06,0x24,0xa8,0x14,0x06,0x0c,0x9d,0x10,0x26,
+      0x24,0xa9,0x10,0x26,0x9f,0x10,0x54,0x02,0x03,0x04,0x14,0x00,
+      0x50,0x26,0x0a,0x00,0x9f,0x20,0x54,0x00,0x03,0x00,0x10,0x00,
+      0x50,0x26,0x0a,0x00,0x97,0x05,0x54,0x04,0x00,0x08,0x00,0x00,
+      0xd0,0x40,0x10,0x00,0x0b,0x82,0x21,0x04,0x1b,0x80,0x21,0x04,
+      0x97,0x05,0x54,0x0c,0x00,0x10,0x00,0x00,0xd0,0x44,0x10,0x00,
+      0x4b,0x03,0x2f,0x00,0x42,0x00,0x00,0x04,0x00,0x00,0x5b,0x01,
+      0x2f,0x00,0x42,0x00,0x00,0x04,0x00,0x00,0x57,0x10,0x54,0x00,
+      0x00,0x00,0x00,0x80,0xa8,0x15,0x00,0x00,0x57,0x20,0x54,0x08,
+      0x00,0x10,0x00,0x90,0xa8,0x75,0x00,0x00,0x0e,0x00,0x00,0x00,
+   };
+   ok &= mrt_compiled && part.info.binary_size == sizeof(expected_mrt) &&
+         part.info.main_offset == 0 && part.info.main_size == sizeof(expected_mrt) &&
+         part.info.nr_gprs == 12 && part.info.agx3_staging_known &&
+         part.info.agx3_staging_halfs == 16 &&
+         memcmp(part.binary, expected_mrt, sizeof(expected_mrt)) == 0;
+   if (mrt_compiled)
+      free(part.binary);
+   ralloc_free(mrt.shader);
+
    /* A different store format must not inherit RT0's byte string. */
    nir_builder bad = nir_builder_init_simple_shader(
       MESA_SHADER_COMPUTE, &agx_nir_options, "unsupported G17P EOT");
@@ -1706,6 +1743,11 @@ run_case(const struct agx3_graphics_case *c, enum agx_isa_encoding enc)
 int
 main(int argc, char **argv)
 {
+   if (argc == 2 && !strcmp(argv[1], "--eot-only")) {
+      const bool ok = test_g17p_eot_block_store();
+      printf("G17P RT0 and WBOIT MRT EOT: %s\n", ok ? "PASS" : "FAIL");
+      return ok ? 0 : 1;
+   }
    if (argc == 2 && !strcmp(argv[1], "--custom-border-only")) {
       bool ok = test_custom_border_samplers(false, false) &&
                 test_custom_border_samplers(true, false) &&

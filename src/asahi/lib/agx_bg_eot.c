@@ -25,15 +25,19 @@
 static bool
 agx_g17p_rt0_eot_text_supported(const struct agx_shader_part *bin)
 {
-   /* Native RGBA8 and RGB10A2 EOT keys independently produce the same
-    * complete68-byte physical store program (conversion is in the fragment).
-    * The builtin compiler's complete native EOT text is68 bytes, with no
-    * synthetic compute preamble. The CODE container supplies its own stop
-    * constant program and places the actual entry at block+0x80. */
-   return bin && bin->binary && bin->info.binary_size == 68 &&
-          bin->info.main_offset == 0 && bin->info.main_size == 68 &&
-          bin->info.nr_gprs == 8 && !bin->info.scratch_size &&
-          bin->info.agx3_staging_known && bin->info.agx3_staging_halfs == 8;
+   /* Admit only complete native builtin texts: the 68-byte RT0 program or the
+    * exact 120-byte RGBA16F+R8 WBOIT MRT program. Neither has a synthetic
+    * compute preamble; the CODE container supplies the stop constant. */
+   const bool rt0 = bin && bin->info.binary_size == 68 &&
+                    bin->info.nr_gprs == 8 &&
+                    bin->info.agx3_staging_halfs == 8;
+   const bool wboit_mrt = bin && bin->info.binary_size == 120 &&
+                          bin->info.nr_gprs == 12 &&
+                          bin->info.agx3_staging_halfs == 16;
+   return bin && bin->binary && (rt0 || wboit_mrt) &&
+          bin->info.main_offset == 0 &&
+          bin->info.main_size == bin->info.binary_size &&
+          !bin->info.scratch_size && bin->info.agx3_staging_known;
 }
 
 static bool

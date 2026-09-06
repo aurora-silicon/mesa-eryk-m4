@@ -76,7 +76,14 @@ hk_agx3_g17p_rt0_tile_layout_supported(struct agx_tilebuffer_layout *tib)
        tib->tile_size != 32 * 32 || tib->spilled[0])
       return false;
 
-   for (unsigned rt = 1; rt < AGX_MAX_RENDER_TARGETS; ++rt) {
+   const bool mixed_mrt =
+      tib->logical_format[0] == PIPE_FORMAT_R16G16B16A16_FLOAT &&
+      tib->logical_format[1] == PIPE_FORMAT_R8_UNORM &&
+      !tib->spilled[1] && tib->_offset_B[0] == 0 &&
+      tib->_offset_B[1] == 8 && tib->sample_size_B == 16;
+
+   for (unsigned rt = mixed_mrt ? 2 : 1;
+        rt < AGX_MAX_RENDER_TARGETS; ++rt) {
       if (tib->logical_format[rt] != PIPE_FORMAT_NONE)
          return false;
    }
@@ -85,9 +92,9 @@ hk_agx3_g17p_rt0_tile_layout_supported(struct agx_tilebuffer_layout *tib)
    if (tib->logical_format[0] == PIPE_FORMAT_NONE)
       return tib->sample_size_B == 0;
 
-   return tib->sample_size_B == 8 &&
+   return mixed_mrt || (tib->sample_size_B == 8 &&
           (agx_tilebuffer_physical_format(tib, 0) == PIPE_FORMAT_R8_UNORM ||
-           agx_tilebuffer_physical_format(tib, 0) == PIPE_FORMAT_R10G10B10A2_UNORM);
+           agx_tilebuffer_physical_format(tib, 0) == PIPE_FORMAT_R10G10B10A2_UNORM));
 }
 
 static bool
@@ -334,7 +341,9 @@ hk_agx3_g17p_rt0_bg_resource_spec(
        * fill its 17-bit result. agx_bg_eot.c emits a full-component RT0
        * store for these two bounded shaders, so the result is all ones,
        * not the unextended four-component mask 0xf from a different native
-       * framebuffer. calculateBackgroundObjectBits (0x3f0d90) places this
+       * framebuffer. The exact WBOIT MRT clear/reload also ends in a live RT1
+       * scalar pass, so the same highest-pass extension remains all ones.
+       * calculateBackgroundObjectBits (0x3f0d90) places this
        * pass mask at bit 47, independently of the USC pointer and resource
        * fields. This is not a general MRT or partial-component encoder.
        * It is the ordinary pass-control mode: native loader +0xb0 starts
@@ -363,7 +372,9 @@ hk_agx3_g17p_rt0_bg_shader_resources_match(
 {
    switch (op) {
    case HK_AGX3_G17P_RT0_BG_CLEAR:
-      return push_count == HK_AGX3_G17P_RT0_CLEAR_PUSH_HALFS && !uses_txf;
+      return (push_count == HK_AGX3_G17P_RT0_CLEAR_PUSH_HALFS ||
+              push_count == HK_AGX3_G17P_WBOIT_MRT_CLEAR_PUSH_HALFS) &&
+             !uses_txf;
    case HK_AGX3_G17P_RT0_BG_RELOAD:
       return push_count == 0 && uses_txf;
    default:
@@ -382,16 +393,22 @@ hk_agx3_g17p_rt0_bg_program_generate(
    struct agx3_ioto_uniform_range ranges[2];
    size_t range_count;
    switch (desc->op) {
-   case HK_AGX3_G17P_RT0_BG_CLEAR:
-      if (!desc->clear_value_va || desc->texture_pointer_va || desc->sampler_pointer_va)
+   case HK_AGX3_G17P_RT0_BG_CLEAR: {
+      const uint16_t clear_push_halfs = desc->clear_push_halfs
+         ? desc->clear_push_halfs : HK_AGX3_G17P_RT0_CLEAR_PUSH_HALFS;
+      if (!desc->clear_value_va || desc->texture_pointer_va ||
+          desc->sampler_pointer_va ||
+          (clear_push_halfs != HK_AGX3_G17P_RT0_CLEAR_PUSH_HALFS &&
+           clear_push_halfs != HK_AGX3_G17P_WBOIT_MRT_CLEAR_PUSH_HALFS))
          return false;
       ranges[0] = (struct agx3_ioto_uniform_range){
          .start_halfs = 4,
-         .size_halfs = HK_AGX3_G17P_RT0_CLEAR_PUSH_HALFS - 4,
+         .size_halfs = clear_push_halfs - 4,
          .address = desc->clear_value_va,
       };
       range_count = 1;
       break;
+   }
    case HK_AGX3_G17P_RT0_BG_RELOAD:
       if (desc->clear_value_va || !desc->texture_pointer_va || !desc->sampler_pointer_va)
          return false;
@@ -483,7 +500,10 @@ hk_agx3_g17p_rt0_bg_program_generate(
           &written) ||
        written > UINT16_MAX ||
        (desc->op == HK_AGX3_G17P_RT0_BG_CLEAR &&
-        written > AGX_IOTO_G17P_RT0_CLEAR_PROGRAM_SIZE))
+        written > (desc->clear_push_halfs ==
+                      HK_AGX3_G17P_WBOIT_MRT_CLEAR_PUSH_HALFS
+                      ? AGX_IOTO_G17P_WBOIT_MRT_CLEAR_PROGRAM_SIZE
+                      : AGX_IOTO_G17P_RT0_CLEAR_PROGRAM_SIZE)))
       return false;
 
    staged.length = (uint16_t)written;
@@ -496,10 +516,18 @@ hk_agx3_g17p_rt0_eot_program_generate(
    enum agx_chip chip, const struct hk_agx3_g17p_rt0_eot_program_desc *desc,
    struct hk_agx3_g17p_rt0_eot_program *program)
 {
-   if (!program || chip != AGX_CHIP_G17P || !desc ||
-       desc->shader_binary_size != 68 || desc->nr_gprs != 8 ||
-       desc->staging_halfs != 8 || !desc->pbe_argument_va ||
-       desc->pbe_argument_va > UINT64_C(0xffffffffffff) - 31 ||
+   const bool rt0 = desc && desc->shader_binary_size == 68 &&
+                    desc->nr_gprs == 8 && desc->staging_halfs == 8 &&
+                    (desc->attachment_count == 0 ||
+                     desc->attachment_count == 1);
+   const bool wboit_mrt = desc && desc->shader_binary_size == 120 &&
+                          desc->nr_gprs == 12 &&
+                          desc->staging_halfs == 16 &&
+                          desc->attachment_count == 2;
+   if (!program || chip != AGX_CHIP_G17P || !desc || (!rt0 && !wboit_mrt) ||
+       !desc->pbe_argument_va ||
+       desc->pbe_argument_va > UINT64_C(0xffffffffffff) -
+          (wboit_mrt ? 63 : 31) ||
        (desc->pbe_argument_va & 31))
       return false;
 
@@ -527,7 +555,7 @@ hk_agx3_g17p_rt0_eot_program_generate(
     * uses0..3 before the final
     * COPYs. No descriptor-memory load or load-completion wait is needed.
     */
-   uint8_t body[3 * AGX_IOTO_LOAD_LDIMM_MAX_SIZE];
+   uint8_t body[4 * AGX_IOTO_LOAD_LDIMM_MAX_SIZE];
    size_t body_size = 0;
    for (unsigned i = 0; i < 2; ++i) {
       uint8_t bytes[AGX_IOTO_LOAD_LDIMM_MAX_SIZE], length;
@@ -547,14 +575,23 @@ hk_agx3_g17p_rt0_eot_program_generate(
       return false;
    body_size += offset_length;
 
+   if (wboit_mrt) {
+      if (!agx_ioto_load_pack_ldimm(chip, 10, desc->imageblock_offset1_B,
+                                    body + body_size, &offset_length))
+         return false;
+      body_size += offset_length;
+   }
+
    /* Preserve the proven EOT COPY source-file and no-kill policy. Publish
     * pointer dwords in halves0/2 and the imageblock byte offset in half4.
     */
-   uint8_t copies[12];
+   uint8_t copies[20];
    const struct agx3_field_kv baseline[] = {{9,3},{10,2},{23,2},{24,2}};
-   for (unsigned i = 0; i < 3; ++i) {
+   const unsigned copy_count = wboit_mrt ? 5 : 3;
+   const unsigned copy_sources[] = {4, 6, 8, 8, 10};
+   for (unsigned i = 0; i < copy_count; ++i) {
       const struct agx3_field_kv operands[] = {
-         {3, 2u * i}, {16, 4u + 2u * i},
+         {3, 2u * i}, {16, copy_sources[i]},
       };
       uint8_t bytes[AGX3_MAX_WORDS * 2], length = 0;
       if (!agx3_bind_compose(AGX_ISA_ENCODING_AGX3B, "copy", 0,
@@ -570,7 +607,7 @@ hk_agx3_g17p_rt0_eot_program_generate(
    struct hk_agx3_g17p_rt0_eot_program staged = {0};
    size_t written = 0;
    if (!agx_ioto_g17p_resource_program_compose(
-          desc->program_va, body, body_size, copies, sizeof(copies), &tail,
+          desc->program_va, body, body_size, copies, 4 * copy_count, &tail,
           staged.bytes, sizeof(staged.bytes), &written) ||
        written > sizeof(staged.bytes))
       return false;

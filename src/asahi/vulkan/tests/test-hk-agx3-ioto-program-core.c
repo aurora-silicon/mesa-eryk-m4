@@ -1025,7 +1025,7 @@ test_g17p_rt0_eot_program(void)
    struct hk_agx3_g17p_rt0_eot_program program;
    CHECK(hk_agx3_g17p_rt0_eot_program_generate(AGX_CHIP_G17P, &desc,
                                                &program));
-   CHECK(AGX_IOTO_G17P_RT0_EOT_PROGRAM_SIZE == 174);
+   CHECK(AGX_IOTO_G17P_RT0_EOT_PROGRAM_SIZE == 190);
    CHECK(program.length == 120);
    size_t prefix_size;
    CHECK(check_eot_pointer_prefix(&program, desc.pbe_argument_va, desc.imageblock_offset_B,
@@ -1170,6 +1170,19 @@ test_g17p_rt0_eot_program(void)
                 relocated.length - 4) == 0);
    CHECK(
       !hk_agx3_g17p_rt0_eot_program_generate(AGX_CHIP_G17S, &desc, &program));
+
+   struct hk_agx3_g17p_rt0_eot_program_desc mrt = desc;
+   mrt.shader_binary_size = 120;
+   mrt.nr_gprs = 12;
+   mrt.staging_halfs = 16;
+   mrt.attachment_count = 2;
+   mrt.imageblock_offset1_B = 8;
+   CHECK(hk_agx3_g17p_rt0_eot_program_generate(AGX_CHIP_G17P, &mrt,
+                                                &relocated));
+   CHECK(relocated.length <= AGX_IOTO_G17P_RT0_EOT_PROGRAM_SIZE);
+   mrt.attachment_count = 1;
+   CHECK(!hk_agx3_g17p_rt0_eot_program_generate(AGX_CHIP_G17P, &mrt,
+                                                 &program));
    return 0;
 }
 
@@ -1290,6 +1303,9 @@ test_g17p_rt0_background_programs(void)
 {
    CHECK(hk_agx3_g17p_rt0_bg_shader_resources_match(
       HK_AGX3_G17P_RT0_BG_CLEAR, HK_AGX3_G17P_RT0_CLEAR_PUSH_HALFS, false));
+   CHECK(hk_agx3_g17p_rt0_bg_shader_resources_match(
+      HK_AGX3_G17P_RT0_BG_CLEAR,
+      HK_AGX3_G17P_WBOIT_MRT_CLEAR_PUSH_HALFS, false));
    CHECK(!hk_agx3_g17p_rt0_bg_shader_resources_match(
       HK_AGX3_G17P_RT0_BG_CLEAR, HK_AGX3_G17P_RT0_CLEAR_PUSH_HALFS - 1,
       false));
@@ -1313,6 +1329,14 @@ test_g17p_rt0_background_programs(void)
    struct hk_agx3_g17p_rt0_bg_program program;
    CHECK(hk_agx3_g17p_rt0_bg_program_generate(AGX_CHIP_G17P, &clear, &program));
    CHECK(program.length == AGX_IOTO_G17P_RT0_CLEAR_PROGRAM_SIZE);
+
+   struct hk_agx3_g17p_rt0_bg_program_desc mrt_clear = clear;
+   mrt_clear.clear_push_halfs = HK_AGX3_G17P_WBOIT_MRT_CLEAR_PUSH_HALFS;
+   struct hk_agx3_g17p_rt0_bg_program mrt_clear_program;
+   CHECK(hk_agx3_g17p_rt0_bg_program_generate(
+      AGX_CHIP_G17P, &mrt_clear, &mrt_clear_program));
+   CHECK(mrt_clear_program.length ==
+         AGX_IOTO_G17P_WBOIT_MRT_CLEAR_PROGRAM_SIZE);
 
    /* m1n1 g17p_triangle_source.py, split where HAL200 inserts LoadShader and
     * the default profile-loader prefix before the trailing COPY records. */
@@ -1527,6 +1551,16 @@ test_g17p_single_layer_rt0_layout(void)
    };
    tib = agx_build_tilebuffer_layout(mrt, 2, 1, false);
    CHECK(!hk_agx3_g17p_rt0_tile_layout_supported(&tib));
+
+   enum pipe_format wboit[AGX_MAX_RENDER_TARGETS] = {
+      PIPE_FORMAT_R16G16B16A16_FLOAT,
+      PIPE_FORMAT_R8_UNORM,
+   };
+   tib = agx_build_tilebuffer_layout(wboit, 2, 1, false);
+   CHECK(hk_agx3_g17p_rt0_tile_layout_supported(&tib));
+   CHECK(tib.sample_size_B == 16);
+   CHECK(agx_tilebuffer_offset_B(&tib, 0) == 0);
+   CHECK(agx_tilebuffer_offset_B(&tib, 1) == 8);
 
    tib = agx_build_tilebuffer_layout(rgba, 1, 2, false);
    CHECK(!hk_agx3_g17p_rt0_tile_layout_supported(&tib));

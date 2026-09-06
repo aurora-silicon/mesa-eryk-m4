@@ -316,21 +316,39 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
       return (struct hk_bg_eot){0};
    }
 
+   const bool wboit_mrt =
+      key->tib.logical_format[0] == PIPE_FORMAT_R16G16B16A16_FLOAT &&
+      key->tib.logical_format[1] == PIPE_FORMAT_R8_UNORM;
+
    for (unsigned rt = 0; rt < HK_MAX_RTS; ++rt) {
       const enum agx_bg_eot_op op = key->op[rt];
       const bool rt0_supported = store
                                     ? (op == AGX_EOT_STORE || op == AGX_BG_EOT_NONE)
                                     : (op == AGX_BG_EOT_NONE ||
                                        op == AGX_BG_CLEAR || op == AGX_BG_LOAD);
-      if ((rt == 0 && !rt0_supported) || (rt != 0 && op != AGX_BG_EOT_NONE)) {
+      const bool wboit_mrt_rt1 =
+         rt == 1 && wboit_mrt &&
+         (store ? op == AGX_EOT_STORE
+                : (op == AGX_BG_CLEAR || op == AGX_BG_LOAD));
+      if ((rt == 0 && !rt0_supported) ||
+          (rt != 0 && op != AGX_BG_EOT_NONE && !wboit_mrt_rt1)) {
          vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
          return (struct hk_bg_eot){0};
       }
    }
 
    const enum agx_bg_eot_op op = key->op[0];
+   const bool wboit_mrt_active = wboit_mrt &&
+                                 key->op[1] != AGX_BG_EOT_NONE;
+   if (wboit_mrt_active &&
+       (key->op[1] != op || info->colorAttachmentCount < 2)) {
+      vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+      return (struct hk_bg_eot){0};
+   }
    if (!store && op == AGX_BG_CLEAR)
-      key->reserved_preamble = HK_AGX3_G17P_RT0_CLEAR_PUSH_HALFS;
+      key->reserved_preamble = wboit_mrt_active
+         ? HK_AGX3_G17P_WBOIT_MRT_CLEAR_PUSH_HALFS
+         : HK_AGX3_G17P_RT0_CLEAR_PUSH_HALFS;
 
    struct agx_bg_eot_shader *shader = agx_get_bg_eot_shader(&dev->bg_eot, key);
    const bool shader_resources_match =
@@ -341,6 +359,13 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
                       op == AGX_BG_CLEAR ? HK_AGX3_G17P_RT0_BG_CLEAR
                                          : HK_AGX3_G17P_RT0_BG_RELOAD,
                       shader->info.push_count, shader->info.uses_txf)));
+   if (!store && debug_get_bool_option("HK_G17P_LAUNCH_TRACE", false) && shader)
+      fprintf(stderr, "G17P BG metadata: op=%u size=%u gprs=%u push=%u "
+                      "staging=%u txf=%u supported=%u resources=%u\n",
+              op, shader->info.binary_size, shader->info.nr_gprs,
+              shader->info.push_count, shader->info.agx3_staging_halfs,
+              shader->info.uses_txf, hk_g17p_bg_eot_shader_supported(shader),
+              shader_resources_match);
    if (!hk_g17p_bg_eot_shader_supported(shader) || !shader_resources_match) {
       vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
       return (struct hk_bg_eot){0};
@@ -355,7 +380,9 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
       program_capacity = AGX_IOTO_G17P_RT0_EOT_PROGRAM_SIZE;
       program_label = "G17P RT0 EOT Ioto program";
    } else if (op == AGX_BG_CLEAR) {
-      program_capacity = AGX_IOTO_G17P_RT0_CLEAR_PROGRAM_SIZE;
+      program_capacity = wboit_mrt_active
+         ? AGX_IOTO_G17P_WBOIT_MRT_CLEAR_PROGRAM_SIZE
+         : AGX_IOTO_G17P_RT0_CLEAR_PROGRAM_SIZE;
       program_label = "G17P RT0 clear Ioto program";
    } else {
       program_capacity = AGX_IOTO_G17P_RT0_RELOAD_PROGRAM_MAX_SIZE;
@@ -377,8 +404,13 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
    uint64_t resource_spec;
    if (store && op == AGX_EOT_STORE) {
       struct hk_image_view *iview = cmd->state.gfx.render.color_att[0].iview;
+      struct hk_image_view *iview1 = wboit_mrt_active
+         ? cmd->state.gfx.render.color_att[1].iview : NULL;
       if (!iview || !iview->planes[0].eot_pbe_valid ||
-          info->pColorAttachments[0].imageView == VK_NULL_HANDLE) {
+          info->pColorAttachments[0].imageView == VK_NULL_HANDLE ||
+          (wboit_mrt_active &&
+           (!iview1 || !iview1->planes[0].eot_pbe_valid ||
+            info->pColorAttachments[1].imageView == VK_NULL_HANDLE))) {
          vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FORMAT_NOT_SUPPORTED);
          return (struct hk_bg_eot){0};
       }
@@ -390,10 +422,20 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
          vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
          return (struct hk_bg_eot){0};
       }
+      static_assert(sizeof(struct hk_native_pbe_descriptor) ==
+                       AGX_IOTO_G17P_RT0_PBE_ARGUMENT_SIZE,
+                    "native PBE table stride");
 
+      struct hk_native_pbe_descriptor pbe_arguments[2] = {
+         iview->planes[0].eot,
+      };
+      if (wboit_mrt_active)
+         pbe_arguments[1] = iview1->planes[0].eot;
+      const size_t pbe_argument_size = wboit_mrt_active
+         ? AGX_IOTO_G17P_WBOIT_MRT_PBE_ARGUMENT_SIZE
+         : AGX_IOTO_G17P_RT0_PBE_ARGUMENT_SIZE;
       const uint64_t pbe_argument_va =
-         hk_pool_upload(cmd, &iview->planes[0].eot,
-                        AGX_IOTO_G17P_RT0_PBE_ARGUMENT_SIZE, 32);
+         hk_pool_upload(cmd, pbe_arguments, pbe_argument_size, 32);
       if (!pbe_argument_va)
          return (struct hk_bg_eot){0};
 
@@ -402,6 +444,9 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
          .shader_va = shader->ptr + shader->info.main_offset,
          .pbe_argument_va = pbe_argument_va,
          .imageblock_offset_B = agx_tilebuffer_offset_B(&key->tib, 0),
+         .attachment_count = wboit_mrt_active ? 2 : 1,
+         .imageblock_offset1_B = wboit_mrt_active
+            ? agx_tilebuffer_offset_B(&key->tib, 1) : 0,
          .shader_binary_size = shader->info.binary_size,
          .scratch_size = shader->info.scratch_size,
          .nr_gprs = shader->info.nr_gprs,
@@ -418,6 +463,15 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
       memcpy(program_map, program.bytes, program.length);
       program_length = program.length;
       resource_spec = AGX_IOTO_G17P_EOT_RESOURCE_SPEC;
+      if (debug_get_bool_option("HK_G17P_LAUNCH_TRACE", false))
+         fprintf(stderr,
+                 "G17P EOT launch: program=%" PRIx64 " length=%zu "
+                 "pbe=%" PRIx64 " attachments=%u offsets=%u,%u "
+                 "gprs=%u staging=%u\n",
+                 program_bo->va->addr, program_length, pbe_argument_va,
+                 desc.attachment_count, desc.imageblock_offset_B,
+                 desc.imageblock_offset1_B, desc.nr_gprs,
+                 desc.staging_halfs);
    } else if (op == AGX_BG_EOT_NONE) {
       const struct hk_agx3_g17p_graphics_program_desc desc = {
          .program_va = program_bo->va->addr,
@@ -446,7 +500,13 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
    } else {
       const VkRenderingAttachmentInfo *att_info = &info->pColorAttachments[0];
       struct hk_image_view *iview = cmd->state.gfx.render.color_att[0].iview;
-      if (!iview || att_info->imageView == VK_NULL_HANDLE) {
+      const VkRenderingAttachmentInfo *att_info1 =
+         wboit_mrt_active ? &info->pColorAttachments[1] : NULL;
+      struct hk_image_view *iview1 =
+         wboit_mrt_active ? cmd->state.gfx.render.color_att[1].iview : NULL;
+      if (!iview || att_info->imageView == VK_NULL_HANDLE ||
+          (wboit_mrt_active &&
+           (!iview1 || att_info1->imageView == VK_NULL_HANDLE))) {
          vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FORMAT_NOT_SUPPORTED);
          return (struct hk_bg_eot){0};
       }
@@ -466,6 +526,7 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
          .scratch_size = shader->info.scratch_size,
          .nr_gprs = shader->info.nr_gprs,
          .staging_halfs = shader->info.agx3_staging_halfs,
+         .clear_push_halfs = shader->info.push_count,
          .staging_known = shader->info.agx3_staging_known,
          .op = op == AGX_BG_CLEAR ? HK_AGX3_G17P_RT0_BG_CLEAR
                                   : HK_AGX3_G17P_RT0_BG_RELOAD,
@@ -473,18 +534,33 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
 
       if (op == AGX_BG_CLEAR) {
          static_assert(sizeof(att_info->clearValue.color) == 16, "fixed ABI");
+         VkClearColorValue clear_values[2] = {
+            att_info->clearValue.color,
+         };
+         if (wboit_mrt_active)
+            clear_values[1] = att_info1->clearValue.color;
+         const size_t clear_size = wboit_mrt_active ? 20 : 16;
          desc.clear_value_va =
-            hk_pool_upload(cmd, &att_info->clearValue.color, 16, 16);
+            hk_pool_upload(cmd, clear_values, clear_size, 16);
          if (!desc.clear_value_va)
             return (struct hk_bg_eot){0};
       } else {
-         /* Native texture-table entries occupy aligned 32-byte slots.
-          * This private one-entry table follows the same contract as the
-          * sampled-image heap; arbitrary preceding uploads may otherwise
-          * place its base inside a descriptor slot. */
+         /* Native texture-table entries occupy aligned 32-byte slots. RT1 is
+          * native texture index2, so the exact MRT table retains index1 as a
+          * zero gap. */
+         static_assert(sizeof(struct hk_native_texture_descriptor) ==
+                          AGX_TEXTURE_GEN9_LENGTH,
+                       "native texture table stride");
+         struct hk_native_texture_descriptor textures[3] = {
+            iview->planes[0].background,
+         };
+         if (wboit_mrt_active)
+            textures[2] = iview1->planes[0].background;
+         const size_t texture_size = wboit_mrt_active
+            ? 3 * AGX_TEXTURE_GEN9_LENGTH : AGX_TEXTURE_GEN9_LENGTH;
          const uint64_t texture_va =
-            hk_pool_upload(cmd, &iview->planes[0].background,
-                           AGX_TEXTURE_GEN9_LENGTH, AGX_TEXTURE_GEN9_LENGTH);
+            hk_pool_upload(cmd, textures, texture_size,
+                           AGX_TEXTURE_GEN9_LENGTH);
          const uint64_t sampler_va =
             dev->rodata.bo && dev->rodata.bo->va ? dev->rodata.bo->va->addr : 0;
          if (!texture_va || !sampler_va)
@@ -516,10 +592,10 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
    if (!store && debug_get_bool_option("HK_G17P_LAUNCH_TRACE", false)) {
       fprintf(stderr,
               "G17P BG launch: op=%s program=%" PRIx64 " resources=%" PRIx64
-              " staging_known=%u staging_halfs=%u compiler_d=%u\n",
+              " length=%zu staging_known=%u staging_halfs=%u compiler_d=%u\n",
               op == AGX_BG_CLEAR ? "clear" :
               op == AGX_BG_LOAD ? "reload" : "none",
-              program_bo->va->addr, resource_spec,
+              program_bo->va->addr, resource_spec, program_length,
               shader->info.agx3_staging_known,
               shader->info.agx3_staging_halfs,
               shader->info.agx3_staging_known

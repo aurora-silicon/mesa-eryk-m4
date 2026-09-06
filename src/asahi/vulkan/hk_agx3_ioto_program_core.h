@@ -124,6 +124,7 @@ enum hk_agx3_g17p_rt0_bg_op {
 };
 
 #define HK_AGX3_G17P_RT0_CLEAR_PUSH_HALFS 12u
+#define HK_AGX3_G17P_WBOIT_MRT_CLEAR_PUSH_HALFS 14u
 
 /* Resource spec for the bounded one-RT background shaders, not an ordinary
  * fragment shader or EOT. CLEAR/RELOAD write every live RT0 component; NONE
@@ -141,6 +142,7 @@ struct hk_agx3_g17p_rt0_bg_program_desc {
    uint32_t scratch_size;
    uint16_t nr_gprs;
    uint16_t staging_halfs;
+   uint16_t clear_push_halfs;
    bool staging_known;
    enum hk_agx3_g17p_rt0_bg_op op;
 };
@@ -150,11 +152,9 @@ struct hk_agx3_g17p_rt0_bg_program {
    uint16_t length;
 };
 
-/* Build the one-attachment clear or reload background program. Clear maps one
- * 16-byte value to uniform halfs 4..11. Reload maps two 64-bit texture/sampler
- * pointers to uniform halfs0..7, matching the native immediate-TEX ABI. The
- * input VAs name pointer cells, not inline descriptors. Use
- * hk_agx3_g17p_rt0_bg_resource_spec for their pass mask. */
+/* Build the bounded clear or reload background program. Clear maps RT values
+ * from uniform half4 onward; reload maps two 64-bit texture/sampler pointers
+ * to halfs0..7, matching the native immediate-TEX ABI. */
 bool hk_agx3_g17p_rt0_bg_program_generate(
    enum agx_chip chip, const struct hk_agx3_g17p_rt0_bg_program_desc *desc,
    struct hk_agx3_g17p_rt0_bg_program *program);
@@ -171,6 +171,8 @@ struct hk_agx3_g17p_rt0_eot_program_desc {
    /* RT0 byte offset inside one imageblock sample (native kind5 argument).
     * Published as a zero-extended32-bit value in uniform halves4..5. */
    uint8_t imageblock_offset_B;
+   uint8_t attachment_count;
+   uint8_t imageblock_offset1_B;
    uint32_t shader_binary_size;
    uint32_t scratch_size;
    uint16_t nr_gprs;
@@ -182,12 +184,12 @@ struct hk_agx3_g17p_rt0_eot_program {
    uint16_t length;
 };
 
-/* Build the one-attachment G17P EOT Ioto program. Two LDIMM records hold the
+/* Build the bounded G17P EOT Ioto program. Two LDIMM records hold the
  * raw PBE table pointer in GPR halves 4..7 across the profile setup, then COPY
  * publishes it in uniform halves 0..3. A third LDIMM/COPY supplies
- * imageblock_offset_B through CProg GPR8 into halves4..5. The native68-byte
- * shader consumes this
- * ABI; no inline PBE uniform payload is supplied. */
+ * imageblock offset through CProg GPR8 into halves4..5. The exact MRT form
+ * additionally publishes its second offset at halves8..9, retaining the
+ * native metadata's intervening dword. No inline PBE payload is supplied. */
 bool hk_agx3_g17p_rt0_eot_program_generate(
    enum agx_chip chip, const struct hk_agx3_g17p_rt0_eot_program_desc *desc,
    struct hk_agx3_g17p_rt0_eot_program *program);
