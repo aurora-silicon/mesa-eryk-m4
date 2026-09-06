@@ -19,6 +19,7 @@
 #include <vulkan/vulkan.h>
 
 #include <dlfcn.h>
+#include <inttypes.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -697,6 +698,11 @@ main(void)
                                VK_QUERY_RESULT_64_BIT |
                                   VK_QUERY_RESULT_WITH_AVAILABILITY_BIT),
          "vkGetQueryPoolResults(occlusion)");
+   fprintf(stderr,
+           "g17p-render-only: occlusion samples=%" PRIu64
+           " available=%" PRIu64 " expected=%u\n",
+           query_result.samples, query_result.available,
+           IMAGE_WIDTH * IMAGE_HEIGHT);
    if (query_result.available != 1 ||
        query_result.samples != IMAGE_WIDTH * IMAGE_HEIGHT)
       die("precise occlusion result differs from the full viewport");
