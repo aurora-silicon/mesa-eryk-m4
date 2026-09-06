@@ -531,7 +531,8 @@ hk_get_device_features(
       /* VK_EXT_extended_dynamic_state2 */
       .extendedDynamicState2 = true,
       .extendedDynamicState2LogicOp = true,
-      .extendedDynamicState2PatchControlPoints = true,
+      .extendedDynamicState2PatchControlPoints =
+         dev->chip != AGX_CHIP_G17P,
 
       /* VK_EXT_extended_dynamic_state3 */
       .extendedDynamicState3TessellationDomainOrigin = true,
