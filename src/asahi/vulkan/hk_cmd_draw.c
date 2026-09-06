@@ -4615,7 +4615,7 @@ hk_flush_gfx_state(struct hk_cmd_buffer *cmd, uint32_t draw_id,
       }
    }
 
-   hk_ensure_cs_has_space(cmd, cs, 0x2000 /* TODO */);
+   hk_ensure_cs_has_space(cmd, cs, HK_GFX_DRAW_RESERVATION);
 
 #ifndef NDEBUG
    if (unlikely(dev->dev.debug & AGX_DBG_DIRTY)) {

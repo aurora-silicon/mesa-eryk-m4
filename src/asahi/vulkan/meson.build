@@ -8,6 +8,7 @@ hk_files = files(
   'hk_cmd_buffer.c',
   'hk_cmd_buffer.h',
   'hk_cmd_lifetime.c',
+  'hk_cs_root_size.h',
   'hk_cmd_clear.c',
   'hk_cmd_dispatch.c',
   'hk_cmd_draw.c',
@@ -84,6 +85,31 @@ hk_files = files(
 )
 
 if with_tests
+  test(
+    'hk_cs_root_size',
+    executable(
+      'hk_cs_root_size_test',
+      files('tests/test-hk-cs-root-size.c'),
+      include_directories : [
+        inc_gallium,
+        inc_gallium_aux,
+        inc_include,
+        inc_src,
+        inc_asahi,
+        inc_virtio_gpu,
+        inc_virtio_vdrm,
+      ],
+      dependencies : [
+        idep_mesautil,
+        idep_vulkan_runtime_headers,
+        idep_vulkan_util_headers,
+      ],
+      c_args : [c_msvc_compat_args, '-Wno-error=pointer-arith'],
+      gnu_symbol_visibility : 'hidden',
+    ),
+    suite : ['asahi'],
+  )
+
   test(
     'hk_cmd_lifetime',
     executable(

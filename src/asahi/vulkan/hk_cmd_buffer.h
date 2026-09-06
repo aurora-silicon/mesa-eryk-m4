@@ -24,6 +24,7 @@
 #include "hk_shader.h"
 
 #include "hk_cmd_pool.h"
+#include "hk_cs_root_size.h"
 #include "hk_descriptor_set.h"
 #include "hk_drm_render_core.h"
 
@@ -656,7 +657,8 @@ hk_cmd_buffer_get_cs_general(struct hk_cmd_buffer *cmd, struct hk_cs **ptr,
 {
    if ((*ptr) == NULL) {
       /* Allocate root control stream */
-      size_t initial_size = 65536;
+      struct hk_device *dev = hk_cmd_buffer_device(cmd);
+      size_t initial_size = hk_cs_root_size(dev->dev.chip, compute);
       struct agx_ptr root = hk_pool_alloc(cmd, initial_size, 1024);
       if (!root.cpu)
          return NULL;

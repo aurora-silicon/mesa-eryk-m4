@@ -1707,6 +1707,9 @@ hk_cs_init_graphics(struct hk_cmd_buffer *cmd, struct hk_cs *cs)
 
    /* All graphics state must be reemited in each control stream */
    hk_cmd_buffer_dirty_all(cmd);
+
+   if (dev->dev.chip == AGX_CHIP_G17P)
+      assert((cs->current - cs->start) == HK_G17P_VDM_INITIAL_SIZE);
 }
 
 void
@@ -1726,10 +1729,8 @@ hk_ensure_cs_has_space(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
     *
     * 0x200 is not enough. 0x400 seems to work. 0x800 for safety.
     */
-   space += link_length + 0x800;
-
    /* If there is room in the command buffer, we're done */
-   if (likely((cs->end - cs->current) >= space))
+   if (likely(hk_cs_space_fits(cs->end - cs->current, space, link_length)))
       return;
 
    /* Otherwise, we need to allocate a new command buffer. We use memory owned
