@@ -4526,6 +4526,16 @@ hk_flush_gfx_state(struct hk_cmd_buffer *cmd, uint32_t draw_id,
    if (!cs)
       return NULL;
 
+   /* Native HAL200 starts each draw after the first as a new top-level VDM
+    * block: terminate the preceding direct-draw block, then rebuild the
+    * complete VertexProgramVariant and bind tail.  A second direct draw
+    * appended immediately after the first is decoded as shader-state data
+    * and faults in dVDM_SSD before either TA or fragment starts. */
+   if (dev->dev.chip == AGX_CHIP_G17P && cs->stats.cmds > 0) {
+      cs->current = hk_cmd_buffer_emit_vdm_terminate(cmd, cs->current);
+      hk_cmd_buffer_dirty_all(cmd);
+   }
+
    /* Annoyingly,
     * VK_DEPTH_BIAS_REPRESENTATION_LEAST_REPRESENTABLE_VALUE_FORCE_UNORM_EXT is
     * render pass state on Imaginapple but draw state in Vulkan. In practice,
