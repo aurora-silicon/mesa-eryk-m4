@@ -356,6 +356,12 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
          "HK_G17P_WBOIT_EOT_RT1_VIA_SLOT0", false);
    const bool diagnostic_rt1_slot0 =
       store && wboit_mrt_active && rt1_via_slot0;
+   static int rt1_from_rt0 = -1;
+   if (rt1_from_rt0 < 0)
+      rt1_from_rt0 = debug_get_bool_option(
+         "HK_G17P_WBOIT_EOT_RT1_FROM_RT0", false);
+   const bool diagnostic_rt1_from_rt0 =
+      diagnostic_rt1_slot0 && rt1_from_rt0;
    struct agx_bg_eot_key shader_key = *key;
    if (diagnostic_rt1_slot0) {
       shader_key.op[1] = AGX_BG_EOT_NONE;
@@ -461,7 +467,8 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
          .shader_va = shader->ptr + shader->info.main_offset,
          .pbe_argument_va = pbe_argument_va,
          .imageblock_offset_B = agx_tilebuffer_offset_B(
-            &key->tib, diagnostic_rt1_slot0 ? 1 : 0),
+            &key->tib, diagnostic_rt1_from_rt0 ? 0
+                                               : diagnostic_rt1_slot0 ? 1 : 0),
          .attachment_count =
             wboit_mrt_active && !diagnostic_rt1_slot0 ? 2 : 1,
          .imageblock_offset1_B =
