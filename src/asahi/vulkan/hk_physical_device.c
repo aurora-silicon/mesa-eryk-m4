@@ -535,22 +535,29 @@ hk_get_device_features(
          dev->chip != AGX_CHIP_G17P,
 
       /* VK_EXT_extended_dynamic_state3 */
-      .extendedDynamicState3TessellationDomainOrigin = true,
+      /* Keep G17P states behind their actual native path: no tessellation or
+       * rasterization streams, no multisample locations, no grounded AGX3
+       * sample-mask writeout, and polygon-point fill remains unproven. */
+      .extendedDynamicState3TessellationDomainOrigin =
+         dev->chip != AGX_CHIP_G17P,
       .extendedDynamicState3DepthClampEnable = true,
-      .extendedDynamicState3PolygonMode = true,
+      .extendedDynamicState3PolygonMode = dev->chip != AGX_CHIP_G17P,
       .extendedDynamicState3RasterizationSamples = true,
-      .extendedDynamicState3SampleMask = true,
-      .extendedDynamicState3AlphaToCoverageEnable = true,
+      .extendedDynamicState3SampleMask = dev->chip != AGX_CHIP_G17P,
+      .extendedDynamicState3AlphaToCoverageEnable =
+         dev->chip != AGX_CHIP_G17P,
       .extendedDynamicState3AlphaToOneEnable = true,
       .extendedDynamicState3LogicOpEnable = true,
       .extendedDynamicState3ColorBlendEnable = true,
       .extendedDynamicState3ColorBlendEquation = true,
       .extendedDynamicState3ColorWriteMask = true,
-      .extendedDynamicState3RasterizationStream = true,
+      .extendedDynamicState3RasterizationStream =
+         dev->chip != AGX_CHIP_G17P,
       .extendedDynamicState3ConservativeRasterizationMode = false,
       .extendedDynamicState3ExtraPrimitiveOverestimationSize = false,
       .extendedDynamicState3DepthClipEnable = true,
-      .extendedDynamicState3SampleLocationsEnable = true,
+      .extendedDynamicState3SampleLocationsEnable =
+         dev->chip != AGX_CHIP_G17P,
       .extendedDynamicState3ColorBlendAdvanced = false,
       .extendedDynamicState3ProvokingVertexMode = true,
       .extendedDynamicState3LineRasterizationMode = true,
