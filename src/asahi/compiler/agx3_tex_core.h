@@ -152,6 +152,13 @@ bool agx3_tex_encode_sample(enum agx_isa_encoding enc,
  */
 #define AGX3_TEX_COPY_MAX_LENGTH 10u
 
+/* A native staging COPY must preserve a coordinate GPR if later work uses
+ * it. CACHE/NONE/DISCARD are independent of the staging-bank release bit. */
+bool agx3_tex_stage_copy_hints(enum agx_isa_encoding enc, uint16_t dest,
+                               uint16_t src, uint8_t slot, uint16_t wait_mask,
+                               bool src_cache, bool src_discard,
+                               uint8_t out[AGX3_TEX_COPY_MAX_LENGTH], uint8_t *len);
+
 bool agx3_tex_stage_copy(enum agx_isa_encoding enc, uint16_t dest,
                          uint16_t src, uint8_t slot, uint16_t wait_mask,
                          uint8_t out[AGX3_TEX_COPY_MAX_LENGTH], uint8_t *len);

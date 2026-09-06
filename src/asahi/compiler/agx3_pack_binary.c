@@ -803,8 +803,10 @@ agx3_emit_texture_fetch(struct util_dynarray *emission,
    if (stage_coordinates) {
       for (unsigned i = 0; i < agx_channels(I->src[0]); i++) {
          uint8_t copy[AGX3_TEX_MAX_LENGTH], copy_len = 0;
-         if (!agx3_tex_stage_copy(enc, 2 * i, I->src[0].value + 2 * i,
+         if (!agx3_tex_stage_copy_hints(enc, 2 * i, I->src[0].value + 2 * i,
                                   slot, i == 0 ? wait_mask : 0,
+                                  enc == AGX_ISA_ENCODING_AGX3B && I->src[0].cache,
+                                  enc != AGX_ISA_ENCODING_AGX3B || I->src[0].discard,
                                   copy, &copy_len) ||
              !agx3_append(emission, copy, copy_len))
             return false;
@@ -890,10 +892,14 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
    uint8_t bytes[AGX3_TEX_MAX_LENGTH];
    uint8_t len = 0;
 
-   if (!agx3_tex_stage_copy(enc, coord, coord, slot, wait_mask, bytes, &len) ||
+   if (!agx3_tex_stage_copy_hints(enc, coord, coord, slot, wait_mask,
+          enc == AGX_ISA_ENCODING_AGX3B && I->src[0].cache,
+          enc != AGX_ISA_ENCODING_AGX3B || I->src[0].discard, bytes, &len) ||
        !agx3_append(emission, bytes, len))
       return false;
-   if (!agx3_tex_stage_copy(enc, coord + 2, coord + 2, slot, 0, bytes, &len) ||
+   if (!agx3_tex_stage_copy_hints(enc, coord + 2, coord + 2, slot, 0,
+          enc == AGX_ISA_ENCODING_AGX3B && I->src[0].cache,
+          enc != AGX_ISA_ENCODING_AGX3B || I->src[0].discard, bytes, &len) ||
        !agx3_append(emission, bytes, len))
       return false;
 

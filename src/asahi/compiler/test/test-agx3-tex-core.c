@@ -936,10 +936,34 @@ test_indexed_fetch_native(void)
    return 0;
 }
 
+static int
+test_staging_source_lifetime(void)
+{
+   /* Fresh complete native read kernels use coordinates both for TEX and
+    * later output addressing/XOR. Their staging producers must not discard. */
+   const uint8_t golden[2][2][4]={
+      {{0x0b,0x08,0x21,0x24},{0x1b,0x0a,0x21,0x44}},
+      {{0x0b,0x88,0x21,0x24},{0x1b,0x8a,0x21,0x44}},
+   };
+   for(unsigned cache=0;cache<2;cache++)for(unsigned xy=0;xy<2;xy++) {
+      uint8_t bytes[AGX3_TEX_COPY_MAX_LENGTH],len;
+      CHECK(agx3_tex_stage_copy_hints(AGX_ISA_ENCODING_AGX3B,2*xy,8+2*xy,
+         1,1u<<xy,cache,false,bytes,&len));
+      CHECK(len==4 && !memcmp(bytes,golden[cache][xy],4));
+   }
+   uint8_t rejected[AGX3_TEX_COPY_MAX_LENGTH], length=0xff;
+   memset(rejected,0xa5,sizeof(rejected));
+   CHECK(!agx3_tex_stage_copy_hints(AGX_ISA_ENCODING_AGX3B,0,8,1,0,
+      true,true,rejected,&length));
+   CHECK(length==0);
+   for(unsigned i=0;i<sizeof(rejected);i++)CHECK(rejected[i]==0);
+   return 0;
+}
+
 int
 main(void)
 {
-   if (test_exact_witnesses() || test_supported_axes() || test_fail_closed() ||
+   if (test_staging_source_lifetime() || test_exact_witnesses() || test_supported_axes() || test_fail_closed() ||
        test_sample_witnesses() || test_copy_witnesses() ||
        test_sample_fail_closed() || test_array_fetch() ||
        test_bindless_operand_kinds() || test_indexed_sample_witnesses() || test_sample_mask_domain() || test_indexed_fetch_native())

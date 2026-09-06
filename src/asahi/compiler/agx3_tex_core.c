@@ -273,14 +273,18 @@ agx3_tex_encode_sample(enum agx_isa_encoding enc,
 }
 
 bool
-agx3_tex_stage_copy(enum agx_isa_encoding enc, uint16_t dest, uint16_t src,
+agx3_tex_stage_copy_hints(enum agx_isa_encoding enc, uint16_t dest, uint16_t src,
                     uint8_t slot, uint16_t wait_mask,
+                          bool src_cache, bool src_discard,
                     uint8_t out[AGX3_TEX_COPY_MAX_LENGTH], uint8_t *len)
 {
    if (out == NULL || len == NULL)
       return false;
    memset(out, 0, AGX3_TEX_COPY_MAX_LENGTH);
    *len = 0;
+   if ((src_cache && src_discard) ||
+       (enc == AGX_ISA_ENCODING_AGX3C && (src_cache || !src_discard)))
+      return false;
 
    if (enc != AGX_ISA_ENCODING_AGX3B && enc != AGX_ISA_ENCODING_AGX3C)
       return false;
@@ -301,7 +305,6 @@ agx3_tex_stage_copy(enum agx_isa_encoding enc, uint16_t dest, uint16_t src,
    base[nb++] = (struct agx3_field_kv)KV(10, 2);
    base[nb++] = (struct agx3_field_kv)KV(23, 2);
    base[nb++] = (struct agx3_field_kv)KV(24, 2);
-   base[nb++] = (struct agx3_field_kv)KV(27, 1);
    if (enc == AGX_ISA_ENCODING_AGX3C) {
       base[nb++] = (struct agx3_field_kv)KV(28, 1);
       base[nb++] = (struct agx3_field_kv)KV(29, 35);
@@ -311,6 +314,8 @@ agx3_tex_stage_copy(enum agx_isa_encoding enc, uint16_t dest, uint16_t src,
    unsigned n = 0;
    ov[n++] = (struct agx3_field_kv)KV(5, dest);
    ov[n++] = (struct agx3_field_kv)KV(16, src);
+   ov[n++] = (struct agx3_field_kv)KV(25, src_cache);
+   ov[n++] = (struct agx3_field_kv)KV(27, src_discard);
    ov[n++] = (struct agx3_field_kv)KV(12, slot);
    for (unsigned i = 0; i < 8; ++i)
       if (wait_mask & (1u << i))
@@ -326,6 +331,14 @@ agx3_tex_stage_copy(enum agx_isa_encoding enc, uint16_t dest, uint16_t src,
    memset(out, 0, AGX3_TEX_COPY_MAX_LENGTH);
    *len = 0;
    return false;
+}
+
+bool
+agx3_tex_stage_copy(enum agx_isa_encoding enc, uint16_t dest, uint16_t src,
+                    uint8_t slot, uint16_t wait_mask,
+                    uint8_t out[AGX3_TEX_COPY_MAX_LENGTH], uint8_t *len)
+{
+   return agx3_tex_stage_copy_hints(enc,dest,src,slot,wait_mask,false,true,out,len);
 }
 
 static uint16_t
