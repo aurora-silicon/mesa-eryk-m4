@@ -292,12 +292,59 @@ check_gen9_single_layer_packet(void)
    return 0;
 }
 
+static int
+check_gen9_native_mips(void)
+{
+   const struct agx_pbe_agx3_2d_fields f = {
+      .layout = 1, .channels = 0x28, .type = 0,
+      .swizzle_r = 0, .swizzle_g = 1, .swizzle_b = 2, .swizzle_a = 3,
+      .width = 128, .height = 128, .buffer = UINT64_C(0x87fddc0000),
+   };
+   /* Recovered native StateFields output for level1 of a three-level chain:
+    * base dimensions/address are preserved; extension is fully explicit. */
+   static const uint8_t native_level1_of3[32] = {
+      0x12,0x0a,0xe4,0x7f,0xc0,0x1f,0x00,0x04,
+      0x00,0xc0,0xdd,0x7f,0x08,0x00,0x00,0x80,
+      0x00,0x00,0x00,0x00,0x00,0x10,0x02,0x00,
+      0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+   };
+   struct agx_pbe_agx3_descriptor p, plain;
+   CHECK(agx_pbe_agx3_2d_mip_pack(9,&f,1,3,&p));
+   CHECK(memcmp(p.bytes,native_level1_of3,32)==0);
+   CHECK(agx_pbe_agx3_2d_pack(9,&f,&plain));
+   CHECK(agx_pbe_agx3_2d_mip_pack(9,&f,0,1,&p));
+   CHECK(memcmp(&p,&plain,sizeof(p))==0);
+   for(unsigned levels=1;levels<=16;levels++) {
+      for(unsigned level=0;level<levels;level++) {
+         CHECK(agx_pbe_agx3_2d_mip_pack(9,&f,level,levels,&p));
+         CHECK(p.length==32);
+         for(unsigned i=0;i<32;i++) {
+            uint8_t expect=plain.bytes[i];
+            if(levels>1) {
+               if(i==7)expect|=4;
+               if(i==15)expect|=128;
+               if(i==21)expect=level*16;
+               if(i==22)expect=levels-1;
+            }
+            CHECK(p.bytes[i]==expect);
+         }
+      }
+   }
+   const unsigned invalid[][3]={{9,0,0},{9,0,17},{9,1,1},{9,16,16},{10,0,1},{9,UINT32_MAX,2}};
+   for(unsigned i=0;i<sizeof(invalid)/sizeof(invalid[0]);i++) {
+      memset(&p,0xa5,sizeof(p));
+      CHECK(!agx_pbe_agx3_2d_mip_pack(invalid[i][0],&f,invalid[i][1],invalid[i][2],&p));
+      CHECK(memcmp(&p,&(struct agx_pbe_agx3_descriptor){0},sizeof(p))==0);
+   }
+   return 0;
+}
+
 int
 main(void)
 {
    if (check_exact_generation_vectors() || check_exhaustive_format_axes() ||
        check_dimension_and_address_bits() || check_fail_closed_axes() ||
-       check_gen9_single_layer_packet())
+       check_gen9_single_layer_packet() || check_gen9_native_mips())
       return 1;
 
    printf("agx_pbe_agx3_core: %u checks passed\n", checks);

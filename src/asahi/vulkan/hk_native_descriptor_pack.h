@@ -27,8 +27,9 @@ bool hk_pack_native_texture(unsigned generation,
 bool hk_translate_native_texture_sample_count(
    unsigned generation, unsigned samples, enum agx_sample_count *out);
 
-/* Pack the native hardware PBE word. Gen9/10 accept only the exact uncompressed
- * single-level/single-layer 2D subset; software-addressed axes remain gated.
+/* Pack the native hardware PBE word. Gen9 supports uncompressed single-layer
+ * 2D mip chains; Gen10 retains its single-level subset. Software-addressed
+ * axes remain separate.
  */
 bool hk_pack_native_pbe(unsigned generation,
                         struct hk_native_pbe_descriptor *out,

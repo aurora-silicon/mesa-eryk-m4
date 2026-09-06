@@ -202,16 +202,18 @@ hk_pack_native_pbe(unsigned generation,
       return false;
 
    /* The recovered subset deliberately excludes every field whose Gen9/10
-    * semantic placement is incomplete: linear stride, arrays, mip levels,
+    * semantic placement is incomplete: linear stride, arrays,
     * compression, sparse mode, gamma and the software-addressing sideband.
     */
    if (legacy->dimension != AGX_TEXTURE_DIMENSION_2D ||
        (legacy->layout != AGX_LAYOUT_TWIDDLED &&
         legacy->layout != AGX_LAYOUT_GPU) ||
        legacy->unk_52 || legacy->rotate_90 || legacy->flip_vertical ||
-       legacy->samples != AGX_SAMPLE_COUNT_2 || legacy->unk_mipmapped ||
+       legacy->samples != AGX_SAMPLE_COUNT_2 ||
        legacy->compressed || legacy->mode != AGX_IMAGE_MODE_NORMAL ||
-       legacy->level != 0 || legacy->levels != 1 || legacy->layers != 1 ||
+       legacy->layers != 1 ||
+       (generation != 9 && (legacy->level != 0 || legacy->levels != 1 ||
+                            legacy->unk_mipmapped)) ||
        legacy->srgb || legacy->extended ||
        legacy->stride || legacy->acceleration_buffer ||
        legacy->depth_linear != 1 || legacy->layer_stride_linear ||
@@ -235,7 +237,11 @@ hk_pack_native_pbe(unsigned generation,
       .page_aligned_layers = legacy->page_aligned_layers,
    };
    struct agx_pbe_agx3_descriptor packed;
-   if (!agx_pbe_agx3_2d_pack(generation, &fields, &packed))
+   const bool valid = generation == 9
+      ? agx_pbe_agx3_2d_mip_pack(generation, &fields, legacy->level,
+                                legacy->levels, &packed)
+      : agx_pbe_agx3_2d_pack(generation, &fields, &packed);
+   if (!valid)
       return false;
 
    static_assert(sizeof(out->opaque) == sizeof(packed.bytes));

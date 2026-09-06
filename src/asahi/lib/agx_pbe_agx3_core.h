@@ -52,6 +52,12 @@ bool agx_pbe_agx3_2d_pack(
    const struct agx_pbe_agx3_2d_fields *fields,
    struct agx_pbe_agx3_descriptor *out);
 
+/* Gen9 native mip extension: the existing descriptor is unchanged for
+ * level=0, levels=1. Width/height and buffer describe the complete mip chain. */
+bool agx_pbe_agx3_2d_mip_pack(
+   uint32_t generation, const struct agx_pbe_agx3_2d_fields *fields,
+   uint32_t level, uint32_t levels, struct agx_pbe_agx3_descriptor *out);
+
 bool agx_pbe_agx3_2d_unpack(
    uint32_t generation, const void *bytes, size_t size,
    struct agx_pbe_agx3_2d_fields *fields);

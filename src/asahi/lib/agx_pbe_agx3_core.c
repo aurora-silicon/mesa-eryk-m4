@@ -135,6 +135,33 @@ agx_pbe_agx3_2d_pack(uint32_t generation,
 }
 
 bool
+agx_pbe_agx3_2d_mip_pack(
+   uint32_t generation, const struct agx_pbe_agx3_2d_fields *fields,
+   uint32_t level, uint32_t levels, struct agx_pbe_agx3_descriptor *out)
+{
+   if (out)
+      memset(out, 0, sizeof(*out));
+   if (generation != AGX_PBE_AGX3_GENERATION_9 || !levels || levels > 16 ||
+       level >= levels || !agx_pbe_agx3_2d_pack(generation, fields, out))
+      return false;
+
+   /* PBEStateEncoderGen9::StateFields 0x34ef68 and 0x34f00c..0x34f028:
+    * level | (levels - 1) selects the extended descriptor. The level is
+    * word2[47:44], levels-1 is word2[51:48], with word0 bit58 and word1
+    * bit63 marking the extension. All other word2/word3 bits remain zero.
+    * Using the native chain fields preserves the allocation's mip tail
+    * addressing rather than pretending each level is a standalone image.
+    */
+   if (level || levels > 1) {
+      store_le64(&out->bytes[0], load_le64(&out->bytes[0]) | (UINT64_C(1) << 58));
+      store_le64(&out->bytes[8], load_le64(&out->bytes[8]) | (UINT64_C(1) << 63));
+      store_le64(&out->bytes[16], ((uint64_t)level << 44) |
+                                     ((uint64_t)(levels - 1) << 48));
+   }
+   return true;
+}
+
+bool
 agx_pbe_agx3_2d_unpack(uint32_t generation, const void *bytes, size_t size,
                        struct agx_pbe_agx3_2d_fields *fields)
 {

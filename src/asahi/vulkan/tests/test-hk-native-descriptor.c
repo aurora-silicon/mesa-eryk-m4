@@ -218,6 +218,7 @@ main(void)
    assert(hk_native_pbe_supported(8));
    assert(!hk_native_pbe_supported(9));
    assert(!hk_native_pbe_supported(10));
+
    assert(hk_native_pbe_hardware_supported(7));
    assert(hk_native_pbe_hardware_supported(8));
    assert(hk_native_pbe_hardware_supported(9));
@@ -391,6 +392,25 @@ main(void)
    assert(hk_pack_native_pbe(10, &native_pbe, &pbe));
    assert(memcmp(&native_pbe, gen10_pbe, sizeof(gen10_pbe)) == 0);
    assert(!hk_native_pbe_supported(10));
+   pbe.unk_mipmapped = true;
+   for (unsigned levels = 2; levels <= 16; ++levels) {
+      pbe.levels = levels;
+      for (unsigned level = 0; level < levels; ++level) {
+         pbe.level = level;
+         assert(hk_pack_native_pbe(9, &native_pbe, &pbe));
+         uint8_t expected[32];
+         memcpy(expected, gen9_pbe, sizeof(expected));
+         expected[7] |= 4;
+         expected[15] |= 128;
+         expected[21] = level << 4;
+         expected[22] = levels - 1;
+         assert(memcmp(&native_pbe, expected, sizeof(expected)) == 0);
+      }
+   }
+   pbe.unk_mipmapped = false;
+   pbe.level = 0;
+   pbe.levels = 1;
+
 
 #define CHECK_PBE_REJECT(statement_)                                           \
    do {                                                                        \
@@ -411,7 +431,7 @@ main(void)
    pbe.compressed = false;
    CHECK_PBE_REJECT(pbe.level = 1);
    pbe.level = 0;
-   CHECK_PBE_REJECT(pbe.levels = 2);
+   CHECK_PBE_REJECT(pbe.levels = 17);
    pbe.levels = 1;
    CHECK_PBE_REJECT(pbe.srgb = true);
    pbe.srgb = false;
