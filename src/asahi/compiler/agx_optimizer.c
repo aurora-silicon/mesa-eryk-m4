@@ -225,11 +225,20 @@ agx_optimizer_not(agx_instr *I, agx_instr *use)
 }
 
 static bool
-agx_optimizer_fmov_rev(agx_instr *I, agx_instr *use)
+agx_optimizer_fmov_rev(agx_context *ctx, agx_instr *I, agx_instr *use)
 {
    if (!agx_is_fmov(use))
       return false;
    if (use->src[0].neg || use->src[0].abs)
+      return false;
+
+   /* AGX3b's transcendental/rounding forms have no native saturation bit.
+    * Keep the following saturating fmov separate, matching Apple's native
+    * lowering, so the funop remains encodable and the clamp still happens. */
+   if (ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B && use->saturate &&
+       (I->op == AGX_OPCODE_FLOOR || I->op == AGX_OPCODE_CEIL ||
+        I->op == AGX_OPCODE_TRUNC || I->op == AGX_OPCODE_LOG2 ||
+        I->op == AGX_OPCODE_EXP2))
       return false;
 
    /* We can fold f2f16 into 32-bit instructions, but we can't fold f2f32 into
@@ -645,7 +654,7 @@ agx_optimizer_backward(agx_context *ctx)
          }
 
          /* Destination has a single use, try to propagate */
-         if (info.is_float && agx_optimizer_fmov_rev(I, use)) {
+         if (info.is_float && agx_optimizer_fmov_rev(ctx, I, use)) {
             agx_remove_instruction(use);
             continue;
          }

@@ -622,6 +622,33 @@ static void test_int_to_float_liveness(void)
 static void
 test_native_fma_minifloat(void)
 {
+   {
+      static const struct {
+         uint16_t dest, src, addend;
+         uint8_t immediate;
+         enum agx3_alu_hint src_hint, addend_hint;
+         const char *bytes;
+      } negative_addend[] = {
+         {0, 0, 2, 64, AGX3_ALU_HINT_DISCARD, AGX3_ALU_HINT_DISCARD,
+          "09010ec1910202c2"},
+         {0, 2, 4, 64, AGX3_ALU_HINT_NONE, AGX3_ALU_HINT_NONE,
+          "090306c1110402c2"},
+         {0, 0, 2, 32, AGX3_ALU_HINT_DISCARD, AGX3_ALU_HINT_DISCARD,
+          "09010ea1910202c2"},
+         {0, 2, 4, 32, AGX3_ALU_HINT_NONE, AGX3_ALU_HINT_NONE,
+          "090306a1110402c2"},
+      };
+      for (unsigned i = 0;
+           i < sizeof(negative_addend) / sizeof(negative_addend[0]); ++i) {
+         uint8_t out[16], len;
+         assert(agx3_alu_fma_minifloat_mod(
+            AGX_ISA_ENCODING_AGX3B, negative_addend[i].dest,
+            negative_addend[i].src, negative_addend[i].immediate,
+            negative_addend[i].addend, true, negative_addend[i].src_hint,
+            negative_addend[i].addend_hint, false, 0, out, &len));
+         exact(out, len, negative_addend[i].bytes);
+      }
+   }
    {const uint8_t native[]={0x49,0x11,0x2e,0xc1,0x81,0x08,0x02,0x42};uint8_t out[16],len;
     assert(agx3_alu_fma_minifloat(AGX_ISA_ENCODING_AGX3B,8,16,64,8,1,1,1,2,out,&len));
     assert(len==sizeof(native) && !memcmp(out,native,len));}

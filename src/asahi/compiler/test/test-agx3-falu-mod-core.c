@@ -313,7 +313,38 @@ fma_addend_vectors(void)
          fprintf(stderr,"FMA minifloat addend vector %u failed\n",i);fail++;
       }
    }
-   printf("native FMA minifloat addend: six Apple live/dead vectors: %u failures\n",fail);
+   {
+      const struct {
+         uint16_t dst, src0, src1;
+         struct agx3_falu_runtime rt;
+         uint8_t bytes[8];
+      } negative_multiplier[] = {
+         {0, 0, 2, {.discard={1,1}},
+          {0x09,0x03,0x1e,0x01,0x21,0x98,0x02,0xc8}},
+         {0, 2, 4, {.cache={0,0}, .discard={0,0}},
+          {0x09,0x05,0x06,0x03,0x21,0x98,0x02,0xc8}},
+      };
+      for (unsigned i = 0;
+           i < sizeof(negative_multiplier) / sizeof(negative_multiplier[0]);
+           ++i) {
+         uint8_t out[16], size = 0;
+         if (!agx3_falu_fma_addend_imm_mod(
+                AGX_ISA_ENCODING_AGX3B, negative_multiplier[i].dst,
+                negative_multiplier[i].src0, negative_multiplier[i].src1,
+                24, true, false, &negative_multiplier[i].rt, out, &size) ||
+             size != sizeof(negative_multiplier[i].bytes) ||
+             memcmp(out, negative_multiplier[i].bytes, size)) {
+            fprintf(stderr,
+                    "FMA minifloat addend negated-multiplier vector %u failed\n",
+                    i);
+            for (unsigned j = 0; j < size; ++j)
+               fprintf(stderr, "%02x", out[j]);
+            fprintf(stderr, " size=%u\n", size);
+            fail++;
+         }
+      }
+   }
+   printf("native FMA minifloat addend: eight Apple live/dead/modifier vectors: %u failures\n",fail);
    return fail;
 }
 
