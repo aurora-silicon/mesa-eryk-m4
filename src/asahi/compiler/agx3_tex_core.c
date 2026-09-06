@@ -540,8 +540,10 @@ agx3_tex_stage_lod(enum agx_isa_encoding enc, uint16_t src, uint8_t slot,
 
 /* The dynamic array-layer witness uses PACK_SMPIR like register LOD, but its
  * operand-type selectors differ. In particular, f74=4/f75=0 produces the
- * native 1705540600080000f0c00400 for discarded r2; the LOD baseline's
- * f74=2/f75=16 silently leaves the sample destination unwritten. */
+ * native 1705540600080000f0c00400 for discarded r2 on slot 1; the LOD
+ * baseline's f74=2/f75=16 silently leaves the sample destination unwritten.
+ * Register-indexed array samples use the independently witnessed slot-6 form
+ * 1705540600180000f0e40400 for discarded r6. */
 bool
 agx3_tex_stage_array_layer(enum agx_isa_encoding enc, uint16_t src,
                            uint8_t slot, uint16_t wait_mask, bool src_cache,

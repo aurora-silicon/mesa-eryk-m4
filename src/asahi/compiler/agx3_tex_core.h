@@ -148,7 +148,8 @@ bool agx3_tex_stage_lod(enum agx_isa_encoding enc, uint16_t src, uint8_t slot,
                        uint8_t out[AGX3_TEX_MAX_LENGTH], uint8_t *len);
 
 /* Pack a register-valued integer 2D-array layer into the separately witnessed
- * array-layer PACK_SMPIR form. */
+ * array-layer PACK_SMPIR form. Native register-indexed descriptors use slot 6;
+ * the caller must make the corresponding SMP wait on that staging slot. */
 bool agx3_tex_stage_array_layer(enum agx_isa_encoding enc, uint16_t src,
                                 uint8_t slot, uint16_t wait_mask,
                                 bool src_cache, bool src_discard,

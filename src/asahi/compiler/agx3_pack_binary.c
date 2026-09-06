@@ -891,12 +891,22 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
    if (wait_mask & (wait_mask - 1))
       return false;
 
+   const bool register_operands = !immediate &&
+      (I->src[3].type == AGX_INDEX_REGISTER ||
+       I->src[4].type == AGX_INDEX_REGISTER);
+
+   /* Native register-indexed array samples publish their coordinate/layer
+    * operand bank on slot 6 and wait slot 6 in SMP, independently of SMP's
+    * own result slot. Uniform/immediate array samples use the ordinary result
+    * slot. Keeping these two timelines distinct is required by the witnessed
+    * ep4 register-descriptor form. */
+   const uint8_t stage_slot = array && register_operands ? 6 : slot;
    const uint16_t coord = explicit_lod ? 0 : I->src[0].value;
    uint8_t bytes[AGX3_TEX_MAX_LENGTH];
    uint8_t len = 0;
 
    if (explicit_lod) {
-      if (!agx3_tex_stage_lod(enc, I->src[1].value, slot, wait_mask,
+      if (!agx3_tex_stage_lod(enc, I->src[1].value, stage_slot, wait_mask,
                              I->src[1].cache, I->src[1].discard,
                              bytes, &len) ||
           !agx3_append(emission, bytes, len))
@@ -904,19 +914,19 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
       wait_mask = 0;
    }
 
-   if (!agx3_tex_stage_copy_hints(enc, coord, I->src[0].value, slot, wait_mask,
+   if (!agx3_tex_stage_copy_hints(enc, coord, I->src[0].value, stage_slot, wait_mask,
           enc == AGX_ISA_ENCODING_AGX3B && I->src[0].cache,
           enc != AGX_ISA_ENCODING_AGX3B || I->src[0].discard, bytes, &len) ||
        !agx3_append(emission, bytes, len))
       return false;
-   if (!agx3_tex_stage_copy_hints(enc, coord + 2, I->src[0].value + 2, slot, 0,
+   if (!agx3_tex_stage_copy_hints(enc, coord + 2, I->src[0].value + 2, stage_slot, 0,
           enc == AGX_ISA_ENCODING_AGX3B && I->src[0].cache,
           enc != AGX_ISA_ENCODING_AGX3B || I->src[0].discard, bytes, &len) ||
        !agx3_append(emission, bytes, len))
       return false;
 
    if (array &&
-       (!agx3_tex_stage_array_layer(enc, I->src[0].value + 4, slot, 0,
+       (!agx3_tex_stage_array_layer(enc, I->src[0].value + 4, stage_slot, 0,
                                    I->src[0].cache, I->src[0].discard,
                                    bytes, &len) ||
         !agx3_append(emission, bytes, len)))
@@ -940,7 +950,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
       .lod = explicit_lod ? AGX3_TEX_LOD_REGISTER : AGX3_TEX_LOD_AUTO,
       .array = array,
       .slot = slot,
-      .wait_mask = (uint16_t)(1u << (slot - 1)),
+      .wait_mask = (uint16_t)(1u << (stage_slot - 1)),
       .coord_kill = I->src[0].kill,
       .final = final,
    };

@@ -998,18 +998,27 @@ test_register_lod(void)
 static int
 test_register_array_layer(void)
 {
-   /* Native sample_array_dynamic: discarded r2 publishes integer layer. */
-   const uint8_t native[] = {
+   /* Native direct/uniform sample: discarded r2 publishes on slot 1. */
+   const uint8_t native_slot1[] = {
       0x17, 0x05, 0x54, 0x06, 0x00, 0x08,
       0x00, 0x00, 0xf0, 0xc0, 0x04, 0x00,
+   };
+   /* Native register-indexed sample: discarded r6 publishes on slot 6. */
+   const uint8_t native_register[] = {
+      0x17, 0x05, 0x54, 0x06, 0x00, 0x18,
+      0x00, 0x00, 0xf0, 0xe4, 0x04, 0x00,
    };
    uint8_t bytes[AGX3_TEX_MAX_LENGTH], len;
    CHECK(agx3_tex_stage_array_layer(AGX_ISA_ENCODING_AGX3B, 4, 1, 0,
                                     false, true, bytes, &len));
-   CHECK(len == sizeof(native) && !memcmp(bytes, native, len));
+   CHECK(len == sizeof(native_slot1) && !memcmp(bytes, native_slot1, len));
    CHECK(memcmp(bytes,
                 (const uint8_t[]){0x17,0x05,0x54,0x06,0,0x08,0,4,
                                   0xf0,0xc0,0x08,0}, len));
+   CHECK(agx3_tex_stage_array_layer(AGX_ISA_ENCODING_AGX3B, 12, 6, 0,
+                                    false, true, bytes, &len));
+   CHECK(len == sizeof(native_register) &&
+         !memcmp(bytes, native_register, len));
    return 0;
 }
 
