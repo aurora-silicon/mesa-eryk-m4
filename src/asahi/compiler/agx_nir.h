@@ -62,9 +62,10 @@ struct agx_g17p_storage_image_binding {
    uint32_t pbe_offset_B;
 };
 
-/* Turn the one statically indexed set-0 Gen9 combined image/sampler used by
- * the initial G17P graphics path into texture-state 0 / sampler-state 1. The
- * caller must place the corresponding native states in those CProg regions.
+/* Turn one statically indexed set-0 Gen9 combined image/sampler used by the
+ * initial G17P graphics or compute path into texture-state 0 / sampler-state
+ * 0. The caller must place the corresponding native states in those CProg
+ * regions.
  */
 bool agx_nir_lower_g17p_combined_sampler(
    struct nir_shader *s, struct agx_g17p_combined_sampler_binding *binding);

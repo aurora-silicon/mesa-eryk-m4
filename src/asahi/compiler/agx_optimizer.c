@@ -142,7 +142,7 @@ image_write_source_can_be_immediate(agx_instr *I, unsigned s)
 }
 
 static void
-agx_optimizer_inline_imm(agx_instr **defs, agx_instr *I)
+agx_optimizer_inline_imm(agx_context *ctx, agx_instr **defs, agx_instr *I)
 {
    agx_foreach_ssa_src(I, s) {
       agx_index src = I->src[s];
@@ -162,7 +162,9 @@ agx_optimizer_inline_imm(agx_instr **defs, agx_instr *I)
          continue;
       if (I->op == AGX_OPCODE_ZS_EMIT && s != 0)
          continue;
-      if (I->op == AGX_OPCODE_TEXTURE_SAMPLE && s != 4)
+      if (I->op == AGX_OPCODE_TEXTURE_SAMPLE && s != 4 &&
+          !(ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B && s == 1 &&
+            I->lod_mode == AGX_LOD_MODE_LOD_MIN))
          continue;
       if ((I->op == AGX_OPCODE_DEVICE_STORE ||
            I->op == AGX_OPCODE_LOCAL_STORE || I->op == AGX_OPCODE_ATOMIC ||
@@ -603,7 +605,7 @@ agx_optimizer_forward(agx_context *ctx)
           I->op != AGX_OPCODE_TEX_STATE_STORE &&
           I->op != AGX_OPCODE_SAMPLER_STATE_STORE &&
           I->op != AGX_OPCODE_UNIFORM_STORE && I->op != AGX_OPCODE_EXPORT)
-         agx_optimizer_inline_imm(defs, I);
+         agx_optimizer_inline_imm(ctx, defs, I);
 
       if (I->op == AGX_OPCODE_IF_ICMP) {
          agx_optimizer_if_not(defs, I);

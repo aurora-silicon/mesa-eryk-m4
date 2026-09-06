@@ -2303,6 +2303,61 @@ agx_fminmax_to(agx_builder *b, agx_index dst, agx_index s0, agx_index s1,
 }
 
 static void
+agx_lower_agx3_fma_sources(agx_context *ctx)
+{
+   if (ctx->key->dev.encoding != AGX_ISA_ENCODING_AGX3B)
+      return;
+
+   agx_foreach_instr_global_safe(ctx, I) {
+      if (I->op != AGX_OPCODE_FFMA || I->nr_srcs != 3 || I->saturate)
+         continue;
+
+      agx_builder b = agx_init_builder(ctx, agx_before_instr(I));
+      agx_foreach_src(I, s) {
+         if (I->src[s].size != AGX_SIZE_16 ||
+             I->src[s].type == AGX_INDEX_IMMEDIATE ||
+             I->src[s].type == AGX_INDEX_NULL || I->src[s].abs ||
+             I->src[s].neg)
+            continue;
+
+         agx_index widened = agx_temp(ctx, AGX_SIZE_32);
+         agx_fmov_to(&b, widened, I->src[s]);
+         I->src[s] = widened;
+      }
+
+      bool mixed = false, has_neg = false, unsupported_modifier = false;
+      agx_foreach_src(I, s) {
+         mixed |= I->src[s].type == AGX_INDEX_IMMEDIATE ||
+                  I->src[s].size != AGX_SIZE_32;
+         has_neg |= I->src[s].neg;
+         unsupported_modifier |= I->src[s].abs ||
+                                 (I->src[s].neg &&
+                                  (I->src[s].type == AGX_INDEX_IMMEDIATE ||
+                                   I->src[s].size != AGX_SIZE_32));
+      }
+
+      /* The native modifier form takes three full F32 registers. Preserve
+       * exact fneg semantics for mixed/minifloat FMA shapes by flipping the
+       * source sign bit before register allocation. The resulting FMA has no
+       * modifier and stays on the already-grounded mixed-source form. */
+      if (!mixed || !has_neg || unsupported_modifier)
+         continue;
+
+      agx_foreach_src(I, s) {
+         if (!I->src[s].neg)
+            continue;
+
+         agx_index source = I->src[s];
+         source.neg = false;
+         agx_index sign = agx_mov_imm(&b, 32, UINT32_C(0x80000000));
+         agx_index flipped = agx_temp(ctx, AGX_SIZE_32);
+         agx_bitop_to(&b, flipped, source, sign, 0x6);
+         I->src[s] = flipped;
+      }
+   }
+}
+
+static void
 agx_materialize_agx3_alu_constants(agx_context *ctx)
 {
    agx_foreach_instr_global_safe(ctx, I) {
@@ -2614,6 +2669,32 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
    }
 
    case nir_op_fsin_agx: {
+      if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B) {
+         /* G17P has no sin_pt_1 quadrant fixup. Use the standard Mesa
+          * minimax sine fallback on the already-normalized quadrant input
+          * instead. This is the same polynomial used by lower_sincos, with
+          * radians / (2 pi) reduced to quadrants / 4:
+          *
+          *   t = 2 fract(q / 4 + 1/2) - 1
+          *   x = 4 (t - t |t|)
+          *   sin(q pi/2) ~= x + .225 (x |x| - x)
+          *
+          * It uses only the grounded G17P FMA and floor paths and avoids
+          * assigning AGX2 semantics to G17P's unqualified f32sinc funop.
+          */
+         agx_index u = agx_ffma(b, s0, agx_immediate_f(0.25f),
+                                agx_immediate_f(0.5f));
+         agx_index fract = agx_ffma(b, agx_neg(agx_floor(b, u)),
+                                    agx_immediate_f(1.0f), u);
+         agx_index t = agx_ffma(b, fract, agx_immediate_f(2.0f),
+                                agx_immediate_f(-1.0f));
+         agx_index x = agx_ffma(b, agx_neg(t), agx_abs(t), t);
+         x = agx_fmul(b, x, agx_immediate_f(4.0f));
+         agx_index correction = agx_ffma(b, x, agx_abs(x), agx_neg(x));
+         agx_index slope = agx_mov_imm(b, 32, UINT32_C(0x3e666666));
+         return agx_ffma_to(b, dst, correction, slope, x);
+      }
+
       agx_index fixup = agx_sin_pt_1(b, s0);
       agx_index sinc = agx_sin_pt_2(b, fixup);
       return agx_fmul_to(b, dst, sinc, fixup);
@@ -2863,6 +2944,15 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
 
    enum agx_lod_mode lod_mode =
       agx_lod_mode_for_nir(instr->op, has_bias, has_min_lod, lod_is_zero);
+
+   /* AGX2's AUTO_LOD encoding also covers txl(..., 0). G17P's AUTO form is
+    * specifically the fragment derivative form, while Apple's kernel
+    * witnesses use the explicit immediate-level encoding. Keep compute txl
+    * at level zero explicit so the packer can select that native form. */
+   if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+       b->shader->stage == MESA_SHADER_COMPUTE && instr->op == nir_texop_txl &&
+       lod_is_zero)
+      lod_mode = AGX_LOD_MODE_LOD_MIN;
 
    if (lod_mode == AGX_LOD_MODE_AUTO_LOD) {
       /* Ignored logically but asserted 0 */
@@ -4087,6 +4177,8 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
          AGX_PASS(ctx, agx_opt_promote_constants);
       }
    }
+
+   agx_lower_agx3_fma_sources(ctx);
 
    if (key->dev.encoding != AGX_ISA_ENCODING_AGX2)
       agx_materialize_agx3_alu_constants(ctx);

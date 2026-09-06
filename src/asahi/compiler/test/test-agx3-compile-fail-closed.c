@@ -857,6 +857,39 @@ check_constant_array_ordering(enum agx_isa_encoding encoding, bool ordered)
  * with `no grounded AGX3 encoding for iadd`.
  */
 static bool
+check_mixed_fma_neg_compute(void)
+{
+   nir_builder b = nir_builder_init_simple_shader(
+      MESA_SHADER_COMPUTE, &agx_nir_options, "G17P mixed FMA fneg");
+   b.shader->info.workgroup_size[0] = 1;
+   b.shader->info.workgroup_size[1] = 1;
+   b.shader->info.workgroup_size[2] = 1;
+   b.shader->info.shared_size = 4;
+
+   nir_def *lane = nir_u2f32(&b, nir_load_local_invocation_index(&b));
+   nir_def *half = nir_f2f16(&b, nir_fadd_imm(&b, lane, 0.5f));
+   nir_def *half32 = nir_f2f32(&b, half);
+   nir_def *result = nir_ffma(&b, nir_fneg(&b, lane), half32,
+                              nir_imm_float(&b, 1.0f));
+   nir_store_shared(&b, result, nir_imm_int(&b, 0),
+                    .align_mul = 4);
+   agx_preprocess_nir(b.shader);
+
+   struct agx_shader_key key = {0};
+   key.dev.encoding = AGX_ISA_ENCODING_AGX3B;
+   struct agx_shader_part part = {0};
+   const bool compiled = agx_compile_shader_nir(b.shader, &key, &part);
+   const bool valid = compiled && part.binary != NULL &&
+                      part.info.binary_size > 4 && part.info.stats.instrs >= 7;
+   if (!valid)
+      fprintf(stderr, "G17P mixed-source negative FMA lowering failed\n");
+
+   free(part.binary);
+   ralloc_free(b.shader);
+   return valid;
+}
+
+static bool
 check_uniform_alu_policy(void)
 {
    const struct {
@@ -913,6 +946,8 @@ main(void)
    if (!check_uniform_alu_policy())
       return 1;
    if (!check_agx2_legacy_printf_address_accepted())
+      return 1;
+   if (!check_mixed_fma_neg_compute())
       return 1;
 
    for (unsigned i = 0; i < sizeof(encodings) / sizeof(encodings[0]); ++i) {

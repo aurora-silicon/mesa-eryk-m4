@@ -321,49 +321,74 @@ hk_dispatch_g17p_native(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
          vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
          return;
       }
-      /* Native G17P compute resources use four uniform halves per binding
-       * slot. A plain read consumes two slots; read_write uses four: texture,
-       * PBE, access control, and coordinate clamp. Keep the Honeykrisp root
-       * immediately after that native prefix. */
-      uint64_t access_control = 0;
-      if (s->info.agx3_storage_image_valid) {
+      uint64_t pointers[4] = {0};
+      if (s->info.agx3_combined_sampler_valid) {
+         struct hk_descriptor_set *set = descriptors->sets[0];
+         const struct agx_g17p_combined_sampler_binding *binding =
+            &s->info.agx3_combined_sampler;
+         if (!set || !set->mapped_ptr ||
+             binding->sampler_index_offset_B > set->size ||
+             set->size - binding->sampler_index_offset_B < sizeof(uint16_t)) {
+            vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+            return;
+         }
+
+         uint16_t sampler_index;
+         memcpy(&sampler_index,
+                (const uint8_t *)set->mapped_ptr +
+                   binding->sampler_index_offset_B,
+                sizeof(sampler_index));
+         if (!dev->samplers.table.bo || !dev->samplers.table.bo->va) {
+            vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+            return;
+         }
+         const struct hk_agx3_g17p_combined_sampler_heap heap = {
+            .descriptor_set_va = set_address,
+            .sampler_heap_va = dev->samplers.table.bo->va->addr,
+            .texture_offset_B = binding->texture_offset_B,
+            .sampler_index = sampler_index,
+            .sampler_count = dev->samplers.table.alloc,
+            .sampler_element_size_B =
+               agx_chip_sampler_heap_element_size(dev->dev.chip),
+         };
+         if (!hk_agx3_g17p_combined_sampler_pointers(&heap, pointers)) {
+            vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+            return;
+         }
+      } else if (s->info.agx3_storage_image_valid) {
          /* Exact access::read_write control descriptor from the native G17P
           * Tier-2 argument buffer. Preserve its full slot and alignment. */
          static const uint8_t native_read_write_control[32] = {
             0x68, 0x0e, 0x00, 0x00, 0x00, 0x00, 0x03, 0x1b,
          };
-         access_control = hk_pool_upload(cmd, native_read_write_control,
-                                         sizeof(native_read_write_control),
-                                         32);
+         const uint64_t access_control =
+            hk_pool_upload(cmd, native_read_write_control,
+                           sizeof(native_read_write_control), 32);
          if (!access_control)
             return;
-      }
 
-      const uint64_t pointers[4] = {
-         s->info.agx3_storage_image_valid
-            ? set_address + s->info.agx3_storage_image.texture_offset_B
-            : set_address + offset,
-         s->info.agx3_storage_image_valid
-            ? set_address + s->info.agx3_storage_image.pbe_offset_B
-            : dev->rodata.bo->va->addr,
-         access_control,
+         pointers[0] = set_address +
+                       s->info.agx3_storage_image.texture_offset_B;
+         pointers[1] = set_address + s->info.agx3_storage_image.pbe_offset_B;
+         pointers[2] = access_control;
          /* The native read_write ISEL clamps each unsigned coordinate against
           * uniform half12. The only consumed vector word is 0xffff. */
-         s->info.agx3_storage_image_valid ? UINT64_C(0xffff) : 0,
-      };
-      if (hk_g17p_launch_trace_enabled()) {
+         pointers[3] = UINT64_C(0xffff);
+      } else {
+         /* Native G17P compute read() uses table pointers in uniform
+          * halves0..7, with ordinary buffer arguments beginning at half8. */
+         pointers[0] = set_address + offset;
+         pointers[1] = dev->rodata.bo->va->addr;
+      }
+      if (s->info.agx3_storage_image_valid && hk_g17p_launch_trace_enabled()) {
          fprintf(stderr,
                  "G17P storage pointers: set=0x%" PRIx64
                  " size=%u tex_off=%u pbe_off=%u slot0=0x%" PRIx64
                  " slot1=0x%" PRIx64 " slot2=0x%" PRIx64
                  " slot3=0x%" PRIx64 "\n",
                  set_address, set_size,
-                 s->info.agx3_storage_image_valid
-                    ? s->info.agx3_storage_image.texture_offset_B
-                    : offset,
-                 s->info.agx3_storage_image_valid
-                    ? s->info.agx3_storage_image.pbe_offset_B
-                    : 0,
+                 s->info.agx3_storage_image.texture_offset_B,
+                 s->info.agx3_storage_image.pbe_offset_B,
                  pointers[0], pointers[1], pointers[2], pointers[3]);
       }
       const size_t pointer_count =

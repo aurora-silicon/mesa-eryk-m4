@@ -4147,6 +4147,72 @@ TEST_F(AGX3PackBinary, ExplicitLodStagingAndLifetime)
    }
 }
 
+TEST_F(AGX3PackBinary, ComputeImmediateLodSample)
+{
+   auto enc = AGX_ISA_ENCODING_AGX3B;
+   agx_builder *b = builder(enc);
+   b->shader->stage = MESA_SHADER_COMPUTE;
+   agx_index dest = agx_register(8, AGX_SIZE_32);
+   dest.channels_m1 = 3;
+   agx_index coord = agx_register(4, AGX_SIZE_32);
+   coord.channels_m1 = 1;
+   auto *I = agx_texture_sample_to(
+      b, dest, coord, agx_immediate_f(2.0f), agx_immediate(0),
+      agx_immediate(0), agx_immediate(0), agx_null(), AGX_DIM_2D,
+      AGX_LOD_MODE_LOD_MIN, 0, false, false, false, AGX_GATHER_NONE, false);
+   I->mask = 15;
+   agx_stop(b);
+
+   std::vector<uint8_t> want;
+   uint8_t bytes[AGX3_TEX_MAX_LENGTH], len;
+   ASSERT_TRUE(agx3_tex_stage_copy_hints(enc, 0, 4, 1, 0, false, false,
+                                        bytes, &len));
+   append(want, bytes, len);
+   ASSERT_TRUE(agx3_tex_stage_copy_hints(enc, 2, 6, 1, 0, false, false,
+                                        bytes, &len));
+   append(want, bytes, len);
+   struct agx3_tex_sample_desc d = {};
+   d.dest = 8;
+   d.width = AGX3_TEX_W32;
+   d.mask = 15;
+   d.lod = AGX3_TEX_LOD_LEVEL;
+   d.lod_x64 = 128;
+   d.slot = 1;
+   d.wait_mask = 1;
+   d.final = true;
+   ASSERT_TRUE(agx3_tex_encode_sample(enc, &d, bytes, &len));
+   append(want, bytes, len);
+   struct agx3_encoded_end end;
+   ASSERT_TRUE(agx3_pack_end(enc, &end));
+   append(want, end.bytes, end.length);
+   EXPECT_EQ(pack(b), want);
+   EXPECT_EQ(b->shader->agx3_staging_halfs, 8);
+}
+
+TEST_F(AGX3PackBinary, ComputeSampleRefusesUnqualifiedLod)
+{
+   for (unsigned shape = 0; shape < 3; ++shape) {
+      agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+      b->shader->stage = MESA_SHADER_COMPUTE;
+      agx_index dest = agx_register(8, AGX_SIZE_32);
+      dest.channels_m1 = 3;
+      agx_index coord = agx_register(4, AGX_SIZE_32);
+      coord.channels_m1 = 1;
+      const bool implicit = shape == 0;
+      agx_index lod = shape == 1 ? agx_register(0, AGX_SIZE_16)
+                                 : agx_immediate_f(-1.0f);
+      auto *I = agx_texture_sample_to(
+         b, dest, coord, implicit ? agx_immediate(0) : lod,
+         agx_immediate(0), agx_immediate(0), agx_immediate(0), agx_null(),
+         AGX_DIM_2D,
+         implicit ? AGX_LOD_MODE_AUTO_LOD : AGX_LOD_MODE_LOD_MIN, 0, false,
+         false, false, AGX_GATHER_NONE, false);
+      I->mask = 15;
+      agx_stop(b);
+      pack(b, /*expect_ok=*/false);
+   }
+}
+
 TEST_F(AGX3PackBinary, ArraySampleStagingAndLifetime)
 {
    for (unsigned hint = 0; hint < 3; ++hint) {

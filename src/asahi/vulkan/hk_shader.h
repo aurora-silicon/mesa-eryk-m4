@@ -112,9 +112,9 @@ struct hk_shader_info {
    uint8_t cull_distance_array_size;
    uint8_t set_count;
 
-   /* The bounded G17P fragment path lowers one Gen9 combined image/sampler to
-    * texture-state 0 and sampler-state 1. Command recording joins the bound
-    * descriptor set and the native sampler heap into those CProg slots.
+   /* The bounded G17P graphics/compute path lowers one Gen9 combined
+    * image/sampler to native texture/sampler state 0. Command recording joins
+    * the bound descriptor set and native sampler heap into those CProg slots.
     */
    bool agx3_combined_sampler_valid;
    bool agx3_uses_root;

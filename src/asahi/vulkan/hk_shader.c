@@ -1192,14 +1192,29 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
       } else {
          ralloc_free(candidate);
          candidate = nir_shader_clone(NULL, nir);
-         struct agx_g17p_txf_binding binding;
-         if (candidate && agx_nir_lower_g17p_txf(candidate, &binding)) {
+         struct agx_g17p_combined_sampler_binding sampled_binding;
+         if (candidate &&
+             !dev->vk.enabled_features.descriptorBindingSampledImageUpdateAfterBind &&
+             agx_nir_lower_g17p_combined_sampler(candidate, &sampled_binding)) {
             ralloc_free(nir);
             nir = candidate;
+            shader->info.agx3_combined_sampler_valid = true;
+            shader->info.agx3_combined_sampler = sampled_binding;
             shader->info.agx3_txf_texture_valid = true;
-            shader->info.agx3_txf_texture = binding;
+            shader->info.agx3_txf_texture.texture_offset_B =
+               sampled_binding.texture_offset_B;
          } else {
             ralloc_free(candidate);
+            candidate = nir_shader_clone(NULL, nir);
+            struct agx_g17p_txf_binding binding;
+            if (candidate && agx_nir_lower_g17p_txf(candidate, &binding)) {
+               ralloc_free(nir);
+               nir = candidate;
+               shader->info.agx3_txf_texture_valid = true;
+               shader->info.agx3_txf_texture = binding;
+            } else {
+               ralloc_free(candidate);
+            }
          }
       }
    }

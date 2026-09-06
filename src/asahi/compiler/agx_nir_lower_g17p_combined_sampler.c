@@ -160,7 +160,9 @@ bool
 agx_nir_lower_g17p_combined_sampler(
    nir_shader *shader, struct agx_g17p_combined_sampler_binding *binding)
 {
-   if (!shader || !binding || shader->info.stage != MESA_SHADER_FRAGMENT)
+   if (!shader || !binding ||
+       (shader->info.stage != MESA_SHADER_FRAGMENT &&
+        shader->info.stage != MESA_SHADER_COMPUTE))
       return false;
 
    nir_tex_instr *sample = NULL;
@@ -215,7 +217,11 @@ agx_nir_lower_g17p_combined_sampler(
    sample->sampler_index = 0;
 
    NIR_PASS(_, shader, nir_opt_dce);
-   if (g17p_has_descriptor_access(shader))
+   /* The initial fragment ABI replaces the whole descriptor root. Compute
+    * reserves the same native texture/sampler pointer prefix but may keep
+    * unrelated storage-image/SSBO descriptors in the ordinary root. */
+   if (shader->info.stage == MESA_SHADER_FRAGMENT &&
+       g17p_has_descriptor_access(shader))
       return false;
 
    *binding = (struct agx_g17p_combined_sampler_binding){

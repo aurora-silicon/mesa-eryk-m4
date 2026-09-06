@@ -951,10 +951,20 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
                          uint8_t slot, uint16_t wait_mask, bool final)
 {
    const bool explicit_lod = I->lod_mode == AGX_LOD_MODE_LOD_MIN;
+   const bool immediate_lod = explicit_lod &&
+                              I->src[1].type == AGX_INDEX_IMMEDIATE;
+   const float immediate_level = immediate_lod ?
+      agx_minifloat_decode(I->src[1].value) : 0.0f;
+   const float immediate_level_x64 = immediate_level * 64.0f;
+   const bool valid_immediate_lod = immediate_lod && immediate_level >= 0.0f &&
+      immediate_level_x64 <= 0xfff &&
+      immediate_level_x64 == (float)(uint16_t)immediate_level_x64;
    const bool array = I->dim == AGX_DIM_2D_ARRAY;
    const bool valid_lod = explicit_lod ?
-      (enc == AGX_ISA_ENCODING_AGX3B && agx3_tex_plain_reg(I->src[1]) &&
-       I->src[1].size == AGX_SIZE_16 && agx_channels(I->src[1]) == 1) :
+      (enc == AGX_ISA_ENCODING_AGX3B &&
+       (valid_immediate_lod ||
+        (agx3_tex_plain_reg(I->src[1]) && I->src[1].size == AGX_SIZE_16 &&
+         agx_channels(I->src[1]) == 1))) :
       (I->lod_mode == AGX_LOD_MODE_AUTO_LOD && agx3_tex_imm(I->src[1], 0));
    const bool immediate = I->nr_srcs == 6 &&
       I->src[3].type == AGX_INDEX_IMMEDIATE &&
@@ -1008,7 +1018,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
    uint8_t bytes[AGX3_TEX_MAX_LENGTH];
    uint8_t len = 0;
 
-   if (explicit_lod) {
+   if (explicit_lod && !immediate_lod) {
       if (!agx3_tex_stage_lod(enc, I->src[1].value, stage_slot, wait_mask,
                              I->src[1].cache, I->src[1].discard,
                              bytes, &len) ||
@@ -1050,7 +1060,9 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
       .sampler_value = immediate ? 0 : I->src[4].value,
       .texture_kill = !immediate && I->src[3].kill,
       .sampler_kill = !immediate && I->src[4].kill,
-      .lod = explicit_lod ? AGX3_TEX_LOD_REGISTER : AGX3_TEX_LOD_AUTO,
+      .lod = immediate_lod ? AGX3_TEX_LOD_LEVEL :
+             explicit_lod ? AGX3_TEX_LOD_REGISTER : AGX3_TEX_LOD_AUTO,
+      .lod_x64 = immediate_lod ? (uint16_t)immediate_level_x64 : 0,
       .array = array,
       .slot = slot,
       .wait_mask = (uint16_t)(1u << (stage_slot - 1)),
@@ -3755,8 +3767,12 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             const bool final = --texture_ops_left == 0;
             /* The implicit-LOD form needs the 2x2 quad's derivatives; every
              * witness is a fragment shader and the hardware has no quad
-             * outside one. */
-            if (ctx->stage != MESA_SHADER_FRAGMENT ||
+             * outside one. Apple's explicit immediate-level form is a
+             * compute kernel witness and does not consume derivatives. */
+            const bool compute_level = ctx->stage == MESA_SHADER_COMPUTE &&
+               I->lod_mode == AGX_LOD_MODE_LOD_MIN &&
+               I->src[1].type == AGX_INDEX_IMMEDIATE;
+            if ((ctx->stage != MESA_SHADER_FRAGMENT && !compute_level) ||
                 !agx3_emit_texture_sample(emission, enc, I, slot, wait,
                                           final))
                AGX3_REFUSE(I);
