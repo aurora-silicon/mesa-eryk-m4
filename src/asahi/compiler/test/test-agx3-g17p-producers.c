@@ -356,6 +356,16 @@ test_subgroup(void)
    };
    ok = agx3_subgroup_encode_reduce(B, &r6, o, &l);
    check("catomic sRediadd", "bf11540002001403", o, l, ok);
+
+   struct agx3_subgroup_reduce_desc r7 = {
+      .dest = 0, .src = 0, .op = AGX3_SUBGROUP_REDUCE_SMIN, .wait_mask = 0x20,
+   };
+   ok = agx3_subgroup_encode_reduce(B, &r7, o, &l);
+   check("sr_min_s32 sRedimin", "3f02560002001407", o, l, ok);
+
+   r7.op = AGX3_SUBGROUP_REDUCE_SMAX;
+   ok = agx3_subgroup_encode_reduce(B, &r7, o, &l);
+   check("sr_max_s32 sRedimax", "bf02560002001407", o, l, ok);
 }
 
 /* ------------------------------------------------------------------ zs */
@@ -507,15 +517,6 @@ test_refusals(void)
    uint8_t bo[AGX3_SUBGROUP_MAX_LENGTH];
    if (agx3_subgroup_encode_shuffle(AGX_ISA_ENCODING_AGX3C, &sh, bo, &l)) {
       fprintf(stderr, "immediate-lane simdbcast accepted on AGX3c\n");
-      failures++;
-   }
-
-   checks++;
-   struct agx3_subgroup_reduce_desc rd = {
-      .op = AGX3_SUBGROUP_REDUCE_SMAX, .wait_mask = 1,
-   };
-   if (agx3_subgroup_encode_reduce(B, &rd, bo, &l)) {
-      fprintf(stderr, "signed min/max reduce accepted an unwitnessed wait\n");
       failures++;
    }
 }

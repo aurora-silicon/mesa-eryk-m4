@@ -331,11 +331,13 @@ agx3_subgroup_encode_reduce(enum agx_isa_encoding enc,
     * Per-slot wait bits. Their base differs by operand family, each pinned by
     * a g17p probe whose source arrives on scoreboard slot 6:
     *   float reductions            f49 + (slot - 1)   (sRedf32add, sRedfmax)
-    *   integer add                 f45 + (slot - 1)   (sRediadd, also catomic
+    *   integer add / signed min-max
+    *                               f45 + (slot - 1)   (sRediadd, sRedimin,
+    *                                                   sRedimax; also catomic
     *                                                   at slot 1)
     *   bitwise / unsigned min-max  f44 + (slot - 1)   (sRedAND, sRedumax)
-    * The signed min/max family has no witness, so a wait on it is refused
-    * rather than assumed to share either base.
+    * Own-shader A18 Pro captures pin slot-6 signed min/max to this family:
+    *   sRedimin 3f02560002001407, sRedimax bf02560002001407.
     */
    const unsigned slots = is_c(enc) ? 8 : 6;
    if (d->wait_mask != 0) {
@@ -346,7 +348,7 @@ agx3_subgroup_encode_reduce(enum agx_isa_encoding enc,
          wait_base = 49;
       else if (f->integer_class == 2)
          wait_base = 44;
-      else if (f->integer_class == 0)
+      else if (f->integer_class == 0 || f->integer_class == 1)
          wait_base = 45;
       else
          return false;
