@@ -4567,21 +4567,6 @@ hk_flush_gfx_state(struct hk_cmd_buffer *cmd, uint32_t draw_id,
    if (!cs)
       return NULL;
 
-   /* 0xc0 terminates a HAL200 VDM stream; it does not frame another direct
-    * draw. Until the G17P top-level link record is decoded, retain each draw
-    * as its own render so no geometry is silently discarded after draw zero.
-    */
-   if (dev->dev.chip == AGX_CHIP_G17P && cs->stats.cmds > 0) {
-      if (hk_g17p_launch_trace_enabled())
-         fprintf(stderr, "G17P direct draw: starting a retained render\n");
-
-      hk_cmd_buffer_end_graphics(cmd);
-      cs = hk_cmd_buffer_get_cs(cmd, false /* compute */);
-      if (!cs)
-         return NULL;
-
-   }
-
    /* Annoyingly,
     * VK_DEPTH_BIAS_REPRESENTATION_LEAST_REPRESENTABLE_VALUE_FORCE_UNORM_EXT is
     * render pass state on Imaginapple but draw state in Vulkan. In practice,
@@ -4613,6 +4598,23 @@ hk_flush_gfx_state(struct hk_cmd_buffer *cmd, uint32_t draw_id,
          succ = u_tristate_set(&cs->cr.dbias_is_int, dbias_is_int);
          assert(succ && "can always set tri-state on a new control stream");
       }
+   }
+
+   /* Native G17P concatenates ordinary draws in one 0x8000-byte VDM root.
+    * Its in-stream link packet is not yet established on hardware, so cross
+    * that uncommon capacity boundary with the already-correct retained-render
+    * transition rather than silently dropping the linked suffix.
+    */
+   if (hk_g17p_vdm_needs_render_split(
+          dev->dev.chip, cs->stats.cmds, cs->end - cs->current,
+          AGX_VDM_STREAM_LINK_LENGTH)) {
+      if (hk_g17p_launch_trace_enabled())
+         fprintf(stderr, "G17P VDM root full: starting a retained render\n");
+
+      hk_cmd_buffer_end_graphics(cmd);
+      cs = hk_cmd_buffer_get_cs(cmd, false /* compute */);
+      if (!cs)
+         return NULL;
    }
 
    hk_ensure_cs_has_space(cmd, cs, HK_GFX_DRAW_RESERVATION);
