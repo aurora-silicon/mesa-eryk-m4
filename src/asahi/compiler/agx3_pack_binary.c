@@ -43,6 +43,7 @@
 #include "agx3_select_core.h"
 #include "agx3_slot_core.h"
 #include "agx3_sr_core.h"
+#include "agx3_zs_core.h"
 #include "agx3_stage_core.h"
 #include "agx3_static_spill_core.h"
 #include "agx3_subgroup_core.h"
@@ -470,6 +471,7 @@ agx3_is_async(const agx_instr *I)
 
    return I->op == AGX_OPCODE_DEVICE_LOAD || I->op == AGX_OPCODE_LOCAL_LOAD ||
           I->op == AGX_OPCODE_LDCF || I->op == AGX_OPCODE_GET_SR ||
+          I->op == AGX_OPCODE_GET_COVERAGE_1X_AGX3 ||
           I->op == AGX_OPCODE_TEXTURE_LOAD ||
           I->op == AGX_OPCODE_TEXTURE_SAMPLE || I->op == AGX_OPCODE_LD_TILE ||
           I->op == AGX_OPCODE_SCS_LOAD_AGX3 ||
@@ -1878,7 +1880,8 @@ agx3_emit_alu(struct util_dynarray *emission, enum agx_isa_encoding enc,
     */
    bool all_sources_registers = true;
    for (unsigned i = 0; i < S->nr_srcs; ++i)
-      all_sources_registers &= S->src[i].is_reg;
+      all_sources_registers &= S->src[i].is_reg &&
+                               S->src[i].size == AGX3_SEL_SIZE_32;
 
    uint8_t bytes[AGX3_ALU_MAX_LENGTH];
    uint8_t len = 0;
@@ -1887,6 +1890,7 @@ agx3_emit_alu(struct util_dynarray *emission, enum agx_isa_encoding enc,
    const uint16_t s2 = S->nr_srcs > 2 ? S->src[2].reg : 0;
 
    if (op != AGX3_ALU_NUM && all_sources_registers &&
+       S->has_dest && S->dest_size == AGX3_SEL_SIZE_32 &&
        agx3_alu_compose(enc, op, S->dest, s0, s1, s2, S->imm, wait_mask,
                         bytes, &len)) {
       return agx3_append(emission, bytes, len);
@@ -2986,6 +2990,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
    unsigned tile_loads_seen = 0;
    unsigned tile_stores_left = 0;
    unsigned device_loads_left = 0;
+   bool has_coverage_write = false;
    unsigned count = 0;
 
    assert(enc == AGX_ISA_ENCODING_AGX3B || enc == AGX_ISA_ENCODING_AGX3C);
@@ -3004,6 +3009,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             tile_loads_left++;
          if (scan_I->op == AGX_OPCODE_ST_TILE)
             tile_stores_left++;
+         if (scan_I->op == AGX_OPCODE_SAMPLE_MASK_1X_AGX3)
+            has_coverage_write = true;
          if (scan_I->op == AGX_OPCODE_DEVICE_LOAD)
             device_loads_left++;
       }
@@ -3055,11 +3062,16 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
       g17p_blend_protocol &= phase == 4;
    }
    const bool g17p_pixel_protocol =
-      g17p_colour_protocol || g17p_blend_protocol;
+      g17p_colour_protocol || g17p_blend_protocol || has_coverage_write;
    const agx_instr *g17p_deferred_write = g17p_pixel_protocol ?
       agx3_g17p_deferred_write_wait(ctx, g17p_blend_protocol) : NULL;
    agx3_g17p_colour_link_info(ctx, g17p_colour_protocol &&
                                   g17p_deferred_write != NULL);
+   ctx->agx3_colour_link.straight_line = list_length(&ctx->blocks) == 1;
+   agx_foreach_instr_global(ctx, entry_I) {
+      if (agx3_is_cf_op(entry_I) || entry_I->op == AGX_OPCODE_SAMPLE_MASK_1X_AGX3)
+         ctx->agx3_colour_link.straight_line = false;
+   }
    unsigned g17p_link_packs_seen = 0;
    bool g17p_colour_open = false;
    const bool g17p_position_protocol =
@@ -3150,6 +3162,22 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
    k = 0;
    unsigned vertex_loads_seen = 0;
    bool interpolation_started = false;
+   if (has_coverage_write && enc == AGX_ISA_ENCODING_AGX3B &&
+       ctx->stage == MESA_SHADER_FRAGMENT &&
+       !ctx->key->fs.ignore_tib_dependencies) {
+      /* Native memory_discard enters before its first device load, then
+       * uses unmarked SR/RHW inputs throughout the coverage operation.
+       * This is the same existing entry gate, moved before the main part's
+       * root loads; do not restart the input protocol after MOVMSK. */
+      uint8_t entry[AGX3_PIXEL_MAX_LENGTH], entry_len;
+      if (!agx3_pixel_colour_entry(enc, entry, &entry_len) ||
+          !agx3_append(emission, entry, entry_len))
+         goto fail;
+      ctx->agx3_colour_link.entry_emitted = true;
+      ctx->agx3_colour_link.entry_offset = emission->size - entry_len - initial_size;
+      g17p_colour_open = true;
+      interpolation_started = true;
+   }
 
    agx_foreach_block(ctx, block) {
       block->offset = emission->size;
@@ -3405,13 +3433,16 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                continue;
             }
             if (g17p_pixel_protocol && I->op == AGX_OPCODE_WAIT_PIX &&
-                I->writeout == (g17p_blend_protocol ? 8 : 0xc) &&
+                (I->writeout == 1 ||
+                 I->writeout == (g17p_blend_protocol ? 8 : 0xc)) &&
                 !g17p_colour_open) {
                uint8_t entry[AGX3_PIXEL_MAX_LENGTH];
                uint8_t entry_len = 0;
                if (!agx3_pixel_colour_entry(enc, entry, &entry_len) ||
                    !agx3_append(emission, entry, entry_len))
                   AGX3_REFUSE(I);
+               ctx->agx3_colour_link.entry_emitted = true;
+               ctx->agx3_colour_link.entry_offset = emission->size - entry_len - initial_size;
                g17p_colour_open = true;
             }
             if (!agx3_emit_pixel(emission, enc, I, wait))
@@ -3468,6 +3499,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                   if (!agx3_pixel_colour_entry(enc, entry, &entry_len) ||
                       !agx3_append(emission, entry, entry_len))
                      AGX3_REFUSE(I);
+                  ctx->agx3_colour_link.entry_emitted = true;
+                  ctx->agx3_colour_link.entry_offset = emission->size - entry_len - initial_size;
                   g17p_colour_open = true;
                }
                if (!agx3_emit_pixel(emission, enc, g17p_deferred_write, 0))
@@ -3539,6 +3572,67 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                }
             }
             AGX3_REFUSE(I);
+         }
+
+         if (I->op == AGX_OPCODE_GET_COVERAGE_1X_AGX3) {
+            if (enc != AGX_ISA_ENCODING_AGX3B || ctx->stage != MESA_SHADER_FRAGMENT ||
+                I->nr_dests != 1 || I->nr_srcs ||
+                !agx3_src_is_register(I->dest[0]) || I->dest[0].memory ||
+                I->dest[0].size != AGX_SIZE_16 || agx_channels(I->dest[0]) != 1)
+               AGX3_REFUSE(I);
+            const struct agx3_sr_desc d = {
+               .dest = I->dest[0].value, .width = AGX3_SR_W16,
+               .sr = 2, .slot = slot, .wait_mask = wait,
+            };
+            uint8_t bytes[AGX3_SR_MAX_LENGTH], len;
+            if (!agx3_sr_encode(enc, &d, bytes, &len) ||
+                !agx3_append(emission, bytes, len))
+               AGX3_REFUSE(I);
+            interpolation_started = true;
+            continue;
+         }
+
+         if (I->op == AGX_OPCODE_SAMPLE_MASK_1X_AGX3) {
+            if (enc != AGX_ISA_ENCODING_AGX3B || ctx->stage != MESA_SHADER_FRAGMENT ||
+                I->nr_dests || I->nr_srcs != 2 ||
+                !agx3_src_is_register(I->src[0]) || I->src[0].memory ||
+                I->src[0].size != AGX_SIZE_16 || agx_channels(I->src[0]) != 1 ||
+                !agx3_vary_reg32(I->src[1]) || agx_channels(I->src[1]) != 1)
+               AGX3_REFUSE(I);
+            if (!g17p_colour_open) {
+               uint8_t entry[AGX3_PIXEL_MAX_LENGTH], entry_len;
+               if (!agx3_pixel_colour_entry(enc, entry, &entry_len) ||
+                   !agx3_append(emission, entry, entry_len))
+                  AGX3_REFUSE(I);
+               ctx->agx3_colour_link.entry_emitted = true;
+               ctx->agx3_colour_link.entry_offset = emission->size - entry_len - initial_size;
+               g17p_colour_open = true;
+            }
+            uint8_t bytes[AGX3_ALU_MAX_LENGTH], len;
+            if (!agx3_stage_copy_source(enc, 0, I->src[1].value,
+                                         I->src[1].discard, 1,
+                                         wait | outstanding_here, bytes, &len) ||
+                !agx3_append(emission, bytes, len))
+               AGX3_REFUSE(I);
+            /* Native simple and sampled-alpha fragments produce and stage
+             * SR2's complete coverage word before acquiring class1. Keep
+             * this ordering within the atomic pseudo rather than inheriting
+             * the AGX2 wait-before-mask-calculation schedule. */
+            if ((I->imm & 2) &&
+                (!agx3_pixel_wait(enc, 1, 0, bytes, &len) ||
+                 !agx3_append(emission, bytes, len)))
+               AGX3_REFUSE(I);
+            const struct agx3_zs_desc zs = {
+               .value = 0, .value_kill = true, .slot = 1, .wait_mask = 1,
+            };
+            if (!agx3_zs_encode_sample_mask(enc, &zs, bytes, &len) ||
+                !agx3_append(emission, bytes, len) ||
+                !agx3_pixel_release(enc, 1, false, 0, bytes, &len) ||
+                !agx3_append(emission, bytes, len))
+               AGX3_REFUSE(I);
+            outstanding = 0;
+            ctx->agx3_staging_halfs = MAX2(ctx->agx3_staging_halfs, 2);
+            continue;
          }
 
          /* Special-register read. */
@@ -3889,14 +3983,19 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
              I->dest[0].type == AGX_INDEX_REGISTER && !I->dest[0].memory &&
              agx_channels(I->dest[0]) == 1 &&
              (I->dest[0].size == AGX_SIZE_16 || I->dest[0].size == AGX_SIZE_32) &&
-             agx3_mod_src_ok(I->src[0]) &&
-             agx3_mod_src_ok(I->src[1]) && !I->src[0].abs && !I->src[0].neg &&
+             agx3_src_is_register(I->src[0]) && agx3_src_is_register(I->src[1]) &&
+             agx_channels(I->src[0]) == 1 && agx_channels(I->src[1]) == 1 &&
+             (I->src[0].size == AGX_SIZE_16 || I->src[0].size == AGX_SIZE_32) &&
+             (I->src[1].size == AGX_SIZE_16 || I->src[1].size == AGX_SIZE_32) &&
+             !I->src[0].abs && !I->src[0].neg &&
              !I->src[1].abs && !I->src[1].neg &&
              I->src[2].type == AGX_INDEX_IMMEDIATE && I->src[2].value <= 255 &&
              I->src[3].type == AGX_INDEX_IMMEDIATE && I->src[3].value <= 255) {
             const uint16_t src[] = {I->src[0].value, I->src[1].value};
             const enum agx3_alu_hint hints[] = {
                agx3_post_ra_hint(I->src[0]), agx3_post_ra_hint(I->src[1])};
+            const bool src_16[] = {I->src[0].size == AGX_SIZE_16,
+                                   I->src[1].size == AGX_SIZE_16};
             uint8_t bytes[AGX3_ALU_MAX_LENGTH], len;
             unsigned condition = I->fcond;
             bool swap = I->invert_cond;
@@ -3918,7 +4017,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                 (I->src[1].cache && I->src[1].discard) ||
                 I->src[2].abs || I->src[2].neg ||
                 I->src[3].abs || I->src[3].neg ||
-                !agx3_alu_fcmp_select_imm(enc, I->dest[0].value, src, hints,
+                !agx3_alu_fcmp_select_imm_width(enc, I->dest[0].value, src, src_16, hints,
                     condition, I->src[swap ? 3 : 2].value,
                     I->src[swap ? 2 : 3].value, I->dest[0].size == AGX_SIZE_16,
                     I->dest[0].cache,

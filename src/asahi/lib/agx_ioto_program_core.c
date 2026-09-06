@@ -652,6 +652,23 @@ agx_ioto_g17p_fragment_resource_program_compose(
 }
 
 bool
+agx_ioto_g17p_coverage_fragment_program_compose(
+   uint64_t program_va, const void *pre_copy_body, size_t pre_copy_body_size,
+   const void *copies, size_t copies_size,
+   const struct agx_ioto_state_tail_output *packed_tail, void *output,
+   size_t capacity, size_t *written)
+{
+   /* Complete native keep, conditional-discard and early-test fragments all
+    * name this mask in __GPU_METADATA_2 root.field1. Releasing class0 here
+    * prematurely allows partial coverage even with the original Apple body. */
+   static const uint8_t coverage_pixrel[] = {0x07,0x02,0x54,0xf2,0x02,0x00};
+   return g17p_resource_program_compose(
+      program_va, pre_copy_body, pre_copy_body_size, copies, copies_size,
+      packed_tail, output, capacity, written, coverage_pixrel,
+      sizeof(coverage_pixrel));
+}
+
+bool
 agx_ioto_g17p_background_resource_program_compose(
    uint64_t program_va, const void *pre_copy_body, size_t pre_copy_body_size,
    const void *copies, size_t copies_size,

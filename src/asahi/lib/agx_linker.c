@@ -13,6 +13,7 @@
 #include "agx3_code_container_core.h"
 #include "agx_compile.h"
 #include "agx3_fltnorm_core.h"
+#include "agx3_pixel_core.h"
 #include "agx_device.h"
 #include "agx_pack.h"
 #include "agx_scratch.h"
@@ -205,6 +206,22 @@ agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
       !prolog && !nr_samples_shaded && main && epilog &&
       agx3_fuse_colour_parts(&main->info.agx3_colour_link,
                               &epilog->info.agx3_colour_link, fused_colour);
+   const bool dedup_entry = dev->chip == AGX_CHIP_G17P && fragment &&
+      !prolog && !nr_samples_shaded && !colour_fused && main && epilog &&
+      main->info.agx3_colour_link.entry_emitted &&
+      epilog->info.agx3_colour_link.entry_emitted &&
+      epilog->info.agx3_colour_link.straight_line;
+   if (dedup_entry) {
+      const uint32_t off = epilog->info.agx3_colour_link.entry_offset;
+      uint8_t gate[AGX3_PIXEL_MAX_LENGTH], gate_size;
+      if ((off & 1) || off > epilog->info.main_size ||
+          epilog->info.main_size - off < AGX3_PIXEL_MAX_LENGTH ||
+          !agx3_pixel_colour_entry(AGX_ISA_ENCODING_AGX3B, gate, &gate_size) ||
+          gate_size != AGX3_PIXEL_MAX_LENGTH ||
+          memcmp((const uint8_t *)epilog->binary + epilog->info.main_offset + off,
+                 gate, gate_size))
+         return false;
+   }
    size_t size = 0;
    unsigned nr_gprs = 0, scratch_size = 0;
    unsigned staging_halfs = 0;
@@ -244,6 +261,8 @@ agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
 
    if (colour_fused)
       size = sizeof(fused_colour);
+   else if (dedup_entry)
+      size -= AGX3_PIXEL_MAX_LENGTH;
 
    assert(size > 0 && "must stop");
 
@@ -318,8 +337,16 @@ agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
          continue;
 
       size_t sz = part->info.main_size;
-      memcpy(linked_map + offset,
-             (const uint8_t *)part->binary + part->info.main_offset, sz);
+      const uint8_t *part_code = (const uint8_t *)part->binary + part->info.main_offset;
+      if (dedup_entry && i == 2) {
+         const unsigned gate = part->info.agx3_colour_link.entry_offset;
+         memcpy(linked_map + offset, part_code, gate);
+         memcpy(linked_map + offset + gate, part_code + gate + AGX3_PIXEL_MAX_LENGTH,
+                sz - gate - AGX3_PIXEL_MAX_LENGTH);
+         sz -= AGX3_PIXEL_MAX_LENGTH;
+      } else {
+         memcpy(linked_map + offset, part_code, sz);
+      }
       if (dev->chip == AGX_CHIP_G17P && fragment &&
           !agx3_fltnorm_relocate_start(linked_map + offset, sz,
                                        part->info.agx3_fltnorm_start, offset))

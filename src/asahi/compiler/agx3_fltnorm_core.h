@@ -169,6 +169,10 @@ bool agx3_fltnorm_relocate_start(uint8_t *code, size_t size,
 /* Finite compiler provenance for a uniform-copy-only main and an opaque
  * RGBA8 two-pack epilog. No executable byte parsing is used for fusion. */
 struct agx3_colour_link_info {
+   /* Producer-recorded native pixel-entry provenance for part linking. */
+   bool entry_emitted;
+   bool straight_line;
+   uint32_t entry_offset;
    bool copy_only;
    uint8_t copy_count;
    struct { uint16_t reg, uniform; } copies[4];

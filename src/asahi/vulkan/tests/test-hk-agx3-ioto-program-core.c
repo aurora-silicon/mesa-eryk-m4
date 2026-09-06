@@ -1603,10 +1603,41 @@ test_alias(void)
    return 0;
 }
 
+static int
+test_coverage_initial_pixel_dependencies(void)
+{
+   const struct agx3_ioto_uniform_range root = {
+      .start_halfs=12, .size_halfs=4, .address=0x2000,
+   };
+   struct hk_agx3_g17p_graphics_program_desc desc = {
+      .program_va=0x10000040000, .shader_va=0x10000000080,
+      .shader_binary_size=280, .nr_gprs=15, .compiler_d_valid=true,
+      .compiler_d=4, .fragment=true, .uniform_ranges=&root,
+   };
+   for(unsigned resources=0;resources<=1;resources++) {
+      desc.uniform_range_count=resources;
+      struct hk_agx3_g17p_graphics_program opaque,coverage;
+      desc.writes_sample_mask=false;
+      CHECK(hk_agx3_g17p_basic_graphics_program_generate(AGX_CHIP_G17P,&desc,&opaque));
+      desc.writes_sample_mask=true;
+      CHECK(hk_agx3_g17p_basic_graphics_program_generate(AGX_CHIP_G17P,&desc,&coverage));
+      CHECK(coverage.length==opaque.length);
+      const uint8_t native_tail[]={0x07,0x02,0x54,0xf2,0x02,0x00,0x0e,0,0,0};
+      CHECK(!memcmp(coverage.bytes+coverage.length-sizeof(native_tail),native_tail,sizeof(native_tail)));
+      CHECK(opaque.bytes[opaque.length-7]==0xf3);
+      opaque.bytes[opaque.length-7]=0xf2;
+      CHECK(!memcmp(opaque.bytes,coverage.bytes,coverage.length));
+   }
+   desc.fragment=false;
+   struct hk_agx3_g17p_graphics_program invalid;
+   CHECK(!hk_agx3_g17p_basic_graphics_program_generate(AGX_CHIP_G17P,&desc,&invalid));
+   return 0;
+}
+
 int
 main(void)
 {
-   if (test_exact_target_order() || test_terminal_suffix_modes() ||
+   if (test_coverage_initial_pixel_dependencies() || test_exact_target_order() || test_terminal_suffix_modes() ||
        test_fail_closed() || test_g17s_minimal_compute_admission() ||
        test_g17p_dynamic_compute_program() ||
        test_g17p_direct_add3_compute_bridge() ||

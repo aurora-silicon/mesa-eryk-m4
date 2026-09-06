@@ -153,6 +153,15 @@ bool agx_ioto_g17p_fragment_resource_program_compose(
    const struct agx_ioto_state_tail_output *packed_tail, void *output,
    size_t capacity, size_t *written);
 
+/* Native coverage fragment metadata keeps the loader's pixel class0 held:
+ * __GPU_METADATA_2.field1=0x2f2, versus opaque0x2f3. This composer accepts
+ * empty resource spans for the no-resource form as well. */
+bool agx_ioto_g17p_coverage_fragment_program_compose(
+   uint64_t program_va, const void *pre_copy_body, size_t pre_copy_body_size,
+   const void *copies, size_t copies_size,
+   const struct agx_ioto_state_tail_output *packed_tail, void *output,
+   size_t capacity, size_t *written);
+
 /* Internal background clear/reload programs with no shader pixel-dependency
  * operations use the native BG PIXREL descriptor 0x200, not ordinary FS
  * 0x2f3. The scheduled-load and COPY validation is identical to the other

@@ -1270,6 +1270,9 @@ hk_upload_usc_words(struct hk_cmd_buffer *cmd, struct hk_shader *s,
          .compiler_d_valid = linked->b.g17p_compiler_d_valid,
          .compiler_d = linked->b.g17p_compiler_d,
          .fragment = s->info.stage == MESA_SHADER_FRAGMENT,
+         .writes_sample_mask = s->info.stage == MESA_SHADER_FRAGMENT &&
+            ((linked->b.fragment_control.opaque[0] >> 29) == AGX_PASS_TYPE_PUNCH_THROUGH ||
+             (linked->b.fragment_control.opaque[0] >> 29) == AGX_PASS_TYPE_TRANSLUCENT_PUNCH_THROUGH),
       };
       struct hk_agx3_g17p_graphics_program program;
       if (!hk_agx3_g17p_basic_graphics_program_generate(dev->dev.chip, &desc,

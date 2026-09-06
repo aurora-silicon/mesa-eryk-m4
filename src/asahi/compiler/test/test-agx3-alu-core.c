@@ -695,7 +695,11 @@ static void test_native_u16_arithmetic(void)
    exact(out,len,"9f21540a032040001605");
    assert(agx3_alu_shift_add16(AGX_ISA_ENCODING_AGX3B,10,n,dead,4,true,0,out,&len));
    exact(out,len,"9f01540a031628001605");
-   puts("Native u16 ALU: five exact native narrow-bitwise/shift-add vectors PASS");
+   const uint16_t mixed_src[] = {2, 4};
+   const bool mixed_width[] = {false, true};
+   assert(agx3_alu_fcmp_select_imm_width(AGX_ISA_ENCODING_AGX3B,2,mixed_src,mixed_width,dead,1,255,0,true,false,32,out,&len));
+   exact(out,len,"12031d04a2ff03c02080");
+   puts("Native u16 ALU and mixed-width FSEL: six native byte vectors PASS");
 }
 
 int main(void){

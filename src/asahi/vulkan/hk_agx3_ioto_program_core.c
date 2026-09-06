@@ -187,6 +187,7 @@ hk_agx3_g17p_basic_graphics_program_generate(
    struct hk_agx3_g17p_graphics_program *program)
 {
    if (!program || chip != AGX_CHIP_G17P || !desc ||
+       (desc->writes_sample_mask && !desc->fragment) ||
        desc->uniform_range_count > HK_AGX3_G17P_GRAPHICS_MAX_RANGES ||
        (desc->uniform_range_count != 0 && !desc->uniform_ranges))
       return false;
@@ -199,7 +200,11 @@ hk_agx3_g17p_basic_graphics_program_generate(
    size_t written = 0;
    if (desc->uniform_range_count == 0) {
       const bool composed =
-         desc->fragment
+         desc->fragment && desc->writes_sample_mask
+            ? agx_ioto_g17p_coverage_fragment_program_compose(
+                 desc->program_va, NULL, 0, NULL, 0, &tail, staged.bytes,
+                 sizeof(staged.bytes), &written)
+            : desc->fragment
             ? agx_ioto_g17p_fragment_no_resource_program_compose(
                  desc->program_va, &tail, staged.bytes, sizeof(staged.bytes),
                  &written)
@@ -240,7 +245,12 @@ hk_agx3_g17p_basic_graphics_program_generate(
       if (!agx3_ioto_uniform_program_body_generate(
              chip, &load_desc, workspace, &body_size, &copy_offset) ||
           copy_offset > body_size ||
-          !(desc->fragment
+          !(desc->fragment && desc->writes_sample_mask
+               ? agx_ioto_g17p_coverage_fragment_program_compose(
+                    desc->program_va, body, copy_offset, body + copy_offset,
+                    body_size - copy_offset, &tail, staged.bytes,
+                    sizeof(staged.bytes), &written)
+               : desc->fragment
                ? agx_ioto_g17p_fragment_resource_program_compose(
                     desc->program_va, body, copy_offset, body + copy_offset,
                     body_size - copy_offset, &tail, staged.bytes,

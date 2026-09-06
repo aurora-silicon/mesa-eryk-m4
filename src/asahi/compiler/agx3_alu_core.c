@@ -413,23 +413,26 @@ agx3_alu_integer_reg(enum agx_isa_encoding enc, enum agx3_alu_op op,
 /* Native float comparison selects two integer immediates. Field 11 selects
  * the result width; a 16-bit result can target either register half. */
 bool
-agx3_alu_fcmp_select_imm(enum agx_isa_encoding enc, uint16_t dest,
-                        const uint16_t src[2], const enum agx3_alu_hint hints[2],
+agx3_alu_fcmp_select_imm_width(enum agx_isa_encoding enc, uint16_t dest,
+                        const uint16_t src[2], const bool src_16[2],
+                        const enum agx3_alu_hint hints[2],
                         unsigned condition, uint8_t if_true, uint8_t if_false,
                         bool dest_16, bool dest_cache, uint16_t wait_mask,
                         uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len)
 {
-   if (enc != AGX_ISA_ENCODING_AGX3B || !out || !len || !src || !hints ||
+   if (enc != AGX_ISA_ENCODING_AGX3B || !out || !len || !src || !src_16 || !hints ||
+       (src_16[0] && src_16[1]) ||
        dest >= 256 || (!dest_16 && (dest & 1)) || (condition != 0 && condition != 1 && condition != 2 &&
         condition != 5 && condition != 6) ||
        (wait_mask != 0 && wait_mask != 32))
       return false;
    for (unsigned i = 0; i < 2; ++i)
-      if (src[i] >= 256 || (src[i] & 1) ||
+      if (src[i] >= 256 || (!src_16[i] && (src[i] & 1)) ||
           (unsigned)hints[i] > AGX3_ALU_HINT_CACHE)
          return false;
    const struct agx3_field_kv base[] = {
-      {10, 2}, {11, dest_16 ? 1 : 2}, {42, 2}, {43, 2}, {59, 2}, {60, 2},
+      {10, 2}, {11, dest_16 ? 1 : 2}, {42, 2}, {43, src_16[0] ? 1 : 2},
+      {59, 2}, {60, src_16[1] ? 1 : 2},
       {76, 1}, {77, dest_16 ? 1 : 2}, {93, 1}, {94, dest_16 ? 1 : 2},
    };
    const struct agx3_field_kv fields[] = {
@@ -486,6 +489,18 @@ agx3_alu_fcmp_select_zero(enum agx_isa_encoding enc, uint16_t dest,
       if (agx3_bind_compose(enc, "fsel", ep, base, 10, fields, 14, out, len))
          return true;
    return false;
+}
+
+bool
+agx3_alu_fcmp_select_imm(enum agx_isa_encoding enc, uint16_t dest,
+                        const uint16_t src[2], const enum agx3_alu_hint hints[2],
+                        unsigned condition, uint8_t if_true, uint8_t if_false,
+                        bool dest_16, bool dest_cache, uint16_t wait_mask,
+                        uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len)
+{
+   const bool src_16[2] = {false, false};
+   return agx3_alu_fcmp_select_imm_width(enc, dest, src, src_16, hints, condition,
+      if_true, if_false, dest_16, dest_cache, wait_mask, out, len);
 }
 
 /* Integer source liveness remains relevant after conversion: IDs can still

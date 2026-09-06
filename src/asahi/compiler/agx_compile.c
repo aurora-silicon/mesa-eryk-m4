@@ -1708,6 +1708,29 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
       bool no_tests =
          nir_src_is_const(instr->src[1]) && nir_src_as_uint(instr->src[1]) == 0;
 
+      if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+          !b->shader->key->fs.inside_sample_loop) {
+         /* Native early-fragment-tests code uses MOVMSK word zero for a
+          * no-op. Keep TARGET dynamic and select that word without changing
+          * EXEC around a coverage operation. */
+         agx_index target = agx_and(b, agx_src_index(&instr->src[0]),
+                                    agx_immediate(1));
+         agx_index live = agx_and(b, agx_src_index(&instr->src[1]),
+                                  agx_immediate(1));
+         agx_index t16 = agx_temp(b->shader, AGX_SIZE_16);
+         agx_get_coverage_1x_agx3_to(b, t16);
+         agx_index mid = agx_iadd(b, t16, t16, 4);
+         agx_index word = agx_iadd(b, live, mid, 4);
+         agx_index zero = agx_mov_imm(b, 16, 0);
+         agx_index target32 = agx_temp(b->shader, AGX_SIZE_32);
+         agx_index word32 = agx_temp(b->shader, AGX_SIZE_32);
+         agx_emit_collect_to(b, target32, 2, (agx_index[]){target, zero});
+         agx_emit_collect_to(b, word32, 2, (agx_index[]){word, zero});
+         agx_index selected = agx_temp(b->shader, AGX_SIZE_32);
+         agx_imad_to(b, selected, target32, word32, agx_zero(), 0);
+         return agx_sample_mask_1x_agx3(b, target, selected, !no_tests ? 2 : 0);
+      }
+
       if (!no_tests)
          agx_wait_pixel_mask(b, 0x1);
 

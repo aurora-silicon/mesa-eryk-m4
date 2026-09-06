@@ -3019,9 +3019,16 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
     */
    const uint32_t pass_type = linked_fs->b.fragment_control.opaque[0] >> 29;
    if (pass_type != AGX_PASS_TYPE_OPAQUE &&
-       pass_type != AGX_PASS_TYPE_TRANSLUCENT)
+       pass_type != AGX_PASS_TYPE_TRANSLUCENT &&
+       pass_type != AGX_PASS_TYPE_PUNCH_THROUGH)
       return false;
    secondary_fields.words[0] |= pass_type << 29;
+   /* Native46c674..46c694 forces bit26 for pass type2, before merging it
+    * into the same SECONDARY payload. This prevents triangle merging from
+    * treating per-fragment coverage rejection as an opaque pass. Type3's
+    * additional draw-buffer-state predicate is a separate native path. */
+   if (pass_type == AGX_PASS_TYPE_PUNCH_THROUGH)
+      secondary_fields.words[0] |= UINT32_C(1) << 26;
    /* Native458934..45896c retains both stencil-control bits in the
     * same per-draw record as depth. No extra state allocation or launch. */
    const uint32_t fragment_control = raster_state.fragment_control |
