@@ -20,6 +20,39 @@ struct ctx {
    bool native_raw;
 };
 
+/* G17P's general multiply-high encoding is not hardware-qualified yet, while
+ * nir_opt_idiv_const lowers non-power-of-two udiv to multiply-high. Vertex
+ * divisors are pipeline constants, so use exact binary long division composed
+ * only of the already-grounded integer shift, compare/select and subtract
+ * families. The remainder never underflows and every shifted divisor fits in
+ * 32 bits by construction.
+ */
+static nir_def *
+g17p_udiv_imm(nir_builder *b, nir_def *numerator, uint32_t divisor)
+{
+   assert(divisor != 0);
+
+   if (util_is_power_of_two_or_zero(divisor))
+      return nir_ushr_imm(b, numerator, util_logbase2(divisor));
+
+   nir_def *remainder = numerator;
+   nir_def *quotient = nir_imm_int(b, 0);
+
+   for (int shift = __builtin_clz(divisor); shift >= 0; --shift) {
+      const uint32_t shifted_divisor = divisor << shift;
+      nir_def *ge = nir_uge(b, remainder, nir_imm_int(b, shifted_divisor));
+      remainder = nir_bcsel(
+         b, ge, nir_isub(b, remainder, nir_imm_int(b, shifted_divisor)),
+         remainder);
+      quotient = nir_ior(
+         b, quotient,
+         nir_bcsel(b, ge, nir_imm_int(b, UINT32_C(1) << shift),
+                   nir_imm_int(b, 0)));
+   }
+
+   return quotient;
+}
+
 static bool
 is_rgb10_a2(const struct util_format_description *desc)
 {
@@ -168,10 +201,14 @@ pass(struct nir_builder *b, nir_intrinsic_instr *intr, void *data)
     */
    nir_def *el;
    if (attrib.instanced) {
-      if (attrib.divisor > 0)
-         el = nir_udiv_imm(b, nir_load_instance_id(b), attrib.divisor);
-      else
+      if (attrib.divisor > 0) {
+         nir_def *instance_id = nir_load_instance_id(b);
+         el = ctx->native_raw
+                 ? g17p_udiv_imm(b, instance_id, attrib.divisor)
+                 : nir_udiv_imm(b, instance_id, attrib.divisor);
+      } else {
          el = nir_imm_int(b, 0);
+      }
 
       el = nir_iadd(b, el, nir_load_base_instance(b));
 
