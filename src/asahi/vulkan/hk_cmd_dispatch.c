@@ -159,8 +159,9 @@ hk_g17p_compute_shader_supported(struct hk_shader *s,
                                  struct hk_linked_shader *linked)
 {
    if (s && linked && hk_g17p_launch_trace_enabled())
-      fprintf(stderr,"G17P compute resources: txf=%u binding=%u preamble=%u local=%u texture=%u sampler=%u heap=%u scratch=%u/%u\n",
-         linked->b.uses_txf,s->info.agx3_txf_texture_valid,s->b.info.has_preamble,
+      fprintf(stderr,"G17P compute resources: txf=%u binding=%u storage=%u preamble=%u local=%u texture=%u sampler=%u heap=%u scratch=%u/%u\n",
+         linked->b.uses_txf,s->info.agx3_txf_texture_valid,
+         s->info.agx3_storage_image_valid,s->b.info.has_preamble,
          s->b.info.local_size,s->b.info.texture_state_count,s->b.info.sampler_state_count,
          s->b.info.uses_sampler_heap,s->b.info.scratch_size,linked->b.scratch_size);
    return s && linked && s->info.stage == MESA_SHADER_COMPUTE &&
@@ -168,13 +169,16 @@ hk_g17p_compute_shader_supported(struct hk_shader *s,
           linked->b.size <= UINT32_MAX && linked->b.nr_gprs != 0 &&
           !s->b.info.has_preamble && s->b.info.preamble_scratch_size == 0 &&
           s->b.info.scratch_size == 0 && linked->b.scratch_size == 0 &&
+          s->b.info.agx3_staging_known &&
           s->b.info.local_size <= 32768 &&
           s->b.info.texture_state_count == 0 &&
           (s->b.info.sampler_state_count == 0 ||
-           (s->info.agx3_txf_texture_valid &&
+           ((s->info.agx3_txf_texture_valid ||
+             s->info.agx3_storage_image_valid) &&
             s->b.info.sampler_state_count == 1)) &&
           !s->b.info.uses_sampler_heap &&
-          (!linked->b.uses_txf || s->info.agx3_txf_texture_valid) &&
+          (!linked->b.uses_txf || s->info.agx3_txf_texture_valid ||
+           s->info.agx3_storage_image_valid) &&
           s->info.set_count <= HK_AGX3_G17P_MAX_ROOT_SETS;
 }
 
@@ -184,7 +188,8 @@ hk_g17p_compute_uniform_ranges(
    struct agx3_ioto_uniform_range ranges[3], size_t *range_count)
 {
    if (!s || !ranges || !range_count ||
-       (!!texture_pointers != s->info.agx3_txf_texture_valid))
+       (!!texture_pointers != (s->info.agx3_txf_texture_valid ||
+                               s->info.agx3_storage_image_valid)))
       return false;
 
    /* A shader that reads neither the root descriptor nor any descriptor set
@@ -215,7 +220,11 @@ hk_g17p_compute_uniform_ranges(
       return true;
    }
 
-   const unsigned root_uniform = texture_pointers ? AGX_G17P_TXF_ROOT_HALFS : 0;
+   const unsigned root_uniform = s->info.agx3_storage_image_valid
+                                    ? AGX_G17P_STORAGE_ROOT_HALFS
+                                 : texture_pointers
+                                    ? AGX_G17P_TXF_ROOT_HALFS
+                                    : 0;
    if (!hk_agx3_g17p_root_range(root_uniform, s->info.set_count, root_ptr, &ranges[0]))
       return false;
 
@@ -236,7 +245,7 @@ hk_g17p_compute_uniform_ranges(
    size_t count = 1;
    if (texture_pointers) {
       ranges[count++] = (struct agx3_ioto_uniform_range){
-         .start_halfs = 0, .size_halfs = AGX_G17P_TXF_ROOT_HALFS,
+         .start_halfs = 0, .size_halfs = root_uniform,
          .address = texture_pointers,
       };
    }
@@ -297,24 +306,70 @@ hk_dispatch_g17p_native(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
       return;
 
    uint64_t texture_pointers = 0;
-   if (s->info.agx3_txf_texture_valid) {
+   if (s->info.agx3_txf_texture_valid || s->info.agx3_storage_image_valid) {
       const struct hk_descriptor_state *descriptors = &cmd->state.cs.descriptors;
       const uint64_t set_address = descriptors->root.sets[0];
       const uint32_t set_size = descriptors->set_sizes[0];
-      const uint32_t offset = s->info.agx3_txf_texture.texture_offset_B;
+      const uint32_t offset = s->info.agx3_storage_image_valid
+         ? s->info.agx3_storage_image.texture_offset_B
+         : s->info.agx3_txf_texture.texture_offset_B;
       if (!set_address || offset > set_size ||
-          set_size - offset < 32 || !dev->rodata.bo ||
+          set_size - offset <
+             (s->info.agx3_storage_image_valid ? 64 : 32) ||
+          !dev->rodata.bo ||
           !dev->rodata.bo->va) {
          vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
          return;
       }
-      /* Native G17P compute read() uses table pointers in uniform halves0..7,
-       * with its ordinary buffer arguments beginning at half8. Preserve the
-       * existing root ABI after that prefix and keep both pointers immutable. */
-      const uint64_t pointers[2] = {
-         set_address + offset, dev->rodata.bo->va->addr,
+      /* Native G17P compute resources use four uniform halves per binding
+       * slot. A plain read consumes two slots; read_write uses four: texture,
+       * PBE, access control, and coordinate clamp. Keep the Honeykrisp root
+       * immediately after that native prefix. */
+      uint64_t access_control = 0;
+      if (s->info.agx3_storage_image_valid) {
+         /* Exact access::read_write control descriptor from the native G17P
+          * Tier-2 argument buffer. Preserve its full slot and alignment. */
+         static const uint8_t native_read_write_control[32] = {
+            0x68, 0x0e, 0x00, 0x00, 0x00, 0x00, 0x03, 0x1b,
+         };
+         access_control = hk_pool_upload(cmd, native_read_write_control,
+                                         sizeof(native_read_write_control),
+                                         32);
+         if (!access_control)
+            return;
+      }
+
+      const uint64_t pointers[4] = {
+         s->info.agx3_storage_image_valid
+            ? set_address + s->info.agx3_storage_image.texture_offset_B
+            : set_address + offset,
+         s->info.agx3_storage_image_valid
+            ? set_address + s->info.agx3_storage_image.pbe_offset_B
+            : dev->rodata.bo->va->addr,
+         access_control,
+         /* The native read_write ISEL clamps each unsigned coordinate against
+          * uniform half12. The only consumed vector word is 0xffff. */
+         s->info.agx3_storage_image_valid ? UINT64_C(0xffff) : 0,
       };
-      texture_pointers = hk_pool_upload(cmd, pointers, sizeof(pointers), 8);
+      if (hk_g17p_launch_trace_enabled()) {
+         fprintf(stderr,
+                 "G17P storage pointers: set=0x%" PRIx64
+                 " size=%u tex_off=%u pbe_off=%u slot0=0x%" PRIx64
+                 " slot1=0x%" PRIx64 " slot2=0x%" PRIx64
+                 " slot3=0x%" PRIx64 "\n",
+                 set_address, set_size,
+                 s->info.agx3_storage_image_valid
+                    ? s->info.agx3_storage_image.texture_offset_B
+                    : offset,
+                 s->info.agx3_storage_image_valid
+                    ? s->info.agx3_storage_image.pbe_offset_B
+                    : 0,
+                 pointers[0], pointers[1], pointers[2], pointers[3]);
+      }
+      const size_t pointer_count =
+         s->info.agx3_storage_image_valid ? 4 : 2;
+      texture_pointers =
+         hk_pool_upload(cmd, pointers, pointer_count * sizeof(pointers[0]), 8);
       if (!texture_pointers)
          return;
    }
@@ -394,6 +449,8 @@ hk_dispatch_g17p_native(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
       .shader_binary_size = linked->b.size,
       .scratch_size = linked->b.scratch_size,
       .nr_gprs = linked->b.nr_gprs,
+      .compiler_d_valid = s->b.info.agx3_staging_known,
+      .compiler_d = (uint32_t)s->b.info.agx3_staging_halfs * 2,
       .threadgroup_memory_size_B = s->b.info.local_size
          ? MAX2(256u, ALIGN_POT(s->b.info.local_size, 64u))
          : 0,

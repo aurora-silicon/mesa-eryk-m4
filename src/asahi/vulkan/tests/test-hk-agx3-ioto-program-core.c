@@ -504,6 +504,8 @@ test_g17p_dynamic_compute_program(void)
       .uniform_range_count = ARRAY_SIZE(ranges),
       .shader_binary_size = 96,
       .nr_gprs = 8,
+      .compiler_d_valid = true,
+      .compiler_d = 32,
       .threadgroup_memory_size_B = 4096,
       .launch_sources = sources,
    };
@@ -533,7 +535,8 @@ test_g17p_dynamic_compute_program(void)
     * footprint). A compiler-produced shader must declare its own, exactly as
     * the graphics path does, so the expectation carries it too. */
    struct agx_ioto_state expected_spectpr;
-   CHECK(agx_ioto_g17p_compiler_spectpr_build(desc.scratch_size, desc.nr_gprs,
+   CHECK(agx_ioto_g17p_compiler_spectpr_build(desc.scratch_size,
+                                              desc.compiler_d,
                                               &expected_spectpr));
    CHECK(agx_ioto_state_pack_spectpr(
       AGX_CHIP_G17P, &expected_spectpr,
@@ -576,6 +579,11 @@ test_g17p_dynamic_compute_program(void)
    const struct hk_agx3_g17p_compute_program before = program;
    struct hk_agx3_g17p_compute_program_desc invalid = desc;
    invalid.scratch_size = 16;
+   CHECK(!hk_agx3_g17p_compute_program_generate(AGX_CHIP_G17P, &invalid,
+                                                &program));
+   CHECK(memcmp(&program, &before, sizeof(program)) == 0);
+   invalid = desc;
+   invalid.compiler_d_valid = false;
    CHECK(!hk_agx3_g17p_compute_program_generate(AGX_CHIP_G17P, &invalid,
                                                 &program));
    CHECK(memcmp(&program, &before, sizeof(program)) == 0);

@@ -21,11 +21,12 @@ extern "C" {
 
 /* This is intentionally the subset whose complete byte geometry is recovered:
  * uncompressed, non-sparse, single-level, single-layer 2D images in ordinary
- * twiddled/GPU memory. Gen9's ordinary single-layer packet has no layer-mode
- * bit regardless of allocation padding; the inherited page-aligned-layer
- * input is ignored on pack and canonicalized to false on unpack. Gen10 keeps
- * its existing flag semantics. Fields with unresolved Gen9/10 semantics are
- * not represented and are required to be zero by the decoder.
+ * Gen9 linear or Gen9/10 twiddled/GPU memory. Gen9's ordinary single-layer
+ * packet has no layer-mode bit regardless of allocation padding; the
+ * inherited page-aligned-layer input is ignored on pack and canonicalized to
+ * false on unpack. Gen10 keeps its existing flag semantics. Fields with
+ * unresolved Gen9/10 semantics are not represented and are required to be
+ * zero by the decoder.
  */
 struct agx_pbe_agx3_2d_fields {
    uint8_t layout;
@@ -38,6 +39,8 @@ struct agx_pbe_agx3_2d_fields {
    uint16_t width;
    uint16_t height;
    uint64_t buffer;
+   /* Gen9 linear row pitch in bytes. Zero for tiled layouts. */
+   uint32_t stride_B;
    /* Legacy layout metadata: encoded only for Gen10, not ordinary Gen9 2D. */
    bool page_aligned_layers;
 };

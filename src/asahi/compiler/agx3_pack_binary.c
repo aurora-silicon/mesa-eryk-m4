@@ -28,6 +28,7 @@
 
 #include "agx3_alu_core.h"
 #include "agx3_atomic_core.h"
+#include "agx3_binder.h"
 #include "agx3_cf_core.h"
 #include "agx3_copy_core.h"
 #include "agx3_falu_mod_core.h"
@@ -474,7 +475,7 @@ agx3_is_async(const agx_instr *I)
    return I->op == AGX_OPCODE_DEVICE_LOAD || I->op == AGX_OPCODE_LOCAL_LOAD ||
           I->op == AGX_OPCODE_LDCF || I->op == AGX_OPCODE_GET_SR ||
           I->op == AGX_OPCODE_GET_COVERAGE_1X_AGX3 ||
-          I->op == AGX_OPCODE_TEXTURE_LOAD ||
+          I->op == AGX_OPCODE_TEXTURE_LOAD || I->op == AGX_OPCODE_IMAGE_LOAD ||
           I->op == AGX_OPCODE_TEXTURE_SAMPLE || I->op == AGX_OPCODE_LD_TILE ||
           I->op == AGX_OPCODE_SCS_LOAD_AGX3 ||
           I->op == AGX_OPCODE_SCS_LOAD_UNIFORM_INDEXED_AGX3 ||
@@ -799,13 +800,16 @@ agx3_emit_texture_fetch(struct util_dynarray *emission,
        I->query_lod || I->gather != AGX_GATHER_NONE || I->sparse)
       return false;
 
-   /* Native read() stages its coordinates into bank0 before the fetch.
-    * The bounded single-fetch path can reuse these first three entries,
-    * independently of the source GPR numbers. */
+   /* Native image read() stages coordinates at halves16/18, keeping them
+    * disjoint from imgwci's halves0/2 while the asynchronous read is live.
+    * Ordinary texture loads retain the original bank0 staging ABI. */
+   const uint16_t staging_coord =
+      I->op == AGX_OPCODE_IMAGE_LOAD ? 16 : 0;
    if (stage_coordinates) {
       for (unsigned i = 0; i < agx_channels(I->src[0]); i++) {
          uint8_t copy[AGX3_TEX_MAX_LENGTH], copy_len = 0;
-         if (!agx3_tex_stage_copy_hints(enc, 2 * i, I->src[0].value + 2 * i,
+         if (!agx3_tex_stage_copy_hints(enc, staging_coord + 2 * i,
+                                  I->src[0].value + 2 * i,
                                   slot, i == 0 ? wait_mask : 0,
                                   enc == AGX_ISA_ENCODING_AGX3B && I->src[0].cache,
                                   enc != AGX_ISA_ENCODING_AGX3B || I->src[0].discard,
@@ -817,7 +821,7 @@ agx3_emit_texture_fetch(struct util_dynarray *emission,
 
    const struct agx3_tex_fetch_desc d = {
       .dest = I->dest[0].value,
-      .coord = stage_coordinates ? 0 : I->src[0].value,
+      .coord = stage_coordinates ? staging_coord : I->src[0].value,
       .width = I->dest[0].size == AGX_SIZE_32 ? AGX3_TEX_W32 : AGX3_TEX_W16,
       .mask = I->mask,
       .texture = immediate ? I->src[3].value : 0,
@@ -837,6 +841,102 @@ agx3_emit_texture_fetch(struct util_dynarray *emission,
    uint8_t len = 0;
    return agx3_tex_encode_fetch(enc, &d, bytes, &len) &&
           agx3_append(emission, bytes, len);
+}
+
+/* Native G17P imgwci reads its integer coordinates through a dedicated pair
+ * populated by this exact isel.ep35 form. Both selected values are the same,
+ * so the select is a routing operation, not a source-level conditional. */
+static bool
+agx3_emit_image_coord(struct util_dynarray *emission,
+                      enum agx_isa_encoding enc, uint16_t dest, uint16_t src)
+{
+   if (enc != AGX_ISA_ENCODING_AGX3B || (dest & 1) || dest > 2 ||
+       (src & 1) || src > 254)
+      return false;
+
+   const struct agx3_field_kv base[] = {
+      {10, 5}, {11, 2}, {13, 2}, {42, 2}, {43, 2}, {46, 1},
+      {51, 12}, {57, 3}, {58, 2}, {72, 2}, {73, 2}, {76, 1},
+      {83, 12}, {89, 3}, {90, 2}, {106, 1},
+   };
+   const struct agx3_field_kv values[] = {
+      {6, dest}, {35, src}, {65, src},
+   };
+   uint8_t bytes[14], len = 0;
+   return agx3_bind_compose(enc, "isel", 35, base, ARRAY_SIZE(base), values,
+                            ARRAY_SIZE(values), bytes, &len) &&
+          len == sizeof(bytes) && agx3_append(emission, bytes, len);
+}
+
+/* One bounded public storage-image form: noncoherent 2D RGBA8UI, native
+ * texture-state0/PBE-state0, one preceding image load on scoreboard slot1.
+ * The four slot2 COPYs route its packed vec4 into the exact imgwci data lanes.
+ * The first COPY consumes the one-shot image-load dependency; native imgwci
+ * then waits for staging slot2.
+ * Validation happens before the first append, so a refusal leaves the output
+ * transaction untouched. */
+static bool
+agx3_emit_storage_image_write(struct util_dynarray *emission,
+                              enum agx_isa_encoding enc, const agx_instr *I,
+                              uint16_t wait_mask)
+{
+   if (enc != AGX_ISA_ENCODING_AGX3B || I->nr_dests != 0 ||
+       I->nr_srcs != 5 ||
+       I->dim != AGX_DIM_2D || I->coherent || wait_mask != 1 ||
+       !agx3_tex_plain_reg(I->src[0]) || I->src[0].size != AGX_SIZE_32 ||
+       agx_channels(I->src[0]) != 4 || (I->src[0].value & 1) ||
+       I->src[0].value > 248 || !agx3_tex_plain_reg(I->src[1]) ||
+       I->src[1].size != AGX_SIZE_32 || agx_channels(I->src[1]) != 2 ||
+       (I->src[1].value & 1) || I->src[1].value > 252 ||
+       !agx3_tex_imm(I->src[2], 0) || !agx3_tex_imm(I->src[3], 0) ||
+       !agx3_tex_imm(I->src[4], 0)) {
+      if (agx_compiler_debug & AGX_DBG_SHADERS)
+         fprintf(stderr, "G17P imgwci shape refusal: wait=0x%x data=%u/%u/%u coord=%u/%u/%u dim=%u coherent=%u\n",
+                 wait_mask, I->src[0].value, I->src[0].size,
+                 agx_channels(I->src[0]), I->src[1].value, I->src[1].size,
+                 agx_channels(I->src[1]), I->dim, I->coherent);
+      return false;
+   }
+
+   struct util_dynarray staged;
+   util_dynarray_init(&staged, NULL);
+   const uint16_t data_dest[4] = {4, 6, 12, 14};
+   if (!agx3_emit_image_coord(&staged, enc, 0, I->src[1].value) ||
+       !agx3_emit_image_coord(&staged, enc, 2, I->src[1].value + 2)) {
+      if (agx_compiler_debug & AGX_DBG_SHADERS)
+         fprintf(stderr, "G17P imgwci coordinate compose refusal\n");
+      goto fail;
+   }
+
+   for (unsigned c = 0; c < 4; ++c) {
+      uint8_t bytes[AGX3_STAGE_MAX_LENGTH], len = 0;
+      if (!agx3_stage_copy_source(enc, data_dest[c],
+                                  I->src[0].value + 2 * c,
+                                  I->src[0].discard, 2,
+                                  c == 0 ? wait_mask : 0,
+                                  bytes, &len) ||
+          !agx3_append(&staged, bytes, len)) {
+         if (agx_compiler_debug & AGX_DBG_SHADERS)
+            fprintf(stderr, "G17P imgwci data compose refusal: component=%u\n", c);
+         goto fail;
+      }
+   }
+
+   uint8_t imgwci[AGX3_IMAGE_WRITE_LENGTH], imgwci_len = 0;
+   if (!agx3_tex_encode_image_write_rgba8ui_2d(enc, wait_mask, imgwci,
+                                                &imgwci_len) ||
+       !agx3_append(&staged, imgwci, imgwci_len) ||
+       !agx3_append(emission, staged.data, staged.size)) {
+      if (agx_compiler_debug & AGX_DBG_SHADERS)
+         fprintf(stderr, "G17P imgwci instruction compose refusal\n");
+      goto fail;
+   }
+   util_dynarray_fini(&staged);
+   return true;
+
+fail:
+   util_dynarray_fini(&staged);
+   return false;
 }
 
 /* Filtered 2D samples use scoreboard-signalling native staging producers.
@@ -3205,6 +3305,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
    unsigned tile_loads_left = 0;
    unsigned tile_loads_seen = 0;
    unsigned tile_stores_left = 0;
+   unsigned image_loads_left = 0;
+   unsigned image_writes_left = 0;
    unsigned device_loads_left = 0;
    bool has_coverage_write = false;
    unsigned count = 0;
@@ -3219,6 +3321,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
          /* Apple's "last texture op" marker goes on the final smp of the
           * whole stream, fetch or sample alike. */
          if (scan_I->op == AGX_OPCODE_TEXTURE_LOAD ||
+             scan_I->op == AGX_OPCODE_IMAGE_LOAD ||
              scan_I->op == AGX_OPCODE_TEXTURE_SAMPLE)
             texture_ops_left++;
          if (scan_I->op == AGX_OPCODE_LD_TILE)
@@ -3229,6 +3332,10 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             has_coverage_write = true;
          if (scan_I->op == AGX_OPCODE_DEVICE_LOAD)
             device_loads_left++;
+         if (scan_I->op == AGX_OPCODE_IMAGE_LOAD)
+            image_loads_left++;
+         if (scan_I->op == AGX_OPCODE_IMAGE_WRITE)
+            image_writes_left++;
       }
    }
 
@@ -3322,6 +3429,13 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
    const bool g17p_vertex_load_policy =
       enc == AGX_ISA_ENCODING_AGX3B && ctx->stage == MESA_SHADER_VERTEX &&
       device_loads_left > 0;
+   /* Native read_write storage-image kernels assign their sole image read to
+    * slot 1 and imgwci waits on that slot. Select slot 1 from the exact
+    * one-load/one-write compute graph; the ordinary dependency pass still
+    * derives the write's wait bit from the load result registers. */
+   const bool g17p_storage_image_protocol =
+      enc == AGX_ISA_ENCODING_AGX3B && ctx->stage == MESA_SHADER_COMPUTE &&
+      image_loads_left == 1 && image_writes_left == 1;
 
    /* Assign one scoreboard timeline over the whole linearized shader, rather
     * than restarting at each basic block.  Fallthrough blocks may consume an
@@ -3349,6 +3463,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
          if (I->op == AGX_OPCODE_EXPORT)
             continue;
          e->is_async = agx3_is_async(I);
+         if (g17p_storage_image_protocol && I->op == AGX_OPCODE_IMAGE_LOAD)
+            e->preferred_slot = 1;
          if (g17p_vertex_load_policy && I->op == AGX_OPCODE_DEVICE_LOAD &&
              vertex_loads_scheduled++ == 0)
             e->preferred_slot = 6;
@@ -3605,20 +3721,32 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             continue;
          }
 
-         if (I->op == AGX_OPCODE_TEXTURE_LOAD) {
+         if (I->op == AGX_OPCODE_TEXTURE_LOAD ||
+             I->op == AGX_OPCODE_IMAGE_LOAD) {
             /* Native TEX reads staging coordinates, independently of GPRs.
              * This also applies to the background reload's pixel coordinates. */
             const bool staged = ctx->stage == MESA_SHADER_FRAGMENT ||
                                 ctx->stage == MESA_SHADER_COMPUTE;
-            if (staged)
-               ctx->agx3_staging_halfs = MAX2(ctx->agx3_staging_halfs,
-                                              2 * agx_channels(I->src[0]));
+            if (staged) {
+               const unsigned coord_base =
+                  I->op == AGX_OPCODE_IMAGE_LOAD ? 16 : 0;
+               ctx->agx3_staging_halfs = MAX2(
+                  ctx->agx3_staging_halfs,
+                  coord_base + 2 * agx_channels(I->src[0]));
+            }
             else
                ctx->agx3_staging_known = false;
             assert(texture_ops_left > 0);
             const bool final = --texture_ops_left == 0;
             if (!agx3_emit_texture_fetch(emission, enc, I, slot, wait, final, staged))
                AGX3_REFUSE(I);
+            continue;
+         }
+
+         if (I->op == AGX_OPCODE_IMAGE_WRITE) {
+            if (!agx3_emit_storage_image_write(emission, enc, I, wait))
+               AGX3_REFUSE(I);
+            ctx->agx3_staging_halfs = MAX2(ctx->agx3_staging_halfs, 16);
             continue;
          }
 

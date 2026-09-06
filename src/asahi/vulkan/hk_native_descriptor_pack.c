@@ -202,11 +202,15 @@ hk_pack_native_pbe(unsigned generation,
       return false;
 
    /* The recovered subset deliberately excludes every field whose Gen9/10
-    * semantic placement is incomplete: linear stride, arrays,
-    * compression, sparse mode, gamma and the software-addressing sideband.
+    * semantic placement is incomplete: arrays, compression, sparse mode,
+    * gamma and the software-addressing sideband.
     */
    if (legacy->dimension != AGX_TEXTURE_DIMENSION_2D ||
-       (legacy->layout != AGX_LAYOUT_TWIDDLED &&
+       (legacy->layout == AGX_LAYOUT_LINEAR &&
+        (generation != 9 || legacy->level != 0 || legacy->levels != 1 ||
+         legacy->unk_mipmapped)) ||
+       (legacy->layout != AGX_LAYOUT_LINEAR &&
+        legacy->layout != AGX_LAYOUT_TWIDDLED &&
         legacy->layout != AGX_LAYOUT_GPU) ||
        legacy->unk_52 || legacy->rotate_90 || legacy->flip_vertical ||
        legacy->samples != AGX_SAMPLE_COUNT_2 ||
@@ -215,7 +219,10 @@ hk_pack_native_pbe(unsigned generation,
        (generation != 9 && (legacy->level != 0 || legacy->levels != 1 ||
                             legacy->unk_mipmapped)) ||
        legacy->srgb || legacy->extended ||
-       legacy->stride || legacy->acceleration_buffer ||
+       (legacy->layout == AGX_LAYOUT_LINEAR
+           ? legacy->stride < 12 || legacy->stride > UINT32_MAX - 4
+                                             : legacy->stride != 0) ||
+       legacy->acceleration_buffer ||
        legacy->depth_linear != 1 || legacy->layer_stride_linear ||
        legacy->level_offset_sw || legacy->aligned_width_msaa_sw ||
        legacy->sample_count_log2_sw || legacy->tile_width_sw != 1 ||
@@ -234,6 +241,9 @@ hk_pack_native_pbe(unsigned generation,
       .width = legacy->width,
       .height = legacy->height,
       .buffer = legacy->buffer,
+      .stride_B = legacy->layout == AGX_LAYOUT_LINEAR
+                     ? legacy->stride + 4
+                     : 0,
       .page_aligned_layers = legacy->page_aligned_layers,
    };
    struct agx_pbe_agx3_descriptor packed;

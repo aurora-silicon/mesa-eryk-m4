@@ -355,6 +355,41 @@ agx3_tex_stage_copy(enum agx_isa_encoding enc, uint16_t dest, uint16_t src,
    return agx3_tex_stage_copy_hints(enc,dest,src,slot,wait_mask,false,true,out,len);
 }
 
+bool
+agx3_tex_encode_image_write_rgba8ui_2d(
+   enum agx_isa_encoding enc, uint16_t wait_mask,
+   uint8_t out[AGX3_IMAGE_WRITE_LENGTH], uint8_t *len)
+{
+   if (out == NULL || len == NULL)
+      return false;
+
+   memset(out, 0, AGX3_IMAGE_WRITE_LENGTH);
+   *len = 0;
+   if (enc != AGX_ISA_ENCODING_AGX3B || wait_mask != 1)
+      return false;
+
+   /* Nonzero field values recovered by decoding the native 16-byte
+    * imgwci.ep0. Every omitted field is intentionally zero; the composer
+    * validates the complete selected form, including the state0 selectors. */
+   const struct agx3_field_kv fields[] = {
+      KV(9, 5),   KV(12, 1),  KV(13, 1),   KV(24, 1), KV(38, 1),
+      KV(51, 1),  KV(52, 1),  KV(60, 1),   KV(71, 2), KV(72, 1),
+      KV(74, 1),  KV(79, 4),  KV(85, 3),   KV(86, 3), KV(99, 1),
+      KV(100, 1), KV(113, 1),
+   };
+
+   if (!agx3_bind_compose(enc, "imgwci", 0, fields,
+                          sizeof(fields) / sizeof(fields[0]),
+                          NULL, 0, out, len) ||
+       *len != AGX3_IMAGE_WRITE_LENGTH) {
+      memset(out, 0, AGX3_IMAGE_WRITE_LENGTH);
+      *len = 0;
+      return false;
+   }
+
+   return true;
+}
+
 static uint16_t
 word(const uint8_t *p, unsigned i)
 {

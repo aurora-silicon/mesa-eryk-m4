@@ -4264,3 +4264,114 @@ TEST_F(AGX3PackBinary, ArrayRegisterDescriptorsUseNativeStaging)
    EXPECT_EQ(pack(b), want);
    EXPECT_EQ(b->shader->agx3_staging_halfs, 8);
 }
+TEST_F(AGX3PackBinary, StorageImageWriteMatchesNativeWitnessAndRefusesOtherWaits)
+{
+   static const uint8_t native[AGX3_IMAGE_WRITE_LENGTH] = {
+      0xd7, 0x20, 0x54, 0x00, 0x20, 0x40, 0x00, 0x00,
+      0x00, 0x04, 0x00, 0x00, 0x88, 0x1a, 0x09, 0x00,
+   };
+   uint8_t bytes[AGX3_IMAGE_WRITE_LENGTH];
+   uint8_t len = 0;
+   ASSERT_TRUE(agx3_tex_encode_image_write_rgba8ui_2d(
+      AGX_ISA_ENCODING_AGX3B, 1, bytes, &len));
+   ASSERT_EQ(len, sizeof(native));
+   EXPECT_EQ(memcmp(bytes, native, sizeof(native)), 0);
+
+   for (unsigned wait : {0u, 2u, 3u, 0x40u}) {
+      memset(bytes, 0xa5, sizeof(bytes));
+      len = 0xa5;
+      EXPECT_FALSE(agx3_tex_encode_image_write_rgba8ui_2d(
+         AGX_ISA_ENCODING_AGX3B, wait, bytes, &len));
+      EXPECT_EQ(len, 0);
+      for (uint8_t byte : bytes)
+         EXPECT_EQ(byte, 0);
+   }
+
+   memset(bytes, 0xa5, sizeof(bytes));
+   len = 0xa5;
+   EXPECT_FALSE(agx3_tex_encode_image_write_rgba8ui_2d(
+      AGX_ISA_ENCODING_AGX3C, 1, bytes, &len));
+   EXPECT_EQ(len, 0);
+   for (uint8_t byte : bytes)
+      EXPECT_EQ(byte, 0);
+}
+
+TEST_F(AGX3PackBinary, StorageImageRoundtripDerivesLoadDependencyAndRejectsShapes)
+{
+   static const uint8_t imgwci[AGX3_IMAGE_WRITE_LENGTH] = {
+      0xd7, 0x20, 0x54, 0x00, 0x20, 0x40, 0x00, 0x00,
+      0x00, 0x04, 0x00, 0x00, 0x88, 0x1a, 0x09, 0x00,
+   };
+
+   for (unsigned mode = 0; mode < 4; ++mode) {
+      agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+      b->shader->stage = MESA_SHADER_COMPUTE;
+      agx_index coord = agx_register(0, AGX_SIZE_32);
+      coord.channels_m1 = 1;
+      agx_index data = agx_register(4, AGX_SIZE_32);
+      data.channels_m1 = 3;
+      agx_instr *load = agx_image_load_to(
+         b, data, coord, agx_immediate(0), agx_immediate(0),
+         agx_immediate(0), agx_immediate(0), agx_null(), AGX_DIM_2D,
+         AGX_LOD_MODE_AUTO_LOD, 15, false, false, false);
+      load->format = AGX_FORMAT_I8;
+      agx_image_write(
+         b, data, coord, agx_immediate(0), agx_immediate(0),
+         agx_immediate(0), mode == 1 ? AGX_DIM_2D_ARRAY
+                            : mode == 2 ? AGX_DIM_2D_MS : AGX_DIM_2D,
+         mode == 3);
+      agx_stop(b);
+
+      const std::vector<uint8_t> code = pack(b, mode == 0);
+      if (mode == 0) {
+         EXPECT_TRUE(b->shader->agx3_staging_known);
+         EXPECT_EQ(b->shader->agx3_staging_halfs, 20);
+         static const uint8_t read_coords[] = {
+            0x8b, 0x00, 0x21, 0x04, 0x9b, 0x02, 0x21, 0x04,
+         };
+         EXPECT_NE(std::search(code.begin(), code.end(), read_coords,
+                               read_coords + sizeof(read_coords)),
+                   code.end());
+         static const uint8_t coord_x[] = {
+            0x02, 0x01, 0x2f, 0x0d, 0x83, 0x00, 0x45,
+            0x02, 0x20, 0x0c, 0x00, 0x04, 0x00, 0x00,
+         };
+         static const uint8_t coord_y[] = {
+            0x12, 0x03, 0x2f, 0x0d, 0x83, 0x02, 0x45,
+            0x02, 0x20, 0x0c, 0x00, 0x04, 0x00, 0x00,
+         };
+         const auto first_coord = std::search(code.begin(), code.end(),
+                                               coord_x,
+                                               coord_x + sizeof(coord_x));
+         ASSERT_NE(first_coord, code.end());
+         ASSERT_GE(std::distance(first_coord, code.end()),
+                   static_cast<ptrdiff_t>(sizeof(coord_x) + sizeof(coord_y)));
+         EXPECT_TRUE(std::equal(coord_y, coord_y + sizeof(coord_y),
+                                first_coord + sizeof(coord_x)));
+
+         const auto first = std::search(code.begin(), code.end(), imgwci,
+                                        imgwci + sizeof(imgwci));
+         ASSERT_NE(first, code.end());
+         /* The native witness consumes the image-load scoreboard signal once:
+          * the first data-staging COPY waits on slot 1, while the remaining
+          * components only join the same slot-2 staging transaction. */
+         const unsigned data_dest[4] = {4, 6, 12, 14};
+         std::vector<uint8_t> staging;
+         for (unsigned c = 0; c < 4; ++c) {
+            uint8_t copy[AGX3_STAGE_MAX_LENGTH], len = 0;
+            ASSERT_TRUE(agx3_stage_copy_source(
+               AGX_ISA_ENCODING_AGX3B, data_dest[c], 4 + 2 * c, false, 2,
+               c == 0 ? 1 : 0, copy, &len));
+            append(staging, copy, len);
+         }
+         ASSERT_GE(std::distance(code.begin(), first), staging.size());
+         EXPECT_TRUE(std::equal(staging.begin(), staging.end(),
+                                first - staging.size()));
+         EXPECT_EQ(std::search(first + sizeof(imgwci), code.end(), imgwci,
+                               imgwci + sizeof(imgwci)),
+                   code.end());
+      } else {
+         EXPECT_TRUE(code.empty());
+      }
+   }
+}

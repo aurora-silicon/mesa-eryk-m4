@@ -47,8 +47,19 @@ struct agx_g17p_combined_sampler_binding {
 
 /* Native compute texture/sampler table pointers occupy halves0..7. */
 #define AGX_G17P_TXF_ROOT_HALFS 8u
+/* Native read_write textures consume four four-half binding slots: the read
+ * texture, the write PBE, their access-control descriptor, and the coordinate
+ * clamp vector. */
+#define AGX_G17P_STORAGE_ROOT_HALFS 16u
 struct agx_g17p_txf_binding {
    uint32_t texture_offset_B;
+};
+
+/* Native compute image read/write uses one texture-state and one PBE-state
+ * pointer in the same four-quad prefix as the existing TXF path. */
+struct agx_g17p_storage_image_binding {
+   uint32_t texture_offset_B;
+   uint32_t pbe_offset_B;
 };
 
 /* Turn the one statically indexed set-0 Gen9 combined image/sampler used by
@@ -65,3 +76,8 @@ bool agx_nir_lower_g17p_combined_sampler(
  */
 bool agx_nir_lower_g17p_txf(
    struct nir_shader *s, struct agx_g17p_txf_binding *binding);
+
+/* Turn one set-0, single-sample 2D RGBA8UI read/write image into native
+ * texture-state 0 / PBE-state 0. Every other image shape stays fail-closed. */
+bool agx_nir_lower_g17p_storage_image(
+   struct nir_shader *s, struct agx_g17p_storage_image_binding *binding);

@@ -1273,6 +1273,82 @@ test_txf_lowering(void)
    return ok;
 }
 
+static nir_shader *
+build_cs_storage_image(unsigned mode)
+{
+   nir_builder b = nir_builder_init_simple_shader(
+      MESA_SHADER_COMPUTE, &agx_nir_options, "AGX3 bounded storage image CS");
+   b.shader->info.workgroup_size[0] = 1;
+   b.shader->info.workgroup_size[1] = 1;
+   b.shader->info.workgroup_size[2] = 1;
+
+   const enum pipe_format format =
+      mode == 1 ? PIPE_FORMAT_R16G16B16A16_UINT
+                : PIPE_FORMAT_R8G8B8A8_UINT;
+   const enum glsl_sampler_dim dim =
+      mode == 2 ? GLSL_SAMPLER_DIM_3D
+      : mode == 3 ? GLSL_SAMPLER_DIM_MS
+                  : GLSL_SAMPLER_DIM_2D;
+   nir_def *gid = nir_load_global_invocation_id(&b, 32);
+   nir_def *zero = nir_imm_int(&b, 0);
+   nir_def *coord = nir_vec4(&b, nir_channel(&b, gid, 0),
+                             nir_channel(&b, gid, 1), zero, zero);
+   nir_def *texture = nir_bindless_image_agx(
+      &b, nir_imm_int(&b, 64), .desc_set = 0);
+   nir_def *pbe = nir_bindless_image_agx(
+      &b, nir_imm_int(&b, 96), .desc_set = 0);
+   nir_def *value = nir_bindless_image_load(
+      &b, 4, 32, texture, coord, zero, zero, .image_dim = dim,
+      .image_array = false, .format = format, .access = ACCESS_RESTRICT);
+   nir_bindless_image_store(&b, pbe, coord, zero, value, zero,
+                            .image_dim = dim, .image_array = false,
+                            .format = format, .access = ACCESS_RESTRICT);
+   return b.shader;
+}
+
+static bool
+test_storage_image_lowering(void)
+{
+   for (unsigned mode = 0; mode < 4; ++mode) {
+      nir_shader *nir = build_cs_storage_image(mode);
+      struct agx_g17p_storage_image_binding binding = {
+         .texture_offset_B = UINT32_MAX,
+         .pbe_offset_B = UINT32_MAX,
+      };
+      const bool lowered = agx_nir_lower_g17p_storage_image(nir, &binding);
+      unsigned bindless_handles = 0, bindless_ops = 0;
+      unsigned ordinary_loads = 0, ordinary_stores = 0;
+      nir_foreach_function_impl(impl, nir) {
+         nir_foreach_block(block, impl) {
+            nir_foreach_instr(instr, block) {
+               if (instr->type != nir_instr_type_intrinsic)
+                  continue;
+               const nir_intrinsic_op op =
+                  nir_instr_as_intrinsic(instr)->intrinsic;
+               bindless_handles += op == nir_intrinsic_bindless_image_agx;
+               bindless_ops += op == nir_intrinsic_bindless_image_load ||
+                               op == nir_intrinsic_bindless_image_store;
+               ordinary_loads += op == nir_intrinsic_image_load;
+               ordinary_stores += op == nir_intrinsic_image_store;
+            }
+         }
+      }
+
+      const bool ok = mode == 0
+         ? lowered && binding.texture_offset_B == 64 &&
+              binding.pbe_offset_B == 96 && bindless_handles == 0 &&
+              bindless_ops == 0 && ordinary_loads == 1 && ordinary_stores == 1
+         : !lowered && binding.texture_offset_B == UINT32_MAX &&
+              binding.pbe_offset_B == UINT32_MAX && bindless_handles == 2 &&
+              bindless_ops == 2 && ordinary_loads == 0 && ordinary_stores == 0;
+      ralloc_free(nir);
+      if (!ok)
+         return false;
+   }
+
+   return true;
+}
+
 static bool
 test_g17p_eot_block_store(void)
 {
@@ -1907,6 +1983,12 @@ main(int argc, char **argv)
               ok ? "PASS" : "FAIL");
       return ok ? 0 : 1;
    }
+   if (argc == 2 && !strcmp(argv[1], "--storage-image-lowering-only")) {
+      const bool ok = test_storage_image_lowering();
+      fprintf(stderr, "G17P bounded RGBA8UI storage-image lowering: %s\n",
+              ok ? "PASS" : "FAIL");
+      return ok ? 0 : 1;
+   }
    const enum agx_isa_encoding encodings[] = {
       AGX_ISA_ENCODING_AGX3B,
       AGX_ISA_ENCODING_AGX3C,
@@ -1928,6 +2010,11 @@ main(int argc, char **argv)
 
    if (!test_txf_lowering()) {
       fputs("static TXF descriptor lowering mismatch\n", stderr);
+      all_ok = false;
+   }
+
+   if (!test_storage_image_lowering()) {
+      fputs("bounded storage-image lowering mismatch\n", stderr);
       all_ok = false;
    }
 

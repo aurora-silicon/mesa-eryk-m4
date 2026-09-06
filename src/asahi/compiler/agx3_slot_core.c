@@ -76,6 +76,17 @@ agx3_slot_assign(const struct agx3_slot_instr *instrs, unsigned n,
          if (!I->preferred_slot)
             next = (next + 1) % nslots;
          out[i].slot = slot;
+
+         /* Reusing an already-synchronized slot starts a new dependency
+          * generation. Retire the old generation's register aliases before
+          * publishing the new result, otherwise an unrelated later write can
+          * consume the new generation's wait and hide it from its consumer. */
+         if (slot_waited[slot]) {
+            for (unsigned r = 0; r < AGX3_SLOT_NUM_TOKENS; ++r) {
+               if (reg_slot[r] == slot)
+                  reg_slot[r] = 0;
+            }
+         }
          slot_waited[slot] = false; /* freshly outstanding */
          for (unsigned d = 0; d < I->nr_dsts; ++d) {
             if (I->dst[d] >= AGX3_SLOT_NUM_TOKENS)

@@ -19,6 +19,10 @@
 #include "hk_physical_device.h"
 #include "hk_sampler.h"
 
+#include "util/u_debug.h"
+
+#include <inttypes.h>
+
 static inline uint32_t
 align_u32(uint32_t v, uint32_t a)
 {
@@ -161,18 +165,30 @@ write_storage_image_view_desc(struct hk_descriptor_set *set,
    const unsigned generation = set->layout->descriptor_generation;
    const struct hk_storage_image_descriptor_layout native =
       hk_storage_image_descriptor_layout(generation);
+   bool supported = false;
 
-   if (hk_native_pbe_supported(generation) && info &&
-       info->imageView != VK_NULL_HANDLE) {
+   if (info && info->imageView != VK_NULL_HANDLE) {
       VK_FROM_HANDLE(hk_image_view, view, info->imageView);
 
-      /* Storage images are always single plane */
-      assert(view->plane_count == 1);
-      uint8_t plane = 0;
+      const bool native_basic =
+         hk_native_pbe_hardware_supported(generation) &&
+         view->plane_count == 1 &&
+         view->vk.image->samples == VK_SAMPLE_COUNT_1_BIT &&
+         view->vk.view_type == VK_IMAGE_VIEW_TYPE_2D &&
+         view->vk.format == VK_FORMAT_R8G8B8A8_UINT &&
+         view->planes[0].storage_pbe_valid;
+      supported = hk_native_pbe_supported(generation) || native_basic;
+      if (supported) {
+         /* Storage images are always single plane */
+         assert(view->plane_count == 1);
+         uint8_t plane = 0;
 
-      desc.tex = view->planes[plane].ro_storage;
-      desc.pbe = view->planes[plane].storage;
-   } else {
+         desc.tex = view->planes[plane].ro_storage;
+         desc.pbe = view->planes[plane].storage;
+      }
+   }
+
+   if (!supported) {
       hk_set_null_native_texture(generation, &desc.tex);
       hk_set_null_native_pbe(generation, &desc.pbe);
    }
@@ -181,6 +197,18 @@ write_storage_image_view_desc(struct hk_descriptor_set *set,
    memcpy(packed + native.texture, &desc.tex,
           hk_texture_descriptor_size(generation));
    memcpy(packed + native.pbe, &desc.pbe, hk_pbe_descriptor_size(generation));
+   if (debug_get_bool_option("HK_G17P_LAUNCH_TRACE", false) && generation == 9) {
+      fprintf(stderr,
+              "G17P storage descriptor set=0x%" PRIx64
+              " binding=%u elem=%u offset=%u valid=%u bytes=",
+              set->addr, binding, elem,
+              set->layout->binding[binding].offset +
+                 elem * set->layout->binding[binding].stride,
+              supported);
+      for (unsigned i = 0; i < native.stride; ++i)
+         fprintf(stderr, "%02x", packed[i]);
+      fputc('\n', stderr);
+   }
    write_desc(set, binding, elem, packed, native.stride);
 }
 

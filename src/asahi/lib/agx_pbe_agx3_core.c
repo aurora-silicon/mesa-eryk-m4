@@ -8,6 +8,7 @@
 #include <string.h>
 
 #define AGX_PBE_DIMENSION_2D 2u
+#define AGX_PBE_LAYOUT_LINEAR 0u
 #define AGX_PBE_LAYOUT_TWIDDLED 1u
 #define AGX_PBE_LAYOUT_GPU 2u
 
@@ -83,14 +84,22 @@ fields_valid(uint32_t generation,
       return false;
 
    const uint32_t maximum_dimension = UINT32_C(1) << dimension_bits;
-   return (fields->layout == AGX_PBE_LAYOUT_TWIDDLED ||
+   const bool linear = fields->layout == AGX_PBE_LAYOUT_LINEAR;
+   const bool stride_valid =
+      linear ? fields->stride_B >= 16 && !(fields->stride_B & 0xf) &&
+                  fields->stride_B - 16 < (UINT32_C(1) << 21)
+             : fields->stride_B == 0;
+   const bool address_valid =
+      fields->buffer && !(fields->buffer & 0xf) &&
+      !(fields->buffer >> (linear ? 44 : 48));
+   return (!linear || generation == AGX_PBE_AGX3_GENERATION_9) &&
+          (linear || fields->layout == AGX_PBE_LAYOUT_TWIDDLED ||
            fields->layout == AGX_PBE_LAYOUT_GPU) &&
           channel_is_uncompressed(fields->channels) && fields->type <= 5 &&
           fields->swizzle_r <= 3 && fields->swizzle_g <= 3 &&
           fields->swizzle_b <= 3 && fields->swizzle_a <= 3 && fields->width &&
           fields->width <= maximum_dimension && fields->height &&
-          fields->height <= maximum_dimension && fields->buffer &&
-          !(fields->buffer & 0xf) && !(fields->buffer >> 48);
+          fields->height <= maximum_dimension && address_valid && stride_valid;
 }
 
 bool
@@ -127,9 +136,13 @@ agx_pbe_agx3_2d_pack(uint32_t generation,
     */
    const bool layer_flag = generation == AGX_PBE_AGX3_GENERATION_10 &&
                            fields->page_aligned_layers;
+   uint64_t word1 = fields->buffer >> 4;
+   if (fields->layout == AGX_PBE_LAYOUT_LINEAR)
+      word1 |= (uint64_t)(fields->stride_B - 16) << 40;
+   else
+      word1 |= (uint64_t)layer_flag << 60;
    store_le64(&out->bytes[0], word0);
-   store_le64(&out->bytes[8], (fields->buffer >> 4) |
-                            ((uint64_t)layer_flag << 60));
+   store_le64(&out->bytes[8], word1);
    out->length = AGX_PBE_AGX3_DESCRIPTOR_LENGTH;
    return true;
 }
@@ -142,6 +155,8 @@ agx_pbe_agx3_2d_mip_pack(
    if (out)
       memset(out, 0, sizeof(*out));
    if (generation != AGX_PBE_AGX3_GENERATION_9 || !levels || levels > 16 ||
+       (fields && fields->layout == AGX_PBE_LAYOUT_LINEAR &&
+        (level || levels != 1)) ||
        level >= levels || !agx_pbe_agx3_2d_pack(generation, fields, out))
       return false;
 
@@ -183,13 +198,16 @@ agx_pbe_agx3_2d_unpack(uint32_t generation, const void *bytes, size_t size,
          ? (UINT64_C(1) << 52) - 1
          : (UINT64_C(1) << 54) - 1;
 
-   const uint64_t word1_mask = ((UINT64_C(1) << 44) - 1) |
-      (generation == AGX_PBE_AGX3_GENERATION_10 ? UINT64_C(1) << 60 : 0);
+   const uint8_t layout = (word0 >> 4) & 0x3;
+   const uint64_t word1_mask = layout == AGX_PBE_LAYOUT_LINEAR
+      ? (UINT64_C(1) << 61) - 1
+      : ((UINT64_C(1) << 44) - 1) |
+           (generation == AGX_PBE_AGX3_GENERATION_10 ? UINT64_C(1) << 60 : 0);
    if ((word0 & 0xf) != AGX_PBE_DIMENSION_2D ||
        (word0 & ~word0_mask) || (word1 & ~word1_mask) || word2 || word3)
       return false;
 
-   fields->layout = (word0 >> 4) & 0x3;
+   fields->layout = layout;
    fields->channels = (word0 >> 6) & 0x7f;
    fields->type = (word0 >> 13) & 0x7;
    fields->swizzle_r = (word0 >> 16) & 0x3;
@@ -199,8 +217,13 @@ agx_pbe_agx3_2d_unpack(uint32_t generation, const void *bytes, size_t size,
    fields->width = ((word0 >> 24) & ((UINT64_C(1) << dimension_bits) - 1)) + 1;
    fields->height =
       ((word0 >> height_shift) & ((UINT64_C(1) << dimension_bits) - 1)) + 1;
-   fields->buffer = (word1 & ((UINT64_C(1) << 44) - 1)) << 4;
-   fields->page_aligned_layers = (word1 >> 60) & 1;
+   if (layout == AGX_PBE_LAYOUT_LINEAR) {
+      fields->buffer = (word1 & ((UINT64_C(1) << 40) - 1)) << 4;
+      fields->stride_B = ((word1 >> 40) & ((UINT64_C(1) << 21) - 1)) + 16;
+   } else {
+      fields->buffer = (word1 & ((UINT64_C(1) << 44) - 1)) << 4;
+      fields->page_aligned_layers = (word1 >> 60) & 1;
+   }
 
    if (!fields_valid(generation, fields)) {
       memset(fields, 0, sizeof(*fields));

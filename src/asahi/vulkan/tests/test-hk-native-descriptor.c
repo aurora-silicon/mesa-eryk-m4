@@ -423,7 +423,17 @@ main(void)
 
    CHECK_PBE_REJECT(pbe.buffer |= 1);
    pbe.buffer = 0x10000080000ull;
-   CHECK_PBE_REJECT(pbe.layout = AGX_LAYOUT_LINEAR);
+   pbe.layout = AGX_LAYOUT_LINEAR;
+   pbe.stride = 1020; /* 1024-byte row pitch in the legacy minus-4 ABI. */
+   static const uint8_t linear_pbe[32] = {
+      0x02, 0x0a, 0xe4, 0xff, 0xc0, 0x1f, 0x00, 0x00,
+      0x00, 0x80, 0x00, 0x00, 0x10, 0xf0, 0x03, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+   };
+   assert(hk_pack_native_pbe(9, &native_pbe, &pbe));
+   assert(memcmp(&native_pbe, linear_pbe, sizeof(linear_pbe)) == 0);
+   pbe.stride = 0;
    pbe.layout = AGX_LAYOUT_GPU;
    CHECK_PBE_REJECT(pbe.dimension = AGX_TEXTURE_DIMENSION_2D_ARRAY);
    pbe.dimension = AGX_TEXTURE_DIMENSION_2D;

@@ -34,8 +34,46 @@ same_fields(uint32_t generation, const struct agx_pbe_agx3_2d_fields *a,
           a->swizzle_b == b->swizzle_b &&
           a->swizzle_a == b->swizzle_a && a->width == b->width &&
           a->height == b->height && a->buffer == b->buffer &&
+          a->stride_B == b->stride_B &&
           a->page_aligned_layers ==
              (generation == AGX_PBE_AGX3_GENERATION_10 && b->page_aligned_layers);
+}
+
+static int
+check_exact_gen9_linear_vector(void)
+{
+   /* Own-MSL buffer-backed R32F storage-image capture: 64x64, base
+    * 0x10000018000, 256-byte row pitch. Linear stride is rowPitch-16 at
+    * descriptor bit104, sharing word1 with the shortened 40-bit address. */
+   const struct agx_pbe_agx3_2d_fields fields = {
+      .layout = 0, .channels = 0x21, .type = 4,
+      .swizzle_r = 0, .swizzle_g = 0, .swizzle_b = 0, .swizzle_a = 0,
+      .width = 64, .height = 64, .buffer = UINT64_C(0x10000018000),
+      .stride_B = 256,
+   };
+   static const uint8_t expected[32] = {
+      0x42, 0x88, 0x00, 0x3f, 0xc0, 0x0f, 0x00, 0x00,
+      0x00, 0x18, 0x00, 0x00, 0x10, 0xf0, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+   };
+   struct agx_pbe_agx3_descriptor packed;
+   struct agx_pbe_agx3_2d_fields decoded;
+   CHECK(agx_pbe_agx3_2d_pack(9, &fields, &packed));
+   CHECK(memcmp(packed.bytes, expected, sizeof(expected)) == 0);
+   CHECK(agx_pbe_agx3_2d_unpack(9, expected, sizeof(expected), &decoded));
+   CHECK(same_fields(9, &decoded, &fields));
+
+   struct agx_pbe_agx3_2d_fields bad = fields;
+   bad.stride_B = 252;
+   CHECK(!agx_pbe_agx3_2d_pack(9, &bad, &packed));
+   bad = fields;
+   bad.buffer = UINT64_C(1) << 44;
+   CHECK(!agx_pbe_agx3_2d_pack(9, &bad, &packed));
+   bad = fields;
+   bad.layout = 2;
+   CHECK(!agx_pbe_agx3_2d_pack(9, &bad, &packed));
+   return 0;
 }
 
 static int
@@ -342,7 +380,8 @@ check_gen9_native_mips(void)
 int
 main(void)
 {
-   if (check_exact_generation_vectors() || check_exhaustive_format_axes() ||
+   if (check_exact_generation_vectors() || check_exact_gen9_linear_vector() ||
+       check_exhaustive_format_axes() ||
        check_dimension_and_address_bits() || check_fail_closed_axes() ||
        check_gen9_single_layer_packet() || check_gen9_native_mips())
       return 1;

@@ -448,3 +448,125 @@ agx_nir_lower_g17p_txf(nir_shader *shader,
    };
    return true;
 }
+
+static bool
+g17p_storage_handle_offset(const nir_intrinsic_instr *intr,
+                           uint32_t *offset_B)
+{
+   nir_intrinsic_instr *handle = nir_src_as_intrinsic(intr->src[0]);
+   if (!handle || handle->intrinsic != nir_intrinsic_bindless_image_agx ||
+       nir_intrinsic_desc_set(handle) != 0 ||
+       !nir_src_is_const(handle->src[0]))
+      return false;
+
+   *offset_B = nir_src_as_uint(handle->src[0]);
+   return true;
+}
+
+static bool
+g17p_storage_image_shape(const nir_intrinsic_instr *intr, bool load)
+{
+   if (intr->intrinsic != (load ? nir_intrinsic_bindless_image_load
+                                : nir_intrinsic_bindless_image_store) ||
+       nir_intrinsic_image_dim(intr) != GLSL_SAMPLER_DIM_2D ||
+       nir_intrinsic_image_array(intr) ||
+       nir_intrinsic_format(intr) != PIPE_FORMAT_R8G8B8A8_UINT ||
+       nir_src_num_components(intr->src[1]) != 4 ||
+       nir_src_bit_size(intr->src[1]) != 32 ||
+       !nir_src_is_const(intr->src[2]) ||
+       nir_src_as_uint(intr->src[2]) != 0)
+      return false;
+
+   if (load) {
+      return intr->def.num_components == 4 && intr->def.bit_size == 32 &&
+             !nir_intrinsic_image_array(intr) &&
+             nir_src_is_const(intr->src[3]) &&
+             nir_src_as_uint(intr->src[3]) == 0 &&
+             !(nir_intrinsic_access(intr) &
+               (ACCESS_COHERENT | ACCESS_VOLATILE));
+   }
+
+   return nir_src_num_components(intr->src[3]) == 4 &&
+          nir_src_bit_size(intr->src[3]) == 32 &&
+          nir_src_is_const(intr->src[4]) &&
+          nir_src_as_uint(intr->src[4]) == 0 &&
+          !(nir_intrinsic_access(intr) &
+            (ACCESS_COHERENT | ACCESS_VOLATILE));
+}
+
+bool
+agx_nir_lower_g17p_storage_image(
+   nir_shader *shader, struct agx_g17p_storage_image_binding *binding)
+{
+   if (!shader || !binding || shader->info.stage != MESA_SHADER_COMPUTE)
+      return false;
+
+   nir_intrinsic_instr *load = NULL, *store = NULL;
+   uint32_t texture_offset_B = 0, pbe_offset_B = 0;
+   unsigned impl_count = 0, block_count = 0;
+   nir_foreach_function_impl(impl, shader) {
+      impl_count++;
+      nir_foreach_block(block, impl) {
+         block_count++;
+         nir_foreach_instr(instr, block) {
+            if (instr->type == nir_instr_type_tex)
+               return false;
+            if (instr->type != nir_instr_type_intrinsic)
+               continue;
+
+            nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+            if (intr->intrinsic == nir_intrinsic_bindless_image_load) {
+               if (load || !g17p_storage_image_shape(intr, true) ||
+                   !g17p_storage_handle_offset(intr, &texture_offset_B))
+                  return false;
+               load = intr;
+            } else if (intr->intrinsic == nir_intrinsic_bindless_image_store) {
+               if (!load || store || !g17p_storage_image_shape(intr, false) ||
+                   !g17p_storage_handle_offset(intr, &pbe_offset_B))
+                  return false;
+               store = intr;
+            } else if (intr->intrinsic == nir_intrinsic_bindless_image_sparse_load ||
+                       intr->intrinsic == nir_intrinsic_bindless_image_atomic ||
+                       intr->intrinsic == nir_intrinsic_bindless_image_atomic_swap ||
+                       intr->intrinsic == nir_intrinsic_bindless_image_size ||
+                       intr->intrinsic == nir_intrinsic_bindless_image_samples) {
+               return false;
+            }
+         }
+      }
+   }
+
+   /* A Gen9 storage descriptor is texture32 followed by PBE32. Requiring this
+    * exact pair proves both operations name the same API image. */
+   if (impl_count != 1 || block_count != 1 || !load || !store ||
+       store->src[3].ssa != &load->def || (texture_offset_B & 7) != 0 ||
+       pbe_offset_B != texture_offset_B + 32)
+      return false;
+
+   nir_foreach_function_impl(impl, shader) {
+      nir_builder b = nir_builder_create(impl);
+      nir_foreach_block(block, impl) {
+         nir_foreach_instr_safe(instr, block) {
+            if (instr != &load->instr && instr != &store->instr)
+               continue;
+            nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+            b.cursor = nir_before_instr(instr);
+            nir_src_rewrite(&intr->src[0],
+                            nir_imm_intN_t(&b, 0, 16));
+            intr->intrinsic = intr == load ? nir_intrinsic_image_load
+                                           : nir_intrinsic_image_store;
+         }
+      }
+      nir_progress(true, impl, nir_metadata_control_flow);
+   }
+
+   NIR_PASS(_, shader, nir_opt_dce);
+   if (g17p_has_bindless_texture_access(shader))
+      return false;
+
+   *binding = (struct agx_g17p_storage_image_binding){
+      .texture_offset_B = texture_offset_B,
+      .pbe_offset_B = pbe_offset_B,
+   };
+   return true;
+}

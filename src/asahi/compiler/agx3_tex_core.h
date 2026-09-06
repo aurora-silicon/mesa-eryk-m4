@@ -172,6 +172,22 @@ bool agx3_tex_encode_sample(enum agx_isa_encoding enc,
  */
 #define AGX3_TEX_COPY_MAX_LENGTH 10u
 
+/*
+ * Exact G17P storage-image write instruction from the native
+ * `texture2d<uint, access::read_write>` witness. The bounded path names
+ * texture state 0 and PBE state 0, consumes the fixed coordinate/data staging
+ * lanes populated by the caller, and waits on their staging slot 2. The
+ * `wait_mask` argument is the upstream load dependency consumed once by the
+ * first data-staging write; only one preceding image load on slot 1 is
+ * grounded. No other state, format, or dependency shape is currently
+ * grounded.
+ */
+#define AGX3_IMAGE_WRITE_LENGTH 16u
+
+bool agx3_tex_encode_image_write_rgba8ui_2d(
+   enum agx_isa_encoding enc, uint16_t wait_mask,
+   uint8_t out[AGX3_IMAGE_WRITE_LENGTH], uint8_t *len);
+
 /* A native staging COPY must preserve a coordinate GPR if later work uses
  * it. CACHE/NONE/DISCARD are independent of the staging-bank release bit. */
 bool agx3_tex_stage_copy_hints(enum agx_isa_encoding enc, uint16_t dest,

@@ -673,25 +673,20 @@ hk_agx3_g17p_compute_state_tail(
    if (!tail_ok)
       return false;
 
-   /* Declare the shader's register footprint.
+   /* Declare the shader's compiler-D footprint.
     *
     * agx_ioto_g17p_runtime_compute_tail_build() leaves SPECTPR entirely zero,
     * because it was recovered from the hand-written add3 witness, whose
-    * register use fits the default allocation. Every compiler-produced shader
-    * must declare its own: the graphics path directly above already does this
-    * (hk_agx3_g17p_graphics_state_tail -> agx_ioto_g17p_compiler_spectpr_build)
-    * and this function *validates* nr_gprs/scratch_size and then never used
-    * them -- vestigial checks for a wiring that was never finished.
-    *
-    * Observed consequence: a 16-GPR Honeykrisp compute shader shipped the
-    * add3 footprint (`f7 00 2a 00 00 00 00 00 00 00`, i.e. the nr_gprs==0
-    * form that spectpr_build itself refuses to produce). The dispatch ran to
-    * `stop` and faulted nowhere -- with soft faults enabled a store through a
-    * register outside the declared allocation is silently discarded -- and the
-    * destination buffer came back completely untouched.
+    * register use fits the default allocation. Apple's ShaderInfo field 38 is
+    * staging bytes, independently of the ordinary GPR allocation; the G17P
+    * graphics path already supplies the same `agx3_staging_halfs * 2` value.
+    * Do not substitute nr_gprs here: storage image staging uses 16 halves even
+    * when the compiler happens to allocate a different main-register count.
     */
    struct agx_ioto_state spectpr;
-   if (!agx_ioto_g17p_compiler_spectpr_build(desc->scratch_size, desc->nr_gprs,
+   if (!desc->compiler_d_valid ||
+       !agx_ioto_g17p_compiler_spectpr_build(desc->scratch_size,
+                                             desc->compiler_d,
                                              &spectpr) ||
        !agx_ioto_state_pack_spectpr(
           AGX_CHIP_G17P, &spectpr,

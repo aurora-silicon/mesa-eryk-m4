@@ -132,6 +132,34 @@ int main(void)
       CHECK(!agx3_slot_assign(&preferred, 1, 6, r));
    }
 
+   /* Reusing an already-retired preferred slot starts a new dependency
+    * generation. A stale register from the old generation must not consume
+    * the new result's wait before its actual consumer. */
+   {
+      struct agx3_slot_instr preferred = ld(4);
+      preferred.preferred_slot = 1;
+      struct agx3_slot_instr p[] = {
+         ld(0), alu(2, 0, 0), preferred, alu(0, 6, 8), st(4),
+      };
+      CHECK(agx3_slot_assign(p, 5, 6, r));
+      CHECK(r[0].slot == 1 && r[1].wait_mask == 1);
+      CHECK(r[2].slot == 1 && r[2].wait_mask == 0);
+      CHECK(r[3].wait_mask == 0);
+      CHECK(r[4].wait_mask == 1);
+   }
+
+   /* Round-robin wrap obeys the same generation rule after a prior wait. */
+   {
+      struct agx3_slot_instr p[] = {
+         ld(0), alu(6, 0, 0), ld(2), ld(4), alu(0, 8, 10), st(4),
+      };
+      CHECK(agx3_slot_assign(p, 6, 2, r));
+      CHECK(r[0].slot == 1 && r[1].wait_mask == 1);
+      CHECK(r[2].slot == 2 && r[3].slot == 1);
+      CHECK(r[4].wait_mask == 0);
+      CHECK(r[5].wait_mask == 1);
+   }
+
    /* Static copy produces a TPS dependency token and a later rld consumes it.
     * The reload must wait the copy even though the two operations share no
     * architectural GPR. Its own GPR result then remains async as usual. */
