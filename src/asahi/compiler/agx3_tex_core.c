@@ -169,7 +169,9 @@ sample_ok(enum agx_isa_encoding enc, const struct agx3_tex_sample_desc *d)
       /* 12-bit immediate level field; witnessed up to 464 (level 7.25). */
       if (d->lod_x64 > 0xfff)
          return false;
-   } else if (d->lod != AGX3_TEX_LOD_AUTO || d->lod_x64 != 0) {
+   } else if ((d->lod != AGX3_TEX_LOD_AUTO &&
+               !(d->lod == AGX3_TEX_LOD_REGISTER &&
+                 enc == AGX_ISA_ENCODING_AGX3B)) || d->lod_x64 != 0) {
       return false;
    }
 
@@ -251,6 +253,10 @@ agx3_tex_encode_sample(enum agx_isa_encoding enc,
       ov[n++] = (struct agx3_field_kv)KV(136, 1);
    if (d->lod == AGX3_TEX_LOD_AUTO) {
       ov[n++] = (struct agx3_field_kv)KV(156, 1); /* implicit-LOD marker */
+   } else if (d->lod == AGX3_TEX_LOD_REGISTER) {
+      ov[n++] = (struct agx3_field_kv)KV(28, 0); /* packed level bank */
+      ov[n++] = (struct agx3_field_kv)KV(139, 4);
+      ov[n++] = (struct agx3_field_kv)KV(156, 1); /* native fragment form */
    } else {
       ov[n++] = (struct agx3_field_kv)KV(37, 1);  /* immediate LOD operand */
       ov[n++] = (struct agx3_field_kv)KV(139, 2); /* explicit-level mode */
@@ -313,7 +319,7 @@ agx3_tex_stage_copy_hints(enum agx_isa_encoding enc, uint16_t dest, uint16_t src
    struct agx3_field_kv ov[12];
    unsigned n = 0;
    ov[n++] = (struct agx3_field_kv)KV(5, dest);
-   ov[n++] = (struct agx3_field_kv)KV(16, src);
+   ov[n++] = (struct agx3_field_kv)KV(16, src & 0x7f);
    ov[n++] = (struct agx3_field_kv)KV(25, src_cache);
    ov[n++] = (struct agx3_field_kv)KV(27, src_discard);
    ov[n++] = (struct agx3_field_kv)KV(12, slot);
@@ -481,4 +487,45 @@ agx3_tex_decode_fetch(enum agx_isa_encoding enc, const void *instruction,
    }
 
    return false;
+}
+
+/* Fresh native G17P lod_float/lod_half fragment pairs use this 12-byte
+ * PACK_SMPIR for scalar half LOD, preserving the source when it remains live.
+ * f5=6 selects the level staging bank, not architectural GPR r3. */
+bool
+agx3_tex_stage_lod(enum agx_isa_encoding enc, uint16_t src, uint8_t slot,
+                   uint16_t wait_mask, bool src_cache, bool src_discard,
+                   uint8_t out[AGX3_TEX_MAX_LENGTH], uint8_t *len)
+{
+   if (!out || !len)
+      return false;
+   memset(out, 0, AGX3_TEX_MAX_LENGTH);
+   *len = 0;
+   if (enc != AGX_ISA_ENCODING_AGX3B || src >= 256 || slot < 1 || slot > 6 ||
+       (wait_mask & ~0x3f) || (src_cache && src_discard))
+      return false;
+
+   const struct agx3_field_kv base[] = {
+      KV(5, 6), KV(9, 5), KV(10, 2), KV(23, 2), KV(24, 1),
+      KV(38, 1), KV(51, 1), KV(52, 2), KV(74, 2), KV(75, 16),
+   };
+   struct agx3_field_kv ov[10];
+   unsigned n = 0;
+   ov[n++] = (struct agx3_field_kv)KV(16, src & 0x7f);
+   ov[n++] = (struct agx3_field_kv)KV(12, slot);
+   ov[n++] = (struct agx3_field_kv)KV(25, src_cache);
+   ov[n++] = (struct agx3_field_kv)KV(27, src_discard);
+   for (unsigned i = 0; i < 6; ++i)
+      if (wait_mask & (1u << i))
+         ov[n++] = (struct agx3_field_kv)KV(58 + i, 1);
+   if (!agx3_bind_compose(enc, "pack_smpir", 0, base,
+                         sizeof(base) / sizeof(base[0]), ov, n, out, len))
+      return false;
+
+   /* The source is an eight-bit half-register index (f16 bits 0..6 at
+    * instruction bits 41..47, bit 7 at bit 48). Apple's encoder's 191
+    * bound is a compiler allocation policy, not a narrower wire field.
+    * Keep the same native instruction for Mesa's full 256-half bank. */
+   out[6] |= (src >> 7) & 1;
+   return true;
 }

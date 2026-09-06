@@ -4019,3 +4019,48 @@ TEST_F(AGX3PackBinary, ScalarByteStoreReadsOddNativeHalf)
    append(want,end.bytes,end.length);
    EXPECT_EQ(pack(b),want);
 }
+
+TEST_F(AGX3PackBinary, ExplicitLodStagingAndLifetime)
+{
+   for (unsigned lod_reg : {0u, 1u, 127u, 254u, 255u}) {
+      for (unsigned hint = 0; hint < 3; ++hint) {
+         auto enc = AGX_ISA_ENCODING_AGX3B;
+         agx_builder *b = builder(enc);
+         b->shader->stage = MESA_SHADER_FRAGMENT;
+         key.no_stop = true;
+         agx_index dest = agx_register(8, AGX_SIZE_32);
+         dest.channels_m1 = 3;
+         agx_index coord = agx_register(4, AGX_SIZE_32);
+         coord.channels_m1 = 1;
+         agx_index lod = agx_register(lod_reg, AGX_SIZE_16);
+         lod.cache = hint == 1;
+         lod.discard = hint == 2;
+         auto *I = agx_texture_sample_to(b, dest, coord, lod,
+            agx_immediate(0), agx_immediate(0), agx_immediate(0), agx_null(),
+            AGX_DIM_2D, AGX_LOD_MODE_LOD_MIN, 0, false, false, false,
+            AGX_GATHER_NONE, false);
+         I->mask = 15;
+         std::vector<uint8_t> want;
+         uint8_t bytes[AGX3_TEX_MAX_LENGTH], len;
+         ASSERT_TRUE(agx3_tex_stage_lod(enc, lod_reg, 1, 0,
+                                      hint == 1, hint == 2, bytes, &len));
+         append(want, bytes, len);
+         ASSERT_TRUE(agx3_tex_stage_copy_hints(enc, 0, 4, 1, 0,
+                                              false, false, bytes, &len));
+         append(want, bytes, len);
+         ASSERT_TRUE(agx3_tex_stage_copy_hints(enc, 2, 6, 1, 0,
+                                              false, false, bytes, &len));
+         append(want, bytes, len);
+         struct agx3_tex_sample_desc d = {};
+         d.dest=8; d.width=AGX3_TEX_W32; d.mask=15;
+         d.lod=AGX3_TEX_LOD_REGISTER; d.slot=1; d.wait_mask=1; d.final=true;
+         ASSERT_TRUE(agx3_tex_encode_sample(enc, &d, bytes, &len));
+         append(want, bytes, len);
+         ASSERT_TRUE(agx3_alu_compose(enc, AGX3_ALU_BAND, 0, 0, 0, 0, 0,
+                                      1, bytes, &len));
+         append(want, bytes, len);
+         EXPECT_EQ(pack(b), want);
+         EXPECT_EQ(b->shader->agx3_staging_halfs, 8);
+      }
+   }
+}

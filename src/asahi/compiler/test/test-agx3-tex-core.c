@@ -960,10 +960,40 @@ test_staging_source_lifetime(void)
    return 0;
 }
 
+static int
+test_register_lod(void)
+{
+   /* Fresh native G17P fragment bodies, float-to-half and retained half LOD. */
+   const uint8_t dead[] = {0x17,0x05,0x54,0x06,0,0,0,0x04,0xf0,0xc0,0x08,0};
+   const uint8_t live[] = {0x17,0x05,0x56,0x06,0,0x10,0,0x04,0x70,0xc0,0x08,0};
+   const uint8_t sample[] = {0x05,0x80,0x0c,0xb8,0xb0,0,0,1,1,0,0x10,0,1,0};
+   uint8_t b[AGX3_TEX_MAX_LENGTH], len;
+   CHECK(agx3_tex_stage_lod(AGX_ISA_ENCODING_AGX3B,0,1,0,false,true,b,&len));
+   CHECK(len == sizeof(dead) && !memcmp(b,dead,len));
+   CHECK(agx3_tex_stage_lod(AGX_ISA_ENCODING_AGX3B,8,1,1u<<5,false,false,b,&len));
+   CHECK(len == sizeof(live) && !memcmp(b,live,len));
+   struct agx3_tex_sample_desc d = {.dest=0,.coord=0,.width=AGX3_TEX_W32,
+      .mask=15,.lod=AGX3_TEX_LOD_REGISTER,.slot=1,.wait_mask=1,
+      .coord_kill=true,.final=true};
+   CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B,&d,b,&len));
+   CHECK(len == sizeof(sample) && !memcmp(b,sample,len));
+   /* Independently decode the full eight-bit field, including the upper
+    * bank. Adjacent CACHE/DISCARD and scoreboard bits must stay intact. */
+   for (unsigned src = 0; src < 256; ++src) {
+      CHECK(agx3_tex_stage_lod(AGX_ISA_ENCODING_AGX3B,src,1,0,false,true,b,&len));
+      CHECK(len == 12);
+      CHECK(((b[5] >> 1) | ((b[6] & 1) << 7)) == src);
+      b[5] &= 1;
+      b[6] &= ~1;
+      CHECK(!memcmp(b,dead,sizeof(dead)));
+   }
+   return 0;
+}
+
 int
 main(void)
 {
-   if (test_staging_source_lifetime() || test_exact_witnesses() || test_supported_axes() || test_fail_closed() ||
+   if (test_register_lod() || test_staging_source_lifetime() || test_exact_witnesses() || test_supported_axes() || test_fail_closed() ||
        test_sample_witnesses() || test_copy_witnesses() ||
        test_sample_fail_closed() || test_array_fetch() ||
        test_bindless_operand_kinds() || test_indexed_sample_witnesses() || test_sample_mask_domain() || test_indexed_fetch_native())

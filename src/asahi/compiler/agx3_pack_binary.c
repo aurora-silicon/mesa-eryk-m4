@@ -837,24 +837,22 @@ agx3_emit_texture_fetch(struct util_dynarray *emission,
           agx3_append(emission, bytes, len);
 }
 
-/*
- * Translate the corpus-grounded filtered 2D sample: implicit LOD (the shape
- * every fragment `texture()` reaches the backend with -- Mesa also folds
- * `textureLod(.., 0)` into it), immediate texture and sampler state, no
- * array/offset/shadow/gather axis.
- *
- * Every witnessed smp reads its coordinates through a scoreboard-signalling
- * producer and waits on that slot: Apple stages ALU-computed coordinates with
- * in-place `copy` instructions carrying the smp's slot (x_coordreg,
- * fs_bufcoord), so this path emits that exact three-instruction group --
- * copy(x), copy(y), smp -- with any producer dependency of the coordinates
- * carried on the first copy, precisely where Apple's own schedule puts it.
+/* Filtered 2D samples use scoreboard-signalling native staging producers.
+ * The implicit form keeps its coordinate layout. Explicit per-lane LOD adds
+ * one PACK_SMPIR into bank 6 and stages coordinates into bank 0, avoiding
+ * overlap regardless of the architectural source registers. All input waits
+ * attach to the first producer; the sample waits for their shared slot.
  */
 static bool
 agx3_emit_texture_sample(struct util_dynarray *emission,
                          enum agx_isa_encoding enc, const agx_instr *I,
                          uint8_t slot, uint16_t wait_mask, bool final)
 {
+   const bool explicit_lod = I->lod_mode == AGX_LOD_MODE_LOD_MIN;
+   const bool valid_lod = explicit_lod ?
+      (enc == AGX_ISA_ENCODING_AGX3B && agx3_tex_plain_reg(I->src[1]) &&
+       I->src[1].size == AGX_SIZE_16 && agx_channels(I->src[1]) == 1) :
+      (I->lod_mode == AGX_LOD_MODE_AUTO_LOD && agx3_tex_imm(I->src[1], 0));
    const bool immediate = I->nr_srcs == 6 &&
       I->src[3].type == AGX_INDEX_IMMEDIATE &&
       I->src[4].type == AGX_INDEX_IMMEDIATE;
@@ -867,7 +865,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
        !agx3_tex_plain_reg(I->src[0]) ||
        I->src[0].size != AGX_SIZE_32 || agx_channels(I->src[0]) != 2 ||
        (I->src[0].value & 3) || I->src[0].value > 60 ||
-       !agx3_tex_imm(I->src[1], 0) || !agx3_tex_imm(I->src[2], 0) ||
+       !valid_lod || !agx3_tex_imm(I->src[2], 0) ||
        (immediate && (I->src[3].value > 15 || I->src[4].value > 15)) ||
        I->src[3].memory || I->src[3].abs || I->src[3].neg ||
        I->src[4].memory || I->src[4].abs || I->src[4].neg ||
@@ -878,7 +876,6 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
          agx_channels(I->src[3]) != 1 || agx_channels(I->src[4]) != 1 ||
          (I->src[3].value & 1) || (I->src[4].value & 1))) ||
        !agx_is_null(I->src[5]) || I->dim != AGX_DIM_2D ||
-       I->lod_mode != AGX_LOD_MODE_AUTO_LOD ||
        (I->mask == 0 || (I->mask & ~15u)) ||
        I->offset || I->shadow || I->query_lod ||
        I->gather != AGX_GATHER_NONE || I->sparse)
@@ -888,16 +885,24 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
    if (wait_mask & (wait_mask - 1))
       return false;
 
-   const uint16_t coord = I->src[0].value;
+   const uint16_t coord = explicit_lod ? 0 : I->src[0].value;
    uint8_t bytes[AGX3_TEX_MAX_LENGTH];
    uint8_t len = 0;
 
-   if (!agx3_tex_stage_copy_hints(enc, coord, coord, slot, wait_mask,
+   if (explicit_lod) {
+      if (!agx3_tex_stage_lod(enc, I->src[1].value, slot, wait_mask,
+                             I->src[1].cache, I->src[1].discard, bytes, &len) ||
+          !agx3_append(emission, bytes, len))
+         return false;
+      wait_mask = 0;
+   }
+
+   if (!agx3_tex_stage_copy_hints(enc, coord, I->src[0].value, slot, wait_mask,
           enc == AGX_ISA_ENCODING_AGX3B && I->src[0].cache,
           enc != AGX_ISA_ENCODING_AGX3B || I->src[0].discard, bytes, &len) ||
        !agx3_append(emission, bytes, len))
       return false;
-   if (!agx3_tex_stage_copy_hints(enc, coord + 2, coord + 2, slot, 0,
+   if (!agx3_tex_stage_copy_hints(enc, coord + 2, I->src[0].value + 2, slot, 0,
           enc == AGX_ISA_ENCODING_AGX3B && I->src[0].cache,
           enc != AGX_ISA_ENCODING_AGX3B || I->src[0].discard, bytes, &len) ||
        !agx3_append(emission, bytes, len))
@@ -918,7 +923,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
       .sampler_value = immediate ? 0 : I->src[4].value,
       .texture_kill = !immediate && I->src[3].kill,
       .sampler_kill = !immediate && I->src[4].kill,
-      .lod = AGX3_TEX_LOD_AUTO,
+      .lod = explicit_lod ? AGX3_TEX_LOD_REGISTER : AGX3_TEX_LOD_AUTO,
       .slot = slot,
       .wait_mask = (uint16_t)(1u << (slot - 1)),
       .coord_kill = I->src[0].kill,
@@ -3455,7 +3460,9 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                AGX3_REFUSE(I);
             /* The sample emitter stages exactly two 32-bit coordinates. */
             ctx->agx3_staging_halfs =
-               MAX2(ctx->agx3_staging_halfs, I->src[0].value + 4);
+               MAX2(ctx->agx3_staging_halfs,
+                    I->lod_mode == AGX_LOD_MODE_LOD_MIN
+                       ? 8 : I->src[0].value + 4);
             continue;
          }
 

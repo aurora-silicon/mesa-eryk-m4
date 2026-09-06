@@ -12,7 +12,8 @@
 static bool
 g17p_sample_shape(const nir_tex_instr *tex)
 {
-   if ((tex->op != nir_texop_tex && tex->op != nir_texop_txb) ||
+   if ((tex->op != nir_texop_tex && tex->op != nir_texop_txb &&
+        tex->op != nir_texop_txl) ||
        tex->sampler_dim != GLSL_SAMPLER_DIM_2D ||
        tex->is_array || tex->is_shadow || tex->is_sparse ||
        tex->coord_components != 2 ||
@@ -23,7 +24,9 @@ g17p_sample_shape(const nir_tex_instr *tex)
 
    const bool has_bias =
       nir_tex_instr_src_index(tex, nir_tex_src_bias) >= 0;
-   if (tex->num_srcs != (has_bias ? 4 : 3) ||
+   const bool has_lod = nir_tex_instr_src_index(tex, nir_tex_src_lod) >= 0;
+   if (tex->num_srcs != ((has_bias || has_lod) ? 4 : 3) ||
+       has_lod != (tex->op == nir_texop_txl) ||
        has_bias != (tex->op == nir_texop_txb))
       return false;
 
@@ -97,7 +100,7 @@ g17p_is_sampler_bias(const nir_tex_instr *tex, uint32_t expected_offset_B)
 {
    const int index = nir_tex_instr_src_index(tex, nir_tex_src_bias);
    if (index < 0)
-      return tex->op == nir_texop_tex;
+      return tex->op == nir_texop_tex || tex->op == nir_texop_txl;
 
    nir_intrinsic_instr *load = nir_src_as_intrinsic(tex->src[index].src);
    if (!load || load->def.num_components != 1 || load->def.bit_size != 16)
@@ -288,7 +291,8 @@ agx_nir_lower_g17p_indexed_samplers(nir_shader *shader)
                continue;
             nir_tex_instr *tex = nir_instr_as_tex(instr);
             const bool fetch = g17p_indexed_fetch_shape(tex);
-            if (!fetch && (!g17p_sample_shape(tex) || tex->op != nir_texop_tex))
+            if (!fetch && (!g17p_sample_shape(tex) ||
+                           (tex->op != nir_texop_tex && tex->op != nir_texop_txl)))
                return false;
             nir_intrinsic_instr *image = nir_src_as_intrinsic(
                tex->src[nir_tex_instr_src_index(tex, nir_tex_src_texture_handle)].src);
