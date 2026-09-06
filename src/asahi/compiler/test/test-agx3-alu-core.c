@@ -781,6 +781,20 @@ static void test_native_narrow_multiply(void)
    puts("Native narrow multiply: three Apple live/dead/odd-half vectors PASS");
 }
 
+static void test_native_half_multiply(void)
+{
+   for (unsigned live=0;live<2;live++) {
+      const uint16_t src[]={live?0:2,live?1:3};
+      enum agx3_alu_hint hint=live?AGX3_ALU_HINT_NONE:AGX3_ALU_HINT_DISCARD;
+      const enum agx3_alu_hint hints[]={hint,hint};
+      uint8_t bytes[AGX3_ALU_MAX_LENGTH],len;
+      assert(agx3_alu_hmul(AGX_ISA_ENCODING_AGX3B,live?4:2,src,hints,
+                           false,32,bytes,&len));
+      exact(bytes,len,live?"2000050100c0":"10021d0300c0");
+   }
+   puts("Native half multiply: two complete Apple live/dead vectors PASS");
+}
+
 static void test_native_sqrt_step(void)
 {
    for (unsigned live=0;live<2;live++) {
@@ -888,6 +902,7 @@ static void test_native_high_float_registers(void)
 
 int main(void){
    test_native_high_float_registers();
+   test_native_half_multiply();
    test_native_narrow_multiply();
    test_native_sqrt_step();
    test_native_select_reg_imm();

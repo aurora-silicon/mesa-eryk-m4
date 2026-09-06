@@ -189,6 +189,11 @@ bool agx3_alu_fmul_narrow(enum agx_isa_encoding enc, uint16_t dest,
                            bool dest_cache, uint16_t wait_mask,
                            uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len);
 
+bool agx3_alu_hmul(enum agx_isa_encoding enc, uint16_t dest,
+                   const uint16_t src[2], const enum agx3_alu_hint hints[2],
+                   bool dest_cache, uint16_t wait_mask,
+                   uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len);
+
 #ifdef __cplusplus
 }
 #endif
