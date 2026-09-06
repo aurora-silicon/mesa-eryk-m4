@@ -104,9 +104,59 @@ test_half_zero_lifetime(void)
    }
 }
 
+static void
+test_float_zero_compare(void)
+{
+   /* Complete native branches preserve X for their body or discard it when
+    * it is used only by the condition. GE/LE additionally exercise or-NaN. */
+   const struct {unsigned cond;bool cache,or_nan;unsigned length;uint8_t bytes[10];} v[]={
+      {0,true,false,10,{0x0a,0x83,0x23,0x81,0x06,0x00,0x00,0xc2,0x00,0x00}},
+      {1,true,false,6,{0x0a,0x83,0x22,0x81,0x03,0xc2}},
+      {2,true,false,6,{0x0a,0x83,0x22,0x81,0x02,0xc2}},
+      {0,false,false,10,{0x0a,0x03,0x2b,0x81,0x06,0x00,0x00,0xc2,0x00,0x00}},
+      {1,false,false,6,{0x0a,0x03,0x2a,0x81,0x03,0xc2}},
+      {2,false,false,6,{0x0a,0x03,0x2a,0x81,0x02,0xc2}},
+      {1,true,true,10,{0x1a,0x83,0x23,0x81,0x06,0x00,0x02,0xc2,0x00,0x00}},
+      {2,true,true,10,{0x1a,0x83,0x23,0x81,0x06,0x00,0x03,0xc2,0x00,0x00}},
+   };
+   for(unsigned i=0;i<sizeof(v)/sizeof(v[0]);i++) {
+      uint8_t bytes[AGX3_CF_MAX_LENGTH],length=0;
+      bool ok=agx3_cf_fcmp_zero(AGX_ISA_ENCODING_AGX3B,v[i].cond,v[i].or_nan,0,2,false,
+         (struct agx3_cf_source_hints){v[i].cache,!v[i].cache},32,bytes,&length);
+      checks++;
+      if(!ok || length!=v[i].length || memcmp(bytes,v[i].bytes,length)) {
+         fprintf(stderr,"FAIL native float-zero branch vector%u\n",i);failures++;
+      }
+   }
+}
+
+static void
+test_half_float_zero_compare(void)
+{
+   const uint8_t gold[2][3][10]={
+      {{0x0a,0x82,0x23,0x81,0x06,0,0,0xc2,0,0},
+       {0x0a,0x82,0x22,0x81,0x03,0xc2},
+       {0x0a,0x82,0x22,0x81,0x02,0xc2}},
+      {{0x0a,0x82,0x23,0x81,0x06,0,0x08,0xc2,0,0},
+       {0x0a,0x82,0x22,0x81,0x0b,0xc2},
+       {0x0a,0x82,0x22,0x81,0x0a,0xc2}},
+   };
+   for(unsigned odd=0;odd<2;odd++)for(unsigned condition=0;condition<3;condition++) {
+      uint8_t bytes[AGX3_CF_MAX_LENGTH],length=0;
+      bool ok=agx3_cf_fcmp_zero(AGX_ISA_ENCODING_AGX3B,condition,false,0,2+odd,true,
+         (struct agx3_cf_source_hints){true,false},32,bytes,&length);
+      checks++;
+      if(!ok || length!=(condition?6:10) || memcmp(bytes,gold[odd][condition],length)) {
+         fprintf(stderr,"FAIL native half float-zero branch odd%u condition%u\n",odd,condition);failures++;
+      }
+   }
+}
+
 int
 main(void)
 {
+   test_float_zero_compare();
+   test_half_float_zero_compare();
    test_half_comparisons();
    test_half_zero_lifetime();
    for (size_t i = 0; i < cf_vec_count; ++i) {

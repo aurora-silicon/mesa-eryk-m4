@@ -283,3 +283,23 @@ agx3_cf_patch_branch(enum agx_isa_encoding enc, bool is_bn, uint8_t *branch,
 
    return false;
 }
+
+bool agx3_cf_fcmp_zero(enum agx_isa_encoding enc, enum agx3_cf_fcond cond,
+                        bool or_nan, unsigned slot, uint16_t source, bool source_16,
+                        struct agx3_cf_source_hints hint, uint16_t wait_mask,
+                        uint8_t out[AGX3_CF_MAX_LENGTH], uint8_t *len)
+{
+   if (!agx3b(enc) || !out || !len || !fcond_ok(cond) || !slot_ok(slot) ||
+       source >= 256 || (!source_16 && (source & 1)) || (hint.cache && hint.discard) ||
+       (wait_mask & ~0x3fu) || (or_nan && cond == AGX3_CF_FCOND_EQ))
+      return false;
+   const struct agx3_field_kv base[]={KV(9,2),KV(10,source_16?1:2),KV(26,1),KV(27,2)};
+   struct agx3_field_kv fields[13]={
+      KV(2,source),KV(18,0),KV(11,hint.cache),KV(13,hint.discard),
+      KV(34,or_nan),KV(35,slot),KV(46,(unsigned)cond+(or_nan?4:0)),
+   };
+   for(unsigned i=0;i<6;i++)fields[7+i]=(struct agx3_field_kv)KV(38+i,!!(wait_mask&(1u<<i)));
+   for(unsigned ep=0;ep<=1;ep++)
+      if(agx3_bind_compose(enc,"fcmp",ep,base,4,fields,13,out,len))return true;
+   return false;
+}

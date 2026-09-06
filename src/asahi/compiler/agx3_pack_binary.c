@@ -2308,6 +2308,32 @@ agx3_emit_cf_compare(struct util_dynarray *emission, enum agx_isa_encoding enc,
       return agx3_append(emission, bytes, len);
    }
 
+   if (is_float && enc == AGX_ISA_ENCODING_AGX3B &&
+       ((agx3_cf_is_zero(I->src[1]) && (agx3_vary_reg32(I->src[0]) || agx3_cf_reg16(I->src[0]))) ||
+        (agx3_cf_is_zero(I->src[0]) && (agx3_vary_reg32(I->src[1]) || agx3_cf_reg16(I->src[1]))))) {
+      const bool zero_first=agx3_cf_is_zero(I->src[0]);
+      const agx_index source=I->src[zero_first?1:0];
+      enum agx_fcond relation=I->fcond;
+      if(zero_first) {
+         switch(relation) {
+         case AGX_FCOND_LT:relation=AGX_FCOND_GT;break;
+         case AGX_FCOND_GT:relation=AGX_FCOND_LT;break;
+         case AGX_FCOND_LE:relation=AGX_FCOND_GE;break;
+         case AGX_FCOND_GE:relation=AGX_FCOND_LE;break;
+         case AGX_FCOND_LTN:relation=AGX_FCOND_GTN;break;
+         case AGX_FCOND_GTN:relation=AGX_FCOND_LTN;break;
+         default:break;
+         }
+      }
+      enum agx3_cf_fcond condition;bool or_nan;
+      if(source.kill || agx_channels(source)!=1 ||
+         !agx3_cf_map_fcond(relation,&condition,&or_nan,invert) ||
+         !agx3_cf_fcmp_zero(enc,condition,or_nan,flag_slot,source.value,source.size==AGX_SIZE_16,
+            (struct agx3_cf_source_hints){source.cache,source.discard},0,bytes,&len))
+         return false;
+      return agx3_append(emission,bytes,len);
+   }
+
    if (!agx3_cf_reg32(I->src[0]))
       return false;
 

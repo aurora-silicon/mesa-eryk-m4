@@ -90,6 +90,12 @@ bool agx3_cf_fcmp_reg(enum agx_isa_encoding enc, enum agx3_cf_fcond cond,
                       bool or_nan, unsigned slot, uint16_t src0, uint16_t src1,
                       uint8_t out[AGX3_CF_MAX_LENGTH], uint8_t *len);
 
+/* Float comparison against literal zero, retaining the actual source lifetime. */
+bool agx3_cf_fcmp_zero(enum agx_isa_encoding enc, enum agx3_cf_fcond cond,
+                        bool or_nan, unsigned slot, uint16_t source, bool source_16,
+                        struct agx3_cf_source_hints hint, uint16_t wait_mask,
+                        uint8_t out[AGX3_CF_MAX_LENGTH], uint8_t *len);
+
 /* Exec-mask stack. cndst pushes (an `if`), with push count 1 or 2 (2 = a loop
  * entry that reserves a nesting level). cndlt is the loop/break test (push
  * count fixed at 2). cndef is the `else` flip. cndend pops `count` levels. */
