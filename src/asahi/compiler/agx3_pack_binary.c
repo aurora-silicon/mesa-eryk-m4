@@ -4349,6 +4349,42 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             continue;
          }
 
+         /* A local-memory byte offset widens the 16-bit local invocation
+          * index with `iadd dst32, #0, src16.abs`. The native integer iadd
+          * immediate form does not admit zero in its witnessed endpoint, but
+          * zero-extension needs no new arithmetic encoding: copy the low half
+          * and clear the high half, exactly like the existing widened BITOP
+          * move below. The copy carries the source's real wait/lifetime. */
+         if (enc == AGX_ISA_ENCODING_AGX3B && I->op == AGX_OPCODE_IADD &&
+             I->nr_dests == 1 && I->nr_srcs == 2 && !I->saturate &&
+             I->shift == 0 && agx3_src_is_register(I->dest[0]) &&
+             !I->dest[0].memory && I->dest[0].size == AGX_SIZE_32 &&
+             agx_channels(I->dest[0]) == 1 && !(I->dest[0].value & 1)) {
+            const bool imm_first = I->src[0].type == AGX_INDEX_IMMEDIATE;
+            const agx_index zero = I->src[imm_first ? 0 : 1];
+            const agx_index half = I->src[imm_first ? 1 : 0];
+            /* Post-RA discard is the physical lifetime bit consumed by COPY;
+             * SSA kill is allocator bookkeeping and must not reject the same
+             * physical source shape. */
+            if (zero.type == AGX_INDEX_IMMEDIATE && zero.value == 0 &&
+                !zero.memory && !zero.abs && !zero.neg &&
+                agx3_src_is_register(half) && !half.memory && half.abs &&
+                !half.neg && half.size == AGX_SIZE_16 &&
+                agx_channels(half) == 1 && !(half.cache && half.discard)) {
+               uint8_t lo[AGX3_COPY_MAX_LENGTH], hi[AGX3_STAGE_MAX_LENGTH];
+               uint8_t lo_len = 0, hi_len = 0;
+               if (!agx3_copy_encode_reg16(enc, I->dest[0].value, half.value,
+                                           I->dest[0].cache, half.cache,
+                                           half.discard, wait, lo, &lo_len) ||
+                   !agx3_clr(enc, I->dest[0].value + 1, true, false, hi,
+                             &hi_len) ||
+                   !agx3_append(emission, lo, lo_len) ||
+                   !agx3_append(emission, hi, hi_len))
+                  AGX3_REFUSE(I);
+               continue;
+            }
+         }
+
          /*
           * `iadd dst32, #imm, src << shift` -- constant address arithmetic,
           * which is what every shader with more than one memory access is

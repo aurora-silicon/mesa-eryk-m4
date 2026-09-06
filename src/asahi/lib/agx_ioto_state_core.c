@@ -518,6 +518,38 @@ agx_ioto_g17p_runtime_compute_tail_build(
 }
 
 bool
+agx_ioto_g17p_runtime_compute_tail_build_shared(
+   uint64_t shader_va, enum agx_ioto_g17p_compute_ldshdr_f1 ldshdr_f1,
+   uint32_t threadgroup_memory_size_B,
+   struct agx_ioto_state_tail_output *output)
+{
+   if (!output || threadgroup_memory_size_B < 256 ||
+       threadgroup_memory_size_B > 32768 ||
+       (threadgroup_memory_size_B & 63) != 0)
+      return false;
+
+   struct agx_ioto_state_tail_output staged;
+   if (!agx_ioto_g17p_runtime_compute_tail_build(shader_va, ldshdr_f1,
+                                                  &staged))
+      return false;
+
+   /* EXP-0024's hardware-validated static sweep places
+    * `(bytes << 2) | 0x80` in the second SPECLM dword. In the recovered GPU0
+    * field graph that is exactly byte-size f18 plus enable f24. Repack the
+    * record through the field encoder instead of patching opaque bytes. */
+   struct agx_ioto_state speclm = {0};
+   speclm.f[18] = threadgroup_memory_size_B;
+   speclm.f[24] = 1;
+   if (!agx_ioto_state_pack_speclm(AGX_CHIP_G17P, &speclm, staged.bytes,
+                                    AGX_IOTO_SPECLM_SIZE))
+      return false;
+   staged.bytes[3] |= UINT8_C(0x40);
+
+   *output = staged;
+   return true;
+}
+
+bool
 agx_ioto_g17p_compiler_spectpr_build(
    uint32_t spill_bytes, uint32_t d_value, struct agx_ioto_state *state)
 {

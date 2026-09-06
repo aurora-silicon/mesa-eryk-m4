@@ -168,7 +168,8 @@ hk_g17p_compute_shader_supported(struct hk_shader *s,
           linked->b.size <= UINT32_MAX && linked->b.nr_gprs != 0 &&
           !s->b.info.has_preamble && s->b.info.preamble_scratch_size == 0 &&
           s->b.info.scratch_size == 0 && linked->b.scratch_size == 0 &&
-          s->b.info.local_size == 0 && s->b.info.texture_state_count == 0 &&
+          s->b.info.local_size <= 32768 &&
+          s->b.info.texture_state_count == 0 &&
           (s->b.info.sampler_state_count == 0 ||
            (s->info.agx3_txf_texture_valid &&
             s->b.info.sampler_state_count == 1)) &&
@@ -393,6 +394,9 @@ hk_dispatch_g17p_native(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
       .shader_binary_size = linked->b.size,
       .scratch_size = linked->b.scratch_size,
       .nr_gprs = linked->b.nr_gprs,
+      .threadgroup_memory_size_B = s->b.info.local_size
+         ? MAX2(256u, ALIGN_POT(s->b.info.local_size, 64u))
+         : 0,
       .launch_sources = launch_sources,
    };
    struct hk_agx3_g17p_compute_program program;

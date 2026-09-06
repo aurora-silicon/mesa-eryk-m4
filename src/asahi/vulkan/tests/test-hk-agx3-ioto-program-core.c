@@ -504,6 +504,7 @@ test_g17p_dynamic_compute_program(void)
       .uniform_range_count = ARRAY_SIZE(ranges),
       .shader_binary_size = 96,
       .nr_gprs = 8,
+      .threadgroup_memory_size_B = 4096,
       .launch_sources = sources,
    };
    struct hk_agx3_g17p_compute_program program;
@@ -525,9 +526,9 @@ test_g17p_dynamic_compute_program(void)
     * 118-byte length happened to land on -- a fourth self-pinned expectation
     * rather than a witness. LDSHDR f1 is a program-kind selector (permuted
     * through agx_ioto_e4), so a direct dispatch announces the direct kind. */
-   CHECK(agx_ioto_g17p_runtime_compute_tail_build(
+   CHECK(agx_ioto_g17p_runtime_compute_tail_build_shared(
       desc.shader_va, AGX_IOTO_G17P_COMPUTE_LDSHDR_F1_DIRECT_ADD3,
-      &expected_tail));
+      desc.threadgroup_memory_size_B, &expected_tail));
    /* The runtime builder leaves SPECTPR zero (the hand-written add3 witness's
     * footprint). A compiler-produced shader must declare its own, exactly as
     * the graphics path does, so the expectation carries it too. */
@@ -580,6 +581,11 @@ test_g17p_dynamic_compute_program(void)
    CHECK(memcmp(&program, &before, sizeof(program)) == 0);
    invalid = desc;
    invalid.uniform_ranges = NULL;
+   CHECK(!hk_agx3_g17p_compute_program_generate(AGX_CHIP_G17P, &invalid,
+                                                &program));
+   CHECK(memcmp(&program, &before, sizeof(program)) == 0);
+   invalid = desc;
+   invalid.threadgroup_memory_size_B = 257;
    CHECK(!hk_agx3_g17p_compute_program_generate(AGX_CHIP_G17P, &invalid,
                                                 &program));
    CHECK(memcmp(&program, &before, sizeof(program)) == 0);

@@ -228,6 +228,7 @@ struct hk_agx3_g17p_compute_program_desc {
    uint32_t shader_binary_size;
    uint32_t scratch_size;
    uint16_t nr_gprs;
+   uint32_t threadgroup_memory_size_B;
    struct agx3_cdm_direct_template_sources launch_sources;
 };
 

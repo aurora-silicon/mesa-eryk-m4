@@ -824,6 +824,45 @@ test_g17p_runtime_compute_tail(void)
 }
 
 static int
+test_g17p_runtime_compute_shared_tail(void)
+{
+   static const struct {
+      uint32_t size_B;
+      uint32_t speclm_word1;
+   } cases[] = {
+      {256, UINT32_C(0x00000480)},
+      {1024, UINT32_C(0x00001080)},
+      {4096, UINT32_C(0x00004080)},
+      {16384, UINT32_C(0x00010080)},
+      {32768, UINT32_C(0x00020080)},
+   };
+   const uint64_t shader_va = UINT64_C(0x100000003c0);
+   struct agx_ioto_state_tail_output output;
+
+   for (unsigned i = 0; i < ARRAY_SIZE(cases); ++i) {
+      memset(&output, 0xa5, sizeof(output));
+      CHECK(agx_ioto_g17p_runtime_compute_tail_build_shared(
+         shader_va, AGX_IOTO_G17P_COMPUTE_LDSHDR_F1_DIRECT_ADD3,
+         cases[i].size_B, &output));
+      CHECK(output.length == AGX_IOTO_STATE_TAIL_TYPE0_SIZE);
+      CHECK(memcmp(output.bytes, "\x77\x00\x2a\x41", 4) == 0);
+      uint32_t word1;
+      memcpy(&word1, output.bytes + 4, sizeof(word1));
+      CHECK(word1 == cases[i].speclm_word1);
+   }
+
+   const struct agx_ioto_state_tail_output before = output;
+   static const uint32_t invalid_sizes[] = {0, 64, 255, 257, 32769};
+   for (unsigned i = 0; i < ARRAY_SIZE(invalid_sizes); ++i) {
+      CHECK(!agx_ioto_g17p_runtime_compute_tail_build_shared(
+         shader_va, AGX_IOTO_G17P_COMPUTE_LDSHDR_F1_DIRECT_ADD3,
+         invalid_sizes[i], &output));
+      CHECK(memcmp(&output, &before, sizeof(output)) == 0);
+   }
+   return 0;
+}
+
+static int
 test_g17p_compiler_spectpr(void)
 {
    static const uint8_t pinned_expected[AGX_IOTO_SPECTPR_SIZE] = {
@@ -862,6 +901,7 @@ main(void)
    CHECK(test_g17s_minimal_compute_tail() == 0);
    CHECK(test_g17p_compute_ldshdr() == 0);
    CHECK(test_g17p_runtime_compute_tail() == 0);
+   CHECK(test_g17p_runtime_compute_shared_tail() == 0);
    CHECK(test_g17p_compiler_spectpr() == 0);
 
    printf("agx_ioto_state_core: %llu checks passed\n",

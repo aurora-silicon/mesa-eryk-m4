@@ -665,8 +665,12 @@ hk_agx3_g17p_compute_state_tail(
    const enum agx_ioto_g17p_compute_ldshdr_f1 fetch =
       AGX_IOTO_G17P_COMPUTE_LDSHDR_F1_DIRECT_ADD3;
    struct agx_ioto_state_tail_output staged;
-   if (!agx_ioto_g17p_runtime_compute_tail_build(desc->shader_va, fetch,
-                                                 &staged))
+   const bool tail_ok = desc->threadgroup_memory_size_B
+      ? agx_ioto_g17p_runtime_compute_tail_build_shared(
+           desc->shader_va, fetch, desc->threadgroup_memory_size_B, &staged)
+      : agx_ioto_g17p_runtime_compute_tail_build(desc->shader_va, fetch,
+                                                 &staged);
+   if (!tail_ok)
       return false;
 
    /* Declare the shader's register footprint.

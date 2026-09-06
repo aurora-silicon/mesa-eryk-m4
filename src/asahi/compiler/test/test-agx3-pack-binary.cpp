@@ -23,6 +23,7 @@ extern "C" {
 #include "agx3_isel_core.h"
 #include "agx3_atomic_core.h"
 #include "agx3_cf_core.h"
+#include "agx3_copy_core.h"
 #include "agx3_falu_mod_core.h"
 #include "agx3_fltnorm_core.h"
 #include "agx3_local_tps_core.h"
@@ -3463,6 +3464,32 @@ TEST_F(AGX3PackBinary, ImmediateIaddPreservesLiveSource)
                                 (uint8_t)(killed ? 0x14 : 0x10),0x14};
       ASSERT_GE(bytes.size(), sizeof(native));
       EXPECT_EQ(memcmp(bytes.data(), native, sizeof(native)), 0);
+   }
+}
+
+TEST_F(AGX3PackBinary, LocalIndexZeroExtendUsesCopyAndClear)
+{
+   for (unsigned source : {0u, 1u, 255u}) {
+      agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+      agx_index half = agx_register(source, AGX_SIZE_16);
+      half.abs = true;
+      half.discard = true;
+      half.kill = source == 255;
+      agx_iadd_to(b, agx_register(4, AGX_SIZE_32), agx_immediate(0), half, 0);
+      agx_stop(b);
+
+      uint8_t bytes[AGX3_COPY_MAX_LENGTH], len = 0;
+      std::vector<uint8_t> want;
+      ASSERT_TRUE(agx3_copy_encode_reg16(AGX_ISA_ENCODING_AGX3B, 4, source,
+                                         false, false, true, 0, bytes, &len));
+      append(want, bytes, len);
+      ASSERT_TRUE(agx3_clr(AGX_ISA_ENCODING_AGX3B, 5, true, false, bytes,
+                           &len));
+      append(want, bytes, len);
+      struct agx3_encoded_end end;
+      ASSERT_TRUE(agx3_pack_end(AGX_ISA_ENCODING_AGX3B, &end));
+      append(want, end.bytes, end.length);
+      EXPECT_EQ(pack(b), want) << "source half=" << source;
    }
 }
 

@@ -111,6 +111,15 @@ bool agx_ioto_g17p_runtime_compute_tail_build(
    uint64_t shader_va, enum agx_ioto_g17p_compute_ldshdr_f1 ldshdr_f1,
    struct agx_ioto_state_tail_output *output);
 
+/* Build the same runtime compute tail with a statically allocated
+ * threadgroup-memory region. The admitted byte range and 64-byte granularity
+ * are the exact A18 Pro static-allocation sweep; zero remains the separate
+ * no-threadgroup-memory form above. */
+bool agx_ioto_g17p_runtime_compute_tail_build_shared(
+   uint64_t shader_va, enum agx_ioto_g17p_compute_ldshdr_f1 ldshdr_f1,
+   uint32_t threadgroup_memory_size_B,
+   struct agx_ioto_state_tail_output *output);
+
 /* Build the exact pre-runtime G17P SPECTPR fields from Apple's raw compiler
  * spill-byte and D values.  These are intentionally not sourced from Mesa's
  * scratch_size: the runtime may subsequently overwrite f10/f11/f20/f22. */
