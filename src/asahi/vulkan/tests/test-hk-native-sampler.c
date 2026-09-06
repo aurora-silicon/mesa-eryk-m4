@@ -74,9 +74,10 @@ main(void)
    check_chip(AGX_CHIP_G17S, AGX_SAMPLER_GENERATION_GEN5, 32);
    check_chip(AGX_CHIP_G17C, AGX_SAMPLER_GENERATION_GEN5, 32);
 
-   struct hk_native_sampler_descriptor gen4, hal200, gen5;
+   struct hk_native_sampler_descriptor gen4, hal200, g17p, gen5;
    assert(hk_pack_native_sampler(AGX_CHIP_G14G, &gen4, &base));
    assert(hk_pack_native_sampler(AGX_CHIP_G16G, &hal200, &base));
+   assert(hk_pack_native_sampler(AGX_CHIP_G17P, &g17p, &base));
    assert(hk_pack_native_sampler(AGX_CHIP_G17G, &gen5, &base));
 
    static const uint8_t expected_gen4[8] = {
@@ -90,6 +91,9 @@ main(void)
    };
    assert(memcmp(&gen4, expected_gen4, sizeof(expected_gen4)) == 0);
    assert(memcmp(&hal200, expected_hal200, sizeof(expected_hal200)) == 0);
+   assert(memcmp(&g17p, expected_hal200, sizeof(expected_hal200)) == 0);
+   for (unsigned i = sizeof(expected_hal200); i < sizeof(g17p); ++i)
+      assert(((const uint8_t *)&g17p)[i] == 0);
    assert(memcmp(&gen5, expected_gen5, sizeof(expected_gen5)) == 0);
 
    /* A disabled compare must retain the exact mature Gen4 bytes: compare

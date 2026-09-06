@@ -150,7 +150,7 @@ main(void)
           properties.limits.framebufferColorSampleCounts !=
              VK_SAMPLE_COUNT_1_BIT ||
           features.geometryShader || features.tessellationShader ||
-          features.samplerAnisotropy || features.sparseBinding ||
+          !features.samplerAnisotropy || features.sparseBinding ||
           !has_bounded_g17p_queue(devices[i])) {
          die("T8140/G17P properties do not match the bounded profile");
       }

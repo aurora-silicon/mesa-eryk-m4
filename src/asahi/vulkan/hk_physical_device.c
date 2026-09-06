@@ -681,7 +681,6 @@ hk_get_device_features(
       features->geometryShader = false;
       features->tessellationShader = false;
       features->sampleRateShading = false;
-      features->samplerAnisotropy = false;
       features->pipelineStatisticsQuery = false;
       features->vertexPipelineStoresAndAtomics = false;
       features->fragmentStoresAndAtomics = false;
