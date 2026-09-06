@@ -58,6 +58,21 @@ main(void)
    assert(dynamic_state.fragment_control == UINT32_C(0x00070200));
    assert(memcmp(dynamic_state.depth_bias, bias, sizeof(bias)) == 0);
 
+   /* D16 exact force-UNORM turns -16384 API units into -0.25.  Preserve the
+    * independently selected -0.0625 clamp as its literal float payload. */
+   biased.depth_bias_raw = UINT32_C(0xbe800000);
+   biased.slope_scale_raw = 0;
+   biased.clamp_raw = UINT32_C(0xbd800000);
+   static const uint8_t exact_clamped[] = {
+      0x00, 0x00, 0x80, 0xbe, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x80, 0xbd,
+   };
+   assert(agx_ppp_hal200_raster_state_build(AGX_CHIP_G17P, &biased,
+                                             &dynamic_state));
+   assert(dynamic_state.fragment_control == UINT32_C(0x00070200));
+   assert(memcmp(dynamic_state.depth_bias, exact_clamped,
+                 sizeof(exact_clamped)) == 0);
+
    memset(&dynamic_state, 0xa5, sizeof(dynamic_state));
    assert(!agx_ppp_hal200_raster_state_build(AGX_CHIP_G17G, &fields,
                                               &dynamic_state));
