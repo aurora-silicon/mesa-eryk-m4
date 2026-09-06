@@ -100,7 +100,8 @@ void agx_tilebuffer_set_samples(struct agx_tilebuffer_layout *tib,
 bool agx_nir_lower_tilebuffer(struct nir_shader *shader,
                               struct agx_tilebuffer_layout *tib,
                               uint8_t *colormasks, unsigned *bindless_base,
-                              struct nir_def *write_samples, bool *translucent);
+                              struct nir_def *write_samples, bool *translucent,
+                              bool preserve_zero_mask);
 
 bool agx_nir_lower_to_per_sample(struct nir_shader *shader);
 

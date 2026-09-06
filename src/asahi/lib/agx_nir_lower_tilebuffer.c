@@ -24,6 +24,7 @@ struct ctx {
    bool any_memory_stores;
    uint8_t outputs_written;
    nir_def *write_samples;
+   bool preserve_zero_mask;
 };
 
 static void
@@ -305,9 +306,19 @@ pass(nir_builder *b, nir_intrinsic_instr *intr, void *data)
       if (agx_tilebuffer_supports_mask(tib, rt))
          write_mask &= nir_intrinsic_write_mask(intr);
 
-      /* Delete stores that are entirely masked out */
-      if (!write_mask)
+      /* On G17P, a covered fragment with no tile store still dirties the tile
+       * and loses the background clear at EOT. Preserve the destination with
+       * a real load/store pair so fragment and query side effects still run. */
+      if (!write_mask) {
+         if (ctx->preserve_zero_mask && !tib->spilled[rt]) {
+            nir_def *value = load_tilebuffer(
+               b, tib, comps, intr->src[0].ssa->bit_size, rt, format,
+               logical_format);
+            store_tilebuffer(b, tib, format, logical_format, rt, value,
+                             ctx->write_samples, BITFIELD_MASK(comps));
+         }
          return true;
+      }
 
       nir_def *value = intr->src[0].ssa;
 
@@ -350,7 +361,8 @@ pass(nir_builder *b, nir_intrinsic_instr *intr, void *data)
 bool
 agx_nir_lower_tilebuffer(nir_shader *shader, struct agx_tilebuffer_layout *tib,
                          uint8_t *colormasks, unsigned *bindless_base,
-                         nir_def *write_samples, bool *translucent)
+                         nir_def *write_samples, bool *translucent,
+                         bool preserve_zero_mask)
 {
    assert(shader->info.stage == MESA_SHADER_FRAGMENT);
 
@@ -359,6 +371,7 @@ agx_nir_lower_tilebuffer(nir_shader *shader, struct agx_tilebuffer_layout *tib,
       .colormasks = colormasks,
       .translucent = translucent,
       .write_samples = write_samples,
+      .preserve_zero_mask = preserve_zero_mask,
    };
 
    /* Allocate 1 texture + 1 PBE descriptor for each spilled descriptor */

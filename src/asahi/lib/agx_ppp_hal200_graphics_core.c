@@ -44,6 +44,23 @@ agx_ppp_hal200_depth_clip_pack(enum agx_chip chip, bool depth_clip,
    return true;
 }
 
+bool
+agx_ppp_hal200_rasterizer_discard_pack(
+   enum agx_chip chip, bool discard, uint32_t secondary_original,
+   uint32_t cull_original, uint32_t *secondary_out, uint32_t *cull_out)
+{
+   if (chip != AGX_CHIP_G17P || !secondary_out || !cull_out)
+      return false;
+
+   const uint32_t secondary_mask = UINT32_C(1) << 21;
+   const uint32_t cull_mask = UINT32_C(1) << 17;
+   *secondary_out = (secondary_original & ~secondary_mask) |
+                    (discard ? secondary_mask : 0);
+   *cull_out = (cull_original & ~cull_mask) |
+               (discard ? cull_mask : 0);
+   return true;
+}
+
 static void
 store_le32(uint8_t *dst, uint32_t value)
 {

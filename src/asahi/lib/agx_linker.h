@@ -290,6 +290,7 @@ struct agx_fs_epilog_key {
    enum pipe_format rt_formats[8];
    uint8_t nr_samples;
    bool force_small_tile;
+   bool preserve_zero_mask;
 };
 
 void agx_nir_vs_prolog(struct nir_builder *b, const void *key_);

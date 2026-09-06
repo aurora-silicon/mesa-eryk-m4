@@ -275,5 +275,23 @@ main(void)
                                           &unchanged));
    assert(!agx_ppp_hal200_depth_clip_pack(AGX_CHIP_G17P, true, 0, NULL));
    assert(unchanged == UINT32_C(0xdeadbeef));
+
+   uint32_t secondary_discard, cull_discard;
+   assert(agx_ppp_hal200_rasterizer_discard_pack(
+      AGX_CHIP_G17P, true, UINT32_C(0x00000200), UINT32_C(0x00000480),
+      &secondary_discard, &cull_discard));
+   assert(secondary_discard == UINT32_C(0x00200200));
+   assert(cull_discard == UINT32_C(0x00020480));
+   assert(agx_ppp_hal200_rasterizer_discard_pack(
+      AGX_CHIP_G17P, false, secondary_discard, cull_discard,
+      &secondary_discard, &cull_discard));
+   assert(secondary_discard == UINT32_C(0x00000200));
+   assert(cull_discard == UINT32_C(0x00000480));
+   assert(!agx_ppp_hal200_rasterizer_discard_pack(
+      AGX_CHIP_G17G, true, 0, 0, &secondary_discard, &cull_discard));
+   assert(!agx_ppp_hal200_rasterizer_discard_pack(
+      AGX_CHIP_G17P, true, 0, 0, NULL, &cull_discard));
+   assert(!agx_ppp_hal200_rasterizer_discard_pack(
+      AGX_CHIP_G17P, true, 0, 0, &secondary_discard, NULL));
    return 0;
 }

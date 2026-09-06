@@ -56,6 +56,11 @@ bool agx_ppp_hal200_cull_provoking_pack(enum agx_chip chip, unsigned selector,
 bool agx_ppp_hal200_depth_clip_pack(enum agx_chip chip, bool depth_clip,
                                    uint32_t original, uint32_t *out);
 
+/* Rasterizer discard is a dual-record contract on HAL200. */
+bool agx_ppp_hal200_rasterizer_discard_pack(
+   enum agx_chip chip, bool discard, uint32_t secondary_original,
+   uint32_t cull_original, uint32_t *secondary_out, uint32_t *cull_out);
+
 struct agx_ppp_hal200_graphics_core {
    uint8_t bytes[AGX_PPP_HAL200_GRAPHICS_MAX_LENGTH];
    uint8_t length;

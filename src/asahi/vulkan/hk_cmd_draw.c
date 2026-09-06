@@ -3030,6 +3030,11 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
           vk_rasterization_state_depth_clip_enable(&dyn->rs),
           cull_fields.words[0], &cull_fields.words[0]))
       return false;
+   if (!agx_ppp_hal200_rasterizer_discard_pack(
+          dev->dev.chip, hk_rast_discard(cmd), secondary_fields.words[0],
+          cull_fields.words[0], &secondary_fields.words[0],
+          &cull_fields.words[0]))
+      return false;
 
    struct agx_ppp_w_clamp_cull2_core w_cull2_record;
    const struct agx_ppp_w_clamp_cull2_fields w_cull2_fields = {
@@ -4007,6 +4012,7 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
          .blend.alpha_to_one = dyn->ms.alpha_to_one_enable,
          .blend.logicop_enable = dyn->cb.logic_op_enable,
          .blend.logicop_func = vk_logic_op_to_pipe(dyn->cb.logic_op),
+         .preserve_zero_mask = dev->dev.chip == AGX_CHIP_G17P,
       };
 
       for (unsigned rt = 0; rt < ARRAY_SIZE(dyn->cal.color_map); ++rt) {
