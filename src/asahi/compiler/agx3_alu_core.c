@@ -123,7 +123,9 @@ agx3_alu_float_reg(enum agx_isa_encoding enc, enum agx3_alu_op op,
        (wait_mask & ~UINT16_C(0x3f)))
       return false;
    const unsigned count = op == AGX3_ALU_FMA ? 3 : 2;
-   const unsigned limit = op == AGX3_ALU_FADD ? 256 : 128;
+   /* Native FADD/FMUL/FMA all encode eight-bit half-register operands.
+    * TEX alone has a separate seven-bit destination restriction. */
+   const unsigned limit = 256;
    if (dest >= limit || (dest & 1))
       return false;
    for (unsigned i = 0; i < count; ++i)

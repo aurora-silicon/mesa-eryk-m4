@@ -789,7 +789,43 @@ static void test_native_select_reg_imm(void)
    puts("Native zero-comparison boolean FSEL: two exact live/dead vectors PASS");
 }
 
+static void test_native_high_float_registers(void)
+{
+   /* Original native80-value kernels force retained ALU values into the upper
+    * register bank. These are complete-instruction byte vectors, not patched
+    * low-register examples; they retain native hints and scoreboard waits. */
+   static const struct {
+      enum agx3_alu_op op; uint16_t dest,src[3];
+      enum agx3_alu_hint hints[3]; uint16_t wait; const char *bytes;
+   } vectors[]={
+      {AGX3_ALU_FMUL,168,{0,2,0},{AGX3_ALU_HINT_CACHE,AGX3_ALU_HINT_CACHE,AGX3_ALU_HINT_NONE},4,"498345810070"},
+      {AGX3_ALU_FMUL,172,{4,6,0},{AGX3_ALU_HINT_DISCARD,AGX3_ALU_HINT_CACHE,AGX3_ALU_HINT_NONE},0,"698755050010"},
+      {AGX3_ALU_FMUL,174,{6,160,0},{AGX3_ALU_HINT_DISCARD,AGX3_ALU_HINT_CACHE,AGX3_ALU_HINT_NONE},0,"79a155070011"},
+      {AGX3_ALU_FMUL,142,{142,128,0},{AGX3_ALU_HINT_DISCARD,AGX3_ALU_HINT_CACHE,AGX3_ALU_HINT_NONE},0,"7981150f0015"},
+      {AGX3_ALU_FMUL,110,{110,152,0},{AGX3_ALU_HINT_DISCARD,AGX3_ALU_HINT_CACHE,AGX3_ALU_HINT_NONE},0,"7999d56f0001"},
+      {AGX3_ALU_FMUL,70,{70,56,0},{AGX3_ALU_HINT_DISCARD,AGX3_ALU_HINT_CACHE,AGX3_ALU_HINT_NONE},0,"39b99147"},
+      {AGX3_ALU_FMUL,38,{38,24,0},{AGX3_ALU_HINT_DISCARD,AGX3_ALU_HINT_CACHE,AGX3_ALU_HINT_NONE},0,"39995127"},
+      {AGX3_ALU_FMUL,4,{184,186,0},{AGX3_ALU_HINT_DISCARD,AGX3_ALU_HINT_DISCARD,AGX3_ALU_HINT_NONE},0,"293b1d390005"},
+      {AGX3_ALU_FMA,168,{2,0,4},{AGX3_ALU_HINT_CACHE,AGX3_ALU_HINT_CACHE,AGX3_ALU_HINT_CACHE},4,"4981468301840270"},
+      {AGX3_ALU_FMA,172,{6,4,152},{AGX3_ALU_HINT_CACHE,AGX3_ALU_HINT_DISCARD,AGX3_ALU_HINT_CACHE},0,"69054e8741980210"},
+      {AGX3_ALU_FMA,174,{152,6,154},{AGX3_ALU_HINT_CACHE,AGX3_ALU_HINT_DISCARD,AGX3_ALU_HINT_CACHE},0,"79074e99419a0214"},
+      {AGX3_ALU_FMA,150,{128,150,130},{AGX3_ALU_HINT_CACHE,AGX3_ALU_HINT_DISCARD,AGX3_ALU_HINT_CACHE},0,"b9170e8141820215"},
+      {AGX3_ALU_FMA,118,{160,86,162},{AGX3_ALU_HINT_CACHE,AGX3_ALU_HINT_DISCARD,AGX3_ALU_HINT_CACHE},0,"b957cea141a20204"},
+      {AGX3_ALU_FMA,70,{48,70,50},{AGX3_ALU_HINT_CACHE,AGX3_ALU_HINT_DISCARD,AGX3_ALU_HINT_CACHE},0,"39478eb100b2"},
+      {AGX3_ALU_FMA,38,{104,24,106},{AGX3_ALU_HINT_CACHE,AGX3_ALU_HINT_DISCARD,AGX3_ALU_HINT_CACHE},0,"39194ee900ea"},
+      {AGX3_ALU_FMA,2,{102,100,104},{AGX3_ALU_HINT_DISCARD,AGX3_ALU_HINT_DISCARD,AGX3_ALU_HINT_DISCARD},0,"19651e678068"},
+   };
+   for(unsigned i=0;i<sizeof(vectors)/sizeof(vectors[0]);i++) {
+      uint8_t bytes[AGX3_ALU_MAX_LENGTH],len;
+      assert(agx3_alu_float_reg(AGX_ISA_ENCODING_AGX3B,vectors[i].op,vectors[i].dest,
+         vectors[i].src,vectors[i].hints,vectors[i].wait,bytes,&len));
+      exact(bytes,len,vectors[i].bytes);
+   }
+   puts("Native full-bank FMUL/FMA:16 exact high-register/lifetime/wait vectors PASS");
+}
+
 int main(void){
+   test_native_high_float_registers();
    test_native_select_reg_imm();
    test_native_asr32();
    test_native_extract32();
