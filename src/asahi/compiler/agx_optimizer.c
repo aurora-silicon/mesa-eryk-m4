@@ -348,6 +348,15 @@ agx_optimizer_copyprop(agx_context *ctx, agx_instr **defs, agx_instr *I)
           !(def->src[0].size < src.size && agx_supports_zext(I, s)))
          continue;
 
+      /* AGX2 can carry the zero-extension modifier on integer arithmetic,
+       * but the grounded G17P iadd/imad forms are width-matched. Preserve the
+       * explicit 16-to-32 move so the AGX3 packer emits its witnessed
+       * COPY-low plus CLR-high sequence before full-width arithmetic. */
+      if (ctx->key && ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+          def->src[0].size == AGX_SIZE_16 && src.size == AGX_SIZE_32 &&
+          (I->op == AGX_OPCODE_IADD || I->op == AGX_OPCODE_IMAD))
+         continue;
+
       /* Optimize split(64-bit uniform) so we can get better copyprop of the
        * 32-bit uniform parts. This helps reduce moves with 64-bit uniforms.
        */
