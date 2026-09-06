@@ -39,7 +39,7 @@ int main(void)
    uint8_t retained[3][256], saved[3][256], group[128], viewport[40];
    struct hk_g17p_bind_state_upload uploads[3];
    const uint32_t counts[] = {2, 0x20000, 0};
-   const uint32_t bases[] = {0x200000, 0x200100, 0x220000};
+   const uint32_t bases[] = {0x800000, 0x800100, 0x820000};
    for (unsigned draw = 0; draw < 3; ++draw) {
       memset(retained[draw], 0xa5, sizeof(retained[draw]));
       memset(group, 0x10 + draw, sizeof(group));
@@ -94,7 +94,7 @@ int main(void)
    }
    assert(indices[0][4] == 0 && indices[1][4] == 1 && indices[2][4] == 0);
    assert(pointers[0] != pointers[1] && pointers[1] != pointers[2]);
-   const uint64_t bad[] = {0, 3, 0x1ffffc, 0x200001, 0x1fffffc,
+   const uint64_t bad[] = {0, 3, 0x7ffffc, 0x800001, 0x1fffffc,
                           0x2000000, 0x1000200000, 0x10000000000, UINT64_MAX};
    for (unsigned i = 0; i < sizeof(bad) / sizeof(bad[0]); ++i) {
       uint32_t untouched = 0xdeadbeef;

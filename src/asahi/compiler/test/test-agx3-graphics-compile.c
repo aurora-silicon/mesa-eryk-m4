@@ -1616,6 +1616,7 @@ struct agx3_graphics_case {
    size_t expected_g17p_binary_size;
    bool compare_apple_g17p_vs;
    uint8_t expected_g17p_loads;
+   bool g17p_only;
 };
 
 static const struct agx3_graphics_case cases[] = {
@@ -1636,7 +1637,7 @@ static const struct agx3_graphics_case cases[] = {
    {"vs-g17p-half2-varying", build_vs_g17p_half2_varying, true,
     .expected_g17p_binary = mesa_g17p_half2_varying_vs,
     .expected_g17p_binary_size = sizeof(mesa_g17p_half2_varying_vs),
-    .expected_g17p_loads = 2},
+    .expected_g17p_loads = 2, .g17p_only = true},
    {"vs-vkcube-varyings", build_vs_vkcube_varyings, true},
    {"vs-vkcube-vbo-ubo", build_vs_vkcube_vbo_ubo, true, false,
     AGX_ABI_VUNI_COUNT_VK(2) + 8, 257},
@@ -1934,6 +1935,8 @@ main(int argc, char **argv)
 
    for (unsigned e = 0; e < ARRAY_SIZE(encodings); ++e) {
       for (unsigned i = 0; i < ARRAY_SIZE(cases); ++i) {
+         if (cases[i].g17p_only && encodings[e] != AGX_ISA_ENCODING_AGX3B)
+            continue;
          if (!run_case(&cases[i], encodings[e]))
             all_ok = false;
       }
