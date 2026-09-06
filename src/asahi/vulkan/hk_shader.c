@@ -1071,14 +1071,14 @@ lower_uniforms(nir_builder *b, nir_intrinsic_instr *intr, void *data)
 }
 
 /* The native G17P flat path takes the C coefficient directly. Its launch
- * admission currently permits only triangle lists, so the first-fan B/C
- * selection is unreachable. Keep that topology restriction paired with this
- * lowering; do not import a root pointer and perform a redundant per-pixel
- * select for a topology this path never executes.
+ * admission currently permits only non-fan triangle primitives, so the
+ * first-fan B/C selection is unreachable. Keep that topology restriction
+ * paired with this lowering; do not import a root pointer and perform a
+ * redundant per-pixel select for a topology this path never executes.
  */
 static bool
-hk_g17p_lower_flat_triangle_list(nir_builder *b, nir_intrinsic_instr *intr,
-                                 UNUSED void *data)
+hk_g17p_lower_flat_nonfan_triangles(nir_builder *b, nir_intrinsic_instr *intr,
+                                    UNUSED void *data)
 {
    if (intr->intrinsic != nir_intrinsic_load_is_first_fan_agx)
       return false;
@@ -1258,7 +1258,8 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
       NIR_PASS(_, nir, agx_nir_lower_interpolation);
       if (dev->dev.chip == AGX_CHIP_G17P) {
          NIR_PASS(_, nir, nir_shader_intrinsics_pass,
-                  hk_g17p_lower_flat_triangle_list, nir_metadata_control_flow, NULL);
+                  hk_g17p_lower_flat_nonfan_triangles,
+                  nir_metadata_control_flow, NULL);
       }
    } else if (sw_stage == MESA_SHADER_TESS_EVAL ||
               sw_stage == MESA_SHADER_TESS_CTRL) {
