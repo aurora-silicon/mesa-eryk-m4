@@ -1173,7 +1173,7 @@ test_g17p_rt0_eot_program(void)
 
    struct hk_agx3_g17p_rt0_eot_program_desc mrt = desc;
    mrt.shader_binary_size = 120;
-   mrt.nr_gprs = 12;
+   mrt.nr_gprs = 8;
    mrt.staging_halfs = 16;
    mrt.attachment_count = 2;
    mrt.imageblock_offset1_B = 8;

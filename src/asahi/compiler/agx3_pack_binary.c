@@ -3115,7 +3115,10 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
          0x57, 0x20, 0x54, 0x08, 0x00, 0x10, 0x00, 0x90,
          0xa8, 0x75, 0x00, 0x00, 0x0e, 0x00, 0x00, 0x00,
       };
-      ctx->max_reg = MAX2(ctx->max_reg, 11);
+      /* Native common field0=3 is three 32-bit GPRs. The text's only GPR
+       * COPY destinations are halves4/5, so retain the eight-half bound used
+       * by the matching RT0 builtin. D=32 independently needs16 staging. */
+      ctx->max_reg = MAX2(ctx->max_reg, 7);
       ctx->agx3_staging_halfs = MAX2(ctx->agx3_staging_halfs, 16);
       return agx3_append(emission, g17p_wboit_mrt_eot,
                          sizeof(g17p_wboit_mrt_eot));

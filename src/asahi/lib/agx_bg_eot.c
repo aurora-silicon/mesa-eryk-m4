@@ -32,7 +32,7 @@ agx_g17p_rt0_eot_text_supported(const struct agx_shader_part *bin)
                     bin->info.nr_gprs == 8 &&
                     bin->info.agx3_staging_halfs == 8;
    const bool wboit_mrt = bin && bin->info.binary_size == 120 &&
-                          bin->info.nr_gprs == 12 &&
+                          bin->info.nr_gprs == 8 &&
                           bin->info.agx3_staging_halfs == 16;
    return bin && bin->binary && (rt0 || wboit_mrt) &&
           bin->info.main_offset == 0 &&

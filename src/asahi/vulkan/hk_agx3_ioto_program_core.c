@@ -521,7 +521,7 @@ hk_agx3_g17p_rt0_eot_program_generate(
                     (desc->attachment_count == 0 ||
                      desc->attachment_count == 1);
    const bool wboit_mrt = desc && desc->shader_binary_size == 120 &&
-                          desc->nr_gprs == 12 &&
+                          desc->nr_gprs == 8 &&
                           desc->staging_halfs == 16 &&
                           desc->attachment_count == 2;
    if (!program || chip != AGX_CHIP_G17P || !desc || (!rt0 && !wboit_mrt) ||

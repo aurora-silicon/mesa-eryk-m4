@@ -1260,7 +1260,7 @@ test_g17p_eot_block_store(void)
    };
    ok &= mrt_compiled && part.info.binary_size == sizeof(expected_mrt) &&
          part.info.main_offset == 0 && part.info.main_size == sizeof(expected_mrt) &&
-         part.info.nr_gprs == 12 && part.info.agx3_staging_known &&
+         part.info.nr_gprs == 8 && part.info.agx3_staging_known &&
          part.info.agx3_staging_halfs == 16 &&
          memcmp(part.binary, expected_mrt, sizeof(expected_mrt)) == 0;
    if (mrt_compiled)
