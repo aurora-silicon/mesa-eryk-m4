@@ -32,8 +32,8 @@ struct hk_g17p_buffer_to_image_copy {
    uint32_t buffer_image_height;
 };
 
-/* The HAL200 upload path renders an RGBA8 or RGB10A2 staging buffer into
- * one complete, single-layer 2D image; explicit padded row strides are valid.
- */
+/* Native uncompressed color uploads preserve rectangles and mip/layer
+ * subresources. Multi-layer regions are split into native single-layer
+ * passes without changing source layout or copying index/pixel data. */
 bool hk_g17p_buffer_to_image_copy_supported(
    const struct hk_g17p_buffer_to_image_copy *copy);

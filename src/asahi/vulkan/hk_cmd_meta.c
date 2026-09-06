@@ -1475,11 +1475,9 @@ hk_g17p_copy_buffer_to_image_supported(
    struct hk_device *dev, const struct hk_image *image,
    const VkCopyBufferToImageInfo2 *info)
 {
-   if (info->regionCount != 1)
-      return false;
-
-   const VkBufferImageCopy2 *region = &info->pRegions[0];
-   return hk_g17p_buffer_to_image_copy_supported(
+   for (unsigned i = 0; i < info->regionCount; ++i) {
+      const VkBufferImageCopy2 *region = &info->pRegions[i];
+      if (!hk_g17p_buffer_to_image_copy_supported(
       &(const struct hk_g17p_buffer_to_image_copy){
          .chip = dev->dev.chip,
          .format = image->vk.format,
@@ -1498,7 +1496,10 @@ hk_g17p_copy_buffer_to_image_supported(
          .copy_extent = region->imageExtent,
          .buffer_row_length = region->bufferRowLength,
          .buffer_image_height = region->bufferImageHeight,
-      });
+      }))
+         return false;
+   }
+   return true;
 }
 
 static bool
@@ -1534,8 +1535,51 @@ hk_CmdCopyBufferToImage2(VkCommandBuffer commandBuffer,
       struct vk_meta_copy_image_properties dst_props =
          hk_meta_copy_get_image_properties(dst_image);
 
-      vk_meta_copy_buffer_to_image(&cmd->vk, &dev->meta, pCopyBufferToImageInfo,
-                                   &dst_props, bind_point);
+      if (dev->dev.chip == AGX_CHIP_G17P) {
+         /* Native single-layer EOT views already select the mip and base
+          * layer. Keep source row/image strides intact while splitting only
+          * multi-layer regions; no staging copy or compute expansion. */
+         for (unsigned r = 0; r < pCopyBufferToImageInfo->regionCount; ++r) {
+            VkBufferImageCopy2 region = pCopyBufferToImageInfo->pRegions[r];
+            const uint32_t layers =
+               vk_image_subresource_layer_count(&dst_image->vk,
+                                                &region.imageSubresource);
+            const uint64_t rows = region.bufferImageHeight ?
+                                     region.bufferImageHeight : region.imageExtent.height;
+            const uint64_t columns = region.bufferRowLength ?
+                                        region.bufferRowLength : region.imageExtent.width;
+            const uint64_t pixel_size = vk_format_get_blocksize(dst_image->vk.format);
+            if (columns > UINT64_MAX / rows ||
+                columns * rows > UINT64_MAX / pixel_size) {
+               vk_command_buffer_set_error(&cmd->vk, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+               break;
+            }
+            const uint64_t stride = columns * rows * pixel_size;
+            const uint64_t offset = region.bufferOffset;
+            if (layers > 1 && stride > (UINT64_MAX - offset) / (layers - 1)) {
+               vk_command_buffer_set_error(&cmd->vk, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+               break;
+            }
+            const uint32_t base_layer = region.imageSubresource.baseArrayLayer;
+            region.imageSubresource.layerCount = 1;
+            VkCopyBufferToImageInfo2 info = *pCopyBufferToImageInfo;
+            info.regionCount = 1;
+            info.pRegions = &region;
+            for (uint32_t layer = 0; layer < layers; ++layer) {
+               region.imageSubresource.baseArrayLayer = base_layer + layer;
+               region.bufferOffset = offset + layer * stride;
+               vk_meta_copy_buffer_to_image(&cmd->vk, &dev->meta, &info,
+                                            &dst_props, bind_point);
+               if (vk_command_buffer_has_error(&cmd->vk))
+                  break;
+            }
+            if (vk_command_buffer_has_error(&cmd->vk))
+               break;
+         }
+      } else {
+         vk_meta_copy_buffer_to_image(&cmd->vk, &dev->meta, pCopyBufferToImageInfo,
+                                      &dst_props, bind_point);
+      }
    } else {
       hk_meta_copy_buffer_to_image2(&cmd->vk, &dev->meta,
                                     pCopyBufferToImageInfo);

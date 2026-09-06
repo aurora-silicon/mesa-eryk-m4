@@ -16,14 +16,28 @@ hk_g17p_buffer_to_image_copy_supported(
         copy->layout != VK_IMAGE_LAYOUT_GENERAL) ||
        copy->image_type != VK_IMAGE_TYPE_2D ||
        copy->samples != VK_SAMPLE_COUNT_1_BIT || copy->plane_count != 1 ||
-       copy->mip_levels != 1 || copy->array_layers != 1 ||
-       copy->aspect != VK_IMAGE_ASPECT_COLOR_BIT || copy->mip_level != 0 ||
-       copy->base_array_layer != 0 || copy->layer_count != 1 ||
-       copy->image_offset.x != 0 || copy->image_offset.y != 0 ||
+       copy->mip_levels == 0 || copy->array_layers == 0 ||
+       copy->aspect != VK_IMAGE_ASPECT_COLOR_BIT ||
+       copy->mip_level >= copy->mip_levels || copy->mip_level >= 32 ||
+       copy->base_array_layer >= copy->array_layers ||
+       copy->layer_count == 0 ||
+       (copy->layer_count != VK_REMAINING_ARRAY_LAYERS &&
+        copy->layer_count > copy->array_layers - copy->base_array_layer) ||
+       copy->image_offset.x < 0 || copy->image_offset.y < 0 ||
        copy->image_offset.z != 0 || copy->image_extent.depth != 1 ||
        copy->copy_extent.depth != 1 ||
-       copy->copy_extent.width != copy->image_extent.width ||
-       copy->copy_extent.height != copy->image_extent.height)
+       copy->image_extent.width == 0 || copy->image_extent.height == 0 ||
+       copy->copy_extent.width == 0 || copy->copy_extent.height == 0)
+      return false;
+
+   const uint32_t width = copy->image_extent.width >> copy->mip_level;
+   const uint32_t height = copy->image_extent.height >> copy->mip_level;
+   const uint32_t mip_width = width ? width : 1;
+   const uint32_t mip_height = height ? height : 1;
+   const uint32_t x = copy->image_offset.x, y = copy->image_offset.y;
+   if (x >= mip_width || y >= mip_height ||
+       copy->copy_extent.width > mip_width - x ||
+       copy->copy_extent.height > mip_height - y)
       return false;
 
    return (copy->buffer_row_length == 0 ||
