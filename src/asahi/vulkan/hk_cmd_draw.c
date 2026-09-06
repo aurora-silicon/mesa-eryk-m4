@@ -350,7 +350,22 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
          ? HK_AGX3_G17P_WBOIT_MRT_CLEAR_PUSH_HALFS
          : HK_AGX3_G17P_RT0_CLEAR_PUSH_HALFS;
 
-   struct agx_bg_eot_shader *shader = agx_get_bg_eot_shader(&dev->bg_eot, key);
+   static int rt1_via_slot0 = -1;
+   if (rt1_via_slot0 < 0)
+      rt1_via_slot0 = debug_get_bool_option(
+         "HK_G17P_WBOIT_EOT_RT1_VIA_SLOT0", false);
+   const bool diagnostic_rt1_slot0 =
+      store && wboit_mrt_active && rt1_via_slot0;
+   struct agx_bg_eot_key shader_key = *key;
+   if (diagnostic_rt1_slot0) {
+      shader_key.op[1] = AGX_BG_EOT_NONE;
+      shader_key.tib.logical_format[0] = PIPE_FORMAT_R8_UNORM;
+      shader_key.tib.logical_format[1] = PIPE_FORMAT_NONE;
+      shader_key.tib._offset_B[0] = 0;
+   }
+
+   struct agx_bg_eot_shader *shader =
+      agx_get_bg_eot_shader(&dev->bg_eot, &shader_key);
    const bool shader_resources_match =
       shader &&
       (store || (op == AGX_BG_EOT_NONE
@@ -427,11 +442,13 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
                     "native PBE table stride");
 
       struct hk_native_pbe_descriptor pbe_arguments[2] = {
-         iview->planes[0].eot,
+         diagnostic_rt1_slot0 ? iview1->planes[0].eot
+                              : iview->planes[0].eot,
       };
-      if (wboit_mrt_active)
+      if (wboit_mrt_active && !diagnostic_rt1_slot0)
          pbe_arguments[1] = iview1->planes[0].eot;
-      const size_t pbe_argument_size = wboit_mrt_active
+      const size_t pbe_argument_size =
+         wboit_mrt_active && !diagnostic_rt1_slot0
          ? AGX_IOTO_G17P_WBOIT_MRT_PBE_ARGUMENT_SIZE
          : AGX_IOTO_G17P_RT0_PBE_ARGUMENT_SIZE;
       const uint64_t pbe_argument_va =
@@ -443,9 +460,12 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
          .program_va = program_bo->va->addr,
          .shader_va = shader->ptr + shader->info.main_offset,
          .pbe_argument_va = pbe_argument_va,
-         .imageblock_offset_B = agx_tilebuffer_offset_B(&key->tib, 0),
-         .attachment_count = wboit_mrt_active ? 2 : 1,
-         .imageblock_offset1_B = wboit_mrt_active
+         .imageblock_offset_B = agx_tilebuffer_offset_B(
+            &key->tib, diagnostic_rt1_slot0 ? 1 : 0),
+         .attachment_count =
+            wboit_mrt_active && !diagnostic_rt1_slot0 ? 2 : 1,
+         .imageblock_offset1_B =
+            wboit_mrt_active && !diagnostic_rt1_slot0
             ? agx_tilebuffer_offset_B(&key->tib, 1) : 0,
          .shader_binary_size = shader->info.binary_size,
          .scratch_size = shader->info.scratch_size,
