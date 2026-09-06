@@ -388,8 +388,9 @@ struct hk_cs {
       struct hk_scratch_req fs;
    } scratch;
 
-   /* Immediate writes, type libagx_imm_write. These all happen in parallel at
-    * the end of the control stream. This accelerates queries. Implies CDM.
+   /* Immediate writes, type libagx_imm_write. These happen at the end of the
+    * control stream (parallel on AGX2, native ordered stores on G17P). This
+    * accelerates queries. Implies CDM.
     */
    struct util_dynarray imm_writes;
 
@@ -968,6 +969,12 @@ void hk_dispatch_precomp(struct hk_cmd_buffer *cmd, struct agx_grid grid,
 
 void hk_queue_write(struct hk_cmd_buffer *cmd, uint64_t address, uint32_t value,
                     bool after_gfx);
+
+/* Dispatch the native G17P raw-address fill meta shader into an explicitly
+ * selected compute stream.  The target may be the ordinary or post-graphics
+ * stream; the latter preserves query-availability ordering. */
+void hk_g17p_meta_fill_addr(struct hk_cmd_buffer *cmd, struct hk_cs **target,
+                            uint64_t address, uint64_t size, uint32_t value);
 
 void agx_fill_velem_keys(const struct vk_vertex_input_state *vi,
                          uint64_t attribs_read, struct agx_velem_key *keys);

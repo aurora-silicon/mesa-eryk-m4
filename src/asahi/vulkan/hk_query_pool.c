@@ -143,13 +143,24 @@ hk_dispatch_imm_writes(struct hk_cmd_buffer *cmd, struct hk_cs *cs)
 
    perf_debug(cmd, "Queued writes");
 
-   uint64_t params =
-      hk_pool_upload(cmd, cs->imm_writes.data, cs->imm_writes.size, 16);
-
    uint32_t count =
       util_dynarray_num_elements(&cs->imm_writes, struct libagx_imm_write);
    assert(count > 0);
 
+   if (dev->dev.chip == AGX_CHIP_G17P) {
+      struct hk_cs *target = cs;
+      util_dynarray_foreach(&cs->imm_writes, struct libagx_imm_write, write) {
+         hk_g17p_meta_fill_addr(cmd, &target, write->address,
+                                sizeof(write->value), write->value);
+         if (vk_command_buffer_has_error(&cmd->vk))
+            return;
+      }
+      assert(target == cs);
+      return;
+   }
+
+   uint64_t params =
+      hk_pool_upload(cmd, cs->imm_writes.data, cs->imm_writes.size, 16);
    libagx_write_u32s(cmd, agx_1d(count), AGX_BARRIER_ALL | AGX_POSTGFX, params);
 }
 
@@ -185,7 +196,80 @@ hk_queue_write(struct hk_cmd_buffer *cmd, uint64_t address, uint32_t value,
    hk_cdm_cache_flush(dev, cs);
 
    perf_debug(cmd, "Queued write");
+   if (dev->dev.chip == AGX_CHIP_G17P) {
+      hk_g17p_meta_fill_addr(cmd, &cmd->current_cs.cs, address,
+                             sizeof(value), value);
+      return;
+   }
+
    libagx_write_u32(cmd, agx_1d(1), AGX_BARRIER_ALL, address, value);
+}
+
+static void
+emit_zero_queries_g17p(struct hk_cmd_buffer *cmd, struct hk_query_pool *pool,
+                       uint32_t first_index, uint32_t num_queries,
+                       bool set_available)
+{
+   struct hk_device *dev = hk_cmd_buffer_device(cmd);
+
+   if (first_index > pool->vk.query_count ||
+       num_queries > pool->vk.query_count - first_index) {
+      vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+      return;
+   }
+   if (num_queries == 0)
+      return;
+
+   switch (pool->vk.query_type) {
+   case VK_QUERY_TYPE_TIMESTAMP: {
+      if (hk_reports_per_query(pool) != 1 || pool->query_stride != 8) {
+         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+         return;
+      }
+
+      const uint64_t address = pool->bo->va->addr +
+                               hk_query_offset(pool, first_index);
+      const uint64_t size = (uint64_t)num_queries * pool->query_stride;
+      hk_g17p_meta_fill_addr(cmd, &cmd->current_cs.cs, address, size,
+                             set_available ? 0 : UINT32_MAX);
+      return;
+   }
+
+   case VK_QUERY_TYPE_OCCLUSION: {
+      if (hk_reports_per_query(pool) != 1 || pool->query_stride != 8 ||
+          pool->oq_queries != pool->vk.query_count) {
+         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+         return;
+      }
+
+      hk_g17p_meta_fill_addr(cmd, &cmd->current_cs.cs,
+                             pool->bo->va->addr +
+                                (uint64_t)first_index * sizeof(uint32_t),
+                             (uint64_t)num_queries * sizeof(uint32_t),
+                             set_available ? 1 : 0);
+      if (vk_command_buffer_has_error(&cmd->vk))
+         return;
+
+      /* The hardware counters live in a shared descriptor heap and the query
+       * pool contains a CPU-populated u16 remap.  Clear each exact 64-bit
+       * counter address; never assume separately allocated slots are adjacent. */
+      for (uint32_t i = 0; i < num_queries; ++i) {
+         uint64_t report =
+            hk_query_report_addr(dev, pool, first_index + i);
+         hk_g17p_meta_fill_addr(cmd, &cmd->current_cs.cs, report,
+                                sizeof(uint64_t), 0);
+         if (vk_command_buffer_has_error(&cmd->vk))
+            return;
+      }
+      return;
+   }
+
+   default:
+      /* No native reset encoding is grounded for statistics, transform
+       * feedback, or any future query layout. */
+      vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+      return;
+   }
 }
 
 static void
@@ -195,6 +279,12 @@ emit_zero_queries(struct hk_cmd_buffer *cmd, struct hk_query_pool *pool,
 {
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
    perf_debug(cmd, "Query pool zero");
+
+   if (dev->dev.chip == AGX_CHIP_G17P) {
+      emit_zero_queries_g17p(cmd, pool, first_index, num_queries,
+                             set_available);
+      return;
+   }
 
    struct libagx_reset_query_args info = {
       .availability = hk_has_available(pool) ? pool->bo->va->addr : 0,

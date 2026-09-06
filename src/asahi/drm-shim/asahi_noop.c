@@ -92,6 +92,38 @@ asahi_ioctl_noop(int fd, unsigned long request, void *arg)
 }
 
 static int
+asahi_ioctl_gem_bind_object(int fd, unsigned long request, void *arg)
+{
+   struct drm_asahi_gem_bind_object *bind = arg;
+
+   switch (bind->op) {
+   case DRM_ASAHI_BIND_OBJECT_OP_BIND:
+      if (!bind->handle ||
+          bind->flags != DRM_ASAHI_BIND_OBJECT_USAGE_TIMESTAMPS) {
+         errno = EINVAL;
+         return -1;
+      }
+
+      /* The no-op winsys has no firmware object table.  Preserve a stable,
+       * nonzero identity so timestamp-pool recording exercises the same
+       * driver lifetime path without pretending an object was submitted. */
+      bind->object_handle = bind->handle;
+      return 0;
+
+   case DRM_ASAHI_BIND_OBJECT_OP_UNBIND:
+      if (!bind->object_handle) {
+         errno = EINVAL;
+         return -1;
+      }
+      return 0;
+
+   default:
+      errno = EINVAL;
+      return -1;
+   }
+}
+
+static int
 asahi_ioctl_gem_create(int fd, unsigned long request, void *arg)
 {
    struct shim_fd *shim_fd = drm_shim_fd_lookup(fd);
@@ -223,7 +255,7 @@ static ioctl_fn_t driver_ioctls[] = {
    [DRM_ASAHI_GEM_MMAP_OFFSET] = asahi_ioctl_gem_mmap_offset,
    [DRM_ASAHI_QUEUE_CREATE] = asahi_ioctl_noop,
    [DRM_ASAHI_QUEUE_DESTROY] = asahi_ioctl_noop,
-   [DRM_ASAHI_GEM_BIND_OBJECT] = asahi_ioctl_noop,
+   [DRM_ASAHI_GEM_BIND_OBJECT] = asahi_ioctl_gem_bind_object,
    [DRM_ASAHI_SUBMIT] = asahi_ioctl_noop,
 };
 

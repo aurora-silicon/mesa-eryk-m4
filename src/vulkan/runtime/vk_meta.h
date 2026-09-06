@@ -416,6 +416,14 @@ void vk_meta_fill_buffer(struct vk_command_buffer *cmd,
                          struct vk_meta_device *meta, VkBuffer buffer,
                          VkDeviceSize offset, VkDeviceSize size, uint32_t data);
 
+/* Fill a raw, naturally aligned device-address range.  This is the internal
+ * counterpart of vk_meta_fill_buffer() for driver-owned allocations which do
+ * not have a public VkBuffer wrapper. */
+void vk_meta_fill_buffer_addr(struct vk_command_buffer *cmd,
+                              struct vk_meta_device *meta,
+                              VkDeviceAddress address, VkDeviceSize size,
+                              uint32_t data);
+
 static inline enum glsl_sampler_dim
 vk_image_view_type_to_sampler_dim(VkImageViewType view_type)
 {

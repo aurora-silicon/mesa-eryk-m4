@@ -2594,24 +2594,27 @@ get_fill_buffer_pipeline(struct vk_device *device, struct vk_meta_device *meta,
 }
 
 void
-vk_meta_fill_buffer(struct vk_command_buffer *cmd, struct vk_meta_device *meta,
-                    VkBuffer buffer, VkDeviceSize offset, VkDeviceSize size,
-                    uint32_t data)
+vk_meta_fill_buffer_addr(struct vk_command_buffer *cmd,
+                         struct vk_meta_device *meta,
+                         VkDeviceAddress addr, VkDeviceSize size,
+                         uint32_t data)
 {
-   VK_FROM_HANDLE(vk_buffer, buf, buffer);
    struct vk_device *dev = cmd->base.device;
    const struct vk_physical_device *pdev = dev->physical;
    const struct vk_device_dispatch_table *disp = &dev->dispatch_table;
    VkResult result;
 
-   /* VK_WHOLE_SIZE rounds down to complete 32-bit words. Select the
-    * vector width from the actual address and complete range, so no vector
-    * store can cross the caller's requested interval. */
-   size = vk_buffer_range(buf, offset, size) & ~UINT64_C(3);
+   /* The raw-address entry point is for complete 32-bit words only.  Refuse a
+    * malformed internal request instead of allowing a vector store to cross
+    * the driver's allocation. */
+   if ((addr | size) & 3 || size > UINT64_MAX - addr) {
+      vk_command_buffer_set_error(cmd, VK_ERROR_FEATURE_NOT_PRESENT);
+      return;
+   }
+
    if (size == 0)
       return;
 
-   const uint64_t addr = vk_meta_buffer_address(dev, buffer, offset, size);
    const uint32_t max_chunk = MAX2(meta->buffer_access.max_fill_chunk_size, 4);
    assert(util_is_power_of_two_nonzero(max_chunk) && max_chunk <= 16);
 
@@ -2648,7 +2651,7 @@ vk_meta_fill_buffer(struct vk_command_buffer *cmd, struct vk_meta_device *meta,
    while (size > 0) {
       struct vk_meta_fill_buffer_info args = {
          .size = MIN2(size, max_per_dispatch_size),
-         .buf_addr = vk_meta_buffer_address(dev, buffer, offset, size),
+         .buf_addr = addr,
          .data = data,
       };
       uint32_t wg_count = DIV_ROUND_UP(args.size, per_wg_copy_size);
@@ -2659,7 +2662,24 @@ vk_meta_fill_buffer(struct vk_command_buffer *cmd, struct vk_meta_device *meta,
 
       disp->CmdDispatch(vk_command_buffer_to_handle(cmd), wg_count, 1, 1);
 
-      offset += args.size;
+      addr += args.size;
       size -= args.size;
    }
+}
+
+void
+vk_meta_fill_buffer(struct vk_command_buffer *cmd, struct vk_meta_device *meta,
+                    VkBuffer buffer, VkDeviceSize offset, VkDeviceSize size,
+                    uint32_t data)
+{
+   VK_FROM_HANDLE(vk_buffer, buf, buffer);
+
+   /* VK_WHOLE_SIZE rounds down to complete 32-bit words. */
+   size = vk_buffer_range(buf, offset, size) & ~UINT64_C(3);
+   if (size == 0)
+      return;
+
+   VkDeviceAddress addr =
+      vk_meta_buffer_address(cmd->base.device, buffer, offset, size);
+   vk_meta_fill_buffer_addr(cmd, meta, addr, size, data);
 }

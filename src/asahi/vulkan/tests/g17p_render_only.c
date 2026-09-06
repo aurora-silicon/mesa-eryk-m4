@@ -40,6 +40,9 @@ VK_FN(vkGetDeviceProcAddr);
 VK_FN(vkCreateInstance);
 VK_FN(vkEnumeratePhysicalDevices);
 VK_FN(vkGetPhysicalDeviceProperties);
+#ifdef G17P_OCCLUSION_QUERY
+VK_FN(vkGetPhysicalDeviceFeatures);
+#endif
 VK_FN(vkGetPhysicalDeviceMemoryProperties);
 VK_FN(vkGetPhysicalDeviceQueueFamilyProperties);
 VK_FN(vkGetPhysicalDeviceFormatProperties);
@@ -71,6 +74,13 @@ VK_FN(vkEndCommandBuffer);
 VK_FN(vkCreateFence);
 VK_FN(vkQueueSubmit);
 VK_FN(vkWaitForFences);
+#ifdef G17P_OCCLUSION_QUERY
+VK_FN(vkCreateQueryPool);
+VK_FN(vkCmdResetQueryPool);
+VK_FN(vkCmdBeginQuery);
+VK_FN(vkCmdEndQuery);
+VK_FN(vkGetQueryPoolResults);
+#endif
 
 static void
 die(const char *what)
@@ -171,6 +181,9 @@ main(void)
    LOAD_INSTANCE(instance, vkGetDeviceProcAddr);
    LOAD_INSTANCE(instance, vkEnumeratePhysicalDevices);
    LOAD_INSTANCE(instance, vkGetPhysicalDeviceProperties);
+#ifdef G17P_OCCLUSION_QUERY
+   LOAD_INSTANCE(instance, vkGetPhysicalDeviceFeatures);
+#endif
    LOAD_INSTANCE(instance, vkGetPhysicalDeviceMemoryProperties);
    LOAD_INSTANCE(instance, vkGetPhysicalDeviceQueueFamilyProperties);
    LOAD_INSTANCE(instance, vkGetPhysicalDeviceFormatProperties);
@@ -236,6 +249,13 @@ main(void)
    fprintf(stderr, "g17p-render-only: device %s, queue %u\n",
            properties.deviceName, queue_family);
 
+#ifdef G17P_OCCLUSION_QUERY
+   VkPhysicalDeviceFeatures physical_features;
+   vkGetPhysicalDeviceFeatures(physical, &physical_features);
+   if (!physical_features.occlusionQueryPrecise)
+      die("T8140 does not advertise precise occlusion queries");
+#endif
+
    const float queue_priority = 1.0f;
    const VkDeviceQueueCreateInfo queue_info = {
       .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
@@ -247,6 +267,11 @@ main(void)
       .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
       .queueCreateInfoCount = 1,
       .pQueueCreateInfos = &queue_info,
+#ifdef G17P_OCCLUSION_QUERY
+      .pEnabledFeatures = &(const VkPhysicalDeviceFeatures){
+         .occlusionQueryPrecise = VK_TRUE,
+      },
+#endif
    };
    VkDevice device;
    check(vkCreateDevice(physical, &device_info, NULL, &device),
@@ -279,6 +304,13 @@ main(void)
    LOAD_DEVICE(device, vkCreateFence);
    LOAD_DEVICE(device, vkQueueSubmit);
    LOAD_DEVICE(device, vkWaitForFences);
+#ifdef G17P_OCCLUSION_QUERY
+   LOAD_DEVICE(device, vkCreateQueryPool);
+   LOAD_DEVICE(device, vkCmdResetQueryPool);
+   LOAD_DEVICE(device, vkCmdBeginQuery);
+   LOAD_DEVICE(device, vkCmdEndQuery);
+   LOAD_DEVICE(device, vkGetQueryPoolResults);
+#endif
 
    VkQueue queue;
    vkGetDeviceQueue(device, queue_family, 0, &queue);
@@ -578,6 +610,17 @@ main(void)
    };
    check(vkBeginCommandBuffer(command_buffer, &begin_info),
          "vkBeginCommandBuffer");
+#ifdef G17P_OCCLUSION_QUERY
+   const VkQueryPoolCreateInfo query_info = {
+      .sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO,
+      .queryType = VK_QUERY_TYPE_OCCLUSION,
+      .queryCount = 1,
+   };
+   VkQueryPool query_pool;
+   check(vkCreateQueryPool(device, &query_info, NULL, &query_pool),
+         "vkCreateQueryPool(occlusion)");
+   vkCmdResetQueryPool(command_buffer, query_pool, 0, 1);
+#endif
    const VkClearValue clear = {.color = {{0.0f, 0.0f, 0.0f, 1.0f}}};
    const VkRenderPassBeginInfo render_begin = {
       .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
@@ -594,12 +637,26 @@ main(void)
    const VkDeviceSize vertex_offset = 0;
    vkCmdBindVertexBuffers(command_buffer, 0, 1, &vertex_buffer,
                           &vertex_offset);
+#ifdef G17P_OCCLUSION_QUERY
+   vkCmdBeginQuery(command_buffer, query_pool, 0,
+                   VK_QUERY_CONTROL_PRECISE_BIT);
+#endif
    vkCmdDraw(command_buffer, 3, 1, 0, 0);
+#ifdef G17P_OCCLUSION_QUERY
+   vkCmdEndQuery(command_buffer, query_pool, 0);
+#endif
    vkCmdEndRenderPass(command_buffer);
 
 
    check(vkEndCommandBuffer(command_buffer), "vkEndCommandBuffer");
    fprintf(stderr, "g17p-render-only: command buffer recorded\n");
+
+#ifdef G17P_OCCLUSION_QUERY
+   if (getenv("G17P_QUERY_RECORD_ONLY")) {
+      puts("g17p-occlusion-query: record-only PASS");
+      return EXIT_SUCCESS;
+   }
+#endif
 
    const VkFenceCreateInfo fence_info = {
       .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
@@ -628,6 +685,22 @@ main(void)
               waited);
       return EXIT_FAILURE;
    }
+
+#ifdef G17P_OCCLUSION_QUERY
+   struct {
+      uint64_t samples;
+      uint64_t available;
+   } query_result = {0};
+   check(vkGetQueryPoolResults(device, query_pool, 0, 1,
+                               sizeof(query_result), &query_result,
+                               sizeof(query_result),
+                               VK_QUERY_RESULT_64_BIT |
+                                  VK_QUERY_RESULT_WITH_AVAILABILITY_BIT),
+         "vkGetQueryPoolResults(occlusion)");
+   if (query_result.available != 1 ||
+       query_result.samples != IMAGE_WIDTH * IMAGE_HEIGHT)
+      die("precise occlusion result differs from the full viewport");
+#endif
 
    /* Verify PIXELS, not just the fence. The clear is opaque black and the
     * vertex data is a full-viewport triangle, so a correct render leaves NO

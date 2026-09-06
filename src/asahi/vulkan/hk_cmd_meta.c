@@ -208,6 +208,38 @@ hk_meta_end(struct hk_cmd_buffer *cmd, struct hk_meta_save *save,
    cmd->in_meta = false;
 }
 
+void
+hk_g17p_meta_fill_addr(struct hk_cmd_buffer *cmd, struct hk_cs **target,
+                       uint64_t address, uint64_t size, uint32_t value)
+{
+   struct hk_device *dev = hk_cmd_buffer_device(cmd);
+   if (dev->dev.chip != AGX_CHIP_G17P || !target || !address ||
+       ((address | size) & 3)) {
+      vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+      return;
+   }
+
+   /* vk_meta dispatches into current_cs.cs.  Select the caller's exact CDM
+    * stream for the duration of this internal dispatch so a post-graphics
+    * availability store cannot migrate ahead of its producing VDM stream. */
+   struct hk_cs *saved = NULL;
+   const bool redirect = target != &cmd->current_cs.cs;
+   if (redirect) {
+      saved = cmd->current_cs.cs;
+      cmd->current_cs.cs = *target;
+   }
+
+   struct hk_meta_save save;
+   hk_meta_begin(cmd, &save, VK_PIPELINE_BIND_POINT_COMPUTE);
+   vk_meta_fill_buffer_addr(&cmd->vk, &dev->meta, address, size, value);
+   hk_meta_end(cmd, &save, VK_PIPELINE_BIND_POINT_COMPUTE);
+
+   if (redirect) {
+      *target = cmd->current_cs.cs;
+      cmd->current_cs.cs = saved;
+   }
+}
+
 #define BINDING_OUTPUT 0
 #define BINDING_INPUT  1
 
