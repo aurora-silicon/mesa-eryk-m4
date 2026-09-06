@@ -614,6 +614,44 @@ test_g17p_background_clear(void)
 }
 
 static bool
+test_g17p_background_f16_clear_narrowing(void)
+{
+   nir_builder b = nir_builder_init_simple_shader(
+      MESA_SHADER_FRAGMENT, &agx_nir_options, "G17P f16 background clear");
+   b.shader->info.internal = true;
+   nir_store_local_pixel_agx(
+      &b, nir_load_preamble(&b, 4, 32, .base = 4),
+      nir_imm_intN_t(&b, 0xff, 16), nir_undef(&b, 2, 16), .base = 0,
+      .write_mask = 0xf, .format = PIPE_FORMAT_R16_FLOAT);
+   nir_shader *nir = fs_finish(&b);
+
+   struct agx_shader_key key = {
+      .dev.encoding = AGX_ISA_ENCODING_AGX3B,
+      .fs.ignore_tib_dependencies = true,
+      .reserved_preamble = 12,
+      .no_preamble = true,
+   };
+   struct agx_shader_part part = {0};
+   const bool compiled = agx_compile_shader_nir(nir, &key, &part);
+   static const uint8_t expected[] =
+      "\x0b\x04\x01\x08\x01\x01\x1c\x81\x00\x02"
+      "\x1b\x06\x01\x08\x01\x03\x1c\x81\x04\x02"
+      "\x1b\x08\x01\x08\x11\x03\x1c\x81\x00\x02"
+      "\x2b\x0a\x01\x08\x11\x05\x1c\x81\x04\x02"
+      "\xe7\x06\x54\x00\x00\x00\x01\x0e\x00\x00\x00\x00"
+      "\x0e\x00\x00\x00";
+   const bool ok = compiled && part.binary != NULL &&
+                   part.info.binary_size == sizeof(expected) - 1 &&
+                   !memcmp(part.binary, expected, sizeof(expected) - 1);
+   if (!ok)
+      fprintf(stderr, "AGX3b f16 background-clear narrowing mismatch\n");
+
+   free(part.binary);
+   ralloc_free(nir);
+   return ok;
+}
+
+static bool
 test_g17p_background_reload_staging(void)
 {
    nir_builder b = nir_builder_init_simple_shader(
@@ -1778,6 +1816,12 @@ main(int argc, char **argv)
       fprintf(stderr, "G17P background reload staging: %s\n", ok ? "PASS" : "FAIL");
       return ok ? 0 : 1;
    }
+   if (argc == 2 && !strcmp(argv[1], "--f16-clear-only")) {
+      const bool ok = test_g17p_background_f16_clear_narrowing();
+      fprintf(stderr, "G17P f16 background clear narrowing: %s\n",
+              ok ? "PASS" : "FAIL");
+      return ok ? 0 : 1;
+   }
    const enum agx_isa_encoding encodings[] = {
       AGX_ISA_ENCODING_AGX3B,
       AGX_ISA_ENCODING_AGX3C,
@@ -1808,6 +1852,8 @@ main(int argc, char **argv)
    if (!test_g17p_background_reload_staging())
       return 1;
    if (!test_g17p_background_clear())
+      all_ok = false;
+   if (!test_g17p_background_f16_clear_narrowing())
       all_ok = false;
 
    for (unsigned e = 0; e < ARRAY_SIZE(encodings); ++e) {

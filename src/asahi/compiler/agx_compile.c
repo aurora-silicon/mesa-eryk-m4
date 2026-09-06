@@ -811,8 +811,24 @@ agx_emit_local_store_pixel(agx_builder *b, nir_intrinsic_instr *instr)
       agx_format_for_pipe(nir_intrinsic_format(instr));
 
    agx_index packed[4] = {agx_null()};
-   const unsigned nr_packed =
+   unsigned nr_packed =
       agx_pack_normalized_agx3(b, compacted, compact_count, format, packed);
+
+   /* AGX3's tile store encodes only the lane width.  Unlike AGX2 it cannot
+    * narrow an f32 colour to the f16 lanes named by that width, so make the
+    * conversion explicit before collecting the store payload. */
+   if (b->shader->key->dev.encoding != AGX_ISA_ENCODING_AGX2 &&
+       format == AGX_FORMAT_F16 && nr_packed == 0) {
+      nr_packed = compact_count;
+      for (unsigned i = 0; i < compact_count; ++i) {
+         if (compacted[i].size == AGX_SIZE_32) {
+            packed[i] = agx_temp(b->shader, AGX_SIZE_16);
+            agx_fmov_to(b, packed[i], compacted[i]);
+         } else {
+            packed[i] = compacted[i];
+         }
+      }
+   }
 
    agx_index collected =
       nr_packed ? agx_emit_collect(b, nr_packed, packed)
