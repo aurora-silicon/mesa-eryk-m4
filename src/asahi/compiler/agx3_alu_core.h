@@ -159,6 +159,26 @@ bool agx3_alu_bfeil(enum agx_isa_encoding enc, uint16_t dest, uint16_t source,
                     const enum agx3_alu_hint hints[2], uint16_t wait_mask,
                     uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *length);
 
+/* Extract32 bits from a low/high register pair at an immediate offset1..31.
+ * Native EXTRACT is one instruction and carries both source hints and waits. */
+bool agx3_alu_extract_imm32(enum agx_isa_encoding enc, uint16_t dest,
+                            const uint16_t low_high[2], unsigned shift,
+                            const enum agx3_alu_hint hints[2], bool dest_cache,
+                            uint16_t wait_mask,
+                            uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *length);
+
+/* Signed right shift by an immediate1..31, with native source lifetime/waits. */
+bool agx3_alu_asr_imm32(enum agx_isa_encoding enc, uint16_t dest, uint16_t source,
+                        unsigned shift, enum agx3_alu_hint hint, bool dest_cache,
+                        uint16_t wait_mask, uint8_t out[AGX3_ALU_MAX_LENGTH],
+                        uint8_t *length);
+
+bool agx3_alu_fcmp_select_reg_imm(enum agx_isa_encoding enc, uint16_t dest,
+                                  const uint16_t src[4], bool compare_zero, const bool immediate[2],
+                                  const enum agx3_alu_hint hints[4], unsigned condition,
+                                  bool dest_16, bool dest_cache, uint16_t wait_mask,
+                                  uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len);
+
 #ifdef __cplusplus
 }
 #endif

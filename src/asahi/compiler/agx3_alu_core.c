@@ -631,3 +631,93 @@ agx3_alu_shift_add16(enum agx_isa_encoding enc, uint16_t dest,
          fields[n++] = (struct agx3_field_kv){45 + i, 1};
    return agx3_bind_compose(enc, "iadd", 0, base, 6, fields, n, out, len);
 }
+
+bool
+agx3_alu_extract_imm32(enum agx_isa_encoding enc, uint16_t dest,
+                       const uint16_t low_high[2], unsigned shift,
+                       const enum agx3_alu_hint hints[2], bool dest_cache,
+                       uint16_t wait_mask,
+                       uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *length)
+{
+   if (enc != AGX_ISA_ENCODING_AGX3B || !out || !length || !low_high ||
+       !hints || dest>=192 || low_high[0]>=192 || low_high[1]>=192 ||
+       ((dest | low_high[0] | low_high[1]) & 1) || shift<1 || shift>31 ||
+       (unsigned)hints[0]>AGX3_ALU_HINT_CACHE ||
+       (unsigned)hints[1]>AGX3_ALU_HINT_CACHE || (wait_mask & ~0x3fu))
+      return false;
+   const struct agx3_field_kv base[] = {
+      {9,2},{10,2},{23,2},{24,2},{38,1},{39,2},{52,2},{53,2},
+   };
+   struct agx3_field_kv fields[16] = {
+      {2,dest},{11,dest_cache},{16,low_high[1]},{30,shift},{45,low_high[0]},
+      {25,hints[1]==AGX3_ALU_HINT_CACHE},{27,hints[1]==AGX3_ALU_HINT_DISCARD},
+      {54,hints[0]==AGX3_ALU_HINT_CACHE},{56,hints[0]==AGX3_ALU_HINT_DISCARD},
+      {57,0},
+   };
+   for(unsigned i=0;i<6;i++)
+      fields[10+i]=(struct agx3_field_kv){60+i,!!(wait_mask & (1u<<i))};
+   return agx3_bind_compose(enc,"extract",0,base,8,fields,16,out,length);
+}
+
+/* Native arithmetic right shift keeps signed fill without a second operation. */
+bool
+agx3_alu_asr_imm32(enum agx_isa_encoding enc, uint16_t dest, uint16_t source,
+                   unsigned shift, enum agx3_alu_hint hint, bool dest_cache,
+                   uint16_t wait_mask, uint8_t out[AGX3_ALU_MAX_LENGTH],
+                   uint8_t *length)
+{
+   if (enc != AGX_ISA_ENCODING_AGX3B || !out || !length ||
+       dest >= 192 || source >= 192 || ((dest | source) & 1) ||
+       shift < 1 || shift > 31 || (unsigned)hint > AGX3_ALU_HINT_CACHE ||
+       (wait_mask & ~0x3fu))
+      return false;
+   const struct agx3_field_kv base[] = {
+      {9,2},{10,2},{23,2},{24,2},{38,1},{39,2},
+   };
+   struct agx3_field_kv fields[13] = {
+      {2,dest},{11,dest_cache},{16,source},{30,shift},
+      {25,hint == AGX3_ALU_HINT_CACHE},{27,hint == AGX3_ALU_HINT_DISCARD},
+      {28,1},
+   };
+   for (unsigned i=0;i<6;i++)
+      fields[7+i]=(struct agx3_field_kv){45+i,!!(wait_mask & (1u<<i))};
+   return agx3_bind_compose(enc,"sra",0,base,6,fields,13,out,length);
+}
+
+bool agx3_alu_fcmp_select_reg_imm(enum agx_isa_encoding enc, uint16_t dest,
+                                  const uint16_t src[4], bool compare_zero, const bool immediate[2],
+                                  const enum agx3_alu_hint hints[4], unsigned condition,
+                                  bool dest_16, bool dest_cache, uint16_t wait_mask,
+                                  uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len)
+{
+   if (enc != AGX_ISA_ENCODING_AGX3B || !out || !len || !src || !immediate ||
+       !hints || dest>=256 || (!dest_16 && (dest&1)) ||
+       (condition!=0 && condition!=1 && condition!=2 && condition!=5 && condition!=6) ||
+       (wait_mask!=0 && wait_mask!=32) || (compare_zero && src[1]!=0))
+      return false;
+   for(unsigned i=0;i<4;i++) {
+      const bool imm=(i==1 && compare_zero) || (i>=2 && immediate[i-2]);
+      if(src[i]>=256 || (!imm && (i<2 || !dest_16) && (src[i]&1)) ||
+         (unsigned)hints[i]>AGX3_ALU_HINT_CACHE || (imm && hints[i]!=AGX3_ALU_HINT_NONE))
+         return false;
+   }
+   const struct agx3_field_kv base[]={
+      {10,2},{11,dest_16?1:2},{42,2},{43,2},{59,compare_zero?1:2},{60,2},
+      {76,immediate[0]?1:2},{77,dest_16?1:2},{93,immediate[1]?1:2},{94,dest_16?1:2},
+   };
+   struct agx3_field_kv fields[16]={
+      {3,dest},{12,dest_cache},{35,src[0]},{compare_zero?51:52,src[1]},
+      {immediate[0]?68:69,src[2]},{immediate[1]?85:86,src[3]},
+      {110,condition},{107,wait_mask==32},
+   };
+   const unsigned cache[]={44,61,78,95},discard[]={46,63,80,97};
+   unsigned n=8;
+   for(unsigned i=0;i<4;i++) if((i<2 && !(i==1 && compare_zero)) || (i>=2 && !immediate[i-2])) {
+      fields[n++]=(struct agx3_field_kv){cache[i],hints[i]==AGX3_ALU_HINT_CACHE};
+      fields[n++]=(struct agx3_field_kv){discard[i],hints[i]==AGX3_ALU_HINT_DISCARD};
+   }
+   for(unsigned ep=0;ep<28;ep++)
+      if(agx3_bind_compose(enc,"fsel",ep,base,10,fields,n,out,len))
+         return true;
+   return false;
+}

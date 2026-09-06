@@ -777,7 +777,9 @@ agx3_emit_texture_fetch(struct util_dynarray *emission,
        !agx3_tex_plain_reg(I->src[0]) ||
        I->src[0].size != AGX_SIZE_32 ||
        agx_channels(I->src[0]) != (I->dim == AGX_DIM_2D_ARRAY ? 3 : 2) ||
-       (I->src[0].value & 3) || I->src[0].value > 60 ||
+       (stage_coordinates ? ((I->src[0].value & 1) ||
+         I->src[0].value + 2 * agx_channels(I->src[0]) > 256) :
+         ((I->src[0].value & 3) || I->src[0].value > 60)) ||
        !agx3_tex_imm(I->src[1], 0) || !agx3_tex_imm(I->src[2], 0) ||
        (immediate ? I->src[3].value > 15 :
         (enc != AGX_ISA_ENCODING_AGX3B ||
@@ -3979,6 +3981,91 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             }
          }
 
+         /* Compare against literal floating zero and materialize a narrow
+          * integer boolean using the same native FSEL instruction. */
+         if (enc == AGX_ISA_ENCODING_AGX3B && I->op == AGX_OPCODE_FCMPSEL &&
+             I->nr_dests==1 && I->nr_srcs==4 &&
+             agx3_src_is_register(I->dest[0]) && !I->dest[0].memory && agx_channels(I->dest[0])==1 &&
+             (I->dest[0].size==AGX_SIZE_16 || I->dest[0].size==AGX_SIZE_32) &&
+             I->src[2].type==AGX_INDEX_IMMEDIATE && I->src[3].type==AGX_INDEX_IMMEDIATE &&
+             I->src[2].value<=255 && I->src[3].value<=255 &&
+             ((I->src[0].type==AGX_INDEX_IMMEDIATE && I->src[0].value==0 && agx3_vary_reg32(I->src[1])) ||
+              (I->src[1].type==AGX_INDEX_IMMEDIATE && I->src[1].value==0 && agx3_vary_reg32(I->src[0])))) {
+            const bool zero_first=I->src[0].type==AGX_INDEX_IMMEDIATE;
+            const agx_index compare=I->src[zero_first?1:0];
+            unsigned condition=I->fcond;
+            bool swap=I->invert_cond;
+            if(condition==AGX_FCOND_LTN) {condition=AGX_FCOND_GE;swap=!swap;}
+            else if(condition==AGX_FCOND_GTN) {condition=AGX_FCOND_LE;swap=!swap;}
+            if(zero_first) {
+               switch(condition) {
+               case AGX_FCOND_LT:condition=AGX_FCOND_GT;break;
+               case AGX_FCOND_GT:condition=AGX_FCOND_LT;break;
+               case AGX_FCOND_LE:condition=AGX_FCOND_GE;break;
+               case AGX_FCOND_GE:condition=AGX_FCOND_LE;break;
+               default:break;
+               }
+            }
+            const uint16_t src[]={compare.value,0,I->src[swap?3:2].value,I->src[swap?2:3].value};
+            const bool immediate[]={true,true};
+            const enum agx3_alu_hint hints[]={agx3_post_ra_hint(compare),AGX3_ALU_HINT_NONE,
+               AGX3_ALU_HINT_NONE,AGX3_ALU_HINT_NONE};
+            bool invalid=I->saturate || agx_channels(compare)!=1;
+            for(unsigned i=0;i<4;i++)invalid|=I->src[i].abs || I->src[i].neg || I->src[i].kill ||
+               (I->src[i].cache && I->src[i].discard);
+            if(invalid)AGX3_REFUSE(I);
+            uint16_t fsel_wait=wait;
+            if(fsel_wait!=0 && fsel_wait!=32) {
+               if(!agx3_retire_slots_noop(emission,enc,fsel_wait))AGX3_REFUSE(I);
+               fsel_wait=0;
+            }
+            uint8_t bytes[AGX3_ALU_MAX_LENGTH],len;
+            if(!agx3_alu_fcmp_select_reg_imm(enc,I->dest[0].value,src,true,immediate,hints,
+                 condition,I->dest[0].size==AGX_SIZE_16,I->dest[0].cache,fsel_wait,bytes,&len) ||
+               !agx3_append(emission,bytes,len))AGX3_REFUSE(I);
+            continue;
+         }
+
+         /* A fused float comparison can select a retained narrow boolean and
+          * an immediate directly, without widening the register or materializing
+          * a separate comparison result. */
+         if (enc == AGX_ISA_ENCODING_AGX3B && I->op == AGX_OPCODE_FCMPSEL &&
+             I->nr_dests==1 && I->nr_srcs==4 &&
+             agx3_src_is_register(I->dest[0]) && !I->dest[0].memory && agx_channels(I->dest[0])==1 &&
+             (I->dest[0].size==AGX_SIZE_16 || I->dest[0].size==AGX_SIZE_32) &&
+             agx3_vary_reg32(I->src[0]) && agx3_vary_reg32(I->src[1]) &&
+             ((I->src[2].type==AGX_INDEX_IMMEDIATE) !=
+              (I->src[3].type==AGX_INDEX_IMMEDIATE))) {
+            unsigned condition=I->fcond;
+            bool swap=I->invert_cond;
+            if(condition==AGX_FCOND_LTN) {condition=AGX_FCOND_GE;swap=!swap;}
+            else if(condition==AGX_FCOND_GTN) {condition=AGX_FCOND_LE;swap=!swap;}
+            const agx_index operands[]={I->src[0],I->src[1],I->src[swap?3:2],I->src[swap?2:3]};
+            uint16_t src[4]; enum agx3_alu_hint hints[4]; bool immediate[2];
+            bool invalid=I->saturate;
+            for(unsigned i=0;i<4;i++) {
+               const agx_index x=operands[i];
+               const bool imm=x.type==AGX_INDEX_IMMEDIATE;
+               invalid|=x.abs || x.neg || x.kill || x.memory || agx_channels(x)!=1 ||
+                  (x.cache && x.discard) ||
+                  (imm ? x.value>255 : (!agx3_src_is_register(x) ||
+                    x.size!=(i<2?AGX_SIZE_32:I->dest[0].size)));
+               src[i]=x.value; hints[i]=imm?AGX3_ALU_HINT_NONE:agx3_post_ra_hint(x);
+               if(i>=2)immediate[i-2]=imm;
+            }
+            if(invalid)AGX3_REFUSE(I);
+            uint16_t fsel_wait=wait;
+            if(fsel_wait!=0 && fsel_wait!=32) {
+               if(!agx3_retire_slots_noop(emission,enc,fsel_wait))AGX3_REFUSE(I);
+               fsel_wait=0;
+            }
+            uint8_t bytes[AGX3_ALU_MAX_LENGTH],len;
+            if(!agx3_alu_fcmp_select_reg_imm(enc,I->dest[0].value,src,false,immediate,hints,
+                 condition,I->dest[0].size==AGX_SIZE_16,I->dest[0].cache,fsel_wait,bytes,&len) ||
+               !agx3_append(emission,bytes,len))AGX3_REFUSE(I);
+            continue;
+         }
+
          /* Float comparison selecting integer byte constants, preserving the
           * native 16/32-bit destination width assigned by register allocation. */
          if (enc == AGX_ISA_ENCODING_AGX3B && I->op == AGX_OPCODE_FCMPSEL &&
@@ -4708,6 +4795,43 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                   AGX3_REFUSE(I);
                continue;
             }
+         }
+
+         if (enc == AGX_ISA_ENCODING_AGX3B && I->op == AGX_OPCODE_ASR &&
+             I->nr_dests == 1 && I->nr_srcs == 2 &&
+             I->src[1].type == AGX_INDEX_IMMEDIATE &&
+             I->src[1].value >= 1 && I->src[1].value <= 31 &&
+             !I->src[1].abs && !I->src[1].neg) {
+            const agx_index dest=I->dest[0], src=I->src[0];
+            if (!agx3_vary_reg32(dest) || !agx3_vary_reg32(src) ||
+                src.abs || src.neg || agx_channels(dest)!=1 || agx_channels(src)!=1)
+               AGX3_REFUSE(I);
+            uint8_t bytes[AGX3_ALU_MAX_LENGTH], length;
+            if (!agx3_alu_asr_imm32(enc,dest.value,src.value,I->src[1].value,
+                                     agx3_post_ra_hint(src),dest.cache,wait,bytes,&length) ||
+                !agx3_append(emission,bytes,length))
+               AGX3_REFUSE(I);
+            continue;
+         }
+
+         if (enc == AGX_ISA_ENCODING_AGX3B && I->op == AGX_OPCODE_EXTR &&
+             I->nr_dests==1 && I->nr_srcs==3 && I->bfi_mask==0 &&
+             I->src[2].type==AGX_INDEX_IMMEDIATE &&
+             I->src[2].value>=1 && I->src[2].value<=31 &&
+             !I->src[2].abs && !I->src[2].neg) {
+            const agx_index dst=I->dest[0], lo=I->src[0], hi=I->src[1];
+            if (!agx3_vary_reg32(dst) || !agx3_vary_reg32(lo) ||
+                !agx3_vary_reg32(hi) || lo.abs || lo.neg || hi.abs || hi.neg ||
+                agx_channels(dst)!=1 || agx_channels(lo)!=1 || agx_channels(hi)!=1)
+               AGX3_REFUSE(I);
+            const uint16_t src[2]={lo.value,hi.value};
+            const enum agx3_alu_hint hints[2]={agx3_post_ra_hint(lo),agx3_post_ra_hint(hi)};
+            uint8_t bytes[AGX3_ALU_MAX_LENGTH],length;
+            if (!agx3_alu_extract_imm32(enc,dst.value,src,I->src[2].value,hints,
+                                         dst.cache,wait,bytes,&length) ||
+                !agx3_append(emission,bytes,length))
+               AGX3_REFUSE(I);
+            continue;
          }
 
          if (enc == AGX_ISA_ENCODING_AGX3B && I->op == AGX_OPCODE_BFEIL &&

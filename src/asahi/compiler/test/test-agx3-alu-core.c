@@ -723,7 +723,76 @@ test_blur_half_arithmetic(void)
    puts("Blur half arithmetic: seven native signed-conversion/immediate-add witnesses PASS");
 }
 
+static void test_native_extract32(void)
+{
+   uint8_t bytes[AGX3_ALU_MAX_LENGTH],length;
+   const unsigned shifts[]={1,4,16,28,31};
+   const char *golden[5][2]={
+      {"2701560002040400f0150900","2701560002080410f0100900"},
+      {"2701560002041000f0150900","2701560002081010f0100900"},
+      {"2701560002044000f0150900","2701560002084010f0100900"},
+      {"2701560002047000f0150900","2701560002087010f0100900"},
+      {"2701560002047c00f0150900","2701560002087c10f0100900"},
+   };
+   for(unsigned n=0;n<5;n++)for(unsigned live=0;live<2;live++) {
+      const uint16_t src[2]={live?2:0,live?4:2};
+      const enum agx3_alu_hint hints[2]={live?AGX3_ALU_HINT_NONE:AGX3_ALU_HINT_DISCARD,live?AGX3_ALU_HINT_NONE:AGX3_ALU_HINT_DISCARD};
+      assert(agx3_alu_extract_imm32(AGX_ISA_ENCODING_AGX3B,0,src,shifts[n],hints,false,32,bytes,&length));
+      exact(bytes,length,golden[n][live]);
+   }
+   puts("Native EXTRACT32:10 exact Apple immediate/live/dead vectors PASS");
+}
+
+static void test_native_asr32(void)
+{
+   const unsigned shifts[]={1,4,28};
+   const char *golden[3][2]={
+      {"a7015600020004786200","a7015600020404386200"},
+      {"a7015600020010786200","a7015600020410386200"},
+      {"a7015600020070786200","a7015600020470386200"},
+   };
+   for(unsigned n=0;n<3;n++)for(unsigned live=0;live<2;live++) {
+      uint8_t bytes[AGX3_ALU_MAX_LENGTH],length;
+      assert(agx3_alu_asr_imm32(AGX_ISA_ENCODING_AGX3B,0,live?2:0,shifts[n],
+                                live?AGX3_ALU_HINT_NONE:AGX3_ALU_HINT_DISCARD,
+                                false,32,bytes,&length));
+      exact(bytes,length,golden[n][live]);
+   }
+   puts("Native ASR32:6 exact Apple immediate/live/dead vectors PASS");
+}
+
+static void test_native_select_reg_imm(void)
+{
+   const uint16_t src[4][4]={{0,2,10,1},{0,2,7,1},{0,2,10,1},{4,6,2,1}};
+   const char *golden[]={"02011d03860a00c02081","32011d03060700c02081",
+      "02011f03860a00c02081","02051f07060200c02081"};
+   const bool imm[]={false,true};
+   for(unsigned i=0;i<4;i++) {
+      const enum agx3_alu_hint hints[]={AGX3_ALU_HINT_DISCARD,AGX3_ALU_HINT_DISCARD,
+         (i&1)?AGX3_ALU_HINT_NONE:AGX3_ALU_HINT_DISCARD,AGX3_ALU_HINT_NONE};
+      uint8_t bytes[AGX3_ALU_MAX_LENGTH],len;
+      assert(agx3_alu_fcmp_select_reg_imm(AGX_ISA_ENCODING_AGX3B,i==1?6:0,src[i],false,imm,
+         hints,0,i<2,false,32,bytes,&len));
+      exact(bytes,len,golden[i]);
+   }
+   puts("Native retained-register/immediate FSEL: four exact16/32-bit live/dead vectors PASS");
+   for(unsigned live=0;live<2;live++) {
+      const uint16_t inputs[]={live?2:0,0,1,0};
+      const bool immediate[]={true,true};
+      const enum agx3_alu_hint hints[]={live?AGX3_ALU_HINT_NONE:AGX3_ALU_HINT_DISCARD,
+         AGX3_ALU_HINT_NONE,AGX3_ALU_HINT_NONE,AGX3_ALU_HINT_NONE};
+      uint8_t bytes[AGX3_ALU_MAX_LENGTH],len;
+      assert(agx3_alu_fcmp_select_reg_imm(AGX_ISA_ENCODING_AGX3B,0,inputs,true,immediate,
+         hints,2,true,false,32,bytes,&len));
+      exact(bytes,len,live?"02030581228102c22080":"02010d81228102c22080");
+   }
+   puts("Native zero-comparison boolean FSEL: two exact live/dead vectors PASS");
+}
+
 int main(void){
+   test_native_select_reg_imm();
+   test_native_asr32();
+   test_native_extract32();
    test_blur_half_arithmetic();
    test_native_u16_arithmetic();
    test_native_fma_minifloat();
