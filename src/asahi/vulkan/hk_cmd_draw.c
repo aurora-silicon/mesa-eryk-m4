@@ -4567,14 +4567,19 @@ hk_flush_gfx_state(struct hk_cmd_buffer *cmd, uint32_t draw_id,
    if (!cs)
       return NULL;
 
-   /* Native HAL200 starts each draw after the first as a new top-level VDM
-    * block: terminate the preceding direct-draw block, then rebuild the
-    * complete VertexProgramVariant and bind tail.  A second direct draw
-    * appended immediately after the first is decoded as shader-state data
-    * and faults in dVDM_SSD before either TA or fragment starts. */
+   /* 0xc0 terminates a HAL200 VDM stream; it does not frame another direct
+    * draw. Until the G17P top-level link record is decoded, retain each draw
+    * as its own render so no geometry is silently discarded after draw zero.
+    */
    if (dev->dev.chip == AGX_CHIP_G17P && cs->stats.cmds > 0) {
-      cs->current = hk_cmd_buffer_emit_vdm_terminate(cmd, cs->current);
-      hk_cmd_buffer_dirty_all(cmd);
+      if (hk_g17p_launch_trace_enabled())
+         fprintf(stderr, "G17P direct draw: starting a retained render\n");
+
+      hk_cmd_buffer_end_graphics(cmd);
+      cs = hk_cmd_buffer_get_cs(cmd, false /* compute */);
+      if (!cs)
+         return NULL;
+
    }
 
    /* Annoyingly,
