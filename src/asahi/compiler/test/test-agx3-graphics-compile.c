@@ -94,6 +94,22 @@ static const uint8_t mesa_g17p_float2_vs[] = {
    0x57,0x86,0x54,0x06,0x60,0x40,0x4b,0x00,0x0e,0x00,0x00,0x00,
 };
 
+/* Exact post-lowering R16G16_SFLOAT vertex path.  The two six-byte f32add
+ * instructions at +0x12/+0x18 are the corpus-grounded half-to-float widens;
+ * both preserve their raw LDDEV halves through separate UVS exports. */
+static const uint8_t mesa_g17p_half2_varying_vs[] = {
+   0x0c,0xdd,0x10,0x06,0x67,0x10,0x54,0x02,0x01,0x00,0x20,0x00,0x49,0x01,0x00,0x40,
+   0x44,0x00,0x29,0x02,0x1c,0x81,0x00,0xc2,0x39,0x02,0x1c,0x81,0x08,0x02,0x67,0x00,
+   0x44,0x08,0x00,0x00,0x20,0x00,0x57,0x00,0x00,0x40,0x40,0x00,0x0b,0x08,0x21,0x44,
+   0x1b,0x0b,0x27,0x00,0x42,0x00,0x00,0x04,0x00,0x00,0x2b,0x0d,0x27,0x00,0x42,0x00,
+   0x00,0x08,0x00,0x00,0x3b,0x0f,0x27,0x00,0x42,0x00,0x00,0x0c,0x00,0x00,0x4b,0x05,
+   0x27,0x00,0x42,0x00,0x00,0x10,0x00,0x00,0x5b,0x07,0x27,0x00,0x42,0x00,0x00,0x14,
+   0x00,0x00,0x57,0x16,0x54,0x00,0x00,0x40,0x48,0x00,0x57,0x26,0x54,0x02,0x20,0x40,
+   0x49,0x00,0x57,0x46,0x54,0x04,0x40,0x40,0x4a,0x00,0x57,0x86,0x54,0x06,0x60,0x40,
+   0x4b,0x00,0x57,0x06,0x55,0x08,0x80,0x40,0x4c,0x00,0x57,0x06,0x56,0x0a,0xa0,0x40,
+   0x4d,0x00,0x0e,0x00,0x00,0x00,
+};
+
 static bool
 g17p_vs_position_dataflow(const uint8_t *binary, size_t size)
 {
@@ -418,6 +434,43 @@ build_vs_g17p_two_loads(void)
 
    for (unsigned c = 0; c < ARRAY_SIZE(values); ++c)
       nir_store_uvs_agx(&b, values[c], nir_imm_intN_t(&b, c, 16));
+
+   b.shader->info.outputs_written =
+      VARYING_BIT_POS | BITFIELD64_BIT(VARYING_SLOT_VAR0);
+   agx_preprocess_nir(b.shader);
+   return b.shader;
+}
+
+/* Post-VBO-lowering shape for a separate R16G16_SFLOAT attribute.  The raw
+ * 32-bit LDDEV result carries two IEEE binary16 values; each is widened by
+ * the native mixed-width f32add-with-negative-zero form before UVS export. */
+static nir_shader *
+build_vs_g17p_half2_varying(void)
+{
+   nir_builder b = nir_builder_init_simple_shader(
+      MESA_SHADER_VERTEX, &agx_nir_options, "G17P half2 varying VS");
+
+   nir_def *vertex = nir_load_vertex_id(&b);
+   nir_def *packed = nir_load_agx(
+      &b, 1, 32, nir_load_preamble(&b, 1, 64, .base = 4), vertex,
+      .access = 0, .base = 2 << AGX_NIR_MEMORY_PACKED_COUNT_SHIFT,
+      .format = PIPE_FORMAT_R16_UINT, .sign_extend = false);
+   nir_def *halfs[] = {
+      nir_unpack_32_2x16_split_x(&b, packed),
+      nir_unpack_32_2x16_split_y(&b, packed),
+   };
+
+   for (unsigned c = 0; c < ARRAY_SIZE(halfs); ++c)
+      nir_store_uvs_agx(&b, nir_f2f32(&b, halfs[c]),
+                        nir_imm_intN_t(&b, 4 + c, 16));
+
+   nir_def *position = nir_load_agx(
+      &b, 4, 32, nir_load_preamble(&b, 1, 64, .base = 0), vertex,
+      .access = 0, .base = 2, .format = PIPE_FORMAT_R32_UINT,
+      .sign_extend = false);
+   for (unsigned c = 0; c < 4; ++c)
+      nir_store_uvs_agx(&b, nir_channel(&b, position, c),
+                        nir_imm_intN_t(&b, c, 16));
 
    b.shader->info.outputs_written =
       VARYING_BIT_POS | BITFIELD64_BIT(VARYING_SLOT_VAR0);
@@ -1580,6 +1633,10 @@ static const struct agx3_graphics_case cases[] = {
     true, .expected_g17p_loads = 1},
    {"vs-g17p-two-loads", build_vs_g17p_two_loads, true,
     .expected_g17p_loads = 2},
+   {"vs-g17p-half2-varying", build_vs_g17p_half2_varying, true,
+    .expected_g17p_binary = mesa_g17p_half2_varying_vs,
+    .expected_g17p_binary_size = sizeof(mesa_g17p_half2_varying_vs),
+    .expected_g17p_loads = 2},
    {"vs-vkcube-varyings", build_vs_vkcube_varyings, true},
    {"vs-vkcube-vbo-ubo", build_vs_vkcube_vbo_ubo, true, false,
     AGX_ABI_VUNI_COUNT_VK(2) + 8, 257},
@@ -1779,9 +1836,27 @@ run_case(const struct agx3_graphics_case *c, enum agx_isa_encoding enc)
    return result;
 }
 
+static bool
+test_g17p_half2_varying(void)
+{
+   const struct agx3_graphics_case c = {
+      "vs-g17p-half2-varying", build_vs_g17p_half2_varying, true,
+      .expected_g17p_binary = mesa_g17p_half2_varying_vs,
+      .expected_g17p_binary_size = sizeof(mesa_g17p_half2_varying_vs),
+      .expected_g17p_loads = 2,
+   };
+   return run_case(&c, AGX_ISA_ENCODING_AGX3B);
+}
+
 int
 main(int argc, char **argv)
 {
+   if (argc == 2 && !strcmp(argv[1], "--half-vbo-only")) {
+      const bool ok = test_g17p_half2_varying();
+      fprintf(stderr, "G17P R16G16_SFLOAT vertex attribute: %s\n",
+              ok ? "PASS" : "FAIL");
+      return ok ? 0 : 1;
+   }
    if (argc == 2 && !strcmp(argv[1], "--eot-only")) {
       const bool ok = test_g17p_eot_block_store();
       printf("G17P RT0 and WBOIT MRT EOT: %s\n", ok ? "PASS" : "FAIL");
