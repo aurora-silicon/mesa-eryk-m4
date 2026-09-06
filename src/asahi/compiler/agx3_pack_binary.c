@@ -4465,8 +4465,29 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             continue;
          }
 
-         /* Pixel coordinates are16-bit unsigned halves. Apple has a direct
-          * unsigned-half int2flt form, distinct from the existing U32 form.
+         if (enc == AGX_ISA_ENCODING_AGX3B && I->op == AGX_OPCODE_IADD &&
+             I->nr_dests == 1 && I->nr_srcs == 2 && !I->saturate && I->shift == 0 &&
+             I->dest[0].type == AGX_INDEX_REGISTER && !I->dest[0].memory &&
+             I->dest[0].size == AGX_SIZE_16 && agx_channels(I->dest[0]) == 1) {
+            const bool imm_first = I->src[0].type == AGX_INDEX_IMMEDIATE;
+            const agx_index imm = I->src[imm_first ? 0 : 1];
+            const agx_index reg = I->src[imm_first ? 1 : 0];
+            if (imm.type == AGX_INDEX_IMMEDIATE && imm.value <= 255 &&
+                !imm.abs && !imm.neg && !imm.memory &&
+                reg.type == AGX_INDEX_REGISTER && !reg.memory &&
+                reg.size == AGX_SIZE_16 && agx_channels(reg) == 1 &&
+                !reg.abs && !reg.neg && !reg.kill && !(reg.cache && reg.discard)) {
+               uint8_t bytes[AGX3_ALU_MAX_LENGTH], len;
+               if (!agx3_alu_add_imm16(enc,I->dest[0].value,reg.value,imm.value,
+                     agx3_post_ra_hint(reg),I->dest[0].cache,wait,bytes,&len) ||
+                   !agx3_append(emission,bytes,len))
+                  AGX3_REFUSE(I);
+               continue;
+            }
+         }
+
+         /* Coordinates and loop counters use16-bit halves. Apple has a direct
+          * signed/unsigned half int2flt form, distinct from the32-bit form.
           * Preserve liveness and async producer waits; do not reinterpret the
           * neighbouring half as part of a32-bit integer or widen in place.
           */
@@ -4474,7 +4495,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
              I->nr_srcs == 2 && !I->saturate &&
              I->round == AGX_ROUND_RTE &&
              I->src[0].type == AGX_INDEX_IMMEDIATE &&
-             I->src[0].value == AGX_CONVERT_U16_TO_F &&
+             (I->src[0].value == AGX_CONVERT_U16_TO_F ||
+              I->src[0].value == AGX_CONVERT_S16_TO_F) &&
              agx3_src_is_register(I->dest[0]) &&
              I->dest[0].size == AGX_SIZE_32 && agx_channels(I->dest[0]) == 1 &&
              agx3_src_is_register(I->src[1]) && !I->src[1].abs &&
@@ -4484,7 +4506,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
              agx_channels(I->src[1]) == 1) {
             uint8_t bytes[AGX3_ALU_MAX_LENGTH];
             uint8_t len = 0;
-            if (!agx3_alu_u16_to_f32(enc, I->dest[0].value, I->src[1].value,
+            if (!(I->src[0].value == AGX_CONVERT_S16_TO_F ? agx3_alu_s16_to_f32 :
+                   agx3_alu_u16_to_f32)(enc, I->dest[0].value, I->src[1].value,
                                      agx3_post_ra_hint(I->src[1]), wait, bytes, &len) ||
                 !agx3_append(emission, bytes, len))
                AGX3_REFUSE(I);

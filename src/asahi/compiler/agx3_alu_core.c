@@ -199,9 +199,9 @@ agx3_alu_fma_minifloat(enum agx_isa_encoding enc, uint16_t dest,
    return false;
 }
 
-bool
-agx3_alu_u16_to_f32(enum agx_isa_encoding enc, uint16_t dest, uint16_t src,
-                    enum agx3_alu_hint hint, uint16_t wait_mask,
+static bool
+agx3_alu_int16_to_f32(enum agx_isa_encoding enc, uint16_t dest, uint16_t src,
+                    enum agx3_alu_hint hint, bool is_signed, uint16_t wait_mask,
                     uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len)
 {
    if (!out || !len || enc != AGX_ISA_ENCODING_AGX3B || dest >= 128 ||
@@ -212,20 +212,62 @@ agx3_alu_u16_to_f32(enum agx_isa_encoding enc, uint16_t dest, uint16_t src,
    /* Apple ushort_cs: a70756000200a420 (r0f <- r0h, wait slot6).
     * ushort_pair_cs additionally witnesses odd source half3 and no wait;
     * ushort_reuse_cs has f29=0 with a later16-bit store of the same source.
-    * Versus U32 int2flt only f26 changes2->1. f30=0 remains unsigned.
+    * Versus U32 int2flt only f26 changes2->1. The fresh short_float and
+    * short_float_live witnesses establish signedness in f30.
     */
    const struct agx3_field_kv base[] = {
       {9, 2}, {10, 2}, {25, 2}, {26, 1},
    };
-   struct agx3_field_kv fields[10] = {
+   struct agx3_field_kv fields[11] = {
       {2, dest}, {18, src}, {29, hint == AGX3_ALU_HINT_DISCARD},
-      {27, hint == AGX3_ALU_HINT_CACHE},
+      {27, hint == AGX3_ALU_HINT_CACHE}, {30, is_signed},
    };
-   unsigned n = 4;
+   unsigned n = 5;
    for (unsigned slot = 0; slot < 6; ++slot)
       if (wait_mask & (1u << slot))
          fields[n++] = (struct agx3_field_kv){33 + slot, 1};
    return agx3_bind_compose(enc, "int2flt", 0, base, 4, fields, n, out, len);
+}
+
+bool
+agx3_alu_u16_to_f32(enum agx_isa_encoding enc, uint16_t dest, uint16_t src,
+                     enum agx3_alu_hint hint, uint16_t wait_mask,
+                     uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len)
+{
+   return agx3_alu_int16_to_f32(enc,dest,src,hint,false,wait_mask,out,len);
+}
+
+bool
+agx3_alu_s16_to_f32(enum agx_isa_encoding enc, uint16_t dest, uint16_t src,
+                     enum agx3_alu_hint hint, uint16_t wait_mask,
+                     uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len)
+{
+   return agx3_alu_int16_to_f32(enc,dest,src,hint,true,wait_mask,out,len);
+}
+
+bool
+agx3_alu_add_imm16(enum agx_isa_encoding enc, uint16_t dest, uint16_t src,
+                    uint16_t immediate, enum agx3_alu_hint hint, bool dest_cache,
+                    uint16_t wait_mask, uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len)
+{
+   if (enc != AGX_ISA_ENCODING_AGX3B || !out || !len || dest >= 256 ||
+       src >= 256 || immediate > 255 || (unsigned)hint > AGX3_ALU_HINT_CACHE ||
+       (wait_mask & ~0x3fu))
+      return false;
+   /* Native short +2 and ushort2 +(2,17): result and register operand
+    * are individual halves, with the immediate in slot A. Addition wraps
+    * at16 bits without widening or allocating a temporary register. */
+   const struct agx3_field_kv base[] = {
+      {9,2}, {10,1}, {23,1}, {24,1}, {38,2}, {39,1},
+   };
+   struct agx3_field_kv fields[12] = {
+      {2,dest}, {11,dest_cache}, {15,immediate}, {31,src},
+      {40,hint == AGX3_ALU_HINT_CACHE}, {42,hint == AGX3_ALU_HINT_DISCARD},
+   };
+   unsigned n=6;
+   for(unsigned i=0;i<6;++i)
+      if(wait_mask & (1u<<i))fields[n++]=(struct agx3_field_kv){45+i,1};
+   return agx3_bind_compose(enc,"iadd",0,base,6,fields,n,out,len);
 }
 
 /* Exact native G17P witnesses include 0x1800 (1/512), adjacent literals,

@@ -115,6 +115,13 @@ bool agx3_alu_fmul_mixed(enum agx_isa_encoding enc, uint16_t dest,
  * include both last-use and reused input, odd half indices and load waits.
  * This does not admit signed, byte, float16, vector, uniform or AGX3c forms.
  */
+bool agx3_alu_s16_to_f32(enum agx_isa_encoding enc, uint16_t dest, uint16_t src,
+                        enum agx3_alu_hint hint, uint16_t wait_mask,
+                        uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len);
+bool agx3_alu_add_imm16(enum agx_isa_encoding enc, uint16_t dest, uint16_t src,
+                       uint16_t immediate, enum agx3_alu_hint hint, bool dest_cache,
+                       uint16_t wait_mask, uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len);
+
 bool agx3_alu_u16_to_f32(enum agx_isa_encoding enc, uint16_t dest,
                         uint16_t src, enum agx3_alu_hint hint, uint16_t wait_mask,
                         uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len);

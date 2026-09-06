@@ -702,7 +702,29 @@ static void test_native_u16_arithmetic(void)
    puts("Native u16 ALU and mixed-width FSEL: six native byte vectors PASS");
 }
 
+static void
+test_blur_half_arithmetic(void)
+{
+   uint8_t out[AGX3_ALU_MAX_LENGTH],len;
+   assert(agx3_alu_s16_to_f32(AGX_ISA_ENCODING_AGX3B,0,0,AGX3_ALU_HINT_DISCARD,32,out,&len));
+   exact(out,len,"a70756000200a460");
+   assert(agx3_alu_s16_to_f32(AGX_ISA_ENCODING_AGX3B,2,4,AGX3_ALU_HINT_NONE,32,out,&len));
+   exact(out,len,"a707560202088460");
+   assert(agx3_alu_s16_to_f32(AGX_ISA_ENCODING_AGX3B,0,2,AGX3_ALU_HINT_DISCARD,32,out,&len));
+   exact(out,len,"a70756000204a460");
+   assert(agx3_alu_s16_to_f32(AGX_ISA_ENCODING_AGX3B,2,3,AGX3_ALU_HINT_DISCARD,0,out,&len));
+   exact(out,len,"a70754020206a460");
+   assert(agx3_alu_add_imm16(AGX_ISA_ENCODING_AGX3B,2,2,2,AGX3_ALU_HINT_DISCARD,false,32,out,&len));
+   exact(out,len,"9f015602020408001504");
+   assert(agx3_alu_add_imm16(AGX_ISA_ENCODING_AGX3B,2,3,2,AGX3_ALU_HINT_NONE,false,32,out,&len));
+   exact(out,len,"9f01560202040c001104");
+   assert(agx3_alu_add_imm16(AGX_ISA_ENCODING_AGX3B,3,3,17,AGX3_ALU_HINT_DISCARD,false,0,out,&len));
+   exact(out,len,"9f01540302220c001504");
+   puts("Blur half arithmetic: seven native signed-conversion/immediate-add witnesses PASS");
+}
+
 int main(void){
+   test_blur_half_arithmetic();
    test_native_u16_arithmetic();
    test_native_fma_minifloat();
    test_int_to_float_liveness();

@@ -3949,3 +3949,22 @@ TEST_F(AGX3PackBinary, HalfZeroGnomeSamplerIndexSurvivesBranch)
    /* Both original halves remain live; no specimen-only discard/wait6. */
    EXPECT_EQ(memcmp(code.data(),native,sizeof(native)),0);
 }
+
+TEST_F(AGX3PackBinary, BlurSignedHalfConversionAndCounterStayNative)
+{
+   for (bool convert : {true,false}) {
+      agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+      if (convert)
+         agx_convert_to(b,agx_register(44,AGX_SIZE_32),agx_immediate(AGX_CONVERT_S16_TO_F),
+                         agx_register(1,AGX_SIZE_16),AGX_ROUND_RTE);
+      else
+         agx_iadd_to(b,agx_register(1,AGX_SIZE_16),agx_register(1,AGX_SIZE_16),agx_immediate(2),0);
+      agx_stop(b);
+      auto code = pack(b);
+      ASSERT_EQ(code.size(),convert ? 12u : 14u);
+      const uint8_t converted[] = {0xa7,0x07,0x54,0x2c,0x02,0x02,0x84,0x60};
+      const uint8_t incremented[] = {0x9f,0x01,0x54,0x01,0x02,0x04,0x04,0x00,0x11,0x04};
+      EXPECT_EQ(memcmp(code.data(),convert ? converted : incremented,
+                       convert ? sizeof(converted) : sizeof(incremented)),0);
+   }
+}
