@@ -56,3 +56,6 @@ VkResult hk_cmd_pool_alloc_bo(struct hk_cmd_pool *pool, bool force_usc,
 void hk_cmd_pool_free_bo_list(struct hk_cmd_pool *pool, struct list_head *bos);
 void hk_cmd_pool_free_usc_bo_list(struct hk_cmd_pool *pool,
                                   struct list_head *bos);
+
+VkResult hk_cmd_bo_ensure_vdm_alias(struct hk_cmd_pool *pool,
+                                    struct hk_cmd_bo *bo);

@@ -50,8 +50,8 @@
 #include "util/u_dynarray.h"
 #include "vulkan/vulkan_core.h"
 
-uint64_t
-hk_g17p_vdm_compact(struct hk_cmd_buffer *cmd, uint64_t primary)
+static uint64_t
+hk_g17p_vdm_lookup(struct hk_cmd_buffer *cmd, uint64_t primary, bool bind)
 {
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
    if (!hk_g17p_vdm_low_window_enabled(&dev->dev))
@@ -61,6 +61,15 @@ hk_g17p_vdm_compact(struct hk_cmd_buffer *cmd, uint64_t primary)
       const uint64_t start = bo->bo->va->addr;
       if (primary < start || primary - start >= bo->bo->size)
          continue;
+
+      if (bind) {
+         const VkResult result =
+            hk_cmd_bo_ensure_vdm_alias(hk_cmd_buffer_pool(cmd), bo);
+         if (result != VK_SUCCESS) {
+            vk_command_buffer_set_error(&cmd->vk, result);
+            return 0;
+         }
+      }
 
       const uint64_t alias = bo->g17p_vdm_alias + (primary - start);
       uint32_t compact = 0;
@@ -75,9 +84,17 @@ hk_g17p_vdm_compact(struct hk_cmd_buffer *cmd, uint64_t primary)
 }
 
 uint64_t
+hk_g17p_vdm_compact(struct hk_cmd_buffer *cmd, uint64_t primary)
+{
+   return hk_g17p_vdm_lookup(cmd, primary, true);
+}
+
+uint64_t
 hk_g17p_vdm_alias(struct hk_cmd_buffer *cmd, uint64_t primary)
 {
-   const uint64_t compact = hk_g17p_vdm_compact(cmd, primary);
+   /* Submission may read a simultaneous-use CB from multiple queues. All
+    * VDM roots/links were mapped during recording; never mutate them here. */
+   const uint64_t compact = hk_g17p_vdm_lookup(cmd, primary, false);
    return compact ? AGX_G17P_VDM_USER_BASE + compact : 0;
 }
 
@@ -1420,6 +1437,12 @@ hk_cs_init_graphics(struct hk_cmd_buffer *cmd, struct hk_cs *cs)
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
    struct hk_rendering_state *render = &cmd->state.gfx.render;
    uint8_t *map = cs->current;
+
+   /* Even a clear-only stream needs a stable root alias before EndCommandBuffer.
+    * Linked chunks acquire theirs in hk_cmd_buffer_emit_cs_jump. */
+   if (hk_g17p_vdm_low_window_enabled(&dev->dev) &&
+       !hk_g17p_vdm_compact(cmd, cs->addr))
+      return;
 
    hk_drm_attachment_set_init(&cs->fragment_attachments);
 

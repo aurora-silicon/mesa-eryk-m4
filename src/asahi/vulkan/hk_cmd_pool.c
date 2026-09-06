@@ -63,6 +63,35 @@ hk_g17p_vdm_alias_free(struct agx_device *dev, uint64_t alias, uint64_t size)
    simple_mtx_unlock(&dev->vma_lock);
 }
 
+VkResult
+hk_cmd_bo_ensure_vdm_alias(struct hk_cmd_pool *pool, struct hk_cmd_bo *bo)
+{
+   struct hk_device *dev = hk_cmd_pool_device(pool);
+   /* Command pools are externally synchronized. A mapping is established
+    * only when this BO first supplies a VDM pointer, then remains immutable
+    * through submission and cached BO reuse. Ordinary data/compute uploads
+    * consume no space in the finite VDM aperture. */
+   if (bo->g17p_vdm_alias || !hk_g17p_vdm_low_window_enabled(&dev->dev))
+      return VK_SUCCESS;
+
+   const uint64_t alias = hk_g17p_vdm_alias_alloc(&dev->dev, bo->bo->size);
+   const uint32_t flags = DRM_ASAHI_BIND_READ | DRM_ASAHI_BIND_WRITE;
+   if (!alias || agx_bo_bind(&dev->dev, bo->bo, alias, bo->bo->size, 0, flags)) {
+      if (alias)
+         hk_g17p_vdm_alias_free(&dev->dev, alias, bo->bo->size);
+      return vk_error(pool, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+   }
+
+   bo->g17p_vdm_alias = alias;
+   fprintf(stderr,
+           "asahi: G17P VDM command BO full=%#llx alias=%#llx low=%#llx size=%#llx\n",
+           (unsigned long long)bo->bo->va->addr,
+           (unsigned long long)alias,
+           (unsigned long long)(alias - AGX_G17P_VDM_USER_BASE),
+           (unsigned long long)bo->bo->size);
+   return VK_SUCCESS;
+}
+
 static VkResult
 hk_cmd_bo_create(struct hk_cmd_pool *pool, bool usc, struct hk_cmd_bo **bo_out)
 {
@@ -79,32 +108,6 @@ hk_cmd_bo_create(struct hk_cmd_pool *pool, bool usc, struct hk_cmd_bo **bo_out)
    if (bo->bo == NULL) {
       vk_free(&pool->vk.alloc, bo);
       return vk_error(pool, VK_ERROR_OUT_OF_DEVICE_MEMORY);
-   }
-
-   if (!usc && hk_g17p_vdm_low_window_enabled(&dev->dev)) {
-      const uint64_t alias =
-         hk_g17p_vdm_alias_alloc(&dev->dev, bo->bo->size);
-      const uint32_t flags = DRM_ASAHI_BIND_READ | DRM_ASAHI_BIND_WRITE;
-
-      if (!alias ||
-          agx_bo_bind(&dev->dev, bo->bo, alias, bo->bo->size, 0, flags)) {
-         fprintf(stderr,
-                 "asahi: failed to bind G17P VDM alias %#llx\n",
-                 (unsigned long long)alias);
-         if (alias)
-            hk_g17p_vdm_alias_free(&dev->dev, alias, bo->bo->size);
-         agx_bo_unreference(&dev->dev, bo->bo);
-         vk_free(&pool->vk.alloc, bo);
-         return vk_error(pool, VK_ERROR_OUT_OF_DEVICE_MEMORY);
-      }
-
-      bo->g17p_vdm_alias = alias;
-      fprintf(stderr,
-              "asahi: G17P VDM command BO full=%#llx alias=%#llx low=%#llx size=%#llx\n",
-              (unsigned long long)bo->bo->va->addr,
-              (unsigned long long)alias,
-              (unsigned long long)(alias - AGX_G17P_VDM_USER_BASE),
-              (unsigned long long)bo->bo->size);
    }
 
    bo->map = agx_bo_map(bo->bo);
