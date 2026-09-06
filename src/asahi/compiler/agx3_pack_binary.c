@@ -3815,6 +3815,21 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             continue;
          }
 
+         if (enc == AGX_ISA_ENCODING_AGX3B && I->op == AGX_OPCODE_SRSQRT) {
+            const agx_index dest=I->dest[0], src=I->src[0];
+            if (I->nr_dests != 1 || I->nr_srcs != 1 || I->saturate ||
+                !agx3_vary_reg32(dest) || !agx3_vary_reg32(src) ||
+                agx_channels(dest) != 1 || agx_channels(src) != 1 ||
+                src.abs || src.neg)
+               AGX3_REFUSE(I);
+            uint8_t bytes[AGX3_ALU_MAX_LENGTH],len;
+            if (!agx3_alu_sqrt_step(enc,dest.value,src.value,agx3_post_ra_hint(src),
+                                   dest.cache,wait,bytes,&len) ||
+                !agx3_append(emission,bytes,len))
+               AGX3_REFUSE(I);
+            continue;
+         }
+
          /* Transcendental / rounding / gradient funops. The gradients need
           * the 2x2 quad, and every witness is a fragment shader. */
          const int fop = agx3_map_funop(I->op);

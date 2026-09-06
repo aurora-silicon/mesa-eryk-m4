@@ -761,6 +761,17 @@ static void test_native_asr32(void)
    puts("Native ASR32:6 exact Apple immediate/live/dead vectors PASS");
 }
 
+static void test_native_sqrt_step(void)
+{
+   for (unsigned live=0;live<2;live++) {
+      uint8_t bytes[AGX3_ALU_MAX_LENGTH],len;
+      assert(agx3_alu_sqrt_step(AGX_ISA_ENCODING_AGX3B,live?0:2,live?2:0,
+                               AGX3_ALU_HINT_CACHE,true,32,bytes,&len));
+      exact(bytes,len,live?"2f015600030492400000":"2f015602030092400000");
+   }
+   puts("Native sqrt step: two complete Apple live/dead square-root kernels PASS");
+}
+
 static void test_native_select_reg_imm(void)
 {
    const uint16_t src[4][4]={{0,2,10,1},{0,2,7,1},{0,2,10,1},{4,6,2,1}};
@@ -843,6 +854,7 @@ static void test_native_high_float_registers(void)
 
 int main(void){
    test_native_high_float_registers();
+   test_native_sqrt_step();
    test_native_select_reg_imm();
    test_native_asr32();
    test_native_extract32();

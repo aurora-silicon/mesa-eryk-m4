@@ -6,6 +6,27 @@
 #include "agx3_binder.h"
 
 bool
+agx3_alu_sqrt_step(enum agx_isa_encoding enc, uint16_t dest, uint16_t src,
+                  enum agx3_alu_hint hint, bool dest_cache, uint16_t wait_mask,
+                  uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len)
+{
+   if (enc != AGX_ISA_ENCODING_AGX3B || !out || !len || dest >= 256 ||
+       src >= 256 || ((dest | src) & 1) ||
+       (unsigned)hint > AGX3_ALU_HINT_CACHE || (wait_mask & ~UINT16_C(0x3f)))
+      return false;
+   /* Apple sqrt emits this step followed by FMUL with the original input.
+    * Ordinary rsqrt is a distinct opcode and cannot replace this operation. */
+   const struct agx3_field_kv base[] = {{9,2},{10,2},{25,2},{26,2}};
+   struct agx3_field_kv fields[11] = {
+      {2,dest},{18,src},{11,dest_cache},
+      {27,hint == AGX3_ALU_HINT_CACHE},{29,hint == AGX3_ALU_HINT_DISCARD},
+   };
+   for (unsigned i = 0; i < 6; ++i)
+      fields[5+i] = (struct agx3_field_kv){35+i,!!(wait_mask & (1u<<i))};
+   return agx3_bind_compose(enc,"f32sqrtstep",0,base,4,fields,11,out,len);
+}
+
+bool
 agx3_alu_fmul_minifloat(enum agx_isa_encoding enc, uint16_t dest, uint16_t src,
                        uint16_t immediate, enum agx3_alu_hint hint, uint16_t wait_mask,
                        uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len)
