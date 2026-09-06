@@ -744,3 +744,32 @@ bool agx3_alu_fcmp_select_reg_imm(enum agx_isa_encoding enc, uint16_t dest,
          return true;
    return false;
 }
+
+/* Native float32 multiplication rounds directly to the half destination. */
+bool
+agx3_alu_fmul_narrow(enum agx_isa_encoding enc, uint16_t dest,
+                     const uint16_t src[2], const enum agx3_alu_hint hints[2],
+                     bool dest_cache, uint16_t wait_mask,
+                     uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len)
+{
+   if (enc != AGX_ISA_ENCODING_AGX3B || !src || !hints || !out || !len ||
+       dest >= 256 || src[0] >= 256 || src[1] >= 256 ||
+       ((src[0] | src[1]) & 1) || (wait_mask & ~UINT16_C(0x3f)) ||
+       (unsigned)hints[0] > AGX3_ALU_HINT_CACHE ||
+       (unsigned)hints[1] > AGX3_ALU_HINT_CACHE)
+      return false;
+   const struct agx3_field_kv base[] = {
+      {9,2},{10,1},{25,2},{26,2},{42,2},{43,2},{60,2},{74,2},
+   };
+   struct agx3_field_kv fields[14] = {
+      {2,dest},{18,src[0]},{35,src[1]},{11,dest_cache},
+      {27,hints[0] == AGX3_ALU_HINT_CACHE},{29,hints[0] == AGX3_ALU_HINT_DISCARD},
+      {44,hints[1] == AGX3_ALU_HINT_CACHE},{46,hints[1] == AGX3_ALU_HINT_DISCARD},
+   };
+   for (unsigned i=0;i<6;i++)
+      fields[8+i] = (struct agx3_field_kv){80+i,!!(wait_mask & (1u<<i))};
+   for (unsigned ep=0;ep<2;ep++)
+      if (agx3_bind_compose(enc,"f32mul",ep,base,8,fields,14,out,len))
+         return true;
+   return false;
+}

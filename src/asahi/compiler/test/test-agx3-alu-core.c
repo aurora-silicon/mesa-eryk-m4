@@ -761,6 +761,26 @@ static void test_native_asr32(void)
    puts("Native ASR32:6 exact Apple immediate/live/dead vectors PASS");
 }
 
+static void test_native_narrow_multiply(void)
+{
+   const uint16_t src[]={0,2};
+   for (unsigned live=0;live<2;live++) {
+      enum agx3_alu_hint hint=live?AGX3_ALU_HINT_NONE:AGX3_ALU_HINT_DISCARD;
+      const enum agx3_alu_hint hints[]={hint,hint};
+      uint8_t bytes[AGX3_ALU_MAX_LENGTH],len;
+      assert(agx3_alu_fmul_narrow(AGX_ISA_ENCODING_AGX3B,live?6:0,src,hints,
+                                 false,32,bytes,&len));
+      exact(bytes,len,live?"3101050300c0":"01011d0300c0");
+   }
+   const uint16_t odd_src[]={4,6};
+   const enum agx3_alu_hint odd_hints[]={AGX3_ALU_HINT_DISCARD,AGX3_ALU_HINT_DISCARD};
+   uint8_t bytes[AGX3_ALU_MAX_LENGTH],len;
+   assert(agx3_alu_fmul_narrow(AGX_ISA_ENCODING_AGX3B,1,odd_src,odd_hints,
+                              false,0,bytes,&len));
+   exact(bytes,len,"01051d070400");
+   puts("Native narrow multiply: three Apple live/dead/odd-half vectors PASS");
+}
+
 static void test_native_sqrt_step(void)
 {
    for (unsigned live=0;live<2;live++) {
@@ -868,6 +888,7 @@ static void test_native_high_float_registers(void)
 
 int main(void){
    test_native_high_float_registers();
+   test_native_narrow_multiply();
    test_native_sqrt_step();
    test_native_select_reg_imm();
    test_native_asr32();
