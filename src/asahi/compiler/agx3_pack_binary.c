@@ -840,10 +840,10 @@ agx3_emit_texture_fetch(struct util_dynarray *emission,
 }
 
 /* Filtered 2D samples use scoreboard-signalling native staging producers.
- * The implicit form keeps its coordinate layout. Explicit per-lane LOD adds
- * one PACK_SMPIR into bank 6 and stages coordinates into bank 0, avoiding
- * overlap regardless of the architectural source registers. All input waits
- * attach to the first producer; the sample waits for their shared slot.
+ * Plain implicit 2D keeps its coordinate layout. Explicit per-lane LOD and
+ * 2D-array samples stage coordinates into bank 0; their auxiliary scalar is
+ * packed into bank 6. All input waits attach to the first producer; the sample
+ * waits for their shared slot.
  */
 static bool
 agx3_emit_texture_sample(struct util_dynarray *emission,
@@ -901,7 +901,10 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
     * slot. Keeping these two timelines distinct is required by the witnessed
     * ep4 register-descriptor form. */
    const uint8_t stage_slot = array && register_operands ? 6 : slot;
-   const uint16_t coord = explicit_lod ? 0 : I->src[0].value;
+   /* Every native array witness names coordinate bank 0 in SMP, including
+    * register-indexed shaders whose physical coordinates live elsewhere.
+    * PACK_SMPIR publishes only the layer, so explicitly copy x/y to bank 0. */
+   const uint16_t coord = (explicit_lod || array) ? 0 : I->src[0].value;
    uint8_t bytes[AGX3_TEX_MAX_LENGTH];
    uint8_t len = 0;
 

@@ -625,6 +625,12 @@ test_indexed_sample_witnesses(void)
    const uint8_t register_bytes[] = {
       0x05,0x80,0x0c,0xb8,0x34,0x00,0x00,0x00,0x01,0x02,
       0x90,0x01,0x01,0x00,0xa0,0x28,0x00,0x00,0x40,0x00};
+   const uint8_t uniform_array_bytes[] = {
+      0x05,0xe0,0x0c,0xb8,0xb0,0x00,0x00,0x04,0x83,0x03,
+      0x90,0x01,0x01,0x00,0x80,0x20,0x00,0x00,0x00,0x00};
+   const uint8_t register_array_bytes[] = {
+      0x05,0x80,0x0c,0xb8,0x34,0x00,0x00,0x04,0x01,0x02,
+      0x90,0x01,0x01,0x00,0xa0,0x28,0x00,0x00,0x40,0x00};
    struct agx3_tex_sample_desc d = {
       .width=AGX3_TEX_W32, .mask=15, .slot=1, .wait_mask=1,
       .coord_kill=true, .final=true, .lod=AGX3_TEX_LOD_AUTO,
@@ -636,12 +642,22 @@ test_indexed_sample_witnesses(void)
    CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
    CHECK(len==sizeof(uniform_bytes));
    CHECK(memcmp(out,uniform_bytes,len)==0);
+   d.array=true;
+   CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+   CHECK(len==sizeof(uniform_array_bytes));
+   CHECK(memcmp(out,uniform_array_bytes,len)==0);
+   d.array=false;
    d.texture_kind=d.sampler_kind=AGX3_TEX_OPERAND_REGISTER;
    d.texture_value=0; d.sampler_value=4; d.wait_mask=32;
    d.texture_kill=d.sampler_kill=true;
    CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
    CHECK(len==sizeof(register_bytes));
    CHECK(memcmp(out,register_bytes,len)==0);
+   d.array=true;
+   CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+   CHECK(len==sizeof(register_array_bytes));
+   CHECK(memcmp(out,register_array_bytes,len)==0);
+   d.array=false;
    d.texture_value=1;
    CHECK(!agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
    d.texture_value=0; d.texture_kind=AGX3_TEX_OPERAND_UNIFORM;

@@ -4156,7 +4156,7 @@ TEST_F(AGX3PackBinary, ArraySampleStagingAndLifetime)
    }
 }
 
-TEST_F(AGX3PackBinary, ArrayRegisterDescriptorsUseNativeStageSlot)
+TEST_F(AGX3PackBinary, ArrayRegisterDescriptorsUseNativeStaging)
 {
    auto enc = AGX_ISA_ENCODING_AGX3B;
    agx_builder *b = builder(enc);
@@ -4164,7 +4164,7 @@ TEST_F(AGX3PackBinary, ArrayRegisterDescriptorsUseNativeStageSlot)
    key.no_stop = true;
    agx_index dest = agx_register(8, AGX_SIZE_32);
    dest.channels_m1 = 3;
-   agx_index coord = agx_register(0, AGX_SIZE_32);
+   agx_index coord = agx_register(20, AGX_SIZE_32);
    coord.channels_m1 = 2;
    auto *I = agx_texture_sample_to(
       b, dest, coord, agx_immediate(0), agx_immediate(0),
@@ -4176,16 +4176,16 @@ TEST_F(AGX3PackBinary, ArrayRegisterDescriptorsUseNativeStageSlot)
 
    std::vector<uint8_t> want;
    uint8_t bytes[AGX3_TEX_MAX_LENGTH], len;
-   ASSERT_TRUE(agx3_tex_stage_copy_hints(enc, 0, 0, 6, 0, false, false,
+   ASSERT_TRUE(agx3_tex_stage_copy_hints(enc, 0, 20, 6, 0, false, false,
                                          bytes, &len));
    append(want, bytes, len);
-   ASSERT_TRUE(agx3_tex_stage_copy_hints(enc, 2, 2, 6, 0, false, false,
+   ASSERT_TRUE(agx3_tex_stage_copy_hints(enc, 2, 22, 6, 0, false, false,
                                          bytes, &len));
    append(want, bytes, len);
-   ASSERT_TRUE(agx3_tex_stage_array_layer(enc, 4, 6, 0, false, false,
+   ASSERT_TRUE(agx3_tex_stage_array_layer(enc, 24, 6, 0, false, false,
                                           bytes, &len));
    EXPECT_EQ(std::vector<uint8_t>(bytes, bytes + len),
-             (std::vector<uint8_t>{0x17,0x05,0x54,0x06,0,0x08,
+             (std::vector<uint8_t>{0x17,0x05,0x54,0x06,0,0x30,
                                    0,0,0x70,0xe4,0x04,0}));
    append(want, bytes, len);
    struct agx3_tex_sample_desc d = {};
