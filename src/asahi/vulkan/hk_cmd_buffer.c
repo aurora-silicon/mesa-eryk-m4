@@ -937,8 +937,7 @@ hk_g17p_basic_fragment_layout(struct hk_cmd_buffer *cmd)
  * HAL200 updateVaryingTable (0x3efa58) uses the same CF entry encoding for
  * smooth, linear and flat inputs, including their mixture in one shader.
  * Flat inputs are restricted to triangle lists; the compiler selects C and
- * therefore must not admit the first-fan layout. System inputs other than
- * reciprocal W and all Z inputs stay closed.
+ * therefore must not admit the first-fan layout. Position Z and reciprocal W use the native system coefficient sources.
  */
 bool
 hk_g17p_smooth_varyings_supported(struct hk_cmd_buffer *cmd,
@@ -955,16 +954,16 @@ hk_g17p_smooth_varyings_supported(struct hk_cmd_buffer *cmd,
    const struct hk_shader *vs =
       api_vs ? &api_vs->variants[HK_VS_VARIANT_HW] : NULL;
    if (!vs || gfx->shaders[MESA_SHADER_GEOMETRY] ||
-       gfx->shaders[MESA_SHADER_TESS_EVAL] || cf->reads_z ||
-       cf->nr_bindings > HK_AGX3_G17P_MAX_USER_WORDS + 1 ||
-       cf->nr_cf > HK_AGX3_G17P_MAX_USER_WORDS + 1 ||
+       gfx->shaders[MESA_SHADER_TESS_EVAL] ||
+       cf->nr_bindings > HK_AGX3_G17P_MAX_USER_WORDS + 2 ||
+       cf->nr_cf > HK_AGX3_G17P_MAX_USER_WORDS + 2 ||
        vs->agx3_vdm_state_update.source_layout !=
           AGX_VDM_STATE_UPDATE_SOURCE_LAYOUT_AGX3_VERTEX_PROGRAM_VARIANT ||
-       vs->info.uvs.user_size == 0 || vs->info.uvs.user_size > HK_AGX3_G17P_MAX_USER_WORDS)
+       vs->info.uvs.user_size > HK_AGX3_G17P_MAX_USER_WORDS)
       return false;
 
    unsigned next_cf = 0;
-   bool has_rhw = false;
+   bool has_rhw = false, has_z = false;
    unsigned user_bindings = 0;
    for (unsigned i = 0; i < cf->nr_bindings; ++i) {
       const struct agx_cf_binding *b = &cf->bindings[i];
@@ -975,11 +974,21 @@ hk_g17p_smooth_varyings_supported(struct hk_cmd_buffer *cmd,
            (gfx->provoking != 0 && gfx->provoking != 2)))
          return false;
       if (b->slot == VARYING_SLOT_POS) {
-         /* Perspective interpolation first reads reciprocal W, linearly. */
-         if (i != 0 || b->offset != 3 ||
-             b->count != 1 || b->perspective)
+         /* System coefficients precede user coefficients: optional W,
+          * then optional Z. agx_link_varyings assigns native Z source1. */
+         if (user_bindings || b->count != 1 || b->perspective || !b->smooth)
             return false;
-         has_rhw = true;
+         if (b->offset == 3) {
+            if (i != 0 || has_rhw || has_z)
+               return false;
+            has_rhw = true;
+         } else if (b->offset == 2) {
+            if (has_z || !cf->reads_z)
+               return false;
+            has_z = true;
+         } else {
+            return false;
+         }
       } else {
          if (b->slot < VARYING_SLOT_VAR0 || b->slot > VARYING_SLOT_VAR31 ||
              (b->perspective && !has_rhw) ||
@@ -992,7 +1001,8 @@ hk_g17p_smooth_varyings_supported(struct hk_cmd_buffer *cmd,
       }
       next_cf += b->count;
    }
-   return user_bindings > 0 && next_cf == cf->nr_cf;
+   return (user_bindings || has_rhw || has_z) &&
+          has_z == cf->reads_z && next_cf == cf->nr_cf;
 }
 
 static bool

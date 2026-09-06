@@ -317,10 +317,38 @@ fma_addend_vectors(void)
    return fail;
 }
 
+static unsigned
+fma_two_vectors(void)
+{
+   const struct {
+      uint16_t dst,src; uint8_t mul,add;
+      struct agx3_falu_runtime rt;
+      unsigned size; uint8_t bytes[16];
+   } vectors[] = {
+      {0,0,64,176,{.cache={0},.discard={1},.dest_cache=0,.wait_mask=32},8,{0x09,0x01,0x0e,0xc1,0xa1,0xb0,0x02,0xc2}},
+      {0,2,64,176,{.cache={0},.discard={0},.dest_cache=0,.wait_mask=32},8,{0x09,0x03,0x06,0xc1,0xa1,0xb0,0x02,0xc2}},
+      {0,0,32,16,{.cache={0},.discard={1},.dest_cache=0,.wait_mask=32},8,{0x09,0x01,0x0e,0xa1,0x21,0x90,0x02,0xc2}},
+      {0,2,32,16,{.cache={0},.discard={0},.dest_cache=0,.wait_mask=32},8,{0x09,0x03,0x06,0xa1,0x21,0x90,0x02,0xc2}},
+      {0,0,56,160,{.cache={0},.discard={1},.dest_cache=0,.wait_mask=32},8,{0x09,0x01,0x0e,0xb9,0xa1,0xa0,0x02,0xc2}},
+      {0,2,56,160,{.cache={0},.discard={0},.dest_cache=0,.wait_mask=32},8,{0x09,0x03,0x06,0xb9,0xa1,0xa0,0x02,0xc2}},
+   };
+   unsigned fail=0;
+   for(unsigned i=0;i<sizeof(vectors)/sizeof(vectors[0]);++i){
+      uint8_t out[16],size=0;
+      if(!agx3_falu_fma_two_imm(AGX_ISA_ENCODING_AGX3B,vectors[i].dst,
+             vectors[i].src,vectors[i].mul,vectors[i].add,&vectors[i].rt,out,&size)||
+         size!=vectors[i].size||memcmp(out,vectors[i].bytes,size)){
+         fprintf(stderr,"FMA two-immediate vector %u failed\n",i);fail++;
+      }
+   }
+   printf("native FMA two minifloats: six Apple live/dead vectors: %u failures\n",fail);
+   return fail;
+}
+
 int
 main(void)
 {
-   unsigned pass = 0, fail = runtime_vectors() + add_runtime_vectors() + narrow_runtime_vectors() + mul_runtime_vectors() + fma_addend_vectors();
+   unsigned pass = 0, fail = runtime_vectors() + add_runtime_vectors() + narrow_runtime_vectors() + mul_runtime_vectors() + fma_addend_vectors() + fma_two_vectors();
    for (size_t i = 0; i < mod_vec_count; ++i) {
       const struct mod_vec *v = &mod_vecs[i];
       const enum agx_isa_encoding e =

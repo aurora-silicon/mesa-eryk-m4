@@ -1688,6 +1688,10 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
    case nir_intrinsic_load_frag_coord_z: {
       agx_index cf = agx_get_cf(b->shader, VARYING_SLOT_POS, 2);
 
+      if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B)
+         return agx_interp_agx3_to(b, dst, cf, agx_zero(),
+                                     AGX_INTERPOLATION_CENTER, false);
+
       return agx_iter_to(b, dst, cf, agx_zero(), 1, AGX_INTERPOLATION_CENTER);
    }
 

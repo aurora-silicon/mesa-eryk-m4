@@ -4882,6 +4882,33 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             continue;
          }
 
+         if (enc == AGX_ISA_ENCODING_AGX3B && I->op == AGX_OPCODE_FFMA &&
+             !I->saturate && I->nr_dests == 1 && I->nr_srcs == 3 &&
+             agx3_vary_reg32(I->dest[0]) && agx_channels(I->dest[0]) == 1 &&
+             I->src[2].type == AGX_INDEX_IMMEDIATE && I->src[2].value <= 255 &&
+             !I->src[2].abs && !I->src[2].neg && !I->src[2].memory) {
+            const bool imm_first = I->src[0].type == AGX_INDEX_IMMEDIATE;
+            const agx_index imm = I->src[imm_first ? 0 : 1];
+            const agx_index reg = I->src[imm_first ? 1 : 0];
+            if (imm.type == AGX_INDEX_IMMEDIATE && imm.value <= 255 &&
+                !imm.abs && !imm.neg && !imm.memory &&
+                agx3_vary_reg32(reg) && agx_channels(reg) == 1) {
+               if (reg.kill)
+                  AGX3_REFUSE(I);
+               const struct agx3_falu_runtime runtime = {
+                  .dest_cache = I->dest[0].cache, .wait_mask = wait,
+                  .cache = {reg.cache}, .discard = {reg.discard},
+               };
+               uint8_t bytes[AGX3_FALU_MOD_MAX_LENGTH], length;
+               if (!agx3_falu_fma_two_imm(enc, I->dest[0].value,
+                       reg.value, imm.value, I->src[2].value,
+                       &runtime, bytes, &length) ||
+                   !agx3_append(emission, bytes, length))
+                  AGX3_REFUSE(I);
+               continue;
+            }
+         }
+
          /* Native FMA with a minifloat multiplier. Preserve both async
           * dependencies in the instruction, including the extended two-wait
           * form; do not serialize independent texture operations. */

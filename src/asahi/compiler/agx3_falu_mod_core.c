@@ -324,3 +324,34 @@ agx3_falu_fma_addend_imm(enum agx_isa_encoding enc, uint16_t dest,
    }
    return false;
 }
+
+/* The immediate multiplier and addend occupy independent native fields.
+ * This is still one fused operation with one rounding, e.g. depth*2-1. */
+bool
+agx3_falu_fma_two_imm(enum agx_isa_encoding enc, uint16_t dest,
+                     uint16_t src, uint8_t multiplier, uint8_t addend,
+                     const struct agx3_falu_runtime *runtime,
+                     uint8_t out[AGX3_FALU_MOD_MAX_LENGTH], uint8_t *len)
+{
+   if (enc != AGX_ISA_ENCODING_AGX3B || !runtime || !out || !len ||
+       !regs_ok(dest, src, 0) || runtime->wait_mask > 0x3f ||
+       (runtime->cache[0] && runtime->discard[0]))
+      return false;
+   const struct agx3_field_kv base[] = {
+      KV(9,2), KV(10,2), KV(25,2), KV(26,2), KV(42,1), KV(43,2),
+      KV(59,1), KV(60,2), KV(77,2), KV(91,2),
+   };
+   struct agx3_field_kv ov[14] = {
+      KV(2,dest), KV(18,src), KV(34,multiplier), KV(51,addend),
+      KV(11,runtime->dest_cache), KV(27,runtime->cache[0]),
+      KV(29,runtime->discard[0]),
+   };
+   unsigned n = 7;
+   for (unsigned i = 0; i < 6; ++i)
+      if (runtime->wait_mask & (1u << i))
+         ov[n++] = (struct agx3_field_kv)KV(97+i,1);
+   for (unsigned ep = 0; ep <= 5; ++ep)
+      if (agx3_bind_compose(enc,"f32fma",ep,base,10,ov,n,out,len))
+         return true;
+   return false;
+}
