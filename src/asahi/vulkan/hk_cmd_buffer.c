@@ -127,11 +127,7 @@ hk_free_resettable_cmd_buffer(struct hk_cmd_buffer *cmd)
       hk_cs_destroy(it);
    }
 
-   util_dynarray_foreach(&cmd->large_bos, struct agx_bo *, bo) {
-      agx_bo_unreference(&dev->dev, *bo);
-   }
-
-   util_dynarray_clear(&cmd->large_bos);
+   hk_cmd_buffer_release_bos(cmd, &dev->dev);
 }
 
 static void
@@ -141,8 +137,8 @@ hk_destroy_cmd_buffer(struct vk_command_buffer *vk_cmd_buffer)
       container_of(vk_cmd_buffer, struct hk_cmd_buffer, vk);
    struct hk_cmd_pool *pool = hk_cmd_buffer_pool(cmd);
 
-   util_dynarray_fini(&cmd->large_bos);
    hk_free_resettable_cmd_buffer(cmd);
+   util_dynarray_fini(&cmd->large_bos);
    vk_command_buffer_finish(&cmd->vk);
    vk_free(&pool->vk.alloc, cmd);
 }
@@ -1247,6 +1243,15 @@ hk_upload_usc_words(struct hk_cmd_buffer *cmd, struct hk_shader *s,
          vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
          return 0;
       }
+
+      /* The Ioto program embeds the linked executable address, and promoted
+       * constants embed the shader BO address. Pipelines may be destroyed
+       * after recording, so retain both until this command buffer is reset.
+       */
+      hk_cmd_buffer_retain_bo(cmd, linked->b.bo);
+      if (s->b.info.rodata.size_16 != 0)
+         hk_cmd_buffer_retain_bo(cmd, s->bo);
+
       struct agx_bo *program_bo =
          agx_bo_create(&dev->dev, program_capacity,
                        AGX_IOTO_PROGRAM_ALIGNMENT, AGX_BO_EXEC | AGX_BO_LOW_VA,

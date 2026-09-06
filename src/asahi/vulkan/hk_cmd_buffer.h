@@ -534,7 +534,7 @@ struct hk_cmd_buffer {
    /* Does the command buffer use the geometry heap? */
    bool uses_heap;
 
-   /* Owned large BOs */
+   /* Owned BOs and retained references needed by recorded commands. */
    struct util_dynarray large_bos;
 };
 
@@ -600,6 +600,13 @@ uint64_t hk_pool_upload(struct hk_cmd_buffer *cmd, const void *data,
                         uint32_t size, uint32_t alignment);
 uint64_t hk_pool_usc_upload(struct hk_cmd_buffer *cmd, const void *data,
                             uint32_t size, uint32_t alignment);
+
+/* Keep externally owned storage referenced by recorded GPU commands alive for
+ * the command-buffer lifetime. Repeated uses of the same BO are deduplicated.
+ */
+void hk_cmd_buffer_retain_bo(struct hk_cmd_buffer *cmd, struct agx_bo *bo);
+void hk_cmd_buffer_release_bos(struct hk_cmd_buffer *cmd,
+                               struct agx_device *dev);
 
 static inline struct agx_ptr
 hk_pool_alloc(struct hk_cmd_buffer *cmd, uint32_t size, uint32_t alignment)

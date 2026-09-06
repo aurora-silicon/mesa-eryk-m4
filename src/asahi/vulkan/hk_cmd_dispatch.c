@@ -335,6 +335,14 @@ hk_dispatch_g17p_native(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
       return;
    }
 
+   /* The recorded Ioto program dereferences these executable/constant BOs
+    * after vkQueueSubmit returns. Their originating pipeline need not remain
+    * alive after command recording, so the command buffer owns references.
+    */
+   hk_cmd_buffer_retain_bo(cmd, linked->b.bo);
+   if (s->b.info.rodata.size_16 != 0)
+      hk_cmd_buffer_retain_bo(cmd, s->bo);
+
    struct agx_bo *program_bo = agx_bo_create(
       &dev->dev, HK_AGX3_G17P_COMPUTE_PROGRAM_MAX_SIZE,
       AGX_IOTO_PROGRAM_ALIGNMENT, AGX_BO_EXEC | AGX_BO_LOW_VA,
