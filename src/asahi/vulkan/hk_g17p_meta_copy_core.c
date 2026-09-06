@@ -10,7 +10,9 @@ hk_g17p_buffer_to_image_copy_supported(
    const struct hk_g17p_buffer_to_image_copy *copy)
 {
    if (!copy || copy->chip != AGX_CHIP_G17P ||
-       (copy->format != VK_FORMAT_R8G8B8A8_UNORM &&
+       (copy->format != VK_FORMAT_R8_UNORM &&
+        copy->format != VK_FORMAT_B8G8R8A8_UNORM &&
+        copy->format != VK_FORMAT_R8G8B8A8_UNORM &&
         copy->format != VK_FORMAT_A2B10G10R10_UNORM_PACK32) ||
        (copy->layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL &&
         copy->layout != VK_IMAGE_LAYOUT_GENERAL) ||

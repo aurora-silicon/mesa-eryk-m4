@@ -44,6 +44,10 @@ main(void)
 
    struct hk_g17p_buffer_to_image_copy bad = vkcube;
    bad.format = VK_FORMAT_B8G8R8A8_UNORM;
+   CHECK(hk_g17p_buffer_to_image_copy_supported(&bad));
+   bad.format = VK_FORMAT_R8_UNORM;
+   CHECK(hk_g17p_buffer_to_image_copy_supported(&bad));
+   bad.format = VK_FORMAT_R16G16B16A16_SFLOAT;
    CHECK(!hk_g17p_buffer_to_image_copy_supported(&bad));
    bad = vkcube;
    bad.copy_extent.width--;
