@@ -1989,9 +1989,13 @@ agx3_emit_alu(struct util_dynarray *emission, enum agx_isa_encoding enc,
 static bool
 agx3_subgroup_plain(agx_index index, enum agx_index_type type)
 {
+   /* cache/discard are post-RA performance hints, not value modifiers.  The
+    * bounded subgroup forms either carry a pinned liveness profile or expose
+    * the relevant hint explicitly below, so refusing a legal public subgroup
+    * operation merely because its source became a last use is incorrect. */
    return index.type == type && !index.memory && index.size == AGX_SIZE_32 &&
-          agx_channels(index) == 1 && !index.abs && !index.neg && !index.cache &&
-          !index.discard && !index.kill && (index.value & 1) == 0;
+          agx_channels(index) == 1 && !index.abs && !index.neg && !index.kill &&
+          !(index.cache && index.discard) && (index.value & 1) == 0;
 }
 
 /* Preserve the older bounded immediate broadcast witnesses. */
@@ -2000,14 +2004,35 @@ agx3_emit_simd_broadcast(struct util_dynarray *emission,
                          enum agx_isa_encoding enc, const agx_instr *I,
                          uint16_t wait_mask)
 {
-   if (wait_mask != 0 || I->op != AGX_OPCODE_SHUFFLE || I->nr_dests != 1 ||
-       I->nr_srcs != 2 || !agx3_mod_src_ok(I->dest[0]) ||
-       !agx3_mod_src_ok(I->src[0]) || I->src[0].abs || I->src[0].neg ||
-       agx_channels(I->dest[0]) != 1 || agx_channels(I->src[0]) != 1 ||
+   if (I->op != AGX_OPCODE_SHUFFLE || I->nr_dests != 1 || I->nr_srcs != 2 ||
+       !agx3_subgroup_plain(I->dest[0], AGX_INDEX_REGISTER) ||
+       !agx3_subgroup_plain(I->src[0], AGX_INDEX_REGISTER) ||
        I->src[1].type != AGX_INDEX_IMMEDIATE || I->src[1].memory ||
        I->src[1].abs || I->src[1].neg ||
        agx_channels(I->src[1]) != 1 || I->saturate ||
-       (I->src[1].value != 0 && I->src[1].value != 3))
+       (I->src[1].value != 0 && I->src[1].value != 3 &&
+        I->src[1].value != 5))
+      return false;
+
+   /* G17P's immediate-lane form has direct lane 0/3/5 witnesses, including a
+    * device-load producer on slot 6.  Route AGX3b through that exact bounded
+    * encoder so a public subgroupShuffle may carry its real dependency. */
+   if (enc == AGX_ISA_ENCODING_AGX3B) {
+      const struct agx3_subgroup_shuffle_desc d = {
+         .op = AGX3_SUBGROUP_SHUFFLE_BROADCAST,
+         .lane_kind = AGX3_SUBGROUP_LANE_IMMEDIATE,
+         .dest = I->dest[0].value,
+         .src = I->src[0].value,
+         .lane = I->src[1].value,
+         .wait_mask = wait_mask,
+         .dest_hint = I->dest[0].cache,
+      };
+      uint8_t bytes[AGX3_SUBGROUP_MAX_LENGTH], length = 0;
+      return agx3_subgroup_encode_shuffle(enc, &d, bytes, &length) &&
+             agx3_append(emission, bytes, length);
+   }
+
+   if (wait_mask != 0 || I->src[1].value == 5)
       return false;
 
    struct agx3_encoded_simd_broadcast_f32_imm encoded;
@@ -2141,6 +2166,8 @@ agx3_emit_subgroup_reduce(struct util_dynarray *emission,
       .dest = I->dest[0].value,
       .src = I->src[0].value,
       .wait_mask = wait_mask,
+      .dest_hint = I->dest[0].cache,
+      .src_live = !I->src[0].discard,
    };
    uint8_t bytes[AGX3_SUBGROUP_MAX_LENGTH], length = 0;
    return agx3_subgroup_encode_reduce(enc, &d, bytes, &length) &&

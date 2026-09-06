@@ -2456,6 +2456,15 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
    case nir_op_fmax_agx:
       return agx_fminmax_to(b, dst, s0, s1, instr);
 
+   case nir_op_iabs: {
+      assert(sz == 32 && "other integer absolute values lowered");
+      /* Keep G17P's 32-bit absolute value independent of signed isel.  The
+       * usual two's-complement identity is exact even for INT_MIN. */
+      agx_index sign = agx_asr(b, s0, agx_immediate(31));
+      agx_index magnitude = agx_xor(b, s0, sign);
+      return agx_iadd_to(b, dst, magnitude, agx_neg(sign), 0);
+   }
+
    case nir_op_imin:
       return agx_icmpsel_to(b, dst, s0, s1, s0, s1, AGX_ICOND_SLT);
    case nir_op_imax:
@@ -2491,8 +2500,24 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
 
    case nir_op_ishl:
       return agx_bfi_to(b, dst, i0, s0, s1, 0);
-   case nir_op_ushr:
+   case nir_op_ushr: {
+      /* G17P's native register `srl` operand is a bitfield boundary, so its
+       * effective logical shift is (-operand) & 31.  Convert NIR's ordinary
+       * right-shift count before selecting the witnessed instruction.  This
+       * is observable in 64-bit lowering: for a count of 11, passing 11
+       * extracts the top 11 bits (x >> 21), while passing -11 produces the
+       * required x >> 11. */
+      if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B) {
+         if (s1.type == AGX_INDEX_IMMEDIATE) {
+            s1.value = (0u - s1.value) & 31u;
+         } else {
+            agx_index boundary = agx_temp(b->shader, AGX_SIZE_32);
+            agx_iadd_to(b, boundary, i0, agx_neg(s1), 0);
+            s1 = boundary;
+         }
+      }
       return agx_ushr_to(b, dst, s0, s1);
+   }
    case nir_op_ishr:
       return agx_asr_to(b, dst, s0, s1);
 
@@ -3300,6 +3325,80 @@ agx_optimize_loop_nir(nir_shader *nir)
       NIR_PASS(progress, nir, nir_opt_undef);
       NIR_PASS(progress, nir, nir_opt_loop_unroll);
    } while (progress);
+}
+
+static bool
+agx_nir_lower_imul64_filter(const nir_instr *instr, const void *_)
+{
+   if (instr->type != nir_instr_type_alu)
+      return false;
+
+   const nir_alu_instr *alu = nir_instr_as_alu(instr);
+   return alu->op == nir_op_imul && alu->def.bit_size == 64;
+}
+
+static nir_def *
+agx_nir_umul_high32(nir_builder *b, nir_def *x, nir_def *y)
+{
+   nir_def *shift = nir_imm_int(b, 16);
+   nir_def *mask = nir_imm_int(b, 0xffff);
+
+   /* Hacker's Delight unsigned 16-bit partial-product expansion. */
+   nir_def *xl = nir_iand(b, x, mask);
+   nir_def *yl = nir_iand(b, y, mask);
+   nir_def *xh = nir_ushr(b, x, shift);
+   nir_def *yh = nir_ushr(b, y, shift);
+   nir_def *lo = nir_imul(b, xl, yl);
+   nir_def *m1 = nir_imul(b, xl, yh);
+   nir_def *m2 = nir_imul(b, xh, yl);
+   nir_def *hi = nir_imul(b, xh, yh);
+   nir_def *t = nir_iadd(b, m2, nir_ushr(b, lo, shift));
+   nir_def *w1 = nir_iadd(b, m1, nir_iand(b, t, mask));
+   nir_def *w2 = nir_ushr(b, t, shift);
+   return nir_iadd(b, hi, nir_iadd(b, nir_ushr(b, w1, shift), w2));
+}
+
+static nir_def *
+agx_nir_lower_imul64_instr(nir_builder *b, nir_instr *instr, void *_)
+{
+   nir_alu_instr *alu = nir_instr_as_alu(instr);
+   nir_def *x = nir_ssa_for_alu_src(b, alu, 0);
+   nir_def *y = nir_ssa_for_alu_src(b, alu, 1);
+   nir_def *xl = nir_unpack_64_2x32_split_x(b, x);
+   nir_def *xh = nir_unpack_64_2x32_split_y(b, x);
+   nir_def *yl = nir_unpack_64_2x32_split_x(b, y);
+   nir_def *yh = nir_unpack_64_2x32_split_y(b, y);
+   nir_def *hi = nir_iadd(
+      b, agx_nir_umul_high32(b, xl, yl),
+      nir_iadd(b, nir_imul(b, xl, yh), nir_imul(b, xh, yl)));
+
+   return nir_pack_64_2x32_split(b, nir_imul(b, xl, yl), hi);
+}
+
+static bool
+agx_nir_lower_imul64(nir_shader *nir)
+{
+   return nir_shader_lower_instructions(
+      nir, agx_nir_lower_imul64_filter, agx_nir_lower_imul64_instr, NULL);
+}
+
+static bool
+agx_nir_has_alu64(const nir_shader *nir, nir_op opcode)
+{
+   nir_foreach_function_impl(impl, nir) {
+      nir_foreach_block(block, impl) {
+         nir_foreach_instr(instr, block) {
+            if (instr->type != nir_instr_type_alu)
+               continue;
+
+            const nir_alu_instr *alu = nir_instr_as_alu(instr);
+            if (alu->op == opcode && alu->def.bit_size == 64)
+               return true;
+         }
+      }
+   }
+
+   return false;
 }
 
 bool
@@ -4353,6 +4452,11 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
 
    memset(out, 0, sizeof *out);
 
+   /* Record API/source arithmetic before backend lowering introduces its own
+    * 64-bit address and invocation-ID calculations. */
+   const bool source_iadd64 = agx_nir_has_alu64(nir, nir_op_iadd);
+   const bool source_imul64 = agx_nir_has_alu64(nir, nir_op_imul);
+
    if ((key->dev.encoding == AGX_ISA_ENCODING_AGX3B ||
         key->dev.encoding == AGX_ISA_ENCODING_AGX3C) &&
        has_unlowered_printf_address(nir))
@@ -4431,6 +4535,25 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
    const bool form_preamble = !key->secondary && !key->no_preamble;
    const bool is_agx3 = key->dev.encoding == AGX_ISA_ENCODING_AGX3B ||
                        key->dev.encoding == AGX_ISA_ENCODING_AGX3C;
+   const bool is_g17p = key->dev.encoding == AGX_ISA_ENCODING_AGX3B;
+
+   /* AGX2 has native 64-bit add and 32x32->64 multiply forms, so the shared
+    * compiler options preserve them.  G17P has neither form grounded: lower
+    * add to low/add, carry, high/add and lower multiply-high to the standard
+    * 16-bit partial-product sequence.  Keep the override local to this
+    * compile so the other encodings retain their paths and frontends continue
+    * sharing agx_nir_options. */
+   const nir_shader_compiler_options *original_options = nir->options;
+   nir_shader_compiler_options agx3_options;
+   if (is_g17p) {
+      agx3_options = *original_options;
+      agx3_options.lower_iabs = false;
+      if (source_iadd64)
+         agx3_options.lower_int64_options |= nir_lower_iadd64;
+      if (source_imul64)
+         agx3_options.lower_int64_options &= ~nir_lower_imul64;
+      nir->options = &agx3_options;
+   }
 
    agx_optimize_nir(
       nir, key->dev.soft_fault, !is_agx3,
@@ -4440,6 +4563,12 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
                                               : NULL,
       (form_preamble && key->promote_textures) ? &info->sampler_state_count
                                               : NULL);
+
+   if (is_g17p && source_imul64)
+      NIR_PASS(_, nir, agx_nir_lower_imul64);
+
+   if (is_g17p)
+      nir->options = original_options;
 
    if (nir->info.stage == MESA_SHADER_FRAGMENT) {
       info->varyings.fs.nr_cf = key->fs.cf_base;

@@ -140,6 +140,10 @@ test_ballot_vectors(void)
    CHECK(agx3_subgroup_encode_ballot(AGX_ISA_ENCODING_AGX3C, &d, out, &length));
    CHECK(bytes_equal(out, length, int_c, sizeof(int_c)));
 
+   d.dest = 4;
+   CHECK(agx3_subgroup_encode_ballot(AGX_ISA_ENCODING_AGX3B, &d, out, &length));
+   d.dest = 0;
+
    d.src = 0;
    d.condition = 5;
    CHECK(agx3_subgroup_encode_ballot(AGX_ISA_ENCODING_AGX3B, &d, out, &length));

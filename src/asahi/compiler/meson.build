@@ -620,6 +620,19 @@ if with_tests
   )
 
   test(
+    'agx3_int64',
+    executable(
+      'agx3_int64_test',
+      files('test/test-agx3-int64.c'),
+      c_args : [c_msvc_compat_args, no_override_init_args],
+      gnu_symbol_visibility : 'hidden',
+      dependencies : [idep_nir, idep_mesautil],
+      link_with : [libasahi_compiler],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
     'agx3_multi_store',
     executable(
       'agx3_multi_store_test',
