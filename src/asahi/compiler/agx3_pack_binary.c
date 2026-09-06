@@ -364,7 +364,7 @@ agx3_try_float_modifier(struct util_dynarray *emission,
    bool ok;
    const uint16_t d = I->dest[0].value, s0 = I->src[0].value,
                   s1 = I->src[1].value;
-   if (is_add && enc == AGX_ISA_ENCODING_AGX3B) {
+   if ((is_add || is_mul) && enc == AGX_ISA_ENCODING_AGX3B) {
       struct agx3_falu_runtime runtime = {
          .dest_cache = I->dest[0].cache,
          .wait_mask = wait,
@@ -375,7 +375,9 @@ agx3_try_float_modifier(struct util_dynarray *emission,
          runtime.cache[i] = I->src[i].cache;
          runtime.discard[i] = I->src[i].discard;
       }
-      ok = agx3_falu_add_mod_runtime(enc, d, s0, s1, &m, &runtime, bytes, &len);
+      ok = is_add
+         ? agx3_falu_add_mod_runtime(enc, d, s0, s1, &m, &runtime, bytes, &len)
+         : agx3_falu_mul_mod_runtime(enc, d, s0, s1, &m, &runtime, bytes, &len);
    } else if (is_add)
       ok = agx3_falu_add_mod(enc, d, s0, s1, &m, bytes, &len);
    else if (is_mul)
@@ -401,7 +403,7 @@ agx3_try_float_modifier(struct util_dynarray *emission,
                                &m, bytes, &len);
       }
    }
-   if (!ok || (wait && !((is_add || is_fma) && enc == AGX_ISA_ENCODING_AGX3B)))
+   if (!ok || (wait && enc != AGX_ISA_ENCODING_AGX3B))
       return -1;
 
    memcpy(util_dynarray_grow_bytes(emission, 1, len), bytes, len);
@@ -4853,6 +4855,31 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                   AGX3_REFUSE(I);
                continue;
             }
+         }
+
+         if (enc == AGX_ISA_ENCODING_AGX3B && I->op == AGX_OPCODE_FFMA &&
+             !I->saturate && I->nr_dests == 1 && I->nr_srcs == 3 &&
+             agx3_vary_reg32(I->dest[0]) && agx_channels(I->dest[0]) == 1 &&
+             agx3_vary_reg32(I->src[0]) && agx_channels(I->src[0]) == 1 &&
+             agx3_vary_reg32(I->src[1]) && agx_channels(I->src[1]) == 1 &&
+             I->src[2].type == AGX_INDEX_IMMEDIATE && I->src[2].value <= 255 &&
+             !I->src[2].abs && !I->src[2].neg && !I->src[2].memory) {
+            struct agx3_falu_runtime runtime = {
+               .dest_cache = I->dest[0].cache, .wait_mask = wait,
+            };
+            for (unsigned i = 0; i < 2; ++i) {
+               if (I->src[i].kill)
+                  AGX3_REFUSE(I);
+               runtime.cache[i] = I->src[i].cache;
+               runtime.discard[i] = I->src[i].discard;
+            }
+            uint8_t bytes[AGX3_FALU_MOD_MAX_LENGTH], length;
+            if (!agx3_falu_fma_addend_imm(enc, I->dest[0].value,
+                    I->src[0].value, I->src[1].value, I->src[2].value,
+                    &runtime, bytes, &length) ||
+                !agx3_append(emission, bytes, length))
+               AGX3_REFUSE(I);
+            continue;
          }
 
          /* Native FMA with a minifloat multiplier. Preserve both async

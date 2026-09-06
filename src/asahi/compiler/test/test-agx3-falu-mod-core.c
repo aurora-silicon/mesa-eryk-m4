@@ -253,10 +253,74 @@ runtime_vectors(void)
    return fail;
 }
 
+static unsigned
+mul_runtime_vectors(void)
+{
+   const struct {
+      uint16_t dst, s0, s1;
+      struct agx3_falu_mods m;
+      struct agx3_falu_runtime rt;
+      unsigned size;
+      uint8_t bytes[16];
+   } vectors[] = {
+      {0,6,4,{.src0_abs=0,.src0_neg=0,.src1_abs=0,.src1_neg=0,.saturate=1}, {.cache={0,0},.discard={1,1},.dest_cache=0,.wait_mask=32},8,{0x09,0x05,0x1d,0x07,0x01,0x00,0x00,0x82}},
+      {0,4,2,{.src0_abs=0,.src0_neg=0,.src1_abs=0,.src1_neg=0,.saturate=1}, {.cache={0,0},.discard={0,0},.dest_cache=0,.wait_mask=32},8,{0x09,0x03,0x05,0x05,0x01,0x00,0x00,0x82}},
+      {0,6,4,{.src0_abs=0,.src0_neg=0,.src1_abs=1,.src1_neg=0,.saturate=0}, {.cache={0,0},.discard={1,1},.dest_cache=0,.wait_mask=32},12,{0x09,0x05,0x1d,0x07,0x02,0x00,0x00,0x80,0x01,0x00,0x00,0x00}},
+      {0,4,2,{.src0_abs=0,.src0_neg=0,.src1_abs=1,.src1_neg=0,.saturate=0}, {.cache={0,0},.discard={0,0},.dest_cache=0,.wait_mask=32},12,{0x09,0x03,0x05,0x05,0x02,0x00,0x00,0x80,0x01,0x00,0x00,0x00}},
+      {0,4,6,{.src0_abs=0,.src0_neg=1,.src1_abs=0,.src1_neg=0,.saturate=0}, {.cache={0,0},.discard={1,1},.dest_cache=0,.wait_mask=32},6,{0x09,0x07,0x1d,0x05,0x00,0xc8}},
+      {0,2,4,{.src0_abs=0,.src0_neg=1,.src1_abs=0,.src1_neg=0,.saturate=0}, {.cache={0,0},.discard={0,0},.dest_cache=0,.wait_mask=32},6,{0x09,0x05,0x05,0x03,0x00,0xc8}},
+      {0,4,6,{.src0_abs=1,.src0_neg=1,.src1_abs=1,.src1_neg=0,.saturate=0}, {.cache={0,0},.discard={1,1},.dest_cache=0,.wait_mask=32},12,{0x09,0x07,0x1d,0x05,0x02,0x08,0x00,0x80,0x03,0x00,0x00,0x00}},
+      {0,2,4,{.src0_abs=1,.src0_neg=1,.src1_abs=1,.src1_neg=0,.saturate=0}, {.cache={0,0},.discard={0,0},.dest_cache=0,.wait_mask=32},12,{0x09,0x05,0x05,0x03,0x02,0x08,0x00,0x80,0x03,0x00,0x00,0x00}},
+   };
+   unsigned fail = 0;
+   for (unsigned i = 0; i < sizeof(vectors)/sizeof(vectors[0]); ++i) {
+      uint8_t out[16], size;
+      if (!agx3_falu_mul_mod_runtime(AGX_ISA_ENCODING_AGX3B,
+              vectors[i].dst, vectors[i].s0, vectors[i].s1,
+              &vectors[i].m, &vectors[i].rt, out, &size) ||
+          size != vectors[i].size || memcmp(out, vectors[i].bytes, size)) {
+         fprintf(stderr, "native modified FMUL vector %u failed size=%u: ", i, size);
+         for (unsigned j=0;j<size;++j) fprintf(stderr,"%02x",out[j]);
+         fprintf(stderr,"\n");
+         fail++;
+      }
+   }
+   printf("native modified FMUL: eight Apple live/dead byte vectors: %u failures\n", fail);
+   return fail;
+}
+
+static unsigned
+fma_addend_vectors(void)
+{
+   const struct {
+      uint16_t dst,s0,s1; uint8_t imm;
+      struct agx3_falu_runtime rt;
+      unsigned size; uint8_t bytes[16];
+   } vectors[] = {
+      {0,6,4,48,{.cache={0,0},.discard={1,1},.dest_cache=0,.wait_mask=32},8,{0x09,0x05,0x1e,0x07,0x21,0xb0,0x02,0xc0}},
+      {0,4,2,48,{.cache={0,0},.discard={0,0},.dest_cache=0,.wait_mask=32},8,{0x09,0x03,0x06,0x05,0x21,0xb0,0x02,0xc0}},
+      {0,6,4,176,{.cache={0,0},.discard={1,1},.dest_cache=0,.wait_mask=32},8,{0x09,0x05,0x1e,0x07,0xa1,0xb0,0x02,0xc0}},
+      {0,4,2,176,{.cache={0,0},.discard={0,0},.dest_cache=0,.wait_mask=32},8,{0x09,0x03,0x06,0x05,0xa1,0xb0,0x02,0xc0}},
+      {0,6,4,32,{.cache={0,0},.discard={1,1},.dest_cache=0,.wait_mask=32},8,{0x09,0x05,0x1e,0x07,0x21,0xa0,0x02,0xc0}},
+      {0,4,2,32,{.cache={0,0},.discard={0,0},.dest_cache=0,.wait_mask=32},8,{0x09,0x03,0x06,0x05,0x21,0xa0,0x02,0xc0}},
+   };
+   unsigned fail=0;
+   for(unsigned i=0;i<sizeof(vectors)/sizeof(vectors[0]);++i){
+      uint8_t out[16],size=0;
+      if(!agx3_falu_fma_addend_imm(AGX_ISA_ENCODING_AGX3B,vectors[i].dst,
+             vectors[i].s0,vectors[i].s1,vectors[i].imm,&vectors[i].rt,out,&size)||
+         size!=vectors[i].size||memcmp(out,vectors[i].bytes,size)){
+         fprintf(stderr,"FMA minifloat addend vector %u failed\n",i);fail++;
+      }
+   }
+   printf("native FMA minifloat addend: six Apple live/dead vectors: %u failures\n",fail);
+   return fail;
+}
+
 int
 main(void)
 {
-   unsigned pass = 0, fail = runtime_vectors() + add_runtime_vectors() + narrow_runtime_vectors();
+   unsigned pass = 0, fail = runtime_vectors() + add_runtime_vectors() + narrow_runtime_vectors() + mul_runtime_vectors() + fma_addend_vectors();
    for (size_t i = 0; i < mod_vec_count; ++i) {
       const struct mod_vec *v = &mod_vecs[i];
       const enum agx_isa_encoding e =
