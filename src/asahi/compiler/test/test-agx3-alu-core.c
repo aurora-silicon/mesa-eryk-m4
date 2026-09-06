@@ -815,6 +815,20 @@ static void test_native_select_reg_imm(void)
       exact(bytes,len,reg_golden[i]);
    }
    puts("Native register-register FSEL: four exact 16/32-bit live/dead vectors PASS");
+   const uint16_t zero_registers[4][4]={{0,0,8,9},{0,0,2,3},{14,0,4,6},{0,0,2,4}};
+   const char *zero_golden[]={"02010d81820803c28009","0a012d81028203c20083",
+      "020f0f81820403c28006","02010f81020203c20004"};
+   for(unsigned i=0;i<4;i++) {
+      const enum agx3_alu_hint live_hint=i==1?AGX3_ALU_HINT_CACHE:AGX3_ALU_HINT_NONE;
+      const enum agx3_alu_hint hints[]={AGX3_ALU_HINT_DISCARD,AGX3_ALU_HINT_NONE,
+         (i&1)?live_hint:AGX3_ALU_HINT_DISCARD,
+         (i&1)?live_hint:AGX3_ALU_HINT_DISCARD};
+      uint8_t bytes[AGX3_ALU_MAX_LENGTH],len;
+      assert(agx3_alu_fcmp_select_reg_imm(AGX_ISA_ENCODING_AGX3B,i==1?1:0,
+         zero_registers[i],true,reg_immediate,hints,1,i<2,i==1,32,bytes,&len));
+      exact(bytes,len,zero_golden[i]);
+   }
+   puts("Native zero-compare register FSEL: four exact 16/32-bit live/dead vectors PASS");
 }
 
 static void test_native_high_float_registers(void)
