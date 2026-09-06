@@ -77,7 +77,7 @@ agx_compose_float_src(agx_index to, agx_index from)
 }
 
 static void
-agx_optimizer_fmov(agx_instr **defs, agx_instr *ins)
+agx_optimizer_fmov(agx_context *ctx, agx_instr **defs, agx_instr *ins)
 {
    agx_foreach_ssa_src(ins, s) {
       agx_index src = ins->src[s];
@@ -101,6 +101,14 @@ agx_optimizer_fmov(agx_instr **defs, agx_instr *ins)
       assert(src.size == AGX_SIZE_32 || src.size == AGX_SIZE_16);
 
       if (src.size == AGX_SIZE_16 && def->src[0].size == AGX_SIZE_32)
+         continue;
+
+      /* G17P does not have a corpus-grounded direct f32+f16 ADD. Preserve
+       * the explicit exact widening before a full-width add, matching the
+       * native compiler sequence used for half-backed blend attachments. */
+      if (ctx->key && ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+          ins->op == AGX_OPCODE_FADD && src.size == AGX_SIZE_32 &&
+          def->src[0].size == AGX_SIZE_16)
          continue;
 
       ins->src[s] = agx_compose_float_src(src, def->src[0]);
@@ -235,7 +243,8 @@ agx_optimizer_fmov_rev(agx_context *ctx, agx_instr *I, agx_instr *use)
    /* AGX3b's transcendental/rounding forms have no native saturation bit.
     * Keep the following saturating fmov separate, matching Apple's native
     * lowering, so the funop remains encodable and the clamp still happens. */
-   if (ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B && use->saturate &&
+   if (ctx->key && ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+       use->saturate &&
        (I->op == AGX_OPCODE_FLOOR || I->op == AGX_OPCODE_CEIL ||
         I->op == AGX_OPCODE_TRUNC || I->op == AGX_OPCODE_LOG2 ||
         I->op == AGX_OPCODE_EXP2))
@@ -567,7 +576,7 @@ agx_optimizer_forward(agx_context *ctx)
       /* Propagate fmov down */
       if (info.is_float || I->op == AGX_OPCODE_FCMPSEL ||
           I->op == AGX_OPCODE_FCMP)
-         agx_optimizer_fmov(defs, I);
+         agx_optimizer_fmov(ctx, defs, I);
 
       /* Inline immediates if we can. TODO: systematic */
       if (I->op != AGX_OPCODE_COLLECT && I->op != AGX_OPCODE_IMAGE_LOAD &&

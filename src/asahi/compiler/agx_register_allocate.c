@@ -112,6 +112,9 @@ struct ra_ctx {
 
    /* Maximum number of registers that RA is allowed to use */
    unsigned bound[RA_CLASSES];
+
+   /* SSA values that must begin in G17P's corpus-grounded low store bank. */
+   BITSET_WORD *low_gpr;
 };
 
 /*
@@ -350,6 +353,9 @@ dest_limit(const struct ra_ctx *rctx, const agx_instr *I, unsigned d)
    if (rctx->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
        (I->op == AGX_OPCODE_TEXTURE_SAMPLE || I->op == AGX_OPCODE_TEXTURE_LOAD))
       limit = MIN2(limit, 128);
+   if (rctx->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+       BITSET_TEST(rctx->low_gpr, I->dest[d].value))
+      limit = MIN2(limit, 16);
    return limit;
 }
 
@@ -1542,9 +1548,14 @@ agx_ra(agx_context *ctx)
    agx_instr **src_to_collect_phi = calloc(ctx->alloc, sizeof(agx_instr *));
    enum agx_size *sizes = calloc(ctx->alloc, sizeof(enum agx_size));
    BITSET_WORD *visited = BITSET_CALLOC(ctx->alloc);
+   BITSET_WORD *low_gpr = BITSET_CALLOC(ctx->alloc);
    unsigned max_ncomps = 1;
 
    agx_foreach_instr_global(ctx, I) {
+      if (ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+          I->op == AGX_OPCODE_ST_TILE && I->src[0].type == AGX_INDEX_NORMAL)
+         BITSET_SET(low_gpr, I->src[0].value);
+
       /* Record collects/phis so we can coalesce when assigning */
       if (I->op == AGX_OPCODE_COLLECT || I->op == AGX_OPCODE_PHI ||
           I->op == AGX_OPCODE_EXPORT || I->op == AGX_OPCODE_SPLIT) {
@@ -1614,6 +1625,7 @@ agx_ra(agx_context *ctx)
          .sizes = sizes,
          .classes = classes,
          .visited = visited,
+         .low_gpr = low_gpr,
          .bound[RA_GPR] = max_regs,
          .bound[RA_MEM] = AGX_NUM_MODELED_REGS,
          .count[RA_GPR] = &reg_count,
@@ -1758,6 +1770,7 @@ agx_ra(agx_context *ctx)
    }
 
    free(phi_web);
+   free(low_gpr);
    free(src_to_collect_phi);
    free(ncomps);
    free(ncomps_unrounded);

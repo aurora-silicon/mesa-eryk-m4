@@ -13,6 +13,27 @@ int main(void){
       if(!ok||len!=v->nbytes||memcmp(out,v->bytes,v->nbytes)){ if(fail<8) fprintf(stderr,"FAIL %s enc=%d i=%zu\n",v->op,v->enc,i); fail++; } else pass++;
    }
    {
+      static const uint8_t scalar_w16[] = {
+         0x67,0x0e,0x54,0x00,0x00,0x00,0x01,0x82,0x02,0x00,0x00,0x00,
+      };
+      static const uint8_t scalar_w8[] = {
+         0x67,0x0e,0x54,0x00,0x00,0x00,0x01,0xc2,0x02,0x00,0x00,0x00,
+      };
+      const struct { enum agx3_tile_width width; const uint8_t *bytes; } v[] = {
+         {AGX3_TILE_W16, scalar_w16}, {AGX3_TILE_W8, scalar_w8},
+      };
+      for (unsigned i = 0; i < sizeof(v) / sizeof(v[0]); ++i) {
+         uint8_t out[AGX3_TILE_MAX_LENGTH], len = 0;
+         if (!agx3_tile_load(AGX_ISA_ENCODING_AGX3B, 0, v[i].width, 6,
+                             1, 0, AGX3_TILE_COV_1X, 0, true, true,
+                             out, &len) || len != sizeof(scalar_w8) ||
+             memcmp(out, v[i].bytes, len))
+            fail++;
+         else
+            pass++;
+      }
+   }
+   {
       uint8_t out[AGX3_TILE_MAX_LENGTH]; uint8_t len=0;
       if(agx3_tile_store(AGX_ISA_ENCODING_AGX3B,0,AGX3_TILE_W32,15,0,
                          AGX3_TILE_COV_1X,0x40,out,&len)) fail++; else pass++;
