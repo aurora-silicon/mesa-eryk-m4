@@ -787,6 +787,23 @@ static void test_native_select_reg_imm(void)
       exact(bytes,len,live?"02030581228102c22080":"02010d81228102c22080");
    }
    puts("Native zero-comparison boolean FSEL: two exact live/dead vectors PASS");
+   /* Fresh complete Apple kernels select two loaded values, then optionally
+    * store both operands again. Cover DISCARD, CACHE and retained NONE hints. */
+   const uint16_t registers[4][4]={{4,6,8,9},{4,6,2,3},{4,6,8,10},{6,8,2,4}};
+   const char *reg_golden[]={"02051d07820803c08009","0a053d07028203c00083",
+      "02051f07820803c0800a","02071f09020203c00004"};
+   const bool reg_immediate[]={false,false};
+   for(unsigned i=0;i<4;i++) {
+      const enum agx3_alu_hint live_hint=i==1?AGX3_ALU_HINT_CACHE:AGX3_ALU_HINT_NONE;
+      const enum agx3_alu_hint hints[]={AGX3_ALU_HINT_DISCARD,AGX3_ALU_HINT_DISCARD,
+         (i&1)?live_hint:AGX3_ALU_HINT_DISCARD,
+         (i&1)?live_hint:AGX3_ALU_HINT_DISCARD};
+      uint8_t bytes[AGX3_ALU_MAX_LENGTH],len;
+      assert(agx3_alu_fcmp_select_reg_imm(AGX_ISA_ENCODING_AGX3B,i==1?1:0,registers[i],
+         false,reg_immediate,hints,1,i<2,i==1,32,bytes,&len));
+      exact(bytes,len,reg_golden[i]);
+   }
+   puts("Native register-register FSEL: four exact 16/32-bit live/dead vectors PASS");
 }
 
 static void test_native_high_float_registers(void)
