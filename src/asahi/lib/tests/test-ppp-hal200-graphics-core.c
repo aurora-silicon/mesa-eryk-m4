@@ -252,5 +252,28 @@ main(void)
    assert(!agx_ppp_hal200_cull_mode_pack(AGX_CHIP_G17G, 0, 0, 0, &unchanged));
    assert(!agx_ppp_hal200_cull_mode_pack(AGX_CHIP_G17P, 0, 0, 0, NULL));
    assert(unchanged == 0xdeadbeef);
+
+   /* EXP-0019 and the HAL200 Metal setter isolate the two-bit mode exactly:
+    * clip=01, clamp=10. All other raster fields must survive the update. */
+   uint32_t depth_clip;
+   assert(agx_ppp_hal200_depth_clip_pack(AGX_CHIP_G17P, true,
+                                         0xdeadbeef, &depth_clip));
+   assert(depth_clip ==
+          ((UINT32_C(0xdeadbeef) & ~UINT32_C(0xc00)) | UINT32_C(0x400)));
+   assert(agx_ppp_hal200_depth_clip_pack(AGX_CHIP_G17P, false,
+                                         0xdeadbeef, &depth_clip));
+   assert(depth_clip ==
+          ((UINT32_C(0xdeadbeef) & ~UINT32_C(0xc00)) | UINT32_C(0x800)));
+   assert(agx_ppp_hal200_depth_clip_pack(AGX_CHIP_G17P, true,
+                                         0x480, &depth_clip));
+   assert(depth_clip == UINT32_C(0x480));
+   assert(agx_ppp_hal200_depth_clip_pack(AGX_CHIP_G17P, false,
+                                         0x480, &depth_clip));
+   assert(depth_clip == UINT32_C(0x880));
+   unchanged = UINT32_C(0xdeadbeef);
+   assert(!agx_ppp_hal200_depth_clip_pack(AGX_CHIP_G17G, true, 0,
+                                          &unchanged));
+   assert(!agx_ppp_hal200_depth_clip_pack(AGX_CHIP_G17P, true, 0, NULL));
+   assert(unchanged == UINT32_C(0xdeadbeef));
    return 0;
 }

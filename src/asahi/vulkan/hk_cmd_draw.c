@@ -3025,7 +3025,11 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
                                          cull_fields.words[0],
                                          &cull_fields.words[0]))
       return false;
-
+   if (!agx_ppp_hal200_depth_clip_pack(
+          dev->dev.chip,
+          vk_rasterization_state_depth_clip_enable(&dyn->rs),
+          cull_fields.words[0], &cull_fields.words[0]))
+      return false;
 
    struct agx_ppp_w_clamp_cull2_core w_cull2_record;
    const struct agx_ppp_w_clamp_cull2_fields w_cull2_fields = {

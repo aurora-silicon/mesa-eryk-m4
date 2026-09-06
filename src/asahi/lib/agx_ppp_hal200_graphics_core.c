@@ -32,6 +32,18 @@ agx_ppp_hal200_cull_provoking_pack(enum agx_chip chip, unsigned selector,
    return true;
 }
 
+bool
+agx_ppp_hal200_depth_clip_pack(enum agx_chip chip, bool depth_clip,
+                               uint32_t original, uint32_t *out)
+{
+   if (chip != AGX_CHIP_G17P || !out)
+      return false;
+
+   *out = (original & ~UINT32_C(0xc00)) |
+          (depth_clip ? UINT32_C(0x400) : UINT32_C(0x800));
+   return true;
+}
+
 static void
 store_le32(uint8_t *dst, uint32_t value)
 {

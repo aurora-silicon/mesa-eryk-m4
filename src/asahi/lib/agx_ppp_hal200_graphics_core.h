@@ -52,6 +52,10 @@ bool agx_ppp_hal200_cull_mode_pack(enum agx_chip chip, unsigned cull_mode,
 bool agx_ppp_hal200_cull_provoking_pack(enum agx_chip chip, unsigned selector,
                                        uint32_t original, uint32_t *out);
 
+/* Native setDepthClipMode: CULL bits11:10 are 01 for clip and 10 for clamp. */
+bool agx_ppp_hal200_depth_clip_pack(enum agx_chip chip, bool depth_clip,
+                                   uint32_t original, uint32_t *out);
+
 struct agx_ppp_hal200_graphics_core {
    uint8_t bytes[AGX_PPP_HAL200_GRAPHICS_MAX_LENGTH];
    uint8_t length;
