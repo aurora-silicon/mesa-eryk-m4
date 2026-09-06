@@ -1384,8 +1384,11 @@ agx3_translate_mem(const agx_instr *I, bool is_store, uint8_t slot,
    d->shift = (uint8_t)I->shift;
 
    const agx_index data = is_store ? I->src[0] : I->dest[0];
+   /* Native scalar byte stores also address individual halves. Apple's
+    * byte_halves_odd_zero stores ushort2.y from half3 with W8/mask1. */
    const bool scalar_half = data.size == AGX_SIZE_16 &&
-      w == AGX3_MEM_W16 && I->mask == 1 && agx_channels(data) == 1;
+      (w == AGX3_MEM_W16 || (is_store && w == AGX3_MEM_W8)) &&
+      I->mask == 1 && agx_channels(data) == 1;
    if (!agx3_src_is_register(data) || data.memory ||
        (!scalar_half && (data.value & 1)) || data.value >= 256)
       return false;
@@ -4560,8 +4563,10 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
 
          if (enc == AGX_ISA_ENCODING_AGX3B && I->op == AGX_OPCODE_BITOP &&
              I->nr_dests == 1 && I->nr_srcs == 2 && !I->saturate &&
-             I->dest[0].size == AGX_SIZE_16 && I->src[0].size == AGX_SIZE_16 &&
-             I->src[1].size == AGX_SIZE_16 && agx_channels(I->dest[0]) == 1 &&
+             I->dest[0].size == AGX_SIZE_16 &&
+             (I->src[0].size == AGX_SIZE_16 || agx3_vary_reg32(I->src[0])) &&
+             (I->src[1].size == AGX_SIZE_16 || agx3_vary_reg32(I->src[1])) &&
+             agx_channels(I->dest[0]) == 1 &&
              agx_channels(I->src[0]) == 1 && agx_channels(I->src[1]) == 1 &&
              agx3_src_is_register(I->dest[0]) && agx3_src_is_register(I->src[0]) &&
              agx3_src_is_register(I->src[1]) &&
@@ -4570,6 +4575,10 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             if (tt == AGX3_SEL_TT_AND || tt == AGX3_SEL_TT_OR || tt == AGX3_SEL_TT_XOR) {
                const enum agx3_alu_op op = tt == AGX3_SEL_TT_AND ? AGX3_ALU_BAND :
                   tt == AGX3_SEL_TT_OR ? AGX3_ALU_BOR : AGX3_ALU_BXOR;
+               /* A narrow bitwise result depends only on the low half of
+                * each input, including wider IR registers. Native register
+                * indices already address halves: retain those indices and
+                * the actual lifetime hints without a conversion or copy. */
                const uint16_t src[2] = {I->src[0].value, I->src[1].value};
                const enum agx3_alu_hint hints[2] = {
                   agx3_post_ra_hint(I->src[0]), agx3_post_ra_hint(I->src[1])};

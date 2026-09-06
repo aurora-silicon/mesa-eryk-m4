@@ -3968,3 +3968,54 @@ TEST_F(AGX3PackBinary, BlurSignedHalfConversionAndCounterStayNative)
                        convert ? sizeof(converted) : sizeof(incremented)),0);
    }
 }
+
+TEST_F(AGX3PackBinary, NarrowBitwiseUsesWiderSourcesLowHalves)
+{
+   for (unsigned mask = 1; mask < 4; ++mask) {
+      for (unsigned lifetime = 0; lifetime < 4; ++lifetime) {
+         for (unsigned op = 0; op < 3; ++op) {
+            const enum agx3_alu_op ops[] = {AGX3_ALU_BAND,AGX3_ALU_BOR,AGX3_ALU_BXOR};
+            const unsigned tt[] = {8,14,6};
+            auto *b = builder(AGX_ISA_ENCODING_AGX3B);
+            agx_index a = agx_register(2,mask & 1 ? AGX_SIZE_32 : AGX_SIZE_16);
+            agx_index z = agx_register(6,mask & 2 ? AGX_SIZE_32 : AGX_SIZE_16);
+            a.discard = lifetime & 1; a.cache = !a.discard;
+            z.discard = lifetime & 2; z.cache = !z.discard;
+            agx_bitop_to(b,agx_register(1,AGX_SIZE_16),a,z,tt[op]);
+            agx_stop(b);
+            const uint16_t halves[2] = {2,6};
+            const enum agx3_alu_hint hints[2] = {
+               a.discard ? AGX3_ALU_HINT_DISCARD : AGX3_ALU_HINT_CACHE,
+               z.discard ? AGX3_ALU_HINT_DISCARD : AGX3_ALU_HINT_CACHE,
+            };
+            uint8_t bytes[AGX3_ALU_MAX_LENGTH], length;
+            ASSERT_TRUE(agx3_alu_bit_reg16(AGX_ISA_ENCODING_AGX3B,ops[op],1,
+                                          halves,hints,0,bytes,&length));
+            std::vector<uint8_t> want;
+            append(want,bytes,length);
+            struct agx3_encoded_end end;
+            ASSERT_TRUE(agx3_pack_end(AGX_ISA_ENCODING_AGX3B,&end));
+            append(want,end.bytes,end.length);
+            EXPECT_EQ(pack(b),want);
+         }
+      }
+   }
+}
+
+TEST_F(AGX3PackBinary, ScalarByteStoreReadsOddNativeHalf)
+{
+   auto *b = builder(AGX_ISA_ENCODING_AGX3B);
+   agx_index index = agx_register(0,AGX_SIZE_32);
+   index.kill = true;
+   agx_device_store(b,agx_register(3,AGX_SIZE_16),agx_uniform(4,AGX_SIZE_64),
+                     index,AGX_FORMAT_I8,1,0,false);
+   agx_stop(b);
+   /* Apple byte_halves_odd_zero, actual native W8 store of the second
+    * ushort half with a uniform pointer and last-use register index. */
+   const uint8_t native[] = {0xe7,0,0x54,3,1,0,0x21,0,0x21,0,0,0x90,0x10,0};
+   std::vector<uint8_t> want(native,native+sizeof(native));
+   struct agx3_encoded_end end;
+   ASSERT_TRUE(agx3_pack_end(AGX_ISA_ENCODING_AGX3B,&end));
+   append(want,end.bytes,end.length);
+   EXPECT_EQ(pack(b),want);
+}
