@@ -814,10 +814,11 @@ agx_emit_local_store_pixel(agx_builder *b, nir_intrinsic_instr *instr)
    unsigned nr_packed =
       agx_pack_normalized_agx3(b, compacted, compact_count, format, packed);
 
-   /* AGX3's tile store encodes only the lane width.  Unlike AGX2 it cannot
+   /* G17P's tile store encodes only the lane width.  Unlike AGX2 it cannot
     * narrow an f32 colour to the f16 lanes named by that width, so make the
-    * conversion explicit before collecting the store payload. */
-   if (b->shader->key->dev.encoding != AGX_ISA_ENCODING_AGX2 &&
+    * conversion explicit before collecting the store payload.  Keep AGX3c
+    * unchanged until its matching narrowing ALU form is grounded. */
+   if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
        format == AGX_FORMAT_F16 && nr_packed == 0) {
       nr_packed = compact_count;
       for (unsigned i = 0; i < compact_count; ++i) {

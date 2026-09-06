@@ -260,6 +260,16 @@ agx_optimizer_fmov_rev(agx_context *ctx, agx_instr *I, agx_instr *use)
    if (I->dest[0].size == AGX_SIZE_16 && use->dest[0].size == AGX_SIZE_32)
       return false;
 
+   /* G17P only has a corpus-grounded direct f32 operation with an f16
+    * destination for FMUL.  Keep an explicit f32-to-f16 move after ADD/FMA
+    * and the remaining float operations so each rounds exactly once through
+    * the native narrowing form instead of creating an unencodable mixed-width
+    * producer. */
+   if (ctx->key && ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+       I->dest[0].size == AGX_SIZE_32 && use->dest[0].size == AGX_SIZE_16 &&
+       I->op != AGX_OPCODE_FMUL)
+      return false;
+
    /* saturate(saturate(x)) = saturate(x) */
    I->saturate |= use->saturate;
    I->dest[0] = use->dest[0];

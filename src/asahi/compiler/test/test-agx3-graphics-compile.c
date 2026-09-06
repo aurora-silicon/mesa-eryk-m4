@@ -640,14 +640,15 @@ test_g17p_background_f16_clear_narrowing(void)
       "\x2b\x0a\x01\x08\x11\x05\x1c\x81\x04\x02"
       "\xe7\x06\x54\x00\x00\x00\x01\x0e\x00\x00\x00\x00"
       "\x0e\x00\x00\x00";
-   const bool ok = compiled && part.binary != NULL &&
-                   part.info.binary_size == sizeof(expected) - 1 &&
-                   !memcmp(part.binary, expected, sizeof(expected) - 1);
+   bool ok = compiled && part.binary != NULL &&
+             part.info.binary_size == sizeof(expected) - 1 &&
+             !memcmp(part.binary, expected, sizeof(expected) - 1);
    if (!ok)
       fprintf(stderr, "AGX3b f16 background-clear narrowing mismatch\n");
 
    free(part.binary);
    ralloc_free(nir);
+
    return ok;
 }
 
