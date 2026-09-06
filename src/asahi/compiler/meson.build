@@ -704,6 +704,19 @@ if with_tests
   )
 
   test(
+    'agx_register_bank',
+    executable(
+      'agx_register_bank_test',
+      files('test/test-register-bank.c'),
+      c_args : [c_msvc_compat_args, no_override_init_args, '-UNDEBUG'],
+      gnu_symbol_visibility : 'hidden',
+      dependencies : [idep_nir, idep_mesautil],
+      link_with : [libasahi_compiler],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
     'agx3_rgb10_memory',
     executable(
       'agx3_rgb10_memory_test',

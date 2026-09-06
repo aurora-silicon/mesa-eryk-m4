@@ -328,9 +328,9 @@ agx_calc_register_demand(agx_context *ctx, bool remat)
 
 static bool
 find_regs_simple(struct ra_ctx *rctx, enum ra_class cls, unsigned count,
-                 unsigned align, unsigned *out)
+                 unsigned align, unsigned limit, unsigned *out)
 {
-   for (unsigned reg = 0; reg + count <= rctx->bound[cls]; reg += align) {
+   for (unsigned reg = 0; reg + count <= limit; reg += align) {
       if (!BITSET_TEST_COUNT(rctx->used_regs[cls], reg, count)) {
          *out = reg;
          return true;
@@ -338,6 +338,19 @@ find_regs_simple(struct ra_ctx *rctx, enum ra_class cls, unsigned count,
    }
 
    return false;
+}
+
+static unsigned
+dest_limit(const struct ra_ctx *rctx, const agx_instr *I, unsigned d)
+{
+   enum ra_class cls = ra_class_for_index(I->dest[d]);
+   unsigned limit = rctx->bound[cls];
+   /* G17P TEX encodes a seven-bit half-register destination. ALU values and
+    * texture coordinates retain access to the entire register file. */
+   if (rctx->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+       (I->op == AGX_OPCODE_TEXTURE_SAMPLE || I->op == AGX_OPCODE_TEXTURE_LOAD))
+      limit = MIN2(limit, 128);
+   return limit;
 }
 
 /*
@@ -457,8 +470,57 @@ insert_copy(struct ra_ctx *rctx, struct util_dynarray *copies, unsigned new_reg,
 }
 
 static unsigned
+find_constrained_region(struct ra_ctx *rctx, unsigned count, unsigned limit,
+                        unsigned *span_out)
+{
+   unsigned best = ~0u, best_moves = ~0u, best_span = 0;
+   /* RA vectors are naturally aligned powers of two, at most 16 halves.
+    * A result may overlap a larger live vector. Evict that whole vector,
+    * rather than interpreting one of its interior halves as another SSA. */
+   for (unsigned span = count; span <= 16; span *= 2) {
+      for (unsigned base = 0; base + span <= limit; base += span) {
+         if (base < reserved_size(rctx->shader))
+            continue;
+         unsigned moves = 0;
+         bool valid = true;
+         for (unsigned reg = reserved_size(rctx->shader); reg < limit;) {
+            if (!BITSET_TEST(rctx->used_regs[RA_GPR], reg)) {
+               ++reg;
+               continue;
+            }
+            unsigned ssa = rctx->reg_to_ssa[reg];
+            unsigned width = rctx->ncomps[ssa];
+            assert(width && rctx->ssa_to_reg[ssa] == reg);
+            if (reg < base + span && reg + width > base) {
+               if (reg < base || reg + width > base + span) {
+                  valid = false;
+                  break;
+               }
+               moves += width / agx_size_align_16(rctx->sizes[ssa]);
+            }
+            reg += width;
+         }
+         if (valid && moves < best_moves) {
+            best = base;
+            best_moves = moves;
+            best_span = span;
+         }
+      }
+      /* Prefer the smallest whole-value region before minimizing copies.
+       * Otherwise a cheap wider victim can leave all free halves trapped
+       * in the reserved prefix and the result's partially occupied block,
+       * with no movable region large enough to relocate that victim. */
+      if (best != ~0u)
+         break;
+   }
+   assert(best < limit && best_span);
+   *span_out = best_span;
+   return best;
+}
+
+static unsigned
 assign_regs_by_copying(struct ra_ctx *rctx, agx_index dest, const agx_instr *I,
-                       struct util_dynarray *copies)
+                       struct util_dynarray *copies, unsigned limit)
 {
    BITSET_DECLARE(clobbered, AGX_NUM_REGS) = {0};
    assert(dest.type == AGX_INDEX_NORMAL);
@@ -466,6 +528,32 @@ assign_regs_by_copying(struct ra_ctx *rctx, agx_index dest, const agx_instr *I,
    /* Initialize the worklist with the variable we're assigning */
    unsigned blocked_vars[16] = {dest.value};
    size_t nr_blocked = 1;
+
+   if (limit < rctx->bound[RA_GPR]) {
+      unsigned count = rctx->ncomps[dest.value], span;
+      unsigned base = find_constrained_region(rctx, count, limit, &span);
+      nr_blocked = 0;
+      for (unsigned reg = base; reg < base + span;) {
+         if (!BITSET_TEST(rctx->used_regs[RA_GPR], reg)) {
+            ++reg;
+            continue;
+         }
+         unsigned ssa = rctx->reg_to_ssa[reg];
+         unsigned width = rctx->ncomps[ssa];
+         assert(rctx->ssa_to_reg[ssa] == reg && reg + width <= base + span);
+         assert(nr_blocked < ARRAY_SIZE(blocked_vars));
+         blocked_vars[nr_blocked++] = ssa;
+         BITSET_CLEAR_COUNT(rctx->used_regs[RA_GPR], reg, width);
+         reg += width;
+      }
+      /* Only reserve the actual result. Freed excess halves of a larger
+       * victim remain available to the shuffle. This leaves enough total
+       * free space even when the low bank started completely full. Copies
+       * execute in parallel before I, preserving every victim's old value. */
+      BITSET_SET_COUNT(rctx->used_regs[RA_GPR], base, count);
+      BITSET_SET_COUNT(clobbered, base, count);
+      set_ssa_to_reg(rctx, dest.value, base);
+   }
 
    while (nr_blocked > 0) {
       /* Grab the largest var. TODO: Consider not writing O(N^2) code. */
@@ -606,8 +694,9 @@ find_regs(struct ra_ctx *rctx, agx_instr *I, unsigned dest_idx, unsigned count,
    assert(count == align);
 
    enum ra_class cls = ra_class_for_index(I->dest[dest_idx]);
+   unsigned limit = dest_limit(rctx, I, dest_idx);
 
-   if (find_regs_simple(rctx, cls, count, align, &reg)) {
+   if (find_regs_simple(rctx, cls, count, align, limit, &reg)) {
       return reg;
    } else {
       assert(!rctx->early_killed && "no live range splits with early kill");
@@ -615,7 +704,7 @@ find_regs(struct ra_ctx *rctx, agx_instr *I, unsigned dest_idx, unsigned count,
 
       struct util_dynarray copies = UTIL_DYNARRAY_INIT;
 
-      reg = assign_regs_by_copying(rctx, I->dest[dest_idx], I, &copies);
+      reg = assign_regs_by_copying(rctx, I->dest[dest_idx], I, &copies, limit);
 
       /* Insert the necessary copies. Phis need special handling since we can't
        * insert instructions before the phi.
@@ -835,6 +924,9 @@ pick_regs(struct ra_ctx *rctx, agx_instr *I, unsigned d)
 
    unsigned align = count;
 
+   if (dest_limit(rctx, I, d) < rctx->bound[cls])
+      return find_regs(rctx, I, d, count, align);
+
    /* Try to allocate entire phi webs compatibly */
    unsigned phi_idx = phi_web_find(rctx->phi_web, idx.value);
    if (rctx->phi_web[phi_idx].assigned) {
@@ -1027,7 +1119,7 @@ try_kill_early_sources(struct ra_ctx *rctx, const agx_instr *I,
     *
     * To ensure that, the region must be aligned and cover the destination.
     */
-   if (region_base == region_end ||
+   if (region_base == region_end || dest_end > dest_limit(rctx, I, 0) ||
        (rctx->ssa_to_reg[I->src[first_source].value] & (dest_size - 1)) ||
        ((region_end < dest_end) &&
         BITSET_TEST_RANGE(rctx->used_regs[RA_GPR], region_end, dest_end)))
