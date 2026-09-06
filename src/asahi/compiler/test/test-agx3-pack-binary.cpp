@@ -4070,7 +4070,7 @@ TEST_F(AGX3PackBinary, ExplicitLodStagingAndLifetime)
          std::vector<uint8_t> want;
          uint8_t bytes[AGX3_TEX_MAX_LENGTH], len;
          ASSERT_TRUE(agx3_tex_stage_lod(enc, lod_reg, 1, 0,
-                                      hint == 1, hint == 2, bytes, &len));
+                                       hint == 1, hint == 2, bytes, &len));
          append(want, bytes, len);
          ASSERT_TRUE(agx3_tex_stage_copy_hints(enc, 0, 4, 1, 0,
                                               false, false, bytes, &len));
@@ -4089,5 +4089,69 @@ TEST_F(AGX3PackBinary, ExplicitLodStagingAndLifetime)
          EXPECT_EQ(pack(b), want);
          EXPECT_EQ(b->shader->agx3_staging_halfs, 8);
       }
+   }
+}
+
+TEST_F(AGX3PackBinary, ArraySampleStagingAndLifetime)
+{
+   for (unsigned hint = 0; hint < 3; ++hint) {
+      auto enc = AGX_ISA_ENCODING_AGX3B;
+      agx_builder *b = builder(enc);
+      b->shader->stage = MESA_SHADER_FRAGMENT;
+      key.no_stop = true;
+      agx_index dest = agx_register(8, AGX_SIZE_32);
+      dest.channels_m1 = 3;
+      agx_index coord = agx_register(0, AGX_SIZE_32);
+      coord.channels_m1 = 2;
+      coord.cache = hint == 1;
+      coord.discard = hint == 2;
+      coord.kill = hint == 2;
+      auto *I = agx_texture_sample_to(
+         b, dest, coord, agx_immediate(0), agx_immediate(0),
+         agx_immediate(0), agx_immediate(0), agx_null(), AGX_DIM_2D_ARRAY,
+         AGX_LOD_MODE_AUTO_LOD, 0, false, false, false, AGX_GATHER_NONE,
+         false);
+      I->mask = 15;
+      agx_stop(b);
+
+      std::vector<uint8_t> want;
+      uint8_t bytes[AGX3_TEX_MAX_LENGTH], len;
+      ASSERT_TRUE(agx3_tex_stage_copy_hints(enc, 0, 0, 1, 0,
+                                           hint == 1, hint == 2,
+                                           bytes, &len));
+      append(want, bytes, len);
+      ASSERT_TRUE(agx3_tex_stage_copy_hints(enc, 2, 2, 1, 0,
+                                           hint == 1, hint == 2,
+                                           bytes, &len));
+      append(want, bytes, len);
+      ASSERT_TRUE(agx3_tex_stage_array_layer(enc, 4, 1, 0,
+                                            hint == 1, hint == 2,
+                                            bytes, &len));
+      if (hint == 2) {
+         const uint8_t native[] = {
+            0x17, 0x05, 0x54, 0x06, 0x00, 0x08,
+            0x00, 0x00, 0xf0, 0xc0, 0x04, 0x00,
+         };
+         EXPECT_EQ(std::vector<uint8_t>(bytes, bytes + len),
+                   std::vector<uint8_t>(native, native + sizeof(native)));
+      }
+      append(want, bytes, len);
+      struct agx3_tex_sample_desc d = {};
+      d.dest = 8;
+      d.width = AGX3_TEX_W32;
+      d.mask = 15;
+      d.lod = AGX3_TEX_LOD_AUTO;
+      d.slot = 1;
+      d.wait_mask = 1;
+      d.coord_kill = hint == 2;
+      d.final = true;
+      d.array = true;
+      ASSERT_TRUE(agx3_tex_encode_sample(enc, &d, bytes, &len));
+      append(want, bytes, len);
+      ASSERT_TRUE(agx3_alu_compose(enc, AGX3_ALU_BAND, 0, 0, 0, 0, 0,
+                                   1, bytes, &len));
+      append(want, bytes, len);
+      EXPECT_EQ(pack(b), want);
+      EXPECT_EQ(b->shader->agx3_staging_halfs, 8);
    }
 }

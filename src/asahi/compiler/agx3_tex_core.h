@@ -106,8 +106,10 @@ bool agx3_tex_decode_fetch(enum agx_isa_encoding enc, const void *instruction,
  *    by PACK_SMPIR and selected with f139=4. The fragment marker is also
  *    present for explicit LOD; it does not itself select implicit derivatives.
  *
- * Everything else about the sampler family -- arrays, other dimensions,
- * bias, gradients, min-LOD, offsets,
+ * G17P also supports the witnessed 2D-array implicit-LOD form with a
+ * register-valued layer packed into the same auxiliary operand bank.
+ * Everything else about the sampler family -- other dimensions, bias,
+ * gradients, min-LOD, offsets,
  * shadow compare, gather -- remains a deliberate refusal: those axes either
  * need additional operand marshalling and qualification.
  */
@@ -130,7 +132,7 @@ struct agx3_tex_sample_desc {
    uint16_t wait_mask;  /* zero or one compactly encodable dependency */
    bool coord_kill;
    bool final;          /* witnessed final texture-op marker */
-   bool array;          /* 2D array: layer in the register after the pair */
+   bool array;          /* 2D array: register layer already in operand bank 6 */
    enum agx3_tex_operand_kind texture_kind;
    enum agx3_tex_operand_kind sampler_kind;
    uint16_t texture_value;
@@ -144,6 +146,13 @@ struct agx3_tex_sample_desc {
 bool agx3_tex_stage_lod(enum agx_isa_encoding enc, uint16_t src, uint8_t slot,
                        uint16_t wait_mask, bool src_cache, bool src_discard,
                        uint8_t out[AGX3_TEX_MAX_LENGTH], uint8_t *len);
+
+/* Pack a register-valued integer 2D-array layer into the separately witnessed
+ * array-layer PACK_SMPIR form. */
+bool agx3_tex_stage_array_layer(enum agx_isa_encoding enc, uint16_t src,
+                                uint8_t slot, uint16_t wait_mask,
+                                bool src_cache, bool src_discard,
+                                uint8_t out[AGX3_TEX_MAX_LENGTH], uint8_t *len);
 
 bool agx3_tex_encode_sample(enum agx_isa_encoding enc,
                             const struct agx3_tex_sample_desc *d,

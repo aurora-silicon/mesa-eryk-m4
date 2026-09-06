@@ -351,6 +351,11 @@ test_sample_witnesses(void)
         .coord_kill = true, .final = true},
        "05800cb8b0000000010010000100",
        "0f061600418060290118010000000000008000000000"},
+      {"ts_array register layer implicit LOD",
+       {.dest = 0, .coord = 0, .width = AGX3_TEX_W32, .mask = 15,
+        .lod = AGX3_TEX_LOD_AUTO, .slot = 1, .wait_mask = 1,
+        .coord_kill = true, .final = true, .array = true},
+       "05800cb8b0000004010010000100", NULL},
    };
 
    uint8_t bytes[AGX3_TEX_MAX_LENGTH];
@@ -990,10 +995,30 @@ test_register_lod(void)
    return 0;
 }
 
+static int
+test_register_array_layer(void)
+{
+   /* Native sample_array_dynamic: discarded r2 publishes integer layer. */
+   const uint8_t native[] = {
+      0x17, 0x05, 0x54, 0x06, 0x00, 0x08,
+      0x00, 0x00, 0xf0, 0xc0, 0x04, 0x00,
+   };
+   uint8_t bytes[AGX3_TEX_MAX_LENGTH], len;
+   CHECK(agx3_tex_stage_array_layer(AGX_ISA_ENCODING_AGX3B, 4, 1, 0,
+                                    false, true, bytes, &len));
+   CHECK(len == sizeof(native) && !memcmp(bytes, native, len));
+   CHECK(memcmp(bytes,
+                (const uint8_t[]){0x17,0x05,0x54,0x06,0,0x08,0,4,
+                                  0xf0,0xc0,0x08,0}, len));
+   return 0;
+}
+
 int
 main(void)
 {
-   if (test_register_lod() || test_staging_source_lifetime() || test_exact_witnesses() || test_supported_axes() || test_fail_closed() ||
+   if (test_register_lod() || test_register_array_layer() ||
+       test_staging_source_lifetime() || test_exact_witnesses() ||
+       test_supported_axes() || test_fail_closed() ||
        test_sample_witnesses() || test_copy_witnesses() ||
        test_sample_fail_closed() || test_array_fetch() ||
        test_bindless_operand_kinds() || test_indexed_sample_witnesses() || test_sample_mask_domain() || test_indexed_fetch_native())

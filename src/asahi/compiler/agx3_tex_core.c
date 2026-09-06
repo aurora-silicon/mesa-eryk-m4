@@ -179,6 +179,12 @@ sample_ok(enum agx_isa_encoding enc, const struct agx3_tex_sample_desc *d)
        d->mask != 8 && d->mask != 12 && d->mask != 15)
       return false;
 
+   /* The array selector and register-layer operand are grounded only for the
+    * G17P implicit-LOD form. */
+   if (d->array &&
+       (enc != AGX_ISA_ENCODING_AGX3B || d->lod != AGX3_TEX_LOD_AUTO))
+      return false;
+
    const unsigned tk = d->texture_kind ? d->texture_kind : 1;
    const unsigned sk = d->sampler_kind ? d->sampler_kind : 1;
    if (tk > 3 || sk > 3 || (tk == 1) != (sk == 1) ||
@@ -245,6 +251,8 @@ agx3_tex_encode_sample(enum agx_isa_encoding enc,
    ov[n++] = (struct agx3_field_kv)KV(75, d->mask);
    ov[n++] = (struct agx3_field_kv)KV(76, 1);  /* 2D */
    ov[n++] = (struct agx3_field_kv)KV(78, 2);  /* filtered sample */
+   if (d->array)
+      ov[n++] = (struct agx3_field_kv)KV(77, 2); /* register array layer */
    ov[n++] = (struct agx3_field_kv)KV(94 + tk, tk == 1 ? d->texture : d->texture_value);
    ov[n++] = (struct agx3_field_kv)KV(123 + sk, sk == 1 ? d->sampler : d->sampler_value);
    if (d->texture_kill)
@@ -489,9 +497,9 @@ agx3_tex_decode_fetch(enum agx_isa_encoding enc, const void *instruction,
    return false;
 }
 
-/* Fresh native G17P lod_float/lod_half fragment pairs use this 12-byte
- * PACK_SMPIR for scalar half LOD, preserving the source when it remains live.
- * f5=6 selects the level staging bank, not architectural GPR r3. */
+/* Fresh native G17P LOD fragment witnesses use this 12-byte PACK_SMPIR for a
+ * scalar half LOD, preserving the source when it remains live. f5=6 selects
+ * operand bank 6, not architectural r3. */
 bool
 agx3_tex_stage_lod(enum agx_isa_encoding enc, uint16_t src, uint8_t slot,
                    uint16_t wait_mask, bool src_cache, bool src_discard,
@@ -526,6 +534,45 @@ agx3_tex_stage_lod(enum agx_isa_encoding enc, uint16_t src, uint8_t slot,
     * instruction bits 41..47, bit 7 at bit 48). Apple's encoder's 191
     * bound is a compiler allocation policy, not a narrower wire field.
     * Keep the same native instruction for Mesa's full 256-half bank. */
+   out[6] |= (src >> 7) & 1;
+   return true;
+}
+
+/* The dynamic array-layer witness uses PACK_SMPIR like register LOD, but its
+ * operand-type selectors differ. In particular, f74=4/f75=0 produces the
+ * native 1705540600080000f0c00400 for discarded r2; the LOD baseline's
+ * f74=2/f75=16 silently leaves the sample destination unwritten. */
+bool
+agx3_tex_stage_array_layer(enum agx_isa_encoding enc, uint16_t src,
+                           uint8_t slot, uint16_t wait_mask, bool src_cache,
+                           bool src_discard,
+                           uint8_t out[AGX3_TEX_MAX_LENGTH], uint8_t *len)
+{
+   if (!out || !len)
+      return false;
+   memset(out, 0, AGX3_TEX_MAX_LENGTH);
+   *len = 0;
+   if (enc != AGX_ISA_ENCODING_AGX3B || src >= 256 || slot < 1 || slot > 6 ||
+       (wait_mask & ~0x3f) || (src_cache && src_discard))
+      return false;
+
+   const struct agx3_field_kv base[] = {
+      KV(5, 6), KV(9, 5), KV(10, 2), KV(23, 2), KV(24, 1),
+      KV(38, 1), KV(51, 1), KV(52, 2), KV(74, 4),
+   };
+   struct agx3_field_kv ov[10];
+   unsigned n = 0;
+   ov[n++] = (struct agx3_field_kv)KV(16, src & 0x7f);
+   ov[n++] = (struct agx3_field_kv)KV(12, slot);
+   ov[n++] = (struct agx3_field_kv)KV(25, src_cache);
+   ov[n++] = (struct agx3_field_kv)KV(27, src_discard);
+   for (unsigned i = 0; i < 6; ++i)
+      if (wait_mask & (1u << i))
+         ov[n++] = (struct agx3_field_kv)KV(58 + i, 1);
+   if (!agx3_bind_compose(enc, "pack_smpir", 0, base,
+                         sizeof(base) / sizeof(base[0]), ov, n, out, len))
+      return false;
+
    out[6] |= (src >> 7) & 1;
    return true;
 }

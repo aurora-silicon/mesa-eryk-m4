@@ -13,10 +13,10 @@ static bool
 g17p_sample_shape(const nir_tex_instr *tex)
 {
    if ((tex->op != nir_texop_tex && tex->op != nir_texop_txb &&
-        tex->op != nir_texop_txl) ||
+       tex->op != nir_texop_txl) ||
        tex->sampler_dim != GLSL_SAMPLER_DIM_2D ||
-       tex->is_array || tex->is_shadow || tex->is_sparse ||
-       tex->coord_components != 2 ||
+       tex->is_shadow || tex->is_sparse ||
+       tex->coord_components != (tex->is_array ? 3 : 2) ||
        (tex->backend_flags & ~AGX_TEXTURE_FLAG_CLAMP_TO_0) != 0 ||
        tex->dest_type != nir_type_float32 || tex->def.num_components != 4 ||
        tex->def.bit_size != 32)
@@ -34,7 +34,9 @@ g17p_sample_shape(const nir_tex_instr *tex)
    if (coord < 0)
       coord = nir_tex_instr_src_index(tex, nir_tex_src_backend1);
 
-   return coord >= 0 && nir_src_num_components(tex->src[coord].src) == 2 &&
+   return coord >= 0 &&
+          nir_src_num_components(tex->src[coord].src) ==
+             tex->coord_components &&
           nir_src_bit_size(tex->src[coord].src) == 32 &&
           nir_tex_instr_src_index(tex, nir_tex_src_texture_handle) >= 0 &&
           nir_tex_instr_src_index(tex, nir_tex_src_sampler_handle) >= 0;
