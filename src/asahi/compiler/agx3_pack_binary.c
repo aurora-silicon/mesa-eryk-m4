@@ -4593,7 +4593,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
          }
 
          if (enc == AGX_ISA_ENCODING_AGX3B && I->op == AGX_OPCODE_RCP &&
-             I->nr_dests == 1 && I->nr_srcs == 1 && !I->saturate) {
+             I->nr_dests == 1 && I->nr_srcs == 1 && !I->saturate &&
+             I->dest[0].size == AGX_SIZE_16) {
             const agx_index dest=I->dest[0], src=I->src[0];
             if (!agx3_src_is_register(dest) || dest.memory ||
                 dest.size != AGX_SIZE_16 || agx_channels(dest) != 1 ||
