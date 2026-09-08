@@ -4775,12 +4775,17 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
           * shaderFloat16 ternary form: compare two half registers and select
           * either of two half registers without widening or materializing a
           * boolean.  Keep every operand's physical half and lifetime hint.
+          * Mixed-width and immediate forms belong to the handlers below.
           */
          if (enc == AGX_ISA_ENCODING_AGX3B && I->op == AGX_OPCODE_FCMPSEL &&
              I->nr_dests == 1 && I->nr_srcs == 4 && !I->saturate &&
              agx3_src_is_register(I->dest[0]) && !I->dest[0].memory &&
              I->dest[0].size == AGX_SIZE_16 &&
-             agx_channels(I->dest[0]) == 1) {
+             agx_channels(I->dest[0]) == 1 &&
+             agx3_src_is_register(I->src[0]) && I->src[0].size == AGX_SIZE_16 &&
+             agx3_src_is_register(I->src[1]) && I->src[1].size == AGX_SIZE_16 &&
+             agx3_src_is_register(I->src[2]) && I->src[2].size == AGX_SIZE_16 &&
+             agx3_src_is_register(I->src[3]) && I->src[3].size == AGX_SIZE_16) {
             uint16_t src[4];
             enum agx3_alu_hint hints[4];
             bool invalid = false;

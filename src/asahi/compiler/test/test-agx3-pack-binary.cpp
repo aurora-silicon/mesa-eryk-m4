@@ -5316,6 +5316,33 @@ TEST_F(AGX3PackBinary, FselZeroMixedGnomeRegisterShape)
    }
 }
 
+TEST_F(AGX3PackBinary, FselFloatComparisonWithHalfResult)
+{
+   /* Hyprland's border shader compares f32 coordinates while selecting an
+    * f16 value or a boolean immediate. It must reach the mixed-width forms,
+    * rather than the all-half register comparison handler. */
+   for (bool boolean : {false, true}) {
+      std::vector<uint8_t> canonical;
+      for (bool zero_first : {false, true}) {
+         agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+         agx_index compare = agx_register(6, AGX_SIZE_32);
+         agx_index selected = boolean ? agx_immediate(255) : agx_register(1, AGX_SIZE_16);
+         agx_fcmpsel_to(b, agx_register(3, AGX_SIZE_16),
+                        zero_first ? agx_immediate(0) : compare,
+                        zero_first ? compare : agx_immediate(0),
+                        selected, agx_immediate(0),
+                        zero_first ? AGX_FCOND_GT : AGX_FCOND_LT);
+         agx_stop(b);
+         const auto code = pack(b);
+         ASSERT_FALSE(code.empty());
+         if (!zero_first)
+            canonical = code;
+         else
+            EXPECT_EQ(code, canonical);
+      }
+   }
+}
+
 TEST_F(AGX3PackBinary, FselZeroNativeLifetimeAndCompareOrder)
 {
    for (bool zero_first : {false, true}) {
