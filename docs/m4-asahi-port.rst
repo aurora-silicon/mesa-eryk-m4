@@ -105,3 +105,11 @@ Both host and AArch64 builds pass. Four focused PPP/bind-tail tests pass. The
 unchanged direct-draw test fails its whole-struct memcmp assertion at line 235;
 its implementation and test have no changes in this port. Full-byte M4 kernel
 wire comparisons separately pass against the previously executed encoders.
+
+The first graphics attempt stopped before render submission: the live
+VertexProgramVariant encoder still admitted G17P only. The remaining native
+HAL200 VDM, bind-tail, PPP and meta-copy gates now admit G16G using the existing
+M4 encoding evidence. Five focused encoding tests pass, including an explicit
+M4/G17P byte comparison for the direct-draw packet. The earlier direct-draw
+failure was a test comparing unspecified C struct padding; it now compares
+semantic fields. Hardware rendered output remains the next qualification gate.

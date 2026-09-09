@@ -232,7 +232,16 @@ main(void)
    struct agx_vdm_hal200_direct_draw_fields unpacked;
    assert(agx_vdm_hal200_direct_draw_unpack(
       AGX_CHIP_G17P, packed.bytes, packed.length, &unpacked));
-   assert(memcmp(&unpacked, &fields, sizeof(fields)) == 0);
+   /* Struct padding is unspecified; compare decoded semantic fields. */
+   assert(unpacked.draw_state_context_offset == fields.draw_state_context_offset);
+   assert(unpacked.primitive == fields.primitive);
+   assert(unpacked.vertex_count == fields.vertex_count);
+   assert(unpacked.instance_count == fields.instance_count);
+   assert(unpacked.vertex_start == fields.vertex_start);
+   struct agx_vdm_hal200_direct_draw m4;
+   assert(agx_vdm_hal200_direct_draw_pack(AGX_CHIP_G16G, &fields, &m4));
+   assert(m4.length == packed.length);
+   assert(memcmp(m4.bytes, packed.bytes, packed.length) == 0);
 
    /* The first draw follows newly emitted render state and therefore carries
     * its four-byte PPP selector.  Native drawPrimitives emits exactly the

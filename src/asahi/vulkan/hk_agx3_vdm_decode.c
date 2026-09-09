@@ -115,7 +115,7 @@ hk_agx3_g17p_vertex_program_info(
    if (program)
       memset(program, 0, sizeof(*program));
 
-   if (chip != AGX_CHIP_G17P || !compiler_info || !program ||
+   if (!agx_chip_uses_hal200_ioto(chip) || !compiler_info || !program ||
        !compiler_info->hardware_vertex ||
        compiler_info->has_preamble || compiler_info->nr_preamble_gprs != 0 ||
        compiler_info->preamble_scratch_size != 0 ||

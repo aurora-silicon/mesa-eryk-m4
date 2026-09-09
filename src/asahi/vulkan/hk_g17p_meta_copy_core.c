@@ -9,7 +9,7 @@ bool
 hk_g17p_buffer_to_image_copy_supported(
    const struct hk_g17p_buffer_to_image_copy *copy)
 {
-   if (!copy || copy->chip != AGX_CHIP_G17P ||
+   if (!copy || !agx_chip_uses_hal200_ioto(copy->chip) ||
        (copy->format != VK_FORMAT_R8_UNORM &&
         copy->format != VK_FORMAT_B8G8R8A8_UNORM &&
         copy->format != VK_FORMAT_R8G8B8A8_UNORM &&
@@ -57,7 +57,7 @@ hk_g17p_image_copy_slice(enum agx_chip chip, VkImageType src_type,
    if (out)
       *out = (VkImageCopy2){0};
 
-   if (chip != AGX_CHIP_G17P || !region || !out ||
+   if (!agx_chip_uses_hal200_ioto(chip) || !region || !out ||
        src_type != VK_IMAGE_TYPE_2D || dst_type != VK_IMAGE_TYPE_2D ||
        src_layers == 0 || src_layers != dst_layers || slice >= src_layers ||
        region->extent.depth != 1 ||
@@ -83,7 +83,7 @@ hk_g17p_image_blit_slice(enum agx_chip chip, VkImageType src_type,
    if (out)
       *out = (VkImageBlit2){0};
 
-   if (chip != AGX_CHIP_G17P || !region || !out ||
+   if (!agx_chip_uses_hal200_ioto(chip) || !region || !out ||
        src_type != VK_IMAGE_TYPE_2D || dst_type != VK_IMAGE_TYPE_2D ||
        src_layers == 0 || src_layers != dst_layers || slice >= src_layers ||
        region->srcOffsets[0].z != 0 || region->srcOffsets[1].z != 1 ||

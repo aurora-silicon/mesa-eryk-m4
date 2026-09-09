@@ -52,7 +52,7 @@ agx_vdm_hal200_direct_draw_pack(
    if (out)
       memset(out, 0, sizeof(*out));
 
-   if (!out || !fields || chip != AGX_CHIP_G17P ||
+   if (!out || !fields || !agx_chip_uses_hal200_ioto(chip) ||
        fields->draw_state_context_offset == 0 ||
        (fields->draw_state_context_offset & UINT32_C(3)) != 0 ||
        !primitive_supported(fields->primitive) || fields->vertex_count == 0 ||
@@ -78,7 +78,7 @@ agx_vdm_hal200_direct_draw_unpack(
    if (fields)
       memset(fields, 0, sizeof(*fields));
 
-   if (!bytes || !fields || chip != AGX_CHIP_G17P ||
+   if (!bytes || !fields || !agx_chip_uses_hal200_ioto(chip) ||
        size != AGX_VDM_HAL200_DIRECT_DRAW_LENGTH)
       return false;
 
@@ -110,7 +110,7 @@ agx_vdm_hal200_draw_emit(enum agx_chip chip, const void *packed,
    if (emitted_size)
       *emitted_size = 0;
 
-   if (chip != AGX_CHIP_G17P || !packed || !stream || !emitted_size ||
+   if (!agx_chip_uses_hal200_ioto(chip) || !packed || !stream || !emitted_size ||
        (packed_size != AGX_VDM_HAL200_DIRECT_DRAW_LENGTH &&
         packed_size != AGX_VDM_HAL200_INDEXED_DRAW_LENGTH))
       return false;
@@ -176,7 +176,7 @@ agx_vdm_hal200_indexed_draw_pack(
 
    uint64_t address;
    uint32_t size_word;
-   if (!out || !fields || chip != AGX_CHIP_G17P ||
+   if (!out || !fields || !agx_chip_uses_hal200_ioto(chip) ||
        !fields->draw_state_context_offset ||
        (fields->draw_state_context_offset & 3) || fields->instance_count == 0 ||
        !primitive_supported(fields->primitive) ||
@@ -219,7 +219,7 @@ agx_vdm_hal200_indirect_draw_pack(
    if (out)
       memset(out, 0, sizeof(*out));
 
-   if (!out || !fields || chip != AGX_CHIP_G17P ||
+   if (!out || !fields || !agx_chip_uses_hal200_ioto(chip) ||
        !fields->draw_state_context_offset ||
        (fields->draw_state_context_offset & 3) || !fields->indirect_buffer)
       return false;

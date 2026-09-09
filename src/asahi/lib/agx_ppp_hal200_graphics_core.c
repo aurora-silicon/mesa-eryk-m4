@@ -13,7 +13,7 @@ agx_ppp_hal200_cull_mode_pack(enum agx_chip chip, unsigned cull_mode,
                               bool front_face_ccw, uint32_t original,
                               uint32_t *out)
 {
-   if (chip != AGX_CHIP_G17P || cull_mode > 3 || !out)
+   if (!agx_chip_uses_hal200_ioto(chip) || cull_mode > 3 || !out)
       return false;
 
    *out = (original & ~UINT32_C(0x10003)) | cull_mode |
@@ -25,7 +25,7 @@ bool
 agx_ppp_hal200_cull_provoking_pack(enum agx_chip chip, unsigned selector,
                                    uint32_t original, uint32_t *out)
 {
-   if (chip != AGX_CHIP_G17P || selector > 2 || !out)
+   if (!agx_chip_uses_hal200_ioto(chip) || selector > 2 || !out)
       return false;
 
    *out = (original & ~UINT32_C(0x180)) | ((selector + 1) << 7);
@@ -36,7 +36,7 @@ bool
 agx_ppp_hal200_depth_clip_pack(enum agx_chip chip, bool depth_clip,
                                uint32_t original, uint32_t *out)
 {
-   if (chip != AGX_CHIP_G17P || !out)
+   if (!agx_chip_uses_hal200_ioto(chip) || !out)
       return false;
 
    *out = (original & ~UINT32_C(0xc00)) |
@@ -49,7 +49,7 @@ agx_ppp_hal200_rasterizer_discard_pack(
    enum agx_chip chip, bool discard, uint32_t secondary_original,
    uint32_t cull_original, uint32_t *secondary_out, uint32_t *cull_out)
 {
-   if (chip != AGX_CHIP_G17P || !secondary_out || !cull_out)
+   if (!agx_chip_uses_hal200_ioto(chip) || !secondary_out || !cull_out)
       return false;
 
    const uint32_t secondary_mask = UINT32_C(1) << 21;
@@ -230,7 +230,7 @@ agx_ppp_hal200_depth_face_pack(enum agx_chip chip, bool test_enable,
                                bool write_enable, uint32_t compare,
                                uint32_t original, uint32_t *out)
 {
-   if (!out || chip != AGX_CHIP_G17P || compare > 7)
+   if (!out || !agx_chip_uses_hal200_ioto(chip) || compare > 7)
       return false;
 
    const uint32_t mask = UINT32_C(0x07200000);
