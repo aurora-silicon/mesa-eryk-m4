@@ -11,6 +11,7 @@ import os
 import pwd
 from pathlib import Path
 import signal
+import shutil
 import subprocess
 import time
 
@@ -258,6 +259,31 @@ def main():
                     if not ('zink' in text.lower() and 'M4' in text):
                         raise RuntimeError('SuperTuxKart did not identify the M4 Zink renderer')
                     summary.update(supertuxkart_started=True)
+            if os.environ.get('M4_TEST_0AD') == '1':
+                os.killpg(terminal.pid, signal.SIGTERM)
+                terminal.wait(timeout=4)
+                game_env = {**env, 'SDL_VIDEODRIVER': 'wayland', 'HK_DEBUG_LOG': '1',
+                            **({'MESA_EXTENSION_OVERRIDE': '-GL_EXT_texture_compression_s3tc'}
+                               if os.getenv('M4_0AD_UNCOMPRESSED') == '1' else {}),
+                            'LD_LIBRARY_PATH': env['LD_LIBRARY_PATH'] +
+                                ':/opt/m4-0ad/usr/lib/games/0ad:/opt/m4-0ad/usr/lib/aarch64-linux-gnu',
+                            'LD_PRELOAD': '/opt/asahi-m4-port/lib/gl-renderer-audit.so',
+                            'XDG_CONFIG_HOME': str(Path(account.pw_dir)/'.config/m4-asahi-0ad'),
+                            'XDG_CACHE_HOME': str(Path(account.pw_dir)/'.cache/m4-asahi-0ad'),
+                            'XDG_STATE_HOME': str(Path(account.pw_dir)/'.local/state/m4-asahi-0ad')}
+                game_args = ['/opt/m4-0ad/usr/games/pyrogenesis', '-mod=public',
+                    '-nosound', '-conf=rendererbackend:gl', '-conf=windowed:true',
+                    '-xres=1024', '-yres=768', '-conf=overlay.fps:true',
+                    '-conf=pauseonfocusloss:false', '-conf=vsync:true',
+                    '-autostart=skirmishes/acropolis_bay_2p',
+                    '-autostart-civ=1:athen', '-autostart-civ=2:spart',
+                    '-autostart-ai=2:petra', '-autostart-seed=0', '-autostart-aiseed=0']
+                (result/'0ad-command.json').write_text(json.dumps(game_args, indent=2)+'\n')
+                with (result/'0ad.log').open('w') as game_log:
+                    game = subprocess.Popen([*user_command, *game_args], env=game_env,
+                        stdout=game_log, stderr=game_log, start_new_session=True,
+                        cwd=account.pw_dir)
+                summary.update(zeroad_started=True, zeroad_map='acropolis_bay_2p')
             if os.environ.get('M4_TEST_SUPERTUX') == '1':
                 os.killpg(terminal.pid, signal.SIGTERM)
                 terminal.wait(timeout=4)
@@ -336,6 +362,12 @@ def main():
                 deadline = time.monotonic() + live_seconds
                 checks = 0
                 while time.monotonic() < deadline and not stop_file.exists() and not Path('/run/m4-hyprland-stop').exists():
+                    if summary.get('zeroad_started'):
+                        if game.poll() is not None:
+                            raise RuntimeError(f'0 A.D. exited during the map test: {game.returncode}')
+                        game_text = (result/'0ad.log').read_text()
+                        if any(x in game_text for x in ('MESA: error:', 'no grounded AGX3 encoding', 'Assertion `')):
+                            raise RuntimeError('0 A.D. driver error; see game log')
                     if summary.get('supertuxkart_started'):
                         game_text=(result/'supertuxkart.log').read_text()
                         if any(x in game_text for x in ('MESA: error:', 'no grounded AGX3 encoding', 'Assertion `')):
@@ -365,16 +397,35 @@ def main():
                     # Parent validates all fields before feeding the hardware watchdog.
                     print(json.dumps({'event': 'gpu-progress', 'check': evidence}), flush=True)
                     if (checks in (2,4,8) or
-                        (summary.get('supertuxkart_started') and checks % 12 == 0)):
+                        ((summary.get('supertuxkart_started') or summary.get('zeroad_started')) and checks % 12 == 0)):
                         subprocess.run(['grim','-t','ppm','-o',output_name,str(result/f'live-{checks}.ppm')],env=env,check=True,timeout=120 if summary.get('supertuxkart_started') else 6)
                     checks += 1
                     time.sleep(min(5, max(0, deadline - time.monotonic())))
                 if summary.get('supertuxkart_started') and not summary.get('supertuxkart_demo',{}).get('completed'):
                     raise RuntimeError('SuperTuxKart demo did not finish before the test deadline or stop request')
+                if summary.get('zeroad_started'):
+                    game_text = (Path(game_env['XDG_STATE_HOME'])/'0ad/log/system_info.txt').read_text()
+                    if not ('zink' in game_text.lower() and 'M4' in game_text):
+                        raise RuntimeError('0 A.D. did not identify the M4 Zink renderer')
+                    clients = subprocess.check_output(['hyprctl','-j','clients'],env=env,text=True,timeout=2)
+                    (result/'0ad-clients.json').write_text(clients)
+                    game_pids = subprocess.check_output(['pgrep','-u',str(account.pw_uid),'-x','pyrogenesis'],text=True).split()
+                    assert len(game_pids) == 1, game_pids
+                    if not any(c.get('mapped') and c.get('pid') == int(game_pids[0]) for c in json.loads(clients)):
+                        raise RuntimeError('0 A.D. has no mapped window')
+                    (result/'0ad-maps.txt').write_text(Path('/proc',game_pids[0],'maps').read_text())
+                    subprocess.run(['grim','-t','ppm','-o',output_name,str(result/'0ad-final.ppm')],env=env,check=True,timeout=6)
+                    summary['zeroad_renderer'] = 'M4 Zink/Honeykrisp'
+                    summary['zeroad_scope'] = 'Bounded process/window survival; inspect screenshots for map rendering'
+                    (result/'0ad-result.json').write_text(json.dumps(summary,indent=2)+'\n')
                 summary['interactive_seconds'] = live_seconds
                 summary['health_checks'] = checks
             print(json.dumps(summary), flush=True)
         finally:
+            if os.environ.get('M4_TEST_0AD') == '1' and account:
+                logs = Path(account.pw_dir)/'.local/state/m4-asahi-0ad/0ad/log'
+                if logs.exists():
+                    shutil.copytree(logs, result/'0ad-engine-logs', dirs_exist_ok=True)
             for process in (game, terminal, child):
                 if process is None:
                     continue

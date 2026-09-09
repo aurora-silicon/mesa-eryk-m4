@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 """Supervise the Asahi desktop; renew only after real GPU and compositor checks."""
-import argparse, json, os, re, signal, subprocess, sys, time
+import argparse, json, os, re, shutil, signal, subprocess, sys, time
 from pathlib import Path
 sys.path.insert(0, '/root/g16-submit-test')
 from experiment_watchdog import ExperimentWatchdog, KEEPALIVE
@@ -20,7 +20,7 @@ stopping=False
 def stop():
     # The seat/session children deliberately own process groups. Stop their
     # actual GPU clients too, so thermal trips don't leave rendering running.
-    for name in ('supertux2','supertuxkart','Hyprland'):
+    for name in ('supertux2','supertuxkart','pyrogenesis','Hyprland'):
         subprocess.run(['pkill','-TERM','-u','1000','-x',name],timeout=3)
     if proc is not None and proc.poll() is None:
         os.killpg(proc.pid,signal.SIGTERM)
@@ -113,6 +113,10 @@ except BaseException as error:
     stop()
     raise
 finally:
+    if os.environ.get('M4_TEST_0AD') == '1':
+        engine_logs=Path('/home/e/.local/state/m4-asahi-0ad/0ad/log')
+        if engine_logs.exists():
+            shutil.copytree(engine_logs,a.output/'0ad-engine-logs',dirs_exist_ok=True)
     r['thermal']=t.summary()
     (a.output/'result.json').write_text(json.dumps(r,indent=2)+'\n')
     subprocess.run(['dmesg','--color=never'],stdout=(a.output/'dmesg.log').open('w'),timeout=3)

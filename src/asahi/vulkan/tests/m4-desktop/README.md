@@ -385,3 +385,52 @@ inputs are a raw RGBA8 texture, separate U/V bit-pattern images, and nearest/
 linear grayscale samples with alpha 255 for coverage and zero for the clear.
 All inputs use the same row order; width/height describe the texture. It checks
 base-level repeat filtering only and leaves interpolation validation separate.
+
+## 0 A.D. bring-up attempt (2026-09-09, not passing)
+
+`M4_TEST_0AD=1` selects 0 A.D. instead of either SuperTux test. The runner
+starts release 28 on `skirmishes/acropolis_bay_2p`, Athens versus a Sparta
+Petra AI, deterministic seeds, a 1024x768 requested Wayland window, the GL
+backend through Zink, no sound, and the FPS overlay. The installed private
+Debian ARM64 package is `0.28.0-3+b2`, with data `0.28.0-1`, under
+`/opt/m4-0ad`; `/usr/share/games/0ad` points to its data directory. Its missing
+versioned libraries are private too. Package URLs and SHA256 checks against
+the Debian package index are in workspace
+`_provenance/asahi-0ad-20260909/packages.json`.
+
+The game gets isolated configuration, cache and state directories, Honeykrisp
+error logging, and the same watchdog/thermal guards as the desktop tests.
+The guard explicitly stops `pyrogenesis` on failure and copies its engine
+logs before final evidence sync. The bounded result checks process/window
+survival and the engine-reported renderer; screenshots still need inspection
+to establish actual map rendering. It is not a full-match completion test.
+
+```
+M4_TEST_0AD=1 python3 /root/asahi-desktop/desktop-guard.py \
+  --seconds 180 --output /root/asahi-evidence/UNIQUE-NAME
+```
+
+`M4_0AD_UNCOMPRESSED=1` additionally hides S3TC from this game's GL context,
+selecting its existing texture decompression fallback. It changes asset
+upload, not GPU rendering, and is an explicitly experimental diagnostic.
+
+No tested configuration passed:
+
+- `0ad-map-1`: compositor screencopy timed out before the game launched.
+- `0ad-map-2` and `0ad-map-3`: the engine identified M4 Zink/Honeykrisp,
+  but command recording rejected buffer-to-image uploads. Detailed logging
+  localized `VK_ERROR_FEATURE_NOT_PRESENT` to `hk_cmd_meta.c:1850` at that
+  source revision. The native upload path covers only selected compressed
+  formats; the game's DXT family includes additional formats. Exact rejected
+  upload parameters were not captured, so this remains a likely cause.
+- `0ad-map-4`: disabling S3TC passed that initial rejection, then GPU job 89
+  failed retirement with EIO and Zink reported device loss. The guard saved
+  firmware trace/MMU diagnostics and requested reboot. The captured early
+  desktop frame contains only the wallpaper; no rendered map was verified.
+
+All four tests verified a 60-second watchdog. Peak of all monitored PMP
+channels across the attempts was 54 C, with no thermal trip. GPU clocks were
+not changed. Evidence is under `_provenance/asahi-0ad-20260909/` in the
+workspace. Next work is capturing exact rejected upload parameters and
+isolating the first uncompressed submission that loses the device; no
+kernel or Mesa rendering implementation was changed for these attempts.
