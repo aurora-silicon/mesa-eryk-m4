@@ -273,6 +273,12 @@
 
 #define T8140_DEVICE_ID TEST_DEVICE_ID
 #ifdef M4_UPLOAD_SUBRECT
+#ifndef M4_UPLOAD_X
+#define M4_UPLOAD_X 28
+#define M4_UPLOAD_Y 28
+#define M4_UPLOAD_WIDTH 8
+#define M4_UPLOAD_HEIGHT 8
+#endif
 #define IMAGE_WIDTH 512
 #define IMAGE_HEIGHT 512
 #else
@@ -860,8 +866,9 @@ verify_readback(const uint8_t *map)
       const uint8_t *actual = &pixels[pixel * sizeof(expected)];
 #ifdef M4_UPLOAD_SUBRECT
       const unsigned x = pixel % IMAGE_WIDTH, y = pixel / IMAGE_WIDTH;
-      if (x >= 28 && x < 36 && y >= 28 && y < 36) {
-         const uint8_t uploaded[4] = {(x-28)*31, (y-28)*29, 117, 255};
+      if (x >= M4_UPLOAD_X && x < M4_UPLOAD_X + M4_UPLOAD_WIDTH &&
+          y >= M4_UPLOAD_Y && y < M4_UPLOAD_Y + M4_UPLOAD_HEIGHT) {
+         const uint8_t uploaded[4] = {(x-M4_UPLOAD_X)*7, (y-M4_UPLOAD_Y)*5, 117, 255};
          if (memcmp(actual, uploaded, 4)) {
             fprintf(stderr, "subrect (%u,%u): %u,%u,%u,%u expected %u,%u,117,255\n",
                     x,y,actual[0],actual[1],actual[2],actual[3],uploaded[0],uploaded[1]);
@@ -1259,10 +1266,10 @@ main(void)
 #endif
    memset(readback_map, 0xa5, READBACK_BYTES);
 #ifdef M4_UPLOAD_SUBRECT
-   for (unsigned y = 0; y < 8; ++y) {
-      for (unsigned x = 0; x < 8; ++x) {
-         uint8_t *pixel = readback_map + READBACK_GUARD_BYTES + (y * 8 + x) * 4;
-         pixel[0] = x * 31; pixel[1] = y * 29; pixel[2] = 117; pixel[3] = 255;
+   for (unsigned y = 0; y < M4_UPLOAD_HEIGHT; ++y) {
+      for (unsigned x = 0; x < M4_UPLOAD_WIDTH; ++x) {
+         uint8_t *pixel = readback_map + READBACK_GUARD_BYTES + (y * M4_UPLOAD_WIDTH + x) * 4;
+         pixel[0] = x * 7; pixel[1] = y * 5; pixel[2] = 117; pixel[3] = 255;
       }
    }
 #endif
@@ -1563,7 +1570,8 @@ main(void)
    const VkBufferImageCopy upload = {
       .bufferOffset = READBACK_GUARD_BYTES,
       .imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1},
-      .imageOffset = {28,28,0}, .imageExtent = {8,8,1},
+      .imageOffset = {M4_UPLOAD_X,M4_UPLOAD_Y,0},
+      .imageExtent = {M4_UPLOAD_WIDTH,M4_UPLOAD_HEIGHT,1},
    };
    vkCmdCopyBufferToImage(command_buffer,readback,image,
                          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,1,&upload);
