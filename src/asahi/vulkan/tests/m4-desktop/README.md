@@ -535,3 +535,17 @@ retained color, not just the last overwrite. `0ad-vdm-retain-tiles-2` passed
 all 8192 pixels after 2048 draws. The first expanded test accidentally read
 only 16x16 pixels and is invalid; that readback extent was corrected.
 `0ad-vdm-retain-colors` also passed the original single-tile version.
+
+A depth-only meta clear exposed a separate color-loss bug: the implicit
+color mask (no fragment output at all) forced translucency but did not
+preserve the tile value. HAL200 then stored undefined color. Extend the
+existing zero-mask load/store preservation to bound, unspilled attachments
+that the shader does not write. This preserves physical sRGB values too.
+`0ad-depth-clear` returned black instead of red before the fix;
+`0ad-depth-clear-fixed` preserved all 256 red pixels. The complete
+`m4_gl_depth_clear.c` test additionally proves that the depth clear takes
+effect: after clearing color to blue, a LESS-tested half-screen draw passes
+against the new depth. `0ad-depth-clear-full-2` passed both checks; the first
+cold run failed and remains evidence of the separate cold-start issue.
+Host and ARM64 builds passed. Normal batched `0ad-scene-unwritten-color`
+still stalled; no full game boot has been established at this point.
