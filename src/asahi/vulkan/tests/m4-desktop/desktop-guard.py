@@ -43,6 +43,7 @@ try:
         kernel_source=None
         kernel_pending=''
         last_kernel_feed=0
+        last_kernel_report=0
         while proc.poll() is None:
             t.check()
             if time.monotonic()>deadline:
@@ -52,8 +53,9 @@ try:
                 kernel_source=kernel_path.open()
             if kernel_source is not None:
                 kernel_pending+=kernel_source.read()
-                while '\n' in kernel_pending:
-                    kline,kernel_pending=kernel_pending.split('\n',1)
+                kernel_lines=kernel_pending.split('\n')
+                kernel_pending=kernel_lines.pop()
+                for kline in kernel_lines:
                     if any(x in kline for x in ('GPU retirement unproven','firmware crashed','Internal error:','BUG:')):
                         raise RuntimeError('kernel GPU failure: '+kline)
                     # Asset upload may keep a freshly submitted probe behind
@@ -62,6 +64,9 @@ try:
                     # forward progress. Never feed from an old buffered line.
                     match=re.search(r'^\[\s*([0-9.]+)\].*userspace GPU job (\d+) retired',kline)
                     now=time.monotonic()
+                    if match and now-last_kernel_report >= 5:
+                        print(json.dumps({'event':'kernel-progress-age','job':int(match[2]),'age':now-float(match[1]),'startup_elapsed':now-began}),flush=True)
+                        last_kernel_report=now
                     if match and now-began < 180 and now-last_kernel_feed >= 5 and 0 <= now-float(match[1]) < 3:
                         t.check()
                         health.write(json.dumps({'event':'startup-gpu-retirement','timestamp':float(match[1]),'job':int(match[2])})+'\n')
@@ -70,8 +75,9 @@ try:
                         last_kernel_feed=now
                         print(json.dumps({'event':'startup-gpu-retirement','job':int(match[2])}),flush=True)
             pending+=source.read()
-            while '\n' in pending:
-                line,pending=pending.split('\n',1)
+            lines=pending.split('\n')
+            pending=lines.pop()
+            for line in lines:
                 if not line.startswith('{'): continue
                 try: event=json.loads(line)
                 except json.JSONDecodeError: continue
