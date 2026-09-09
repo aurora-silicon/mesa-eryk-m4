@@ -284,6 +284,8 @@ def main():
                     game_args.append('-conf=postproc:false')
                 if os.getenv('M4_0AD_SYNC') == '1':
                     game_env.update(ZINK_DEBUG='flushsync,noreorder')
+                if os.getenv('M4_0AD_SYNC_DRAWS') == '1':
+                    game_env['ZINK_DEBUG'] = ','.join(filter(None, [game_env.get('ZINK_DEBUG', ''), 'sync']))
                 if os.getenv('M4_0AD_TRACE') == '1':
                     game_env.update(HK_G17P_LAUNCH_TRACE='1', AGX_MESA_DEBUG='shaders,internal')
                     trace_dir = Path(account.pw_dir)/'.local/state/m4-asahi-traces'
@@ -432,12 +434,22 @@ def main():
                         raise RuntimeError('0 A.D. did not identify the M4 Zink renderer')
                     clients = subprocess.check_output(['hyprctl','-j','clients'],env=env,text=True,timeout=2)
                     (result/'0ad-clients.json').write_text(clients)
-                    game_pids = subprocess.check_output(['pgrep','-u',str(account.pw_uid),'-x','pyrogenesis'],text=True).split()
-                    assert len(game_pids) == 1, game_pids
-                    if not any(c.get('mapped') and c.get('pid') == int(game_pids[0]) for c in json.loads(clients)):
-                        raise RuntimeError('0 A.D. has no mapped window')
-                    (result/'0ad-maps.txt').write_text(Path('/proc',game_pids[0],'maps').read_text())
-                    subprocess.run(['grim','-t','ppm','-o',output_name,str(result/'0ad-final.ppm')],env=env,check=True,timeout=6)
+                    # The engine names its main thread "main", so comm-based
+                    # pgrep cannot identify it. Validate the mapped window's
+                    # process against the installed executable and desktop UID.
+                    game_pids = {c['pid'] for c in json.loads(clients)
+                                 if c.get('mapped') and c.get('class') == 'pyrogenesis'}
+                    if len(game_pids) != 1 or game.poll() is not None:
+                        raise RuntimeError('0 A.D. has no unique surviving mapped window')
+                    game_proc = Path('/proc', str(game_pids.pop()))
+                    if (game_proc.stat().st_uid != account.pw_uid or
+                        (game_proc/'exe').resolve() != Path('/opt/m4-0ad/usr/games/pyrogenesis').resolve()):
+                        raise RuntimeError('0 A.D. window has an unexpected owner or executable')
+                    (result/'0ad-maps.txt').write_text((game_proc/'maps').read_text())
+                    (result/'0ad-process.json').write_text(json.dumps({
+                        'pid': int(game_proc.name), 'comm': (game_proc/'comm').read_text().strip(),
+                        'exe': str((game_proc/'exe').resolve()), 'uid': game_proc.stat().st_uid}, indent=2)+'\n')
+                    subprocess.run(['grim','-t','ppm','-o',output_name,str(result/'0ad-final.ppm')],env=env,check=True,timeout=120)
                     summary['zeroad_renderer'] = 'M4 Zink/Honeykrisp'
                     summary['zeroad_scope'] = 'Bounded process/window survival; inspect screenshots for map rendering'
                     (result/'0ad-result.json').write_text(json.dumps(summary,indent=2)+'\n')

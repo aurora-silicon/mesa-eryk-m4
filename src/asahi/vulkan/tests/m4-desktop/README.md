@@ -386,7 +386,52 @@ linear grayscale samples with alpha 255 for coverage and zero for the clear.
 All inputs use the same row order; width/height describe the texture. It checks
 base-level repeat filtering only and leaves interpolation validation separate.
 
-## 0 A.D. bring-up attempt (2026-09-09, not passing)
+## 0 A.D. bring-up (2026-09-09 onward)
+
+The real game reached a visible map under native M4 Hyprland in
+`0ad-map-22`: terrain, units, buildings and interface are present. This is
+an initial boot milestone, not rendering correctness or performance parity.
+Building surfaces have conspicuous artifacts and the FPS overlay reads 1.
+Normal batched submission still hangs; the boot profile separates every
+draw into its own render pass using Zink's diagnostic synchronization mode:
+
+```
+M4_TEST_0AD=1 M4_0AD_UNCOMPRESSED=1 M4_0AD_NO_SHADOWS=1 \
+M4_0AD_NO_POSTPROC=1 M4_0AD_SYNC_DRAWS=1 \
+python3 /root/asahi-desktop/desktop-guard.py \
+  --seconds 180 --output /root/asahi-evidence/UNIQUE-NAME
+```
+
+`M4_0AD_SYNC_DRAWS=1` adds `sync` to the game's `ZINK_DEBUG`; it is separate
+from the older flush-thread-only diagnostic. Rendering stays on M4 through
+Zink/Honeykrisp. Disabling S3TC selects CPU asset decompression, while shadows
+and postprocessing avoid unsupported shader paths. No GPU clocks are raised.
+The captured full scene also completed in `0ad-sync-unwritten-color` after
+the depth-clear preservation fix, with a 53 C maximum monitored temperature.
+
+`0ad-map-22` recorded 16 successful GPU/compositor health checks and a
+54.5 C maximum across all six PMP channels, without a thermal trip or
+recorded GPU fault. Its final process check nevertheless failed and the
+guard rebooted: the engine's `EarlyInit()` calls `debug_SetThreadName("main")`,
+so `pgrep -x pyrogenesis` missed the surviving game. This run remains marked
+failed. The runner now identifies the mapped Wayland client and validates
+its executable and UID through `/proc`; thermal-stop matching uses the
+executable argv instead of the renamed comm. Final screencopy uses the same
+bounded allowance as live screenshots. Successful tests stop the game and
+compositor after collecting evidence, before disarming the watchdog.
+
+The corrected repeat, `0ad-map-23`, passed its 180-second interval with
+17 validated GPU/compositor health checks, 389 thermal samples, a 54.5 C
+peak, no thermal trip, and no recorded GPU fault. The final process evidence
+confirms comm `main`, UID 1000, and the private pyrogenesis executable; the
+engine identifies M4 Zink/Honeykrisp. Live and final screencopies show the
+actual map. The game and compositor were stopped and the watchdog disarmed
+after evidence sync. This is bounded boot validation, not a completed match.
+The kernel is `08f7797b248d`; deployed Mesa includes the runtime changes
+through `2ae4d60b693` (its embedded build-version string predates that commit).
+Evidence lives in workspace `_provenance/asahi-0ad-20260909/0ad-map-23/`.
+
+### Setup and earlier failures
 
 `M4_TEST_0AD=1` selects 0 A.D. instead of either SuperTux test. The runner
 starts release 28 on `skirmishes/acropolis_bay_2p`, Athens versus a Sparta
@@ -414,7 +459,7 @@ M4_TEST_0AD=1 python3 /root/asahi-desktop/desktop-guard.py \
 selecting its existing texture decompression fallback. It changes asset
 upload, not GPU rendering, and is an explicitly experimental diagnostic.
 
-No tested configuration passed:
+The first four configurations did not pass:
 
 - `0ad-map-1`: compositor screencopy timed out before the game launched.
 - `0ad-map-2` and `0ad-map-3`: the engine identified M4 Zink/Honeykrisp,
@@ -548,4 +593,5 @@ effect: after clearing color to blue, a LESS-tested half-screen draw passes
 against the new depth. `0ad-depth-clear-full-2` passed both checks; the first
 cold run failed and remains evidence of the separate cold-start issue.
 Host and ARM64 builds passed. Normal batched `0ad-scene-unwritten-color`
-still stalled; no full game boot has been established at this point.
+still stalled. The synchronized replay and actual map described above are
+the subsequent boot evidence; they do not qualify ordinary batching.
