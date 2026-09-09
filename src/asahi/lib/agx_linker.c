@@ -210,18 +210,18 @@ agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
    /* These literal loop fragments are AGX2 machine code. G17P exposes only
     * one sample and its Vulkan path folds sample shading before split-FS
     * lowering; fail closed if a caller ever bypasses that canonicalization. */
-   if (dev->chip == AGX_CHIP_G17P && nr_samples_shaded) {
+   if (agx_native_graphics(dev) && nr_samples_shaded) {
       fprintf(stderr,
               "agx_fast_link: external sample loop is not AGX3 machine code\n");
       return false;
    }
 
    uint8_t fused_colour[AGX3_COLOUR_LINK_SIZE];
-   const bool colour_fused = dev->chip == AGX_CHIP_G17P && fragment &&
+   const bool colour_fused = agx_native_graphics(dev) && fragment &&
       !prolog && !nr_samples_shaded && main && epilog &&
       agx3_fuse_colour_parts(&main->info.agx3_colour_link,
                               &epilog->info.agx3_colour_link, fused_colour);
-   const bool dedup_entry = dev->chip == AGX_CHIP_G17P && fragment &&
+   const bool dedup_entry = agx_native_graphics(dev) && fragment &&
       !prolog && !nr_samples_shaded && !colour_fused && main && epilog &&
       main->info.agx3_colour_link.entry_emitted &&
       epilog->info.agx3_colour_link.entry_emitted &&
@@ -281,7 +281,7 @@ agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
 
    assert(size > 0 && "must stop");
 
-   if (dev->chip == AGX_CHIP_G17P &&
+   if (agx_native_graphics(dev) &&
        (main->info.stage == MESA_SHADER_VERTEX ||
         main->info.stage == MESA_SHADER_FRAGMENT) &&
        staging_known && !linked->g17p_compiler_d_valid) {
@@ -330,7 +330,7 @@ agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
    if (prolog) {
       size_t sz = prolog->info.main_size;
       memcpy(linked_map + offset, prolog->binary, sz);
-      if (dev->chip == AGX_CHIP_G17P && fragment &&
+      if (agx_native_graphics(dev) && fragment &&
           !agx3_fltnorm_relocate_start(linked_map + offset, sz,
                                        prolog->info.agx3_fltnorm_start, offset))
          goto invalid_start_marker;
@@ -362,7 +362,7 @@ agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
       } else {
          memcpy(linked_map + offset, part_code, sz);
       }
-      if (dev->chip == AGX_CHIP_G17P && fragment &&
+      if (agx_native_graphics(dev) && fragment &&
           !agx3_fltnorm_relocate_start(linked_map + offset, sz,
                                        part->info.agx3_fltnorm_start, offset))
          goto invalid_start_marker;

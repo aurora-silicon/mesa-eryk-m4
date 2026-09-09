@@ -56,7 +56,7 @@ hk_agx3_g17p_no_resource_program_generate(
    const struct agx_ioto_state_tail_output *packed_tail, void *output,
    size_t capacity, size_t *written)
 {
-   if (chip != AGX_CHIP_G17P)
+   if (!agx_chip_uses_hal200_ioto(chip))
       return false;
 
    return agx_ioto_g17p_no_resource_program_compose(program_va, packed_tail,
@@ -215,7 +215,7 @@ hk_agx3_g17p_graphics_program_bound(
    size_t range_count, size_t *size)
 {
    size_t body, chunks;
-   if (!size || chip != AGX_CHIP_G17P ||
+   if (!size || !agx_chip_uses_hal200_ioto(chip) ||
        range_count > HK_AGX3_G17P_GRAPHICS_MAX_RANGES ||
        !agx3_ioto_uniform_program_body_bound(chip, ranges, range_count,
                                               &body, &chunks) ||
@@ -235,7 +235,7 @@ hk_agx3_g17p_basic_graphics_program_generate(
    enum agx_chip chip, const struct hk_agx3_g17p_graphics_program_desc *desc,
    struct hk_agx3_g17p_graphics_program *program)
 {
-   if (!program || chip != AGX_CHIP_G17P || !desc ||
+   if (!program || !agx_chip_uses_hal200_ioto(chip) || !desc ||
        (desc->writes_sample_mask && !desc->fragment) ||
        desc->uniform_range_count > HK_AGX3_G17P_GRAPHICS_MAX_RANGES ||
        (desc->uniform_range_count != 0 && !desc->uniform_ranges))
@@ -414,7 +414,7 @@ bool
 hk_agx3_g17p_rt0_bg_resource_spec(
    enum agx_chip chip, enum hk_agx3_g17p_rt0_bg_op op, uint64_t *resource_spec)
 {
-   if (chip != AGX_CHIP_G17P || !resource_spec)
+   if (!agx_chip_uses_hal200_ioto(chip) || !resource_spec)
       return false;
 
    uint64_t pass_mask;
@@ -472,7 +472,7 @@ hk_agx3_g17p_rt0_bg_program_generate(
    enum agx_chip chip, const struct hk_agx3_g17p_rt0_bg_program_desc *desc,
    struct hk_agx3_g17p_rt0_bg_program *program)
 {
-   if (!program || chip != AGX_CHIP_G17P || !desc)
+   if (!program || !agx_chip_uses_hal200_ioto(chip) || !desc)
       return false;
 
    struct agx3_ioto_uniform_range ranges[2];
@@ -611,7 +611,7 @@ hk_agx3_g17p_rt0_eot_program_generate(
                           desc->nr_gprs == 8 &&
                           desc->staging_halfs == 16 &&
                           desc->attachment_count == 2;
-   if (!program || chip != AGX_CHIP_G17P || !desc || (!rt0 && !wboit_mrt) ||
+   if (!program || !agx_chip_uses_hal200_ioto(chip) || !desc || (!rt0 && !wboit_mrt) ||
        !desc->pbe_argument_va ||
        desc->pbe_argument_va > UINT64_C(0xffffffffffff) -
           (wboit_mrt ? 63 : 31) ||

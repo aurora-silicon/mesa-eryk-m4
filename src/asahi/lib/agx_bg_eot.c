@@ -176,7 +176,7 @@ agx_compile_bg_eot_shader(struct agx_bg_eot_cache *cache, nir_shader *shader,
 
       unsigned bindless_base = 0;
       NIR_PASS(_, shader, agx_nir_lower_tilebuffer, tib, NULL, &bindless_base,
-               NULL, NULL, false, cache->dev->chip == AGX_CHIP_G17P);
+               NULL, NULL, false, agx_native_graphics(cache->dev));
       NIR_PASS(_, shader, agx_nir_lower_monolithic_msaa, tib->nr_samples);
       NIR_PASS(_, shader, agx_nir_lower_multisampled_image_store);
       NIR_PASS(_, shader, agx_nir_lower_texture);
@@ -192,7 +192,7 @@ agx_compile_bg_eot_shader(struct agx_bg_eot_cache *cache, nir_shader *shader,
       return NULL;
    }
 
-   if (cache->dev->chip == AGX_CHIP_G17P && tib == NULL &&
+   if (agx_native_graphics(cache->dev) && tib == NULL &&
        !agx_g17p_rt0_eot_text_supported(&bin)) {
       free(bin.binary);
       ralloc_free(shader);
@@ -201,7 +201,7 @@ agx_compile_bg_eot_shader(struct agx_bg_eot_cache *cache, nir_shader *shader,
    }
 
    res->info = bin.info;
-   if (cache->dev->chip == AGX_CHIP_G17P) {
+   if (agx_native_graphics(cache->dev)) {
       if (!agx_g17p_upload_bg_eot(cache, &bin, res)) {
          free(bin.binary);
          ralloc_free(shader);
@@ -272,7 +272,7 @@ agx_build_background_shader(struct agx_bg_eot_cache *cache,
       .dev = agx_gather_device_key(cache->dev),
       .fs.ignore_tib_dependencies = true,
       .reserved_preamble = key->reserved_preamble,
-      .no_preamble = cache->dev->chip == AGX_CHIP_G17P,
+      .no_preamble = agx_native_graphics(cache->dev),
    };
 
    for (unsigned rt = 0; rt < ARRAY_SIZE(key->op); ++rt) {
@@ -286,7 +286,7 @@ agx_build_background_shader(struct agx_bg_eot_cache *cache,
 
       nir_store_output(
          &b, build_background_op(&b, key->op[rt], rt, nr, msaa, layered,
-                                 cache->dev->chip == AGX_CHIP_G17P),
+                                 agx_native_graphics(cache->dev)),
          nir_imm_int(&b, 0), .write_mask = BITFIELD_MASK(nr),
          .src_type = nir_type_uint32,
          .io_semantics.location = FRAG_RESULT_DATA0 + rt,
@@ -328,7 +328,7 @@ agx_build_end_of_tile_shader(struct agx_bg_eot_cache *cache,
 
       bool explicit = false;
       nir_def *coords = layer;
-      if (cache->dev->chip == AGX_CHIP_G17P) {
+      if (agx_native_graphics(cache->dev)) {
          /* AGX3's EOT imgwblk has no implicit pixel-coordinate form.  Apple's
           * G17P compiler reads the hardware grid X/Y SRs explicitly. */
          coords = nir_trim_vector(
@@ -346,9 +346,9 @@ agx_build_end_of_tile_shader(struct agx_bg_eot_cache *cache,
    struct agx_shader_key compiler_key = {
       .dev = agx_gather_device_key(cache->dev),
       .reserved_preamble = key->reserved_preamble,
-      .no_preamble = cache->dev->chip == AGX_CHIP_G17P,
+      .no_preamble = agx_native_graphics(cache->dev),
       .g17p_rt0_eot_i32 =
-         cache->dev->chip == AGX_CHIP_G17P &&
+         agx_native_graphics(cache->dev) &&
          (key->tib.logical_format[0] == PIPE_FORMAT_R32_FLOAT ||
           key->tib.logical_format[0] == PIPE_FORMAT_R32G32_FLOAT ||
           key->tib.logical_format[0] == PIPE_FORMAT_R32_UINT ||
@@ -356,22 +356,22 @@ agx_build_end_of_tile_shader(struct agx_bg_eot_cache *cache,
           key->tib.logical_format[0] == PIPE_FORMAT_R32G32_SINT ||
           key->tib.logical_format[0] == PIPE_FORMAT_R32G32_UINT),
       .g17p_rt0_eot_i32_selector_15 =
-         cache->dev->chip == AGX_CHIP_G17P &&
+         agx_native_graphics(cache->dev) &&
          key->tib.logical_format[0] == PIPE_FORMAT_R32G32_SINT,
       .g17p_rt0_eot_i32_selector_75 =
-         cache->dev->chip == AGX_CHIP_G17P &&
+         agx_native_graphics(cache->dev) &&
          key->tib.logical_format[0] == PIPE_FORMAT_R32G32_UINT,
       .g17p_rt0_eot_norm16_selector_95 =
-         cache->dev->chip == AGX_CHIP_G17P &&
+         agx_native_graphics(cache->dev) &&
          (key->tib.logical_format[0] == PIPE_FORMAT_R16_UNORM ||
           key->tib.logical_format[0] == PIPE_FORMAT_R16_SNORM ||
           key->tib.logical_format[0] == PIPE_FORMAT_R16G16B16A16_SNORM),
       .g17p_rt0_eot_i16_signed_two_words =
-         cache->dev->chip == AGX_CHIP_G17P &&
+         agx_native_graphics(cache->dev) &&
          key->tib.logical_format[0] == PIPE_FORMAT_R16G16B16A16_SINT,
    };
 
-   if (cache->dev->chip == AGX_CHIP_G17P) {
+   if (agx_native_graphics(cache->dev)) {
       switch (key->tib.logical_format[0]) {
       case PIPE_FORMAT_R32_FLOAT:
       case PIPE_FORMAT_R32_UINT:

@@ -13,6 +13,9 @@
  * without hiding regressions in the eventual GPU copy implementation.
  */
 
+#ifndef TEST_DEVICE_ID
+#define TEST_DEVICE_ID 0x8140
+#endif
 #define VK_NO_PROTOTYPES
 #include <vulkan/vulkan.h>
 
@@ -268,7 +271,7 @@
 #define G17P_FRAG_SPV g17p_wsi_triangle_frag_spv
 #endif
 
-#define T8140_DEVICE_ID 0x8140
+#define T8140_DEVICE_ID TEST_DEVICE_ID
 #define IMAGE_WIDTH 32
 #define IMAGE_HEIGHT 32
 

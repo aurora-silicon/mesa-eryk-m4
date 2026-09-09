@@ -155,7 +155,7 @@ asahi_g17p_vdm_bisect(struct hk_device *dev, struct hk_cs *cs, size_t len)
    if (stage == 0)
       return len;
 
-   if (dev->dev.chip != AGX_CHIP_G17P || cs->stream_linked || stage < 1 ||
+   if (!agx_native_graphics(&dev->dev) || cs->stream_linked || stage < 1 ||
        stage > 12) {
       mesa_loge("HK_G17P_VDM_BISECT=%d requires an unlinked G17P stream",
                 stage);
@@ -269,7 +269,7 @@ asahi_fill_vdm_command(struct hk_device *dev, struct hk_cs *cs,
    if (native_base < 0)
       native_base =
          debug_get_bool_option("HK_G17P_VDM_NATIVE_BASE", false) ? 1 : 0;
-   if (native_base && dev->dev.chip == AGX_CHIP_G17P && !cs->stream_linked) {
+   if (native_base && agx_native_graphics(&dev->dev) && !cs->stream_linked) {
       uint32_t header = 0;
       if (len >= 16)
          memcpy(&header, (const uint8_t *)cs->start + 12, sizeof(header));
@@ -326,7 +326,7 @@ asahi_fill_vdm_command(struct hk_device *dev, struct hk_cs *cs,
    static_assert(sizeof(c->zls_ctrl) == sizeof(cs->cr.zls_control));
    memcpy(&c->zls_ctrl, &cs->cr.zls_control, sizeof(cs->cr.zls_control));
 
-   if (dev->dev.chip == AGX_CHIP_G17P) {
+   if (agx_native_graphics(&dev->dev)) {
       c->isp_zls_pixels = hk_drm_g17p_zls_pixels(
          cs->cr.zls_width, cs->cr.zls_height, cs->cr.depth.buffer,
          cs->cr.depth.meta, cs->cr.stencil.buffer, cs->cr.stencil.meta);
@@ -354,7 +354,7 @@ asahi_fill_vdm_command(struct hk_device *dev, struct hk_cs *cs,
    }
 
    if ((dev->dev.debug & AGX_DBG_NOCLUSTER) &&
-       dev->dev.chip != AGX_CHIP_G17P) {
+       !agx_native_graphics(&dev->dev)) {
       c->flags |= DRM_ASAHI_RENDER_NO_VERTEX_CLUSTERING;
    }
 
@@ -461,7 +461,7 @@ hk_g17p_write_range_candidates(struct hk_device *dev,
 {
    const bool dump = getenv("HK_G17P_DUMP_WRITE_RANGES") != NULL;
    const bool synthesize = getenv("HK_G17P_NATIVE_WRITE_SPANS") != NULL;
-   if (dev->dev.chip != AGX_CHIP_G17P || (!dump && !synthesize))
+   if (!agx_native_graphics(&dev->dev) || (!dump && !synthesize))
       return false;
 
    uint64_t main_start = UINT64_MAX, main_end = 0;
@@ -584,7 +584,7 @@ queue_submit_single(struct hk_device *dev, struct drm_asahi_submit *submit,
 {
    struct agx_submit_virt virt = {.ring_idx = ring_idx};
 
-   if (dev->dev.chip == AGX_CHIP_G17P &&
+   if (agx_native_graphics(&dev->dev) &&
        getenv("HK_G17P_ABORT_BEFORE_IOCTL") != NULL) {
       fprintf(stderr,
               "G17P diagnostic: aborting before DRM_IOCTL_ASAHI_SUBMIT\n");

@@ -33,7 +33,7 @@ hk_g17p_vdm_low_window_enabled(const struct agx_device *dev)
    if (enabled < 0)
       enabled = debug_get_bool_option("ASAHI_G17P_VDM_LOW_WINDOW", true);
 
-   return dev->chip == AGX_CHIP_G17P && enabled;
+   return dev->chip == AGX_CHIP_G16G || (dev->chip == AGX_CHIP_G17P && enabled);
 }
 
 static void
@@ -75,7 +75,7 @@ hk_cmd_bo_ensure_vdm_alias(struct hk_cmd_pool *pool, struct hk_cmd_bo *bo)
       return VK_SUCCESS;
 
    const uint64_t alias = hk_g17p_vdm_alias_alloc(&dev->dev, bo->bo->size);
-   const uint32_t flags = DRM_ASAHI_BIND_READ | DRM_ASAHI_BIND_WRITE;
+   const uint32_t flags = DRM_ASAHI_BIND_READ | (dev->dev.chip == AGX_CHIP_G16G ? 0 : DRM_ASAHI_BIND_WRITE);
    if (!alias || agx_bo_bind(&dev->dev, bo->bo, alias, bo->bo->size, 0, flags)) {
       if (alias)
          hk_g17p_vdm_alias_free(&dev->dev, alias, bo->bo->size);

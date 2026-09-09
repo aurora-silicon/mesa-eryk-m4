@@ -328,7 +328,7 @@ hk_get_device_features(
       .storagePushConstant16 = true,
       /* HAL200 interpolation is 32-bit, but the compiler performs matching
        * type-correct widening at ST_VARY and narrowing after interpolation. */
-      .storageInputOutput16 = dev->chip == AGX_CHIP_G17P,
+      .storageInputOutput16 = agx_native_graphics(dev),
       .multiview = true,
       .multiviewGeometryShader = false,
       .multiviewTessellationShader = false,
@@ -535,32 +535,32 @@ hk_get_device_features(
       .extendedDynamicState2 = true,
       .extendedDynamicState2LogicOp = true,
       .extendedDynamicState2PatchControlPoints =
-         dev->chip != AGX_CHIP_G17P,
+         !agx_native_graphics(dev),
 
       /* VK_EXT_extended_dynamic_state3 */
       /* Keep G17P states behind their actual native path: no tessellation or
        * rasterization streams, no multisample locations, no grounded AGX3
        * sample-mask writeout, and polygon-point fill remains unproven. */
       .extendedDynamicState3TessellationDomainOrigin =
-         dev->chip != AGX_CHIP_G17P,
+         !agx_native_graphics(dev),
       .extendedDynamicState3DepthClampEnable = true,
-      .extendedDynamicState3PolygonMode = dev->chip != AGX_CHIP_G17P,
+      .extendedDynamicState3PolygonMode = !agx_native_graphics(dev),
       .extendedDynamicState3RasterizationSamples = true,
-      .extendedDynamicState3SampleMask = dev->chip != AGX_CHIP_G17P,
+      .extendedDynamicState3SampleMask = !agx_native_graphics(dev),
       .extendedDynamicState3AlphaToCoverageEnable =
-         dev->chip != AGX_CHIP_G17P,
+         !agx_native_graphics(dev),
       .extendedDynamicState3AlphaToOneEnable = true,
       .extendedDynamicState3LogicOpEnable = true,
       .extendedDynamicState3ColorBlendEnable = true,
       .extendedDynamicState3ColorBlendEquation = true,
       .extendedDynamicState3ColorWriteMask = true,
       .extendedDynamicState3RasterizationStream =
-         dev->chip != AGX_CHIP_G17P,
+         !agx_native_graphics(dev),
       .extendedDynamicState3ConservativeRasterizationMode = false,
       .extendedDynamicState3ExtraPrimitiveOverestimationSize = false,
       .extendedDynamicState3DepthClipEnable = true,
       .extendedDynamicState3SampleLocationsEnable =
-         dev->chip != AGX_CHIP_G17P,
+         !agx_native_graphics(dev),
       .extendedDynamicState3ColorBlendAdvanced = false,
       .extendedDynamicState3ProvokingVertexMode = true,
       .extendedDynamicState3LineRasterizationMode = true,
@@ -730,11 +730,11 @@ hk_get_device_properties(const struct agx_device *dev,
    const VkSampleCountFlagBits sample_counts =
       VK_SAMPLE_COUNT_1_BIT | VK_SAMPLE_COUNT_2_BIT | VK_SAMPLE_COUNT_4_BIT;
    const VkSampleCountFlagBits color_sample_counts =
-      dev->chip == AGX_CHIP_G17P
+      agx_native_graphics(dev)
          ? VK_SAMPLE_COUNT_1_BIT | VK_SAMPLE_COUNT_2_BIT
          : sample_counts;
    const VkSampleCountFlagBits other_sample_counts =
-      dev->chip == AGX_CHIP_G17P ? VK_SAMPLE_COUNT_1_BIT : sample_counts;
+      agx_native_graphics(dev) ? VK_SAMPLE_COUNT_1_BIT : sample_counts;
 
    uint64_t os_page_size = 16384;
    os_get_page_size(&os_page_size);
@@ -1065,7 +1065,7 @@ hk_get_device_properties(const struct agx_device *dev,
       .defaultRobustnessVertexInputs =
          VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_DISABLED_EXT,
       .defaultRobustnessImages =
-         dev->chip == AGX_CHIP_G17P
+         agx_native_graphics(dev)
             ? VK_PIPELINE_ROBUSTNESS_IMAGE_BEHAVIOR_DISABLED_EXT
             : VK_PIPELINE_ROBUSTNESS_IMAGE_BEHAVIOR_ROBUST_IMAGE_ACCESS_2_EXT,
 
@@ -1119,7 +1119,7 @@ hk_get_device_properties(const struct agx_device *dev,
       .advancedBlendAllOperations = true,
    };
 
-   if (dev->chip == AGX_CHIP_G17P) {
+   if (agx_native_graphics(dev)) {
       properties->advancedBlendMaxColorAttachments = 0;
       properties->advancedBlendIndependentBlend = false;
       properties->advancedBlendNonPremultipliedSrcColor = false;
@@ -1368,7 +1368,7 @@ hk_create_drm_physical_device(struct vk_instance *_instance,
    /* HAL200 advanced blend epilogs currently complete without a fault but
     * write zero instead of the blended colour.  Keep the extension private to
     * the compiler until its fragment tile protocol is hardware-qualified. */
-   if (pdev->dev.chip == AGX_CHIP_G17P)
+   if (agx_native_graphics(&pdev->dev))
       supported_extensions.EXT_blend_operation_advanced = false;
 
    struct vk_features supported_features;
@@ -1433,15 +1433,13 @@ hk_create_drm_physical_device(struct vk_instance *_instance,
    VkQueueFlags queue_flags =
       VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT |
       VK_QUEUE_SPARSE_BINDING_BIT;
-   if (pdev->dev.chip == AGX_CHIP_G17P) {
+   if (agx_native_graphics(&pdev->dev)) {
       /* Graphics, compute and transfers use the native HAL200 queue path.
        * Sparse binding still requires separate kernel support. */
       queue_flags = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT |
                     VK_QUEUE_TRANSFER_BIT;
    }
 
-   if (pdev->dev.chip == AGX_CHIP_G16G)
-      queue_flags = VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT;
 
    uint32_t queue_count = 1;
    if (pdev->dev.params.features & DRM_ASAHI_FEATURE_INDEPENDENT_QUEUES) {

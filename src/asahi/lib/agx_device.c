@@ -1130,7 +1130,7 @@ agx_open_device(void *memctx, struct agx_device *dev)
    simple_mtx_init(&dev->vma_lock, mtx_plain);
    util_vma_heap_init(&dev->main_heap, user_start, user_size);
    util_vma_heap_init(&dev->usc_heap, dev->shader_base, shader_size);
-   if (dev->chip == AGX_CHIP_G17P &&
+   if (agx_native_graphics(dev) &&
        !agx_g17p_vdm_alias_heap_init(&dev->g17p_vdm_alias_heap)) {
       fprintf(stderr, "Failed to initialize G17P low VDM alias heap\n");
       return false;
@@ -1146,7 +1146,7 @@ agx_open_device(void *memctx, struct agx_device *dev)
    const char *usc_low_env = getenv("ASAHI_G17P_USC_LOW");
    const bool usc_low = usc_low_env != NULL && usc_low_env[0] == '1' &&
                         usc_low_env[1] == '\0';
-   if (usc_low)
+   if (usc_low || dev->chip == AGX_CHIP_G16G)
       dev->usc_heap.alloc_high = false;
 
    if (dev->chip == AGX_CHIP_G17P) {
@@ -1252,7 +1252,7 @@ agx_open_device(void *memctx, struct agx_device *dev)
    }
 
    struct agx_bo *bo =
-      dev->chip == AGX_CHIP_G17P
+      agx_native_graphics(dev)
          ? agx_bo_create(dev, LIBAGX_PRINTF_BUFFER_SIZE, 0, AGX_BO_WRITEBACK,
                          "Printf/abort")
          : agx_create_fixed_bo(
@@ -1275,7 +1275,7 @@ agx_open_device(void *memctx, struct agx_device *dev)
    }
 
    dev->printf_buffer_address =
-      dev->chip == AGX_CHIP_G17P ? bo->va->addr
+      agx_native_graphics(dev) ? bo->va->addr
                                  : LIBAGX_PRINTF_BUFFER_ADDRESS;
 
    u_printf_init(&dev->printf, bo, agx_bo_map(bo));
@@ -1353,7 +1353,7 @@ agx_close_device(struct agx_device *dev)
 
    util_vma_heap_finish(&dev->main_heap);
    util_vma_heap_finish(&dev->usc_heap);
-   if (dev->chip == AGX_CHIP_G17P)
+   if (agx_native_graphics(dev))
       util_vma_heap_finish(&dev->g17p_vdm_alias_heap);
    glsl_type_singleton_decref();
 

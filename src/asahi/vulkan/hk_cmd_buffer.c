@@ -1248,7 +1248,7 @@ hk_upload_usc_words(struct hk_cmd_buffer *cmd, struct hk_shader *s,
 
    if (agx_chip_command_stream_generation(dev->dev.chip) ==
        AGX_CS_GENERATION_HAL200) {
-      if (dev->dev.chip != AGX_CHIP_G17P ||
+      if (!agx_native_graphics(&dev->dev) ||
           !hk_g17p_basic_graphics_program_supported(cmd, s, linked)) {
          vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
          return 0;
@@ -1551,7 +1551,7 @@ hk_cs_init_graphics(struct hk_cmd_buffer *cmd, struct hk_cs *cs)
       hk_drm_attachment_set_add(&cs->fragment_attachments, plane->addr, size);
    }
 
-   if (dev->dev.chip == AGX_CHIP_G17P) {
+   if (agx_native_graphics(&dev->dev)) {
       /* The kext preserves a zero final VDM word when this selector is the
        * UINT32_MAX sentinel.  This reproduces m1n1's direct-triangle prefix. */
       cs->agx3_active_context_selector_valid = true;
@@ -1652,7 +1652,7 @@ hk_cs_init_graphics(struct hk_cmd_buffer *cmd, struct hk_cs *cs)
 
       memcpy(map, records, sizeof(records));
       map += sizeof(records);
-   } else if (dev->dev.chip == AGX_CHIP_G17P) {
+   } else if (agx_native_graphics(&dev->dev)) {
       /* PPPEncoderGen6's inspected G17P fixed-layout opening is one exact
        * W-clamp/Cull-2 payload, not the legacy AGX2 selector graph below.
        * Keep the payload in the compact VDM window just like every other
@@ -1732,7 +1732,7 @@ hk_cs_init_graphics(struct hk_cmd_buffer *cmd, struct hk_cs *cs)
    /* All graphics state must be reemited in each control stream */
    hk_cmd_buffer_dirty_all(cmd);
 
-   if (dev->dev.chip == AGX_CHIP_G17P)
+   if (agx_native_graphics(&dev->dev))
       assert((cs->current - cs->start) == HK_G17P_VDM_INITIAL_SIZE);
 }
 
@@ -1829,7 +1829,7 @@ hk_optimize_empty_vdm(struct hk_cmd_buffer *cmd)
     * common finalizer will append the native VDM terminator without uploading
     * any ordinary vertex or fragment program.
     */
-   if (dev->dev.chip == AGX_CHIP_G17P && cs->cr.process_empty_tiles &&
+   if (agx_native_graphics(&dev->dev) && cs->cr.process_empty_tiles &&
        !agx_get_precompiled(&dev->bg_eot, LIBAGX_FILL_UINT4)) {
       /* Normally supplied by the first draw. A clear has no application
        * sample-location state; use the attachment sample count and leave

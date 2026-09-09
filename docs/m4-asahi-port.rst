@@ -88,3 +88,20 @@ passed; ``asahi-agx-ioto-program-core`` fails its pre-existing negative resource
 composition check at line 642. Compiling the same seven source files from the
 pre-change HEAD reproduces that failure (``build/m4-ioto-baseline/result.log``).
 No new Vulkan graphics, Wayland, Hyprland or SuperTux result is claimed yet.
+
+Native graphics recording (qualification in progress)
+----------------------------------------------------
+
+The opt-in M4 device now records HAL200 graphics through the common Honeykrisp
+path: native PPP/VDM, linked vertex/fragment containers, and BG/EOT programs.
+The real G16G compiler identity and ten-core helper framing remain intact.
+VDM command buffers own read-only low aliases; their lifetimes follow command
+buffers. Architectural context-save backing belongs to the kernel GPUVM.
+No lab ioctl, captured render graph or Mesa fixed scratch allocation is used.
+Graphics queue advertisement is experimental until hardware tests establish
+rendered pixels and then window-system operation. This is not desktop parity.
+
+Both host and AArch64 builds pass. Four focused PPP/bind-tail tests pass. The
+unchanged direct-draw test fails its whole-struct memcmp assertion at line 235;
+its implementation and test have no changes in this port. Full-byte M4 kernel
+wire comparisons separately pass against the previously executed encoders.
