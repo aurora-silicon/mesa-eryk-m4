@@ -434,3 +434,22 @@ not changed. Evidence is under `_provenance/asahi-0ad-20260909/` in the
 workspace. Next work is capturing exact rejected upload parameters and
 isolating the first uncompressed submission that loses the device; no
 kernel or Mesa rendering implementation was changed for these attempts.
+
+The next 0 A.D. vertex shader required `fma(-2, abs(x), 3)`. Mixed/minifloat
+FMA now lowers F32 absolute/negate source modifiers to sign-bit operations
+before register allocation, preserving a single fused operation. The native
+all-register modifier path remains unchanged. `m4_vulkan_fma_abs` verifies
+32 exact outputs for this expression and `fma(0.5, -abs(x), 1)`, including
+both signs of zero and infinities. Build its SPIR-V header with:
+
+```
+glslangValidator -V --vn m4_vulkan_fma_abs_spv m4_vulkan_fma_abs.comp \
+  -o m4_vulkan_fma_abs_spv.h
+```
+
+`0ad-fma-abs-2`, `-3`, and `-4` passed; `-4` removed the per-element diagnostic
+printing before verification. The first run returned unchanged input values;
+that initial failure is retained in evidence and its cause is not established.
+Both host and ARM64 Mesa builds passed. `0ad-map-11` passed the former vertex
+shader refusal and reached a separate fragment texture-sample refusal while
+creating its shadow map. This still does not establish a rendered game map.

@@ -398,7 +398,7 @@ def main():
                                                env={**env, **({'HK_G17P_LAUNCH_TRACE': '1'}
                                                     if os.getenv('M4_HYPR_TRACE_HEALTH') == '1' else {})},
                                                stdout=subprocess.PIPE, stderr=diagnostics,
-                                               text=True, timeout=120 if summary.get('supertuxkart_started') else 8, check=True)
+                                               text=True, timeout=120 if (summary.get('supertuxkart_started') or summary.get('zeroad_started')) else 8, check=True)
                     assert 'PASS — 32 buffer writes' in check.stdout, check.stdout
                     evidence = {'passed':True, 'vulkan':True, 'values_verified':32, 'device_id':0x8132, 'sequence':checks, 'checked_at':time.monotonic()}
                     reply = json.loads(subprocess.check_output(['hyprctl', '-j', 'monitors'],
@@ -411,7 +411,7 @@ def main():
                     print(json.dumps({'event': 'gpu-progress', 'check': evidence}), flush=True)
                     if (checks in (2,4,8) or
                         ((summary.get('supertuxkart_started') or summary.get('zeroad_started')) and checks % 12 == 0)):
-                        subprocess.run(['grim','-t','ppm','-o',output_name,str(result/f'live-{checks}.ppm')],env=env,check=True,timeout=120 if summary.get('supertuxkart_started') else 6)
+                        subprocess.run(['grim','-t','ppm','-o',output_name,str(result/f'live-{checks}.ppm')],env=env,check=True,timeout=120 if (summary.get('supertuxkart_started') or summary.get('zeroad_started')) else 6)
                     checks += 1
                     time.sleep(min(5, max(0, deadline - time.monotonic())))
                 if summary.get('supertuxkart_started') and not summary.get('supertuxkart_demo',{}).get('completed'):
