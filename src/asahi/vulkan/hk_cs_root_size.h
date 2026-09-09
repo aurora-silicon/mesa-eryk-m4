@@ -35,6 +35,9 @@ static inline bool
 hk_g17p_vdm_needs_render_split(enum agx_chip chip, unsigned commands,
                                size_t remaining, size_t link_length)
 {
-   return chip == AGX_CHIP_G17P && commands > 0 &&
+   /* M4 also needs the retained-render transition at a full root. Its first
+    * linked 0 A.D. scene stalls in tiling; standalone links are not yet
+    * hardware-qualified. This is a storage boundary, not a draw-count cap. */
+   return (chip == AGX_CHIP_G17P || chip == AGX_CHIP_G16G) && commands > 0 &&
           !hk_cs_space_fits(remaining, HK_GFX_DRAW_RESERVATION, link_length);
 }

@@ -497,3 +497,19 @@ Attempts 17/18 exposed launcher timing/legacy-IPC mistakes; the pre-map Lua
 rule in attempt 19 fixes both. The game still stalled in its first scene
 render in attempts 16/19; window size alone did not resolve it. No passing
 map run has yet been established at this commit.
+
+M4 now uses the existing retained-render transition when its 64 KiB VDM root
+runs out of room. This applies the same storage-capacity check already used
+on G17P; it does not impose a draw-count limit. `m4_gl_vdm_chain.c` emits 2048
+draws with alternating uniform colors. `0ad-vdm-chain-3` crossed four root
+boundaries and verified 256 exact green pixels, without a GPU fault. The
+first split-path run completed but failed its pixel check; this remains part
+of the unresolved cold-start behavior documented above. The preceding
+full-alias link experiment faulted and was reverted: high address bits in
+the native packet alone do not establish the command window's base semantics.
+
+This change does not fix the whole game: `0ad-scene-replay-split` still
+stalled in tiling in the first scene root, now with `linked=0`. The captured
+frame is black and is not passing evidence. A 10-second host render timeout
+and a 32 MiB initial parameter-buffer diagnostic also failed; both kernel
+changes were reverted. Keep the normal GPU clock and thermal guards.

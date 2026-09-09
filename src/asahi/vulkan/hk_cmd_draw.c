@@ -4660,8 +4660,8 @@ hk_flush_gfx_state(struct hk_cmd_buffer *cmd, uint32_t draw_id,
       }
    }
 
-   /* Native G17P concatenates ordinary draws in one 0x8000-byte VDM root.
-    * Its in-stream link packet is not yet established on hardware, so cross
+   /* Native graphics concatenate ordinary draws in the allocated VDM root.
+    * M4/G17P in-stream links are not yet established on hardware, so cross
     * that uncommon capacity boundary with the already-correct retained-render
     * transition rather than silently dropping the linked suffix.
     */

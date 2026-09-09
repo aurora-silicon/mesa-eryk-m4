@@ -10,6 +10,7 @@ main(void)
    const size_t command_bo_size = 128 * 1024;
    assert(hk_cs_root_size(AGX_CHIP_G17P, false) == 32768);
    assert(hk_cs_root_size(AGX_CHIP_G17P, true) == 65536);
+   assert(hk_cs_root_size(AGX_CHIP_G16G, false) == 65536);
    assert(hk_cs_root_size(AGX_CHIP_G14G, false) == 65536);
    assert(hk_cs_root_size(AGX_CHIP_G14G, true) == 65536);
 
@@ -34,6 +35,12 @@ main(void)
    assert(hk_g17p_vdm_needs_render_split(AGX_CHIP_G17P, 1, minimum - 1,
                                          vdm_link_length));
    assert(!hk_g17p_vdm_needs_render_split(AGX_CHIP_G17P, 0, minimum - 1,
+                                          vdm_link_length));
+   assert(!hk_g17p_vdm_needs_render_split(AGX_CHIP_G16G, 1, minimum,
+                                          vdm_link_length));
+   assert(hk_g17p_vdm_needs_render_split(AGX_CHIP_G16G, 1, minimum - 1,
+                                         vdm_link_length));
+   assert(!hk_g17p_vdm_needs_render_split(AGX_CHIP_G16G, 0, minimum - 1,
                                           vdm_link_length));
    assert(!hk_g17p_vdm_needs_render_split(AGX_CHIP_G14G, 1, minimum - 1,
                                           vdm_link_length));
