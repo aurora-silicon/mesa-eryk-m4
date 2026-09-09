@@ -453,3 +453,15 @@ that initial failure is retained in evidence and its cause is not established.
 Both host and ARM64 Mesa builds passed. `0ad-map-11` passed the former vertex
 shader refusal and reached a separate fragment texture-sample refusal while
 creating its shadow map. This still does not establish a rendered game map.
+
+With shadows disabled (`M4_0AD_NO_SHADOWS=1`), `0ad-map-12` instead reached
+an F16/F32 compare-select with full-width alternatives. The compiler now
+widens that first comparator exactly before RA, preserving the condition
+and selected bit patterns. `0ad-map-13` passed this shader and reached a
+separate native draw-bind rejection; a rendered map is still unverified.
+
+`m4_vulkan_compare_half` checks 32 half/full comparisons, including signed
+zero, infinities, NaNs and half subnormals. `0ad-compare-half-2` passed all
+outputs. Its first cold run returned all original inputs, resembling the
+unresolved first FMA-probe behavior above; it is not qualified as a stable
+cold-start compute test. Both host and ARM64 Mesa builds passed.

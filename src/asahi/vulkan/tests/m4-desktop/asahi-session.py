@@ -278,6 +278,8 @@ def main():
                     '-autostart=skirmishes/acropolis_bay_2p',
                     '-autostart-civ=1:athen', '-autostart-civ=2:spart',
                     '-autostart-ai=2:petra', '-autostart-seed=0', '-autostart-aiseed=0']
+                if os.getenv('M4_0AD_NO_SHADOWS') == '1':
+                    game_args.append('-conf=shadows:false')
                 if os.getenv('M4_0AD_SYNC') == '1':
                     game_env.update(ZINK_DEBUG='flushsync,noreorder')
                 if os.getenv('M4_0AD_TRACE') == '1':

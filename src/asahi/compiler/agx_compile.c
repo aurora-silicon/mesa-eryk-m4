@@ -2536,6 +2536,21 @@ agx_materialize_agx3_alu_constants(agx_context *ctx)
        * FCMP is lowered to a boolean FSEL later, so normalize it here too.
        */
       if (I->op == AGX_OPCODE_FCMPSEL || I->op == AGX_OPCODE_FCMP) {
+         /* The native mixed-width FSEL routes F32/F16 comparators, not
+          * F16/F32. Widen the first comparator exactly before RA when the
+          * result is full-width; retain the original condition and selected
+          * bit patterns, including unordered/NaN behavior. */
+         if (ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+             I->op == AGX_OPCODE_FCMPSEL &&
+             I->dest[0].size == AGX_SIZE_32 &&
+             I->src[0].type != AGX_INDEX_IMMEDIATE &&
+             I->src[0].size == AGX_SIZE_16 &&
+             I->src[1].type != AGX_INDEX_IMMEDIATE &&
+             I->src[1].size == AGX_SIZE_32) {
+            agx_index wide = agx_temp(ctx, AGX_SIZE_32);
+            agx_fmov_to(&b, wide, I->src[0]);
+            I->src[0] = wide;
+         }
          const bool modified = I->src[0].abs || I->src[0].neg ||
                                I->src[1].abs || I->src[1].neg;
          for (unsigned s = 0; s < 2; ++s) {

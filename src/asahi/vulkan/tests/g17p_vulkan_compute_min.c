@@ -18,7 +18,11 @@
 #include <string.h>
 #include <unistd.h>
 
-#if defined(M4_FMA_ABS)
+#if defined(M4_COMPARE_HALF)
+#include "m4_vulkan_compare_half_spv.h"
+#define COMPUTE_SPV m4_vulkan_compare_half_spv
+#define TEST_NAME "m4-vulkan-compare-half"
+#elif defined(M4_FMA_ABS)
 #include "m4_vulkan_fma_abs_spv.h"
 #define COMPUTE_SPV m4_vulkan_fma_abs_spv
 #define TEST_NAME "m4-vulkan-fma-abs"
@@ -402,7 +406,7 @@ main(int argc, char **argv)
     * like. With the sentinel the readback classifies itself. */
    for (uint32_t i = 0; i < ELEMENT_COUNT + GUARD_COUNT; ++i)
       mapped[i] =
-#if defined(M4_FMA_ABS) || defined(M4_HALF_CONVERSION) || defined(M4_COMPARE_SELECT) || defined(M4_FLOAT_MODIFIERS) || defined(M4_MINMAX) || defined(M4_TRIG)
+#if defined(M4_COMPARE_HALF) || defined(M4_FMA_ABS) || defined(M4_HALF_CONVERSION) || defined(M4_COMPARE_SELECT) || defined(M4_FLOAT_MODIFIERS) || defined(M4_MINMAX) || defined(M4_TRIG)
          test_inputs[i];
 #else
          SENTINEL(i);
@@ -621,7 +625,7 @@ main(int argc, char **argv)
       const uint32_t expected = UINT32_C(0x6d000000) + i;
 #else
       const uint32_t expected =
-#if defined(M4_FMA_ABS) || defined(M4_HALF_CONVERSION) || defined(M4_COMPARE_SELECT) || defined(M4_FLOAT_MODIFIERS) || defined(M4_MINMAX) || defined(M4_TRIG)
+#if defined(M4_COMPARE_HALF) || defined(M4_FMA_ABS) || defined(M4_HALF_CONVERSION) || defined(M4_COMPARE_SELECT) || defined(M4_FLOAT_MODIFIERS) || defined(M4_MINMAX) || defined(M4_TRIG)
          test_expected[i];
 #else
          UINT32_C(0x12340000) + i;
@@ -653,7 +657,7 @@ main(int argc, char **argv)
 #ifdef G17P_NULL_DESCRIPTOR
               UINT32_C(0x6d000000) + first_bad,
 #else
-#if defined(M4_FMA_ABS) || defined(M4_HALF_CONVERSION) || defined(M4_COMPARE_SELECT) || defined(M4_FLOAT_MODIFIERS) || defined(M4_MINMAX) || defined(M4_TRIG)
+#if defined(M4_COMPARE_HALF) || defined(M4_FMA_ABS) || defined(M4_HALF_CONVERSION) || defined(M4_COMPARE_SELECT) || defined(M4_FLOAT_MODIFIERS) || defined(M4_MINMAX) || defined(M4_TRIG)
               test_expected[first_bad],
 #else
               UINT32_C(0x12340000) + first_bad,
@@ -709,6 +713,8 @@ main(int argc, char **argv)
    printf(TEST_NAME ": PASS — 32 null SSBO/UBO loads returned zero, null "
                     "SSBO stores were discarded, exact output and 32 guards "
                     "stable for three seconds\n");
+#elif defined(M4_COMPARE_HALF)
+   printf(TEST_NAME ": PASS — 32 exact half/full comparison results including NaN, infinities, and signed zero\n");
 #elif defined(M4_FMA_ABS)
    printf(TEST_NAME ": PASS — 32 exact FMA abs/negate results with immediate operands\n");
 #elif defined(M4_UNARY)
