@@ -1427,6 +1427,9 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
       simple_mtx_unlock(lock);
 
    if (!compiled) {
+      mesa_loge("AGX backend rejected %s shader for %s (name=%s)",
+                _mesa_shader_stage_to_string(nir->info.stage),
+                agx_chip_name(dev->dev.chip), nir->info.name ? nir->info.name : "unnamed");
       /* On G17P this is currently the single biggest functional gap in the
        * driver, and it is not a shader-specific accident: the AGX3 packer
        * encodes AT MOST ONE SSBO ACCESS PER SHADER and no atomics at all.

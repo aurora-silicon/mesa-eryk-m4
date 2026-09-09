@@ -4376,8 +4376,18 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
          struct agx_vdm_state_update encoded;
          if (!hk_agx3_encode_vdm_state_update_draw(dev->dev.chip, &info,
                                                     &encoded)) {
-            mesa_loge("no complete AGX3 VertexProgramVariant state for %s",
-                      agx_chip_name(dev->dev.chip));
+            mesa_loge("no complete AGX3 VertexProgramVariant state for %s: "
+                      "pipeline=%#llx layout=%u ordinary=%u selector=%u "
+                      "sw-index=%u scratch=%u/%u preamble=%u data=%zu tex=%u sampler=%u root=%#llx",
+                      agx_chip_name(dev->dev.chip),
+                      (unsigned long long)pipeline_program,
+                      program->source_layout, ordinary_draw_path,
+                      cs->agx3_active_context_selector_valid,
+                      linked_hw_vs->sw_indexing, hw_vs->b.info.scratch_size,
+                      linked_hw_vs->b.scratch_size, hw_vs->b.info.has_preamble,
+                      (size_t)hw_vs->data_size, hw_vs->b.info.texture_state_count,
+                      hw_vs->b.info.sampler_state_count,
+                      (unsigned long long)gfx->root);
             vk_command_buffer_set_error(&cmd->vk,
                                         VK_ERROR_FEATURE_NOT_PRESENT);
             cs->current = out;

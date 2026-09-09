@@ -68,18 +68,16 @@ struct agx3_branch_fixup {
 /*
  * This backend is fail-closed per instruction: a shader containing anything
  * outside the grounded domain is refused, never mis-encoded. A bare refusal is
- * hard to act on, so name the instruction that closed the door under the
- * compiler's existing shader-debug flag (AGX_MESA_DEBUG=shaders). This is the
- * difference between "AGX3 rejected this shader" and a usable bug report.
+ * hard to act on, so always name the rejected instruction. Successful shaders
+ * stay quiet without AGX_MESA_DEBUG=shaders.
  */
 static void
 agx3_report_refusal(const agx_instr *I, unsigned line)
 {
-   if (agx_compiler_debug & AGX_DBG_SHADERS) {
-      fprintf(stderr,
-              "agx3_pack_binary.c:%u: no grounded AGX3 encoding for %s\n",
-              line, agx_opcodes_info[I->op].name);
-   }
+   fprintf(stderr,
+           "agx3_pack_binary.c:%u: no grounded AGX3 encoding for %s\n",
+           line, agx_opcodes_info[I->op].name);
+   agx_print_instr(I, stderr);
 }
 
 #define AGX3_REFUSE(I)                                                         \
