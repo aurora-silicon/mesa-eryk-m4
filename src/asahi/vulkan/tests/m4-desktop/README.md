@@ -513,3 +513,18 @@ stalled in tiling in the first scene root, now with `linked=0`. The captured
 frame is black and is not passing evidence. A 10-second host render timeout
 and a 32 MiB initial parameter-buffer diagnostic also failed; both kernel
 changes were reverted. Keep the normal GPU clock and thermal guards.
+
+Native raster updates now use the immutable HAL200 bind tail even when
+only depth/stencil or fragment state changes. The old fallback could emit
+an AGX2 aggregate PPP packet, and the following draw lacked the selector
+required for a fresh native tail. `m4_gl_depth_update.c` keeps the program,
+uniforms and geometry constant while changing LESS to LEQUAL at equal depth.
+`0ad-depth-update-2` verified 256 green pixels. Run 1 failed its pixel check;
+the cold-start limitation remains. Host and ARM64 builds passed. Full-scene
+`0ad-scene-native-ppp` still stalled in tiling, so this is not a boot claim.
+
+Readback checkpoints allow the captured terrain and individual building
+draws to complete. `0ad-scene-checkpoints` passed the prefix through call
+23856; `0ad-dense-checkpoints` passed individual draws through 26623 and
+the group through 27873, then stalled in a later fragment pass. These are
+partial-scene diagnostics, not a rendered map or game stability result.

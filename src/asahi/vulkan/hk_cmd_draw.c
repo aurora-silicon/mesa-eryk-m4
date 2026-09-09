@@ -3342,7 +3342,8 @@ hk_default_sample_positions(unsigned nr_samples)
 }
 
 static void
-hk_flush_ppp_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs, uint8_t **out)
+hk_flush_ppp_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs, uint8_t **out,
+                   bool *native_bind_emitted)
 {
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
    const struct hk_rendering_state *render = &cmd->state.gfx.render;
@@ -3472,6 +3473,20 @@ hk_flush_ppp_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs, uint8_t **out)
    size_t size = agx_ppp_update_size(&dirty);
    if (size == AGX_PPP_HEADER_LENGTH)
       return;
+
+   /* Native HAL200 uses the immutable bind records for every raster update,
+    * including depth/stencil or fragment-only changes with an unchanged VS.
+    * Emitting an AGX2 aggregate PPP packet here mixes command generations.
+    * The following draw also needs the selector for this fresh bind tail.
+    */
+   if (agx_native_graphics(&dev->dev)) {
+      if (!hk_g17p_emit_native_bind_tail(cmd, cs, out)) {
+         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+         return;
+      }
+      *native_bind_emitted = true;
+      return;
+   }
 
    /* Otherwise, allocate enough space for the update and push it. */
    assert(size > AGX_PPP_HEADER_LENGTH);
@@ -4508,8 +4523,10 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
       }
    }
 
-   if (!g17p_native_bind_tail_emitted)
-      hk_flush_ppp_state(cmd, cs, &out);
+   if (!g17p_native_bind_tail_emitted) {
+      hk_flush_ppp_state(cmd, cs, &out, &g17p_native_bind_tail_emitted);
+      *g17p_native_bind_tail_emitted_out = g17p_native_bind_tail_emitted;
+   }
    cs->current = out;
 
    if (vk_command_buffer_has_error(&cmd->vk))
