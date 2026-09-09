@@ -13,6 +13,7 @@
 
 #include "util/build_id.h"
 #include "util/driconf.h"
+#include "util/u_debug.h"
 #include "util/mesa-blake3.h"
 
 VKAPI_ATTR VkResult VKAPI_CALL
@@ -156,6 +157,9 @@ hk_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
       goto fail_alloc;
 
    hk_init_dri_options(instance);
+
+   instance->vk.enable_debug_logging =
+      debug_get_bool_option("HK_DEBUG_LOG", false);
 
    instance->vk.physical_devices.try_create_for_drm =
       hk_create_drm_physical_device;
