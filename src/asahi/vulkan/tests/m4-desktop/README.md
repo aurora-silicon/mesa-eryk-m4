@@ -470,3 +470,20 @@ The isolated translucent-discard probe additionally exposed a half-register
 LDIMM carrying a wait mask, although that instruction has no wait field.
 The backend now emits the existing wait-retirement NOP before LDIMM. This
 preserves dependencies rather than dropping the requested wait.
+
+`0ad-map-14` localized the draw-bind refusal to pass type 3 (translucent
+punch-through). The native bind path now retains that pass type, conservatively
+disabling triangle merging for it. M4 B0's `updateFragmentShaderISPState` at
+0x44747c..0x4474cc confirms the pass-type bits and the conditional merge-disable
+bit. The exact draw-buffer predicate is not yet mapped, so this may sacrifice
+merging performance; it does not remove blending or coverage rejection.
+Reference arm64e slice SHA256:
+`edd46e01416e595b51734428ece82aa0104868b35d585f492b2efa3ceebbce3a`.
+
+`m4_gl_translucent_discard.c` creates a 64x64 RGBA8 target, clears blue,
+then draws red at half alpha while discarding the left half. Compile with
+EGL/GLESv2 and run under the mandatory bounded guard and M4 Zink environment;
+its optional first argument saves raw RGBA for inspection. `0ad-translucent-3`
+verified all 4096 pixels. Run 1 refused LDIMM before the wait fix; run 2 failed
+its first preserved-pixel check without a pixel dump. These failures remain
+in evidence. The isolated result is not a cold-start stability claim.

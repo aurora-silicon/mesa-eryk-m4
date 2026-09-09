@@ -3151,14 +3151,20 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
    const uint32_t pass_type = linked_fs->b.fragment_control.opaque[0] >> 29;
    if (pass_type != AGX_PASS_TYPE_OPAQUE &&
        pass_type != AGX_PASS_TYPE_TRANSLUCENT &&
-       pass_type != AGX_PASS_TYPE_PUNCH_THROUGH)
+       pass_type != AGX_PASS_TYPE_PUNCH_THROUGH &&
+       pass_type != AGX_PASS_TYPE_TRANSLUCENT_PUNCH_THROUGH) {
+      mesa_loge("unsupported HAL200 fragment pass type %u", pass_type);
       return false;
+   }
    secondary_fields.words[0] |= pass_type << 29;
-   /* Native46c674..46c694 forces bit26 for pass type2, before merging it
-    * into the same SECONDARY payload. This prevents triangle merging from
-    * treating per-fragment coverage rejection as an opaque pass. Type3's
-    * additional draw-buffer-state predicate is a separate native path. */
-   if (pass_type == AGX_PASS_TYPE_PUNCH_THROUGH)
+   /* M4 B0 updateFragmentShaderISPState (44747c..4474cc) retains pass
+    * type 3 and disables triangle merging for type 2, or type 3 with the
+    * draw-buffer predicate set. Conservatively disable merging for all
+    * translucent punch-through draws until that predicate is mapped. This
+    * keeps destination reads and coverage rejection ordered without changing
+    * the shader, blending, or depth/stencil operations. */
+   if (pass_type == AGX_PASS_TYPE_PUNCH_THROUGH ||
+       pass_type == AGX_PASS_TYPE_TRANSLUCENT_PUNCH_THROUGH)
       secondary_fields.words[0] |= UINT32_C(1) << 26;
    /* Native458934..45896c retains both stencil-control bits in the
     * same per-draw record as depth. No extra state allocation or launch. */
