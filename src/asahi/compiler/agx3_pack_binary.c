@@ -5654,8 +5654,12 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
              agx3_src_is_register(I->dest[0]) &&
              I->dest[0].size == AGX_SIZE_16 && agx_channels(I->dest[0]) == 1) {
             uint8_t bytes[AGX3_ALU_MAX_LENGTH], len = 0;
+            /* Half LDIMM has no wait field. Retire dependencies explicitly
+             * before overwriting a half register assigned after an async op. */
+            if (wait && !agx3_retire_slots_noop(emission, enc, wait))
+               AGX3_REFUSE(I);
             if (I->imm > 0xffff ||
-                !agx3_alu_mov16(enc, I->dest[0].value, I->imm, wait, bytes, &len) ||
+                !agx3_alu_mov16(enc, I->dest[0].value, I->imm, 0, bytes, &len) ||
                 !agx3_append(emission, bytes, len))
                AGX3_REFUSE(I);
             continue;

@@ -465,3 +465,8 @@ zero, infinities, NaNs and half subnormals. `0ad-compare-half-2` passed all
 outputs. Its first cold run returned all original inputs, resembling the
 unresolved first FMA-probe behavior above; it is not qualified as a stable
 cold-start compute test. Both host and ARM64 Mesa builds passed.
+
+The isolated translucent-discard probe additionally exposed a half-register
+LDIMM carrying a wait mask, although that instruction has no wait field.
+The backend now emits the existing wait-retirement NOP before LDIMM. This
+preserves dependencies rather than dropping the requested wait.
