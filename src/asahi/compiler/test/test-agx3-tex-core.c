@@ -1038,10 +1038,35 @@ test_register_array_layer(void)
    return 0;
 }
 
+static int
+test_staging_source_banks(void)
+{
+   /* A high coordinate register must never encode as its low-bank alias.
+    * The J713 skinning probe exercises these copies with real coordinates.
+    * Cover independent lifetime hints and each native dependency slot.
+    */
+   for (unsigned source = 128; source < 192; source += 2) {
+      for (unsigned hint = 0; hint < 3; ++hint) {
+         for (unsigned slot = 1; slot <= 6; ++slot) {
+            uint8_t high[AGX3_TEX_COPY_MAX_LENGTH], low[AGX3_TEX_COPY_MAX_LENGTH];
+            uint8_t high_len, low_len;
+            CHECK(agx3_tex_stage_copy_hints(AGX_ISA_ENCODING_AGX3B, 0,
+                     source, slot, 1u << (slot - 1), hint == 1, hint == 2,
+                     high, &high_len));
+            CHECK(agx3_tex_stage_copy_hints(AGX_ISA_ENCODING_AGX3B, 0,
+                     source - 128, slot, 1u << (slot - 1), hint == 1, hint == 2,
+                     low, &low_len));
+            CHECK(high_len != low_len || memcmp(high, low, high_len));
+         }
+      }
+   }
+   return 0;
+}
+
 int
 main(void)
 {
-   if (test_register_lod() || test_register_array_layer() ||
+   if (test_staging_source_banks() || test_register_lod() || test_register_array_layer() ||
        test_staging_source_lifetime() || test_exact_witnesses() ||
        test_supported_axes() || test_fail_closed() ||
        test_sample_witnesses() || test_copy_witnesses() ||

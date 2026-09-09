@@ -778,7 +778,7 @@ static bool
 agx3_emit_texture_fetch(struct util_dynarray *emission,
                         enum agx_isa_encoding enc, const agx_instr *I,
                         uint8_t slot, uint16_t wait_mask, bool final,
-                        bool stage_coordinates)
+                        bool stage_coordinates, uint16_t staging_coord)
 {
    const bool immediate = I->nr_srcs == 6 &&
       I->src[3].type == AGX_INDEX_IMMEDIATE;
@@ -811,11 +811,6 @@ agx3_emit_texture_fetch(struct util_dynarray *emission,
        I->query_lod || I->gather != AGX_GATHER_NONE || I->sparse)
       return false;
 
-   /* Native image read() stages coordinates at halves16/18, keeping them
-    * disjoint from imgwci's halves0/2 while the asynchronous read is live.
-    * Ordinary texture loads retain the original bank0 staging ABI. */
-   const uint16_t staging_coord =
-      I->op == AGX_OPCODE_IMAGE_LOAD ? 16 : 0;
    if (stage_coordinates) {
       for (unsigned i = 0; i < agx_channels(I->src[0]); i++) {
          uint8_t copy[AGX3_TEX_MAX_LENGTH], copy_len = 0;
@@ -4160,9 +4155,14 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             const bool staged = ctx->stage == MESA_SHADER_FRAGMENT ||
                                 ctx->stage == MESA_SHADER_COMPUTE ||
                                 ctx->stage == MESA_SHADER_VERTEX;
+            /* Independent vertex fetches must retain their coordinates
+             * until the result slot retires. Give each slot a disjoint bank;
+             * eight halves also fit array coordinates. Image read/write
+             * retains its separately qualified split bank.
+             */
+            const unsigned coord_base = I->op == AGX_OPCODE_IMAGE_LOAD ? 16 :
+               ctx->stage == MESA_SHADER_VERTEX ? 8 * (slot - 1) : 0;
             if (staged) {
-               const unsigned coord_base =
-                  I->op == AGX_OPCODE_IMAGE_LOAD ? 16 : 0;
                ctx->agx3_staging_halfs = MAX2(
                   ctx->agx3_staging_halfs,
                   coord_base + 2 * agx_channels(I->src[0]));
@@ -4176,12 +4176,14 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
              * dependency explicitly before issuing the coordinate copies.
              */
             uint16_t tex_wait = wait;
+            if (ctx->stage == MESA_SHADER_VERTEX)
+               tex_wait |= outstanding_here & (1u << (slot - 1));
             if (tex_wait & (tex_wait - 1)) {
                if (!agx3_retire_slots_noop(emission, enc, tex_wait))
                   AGX3_REFUSE(I);
                tex_wait = 0;
             }
-            if (!agx3_emit_texture_fetch(emission, enc, I, slot, tex_wait, final, staged)) {
+            if (!agx3_emit_texture_fetch(emission, enc, I, slot, tex_wait, final, staged, coord_base)) {
                fprintf(stderr, "AGX3 texel fetch: stage=%u slot=%u wait=%x staged=%u\n",
                        ctx->stage, slot, tex_wait, staged);
                AGX3_REFUSE(I);

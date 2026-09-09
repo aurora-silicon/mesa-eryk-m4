@@ -327,7 +327,9 @@ agx3_tex_stage_copy_hints(enum agx_isa_encoding enc, uint16_t dest, uint16_t src
    struct agx3_field_kv ov[12];
    unsigned n = 0;
    ov[n++] = (struct agx3_field_kv)KV(5, dest);
-   ov[n++] = (struct agx3_field_kv)KV(16, src & 0x7f);
+   /* Preserve the upper register bank. Unlike PACK_SMPIR below, COPY has
+    * no post-compose source-bit fixup: masking here aliases r64 with r0. */
+   ov[n++] = (struct agx3_field_kv)KV(16, src);
    ov[n++] = (struct agx3_field_kv)KV(25, src_cache);
    ov[n++] = (struct agx3_field_kv)KV(27, src_discard);
    ov[n++] = (struct agx3_field_kv)KV(12, slot);

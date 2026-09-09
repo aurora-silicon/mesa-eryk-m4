@@ -184,3 +184,36 @@ host builds pass, as does the targeted cube-lowering test. The broad graphics
 compiler suite still has unrelated stale exact-binary/refusal expectations
 and unsupported AGX3c cases; it is not reported as a passing suite. These
 results do not yet qualify a correct full SuperTuxKart race.
+
+### Skinning texture coordinates (2026-09-09)
+
+`m4_zink_skinning.c` combines packed 48-byte vertices, 44-byte instances,
+sixteen vertex texture fetches, four weighted bone matrices, quaternion
+rotation and the associated normals/tangents. Each of four input vertices
+and four instances writes seven vec4 results. The fragment shader encodes
+one float's bits at a time into RGBA8, avoiding any dependence on float
+render-target support. All 448 values are compared with independent CPU math
+at absolute tolerance 0.0002. `--reference` explicitly selects a local
+llvmpipe reference; normal mode requires Zink and an M4 renderer.
+`--matrices`, `--identity-bones` and `--identity-rotation` isolate the data
+while keeping the shader's calculations present.
+
+The test reproduced the game's bad positions and normals. `skinning-3`
+failed geometry while color/UV passed; both identity diagnostics also failed.
+Individual three-channel texture reads passed (`fetch-xyz-1`). Two independent
+encoder mistakes were involved:
+
+- Coordinate staging masked the source half-register index with 0x7f,
+  aliasing high registers with unrelated low registers. Unlike PACK_SMPIR,
+  this COPY path did not subsequently restore the high bit.
+- Independent vertex texture loads overwrote the same staging coordinates
+  while earlier fetches could still read them. Vertex fetches now use one
+  eight-half coordinate bank per scoreboard slot and retire that slot before
+  reusing its bank. Other texture/image protocols keep their existing layout.
+
+With just these changes, `skinning-11` passed all 448 values. The earlier
+plain-ALU destination and register-MOV experiments did not fix the reproducer
+and are not part of this change; their patch is saved in the workspace
+provenance. The host texture-core suite passes 5,571 checks, including high
+coordinate source registers with all cache hints and six dependency slots.
+The complete correct race remains the acceptance target.
