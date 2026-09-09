@@ -138,6 +138,24 @@ agx_nir_lower_non_monolithic_uniforms(nir_shader *nir, unsigned nr)
                                      nir_metadata_control_flow, &nr);
 }
 
+void
+agx_nir_reserve_native_vertex_prefix(nir_shader *nir)
+{
+   assert(nir->info.stage == MESA_SHADER_VERTEX);
+   nir_foreach_function_impl(impl, nir) {
+      nir_foreach_block(block, impl) {
+         nir_foreach_instr(instr, block) {
+            if (instr->type != nir_instr_type_intrinsic)
+               continue;
+            nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+            if (intr->intrinsic == nir_intrinsic_load_preamble)
+               nir_intrinsic_set_base(intr, nir_intrinsic_base(intr) +
+                                            AGX_ABI_VUNI_NATIVE_PREFIX);
+         }
+      }
+   }
+}
+
 static bool
 lower_adjacency(nir_builder *b, nir_intrinsic_instr *intr, void *data)
 {
@@ -244,6 +262,7 @@ void
 agx_nir_vs_prolog_raw(nir_builder *b, const void *key)
 {
    agx_nir_vs_prolog_impl(b, key, true);
+   agx_nir_reserve_native_vertex_prefix(b->shader);
 }
 
 static bool

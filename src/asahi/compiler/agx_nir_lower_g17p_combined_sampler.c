@@ -317,7 +317,8 @@ bool
 agx_nir_lower_g17p_indexed_samplers(nir_shader *shader)
 {
    if (!shader || (shader->info.stage != MESA_SHADER_FRAGMENT &&
-                   shader->info.stage != MESA_SHADER_COMPUTE))
+                   shader->info.stage != MESA_SHADER_COMPUTE &&
+                   shader->info.stage != MESA_SHADER_VERTEX))
       return false;
 
    unsigned samples = 0;
@@ -328,6 +329,11 @@ agx_nir_lower_g17p_indexed_samplers(nir_shader *shader)
                continue;
             nir_tex_instr *tex = nir_instr_as_tex(instr);
             const bool fetch = g17p_indexed_fetch_shape(tex);
+            /* Vertex fetches use explicit integer coordinates and LOD zero;
+             * implicit sampling requires fragment derivatives.
+             */
+            if (shader->info.stage == MESA_SHADER_VERTEX && !fetch)
+               return false;
             if (!fetch && (!g17p_sample_shape(tex) ||
                            (tex->op != nir_texop_tex && tex->op != nir_texop_txl)))
                return false;

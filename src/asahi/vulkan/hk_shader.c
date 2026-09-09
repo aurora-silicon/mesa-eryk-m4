@@ -1141,6 +1141,18 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
    bool kill_psiz = false;
 
    if (agx_chip_uses_hal200_ioto(dev->dev.chip) &&
+       nir->info.stage == MESA_SHADER_VERTEX && hw) {
+      nir_shader *candidate = nir_shader_clone(NULL, nir);
+      if (candidate && agx_nir_lower_g17p_indexed_samplers(candidate)) {
+         ralloc_free(nir);
+         nir = candidate;
+         shader->info.agx3_indexed_sampler_valid = true;
+      } else {
+         ralloc_free(candidate);
+      }
+   }
+
+   if (agx_chip_uses_hal200_ioto(dev->dev.chip) &&
        nir->info.stage == MESA_SHADER_FRAGMENT) {
       NIR_PASS(_, nir, agx_nir_lower_g17p_cube_samples);
       nir_shader *candidate = nir_shader_clone(NULL, nir);
@@ -1350,6 +1362,12 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
 
    NIR_PASS(_, nir, nir_shader_intrinsics_pass, lower_uniforms,
             nir_metadata_control_flow, &root);
+
+   if (agx_chip_uses_hal200_ioto(dev->dev.chip) &&
+       nir->info.stage == MESA_SHADER_VERTEX) {
+      agx_nir_reserve_native_vertex_prefix(nir);
+      root += AGX_ABI_VUNI_NATIVE_PREFIX;
+   }
 
    /* Report every uniform half this shader actually reads.
     *

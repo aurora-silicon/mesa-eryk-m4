@@ -4145,7 +4145,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             /* Native TEX reads staging coordinates, independently of GPRs.
              * This also applies to the background reload's pixel coordinates. */
             const bool staged = ctx->stage == MESA_SHADER_FRAGMENT ||
-                                ctx->stage == MESA_SHADER_COMPUTE;
+                                ctx->stage == MESA_SHADER_COMPUTE ||
+                                ctx->stage == MESA_SHADER_VERTEX;
             if (staged) {
                const unsigned coord_base =
                   I->op == AGX_OPCODE_IMAGE_LOAD ? 16 : 0;
@@ -4157,8 +4158,21 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                ctx->agx3_staging_known = false;
             assert(texture_ops_left > 0);
             const bool final = --texture_ops_left == 0;
-            if (!agx3_emit_texture_fetch(emission, enc, I, slot, wait, final, staged))
+            /* Coordinate and heap-index loads can depend on distinct slots.
+             * Compact staging COPY encodes one wait; retire a combined
+             * dependency explicitly before issuing the coordinate copies.
+             */
+            uint16_t tex_wait = wait;
+            if (tex_wait & (tex_wait - 1)) {
+               if (!agx3_retire_slots_noop(emission, enc, tex_wait))
+                  AGX3_REFUSE(I);
+               tex_wait = 0;
+            }
+            if (!agx3_emit_texture_fetch(emission, enc, I, slot, tex_wait, final, staged)) {
+               fprintf(stderr, "AGX3 texel fetch: stage=%u slot=%u wait=%x staged=%u\n",
+                       ctx->stage, slot, tex_wait, staged);
                AGX3_REFUSE(I);
+            }
             continue;
          }
 

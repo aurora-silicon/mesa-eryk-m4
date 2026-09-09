@@ -1907,8 +1907,15 @@ test_g17p_rt0_background_pass_control(void)
    CHECK((resource_spec >> 47) == 0);
    CHECK(AGX_IOTO_G17P_EOT_RESOURCE_SPEC == UINT64_C(0));
 
+   CHECK(hk_agx3_g17p_rt0_bg_resource_spec(
+      AGX_CHIP_G16G, HK_AGX3_G17P_RT0_BG_CLEAR, &resource_spec));
+   CHECK(resource_spec == UINT64_C(0xffff800000000040));
+   CHECK(hk_agx3_g17p_rt0_bg_resource_spec(
+      AGX_CHIP_G16G, HK_AGX3_G17P_RT0_BG_NONE, &resource_spec));
+   CHECK(resource_spec == UINT64_C(0x40));
+
    for (size_t i = 0; i < ARRAY_SIZE(targets); ++i) {
-      if (targets[i] == AGX_CHIP_G17P)
+      if (targets[i] == AGX_CHIP_G17P || targets[i] == AGX_CHIP_G16G)
          continue;
       CHECK(!hk_agx3_g17p_rt0_bg_resource_spec(
          targets[i], HK_AGX3_G17P_RT0_BG_CLEAR, &resource_spec));
