@@ -2506,6 +2506,25 @@ agx_materialize_agx3_alu_constants(agx_context *ctx)
 {
    agx_foreach_instr_global_safe(ctx, I) {
       agx_builder b = agx_init_builder(ctx, agx_before_instr(I));
+      /* General FSEL has register comparators or an implicit zero. Nonzero
+       * minifloats in compare slots must first become floating registers;
+       * selected values in slots 2/3 have integer bit-pattern semantics.
+       */
+      if (I->op == AGX_OPCODE_FCMPSEL) {
+         for (unsigned s = 0; s < 2; ++s) {
+            agx_index src = I->src[s];
+            if (src.type != AGX_INDEX_IMMEDIATE || src.value == 0)
+               continue;
+
+            float value = agx_minifloat_decode(src.value);
+            if (src.abs)
+               value = fabsf(value);
+            if (src.neg)
+               value = -value;
+            I->src[s] = agx_mov_imm(&b, 32, fui(value));
+         }
+      }
+
       /* The grounded immediate-multiplier IMAD has either no addend or a
        * nonnegative byte addend. Split `a * byte - byte` into the witnessed
        * pure multiply followed by the witnessed subtract-immediate form. */

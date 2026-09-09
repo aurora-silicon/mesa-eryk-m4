@@ -18,7 +18,11 @@
 #include <string.h>
 #include <unistd.h>
 
-#ifdef M4_HALF_CONVERSION
+#ifdef M4_COMPARE_SELECT
+#include "m4_vulkan_compare_select_spv.h"
+#define COMPUTE_SPV m4_vulkan_compare_select_spv
+#define TEST_NAME "m4-vulkan-compare-select"
+#elif defined(M4_HALF_CONVERSION)
 #include "m4_vulkan_half_convert_spv.h"
 #define COMPUTE_SPV m4_vulkan_half_convert_spv
 #define TEST_NAME "m4-vulkan-half-convert"
@@ -374,8 +378,8 @@ main(int argc, char **argv)
     * like. With the sentinel the readback classifies itself. */
    for (uint32_t i = 0; i < ELEMENT_COUNT + GUARD_COUNT; ++i)
       mapped[i] =
-#ifdef M4_HALF_CONVERSION
-         half_inputs[i];
+#if defined(M4_HALF_CONVERSION) || defined(M4_COMPARE_SELECT)
+         test_inputs[i];
 #else
          SENTINEL(i);
 #endif
@@ -593,8 +597,8 @@ main(int argc, char **argv)
       const uint32_t expected = UINT32_C(0x6d000000) + i;
 #else
       const uint32_t expected =
-#ifdef M4_HALF_CONVERSION
-         half_expected[i];
+#if defined(M4_HALF_CONVERSION) || defined(M4_COMPARE_SELECT)
+         test_expected[i];
 #else
          UINT32_C(0x12340000) + i;
 #endif
@@ -621,8 +625,8 @@ main(int argc, char **argv)
 #ifdef G17P_NULL_DESCRIPTOR
               UINT32_C(0x6d000000) + first_bad,
 #else
-#ifdef M4_HALF_CONVERSION
-              half_expected[first_bad],
+#if defined(M4_HALF_CONVERSION) || defined(M4_COMPARE_SELECT)
+              test_expected[first_bad],
 #else
               UINT32_C(0x12340000) + first_bad,
 #endif
@@ -677,6 +681,8 @@ main(int argc, char **argv)
    printf(TEST_NAME ": PASS — 32 null SSBO/UBO loads returned zero, null "
                     "SSBO stores were discarded, exact output and 32 guards "
                     "stable for three seconds\n");
+#elif defined(M4_COMPARE_SELECT)
+   printf(TEST_NAME ": PASS — 32 exact constant float compare/select results\n");
 #elif defined(M4_HALF_CONVERSION)
    printf(TEST_NAME ": PASS — 32 exact signed/unsigned binary16 boundary conversions\n");
 #else

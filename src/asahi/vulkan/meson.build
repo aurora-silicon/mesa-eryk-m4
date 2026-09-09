@@ -878,6 +878,15 @@ if with_tests
     )
 
     executable(
+      'm4-vulkan-compare-select',
+      files('tests/m4_vulkan_compare_select.c'),
+      include_directories : [inc_include],
+      dependencies : [dep_dl],
+      c_args : [c_msvc_compat_args],
+      gnu_symbol_visibility : 'hidden',
+    )
+
+    executable(
       'm4-vulkan-half-convert',
       files('tests/m4_vulkan_half_convert.c'),
       include_directories : [inc_include],

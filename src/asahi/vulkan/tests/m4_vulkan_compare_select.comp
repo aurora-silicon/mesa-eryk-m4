@@ -1,0 +1,17 @@
+#version 450
+// SPDX-License-Identifier: MIT
+layout(local_size_x=32) in;
+layout(set=0,binding=0,std430) buffer Data { uint v[]; } data;
+void main() {
+ uint i=gl_LocalInvocationID.x;
+ float a=uintBitsToFloat(data.v[i]);
+ // Keep both alternatives in registers, independent of the comparator.
+ float b=uintBitsToFloat(data.v[i] ^ 0x10000u);
+ float c=uintBitsToFloat(data.v[i] ^ 0x20000u);
+ float r;
+ if (i < 8) r=0.5 < a ? b : c;
+ else if (i < 16) r=a <= 0.5 ? b : c;
+ else if (i < 24) r=0.5 == a ? b : c;
+ else r=a != 0.5 ? b : c;
+ data.v[i]=floatBitsToUint(r);
+}
