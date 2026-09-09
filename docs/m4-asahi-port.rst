@@ -113,3 +113,17 @@ M4 encoding evidence. Five focused encoding tests pass, including an explicit
 M4/G17P byte comparison for the direct-draw packet. The earlier direct-draw
 failure was a test comparing unspecified C struct padding; it now compares
 semantic fields. Hardware rendered output remains the next qualification gate.
+
+Verified M4 rendering and repeated submissions
+---------------------------------------------
+
+``vulkan-render-3`` verified every pixel of the native 32x32 RGBA8 triangle
+through host image copy (checksum ``a513efed37c25325``). Following the kernel
+USC freelist capacity fix, ``vulkan-render-repeat-4`` retired eight render
+passes across two client VMs, including four GPU copies. All four host-copy
+renders passed; GPU image-to-buffer copy retired but returned an incorrect
+green channel. Hyprland and SuperTux remain unqualified on this driver.
+The test accepts ``ASAHI_TEST_REPEAT=1..1000`` for bounded resubmission; the
+command buffer permits reuse and each iteration waits on its own fence.
+The hardware run used a verified 60-second watchdog and six-channel thermal
+guard, with peak observed temperature 53.5 C.

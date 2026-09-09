@@ -696,6 +696,7 @@ VK_FN(vkCmdCopyImageToBuffer);
 #endif
 VK_FN(vkEndCommandBuffer);
 VK_FN(vkCreateFence);
+VK_FN(vkDestroyFence);
 VK_FN(vkQueueSubmit);
 VK_FN(vkWaitForFences);
 
@@ -1084,6 +1085,7 @@ main(void)
 #endif
    LOAD_DEVICE(device, vkEndCommandBuffer);
    LOAD_DEVICE(device, vkCreateFence);
+   LOAD_DEVICE(device, vkDestroyFence);
    LOAD_DEVICE(device, vkQueueSubmit);
    LOAD_DEVICE(device, vkWaitForFences);
 
@@ -1473,7 +1475,7 @@ main(void)
          "vkAllocateCommandBuffers");
    const VkCommandBufferBeginInfo begin_info = {
       .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-      .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+      .flags = 0, /* May be resubmitted by the bounded repetition test. */
    };
    check(vkBeginCommandBuffer(command_buffer, &begin_info),
          "vkBeginCommandBuffer");
@@ -1537,6 +1539,22 @@ main(void)
       .commandBufferCount = 1,
       .pCommandBuffers = &command_buffer,
    };
+   const char *repeat_env = getenv("ASAHI_TEST_REPEAT");
+   unsigned repeats = 1;
+   if (repeat_env) {
+      char *end = NULL;
+      unsigned long value = strtoul(repeat_env, &end, 10);
+      if (*end || value == 0 || value > 1000)
+         die("ASAHI_TEST_REPEAT must be 1..1000 (bounded test workload)");
+      repeats = value;
+   }
+   for (unsigned iteration = 1; iteration < repeats; ++iteration) {
+      VkFence iteration_fence;
+      check(vkCreateFence(device, &fence_info, NULL, &iteration_fence), "vkCreateFence repeat");
+      check(vkQueueSubmit(queue, 1, &submit, iteration_fence), "vkQueueSubmit repeat");
+      check(vkWaitForFences(device, 1, &iteration_fence, true, UINT64_C(5000000000)), "vkWaitForFences repeat");
+      vkDestroyFence(device, iteration_fence, NULL);
+   }
    check(vkQueueSubmit(queue, 1, &submit, fence), "vkQueueSubmit");
 #if G17P_F16_IO || G17P_RG16_UNORM || G17P_RGBA16_UNORM ||            \
    G17P_RG16_SNORM || G17P_R32_UINT || G17P_R32_SFLOAT ||             \
@@ -1559,6 +1577,8 @@ main(void)
    check(vkWaitForFences(device, 1, &fence, true, UINT64_MAX),
          "vkWaitForFences");
 #endif
+
+   printf(PROBE_NAME ": retired %u submissions\n", repeats);
 
 #if G17P_HOST_IMAGE_COPY
    const VkImageToMemoryCopyEXT host_copy_region = {
