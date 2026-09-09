@@ -71,6 +71,34 @@ agx3_alu_sqrt_step(enum agx_isa_encoding enc, uint16_t dest, uint16_t src,
    return agx3_bind_compose(enc,"f32sqrtstep",0,base,4,fields,11,out,len);
 }
 
+/* Reciprocal and inverse square root consume the same cache lifetime fields
+ * as the other unary float instructions. Keep their distinct wait layouts. */
+bool
+agx3_alu_reciprocal(enum agx_isa_encoding enc, bool rsqrt, uint16_t dest,
+                    uint16_t src, enum agx3_alu_hint hint, bool dest_cache,
+                    uint16_t wait_mask, uint8_t out[AGX3_ALU_MAX_LENGTH],
+                    uint8_t *len)
+{
+   if (enc != AGX_ISA_ENCODING_AGX3B || !out || !len || dest >= 128 ||
+       src >= 128 || ((dest | src) & 1) ||
+       (unsigned)hint > AGX3_ALU_HINT_CACHE || (wait_mask & ~UINT16_C(0x3f)))
+      return false;
+   const struct agx3_alu_form *f =
+      &agx3_alu_forms[rsqrt ? AGX3_ALU_RSQRT : AGX3_ALU_RCP][0];
+   struct agx3_field_kv fields[11] = {
+      {2, dest}, {18, src}, {11, dest_cache},
+      {27, hint == AGX3_ALU_HINT_CACHE},
+      {29, hint == AGX3_ALU_HINT_DISCARD},
+   };
+   for (unsigned i = 0; i < 6; ++i)
+      fields[5 + i] = (struct agx3_field_kv){f->wait[i], (wait_mask >> i) & 1};
+   struct agx3_field_kv base[16];
+   for (unsigned i = 0; i < f->nbase; ++i)
+      base[i] = (struct agx3_field_kv){f->base[i].f, f->base[i].v};
+   return agx3_bind_compose(enc, f->mnemonic, 0, base, f->nbase,
+                            fields, 11, out, len);
+}
+
 bool
 agx3_alu_fmul_minifloat(enum agx_isa_encoding enc, uint16_t dest, uint16_t src,
                        uint16_t immediate, enum agx3_alu_hint hint, uint16_t wait_mask,

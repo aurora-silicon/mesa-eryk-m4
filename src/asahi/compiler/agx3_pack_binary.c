@@ -456,6 +456,19 @@ agx3_emit_funop(struct util_dynarray *emission, enum agx_isa_encoding enc,
 
    uint8_t bytes[AGX3_FUNOP_MAX_LENGTH];
    uint8_t len = 0;
+   if (enc == AGX_ISA_ENCODING_AGX3B) {
+      if (I->src[0].kill)
+         return false;
+      const struct agx3_funop_runtime runtime = {
+         .dest_cache = I->dest[0].cache,
+         .src_cache = I->src[0].cache,
+         .src_discard = I->src[0].discard,
+      };
+      return agx3_funop_encode_runtime(
+                enc, op, I->dest[0].value, I->src[0].value,
+                I->src[0].abs, I->src[0].neg, I->saturate, wait_mask,
+                &runtime, bytes, &len) && agx3_append(emission, bytes, len);
+   }
    return agx3_funop_encode(enc, op, I->dest[0].value, I->src[0].value,
                             I->src[0].abs, I->src[0].neg, I->saturate,
                             wait_mask, bytes, &len) &&
@@ -3083,7 +3096,7 @@ agx3_g17p_vertex_output_count(agx_context *ctx, enum agx_isa_encoding enc)
             outputs |= UINT64_C(1) << I->src[0].value;
             break;
          case AGX_OPCODE_GET_SR:
-            if (I->sr != AGX_SR_VERTEX_ID)
+            if (I->sr != AGX_SR_VERTEX_ID && I->sr != AGX_SR_INSTANCE_ID)
                return 0;
             break;
          default:
@@ -4585,6 +4598,24 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
 
          if (I->op == AGX_OPCODE_SCOPED_BARRIER_AGX3) {
             if (!agx3_emit_scoped_barrier(emission, enc, I, wait))
+               AGX3_REFUSE(I);
+            continue;
+         }
+
+         if (enc == AGX_ISA_ENCODING_AGX3B &&
+             (I->op == AGX_OPCODE_RCP || I->op == AGX_OPCODE_RSQRT) &&
+             I->dest[0].size == AGX_SIZE_32 && I->src[0].size == AGX_SIZE_32) {
+            const agx_index dst = I->dest[0], src = I->src[0];
+            if (I->saturate || !agx3_vary_reg32(dst) ||
+                !agx3_vary_reg32(src) || src.abs || src.neg || src.kill ||
+                (src.cache && src.discard))
+               AGX3_REFUSE(I);
+            uint8_t bytes[AGX3_ALU_MAX_LENGTH], len = 0;
+            if (!agx3_alu_reciprocal(enc, I->op == AGX_OPCODE_RSQRT,
+                                      dst.value, src.value,
+                                      agx3_post_ra_hint(src), dst.cache,
+                                      wait, bytes, &len) ||
+                !agx3_append(emission, bytes, len))
                AGX3_REFUSE(I);
             continue;
          }

@@ -2524,8 +2524,9 @@ agx_materialize_agx3_alu_constants(agx_context *ctx)
       /* General FSEL has register comparators or an implicit zero. Nonzero
        * minifloats in compare slots must first become floating registers;
        * selected values in slots 2/3 have integer bit-pattern semantics.
+       * FCMP is lowered to a boolean FSEL later, so normalize it here too.
        */
-      if (I->op == AGX_OPCODE_FCMPSEL) {
+      if (I->op == AGX_OPCODE_FCMPSEL || I->op == AGX_OPCODE_FCMP) {
          const bool modified = I->src[0].abs || I->src[0].neg ||
                                I->src[1].abs || I->src[1].neg;
          for (unsigned s = 0; s < 2; ++s) {
@@ -4369,7 +4370,7 @@ agx3_sink_vertex_outputs(agx_context *ctx)
          break;
       }
       case AGX_OPCODE_GET_SR:
-         if (I->sr != AGX_SR_VERTEX_ID)
+         if (I->sr != AGX_SR_VERTEX_ID && I->sr != AGX_SR_INSTANCE_ID)
             return false;
          break;
       default:

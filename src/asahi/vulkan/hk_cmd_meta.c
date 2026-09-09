@@ -1693,8 +1693,28 @@ hk_g17p_copy_buffer_to_image_supported(
          .copy_extent = region->imageExtent,
          .buffer_row_length = region->bufferRowLength,
          .buffer_image_height = region->bufferImageHeight,
-      }))
+      })) {
+         if (hk_g17p_launch_trace_enabled())
+            fprintf(stderr,
+                    "G17P unsupported upload: format=%u type=%u samples=%u "
+                    "planes=%u layout=%u extent=%ux%ux%u mips=%u layers=%u "
+                    "region=%u aspect=%#x mip=%u layer=%u count=%u "
+                    "offset=%d,%d,%d extent=%ux%ux%u row=%u height=%u\n",
+                    image->vk.format, image->vk.image_type, image->vk.samples,
+                    image->plane_count, info->dstImageLayout,
+                    image->vk.extent.width, image->vk.extent.height,
+                    image->vk.extent.depth, image->vk.mip_levels,
+                    image->vk.array_layers, i,
+                    region->imageSubresource.aspectMask,
+                    region->imageSubresource.mipLevel,
+                    region->imageSubresource.baseArrayLayer,
+                    region->imageSubresource.layerCount,
+                    region->imageOffset.x, region->imageOffset.y,
+                    region->imageOffset.z, region->imageExtent.width,
+                    region->imageExtent.height, region->imageExtent.depth,
+                    region->bufferRowLength, region->bufferImageHeight);
          return false;
+      }
    }
    return true;
 }

@@ -18,7 +18,23 @@
 #include <string.h>
 #include <unistd.h>
 
-#ifdef M4_FLOAT_MODIFIERS
+#ifdef M4_UNARY
+#include "m4_vulkan_unary_spv.h"
+#define COMPUTE_SPV m4_unary_spv
+#define TEST_NAME "m4-vulkan-unary"
+#elif defined(M4_ROUND)
+#include "m4_vulkan_round_spv.h"
+#define COMPUTE_SPV m4_round_spv
+#define TEST_NAME "m4-vulkan-round"
+#elif defined(M4_TRIG)
+#include "m4_vulkan_trig_spv.h"
+#define COMPUTE_SPV m4_trig_spv
+#define TEST_NAME "m4-vulkan-trig"
+#elif defined(M4_MINMAX)
+#include "m4_vulkan_minmax_spv.h"
+#define COMPUTE_SPV m4_minmax_spv
+#define TEST_NAME "m4-vulkan-minmax"
+#elif defined(M4_FLOAT_MODIFIERS)
 #include "m4_vulkan_float_modifiers_spv.h"
 #define COMPUTE_SPV m4_vulkan_float_modifiers_spv
 #define TEST_NAME "m4-vulkan-float-modifiers"
@@ -382,7 +398,7 @@ main(int argc, char **argv)
     * like. With the sentinel the readback classifies itself. */
    for (uint32_t i = 0; i < ELEMENT_COUNT + GUARD_COUNT; ++i)
       mapped[i] =
-#if defined(M4_HALF_CONVERSION) || defined(M4_COMPARE_SELECT) || defined(M4_FLOAT_MODIFIERS)
+#if defined(M4_HALF_CONVERSION) || defined(M4_COMPARE_SELECT) || defined(M4_FLOAT_MODIFIERS) || defined(M4_MINMAX) || defined(M4_TRIG)
          test_inputs[i];
 #else
          SENTINEL(i);
@@ -601,13 +617,17 @@ main(int argc, char **argv)
       const uint32_t expected = UINT32_C(0x6d000000) + i;
 #else
       const uint32_t expected =
-#if defined(M4_HALF_CONVERSION) || defined(M4_COMPARE_SELECT) || defined(M4_FLOAT_MODIFIERS)
+#if defined(M4_HALF_CONVERSION) || defined(M4_COMPARE_SELECT) || defined(M4_FLOAT_MODIFIERS) || defined(M4_MINMAX) || defined(M4_TRIG)
          test_expected[i];
 #else
          UINT32_C(0x12340000) + i;
 #endif
 #endif
+#ifdef M4_TRIG
+      if (trig_equal(mapped[i], expected))
+#else
       if (mapped[i] == expected)
+#endif
          continue;
       if (first_bad == UINT32_MAX)
          first_bad = i;
@@ -629,7 +649,7 @@ main(int argc, char **argv)
 #ifdef G17P_NULL_DESCRIPTOR
               UINT32_C(0x6d000000) + first_bad,
 #else
-#if defined(M4_HALF_CONVERSION) || defined(M4_COMPARE_SELECT) || defined(M4_FLOAT_MODIFIERS)
+#if defined(M4_HALF_CONVERSION) || defined(M4_COMPARE_SELECT) || defined(M4_FLOAT_MODIFIERS) || defined(M4_MINMAX) || defined(M4_TRIG)
               test_expected[first_bad],
 #else
               UINT32_C(0x12340000) + first_bad,
@@ -685,6 +705,14 @@ main(int argc, char **argv)
    printf(TEST_NAME ": PASS — 32 null SSBO/UBO loads returned zero, null "
                     "SSBO stores were discarded, exact output and 32 guards "
                     "stable for three seconds\n");
+#elif defined(M4_UNARY)
+    printf(TEST_NAME ": PASS — 32 live-source reciprocal/rsqrt/exp2/log2 outputs, absolute tolerance 0.002\n");
+#elif defined(M4_ROUND)
+   printf(TEST_NAME ": PASS — 32 bit-exact floor/fract outputs\n");
+#elif defined(M4_TRIG)
+   printf(TEST_NAME ": PASS — 32 sin/cos outputs, absolute tolerance 0.002\n");
+#elif defined(M4_MINMAX)
+   printf(TEST_NAME ": PASS — 32 exact float minimum/maximum results\n");
 #elif defined(M4_FLOAT_MODIFIERS)
    printf(TEST_NAME ": PASS — 32 exact saturated float add/multiply results\n");
 #elif defined(M4_COMPARE_SELECT)

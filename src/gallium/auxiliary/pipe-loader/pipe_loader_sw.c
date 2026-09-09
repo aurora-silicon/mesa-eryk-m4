@@ -123,6 +123,14 @@ pipe_loader_sw_probe_init_common(struct pipe_loader_sw_device *sdev)
    sdev->base.type = PIPE_LOADER_DEVICE_SOFTWARE;
    sdev->base.driver_name = "swrast";
    sdev->base.ops = &pipe_loader_sw_ops;
+#if defined(HAVE_DRI) && defined(HAVE_ZINK)
+   /* The software presentation winsys can be explicitly paired with Zink.
+    * Supply that driver's options before it queries the shared cache. */
+   if (!strcmp(debug_get_option("GALLIUM_DRIVER", ""), "zink")) {
+      sdev->base.driver_name = "zink";
+      sdev->base.ops = &pipe_loader_vk_ops;
+   }
+#endif
    sdev->fd = -1;
 
    sdev->dd = &driver_descriptors;

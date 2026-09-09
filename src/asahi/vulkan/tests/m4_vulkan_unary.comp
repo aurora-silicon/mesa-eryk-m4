@@ -1,0 +1,10 @@
+#version 450
+// SPDX-License-Identifier: MIT
+layout(local_size_x=32) in;
+layout(set=0,binding=0,std430) buffer Data { uint v[]; } data;
+void main() {
+ uint i=gl_LocalInvocationID.x;
+ float a=uintBitsToFloat(data.v[i]);
+ float b=i<8 ? 1.0/a : i<16 ? inversesqrt(a) : i<24 ? exp2(a) : log2(a);
+ data.v[i]=floatBitsToUint(a+b);
+}

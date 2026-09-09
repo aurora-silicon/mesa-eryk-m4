@@ -4519,6 +4519,24 @@ TEST_F(AGX3PackBinary, SixTerminalOutputsDrainOriginalProducersOnce)
    EXPECT_TRUE(std::equal(tail.begin(), tail.end(), got.end() - tail.size()));
 }
 
+TEST_F(AGX3PackBinary, InstanceIdDoesNotPreventTerminalVertexOutputs)
+{
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+   b->shader->stage = MESA_SHADER_VERTEX;
+   b->shader->nir = rzalloc(mem_ctx, nir_shader);
+   b->shader->nir->info.stage = MESA_SHADER_VERTEX;
+   agx_index instance = agx_temp(b->shader, AGX_SIZE_32);
+   agx_get_sr_to(b, instance, AGX_SR_INSTANCE_ID);
+   for (unsigned c = 0; c < 7; ++c)
+      agx_st_vary(b, agx_immediate(c), instance);
+   agx_stop(b);
+   agx_pressure_schedule(b->shader);
+   ASSERT_TRUE(agx3_sink_vertex_outputs(b->shader));
+   agx_ra(b->shader);
+   EXPECT_FALSE(pack(b).empty());
+   EXPECT_EQ(b->shader->agx3_staging_halfs, 14u);
+}
+
 TEST_F(AGX3PackBinary, SixOutputTailSinkingRefusesWithoutMutation)
 {
    for (unsigned mode = 0; mode < 9; ++mode) {

@@ -20,9 +20,9 @@
  *
  * Grounding: research/gpu/GPU_AGX3_TRANSCENDENTAL_INT_OPS_2026-08-24.md and
  * its baselines JSON (funop section, grade A both encodings); dfdx/dfdy from
- * the fragment corpus transcendental-int-re/corpus_frag. Every encoding this
- * core can produce is replayed byte-for-byte against Apple's own compiler
- * output in test/test-agx3-funop-core.c.
+ * the fragment corpus transcendental-int-re/corpus_frag. Canonical specimens
+ * are replayed byte-for-byte in test/test-agx3-funop-core.c. Runtime lifetime
+ * handling is exercised by the M4 round, trig and unary numeric probes.
  */
 
 #pragma once
@@ -64,6 +64,19 @@ bool agx3_funop_encode(enum agx_isa_encoding enc, enum agx3_funop op,
                        uint16_t dest, uint16_t src, bool src_abs, bool src_neg,
                        bool saturate, uint16_t wait_mask,
                        uint8_t out[AGX3_FUNOP_MAX_LENGTH], uint8_t *len);
+
+/* Runtime G16/G17P lowering preserves the allocator's actual cache lifetime. */
+struct agx3_funop_runtime {
+   bool dest_cache;
+   bool src_cache;
+   bool src_discard;
+};
+
+bool agx3_funop_encode_runtime(enum agx_isa_encoding enc, enum agx3_funop op,
+                               uint16_t dest, uint16_t src, bool src_abs,
+                               bool src_neg, bool saturate, uint16_t wait_mask,
+                               const struct agx3_funop_runtime *runtime,
+                               uint8_t out[AGX3_FUNOP_MAX_LENGTH], uint8_t *len);
 
 #ifdef __cplusplus
 }

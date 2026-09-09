@@ -212,8 +212,23 @@ def main():
                 game_env = {**env, 'IRR_DEVICE_TYPE':'wayland',
                             **({'AGX_MESA_DEBUG':'shaders,internal', 'HK_G17P_LAUNCH_TRACE':'1'} if os.getenv('M4_STK_SHADER_TRACE') == '1' else {}),
                             'XDG_CONFIG_HOME':str(Path(account.pw_dir)/'.config/m4-asahi-supertuxkart')}
+                trace_command = []
+                if os.getenv('M4_STK_APITRACE') == '1':
+                    trace_dir = Path(account.pw_dir) / '.local/state/m4-asahi-traces'
+                    trace_dir.mkdir(parents=True, exist_ok=True)
+                    os.chown(trace_dir, account.pw_uid, account.pw_gid)
+                    trace_file = trace_dir / (result.name + '.trace')
+                    if trace_file.exists():
+                        raise RuntimeError('refusing to overwrite existing graphics trace')
+                    wrapper = Path('/opt/m4-apitrace/usr/lib/apitrace/wrappers/egltrace.so')
+                    if not wrapper.is_file():
+                        raise RuntimeError('apitrace EGL wrapper is missing')
+                    trace_command = ['env', 'LD_PRELOAD=' + str(wrapper),
+                                     'TRACE_FILE=' + str(trace_file)]
+                    (result/'graphics-trace.json').write_text(json.dumps(
+                        {'path':str(trace_file),'api':'egl'},indent=2)+'\n')
                 with (result/'supertuxkart.log').open('w') as game_log:
-                    game = subprocess.Popen([*user_command, '/usr/bin/supertuxkart',
+                    game = subprocess.Popen([*user_command, *trace_command, '/usr/bin/supertuxkart',
                         '--render-driver=opengl', '--windowed', '--screensize=800x450',
                         '--race-now', '--track=lighthouse', '--numkarts=4',
                         '--laps=1', '--profile-laps=1', '--log=0',
@@ -349,7 +364,8 @@ def main():
                         _, evidence['native_kms_status'] = native_kms_status()
                     # Parent validates all fields before feeding the hardware watchdog.
                     print(json.dumps({'event': 'gpu-progress', 'check': evidence}), flush=True)
-                    if checks in (2,4,8):
+                    if (checks in (2,4,8) or
+                        (summary.get('supertuxkart_started') and checks % 12 == 0)):
                         subprocess.run(['grim','-t','ppm','-o',output_name,str(result/f'live-{checks}.ppm')],env=env,check=True,timeout=120 if summary.get('supertuxkart_started') else 6)
                     checks += 1
                     time.sleep(min(5, max(0, deadline - time.monotonic())))

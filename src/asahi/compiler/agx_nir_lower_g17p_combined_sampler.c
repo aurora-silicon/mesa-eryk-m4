@@ -465,56 +465,47 @@ agx_nir_lower_g17p_cube_samples(nir_shader *shader)
             nir_def *x = nir_channel(&b, coord, 0);
             nir_def *y = nir_channel(&b, coord, 1);
             nir_def *z = nir_channel(&b, coord, 2);
-            nir_def *x2 = nir_fmul(&b, x, x);
-            nir_def *y2 = nir_fmul(&b, y, y);
-            nir_def *z2 = nir_fmul(&b, z, z);
+            nir_def *ax = nir_fabs(&b, x);
+            nir_def *ay = nir_fabs(&b, y);
+            nir_def *az = nir_fabs(&b, z);
             nir_def *half = nir_imm_float(&b, 0.5f);
-
+            nir_def *use_x = nir_iand(&b, nir_fge(&b, ax, ay),
+                                      nir_fge(&b, ax, az));
+            nir_def *use_y = nir_fge(&b, ay, az);
             nir_def *x_positive = nir_fge_imm(&b, x, 0.0f);
             nir_def *y_positive = nir_fge_imm(&b, y, 0.0f);
             nir_def *z_positive = nir_fge_imm(&b, z, 0.0f);
 
-            /* rsqrt(c*c) gives 1/abs(c) without materializing fabs/fneg,
-             * whose standalone AGX3 forms are not yet qualified. */
-            nir_def *rx = nir_frsq(&b, x2);
-            nir_def *ry = nir_frsq(&b, y2);
-            nir_def *rz = nir_frsq(&b, z2);
-            nir_def *px = nir_fmul_imm(&b, rx, 0.5f);
-            nir_def *nx = nir_fmul_imm(&b, rx, -0.5f);
-            nir_def *py = nir_fmul_imm(&b, ry, 0.5f);
-            nir_def *ny = nir_fmul_imm(&b, ry, -0.5f);
-            nir_def *pz = nir_fmul_imm(&b, rz, 0.5f);
-            nir_def *nz = nir_fmul_imm(&b, rz, -0.5f);
-
-            nir_def *face_x = nir_vec3(
-               &b,
-               nir_bcsel(&b, x_positive, nir_ffma(&b, nx, z, half),
-                          nir_ffma(&b, px, z, half)),
-               nir_ffma(&b, nx, y, half),
-               nir_bcsel(&b, x_positive, nir_imm_float(&b, 0.0f),
-                          nir_imm_float(&b, 1.0f)));
-            nir_def *face_y = nir_vec3(
-               &b, nir_ffma(&b, py, x, half),
-               nir_bcsel(&b, y_positive, nir_ffma(&b, py, z, half),
-                          nir_ffma(&b, ny, z, half)),
-               nir_bcsel(&b, y_positive, nir_imm_float(&b, 2.0f),
-                          nir_imm_float(&b, 3.0f)));
-            nir_def *face_z = nir_vec3(
-               &b,
-               nir_bcsel(&b, z_positive, nir_ffma(&b, pz, x, half),
-                          nir_ffma(&b, nz, x, half)),
-               nir_ffma(&b, nz, y, half),
-               nir_bcsel(&b, z_positive, nir_imm_float(&b, 4.0f),
-                          nir_imm_float(&b, 5.0f)));
-
-            nir_def *use_x = nir_iand(&b, nir_fge(&b, x2, y2),
-                                      nir_fge(&b, x2, z2));
-            nir_def *use_y = nir_iand(&b, nir_fge(&b, y2, x2),
-                                      nir_fge(&b, y2, z2));
-            nir_def *mapped = nir_bcsel(
-               &b, use_x, face_x, nir_bcsel(&b, use_y, face_y, face_z));
+            /* Select the major axis before dividing. Evaluating reciprocal
+             * magnitudes for all three axes generates infinities and NaNs
+             * for ordinary axis-aligned directions. Only the selected face
+             * contributes to the sample coordinates. */
+            nir_def *sc_x = nir_bcsel(&b, x_positive, nir_fneg(&b, z), z);
+            nir_def *sc_z = nir_bcsel(&b, z_positive, x, nir_fneg(&b, x));
+            nir_def *tc_y = nir_bcsel(&b, y_positive, z, nir_fneg(&b, z));
+            nir_def *sc = nir_bcsel(&b, use_x, sc_x,
+                                    nir_bcsel(&b, use_y, x, sc_z));
+            nir_def *tc = nir_bcsel(&b, use_x, nir_fneg(&b, y),
+                                    nir_bcsel(&b, use_y, tc_y, nir_fneg(&b, y)));
+            nir_def *ma = nir_fmax(&b, ax, nir_fmax(&b, ay, az));
+            nir_def *scale = nir_fmul(&b, nir_frcp(&b, ma), half);
+            nir_def *face_x = nir_bcsel(&b, x_positive,
+                                        nir_imm_int(&b, 0), nir_imm_int(&b, 1));
+            nir_def *face_y = nir_bcsel(&b, y_positive,
+                                        nir_imm_int(&b, 2), nir_imm_int(&b, 3));
+            nir_def *face_z = nir_bcsel(&b, z_positive,
+                                        nir_imm_int(&b, 4), nir_imm_int(&b, 5));
+            nir_def *face = nir_bcsel(&b, use_x, face_x,
+                                      nir_bcsel(&b, use_y, face_y, face_z));
+            nir_def *mapped = nir_vec3(&b, nir_ffma(&b, sc, scale, half),
+                                       nir_ffma(&b, tc, scale, half), face);
 
             nir_src_rewrite(&tex->src[coord_index].src, mapped);
+            /* This runs after ordinary texture-source lowering. Native
+             * backend coordinates contain float x/y and an integer layer;
+             * float face bits truncate to zero in PACK_SMPIR's layer field.
+             * Mark early callers as lowered too, avoiding a second f2u. */
+            tex->src[coord_index].src_type = nir_tex_src_backend1;
             tex->sampler_dim = GLSL_SAMPLER_DIM_2D;
             tex->is_array = true;
             tex->array_is_lowered_cube = true;

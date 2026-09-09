@@ -104,6 +104,12 @@ try:
         r.update(passed=True,health_checks=last+1,returncode=proc.returncode)
 except BaseException as error:
     r['error']=repr(error)
+    print(json.dumps({'event':'failure','error':repr(error)}),flush=True)
+    game_log=a.output/'supertuxkart.log'
+    if game_log.exists():
+        with game_log.open('rb') as diagnostics:
+            diagnostics.seek(max(0,game_log.stat().st_size-8192))
+            print(diagnostics.read().decode(errors='replace'),flush=True)
     stop()
     raise
 finally:

@@ -207,10 +207,20 @@ pack_texture(struct hk_device *dev, struct hk_image_view *view,
    struct ail_layout *layout = &plane->layout;
    uint64_t base_addr = hk_image_base_address(image, image_plane);
 
-   bool cubes_to_2d = usage != HK_DESC_USAGE_SAMPLED;
-
    unsigned level = view->vk.base_mip_level;
    unsigned layer = view->vk.base_array_layer;
+
+   /* Native cube samples are lowered to face selection plus a 2D-array
+    * sample. Keep the descriptor dimension and layer count in that same ABI:
+    * a cube descriptor would divide six faces to one layer and clamp every
+    * explicitly selected face to layer zero. */
+   VkImageViewType texture_type = view->vk.view_type;
+   if (agx_native_graphics(&dev->dev) &&
+       (texture_type == VK_IMAGE_VIEW_TYPE_CUBE ||
+        texture_type == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY))
+      texture_type = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+   bool cubes_to_2d = usage != HK_DESC_USAGE_SAMPLED ||
+                      texture_type != view->vk.view_type;
 
    enum pipe_format p_format = format_for_plane(view, view_plane);
    const struct util_format_description *desc =
@@ -261,7 +271,7 @@ pack_texture(struct hk_device *dev, struct hk_image_view *view,
    struct AGX_TEXTURE cfg = {AGX_TEXTURE_header};
    {
       cfg.dimension = translate_image_view_type(
-         view->vk.view_type, view->vk.image->samples > 1, layers > 1, usage);
+         texture_type, view->vk.image->samples > 1, layers > 1, usage);
       cfg.layout = agx_translate_layout(layout->tiling);
       cfg.channels = ail_pixel_format[p_format].channels;
       cfg.type = ail_pixel_format[p_format].type;
