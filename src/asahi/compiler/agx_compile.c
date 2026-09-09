@@ -2506,13 +2506,37 @@ agx_materialize_agx3_alu_constants(agx_context *ctx)
 {
    agx_foreach_instr_global_safe(ctx, I) {
       agx_builder b = agx_init_builder(ctx, agx_before_instr(I));
+      /* SIGNEXT becomes a signed half IADD on AGX2. Keep the AGX3 lowering
+       * in SSA, where temporary registers are still available: preserve the
+       * low 16 bits, move the sign bit to bit 31, then shift arithmetically.
+       */
+      if (I->op == AGX_OPCODE_SIGNEXT &&
+          ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B) {
+         agx_index wide = agx_temp(ctx, AGX_SIZE_32);
+         agx_mov_to(&b, wide, I->src[0]);
+         agx_index shifted = agx_temp(ctx, AGX_SIZE_32);
+         agx_bfi_to(&b, shifted, agx_zero(), wide,
+                    agx_mov_imm(&b, 32, 16), 0);
+         agx_asr_to(&b, I->dest[0], shifted, agx_immediate(16));
+         agx_remove_instruction(I);
+         continue;
+      }
       /* General FSEL has register comparators or an implicit zero. Nonzero
        * minifloats in compare slots must first become floating registers;
        * selected values in slots 2/3 have integer bit-pattern semantics.
        */
       if (I->op == AGX_OPCODE_FCMPSEL) {
+         const bool modified = I->src[0].abs || I->src[0].neg ||
+                               I->src[1].abs || I->src[1].neg;
          for (unsigned s = 0; s < 2; ++s) {
             agx_index src = I->src[s];
+            if (src.type != AGX_INDEX_IMMEDIATE && modified &&
+                (src.abs || src.neg || src.size == AGX_SIZE_16)) {
+               agx_index plain = agx_temp(ctx, AGX_SIZE_32);
+               agx_fmov_to(&b, plain, src);
+               I->src[s] = plain;
+               continue;
+            }
             if (src.type != AGX_INDEX_IMMEDIATE || src.value == 0)
                continue;
 
