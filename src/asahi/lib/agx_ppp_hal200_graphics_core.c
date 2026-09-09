@@ -112,7 +112,7 @@ bundle_layout(enum agx_ppp_hal200_graphics_bundle bundle, uint32_t *header,
 bool
 agx_ppp_hal200_graphics_core_supported(enum agx_chip chip)
 {
-   return chip == AGX_CHIP_G17P;
+   return agx_chip_uses_hal200_ioto(chip);
 }
 
 bool

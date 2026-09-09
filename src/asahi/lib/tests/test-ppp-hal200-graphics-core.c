@@ -8,6 +8,8 @@
 #include <assert.h>
 #include <string.h>
 
+static enum agx_chip target;
+
 static void
 check(enum agx_ppp_hal200_graphics_bundle bundle, const uint32_t *words,
       unsigned word_count, const uint8_t *expected, size_t expected_size)
@@ -16,19 +18,19 @@ check(enum agx_ppp_hal200_graphics_bundle bundle, const uint32_t *words,
    memcpy(fields.words, words, word_count * sizeof(words[0]));
 
    struct agx_ppp_hal200_graphics_core packed;
-   assert(agx_ppp_hal200_graphics_core_pack(AGX_CHIP_G17P, bundle, &fields,
+   assert(agx_ppp_hal200_graphics_core_pack(target, bundle, &fields,
                                              &packed));
    assert(packed.length == expected_size);
    assert(memcmp(packed.bytes, expected, expected_size) == 0);
 
    struct agx_ppp_hal200_graphics_fields unpacked;
    assert(agx_ppp_hal200_graphics_core_unpack(
-      AGX_CHIP_G17P, bundle, packed.bytes, packed.length, &unpacked));
+      target, bundle, packed.bytes, packed.length, &unpacked));
    assert(memcmp(unpacked.words, fields.words, sizeof(fields.words)) == 0);
 }
 
 int
-main(void)
+check_chip(void)
 {
    /* Derived directly from native458898..45891c and vector constants
     * 811700/811710: asymmetric masks and distinct operations expose swaps. */
@@ -66,7 +68,7 @@ main(void)
       .flags = 0,
    };
    struct agx_ppp_hal200_graphics_core live_fs_packed;
-   assert(agx_ppp_hal200_fragment_core_pack(AGX_CHIP_G17P, &live_fs,
+   assert(agx_ppp_hal200_fragment_core_pack(target, &live_fs,
                                             &live_fs_packed));
    assert(live_fs_packed.length == sizeof(no_vary_expected));
    assert(memcmp(live_fs_packed.bytes, no_vary_expected,
@@ -77,14 +79,14 @@ main(void)
    struct agx_ppp_hal200_fragment_fields varying_fs = live_fs;
    varying_fs.resource_counts = UINT32_C(2) << 16;
    varying_fs.varying_table = UINT64_C(0x100000004c0);
-   assert(agx_ppp_hal200_fragment_core_pack(AGX_CHIP_G17P, &varying_fs,
+   assert(agx_ppp_hal200_fragment_core_pack(target, &varying_fs,
                                             &live_fs_packed));
    assert(memcmp(live_fs_packed.bytes, fs_expected, sizeof(fs_expected)) == 0);
 
    /* Relocation across all 48 address bits must survive the split fields. */
    for (unsigned bit = 6; bit < 48; ++bit) {
       varying_fs.varying_table = UINT64_C(1) << bit;
-      assert(agx_ppp_hal200_fragment_core_pack(AGX_CHIP_G17P, &varying_fs,
+      assert(agx_ppp_hal200_fragment_core_pack(target, &varying_fs,
                                                &live_fs_packed));
       uint32_t words[7];
       memcpy(words, live_fs_packed.bytes, sizeof(words));
@@ -95,27 +97,27 @@ main(void)
 
    struct agx_ppp_hal200_fragment_fields bad_fs = live_fs;
    bad_fs.varying_table = 4;
-   assert(!agx_ppp_hal200_fragment_core_pack(AGX_CHIP_G17P, &bad_fs,
+   assert(!agx_ppp_hal200_fragment_core_pack(target, &bad_fs,
                                              &live_fs_packed));
    bad_fs = live_fs;
    bad_fs.varying_table = UINT64_C(1) << 48;
-   assert(!agx_ppp_hal200_fragment_core_pack(AGX_CHIP_G17P, &bad_fs,
+   assert(!agx_ppp_hal200_fragment_core_pack(target, &bad_fs,
                                              &live_fs_packed));
    bad_fs = live_fs;
    bad_fs.resource_counts = 1;
-   assert(!agx_ppp_hal200_fragment_core_pack(AGX_CHIP_G17P, &bad_fs,
+   assert(!agx_ppp_hal200_fragment_core_pack(target, &bad_fs,
                                              &live_fs_packed));
    bad_fs = live_fs;
    bad_fs.stage_program |= 4;
-   assert(!agx_ppp_hal200_fragment_core_pack(AGX_CHIP_G17P, &bad_fs,
+   assert(!agx_ppp_hal200_fragment_core_pack(target, &bad_fs,
                                              &live_fs_packed));
    bad_fs = live_fs;
    bad_fs.stage_program = UINT64_C(1) << 48;
-   assert(!agx_ppp_hal200_fragment_core_pack(AGX_CHIP_G17P, &bad_fs,
+   assert(!agx_ppp_hal200_fragment_core_pack(target, &bad_fs,
                                              &live_fs_packed));
    bad_fs = live_fs;
    bad_fs.stage_program_template = 0x00400000;
-   assert(!agx_ppp_hal200_fragment_core_pack(AGX_CHIP_G17P, &bad_fs,
+   assert(!agx_ppp_hal200_fragment_core_pack(target, &bad_fs,
                                              &live_fs_packed));
 
    uint32_t output_size;
@@ -186,21 +188,21 @@ main(void)
 
    /* Grounded native depth bitfields; all unrelated bits survive. */
    uint32_t depth_face = 0;
-   assert(agx_ppp_hal200_depth_face_pack(AGX_CHIP_G17P, true, true,
+   assert(agx_ppp_hal200_depth_face_pack(target, true, true,
                                          1, 0x07200f00, &depth_face));
    assert(depth_face == UINT32_C(0x01000f00));
-   assert(agx_ppp_hal200_depth_face_pack(AGX_CHIP_G17P, true, false,
+   assert(agx_ppp_hal200_depth_face_pack(target, true, false,
                                          1, 0x07200f00, &depth_face));
    assert(depth_face == UINT32_C(0x01200f00));
    for (unsigned compare = 0; compare < 8; ++compare) {
       for (unsigned write = 0; write < 2; ++write) {
-         assert(agx_ppp_hal200_depth_face_pack(AGX_CHIP_G17P, true, write,
+         assert(agx_ppp_hal200_depth_face_pack(target, true, write,
                                                compare, 0xf8dabcde, &depth_face));
          assert(((depth_face >> 24) & 7) == compare);
          assert(((depth_face >> 21) & 1) == !write);
          assert((depth_face & ~UINT32_C(0x07200000)) ==
                 (UINT32_C(0xf8dabcde) & ~UINT32_C(0x07200000)));
-         assert(agx_ppp_hal200_depth_face_pack(AGX_CHIP_G17P, false, write,
+         assert(agx_ppp_hal200_depth_face_pack(target, false, write,
                                                compare, 0x07200f00, &depth_face));
          assert(depth_face == UINT32_C(0x07200f00));
       }
@@ -208,10 +210,10 @@ main(void)
    depth_face = UINT32_C(0xa5a5a5a5);
    assert(!agx_ppp_hal200_depth_face_pack(AGX_CHIP_G17G, true, true,
                                           1, 0, &depth_face));
-   assert(!agx_ppp_hal200_depth_face_pack(AGX_CHIP_G17P, true, true,
+   assert(!agx_ppp_hal200_depth_face_pack(target, true, true,
                                           8, 0, &depth_face));
    assert(depth_face == UINT32_C(0xa5a5a5a5));
-   assert(!agx_ppp_hal200_depth_face_pack(AGX_CHIP_G17P, true, true,
+   assert(!agx_ppp_hal200_depth_face_pack(target, true, true,
                                           1, 0, NULL));
 
    struct agx_ppp_hal200_graphics_fields fields = {0};
@@ -222,76 +224,85 @@ main(void)
                                              &packed));
    for (unsigned selector = 0; selector < 3; ++selector) {
       uint32_t cull;
-      assert(agx_ppp_hal200_cull_provoking_pack(AGX_CHIP_G17P, selector,
+      assert(agx_ppp_hal200_cull_provoking_pack(target, selector,
                                                0x480, &cull));
       assert((cull == (uint32_t[]){0x480, 0x500, 0x580}[selector]));
-      assert(agx_ppp_hal200_cull_provoking_pack(AGX_CHIP_G17P, selector,
+      assert(agx_ppp_hal200_cull_provoking_pack(target, selector,
                                                0xdeadbeef, &cull));
       assert((cull & ~0x180u) == (0xdeadbeefu & ~0x180u));
       assert(((cull >> 7) & 3) == selector + 1);
    }
    uint32_t unchanged = 0xdeadbeef;
-   assert(!agx_ppp_hal200_cull_provoking_pack(AGX_CHIP_G17P, 3, 0, &unchanged));
+   assert(!agx_ppp_hal200_cull_provoking_pack(target, 3, 0, &unchanged));
    assert(!agx_ppp_hal200_cull_provoking_pack(AGX_CHIP_G17G, 0, 0, &unchanged));
-   assert(!agx_ppp_hal200_cull_provoking_pack(AGX_CHIP_G17P, 0, 0, NULL));
+   assert(!agx_ppp_hal200_cull_provoking_pack(target, 0, 0, NULL));
    assert(unchanged == 0xdeadbeef);
    for (unsigned mode = 0; mode < 4; ++mode) {
       for (unsigned ccw = 0; ccw < 2; ++ccw) {
          uint32_t cull;
-         assert(agx_ppp_hal200_cull_mode_pack(AGX_CHIP_G17P, mode, ccw,
+         assert(agx_ppp_hal200_cull_mode_pack(target, mode, ccw,
                                                0x480, &cull));
          assert(cull == (0x480u | mode | (ccw << 16)));
-         assert(agx_ppp_hal200_cull_mode_pack(AGX_CHIP_G17P, mode, ccw,
+         assert(agx_ppp_hal200_cull_mode_pack(target, mode, ccw,
                                                0xdeadbeef, &cull));
          assert((cull & ~0x10003u) == (0xdeadbeefu & ~0x10003u));
          assert((cull & 3) == mode && ((cull >> 16) & 1) == ccw);
       }
    }
    unchanged = 0xdeadbeef;
-   assert(!agx_ppp_hal200_cull_mode_pack(AGX_CHIP_G17P, 4, 0, 0, &unchanged));
+   assert(!agx_ppp_hal200_cull_mode_pack(target, 4, 0, 0, &unchanged));
    assert(!agx_ppp_hal200_cull_mode_pack(AGX_CHIP_G17G, 0, 0, 0, &unchanged));
-   assert(!agx_ppp_hal200_cull_mode_pack(AGX_CHIP_G17P, 0, 0, 0, NULL));
+   assert(!agx_ppp_hal200_cull_mode_pack(target, 0, 0, 0, NULL));
    assert(unchanged == 0xdeadbeef);
 
    /* EXP-0019 and the HAL200 Metal setter isolate the two-bit mode exactly:
     * clip=01, clamp=10. All other raster fields must survive the update. */
    uint32_t depth_clip;
-   assert(agx_ppp_hal200_depth_clip_pack(AGX_CHIP_G17P, true,
+   assert(agx_ppp_hal200_depth_clip_pack(target, true,
                                          0xdeadbeef, &depth_clip));
    assert(depth_clip ==
           ((UINT32_C(0xdeadbeef) & ~UINT32_C(0xc00)) | UINT32_C(0x400)));
-   assert(agx_ppp_hal200_depth_clip_pack(AGX_CHIP_G17P, false,
+   assert(agx_ppp_hal200_depth_clip_pack(target, false,
                                          0xdeadbeef, &depth_clip));
    assert(depth_clip ==
           ((UINT32_C(0xdeadbeef) & ~UINT32_C(0xc00)) | UINT32_C(0x800)));
-   assert(agx_ppp_hal200_depth_clip_pack(AGX_CHIP_G17P, true,
+   assert(agx_ppp_hal200_depth_clip_pack(target, true,
                                          0x480, &depth_clip));
    assert(depth_clip == UINT32_C(0x480));
-   assert(agx_ppp_hal200_depth_clip_pack(AGX_CHIP_G17P, false,
+   assert(agx_ppp_hal200_depth_clip_pack(target, false,
                                          0x480, &depth_clip));
    assert(depth_clip == UINT32_C(0x880));
    unchanged = UINT32_C(0xdeadbeef);
    assert(!agx_ppp_hal200_depth_clip_pack(AGX_CHIP_G17G, true, 0,
                                           &unchanged));
-   assert(!agx_ppp_hal200_depth_clip_pack(AGX_CHIP_G17P, true, 0, NULL));
+   assert(!agx_ppp_hal200_depth_clip_pack(target, true, 0, NULL));
    assert(unchanged == UINT32_C(0xdeadbeef));
 
    uint32_t secondary_discard, cull_discard;
    assert(agx_ppp_hal200_rasterizer_discard_pack(
-      AGX_CHIP_G17P, true, UINT32_C(0x00000200), UINT32_C(0x00000480),
+      target, true, UINT32_C(0x00000200), UINT32_C(0x00000480),
       &secondary_discard, &cull_discard));
    assert(secondary_discard == UINT32_C(0x00200200));
    assert(cull_discard == UINT32_C(0x00020480));
    assert(agx_ppp_hal200_rasterizer_discard_pack(
-      AGX_CHIP_G17P, false, secondary_discard, cull_discard,
+      target, false, secondary_discard, cull_discard,
       &secondary_discard, &cull_discard));
    assert(secondary_discard == UINT32_C(0x00000200));
    assert(cull_discard == UINT32_C(0x00000480));
    assert(!agx_ppp_hal200_rasterizer_discard_pack(
       AGX_CHIP_G17G, true, 0, 0, &secondary_discard, &cull_discard));
    assert(!agx_ppp_hal200_rasterizer_discard_pack(
-      AGX_CHIP_G17P, true, 0, 0, NULL, &cull_discard));
+      target, true, 0, 0, NULL, &cull_discard));
    assert(!agx_ppp_hal200_rasterizer_discard_pack(
-      AGX_CHIP_G17P, true, 0, 0, &secondary_discard, NULL));
+      target, true, 0, 0, &secondary_discard, NULL));
+   return 0;
+}
+
+int main(void)
+{
+   target = AGX_CHIP_G17P;
+   assert(check_chip() == 0);
+   target = AGX_CHIP_G16G;
+   assert(check_chip() == 0);
    return 0;
 }
