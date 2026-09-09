@@ -296,3 +296,21 @@ verified a 60-second watchdog and healthy thermal monitoring; peak exposed
 temperatures were 51.5 C and 51.25 C respectively. The host llvmpipe oracle
 also passed. Host texture, funop and varying suites passed 5,571, 59 and 977
 checks. These tests do not establish complete Vulkan conformance.
+
+### Complete Lighthouse race (2026-09-09)
+
+`stk-replay-11` with Mesa `d693fcdee6d` completed the captured first frame.
+Against llvmpipe, pixels whose largest RGB error exceeds three UNORM8 steps
+fell from 136,605 in replay 10 to 2,978 in replay 11. The kart group has 55
+such pixels; the opaque track checkpoint has 125. Thin cube-face seams remain
+visible in the sky, and foliage has smaller residual differences. This is
+substantial progress, not a pixel-perfect rendering claim.
+
+`stk-demo-21` then completed the normal Lighthouse race under the actual
+Omarchy Hyprland session: four AI karts, one lap, `--profile-laps=1`, exit 0,
+7,321 frames in 175.244003 seconds, reported average 41.776035 FPS. The path
+was Asahi kernel, Honeykrisp Vulkan, Zink and native DCP scanout. The guard
+verified 38 compute/compositor/scanout health checks and a 60-second watchdog.
+All six exposed thermal channels remained healthy; the peak was 54.75 C.
+GPU clocks remained at the boot setting and CPU thermal policy stayed enabled.
+This qualifies this bounded race on J713, not general long-term stability.
