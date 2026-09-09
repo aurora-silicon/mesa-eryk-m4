@@ -878,6 +878,15 @@ if with_tests
     )
 
     executable(
+      'm4-vulkan-half-convert',
+      files('tests/m4_vulkan_half_convert.c'),
+      include_directories : [inc_include],
+      dependencies : [dep_dl],
+      c_args : [c_msvc_compat_args],
+      gnu_symbol_visibility : 'hidden',
+    )
+
+    executable(
       'g17p-vulkan-null-descriptor',
       files('tests/g17p_vulkan_compute_min.c'),
       include_directories : [inc_include],

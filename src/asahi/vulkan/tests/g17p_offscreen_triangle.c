@@ -272,8 +272,13 @@
 #endif
 
 #define T8140_DEVICE_ID TEST_DEVICE_ID
+#ifdef M4_UPLOAD_SUBRECT
+#define IMAGE_WIDTH 512
+#define IMAGE_HEIGHT 512
+#else
 #define IMAGE_WIDTH 32
 #define IMAGE_HEIGHT 32
+#endif
 
 #if G17P_RGBA16_SINT
 #define IMAGE_FORMAT VK_FORMAT_R16G16B16A16_SINT
@@ -693,6 +698,10 @@ VK_FN(vkCmdEndRenderPass);
 VK_FN(vkCopyImageToMemoryEXT);
 #else
 VK_FN(vkCmdCopyImageToBuffer);
+#ifdef M4_UPLOAD_SUBRECT
+VK_FN(vkCmdCopyBufferToImage);
+VK_FN(vkCmdPipelineBarrier);
+#endif
 #endif
 VK_FN(vkEndCommandBuffer);
 VK_FN(vkCreateFence);
@@ -849,6 +858,18 @@ verify_readback(const uint8_t *map)
 #endif
    for (size_t pixel = 0; pixel < IMAGE_WIDTH * IMAGE_HEIGHT; ++pixel) {
       const uint8_t *actual = &pixels[pixel * sizeof(expected)];
+#ifdef M4_UPLOAD_SUBRECT
+      const unsigned x = pixel % IMAGE_WIDTH, y = pixel / IMAGE_WIDTH;
+      if (x >= 28 && x < 36 && y >= 28 && y < 36) {
+         const uint8_t uploaded[4] = {(x-28)*31, (y-28)*29, 117, 255};
+         if (memcmp(actual, uploaded, 4)) {
+            fprintf(stderr, "subrect (%u,%u): %u,%u,%u,%u expected %u,%u,117,255\n",
+                    x,y,actual[0],actual[1],actual[2],actual[3],uploaded[0],uploaded[1]);
+            return false;
+         }
+         continue;
+      }
+#endif
       if (memcmp(actual, expected, sizeof(expected)) != 0) {
          fprintf(stderr, PROBE_NAME ": pixel %zu differs at byte", pixel);
          for (size_t byte = 0; byte < sizeof(expected); ++byte) {
@@ -1082,6 +1103,10 @@ main(void)
    LOAD_DEVICE(device, vkCopyImageToMemoryEXT);
 #else
    LOAD_DEVICE(device, vkCmdCopyImageToBuffer);
+#ifdef M4_UPLOAD_SUBRECT
+   LOAD_DEVICE(device, vkCmdCopyBufferToImage);
+   LOAD_DEVICE(device, vkCmdPipelineBarrier);
+#endif
 #endif
    LOAD_DEVICE(device, vkEndCommandBuffer);
    LOAD_DEVICE(device, vkCreateFence);
@@ -1141,7 +1166,11 @@ main(void)
       .samples = VK_SAMPLE_COUNT_1_BIT,
       .tiling = VK_IMAGE_TILING_OPTIMAL,
       .usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
-               VK_IMAGE_USAGE_TRANSFER_SRC_BIT | READBACK_IMAGE_USAGE,
+               VK_IMAGE_USAGE_TRANSFER_SRC_BIT | READBACK_IMAGE_USAGE
+#ifdef M4_UPLOAD_SUBRECT
+               | VK_IMAGE_USAGE_TRANSFER_DST_BIT
+#endif
+               ,
       .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
       .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
    };
@@ -1196,7 +1225,11 @@ main(void)
    const VkBufferCreateInfo readback_info = {
       .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
       .size = READBACK_BYTES,
-      .usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+      .usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT
+#ifdef M4_UPLOAD_SUBRECT
+               | VK_BUFFER_USAGE_TRANSFER_SRC_BIT
+#endif
+               ,
       .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
    };
    VkBuffer readback;
@@ -1225,6 +1258,14 @@ main(void)
          "vkMapMemory(readback)");
 #endif
    memset(readback_map, 0xa5, READBACK_BYTES);
+#ifdef M4_UPLOAD_SUBRECT
+   for (unsigned y = 0; y < 8; ++y) {
+      for (unsigned x = 0; x < 8; ++x) {
+         uint8_t *pixel = readback_map + READBACK_GUARD_BYTES + (y * 8 + x) * 4;
+         pixel[0] = x * 31; pixel[1] = y * 29; pixel[2] = 117; pixel[3] = 255;
+      }
+   }
+#endif
 
    const VkImageViewCreateInfo view_info = {
       .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
@@ -1505,6 +1546,39 @@ main(void)
                           &vertex_offset);
    vkCmdDraw(command_buffer, 3, 1, 0, 0);
    vkCmdEndRenderPass(command_buffer);
+#ifdef M4_UPLOAD_SUBRECT
+   VkImageMemoryBarrier upload_barrier = {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+      .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+      .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+      .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+      .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+      .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .image = image,
+      .subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1},
+   };
+   vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+      VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0,NULL, 0,NULL, 1,&upload_barrier);
+   const VkBufferImageCopy upload = {
+      .bufferOffset = READBACK_GUARD_BYTES,
+      .imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1},
+      .imageOffset = {28,28,0}, .imageExtent = {8,8,1},
+   };
+   vkCmdCopyBufferToImage(command_buffer,readback,image,
+                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,1,&upload);
+   upload_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+   upload_barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+   upload_barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+   upload_barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+   const VkMemoryBarrier buffer_barrier = {
+      .sType=VK_STRUCTURE_TYPE_MEMORY_BARRIER,
+      .srcAccessMask=VK_ACCESS_TRANSFER_READ_BIT,
+      .dstAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT,
+   };
+   vkCmdPipelineBarrier(command_buffer,VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_PIPELINE_STAGE_TRANSFER_BIT,0,1,&buffer_barrier,0,NULL,1,&upload_barrier);
+#endif
 
 #if !G17P_HOST_IMAGE_COPY
    const VkBufferImageCopy copy = {
