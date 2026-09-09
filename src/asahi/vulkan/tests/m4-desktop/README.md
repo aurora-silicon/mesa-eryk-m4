@@ -217,3 +217,18 @@ and are not part of this change; their patch is saved in the workspace
 provenance. The host texture-core suite passes 5,571 checks, including high
 coordinate source registers with all cache hints and six dependency slots.
 The complete correct race remains the acceptance target.
+
+The skinning oracle now also covers 40-byte vertices, divergent bone indices,
+indexed drawing from a nonzero offset, and the view/projection uniform block
+(512 float results). `--fixture DIR` accepts four external vertex records,
+four instance records, a bone atlas and a matrices block; captured application
+assets are kept outside this MIT source tree. `skinning-camera-1` passed all
+512 results with the captured first kart's data. This is a numeric shader test,
+not a claim about the complete game's appearance.
+
+`stk-coverage-1` replayed the unchanged kart shaders with clear alpha zero and
+saved alpha as well as RGB. The first kart draw (254 covered pixels) and all
+kart draws (1,751 covered pixels) matched the llvmpipe reference's coverage
+exactly. RGB remained incorrect, directing further investigation to shading
+and texture sampling. The guarded replay completed with no thermal failure;
+the hottest exposed sensor reached 53 C.

@@ -39,6 +39,35 @@ shader(GLenum stage, const char *source)
 }
 
 static void
+read_fixture(const char *directory, const char *name, void *data, size_t size)
+{
+   char path[1024];
+   CHECK(snprintf(path, sizeof(path), "%s/%s", directory, name) <
+         (int)sizeof(path));
+   FILE *file = fopen(path, "rb");
+   CHECK(file);
+   CHECK(fread(data, 1, size, file) == size);
+   CHECK(fgetc(file) == EOF);
+   CHECK(!fclose(file));
+}
+static float
+half_float(const void *data)
+{
+   _Float16 value;
+   memcpy(&value, data, 2);
+   return value;
+}
+static float
+packed_normal(uint32_t packed, unsigned channel)
+{
+   const unsigned bits = channel == 3 ? 2 : 10;
+   int value = (packed >> (channel * 10)) & ((1u << bits) - 1);
+   if (value & (1u << (bits - 1)))
+      value -= 1u << bits;
+   return fmaxf(-1, (float)value / (float)((1u << (bits - 1)) - 1));
+}
+
+static void
 cross3(const float *a, const float *b, float *r)
 {
    r[0] = a[1] * b[2] - a[2] * b[1];
@@ -74,7 +103,8 @@ static const char *skinning_vs =
    "layout(location=11) in vec2 trans;\n"
    "layout(location=12) in ivec2 misc;\n"
    "uniform highp sampler2D skin; uniform int stage;\n"
-   "out vec4 a;out vec4 b;out vec4 c;out vec4 d;out vec4 e;out vec4 f;out vec4 g;\n"
+   "layout(std140) uniform Matrices {mat4 view;mat4 projection;mat4 inverse_view;mat4 inverse_projection;mat4 projection_view;mat4 shadows[4];vec2 screen;};\n"
+   "out vec4 a;out vec4 b;out vec4 c;out vec4 d;out vec4 e;out vec4 f;out vec4 g;out vec4 h;\n"
    "vec3 rotate(vec3 v) {return v+2.0*cross(cross(v,quat.xyz)+quat.w*v,quat.xyz);}\n"
    "mat4 bone(int j) {\n"
    " int row=clamp(j+misc.x,0,2048);\n"
@@ -89,7 +119,7 @@ static const char *skinning_vs =
    " c=vec4(rotate((m*vec4(tangent.xyz,0)).xyz),0);\n"
    " d=vec4(cross(b.xyz,c.xyz)*tangent.w,0);\n"
    " e=vec4(uv+trans*normal.w,uv2);f=colour.zyxw;\n"
-   " g=vec4(length(a),float(misc.y)*0.01,0,0);\n"
+   " g=vec4(length(view*a),float(misc.y)*0.01,0,0);h=projection_view*a;\n"
    " vec2 pxy=grid+vec2(float(gl_InstanceID)*0.5,0);\n"
    " if(stage==1){a=vec4(m[0].xyz,0);b=vec4(m[1].xyz,0);c=vec4(m[2].xyz,0);d=vec4(m[3].xyz,0); }\n"
    " gl_Position=vec4(pxy,0,1);\n"
@@ -108,8 +138,11 @@ main(int argc, char **argv)
          eglMakeCurrent(d, EGL_NO_SURFACE, EGL_NO_SURFACE, c));
    const char *renderer = (const char *)glGetString(GL_RENDERER);
    fprintf(stderr, "renderer: %s\n", renderer);
+   const char *fixture = NULL;
+   uint8_t captured_vertices[4][40];
    bool reference = false, identity_rotation = false, identity_bones = false,
-        matrices = false;
+        matrices = false, short_layout = false, divergent_joints = false,
+        indexed = false;
    for (int i = 1; i < argc; i++) {
       if (!strcmp(argv[i], "--reference"))
          reference = true;
@@ -119,6 +152,14 @@ main(int argc, char **argv)
          identity_bones = true;
       else if (!strcmp(argv[i], "--matrices"))
          matrices = true;
+      else if (!strcmp(argv[i], "--stride40"))
+         short_layout = true;
+      else if (!strcmp(argv[i], "--divergent-joints"))
+         divergent_joints = true;
+      else if (!strcmp(argv[i], "--indexed"))
+         indexed = true;
+      else if (!strcmp(argv[i], "--fixture") && i + 1 < argc)
+         fixture = argv[++i];
       else
          CHECK(false);
    }
@@ -126,12 +167,19 @@ main(int argc, char **argv)
          (reference ? strstr(renderer, "llvmpipe") != NULL
                     : strstr(renderer, "zink") && strstr(renderer, "M4") &&
                          !strstr(renderer, "llvmpipe")));
+   if (fixture) {
+      short_layout = true;
+      read_fixture(fixture, "vertices.bin", captured_vertices,
+                   sizeof(captured_vertices));
+   }
    GLuint vao, vbo, instances, fbo, color;
    glGenVertexArrays(1, &vao);
    glBindVertexArray(vao);
    glGenBuffers(1, &vbo);
    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-   uint8_t vertices[24][48] = {0};
+   const unsigned stride = short_layout ? 40 : 48;
+   const unsigned vertex_base = indexed ? 1024 : 0;
+   uint8_t vertices[1048 * 48] = {0};
    const float pos[4][3] = {{-1, -1, 0}, {1, -1, 0}, {-1, 1, 0}, {1, 1, 0}};
    const uint32_t normal =
       (511u) | ((uint32_t)(-511 & 1023) << 10) | (1u << 30);
@@ -142,44 +190,71 @@ main(int argc, char **argv)
    const int16_t joints[4] = {-32768, -1, 3, 32767};
    const uint16_t weights[4] = {0x3800, 0x3400, 0x3400, 0};
    for (unsigned i = 0; i < 24; i++) {
-      memcpy(vertices[i], pos[i / 6], 12);
-      memcpy(vertices[i] + 12, &normal, 4);
-      memcpy(vertices[i] + 16, colour, 4);
-      memcpy(vertices[i] + 20, uv, 4);
-      memcpy(vertices[i] + 24, uv2, 4);
-      memcpy(vertices[i] + 28, &tangent, 4);
-      memcpy(vertices[i] + 32, joints, 8);
-      memcpy(vertices[i] + 40, weights, 8);
+      uint8_t *v = vertices + (vertex_base + i) * stride;
+      memcpy(v, pos[i / 6], 12);
+      memcpy(v + 12, &normal, 4);
+      memcpy(v + 16, colour, 4);
+      memcpy(v + 20, uv, 4);
+      if (!short_layout) {
+         memcpy(v + 24, uv2, 4);
+         memcpy(v + 28, &tangent, 4);
+      }
+      int16_t joint_data[4];
+      for (unsigned k = 0; k < 4; k++)
+         joint_data[k] =
+            divergent_joints ? (int16_t)(i / 6 * 17 + k * 11 + 3) : joints[k];
+      memcpy(v + (short_layout ? 24 : 32), joint_data, 8);
+      memcpy(v + (short_layout ? 32 : 40), weights, 8);
+      if (fixture)
+         memcpy(v, captured_vertices[i / 6], 40);
    }
-   glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+   glBufferData(GL_ARRAY_BUFFER, (vertex_base + 24) * stride, vertices,
+                GL_STATIC_DRAW);
    const GLenum types[] = {
       GL_FLOAT,      GL_INT_2_10_10_10_REV, GL_UNSIGNED_BYTE, GL_HALF_FLOAT,
       GL_HALF_FLOAT, GL_INT_2_10_10_10_REV, GL_SHORT,         GL_HALF_FLOAT};
-   const unsigned sizes[] = {3, 4, 4, 2, 2, 4, 4, 4},
-                  offsets[] = {0, 12, 16, 20, 24, 28, 32, 40};
+   const unsigned sizes[] = {3, 4, 4, 2, 2, 4, 4, 4};
+   unsigned offsets[] = {0, 12, 16, 20, 24, 28, 32, 40};
+   if (short_layout) {
+      offsets[6] = 24;
+      offsets[7] = 32;
+   }
    for (unsigned i = 0; i < 8; i++) {
+      if (short_layout && (i == 4 || i == 5))
+         continue;
       if (i == 6)
-         glVertexAttribIPointer(i, sizes[i], types[i], 48,
+         glVertexAttribIPointer(i, sizes[i], types[i], stride,
                                 (void *)(uintptr_t)offsets[i]);
       else
          glVertexAttribPointer(i, sizes[i], types[i],
-                               i == 1 || i == 2 || i == 5, 48,
+                               i == 1 || i == 2 || i == 5, stride,
                                (void *)(uintptr_t)offsets[i]);
       glEnableVertexAttribArray(i);
    }
    GLuint grid_buffer;
    glGenBuffers(1, &grid_buffer);
    glBindBuffer(GL_ARRAY_BUFFER, grid_buffer);
-   float grid[24][2];
+   float grid[1048][2] = {{0}};
    const float corners[6][2] = {{-1, -1}, {1, -1}, {-1, 1},
                                 {-1, 1},  {1, -1}, {1, 1}};
    for (unsigned i = 0; i < 24; i++) {
-      grid[i][0] = corners[i % 6][0] * 0.25f - 0.75f;
-      grid[i][1] = corners[i % 6][1] * 0.25f + (float)(i / 6) * 0.5f - 0.75f;
+      grid[vertex_base + i][0] = corners[i % 6][0] * 0.25f - 0.75f;
+      grid[vertex_base + i][1] =
+         corners[i % 6][1] * 0.25f + (float)(i / 6) * 0.5f - 0.75f;
    }
    glBufferData(GL_ARRAY_BUFFER, sizeof(grid), grid, GL_STATIC_DRAW);
    glVertexAttribPointer(13, 2, GL_FLOAT, GL_FALSE, 8, NULL);
    glEnableVertexAttribArray(13);
+   GLuint index_buffer = 0;
+   if (indexed) {
+      uint16_t indices[27] = {0xbeef, 0xdead, 0xabcd};
+      for (unsigned i = 0; i < 24; i++)
+         indices[3 + i] = vertex_base + i;
+      glGenBuffers(1, &index_buffer);
+      glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer);
+      glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices,
+                   GL_STATIC_DRAW);
+   }
    uint8_t data[4][44] = {0};
    const uint16_t scales[4][4] = {{0x3c00, 0x3800, 0xb400, 0},
                                   {0x3c00, 0x3800, 0xb400, 0x3c00},
@@ -199,6 +274,8 @@ main(int argc, char **argv)
       memcpy(data[i] + 36, trans, 4);
       memcpy(data[i] + 40, misc, 4);
    }
+   if (fixture)
+      read_fixture(fixture, "instances.bin", data, sizeof(data));
    glGenBuffers(1, &instances);
    glBindBuffer(GL_ARRAY_BUFFER, instances);
    glBufferData(GL_ARRAY_BUFFER, sizeof(data), data, GL_STATIC_DRAW);
@@ -235,6 +312,8 @@ main(int argc, char **argv)
                    ? 0.0f
                    : (float)((int)((row * 3 + col * 5 + j * 7) % 17) - 8) *
                         0.03125f);
+   if (fixture)
+      read_fixture(fixture, "bones.bin", bones, sizeof(bones));
    GLuint skin;
    glGenTextures(1, &skin);
    glActiveTexture(GL_TEXTURE0);
@@ -247,9 +326,9 @@ main(int argc, char **argv)
    GLuint fs = shader(
       GL_FRAGMENT_SHADER,
       "#version 300 es\nprecision highp float; precision highp int; "
-      "in vec4 a; in vec4 b; in vec4 c; in vec4 d; in vec4 e; in vec4 f; in vec4 g; "
+      "in vec4 a; in vec4 b; in vec4 c; in vec4 d; in vec4 e; in vec4 f; in vec4 g; in vec4 h; "
       "uniform int mode; uniform int component; out vec4 result; void main(){ "
-      "vec4 value=mode==0?a:mode==1?b:mode==2?c:mode==3?d:mode==4?e:mode==5?f:g; "
+      "vec4 value=mode==0?a:mode==1?b:mode==2?c:mode==3?d:mode==4?e:mode==5?f:mode==6?g:h; "
       "uint bits=floatBitsToUint(value[component]); "
       "result=vec4(uvec4(bits,bits>>8,bits>>16,bits>>24)&255u)/255.0;}");
    GLuint program = glCreateProgram();
@@ -262,15 +341,32 @@ main(int argc, char **argv)
    glUseProgram(program);
    glUniform1i(glGetUniformLocation(program, "skin"), 0);
    glUniform1i(glGetUniformLocation(program, "stage"), matrices ? 1 : 0);
+   float camera[146] = {0};
+   for (unsigned mat = 0; mat < 9; mat++)
+      for (unsigned j = 0; j < 4; j++)
+         camera[mat * 16 + j * 5] = 1;
+   if (fixture)
+      read_fixture(fixture, "matrices.bin", camera, sizeof(camera));
+   GLuint camera_buffer;
+   glGenBuffers(1, &camera_buffer);
+   glBindBuffer(GL_UNIFORM_BUFFER, camera_buffer);
+   glBufferData(GL_UNIFORM_BUFFER, sizeof(camera), camera, GL_STATIC_DRAW);
+   glUniformBlockBinding(program, glGetUniformBlockIndex(program, "Matrices"),
+                         0);
+   glBindBufferBase(GL_UNIFORM_BUFFER, 0, camera_buffer);
    unsigned failures = 0;
-   for (unsigned mode = 0; mode < 7; mode++) {
+   for (unsigned mode = 0; mode < 8; mode++) {
       glUniform1i(glGetUniformLocation(program, "mode"), mode);
       float pixels[4][4][4];
       for (unsigned component = 0; component < 4; component++) {
          glUniform1i(glGetUniformLocation(program, "component"), component);
          glClearColor(0, 0, 0, 0);
          glClear(GL_COLOR_BUFFER_BIT);
-         glDrawArraysInstanced(GL_TRIANGLES, 0, 24, 4);
+         if (indexed)
+            glDrawElementsInstanced(GL_TRIANGLES, 24, GL_UNSIGNED_SHORT,
+                                    (void *)6, 4);
+         else
+            glDrawArraysInstanced(GL_TRIANGLES, 0, 24, 4);
          uint8_t raw[4][4][4];
          glReadPixels(0, 0, 4, 4, GL_RGBA, GL_UNSIGNED_BYTE, raw);
          CHECK(glGetError() == GL_NO_ERROR);
@@ -288,9 +384,18 @@ main(int argc, char **argv)
          for (unsigned inst = 0; inst < 4; inst++) {
             float matrix[4][4] = {0};
             for (unsigned k = 0; k < 4; k++) {
-               int row = joints[k] - 1 - (int)inst;
-               row = row < 0 ? 0 : row > 2048 ? 2048 : row;
+               int row = (divergent_joints ? (int)(vertex * 17 + k * 11 + 3)
+                                           : joints[k]) -
+                         1 - (int)inst;
                float weight = k == 0 ? 0.5f : k == 3 ? 0 : 0.25f;
+               if (fixture) {
+                  int16_t joint, offset;
+                  memcpy(&joint, captured_vertices[vertex] + 24 + k * 2, 2);
+                  memcpy(&offset, data[inst] + 40, 2);
+                  row = (int)joint + offset;
+                  weight = half_float(captured_vertices[vertex] + 32 + k * 2);
+               }
+               row = row < 0 ? 0 : row > 2048 ? 2048 : row;
                for (unsigned col = 0; col < 4; col++)
                   for (unsigned j = 0; j < 4; j++)
                      matrix[col][j] += weight * bones[row][col][j];
@@ -298,6 +403,15 @@ main(int argc, char **argv)
             float local[4] = {pos[vertex][0], pos[vertex][1], pos[vertex][2],
                               1};
             float sn[4] = {1, -1, 0, 0}, st[4] = {-1, 0, 1, 0};
+            if (short_layout)
+               st[0] = st[1] = st[2] = 0;
+            if (fixture) {
+               memcpy(local, captured_vertices[vertex], 12);
+               uint32_t packed;
+               memcpy(&packed, captured_vertices[vertex] + 12, 4);
+               for (unsigned j = 0; j < 3; j++)
+                  sn[j] = packed_normal(packed, j);
+            }
             float wp[4] = {0}, wn[4] = {0}, wt[4] = {0};
             for (unsigned col = 0; col < 4; col++)
                for (unsigned j = 0; j < 4; j++) {
@@ -305,25 +419,39 @@ main(int argc, char **argv)
                   wn[j] += matrix[col][j] * sn[col];
                   wt[j] += matrix[col][j] * st[col];
                }
-            wp[1] *= 0.5f;
-            wp[2] *= -0.25f;
+            if (fixture)
+               for (unsigned j = 0; j < 3; j++)
+                  wp[j] *= half_float(data[inst] + 28 + j * 2);
+            else {
+               wp[1] *= 0.5f;
+               wp[2] *= -0.25f;
+            }
             float q[4] = {0.5f, -0.5f, 0.5f, 0.5f};
             if (identity_rotation) {
                q[0] = q[1] = q[2] = 0;
                q[3] = 1;
             }
+            if (fixture)
+               memcpy(q, data[inst] + 12, 16);
             rotate(wp, q);
             rotate(wn, q);
             rotate(wt, q);
-            wp[0] += (float)inst + 1;
-            wp[1] -= 2;
-            wp[2] += 0.25f;
+            if (fixture) {
+               float origin[3];
+               memcpy(origin, data[inst], 12);
+               for (unsigned j = 0; j < 3; j++)
+                  wp[j] += origin[j];
+            } else {
+               wp[0] += (float)inst + 1;
+               wp[1] -= 2;
+               wp[2] += 0.25f;
+            }
             wp[3] = 1;
             float bt[4];
             cross3(wn, wt, bt);
             for (unsigned j = 0; j < 3; j++)
                bt[j] = -bt[j];
-            float expected[7][4];
+            float expected[8][4];
             memcpy(expected[0], wp, 16);
             for (unsigned j = 0; j < 3; j++) {
                expected[1][j] = wn[j];
@@ -331,13 +459,40 @@ main(int argc, char **argv)
                expected[3][j] = bt[j];
             }
             expected[1][3] = expected[2][3] = expected[3][3] = 0;
-            const float uvout[4] = {-0.5f, 0, 2, 0.25f};
+            const float uvout[4] = {-0.5f, 0, short_layout ? 0 : 2,
+                                    short_layout ? 0 : 0.25f};
             memcpy(expected[4], uvout, 16);
             const float cout[4] = {1, 0, 1, 1};
             memcpy(expected[5], cout, 16);
+            float viewpos[4] = {0};
+            for (unsigned j = 0; j < 4; j++) {
+               expected[7][j] = 0;
+               for (unsigned col = 0; col < 4; col++) {
+                  viewpos[j] += camera[col * 4 + j] * wp[col];
+                  expected[7][j] += camera[64 + col * 4 + j] * wp[col];
+               }
+            }
             expected[6][0] =
-               sqrtf(wp[0] * wp[0] + wp[1] * wp[1] + wp[2] * wp[2] + 1);
+               sqrtf(viewpos[0] * viewpos[0] + viewpos[1] * viewpos[1] +
+                     viewpos[2] * viewpos[2] + viewpos[3] * viewpos[3]);
             expected[6][1] = (17 + (float)inst) * 0.01f;
+            if (fixture) {
+               uint32_t packed;
+               memcpy(&packed, captured_vertices[vertex] + 12, 4);
+               int16_t trans[2], misc[2];
+               memcpy(trans, data[inst] + 36, 4);
+               memcpy(misc, data[inst] + 40, 4);
+               for (unsigned j = 0; j < 2; j++)
+                  expected[4][j] =
+                     half_float(captured_vertices[vertex] + 20 + j * 2) +
+                     fmaxf(-1, (float)trans[j] / 32767) *
+                        packed_normal(packed, 3);
+               for (unsigned j = 0; j < 4; j++)
+                  expected[5][j] =
+                     (float)captured_vertices[vertex][16 + (j < 3 ? 2 - j : 3)] /
+                     255;
+               expected[6][1] = (float)misc[1] * 0.01f;
+            }
             expected[6][2] = expected[6][3] = 0;
             if (matrices && mode < 4) {
                for (unsigned j = 0; j < 3; j++)
@@ -367,6 +522,9 @@ main(int argc, char **argv)
    glDeleteShader(fs);
    glDeleteFramebuffers(1, &fbo);
    glDeleteTextures(1, &color);
+   glDeleteBuffers(1, &camera_buffer);
+   if (index_buffer)
+      glDeleteBuffers(1, &index_buffer);
    glDeleteBuffers(1, &grid_buffer);
    glDeleteBuffers(1, &vbo);
    glDeleteBuffers(1, &instances);
