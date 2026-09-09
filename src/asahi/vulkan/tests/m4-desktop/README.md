@@ -528,3 +528,10 @@ draws to complete. `0ad-scene-checkpoints` passed the prefix through call
 23856; `0ad-dense-checkpoints` passed individual draws through 26623 and
 the group through 27873, then stalled in a later fragment pass. These are
 partial-scene diagnostics, not a rendered map or game stability result.
+
+The VDM boundary probe now preserves the first draw on the left half of a
+128x64 target while later draws affect only the right half. This checks
+retained color, not just the last overwrite. `0ad-vdm-retain-tiles-2` passed
+all 8192 pixels after 2048 draws. The first expanded test accidentally read
+only 16x16 pixels and is invalid; that readback extent was corrected.
+`0ad-vdm-retain-colors` also passed the original single-tile version.

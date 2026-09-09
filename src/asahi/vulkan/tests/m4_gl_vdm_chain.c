@@ -57,25 +57,27 @@ main(int argc, char **argv)
    GLuint tex, fb;
    glGenTextures(1, &tex);
    glBindTexture(GL_TEXTURE_2D, tex);
-   glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, 16, 16);
+   glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, 128, 64);
    glGenFramebuffers(1, &fb);
    glBindFramebuffer(GL_FRAMEBUFFER, fb);
    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
                           tex, 0);
    CHECK(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
-   glViewport(0, 0, 16, 16);
+   glViewport(0, 0, 128, 64);
    glClearColor(0, 0, 1, 1);
    glClear(GL_COLOR_BUFFER_BIT);
    GLint paint = glGetUniformLocation(prog, "paint");
    CHECK(paint >= 0);
+   glEnable(GL_SCISSOR_TEST);
    for (unsigned i = 0; i < 2048; ++i) {
+      glScissor(i == 0 ? 0 : 64, 0, 64, 64);
       glUniform4f(paint, !(i & 1), i & 1, 0, 1);
       glDrawArrays(GL_TRIANGLES, 0, 3);
    }
    glFinish();
    CHECK(glGetError() == GL_NO_ERROR);
-   unsigned char pixels[16 * 16 * 4];
-   glReadPixels(0, 0, 16, 16, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+   unsigned char pixels[128 * 64 * 4];
+   glReadPixels(0, 0, 128, 64, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
    CHECK(glGetError() == GL_NO_ERROR);
    if (argc > 1) {
       FILE *out = fopen(argv[1], "wb");
@@ -83,15 +85,17 @@ main(int argc, char **argv)
       CHECK(fwrite(pixels, 1, sizeof(pixels), out) == sizeof(pixels));
       CHECK(fclose(out) == 0);
    }
-   for (unsigned i = 0; i < 16 * 16; ++i) {
+   for (unsigned i = 0; i < 128 * 64; ++i) {
       const unsigned char *p = pixels + 4 * i;
-      if (p[0] != 0 || p[1] != 255 || p[2] != 0 || p[3] != 255) {
-         fprintf(stderr, "pixel %u: %u %u %u %u, expected 0 255 0 255\n",
-                 i, p[0], p[1], p[2], p[3]);
+      unsigned red = (i % 128) < 64 ? 255 : 0;
+      unsigned green = 255 - red;
+      if (p[0] != red || p[1] != green || p[2] != 0 || p[3] != 255) {
+         fprintf(stderr, "pixel %u: %u %u %u %u, expected %u %u 0 255\n",
+                 i, p[0], p[1], p[2], p[3], red, green);
          return 1;
       }
    }
-   puts("PASS: 2048 retained-uniform draws end in 256 exact green pixels");
+   puts("PASS: 2048 draws preserve 4096 red pixels and finish 4096 green pixels");
    eglMakeCurrent(d, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
    eglDestroyContext(d, c);
    eglTerminate(d);
