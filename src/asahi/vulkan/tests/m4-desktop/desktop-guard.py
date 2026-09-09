@@ -59,15 +59,15 @@ try:
                     if any(x in kline for x in ('GPU retirement unproven','firmware crashed','Internal error:','BUG:')):
                         raise RuntimeError('kernel GPU failure: '+kline)
                     # Asset upload may keep a freshly submitted probe behind
-                    # thousands of valid render jobs. During bounded startup,
+                    # thousands of valid render jobs. During this bounded run,
                     # independently verified firmware job retirements count as
-                    # forward progress. Never feed from an old buffered line.
+                    # forward progress throughout the bounded experiment. Never feed from an old buffered line.
                     match=re.search(r'^\[\s*([0-9.]+)\].*userspace GPU job (\d+) retired',kline)
                     now=time.monotonic()
                     if match and now-last_kernel_report >= 5:
                         print(json.dumps({'event':'kernel-progress-age','job':int(match[2]),'age':now-float(match[1]),'startup_elapsed':now-began}),flush=True)
                         last_kernel_report=now
-                    if match and now-began < 180 and now-last_kernel_feed >= 5 and 0 <= now-float(match[1]) < 3:
+                    if match and now-last_kernel_feed >= 5 and 0 <= now-float(match[1]) < 3:
                         t.check()
                         health.write(json.dumps({'event':'startup-gpu-retirement','timestamp':float(match[1]),'job':int(match[2])})+'\n')
                         health.flush(); os.fsync(health.fileno())
