@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 """Supervise the Asahi desktop; renew only after real GPU and compositor checks."""
-import argparse, json, os, signal, subprocess, sys, time
+import argparse, json, os, re, signal, subprocess, sys, time
 from pathlib import Path
 sys.path.insert(0, '/root/g16-submit-test')
 from experiment_watchdog import ExperimentWatchdog, KEEPALIVE
@@ -20,7 +20,7 @@ stopping=False
 def stop():
     # The seat/session children deliberately own process groups. Stop their
     # actual GPU clients too, so thermal trips don't leave rendering running.
-    for name in ('supertux2','Hyprland'):
+    for name in ('supertux2','supertuxkart','Hyprland'):
         subprocess.run(['pkill','-TERM','-u','1000','-x',name],timeout=3)
     if proc is not None and proc.poll() is None:
         os.killpg(proc.pid,signal.SIGTERM)
@@ -38,11 +38,37 @@ try:
         source=(a.output/'command.log').open()
         last=-1
         pending=''
-        deadline=time.monotonic()+a.seconds+45
+        began=time.monotonic()
+        deadline=began+a.seconds+180
+        kernel_source=None
+        kernel_pending=''
+        last_kernel_feed=0
         while proc.poll() is None:
             t.check()
             if time.monotonic()>deadline:
                 raise RuntimeError('desktop exceeded bounded duration')
+            kernel_path=a.output/'kernel-live.log'
+            if kernel_source is None and kernel_path.exists():
+                kernel_source=kernel_path.open()
+            if kernel_source is not None:
+                kernel_pending+=kernel_source.read()
+                while '\n' in kernel_pending:
+                    kline,kernel_pending=kernel_pending.split('\n',1)
+                    if any(x in kline for x in ('GPU retirement unproven','firmware crashed','Internal error:','BUG:')):
+                        raise RuntimeError('kernel GPU failure: '+kline)
+                    # Asset upload may keep a freshly submitted probe behind
+                    # thousands of valid render jobs. During bounded startup,
+                    # independently verified firmware job retirements count as
+                    # forward progress. Never feed from an old buffered line.
+                    match=re.search(r'^\[\s*([0-9.]+)\].*userspace GPU job (\d+) retired',kline)
+                    now=time.monotonic()
+                    if match and now-began < 180 and now-last_kernel_feed >= 5 and 0 <= now-float(match[1]) < 3:
+                        t.check()
+                        health.write(json.dumps({'event':'startup-gpu-retirement','timestamp':float(match[1]),'job':int(match[2])})+'\n')
+                        health.flush(); os.fsync(health.fileno())
+                        w.integer(KEEPALIVE)
+                        last_kernel_feed=now
+                        print(json.dumps({'event':'startup-gpu-retirement','job':int(match[2])}),flush=True)
             pending+=source.read()
             while '\n' in pending:
                 line,pending=pending.split('\n',1)

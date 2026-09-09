@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Bounded real-Hyprland probe; invoke only inside the armed render runner."""
 import json
+import re
 import array
 import hashlib
 import mmap
@@ -205,6 +206,43 @@ def main():
                        'physical_display': physical, 'native_kms': native,
                        'scanout_red_pixels_verified': scanout_red,
                        'red_pixels_verified': red, 'screenshot': pixels.name}
+            if os.environ.get('M4_TEST_SUPERTUXKART') == '1':
+                os.killpg(terminal.pid, signal.SIGTERM)
+                terminal.wait(timeout=4)
+                game_env = {**env, 'IRR_DEVICE_TYPE':'wayland',
+                            **({'AGX_MESA_DEBUG':'shaders,internal', 'HK_G17P_LAUNCH_TRACE':'1'} if os.getenv('M4_STK_SHADER_TRACE') == '1' else {}),
+                            'XDG_CONFIG_HOME':str(Path(account.pw_dir)/'.config/m4-asahi-supertuxkart')}
+                with (result/'supertuxkart.log').open('w') as game_log:
+                    game = subprocess.Popen([*user_command, '/usr/bin/supertuxkart',
+                        '--render-driver=opengl', '--windowed', '--screensize=800x450',
+                        '--race-now', '--track=lighthouse', '--numkarts=4',
+                        '--laps=1', '--profile-laps=1', '--log=0',
+                        '--disable-texture-compression', '--disable-dynamic-lights'],
+                        env=game_env,stdout=game_log,stderr=game_log,
+                        start_new_session=True,cwd=account.pw_dir)
+                    deadline=time.monotonic()+15
+                    while time.monotonic()<deadline:
+                        if game.poll() is not None:
+                            raise RuntimeError(f'SuperTuxKart exited at startup: {game.returncode}')
+                        clients=subprocess.check_output(['hyprctl','-j','clients'],env=env,text=True,timeout=2)
+                        if any('supertuxkart' in c.get('class','').lower() and c.get('mapped') for c in json.loads(clients)):
+                            break
+                        time.sleep(0.2)
+                    else:
+                        raise RuntimeError('SuperTuxKart did not map within fifteen seconds')
+                    (result/'supertuxkart-clients.json').write_text(clients)
+                    subprocess.run(['hyprctl','dispatch','hl.dsp.window.float({action="toggle"})'],env=env,check=True,timeout=2)
+                    subprocess.run(['hyprctl','dispatch','hl.dsp.window.resize({x=800,y=450})'],env=env,check=True,timeout=2)
+                    subprocess.run(['hyprctl','dispatch','hl.dsp.window.center()'],env=env,check=True,timeout=2)
+                    time.sleep(5)
+                    subprocess.run(['grim','-t','ppm','-o',output_name,str(result/'supertuxkart.ppm')],env=env,check=True,timeout=120 if live_seconds else 6)
+                    if game.poll() is not None:
+                        raise RuntimeError(f'SuperTuxKart exited during first frames: {game.returncode}')
+                    game_log.flush()
+                    text=(result/'supertuxkart.log').read_text()
+                    if not ('zink' in text.lower() and 'M4' in text):
+                        raise RuntimeError('SuperTuxKart did not identify the M4 Zink renderer')
+                    summary.update(supertuxkart_started=True)
             if os.environ.get('M4_TEST_SUPERTUX') == '1':
                 os.killpg(terminal.pid, signal.SIGTERM)
                 terminal.wait(timeout=4)
@@ -283,12 +321,24 @@ def main():
                 deadline = time.monotonic() + live_seconds
                 checks = 0
                 while time.monotonic() < deadline and not stop_file.exists() and not Path('/run/m4-hyprland-stop').exists():
+                    if summary.get('supertuxkart_started'):
+                        game_text=(result/'supertuxkart.log').read_text()
+                        if any(x in game_text for x in ('MESA: error:', 'no grounded AGX3 encoding', 'Assertion `')):
+                            raise RuntimeError('SuperTuxKart driver error; see shader log')
+                        if game.poll() is not None:
+                            match=re.search(r'Number of frames: (\d+) time ([0-9.]+), Average FPS: ([0-9.]+)',game_text)
+                            if game.returncode != 0 or not match or int(match[1]) < 1:
+                                raise RuntimeError(f'SuperTuxKart exited without a completed profile race: {game.returncode}')
+                            summary['supertuxkart_demo']={'completed':True,'track':'lighthouse','karts':4,'laps':1,
+                                'frames':int(match[1]),'seconds':float(match[2]),'average_fps':float(match[3]),'exit_status':0}
+                            (result/'supertuxkart-demo.json').write_text(json.dumps(summary['supertuxkart_demo'],indent=2)+'\n')
+                            break
                     with (result / 'health-shaders.stderr').open('a') as diagnostics:
                         check = subprocess.run(['/root/m4-vulkan-compute-min'],
                                                env={**env, **({'HK_G17P_LAUNCH_TRACE': '1'}
                                                     if os.getenv('M4_HYPR_TRACE_HEALTH') == '1' else {})},
                                                stdout=subprocess.PIPE, stderr=diagnostics,
-                                               text=True, timeout=8, check=True)
+                                               text=True, timeout=120 if summary.get('supertuxkart_started') and checks == 0 else 8, check=True)
                     assert 'PASS — 32 buffer writes' in check.stdout, check.stdout
                     evidence = {'passed':True, 'vulkan':True, 'values_verified':32, 'device_id':0x8132, 'sequence':checks, 'checked_at':time.monotonic()}
                     reply = json.loads(subprocess.check_output(['hyprctl', '-j', 'monitors'],
@@ -303,6 +353,8 @@ def main():
                         subprocess.run(['grim','-t','ppm','-o',output_name,str(result/f'live-{checks}.ppm')],env=env,check=True,timeout=6)
                     checks += 1
                     time.sleep(min(5, max(0, deadline - time.monotonic())))
+                if summary.get('supertuxkart_started') and not summary.get('supertuxkart_demo',{}).get('completed'):
+                    raise RuntimeError('SuperTuxKart demo did not finish before the test deadline or stop request')
                 summary['interactive_seconds'] = live_seconds
                 summary['health_checks'] = checks
             print(json.dumps(summary), flush=True)
