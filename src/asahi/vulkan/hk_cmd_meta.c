@@ -1847,6 +1847,16 @@ hk_CmdCopyBufferToImage2(VkCommandBuffer commandBuffer,
           * multi-layer regions; no staging copy or compute expansion. */
          for (unsigned r = 0; r < pCopyBufferToImageInfo->regionCount; ++r) {
             VkBufferImageCopy2 region = pCopyBufferToImageInfo->pRegions[r];
+            if (hk_g17p_launch_trace_enabled()) {
+               VK_FROM_HANDLE(hk_buffer, source, pCopyBufferToImageInfo->srcBuffer);
+               fprintf(stderr, "asahi buffer-to-image: format=%u source=%#llx size=%llu offset=%llu row=%u rows=%u mip=%u layer=%u count=%u xyz=%d,%d,%d extent=%u,%u,%u\n",
+                  dst_image->vk.format, (unsigned long long)hk_buffer_address_rw(source, 0),
+                  (unsigned long long)source->vk.size, (unsigned long long)region.bufferOffset,
+                  region.bufferRowLength, region.bufferImageHeight, region.imageSubresource.mipLevel,
+                  region.imageSubresource.baseArrayLayer, region.imageSubresource.layerCount,
+                  region.imageOffset.x,region.imageOffset.y,region.imageOffset.z,
+                  region.imageExtent.width,region.imageExtent.height,region.imageExtent.depth);
+            }
             const uint32_t layers =
                vk_image_subresource_layer_count(&dst_image->vk,
                                                 &region.imageSubresource);
