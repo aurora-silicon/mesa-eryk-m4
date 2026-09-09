@@ -278,6 +278,19 @@ def main():
                     '-autostart=skirmishes/acropolis_bay_2p',
                     '-autostart-civ=1:athen', '-autostart-civ=2:spart',
                     '-autostart-ai=2:petra', '-autostart-seed=0', '-autostart-aiseed=0']
+                if os.getenv('M4_0AD_SYNC') == '1':
+                    game_env.update(ZINK_DEBUG='flushsync,noreorder')
+                if os.getenv('M4_0AD_TRACE') == '1':
+                    game_env.update(HK_G17P_LAUNCH_TRACE='1', AGX_MESA_DEBUG='shaders,internal')
+                    trace_dir = Path(account.pw_dir)/'.local/state/m4-asahi-traces'
+                    trace_dir.mkdir(parents=True, exist_ok=True)
+                    os.chown(trace_dir, account.pw_uid, account.pw_gid)
+                    trace_file = trace_dir/(result.name+'.trace')
+                    if trace_file.exists():
+                        raise RuntimeError('refusing to overwrite graphics trace')
+                    game_env.update(LD_PRELOAD='/opt/m4-apitrace/usr/lib/apitrace/wrappers/egltrace.so',
+                                    TRACE_FILE=str(trace_file))
+                    (result/'graphics-trace.json').write_text(json.dumps({'path':str(trace_file),'api':'egl'})+'\n')
                 (result/'0ad-command.json').write_text(json.dumps(game_args, indent=2)+'\n')
                 with (result/'0ad.log').open('w') as game_log:
                     game = subprocess.Popen([*user_command, *game_args], env=game_env,

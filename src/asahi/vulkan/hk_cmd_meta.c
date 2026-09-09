@@ -1636,6 +1636,10 @@ hk_CmdCopyBuffer2(VkCommandBuffer commandBuffer, const VkCopyBufferInfo2 *info)
             &dev->vk, info->srcBuffer, region.srcOffset, region.size);
          uint64_t dst = vk_meta_buffer_address(
             &dev->vk, info->dstBuffer, region.dstOffset, region.size);
+         if (hk_g17p_launch_trace_enabled())
+            fprintf(stderr, "asahi buffer-copy: src=%#" PRIx64
+                    " dst=%#" PRIx64 " bytes=%" PRIu64 "\n",
+                    src, dst, (uint64_t)region.size);
          if (region.size > 16 && ((src | dst) & 15) == 0 &&
              (region.size & 15) != 0) {
             const VkDeviceSize tail = region.size & 15;
