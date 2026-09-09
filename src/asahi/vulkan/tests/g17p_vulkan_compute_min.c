@@ -18,7 +18,11 @@
 #include <string.h>
 #include <unistd.h>
 
-#ifdef M4_COMPARE_SELECT
+#ifdef M4_FLOAT_MODIFIERS
+#include "m4_vulkan_float_modifiers_spv.h"
+#define COMPUTE_SPV m4_vulkan_float_modifiers_spv
+#define TEST_NAME "m4-vulkan-float-modifiers"
+#elif defined(M4_COMPARE_SELECT)
 #include "m4_vulkan_compare_select_spv.h"
 #define COMPUTE_SPV m4_vulkan_compare_select_spv
 #define TEST_NAME "m4-vulkan-compare-select"
@@ -378,7 +382,7 @@ main(int argc, char **argv)
     * like. With the sentinel the readback classifies itself. */
    for (uint32_t i = 0; i < ELEMENT_COUNT + GUARD_COUNT; ++i)
       mapped[i] =
-#if defined(M4_HALF_CONVERSION) || defined(M4_COMPARE_SELECT)
+#if defined(M4_HALF_CONVERSION) || defined(M4_COMPARE_SELECT) || defined(M4_FLOAT_MODIFIERS)
          test_inputs[i];
 #else
          SENTINEL(i);
@@ -597,7 +601,7 @@ main(int argc, char **argv)
       const uint32_t expected = UINT32_C(0x6d000000) + i;
 #else
       const uint32_t expected =
-#if defined(M4_HALF_CONVERSION) || defined(M4_COMPARE_SELECT)
+#if defined(M4_HALF_CONVERSION) || defined(M4_COMPARE_SELECT) || defined(M4_FLOAT_MODIFIERS)
          test_expected[i];
 #else
          UINT32_C(0x12340000) + i;
@@ -625,7 +629,7 @@ main(int argc, char **argv)
 #ifdef G17P_NULL_DESCRIPTOR
               UINT32_C(0x6d000000) + first_bad,
 #else
-#if defined(M4_HALF_CONVERSION) || defined(M4_COMPARE_SELECT)
+#if defined(M4_HALF_CONVERSION) || defined(M4_COMPARE_SELECT) || defined(M4_FLOAT_MODIFIERS)
               test_expected[first_bad],
 #else
               UINT32_C(0x12340000) + first_bad,
@@ -681,6 +685,8 @@ main(int argc, char **argv)
    printf(TEST_NAME ": PASS — 32 null SSBO/UBO loads returned zero, null "
                     "SSBO stores were discarded, exact output and 32 guards "
                     "stable for three seconds\n");
+#elif defined(M4_FLOAT_MODIFIERS)
+   printf(TEST_NAME ": PASS — 32 exact saturated float add/multiply results\n");
 #elif defined(M4_COMPARE_SELECT)
    printf(TEST_NAME ": PASS — 32 exact constant float compare/select results\n");
 #elif defined(M4_HALF_CONVERSION)

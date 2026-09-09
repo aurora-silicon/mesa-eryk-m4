@@ -2525,6 +2525,29 @@ agx_materialize_agx3_alu_constants(agx_context *ctx)
          }
       }
 
+      /* Compact add/multiply immediates cannot carry absolute-value
+       * modifiers, and multiply's compact form cannot saturate. The native
+       * register form supports these combinations without splitting the
+       * arithmetic or changing its rounding.
+       */
+      if ((I->op == AGX_OPCODE_FADD || I->op == AGX_OPCODE_FMUL) &&
+          I->dest[0].size == AGX_SIZE_32 &&
+          (I->src[0].abs || I->src[1].abs ||
+           (I->op == AGX_OPCODE_FMUL && I->saturate))) {
+         for (unsigned s = 0; s < 2; ++s) {
+            agx_index src = I->src[s];
+            if (src.type != AGX_INDEX_IMMEDIATE)
+               continue;
+
+            float value = agx_minifloat_decode(src.value);
+            if (src.abs)
+               value = fabsf(value);
+            if (src.neg)
+               value = -value;
+            I->src[s] = agx_mov_imm(&b, 32, fui(value));
+         }
+      }
+
       /* The grounded immediate-multiplier IMAD has either no addend or a
        * nonnegative byte addend. Split `a * byte - byte` into the witnessed
        * pure multiply followed by the witnessed subtract-immediate form. */
