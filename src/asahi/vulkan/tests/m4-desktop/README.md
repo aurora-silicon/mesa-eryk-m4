@@ -348,3 +348,40 @@ cube-to-array path. Host texture, funop and varying suites still pass 5,571,
 59 and 977 checks. Host and ARM64 builds pass. Combined texture-coordinate
 and descriptor dependencies retire through the existing slot-wait sequence
 before staging, instead of failing when more than one producer is outstanding.
+
+`stk-replay-12` confirmed the change in the complete captured scene. The sky
+adds no pixels above the three-step comparison threshold; the final frame has
+2,267 such pixels, largely in foliage. The replay peaked at 53.75 C.
+`stk-demo-22` then completed another normal Lighthouse/four-kart/one-lap race
+under Omarchy Hyprland, with exit 0, 7,182 frames in 169.127014 seconds and
+reported average 42.465126 FPS. All 36 compute/compositor/scanout health checks
+passed and the hottest exposed sensor reached 54.75 C. Both completed races
+used the same boot without a GPU reset. Moving screenshots show the sky seams
+removed. These are visual and bounded stability results, not pixel identity
+with llvmpipe or a full conformance claim.
+
+### Foliage filtering oracle (2026-09-09)
+
+Removing alpha discard from the whole scene changes depth occlusion, so its
+grayscale difference image is not a reliable isolated sampler test. An external
+fixture for the first foliage draw instead uses the original 127 packed
+24-byte vertices, 261 indices, fourteen 44-byte instances, camera block,
+wind uniform and texture mip levels. Application shaders/assets remain outside
+this MIT source tree. `grass-modes-1` reproduced the residual differences.
+With discard removed, both renderers covered exactly the same 77,231 pixels.
+
+`grass-uv-1` exported the interpolated U and V float32 bit patterns through
+RGBA8, separately from the texture reads. The median absolute U/V differences
+from llvmpipe were 0.00000730 and 0.00000441; some overlapping/thin geometry
+has larger differences. Feed each renderer's own measured UVs into independent
+nearest and bilinear repeat-wrap equations. On M4 all 77,231 nearest alpha
+samples match exactly, and every linear alpha sample is within one UNORM8
+step (maximum 0.971135). The texture reads are consistent with their UV inputs;
+the remaining cross-renderer differences originate earlier than those reads.
+This does not establish exact interpolation or depth-tie behavior.
+
+`texture-filter-oracle.py` implements that independent check using NumPy. Its
+inputs are a raw RGBA8 texture, separate U/V bit-pattern images, and nearest/
+linear grayscale samples with alpha 255 for coverage and zero for the clear.
+All inputs use the same row order; width/height describe the texture. It checks
+base-level repeat filtering only and leaves interpolation validation separate.
