@@ -814,7 +814,9 @@ agx3_emit_texture_fetch(struct util_dynarray *emission,
    if (stage_coordinates) {
       for (unsigned i = 0; i < agx_channels(I->src[0]); i++) {
          uint8_t copy[AGX3_TEX_MAX_LENGTH], copy_len = 0;
-         if (!agx3_tex_stage_copy_hints(enc, staging_coord + 2 * i,
+         /* The auxiliary array layer follows the reserved LOD pair. */
+         const unsigned offset = i == 2 ? 6 : 2 * i;
+         if (!agx3_tex_stage_copy_hints(enc, staging_coord + offset,
                                   I->src[0].value + 2 * i,
                                   slot, i == 0 ? wait_mask : 0,
                                   enc == AGX_ISA_ENCODING_AGX3B && I->src[0].cache,
@@ -1008,7 +1010,8 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
          (I->src[3].value & 1) || (I->src[4].value & 1))) ||
        !agx_is_null(I->src[5]) ||
        (I->dim != AGX_DIM_2D && I->dim != AGX_DIM_2D_ARRAY) ||
-       (array && (enc != AGX_ISA_ENCODING_AGX3B || explicit_lod)) ||
+       (array && (enc != AGX_ISA_ENCODING_AGX3B ||
+                  (explicit_lod && !immediate_lod))) ||
        (I->mask == 0 || (I->mask & ~15u)) ||
        I->offset || I->shadow || I->query_lod ||
        I->gather != AGX_GATHER_NONE || I->sparse)
@@ -4174,7 +4177,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             if (staged) {
                ctx->agx3_staging_halfs = MAX2(
                   ctx->agx3_staging_halfs,
-                  coord_base + 2 * agx_channels(I->src[0]));
+                  coord_base + (I->dim == AGX_DIM_2D_ARRAY ? 8 : 4));
             }
             else
                ctx->agx3_staging_known = false;

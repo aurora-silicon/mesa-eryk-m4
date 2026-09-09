@@ -273,3 +273,26 @@ Zink renderer. Build like the other EGL/GLES3 tests and run inside the guards.
 the host oracle passed as well. The host funop, texture and varying suites
 passed 59, 5,571 and 977 checks respectively, and both Mesa builds passed.
 Full-scene and complete-race validation are separate acceptance checks.
+
+### Array mip levels and texture growth (2026-09-09)
+
+The mipmap test now accepts `--array` (three independently colored layers)
+and `--immutable` (allocate all levels before uploading). It additionally
+checks implicit sampling clamped to level zero and integer `texelFetch`.
+Exactly representable constant explicit LODs use the immediate encoding,
+leaving the auxiliary staging bank available for the array layer. Dynamic
+register LOD combined with an array layer remains unsupported.
+
+Mutable texture growth initially corrupted level zero of layers one and two.
+Allocating immutable storage isolated this to integer array reads: filtered
+sampling was correct, but `texelFetch` selected layer zero. The fetch staging
+layout places the layer at half-register offset six, after the reserved LOD
+pair, rather than immediately after XY at offset four. Reserve the full eight
+half-register bank as well.
+
+With this correction, `mipmaps-immutable-2` and `mipmaps-array-4` each passed
+162,720 pixel checks on J713, including texture growth/copying. Both guards
+verified a 60-second watchdog and healthy thermal monitoring; peak exposed
+temperatures were 51.5 C and 51.25 C respectively. The host llvmpipe oracle
+also passed. Host texture, funop and varying suites passed 5,571, 59 and 977
+checks. These tests do not establish complete Vulkan conformance.

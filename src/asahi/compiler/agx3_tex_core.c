@@ -179,10 +179,10 @@ sample_ok(enum agx_isa_encoding enc, const struct agx3_tex_sample_desc *d)
        d->mask != 8 && d->mask != 12 && d->mask != 15)
       return false;
 
-   /* The array selector and register-layer operand are grounded only for the
-    * G17P implicit-LOD form. */
+   /* M4 also qualifies immediate array LODs. Register LOD and layer still
+    * share an auxiliary operand bank whose combined layout is unsupported. */
    if (d->array &&
-       (enc != AGX_ISA_ENCODING_AGX3B || d->lod != AGX3_TEX_LOD_AUTO))
+       (enc != AGX_ISA_ENCODING_AGX3B || d->lod == AGX3_TEX_LOD_REGISTER))
       return false;
 
    const unsigned tk = d->texture_kind ? d->texture_kind : 1;

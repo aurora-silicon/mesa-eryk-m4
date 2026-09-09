@@ -108,6 +108,8 @@ bool agx3_tex_decode_fetch(enum agx_isa_encoding enc, const void *instruction,
  *
  * G17P also supports the witnessed 2D-array implicit-LOD form with a
  * register-valued layer packed into the same auxiliary operand bank.
+ * M4 runtime tests qualify this layer with immediate explicit levels too.
+ * Register-valued LOD plus an array layer remains unsupported.
  * Everything else about the sampler family -- other dimensions, bias,
  * gradients, min-LOD, offsets,
  * shadow compare, gather -- remains a deliberate refusal: those axes either

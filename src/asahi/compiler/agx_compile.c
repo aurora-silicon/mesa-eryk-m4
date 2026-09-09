@@ -3152,6 +3152,18 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
          lod = index;
          lod_is_zero = nir_src_is_const(instr->src[i].src) &&
                        nir_src_as_uint(instr->src[i].src) == 0;
+         if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+             instr->op == nir_texop_txl &&
+             instr->src[i].src_type == nir_tex_src_lod &&
+             nir_src_is_const(instr->src[i].src)) {
+            const float level = nir_src_as_float(instr->src[i].src);
+            /* An immediate LOD leaves the auxiliary staging operand free
+             * for an array layer. Preserve exactly representable levels. */
+            if (level >= 0.0f && level * 64.0f <= 0xfff &&
+                level * 64.0f == (float)(uint16_t)(level * 64.0f) &&
+                agx_minifloat_exact(level))
+               lod = agx_immediate_f(level);
+         }
          break;
 
       case nir_tex_src_lod_bias_min_agx:
