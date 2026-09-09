@@ -1,0 +1,11 @@
+#version 450
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+layout(local_size_x=32) in;
+layout(set=0,binding=0,std430) buffer Data { uint v[]; } data;
+void main() {
+ uint i=gl_LocalInvocationID.x;
+ float16_t h;
+ if (i < 16) h=float16_t(int(data.v[i]));
+ else h=float16_t(data.v[i]);
+ data.v[i]=packFloat2x16(f16vec2(h,float16_t(0.0)));
+}

@@ -18,7 +18,11 @@
 #include <string.h>
 #include <unistd.h>
 
-#ifdef G17P_NULL_DESCRIPTOR
+#ifdef M4_HALF_CONVERSION
+#include "m4_vulkan_half_convert_spv.h"
+#define COMPUTE_SPV m4_vulkan_half_convert_spv
+#define TEST_NAME "m4-vulkan-half-convert"
+#elif defined(G17P_NULL_DESCRIPTOR)
 #include "g17p_vulkan_null_descriptor_spv.h"
 #define COMPUTE_SPV g17p_vulkan_null_descriptor_spv
 #define TEST_NAME "g17p-vulkan-null-descriptor"
@@ -259,12 +263,28 @@ main(int argc, char **argv)
       VK_EXT_ROBUSTNESS_2_EXTENSION_NAME,
    };
 #endif
+#ifdef M4_HALF_CONVERSION
+   VkPhysicalDeviceShaderFloat16Int8Features half = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES,
+   };
+   VkPhysicalDeviceFeatures2 features = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, .pNext = &half,
+   };
+   vkGetPhysicalDeviceFeatures2(physical, &features);
+   if (!half.shaderFloat16) die("shaderFloat16 unavailable");
+   half.shaderInt8 = VK_FALSE;
+   const char *half_extension = VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME;
+#endif
    const VkDeviceCreateInfo device_info = {
       .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
 #ifdef G17P_NULL_DESCRIPTOR
       .pNext = &enabled_robustness2,
       .enabledExtensionCount = 1,
       .ppEnabledExtensionNames = enabled_extensions,
+#endif
+#ifdef M4_HALF_CONVERSION
+      .pNext = &half,
+      .enabledExtensionCount = 1, .ppEnabledExtensionNames = &half_extension,
 #endif
       .queueCreateInfoCount = 1,
       .pQueueCreateInfos = &queue_info,
@@ -353,7 +373,12 @@ main(int argc, char **argv)
     * element read back as 0, which is also what an untouched buffer looks
     * like. With the sentinel the readback classifies itself. */
    for (uint32_t i = 0; i < ELEMENT_COUNT + GUARD_COUNT; ++i)
-      mapped[i] = SENTINEL(i);
+      mapped[i] =
+#ifdef M4_HALF_CONVERSION
+         half_inputs[i];
+#else
+         SENTINEL(i);
+#endif
 
    const VkDescriptorSetLayoutBinding bindings[] = {
       {
@@ -567,7 +592,12 @@ main(int argc, char **argv)
 #ifdef G17P_NULL_DESCRIPTOR
       const uint32_t expected = UINT32_C(0x6d000000) + i;
 #else
-      const uint32_t expected = UINT32_C(0x12340000) + i;
+      const uint32_t expected =
+#ifdef M4_HALF_CONVERSION
+         half_expected[i];
+#else
+         UINT32_C(0x12340000) + i;
+#endif
 #endif
       if (mapped[i] == expected)
          continue;
@@ -591,7 +621,11 @@ main(int argc, char **argv)
 #ifdef G17P_NULL_DESCRIPTOR
               UINT32_C(0x6d000000) + first_bad,
 #else
+#ifdef M4_HALF_CONVERSION
+              half_expected[first_bad],
+#else
               UINT32_C(0x12340000) + first_bad,
+#endif
 #endif
               SENTINEL(first_bad));
       /* The classification is the whole point, so spell it out. */
@@ -643,6 +677,8 @@ main(int argc, char **argv)
    printf(TEST_NAME ": PASS — 32 null SSBO/UBO loads returned zero, null "
                     "SSBO stores were discarded, exact output and 32 guards "
                     "stable for three seconds\n");
+#elif defined(M4_HALF_CONVERSION)
+   printf(TEST_NAME ": PASS — 32 exact signed/unsigned binary16 boundary conversions\n");
 #else
    printf("g17p-vulkan-compute-min: PASS — 32 buffer writes on queue family %u "
           "(flags %#x, private G17P compute route)\n",
