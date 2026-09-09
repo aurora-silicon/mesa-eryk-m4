@@ -487,3 +487,13 @@ its optional first argument saves raw RGBA for inspection. `0ad-translucent-3`
 verified all 4096 pixels. Run 1 refused LDIMM before the wait fix; run 2 failed
 its first preserved-pixel check without a pixel dump. These failures remain
 in evidence. The isolated result is not a cold-start stability claim.
+
+`M4_0AD_NO_POSTPROC=1` disables post-processing for the first-playable
+profile: `0ad-map-15` otherwise rejects a blitter-style texel fetch with a
+varying LOD. The runner now installs a Lua Hyprland rule before launch to
+keep 0 A.D. floating at 1024x768 logical pixels (2048x1536 at the current
+2x scale). Previously tiling expanded it to almost the entire panel.
+Attempts 17/18 exposed launcher timing/legacy-IPC mistakes; the pre-map Lua
+rule in attempt 19 fixes both. The game still stalled in its first scene
+render in attempts 16/19; window size alone did not resolve it. No passing
+map run has yet been established at this commit.

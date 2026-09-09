@@ -280,6 +280,8 @@ def main():
                     '-autostart-ai=2:petra', '-autostart-seed=0', '-autostart-aiseed=0']
                 if os.getenv('M4_0AD_NO_SHADOWS') == '1':
                     game_args.append('-conf=shadows:false')
+                if os.getenv('M4_0AD_NO_POSTPROC') == '1':
+                    game_args.append('-conf=postproc:false')
                 if os.getenv('M4_0AD_SYNC') == '1':
                     game_env.update(ZINK_DEBUG='flushsync,noreorder')
                 if os.getenv('M4_0AD_TRACE') == '1':
@@ -294,6 +296,12 @@ def main():
                                     TRACE_FILE=str(trace_file))
                     (result/'graphics-trace.json').write_text(json.dumps({'path':str(trace_file),'api':'egl'})+'\n')
                 (result/'0ad-command.json').write_text(json.dumps(game_args, indent=2)+'\n')
+                # Register before mapping: Lua-configured Hyprland uses its
+                # Lua IPC, and tiled windows ignore SDL's requested size.
+                subprocess.run(['hyprctl', 'eval',
+                    'hl.window_rule({name="m4-0ad-test", match={class="^pyrogenesis$"}, '
+                    'float=true, size="1024 768", center=true})'],
+                    env=env, check=True, timeout=2)
                 with (result/'0ad.log').open('w') as game_log:
                     game = subprocess.Popen([*user_command, *game_args], env=game_env,
                         stdout=game_log, stderr=game_log, start_new_session=True,
