@@ -141,3 +141,34 @@ fence export/import/wait. Renderer: ``zink Vulkan 1.4(Apple M4 (G16G B0)
 (MESA_HONEYKRISP))``. This first run uses local textures; DMA-BUF sharing and
 actual Hyprland remain subsequent gates. Peak PMP temperature 52 C, watchdog
 60 seconds, clean DRM teardown.
+
+Hyprland and SuperTux on the actual Asahi driver
+----------------------------------------------
+
+J713 ``hyprland-native-5`` and ``hyprland-native-7`` pass the complete desktop
+checks: actual Omarchy user configuration, Zink renderer identity, a red
+terminal verified in screencopy and imported DCP scanout, panel/background
+layers, and SuperTux's real GL context identifying Apple M4 / Honeykrisp.
+The native-5 test peaks at 53.5 C and exits successfully. Both tests use the
+verified 60-second watchdog and mandatory six-channel thermal monitor.
+
+The sustained ``hyprland-live-1`` session additionally reaches visible
+``welcome_antarctica.stl`` gameplay. Its ``gameplay.ppm`` shows correct level
+geometry, sprites and HUD, with an observed 32/33/34 FPS min/average/max in
+the floating 800x450 logical window (scale 2). This is one observed scene,
+not a 60 FPS or full-game benchmark. The intro requires a held input; an
+early synthetic keypress before controller setup did not dismiss it.
+
+The GPU uses the common Asahi DRM scheduler, GEM and GPUVM with the M4 owned
+runtime, vertex/fragment/compute commands and GPU image copies. No g16_lab
+module or CPU shader renderer participates. Display scanout remains the
+existing separate native DCP implementation, with imported GPU buffers.
+The Omarchy shell retains its existing software Qt backend; Hyprland
+compositing and SuperTux rendering are hardware accelerated through Zink.
+
+``tests/m4-desktop`` records the supervised test/deployment scripts and a
+read-only GL context logger. Interactive watchdog renewal requires a fresh
+Vulkan computation with all 32 values verified, responsive Hyprland, valid
+DCP import/completion status, and a live thermal monitor. The default session
+is bounded to 30 minutes. GPU remains at the qualified 338 MHz boot clock;
+GPU thermal throttling and fault recovery are still not implemented.
