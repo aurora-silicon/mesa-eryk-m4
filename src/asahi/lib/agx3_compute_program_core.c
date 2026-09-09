@@ -126,7 +126,7 @@ agx3_g17p_native_compute_launch_pack(
       return false;
 
    memset(packed, 0, AGX3_CDM_DIRECT_LAUNCH_SIZE);
-   if (!program || !grid || program->chip != AGX_CHIP_G17P ||
+   if (!program || !grid || !agx_chip_uses_hal200_ioto(program->chip) ||
        program->program_va == 0 ||
        program->program_va > UINT64_C(0xffffffffffff) ||
        (program->program_va & (AGX_IOTO_PROGRAM_ALIGNMENT - 1)) != 0 ||
@@ -207,7 +207,7 @@ agx3_g17p_native_compute_dispatch_append(
        (sink->capacity != 0 && !sink->data) || sink->length > sink->capacity ||
        AGX3_G17P_NATIVE_COMPUTE_DISPATCH_SIZE >
           sink->capacity - sink->length ||
-       program->chip != AGX_CHIP_G17P ||
+       !agx_chip_uses_hal200_ioto(program->chip) ||
        !program->g17p_native_compute_live_bound)
       return false;
 
@@ -216,7 +216,7 @@ agx3_g17p_native_compute_dispatch_append(
       return false;
 
    const struct agx3_cdm_barrier_info barrier = {
-      .chip = AGX_CHIP_G17P,
+      .chip = program->chip,
       .flags = 0,
    };
    if (!agx3_cdm_barrier_pack(&barrier,

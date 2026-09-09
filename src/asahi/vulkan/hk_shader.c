@@ -193,11 +193,11 @@ hk_preprocess_nir_internal(struct vk_physical_device *vk_pdev, nir_shader *nir)
     * (nir_opt_large_constants.c:545-561).
     */
    if (nir->info.stage == MESA_SHADER_COMPUTE &&
-       ((struct hk_physical_device *)vk_pdev)->dev.chip == AGX_CHIP_G17P)
+       agx_chip_uses_hal200_ioto(((struct hk_physical_device *)vk_pdev)->dev.chip))
       NIR_PASS(_, nir, nir_opt_large_constants, NULL, 32);
 
    /* Optimize but allow copies because we haven't lowered them yet */
-   if (((struct hk_physical_device *)vk_pdev)->dev.chip == AGX_CHIP_G17P)
+   if (agx_chip_uses_hal200_ioto(((struct hk_physical_device *)vk_pdev)->dev.chip))
       agx_preprocess_nir_g17p(nir);
    else
       agx_preprocess_nir(nir);
@@ -841,7 +841,7 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
     * create lod_bias instructions.
     */
    NIR_PASS(_, nir, agx_nir_lower_texture_early_with_2d_robustness,
-            true /* support_lod_bias */, dev->dev.chip == AGX_CHIP_G17P);
+            true /* support_lod_bias */, agx_chip_uses_hal200_ioto(dev->dev.chip));
 
    struct hk_instance *instance = hk_physical_device_instance(
       (struct hk_physical_device *)dev->vk.physical);
@@ -931,7 +931,7 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
             agx_chip_descriptor_generation(dev->dev.chip));
    NIR_PASS(_, nir, agx_nir_lower_multisampled_image_store);
 
-   if (dev->dev.chip == AGX_CHIP_G17P)
+   if (agx_chip_uses_hal200_ioto(dev->dev.chip))
       agx_preprocess_nir_g17p(nir);
    else
       agx_preprocess_nir(nir);
@@ -1140,7 +1140,7 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
    unsigned nr_vbos = 0;
    bool kill_psiz = false;
 
-   if (dev->dev.chip == AGX_CHIP_G17P &&
+   if (agx_chip_uses_hal200_ioto(dev->dev.chip) &&
        nir->info.stage == MESA_SHADER_FRAGMENT) {
       NIR_PASS(_, nir, agx_nir_lower_g17p_cube_samples);
       nir_shader *candidate = nir_shader_clone(NULL, nir);
@@ -1169,7 +1169,7 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
             ralloc_free(candidate);
          }
       }
-   } else if (dev->dev.chip == AGX_CHIP_G17P &&
+   } else if (agx_chip_uses_hal200_ioto(dev->dev.chip) &&
               nir->info.stage == MESA_SHADER_COMPUTE) {
       nir_shader *candidate = nir_shader_clone(NULL, nir);
       struct agx_g17p_sampled_storage_binding sampled_storage;
@@ -1253,7 +1253,7 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
 
       /* Discards must be lowering before lowering MSAA to handle discards */
       NIR_PASS(_, nir, agx_nir_lower_discard_zs_emit);
-      if (dev->dev.chip == AGX_CHIP_G17P) {
+      if (agx_chip_uses_hal200_ioto(dev->dev.chip)) {
          NIR_PASS(_, nir, agx_nir_lower_fs_output_to_epilog_g17p,
                   &shader->info.fs.epilog_key);
       } else {
@@ -1277,7 +1277,7 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
 
       NIR_PASS(_, nir, agx_nir_lower_fs_active_samples_to_register);
       NIR_PASS(_, nir, agx_nir_lower_interpolation);
-      if (dev->dev.chip == AGX_CHIP_G17P) {
+      if (agx_chip_uses_hal200_ioto(dev->dev.chip)) {
          NIR_PASS(_, nir, nir_shader_intrinsics_pass,
                   hk_g17p_lower_flat_nonfan_triangles,
                   nir_metadata_control_flow, NULL);
@@ -1345,7 +1345,7 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
     * no_epilog_discard mask). hk_lower_uvs_index turns those into root
     * accesses, so gather the resource requirement after that pass and before
     * lower_uniforms removes the load_root_agx markers. */
-   if (dev->dev.chip == AGX_CHIP_G17P)
+   if (agx_chip_uses_hal200_ioto(dev->dev.chip))
       shader->info.agx3_uses_root = hk_nir_uses_root(nir);
 
    NIR_PASS(_, nir, nir_shader_intrinsics_pass, lower_uniforms,
@@ -1404,7 +1404,7 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
        * backend runs.  Keep this architectural, not environment-selected:
        * an unhandled descriptor shape must fail closed in the main packer.
        */
-      .no_preamble = dev->dev.chip == AGX_CHIP_G17P,
+      .no_preamble = agx_chip_uses_hal200_ioto(dev->dev.chip),
    };
 
    /* For now, sample shading is always dynamic. Indicate that. */
@@ -1454,7 +1454,7 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
    shader->info.cull_distance_array_size = nir->info.cull_distance_array_size;
    shader->b.info.outputs = outputs;
 
-   if (dev->dev.chip == AGX_CHIP_G17P && sw_stage == MESA_SHADER_VERTEX && hw) {
+   if (agx_chip_uses_hal200_ioto(dev->dev.chip) && sw_stage == MESA_SHADER_VERTEX && hw) {
       const struct hk_agx3_g17p_vertex_compile_info compiler_info = {
          .hardware_vertex = shader->b.info.stage == MESA_SHADER_VERTEX,
          .position_only = shader->b.info.outputs == VARYING_BIT_POS,
@@ -1596,7 +1596,7 @@ hk_compile_shader(struct hk_device *dev, struct vk_shader_compile_info *info,
       /* G17P advertises only VK_SAMPLE_COUNT_1_BIT. Canonicalize sample
        * builtins and qualifiers now, before split FS lowering observes
        * uses_sample_shading and selects the legacy external sample loop. */
-      if (dev->dev.chip == AGX_CHIP_G17P &&
+      if (agx_chip_uses_hal200_ioto(dev->dev.chip) &&
           nir->info.fs.uses_sample_shading)
          NIR_PASS(_, nir, agx_nir_lower_g17p_1x_sample_shading);
 
@@ -1751,7 +1751,7 @@ hk_compile_shader(struct hk_device *dev, struct vk_shader_compile_info *info,
                         : AGX_ROBUSTNESS_DISABLED,
                };
 
-               if (dev->dev.chip == AGX_CHIP_G17P)
+               if (agx_chip_uses_hal200_ioto(dev->dev.chip))
                   agx_nir_lower_vbo_raw(clone, attribs, agx_rs,
                                         !key->vs.static_strides);
                else
@@ -1869,7 +1869,7 @@ hk_compile_shaders(struct vk_device *vk_dev, uint32_t shader_count,
     *
     * Do not apply this to pipeline libraries: their pre-raster shader can be
     * linked with a fragment library later. */
-   if (dev->dev.chip == AGX_CHIP_G17P && state && shader_count > 0 &&
+   if (agx_chip_uses_hal200_ioto(dev->dev.chip) && state && shader_count > 0 &&
        !(state->pipeline_flags & VK_PIPELINE_CREATE_2_LIBRARY_BIT_KHR) &&
        !(state->shader_stages & VK_SHADER_STAGE_FRAGMENT_BIT)) {
       nir_shader *last = shaders[shader_count - 1];

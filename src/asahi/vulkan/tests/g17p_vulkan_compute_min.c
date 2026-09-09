@@ -28,7 +28,9 @@
 #define TEST_NAME "g17p-vulkan-compute-min"
 #endif
 
-#define T8140_DEVICE_ID 0x8140
+#ifndef TEST_DEVICE_ID
+#define TEST_DEVICE_ID 0x8140
+#endif
 #define ELEMENT_COUNT   32
 #ifdef G17P_NULL_DESCRIPTOR
 #define GUARD_COUNT 32
@@ -199,14 +201,14 @@ main(int argc, char **argv)
    VkPhysicalDeviceProperties properties;
    for (uint32_t i = 0; i < physical_count; ++i) {
       vkGetPhysicalDeviceProperties(physical_devices[i], &properties);
-      if (properties.deviceID == T8140_DEVICE_ID) {
+      if (properties.deviceID == TEST_DEVICE_ID) {
          physical = physical_devices[i];
          break;
       }
    }
    free(physical_devices);
    if (physical == VK_NULL_HANDLE)
-      die("T8140/G17P Vulkan device was not found");
+      die("requested Vulkan device ID was not found");
 
    uint32_t queue_family_count = 0;
    vkGetPhysicalDeviceQueueFamilyProperties(physical, &queue_family_count,

@@ -294,7 +294,7 @@ hk_dispatch_g17p_native(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
    static_assert(HK_MAX_SETS == HK_AGX3_G17P_MAX_ROOT_SETS,
                  "G17P root range must cover every Honeykrisp set");
 
-   if (dev->dev.chip != AGX_CHIP_G17P || cs->type != HK_CS_CDM ||
+   if (!agx_chip_uses_hal200_ioto(dev->dev.chip) || cs->type != HK_CS_CDM ||
        !hk_g17p_compute_shader_supported(s, linked) ||
        agx_is_indirect(grid)) {
       vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);

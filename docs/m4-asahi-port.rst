@@ -58,3 +58,33 @@ Workspace evidence is under ``build/mesa-asahi-upstream-control/``, including
 The port logs are ``build/mesa-asahi-tests.log`` and
 ``build/mesa-asahi-graphics-tests.log``. No new Mesa runtime has been installed
 on the J713 as part of this source integration.
+
+First Vulkan compute on the Asahi M4 port
+----------------------------------------
+
+The opt-in ``ASAHI_M4_EXPERIMENTAL=1`` path admits only T8132/G16G with
+one die/cluster and USC 3 / HAL 200. It preserves the real hardware identity,
+uses the native AGX3 compiler and HAL200 Ioto/CDM path, and builds M4's
+ten-entry helper tables instead of Neo's six-entry tables. Executable BOs
+receive GPU read-only bindings. The initial advertised queue supports compute
+and transfer; graphics remains disabled until the M4 render backend is ready.
+Other G16 variants are not admitted.
+
+``vulkan-compute-1`` on J713 boot
+``84bf42d0-9ba9-419f-9d09-5ee8d728a2ac`` passed all 32 output values from
+``g17p_vulkan_compute_min.c`` compiled with ``TEST_DEVICE_ID=0x8132``. This
+is the test's existing SPIR-V computation ``0x12340000 + global_id`` with a
+storage-buffer descriptor, compiled by this Mesa and submitted through the
+new Asahi DRM scheduler/GEM/GPUVM driver (kernel commit ``31dcf1308678``).
+The test's historical executable label still says G17P; the selected device ID
+and actual hardware were M4/T8132. The test also passed Vulkan fence completion,
+followed by the separate open-file DRM teardown test and clean module unload.
+Watchdog timeout was verified at 60 seconds; six-channel thermal peak 53.75 C.
+Evidence is in the workspace's
+``_provenance/asahi-pivot-20260909/hardware/vulkan-compute-1/``.
+
+Native and AArch64 builds passed. Five of six focused Ioto/chip/container tests
+passed; ``asahi-agx-ioto-program-core`` fails its pre-existing negative resource
+composition check at line 642. Compiling the same seven source files from the
+pre-change HEAD reproduces that failure (``build/m4-ioto-baseline/result.log``).
+No new Vulkan graphics, Wayland, Hyprland or SuperTux result is claimed yet.

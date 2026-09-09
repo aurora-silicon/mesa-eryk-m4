@@ -790,7 +790,7 @@ hk_agx3_g17p_compute_program_generate(
    enum agx_chip chip, const struct hk_agx3_g17p_compute_program_desc *desc,
    struct hk_agx3_g17p_compute_program *program)
 {
-   if (!program || chip != AGX_CHIP_G17P || !desc ||
+   if (!program || !agx_chip_uses_hal200_ioto(chip) || !desc ||
        (desc->uniform_range_count != 0 && !desc->uniform_ranges))
       return false;
 
@@ -858,6 +858,7 @@ hk_agx3_g17p_compute_program_generate(
    if (!agx3_g17p_native_compute_program_bind(&launch_desc, &staged.launch))
       return false;
 
+   staged.launch.chip = chip;
    staged.length = (uint16_t)written;
    *program = staged;
    return true;

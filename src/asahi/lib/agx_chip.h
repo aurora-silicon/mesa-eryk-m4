@@ -64,6 +64,9 @@ enum agx_chip {
    AGX_CHIP_UNKNOWN,
 };
 
+
+
+
 /* Instruction set. Apple's compiler names these agx2 and agx3, and the low
  * nibble of an applegpu Mach-O cpusubtype is exactly this value. */
 enum agx_isa {
@@ -139,6 +142,14 @@ enum agx_submission_model {
 #include <stdint.h>
 
 #include "drm-uapi/asahi_drm.h"
+
+/* Shared native shader-loading family. Device admission and render command
+ * support remain separate; this does not admit other G16 products. */
+static inline bool
+agx_chip_uses_hal200_ioto(enum agx_chip chip)
+{
+   return chip == AGX_CHIP_G16G || chip == AGX_CHIP_G17P;
+}
 
 #ifdef __cplusplus
 extern "C" {

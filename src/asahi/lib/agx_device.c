@@ -309,6 +309,11 @@ agx_bo_alloc(struct agx_device *dev, size_t size, size_t align,
    /* executable implies low va */
    assert(!(flags & AGX_BO_EXEC) || (flags & AGX_BO_LOW_VA));
 
+   /* M4 instruction fetch uses the read-only GPU permission. CPU mappings
+    * remain writable for uploads; shader allocations are immutable to GPU. */
+   if (dev->chip == AGX_CHIP_G16G && (flags & AGX_BO_EXEC))
+      flags |= AGX_BO_READONLY;
+
    struct drm_asahi_gem_create gem_create = {.size = size};
 
    if (flags & AGX_BO_WRITEBACK)
@@ -755,7 +760,12 @@ agx_open_device(void *memctx, struct agx_device *dev)
     * is implemented; otherwise a newly-recognised chip can silently reach an
     * encoder from the wrong generation.
     */
-   if (!agx_params_driver_supported(&dev->params)) {
+   const bool m4_experimental = dev->chip == AGX_CHIP_G16G &&
+      dev->params.chip_id == 0x8132 && dev->params.num_dies == 1 &&
+      dev->params.num_clusters_total == 1 && dev->params.usc_generation == 3 &&
+      dev->params.gpu_hal_generation == 200 &&
+      debug_get_bool_option("ASAHI_M4_EXPERIMENTAL", false);
+   if (!m4_experimental && !agx_params_driver_supported(&dev->params)) {
       if (dev->chip == AGX_CHIP_UNKNOWN) {
          fprintf(stderr,
                  "Unsupported Apple GPU architecture G%u (variant 0x%x, %u "
@@ -909,7 +919,7 @@ agx_open_device(void *memctx, struct agx_device *dev)
     * a practical limit.
     *
     * ASAHI_G17P_USC_BASE below overrides this for further experiments only. */
-   if (dev->chip == AGX_CHIP_G17P)
+   if (agx_chip_uses_hal200_ioto(dev->chip))
       dev->shader_base = AGX_G17P_USC_WINDOW_BASE;
 
    /* G17P launch-level bring-up controls.
@@ -993,7 +1003,7 @@ agx_open_device(void *memctx, struct agx_device *dev)
     * untouched while making every ordinary control-stream allocation
     * directly representable, with no per-run alias option.
     */
-   const bool heap_below_usc = dev->chip == AGX_CHIP_G17P;
+   const bool heap_below_usc = agx_chip_uses_hal200_ioto(dev->chip);
 
    /*
     * Start the low heap as high as it can go rather than at the reservation.
@@ -1286,7 +1296,7 @@ agx_open_device(void *memctx, struct agx_device *dev)
     * dword terminates the chain, so it is a well-formed empty container
     * rather than a blank page.
     */
-   if (dev->chip == AGX_CHIP_G17P) {
+   if (agx_chip_uses_hal200_ioto(dev->chip)) {
       const size_t usc_base_size = AIL_PAGESIZE;
 
       simple_mtx_lock(&dev->vma_lock);
@@ -1300,8 +1310,8 @@ agx_open_device(void *memctx, struct agx_device *dev)
       }
 
       struct agx_bo *usc_base = agx_create_fixed_bo(
-         dev, usc_base_size, AGX_BO_WRITEBACK, dev->shader_base,
-         DRM_ASAHI_BIND_READ | DRM_ASAHI_BIND_WRITE, "G17P USC window base");
+         dev, usc_base_size, dev->chip == AGX_CHIP_G16G ? 0 : AGX_BO_WRITEBACK, dev->shader_base,
+         DRM_ASAHI_BIND_READ, "HAL200 USC window base");
       if (usc_base == NULL) {
          fprintf(stderr, "Failed to bind the USC window base page\n");
          return false;
@@ -1314,7 +1324,7 @@ agx_open_device(void *memctx, struct agx_device *dev)
       }
 
       memset(map, 0, usc_base_size);
-      agx3_build_container_lead(map);
+      agx3_build_container_lead_for_chip(map, dev->chip);
       if (agx_bo_sync_for_device(usc_base, 0, usc_base_size))
          return false;
 

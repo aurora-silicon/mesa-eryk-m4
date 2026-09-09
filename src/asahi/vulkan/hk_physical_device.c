@@ -685,7 +685,7 @@ hk_get_device_features(
 #endif
    };
 
-   if (dev->chip == AGX_CHIP_G17P) {
+   if (agx_chip_uses_hal200_ioto(dev->chip)) {
       /* The first HAL200 path is intentionally one ordinary, single-sample
        * graphics pipeline. Keep optional feature reporting within that path
        * until the corresponding joined Ioto programs are implemented. */
@@ -751,7 +751,7 @@ hk_get_device_properties(const struct agx_device *dev,
       .apiVersion = hk_get_vk_version(),
       .driverVersion = vk_get_driver_version(),
       .vendorID = instance->force_vk_vendor ?: VK_VENDOR_ID_MESA,
-      .deviceID = dev->chip == AGX_CHIP_G17P ? dev->params.chip_id : 0,
+      .deviceID = agx_chip_uses_hal200_ioto(dev->chip) ? dev->params.chip_id : 0,
       .deviceType = VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU,
 
       /* Vulkan 1.0 limits */
@@ -1439,6 +1439,9 @@ hk_create_drm_physical_device(struct vk_instance *_instance,
       queue_flags = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT |
                     VK_QUEUE_TRANSFER_BIT;
    }
+
+   if (pdev->dev.chip == AGX_CHIP_G16G)
+      queue_flags = VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT;
 
    uint32_t queue_count = 1;
    if (pdev->dev.params.features & DRM_ASAHI_FEATURE_INDEPENDENT_QUEUES) {

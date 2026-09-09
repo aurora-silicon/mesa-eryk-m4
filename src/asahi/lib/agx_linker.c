@@ -118,28 +118,27 @@ static const uint8_t sample_loop_footer[] = {
 
 /* "0f 00 54 <opcode> 00 x6 06 00 06 00 06 00" per record, then two terminals. */
 static void
-agx3_fill_helper_table(uint8_t *image, size_t base)
+agx3_fill_helper_table(uint8_t *image, size_t base, unsigned positions)
 {
-   static const uint8_t opcodes[] = {0x60, 0x50, 0x40, 0x30, 0x20, 0x10};
    static const uint8_t terminal[16] = {
       0xf7, 0x03, 0xaa, 0x00, 0x8f, 0x02, 0x54, 0x01,
       0x06, 0x00, 0x06, 0x00, 0x06, 0x00, 0x06, 0x00,
    };
 
-   for (unsigned i = 0; i < ARRAY_SIZE(opcodes); ++i) {
+   for (unsigned i = 0; i < positions; ++i) {
       uint8_t *record = image + base + i * 0x10;
 
       memset(record, 0, 0x10);
       record[0] = 0x0f;
       record[2] = 0x54;
-      record[3] = opcodes[i];
+      record[3] = (positions - i) * 16;
       for (unsigned h = 10; h < 16; h += 2) {
          record[h] = 0x06;
          record[h + 1] = 0x00;
       }
    }
-   memcpy(image + base + 0x60, terminal, sizeof(terminal));
-   memcpy(image + base + 0x70, terminal, sizeof(terminal));
+   memcpy(image + base + positions * 16, terminal, sizeof(terminal));
+   memcpy(image + base + (positions + 1) * 16, terminal, sizeof(terminal));
 }
 
 static void
@@ -163,23 +162,30 @@ agx3_container_size(size_t code_size)
  * tables. Identical in both captured Apple code images, so it is a fixed
  * prologue rather than anything workload-specific. */
 void
-agx3_build_container_lead(uint8_t *image)
+agx3_build_container_lead_for_chip(uint8_t *image, enum agx_chip chip)
 {
+   const unsigned positions = chip == AGX_CHIP_G16G ? 10 : 6;
    memset(image, 0, AGX3_CONTAINER_LEAD);
    agx3_put_le32(image, AGX3_CONTAINER_LEAD);
    for (size_t offset = 0x40; offset < AGX3_CONTAINER_LEAD; offset += 2) {
       image[offset] = 0x06;
       image[offset + 1] = 0x00;
    }
-   agx3_fill_helper_table(image, 0x100);
-   agx3_fill_helper_table(image, 0x200);
+   agx3_fill_helper_table(image, 0x100, positions);
+   agx3_fill_helper_table(image, 0x200, positions);
+}
+
+void
+agx3_build_container_lead(uint8_t *image)
+{
+   agx3_build_container_lead_for_chip(image, AGX_CHIP_G17P);
 }
 
 static void
-agx3_build_container(uint8_t *image, size_t code_size, bool fragment)
+agx3_build_container(uint8_t *image, size_t code_size, bool fragment, enum agx_chip chip)
 {
    memset(image, 0, agx3_container_size(code_size));
-   agx3_build_container_lead(image);
+   agx3_build_container_lead_for_chip(image, chip);
 
    agx3_put_le32(image + AGX3_CONTAINER_LEAD,
                  AGX3_CONTAINER_BLOCK_HDR + AGX3_CONTAINER_CONST_PROG +
@@ -192,7 +198,7 @@ agx3_build_container(uint8_t *image, size_t code_size, bool fragment)
 static bool
 agx3_uses_code_container(const struct agx_device *dev)
 {
-   return dev->chip == AGX_CHIP_G17P;
+   return agx_chip_uses_hal200_ioto(dev->chip);
 }
 
 bool
@@ -312,7 +318,7 @@ agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
    }
 
    if (container)
-      agx3_build_container(container_map, size, fragment);
+      agx3_build_container(container_map, size, fragment, dev->chip);
 
    size_t offset = 0;
    if (colour_fused) {

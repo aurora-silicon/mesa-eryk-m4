@@ -68,6 +68,7 @@ struct agx_linked_shader {
 /* Write the AGX3 code container's fixed 0x340-byte leading block. */
 #define AGX3_CONTAINER_LEAD_SIZE 0x340u
 void agx3_build_container_lead(uint8_t *image);
+void agx3_build_container_lead_for_chip(uint8_t *image, enum agx_chip chip);
 
 bool agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
                    bool fragment, struct agx_shader_part *main,
