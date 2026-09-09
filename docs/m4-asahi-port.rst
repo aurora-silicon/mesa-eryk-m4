@@ -127,3 +127,9 @@ The test accepts ``ASAHI_TEST_REPEAT=1..1000`` for bounded resubmission; the
 command buffer permits reuse and each iteration waits on its own fence.
 The hardware run used a verified 60-second watchdog and six-channel thermal
 guard, with peak observed temperature 53.5 C.
+
+``vulkan-render-repeat-5`` passes both readback paths, four submissions each,
+with the same full-image checksum. M4 now selects explicit channel packing
+and raw memory stores in the meta-copy shader, matching the native HAL200
+path. The previous formatted-store selection lost the green/blue channels.
+Safe open-file teardown passed; thermal peak 51.5 C, watchdog 60 seconds.
