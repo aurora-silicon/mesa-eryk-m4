@@ -16,6 +16,11 @@ values, and checks Hyprland IPC and DCP import/completion status every five
 seconds. `desktop-guard.py` verifies a 60-second hardware watchdog before any
 work, and renews it only for a fresh, sequential successful GPU/compositor
 check with a live thermal monitor. It never runs an unconditional heartbeat.
+During long game upload batches it also accepts newly observed, at most
+three-second-old kernel GPU-job retirements. The thermal check remains
+mandatory for every renewal. Compute and screencopy requests may wait up to
+120 seconds behind SuperTuxKart's upload work; without continuing GPU
+retirements the 60-second watchdog still expires independently.
 All six PMP channels are monitored at 0.5-second intervals, with enabled CPU
 thermal policy, startup below 65 C and workload termination at 75 C. No GPU
 clock increase or qualified dedicated GPU sensor is assumed.
@@ -56,3 +61,14 @@ Do not start competing watchdog owners or reload a stopped firmware session
 without a fresh reboot. The launch script retains an already-running Asahi/DCP
 session. `g16_lab` must be absent. This is a supervised bring-up desktop, not an
 automatic boot service or a claim of GPU recovery/thermal throttling support.
+
+## SuperTuxKart full-race test
+
+Set `M4_TEST_SUPERTUXKART=1` when invoking the guard to run SuperTuxKart 1.5
+through Zink/Honeykrisp in an 800x450 logical Wayland window. The isolated
+configuration uses Lighthouse, four AI karts, one lap, `--profile-laps=1`,
+and disables dynamic lights and texture compression. This test requires the
+game to exit successfully after printing nonzero frame-count and timing
+statistics; mapping a loading window, reaching the deadline, or ending the
+session manually does not count as completing the demo. It saves the result
+as `supertuxkart-demo.json`, with game logs and intermediate screen captures.

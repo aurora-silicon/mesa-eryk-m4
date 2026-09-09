@@ -172,3 +172,40 @@ Vulkan computation with all 32 values verified, responsive Hyprland, valid
 DCP import/completion status, and a live thermal monitor. The default session
 is bounded to 30 minutes. GPU remains at the qualified 338 MHz boot clock;
 GPU thermal throttling and fault recovery are still not implemented.
+
+SuperTuxKart bring-up checkpoints
+--------------------------------
+
+SuperTuxKart 1.5 exercises additional compiler and upload paths beyond
+SuperTux's 2D scene. The initial full-race attempts exposed three independent
+issues, corrected in the shared driver/compiler paths:
+
+* Native VDM command aliases were restricted to a 24 MiB window. They now use
+  the architectural 32-bit offset aperture, with sparse mappings and command
+  buffer ownership unchanged.
+* Late AIR integer-to-half conversions are composed from integer-to-F32 and
+  F32-to-F16. Every integer in the finite half range, including its overflow
+  midpoint, is exact in F32. The Vulkan half conversion probe passes 32 exact
+  signed/unsigned boundary cases on M4.
+* Fragment-based buffer-to-image copies could read before the source for
+  helper invocations outside an odd destination rectangle. Unsigned coordinate
+  subtraction wrapped the byte offset to nearly 4 GiB. Copy extent now bounds
+  helper coordinates before address calculation. The 7x33 upload at (1,0)
+  reproduced the fault before this fix and passes all 512x512 pixels and
+  guards afterwards; top-edge and bottom-right-corner uploads also pass.
+
+The paired kernel no longer advertises soft faults on M4 merely because the
+legacy module parameter has its default value: the owned runtime does not
+apply that legacy firmware setting. This does not enable fault recovery.
+
+A subsequent scene shader required a nonzero minifloat compare operand in a
+general float select. The compiler materializes that comparator as an exact
+F32 register, preserving integer bit-pattern semantics for selected operands.
+The dedicated Vulkan test passes 32 exact results, including NaNs, infinities,
+signed zero, equality and ordered comparisons.
+
+These are individual hardware checkpoints, not a completed SuperTuxKart race.
+Evidence is under workspace ``_provenance/asahi-stk-20260909/``, including
+``half-convert-1``, ``subrect-odd-3``, ``subrect-edges-1`` and
+``compare-select-1``. All used a verified 60-second watchdog and the six-channel
+thermal guard. Full-race qualification remains in progress.
