@@ -232,3 +232,44 @@ kart draws (1,751 covered pixels) matched the llvmpipe reference's coverage
 exactly. RGB remained incorrect, directing further investigation to shading
 and texture sampling. The guarded replay completed with no thermal failure;
 the hottest exposed sensor reached 53 C.
+
+### Mipmap selection and helper pixels (2026-09-09)
+
+The captured kart's coverage, UVs and vertex colors matched the reference,
+and linear filtering without mipmaps differed by at most one UNORM8 step.
+With mipmaps enabled, 226 of its 254 pixels differed by more than three steps.
+A fixture replay with each mip filled with a distinct constant color showed
+that levels 1–10 selected correctly, while explicit level zero incorrectly
+used implicit derivatives. Keep AGX3B `txl(..., 0)` explicit in every stage,
+not just compute (`stk-modes-3`).
+
+Small procedural triangles then reproduced invalid derivatives at primitive
+edges. Pixel-position derivatives were correct, while texture-coordinate
+helper values were wrong. The f63 marker previously emitted on the first
+interpolation suppressed those helper values. With that marker clear,
+`stk-marker-1` matched the small-triangle derivative reference exactly and its
+mipmap reference within one UNORM8 step. The isolated captured kart dropped
+from 226 to eight pixels above the three-step threshold (maximum nine steps);
+this remaining difference is not claimed to be exact rendering.
+
+Use NIR's coarse/full-quad helper requirements to retain helper values during
+interpolation and coefficient loads. Plain varying shaders keep the existing
+native marker. The ordinary color writeout protocol remains responsible for
+completion. Primary/secondary triangle-merging bit experiments did not fix
+this error and are not included.
+
+Derivative instructions also need their own source-lifetime handling: their
+composer root requires f29=0, so optional last-use discard must not be encoded.
+Retire pending input producers with the existing slot-wait sequence rather
+than requiring unqualified inline derivative waits.
+
+`m4_zink_mipmaps.c` is a self-contained regression with generated mip colors,
+explicit levels 0–8, automatic selection and XY derivatives on full-size and
+small triangles. It verifies both covered-pixel counts and RGB values against
+an analytic oracle (tolerance two UNORM8 steps). `--explicit-only` isolates
+explicit selection. `--reference` requires llvmpipe; normal mode requires an M4
+Zink renderer. Build like the other EGL/GLES3 tests and run inside the guards.
+`mipmaps-2` passed all 46,048 pixel checks with the conditional helper fix;
+the host oracle passed as well. The host funop, texture and varying suites
+passed 59, 5,571 and 977 checks respectively, and both Mesa builds passed.
+Full-scene and complete-race validation are separate acceptance checks.

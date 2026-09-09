@@ -3244,11 +3244,10 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
 
    /* AGX2's AUTO_LOD encoding also covers txl(..., 0). G17P's AUTO form is
     * specifically the fragment derivative form, while Apple's kernel
-    * witnesses use the explicit immediate-level encoding. Keep compute txl
-    * at level zero explicit so the packer can select that native form. */
+    * witnesses use the explicit immediate-level encoding. Keep txl at level
+    * zero explicit in every stage; fragment txl must not acquire derivatives. */
    if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
-       b->shader->stage == MESA_SHADER_COMPUTE && instr->op == nir_texop_txl &&
-       lod_is_zero)
+       instr->op == nir_texop_txl && lod_is_zero)
       lod_mode = AGX_LOD_MODE_LOD_MIN;
 
    if (lod_mode == AGX_LOD_MODE_AUTO_LOD) {

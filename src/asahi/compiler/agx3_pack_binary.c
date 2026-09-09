@@ -3913,6 +3913,13 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
    unsigned vertex_loads_seen = 0;
    unsigned loop_depth = 1;
    bool interpolation_started = false;
+   /* The native input marker is safe for the plain varying witnesses, but
+    * suppresses out-of-primitive helper values on G16G. Keep complete quads
+    * through interpolation whenever derivatives or quad operations need them.
+    * The colour writeout protocol still handles the end of the shader. */
+   const bool needs_quad_helpers = ctx->stage == MESA_SHADER_FRAGMENT &&
+      (ctx->nir->info.fs.needs_coarse_quad_helper_invocations ||
+       ctx->nir->info.fs.needs_full_quad_helper_invocations);
    if (has_coverage_write && enc == AGX_ISA_ENCODING_AGX3B &&
        ctx->stage == MESA_SHADER_FRAGMENT &&
        !ctx->key->fs.ignore_tib_dependencies) {
@@ -4003,7 +4010,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                  !agx3_private_rhw_use(ctx, block, I)))
                AGX3_REFUSE(I);
             const bool first = enc == AGX_ISA_ENCODING_AGX3B &&
-               ctx->stage == MESA_SHADER_FRAGMENT && !interpolation_started;
+               ctx->stage == MESA_SHADER_FRAGMENT && !interpolation_started &&
+               !needs_quad_helpers;
             if (!agx3_emit_interp(emission, enc, I, wait, first,
                                   ctx->stage == MESA_SHADER_FRAGMENT))
                AGX3_REFUSE(I);
@@ -4068,7 +4076,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
 
          if (I->op == AGX_OPCODE_LDCF) {
             const bool first = enc == AGX_ISA_ENCODING_AGX3B &&
-               ctx->stage == MESA_SHADER_FRAGMENT && !interpolation_started;
+               ctx->stage == MESA_SHADER_FRAGMENT && !interpolation_started &&
+               !needs_quad_helpers;
             if (!agx3_emit_ldcf(emission, enc, I, slot, wait, first))
                AGX3_REFUSE(I);
             interpolation_started = true;
@@ -4659,9 +4668,17 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
           * the 2x2 quad, and every witness is a fragment shader. */
          const int fop = agx3_map_funop(I->op);
          if (fop >= 0) {
+            uint16_t funop_wait = wait;
+            /* Derivative instructions have no qualified inline wait fields.
+             * Retire their input producers with the ordinary slot-wait form. */
+            if ((fop == AGX3_FUNOP_DFDX || fop == AGX3_FUNOP_DFDY) && wait) {
+               if (!agx3_retire_slots_noop(emission, enc, wait))
+                  AGX3_REFUSE(I);
+               funop_wait = 0;
+            }
             if (((fop == AGX3_FUNOP_DFDX || fop == AGX3_FUNOP_DFDY) &&
                  ctx->stage != MESA_SHADER_FRAGMENT) ||
-                !agx3_emit_funop(emission, enc, I, (enum agx3_funop)fop, wait))
+                !agx3_emit_funop(emission, enc, I, (enum agx3_funop)fop, funop_wait))
                AGX3_REFUSE(I);
             continue;
          }

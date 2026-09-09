@@ -146,7 +146,10 @@ encode(enum agx_isa_encoding enc, enum agx3_funop op, uint16_t dest,
          return false;
       ov[n++] = (struct agx3_field_kv)KV(11, runtime->dest_cache);
       ov[n++] = (struct agx3_field_kv)KV(27, runtime->src_cache);
-      ov[n++] = (struct agx3_field_kv)KV(29, runtime->src_discard);
+      /* The derivative forms require f29=0: their source has a cache
+       * selector but no discard encoding. A last use may retain its input. */
+      if (op != AGX3_FUNOP_DFDX && op != AGX3_FUNOP_DFDY)
+         ov[n++] = (struct agx3_field_kv)KV(29, runtime->src_discard);
    }
    if (src_abs)
       ov[n++] = (struct agx3_field_kv)KV(30, 1);

@@ -194,6 +194,29 @@ main(void)
                   agx3_funop_encode(AGX_ISA_ENCODING_AGX3B, AGX3_FUNOP_FLOOR,
                                     128, 0, false, false, false, 0, b, &len));
 
+   /* A derivative source has no discard field. Last-use hints must remain
+    * encodable and agree with the otherwise identical retained source. */
+   for (unsigned op = AGX3_FUNOP_DFDX; op <= AGX3_FUNOP_DFDY; ++op) {
+      for (unsigned dest_cache = 0; dest_cache < 2; ++dest_cache) {
+         struct agx3_funop_runtime hints = {.dest_cache = dest_cache};
+         uint8_t retained[AGX3_FUNOP_MAX_LENGTH], discarded[AGX3_FUNOP_MAX_LENGTH];
+         uint8_t retained_len = 0, discarded_len = 0;
+         bool ok = agx3_funop_encode_runtime(
+            AGX_ISA_ENCODING_AGX3B, op, 2, 4, false, false, false, 0,
+            &hints, retained, &retained_len);
+         hints.src_discard = true;
+         ok &= agx3_funop_encode_runtime(
+            AGX_ISA_ENCODING_AGX3B, op, 2, 4, false, false, false, 0,
+            &hints, discarded, &discarded_len);
+         checks++;
+         if (!ok || retained_len != discarded_len ||
+             memcmp(retained, discarded, retained_len)) {
+            fprintf(stderr, "derivative last-use hint failed: op %u\n", op);
+            failures++;
+         }
+      }
+   }
+
    if (failures) {
       fprintf(stderr, "agx3_funop_core: %u/%u checks failed\n", failures,
               checks);
