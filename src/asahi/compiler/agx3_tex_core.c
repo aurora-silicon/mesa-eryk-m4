@@ -179,6 +179,10 @@ sample_ok(enum agx_isa_encoding enc, const struct agx3_tex_sample_desc *d)
        d->mask != 8 && d->mask != 12 && d->mask != 15)
       return false;
 
+   if (d->cube && (enc != AGX_ISA_ENCODING_AGX3B || d->array ||
+                   d->lod != AGX3_TEX_LOD_AUTO))
+      return false;
+
    /* M4 also qualifies immediate array LODs. Register LOD and layer still
     * share an auxiliary operand bank whose combined layout is unsupported. */
    if (d->array &&
@@ -249,7 +253,7 @@ agx3_tex_encode_sample(enum agx_isa_encoding enc,
    ov[n++] = (struct agx3_field_kv)KV(26, d->slot);
    ov[n++] = (struct agx3_field_kv)KV(27, d->coord_kill ? 1 : 0);
    ov[n++] = (struct agx3_field_kv)KV(75, d->mask);
-   ov[n++] = (struct agx3_field_kv)KV(76, 1);  /* 2D */
+   ov[n++] = (struct agx3_field_kv)KV(76, d->cube ? 4 : 1);  /* M4 cube / 2D */
    ov[n++] = (struct agx3_field_kv)KV(78, 2);  /* filtered sample */
    if (d->array)
       ov[n++] = (struct agx3_field_kv)KV(77, 2); /* register array layer */

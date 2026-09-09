@@ -135,6 +135,7 @@ struct agx3_tex_sample_desc {
    bool coord_kill;
    bool final;          /* witnessed final texture-op marker */
    bool array;          /* 2D array: register layer already in operand bank 6 */
+   bool cube;           /* M4 projected UV plus packed face in operand bank 6 */
    enum agx3_tex_operand_kind texture_kind;
    enum agx3_tex_operand_kind sampler_kind;
    uint16_t texture_value;

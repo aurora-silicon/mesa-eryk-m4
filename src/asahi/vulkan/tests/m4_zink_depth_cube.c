@@ -2,6 +2,7 @@
  * Real Zink rendering checks for depth ordering, partial depth preservation,
  * and all six cubemap faces. Run inside the J713 watchdog/thermal guard.
  */
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -49,6 +50,8 @@ program(const char *fs)
    return p;
 }
 
+static unsigned tolerance;
+
 static void
 verify(const char *label, unsigned test, const uint8_t expected[4])
 {
@@ -56,7 +59,10 @@ verify(const char *label, unsigned test, const uint8_t expected[4])
    glReadPixels(0, 0, 32, 32, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
    CHECK(glGetError() == GL_NO_ERROR);
    for (unsigned i = 0; i < 32 * 32; ++i) {
-      if (memcmp(pixels[i], expected, 4)) {
+      bool mismatch = false;
+      for (unsigned c = 0; c < 4; c++)
+         mismatch |= abs((int)pixels[i][c] - expected[c]) > tolerance;
+      if (mismatch) {
          fprintf(stderr, "FAIL %s test=%u pixel=%u got=%u,%u,%u,%u "
                  "expected=%u,%u,%u,%u\n", label, test, i,
                  pixels[i][0], pixels[i][1], pixels[i][2], pixels[i][3],
@@ -64,19 +70,23 @@ verify(const char *label, unsigned test, const uint8_t expected[4])
          exit(1);
       }
    }
-   printf("PASS: %s test=%u, 1024 exact pixels\n", label, test);
+   printf("PASS: %s test=%u, 1024 pixels, tolerance=%u\n", label, test, tolerance);
    fflush(stdout);
 }
 
 int
 main(int argc, char **argv)
 {
+   bool reference = argc > 1 && !strcmp(argv[argc - 1], "--reference");
+   if (reference)
+      argc--;
+   const int cube_seams = argc == 2 && !strcmp(argv[1], "--cube-seams");
    const int array_face = argc == 2 && !strcmp(argv[1], "--array-face");
    const int array = array_face || (argc == 2 && !strcmp(argv[1], "--array"));
    const int direction = argc == 2 && !strcmp(argv[1], "--direction");
    const int face_math = argc == 2 && !strcmp(argv[1], "--face-math");
    const int cube_grid = argc == 2 && !strcmp(argv[1], "--cube-grid");
-   CHECK(argc == 1 || array || direction || face_math || cube_grid);
+   CHECK(argc == 1 || array || direction || face_math || cube_grid || cube_seams);
    EGLDisplay d = eglGetPlatformDisplay(EGL_PLATFORM_SURFACELESS_MESA,
                                        EGL_DEFAULT_DISPLAY, NULL);
    CHECK(d != EGL_NO_DISPLAY && eglInitialize(d, NULL, NULL) &&
@@ -86,8 +96,9 @@ main(int argc, char **argv)
    CHECK(c != EGL_NO_CONTEXT && eglMakeCurrent(d, EGL_NO_SURFACE, EGL_NO_SURFACE, c));
    const char *renderer = (const char *)glGetString(GL_RENDERER);
    fprintf(stderr, "renderer: %s\n", renderer);
-   CHECK(renderer && strstr(renderer, "zink") && strstr(renderer, "M4") &&
-         !strstr(renderer, "llvmpipe"));
+   CHECK(renderer && (reference ? strstr(renderer, "llvmpipe") != NULL :
+         (strstr(renderer, "zink") && strstr(renderer, "M4") &&
+          !strstr(renderer, "llvmpipe"))));
    GLuint flat = program("#version 300 es\nprecision highp float; "
       "uniform vec4 colour; out vec4 result; void main(){result=colour;}");
    GLuint cube = program(array_face ?
@@ -179,8 +190,8 @@ main(int argc, char **argv)
          glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, GL_RGBA8, 4, 4,
                       0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
    }
-   glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-   glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+   glTexParameteri(target, GL_TEXTURE_MIN_FILTER, cube_seams ? GL_LINEAR : GL_NEAREST);
+   glTexParameteri(target, GL_TEXTURE_MAG_FILTER, cube_seams ? GL_LINEAR : GL_NEAREST);
    glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
    glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
    glUniform1i(glGetUniformLocation(cube, "tex"), 0);
@@ -215,6 +226,60 @@ main(int argc, char **argv)
       const uint8_t face_value[4] = {face,0,0,255};
       verify(face_math ? "face selection math" : direction ? "direction uniform" : array ? "array layer" : "cubemap face",
              face, face_math ? face_value : direction ? axes[face / 2] : faces[face]);
+   }
+   if (cube_seams) {
+      tolerance = 1;
+      unsigned test = 0;
+      /* Two major axes cross an edge. At the exact boundary, linear
+       * filtering averages the two participating faces. */
+      for (int x = -1; x <= 1; x++) {
+         for (int y = -1; y <= 1; y++) {
+            for (int z = -1; z <= 1; z++) {
+               int axes[] = {x, y, z};
+               unsigned count = !!x + !!y + !!z;
+               if (count != 2)
+                  continue;
+               unsigned sum[4] = {0};
+               for (unsigned axis = 0; axis < 3; axis++) {
+                  if (!axes[axis])
+                     continue;
+                  unsigned face = axis * 2 + (axes[axis] < 0);
+                  for (unsigned c = 0; c < 4; c++)
+                     sum[c] += faces[face][c];
+               }
+               uint8_t expected[4];
+               for (unsigned c = 0; c < 4; c++)
+                  expected[c] = (sum[c] + count / 2) / count;
+               glUniform3f(glGetUniformLocation(cube, "direction"), x, y, z);
+               glDrawArrays(GL_TRIANGLES, 0, 6);
+               verify("cube edge filtering", test++, expected);
+            }
+         }
+      }
+   }
+   if (cube_seams) {
+      /* Corner reconstruction may vary across implementations. Vulkan only
+       * requires a constant result when all incident texels agree. Use that
+       * portable oracle instead of imposing llvmpipe's three-face average.
+       * See Vulkan-Docs chapters/textures.adoc, Cube Map Corner Texel. */
+      const uint8_t expected[4] = {37, 113, 211, 255};
+      uint8_t pixels[16][4];
+      for (unsigned i = 0; i < 16; i++)
+         memcpy(pixels[i], expected, 4);
+      for (unsigned face = 0; face < 6; face++)
+         glTexSubImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, 0, 0,
+                         4, 4, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+      tolerance = 0;
+      unsigned test = 0;
+      for (int x = -1; x <= 1; x += 2) {
+         for (int y = -1; y <= 1; y += 2) {
+            for (int z = -1; z <= 1; z += 2) {
+               glUniform3f(glGetUniformLocation(cube, "direction"), x, y, z);
+               glDrawArrays(GL_TRIANGLES, 0, 6);
+               verify("cube corner constant preservation", test++, expected);
+            }
+         }
+      }
    }
    glDeleteTextures(1, &texture);
    glDeleteTextures(1, &color);

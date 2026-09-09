@@ -314,3 +314,37 @@ verified 38 compute/compositor/scanout health checks and a 60-second watchdog.
 All six exposed thermal channels remained healthy; the peak was 54.75 C.
 GPU clocks remained at the boot setting and CPU thermal policy stayed enabled.
 This qualifies this bounded race on J713, not general long-term stability.
+
+### Native M4 cubemap filtering (2026-09-09)
+
+The earlier cube-to-array lowering selected the right faces but discarded
+cube-aware edge filtering and derivative handling. The captured sky had
+1,809 pixels more than three UNORM8 steps from the reference, including
+visible dashed seams. M4's native SMP cube selector is f76=4. It takes
+projected UV and a packed integer face, rather than the original XYZ ray.
+Use the existing face projection, coordinate bank zero and PACK_SMPIR bank
+six, and retain a cube image descriptor with a cube count. This M4 selection
+does not change the unqualified G17P cube path. Cube arrays and explicit cube
+LOD remain outside this qualified subset.
+
+`cube-native-grid-6` passed all 96 face/texel cases (98,304 exact pixels).
+`sky-native-normal-1` ran the isolated captured sky shader with its original
+textures and mip generation: all 1,440,000 pixels were within one UNORM8 step
+of llvmpipe and the seams disappeared. `cube-native-seams-3` passed all twelve
+edges at tolerance one and all eight constant-color corners exactly, using
+the self-contained `m4_zink_depth_cube.c --cube-seams` test. Host reference
+mode is available with `--reference` as the final argument. These guarded
+runs peaked at 51.75 C, with no thermal failures.
+
+An initial corner oracle required the arithmetic average of three differently
+colored faces. M4 differed from it by up to three color steps. That is not a
+portable conformance requirement: the [Vulkan sampling rules](https://github.com/KhronosGroup/Vulkan-Docs/blob/main/chapters/textures.adoc)
+allow different corner reconstruction, while requiring constant preservation
+when the incident texels agree. The committed corner oracle checks that
+requirement; the differing-color measurements remain in the evidence.
+
+The compiler test now compiles both native cube projection and the retained
+cube-to-array path. Host texture, funop and varying suites still pass 5,571,
+59 and 977 checks. Host and ARM64 builds pass. Combined texture-coordinate
+and descriptor dependencies retire through the existing slot-wait sequence
+before staging, instead of failing when more than one producer is outstanding.

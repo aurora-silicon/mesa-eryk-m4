@@ -974,6 +974,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
       immediate_level_x64 <= 0xfff &&
       immediate_level_x64 == (float)(uint16_t)immediate_level_x64;
    const bool array = I->dim == AGX_DIM_2D_ARRAY;
+   const bool cube = I->dim == AGX_DIM_CUBE;
    const bool valid_lod = explicit_lod ?
       (enc == AGX_ISA_ENCODING_AGX3B &&
        (valid_immediate_lod ||
@@ -987,7 +988,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
     * their source only needs to fit the COPY/PACK_SMPIR 7-bit half-register
     * fields. The third scalar must not wrap that field. Plain 2D samples name
     * the coordinate directly in SMP and retain its narrower bound. */
-   const unsigned max_coord = array ? 120 : 60;
+   const unsigned max_coord = (array || cube) ? 120 : 60;
    if (I->nr_dests != 1 || I->nr_srcs != 6 ||
        !agx3_tex_plain_reg(I->dest[0]) ||
        (I->dest[0].size != AGX_SIZE_16 &&
@@ -996,7 +997,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
        (I->dest[0].size == AGX_SIZE_32 && (I->dest[0].value & 1)) ||
        !agx3_tex_plain_reg(I->src[0]) ||
        I->src[0].size != AGX_SIZE_32 ||
-       agx_channels(I->src[0]) != (array ? 3 : 2) ||
+       agx_channels(I->src[0]) != ((array || cube) ? 3 : 2) ||
        (I->src[0].value & 3) || I->src[0].value > max_coord ||
        !valid_lod || !agx3_tex_imm(I->src[2], 0) ||
        (immediate && (I->src[3].value > 15 || I->src[4].value > 15)) ||
@@ -1009,7 +1010,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
          agx_channels(I->src[3]) != 1 || agx_channels(I->src[4]) != 1 ||
          (I->src[3].value & 1) || (I->src[4].value & 1))) ||
        !agx_is_null(I->src[5]) ||
-       (I->dim != AGX_DIM_2D && I->dim != AGX_DIM_2D_ARRAY) ||
+       (I->dim != AGX_DIM_2D && I->dim != AGX_DIM_2D_ARRAY && !cube) ||
        (array && (enc != AGX_ISA_ENCODING_AGX3B ||
                   (explicit_lod && !immediate_lod))) ||
        (I->mask == 0 || (I->mask & ~15u)) ||
@@ -1029,12 +1030,12 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
     * operand bank on slot 6 and wait slot 6 in SMP, independently of SMP's
     * own result slot. Uniform/immediate array samples use the ordinary result
     * slot. Keeping these two timelines distinct is required by the witnessed
-    * ep4 register-descriptor form. */
-   const uint8_t stage_slot = array && register_operands ? 6 : slot;
+    * ep4 register-descriptor form. M4 cube faces use the same operand bank. */
+   const uint8_t stage_slot = (array || cube) && register_operands ? 6 : slot;
    /* Every native array witness names coordinate bank 0 in SMP, including
     * register-indexed shaders whose physical coordinates live elsewhere.
     * PACK_SMPIR publishes only the layer, so explicitly copy x/y to bank 0. */
-   const uint16_t coord = (explicit_lod || array) ? 0 : I->src[0].value;
+   const uint16_t coord = (explicit_lod || array || cube) ? 0 : I->src[0].value;
    uint8_t bytes[AGX3_TEX_MAX_LENGTH];
    uint8_t len = 0;
 
@@ -1058,7 +1059,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
        !agx3_append(emission, bytes, len))
       return false;
 
-   if (array &&
+   if ((array || cube) &&
        (!agx3_tex_stage_array_layer(enc, I->src[0].value + 4, stage_slot, 0,
                                    I->src[0].cache, I->src[0].discard,
                                    bytes, &len) ||
@@ -1084,6 +1085,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
              explicit_lod ? AGX3_TEX_LOD_REGISTER : AGX3_TEX_LOD_AUTO,
       .lod_x64 = immediate_lod ? (uint16_t)immediate_level_x64 : 0,
       .array = array,
+      .cube = cube,
       .slot = slot,
       .wait_mask = (uint16_t)(1u << (stage_slot - 1)),
       .coord_kill = I->src[0].kill,
@@ -4220,15 +4222,21 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             const bool compute_level = ctx->stage == MESA_SHADER_COMPUTE &&
                I->lod_mode == AGX_LOD_MODE_LOD_MIN &&
                I->src[1].type == AGX_INDEX_IMMEDIATE;
+            uint16_t sample_wait = wait;
+            if (sample_wait & (sample_wait - 1)) {
+               if (!agx3_retire_slots_noop(emission, enc, sample_wait))
+                  AGX3_REFUSE(I);
+               sample_wait = 0;
+            }
             if ((ctx->stage != MESA_SHADER_FRAGMENT && !compute_level) ||
-                !agx3_emit_texture_sample(emission, enc, I, slot, wait,
+                !agx3_emit_texture_sample(emission, enc, I, slot, sample_wait,
                                           final))
                AGX3_REFUSE(I);
-            /* The sample emitter stages exactly two 32-bit coordinates. */
+            /* Projected cubes share the array face/layer staging bank. */
             ctx->agx3_staging_halfs =
                MAX2(ctx->agx3_staging_halfs,
                     (I->lod_mode == AGX_LOD_MODE_LOD_MIN ||
-                     I->dim == AGX_DIM_2D_ARRAY)
+                     I->dim == AGX_DIM_2D_ARRAY || I->dim == AGX_DIM_CUBE)
                        ? 8 : I->src[0].value + 4);
             continue;
          }

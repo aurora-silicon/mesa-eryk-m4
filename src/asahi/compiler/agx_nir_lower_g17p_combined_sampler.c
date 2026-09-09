@@ -12,11 +12,13 @@
 static bool
 g17p_sample_shape(const nir_tex_instr *tex)
 {
+   const bool cube = tex->sampler_dim == GLSL_SAMPLER_DIM_CUBE;
    if ((tex->op != nir_texop_tex && tex->op != nir_texop_txb &&
        tex->op != nir_texop_txl) ||
-       tex->sampler_dim != GLSL_SAMPLER_DIM_2D ||
+       (tex->sampler_dim != GLSL_SAMPLER_DIM_2D &&
+        !(cube && !tex->is_array && tex->op == nir_texop_tex)) ||
        tex->is_shadow || tex->is_sparse ||
-       tex->coord_components != (tex->is_array ? 3 : 2) ||
+       tex->coord_components != ((tex->is_array || cube) ? 3 : 2) ||
        (tex->backend_flags & ~(AGX_TEXTURE_FLAG_CLAMP_TO_0 |
                                AGX_TEXTURE_FLAG_NO_CLAMP)) != 0 ||
        tex->backend_flags == (AGX_TEXTURE_FLAG_CLAMP_TO_0 |
@@ -413,13 +415,12 @@ g17p_cube_sample_shape(const nir_tex_instr *tex)
           nir_src_bit_size(tex->src[coord].src) == 32;
 }
 
-/* Lower the exact implicit, non-array cube sample to the already-qualified
- * G17P 2D-array path. Cube images are six consecutive 2D layers; select the
- * major axis and map its face coordinate to [0, 1] before the ordinary array
- * layer marshalling pass. The face ordering and transforms are the Vulkan/GL
- * cube convention (the same mapping used by Mesa's software samplers). */
+/* Project implicit non-array cube samples to UV plus an integer face. M4's
+ * native cube SMP takes these projected operands and retains cube-aware
+ * filtering and derivatives. The earlier G17P path remains a 2D-array sample;
+ * M4 runtime qualification does not establish native cube support on G17P. */
 bool
-agx_nir_lower_g17p_cube_samples(nir_shader *shader)
+agx_nir_lower_g17p_cube_samples(nir_shader *shader, bool native_cube)
 {
    if (!shader || shader->info.stage != MESA_SHADER_FRAGMENT)
       return false;
@@ -506,9 +507,10 @@ agx_nir_lower_g17p_cube_samples(nir_shader *shader)
              * float face bits truncate to zero in PACK_SMPIR's layer field.
              * Mark early callers as lowered too, avoiding a second f2u. */
             tex->src[coord_index].src_type = nir_tex_src_backend1;
-            tex->sampler_dim = GLSL_SAMPLER_DIM_2D;
-            tex->is_array = true;
-            tex->array_is_lowered_cube = true;
+            tex->sampler_dim = native_cube ? GLSL_SAMPLER_DIM_CUBE
+                                           : GLSL_SAMPLER_DIM_2D;
+            tex->is_array = !native_cube;
+            tex->array_is_lowered_cube = !native_cube;
          }
       }
 

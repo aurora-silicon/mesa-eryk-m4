@@ -210,12 +210,12 @@ pack_texture(struct hk_device *dev, struct hk_image_view *view,
    unsigned level = view->vk.base_mip_level;
    unsigned layer = view->vk.base_array_layer;
 
-   /* Native cube samples are lowered to face selection plus a 2D-array
-    * sample. Keep the descriptor dimension and layer count in that same ABI:
-    * a cube descriptor would divide six faces to one layer and clamp every
-    * explicitly selected face to layer zero. */
+   /* M4 native cube samples retain a cube descriptor and cube layer count.
+    * The older cube-to-array path needs six explicit layers instead. */
    VkImageViewType texture_type = view->vk.view_type;
    if (agx_native_graphics(&dev->dev) &&
+       !(dev->dev.params.chip_id == 0x8132 &&
+         texture_type == VK_IMAGE_VIEW_TYPE_CUBE) &&
        (texture_type == VK_IMAGE_VIEW_TYPE_CUBE ||
         texture_type == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY))
       texture_type = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
