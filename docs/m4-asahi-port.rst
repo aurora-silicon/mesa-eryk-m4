@@ -133,3 +133,11 @@ with the same full-image checksum. M4 now selects explicit channel packing
 and raw memory stores in the meta-copy shader, matching the native HAL200
 path. The previous formatted-store selection lost the green/blue channels.
 Safe open-file teardown passed; thermal peak 51.5 C, watchdog 60 seconds.
+
+The isolated EGL/Zink compositing test ``zink-composite-1`` passes eight
+frames / 8192 pixels (maximum channel error 1), with nearest/linear texture
+sampling, premultiplied blending, scissor damage, texture reuse, and native
+fence export/import/wait. Renderer: ``zink Vulkan 1.4(Apple M4 (G16G B0)
+(MESA_HONEYKRISP))``. This first run uses local textures; DMA-BUF sharing and
+actual Hyprland remain subsequent gates. Peak PMP temperature 52 C, watchdog
+60 seconds, clean DRM teardown.

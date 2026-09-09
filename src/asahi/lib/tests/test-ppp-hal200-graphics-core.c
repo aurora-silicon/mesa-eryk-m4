@@ -29,7 +29,7 @@ check(enum agx_ppp_hal200_graphics_bundle bundle, const uint32_t *words,
    assert(memcmp(unpacked.words, fields.words, sizeof(fields.words)) == 0);
 }
 
-int
+static int
 check_chip(void)
 {
    /* Derived directly from native458898..45891c and vector constants
