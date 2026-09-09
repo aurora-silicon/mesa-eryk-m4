@@ -4754,14 +4754,15 @@ TEST_F(AGX3PackBinary, LocalIndexZeroExtendUsesCopyAndClear)
       agx_iadd_to(b, agx_register(4, AGX_SIZE_32), agx_immediate(0), half, 0);
       agx_stop(b);
 
-      uint8_t bytes[AGX3_COPY_MAX_LENGTH], len = 0;
+      uint8_t copy[AGX3_COPY_MAX_LENGTH], clear[AGX3_STAGE_MAX_LENGTH];
+      uint8_t len = 0;
       std::vector<uint8_t> want;
       ASSERT_TRUE(agx3_copy_encode_reg16(AGX_ISA_ENCODING_AGX3B, 4, source,
-                                         false, false, true, 0, bytes, &len));
-      append(want, bytes, len);
-      ASSERT_TRUE(agx3_clr(AGX_ISA_ENCODING_AGX3B, 5, true, false, bytes,
+                                         false, false, true, 0, copy, &len));
+      append(want, copy, len);
+      ASSERT_TRUE(agx3_clr(AGX_ISA_ENCODING_AGX3B, 5, true, false, clear,
                            &len));
-      append(want, bytes, len);
+      append(want, clear, len);
       struct agx3_encoded_end end;
       ASSERT_TRUE(agx3_pack_end(AGX_ISA_ENCODING_AGX3B, &end));
       append(want, end.bytes, end.length);
