@@ -2411,6 +2411,42 @@ agx_fminmax_to(agx_builder *b, agx_index dst, agx_index s0, agx_index s1,
 }
 
 static void
+agx_lower_agx3_half_converts(agx_context *ctx)
+{
+   if (ctx->key->dev.encoding != AGX_ISA_ENCODING_AGX3B)
+      return;
+
+   agx_foreach_instr_global_safe(ctx, I) {
+      if (I->op != AGX_OPCODE_CONVERT || I->nr_dests != 1 ||
+          I->nr_srcs != 2 || I->dest[0].size != AGX_SIZE_16 ||
+          I->src[0].type != AGX_INDEX_IMMEDIATE ||
+          I->round != AGX_ROUND_RTE || I->saturate)
+         continue;
+
+      switch (I->src[0].value) {
+      case AGX_CONVERT_S32_TO_F:
+      case AGX_CONVERT_U32_TO_F:
+      case AGX_CONVERT_S16_TO_F:
+      case AGX_CONVERT_U16_TO_F:
+         break;
+      default:
+         continue;
+      }
+
+      /* Native integer->F32 and F32->F16 are grounded independently. This
+       * composition cannot double-round an integer in the finite F16 range:
+       * every such integer (including the overflow midpoint) is exact in F32.
+       * Larger magnitudes overflow F16 in either route. Run after copyprop so
+       * its destination narrowing cannot recreate the unsupported cast.
+       */
+      agx_index half = I->dest[0];
+      I->dest[0] = agx_temp(ctx, AGX_SIZE_32);
+      agx_builder b = agx_init_builder(ctx, agx_after_instr(I));
+      agx_fmov_to(&b, half, I->dest[0]);
+   }
+}
+
+static void
 agx_lower_agx3_fma_sources(agx_context *ctx)
 {
    if (ctx->key->dev.encoding != AGX_ISA_ENCODING_AGX3B)
@@ -4375,6 +4411,7 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
       }
    }
 
+   agx_lower_agx3_half_converts(ctx);
    agx_lower_agx3_fma_sources(ctx);
 
    if (key->dev.encoding != AGX_ISA_ENCODING_AGX2)
