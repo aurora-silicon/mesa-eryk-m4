@@ -13,6 +13,30 @@
 #include <assert.h>
 
 static void
+test_float_to_int_lifetime(void)
+{
+   const uint8_t canonical[2][10] = {
+      {0x27, 0x07, 0x56, 0, 2, 0, 0xb4, 0x08, 2, 0},
+      {0x27, 0x07, 0x56, 0, 2, 0, 0xb4, 0x48, 3, 0},
+   };
+   uint8_t bytes[AGX3_ALU_MAX_LENGTH], len;
+   for (unsigned is_signed = 0; is_signed < 2; ++is_signed) {
+      assert(agx3_alu_float_to_int(AGX_ISA_ENCODING_AGX3B, 0, 0,
+                                  is_signed, AGX3_ALU_HINT_DISCARD, false,
+                                  32, bytes, &len));
+      assert(len == 10 && !memcmp(bytes, canonical[is_signed], len));
+   }
+   assert(!agx3_alu_float_to_int(AGX_ISA_ENCODING_AGX3C, 0, 0, true,
+                                AGX3_ALU_HINT_NONE, false, 0, bytes, &len));
+   assert(!agx3_alu_float_to_int(AGX_ISA_ENCODING_AGX3B, 0, 128, true,
+                                AGX3_ALU_HINT_NONE, false, 0, bytes, &len));
+   assert(!agx3_alu_float_to_int(AGX_ISA_ENCODING_AGX3B, 1, 0, true,
+                                AGX3_ALU_HINT_NONE, false, 0, bytes, &len));
+   assert(!agx3_alu_float_to_int(AGX_ISA_ENCODING_AGX3B, 0, 0, true,
+                                AGX3_ALU_HINT_NONE, false, 64, bytes, &len));
+}
+
+static void
 test_native_ft1(void)
 {
    static const struct {
@@ -1408,6 +1432,7 @@ int main(void){
    test_float_compare_select();
    test_float_compare_zero();
    test_integer_lifetimes();
+   test_float_to_int_lifetime();
    test_bitwise_lifetimes();
    test_modified_minifloat_add();
    test_imul_high_div3();

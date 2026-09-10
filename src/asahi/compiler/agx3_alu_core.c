@@ -861,6 +861,34 @@ agx3_alu_int_to_float(enum agx_isa_encoding enc, uint16_t dest,
    return agx3_bind_compose(enc, "int2flt", 0, base, 4, fields, n, out, len);
 }
 
+/* The language-cast specimen discards its float source. A shader may still
+ * need that value, for example to calculate a parallax step after converting
+ * the loop bound. Carry the actual register lifetime instead. */
+bool
+agx3_alu_float_to_int(enum agx_isa_encoding enc, uint16_t dest,
+                     uint16_t src, bool is_signed, enum agx3_alu_hint hint,
+                     bool dest_cache, uint16_t wait_mask,
+                     uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len)
+{
+   if (enc != AGX_ISA_ENCODING_AGX3B || !out || !len ||
+       dest >= 128 || src >= 128 || ((dest | src) & 1) ||
+       (unsigned)hint > AGX3_ALU_HINT_CACHE || (wait_mask & ~0x3fu))
+      return false;
+
+   const struct agx3_field_kv base[] = {
+      {9, 2}, {10, 2}, {23, 2}, {24, 2}, {42, 1},
+   };
+   struct agx3_field_kv fields[12] = {
+      {2, dest}, {16, src}, {11, dest_cache},
+      {25, hint == AGX3_ALU_HINT_CACHE},
+      {27, hint == AGX3_ALU_HINT_DISCARD}, {41, is_signed ? 5 : 4},
+   };
+   for (unsigned i = 0; i < 6; ++i)
+      fields[6 + i] = (struct agx3_field_kv){33 + i,
+                                            !!(wait_mask & (1u << i))};
+   return agx3_bind_compose(enc, "flt2int", 0, base, 5, fields, 12, out, len);
+}
+
 bool
 agx3_alu_bfeil(enum agx_isa_encoding enc, uint16_t dest, uint16_t source,
                uint16_t shift, bool shift_is_register, uint8_t width,

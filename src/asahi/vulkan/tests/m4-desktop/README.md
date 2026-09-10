@@ -653,3 +653,38 @@ This narrows the failure beyond these basic loop/sample combinations;
 it is not a reproducer for the remaining game corruption. The test requires
 M4 Zink unless M4_TEST_LLVMPIPE explicitly permits the reference renderer.
 Mesa commits remain local and this working checkout has no Git remotes.
+
+### Float-to-integer source lifetime fix (2026-09-10)
+
+The native `flt2int` language-cast specimen discarded its floating source
+unconditionally. The parallax shader converts a floating loop bound to an
+integer, then reuses that float for truncation and the reciprocal step.
+Discarding it produced invalid loop-carried height and final coordinates.
+The runtime encoder now uses the register allocator's source/destination
+cache hints and actual scoreboard waits for signed and unsigned casts.
+The canonical specimen API and AGX3c path remain separate.
+
+`m4_gl_parallax_loop.c` now accepts `M4_TEST_FLOAT_BOUND=1` or
+`M4_TEST_UNSIGNED_BOUND=1` to exercise a floating bound followed by reuse.
+A desktop-GL reduction failed 12,288 of 28,672 pixels before the fix and
+passed all pixels after (`parallax-loop-float`, `parallax-loop-float-fixed`).
+The tracked GLES test passes all 28,672 pixels for each cast variant on
+both M4 and llvmpipe (`parallax-float-regression`,
+`parallax-unsigned-regression`). A reduction using the game's full material
+shader and generated textures previously returned black for every case;
+afterward eight of nine 128x128 images match llvmpipe byte for byte, with
+15 pixels exceeding 8/255 in the remaining case (`parallax-material-fixed`).
+
+The original, unmodified game trace also improves: at call 36525, pixels
+exceeding 32/255 in any RGB channel fall from 117,490 to 39,091, and mean
+absolute RGB error falls from 3.8329 to 1.7875 (`0ad-f2i-lifetime-fixed`).
+Roof detail is restored. Tower/pavilion material differences and batching
+remain unresolved; this is not a claim of perfect rendering or higher FPS.
+No game shader, effect setting, renderer fallback or clock workaround is
+part of this fix. Guarded replay peaks at 53 C with the 60-second watchdog.
+
+Host and ARM64 builds and the `agx3_alu_core`/`agx3_funop_core` tests pass.
+Broader compiler suites still fail on existing half-abs, EOT, shuffle and
+stale binary expectations; rebuilding the parent packer reproduces those
+same failures (`build/0ad/f2i-baseline-testlog.txt` in the workspace).
+Mesa remains local, with no remotes and no push.

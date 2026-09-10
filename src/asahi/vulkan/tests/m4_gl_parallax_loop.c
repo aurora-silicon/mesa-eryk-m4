@@ -26,10 +26,14 @@ program(unsigned mode)
    const char *vs =
       "#version 300 es\nprecision highp float;layout(location=0) in vec2 pos;void main(){gl_Position=vec4(pos,0,1);}";
    const char *body =
-      "precision highp float;precision highp int;uniform int limit;uniform sampler2D tex;out vec4 color;\n"
+      "precision highp float;precision highp int;uniform int limit;uniform float float_limit;uniform sampler2D tex;out vec4 color;\n"
       "void main(){\n"
       "#if MODE == 0 || MODE == 3\n"
       "int steps=min(int(gl_FragCoord.x)-8,limit);\n"
+      "#elif FLOAT_BOUND == 2\n"
+      "int steps=int(uint(float_limit+gl_FragCoord.x*0.0001));\n"
+      "#elif FLOAT_BOUND == 1\n"
+      "int steps=int(float_limit+gl_FragCoord.x*0.0001);\n"
       "#else\n"
       "int steps=limit;\n"
       "#endif\n"
@@ -49,7 +53,13 @@ program(unsigned mode)
       "coord-=move*((h-height)/(s+h-hp));}\n"
       "color=vec4(float(count)/32.0,height,coord.x,h);}";
    char fs[4096];
-   snprintf(fs, sizeof(fs), "#version 300 es\n#define MODE %u\n%s", mode, body);
+   /* Reusing the float after f2i exposes a destructive source hint in the
+    * native cast encoder. The tiny fractional part preserves the same
+    * analytical loop count while preventing an integer-only expression. */
+   snprintf(fs, sizeof(fs),
+            "#version 300 es\n#define MODE %u\n#define FLOAT_BOUND %u\n%s",
+            mode, getenv("M4_TEST_UNSIGNED_BOUND") ? 2 :
+                     (getenv("M4_TEST_FLOAT_BOUND") ? 1 : 0), body);
    const char *sources[] = {vs, fs};
    GLenum types[] = {GL_VERTEX_SHADER, GL_FRAGMENT_SHADER};
    GLuint p = glCreateProgram();
@@ -129,6 +139,7 @@ main(void)
       for (unsigned j = 0; j < sizeof(limits) / sizeof(limits[0]); j++) {
          int limit = limits[j];
          glUniform1i(glGetUniformLocation(p, "limit"), limit);
+         glUniform1f(glGetUniformLocation(p, "float_limit"), limit);
          glClearColor(1, 0, 1, 1);
          glClear(GL_COLOR_BUFFER_BIT);
          glDrawArrays(GL_TRIANGLES, 0, 3);

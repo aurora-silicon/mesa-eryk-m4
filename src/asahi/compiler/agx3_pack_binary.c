@@ -6020,6 +6020,20 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
              agx3_vary_reg32(I->src[1]) && agx_channels(I->src[1]) == 1) {
             struct agx3_sel_instr S;
             if (agx3_translate_instr(I, &S) &&
+                (S.op == AGX3_SEL_OP_F_TO_I32 || S.op == AGX3_SEL_OP_F_TO_U32)) {
+               if (I->src[1].kill || (I->src[1].cache && I->src[1].discard))
+                  AGX3_REFUSE(I);
+               uint8_t bytes[AGX3_ALU_MAX_LENGTH], len;
+               if (!agx3_alu_float_to_int(
+                      enc, I->dest[0].value, I->src[1].value,
+                      S.op == AGX3_SEL_OP_F_TO_I32,
+                      agx3_post_ra_hint(I->src[1]), I->dest[0].cache,
+                      wait, bytes, &len) ||
+                   !agx3_append(emission, bytes, len))
+                  AGX3_REFUSE(I);
+               continue;
+            }
+            if (agx3_translate_instr(I, &S) &&
                 (S.op == AGX3_SEL_OP_I32_TO_F || S.op == AGX3_SEL_OP_U32_TO_F)) {
                if (I->src[1].kill || (I->src[1].cache && I->src[1].discard))
                   AGX3_REFUSE(I);
