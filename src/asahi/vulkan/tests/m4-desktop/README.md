@@ -896,4 +896,15 @@ snapshot, although the identical one-frame prefix passed independently.
 Thus the shadow-pixel fix is qualified, but these results do not establish
 stable sustained gameplay or blame Hyprland. Kernel render-backing reuse is
 being isolated next. Watchdog recovery and saved thermal evidence remain
-mandatory; the corrected single-frame run peaked at 52 C.
+mandatory; the corrected single-frame run peaked at 52.25 C.
+
+
+Further guarded diagnostics did not resolve sustained replay retirement:
+allocating fresh render backing, allowing a 10-second kernel deadline, and
+retiring each SMP immediately all still failed. The original two-second
+kernel deadline and normal asynchronous texture scheduling were restored.
+The serialized-SMP run completed three PNG snapshots, then timed out during
+the fourth snapshot (which may be incomplete); peak temperature was 52.25 C.
+Disabling only the three parallax loops also ended in watchdog recovery,
+so that quality-reducing diagnostic is not a fix. These experiments do not
+change the qualified shadow-pixel result above.
