@@ -1067,3 +1067,12 @@ tested and reverted. Neither is an established fix: uncached memory also
 failed, delayed cached reads passed, and warm baseline GL runs passed.
 Do not treat these diagnostics as a driver improvement or discard cold
 first-readback failures as warmup.
+
+
+The cold two-read Vulkan probe confirms that the missing data becomes
+visible without another GPU submission: first read 62,496/1,048,576 stale
+words, second read after 100 ms 0/1,048,576. Overall result remains FAIL.
+Evidence: `20260910T102657045013Z-vulkan-cold-second-read`. This identifies
+a completion/visibility problem independently of GL, textures, or game
+shaders. It does not justify a fixed sleep in the driver or establish the
+precise missing synchronization operation.
