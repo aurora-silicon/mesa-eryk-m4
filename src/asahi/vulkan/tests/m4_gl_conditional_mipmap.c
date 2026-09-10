@@ -9,6 +9,7 @@
  */
 #define GL_GLEXT_PROTOTYPES
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -45,13 +46,17 @@ program(unsigned mode)
    const char *vs = "#version 330\nlayout(location=0) in vec2 pos;"
                     "layout(location=1) in vec2 tex;out vec2 uv;"
                     "void main(){gl_Position=vec4(pos,0,1);uv=tex;}";
-   char fs[2048];
-   snprintf(
+   char fs[4096];
+   int source_bytes = snprintf(
       fs, sizeof(fs),
       "#version 330\n#define MODE %u\n"
       "in vec2 uv;out vec4 color;uniform sampler2D baseTex,heightTex;"
       "uniform float offset,heightScale,lod;uniform int enabled,iterations;"
-      "void main(){vec2 p=uv; int count=0;\n"
+      "void main(){\n#if MODE == 9\n"
+      "uint n=uint(gl_FragCoord.x)+1u;"
+      "for(int i=0;i<iterations;i++){n^=n<<13;n^=n>>17;n^=n<<5;}"
+      "color=vec4(float(n&255u)/255.0,float((n>>8)&255u)/255.0,1,1);\n"
+      "#else\nvec2 p=uv; int count=0;\n"
       "#if MODE == 1\n"
       "if(enabled!=0) p+=texture(heightTex,p*heightScale).aa*offset;\n"
       "#elif MODE == 2\n"
@@ -72,8 +77,9 @@ program(unsigned mode)
       "#endif\n"
       "color=texture(baseTex,p);\n#if MODE==7\n"
       "color.r=float(count&255)/255.0;color.g=float(count>>8)/255.0;\n"
-      "#elif MODE==5 || MODE==6\ncolor.r=float(count)/32.0;\n#endif\n}",
+      "#elif MODE==5 || MODE==6\ncolor.r=float(count)/32.0;\n#endif\n#endif\n}",
       mode);
+   CHECK(source_bytes >= 0 && (size_t)source_bytes < sizeof(fs));
    const char *sources[] = {vs, fs};
    GLenum types[] = {GL_VERTEX_SHADER, GL_FRAGMENT_SHADER};
    GLuint p = glCreateProgram();
@@ -116,7 +122,7 @@ main(void)
    while (*selection) {
       char *end;
       unsigned long mode = strtoul(selection, &end, 10);
-      CHECK(end != selection && mode < 9 && count < 64);
+      CHECK(end != selection && mode < 10 && count < 64);
       modes[count++] = mode;
       CHECK(*end == ',' || !*end);
       selection = *end ? end + 1 : end;
@@ -124,6 +130,19 @@ main(void)
    CHECK(count > 0);
    unsigned char *pixels = malloc((size_t)W * W * 4);
    CHECK(pixels);
+   /* Per-column reference keeps CPU validation independent of image area.
+    * Mode 9 has no texture instruction and no derivative-dependent input. */
+   uint32_t *alu_reference = malloc(W * sizeof(*alu_reference));
+   CHECK(alu_reference);
+   for (unsigned x = 0; x < W; x++) {
+      uint32_t n = x + 1;
+      for (unsigned i = 0; i < iterations; i++) {
+         n ^= n << 13;
+         n ^= n >> 17;
+         n ^= n << 5;
+      }
+      alu_reference[x] = n;
+   }
    printf("Configuration: width=%u modes=%u reads=%u delay_ms=%u iterations=%u\n",
           W, count, reads, delay_ms, iterations);
    EGLDisplay d = eglGetPlatformDisplay(EGL_PLATFORM_SURFACELESS_MESA,
@@ -232,13 +251,15 @@ main(void)
             for (unsigned x = 0; x < W; x++) {
                const unsigned char *q = pixels + (y * W + x) * 4;
                unsigned expected_red =
+                  mode == 9 ? alu_reference[x] & 255 :
                   mode == 7 ? iterations & 255 : mode == 5 || (mode == 6 && x >= 32)
                      ? (iterations >= 32 ? 255 : (iterations * 255 + 16) / 32)
                      : 0;
-               const unsigned expected_green = mode == 7 ? iterations >> 8 : 0;
-               if ((mode == 7 ? q[0] != expected_red :
+               const unsigned expected_green = mode == 9 ? (alu_reference[x] >> 8) & 255 :
+                                               mode == 7 ? iterations >> 8 : 0;
+               if ((mode == 7 || mode == 9 ? q[0] != expected_red :
                     abs((int)q[0] - (int)expected_red) > 2) ||
-                   (mode == 7 ? q[1] != expected_green : q[1] > 2) ||
+                   (mode == 7 || mode == 9 ? q[1] != expected_green : q[1] > 2) ||
                    q[2] < 253 || q[3] < 253) {
                   if (bad < 3)
                      fprintf(
@@ -259,6 +280,7 @@ main(void)
    eglDestroyContext(d, ctx);
    eglTerminate(d);
    free(pixels);
+   free(alu_reference);
    printf("%s: conditional mipmaps, %u incorrect pixels\n",
           total_bad ? "FAIL" : "PASS", total_bad);
    return total_bad ? 1 : 0;

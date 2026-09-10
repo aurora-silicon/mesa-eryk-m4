@@ -1151,6 +1151,16 @@ magenta clear; two raw snapshots 200 ms apart are identical. The loop
 contains no texture operations, although an implicit sample follows it.
 Evidence: `20260910T160800982598Z-mipmap-alu4096-large`.
 
+Mode 9 removes texture sampling entirely, including the final sample used by
+mode 7. It runs a uint32 xorshift recurrence seeded by the fragment's column
+and encodes the low two bytes in red/green. A separate CPU recurrence checks
+every pixel exactly; precomputing one reference per column avoids repeating
+the arithmetic for every row. No derivative-dependent input is used.
+The default modes stay 0..6. llvmpipe passes mode 9 at 128 square / 4096
+iterations and modes 0/2/7/9 at 128 square / 20 iterations; ARM64 compilation
+passes. This is a diagnostic, not a shader implementation change or an M4
+success claim.
+
 `M4_TEST_STALE_LINE=invalidate` samples the first stale 128-byte-spaced word,
 reads it immediately again, performs one AArch64 `dc civac` plus `dsb sy`,
 and samples again. Any other value uses only `dsb sy` as a control. The
