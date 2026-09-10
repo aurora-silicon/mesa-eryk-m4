@@ -920,3 +920,37 @@ is retained as a failure, not dismissed as warmup. Evidence directories are
 `shadow-wide-varyings` and `shadow-wide-varyings-repeat`; peak 52.25 C.
 Build with `-lEGL -lGL -lm`, and use the same mandatory guards as other live
 tests. `M4_TEST_LLVMPIPE=1` permits the software reference only.
+
+Further isolation identifies the large model's material loop: omitting its
+27 draws lets the original eight-frame scene complete, while retaining only
+those draws reproduces the Fragment timeout. Disabling its parallax loop
+makes that isolated model pass all eight frames. More narrowly, replacing
+only the loop's `texture2D(normTex, coord)` with explicit LOD zero also passes
+all eight, with the original loop bound and shadows retained. This changes
+filtering quality and is a diagnostic, not a fix. Uniform loop bounds,
+disabled scheduling and disabled register cache hints did not fix the
+original model. Evidence: `shadow-only-model-{no-parallax,loop-lod0}` and
+`shadow-only-large-model` under the same dated evidence directory.
+
+Native shader compilation can now run on a separate macOS host. The tools
+`src/asahi/compiler/test/m4-metal-loop-probes.py` and
+`src/asahi/compiler/test/m4-metal-cross-compile.py` generate 18 loop variants
+and compile their render pipelines explicitly for `applegpu_g16g`. Run on
+the compiler host:
+
+```sh
+python3 m4-metal-loop-probes.py probes
+python3 m4-metal-cross-compile.py --output compiled probes/*.metal
+```
+
+Install a missing toolchain with `xcodebuild -downloadComponent MetalToolchain`.
+The compiler helper supplies a JSON render-pipeline description to
+`applegpu-nt -N`, records exact commands and source/archive hashes, and uses
+no GPU execution. The first corpus used Metal 32023.883 / toolchain 17F109,
+macOS 26.6.1 build 25G76, SDK 26.5. All 18 variants compiled; the reusable
+helper was also exercised separately on a loop/inner-if/shadow variant.
+These binaries are compiler evidence, not M4 hardware success. Sources,
+archives and extracted code are saved in
+`asahi-0ad-20260910-macos/remote-g16g-loop-compiler`.
+Apple documents the pipeline schema at
+<https://developer.apple.com/documentation/metal/compiling-binary-archives-from-a-custom-configuration-script>.
