@@ -609,11 +609,47 @@ division in its vertex shader and hit an unsupported IMAD form; geometry is
 now supplied through an ordinary vertex buffer. Host and ARM64 builds passed.
 
 Scene prefixes through calls 21462 and 22554 completed with ordinary batching
-(`0ad-batch-prefix-*`). Adding the first building at 23123 stalled in fragment
+(`0ad-batch-prefix-*`). Adding the first normal-mapped object (a rock) at 23123 stalled in fragment
 execution. An in-stream VDM barrier did not fix it and was reverted. A later
 cold-boot prefix failed even at 22554, so the boundary is not deterministic
 across boots. Preserving merging restrictions did not fix the batched scene
-(`0ad-building-merge-control`); the synchronized first-building replay
+(`0ad-building-merge-control`); the synchronized normal-mapped-object replay
 `0ad-building-sync-merge` completed. These tests retain the 60-second watchdog,
 six-channel thermal monitoring and unchanged GPU clock. No performance or
 rendering-correctness improvement is claimed from these diagnostics.
+
+
+### Differential parallax diagnosis (2026-09-10)
+
+The original captured frame through call 36525 now has matched llvmpipe and
+M4 replays, including snapshots at 22554, 23123, 23931, 26623 and 36525.
+Both receive identical captured inputs at 2048x1536. llvmpipe shows correct
+roof tiles and tower stonework; M4's original scene still corrupts those
+materials. The large discrepancy is already present at 26623, before the
+later depth-only pass. The displayed FPS number belongs to the capture,
+not to either replay's measured performance.
+
+`0ad-llvmpipe-reference-2` and `0ad-m4-reference-pair` preserve the original
+comparison. A separate diagnostic trace disables only the parallax branch
+in fragment shaders 62, 65 and 71, preserving source-string lengths. With
+that same variant on both renderers, pixels differing by more than 32/255
+in any RGB channel fall from 117,490 to 13,998 at call 36525. A separate
+fixed-eight-iteration variant leaves 39,102 such pixels. Neither variant
+is installed in the game or offered as a rendering fix. The original
+artifacts and the existing Zink synchronization requirement remain open.
+These diagnostics implicate the parallax path but do not prove a specific
+instruction or loop-control bug. Peak M4 temperatures remain at or below
+54 C, with the 60-second watchdog and six-sensor thermal guard throughout.
+Workspace evidence: `_provenance/asahi-0ad-20260909/`; the standalone
+`0ad-frame-comparison.html` there provides original-frame split/difference
+views without modifying the renderer outputs.
+
+`m4_gl_parallax_loop.c` checks analytical results for fragment loop counts,
+conditional entry, loop-carried coordinates/height, and final refinement.
+It includes a gradient texture, explicit LOD with uniform and divergent
+loop bounds, and implicit LOD with uniform bounds. All 28,672 pixel checks
+pass on llvmpipe and on M4 (`0ad-parallax-loop-gradient`, peak 51.75 C).
+This narrows the failure beyond these basic loop/sample combinations;
+it is not a reproducer for the remaining game corruption. The test requires
+M4 Zink unless M4_TEST_LLVMPIPE explicitly permits the reference renderer.
+Mesa commits remain local and this working checkout has no Git remotes.
