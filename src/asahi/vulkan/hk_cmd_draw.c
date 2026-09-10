@@ -3162,8 +3162,13 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
     * draw-buffer predicate set. Conservatively disable merging for all
     * translucent punch-through draws until that predicate is mapped. This
     * keeps destination reads and coverage rejection ordered without changing
-    * the shader, blending, or depth/stencil operations. */
-   if (pass_type == AGX_PASS_TYPE_PUNCH_THROUGH ||
+    * the shader, blending, or depth/stencil operations. Preserve the linker
+    * restriction too: coarse derivatives, wide subgroup operations and memory
+    * writes require unmerged primitives regardless of the pass type. Lines
+    * and points have the same restriction as in the common PPP path. */
+   if ((linked_fs->b.fragment_control.opaque[0] & (UINT32_C(1) << 26)) ||
+       gfx->object_type != AGX_OBJECT_TYPE_TRIANGLE ||
+       pass_type == AGX_PASS_TYPE_PUNCH_THROUGH ||
        pass_type == AGX_PASS_TYPE_TRANSLUCENT_PUNCH_THROUGH)
       secondary_fields.words[0] |= UINT32_C(1) << 26;
    /* Native458934..45896c retains both stencil-control bits in the

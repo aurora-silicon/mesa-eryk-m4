@@ -595,3 +595,25 @@ cold run failed and remains evidence of the separate cold-start issue.
 Host and ARM64 builds passed. Normal batched `0ad-scene-unwritten-color`
 still stalled. The synchronized replay and actual map described above are
 the subsequent boot evidence; they do not qualify ordinary batching.
+
+Native bind state now also preserves the linker's triangle-merging restriction
+(bit 26), and disables merging for points/lines as the common PPP path does.
+The compiler sets this restriction for coarse derivatives, wide subgroup
+operations and memory writes; it must survive independently of pass type.
+`m4_gl_derivatives.c` checks derivatives across 128 triangles with discontinuous
+varying values. `0ad-derivatives-merge-control-3` passed all 4096 pixels;
+run 2 returned zeros, consistent with the unresolved first-readback issue.
+The baseline also passed this probe, so it verifies compatibility rather than
+demonstrating a fixed pixel mismatch. The first probe version used integer
+division in its vertex shader and hit an unsupported IMAD form; geometry is
+now supplied through an ordinary vertex buffer. Host and ARM64 builds passed.
+
+Scene prefixes through calls 21462 and 22554 completed with ordinary batching
+(`0ad-batch-prefix-*`). Adding the first building at 23123 stalled in fragment
+execution. An in-stream VDM barrier did not fix it and was reverted. A later
+cold-boot prefix failed even at 22554, so the boundary is not deterministic
+across boots. Preserving merging restrictions did not fix the batched scene
+(`0ad-building-merge-control`); the synchronized first-building replay
+`0ad-building-sync-merge` completed. These tests retain the 60-second watchdog,
+six-channel thermal monitoring and unchanged GPU clock. No performance or
+rendering-correctness improvement is claimed from these diagnostics.
