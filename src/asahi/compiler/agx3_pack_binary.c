@@ -962,7 +962,8 @@ fail:
 static bool
 agx3_emit_texture_sample(struct util_dynarray *emission,
                          enum agx_isa_encoding enc, const agx_instr *I,
-                         uint8_t slot, uint16_t wait_mask, bool final)
+                         uint8_t slot, uint16_t wait_mask, bool final,
+                         bool retain_helpers)
 {
    const bool explicit_lod = I->lod_mode == AGX_LOD_MODE_LOD_MIN;
    const bool immediate_lod = explicit_lod &&
@@ -1090,6 +1091,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
       .wait_mask = (uint16_t)(1u << (stage_slot - 1)),
       .coord_kill = I->src[0].kill,
       .final = final,
+      .retain_helpers = retain_helpers,
    };
    return agx3_tex_encode_sample(enc, &d, bytes, &len) &&
           agx3_append(emission, bytes, len);
@@ -4230,7 +4232,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             }
             if ((ctx->stage != MESA_SHADER_FRAGMENT && !compute_level) ||
                 !agx3_emit_texture_sample(emission, enc, I, slot, sample_wait,
-                                          final))
+                                          final, enc == AGX_ISA_ENCODING_AGX3B &&
+                                             needs_quad_helpers))
                AGX3_REFUSE(I);
             /* Projected cubes share the array face/layer staging bank. */
             ctx->agx3_staging_halfs =

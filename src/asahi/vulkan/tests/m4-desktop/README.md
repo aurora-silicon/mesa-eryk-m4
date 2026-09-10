@@ -688,3 +688,65 @@ Broader compiler suites still fail on existing half-abs, EOT, shuffle and
 stale binary expectations; rebuilding the parent packer reproduces those
 same failures (`build/0ad/f2i-baseline-testlog.txt` in the workspace).
 Mesa remains local, with no remotes and no push.
+
+
+### Retain fragment helpers through texture sampling (2026-09-10)
+
+After the float-cast fix, mipmapped material tests still differed along the
+boundary between two adjacent triangles: 256 of 16,384 pixels selected a
+coarse mip even with zero parallax displacement. The SMP f156 bit copied
+from native terminal samples was incorrectly treated as an implicit-LOD
+marker and set on every sample. Clearing it on G16G preserves helper
+coordinate updates needed by later texture operations. LOD mode is selected
+independently; register-LOD samples can also precede an implicit sample.
+
+The compiler now requests helper retention for AGX3B fragment shaders whose
+NIR metadata requires quad helpers. Both implicit and register-LOD samples
+honour that request. The normal colour termination protocol ends the shader;
+there is no additional synchronization, fixed staging address or game shader
+change. Canonical encoder callers retain their byte-exact native specimens,
+and AGX3C helper retention remains unsupported. Execution evidence here is
+J713/G16G only.
+
+`m4_gl_conditional_mipmap.c` is the asset-free reproducer. Two triangles
+sample generated mip chains: each base mip has a unique colour, and the
+height texture uses different coordinates to prevent staging-bank reuse
+from concealing the bug. The direct sample is a passing control. A uniform
+branch, uniform loop and register-LOD sample each precede another implicit
+sample. Before this fix those three cases fail 256 pixels each (768 total);
+after it all 65,536 pixels pass, as they do on llvmpipe. Evidence:
+`conditional-mipmap-four-before` and `conditional-mipmap-four-fixed`.
+Build with `-lEGL -lGL`; run through the mandatory watchdog/thermal wrapper.
+The reference run additionally requires `M4_TEST_LLVMPIPE=1`.
+
+The full material shader with generated mipmaps now has only three pixels
+exceeding 8/255 across nine 128x128 cases (maximum 9/255), versus roughly
+256 per case before. The zero-displacement images are byte-identical to
+llvmpipe (`parallax-smp156`). Serialization alone, coordinate retention,
+COPY cache/discard changes and branch mask probes did not fix it. Reusing
+one staging bank (0 or 32) only hid the zero-displacement failure; displaced
+samples still consumed stale helper coordinates. Those probes were reverted.
+
+The original game trace improves again at call 36525: pixels exceeding
+32/255 fall from 39,091 after the float-cast fix to 4,460, versus 117,490
+before both fixes. Mean absolute RGB error is now 1.0557, versus 3.8329
+originally (`0ad-smp-helper-fixed`). This is approximately a 96.2% reduction
+in large pixel differences, not perfect parity or a performance result.
+Existing per-draw Zink synchronization remains necessary. Host/ARM64 builds,
+5,622 texture-core checks and all 15 exact SMP-witness checks pass.
+
+The final helper-retention policy also passed 180 seconds of native DCP
+Hyprland with 0 A.D., 29 independent GPU/compositor health checks and 386
+thermal samples. Peak temperature was 53.75 C, with the 60-second watchdog,
+enabled CPU thermal policy and unchanged 338 MHz GPU clock throughout
+(`0ad-retain-helpers-desktop`). The GPU renders both the game and compositor;
+the existing Quickshell panel still uses its software backend. Indexed
+native graphics/compute sampler compilation also passes. The broader
+compiler-test failures described above remain; direct-IR fragment fixtures
+also lack the NIR helper metadata that the packer expects.
+
+During earlier float-cast desktop validation, a DCP flip failed with -5 and
+the startup screenshot timed out. The guard saved evidence and rebooted;
+the fresh-boot retry passed 180 seconds/30 health checks at 54 C
+(`0ad-f2i-fixed-desktop-fresh`). This display failure is recorded separately
+from the shader fixes, not presented as resolved by either one.

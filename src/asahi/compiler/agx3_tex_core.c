@@ -165,6 +165,9 @@ sample_ok(enum agx_isa_encoding enc, const struct agx3_tex_sample_desc *d)
        d->texture > 15 || d->sampler > 15)
       return false;
 
+   if (d->retain_helpers && enc != AGX_ISA_ENCODING_AGX3B)
+      return false;
+
    if (d->lod == AGX3_TEX_LOD_LEVEL) {
       /* 12-bit immediate level field; witnessed up to 464 (level 7.25). */
       if (d->lod_x64 > 0xfff)
@@ -263,12 +266,20 @@ agx3_tex_encode_sample(enum agx_isa_encoding enc,
       ov[n++] = (struct agx3_field_kv)KV(107, 1);
    if (d->sampler_kill)
       ov[n++] = (struct agx3_field_kv)KV(136, 1);
+   /* f156 appears in native terminal fragment samples. On G16G, setting it
+    * before later implicit samples stops their helper-coordinate updates:
+    * a new staging bank then gives the wrong LOD at primitive boundaries.
+    * Reusing an old bank merely hides the bug with stale helper coordinates.
+    * This is independent of LOD selection (f139), including register LODs.
+    * Keep the exact native specimens by default; compiler-generated shaders
+    * request retention until the normal colour termination protocol.
+    */
    if (d->lod == AGX3_TEX_LOD_AUTO) {
-      ov[n++] = (struct agx3_field_kv)KV(156, 1); /* implicit-LOD marker */
+      ov[n++] = (struct agx3_field_kv)KV(156, !d->retain_helpers);
    } else if (d->lod == AGX3_TEX_LOD_REGISTER) {
       ov[n++] = (struct agx3_field_kv)KV(28, 0); /* packed level bank */
       ov[n++] = (struct agx3_field_kv)KV(139, 4);
-      ov[n++] = (struct agx3_field_kv)KV(156, 1); /* native fragment form */
+      ov[n++] = (struct agx3_field_kv)KV(156, !d->retain_helpers);
    } else {
       ov[n++] = (struct agx3_field_kv)KV(37, 1);  /* immediate LOD operand */
       ov[n++] = (struct agx3_field_kv)KV(139, 2); /* explicit-level mode */

@@ -1063,10 +1063,45 @@ test_staging_source_banks(void)
    return 0;
 }
 
+static int
+test_sample_helper_retention(void)
+{
+   /* The retained form differs from the native terminal specimen only in
+    * f156 (word 4 bit 0), independently of the ordinary last-SMP marker.
+    * J713's conditional mipmap test supplies execution coverage.
+    */
+   for (unsigned kind = 1; kind <= 3; kind++) {
+      for (unsigned lod = 0; lod <= 2; lod++) {
+         struct agx3_tex_sample_desc d = {
+            .dest = 0, .coord = 4, .width = AGX3_TEX_W32, .mask = 15,
+            .slot = 1, .wait_mask = 1, .final = true,
+            .texture_kind = kind, .sampler_kind = kind,
+            .texture_value = 8, .sampler_value = 12, .lod = lod,
+         };
+         uint8_t terminal[AGX3_TEX_MAX_LENGTH], retained[AGX3_TEX_MAX_LENGTH];
+         uint8_t terminal_len, retained_len;
+         CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B, &d,
+                                       terminal, &terminal_len));
+         d.retain_helpers = true;
+         CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B, &d,
+                                       retained, &retained_len));
+         CHECK(terminal_len == retained_len);
+         if (lod != AGX3_TEX_LOD_LEVEL) {
+            CHECK(terminal[8] & 1);
+            terminal[8] &= ~1;
+         }
+         CHECK(!memcmp(terminal, retained, terminal_len));
+         CHECK(!agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3C, &d,
+                                        retained, &retained_len));
+      }
+   }
+   return 0;
+}
+
 int
 main(void)
 {
-   if (test_staging_source_banks() || test_register_lod() || test_register_array_layer() ||
+   if (test_sample_helper_retention() || test_staging_source_banks() || test_register_lod() || test_register_array_layer() ||
        test_staging_source_lifetime() || test_exact_witnesses() ||
        test_supported_axes() || test_fail_closed() ||
        test_sample_witnesses() || test_copy_witnesses() ||
