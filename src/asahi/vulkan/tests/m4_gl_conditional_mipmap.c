@@ -114,6 +114,9 @@ main(void)
    const unsigned reads = setting("M4_TEST_READS", 1, 16);
    CHECK(reads > 0);
    const unsigned finish = setting("M4_TEST_FINISH", 0, 1);
+   const unsigned draws = setting("M4_TEST_DRAWS", 1, 32);
+   const unsigned split = setting("M4_TEST_SPLIT_DRAWS", 0, 1);
+   CHECK(draws > 0 && W % draws == 0);
    const unsigned delay_ms = setting("M4_TEST_READ_DELAY_MS", 0, 1000);
    unsigned modes[64], count = 0;
    const char *selection = getenv("M4_TEST_MODES");
@@ -128,6 +131,8 @@ main(void)
       selection = *end ? end + 1 : end;
    }
    CHECK(count > 0);
+   for (unsigned i = 0; i < count; i++)
+      CHECK(draws == 1 || modes[i] == 0 || modes[i] == 2);
    unsigned char *pixels = malloc((size_t)W * W * 4);
    CHECK(pixels);
    /* Per-column reference keeps CPU validation independent of image area.
@@ -143,8 +148,8 @@ main(void)
       }
       alu_reference[x] = n;
    }
-   printf("Configuration: width=%u modes=%u reads=%u delay_ms=%u iterations=%u\n",
-          W, count, reads, delay_ms, iterations);
+   printf("Configuration: width=%u modes=%u reads=%u delay_ms=%u iterations=%u draws=%u split=%u\n",
+          W, count, reads, delay_ms, iterations, draws, split);
    EGLDisplay d = eglGetPlatformDisplay(EGL_PLATFORM_SURFACELESS_MESA,
                                         EGL_DEFAULT_DISPLAY, NULL);
    CHECK(eglInitialize(d, NULL, NULL));
@@ -225,12 +230,33 @@ main(void)
       glUniform1f(glGetUniformLocation(p, "heightScale"), 2);
       glUniform1f(glGetUniformLocation(p, "lod"), 0.5f);
       glClearColor(1, 0, 1, 1);
+      glDisable(GL_SCISSOR_TEST);
       glClear(GL_COLOR_BUFFER_BIT);
       if (getenv("M4_TEST_CLEAR_FINISH"))
          glFinish();
-      printf("step=%u mode=%u draw\n", step, mode);
-      fflush(stdout);
-      glDrawArrays(GL_TRIANGLES, 0, 6);
+      /* Keep both variants identical apart from glFinish between draws.
+       * Alternating texture descriptors and scissor state makes every draw
+       * observable in a separate stripe, including overwritten stale state.
+       * These are read-only textures, not a render-to-texture dependency test.
+       * Check the actual VDM trace before calling this a batched submission.
+       */
+      if (draws > 1)
+         glEnable(GL_SCISSOR_TEST);
+      for (unsigned draw = 0; draw < draws; draw++) {
+         if (draws > 1) {
+            glScissor(0, draw * (W / draws), W, W / draws);
+            glUniform1i(glGetUniformLocation(p, "baseTex"), draw & 1);
+         }
+         printf("step=%u mode=%u draw=%u sampler=%u\n", step, mode, draw,
+                draw & 1);
+         fflush(stdout);
+         glDrawArrays(GL_TRIANGLES, 0, 6);
+         if (split) {
+            glFinish();
+            printf("step=%u mode=%u draw=%u split-finished\n", step, mode, draw);
+            fflush(stdout);
+         }
+      }
       if (finish) {
          glFinish();
          printf("step=%u mode=%u finished\n", step, mode);
@@ -255,17 +281,24 @@ main(void)
                   mode == 7 ? iterations & 255 : mode == 5 || (mode == 6 && x >= 32)
                      ? (iterations >= 32 ? 255 : (iterations * 255 + 16) / 32)
                      : 0;
-               const unsigned expected_green = mode == 9 ? (alu_reference[x] >> 8) & 255 :
+               unsigned expected_green = mode == 9 ? (alu_reference[x] >> 8) & 255 :
                                                mode == 7 ? iterations >> 8 : 0;
+               unsigned expected_blue = 255, expected_alpha = 255;
+               if (draws > 1 && (y / (W / draws)) & 1) {
+                  expected_red = expected_green = expected_blue = expected_alpha = 128;
+               }
                if ((mode == 7 || mode == 9 ? q[0] != expected_red :
                     abs((int)q[0] - (int)expected_red) > 2) ||
-                   (mode == 7 || mode == 9 ? q[1] != expected_green : q[1] > 2) ||
-                   q[2] < 253 || q[3] < 253) {
+                   (mode == 7 || mode == 9 ? q[1] != expected_green :
+                    abs((int)q[1] - (int)expected_green) > 2) ||
+                   abs((int)q[2] - (int)expected_blue) > 2 ||
+                   abs((int)q[3] - (int)expected_alpha) > 2) {
                   if (bad < 3)
                      fprintf(
                         stderr,
-                        "mode=%u pixel=%u,%u got=%u,%u,%u,%u expected=%u,%u,255,255\n",
-                        mode, x, y, q[0], q[1], q[2], q[3], expected_red, expected_green);
+                        "mode=%u pixel=%u,%u got=%u,%u,%u,%u expected=%u,%u,%u,%u\n",
+                        mode, x, y, q[0], q[1], q[2], q[3], expected_red, expected_green,
+                        expected_blue, expected_alpha);
                   bad++;
                }
             }
