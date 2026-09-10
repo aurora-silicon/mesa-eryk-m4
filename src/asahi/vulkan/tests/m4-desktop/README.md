@@ -1168,3 +1168,22 @@ explicit retirement `monotonic_ns` field when assessing fence ordering.
 Evidence: `20260910T171851600971Z-vulkan-cold-stale-line-invalidate`,
 `20260910T172202880405Z-vulkan-cold-queue-point-two`, and
 `20260910T172337363392Z-vulkan-cold-retirement-monotonic`.
+
+
+#### Compute-fill attachment metadata
+
+Native meta fills now record their writable destination ranges in the exact
+CDM stream that records the dispatch. Submission emits SET_COMPUTE_ATTACHMENTS
+before each compute command, including an empty list to clear preceding state.
+Only known meta destinations are collected; this is not a complete resource
+list for arbitrary compute shaders. Hardware range capacity remains the kernel
+reported attachment capacity, and dropped hints never truncate GPU work.
+
+The paired M4 kernel now forwards these lists to firmware. The ordinary
+4 MiB fill and firmware event 0x116 confirm the matching destination range.
+Cold first-read visibility still fails with either common Asahi 0x17/1 or
+native M4 0x18/3 descriptor attributes; neither is a visibility workaround.
+An independent Apple-compiled G16G uint4 fill main also reproduced stale
+first-read words followed by a correct later read. The temporary literal-VA
+shader replacement used for that experiment was removed; it is not part of
+the driver. Full 0 A.D. rendering remains unqualified.
