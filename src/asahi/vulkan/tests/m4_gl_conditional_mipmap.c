@@ -100,6 +100,7 @@ main(void)
    CHECK(W >= 64);
    const unsigned reads = setting("M4_TEST_READS", 1, 16);
    CHECK(reads > 0);
+   const unsigned finish = setting("M4_TEST_FINISH", 0, 1);
    const unsigned delay_ms = setting("M4_TEST_READ_DELAY_MS", 0, 1000);
    unsigned modes[64], count = 0;
    const char *selection = getenv("M4_TEST_MODES");
@@ -199,7 +200,14 @@ main(void)
       glUniform1f(glGetUniformLocation(p, "lod"), 0.5f);
       glClearColor(1, 0, 1, 1);
       glClear(GL_COLOR_BUFFER_BIT);
+      printf("step=%u mode=%u draw\n", step, mode);
+      fflush(stdout);
       glDrawArrays(GL_TRIANGLES, 0, 6);
+      if (finish) {
+         glFinish();
+         printf("step=%u mode=%u finished\n", step, mode);
+         fflush(stdout);
+      }
       for (unsigned read = 0; read < reads; read++) {
          /* A diagnostic delay never excuses a bad first readback. */
          if (delay_ms) {

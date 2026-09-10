@@ -1033,3 +1033,37 @@ have the same cause. Evidence is in workspace `_provenance/experiments/`:
 `20260910T100047738241Z-mipmap-lod-draw-repeat`,
 `20260910T100105866747Z-mipmap-all-parameterized`, and
 `20260910T100214401888Z-mipmap-direct-then-lod`.
+
+
+`M4_TEST_FINISH=1` additionally calls `glFinish` between each draw and its
+readbacks. This is a diagnostic, not a substitute for the API's implicit
+readback synchronization. A printed `finished` marker alone is not success:
+OpenGL can return after device loss, and the kernel fault evidence must be
+checked. With per-submit waits enabled and Gallium threading disabled, the
+large mode-2 loop itself times out; earlier mode-3-only attribution was
+misleading. Evidence: `20260910T102058014017Z-mipmap-loop-strict-waits`.
+
+`m4_vk_first_submit.c` isolates readback from Zink and render shaders. It
+creates one Vulkan device/queue, fills 4 MiB on the GPU, submits an empty
+batch carrying a fence, waits, and checks every word against a nonzero
+pattern. `M4_TEST_UNCACHED=1` selects a non-cached coherent memory type;
+`M4_TEST_READ_DELAY_MS` optionally delays the first read by up to 1000 ms.
+`M4_TEST_SECOND_READ=1` checks the same buffer again after 100 ms without
+new GPU work. Both reads count toward failure. Run only with watchdog and
+thermal guards; compile with `-lvulkan`. The default device check requires
+Apple M4; `M4_TEST_LLVMPIPE=1` allows a software Vulkan reference.
+
+On a fresh boot, the Vulkan test reports 31,885 stale sentinel words out
+of 1,048,576 despite a successful fence wait. Warm runs pass. Kernel and
+userspace clocks require correlation: `/dev/kmsg` timestamps differ from
+CLOCK_MONOTONIC, and the offset changes across boots. Paired markers show
+that kernel retirement precedes the fence return in both the cold failure
+and a warm success. This does not yet prove a cache or firmware cause.
+Evidence: `20260910T102144732616Z-vulkan-cold-clock-correlation` and
+`20260910T101952424515Z-vulkan-clock-correlation`.
+
+A queue-initial-counter change and withholding the cached memory type were
+tested and reverted. Neither is an established fix: uncached memory also
+failed, delayed cached reads passed, and warm baseline GL runs passed.
+Do not treat these diagnostics as a driver improvement or discard cold
+first-readback failures as warmup.
