@@ -56,6 +56,10 @@ program(unsigned mode)
       "if(enabled!=0) p+=texture(heightTex,p*heightScale).aa*offset;\n"
       "#elif MODE == 2\n"
       "for(int i=0;i<iterations;i++) p+=texture(heightTex,p*heightScale).aa*offset;\n"
+      "#elif MODE == 7\n"
+      "for(int i=0;i<iterations;i++){p+=fract(p.yx*heightScale)*offset;count++;}\n"
+      "#elif MODE == 8\n"
+      "for(int i=0;i<iterations;i++) p+=textureLod(heightTex,p*heightScale,lod).aa*offset;\n"
       "#elif MODE == 3\n"
       "if(enabled!=0) p+=textureLod(heightTex,p*heightScale,lod).aa*offset;\n"
       "#elif MODE == 4\n"
@@ -66,7 +70,9 @@ program(unsigned mode)
       "for(int i=0;i<iterations;i++){p+=texture(heightTex,p*heightScale).aa*offset;"
       "if(enabled!=0)p+=texture(heightTex,p).aa*offset;count++;}}\n"
       "#endif\n"
-      "color=texture(baseTex,p);\n#if MODE>=5\ncolor.r=float(count)/32.0;\n#endif\n}",
+      "color=texture(baseTex,p);\n#if MODE==7\n"
+      "color.r=float(count&255)/255.0;color.g=float(count>>8)/255.0;\n"
+      "#elif MODE==5 || MODE==6\ncolor.r=float(count)/32.0;\n#endif\n}",
       mode);
    const char *sources[] = {vs, fs};
    GLenum types[] = {GL_VERTEX_SHADER, GL_FRAGMENT_SHADER};
@@ -98,7 +104,7 @@ main(void)
 {
    W = setting("M4_TEST_WIDTH", 128, 2048);
    CHECK(W >= 64);
-   const unsigned iterations = setting("M4_TEST_ITERATIONS", 20, 128);
+   const unsigned iterations = setting("M4_TEST_ITERATIONS", 20, 4096);
    const unsigned reads = setting("M4_TEST_READS", 1, 16);
    CHECK(reads > 0);
    const unsigned finish = setting("M4_TEST_FINISH", 0, 1);
@@ -110,7 +116,7 @@ main(void)
    while (*selection) {
       char *end;
       unsigned long mode = strtoul(selection, &end, 10);
-      CHECK(end != selection && mode < 7 && count < 64);
+      CHECK(end != selection && mode < 9 && count < 64);
       modes[count++] = mode;
       CHECK(*end == ',' || !*end);
       selection = *end ? end + 1 : end;
@@ -201,6 +207,8 @@ main(void)
       glUniform1f(glGetUniformLocation(p, "lod"), 0.5f);
       glClearColor(1, 0, 1, 1);
       glClear(GL_COLOR_BUFFER_BIT);
+      if (getenv("M4_TEST_CLEAR_FINISH"))
+         glFinish();
       printf("step=%u mode=%u draw\n", step, mode);
       fflush(stdout);
       glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -224,16 +232,19 @@ main(void)
             for (unsigned x = 0; x < W; x++) {
                const unsigned char *q = pixels + (y * W + x) * 4;
                unsigned expected_red =
-                  mode == 5 || (mode == 6 && x >= 32)
+                  mode == 7 ? iterations & 255 : mode == 5 || (mode == 6 && x >= 32)
                      ? (iterations >= 32 ? 255 : (iterations * 255 + 16) / 32)
                      : 0;
-               if (abs((int)q[0] - (int)expected_red) > 2 || q[1] > 2 ||
+               const unsigned expected_green = mode == 7 ? iterations >> 8 : 0;
+               if ((mode == 7 ? q[0] != expected_red :
+                    abs((int)q[0] - (int)expected_red) > 2) ||
+                   (mode == 7 ? q[1] != expected_green : q[1] > 2) ||
                    q[2] < 253 || q[3] < 253) {
                   if (bad < 3)
                      fprintf(
                         stderr,
-                        "mode=%u pixel=%u,%u got=%u,%u,%u,%u expected=%u,0,255,255\n",
-                        mode, x, y, q[0], q[1], q[2], q[3], expected_red);
+                        "mode=%u pixel=%u,%u got=%u,%u,%u,%u expected=%u,%u,255,255\n",
+                        mode, x, y, q[0], q[1], q[2], q[3], expected_red, expected_green);
                   bad++;
                }
             }

@@ -1105,7 +1105,7 @@ second reads. Neither CPU barrier nor pre-submit cache maintenance is an
 established fix.
 
 `m4_gl_conditional_mipmap.c` accepts `M4_TEST_ITERATIONS` (default 20,
-0..128) to vary dynamic loop work without changing shader allocation.
+0..4096) to vary dynamic loop work without changing shader allocation.
 The iteration-count color checks saturate as the RGBA8 target does.
 llvmpipe passes all seven modes at 0, 8 and 40 iterations.
 
@@ -1138,3 +1138,15 @@ was observed in that interval. The stopping point is close to the earlier
 270,336-pixel result, but its mechanism is not established.
 Evidence: `20260910T154551778585Z-mipmap-loop8-progress-after-fault` and
 `20260910T154646492195Z-mipmap-loop20-progress-after-fault`.
+
+Optional modes 7 and 8 separate arithmetic-only loop work from explicit-LOD
+texture loop work; the default mode sequence remains 0..6. Mode 7 encodes
+the exact iteration count in the red (low byte) and green (high byte) channels.
+`M4_TEST_CLEAR_FINISH=1` separates the magenta clear from the draw, useful
+when inspecting raw fault memory. This does not relax any readback check.
+llvmpipe passes modes 7/8 at 1024 square with 128 iterations and mode 7 at
+128 square with 4096 iterations. The latter at 1024 square stalls on M4:
+98,304 correct pixels, 950,272 pixels retaining the separately finished
+magenta clear; two raw snapshots 200 ms apart are identical. The loop
+contains no texture operations, although an implicit sample follows it.
+Evidence: `20260910T160800982598Z-mipmap-alu4096-large`.
