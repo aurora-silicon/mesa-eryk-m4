@@ -4,6 +4,7 @@
  * Live M4 runs require the watchdog and thermal guards.
  */
 #include <stdint.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -20,6 +21,20 @@
 #define VK(x)   CHECK((x) == VK_SUCCESS)
 #define WORDS   (1024 * 1024)
 #define PATTERN UINT32_C(0x7b2da916)
+
+static void
+cpu_barrier(void)
+{
+#ifdef __aarch64__
+   if (getenv("M4_TEST_CPU_BARRIER") &&
+       !strcmp(getenv("M4_TEST_CPU_BARRIER"), "oshld"))
+      __asm__ volatile("dmb oshld" ::: "memory");
+   else
+      __asm__ volatile("dsb sy" ::: "memory");
+#else
+   __sync_synchronize();
+#endif
+}
 
 static double
 monotonic(void)
@@ -107,6 +122,20 @@ main(void)
    uint32_t *data;
    VK(vkMapMemory(device, memory, 0, VK_WHOLE_SIZE, 0, (void **)&data));
    memset(data, 0xa5, WORDS * sizeof(*data));
+   if (getenv("M4_TEST_CLEAN_BEFORE")) {
+#ifdef __aarch64__
+      uint64_t ctr;
+      __asm__ volatile("mrs %0, ctr_el0" : "=r"(ctr));
+      const unsigned line_size = 4u << ((ctr >> 16) & 15);
+      for (uintptr_t address = (uintptr_t)data;
+           address < (uintptr_t)data + WORDS * sizeof(*data);
+           address += line_size)
+         __asm__ volatile("dc cvac, %0" : : "r"(address) : "memory");
+      __asm__ volatile("dsb sy" ::: "memory");
+#else
+      CHECK(!"M4_TEST_CLEAN_BEFORE requires AArch64");
+#endif
+   }
    VkCommandPoolCreateInfo pci = {
       .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
       .queueFamilyIndex = family};
@@ -136,12 +165,16 @@ main(void)
    VkSubmitInfo submit = {.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
                           .commandBufferCount = 1,
                           .pCommandBuffers = &command};
+   if (getenv("M4_TEST_SUBMIT_BARRIER"))
+      cpu_barrier();
    printf("TIME submit %.9f\n", monotonic());
    fflush(stdout);
-   VK(vkQueueSubmit(queue, 1, &submit, VK_NULL_HANDLE));
+   const bool direct_fence = getenv("M4_TEST_DIRECT_FENCE") != NULL;
+   VK(vkQueueSubmit(queue, 1, &submit, direct_fence ? fence : VK_NULL_HANDLE));
    /* Deliberately signal via an empty submit, as Zink does. */
    VkSubmitInfo empty = {.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO};
-   VK(vkQueueSubmit(queue, 1, &empty, fence));
+   if (!direct_fence)
+      VK(vkQueueSubmit(queue, 1, &empty, fence));
    VK(vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_C(5000000000)));
    printf("TIME fence-return %.9f\n", monotonic());
    fflush(stdout);
@@ -153,6 +186,8 @@ main(void)
                                .tv_nsec = (ms % 1000) * 1000000L};
       nanosleep(&delay, NULL);
    }
+   if (getenv("M4_TEST_CPU_BARRIER"))
+      cpu_barrier();
    unsigned bad = 0;
    for (unsigned i = 0; i < WORDS; i++) {
       if (data[i] != PATTERN) {

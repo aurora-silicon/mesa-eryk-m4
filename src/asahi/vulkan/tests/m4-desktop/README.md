@@ -1076,3 +1076,24 @@ Evidence: `20260910T102657045013Z-vulkan-cold-second-read`. This identifies
 a completion/visibility problem independently of GL, textures, or game
 shaders. It does not justify a fixed sleep in the driver or establish the
 precise missing synchronization operation.
+
+
+Additional first-submit diagnostics: `M4_TEST_DIRECT_FENCE=1` attaches the
+fence directly to the GPU submission. `M4_TEST_CPU_BARRIER=1` executes
+AArch64 `dsb sy` before validation; `oshld` selects `dmb oshld`.
+`M4_TEST_SUBMIT_BARRIER=1` adds the selected barrier before submission.
+`M4_TEST_CLEAN_BEFORE=1` cleans the initialized host buffer to PoC with
+`dc cvac` and `dsb sy` (AArch64 only). These are opt-in experiments, not
+changes to the driver's synchronization contract.
+
+A cold direct-fence run also fails (45,443 stale words), excluding empty
+submission forwarding as the sole cause. A full CPU barrier passed once
+with a retirement-logging kernel, but failed on the baseline kernel repeat
+(43,888 stale words); the weaker read barrier also failed (31,800 words).
+All second reads were correct. Three subsequent warm direct-fence processes
+pass without barriers. Do not promote the single full-barrier success to a
+fix. Evidence: `20260910T151650754767Z-vulkan-cold-direct-fence`,
+`20260910T152307130040Z-vulkan-cold-host-read-barrier`,
+`20260910T152550793475Z-vulkan-cold-acquire-barrier`,
+`20260910T153000854621Z-vulkan-cold-full-barrier-baseline-kernel`, and
+`20260910T153119145685Z-vulkan-warm-direct-fence-repeat`.
