@@ -924,12 +924,16 @@ tests. `M4_TEST_LLVMPIPE=1` permits the software reference only.
 Further isolation identifies the large model's material loop: omitting its
 27 draws lets the original eight-frame scene complete, while retaining only
 those draws reproduces the Fragment timeout. Disabling its parallax loop
-makes that isolated model pass all eight frames. More narrowly, replacing
-only the loop's `texture2D(normTex, coord)` with explicit LOD zero also passes
-all eight, with the original loop bound and shadows retained. This changes
-filtering quality and is a diagnostic, not a fix. Uniform loop bounds,
+makes that isolated model pass all eight frames. An initial explicit-LOD-zero
+variant appeared to pass, but this result is INVALID: apitrace retained the
+original shader-string length and truncated the longer replacement. The
+model did not link, and replay continued despite API errors. The initial
+explicit-gradient variant has the same defect. Neither establishes anything
+about LOD selection or shader execution. Replacement strings must fit the
+captured length, and successful replay validation must reject shader, link
+and API errors independently of the process exit code. Uniform loop bounds,
 disabled scheduling and disabled register cache hints did not fix the
-original model. Evidence: `shadow-only-model-{no-parallax,loop-lod0}` and
+original model. Valid evidence: `shadow-only-model-no-parallax` and
 `shadow-only-large-model` under the same dated evidence directory.
 
 Native shader compilation can now run on a separate macOS host. The tools
