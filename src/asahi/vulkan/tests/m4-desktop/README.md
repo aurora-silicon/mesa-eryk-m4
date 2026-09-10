@@ -958,3 +958,28 @@ archives and extracted code are saved in
 `asahi-0ad-20260910-macos/remote-g16g-loop-compiler`.
 Apple documents the pipeline schema at
 <https://developer.apple.com/documentation/metal/compiling-binary-archives-from-a-custom-configuration-script>.
+
+The corrected, length-preserving LOD-zero shader compiles in llvmpipe but
+still times out on M4. Explicit gradients compile in llvmpipe but are
+rejected by the M4 backend. The original model also still fails with
+coordinate bank zero, without border emulation, without anisotropy, and
+with native control-flow or texture-marker diagnostics. All those encoder
+changes were reverted; these failures do not isolate implicit derivatives.
+
+Changing only the loop maximum from 20 to 4 does produce two validated
+eight-frame M4 completions, peak 54 C. The four-iteration version retains
+its backedge: its NIR and allocated IR differ from the failing maximum-8
+variant only in the constant, hashes and diagnostic pointers. This is not
+a loop-unrolling result and is not a quality-preserving fix. Replacing
+only the final refinement division with multiplication also fails with
+the original maximum 20. The small conditional-mipmap test's 20-iteration
+loop cases pass; its first control readback still returns zeros, so the
+overall test remains a failure. Evidence is saved under
+`shadow-only-model-loop-max{4,4-dump,8}`, `shadow-small-loop20` and
+`shadow-only-model-refinement-multiply` in the dated evidence directory.
+
+`AGX_MESA_DEBUG=shaders` now prints each packed AGX3 binary as one hexadecimal
+record with its shader stage, preamble status, encoding and byte count.
+This supports comparison with the offline native archives even though the
+compiler does not yet have an AGX3 instruction printer. The ARM64 build
+passes, and the small loop test produced complete, length-checked records.
