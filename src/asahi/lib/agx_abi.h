@@ -47,6 +47,11 @@
 #define AGX_ABI_VUNI_COUNT_VK(nr_vbos)                                         \
    ALIGN_POT(AGX_ABI_VUNI_VERTEX_PARAMS(nr_vbos) + 4, 4)
 
+/* Native texture/sampler heap pointers occupy halves 0..7 in fragments too.
+ * Shift the entire ordinary fragment ABI, including blend constants and root
+ * pointers, so textured constant-colour blending cannot alias those heaps.
+ */
+#define AGX_ABI_FUNI_NATIVE_PREFIX 8
 #define AGX_ABI_FUNI_EMRT_HEAP (0)
 #define AGX_ABI_FUNI_BLEND_R   (AGX_ABI_FUNI_EMRT_HEAP + 4)
 #define AGX_ABI_FUNI_BLEND_G   (AGX_ABI_FUNI_BLEND_R + 2)

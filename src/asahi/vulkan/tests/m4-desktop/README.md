@@ -750,3 +750,43 @@ the startup screenshot timed out. The guard saved evidence and rebooted;
 the fresh-boot retry passed 180 seconds/30 health checks at 54 C
 (`0ad-f2i-fixed-desktop-fresh`). This display failure is recorded separately
 from the shader fixes, not presented as resolved by either one.
+
+
+### Native fragment blend constants (2026-09-10)
+
+The remaining large silhouette mismatch is draw 35357 (program 108): the
+blue occluded horse is visible on llvmpipe but mostly absent on M4. A reduced
+occluder/silhouette test reproduces this with ordinary depth/stencil state;
+disabling stencil does not help, while disabling constant-alpha blending
+does. The HAL200 launch path omitted the blend-constant upload performed
+by the AGX2 path. Merely adding that old upload would alias red/green
+constants with the native texture/sampler heap pointers in halves 0..7.
+
+The native fragment ABI now reserves those first eight halves before the
+ordinary fragment layout. Fragment main root/set loads, linked prolog root
+loads and epilog blend constants agree on the shifted layout. The launch
+program uploads RGBA blend constants at native halves 12..19; root and set
+pointers start at half 20. Each draw uses its existing immutable root table.
+No shader substitution, extra submission, wait or cache flush is introduced.
+AGX2 keeps its old layout; the existing native vertex prefix is unchanged.
+
+`m4_gl_blend_constants.c` checks eight depth/stencil/blend combinations plus
+textured constant-colour/constant-alpha blending with four changing RGBA
+constant vectors. The latter keeps both native texture heaps and blend
+constants live, so the ABI overlap cannot be hidden by an untextured shader.
+llvmpipe passes all 4,096 pixels. M4 fails 2,560 before and passes all pixels
+after (`blend-constants-regression-before`, `blend-constants-regression-fixed`).
+Build with `-lEGL -lGLESv2`; reference runs require M4_TEST_LLVMPIPE=1 and
+hardware runs require the watchdog/thermal wrapper. The focused Ioto core
+suite passes all 6,770 checks. The separate advanced-blend epilog test still
+refuses its unrelated mixed-half fcmpsel shape; this change does not implement
+advanced blend equations.
+
+The original scene's horse crop drops from 701 large pixel mismatches to
+2 (the crop already had 2 before the silhouette draw). At call 36525 the
+full-frame count above 32/255 drops from 4,460 to 3,750 and mean absolute
+RGB error from 1.0557 to 1.0396 (`0ad-blend-constants-fixed`). Remaining
+scattered sampling differences are under investigation. Builds pass on
+host and ARM64. Guarded regression peaks at 51 C and replay at 51.75 C,
+with the 60-second watchdog and the unchanged CPU/GPU thermal policy.
+Mesa changes remain local, without remotes or a push.

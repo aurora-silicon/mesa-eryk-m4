@@ -1114,7 +1114,16 @@ hk_g17p_graphics_uniform_ranges(
 
       root_uniform = AGX_ABI_VUNI_NATIVE_PREFIX + AGX_ABI_VUNI_COUNT_VK(nr_attribs);
    } else if (s->info.stage == MESA_SHADER_FRAGMENT) {
-      root_uniform = AGX_ABI_FUNI_ROOT;
+      root_uniform = AGX_ABI_FUNI_NATIVE_PREFIX + AGX_ABI_FUNI_ROOT;
+      if (cmd->state.gfx.uses_blend_constant) {
+         if (!root_ptr)
+            return false;
+         ranges[count++] = (struct agx3_ioto_uniform_range){
+            .start_halfs = AGX_ABI_FUNI_NATIVE_PREFIX + AGX_ABI_FUNI_BLEND_R,
+            .size_halfs = 8,
+            .address = root_ptr + hk_root_descriptor_offset(draw.blend_constant),
+         };
+      }
    } else {
       return false;
    }

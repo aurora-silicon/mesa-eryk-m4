@@ -1167,7 +1167,7 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
          shader->info.agx3_combined_sampler = binding;
 
          /* Texture and sampler table pointers occupy uniform halves 0..7.
-          * Keep ordinary push-root accesses at AGX_ABI_FUNI_ROOT (half 12);
+          * Keep ordinary push-root accesses in the separate native fragment ABI;
           * the lowering removes descriptor accesses, not push constants.
           */
          set_count = 0;
@@ -1346,7 +1346,9 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
                       ? AGX_G17P_TXF_ROOT_HALFS
                       : 0;
    if (sw_stage == MESA_SHADER_FRAGMENT)
-      root = AGX_ABI_FUNI_ROOT;
+      root = AGX_ABI_FUNI_ROOT +
+             (agx_chip_uses_hal200_ioto(dev->dev.chip)
+                 ? AGX_ABI_FUNI_NATIVE_PREFIX : 0);
    else if (sw_stage == MESA_SHADER_VERTEX)
       root = AGX_ABI_VUNI_COUNT_VK(nr_vbos);
 

@@ -2328,10 +2328,18 @@ build_fs_prolog(nir_builder *b, const void *key)
 }
 
 static void
+build_g17p_fs_prolog(nir_builder *b, const void *key)
+{
+   build_fs_prolog(b, key);
+   agx_nir_reserve_native_fragment_prefix(b->shader);
+}
+
+static void
 build_g17p_fs_epilog(nir_builder *b, const void *key_)
 {
    const struct agx_fs_epilog_key *key = key_;
    agx_nir_fs_epilog(b, key);
+   agx_nir_reserve_native_fragment_prefix(b->shader);
 
    if (key->nr_samples == 1)
       NIR_PASS(_, b->shader, agx_nir_lower_g17p_1x_tile_samples);
@@ -2349,7 +2357,9 @@ hk_get_fast_linked_locked_fs(struct hk_device *dev, struct hk_shader *shader,
    struct agx_shader_part *prolog = NULL;
    if (needs_prolog) {
       prolog = hk_get_prolog_epilog(dev, &key->prolog, sizeof(key->prolog),
-                                    build_fs_prolog, false, false,
+                                    agx_native_graphics(&dev->dev)
+                                       ? build_g17p_fs_prolog : build_fs_prolog,
+                                    false, false,
                                     key->prolog.cf_base);
       if (!prolog)
          return NULL;
