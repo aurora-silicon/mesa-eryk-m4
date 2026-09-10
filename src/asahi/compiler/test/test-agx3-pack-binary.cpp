@@ -5662,6 +5662,41 @@ TEST_F(AGX3PackBinary, ComputeSampleRefusesUnqualifiedLod)
    }
 }
 
+TEST_F(AGX3PackBinary, ShadowCoordinatesUseFullCopySourceBank)
+{
+   for (unsigned source : {60u, 64u, 128u, 252u, 254u}) {
+      auto enc = AGX_ISA_ENCODING_AGX3B;
+      agx_builder *b = builder(enc);
+      b->shader->stage = MESA_SHADER_FRAGMENT;
+      b->shader->nir = rzalloc(mem_ctx, nir_shader);
+      key.no_stop = true;
+      agx_index dest = agx_register(72, AGX_SIZE_32);
+      dest.channels_m1 = 3;
+      agx_index coord = agx_register(source, AGX_SIZE_32);
+      coord.channels_m1 = 1;
+      agx_texture_sample_to(
+         b, dest, coord, agx_immediate(0), agx_immediate(0),
+         agx_register(68, AGX_SIZE_64), agx_register(60, AGX_SIZE_64),
+         agx_register(28, AGX_SIZE_32), AGX_DIM_2D,
+         AGX_LOD_MODE_AUTO_LOD, 1, false, true, false, AGX_GATHER_NONE,
+         false);
+      agx_stop(b);
+      if (source == 254) {
+         pack(b, false);
+         continue;
+      }
+
+      auto bytes = pack(b);
+      ASSERT_FALSE(bytes.empty());
+      uint8_t copy[AGX3_TEX_COPY_MAX_LENGTH], len;
+      ASSERT_TRUE(agx3_tex_stage_copy_hints(enc, 0, source, 1, 0,
+                                           false, false, copy, &len));
+      ASSERT_GE(bytes.size(), len);
+      EXPECT_TRUE(std::equal(copy, copy + len, bytes.begin()));
+      EXPECT_EQ(b->shader->agx3_staging_halfs, 8);
+   }
+}
+
 TEST_F(AGX3PackBinary, ArraySampleStagingAndLifetime)
 {
    for (unsigned hint = 0; hint < 3; ++hint) {

@@ -991,11 +991,12 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
    const bool immediate = I->nr_srcs == 6 &&
       I->src[3].type == AGX_INDEX_IMMEDIATE &&
       I->src[4].type == AGX_INDEX_IMMEDIATE;
-   /* Array coordinates are copied to the fixed staging bank before SMP, so
-    * their source only needs to fit the COPY/PACK_SMPIR 7-bit half-register
-    * fields. The third scalar must not wrap that field. Plain 2D samples name
-    * the coordinate directly in SMP and retain its narrower bound. */
-   const unsigned max_coord = (array || cube) ? 120 : 60;
+   /* Fixed-bank samples copy their coordinates before SMP. COPY and
+    * PACK_SMPIR accept the full 256-half source bank; the last component must
+    * fit. Only unstaged 2D samples retain SMP's narrower coordinate bound. */
+   const bool fixed_coord = explicit_lod || array || cube || shadow;
+   const unsigned coord_components = (array || cube) ? 3 : 2;
+   const unsigned max_coord = fixed_coord ? 256 - 2 * coord_components : 60;
    if (I->nr_dests != 1 || I->nr_srcs != 6 ||
        !agx3_tex_plain_reg(I->dest[0]) ||
        (I->dest[0].size != AGX_SIZE_16 &&
@@ -1042,8 +1043,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
    /* Every native array witness names coordinate bank 0 in SMP, including
     * register-indexed shaders whose physical coordinates live elsewhere.
     * PACK_SMPIR publishes only the layer, so explicitly copy x/y to bank 0. */
-   const uint16_t coord = (explicit_lod || array || cube || shadow) ?
-                            0 : I->src[0].value;
+   const uint16_t coord = fixed_coord ? 0 : I->src[0].value;
    uint8_t bytes[AGX3_TEX_MAX_LENGTH];
    uint8_t len = 0;
 

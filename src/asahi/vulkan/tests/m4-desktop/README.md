@@ -841,3 +841,11 @@ Its first M4 run exposed a kernel validation bug: zero color tilebuffer bytes
 were rejected even for depth-only passes. Kernel commit `49ed361697e5` removes
 that rejection while retaining the storage bound; the module builds with the
 existing J713 configuration. Hardware validation follows after reboot.
+
+After reboot with `49ed361697e5`, the GPU-rendered shadow test passes all
+12,288 pixels on M4 Zink/Honeykrisp with zero byte error, matching llvmpipe.
+This covers all eight comparison functions, nearest and linear PCF, three
+reference depths, clamp-to-edge, and the depth-write-to-sample transition.
+The guard saved normal completion without a GPU fault; the peak PMP reading
+was 50.25 C, with the 60-second watchdog and thermal policy active.
+Evidence: `asahi-0ad-20260910-macos/shadow-compare-depth-kernel`.
