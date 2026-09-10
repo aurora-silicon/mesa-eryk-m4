@@ -112,8 +112,9 @@ bool agx3_tex_decode_fetch(enum agx_isa_encoding enc, const void *instruction,
  * Register-valued LOD plus an array layer remains unsupported.
  * Everything else about the sampler family -- other dimensions, bias,
  * gradients, min-LOD, offsets,
- * shadow compare, gather -- remains a deliberate refusal: those axes either
- * need additional operand marshalling and qualification.
+ * gather -- remains a deliberate refusal: those axes need additional operand
+ * marshalling and qualification. M4 2D/array shadow comparisons are admitted
+ * with a scalar F32 result and reference in staging half4 (implicit or LOD0).
  */
 enum agx3_tex_lod {
    AGX3_TEX_LOD_AUTO,
@@ -135,6 +136,7 @@ struct agx3_tex_sample_desc {
    bool coord_kill;
    bool final;          /* witnessed final texture-op marker */
    bool retain_helpers; /* AGX3B: keep helper coordinates for later samples */
+   bool shadow;         /* M4: scalar depth compare, reference in staging half4 */
    bool array;          /* 2D array: register layer already in operand bank 6 */
    bool cube;           /* M4 projected UV plus packed face in operand bank 6 */
    enum agx3_tex_operand_kind texture_kind;

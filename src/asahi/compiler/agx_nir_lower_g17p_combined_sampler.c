@@ -17,20 +17,25 @@ g17p_sample_shape(const nir_tex_instr *tex)
        tex->op != nir_texop_txl) ||
        (tex->sampler_dim != GLSL_SAMPLER_DIM_2D &&
         !(cube && !tex->is_array && tex->op == nir_texop_tex)) ||
-       tex->is_shadow || tex->is_sparse ||
+       (tex->is_shadow && cube) || tex->is_sparse ||
        tex->coord_components != ((tex->is_array || cube) ? 3 : 2) ||
        (tex->backend_flags & ~(AGX_TEXTURE_FLAG_CLAMP_TO_0 |
                                AGX_TEXTURE_FLAG_NO_CLAMP)) != 0 ||
        tex->backend_flags == (AGX_TEXTURE_FLAG_CLAMP_TO_0 |
                               AGX_TEXTURE_FLAG_NO_CLAMP) ||
-       tex->dest_type != nir_type_float32 || tex->def.num_components != 4 ||
+       tex->dest_type != nir_type_float32 ||
+       tex->def.num_components != (tex->is_shadow ? 1 : 4) ||
        tex->def.bit_size != 32)
       return false;
 
    const bool has_bias =
       nir_tex_instr_src_index(tex, nir_tex_src_bias) >= 0;
    const bool has_lod = nir_tex_instr_src_index(tex, nir_tex_src_lod) >= 0;
-   if (tex->num_srcs != ((has_bias || has_lod) ? 4 : 3) ||
+   const int compare = nir_tex_instr_src_index(tex, nir_tex_src_comparator);
+   if (tex->is_shadow != (compare >= 0) ||
+       (compare >= 0 && (nir_src_bit_size(tex->src[compare].src) != 32 ||
+                        nir_src_num_components(tex->src[compare].src) != 1)) ||
+       tex->num_srcs != ((has_bias || has_lod) ? 4 : 3) + tex->is_shadow ||
        has_lod != (tex->op == nir_texop_txl) ||
        has_bias != (tex->op == nir_texop_txb))
       return false;

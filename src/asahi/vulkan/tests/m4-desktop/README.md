@@ -790,3 +790,43 @@ scattered sampling differences are under investigation. Builds pass on
 host and ARM64. Guarded regression peaks at 51 C and replay at 51.75 C,
 with the 60-second watchdog and the unchanged CPU/GPU thermal policy.
 Mesa changes remain local, without remotes or a push.
+
+The commit-labelled build then passed 180 seconds of native DCP Hyprland
+with 0 A.D., 29 independent GPU/compositor health checks and 390 thermal
+samples, peaking at 53.25 C (`0ad-blend-constants-desktop-fresh`). Its SHA256
+is `3535b9fa6e4b1971bbf25838af1f46084ec4345cdc5cb844ac588a104ad1fb6e`.
+The preceding startup attempt hit the already observed DCP flip -5 and
+screenshot timeout (`0ad-blend-constants-desktop`); the guard saved evidence
+and rebooted. The fresh retry is successful, not evidence that this display
+restart failure is fixed. Per-draw synchronization remains enabled; compression, shadows and
+post-processing remain disabled in that baseline test.
+
+
+### M4 shadow comparison capture and encoding (2026-09-10)
+
+Enabling shadows in `0ad-shadows-current` rejects the terrain fragment
+shader: one unsupported shadow sample prevents the whole native descriptor
+lowering, so the backend first reports an ordinary sample with AGX2 operands.
+The game exits; the guard records a 53.5 C maximum and reboots. This is a
+compiler refusal, not a passing shadowed scene.
+
+On macOS 25G83, 38 small Metal fragment pipelines were compiled into native
+M4 binary archives, including 2D/array/cube comparisons, fixed and indirect
+resources, offsets, gradients, variable LOD and fetches. The 2D depth reference
+uses a signalling COPY to staging half4 after x/y at halves0/2. The array
+layer remains in separate auxiliary bank6. SMP uses f143=1, f74=0 and mask1;
+implicit and level-zero forms are byte-witnessed for M4. Eight exact
+fixed/uniform/varying-descriptor witnesses now pass the texture-core suite
+(5,654 checks). The remaining captured modes are not thereby implemented.
+
+The first implementation admits scalar 2D/array shadow samples through native
+descriptor lowering, stages the reference, and retains helper coordinates when
+later samples need them. The native sampler supplies the comparison function
+and filtering; there is no CPU shadow calculation in the driver.
+`m4_gl_shadow_compare.c` is the independent CPU-oracle test: eight comparison
+functions, nearest/linear PCF, three reference depths, and edge clamping.
+llvmpipe passes all 12,288 pixels. Native macOS M4 passes the equivalent Metal
+test at float precision (maximum error 0.000108). Linux hardware validation is
+pending at this checkpoint. Build the GLES test with EGL, GLESv2 and libm;
+M4_TEST_LLVMPIPE=1 allows the reference, live J713 uses the mandatory guards.
+All Mesa changes are local; the checkout has no remotes.

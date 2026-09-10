@@ -1098,10 +1098,36 @@ test_sample_helper_retention(void)
    return 0;
 }
 
+static int
+test_m4_shadow_witnesses(void)
+{
+   /* Native Apple M4, macOS 25G83, MTLBinaryArchive captures. These eight
+    * instructions cover fixed, uniform and varying heap indices, 2D/array,
+    * and implicit/level-zero comparison. No AGX3C hardware claim. */
+   const struct {struct agx3_tex_sample_desc desc; uint8_t bytes[22]; uint8_t size;} cases[] = {
+      { {.dest=0, .coord=0, .width=AGX3_TEX_W32, .mask=1, .slot=1, .wait_mask=1, .coord_kill=1, .final=true, .shadow=true, .array=0, .lod=AGX3_TEX_LOD_AUTO, .texture_kind=1, .sampler_kind=1, .texture_value=0, .sampler_value=0, .texture_kill=0, .sampler_kill=0}, {0x05,0x80,0x0c,0xa0,0x90,0x00,0x20,0x00,0x01,0x00,0x00,0x00,0x01,0x00}, 14 }, /* shadow-2d-v_uv_x-auto */
+      { {.dest=0, .coord=0, .width=AGX3_TEX_W32, .mask=1, .slot=1, .wait_mask=1, .coord_kill=1, .final=true, .shadow=true, .array=0, .lod=AGX3_TEX_LOD_LEVEL, .texture_kind=1, .sampler_kind=1, .texture_value=0, .sampler_value=0, .texture_kill=0, .sampler_kill=0}, {0x05,0x80,0x0c,0xa0,0x90,0x00,0x29,0x00,0x01,0x00,0x00,0x00,0x01,0x00}, 14 }, /* shadow-2d-v_uv_x-level0 */
+      { {.dest=0, .coord=0, .width=AGX3_TEX_W32, .mask=1, .slot=1, .wait_mask=1, .coord_kill=1, .final=true, .shadow=true, .array=0, .lod=AGX3_TEX_LOD_AUTO, .texture_kind=3, .sampler_kind=3, .texture_value=12, .sampler_value=16, .texture_kill=0, .sampler_kill=0}, {0x05,0xe0,0x0c,0xa0,0x90,0x00,0x20,0x00,0x83,0x03,0x80,0x01,0x01,0x00,0x80,0x20,0x00,0x00,0x00,0x00}, 20 }, /* shadow-2d-arg-False */
+      { {.dest=0, .coord=0, .width=AGX3_TEX_W32, .mask=1, .slot=1, .wait_mask=32, .coord_kill=1, .final=true, .shadow=true, .array=0, .lod=AGX3_TEX_LOD_AUTO, .texture_kind=2, .sampler_kind=2, .texture_value=0, .sampler_value=4, .texture_kill=1, .sampler_kill=1}, {0x05,0x80,0x0c,0xa0,0x14,0x00,0x20,0x00,0x01,0x02,0x80,0x01,0x01,0x00,0xa0,0x28,0x00,0x00,0x40,0x00}, 20 }, /* shadow-2d-arg-True */
+      { {.dest=0, .coord=0, .width=AGX3_TEX_W32, .mask=1, .slot=1, .wait_mask=1, .coord_kill=1, .final=true, .shadow=true, .array=1, .lod=AGX3_TEX_LOD_AUTO, .texture_kind=1, .sampler_kind=1, .texture_value=0, .sampler_value=0, .texture_kill=0, .sampler_kill=0}, {0x05,0x80,0x0c,0xa0,0x90,0x00,0x20,0x04,0x01,0x00,0x00,0x00,0x01,0x00}, 14 }, /* shadow-array-v_uv_x-auto */
+      { {.dest=0, .coord=0, .width=AGX3_TEX_W32, .mask=1, .slot=1, .wait_mask=1, .coord_kill=1, .final=true, .shadow=true, .array=1, .lod=AGX3_TEX_LOD_LEVEL, .texture_kind=1, .sampler_kind=1, .texture_value=0, .sampler_value=0, .texture_kill=0, .sampler_kill=0}, {0x05,0x80,0x0c,0xa0,0x90,0x00,0x29,0x01,0x01,0x00,0x00,0x00,0x01,0x00}, 14 }, /* shadow-array-v_uv_x-level0 */
+      { {.dest=0, .coord=0, .width=AGX3_TEX_W32, .mask=1, .slot=1, .wait_mask=1, .coord_kill=1, .final=true, .shadow=true, .array=1, .lod=AGX3_TEX_LOD_AUTO, .texture_kind=3, .sampler_kind=3, .texture_value=12, .sampler_value=16, .texture_kill=0, .sampler_kill=0}, {0x05,0xe0,0x0c,0xa0,0x90,0x00,0x20,0x04,0x83,0x03,0x80,0x01,0x01,0x00,0x80,0x20,0x00,0x00,0x00,0x00}, 20 }, /* shadow-array-arg-False */
+      { {.dest=0, .coord=0, .width=AGX3_TEX_W32, .mask=1, .slot=1, .wait_mask=32, .coord_kill=1, .final=true, .shadow=true, .array=1, .lod=AGX3_TEX_LOD_AUTO, .texture_kind=2, .sampler_kind=2, .texture_value=0, .sampler_value=4, .texture_kill=1, .sampler_kill=1}, {0x05,0x80,0x0c,0xa0,0x14,0x00,0x20,0x04,0x01,0x02,0x80,0x01,0x01,0x00,0xa0,0x28,0x00,0x00,0x40,0x00}, 20 }, /* shadow-array-arg-True */
+   };
+   for (unsigned i=0;i<sizeof(cases)/sizeof(cases[0]);i++) {
+      uint8_t out[AGX3_TEX_MAX_LENGTH], size;
+      CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B, &cases[i].desc, out, &size));
+      CHECK(size==cases[i].size);
+      CHECK(!memcmp(out,cases[i].bytes,size));
+      CHECK(!agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3C, &cases[i].desc, out, &size));
+   }
+   return 0;
+}
+
 int
 main(void)
 {
-   if (test_sample_helper_retention() || test_staging_source_banks() || test_register_lod() || test_register_array_layer() ||
+   if (test_m4_shadow_witnesses() || test_sample_helper_retention() || test_staging_source_banks() || test_register_lod() || test_register_array_layer() ||
        test_staging_source_lifetime() || test_exact_witnesses() ||
        test_supported_axes() || test_fail_closed() ||
        test_sample_witnesses() || test_copy_witnesses() ||

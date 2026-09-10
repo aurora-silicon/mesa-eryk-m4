@@ -976,6 +976,12 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
       immediate_level_x64 == (float)(uint16_t)immediate_level_x64;
    const bool array = I->dim == AGX_DIM_2D_ARRAY;
    const bool cube = I->dim == AGX_DIM_CUBE;
+   const bool shadow = I->shadow;
+   const bool valid_compare = shadow ?
+      (enc == AGX_ISA_ENCODING_AGX3B && !cube &&
+       agx3_tex_plain_reg(I->src[5]) && I->src[5].size == AGX_SIZE_32 &&
+       agx_channels(I->src[5]) == 1 && !(I->src[5].value & 1) &&
+       I->src[5].value < 256) : agx_is_null(I->src[5]);
    const bool valid_lod = explicit_lod ?
       (enc == AGX_ISA_ENCODING_AGX3B &&
        (valid_immediate_lod ||
@@ -1010,12 +1016,12 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
          I->src[3].size != AGX_SIZE_64 || I->src[4].size != AGX_SIZE_64 ||
          agx_channels(I->src[3]) != 1 || agx_channels(I->src[4]) != 1 ||
          (I->src[3].value & 1) || (I->src[4].value & 1))) ||
-       !agx_is_null(I->src[5]) ||
+       !valid_compare ||
        (I->dim != AGX_DIM_2D && I->dim != AGX_DIM_2D_ARRAY && !cube) ||
        (array && (enc != AGX_ISA_ENCODING_AGX3B ||
                   (explicit_lod && !immediate_lod))) ||
        (I->mask == 0 || (I->mask & ~15u)) ||
-       I->offset || I->shadow || I->query_lod ||
+       I->offset || I->query_lod ||
        I->gather != AGX_GATHER_NONE || I->sparse)
       return false;
 
@@ -1036,7 +1042,8 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
    /* Every native array witness names coordinate bank 0 in SMP, including
     * register-indexed shaders whose physical coordinates live elsewhere.
     * PACK_SMPIR publishes only the layer, so explicitly copy x/y to bank 0. */
-   const uint16_t coord = (explicit_lod || array || cube) ? 0 : I->src[0].value;
+   const uint16_t coord = (explicit_lod || array || cube || shadow) ?
+                            0 : I->src[0].value;
    uint8_t bytes[AGX3_TEX_MAX_LENGTH];
    uint8_t len = 0;
 
@@ -1067,6 +1074,16 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
         !agx3_append(emission, bytes, len)))
       return false;
 
+   /* Apple's M4 sample_compare publishes the F32 reference with an ordinary
+    * signalling COPY to half4, after x/y in halves0/2. Array-layer packing
+    * uses the separate auxiliary bank6 and leaves the reference intact. */
+   if (shadow &&
+       (!agx3_tex_stage_copy_hints(enc, 4, I->src[5].value, stage_slot, 0,
+                                  I->src[5].cache, I->src[5].discard,
+                                  bytes, &len) ||
+        !agx3_append(emission, bytes, len)))
+      return false;
+
    const struct agx3_tex_sample_desc d = {
       .dest = I->dest[0].value,
       .coord = coord,
@@ -1092,6 +1109,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
       .coord_kill = I->src[0].kill,
       .final = final,
       .retain_helpers = retain_helpers,
+      .shadow = shadow,
    };
    return agx3_tex_encode_sample(enc, &d, bytes, &len) &&
           agx3_append(emission, bytes, len);
@@ -4238,7 +4256,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             /* Projected cubes share the array face/layer staging bank. */
             ctx->agx3_staging_halfs =
                MAX2(ctx->agx3_staging_halfs,
-                    (I->lod_mode == AGX_LOD_MODE_LOD_MIN ||
+                    (I->shadow || I->lod_mode == AGX_LOD_MODE_LOD_MIN ||
                      I->dim == AGX_DIM_2D_ARRAY || I->dim == AGX_DIM_CUBE)
                        ? 8 : I->src[0].value + 4);
             continue;

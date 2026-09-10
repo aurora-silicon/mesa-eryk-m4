@@ -168,6 +168,14 @@ sample_ok(enum agx_isa_encoding enc, const struct agx3_tex_sample_desc *d)
    if (d->retain_helpers && enc != AGX_ISA_ENCODING_AGX3B)
       return false;
 
+   /* M4 25G83 sample_compare witnesses: 2D/array, scalar F32 result,
+    * reference in coordinate bank half4. Only level(0) was captured. */
+   if (d->shadow &&
+       (enc != AGX_ISA_ENCODING_AGX3B || d->cube || d->coord != 0 ||
+        d->mask != 1 || d->width != AGX3_TEX_W32 ||
+        d->lod == AGX3_TEX_LOD_REGISTER || d->lod_x64 != 0))
+      return false;
+
    if (d->lod == AGX3_TEX_LOD_LEVEL) {
       /* 12-bit immediate level field; witnessed up to 464 (level 7.25). */
       if (d->lod_x64 > 0xfff)
@@ -219,8 +227,8 @@ agx3_tex_encode_sample(enum agx_isa_encoding enc,
    if (!sample_ok(enc, d))
       return false;
 
-   /* The fetch baseline plus f74=1: the sample witnesses carry the extra
-    * mask-group bit on every mask value, where the fetch form does not. */
+   /* Ordinary colour samples carry f74=1 on every mask value. Native M4
+    * depth comparisons instead use f74=0, mask1 and f143=1. */
    const unsigned tk = d->texture_kind ? d->texture_kind : 1;
    const unsigned sk = d->sampler_kind ? d->sampler_kind : 1;
    const bool immediate = tk == 1 && sk == 1;
@@ -230,7 +238,7 @@ agx3_tex_encode_sample(enum agx_isa_encoding enc,
    base[nb++] = (struct agx3_field_kv)KV(23, 5);
    base[nb++] = (struct agx3_field_kv)KV(38, 1);
    base[nb++] = (struct agx3_field_kv)KV(52, 1);
-   base[nb++] = (struct agx3_field_kv)KV(74, 1);
+   base[nb++] = (struct agx3_field_kv)KV(74, !d->shadow);
    base[nb++] = (struct agx3_field_kv)KV(89, 3);
    base[nb++] = (struct agx3_field_kv)KV(90, 3);
    base[nb++] = (struct agx3_field_kv)KV(103, tk);
@@ -258,6 +266,8 @@ agx3_tex_encode_sample(enum agx_isa_encoding enc,
    ov[n++] = (struct agx3_field_kv)KV(75, d->mask);
    ov[n++] = (struct agx3_field_kv)KV(76, d->cube ? 4 : 1);  /* M4 cube / 2D */
    ov[n++] = (struct agx3_field_kv)KV(78, 2);  /* filtered sample */
+   if (d->shadow)
+      ov[n++] = (struct agx3_field_kv)KV(143, 1);
    if (d->array)
       ov[n++] = (struct agx3_field_kv)KV(77, 2); /* register array layer */
    ov[n++] = (struct agx3_field_kv)KV(94 + tk, tk == 1 ? d->texture : d->texture_value);
@@ -284,6 +294,8 @@ agx3_tex_encode_sample(enum agx_isa_encoding enc,
       ov[n++] = (struct agx3_field_kv)KV(37, 1);  /* immediate LOD operand */
       ov[n++] = (struct agx3_field_kv)KV(139, 2); /* explicit-level mode */
       ov[n++] = (struct agx3_field_kv)KV(29, d->lod_x64);
+      if (d->shadow)
+         ov[n++] = (struct agx3_field_kv)KV(156, !d->retain_helpers);
    }
    if (enc == AGX_ISA_ENCODING_AGX3B)
       ov[n++] = (struct agx3_field_kv)KV(147, d->final ? 2 : 0);
