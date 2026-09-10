@@ -983,3 +983,31 @@ record with its shader stage, preamble status, encoding and byte count.
 This supports comparison with the offline native archives even though the
 compiler does not yet have an AGX3 instruction printer. The ARM64 build
 passes, and the small loop test produced complete, length-checked records.
+
+
+The conditional-mipmap regression now exercises 20 iterations, an inner
+conditional sample, and loops inside uniform and varying outer conditions.
+The last two cases encode their completed iteration counts in red. llvmpipe
+passes all 114,688 pixels. M4 passes all loop/conditional cases, including
+those counts, but its first direct-sample readback is entirely zero and the
+overall test fails (16,384 bad pixels). Keep this failure visible; do not
+discard the first readback as warmup. Evidence: `shadow-small-outer-loop20`,
+peak 53 C.
+
+Packed comparison confirms that the passing maximum-4 and failing maximum-8
+model fragments are each 5,648 bytes and differ only in the LDIMM constant
+(one byte at 0x375). The original maximum-20 fragment also runs in nine
+generated two-triangle/material scenes: its machine code differs from
+maximum-8 only in that same constant. Three of 147,456 pixels differ from
+llvmpipe by more than 8/255 (maximum 9); zero-displacement cases match
+exactly. The original game shaders are unchanged in this reduction; the
+textures, geometry and uniforms are generated, including a GPU-cleared
+depth texture. This is not a successful full-scene replay. Evidence:
+`shadow-model-generated`, `shadow-model-generated-reference` and
+`shadow-model-generated-comparison.json`.
+
+A zero-displacement shader diagnostic in the captured scene still times
+out, as does assigning the loop predicate to flag 0 and ordinary conditions
+to flag 5. The latter encoder change was reverted. Neither repetition
+alone nor the static shader binary now explains the scene failure; resource
+and input-dependent execution remain under investigation.

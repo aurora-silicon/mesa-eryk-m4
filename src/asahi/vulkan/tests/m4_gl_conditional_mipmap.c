@@ -3,7 +3,8 @@
  * Use different height/base coordinate values so register allocation cannot
  * accidentally reuse staging and hide stale helper coordinates. The direct
  * sample is the control; conditional, loop and register-LOD samples precede
- * a second implicit sample. All cases must select the blue base mip.
+ * a second implicit sample. All cases must select the blue base mip;
+ * nested-loop cases also encode the completed iteration count in red.
  * Live M4 runs require the watchdog and thermal guards. No game assets.
  */
 #define GL_GLEXT_PROTOTYPES
@@ -37,15 +38,22 @@ program(unsigned mode)
       "#version 330\n#define MODE %u\n"
       "in vec2 uv;out vec4 color;uniform sampler2D baseTex,heightTex;"
       "uniform float offset,heightScale,lod;uniform int enabled,iterations;"
-      "void main(){vec2 p=uv;\n"
+      "void main(){vec2 p=uv; int count=0;\n"
       "#if MODE == 1\n"
       "if(enabled!=0) p+=texture(heightTex,p*heightScale).aa*offset;\n"
       "#elif MODE == 2\n"
       "for(int i=0;i<iterations;i++) p+=texture(heightTex,p*heightScale).aa*offset;\n"
       "#elif MODE == 3\n"
       "if(enabled!=0) p+=textureLod(heightTex,p*heightScale,lod).aa*offset;\n"
+      "#elif MODE == 4\n"
+      "for(int i=0;i<iterations;i++){p+=texture(heightTex,p*heightScale).aa*offset;"
+      "if(enabled!=0)p+=texture(heightTex,p).aa*offset;}\n"
+      "#elif MODE == 5 || MODE == 6\n"
+      "if(enabled!=0 && (MODE==5 || uv.x>2.0)){"
+      "for(int i=0;i<iterations;i++){p+=texture(heightTex,p*heightScale).aa*offset;"
+      "if(enabled!=0)p+=texture(heightTex,p).aa*offset;count++;}}\n"
       "#endif\n"
-      "color=texture(baseTex,p);}",
+      "color=texture(baseTex,p);\n#if MODE>=5\ncolor.r=float(count)/32.0;\n#endif\n}",
       mode);
    const char *sources[] = {vs, fs};
    GLenum types[] = {GL_VERTEX_SHADER, GL_FRAGMENT_SHADER};
@@ -141,13 +149,13 @@ main(void)
    }
    glViewport(0, 0, W, W);
    unsigned total_bad = 0;
-   for (unsigned mode = 0; mode < 4; mode++) {
+   for (unsigned mode = 0; mode < 7; mode++) {
       GLuint p = program(mode);
       glUseProgram(p);
       glUniform1i(glGetUniformLocation(p, "baseTex"), 0);
       glUniform1i(glGetUniformLocation(p, "heightTex"), 1);
       glUniform1i(glGetUniformLocation(p, "enabled"), 1);
-      glUniform1i(glGetUniformLocation(p, "iterations"), 4);
+      glUniform1i(glGetUniformLocation(p, "iterations"), 20);
       glUniform1f(glGetUniformLocation(p, "offset"), 0);
       glUniform1f(glGetUniformLocation(p, "heightScale"), 2);
       glUniform1f(glGetUniformLocation(p, "lod"), 0.5f);
@@ -161,12 +169,15 @@ main(void)
       for (unsigned y = 0; y < W; y++)
          for (unsigned x = 0; x < W; x++) {
             const unsigned char *q = pixels + (y * W + x) * 4;
-            if (q[0] > 2 || q[1] > 2 || q[2] < 253 || q[3] < 253) {
+            unsigned expected_red =
+               mode == 5 || (mode == 6 && x >= 32) ? 159 : 0;
+            if (abs((int)q[0] - (int)expected_red) > 2 || q[1] > 2 ||
+                q[2] < 253 || q[3] < 253) {
                if (bad < 3)
                   fprintf(
                      stderr,
-                     "mode=%u pixel=%u,%u got=%u,%u,%u,%u expected=0,0,255,255\n",
-                     mode, x, y, q[0], q[1], q[2], q[3]);
+                     "mode=%u pixel=%u,%u got=%u,%u,%u,%u expected=%u,0,255,255\n",
+                     mode, x, y, q[0], q[1], q[2], q[3], expected_red);
                bad++;
             }
          }
