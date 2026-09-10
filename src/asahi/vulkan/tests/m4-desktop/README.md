@@ -1097,3 +1097,44 @@ fix. Evidence: `20260910T151650754767Z-vulkan-cold-direct-fence`,
 `20260910T152550793475Z-vulkan-cold-acquire-barrier`,
 `20260910T153000854621Z-vulkan-cold-full-barrier-baseline-kernel`, and
 `20260910T153119145685Z-vulkan-warm-direct-fence-repeat`.
+
+`M4_TEST_CLEAN_BEFORE=discard` also invalidates the initial host buffer's
+CPU cache lines before submission. Both clean-only and clean/invalidate
+cold tests failed (69,490 and 88,784 stale words respectively), with correct
+second reads. Neither CPU barrier nor pre-submit cache maintenance is an
+established fix.
+
+`m4_gl_conditional_mipmap.c` accepts `M4_TEST_ITERATIONS` (default 20,
+0..128) to vary dynamic loop work without changing shader allocation.
+The iteration-count color checks saturate as the RGBA8 target does.
+llvmpipe passes all seven modes at 0, 8 and 40 iterations.
+
+Optional fault evidence: set `HK_M4_FAULT_CAPTURE_DIR` to an existing output
+directory and `HK_M4_FAULT_BO_BYTES` to the exact allocation size to inspect.
+On the first G16G VM error in the process, Mesa snapshots matching retained
+BOs directly, before returning device loss. Filenames include handles and
+GPU VAs; stderr records BO labels and byte counts. `HK_M4_FAULT_REPEAT_MS`
+(1..1000, omitted by default) takes a second snapshot after that diagnostic
+interval. No GPU work is submitted. These are unsynchronized fault
+snapshots, not valid replacement readbacks, and a delay does not fix a fence.
+
+At 1024 square, the mode-2 twenty-iteration fault snapshot contains 270,336
+expected blue words and 778,240 zero words. Forty iterations leave 168,960
+blue and 879,616 zero words. Thus the output is incomplete at the timeout;
+it is not a completed image with only a missing stamp. The changing amount
+of completed work motivates checking execution progress and timing rather
+than inferring an invalid static shader instruction from a timeout alone.
+Evidence: `20260910T153829237500Z-mipmap-loop-fault-image` and
+`20260910T154135004052Z-mipmap-loop40-fault-image`. Kernel baseline unchanged
+for these two runs. The small 128-square twenty-iteration draw retires, but
+its cold first read remains invalid (all 16,384 pixels), while its second
+read passes; retain that overall failure.
+
+The eight-iteration 1024-square probe passes all 1,048,576 pixels. Its
+fragment stage retires about 23.6 ms after the tiling retirement. A repeated
+twenty-iteration run leaves exactly 262,144 blue pixels; both fault snapshots
+200 ms apart have identical SHA-256 and contents. No output-memory progress
+was observed in that interval. The stopping point is close to the earlier
+270,336-pixel result, but its mechanism is not established.
+Evidence: `20260910T154551778585Z-mipmap-loop8-progress-after-fault` and
+`20260910T154646492195Z-mipmap-loop20-progress-after-fault`.

@@ -98,6 +98,7 @@ main(void)
 {
    W = setting("M4_TEST_WIDTH", 128, 2048);
    CHECK(W >= 64);
+   const unsigned iterations = setting("M4_TEST_ITERATIONS", 20, 128);
    const unsigned reads = setting("M4_TEST_READS", 1, 16);
    CHECK(reads > 0);
    const unsigned finish = setting("M4_TEST_FINISH", 0, 1);
@@ -117,8 +118,8 @@ main(void)
    CHECK(count > 0);
    unsigned char *pixels = malloc((size_t)W * W * 4);
    CHECK(pixels);
-   printf("Configuration: width=%u modes=%u reads=%u delay_ms=%u\n", W, count,
-          reads, delay_ms);
+   printf("Configuration: width=%u modes=%u reads=%u delay_ms=%u iterations=%u\n",
+          W, count, reads, delay_ms, iterations);
    EGLDisplay d = eglGetPlatformDisplay(EGL_PLATFORM_SURFACELESS_MESA,
                                         EGL_DEFAULT_DISPLAY, NULL);
    CHECK(eglInitialize(d, NULL, NULL));
@@ -194,7 +195,7 @@ main(void)
       glUniform1i(glGetUniformLocation(p, "baseTex"), 0);
       glUniform1i(glGetUniformLocation(p, "heightTex"), 1);
       glUniform1i(glGetUniformLocation(p, "enabled"), 1);
-      glUniform1i(glGetUniformLocation(p, "iterations"), 20);
+      glUniform1i(glGetUniformLocation(p, "iterations"), iterations);
       glUniform1f(glGetUniformLocation(p, "offset"), 0);
       glUniform1f(glGetUniformLocation(p, "heightScale"), 2);
       glUniform1f(glGetUniformLocation(p, "lod"), 0.5f);
@@ -223,7 +224,9 @@ main(void)
             for (unsigned x = 0; x < W; x++) {
                const unsigned char *q = pixels + (y * W + x) * 4;
                unsigned expected_red =
-                  mode == 5 || (mode == 6 && x >= 32) ? 159 : 0;
+                  mode == 5 || (mode == 6 && x >= 32)
+                     ? (iterations >= 32 ? 255 : (iterations * 255 + 16) / 32)
+                     : 0;
                if (abs((int)q[0] - (int)expected_red) > 2 || q[1] > 2 ||
                    q[2] < 253 || q[3] < 253) {
                   if (bad < 3)

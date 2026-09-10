@@ -129,8 +129,12 @@ main(void)
       const unsigned line_size = 4u << ((ctr >> 16) & 15);
       for (uintptr_t address = (uintptr_t)data;
            address < (uintptr_t)data + WORDS * sizeof(*data);
-           address += line_size)
-         __asm__ volatile("dc cvac, %0" : : "r"(address) : "memory");
+           address += line_size) {
+         if (!strcmp(getenv("M4_TEST_CLEAN_BEFORE"), "discard"))
+            __asm__ volatile("dc civac, %0" : : "r"(address) : "memory");
+         else
+            __asm__ volatile("dc cvac, %0" : : "r"(address) : "memory");
+      }
       __asm__ volatile("dsb sy" ::: "memory");
 #else
       CHECK(!"M4_TEST_CLEAN_BEFORE requires AArch64");

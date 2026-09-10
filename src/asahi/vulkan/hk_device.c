@@ -304,6 +304,66 @@ hk_sampler_heap_remove(struct hk_device *dev, struct hk_rc_sampler *rc)
    simple_mtx_unlock(&h->lock);
 }
 
+/* Opt-in fault evidence for bounded probes. Read the retained BO directly:
+ * a GL readback after device loss cannot tell us what the render engine wrote.
+ * Select an exact allocation size so a small probe never dumps the whole heap.
+ * This is a snapshot of a failed device, not a synchronized Vulkan readback.
+ */
+static void
+hk_capture_fault_buffers(struct hk_device *dev)
+{
+   const char *directory = getenv("HK_M4_FAULT_CAPTURE_DIR");
+   const char *size_setting = getenv("HK_M4_FAULT_BO_BYTES");
+   static int started;
+   if (!directory || !size_setting || dev->dev.chip != AGX_CHIP_G16G)
+      return;
+   char *end;
+   uint64_t selected_size = strtoull(size_setting, &end, 0);
+   if (!*size_setting || *end || !selected_size ||
+       p_atomic_cmpxchg(&started, 0, 1))
+      return;
+
+   const char *repeat_setting = getenv("HK_M4_FAULT_REPEAT_MS");
+   unsigned long repeat_ms = repeat_setting ? strtoul(repeat_setting, &end, 10) : 0;
+   if (repeat_ms > 1000 || (repeat_setting && (!*repeat_setting || *end)))
+      return;
+   for (unsigned pass = 0; pass < (repeat_ms ? 2 : 1); pass++) {
+      if (pass)
+         usleep(repeat_ms * 1000);
+      simple_mtx_lock(&dev->dev.bo_map_lock);
+      for (uint32_t handle = 0; handle < dev->dev.max_handle; handle++) {
+         struct agx_bo *bo = agx_lookup_bo(&dev->dev, handle);
+         if (bo->size != selected_size)
+            continue;
+         char path[4096];
+         int length = snprintf(path, sizeof(path), "%s/bo-%u-va-%llx-read-%u.bin",
+                               directory, handle,
+                               (unsigned long long)(bo->va ? bo->va->addr : 0), pass);
+         if (length < 0 || length >= sizeof(path))
+            continue;
+         void *map = agx_bo_map(bo);
+         if (!map)
+            continue;
+         int fd = open(path, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC | O_NOFOLLOW, 0600);
+         if (fd < 0)
+            continue;
+         size_t written = 0;
+         while (written < bo->size) {
+            ssize_t count = write(fd, (char *)map + written, bo->size - written);
+            if (count < 0 && errno == EINTR)
+               continue;
+            if (count <= 0)
+               break;
+            written += count;
+         }
+         close(fd);
+         fprintf(stderr, "M4 fault BO snapshot handle=%u label=%s bytes=%zu/%zu path=%s\n",
+                 handle, bo->label, written, bo->size, path);
+      }
+      simple_mtx_unlock(&dev->dev.bo_map_lock);
+   }
+}
+
 static VkResult
 hk_check_status(struct vk_device *device)
 {
@@ -319,9 +379,11 @@ hk_check_status(struct vk_device *device)
        * publishes this sticky VM error before signaling such a fence. */
       if (drmIoctl(dev->dev.fd, DRM_IOCTL_ASAHI_GET_PARAMS, &query))
          return vk_device_set_lost(&dev->vk, "VM status query failed: %m");
-      if (status.error)
+      if (status.error) {
+         hk_capture_fault_buffers(dev);
          return vk_device_set_lost(&dev->vk, "GPU VM %u failed: %s",
                                     status.vm_id, strerror(-status.error));
+      }
    }
    return vk_check_printf_status(&dev->vk, &dev->dev.printf);
 }
