@@ -861,3 +861,21 @@ check scheduling/RA/value preservation/slot retirement through the game's
 33-output case and already-terminal physical IR through 128 outputs.
 Very wide live producer sets can still cause RA to insert instructions between
 stores; those nonterminal shapes remain refused instead of risking GPR reuse.
+
+The first visible shadowed scene still had filter errors and two longer runs
+timed out in Fragment, both with and without API tracing. The single-tap test
+did not cover the game's four-tap PCF. Extending the analytic test to that
+weighted filter exposed 4,094 bad pixels of 24,576 on M4; llvmpipe had none.
+Independent shadow samples reused the same coordinate staging bank before
+earlier samples consumed it. Waiting for pending work removed the error.
+The permanent fix adds staging ownership tokens to the existing scoreboard:
+only overlapping coordinate publishers depend on the earlier texture result.
+This covers fixed-bank shadow/LOD/array samples, ordinary samples and staged
+fetches; per-slot vertex-fetch banks keep their existing reuse waits.
+
+With the token fix, the expanded M4 test passes all 24,576 pixels, maximum
+byte error 1 (tolerance 2). The backend regression checks both the overlapping
+wait and independent nonoverlapping samples. The slot core's 60 checks and
+texture core's 5,654 checks pass. The actual scene is being revalidated; the
+earlier desktop timeouts are not yet claimed fixed by this pixel result.
+Evidence: `asahi-0ad-20260910-macos/shadow-four-tap{,-wait,-tokens}`.

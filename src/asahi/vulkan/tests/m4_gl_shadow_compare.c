@@ -44,6 +44,22 @@ edge(int i)
 {
    return i < 0 ? 0 : i > 3 ? 3 : i;
 }
+static float
+sample_expected(const float *depths, unsigned filter, unsigned c, float r,
+                float u, float v)
+{
+   if (!filter)
+      return compare(c, r, depths[edge(floorf(v)) * 4 + edge(floorf(u))]);
+   u -= .5f;
+   v -= .5f;
+   int ix = floorf(u), iy = floorf(v);
+   float fx = u - ix, fy = v - iy, e = 0;
+   for (unsigned dy = 0; dy < 2; dy++)
+      for (unsigned dx = 0; dx < 2; dx++)
+         e += compare(c, r, depths[edge(iy + dy) * 4 + edge(ix + dx)]) *
+              (dx ? fx : 1 - fx) * (dy ? fy : 1 - fy);
+   return e;
+}
 int
 main(void)
 {
@@ -63,7 +79,7 @@ main(void)
          (getenv("M4_TEST_LLVMPIPE") && strstr(renderer, "llvmpipe")));
    const char *sources[] = {
       "#version 300 es\nvoid main(){vec2 p=vec2((gl_VertexID<<1)&2,gl_VertexID&2);gl_Position=vec4(p*2.-1.,0,1);}",
-      "#version 300 es\nprecision highp float;precision highp sampler2DShadow;uniform sampler2DShadow depthTex;uniform float reference;out vec4 color;void main(){vec2 uv=gl_FragCoord.xy/16.*1.5-.25;color=vec4(texture(depthTex,vec3(uv,reference)));}"};
+      "#version 300 es\nprecision highp float;precision highp sampler2DShadow;uniform sampler2DShadow depthTex;uniform float reference;uniform int wide;out vec4 color;void main(){vec2 uv=gl_FragCoord.xy/16.*1.5-.25;float result;if(wide==0){result=texture(depthTex,vec3(uv,reference));}else{vec2 xy=uv*4.;vec2 offset=fract(xy-.5);vec4 size=vec4(offset+1.,2.-offset);vec4 w=(vec4(1.,1.,-.5,-.5)+(xy-.5*offset).xyxy)*.25;vec4 taps=vec4(texture(depthTex,vec3(w.zw,reference)),texture(depthTex,vec3(w.xw,reference)),texture(depthTex,vec3(w.zy,reference)),texture(depthTex,vec3(w.xy,reference)));result=dot(size.zxzx*size.wwyy,taps)/9.;}color=vec4(result);}"};
    GLuint prog = glCreateProgram();
    GLenum kinds[] = {GL_VERTEX_SHADER, GL_FRAGMENT_SHADER};
    for (unsigned i = 0; i < 2; i++) {
@@ -159,59 +175,61 @@ main(void)
                            GL_GREATER, GL_NOTEQUAL, GL_GEQUAL, GL_ALWAYS};
    const float refs[] = {.125, .5, .875};
    unsigned bad = 0, total = 0, max_error = 0;
-   for (unsigned filter = 0; filter < 2; filter++)
-      for (unsigned c = 0; c < 8; c++)
-         for (unsigned r = 0; r < 3; r++) {
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
-                            filter ? GL_LINEAR : GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER,
-                            filter ? GL_LINEAR : GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, funcs[c]);
-            glUniform1f(ref, refs[r]);
-            glClearColor(1, 0, 1, 1);
-            glClear(GL_COLOR_BUFFER_BIT);
-            glDrawArrays(GL_TRIANGLES, 0, 3);
-            unsigned char pixels[16 * 16 * 4];
-            glReadPixels(0, 0, 16, 16, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
-            CHECK(glGetError() == GL_NO_ERROR);
-            unsigned wrong = 0;
-            for (unsigned y = 0; y < 16; y++)
-               for (unsigned x = 0; x < 16; x++) {
-                  float u = ((x + .5f) / 16 * 1.5f - .25f) * 4,
-                        v = ((y + .5f) / 16 * 1.5f - .25f) * 4, e;
-                  if (!filter)
-                     e = compare(c, refs[r],
-                                 depths[edge(floorf(v)) * 4 + edge(floorf(u))]);
-                  else {
-                     u -= .5f;
-                     v -= .5f;
-                     int ix = floorf(u), iy = floorf(v);
-                     float fx = u - ix, fy = v - iy;
-                     e = 0;
-                     for (unsigned dy = 0; dy < 2; dy++)
-                        for (unsigned dx = 0; dx < 2; dx++)
-                           e += compare(
-                                   c, refs[r],
-                                   depths[edge(iy + dy) * 4 + edge(ix + dx)]) *
-                                (dx ? fx : 1 - fx) * (dy ? fy : 1 - fy);
+   for (unsigned wide = 0; wide < 2; wide++)
+      for (unsigned filter = 0; filter < 2; filter++)
+         for (unsigned c = 0; c < 8; c++)
+            for (unsigned r = 0; r < 3; r++) {
+               glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
+                               filter ? GL_LINEAR : GL_NEAREST);
+               glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER,
+                               filter ? GL_LINEAR : GL_NEAREST);
+               glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC,
+                               funcs[c]);
+               glUniform1f(ref, refs[r]);
+               glUniform1i(glGetUniformLocation(prog, "wide"), wide);
+               glClearColor(1, 0, 1, 1);
+               glClear(GL_COLOR_BUFFER_BIT);
+               glDrawArrays(GL_TRIANGLES, 0, 3);
+               unsigned char pixels[16 * 16 * 4];
+               glReadPixels(0, 0, 16, 16, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+               CHECK(glGetError() == GL_NO_ERROR);
+               unsigned wrong = 0;
+               for (unsigned y = 0; y < 16; y++)
+                  for (unsigned x = 0; x < 16; x++) {
+                     float u = ((x + .5f) / 16 * 1.5f - .25f) * 4,
+                           v = ((y + .5f) / 16 * 1.5f - .25f) * 4, e;
+                     if (!wide) {
+                        e = sample_expected(depths, filter, c, refs[r], u, v);
+                     } else {
+                        float ox = u - .5f - floorf(u - .5f);
+                        float oy = v - .5f - floorf(v - .5f);
+                        float wx[] = {u - .5f * ox - .5f, u - .5f * ox + 1};
+                        float wy[] = {v - .5f * oy - .5f, v - .5f * oy + 1};
+                        e = 0;
+                        for (unsigned dy = 0; dy < 2; dy++)
+                           for (unsigned dx = 0; dx < 2; dx++)
+                              e += sample_expected(depths, filter, c, refs[r],
+                                                   wx[dx], wy[dy]) *
+                                   (dx ? 1 + ox : 2 - ox) *
+                                   (dy ? 1 + oy : 2 - oy) / 9;
+                     }
+                     unsigned err = 0;
+                     for (unsigned k = 0; k < 4; k++) {
+                        unsigned q = abs((int)pixels[(y * 16 + x) * 4 + k] -
+                                         (int)lroundf(e * 255));
+                        if (q > err)
+                           err = q;
+                     }
+                     if (err > max_error)
+                        max_error = err;
+                     wrong += err > 2;
                   }
-                  unsigned err = 0;
-                  for (unsigned k = 0; k < 4; k++) {
-                     unsigned q = abs((int)pixels[(y * 16 + x) * 4 + k] -
-                                      (int)lroundf(e * 255));
-                     if (q > err)
-                        err = q;
-                  }
-                  if (err > max_error)
-                     max_error = err;
-                  wrong += err > 2;
-               }
-            printf("filter=%u compare=%u ref=%g wrong=%u\n", filter, c, refs[r],
-                   wrong);
-            fflush(stdout);
-            bad += wrong;
-            total += 256;
-         }
+               printf("wide=%u filter=%u compare=%u ref=%g wrong=%u\n", wide,
+                      filter, c, refs[r], wrong);
+               fflush(stdout);
+               bad += wrong;
+               total += 256;
+            }
    printf("pixels=%u incorrect=%u max_error=%u\n", total, bad, max_error);
    return bad ? 1 : 0;
 }

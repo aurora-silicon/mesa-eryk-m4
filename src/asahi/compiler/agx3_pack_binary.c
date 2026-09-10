@@ -1994,6 +1994,39 @@ agx3_translate_static_spill(const agx_instr *I, bool is_store, uint8_t slot,
 }
 
 static bool
+agx3_append_texture_staging_tokens(const agx_instr *I, mesa_shader_stage stage,
+                                   struct agx3_slot_instr *e)
+{
+   unsigned base, halves;
+   if (I->op == AGX_OPCODE_TEXTURE_SAMPLE) {
+      const bool fixed = I->shadow || I->lod_mode == AGX_LOD_MODE_LOD_MIN ||
+         I->dim == AGX_DIM_2D_ARRAY || I->dim == AGX_DIM_CUBE;
+      base = fixed ? 0 : I->src[0].value;
+      halves = fixed ? 8 : 4;
+   } else if (I->op == AGX_OPCODE_TEXTURE_LOAD || I->op == AGX_OPCODE_IMAGE_LOAD) {
+      /* Vertex fetches already use disjoint banks per result slot and wait
+       * that slot before reusing its bank. Their base is assigned later. */
+      if (stage == MESA_SHADER_VERTEX && I->op == AGX_OPCODE_TEXTURE_LOAD)
+         return true;
+      base = I->op == AGX_OPCODE_IMAGE_LOAD ? 16 : 0;
+      halves = I->dim == AGX_DIM_2D_ARRAY ? 8 : 4;
+   } else {
+      return true;
+   }
+
+   if (base + halves > AGX3_SLOT_STAGING_HALF_TOKENS ||
+       e->nr_dsts + halves > AGX3_SLOT_MAX_REGS)
+      return false;
+   /* COPY publishes coordinates before the asynchronous texture operation
+    * consumes them. Reserve those staging halves through its result slot;
+    * a later overlapping publisher must wait before overwriting them.
+    * Separate GPR and staging tokens preserve unrelated texture parallelism. */
+   for (unsigned h = 0; h < halves; ++h)
+      e->dst[e->nr_dsts++] = AGX3_SLOT_STAGING_TOKEN_BASE + base + h;
+   return true;
+}
+
+static bool
 agx3_append_static_spill_tokens(const agx_instr *I,
                                 struct agx3_slot_instr *slot_instr)
 {
@@ -3925,6 +3958,11 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             ns = agx3_expand_regs(I->src[s], e->src, ns);
          e->nr_dsts = (uint8_t)nd;
          e->nr_srcs = (uint8_t)ns;
+         if (enc == AGX_ISA_ENCODING_AGX3B &&
+             !agx3_append_texture_staging_tokens(I, ctx->stage, e)) {
+            agx3_report_refusal(I, __LINE__);
+            goto fail;
+         }
          if ((I->op == AGX_OPCODE_STACK_LOAD ||
               I->op == AGX_OPCODE_STACK_STORE) &&
              !agx3_append_static_spill_tokens(I, e)) {
