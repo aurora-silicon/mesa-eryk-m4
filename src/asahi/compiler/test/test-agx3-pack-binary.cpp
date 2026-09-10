@@ -4645,9 +4645,28 @@ TEST_F(AGX3PackBinary, NativeHighVertexOutputIndices)
    }
 }
 
+TEST_F(AGX3PackBinary, TerminalVertexOutputsUseStagingFileCapacity)
+{
+   for (unsigned count : {33u, 64u, 65u, 128u, 129u}) {
+      agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+      b->shader->stage = MESA_SHADER_VERTEX;
+      b->shader->nir = rzalloc(mem_ctx, nir_shader);
+      /* Already allocated terminal IR isolates output indexing from spills
+       * that RA may need for a large simultaneously-live producer set. */
+      for (unsigned c = 0; c < count; ++c)
+         agx_st_vary(b, agx_immediate(c), agx_register(0, AGX_SIZE_32));
+      agx_stop(b);
+      const auto bytes = pack(b, count <= 128);
+      if (count <= 128) {
+         EXPECT_FALSE(bytes.empty());
+         EXPECT_EQ(b->shader->agx3_staging_halfs, 2 * count);
+      }
+   }
+}
+
 TEST_F(AGX3PackBinary, WideVertexOutputsPreserveValuesAndRecycleSlotsAfterWrites)
 {
-   for (unsigned count : {5u, 7u, 8u, 9u, 11u, 16u, 32u}) {
+   for (unsigned count : {5u, 7u, 8u, 9u, 11u, 16u, 32u, 33u}) {
       agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
       b->shader->stage = MESA_SHADER_VERTEX;
       b->shader->nir = rzalloc(mem_ctx, nir_shader);

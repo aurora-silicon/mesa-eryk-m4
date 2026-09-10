@@ -849,3 +849,15 @@ reference depths, clamp-to-edge, and the depth-write-to-sample transition.
 The guard saved normal completion without a GPU fault; the peak PMP reading
 was 50.25 C, with the 60-second watchdog and thermal policy active.
 Evidence: `asahi-0ad-20260910-macos/shadow-compare-depth-kernel`.
+
+The actual shadowed scene next exposed two larger-shader boundaries. Its
+shadow coordinates in r32 exceeded the ordinary SMP coordinate field even
+though shadow samples copy them to bank zero. `8efc288d95c` validates those
+sources against COPY's full register bank instead. Then a model vertex shader
+needed 33 scalar outputs, beyond the old 32-output capture-derived limit.
+Output bundling now uses the 256-half staging-file capacity (128 F32 values),
+with occupancy tracking that does not overflow at 64 outputs. Host regressions
+check scheduling/RA/value preservation/slot retirement through the game's
+33-output case and already-terminal physical IR through 128 outputs.
+Very wide live producer sets can still cause RA to insert instructions between
+stores; those nonterminal shapes remain refused instead of risking GPR reuse.

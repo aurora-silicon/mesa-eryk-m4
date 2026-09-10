@@ -3087,7 +3087,8 @@ agx3_g17p_vertex_output_count(agx_context *ctx, enum agx_isa_encoding enc)
    agx_block *output_block = NULL;
    agx_foreach_block(ctx, block)
       output_block = block;
-   uint64_t outputs = 0;
+   bool outputs[AGX3_MAX_VERTEX_OUTPUTS] = {false};
+   unsigned count = 0;
    bool stopped = false;
    agx_foreach_block(ctx, block) {
       agx_foreach_instr_in_block(block, I) {
@@ -3109,11 +3110,12 @@ agx3_g17p_vertex_output_count(agx_context *ctx, enum agx_isa_encoding enc)
             if (I->nr_dests != 0 || I->nr_srcs != 2 ||
                 I->src[0].type != AGX_INDEX_IMMEDIATE ||
                 I->src[0].value >= AGX3_MAX_VERTEX_OUTPUTS ||
-                (outputs & (UINT64_C(1) << I->src[0].value)) ||
+                outputs[I->src[0].value] ||
                 !agx3_vary_reg32(I->src[1]) ||
                 agx_channels(I->src[1]) != 1)
                return 0;
-            outputs |= UINT64_C(1) << I->src[0].value;
+            outputs[I->src[0].value] = true;
+            ++count;
             break;
          case AGX_OPCODE_GET_SR:
             if (I->sr != AGX_SR_VERTEX_ID && I->sr != AGX_SR_INSTANCE_ID)
@@ -3127,8 +3129,13 @@ agx3_g17p_vertex_output_count(agx_context *ctx, enum agx_isa_encoding enc)
          }
       }
    }
-   return stopped && outputs >= 0x1f && !(outputs & (outputs + 1))
-             ? util_bitcount64(outputs) : 0;
+   if (!stopped || count < 5)
+      return 0;
+   for (unsigned i = 0; i < count; ++i) {
+      if (!outputs[i])
+         return 0;
+   }
+   return count;
 }
 
 /* The sources of a contiguous terminal store bundle cannot be overwritten
