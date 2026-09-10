@@ -908,3 +908,15 @@ the fourth snapshot (which may be incomplete); peak temperature was 52.25 C.
 Disabling only the three parallax loops also ended in watchdog recovery,
 so that quality-reducing diagnostic is not a fix. These experiments do not
 change the qualified shadow-pixel result above.
+
+
+`m4_gl_wide_varyings.c` checks real interpolation of 28, 29 and 32 independent
+user scalars (32, 33 and 36 native outputs including position), with 24
+readbacks per interface. Its analytic CPU reference is independent of the
+shader compiler. llvmpipe and the second M4 invocation passed all 1,179,648
+pixels exactly. The first M4 invocation had one entire bad readback in the
+28-scalar control; its 29/32-scalar cases passed. That first-readback anomaly
+is retained as a failure, not dismissed as warmup. Evidence directories are
+`shadow-wide-varyings` and `shadow-wide-varyings-repeat`; peak 52.25 C.
+Build with `-lEGL -lGL -lm`, and use the same mandatory guards as other live
+tests. `M4_TEST_LLVMPIPE=1` permits the software reference only.
