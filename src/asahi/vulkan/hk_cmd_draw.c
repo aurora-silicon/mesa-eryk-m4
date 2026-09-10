@@ -23,6 +23,7 @@
 #include "agx_tilebuffer.h"
 #include "agx_usc.h"
 #include "agx_uvs.h"
+#include "agx_vdm_barrier_core.h"
 #include "agx_vdm_hal200_bind_tail_core.h"
 #include "agx_vdm_hal200_direct_draw_core.h"
 #include "hk_buffer.h"
@@ -4710,6 +4711,25 @@ hk_flush_gfx_state(struct hk_cmd_buffer *cmd, uint32_t draw_id,
    }
 
    hk_ensure_cs_has_space(cmd, cs, HK_GFX_DRAW_RESERVATION);
+
+   /* Bounded M4 ordering diagnostic: place the native-witnessed barrier
+    * before the next draw's state, never inside the HAL200 bind tail whose
+    * last PPP selector is completed by the draw packet. This is not a claim
+    * that every draw needs a barrier or that this packet covers all hazards.
+    */
+   if (dev->dev.chip == AGX_CHIP_G16G && cs->stats.cmds > 0 &&
+       debug_get_bool_option("HK_M4_VDM_DRAW_BARRIER", false)) {
+      struct agx_vdm_barrier_core barrier;
+      if (!agx_vdm_barrier_core_pack(dev->dev.chip, &barrier)) {
+         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+         return NULL;
+      }
+      memcpy(cs->current, barrier.bytes, barrier.length);
+      cs->current += barrier.length;
+      if (hk_g17p_launch_trace_enabled())
+         fprintf(stderr, "M4 diagnostic VDM barrier before draw %u\n",
+                 cs->stats.cmds);
+   }
 
 #ifndef NDEBUG
    if (unlikely(dev->dev.debug & AGX_DBG_DIRTY)) {

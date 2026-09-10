@@ -17,6 +17,13 @@ it with an explicit empty `ZINK_DEBUG=` for **both** variants. Capture
 case as batched. API call counts alone are insufficient. Keep shader and
 submission debug options identical between the pair.
 
+`HK_M4_VDM_DRAW_BARRIER=1` enables an optional G16G diagnostic. It inserts
+the native-witnessed `0x21000960` packet before each subsequent draw's state
+within a stream. It leaves the incomplete HAL200 bind tail contiguous with
+the draw selector that completes it. This is off by default; packet provenance
+does not establish which hazards it orders, and these results do not justify
+permanent barriers between every draw.
+
 The software control uses `LIBGL_ALWAYS_SOFTWARE=true M4_TEST_LLVMPIPE=1`.
 Both 1024-square variants passed every pixel under llvmpipe.
 
