@@ -54,3 +54,21 @@ reduces fragment work per render submission. An earlier full-screen single-draw
 test likewise faults, so the paired result alone does not establish batching
 as the cause. Do not discard the cold-readback failure or count the later good
 read as a successful first read.
+
+
+## Coverage and work controls
+
+`M4_TEST_SCISSOR_X/Y/WIDTH/HEIGHT` restrict coverage within the unchanged
+square attachment. Width/height default to attachment width; X/Y default to
+zero. Coordinates must fit, and scissor height must divide the draw count.
+The CPU reference also checks untouched magenta pixels outside the rectangle.
+`M4_TEST_ALTERNATE_TEXTURE=0` keeps the blue texture across every stripe.
+These controls permit geometry/work/state comparisons without editing shaders.
+
+The 2026-09-10 22:05–22:07 UTC J713 tests on kernel70d02689cd84 showed exact
+first and second reads for all of: loop20 in 512-square origin and far-corner
+regions, loop20 in a far-edge 1024x256 band, full-area direct sample, and
+full-area loop5. All used a1024-square attachment, decoded submission tracing,
+watchdog/thermal guards, and unchanged clocks; monitored peak50.5C. These
+controls weaken geometry-only explanations. Full-area loop20 still needs a
+correct execution path; reduced coverage is not a game fix.

@@ -9,6 +9,7 @@
  */
 #define GL_GLEXT_PROTOTYPES
 #include <stdio.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -116,7 +117,13 @@ main(void)
    const unsigned finish = setting("M4_TEST_FINISH", 0, 1);
    const unsigned draws = setting("M4_TEST_DRAWS", 1, 32);
    const unsigned split = setting("M4_TEST_SPLIT_DRAWS", 0, 1);
-   CHECK(draws > 0 && W % draws == 0);
+   const unsigned alternate = setting("M4_TEST_ALTERNATE_TEXTURE", 1, 1);
+   const unsigned sx = setting("M4_TEST_SCISSOR_X", 0, W);
+   const unsigned sy = setting("M4_TEST_SCISSOR_Y", 0, W);
+   const unsigned sw = setting("M4_TEST_SCISSOR_WIDTH", W, W);
+   const unsigned sh = setting("M4_TEST_SCISSOR_HEIGHT", W, W);
+   CHECK(draws > 0 && sw > 0 && sh > 0 && sh % draws == 0);
+   CHECK(sx + sw <= W && sy + sh <= W);
    const unsigned delay_ms = setting("M4_TEST_READ_DELAY_MS", 0, 1000);
    unsigned modes[64], count = 0;
    const char *selection = getenv("M4_TEST_MODES");
@@ -150,6 +157,8 @@ main(void)
    }
    printf("Configuration: width=%u modes=%u reads=%u delay_ms=%u iterations=%u draws=%u split=%u\n",
           W, count, reads, delay_ms, iterations, draws, split);
+   printf("Coverage: scissor=%u,%u,%u,%u alternate_texture=%u\n",
+          sx, sy, sw, sh, alternate);
    EGLDisplay d = eglGetPlatformDisplay(EGL_PLATFORM_SURFACELESS_MESA,
                                         EGL_DEFAULT_DISPLAY, NULL);
    CHECK(eglInitialize(d, NULL, NULL));
@@ -240,15 +249,14 @@ main(void)
        * These are read-only textures, not a render-to-texture dependency test.
        * Check the actual VDM trace before calling this a batched submission.
        */
-      if (draws > 1)
-         glEnable(GL_SCISSOR_TEST);
+      glEnable(GL_SCISSOR_TEST);
       for (unsigned draw = 0; draw < draws; draw++) {
+         glScissor(sx, sy + draw * (sh / draws), sw, sh / draws);
          if (draws > 1) {
-            glScissor(0, draw * (W / draws), W, W / draws);
-            glUniform1i(glGetUniformLocation(p, "baseTex"), draw & 1);
+            glUniform1i(glGetUniformLocation(p, "baseTex"), alternate && (draw & 1));
          }
          printf("step=%u mode=%u draw=%u sampler=%u\n", step, mode, draw,
-                draw & 1);
+                alternate && (draw & 1));
          fflush(stdout);
          glDrawArrays(GL_TRIANGLES, 0, 6);
          if (split) {
@@ -284,7 +292,12 @@ main(void)
                unsigned expected_green = mode == 9 ? (alu_reference[x] >> 8) & 255 :
                                                mode == 7 ? iterations >> 8 : 0;
                unsigned expected_blue = 255, expected_alpha = 255;
-               if (draws > 1 && (y / (W / draws)) & 1) {
+               const bool covered = x >= sx && x < sx + sw &&
+                                    y >= sy && y < sy + sh;
+               if (!covered) {
+                  expected_red = expected_blue = expected_alpha = 255;
+                  expected_green = 0;
+               } else if (draws > 1 && alternate && (((y - sy) / (sh / draws)) & 1)) {
                   expected_red = expected_green = expected_blue = expected_alpha = 128;
                }
                if ((mode == 7 || mode == 9 ? q[0] != expected_red :
