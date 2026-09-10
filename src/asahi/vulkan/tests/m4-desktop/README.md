@@ -879,3 +879,21 @@ wait and independent nonoverlapping samples. The slot core's 60 checks and
 texture core's 5,654 checks pass. The actual scene is being revalidated; the
 earlier desktop timeouts are not yet claimed fixed by this pixel result.
 Evidence: `asahi-0ad-20260910-macos/shadow-four-tap{,-wait,-tokens}`.
+
+The corrected original shadowed frame (call 40898, 2048x1536) completes on
+M4 and is compared with the identical llvmpipe replay. Pixels with an RGB
+channel error above 32 drop from 39,134 to 3,520; mean absolute RGB error
+falls from 2.464218 to 1.110645. The remaining fine filtering/rasterization
+differences are comparable to the earlier non-shadow scene, not zero.
+An interactive before/after/reference comparison is saved as
+`asahi-0ad-20260910-macos/0ad-shadows-comparison.html`.
+The tested commit build is `5ece7ba5b54`, Vulkan library SHA-256
+`1182488c0aac417f09e9e6940ffc7aa2c4e6e58efdb11f770bedb09c2688cf27`.
+
+Longer desktop testing still times out in Fragment, including after the
+staging fix. An eight-frame headless replay also timed out before its first
+snapshot, although the identical one-frame prefix passed independently.
+Thus the shadow-pixel fix is qualified, but these results do not establish
+stable sustained gameplay or blame Hyprland. Kernel render-backing reuse is
+being isolated next. Watchdog recovery and saved thermal evidence remain
+mandatory; the corrected single-frame run peaked at 52 C.
