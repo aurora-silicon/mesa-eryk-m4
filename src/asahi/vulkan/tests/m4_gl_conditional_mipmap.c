@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 #include <GL/gl.h>
@@ -24,7 +25,19 @@
          exit(1);                                                              \
       }                                                                        \
    } while (0)
-#define W 128
+static unsigned W = 128;
+
+static unsigned
+setting(const char *name, unsigned fallback, unsigned maximum)
+{
+   const char *value = getenv(name);
+   if (!value)
+      return fallback;
+   char *end;
+   unsigned long n = strtoul(value, &end, 10);
+   CHECK(*value && !*end && n <= maximum);
+   return n;
+}
 
 static GLuint
 program(unsigned mode)
@@ -83,6 +96,28 @@ program(unsigned mode)
 int
 main(void)
 {
+   W = setting("M4_TEST_WIDTH", 128, 2048);
+   CHECK(W >= 64);
+   const unsigned reads = setting("M4_TEST_READS", 1, 16);
+   CHECK(reads > 0);
+   const unsigned delay_ms = setting("M4_TEST_READ_DELAY_MS", 0, 1000);
+   unsigned modes[64], count = 0;
+   const char *selection = getenv("M4_TEST_MODES");
+   if (!selection)
+      selection = "0,1,2,3,4,5,6";
+   while (*selection) {
+      char *end;
+      unsigned long mode = strtoul(selection, &end, 10);
+      CHECK(end != selection && mode < 7 && count < 64);
+      modes[count++] = mode;
+      CHECK(*end == ',' || !*end);
+      selection = *end ? end + 1 : end;
+   }
+   CHECK(count > 0);
+   unsigned char *pixels = malloc((size_t)W * W * 4);
+   CHECK(pixels);
+   printf("Configuration: width=%u modes=%u reads=%u delay_ms=%u\n", W, count,
+          reads, delay_ms);
    EGLDisplay d = eglGetPlatformDisplay(EGL_PLATFORM_SURFACELESS_MESA,
                                         EGL_DEFAULT_DISPLAY, NULL);
    CHECK(eglInitialize(d, NULL, NULL));
@@ -137,8 +172,10 @@ main(void)
    }
    /* Eight repeats over 128 pixels, with a 64-pixel texture, select LOD 2.
     * Both triangles have the same affine UV mapping across their diagonal. */
-   const float verts[] = {-1, -1, 0, 0, 1, -1, 8, 0, -1, 1, 0, 8,
-                          1,  -1, 8, 0, 1, 1,  8, 8, -1, 1, 0, 8};
+   const float uv_max = W / 16.0f;
+   const float verts[] = {-1, -1, 0,      0,      1,  -1, uv_max, 0,
+                          -1, 1,  0,      uv_max, 1,  -1, uv_max, 0,
+                          1,  1,  uv_max, uv_max, -1, 1,  0,      uv_max};
    glGenBuffers(1, &vbo);
    glBindBuffer(GL_ARRAY_BUFFER, vbo);
    glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STATIC_DRAW);
@@ -149,7 +186,8 @@ main(void)
    }
    glViewport(0, 0, W, W);
    unsigned total_bad = 0;
-   for (unsigned mode = 0; mode < 7; mode++) {
+   for (unsigned step = 0; step < count; step++) {
+      unsigned mode = modes[step];
       GLuint p = program(mode);
       glUseProgram(p);
       glUniform1i(glGetUniformLocation(p, "baseTex"), 0);
@@ -162,33 +200,43 @@ main(void)
       glClearColor(1, 0, 1, 1);
       glClear(GL_COLOR_BUFFER_BIT);
       glDrawArrays(GL_TRIANGLES, 0, 6);
-      unsigned char pixels[W * W * 4];
-      glReadPixels(0, 0, W, W, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
-      CHECK(glGetError() == GL_NO_ERROR);
-      unsigned bad = 0;
-      for (unsigned y = 0; y < W; y++)
-         for (unsigned x = 0; x < W; x++) {
-            const unsigned char *q = pixels + (y * W + x) * 4;
-            unsigned expected_red =
-               mode == 5 || (mode == 6 && x >= 32) ? 159 : 0;
-            if (abs((int)q[0] - (int)expected_red) > 2 || q[1] > 2 ||
-                q[2] < 253 || q[3] < 253) {
-               if (bad < 3)
-                  fprintf(
-                     stderr,
-                     "mode=%u pixel=%u,%u got=%u,%u,%u,%u expected=%u,0,255,255\n",
-                     mode, x, y, q[0], q[1], q[2], q[3], expected_red);
-               bad++;
-            }
+      for (unsigned read = 0; read < reads; read++) {
+         /* A diagnostic delay never excuses a bad first readback. */
+         if (delay_ms) {
+            struct timespec delay = {.tv_sec = delay_ms / 1000,
+                                     .tv_nsec = (delay_ms % 1000) * 1000000L};
+            nanosleep(&delay, NULL);
          }
-      printf("mode=%u bad=%u/%u\n", mode, bad, W * W);
-      fflush(stdout);
-      total_bad += bad;
+         memset(pixels, 0xa5, (size_t)W * W * 4);
+         glReadPixels(0, 0, W, W, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+         CHECK(glGetError() == GL_NO_ERROR);
+         unsigned bad = 0;
+         for (unsigned y = 0; y < W; y++)
+            for (unsigned x = 0; x < W; x++) {
+               const unsigned char *q = pixels + (y * W + x) * 4;
+               unsigned expected_red =
+                  mode == 5 || (mode == 6 && x >= 32) ? 159 : 0;
+               if (abs((int)q[0] - (int)expected_red) > 2 || q[1] > 2 ||
+                   q[2] < 253 || q[3] < 253) {
+                  if (bad < 3)
+                     fprintf(
+                        stderr,
+                        "mode=%u pixel=%u,%u got=%u,%u,%u,%u expected=%u,0,255,255\n",
+                        mode, x, y, q[0], q[1], q[2], q[3], expected_red);
+                  bad++;
+               }
+            }
+         printf("step=%u mode=%u read=%u bad=%u/%u\n", step, mode, read, bad,
+                W * W);
+         fflush(stdout);
+         total_bad += bad;
+      }
       glDeleteProgram(p);
    }
    eglMakeCurrent(d, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
    eglDestroyContext(d, ctx);
    eglTerminate(d);
+   free(pixels);
    printf("%s: conditional mipmaps, %u incorrect pixels\n",
           total_bad ? "FAIL" : "PASS", total_bad);
    return total_bad ? 1 : 0;

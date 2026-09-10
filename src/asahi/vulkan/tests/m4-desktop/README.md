@@ -1011,3 +1011,25 @@ out, as does assigning the loop predicate to flag 0 and ordinary conditions
 to flag 5. The latter encoder change was reverted. Neither repetition
 alone nor the static shader binary now explains the scene failure; resource
 and input-dependent execution remain under investigation.
+
+
+The mipmap probe accepts `M4_TEST_WIDTH` (64..2048, default 128),
+`M4_TEST_MODES` (a comma-separated sequence of modes 0..6, default all),
+`M4_TEST_READS` (1..16 per draw, default 1), and
+`M4_TEST_READ_DELAY_MS` (0..1000 before each read, default 0). Repeated
+modes compile separate programs; repeated reads reuse the same draw. UV
+coverage scales with resolution to preserve expected base LOD 2. Every
+readback, including the first, contributes to the result; optional delays
+are diagnostics only. Pixel storage is heap allocated and initialized to
+0xa5 before each read.
+
+On J713 with the baseline encoder, 1024-square modes `3,3` with two reads
+each pass all 4,194,304 pixels, as does llvmpipe. The complete mode sequence
+still times out in mode 3 after modes 0..2 pass. A subsequent `0,3` run
+after reboot completes, but the first direct-sample read has 36,320 zero
+pixels; reading the same draw again returns all pixels correctly. These
+are separate observations, not proof that the timeout and readback defect
+have the same cause. Evidence is in workspace `_provenance/experiments/`:
+`20260910T100047738241Z-mipmap-lod-draw-repeat`,
+`20260910T100105866747Z-mipmap-all-parameterized`, and
+`20260910T100214401888Z-mipmap-direct-then-lod`.
