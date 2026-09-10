@@ -810,9 +810,11 @@ lowering, so the backend first reports an ordinary sample with AGX2 operands.
 The game exits; the guard records a 53.5 C maximum and reboots. This is a
 compiler refusal, not a passing shadowed scene.
 
-On macOS 25G83, 38 small Metal fragment pipelines were compiled into native
+On macOS 25G83, 37 of 38 small Metal fragment pipeline probes compiled into native
 M4 binary archives, including 2D/array/cube comparisons, fixed and indirect
-resources, offsets, gradients, variable LOD and fetches. The 2D depth reference
+resources, offsets, gradients, variable LOD and fetches. The optional color
+gather probe had an invalid Metal source signature, not a hardware failure.
+The 2D depth reference
 uses a signalling COPY to staging half4 after x/y at halves0/2. The array
 layer remains in separate auxiliary bank6. SMP uses f143=1, f74=0 and mask1;
 implicit and level-zero forms are byte-witnessed for M4. Eight exact
@@ -830,3 +832,12 @@ test at float precision (maximum error 0.000108). Linux hardware validation is
 pending at this checkpoint. Build the GLES test with EGL, GLESv2 and libm;
 M4_TEST_LLVMPIPE=1 allows the reference, live J713 uses the mandatory guards.
 All Mesa changes are local; the checkout has no remotes.
+
+The Linux probe now renders its depth map with a depth-only framebuffer,
+matching the game's shadow pass and testing attachment-to-sampler visibility.
+CPU uploads of D32_SFLOAT images are separately unsupported in the current
+native meta path. The GPU-rendered version passes llvmpipe's 12,288 pixels.
+Its first M4 run exposed a kernel validation bug: zero color tilebuffer bytes
+were rejected even for depth-only passes. Kernel commit `49ed361697e5` removes
+that rejection while retaining the storage bound; the module builds with the
+existing J713 configuration. Hardware validation follows after reboot.

@@ -101,8 +101,52 @@ main(void)
          depths[y * 4 + x] = ((x + 2 * y) % 5) * .25f;
    glGenTextures(1, &depth);
    glBindTexture(GL_TEXTURE_2D, depth);
-   glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, 4, 4, 0,
-                GL_DEPTH_COMPONENT, GL_FLOAT, depths);
+   glTexStorage2D(GL_TEXTURE_2D, 1, GL_DEPTH_COMPONENT32F, 4, 4);
+   /* Create the depth map through rendering, as a game's shadow pass does.
+    * This also checks depth attachment -> sampled texture visibility. */
+   const char *depth_sources[] = {
+      "#version 300 es\nuniform float z;void main(){vec2 p=vec2((gl_VertexID<<1)&2,gl_VertexID&2);gl_Position=vec4(p*2.-1.,z,1);}",
+      "#version 300 es\nprecision highp float;void main(){}"};
+   GLuint depth_prog = glCreateProgram();
+   for (unsigned i = 0; i < 2; i++) {
+      GLuint sh = glCreateShader(kinds[i]);
+      glShaderSource(sh, 1, &depth_sources[i], NULL);
+      glCompileShader(sh);
+      glGetShaderiv(sh, GL_COMPILE_STATUS, &ok);
+      CHECK(ok);
+      glAttachShader(depth_prog, sh);
+      glDeleteShader(sh);
+   }
+   glLinkProgram(depth_prog);
+   glGetProgramiv(depth_prog, GL_LINK_STATUS, &ok);
+   CHECK(ok);
+   glUseProgram(depth_prog);
+   GLint z = glGetUniformLocation(depth_prog, "z");
+   CHECK(z >= 0);
+   GLuint depth_fb;
+   glGenFramebuffers(1, &depth_fb);
+   glBindFramebuffer(GL_FRAMEBUFFER, depth_fb);
+   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D,
+                          depth, 0);
+   const GLenum none = GL_NONE;
+   glDrawBuffers(1, &none);
+   glReadBuffer(GL_NONE);
+   CHECK(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
+   glViewport(0, 0, 4, 4);
+   glEnable(GL_DEPTH_TEST);
+   glDepthFunc(GL_ALWAYS);
+   glEnable(GL_SCISSOR_TEST);
+   for (unsigned y = 0; y < 4; y++) {
+      for (unsigned x = 0; x < 4; x++) {
+         glScissor(x, y, 1, 1);
+         glUniform1f(z, depths[y * 4 + x] * 2 - 1);
+         glDrawArrays(GL_TRIANGLES, 0, 3);
+      }
+   }
+   glDisable(GL_DEPTH_TEST);
+   glDisable(GL_SCISSOR_TEST);
+   glBindFramebuffer(GL_FRAMEBUFFER, fb);
+   glUseProgram(prog);
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE,
