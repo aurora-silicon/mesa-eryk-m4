@@ -1338,7 +1338,10 @@ hk_queue_init(struct hk_device *dev, const VkDeviceQueueCreateInfo *pCreateInfo,
                        "DRM_IOCTL_SYNCOBJ_CREATE failed: %m");
    }
 
-   uint64_t initial_value = 1;
+   /* The initial point is already signalled. Keep the host counter in sync
+    * so the first real submission cannot reuse it and satisfy waits early. */
+   queue->drm.timeline_value = 1;
+   uint64_t initial_value = queue->drm.timeline_value;
    if (drmSyncobjTimelineSignal(dev->dev.fd, &queue->drm.syncobj,
                                 &initial_value, 1)) {
       hk_queue_finish(dev, queue);

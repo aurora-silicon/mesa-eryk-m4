@@ -1150,3 +1150,21 @@ llvmpipe passes modes 7/8 at 1024 square with 128 iterations and mode 7 at
 magenta clear; two raw snapshots 200 ms apart are identical. The loop
 contains no texture operations, although an implicit sample follows it.
 Evidence: `20260910T160800982598Z-mipmap-alu4096-large`.
+
+`M4_TEST_STALE_LINE=invalidate` samples the first stale 128-byte-spaced word,
+reads it immediately again, performs one AArch64 `dc civac` plus `dsb sy`,
+and samples again. Any other value uses only `dsb sy` as a control. The
+original stale observation counts as failure even if subsequent reads pass.
+One cold run retained the stale word across this operation and then had
+117,888 stale words in the full scan; its second read was correct.
+
+Queue initialization now initializes the host timeline counter to the point
+already signalled in the DRM syncobj (1), so the first real submission uses 2.
+This removes point reuse, but is not a complete cold-readback fix: a verified
+cold run still had 69,488 stale words. A later cold run with exact kernel
+CLOCK_MONOTONIC retirement logging passed. Kernel printk timestamps can differ
+from CLOCK_MONOTONIC by more than the paired userspace markers imply; use the
+explicit retirement `monotonic_ns` field when assessing fence ordering.
+Evidence: `20260910T171851600971Z-vulkan-cold-stale-line-invalidate`,
+`20260910T172202880405Z-vulkan-cold-queue-point-two`, and
+`20260910T172337363392Z-vulkan-cold-retirement-monotonic`.

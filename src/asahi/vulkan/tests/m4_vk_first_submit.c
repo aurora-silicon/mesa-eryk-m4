@@ -192,6 +192,36 @@ main(void)
    }
    if (getenv("M4_TEST_CPU_BARRIER"))
       cpu_barrier();
+   /* Capture a single stale line before the full scan. This diagnostic must
+    * retain the original failure even if a later read observes GPU progress. */
+   unsigned snapshot_bad = 0;
+   if (getenv("M4_TEST_STALE_LINE")) {
+      volatile uint32_t *snapshot = data;
+      for (unsigned i = 0; i < WORDS; i += 32) {
+         uint32_t before = snapshot[i];
+         if (before == PATTERN)
+            continue;
+         snapshot_bad = 1;
+         double t0 = monotonic();
+         uint32_t immediate = snapshot[i];
+#ifdef __aarch64__
+         if (!strcmp(getenv("M4_TEST_STALE_LINE"), "invalidate"))
+            __asm__ volatile("dc civac, %0\n\tdsb sy"
+                             : : "r"(&snapshot[i]) : "memory");
+         else
+            __asm__ volatile("dsb sy" ::: "memory");
+#else
+         cpu_barrier();
+#endif
+         uint32_t after = snapshot[i];
+         double t1 = monotonic();
+         fprintf(stderr, "STALE line word=%u before=%08x immediate=%08x "
+                         "after=%08x operation=%s start=%.9f end=%.9f\n",
+                 i, before, immediate, after, getenv("M4_TEST_STALE_LINE"),
+                 t0, t1);
+         break;
+      }
+   }
    unsigned bad = 0;
    for (unsigned i = 0; i < WORDS; i++) {
       if (data[i] != PATTERN) {
@@ -215,6 +245,7 @@ main(void)
       fflush(stdout);
       bad += second_bad;
    }
+   bad += snapshot_bad;
    VK(vkDeviceWaitIdle(device));
    vkDestroyFence(device, fence, NULL);
    vkDestroyCommandPool(device, pool, NULL);
