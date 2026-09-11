@@ -91,7 +91,8 @@ main(void)
    vkGetDeviceQueue(device, family, 0, &queue);
    VkBufferCreateInfo bci = {.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
                              .size = WORDS * sizeof(uint32_t),
-                             .usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT};
+                             .usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                                      VK_BUFFER_USAGE_TRANSFER_SRC_BIT};
    VkBuffer buffer;
    VK(vkCreateBuffer(device, &bci, NULL, &buffer));
    VkMemoryRequirements req;
@@ -122,6 +123,27 @@ main(void)
    uint32_t *data;
    VK(vkMapMemory(device, memory, 0, VK_WHOLE_SIZE, 0, (void **)&data));
    memset(data, 0xa5, WORDS * sizeof(*data));
+   const bool copy_control = getenv("M4_TEST_GPU_COPY") != NULL;
+   VkBuffer copy_buffer = VK_NULL_HANDLE;
+   VkDeviceMemory copy_memory = VK_NULL_HANDLE;
+   uint32_t *copy_data = NULL;
+   if (copy_control) {
+      VK(vkCreateBuffer(device, &bci, NULL, &copy_buffer));
+      VkMemoryRequirements copy_req;
+      vkGetBufferMemoryRequirements(device, copy_buffer, &copy_req);
+      CHECK(copy_req.memoryTypeBits & (1u << memory_type));
+      mai.allocationSize = copy_req.size;
+      VK(vkAllocateMemory(device, &mai, NULL, &copy_memory));
+      VK(vkBindBufferMemory(device, copy_buffer, copy_memory, 0));
+      VK(vkMapMemory(device, copy_memory, 0, VK_WHOLE_SIZE, 0,
+                     (void **)&copy_data));
+      memset(copy_data, 0x5a, WORDS * sizeof(*copy_data));
+   }
+   const char *dump_dir = getenv("M4_TEST_DUMP_DIR");
+   uint32_t *snapshot = dump_dir ? malloc(WORDS * sizeof(*data)) : NULL;
+   CHECK(!dump_dir || snapshot);
+   if (snapshot)
+      memset(snapshot, 0, WORDS * sizeof(*data));
    if (getenv("M4_TEST_CLEAN_BEFORE")) {
 #ifdef __aarch64__
       uint64_t ctr;
@@ -156,6 +178,17 @@ main(void)
       .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
    VK(vkBeginCommandBuffer(command, &begin));
    vkCmdFillBuffer(command, buffer, 0, VK_WHOLE_SIZE, PATTERN);
+   if (copy_control) {
+      VkMemoryBarrier copy_barrier = {
+         .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
+         .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+         .dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT};
+      vkCmdPipelineBarrier(command, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                           VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 1, &copy_barrier,
+                           0, NULL, 0, NULL);
+      VkBufferCopy region = {.size = WORDS * sizeof(*data)};
+      vkCmdCopyBuffer(command, buffer, copy_buffer, 1, &region);
+   }
    VkMemoryBarrier barrier = {.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
                               .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
                               .dstAccessMask = VK_ACCESS_HOST_READ_BIT};
@@ -223,10 +256,15 @@ main(void)
       }
    }
    unsigned bad = 0;
-   for (unsigned i = 0; i < WORDS; i++) {
-      if (data[i] != PATTERN) {
+   const bool reverse = getenv("M4_TEST_REVERSE_READ") != NULL;
+   for (unsigned step = 0; step < WORDS; step++) {
+      const unsigned i = reverse ? WORDS - 1 - step : step;
+      const uint32_t observed = ((volatile uint32_t *)data)[i];
+      if (snapshot)
+         snapshot[i] = observed;
+      if (observed != PATTERN) {
          if (bad < 3)
-            fprintf(stderr, "word=%u got=%08x expected=%08x\n", i, data[i],
+            fprintf(stderr, "word=%u got=%08x expected=%08x\n", i, observed,
                     PATTERN);
          bad++;
       }
@@ -234,6 +272,29 @@ main(void)
    printf("TIME read-complete %.9f\n", monotonic());
    printf("first-submit bad=%u/%u\n", bad, WORDS);
    fflush(stdout);
+   if (copy_control) {
+      unsigned copy_bad = 0, source_sentinel = 0, untouched = 0;
+      for (unsigned i = 0; i < WORDS; i++) {
+         uint32_t value = ((volatile uint32_t *)copy_data)[i];
+         copy_bad += value != PATTERN;
+         source_sentinel += value == UINT32_C(0xa5a5a5a5);
+         untouched += value == UINT32_C(0x5a5a5a5a);
+      }
+      printf("TIME gpu-copy-read %.9f bad=%u/%u source-sentinel=%u "
+             "untouched=%u\n", monotonic(), copy_bad, WORDS, source_sentinel,
+             untouched);
+      bad += copy_bad;
+   }
+   if (snapshot) {
+      char path[4096];
+      int n = snprintf(path, sizeof(path), "%s/first-read.bin", dump_dir);
+      CHECK(n > 0 && (size_t)n < sizeof(path));
+      FILE *file = fopen(path, "wb");
+      CHECK(file);
+      CHECK(fwrite(snapshot, sizeof(*snapshot), WORDS, file) == WORDS);
+      CHECK(fclose(file) == 0);
+      free(snapshot);
+   }
    if (getenv("M4_TEST_SECOND_READ")) {
       struct timespec delay = {.tv_nsec = 100000000L};
       nanosleep(&delay, NULL);
@@ -249,6 +310,11 @@ main(void)
    VK(vkDeviceWaitIdle(device));
    vkDestroyFence(device, fence, NULL);
    vkDestroyCommandPool(device, pool, NULL);
+   if (copy_control) {
+      vkUnmapMemory(device, copy_memory);
+      vkDestroyBuffer(device, copy_buffer, NULL);
+      vkFreeMemory(device, copy_memory, NULL);
+   }
    vkUnmapMemory(device, memory);
    vkDestroyBuffer(device, buffer, NULL);
    vkFreeMemory(device, memory, NULL);

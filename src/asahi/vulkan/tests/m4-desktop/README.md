@@ -1304,3 +1304,20 @@ remains recorded. The GL attachment reports 24 bits and unsigned-normalized
 type despite its Vulkan backing. Do not call this a D24 conformance pass or
 change the game's depth format to conceal it. Whether this explains every
 localized game-frame difference has not been established.
+
+### First-read spatial and GPU-copy controls (2026-09-11)
+
+`m4_vk_first_submit.c` now supports `M4_TEST_GPU_COPY=1` to copy the filled
+buffer to a distinct sentinel-initialized buffer, with a transfer-write/read
+barrier before the copy and a transfer-write/host-read barrier before the fence.
+Both full buffers are checked. `M4_TEST_DUMP_DIR` saves the first observed words
+to `first-read.bin`, without rereading them for the snapshot. `M4_TEST_REVERSE_READ=1`
+scans from the end. These are diagnostic controls, never driver workarounds.
+
+The current kernel/Mesa baseline still fails cold (`111247`, 81,763 stale words).
+The first saved fill-only scan (`111710`) contains 93,568 stale words, all in
+64-byte-multiple runs below byte 1,015,488. A GPU-copy control (`111542`) and
+one reverse scan (`111848`) pass. Extra GPU work and reversed scan order both
+change observation timing, so neither establishes a synchronization fix.
+All tests retain first-read failures and use the 60-second watchdog and thermal
+guards; peaks are 50.75–52.5 C. Full evidence is in workspace experiment folders.
