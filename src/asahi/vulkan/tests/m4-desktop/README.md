@@ -1333,3 +1333,22 @@ the first profile's on-target report exceeded its 20-second limit after the
 180-second game completed, triggering guarded reboot. All sample data survived;
 no GPU failure was observed. The corrected launcher only records and finalizes
 perf data while live. It does not extend or renew the watchdog itself.
+
+### Single-dispatch completion counter
+
+`m4_completion_counter.comp` writes a 4 MiB buffer and then, after each
+workgroup's buffer memory barrier and workgroup barrier, atomically increments
+one completed-group counter. The workspace `tools/vk-buffer-oracle.c` runner
+uses 4096 groups and a 16-byte header followed by 262144 uvec4 values. Initialize
+counter zero, remaining words 0xa5a5a5a5; expect counter4096, unchanged padding,
+and all data0x7b2da916. `M4_ORACLE_WATCH_WORD=0` observes the counter immediately
+after the fence. The runner retains a snapshot before file I/O, preserving the
+first mismatch rather than accidentally delaying validation through fwrite.
+
+Cold test `20260911T114427646327Z` observed counter0 and stale data; it failed
+145410 comparisons (the watched failure is included separately in that count).
+Identical warm test `20260911T114525577379Z` passed all1048580 buffer words with
+counter4096. Both were guarded, fetched and fault-free, with peaks51.75/50.75 C.
+This supplies a second reproducer, not a synchronization fix. A zero CPU-visible
+counter alone does not distinguish unfinished GPU execution from delayed
+visibility of completed GPU writes.

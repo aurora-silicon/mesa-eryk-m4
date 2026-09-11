@@ -1,0 +1,21 @@
+/* SPDX-License-Identifier: MIT
+ * One dispatch: group leaders count completed stores, without a second GPU
+ * submission or dispatch adding time before the host fence observation.
+ * Run through the mandatory M4 watchdog/thermal guard only.
+ */
+#version 450
+layout(local_size_x = 64) in;
+layout(set = 0, binding = 0, std430) coherent buffer Output {
+   uint completed_groups;
+   uint pad[3];
+   uvec4 data[];
+} output_data;
+
+void main()
+{
+   output_data.data[gl_GlobalInvocationID.x] = uvec4(0x7b2da916u);
+   memoryBarrierBuffer();
+   barrier();
+   if (gl_LocalInvocationIndex == 0)
+      atomicAdd(output_data.completed_groups, 1u);
+}
