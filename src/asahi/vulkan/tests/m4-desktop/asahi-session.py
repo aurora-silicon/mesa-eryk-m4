@@ -364,6 +364,8 @@ def main():
                 if os.getenv('M4_TEST_FRAME_TIMINGS') == '1':
                     game_env['M4_SWAP_TIMING'] = '1'
                 if os.getenv('M4_SUPERTUX_TRACE') == '1':
+                    game_env['M4_EGL_TRACE_GLX_LOOKUP'] = '1'
+                    game_env.update(HK_G17P_LAUNCH_TRACE='1', AGX_MESA_DEBUG='shaders,internal')
                     trace_dir = Path(account.pw_dir)/'.local/state/m4-asahi-traces'
                     trace_dir.mkdir(parents=True, exist_ok=True)
                     os.chown(trace_dir, account.pw_uid, account.pw_gid)

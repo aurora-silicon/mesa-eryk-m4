@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <time.h>
 const unsigned char *glGetString(unsigned name);
 const unsigned char *glGetString(unsigned name)
@@ -29,19 +30,20 @@ const unsigned char *glGetString(unsigned name)
  * Each row describes a completed SDL swap and the interval since the previous
  * one. Keep startup rows; offline summaries explicitly select their interval.
  */
-void SDL_GL_SwapWindow(void *window)
+/* The installed SuperTux uses SDL3, whose swap API returns bool. */
+bool SDL_GL_SwapWindow(void *window)
 {
-    static void (*swap)(void *);
+    static bool (*swap)(void *);
     static int enabled = -1;
     static uint64_t previous, frame;
     struct timespec t;
     if (!swap) swap = dlsym(RTLD_NEXT, "SDL_GL_SwapWindow");
     if (!swap) abort();
     if (enabled < 0) enabled = getenv("M4_SWAP_TIMING") != NULL;
-    if (!enabled) { swap(window); return; }
+    if (!enabled) return swap(window);
     clock_gettime(CLOCK_MONOTONIC, &t);
     uint64_t start = (uint64_t)t.tv_sec * 1000000000 + t.tv_nsec;
-    swap(window);
+    bool success = swap(window);
     clock_gettime(CLOCK_MONOTONIC, &t);
     uint64_t end = (uint64_t)t.tv_sec * 1000000000 + t.tv_nsec;
     fprintf(stderr, "M4_SWAP_TIMING frame=%llu end_ns=%llu interval_ns=%llu swap_ns=%llu\n",
@@ -49,4 +51,25 @@ void SDL_GL_SwapWindow(void *window)
             (unsigned long long)(previous ? end - previous : 0),
             (unsigned long long)(end - start));
     previous = end;
+    return success;
+}
+
+/* GLEW uses GLX lookup even with an EGL context. In EGL capture mode, route
+ * that lookup through the trace wrapper so dynamically loaded calls are also
+ * recorded. Normal tests retain the platform's original lookup. */
+typedef void (*gl_proc)(void);
+gl_proc glXGetProcAddress(const unsigned char *name)
+{
+    if (getenv("M4_EGL_TRACE_GLX_LOOKUP")) {
+        gl_proc (*egl_lookup)(const char *) = dlsym(RTLD_NEXT, "eglGetProcAddress");
+        if (!egl_lookup) abort();
+        return egl_lookup((const char *)name);
+    }
+    gl_proc (*lookup)(const unsigned char *) = dlsym(RTLD_NEXT, "glXGetProcAddress");
+    if (!lookup) abort();
+    return lookup(name);
+}
+gl_proc glXGetProcAddressARB(const unsigned char *name)
+{
+    return glXGetProcAddress(name);
 }
