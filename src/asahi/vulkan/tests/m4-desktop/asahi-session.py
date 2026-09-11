@@ -236,6 +236,11 @@ def main():
                 raise RuntimeError('Unexpected screenshot format')
             red = sum(rgb[i] > 240 and rgb[i+1] < 16 and rgb[i+2] < 16
                       for i in range(0, len(rgb), 3))
+            # Retain independent display evidence even when screencopy fails.
+            # A black readback alone cannot distinguish composition from
+            # visibility of the copied image to the CPU.
+            scanout_red = (verify_native_scanout(result, width, height) if native else
+                           verify_scanout(result, width, height)) if physical else None
             if red < width * height // 2:
                 raise RuntimeError(f'Expected a composed red terminal, found {red} red pixels')
             log.flush()
@@ -243,8 +248,6 @@ def main():
             if not any('Renderer:' in line and 'zink' in line.lower() and 'M4' in line
                        for line in text.splitlines()):
                 raise RuntimeError('Hyprland did not identify the M4 Zink renderer')
-            scanout_red = (verify_native_scanout(result, width, height) if native else
-                           verify_scanout(result, width, height)) if physical else None
             summary = {'passed': True, 'hyprland': True,
                        'scope': f'{width}x{height} {output_name} compositor',
                        'physical_display': physical, 'native_kms': native,
