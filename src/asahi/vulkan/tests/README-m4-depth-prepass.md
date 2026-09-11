@@ -177,3 +177,14 @@ events during loading but updates the viewport only in its gameplay event
 loop. A separate proper game-side resize fix is being tested in the local
 source repository reference/sauerbraten-2020/sauerbraten/src; no driver scaling
 override or shader modification is appropriate for this application bug.
+
+Final actual Sauerbraten171329 passes180s with35 GPU/compositor checks,
+383thermal samples,peak52.75C. Engine log is now correctly retained and has
+no errors; steady gameplay3–4FPS. Loading live-2 fills the whole window and
+final gameplay looks correct. User also confirmed. Local Sauer source fix
+1ebc5c3 only synchronizes loading-time window size/viewport; current binary
+307ff405cc0e5f5ec058070fc3a685be41e25f7fdbc47beadf43fc0248bd671a. Corrected
+trace changes to2048x1536 at startup call810, rather than after loading at
+52085. Mesa production Vulkan remains a4cd, with native register-free waits.
+This qualifies the sampled scene/loading path, not every game effect or good
+performance. Guards and338MHz unchanged. Original failed170257 verdict remains.
