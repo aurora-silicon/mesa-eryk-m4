@@ -5483,6 +5483,45 @@ TEST_F(AGX3PackBinary, CachedHalfIdentityUnconditionalLoopBreak)
    EXPECT_EQ(pack(b), want);
 }
 
+TEST_F(AGX3PackBinary, ZeroLeftHalfComparisonsPreserveRelationAndHints)
+{
+   const struct {
+      enum agx_icond mesa;
+      enum agx3_cf_icond swapped;
+   } cases[] = {
+      {AGX_ICOND_UEQ, AGX3_CF_ICOND_EQ},
+      {AGX_ICOND_SEQ, AGX3_CF_ICOND_EQ},
+      {AGX_ICOND_ULT, AGX3_CF_ICOND_UGT},
+      {AGX_ICOND_UGT, AGX3_CF_ICOND_ULT},
+      {AGX_ICOND_SLT, AGX3_CF_ICOND_SGT},
+      {AGX_ICOND_SGT, AGX3_CF_ICOND_SLT},
+   };
+   const auto enc = AGX_ISA_ENCODING_AGX3B;
+   for (const auto &test : cases) {
+      for (bool invert : {false, true}) {
+         for (unsigned hint = 0; hint < 3; ++hint) {
+            agx_builder *b = builder(enc);
+            agx_index half = agx_register(2, AGX_SIZE_16);
+            half.cache = hint == 1;
+            half.discard = hint == 2;
+            agx_if_icmp(b, agx_immediate(0), half, 1, test.mesa, invert, NULL);
+            agx_stop(b);
+            uint8_t bytes[AGX3_CF_MAX_LENGTH], len = 0;
+            std::vector<uint8_t> want;
+            ASSERT_TRUE(agx3_cf_icmp_zero16_runtime(enc, test.swapped, 0,
+               half.value, {half.cache, half.discard}, 0, bytes, &len));
+            append(want, bytes, len);
+            ASSERT_TRUE(agx3_cf_cndst(enc, 0, invert, 1, bytes, &len));
+            append(want, bytes, len);
+            struct agx3_encoded_end end;
+            ASSERT_TRUE(agx3_pack_end(enc, &end));
+            append(want, end.bytes, end.length);
+            EXPECT_EQ(pack(b), want);
+         }
+      }
+   }
+}
+
 TEST_F(AGX3PackBinary, HalfZeroGnomeSamplerIndexSurvivesBranch)
 {
    agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);

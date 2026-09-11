@@ -2691,15 +2691,21 @@ agx3_emit_cf_compare(struct util_dynarray *emission, enum agx_isa_encoding enc,
       return agx3_append(emission, bytes, len);
    }
 
-   /* Branching on a boolean: Mesa keeps them in 16-bit halves, so the
-    * compare is `r0h != 0` rather than a 32-bit one. */
-   if (!is_float && agx3_cf_reg16(I->src[0]) &&
-       I->src[1].type == AGX_INDEX_IMMEDIATE && !I->src[1].abs &&
-       !I->src[1].neg && I->src[1].value == 0) {
+   /* Mesa keeps booleans in 16-bit halves. Canonicalize zero on either side
+    * to the witnessed register/zero form, preserving signedness and inversion.
+    * Hyprland's ordinary effects also generate `0 relation half-register`.
+    */
+   if (!is_float &&
+       ((agx3_cf_reg16(I->src[0]) && agx3_cf_is_zero(I->src[1])) ||
+        (agx3_cf_is_zero(I->src[0]) && agx3_cf_reg16(I->src[1])))) {
+      const bool zero_first = agx3_cf_is_zero(I->src[0]);
+      const agx_index source = I->src[zero_first ? 1 : 0];
       enum agx3_cf_icond cond16;
-      if (I->src[0].kill || !agx3_cf_map_icond(I->icond, &cond16) ||
-          !agx3_cf_icmp_zero16_runtime(enc, cond16, flag_slot, I->src[0].value,
-             (struct agx3_cf_source_hints){I->src[0].cache,I->src[0].discard},
+      if (source.kill || agx_channels(source) != 1 ||
+          !agx3_cf_map_icond(I->icond, &cond16) ||
+          (zero_first && !agx3_cf_swap_icond(&cond16)) ||
+          !agx3_cf_icmp_zero16_runtime(enc, cond16, flag_slot, source.value,
+             (struct agx3_cf_source_hints){source.cache, source.discard},
              0, bytes, &len))
          return false;
       return agx3_append(emission, bytes, len);
