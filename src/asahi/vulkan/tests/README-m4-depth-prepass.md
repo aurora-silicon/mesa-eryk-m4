@@ -53,3 +53,19 @@ are disabled by default:
 Both controls preserve all shaders' mathematical operations. Installed diagnostic
 Vulkan d97577c1aed310d891daef63079f11764bec45f118315e0da41eb52ce778f78a;
 all tests guarded, peak50.5C. Need identify and fix the specific dependency.
+
+### Address-lifetime isolation (2026-09-11 16:03 UTC)
+
+`AGX3_VERTEX_EXPLICIT_WAITS=all|fma|load` moves existing waits to explicit
+bit-preserving instructions. `AGX3_VERTEX_SOURCE_WAITS=1` additionally retires
+loads before a physical GPR address input is overwritten;
+`AGX3_VERTEX_REUSE_WAITS=1` instead retires only outstanding slot reuse. These
+are disabled-by-default diagnostic controls, not qualified production policy.
+
+The original material-vertex reproducer has 94753 fog pixels differing by more
+than one channel level. Explicit waits alone leave58405; slot-reuse waits alone
+leave31148. Address-source waits reduce this to one pixel off by2, matching
+full serialization and the simple reference rasterization floor. Evidence IDs
+155913,160119,160254 under the workspace experiment collection; all completed,
+three thermal samples each, peak50.5C. This supports an asynchronous source
+lifetime bug; the complete original game prefix remains to be qualified.

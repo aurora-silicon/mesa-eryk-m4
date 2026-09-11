@@ -4001,9 +4001,19 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
    if (!agx3_slot_assign(sl, count, nslots, res))
       goto fail;
 
+   const char *explicit_waits = ctx->stage == MESA_SHADER_VERTEX &&
+      enc == AGX_ISA_ENCODING_AGX3B ? getenv("AGX3_VERTEX_EXPLICIT_WAITS") : NULL;
    const bool serialize_vertex = ctx->stage == MESA_SHADER_VERTEX &&
       enc == AGX_ISA_ENCODING_AGX3B &&
       debug_get_bool_option("AGX3_VERTEX_SERIALIZE", false);
+
+   const bool source_waits = ctx->stage == MESA_SHADER_VERTEX &&
+      enc == AGX_ISA_ENCODING_AGX3B &&
+      debug_get_bool_option("AGX3_VERTEX_SOURCE_WAITS", false);
+   const bool reuse_waits = ctx->stage == MESA_SHADER_VERTEX &&
+      enc == AGX_ISA_ENCODING_AGX3B &&
+      debug_get_bool_option("AGX3_VERTEX_REUSE_WAITS", false);
+   uint16_t pending_reads[AGX3_SLOT_GPR_TOKENS] = {0};
 
    k = 0;
    unsigned vertex_loads_seen = 0;
@@ -4051,7 +4061,42 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
          }
 
          const uint8_t slot = res[k].slot;
-         const uint16_t wait = res[k].wait_mask;
+         uint16_t wait = res[k].wait_mask;
+         if (reuse_waits && slot) {
+            uint16_t retire = outstanding & ~wait & (1u << (slot - 1));
+            if (retire && !agx3_retire_slots_noop(emission, enc, retire))
+               AGX3_REFUSE(I);
+            outstanding &= (uint16_t)~retire;
+         }
+         if (source_waits) {
+            uint16_t retire = 0;
+            for (unsigned d = 0; d < sl[k].nr_dsts; ++d) {
+               unsigned reg = sl[k].dst[d];
+               if (reg < AGX3_SLOT_GPR_TOKENS)
+                  retire |= pending_reads[reg];
+            }
+            if (retire && !agx3_retire_slots_noop(emission, enc, retire))
+               AGX3_REFUSE(I);
+            outstanding &= (uint16_t)~retire;
+            for (unsigned r = 0; r < AGX3_SLOT_GPR_TOKENS; ++r)
+               pending_reads[r] &= (uint16_t)~(retire | wait);
+            if (I->op == AGX_OPCODE_DEVICE_LOAD && slot) {
+               for (unsigned s = 0; s < sl[k].nr_srcs; ++s) {
+                  unsigned reg = sl[k].src[s];
+                  if (reg < AGX3_SLOT_GPR_TOKENS)
+                     pending_reads[reg] |= 1u << (slot - 1);
+               }
+            }
+         }
+         if (wait && explicit_waits &&
+             (!strcmp(explicit_waits, "all") ||
+              (!strcmp(explicit_waits, "fma") && I->op == AGX_OPCODE_FFMA) ||
+              (!strcmp(explicit_waits, "load") && I->op == AGX_OPCODE_DEVICE_LOAD))) {
+            if (!agx3_retire_slots_noop(emission, enc, wait))
+               AGX3_REFUSE(I);
+            outstanding &= (uint16_t)~wait;
+            wait = 0;
+         }
          k++;
 
          /* A wait retires its slots before this instruction issues its own. */
