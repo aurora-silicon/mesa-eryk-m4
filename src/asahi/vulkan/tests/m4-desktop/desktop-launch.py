@@ -1,5 +1,5 @@
 from pathlib import Path
-import subprocess, os, signal
+import subprocess, os, signal, re
 assert not Path('/sys/module/g16_lab').exists()
 output=Path(os.environ['M4_DESKTOP_EVIDENCE'])
 before=subprocess.check_output(['dmesg','--color=never'],text=True)
@@ -45,5 +45,10 @@ print(log,flush=True)
 for bad in ['Internal error:', 'BUG:', 'WARNING:', 'GPU retirement unproven', 'firmware crashed']:
     assert bad not in log, bad
 assert 'userspace GPU job' in log
-assert 'render stage Fragment retired' in log
+# Per-stage stamp logs are optional diagnostics. The retained timestamp record
+# is emitted after both render stages retire; reject incomplete/zero pairs.
+timings = re.findall(r'render GPU timestamps=\[\[([0-9a-f]+), ([0-9a-f]+)\], '
+                    r'\[([0-9a-f]+), ([0-9a-f]+)\]\]', log)
+assert any(all(t) and t[1] >= t[0] and t[3] >= t[2]
+           for t in ([int(v, 16) for v in row] for row in timings)), 'No completed render timing pair'
 print('PASS: shared-buffer Zink and native Hyprland pixels',flush=True)
