@@ -1481,24 +1481,18 @@ vk_meta_copy_image_to_buffer(
    }
 }
 
-static void
-copy_draw(struct vk_command_buffer *cmd, struct vk_meta_device *meta,
+static bool
+copy_begin_rendering(struct vk_command_buffer *cmd, struct vk_meta_device *meta,
           struct vk_image *dst_img, VkImageLayout dst_img_layout,
           const VkImageSubresourceLayers *dst_img_subres,
           const VkOffset3D *dst_img_offset, const VkExtent3D *copy_extent,
-          const struct vk_meta_copy_image_view *view_info)
+          const struct vk_meta_copy_image_view *view_info, bool preserve)
 {
    struct vk_device *dev = cmd->base.device;
    const struct vk_device_dispatch_table *disp = &dev->dispatch_table;
    uint32_t depth_or_layer_count =
       MAX2(copy_extent->depth,
            vk_image_subresource_layer_count(dst_img, dst_img_subres));
-   struct vk_meta_rect rect = {
-      .x0 = dst_img_offset->x,
-      .x1 = dst_img_offset->x + copy_extent->width,
-      .y0 = dst_img_offset->y,
-      .y1 = dst_img_offset->y + copy_extent->height,
-   };
    VkRenderingAttachmentInfo vk_atts[2];
    VkRenderingInfo vk_render = {
       .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
@@ -1529,14 +1523,15 @@ copy_draw(struct vk_command_buffer *cmd, struct vk_meta_device *meta,
          dst_img_subres, VK_PIPELINE_BIND_POINT_GRAPHICS, &iview);
       if (unlikely(result != VK_SUCCESS)) {
          vk_command_buffer_set_error(cmd, result);
-         return;
+         return false;
       }
 
       vk_atts[vk_render.colorAttachmentCount] = (VkRenderingAttachmentInfo){
          .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
          .imageView = iview,
          .imageLayout = dst_img_layout,
-         .loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+         .loadOp = preserve ? VK_ATTACHMENT_LOAD_OP_LOAD
+                            : VK_ATTACHMENT_LOAD_OP_DONT_CARE,
          .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
       };
 
@@ -1555,7 +1550,30 @@ copy_draw(struct vk_command_buffer *cmd, struct vk_meta_device *meta,
    }
 
    disp->CmdBeginRendering(vk_command_buffer_to_handle(cmd), &vk_render);
-   meta->cmd_draw_volume(cmd, meta, &rect, vk_render.layerCount);
+   return !vk_command_buffer_has_error(cmd);
+}
+
+static void
+copy_draw(struct vk_command_buffer *cmd, struct vk_meta_device *meta,
+          struct vk_image *dst_img, VkImageLayout dst_img_layout,
+          const VkImageSubresourceLayers *dst_img_subres,
+          const VkOffset3D *dst_img_offset, const VkExtent3D *copy_extent,
+          const struct vk_meta_copy_image_view *view_info)
+{
+   if (!copy_begin_rendering(cmd, meta, dst_img, dst_img_layout, dst_img_subres,
+                              dst_img_offset, copy_extent, view_info, false))
+      return;
+
+   struct vk_meta_rect rect = {
+      .x0 = dst_img_offset->x,
+      .x1 = dst_img_offset->x + copy_extent->width,
+      .y0 = dst_img_offset->y,
+      .y1 = dst_img_offset->y + copy_extent->height,
+   };
+   const uint32_t layers = MAX2(copy_extent->depth,
+      vk_image_subresource_layer_count(dst_img, dst_img_subres));
+   meta->cmd_draw_volume(cmd, meta, &rect, layers);
+   const struct vk_device_dispatch_table *disp = &cmd->base.device->dispatch_table;
    disp->CmdEndRendering(vk_command_buffer_to_handle(cmd));
 }
 
@@ -1565,7 +1583,7 @@ copy_buffer_to_image_region_gfx(
    struct vk_image *img, VkImageLayout img_layout,
    const struct vk_meta_copy_image_properties *img_props, VkBuffer buffer,
    const struct vk_image_buffer_layout *buf_layout,
-   const VkBufferImageCopy2 *region)
+   const VkBufferImageCopy2 *region, bool rendering_active)
 {
    struct vk_device *dev = cmd->base.device;
    const struct vk_device_dispatch_table *disp = &dev->dispatch_table;
@@ -1608,8 +1626,18 @@ copy_buffer_to_image_region_gfx(
       return;
    }
 
-   copy_draw(cmd, meta, img, img_layout, &region->imageSubresource,
-             &region->imageOffset, &region->imageExtent, &key.img.view);
+   if (rendering_active) {
+      const struct vk_meta_rect rect = {
+         .x0 = region->imageOffset.x,
+         .x1 = region->imageOffset.x + region->imageExtent.width,
+         .y0 = region->imageOffset.y,
+         .y1 = region->imageOffset.y + region->imageExtent.height,
+      };
+      meta->cmd_draw_volume(cmd, meta, &rect, 1);
+   } else {
+      copy_draw(cmd, meta, img, img_layout, &region->imageSubresource,
+                &region->imageOffset, &region->imageExtent, &key.img.view);
+   }
 }
 
 static void
@@ -1692,6 +1720,47 @@ vk_meta_copy_buffer_to_image(
 {
    VK_FROM_HANDLE(vk_image, img, info->dstImage);
 
+   /* An atlas upload commonly contains dozens of disjoint rectangles in one
+    * subresource. Preserve that batch instead of ending a render pass for each
+    * rectangle. Other view types/aspects and mixed subresources retain the
+    * per-region path. LOAD preserves gaps inside the combined render area.
+    */
+   bool batch = meta->batch_buffer_to_image_regions && info->regionCount > 1 &&
+                bind_point == VK_PIPELINE_BIND_POINT_GRAPHICS &&
+                img->image_type == VK_IMAGE_TYPE_2D && img->samples == 1 &&
+                !vk_format_is_compressed(img->format) &&
+                vk_format_get_plane_count(img->format) == 1;
+   if (batch) {
+      const VkBufferImageCopy2 *first = &info->pRegions[0];
+      VkOffset3D offset = first->imageOffset;
+      int64_t end_x = (int64_t)offset.x + first->imageExtent.width;
+      int64_t end_y = (int64_t)offset.y + first->imageExtent.height;
+      for (unsigned i = 0; i < info->regionCount; i++) {
+         const VkBufferImageCopy2 *r = &info->pRegions[i];
+         if (r->imageSubresource.aspectMask != VK_IMAGE_ASPECT_COLOR_BIT ||
+             r->imageSubresource.mipLevel != first->imageSubresource.mipLevel ||
+             r->imageSubresource.baseArrayLayer != first->imageSubresource.baseArrayLayer ||
+             vk_image_subresource_layer_count(img, &r->imageSubresource) != 1 ||
+             r->imageOffset.z != 0 || r->imageExtent.depth != 1) {
+            batch = false;
+            break;
+         }
+         offset.x = MIN2(offset.x, r->imageOffset.x);
+         offset.y = MIN2(offset.y, r->imageOffset.y);
+         end_x = MAX2(end_x, (int64_t)r->imageOffset.x + r->imageExtent.width);
+         end_y = MAX2(end_y, (int64_t)r->imageOffset.y + r->imageExtent.height);
+      }
+      if (batch) {
+         const struct vk_meta_copy_image_view view = img_copy_view_info(
+            VK_IMAGE_VIEW_TYPE_MAX_ENUM, VK_IMAGE_ASPECT_COLOR_BIT, img, img_props);
+         const VkExtent3D extent = {end_x - offset.x, end_y - offset.y, 1};
+         if (!copy_begin_rendering(cmd, meta, img, info->dstImageLayout,
+                                   &first->imageSubresource, &offset, &extent,
+                                   &view, true))
+            return;
+      }
+   }
+
    for (uint32_t i = 0; i < info->regionCount; i++) {
       VkBufferImageCopy2 region = info->pRegions[i];
       struct vk_image_buffer_layout buf_layout =
@@ -1703,7 +1772,7 @@ vk_meta_copy_buffer_to_image(
       if (bind_point == VK_PIPELINE_BIND_POINT_GRAPHICS) {
          copy_buffer_to_image_region_gfx(cmd, meta, img, info->dstImageLayout,
                                          img_props, info->srcBuffer,
-                                         &buf_layout, &region);
+                                         &buf_layout, &region, batch);
       } else {
          copy_buffer_to_image_region_compute(cmd, meta, img,
                                              info->dstImageLayout, img_props,
@@ -1711,6 +1780,8 @@ vk_meta_copy_buffer_to_image(
                                              &region);
       }
    }
+   if (batch)
+      cmd->base.device->dispatch_table.CmdEndRendering(vk_command_buffer_to_handle(cmd));
 }
 
 static nir_shader *

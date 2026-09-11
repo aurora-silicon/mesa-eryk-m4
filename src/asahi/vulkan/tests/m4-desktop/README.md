@@ -1448,3 +1448,32 @@ Supporting Qt6.11.2 sources: `QSGRhiDistanceFieldGlyphCache::storeGlyphs`
 batches glyph entries by atlas; `QRhiVulkan::recordPrimaryCommandBuffer`
 passes the full region count to vkCmdCopyBufferToImage. The batch is lost in
 our native Mesa path, not in Qt's API calls.
+
+### Batched native atlas uploads
+
+M4 now opts into graphics copy-region batching for compatible uncompressed,
+single-plane color images. Regions must target the same2D mip and single layer;
+other requests retain the established path. One render pass covers their union,
+with LOAD preserving untouched gaps. Rectangles keep separate source strides,
+descriptors and draws inside the same VDM stream. Atlas zero initialization
+remains intact; neither shaders nor text quality are simplified.
+
+`m4_vulkan_atlas_upload.c` is a standalone Vulkan pixel oracle (`-lvulkan`).
+It checks R8 and RGBA8,193x129 textures,two mip levels,two layers,128 disjoint
+rectangles plus mixed-layer and multilayer fallback uploads. Padded input rows,
+nonzero offsets,edge tiles and untouched patterned texels are checked bytewise.
+Default requires device0x8132; `--reference` permits another explicitly selected
+ICD. Hardware must run inside the existing watchdog/thermal guard.
+Run20260911T202140988953Z passes62082+248328=310410 bytes,zero mismatches,
+peak55.25C. Host lavapipe is unavailable; no host reference run is claimed.
+
+Run20260911T202214071121Z uses the same Quickshell Vulkan menu. The previously
+67 glyph-upload passes become4 (two atlas initializations,two batched updates).
+Those4 jobs take16.024ms preparation+6.600ms active,versus159.641+113.720ms
+previously. Reused owners fall65->2; existing36MiB resets therefore fall2340MiB
+->72MiB without altering kernel scratch semantics. Sampled visible menu latency
+596/613ms ->337/334ms. Final native scanout screenshot visually correct.
+Watchdog60+0.5s temperature guard retained; interactive session continues bounded.
+Ordinary draws already share VDM streams; kernel render jobs remain serialized,
+and root-capacity boundaries use retained-render splits rather than unqualified
+hardware stream-link packets. This change removes unnecessary pass boundaries.

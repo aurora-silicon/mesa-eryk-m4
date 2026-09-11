@@ -114,6 +114,8 @@ struct vk_meta_device {
    bool use_layer_output;
    bool use_stencil_export;
    bool use_masked_rgba8_buffer_unpack;
+   /* Keep compatible buffer-to-image regions in one graphics render pass. */
+   bool batch_buffer_to_image_regions;
 
    bool use_rect_list_pipeline;
 

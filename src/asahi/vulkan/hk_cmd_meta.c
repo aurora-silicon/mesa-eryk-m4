@@ -69,6 +69,7 @@ hk_device_init_meta(struct hk_device *dev)
    dev->meta.use_stencil_export = true;
    dev->meta.use_masked_rgba8_buffer_unpack =
       agx_native_graphics(&dev->dev);
+   dev->meta.batch_buffer_to_image_regions = dev->dev.chip == AGX_CHIP_G16G;
    dev->meta.use_rect_list_pipeline = true;
    dev->meta.cmd_bind_map_buffer = hk_cmd_bind_map_buffer;
    dev->meta.max_bind_map_buffer_size_B = 64 * 1024;
@@ -2367,7 +2368,15 @@ hk_CmdCopyBufferToImage2(VkCommandBuffer commandBuffer,
       struct vk_meta_copy_image_properties dst_props =
          hk_meta_copy_get_image_properties(dst_image);
 
-      if (agx_native_graphics(&dev->dev)) {
+      bool single_layer_regions = true;
+      for (unsigned r = 0; r < pCopyBufferToImageInfo->regionCount; ++r) {
+         single_layer_regions &=
+            vk_image_subresource_layer_count(
+               &dst_image->vk,
+               &pCopyBufferToImageInfo->pRegions[r].imageSubresource) == 1;
+      }
+
+      if (agx_native_graphics(&dev->dev) && !single_layer_regions) {
          /* Native single-layer EOT views already select the mip and base
           * layer. Keep source row/image strides intact while splitting only
           * multi-layer regions; no staging copy or compute expansion. */
