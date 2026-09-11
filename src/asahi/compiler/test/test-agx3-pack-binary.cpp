@@ -6117,3 +6117,40 @@ TEST_F(AGX3PackBinary, ComputedRgb10WriteUsesNativeStateOneProtocol)
                          imgwci + sizeof(imgwci)),
              code.end());
 }
+
+TEST_F(AGX3PackBinary, M4IntegerMipFetchStagesUniformAndRegister)
+{
+   for (bool uniform : {false, true}) {
+      agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+      b->shader->stage = MESA_SHADER_FRAGMENT;
+      b->shader->nir = rzalloc(mem_ctx, nir_shader);
+      agx_index dest = agx_register(8, AGX_SIZE_32);
+      dest.channels_m1 = 3;
+      agx_index coord = agx_register(0, AGX_SIZE_32);
+      coord.channels_m1 = 1;
+      agx_index lod = uniform ? agx_uniform(18, AGX_SIZE_16)
+                              : agx_register(6, AGX_SIZE_16);
+      agx_instr *tex = agx_texture_sample_to(
+         b, dest, coord, lod, agx_immediate(0), agx_immediate(0),
+         agx_immediate(0), agx_null(), AGX_DIM_2D, AGX_LOD_MODE_LOD_MIN,
+         0, false, false, false, AGX_GATHER_NONE, false);
+      tex->op = AGX_OPCODE_TEXTURE_LOAD;
+      tex->mask = 15;
+      agx_stop(b);
+      const auto bytes = pack(b);
+      ASSERT_FALSE(bytes.empty());
+      unsigned found = 0;
+      for (size_t off=0;off+14<=bytes.size();off+=2) {
+         agx3_tex_fetch_desc decoded = {};
+         if (agx3_tex_decode_fetch(AGX_ISA_ENCODING_AGX3B,
+                                   bytes.data()+off,14,&decoded)) {
+            EXPECT_TRUE(decoded.register_lod);
+            EXPECT_EQ(decoded.coord,0);
+            EXPECT_NE(decoded.wait_mask,0);
+            found++;
+         }
+      }
+      EXPECT_EQ(found,1u);
+      EXPECT_EQ(b->shader->agx3_staging_halfs,8u);
+   }
+}

@@ -257,7 +257,7 @@ agx_nir_lower_g17p_combined_sampler(
  * signed, or unsigned texel interpretation; the result is a 32-bit register
  * value in each case. Input attachments arrive as 2D-array reads. */
 static bool
-g17p_indexed_fetch_shape(const nir_tex_instr *tex)
+g17p_indexed_fetch_shape(const nir_tex_instr *tex, bool allow_lod)
 {
    int coord = nir_tex_instr_src_index(tex, nir_tex_src_backend1);
    if (coord < 0)
@@ -286,8 +286,9 @@ g17p_indexed_fetch_shape(const nir_tex_instr *tex)
    const int handle = nir_tex_instr_src_index(tex, nir_tex_src_texture_handle);
    const int lod = nir_tex_instr_src_index(tex, nir_tex_src_lod);
    return handle >= 0 && lod >= 0 && coord >= 0 && tex->num_srcs == 3 &&
-      nir_src_is_const(tex->src[lod].src) &&
-      nir_src_as_uint(tex->src[lod].src) == 0 &&
+      ((nir_src_is_const(tex->src[lod].src) &&
+        nir_src_as_uint(tex->src[lod].src) == 0) ||
+       (allow_lod && !tex->is_array)) &&
       nir_src_bit_size(tex->src[coord].src) == 32 &&
       nir_src_num_components(tex->src[coord].src) ==
          (lowered_buffer ? 2 : tex->coord_components);
@@ -335,7 +336,8 @@ agx_nir_lower_g17p_indexed_samplers(nir_shader *shader)
             if (instr->type != nir_instr_type_tex)
                continue;
             nir_tex_instr *tex = nir_instr_as_tex(instr);
-            const bool fetch = g17p_indexed_fetch_shape(tex);
+            const bool fetch = g17p_indexed_fetch_shape(
+               tex, shader->info.stage == MESA_SHADER_FRAGMENT);
             /* Vertex fetches use explicit integer coordinates and LOD zero;
              * implicit sampling requires fragment derivatives.
              */

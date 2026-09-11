@@ -2,9 +2,9 @@
  * Copyright 2026 Aurora Silicon
  * SPDX-License-Identifier: MIT
  *
- * Strict AGX3 2D texel-fetch encoding.  This deliberately models only the
- * directly witnessed LOD0 forms with immediate texture selection and sampler
- * zero.  Unsupported texture modes are represented by the absence of an API,
+ * Strict AGX3 2D texel-fetch encoding, including native M4 integer register
+ * LOD via PACK_SMPIR. Register LOD plus array layers remains unsupported.
+ * Unsupported texture modes are represented by the absence of an API,
  * rather than guessed selector values.
  *
  * The array axis is f77, independent of the dimension selector f76: compiling
@@ -69,6 +69,7 @@ struct agx3_tex_fetch_desc {
    bool coord_kill;
    bool final;          /* witnessed final texture-op marker */
    bool array;          /* 2D array: layer in the register after the pair */
+   bool register_lod;   /* Integer LOD published by PACK_SMPIR in bank 6. */
    bool texture_kill;   /* Last use of an indirect texture index */
    /* Operand kinds. Zero is treated as IMMEDIATE so existing callers, which
     * set only `texture`, keep their exact previous encoding. */
@@ -152,6 +153,12 @@ struct agx3_tex_sample_desc {
 bool agx3_tex_stage_lod(enum agx_isa_encoding enc, uint16_t src, uint8_t slot,
                        uint16_t wait_mask, bool src_cache, bool src_discard,
                        uint8_t out[AGX3_TEX_MAX_LENGTH], uint8_t *len);
+
+/* M4 texel fetch uses an integer LOD, not the sample path's half float. */
+bool agx3_tex_stage_fetch_lod(enum agx_isa_encoding enc, uint16_t src,
+                             bool uniform, uint8_t slot, uint16_t wait_mask,
+                             bool src_cache, bool src_discard,
+                             uint8_t out[AGX3_TEX_MAX_LENGTH], uint8_t *len);
 
 /* Pack a register-valued integer 2D-array layer into the separately witnessed
  * array-layer PACK_SMPIR form. Native register-indexed descriptors use slot 6;

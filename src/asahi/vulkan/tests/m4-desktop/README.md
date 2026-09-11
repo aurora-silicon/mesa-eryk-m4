@@ -1197,3 +1197,37 @@ An independent Apple-compiled G16G uint4 fill main also reproduced stale
 first-read words followed by a correct later read. The temporary literal-VA
 shader replacement used for that experiment was removed; it is not part of
 the driver. Full 0 A.D. rendering remains unqualified.
+
+### Integer mip fetch and shadow-pass transitions (2026-09-11)
+
+The shadowed acropolis scene completed a180-second native Hyprland run with
+normal Zink batching (no per-draw sync). The kernel now permits partial
+fragments to share the active tiler's USC pool. Zink transitions written depth
+attachments before the next render pass, preserving its depth-store contract.
+Evidence:20260911T093322130169Z-zink-depth-transition-batched-shadows.
+
+`m4_zink_mipmaps --fetch-lod` checks constant texel-fetch levels0–8, uniform
+level3, and per-pixel levels0–7 against generated mip colors. Run it through
+`tools/gpu-experiment.py` and `/root/run-m4-gl.py`; `--reference --fetch-lod`
+requires llvmpipe. All45056pixels passed on M4 in095954608651Z and on the host.
+Native M4 integer PACK_SMPIR uses f74=3, unlike filtered half-float LOD(f74=2);
+the register-LOD fetch selects f37=0/f139=4. Both register and uniform integer
+operands have independent Apple offline-compiler witnesses. Array plus
+nonzero integer LOD remains outside this implementation. A single promoted
+16-bit mip constant also exposed an odd-sized constant-upload range, now
+aligned and padded inside the compiler-owned blob.
+
+The known cold-first-readback issue is still separate; the initial cold probe
+failed its first level-zero read, and that failure has not been discarded.
+Full default-settings game qualification remains in progress.
+
+Postprocessing was then restored: actual180-second game run100037959404Z
+completed32healthchecks,383thermal samples,peak54C. Live screenshots show
+correct geometry/shadows with postprocessing; normalZinkbatching retained.
+Compressed asset upload and cold first readback remain unqualified.
+The focused encoder(5672checks), constant-promotion and new IR mip-fetch
+tests pass. A broader historical packer test selection is not green: its
+TextureFetch2DLod0Immediate expects the old unstaged coordinate layout, and
+TextureExportRetiresAtPartBoundary has nullNIR and crashes at the existing
+helper-invocation metadata read. These pre-existing fixture issues were
+confirmed against unchanged HEAD code; do not report the whole suite passing.

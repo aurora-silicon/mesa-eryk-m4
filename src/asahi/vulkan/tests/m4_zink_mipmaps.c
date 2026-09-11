@@ -38,7 +38,7 @@ int
 main(int argc, char **argv)
 {
    bool reference = false, explicit_only = false, array = false,
-        immutable = false;
+        immutable = false, fetch_lod = false;
    for (int i = 1; i < argc; i++) {
       if (!strcmp(argv[i], "--reference"))
          reference = true;
@@ -46,11 +46,14 @@ main(int argc, char **argv)
          explicit_only = true;
       else if (!strcmp(argv[i], "--array"))
          array = true;
+      else if (!strcmp(argv[i], "--fetch-lod"))
+         fetch_lod = true;
       else if (!strcmp(argv[i], "--immutable"))
          immutable = true;
       else
          CHECK(false);
    }
+   CHECK(!fetch_lod || !array);
    EGLDisplay d = eglGetPlatformDisplay(EGL_PLATFORM_SURFACELESS_MESA,
                                         EGL_DEFAULT_DISPLAY, NULL);
    CHECK(eglInitialize(d, NULL, NULL));
@@ -123,12 +126,19 @@ main(int argc, char **argv)
       "#version 300 es\nprecision highp float;uniform float scale;out vec2 uv;void main(){vec2 p=vec2(float((gl_VertexID<<1)&2),float(gl_VertexID&2));uv=p;gl_Position=vec4((2.0*p-1.0)*scale,0,1);}";
    unsigned failures = 0, total = 0;
    for (unsigned layer = 0; layer < layers; layer++)
-      for (unsigned mode = 0; mode < (explicit_only ? 9u : 15u); mode++) {
+      for (unsigned mode = 0; mode < (fetch_lod ? 11u : explicit_only ? 9u : 15u); mode++) {
          char fs[1024], expr[256];
-         bool small = mode == 10 || mode == 12,
-              derivative = mode == 11 || mode == 12;
+         bool small = !fetch_lod && (mode == 10 || mode == 12),
+              derivative = !fetch_lod && (mode == 11 || mode == 12);
          const char *coord = array ? "vec3(uv,layer)" : "uv";
-         if (mode < 9)
+         if (fetch_lod) {
+            char lod[64];
+            if (mode < 9)
+               snprintf(lod,sizeof(lod),"%u",mode);
+            else
+               snprintf(lod,sizeof(lod),"%s",mode==9 ? "mip" : "(int(gl_FragCoord.x)&7)");
+            snprintf(expr,sizeof(expr),"texelFetch(t,ivec2(0),%s)",lod);
+         } else if (mode < 9)
             snprintf(expr, sizeof(expr), "textureLod(t,%s,%u.0)", coord, mode);
          else if (mode == 14)
             snprintf(expr, sizeof(expr), "texelFetch(t,%s,0)",
@@ -142,7 +152,7 @@ main(int argc, char **argv)
                "vec4(abs(dFdx(uv.x))*8.0,abs(dFdy(uv.y))*8.0,abs(dFdy(uv.x))*8.0,1)");
          snprintf(
             fs, sizeof(fs),
-            "#version 300 es\nprecision highp float;precision highp %s;uniform %s t;uniform float layer;in vec2 uv;out vec4 o;void main(){o=%s;}",
+            "#version 300 es\nprecision highp float;precision highp %s;uniform %s t;uniform float layer;uniform int mip;in vec2 uv;out vec4 o;void main(){o=%s;}",
             array ? "sampler2DArray" : "sampler2D",
             array ? "sampler2DArray" : "sampler2D", expr);
          GLuint p = glCreateProgram(), v = shader(GL_VERTEX_SHADER, vs),
@@ -155,6 +165,7 @@ main(int argc, char **argv)
          CHECK(ok);
          glUseProgram(p);
          glUniform1i(glGetUniformLocation(p, "t"), 0);
+         glUniform1i(glGetUniformLocation(p, "mip"), 3);
          glUniform1f(glGetUniformLocation(p, "layer"), layer);
          glUniform1f(glGetUniformLocation(p, "scale"), small ? .25f : 1.f);
          glTexParameterf(target, GL_TEXTURE_MAX_LOD, mode >= 13 ? 0 : 1000);
@@ -165,7 +176,7 @@ main(int argc, char **argv)
          glReadPixels(0, 0, 64, 64, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
          CHECK(glGetError() == GL_NO_ERROR);
          unsigned checked = 0, bad = 0;
-         unsigned level = mode < 9 ? mode : mode >= 13 ? 0 : small ? 4 : 2;
+         unsigned level = mode < 9 ? mode : fetch_lod ? 3 : mode >= 13 ? 0 : small ? 4 : 2;
          int expected[3] = {level * 25, 255 - level * 25,
                             level * 10 + layer * 40};
          if (derivative) {
@@ -176,6 +187,10 @@ main(int argc, char **argv)
             if (!pixels[4 * i + 3])
                continue;
             checked++;
+            if (fetch_lod && mode == 10) {
+               unsigned mip=(i%64)&7;
+               expected[0]=mip*25;expected[1]=255-mip*25;expected[2]=mip*10;
+            }
             bool wrong = false;
             for (unsigned k = 0; k < 3; k++)
                wrong |= abs((int)pixels[4 * i + k] - expected[k]) > 2;

@@ -772,14 +772,23 @@ agx3_tex_imm(agx_index index, uint16_t value)
           !index.memory && !index.abs && !index.neg;
 }
 
-/* Translate only the corpus-grounded 2D, non-array, immediate-index texel
- * fetch at LOD0.  Every other texture axis remains a deliberate refusal. */
+/* Marshal witnessed 2D texel fetches, including integer mip levels.
+ * Array fetches retain their separately qualified LOD-zero form. */
 static bool
 agx3_emit_texture_fetch(struct util_dynarray *emission,
                         enum agx_isa_encoding enc, const agx_instr *I,
                         uint8_t slot, uint16_t wait_mask, bool final,
                         bool stage_coordinates, uint16_t staging_coord)
 {
+   const bool register_lod = I->lod_mode == AGX_LOD_MODE_LOD_MIN;
+   const bool valid_lod = register_lod ?
+      enc == AGX_ISA_ENCODING_AGX3B && stage_coordinates && staging_coord == 0 &&
+      I->dim == AGX_DIM_2D &&
+      (agx3_tex_plain_reg(I->src[1]) ||
+       (I->src[1].type == AGX_INDEX_UNIFORM && !I->src[1].memory &&
+        !I->src[1].abs && !I->src[1].neg)) &&
+      I->src[1].size == AGX_SIZE_16 && agx_channels(I->src[1]) == 1 :
+      I->lod_mode == AGX_LOD_MODE_AUTO_LOD && agx3_tex_imm(I->src[1], 0);
    const bool immediate = I->nr_srcs == 6 &&
       I->src[3].type == AGX_INDEX_IMMEDIATE;
    if (I->nr_dests != 1 || I->nr_srcs != 6 ||
@@ -794,7 +803,7 @@ agx3_emit_texture_fetch(struct util_dynarray *emission,
        (stage_coordinates ? ((I->src[0].value & 1) ||
          I->src[0].value + 2 * agx_channels(I->src[0]) > 256) :
          ((I->src[0].value & 3) || I->src[0].value > 60)) ||
-       !agx3_tex_imm(I->src[1], 0) || !agx3_tex_imm(I->src[2], 0) ||
+       !valid_lod || !agx3_tex_imm(I->src[2], 0) ||
        (immediate ? I->src[3].value > 15 :
         (enc != AGX_ISA_ENCODING_AGX3B ||
          (I->src[3].type != AGX_INDEX_REGISTER && I->src[3].type != AGX_INDEX_UNIFORM) ||
@@ -804,12 +813,22 @@ agx3_emit_texture_fetch(struct util_dynarray *emission,
        !agx3_tex_imm(I->src[4], 0) ||
        !agx_is_null(I->src[5]) ||
        (I->dim != AGX_DIM_2D && I->dim != AGX_DIM_2D_ARRAY) ||
-       I->lod_mode != AGX_LOD_MODE_AUTO_LOD ||
        (enc == AGX_ISA_ENCODING_AGX3B ? (!I->mask || (I->mask & ~15u))
                                     : (I->mask != 1 && I->mask != 15)) ||
        I->offset || I->shadow ||
        I->query_lod || I->gather != AGX_GATHER_NONE || I->sparse)
       return false;
+
+   if (register_lod) {
+      uint8_t bytes[AGX3_TEX_MAX_LENGTH], len;
+      if (!agx3_tex_stage_fetch_lod(enc, I->src[1].value,
+                                   I->src[1].type == AGX_INDEX_UNIFORM, slot, wait_mask,
+                                   I->src[1].cache, I->src[1].discard,
+                                   bytes, &len) ||
+          !agx3_append(emission, bytes, len))
+         return false;
+      wait_mask = 0;
+   }
 
    if (stage_coordinates) {
       for (unsigned i = 0; i < agx_channels(I->src[0]); i++) {
@@ -844,6 +863,7 @@ agx3_emit_texture_fetch(struct util_dynarray *emission,
       .coord_kill = stage_coordinates || I->src[0].kill,
       .final = final,
       .array = I->dim == AGX_DIM_2D_ARRAY,
+      .register_lod = register_lod,
    };
    uint8_t bytes[AGX3_TEX_MAX_LENGTH];
    uint8_t len = 0;
@@ -2009,7 +2029,8 @@ agx3_append_texture_staging_tokens(const agx_instr *I, mesa_shader_stage stage,
       if (stage == MESA_SHADER_VERTEX && I->op == AGX_OPCODE_TEXTURE_LOAD)
          return true;
       base = I->op == AGX_OPCODE_IMAGE_LOAD ? 16 : 0;
-      halves = I->dim == AGX_DIM_2D_ARRAY ? 8 : 4;
+      halves = I->dim == AGX_DIM_2D_ARRAY ||
+               I->lod_mode == AGX_LOD_MODE_LOD_MIN ? 8 : 4;
    } else {
       return true;
    }
@@ -4244,7 +4265,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             if (staged) {
                ctx->agx3_staging_halfs = MAX2(
                   ctx->agx3_staging_halfs,
-                  coord_base + (I->dim == AGX_DIM_2D_ARRAY ? 8 : 4));
+                  coord_base + ((I->dim == AGX_DIM_2D_ARRAY ||
+                                 I->lod_mode == AGX_LOD_MODE_LOD_MIN) ? 8 : 4));
             }
             else
                ctx->agx3_staging_known = false;
