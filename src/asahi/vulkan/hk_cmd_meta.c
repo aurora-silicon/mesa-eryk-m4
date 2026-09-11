@@ -1945,7 +1945,7 @@ hk_g17p_copy_buffer_to_image_supported(
    return true;
 }
 
-/* The GPU copies encoded blocks; it never samples or recompresses them. Tile
+/* The GPU copies raw texels/encoded blocks without format conversion. Tile
  * geometry is part of the pipeline key, while offsets and strides are dynamic.
  * A linear endpoint has tile_log2_w == -1. */
 struct hk_block_copy_key {
@@ -2011,8 +2011,9 @@ hk_build_block_copy(const struct hk_block_copy_key *key)
       nir_iadd(&b, block_push(&b, src), nir_imul_imm(&b, src_el, key->block_B));
    nir_def *dst =
       nir_iadd(&b, block_push(&b, dst), nir_imul_imm(&b, dst_el, key->block_B));
-   nir_def *value =
-      nir_load_global(&b, key->block_B / 4, 32, src, .align_mul = key->block_B);
+   const unsigned bits = MIN2(key->block_B * 8, 32);
+   nir_def *value = nir_load_global(&b, MAX2(key->block_B / 4, 1), bits, src,
+                                    .align_mul = key->block_B);
    nir_store_global(&b, value, dst, .align_mul = key->block_B);
    nir_pop_if(&b, NULL);
    return b.shader;
@@ -2073,9 +2074,10 @@ hk_dispatch_block_copy(struct hk_cmd_buffer *cmd,
 }
 
 static bool
-hk_g17p_block_upload_format(VkFormat format)
+hk_native_raw_copy_format(VkFormat format)
 {
    switch (format) {
+   case VK_FORMAT_A1R5G5B5_UNORM_PACK16:
    case VK_FORMAT_ASTC_4x4_UNORM_BLOCK:
    case VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK:
    case VK_FORMAT_BC1_RGB_UNORM_BLOCK:
@@ -2093,11 +2095,11 @@ hk_g17p_block_upload_format(VkFormat format)
 }
 
 static bool
-hk_g17p_copy_compressed_buffer_to_image(
+hk_native_copy_raw_buffer_to_image(
    struct hk_cmd_buffer *cmd, struct hk_image *image,
    const VkCopyBufferToImageInfo2 *info)
 {
-   if (!hk_g17p_block_upload_format(image->vk.format) ||
+   if (!hk_native_raw_copy_format(image->vk.format) ||
        image->plane_count != 1 || image->vk.image_type != VK_IMAGE_TYPE_2D ||
        image->vk.samples != VK_SAMPLE_COUNT_1_BIT ||
        image->planes[0].layout.tiling != AIL_TILING_GPU ||
@@ -2111,11 +2113,10 @@ hk_g17p_copy_compressed_buffer_to_image(
    const uint32_t block_w = util_format_get_blockwidth(format);
    const uint32_t block_h = util_format_get_blockheight(format);
    const uint32_t block_B = util_format_get_blocksize(format);
-   /* Copy encoded blocks without interpreting their channels. BC1 uses eight
-    * bytes per block; BC2/3 and these ASTC/ETC2 formats use sixteen. SRGB and
-    * UNORM differ only when sampled, not in their stored block addresses. */
-   if (block_w != 4 || block_h != 4 ||
-       (block_B != 8 && block_B != 16))
+   /* Packed 16-bit texels and compressed blocks both require bit-exact
+    * transfers. The image layout supplies geometry in format elements. */
+   if (!((block_w == 1 && block_h == 1 && block_B == 2) ||
+         (block_w == 4 && block_h == 4 && (block_B == 8 || block_B == 16))))
       return false;
 
    for (unsigned r = 0; r < info->regionCount; ++r) {
@@ -2195,17 +2196,24 @@ hk_g17p_copy_compressed_buffer_to_image(
 }
 
 static bool
-hk_copy_compressed_image(struct hk_cmd_buffer *cmd, struct hk_image *src,
+hk_native_copy_raw_image(struct hk_cmd_buffer *cmd, struct hk_image *src,
                          struct hk_image *dst, const VkCopyImageInfo2 *info)
 {
-   if (!hk_g17p_block_upload_format(src->vk.format) ||
-       !hk_g17p_block_upload_format(dst->vk.format) || src->plane_count != 1 ||
+   if (!hk_native_raw_copy_format(src->vk.format) ||
+       !hk_native_raw_copy_format(dst->vk.format) || src->plane_count != 1 ||
        dst->plane_count != 1 || src->vk.image_type != VK_IMAGE_TYPE_2D ||
        dst->vk.image_type != VK_IMAGE_TYPE_2D || src->vk.samples != 1 ||
        dst->vk.samples != 1)
       return false;
    const struct ail_layout *sl = &src->planes[0].layout;
    const struct ail_layout *dl = &dst->planes[0].layout;
+   const enum pipe_format sf = hk_format_to_pipe_format(src->vk.format);
+   const enum pipe_format df = hk_format_to_pipe_format(dst->vk.format);
+   const unsigned block_w = util_format_get_blockwidth(sf);
+   const unsigned block_h = util_format_get_blockheight(sf);
+   if (block_w != util_format_get_blockwidth(df) ||
+       block_h != util_format_get_blockheight(df))
+      return false;
    const unsigned block_B = ail_get_blocksize_B(sl);
    if (sl->tiling != AIL_TILING_GPU || dl->tiling != AIL_TILING_GPU ||
        sl->compressed || dl->compressed || block_B != ail_get_blocksize_B(dl))
@@ -2228,8 +2236,8 @@ hk_copy_compressed_image(struct hk_cmd_buffer *cmd, struct hk_image *src,
           region->dstOffset.z || region->extent.depth != 1 ||
           region->srcOffset.x < 0 || region->srcOffset.y < 0 ||
           region->dstOffset.x < 0 || region->dstOffset.y < 0 ||
-          (region->srcOffset.x % 4) || (region->srcOffset.y % 4) ||
-          (region->dstOffset.x % 4) || (region->dstOffset.y % 4))
+          (region->srcOffset.x % block_w) || (region->srcOffset.y % block_h) ||
+          (region->dstOffset.x % block_w) || (region->dstOffset.y % block_h))
          return false;
       const struct ail_tile st = sl->tilesize_el[sm], dt = dl->tilesize_el[dm];
       const struct hk_block_copy_key key = {
@@ -2248,12 +2256,12 @@ hk_copy_compressed_image(struct hk_cmd_buffer *cmd, struct hk_image *src,
                    ail_get_layer_level_B(dl, ds->baseArrayLayer + layer, dm),
             .src_stride = DIV_ROUND_UP(sl->stride_el[sm], st.width_el),
             .dst_stride = DIV_ROUND_UP(dl->stride_el[dm], dt.width_el),
-            .src_x = region->srcOffset.x / 4,
-            .src_y = region->srcOffset.y / 4,
-            .dst_x = region->dstOffset.x / 4,
-            .dst_y = region->dstOffset.y / 4,
-            .width = DIV_ROUND_UP(region->extent.width, 4),
-            .height = DIV_ROUND_UP(region->extent.height, 4),
+            .src_x = region->srcOffset.x / block_w,
+            .src_y = region->srcOffset.y / block_h,
+            .dst_x = region->dstOffset.x / block_w,
+            .dst_y = region->dstOffset.y / block_h,
+            .width = DIV_ROUND_UP(region->extent.width, block_w),
+            .height = DIV_ROUND_UP(region->extent.height, block_h),
          };
          hk_dispatch_block_copy(cmd, &key, &push);
          if (vk_command_buffer_has_error(&cmd->vk))
@@ -2280,14 +2288,14 @@ hk_CmdCopyBufferToImage2(VkCommandBuffer commandBuffer,
 
    bool gfx = hk_copy_requires_gfx(dst_image);
    if (agx_native_graphics(&dev->dev)) {
-      if (hk_g17p_block_upload_format(dst_image->vk.format)) {
+      if (hk_native_raw_copy_format(dst_image->vk.format)) {
          struct hk_meta_save save;
          hk_meta_begin(cmd, &save, VK_PIPELINE_BIND_POINT_COMPUTE);
-         if (!hk_g17p_copy_compressed_buffer_to_image(cmd, dst_image,
+         if (!hk_native_copy_raw_buffer_to_image(cmd, dst_image,
                                                       pCopyBufferToImageInfo)) {
             fprintf(
                stderr,
-               "asahi: unsupported compressed upload format=%u type=%u planes=%u samples=%u tiling=%u compressed=%u layout=%u levels=%u layers=%u extent=%ux%u\n",
+               "asahi: unsupported raw upload format=%u type=%u planes=%u samples=%u tiling=%u compressed=%u layout=%u levels=%u layers=%u extent=%ux%u\n",
                dst_image->vk.format, dst_image->vk.image_type,
                dst_image->plane_count, dst_image->vk.samples,
                dst_image->planes[0].layout.tiling,
@@ -2422,10 +2430,12 @@ hk_CmdCopyImage2(VkCommandBuffer commandBuffer,
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
    if (agx_native_graphics(&dev->dev) &&
        (vk_format_is_compressed(src_image->vk.format) ||
-        vk_format_is_compressed(dst_image->vk.format))) {
+        vk_format_is_compressed(dst_image->vk.format) ||
+        hk_native_raw_copy_format(src_image->vk.format) ||
+        hk_native_raw_copy_format(dst_image->vk.format))) {
       struct hk_meta_save save;
       hk_meta_begin(cmd, &save, VK_PIPELINE_BIND_POINT_COMPUTE);
-      if (!hk_copy_compressed_image(cmd, src_image, dst_image, pCopyImageInfo))
+      if (!hk_native_copy_raw_image(cmd, src_image, dst_image, pCopyImageInfo))
          vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
       hk_meta_end(cmd, &save, VK_PIPELINE_BIND_POINT_COMPUTE);
       return;
