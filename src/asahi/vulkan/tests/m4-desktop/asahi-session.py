@@ -314,6 +314,28 @@ def main():
                         stdout=game_log, stderr=game_log, start_new_session=True,
                         cwd=account.pw_dir)
                 summary.update(zeroad_started=True, zeroad_map='acropolis_bay_2p')
+            if os.environ.get('M4_TEST_SAUERBRATEN') == '1':
+                os.killpg(terminal.pid, signal.SIGTERM)
+                terminal.wait(timeout=4)
+                game_home = Path(account.pw_dir)/'.config/m4-asahi-sauerbraten'
+                game_home.mkdir(parents=True, exist_ok=True)
+                os.chown(game_home, account.pw_uid, account.pw_gid)
+                game_env = {**env, 'SDL_VIDEODRIVER': 'wayland',
+                            'SDL_AUDIODRIVER': 'dummy', 'HK_DEBUG_LOG': '1',
+                            'LD_LIBRARY_PATH': env['LD_LIBRARY_PATH'] + ':/opt/m4-sauerbraten/lib',
+                            'LD_PRELOAD': '/opt/asahi-m4-port/lib/gl-renderer-audit.so'}
+                game_args = ['/opt/m4-sauerbraten/sauer_client', '-q'+str(game_home),
+                             '-g', '-t0', '-w1024', '-h768', '-lmetl4',
+                             '-xshowfps 1; echo M4_SAUERBRATEN_MAP_READY']
+                (result/'sauerbraten-command.json').write_text(json.dumps(game_args, indent=2)+'\n')
+                subprocess.run(['hyprctl', 'eval',
+                    'hl.window_rule({name="m4-sauerbraten-test", match={class=".*[Ss]auer.*"}, '
+                    'float=true, size="1024 768", center=true})'], env=env, check=True, timeout=2)
+                with (result/'sauerbraten.log').open('w') as game_log:
+                    game = subprocess.Popen([*user_command, *game_args], env=game_env,
+                        stdout=game_log, stderr=game_log, start_new_session=True,
+                        cwd='/opt/m4-sauerbraten/game')
+                summary.update(sauerbraten_started=True, sauerbraten_map='metl4')
             if os.environ.get('M4_TEST_SUPERTUX') == '1':
                 os.killpg(terminal.pid, signal.SIGTERM)
                 terminal.wait(timeout=4)
@@ -398,6 +420,12 @@ def main():
                         game_text = (result/'0ad.log').read_text()
                         if any(x in game_text for x in ('MESA: error:', 'no grounded AGX3 encoding', 'Assertion `')):
                             raise RuntimeError('0 A.D. driver error; see game log')
+                    if summary.get('sauerbraten_started'):
+                        if game.poll() is not None:
+                            raise RuntimeError(f'Sauerbraten exited during map test: {game.returncode}')
+                        game_text = (result/'sauerbraten.log').read_text()
+                        if any(x in game_text for x in ('MESA: error:', 'no grounded AGX3 encoding', 'Assertion `')):
+                            raise RuntimeError('Sauerbraten driver error; see game log')
                     if summary.get('supertuxkart_started'):
                         game_text=(result/'supertuxkart.log').read_text()
                         if any(x in game_text for x in ('MESA: error:', 'no grounded AGX3 encoding', 'Assertion `')):
@@ -415,7 +443,7 @@ def main():
                                                env={**env, **({'HK_G17P_LAUNCH_TRACE': '1'}
                                                     if os.getenv('M4_HYPR_TRACE_HEALTH') == '1' else {})},
                                                stdout=subprocess.PIPE, stderr=diagnostics,
-                                               text=True, timeout=120 if (summary.get('supertuxkart_started') or summary.get('zeroad_started')) else 8, check=True)
+                                               text=True, timeout=120 if (summary.get('supertuxkart_started') or summary.get('zeroad_started') or summary.get('sauerbraten_started')) else 8, check=True)
                     assert 'PASS — 32 buffer writes' in check.stdout, check.stdout
                     evidence = {'passed':True, 'vulkan':True, 'values_verified':32, 'device_id':0x8132, 'sequence':checks, 'checked_at':time.monotonic()}
                     reply = json.loads(subprocess.check_output(['hyprctl', '-j', 'monitors'],
@@ -427,8 +455,8 @@ def main():
                     # Parent validates all fields before feeding the hardware watchdog.
                     print(json.dumps({'event': 'gpu-progress', 'check': evidence}), flush=True)
                     if (checks in (2,4,8) or
-                        ((summary.get('supertuxkart_started') or summary.get('zeroad_started')) and checks % 12 == 0)):
-                        subprocess.run(['grim','-t','ppm','-o',output_name,str(result/f'live-{checks}.ppm')],env=env,check=True,timeout=120 if (summary.get('supertuxkart_started') or summary.get('zeroad_started')) else 6)
+                        ((summary.get('supertuxkart_started') or summary.get('zeroad_started') or summary.get('sauerbraten_started')) and checks % 12 == 0)):
+                        subprocess.run(['grim','-t','ppm','-o',output_name,str(result/f'live-{checks}.ppm')],env=env,check=True,timeout=120 if (summary.get('supertuxkart_started') or summary.get('zeroad_started') or summary.get('sauerbraten_started')) else 6)
                     checks += 1
                     time.sleep(min(5, max(0, deadline - time.monotonic())))
                 if summary.get('supertuxkart_started') and not summary.get('supertuxkart_demo',{}).get('completed'):
@@ -470,6 +498,26 @@ def main():
                     summary['zeroad_renderer'] = 'M4 Zink/Honeykrisp'
                     summary['zeroad_scope'] = 'Bounded process/window survival; inspect screenshots for map rendering'
                     (result/'0ad-result.json').write_text(json.dumps(summary,indent=2)+'\n')
+                if summary.get('sauerbraten_started'):
+                    game_text = (result/'sauerbraten.log').read_text()
+                    if not any('Renderer:' in line and 'zink' in line.lower() and 'M4' in line
+                               for line in game_text.splitlines()):
+                        raise RuntimeError('Sauerbraten did not identify the M4 Zink renderer')
+                    if 'M4_SAUERBRATEN_MAP_READY' not in game_text:
+                        raise RuntimeError('Sauerbraten did not finish loading the requested map')
+                    clients = subprocess.check_output(['hyprctl','-j','clients'],env=env,text=True,timeout=2)
+                    (result/'sauerbraten-clients.json').write_text(clients)
+                    game_procs = [Path('/proc',str(c['pid'])) for c in json.loads(clients)
+                                  if c.get('mapped') and
+                                  Path('/proc',str(c['pid']),'exe').resolve() == Path('/opt/m4-sauerbraten/sauer_client')]
+                    if len(game_procs) != 1 or game.poll() is not None or game_procs[0].stat().st_uid != account.pw_uid:
+                        raise RuntimeError('Sauerbraten has no unique surviving owned game window')
+                    (result/'sauerbraten-maps.txt').write_text((game_procs[0]/'maps').read_text())
+                    subprocess.run(['grim','-t','ppm','-o',output_name,str(result/'sauerbraten-final.ppm')],
+                                   env=env,check=True,timeout=120)
+                    summary.update(sauerbraten_renderer='M4 Zink/Honeykrisp',
+                                   sauerbraten_scope='Bounded metl4 map/window survival; inspect screenshots separately')
+                    (result/'sauerbraten-result.json').write_text(json.dumps(summary,indent=2)+'\n')
                 summary['interactive_seconds'] = live_seconds
                 summary['health_checks'] = checks
             print(json.dumps(summary), flush=True)
@@ -478,6 +526,11 @@ def main():
                 logs = Path(account.pw_dir)/'.local/state/m4-asahi-0ad/0ad/log'
                 if logs.exists():
                     shutil.copytree(logs, result/'0ad-engine-logs', dirs_exist_ok=True)
+            if os.environ.get('M4_TEST_SAUERBRATEN') == '1' and account:
+                home = Path(account.pw_dir)/'.config/m4-asahi-sauerbraten'
+                for name in ('log.txt', 'init.cfg', 'config.cfg'):
+                    if (home/name).is_file():
+                        shutil.copyfile(home/name, result/('sauerbraten-'+name))
             for process in (game, terminal, child):
                 if process is None:
                     continue

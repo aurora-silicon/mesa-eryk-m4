@@ -21,13 +21,13 @@ try:
     subprocess.run(['modprobe','drm_dma_helper'],check=True,timeout=5)
     if not Path('/sys/module/m4_dcp_rtkit').exists():
         subprocess.run(['insmod','/root/m4_dcp_rtkit-asahi.ko','kernel_client=1','kms=1','takeover=1'],check=True,timeout=20)
-    env.update(M4_RENDER_OUTPUT=str(output), M4_TEST_SUPERTUX='0' if any(os.environ.get(key)=='1' for key in ('M4_TEST_SUPERTUXKART','M4_TEST_0AD')) else '1', M4_HYPR_NATIVE_KMS='1', M4_HYPR_PHYSICAL='1', M4_HYPR_USER='e', M4_HYPR_WIDTH='2560', M4_HYPR_HEIGHT='1664', PATH='/opt/m4-hyprland/bin:'+os.environ['PATH'])
+    env.update(M4_RENDER_OUTPUT=str(output), M4_TEST_SUPERTUX='0' if any(os.environ.get(key)=='1' for key in ('M4_TEST_SUPERTUXKART','M4_TEST_0AD','M4_TEST_SAUERBRATEN')) else '1', M4_HYPR_NATIVE_KMS='1', M4_HYPR_PHYSICAL='1', M4_HYPR_USER='e', M4_HYPR_WIDTH='2560', M4_HYPR_HEIGHT='1664', PATH='/opt/m4-hyprland/bin:'+os.environ['PATH'])
     if os.environ.get('M4_DESKTOP_CPU_PROFILE')=='1':
         profile_log=(output/'perf-record.log').open('w')
         profiler=subprocess.Popen([perf,'record','-e','cpu-clock','-F','99',
                                    '-a','-g','-o',str(output/'perf.data')],
                                   env=profile_env,stdout=profile_log,stderr=subprocess.STDOUT)
-    subprocess.run(['python3','/root/hyprland-validation/asahi-session.py'],env=env,check=True,timeout=int(os.environ.get('M4_HYPR_INTERACTIVE_SECONDS','0'))+(120 if os.environ.get('M4_TEST_0AD')=='1' else 40))
+    subprocess.run(['python3','/root/hyprland-validation/asahi-session.py'],env=env,check=True,timeout=int(os.environ.get('M4_HYPR_INTERACTIVE_SECONDS','0'))+(120 if any(os.environ.get(k)=='1' for k in ('M4_TEST_0AD','M4_TEST_SAUERBRATEN')) else 40))
 finally:
     if profiler is not None:
         if profiler.poll() is None:

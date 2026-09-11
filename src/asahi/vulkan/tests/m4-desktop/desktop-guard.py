@@ -24,7 +24,7 @@ def stop():
     # restricted to the desktop UID, instead of relying on the comm name.
     subprocess.run(['pkill','-TERM','-u','1000','-f',
                     '^/opt/m4-0ad/usr/games/pyrogenesis( |$)'],timeout=3)
-    for name in ('supertux2','supertuxkart','Hyprland'):
+    for name in ('supertux2','supertuxkart','sauer_client','Hyprland'):
         subprocess.run(['pkill','-TERM','-u','1000','-x',name],timeout=3)
     if proc is not None and proc.poll() is None:
         os.killpg(proc.pid,signal.SIGTERM)
