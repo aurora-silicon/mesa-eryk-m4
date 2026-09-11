@@ -203,3 +203,13 @@ specialization enabled only for game174748 passes7.36096FPS,135.852ms/frame,
 130.903ms swap,224thermals52.5C. Still below requested5x target25.25FPS. Need
 visual/reference checks before accepting specialization as default. No game
 shader replacements, quality reduction or GPUclock change.
+
+Kernel queue-pool8e578 + inline uniforms175837:8.49472FPS. Pooling M4 Ioto
+launch programs in the immutable USC command uploader180436:9.51235FPS,
+751complete intervals after20s exclusion,105.126ms/frame.90s guardPASS,
+223thermal samples53C; finalgameplay screenshot inspected, unchanged scene.
+Vulkan ae26d9e332e7. Per-pool EXEC mapping keeps M4 GPU-read-only instruction
+permissions; command-buffer reset owns lifetime; platform sync retained at
+EndCommandBuffer. No standalone GEM per bind, no game/clock/logging changes.
+Still below5x target; continue profiling. EGLtrace180111 captures directGL
+calls but missesGLEW's GLXlookups; do not use as complete replay reference.

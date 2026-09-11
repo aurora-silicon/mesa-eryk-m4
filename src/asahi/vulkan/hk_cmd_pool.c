@@ -103,7 +103,13 @@ hk_cmd_bo_create(struct hk_cmd_pool *pool, bool usc, struct hk_cmd_bo **bo_out)
    if (bo == NULL)
       return vk_error(pool, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   bo->bo = agx_bo_create(&dev->dev, HK_CMD_BO_SIZE, 0, usc ? AGX_BO_LOW_VA : 0,
+   /* M4 uses this pool for immutable Ioto launch programs as well as
+    * varying tables. Both are read-only to the GPU. Preserve the executable
+    * mapping permissions used by standalone launch allocations. */
+   uint32_t flags = usc ? AGX_BO_LOW_VA : 0;
+   if (usc && dev->dev.chip == AGX_CHIP_G16G)
+      flags |= AGX_BO_EXEC;
+   bo->bo = agx_bo_create(&dev->dev, HK_CMD_BO_SIZE, 0, flags,
                           usc ? "USC command pool" : "Main command pool");
    if (bo->bo == NULL) {
       vk_free(&pool->vk.alloc, bo);
