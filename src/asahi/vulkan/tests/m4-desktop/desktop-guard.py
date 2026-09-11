@@ -28,7 +28,9 @@ def stop():
         subprocess.run(['pkill','-TERM','-u','1000','-x',name],timeout=3)
     if proc is not None and proc.poll() is None:
         os.killpg(proc.pid,signal.SIGTERM)
-os.environ['M4_TEST_CPU_MAX_KHZ']='1860000'
+# The normal-clock comparison still uses the same thermal guard. This ceiling
+# only lowers existing cpufreq limits; a previous lower cap survives until reboot.
+os.environ.setdefault('M4_TEST_CPU_MAX_KHZ', '1860000')
 t=ExperimentThermals(a.output,on_trip=stop)
 try: t.start()
 except BaseException:

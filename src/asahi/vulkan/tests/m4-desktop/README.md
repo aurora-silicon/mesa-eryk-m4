@@ -1477,3 +1477,42 @@ Watchdog60+0.5s temperature guard retained; interactive session continues bounde
 Ordinary draws already share VDM streams; kernel render jobs remain serialized,
 and root-capacity boundaries use retained-render splits rather than unqualified
 hardware stream-link packets. This change removes unnecessary pass boundaries.
+
+
+Cold-start qualification limit: after reboot, experiments203427 (scratch-clear
+omission) and203718 (restored kernel3587bfa, module244b) both returned61864
+R8 mismatches and zero RGBA mismatches. The prior warm oracle passed both.
+The omission was discarded; this identical control result does not establish
+it caused the cold failure. Keep the failed first-read verdict; cold readback
+visibility still needs diagnosis. Test stdout is now line buffered so shader
+logs cannot bury format results, and the workspace classifier recognizes the
+standalone bad=N counts. No repeated readback is substituted for first-read
+correctness.
+
+
+### Menu cursor pacing and CPU clock control
+
+Native KMS presentation counters, using an identical six-second120Hz cursor
+path outside the menu card, reproduce59.585 FPS hidden and29.972 FPS open in
+202214. Driver retirements show2.008 vs3.033 render jobs per displayed frame;
+preparation+active time8.687 vs16.744ms. The60Hz panel therefore loses alternate
+refresh opportunities once the extra pass and presentation overhead exceed
+16.667ms. These are displayed-frame counts, not application FPS estimates.
+
+The desktop guard now accepts the recorded M4_TEST_CPU_MAX_KHZ environment
+ceiling, retaining1860000 by default. The shared thermal helper only lowers
+existing limits; use a fresh boot before the normal-clock comparison. No
+thermal limits, watchdog checks or CPU thermal policy are removed.
+Run20260911T203903149694Z requests4104000, actualpolicy0=4104000 and
+policy1=2892000. Same kernel244b/Mesad1cc, same rendering and copy logging:
+59.424 FPS hidden and29.961 FPS open. CPU caps do not explain the30 FPS plateau.
+This is not a qualified driver speedup. Scratch-clearing omission remains
+reverted, and the existing per-pass reset semantics are unchanged.
+
+Comparable runuser-based menu latency at normal CPU limits was279/306ms.
+A new direct-user IPC launch (no extra PAM session) measured249/261ms, with
+IPC completion still122–143ms. Thus PAM is not established as the source of
+most IPC startup time. Neither path measures a physical click, and40ms scanout
+sampling limits precision; do not attribute a transport change to rendering.
+The normal-clock interactive session remains guarded for1800s, endingabout
+21:09UTC; this is bounded validation, not a long stability claim.

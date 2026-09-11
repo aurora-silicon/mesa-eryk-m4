@@ -236,6 +236,7 @@ run(VkDevice dev, VkQueue queue, unsigned family, unsigned bpp)
 int
 main(int argc, char **argv)
 {
+   setvbuf(stdout, NULL, _IOLBF, 0);
    if (argc > 2 || (argc == 2 && strcmp(argv[1], "--reference")))
       return 2;
    VkApplicationInfo app = {.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
