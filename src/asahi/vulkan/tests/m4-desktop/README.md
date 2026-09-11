@@ -1352,3 +1352,23 @@ counter4096. Both were guarded, fetched and fault-free, with peaks51.75/50.75 C.
 This supplies a second reproducer, not a synchronization fix. A zero CPU-visible
 counter alone does not distinguish unfinished GPU execution from delayed
 visibility of completed GPU writes.
+
+### Main-thread timing capture
+
+`M4_0AD_PROFILE=1` enables the loopback Profiler2 HTTP interface and captures
+its overview/main stream at guarded shutdown. This option requests CPU scope
+instrumentation only (`profiler2.gpu.enable:false`). It changes no rendering
+option. The initial GPU-profiler attempt `20260911T121525468572Z` exposed an
+unsupported timestamp-query helper and failed with FEATURE_NOT_PRESENT; its
+full evidence is retained. CPU-only profiling is not a GPU-query qualification.
+
+Run `20260911T122040990231Z` passed 180 seconds and34 health checks, peak52C.
+The last120 complete frames averaged2.0714FPS with452.5ms/frame inside swap
+buffers; those are main-thread wall times including waits, not GPU utilization.
+Offline `tools/0ad-profile-summary.py` retains the source hash and reports
+inclusive and exclusive nested scope times. No reports run under the live guard.
+
+The prior kernel/Mesa combination also passed an actual900second scene test
+`20260911T115703376071Z`,169 health checks, peak52.5C, with final buildings and
+shadows visually intact. This extends scene stability; it is not a full-match
+or every-setting qualification, and the cold readback defect remains open.

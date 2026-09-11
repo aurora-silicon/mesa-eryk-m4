@@ -14,6 +14,7 @@ import signal
 import shutil
 import subprocess
 import time
+import urllib.request
 
 
 def verify_scanout(result, width, height):
@@ -280,6 +281,10 @@ def main():
                     '-autostart-ai=2:petra', '-autostart-seed=0', '-autostart-aiseed=0']
                 if os.getenv('M4_0AD_NO_SHADOWS') == '1':
                     game_args.append('-conf=shadows:false')
+                if os.getenv('M4_0AD_PROFILE') == '1':
+                    game_args += ['-conf=profiler2.autoenable:true',
+                                  '-conf=profiler2.server:127.0.0.1',
+                                  '-conf=profiler2.gpu.enable:false']
                 if os.getenv('M4_0AD_NO_POSTPROC') == '1':
                     game_args.append('-conf=postproc:false')
                 if os.getenv('M4_0AD_SYNC') == '1':
@@ -449,6 +454,18 @@ def main():
                     (result/'0ad-process.json').write_text(json.dumps({
                         'pid': int(game_proc.name), 'comm': (game_proc/'comm').read_text().strip(),
                         'exe': str((game_proc/'exe').resolve()), 'uid': game_proc.stat().st_uid}, indent=2)+'\n')
+                    if os.getenv('M4_0AD_PROFILE') == '1':
+                        # Only loopback, two bounded reads, and no offline
+                        # analysis while the watchdog guard owns the machine.
+                        for name, url in [('overview', '/overview'),
+                                          ('main', '/query?thread=main')]:
+                            with urllib.request.urlopen('http://127.0.0.1:8000' + url,
+                                                        timeout=5) as response:
+                                data = response.read(32 * 1024 * 1024 + 1)
+                            if len(data) > 32 * 1024 * 1024:
+                                raise RuntimeError('0 A.D. profile exceeds capture bound')
+                            json.loads(data)
+                            (result / f'0ad-profile-{name}.json').write_bytes(data)
                     subprocess.run(['grim','-t','ppm','-o',output_name,str(result/'0ad-final.ppm')],env=env,check=True,timeout=120)
                     summary['zeroad_renderer'] = 'M4 Zink/Honeykrisp'
                     summary['zeroad_scope'] = 'Bounded process/window survival; inspect screenshots for map rendering'
