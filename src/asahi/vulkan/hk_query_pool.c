@@ -147,7 +147,7 @@ hk_dispatch_imm_writes(struct hk_cmd_buffer *cmd, struct hk_cs *cs)
       util_dynarray_num_elements(&cs->imm_writes, struct libagx_imm_write);
    assert(count > 0);
 
-   if (dev->dev.chip == AGX_CHIP_G17P) {
+   if (agx_native_graphics(&dev->dev)) {
       struct hk_cs *target = cs;
       util_dynarray_foreach(&cs->imm_writes, struct libagx_imm_write, write) {
          hk_g17p_meta_fill_addr(cmd, &target, write->address,
@@ -196,7 +196,7 @@ hk_queue_write(struct hk_cmd_buffer *cmd, uint64_t address, uint32_t value,
    hk_cdm_cache_flush(dev, cs);
 
    perf_debug(cmd, "Queued write");
-   if (dev->dev.chip == AGX_CHIP_G17P) {
+   if (agx_native_graphics(&dev->dev)) {
       hk_g17p_meta_fill_addr(cmd, &cmd->current_cs.cs, address,
                              sizeof(value), value);
       return;
@@ -280,7 +280,7 @@ emit_zero_queries(struct hk_cmd_buffer *cmd, struct hk_query_pool *pool,
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
    perf_debug(cmd, "Query pool zero");
 
-   if (dev->dev.chip == AGX_CHIP_G17P) {
+   if (agx_native_graphics(&dev->dev)) {
       emit_zero_queries_g17p(cmd, pool, first_index, num_queries,
                              set_available);
       return;
@@ -491,11 +491,26 @@ hk_CmdWriteTimestamp2(VkCommandBuffer commandBuffer,
    if (!cs)
       return;
 
+   /* Native firmware retires an empty CDM without engine timestamps. A
+    * standalone timestamp query therefore needs an actual engine dispatch.
+    * The shader has no memory effects; the query still uses the firmware's
+    * hardware timestamp, never a host clock or a delayed readback.
+    */
+   if (agx_native_graphics(&dev->dev) && !after_gfx && cs->stats.cmds == 0) {
+      hk_native_meta_timestamp_dispatch(cmd);
+      if (vk_command_buffer_has_error(&cmd->vk))
+         return;
+      cs = cmd->current_cs.cs;
+   }
+
    if (cs->timestamp.end.addr) {
       assert(after_gfx && "compute is handled above");
 
-      libagx_copy_timestamp(cmd, agx_1d(1), AGX_BARRIER_ALL | AGX_POSTGFX,
-                            report_addr, cs->timestamp.end.addr);
+      if (agx_native_graphics(&dev->dev))
+         hk_native_meta_copy_timestamp(cmd, report_addr, cs->timestamp.end.addr);
+      else
+         libagx_copy_timestamp(cmd, agx_1d(1), AGX_BARRIER_ALL | AGX_POSTGFX,
+                               report_addr, cs->timestamp.end.addr);
    } else {
       cs->timestamp.end = (struct agx_timestamp_req){
          .addr = report_addr,
@@ -740,6 +755,28 @@ hk_CmdCopyQueryPoolResults(VkCommandBuffer commandBuffer, VkQueryPool queryPool,
    hk_flush_if_timestamp(cmd, pool);
 
    perf_debug(cmd, "Query pool copy");
+
+   if (agx_native_graphics(&dev->dev)) {
+      if (hk_reports_per_query(pool) != 1 ||
+          (pool->vk.query_type != VK_QUERY_TYPE_TIMESTAMP &&
+           pool->vk.query_type != VK_QUERY_TYPE_OCCLUSION) ||
+          firstQuery > pool->vk.query_count ||
+          queryCount > pool->vk.query_count - firstQuery) {
+         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+         return;
+      }
+      for (uint32_t i = 0; i < queryCount; i++) {
+         uint32_t query = firstQuery + i;
+         hk_native_meta_copy_query(cmd,
+            hk_buffer_address_rw(dst_buffer, dstOffset + (uint64_t)i * stride),
+            hk_query_report_addr(dev, pool, query),
+            hk_has_available(pool) ? hk_query_available_addr(pool, query) : 0,
+            flags);
+         if (vk_command_buffer_has_error(&cmd->vk))
+            return;
+      }
+      return;
+   }
 
    struct libagx_copy_query_args info = {
       .availability = hk_has_available(pool) ? pool->bo->va->addr : 0,

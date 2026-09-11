@@ -34,3 +34,19 @@ production from GPU reset writes. The default still uses vkCmdResetQueryPool.
 (49C); 133215 GPU-reset control on the same system-barrier kernel failed(49.75C).
 The stronger barrier diagnostic was rejected. The host-reset pass does not
 qualify GPU reset or GL query-result copies, and is not a driver workaround.
+
+## Local implementation checkpoint (not deployed for game qualification)
+
+Native NIR helpers now exist for timestamp-only engine dispatch, query reset,
+post-graphics timestamp copy and single-report query-result copy. They replace
+unavailable precompiled libagx helpers; copies execute on the GPU. The standalone
+host-reset control qualifies production in its tested kernel/Mesa combination.
+The GPU-reset path still fails and GL elapsed/result-copy paths remain
+unqualified. Do not claim general query support from this checkpoint.
+
+The game performance run uses the previously qualified Vulkan library SHA
+ad40ed13a5ff3adbdf1d09011aea1f07a2dbfe68e73621bfa7cf99c90d5c35bd.
+The unqualified render-timestamp kernel patch is separately retained at workspace
+build/0ad/native-timestamp-delivery-wip.patch; current kernel source returned to
+the qualified implementation plus host phase diagnostics. No fixed sleeps or
+CPU readback substitution were accepted as a synchronization fix.
