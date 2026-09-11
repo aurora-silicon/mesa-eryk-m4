@@ -359,6 +359,8 @@ def main():
                             'MESA_GL_VERSION_OVERRIDE': '3.3',
                             'LD_PRELOAD': '/opt/asahi-m4-port/lib/gl-renderer-audit.so'}
                 game_env['XDG_CONFIG_HOME'] = str(Path(account.pw_dir)/'.config/m4-asahi-supertux')
+                if os.getenv('M4_TEST_FRAME_TIMINGS') == '1':
+                    game_env['M4_SWAP_TIMING'] = '1'
                 with (result / 'supertux.log').open('w') as game_log:
                     game = subprocess.Popen([*user_command, '/usr/bin/supertux2',
                         '--renderer', 'opengl33core', '--window', '--geometry', '800x450',
