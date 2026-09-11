@@ -11,13 +11,15 @@ profile_env={**os.environ, 'LD_LIBRARY_PATH':'/opt/m4-profiling/usr/lib',
              'DEBUGINFOD_URLS':''}
 perf='/opt/m4-profiling/usr/bin/perf'
 try:
+    # Normal boot owns the seat through SDDM. Stop the user's session before
+    # loading the experimental GPU/display modules and taking over scanout.
+    subprocess.run(['systemctl','stop','sddm'],check=True,timeout=15)
     if not Path('/sys/module/asahi').exists():
         subprocess.run(['modprobe','asahi'],check=True,timeout=25)
     nodes=[p for p in Path('/sys/class/drm').glob('renderD*') if (p/'device/driver').resolve().name == 'asahi']
     assert len(nodes)==1, nodes
     env=dict(os.environ, VK_DRIVER_FILES='/opt/asahi-m4-port/asahi_icd.json', ASAHI_M4_EXPERIMENTAL='1', MESA_SHADER_CACHE_DISABLE='true', HK_G17P_LAUNCH_TRACE='0')
     env.update(LD_LIBRARY_PATH='/opt/asahi-m4-port/lib', LIBGL_DRIVERS_PATH='/opt/asahi-m4-port/lib/dri', GBM_BACKENDS_PATH='/opt/asahi-m4-port/lib/gbm', __EGL_VENDOR_LIBRARY_FILENAMES='/opt/asahi-m4-port/egl.json', MESA_LOADER_DRIVER_OVERRIDE='zink', GALLIUM_DRIVER='zink', ASAHI_MESA_DEBUG='nocompress', LIBGL_ALWAYS_SOFTWARE='0', MESA_GL_VERSION_OVERRIDE='3.3', MESA_GLES_VERSION_OVERRIDE='3.0')
-    subprocess.run(['systemctl','stop','sddm'],check=True,timeout=5)
     subprocess.run(['modprobe','drm_dma_helper'],check=True,timeout=5)
     if not Path('/sys/module/m4_dcp_rtkit').exists():
         subprocess.run(['insmod','/root/m4_dcp_rtkit-asahi.ko','kernel_client=1','kms=1','takeover=1'],check=True,timeout=20)

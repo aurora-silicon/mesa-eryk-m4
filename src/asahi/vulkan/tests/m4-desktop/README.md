@@ -1516,3 +1516,12 @@ most IPC startup time. Neither path measures a physical click, and40ms scanout
 sampling limits precision; do not attribute a transport change to rendering.
 The normal-clock interactive session remains guarded for1800s, endingabout
 21:09UTC; this is bounded validation, not a long stability claim.
+# Normal boot policy — 2026-09-12
+
+Normal J713 boot starts SDDM. Guarded tests may terminate the user's desktop,
+but must not persistently change the boot target to text mode. The launcher
+stops SDDM before loading the experimental GPU/display stack. After testing,
+restore normal login when driver state permits; recover first if a fault makes
+that unsafe. Workspace `tools/restore-display-manager.py` provides a bounded
+watchdog/thermal startup check. Normal SDDM currently uses the existing software
+rendering configuration; this change does not install accelerated login startup.
