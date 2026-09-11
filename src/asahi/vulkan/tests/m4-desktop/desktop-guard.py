@@ -24,7 +24,7 @@ def stop():
     # restricted to the desktop UID, instead of relying on the comm name.
     subprocess.run(['pkill','-TERM','-u','1000','-f',
                     '^/opt/m4-0ad/usr/games/pyrogenesis( |$)'],timeout=3)
-    for name in ('supertux2','supertuxkart','sauer_client','Hyprland'):
+    for name in ('supertux2','supertuxkart','sauer_client','quickshell','Hyprland'):
         subprocess.run(['pkill','-TERM','-u','1000','-x',name],timeout=3)
     if proc is not None and proc.poll() is None:
         os.killpg(proc.pid,signal.SIGTERM)
@@ -35,6 +35,7 @@ except BaseException:
     w.disarm()
     raise
 r['passed']=False
+shell_started=time.time()
 try:
     env={**os.environ,'M4_DESKTOP_EVIDENCE':str(a.output), 'M4_HYPR_INTERACTIVE_SECONDS':str(a.seconds)}
     with (a.output/'command.log').open('w') as log, (a.output/'health.jsonl').open('w') as health:
@@ -140,6 +141,10 @@ finally:
         engine_logs=Path('/home/e/.local/state/m4-asahi-0ad/0ad/log')
         if engine_logs.exists():
             shutil.copytree(engine_logs,a.output/'0ad-engine-logs',dirs_exist_ok=True)
+    with (a.output/'quickshell-journal.log').open('w') as shell_log:
+        subprocess.run(['journalctl','-b','-t','omarchy-shell','--since',
+                        '@'+str(int(shell_started)), '--no-pager','-o','short-monotonic'],
+                       stdout=shell_log,stderr=subprocess.STDOUT,timeout=3)
     r['thermal']=t.summary()
     (a.output/'result.json').write_text(json.dumps(r,indent=2)+'\n')
     subprocess.run(['dmesg','--color=never'],stdout=(a.output/'dmesg.log').open('w'),timeout=3)

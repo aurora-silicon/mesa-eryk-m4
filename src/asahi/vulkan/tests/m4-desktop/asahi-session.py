@@ -81,6 +81,48 @@ def verify_native_scanout(result, width, height):
     return red
 
 
+def quickshell_state(result, account, label):
+    candidates = subprocess.check_output(
+        ['pgrep', '-u', str(account.pw_uid), '-x', 'quickshell'], text=True).split()
+    processes = [Path('/proc', pid) for pid in candidates
+                 if b'/usr/share/omarchy/shell' in Path('/proc',pid,'cmdline').read_bytes().split(b'\0')]
+    if len(processes) != 1:
+        raise RuntimeError('Expected one live Omarchy Quickshell process')
+    proc = processes[0]
+    env = dict(item.split(b'=', 1) for item in (proc/'environ').read_bytes().split(b'\0') if b'=' in item)
+    wanted = ['QT_QUICK_BACKEND', 'QSG_RHI_BACKEND', 'VK_DRIVER_FILES',
+              'GALLIUM_DRIVER', 'MESA_LOADER_DRIVER_OVERRIDE']
+    info = {'pid': int(proc.name), 'exe': str((proc/'exe').resolve()),
+            'environment': {key: env.get(key.encode(), b'').decode() for key in wanted}}
+    info['drm_fds'] = {}
+    for fd in (proc/'fd').iterdir():
+        try:
+            target = os.readlink(fd)
+            if target.startswith('/dev/dri/'):
+                info['drm_fds'][fd.name] = target
+        except FileNotFoundError:
+            continue
+    maps = (proc/'maps').read_text()
+    (result/f'quickshell-{label}-maps.txt').write_text(maps)
+    journal = subprocess.check_output(['journalctl','-b','_PID='+proc.name,
+        '--no-pager','-o','cat'],text=True,timeout=3)
+    (result/f'quickshell-{label}-renderer.log').write_text(journal)
+    backend = os.getenv('M4_QUICKSHELL_BACKEND', 'vulkan')
+    if backend != 'software':
+        api = {'vulkan': 'Vulkan', 'opengl': 'OpenGL'}[backend]
+        if (info['environment']['QT_QUICK_BACKEND'] == 'software' or
+            f'Creating QRhi with backend {api}' not in journal or
+            'Apple M4 (G16G B0)' not in journal or not info['drm_fds'] or
+            '/opt/asahi-m4-port/lib/libvulkan_asahi.so' not in maps):
+            raise RuntimeError('Quickshell has no verified M4 GPU renderer')
+        if any(error in journal for error in ('VK_ERROR_DEVICE_LOST',
+                'Graphics device lost', 'Failed to create RHI', 'MESA: error:')):
+            raise RuntimeError('Quickshell reported a graphics failure')
+        info.update(renderer_verified=True, renderer=api+' on Apple M4')
+    (result/f'quickshell-{label}.json').write_text(json.dumps(info,indent=2)+'\n')
+    return info
+
+
 def main():
     result = Path(os.environ['M4_RENDER_OUTPUT'])
     live_seconds = int(os.environ.get('M4_HYPR_INTERACTIVE_SECONDS', '0'))
@@ -455,8 +497,10 @@ def main():
                     if 'omarchy-bar' not in layers or 'omarchy-background' not in layers:
                         raise RuntimeError('Omarchy panel and background did not appear')
                     summary.update({'desktop_user': account.pw_name,
-                                    'quickshell_backend': 'software',
+                                    'quickshell_requested_backend': os.getenv('M4_QUICKSHELL_BACKEND', 'vulkan'),
                                     'omarchy_panel_and_background': True})
+                if os.getenv('M4_TEST_SHELL') == '1':
+                    summary['quickshell'] = quickshell_state(result, account, 'initial')
                 print(json.dumps({'event': 'ready', 'result': summary}), flush=True)
                 deadline = time.monotonic() + live_seconds
                 checks = 0
@@ -510,6 +554,23 @@ def main():
                     if (checks in (2,4,8) or
                         ((summary.get('supertuxkart_started') or summary.get('zeroad_started') or summary.get('sauerbraten_started')) and checks % 12 == 0)):
                         subprocess.run(['grim','-t','ppm','-o',output_name,str(result/f'live-{checks}.ppm')],env=env,check=True,timeout=120 if (summary.get('supertuxkart_started') or summary.get('zeroad_started') or summary.get('sauerbraten_started')) else 6)
+                    if os.getenv('M4_TEST_SHELL_UI') == '1' and checks < 3:
+                        # Open normal shell surfaces through its own IPC; no
+                        # settings, volume or application launch is triggered.
+                        if checks > 0:
+                            previous = 'omarchy.menu' if checks == 1 else 'omarchy.audio'
+                            subprocess.run([*user_command, 'omarchy-shell', 'shell',
+                                'hide', previous],env=env,check=True,timeout=3)
+                        if checks < 2:
+                            panel = 'omarchy.menu' if checks == 0 else 'omarchy.audio'
+                            payload = '{"menu":"root"}' if checks == 0 else '{}'
+                            reply = subprocess.check_output([*user_command, 'omarchy-shell',
+                                'shell','summon',panel,payload],env=env,text=True,timeout=3)
+                            if reply.strip() != 'ok':
+                                raise RuntimeError('Shell popup did not open: '+repr(reply))
+                        time.sleep(1)
+                        subprocess.run(['grim','-t','ppm','-o',output_name,
+                            str(result/f'quickshell-ui-{checks}.ppm')],env=env,check=True,timeout=6)
                     checks += 1
                     time.sleep(min(5, max(0, deadline - time.monotonic())))
                 if summary.get('supertuxkart_started') and not summary.get('supertuxkart_demo',{}).get('completed'):
@@ -577,6 +638,13 @@ def main():
                     summary.update(sauerbraten_renderer='M4 Zink/Honeykrisp',
                                    sauerbraten_scope='Bounded metl4 map/window survival; inspect screenshots separately')
                     (result/'sauerbraten-result.json').write_text(json.dumps(summary,indent=2)+'\n')
+                if os.getenv('M4_TEST_SHELL') == '1':
+                    final_shell = quickshell_state(result, account, 'final')
+                    if final_shell['pid'] != summary['quickshell']['pid']:
+                        raise RuntimeError('Quickshell restarted during the test')
+                    summary['quickshell'] = final_shell
+                    subprocess.run(['grim','-t','ppm','-o',output_name,str(result/'quickshell-final.ppm')],env=env,check=True,timeout=6)
+                    (result/'quickshell-result.json').write_text(json.dumps(summary,indent=2)+'\n')
                 summary['interactive_seconds'] = live_seconds
                 summary['health_checks'] = checks
             print(json.dumps(summary), flush=True)

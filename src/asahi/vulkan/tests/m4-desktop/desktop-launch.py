@@ -21,7 +21,7 @@ try:
     subprocess.run(['modprobe','drm_dma_helper'],check=True,timeout=5)
     if not Path('/sys/module/m4_dcp_rtkit').exists():
         subprocess.run(['insmod','/root/m4_dcp_rtkit-asahi.ko','kernel_client=1','kms=1','takeover=1'],check=True,timeout=20)
-    env.update(M4_RENDER_OUTPUT=str(output), M4_TEST_SUPERTUX='0' if any(os.environ.get(key)=='1' for key in ('M4_TEST_SUPERTUXKART','M4_TEST_0AD','M4_TEST_SAUERBRATEN')) else '1', M4_HYPR_NATIVE_KMS='1', M4_HYPR_PHYSICAL='1', M4_HYPR_USER='e', M4_HYPR_WIDTH='2560', M4_HYPR_HEIGHT='1664', PATH='/opt/m4-hyprland/bin:'+os.environ['PATH'])
+    env.update(M4_RENDER_OUTPUT=str(output), M4_TEST_SUPERTUX='0' if any(os.environ.get(key)=='1' for key in ('M4_TEST_SUPERTUXKART','M4_TEST_0AD','M4_TEST_SAUERBRATEN','M4_TEST_SHELL')) else '1', M4_HYPR_NATIVE_KMS='1', M4_HYPR_PHYSICAL='1', M4_HYPR_USER='e', M4_HYPR_WIDTH='2560', M4_HYPR_HEIGHT='1664', PATH='/opt/m4-hyprland/bin:'+os.environ['PATH'])
     if os.environ.get('M4_DESKTOP_CPU_PROFILE')=='1':
         profile_log=(output/'perf-record.log').open('w')
         profiler=subprocess.Popen([perf,'record','-e','cpu-clock','-F','99',

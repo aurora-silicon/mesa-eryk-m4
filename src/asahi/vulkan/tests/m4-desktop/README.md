@@ -1372,3 +1372,38 @@ The prior kernel/Mesa combination also passed an actual900second scene test
 `20260911T115703376071Z`,169 health checks, peak52.5C, with final buildings and
 shadows visually intact. This extends scene stability; it is not a full-match
 or every-setting qualification, and the cold readback defect remains open.
+
+## Omarchy Quickshell acceleration (2026-09-11)
+
+The active M4 launcher is now the `omarchy-launch-shell` file in this
+directory, installed at `/opt/m4-hyprland/bin/omarchy-launch-shell`. It clears
+the previous software override and defaults to Qt Quick Vulkan RHI, inheriting
+the private M4 ICD. The distribution launcher still owns shell supervision
+and journal logging. `M4_QUICKSHELL_BACKEND=opengl` selects GPU rendering via
+Zink; `software` remains an explicit reference option. The old lab launcher
+copy in the kernel tree is historical, not this supervised session's source.
+
+Workspace helper:
+
+```sh
+python3 tools/desktop-experiment.py --game shell --shell-ui \
+  --name quickshell-popups --seconds 20
+```
+
+This runs the actual installed shell without a game, checks its Qt renderer
+log against Apple M4, confirms the private Vulkan library and DRM fds in the
+Quickshell process, and rejects device loss, software fallback or a shell
+restart. It retains panel/background layers, screenshots and renderer logs.
+`--shell-ui` opens and closes the normal menu and audio popup through shell
+IPC; no settings or volume are changed. Watchdog60 and 0.5-second six-channel
+thermal monitoring remain mandatory; thermal stop also terminates Quickshell.
+
+Initial Vulkan and Zink runs exposed stale bootstrap command translations in
+the kernel, not a missing Qt shader feature. Kernel3587bfa1cba1 makes the
+permanent M4 low-root context0 visible to normal mapping teardown invalidation.
+No Mesa rendering workaround was needed. Vulkan run194615 passed20seconds,
+61 thermal samples,53.75C. Warm-session popup run194821 passed20seconds,
+58 samples,55.25C. Same Quickshell process survived; logs identify Vulkan on
+Apple M4. Final desktop, menu and audio popup screenshots visually inspected
+with correct text, icons, transparency and wallpaper. These are bounded
+functional checks, not whole-shell or long-duration stability qualification.

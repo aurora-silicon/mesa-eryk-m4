@@ -1,0 +1,12 @@
+#!/bin/sh
+# Use Qt Quick's RHI on the same private M4 driver as this supervised session.
+# Keep the distribution launcher for its journal and process supervision.
+unset QT_QUICK_BACKEND QSG_RHI_PREFER_SOFTWARE_RENDERER
+case "${M4_QUICKSHELL_BACKEND:-vulkan}" in
+    vulkan|opengl) export QSG_RHI_BACKEND="${M4_QUICKSHELL_BACKEND:-vulkan}" ;;
+    software) export QT_QUICK_BACKEND=software ;;
+    *) echo 'Invalid M4_QUICKSHELL_BACKEND' >&2; exit 2 ;;
+esac
+export QSG_INFO=1
+export QT_LOGGING_RULES='qt.scenegraph.general=true;qt.rhi.general=true'
+exec /usr/bin/omarchy-launch-shell "$@"
