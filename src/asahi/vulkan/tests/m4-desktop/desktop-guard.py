@@ -116,13 +116,24 @@ try:
 except BaseException as error:
     r['error']=repr(error)
     print(json.dumps({'event':'failure','error':repr(error)}),flush=True)
-    game_log=a.output/('sauerbraten.log' if os.getenv('M4_TEST_SAUERBRATEN')=='1' else
+    game_log=a.output/('supertux.log' if os.getenv('M4_TEST_SUPERTUX')=='1' else
+                       'sauerbraten.log' if os.getenv('M4_TEST_SAUERBRATEN')=='1' else
                        '0ad.log' if os.getenv('M4_TEST_0AD')=='1' else 'supertuxkart.log')
     if game_log.exists():
         with game_log.open('rb') as diagnostics:
             diagnostics.seek(max(0,game_log.stat().st_size-8192))
             print(diagnostics.read().decode(errors='replace'),flush=True)
     stop()
+    # Preserve the sealed kernel snapshot before reboot destroys devcoredump.
+    # Never renew the watchdog after failure; collection has its own short
+    # bound and cannot prevent recovery or replace the original failure.
+    try:
+        with (a.output/'fault-collection.log').open('w') as diagnostics:
+            subprocess.run(['python3', '/root/g16-fault-dump.py', 'collect',
+                            '--guard-output', str(a.output), '--allow-missing'],
+                           stdout=diagnostics, stderr=subprocess.STDOUT, timeout=5)
+    except Exception as collection_error:
+        r['fault_collection_error'] = repr(collection_error)
     raise
 finally:
     if os.environ.get('M4_TEST_0AD') == '1':
