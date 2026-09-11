@@ -35,6 +35,7 @@ VK_FN(vkAllocateCommandBuffers);
 VK_FN(vkBeginCommandBuffer);
 VK_FN(vkEndCommandBuffer);
 VK_FN(vkCmdResetQueryPool);
+VK_FN(vkResetQueryPool);
 VK_FN(vkCmdWriteTimestamp);
 VK_FN(vkGetDeviceQueue);
 VK_FN(vkCreateFence);
@@ -84,6 +85,7 @@ check(VkResult result, const char *operation)
 int
 main(void)
 {
+   const int host_reset = getenv("M4_TEST_HOST_RESET") != NULL;
    void *loader = dlopen("libvulkan.so.1", RTLD_NOW | RTLD_LOCAL);
    if (!loader)
       die(dlerror());
@@ -97,7 +99,7 @@ main(void)
    const VkApplicationInfo app = {
       .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
       .pApplicationName = "m4-timestamp-query",
-      .apiVersion = VK_API_VERSION_1_0,
+      .apiVersion = VK_API_VERSION_1_2,
    };
    const VkInstanceCreateInfo instance_info = {
       .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
@@ -167,8 +169,13 @@ main(void)
       .queueCount = 1,
       .pQueuePriorities = &priority,
    };
+   const VkPhysicalDeviceHostQueryResetFeatures host_features = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES,
+      .hostQueryReset = VK_TRUE,
+   };
    const VkDeviceCreateInfo device_info = {
       .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+      .pNext = host_reset ? &host_features : NULL,
       .queueCreateInfoCount = 1,
       .pQueueCreateInfos = &queue_info,
    };
@@ -185,6 +192,8 @@ main(void)
    LOAD_DEVICE(device, vkBeginCommandBuffer);
    LOAD_DEVICE(device, vkEndCommandBuffer);
    LOAD_DEVICE(device, vkCmdResetQueryPool);
+   if (host_reset)
+      LOAD_DEVICE(device, vkResetQueryPool);
    LOAD_DEVICE(device, vkCmdWriteTimestamp);
    LOAD_DEVICE(device, vkGetDeviceQueue);
    LOAD_DEVICE(device, vkCreateFence);
@@ -224,7 +233,11 @@ main(void)
    };
    check(vkBeginCommandBuffer(command_buffer, &begin_info),
          "vkBeginCommandBuffer");
-   vkCmdResetQueryPool(command_buffer, query_pool, 0, 2);
+   if (host_reset)
+      vkResetQueryPool(device, query_pool, 0, 2);
+   else
+      vkCmdResetQueryPool(command_buffer, query_pool, 0, 2);
+   printf("query reset source=%s\n", host_reset ? "host API" : "GPU command");
    vkCmdWriteTimestamp(command_buffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
                        query_pool, 0);
    vkCmdWriteTimestamp(command_buffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,

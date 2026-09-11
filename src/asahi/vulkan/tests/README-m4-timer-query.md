@@ -26,3 +26,11 @@ by retrieving an elapsed query. Host llvmpipe passed; M4 is not yet qualified.
 
 Diagnostic logging can change timing. Neither the single pass nor a delayed
 reread qualifies the native query implementation. Mesa changes stay local.
+
+The standalone probe now requests Vulkan1.2. `M4_TEST_HOST_RESET=1` enables
+hostQueryReset and uses vkResetQueryPool before submission, isolating timestamp
+production from GPU reset writes. The default still uses vkCmdResetQueryPool.
+133318 host-reset control passed both GPU timestamps and first-read availability
+(49C); 133215 GPU-reset control on the same system-barrier kernel failed(49.75C).
+The stronger barrier diagnostic was rejected. The host-reset pass does not
+qualify GPU reset or GL query-result copies, and is not a driver workaround.
