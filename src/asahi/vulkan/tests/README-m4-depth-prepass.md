@@ -152,3 +152,28 @@ Three frames535830/885915/1240918 visually inspected: no broad fog corruption;
 meanRGBAerror.217213/.211190/.210931 out of255 and1341/1033/1025pixels>8
 (0.0326–0.0426%). This is correct sampled scene rendering, not pixel-identical
 rasterization or complete game conformance. Actual live-session check pending.
+
+### Live regression and loading-screen follow-up
+
+Production Vulkan a4cd passes focused depth prepass165459 (131072pixels), wide
+perspective165540 (zero bad pixels), and derivatives165904 (4096pixels). Actual
+0AD165920 runs180s with34healthchecks,381temperature samples,peak53.5C. Live
+and final images show intact buildings/shadows; normal postprocessing and BC
+textures enabled, no per-draw sync override. Engine records zero errors or
+warnings. FPS overlay3; earlier depth-tie and synchronization backlog remains.
+
+Sauerbraten170257 ran300s with58successful GPU/compositor checks,619thermal
+samples,peak54C, then FAILED validation because the engine log was missing at
+the expected path. This is not a guard pass. The game resolves even absolute
+log names relative to its -q directory. Recovered the exact nested log: M4
+Zink renderer, map ready, steady3FPS. Kernel log has no GPU fault. Guard
+requested reboot and evidence was recovered afterward. Pass only a basename
+for the unique log filename.
+
+The user spotted a quarter-size loading image; saved live-2.ppm reproduces
+it exactly. Gameplay/menu look correct. The original trace retains a1024x768
+viewport until call52085 switches to2048x1536. Sauerbraten queues resize
+events during loading but updates the viewport only in its gameplay event
+loop. A separate proper game-side resize fix is being tested in the local
+source repository reference/sauerbraten-2020/sauerbraten/src; no driver scaling
+override or shader modification is appropriate for this application bug.

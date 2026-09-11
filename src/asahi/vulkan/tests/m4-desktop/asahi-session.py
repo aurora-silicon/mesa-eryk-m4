@@ -334,11 +334,13 @@ def main():
                     game_env.update(LD_PRELOAD='/opt/m4-apitrace/usr/lib/apitrace/wrappers/egltrace.so',
                                     TRACE_FILE=str(trace_file))
                     (result/'graphics-trace.json').write_text(json.dumps({'path':str(trace_file),'api':'egl'})+'\n')
+                # Sauerbraten resolves log names relative to -q, including
+                # names that start with '/'. Pass a basename to avoid nesting.
                 game_engine_log = game_home/(result.name+'.log')
                 if game_engine_log.exists():
                     raise RuntimeError('refusing to overwrite a game engine log')
                 game_args = ['/opt/m4-sauerbraten/sauer_client', '-q'+str(game_home),
-                             '-g'+str(game_engine_log), '-t0', '-w1024', '-h768', '-lmetl4',
+                             '-g'+game_engine_log.name, '-t0', '-w1024', '-h768', '-lmetl4',
                              '-xshowfps 1; echo M4_SAUERBRATEN_MAP_READY; '
                              'm4stats = [echo M4_SAUERBRATEN_FPS (getfps); sleep 5000 [m4stats]]; m4stats']
                 (result/'sauerbraten-command.json').write_text(json.dumps(game_args, indent=2)+'\n')
