@@ -2547,6 +2547,34 @@ agx_lower_agx3_cf_constants(agx_context *ctx)
    return progress;
 }
 
+/* Half-width shift-add has register operands. Fold an immediate's integer
+ * negation modulo 2^16 and allocate it normally before RA. This also covers
+ * decrementing 16-bit loop counters without guessing a half subtract opcode. */
+bool
+agx_lower_agx3_half_iadd_constants(agx_context *ctx)
+{
+   if (ctx->key->dev.encoding != AGX_ISA_ENCODING_AGX3B)
+      return false;
+
+   bool progress = false;
+   agx_foreach_instr_global_safe(ctx, I) {
+      if (I->op != AGX_OPCODE_IADD || I->nr_dests != 1 || I->nr_srcs != 2 ||
+          I->dest[0].size != AGX_SIZE_16 || agx_channels(I->dest[0]) != 1 ||
+          I->saturate)
+         continue;
+      agx_foreach_src(I, s) {
+         agx_index src = I->src[s];
+         if (src.type != AGX_INDEX_IMMEDIATE || src.value > UINT8_MAX || src.abs)
+            continue;
+         uint16_t value = src.neg ? -src.value : src.value;
+         agx_builder b = agx_init_builder(ctx, agx_before_instr(I));
+         I->src[s] = agx_mov_imm(&b, 16, value);
+         progress = true;
+      }
+   }
+   return progress;
+}
+
 static void
 agx_materialize_agx3_alu_constants(agx_context *ctx)
 {
@@ -4568,6 +4596,7 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
       agx_materialize_agx3_alu_constants(ctx);
 
    AGX_PASS(ctx, agx_lower_agx3_cf_constants);
+   AGX_PASS(ctx, agx_lower_agx3_half_iadd_constants);
 
    /* For correctness, lower uniform sources after copyprop (for correctness,
     * as copyprop creates uniform sources). To keep register pressure in
