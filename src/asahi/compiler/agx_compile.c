@@ -4613,7 +4613,12 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
    agx_lower_pseudo(ctx);
 
    /* Set last-use bits after lowering pseudo for best results. */
-   agx_opt_register_cache(ctx);
+   /* Causal control for the M4 vertex-fog reproducer. This changes only
+    * register lifetime hints; it is not a production workaround. */
+   if (!(ctx->stage == MESA_SHADER_VERTEX &&
+         ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+         debug_get_bool_option("AGX3_VERTEX_NO_CACHE_HINTS", false)))
+      agx_opt_register_cache(ctx);
 
    if (agx_should_dump(nir, AGX_DBG_SHADERS))
       agx_print_shader(ctx, stdout);

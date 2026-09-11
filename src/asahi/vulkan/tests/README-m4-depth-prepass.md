@@ -36,3 +36,20 @@ screen barycentrics divided by each original vertex W, independently of the
 GPU interpolation path. Host llvmpipe and guarded J713151431 passed all1966080
 pixels across8/11/28/29/32 scalar varyings, peak50.25C. This does not reproduce
 the game artifact or establish behavior across clipped negative-W triangles.
+
+The later original-material vertex reproducer isolates bad fog without texture
+shading (workspace tools/gl-mesh-replay.c, original assets outside Mesa). Baseline
+154343 has94753 bad fog pixels; disabling promotion154538 still has61135 and
+noopt154741 is rejected as an unsupported pipeline. Optional AGX3 vertex controls
+are disabled by default:
+
+- `AGX3_VERTEX_SERIALIZE=1`: wait for the preceding native producer before each
+  instruction. 155048 reduces the fog difference to one pixel by2 channel levels,
+  matching the small-geometry control. This is causal evidence for dependencies,
+  not a production serialization fix.
+- `AGX3_VERTEX_NO_CACHE_HINTS=1`: skip only vertex register-cache hint assignment.
+  155123 still has106168 bad fog pixels. This does not fix the failure.
+
+Both controls preserve all shaders' mathematical operations. Installed diagnostic
+Vulkan d97577c1aed310d891daef63079f11764bec45f118315e0da41eb52ce778f78a;
+all tests guarded, peak50.5C. Need identify and fix the specific dependency.

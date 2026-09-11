@@ -26,6 +26,7 @@
  * emitting the witnessed all-clear form there could consume stale data.
  */
 
+#include "util/u_debug.h"
 #include "agx3_alu_core.h"
 #include "agx3_atomic_core.h"
 #include "agx3_binder.h"
@@ -4000,6 +4001,10 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
    if (!agx3_slot_assign(sl, count, nslots, res))
       goto fail;
 
+   const bool serialize_vertex = ctx->stage == MESA_SHADER_VERTEX &&
+      enc == AGX_ISA_ENCODING_AGX3B &&
+      debug_get_bool_option("AGX3_VERTEX_SERIALIZE", false);
+
    k = 0;
    unsigned vertex_loads_seen = 0;
    unsigned loop_depth = 1;
@@ -4036,6 +4041,14 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
 
          if (I->op == AGX_OPCODE_STOP)
             continue;
+
+         /* Diagnostic only: retire the previous physical producer before
+          * any next instruction, using the existing bit-preserving wait. */
+         if (serialize_vertex && outstanding) {
+            if (!agx3_retire_slots_noop(emission, enc, outstanding))
+               AGX3_REFUSE(I);
+            outstanding = 0;
+         }
 
          const uint8_t slot = res[k].slot;
          const uint16_t wait = res[k].wait_mask;
