@@ -819,6 +819,13 @@ static void test_int_to_float_liveness(void)
 static void
 test_native_fma_minifloat(void)
 {
+   /* M4 native saturate(float * half), text+0x60. */
+   {
+      uint8_t out[16], len;
+      assert(agx3_alu_fmul_mixed_mod(AGX_ISA_ENCODING_AGX3B, 0, 0, 4,
+         AGX3_ALU_HINT_DISCARD, AGX3_ALU_HINT_DISCARD, false, true, 0x20, out, &len));
+      exact(out, len, "09011d0401000082");
+   }
    /* M4 applegpu_g16g offline compiler: saturate(fma(-8, src.x, src.y)).
     * Native text+0x52, multiplier 0xe0, result saturation field14. */
    {

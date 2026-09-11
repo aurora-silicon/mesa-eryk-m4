@@ -497,10 +497,11 @@ agx3_alu_mov16(enum agx_isa_encoding enc, uint16_t dest, uint32_t bits,
 }
 
 bool
-agx3_alu_fmul_mixed(enum agx_isa_encoding enc, uint16_t dest,
+agx3_alu_fmul_mixed_mod(enum agx_isa_encoding enc, uint16_t dest,
                     uint16_t f32, uint16_t f16,
                     enum agx3_alu_hint hint32, enum agx3_alu_hint hint16,
-                    uint16_t wait_mask, uint8_t out[AGX3_ALU_MAX_LENGTH],
+                    bool dest_cache, bool saturate, uint16_t wait_mask,
+                    uint8_t out[AGX3_ALU_MAX_LENGTH],
                     uint8_t *len)
 {
    if (!out || !len || enc != AGX_ISA_ENCODING_AGX3B || dest >= 256 ||
@@ -509,21 +510,35 @@ agx3_alu_fmul_mixed(enum agx_isa_encoding enc, uint16_t dest,
        (unsigned)hint16 > AGX3_ALU_HINT_CACHE || (wait_mask & ~0x3f))
       return false;
    const struct agx3_field_kv base[] = {
-      {9, 2}, {10, 2}, {25, 2}, {26, 2}, {42, 2}, {43, 1}, {60, 2}, {74, 2},
+      {9, 2}, {10, 2}, {25, 2}, {26, 2}, {42, 2}, {43, 1}, {60, 2}, {74, 2}, {85, 1},
    };
-   struct agx3_field_kv fields[13] = {
-      {2, dest}, {18, f32}, {35, f16},
+   struct agx3_field_kv fields[15] = {
+      {2, dest}, {18, f32}, {35, f16}, {11, dest_cache}, {14, saturate},
       {27, hint32 == AGX3_ALU_HINT_CACHE},
       {29, hint32 == AGX3_ALU_HINT_DISCARD},
       {44, hint16 == AGX3_ALU_HINT_CACHE},
       {46, hint16 == AGX3_ALU_HINT_DISCARD},
    };
-   unsigned n = 7;
+   unsigned n = 9;
    for (unsigned bit = 0; bit < 6; ++bit)
       if (wait_mask & (1u << bit))
          fields[n++] = (struct agx3_field_kv){80 + bit, 1};
-   return agx3_bind_compose(enc, "f32mul", 0, base, 8, fields, n, out, len) ||
-          agx3_bind_compose(enc, "f32mul", 1, base, 8, fields, n, out, len);
+   for (unsigned ep = 0; ep <= 3; ++ep)
+      if (agx3_bind_compose(enc, "f32mul", ep, base, saturate ? 9 : 8,
+                           fields, n, out, len))
+         return true;
+   return false;
+}
+
+bool
+agx3_alu_fmul_mixed(enum agx_isa_encoding enc, uint16_t dest,
+                    uint16_t f32, uint16_t f16,
+                    enum agx3_alu_hint hint32, enum agx3_alu_hint hint16,
+                    uint16_t wait_mask, uint8_t out[AGX3_ALU_MAX_LENGTH],
+                    uint8_t *len)
+{
+   return agx3_alu_fmul_mixed_mod(enc, dest, f32, f16, hint32, hint16,
+                                 false, false, wait_mask, out, len);
 }
 
 bool

@@ -25,3 +25,19 @@ running warm: it does not isolate warmup or qualify asynchronous visibility.
 The pre-existing completion/readback problem remains open. ARM64 Mesa build
 and the new/existing host ALU fixtures pass; thirteen unrelated unsupported
 forms remain explicitly skipped by that fixture.
+
+The next map test142833 exposed saturated mixed-width F32*F16 multiply.
+The second Metal source yields native textSHA
+4cd8db5fe1d4e29a0d42fc8363201cff1a073189c0cb44eaf5f94f48411fea11;
+text+96 is `09011d0401000082`, field14 saturation, F32 register0 and half4.
+The new encoder preserves destination caching, both source hints and waits,
+and admits the witnessed longer form. Existing unsaturated interface retained.
+Host exact native-byte fixture and all previous ALU tests pass.
+
+`m4_saturated_fma.py --mixed OUTPUT` generates1024 words for
+`m4_saturated_mixed_mul.comp`, eight groups. Both halves contain different exact
+values; positive/negative/zero products cover clamp boundaries and unchanged
+inputs.143256 returned unchanged outputs (229 mismatches) even with synchronous
+submission.143340 identical repeat passed1024 words,49C. Retain both results:
+this qualifies arithmetic once observed, not reliable first-read completion.
+No warmup, sleep, output substitution or game feature disable was added.

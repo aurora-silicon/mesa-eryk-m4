@@ -5885,7 +5885,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
          /* Native scalar f32 x f16 -> f32. Keep the half register distinct
           * from its neighbour, preserve post-RA hints and producer waits. */
          if (I->op == AGX_OPCODE_FMUL && I->nr_dests == 1 &&
-             I->nr_srcs == 2 && !I->saturate &&
+             I->nr_srcs == 2 &&
              agx3_src_is_register(I->dest[0]) &&
              I->dest[0].size == AGX_SIZE_32 && agx_channels(I->dest[0]) == 1 &&
              (I->src[0].size == AGX_SIZE_16 || I->src[1].size == AGX_SIZE_16) &&
@@ -5899,9 +5899,9 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                 f32.abs || f32.neg || f16.abs || f16.neg ||
                 f32.kill || f16.kill || (f32.cache && f32.discard) ||
                 (f16.cache && f16.discard) ||
-                !agx3_alu_fmul_mixed(enc, I->dest[0].value, f32.value,
+                !agx3_alu_fmul_mixed_mod(enc, I->dest[0].value, f32.value,
                     f16.value, agx3_post_ra_hint(f32), agx3_post_ra_hint(f16),
-                    wait, bytes, &len) || !agx3_append(emission, bytes, len))
+                    I->dest[0].cache, I->saturate, wait, bytes, &len) || !agx3_append(emission, bytes, len))
                AGX3_REFUSE(I);
             continue;
          }
