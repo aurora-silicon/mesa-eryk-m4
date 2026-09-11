@@ -23,3 +23,10 @@ buffer-to-image admission path. Renderer was M4 Zink, 53 temperature samples,
 peak51.5C, no kernel GPU fault; guard initiated reboot and evidence was fetched.
 This is not a completed map qualification. No game feature was disabled to
 avoid the missing format.
+
+`M4_SAUERBRATEN_TRACE=1` records original EGL calls in a unique trace under
+`.local/state/m4-asahi-traces` for later reference replay. The ordinary game
+script reports its built-in FPS every five seconds after map loading. These
+reports never renew the watchdog; only the existing GPU/thermal checks do.
+On failure the guard prints the selected game's log tail before recovery, so
+missing features can be identified while the reboot is still finishing.

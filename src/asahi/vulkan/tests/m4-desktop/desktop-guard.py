@@ -116,7 +116,8 @@ try:
 except BaseException as error:
     r['error']=repr(error)
     print(json.dumps({'event':'failure','error':repr(error)}),flush=True)
-    game_log=a.output/'supertuxkart.log'
+    game_log=a.output/('sauerbraten.log' if os.getenv('M4_TEST_SAUERBRATEN')=='1' else
+                       '0ad.log' if os.getenv('M4_TEST_0AD')=='1' else 'supertuxkart.log')
     if game_log.exists():
         with game_log.open('rb') as diagnostics:
             diagnostics.seek(max(0,game_log.stat().st_size-8192))

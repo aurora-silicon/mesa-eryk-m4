@@ -324,9 +324,20 @@ def main():
                             'SDL_AUDIODRIVER': 'dummy', 'HK_DEBUG_LOG': '1',
                             'LD_LIBRARY_PATH': env['LD_LIBRARY_PATH'] + ':/opt/m4-sauerbraten/lib',
                             'LD_PRELOAD': '/opt/asahi-m4-port/lib/gl-renderer-audit.so'}
+                if os.getenv('M4_SAUERBRATEN_TRACE') == '1':
+                    trace_dir = Path(account.pw_dir)/'.local/state/m4-asahi-traces'
+                    trace_dir.mkdir(parents=True, exist_ok=True)
+                    os.chown(trace_dir, account.pw_uid, account.pw_gid)
+                    trace_file = trace_dir/(result.name+'.trace')
+                    if trace_file.exists():
+                        raise RuntimeError('refusing to overwrite graphics trace')
+                    game_env.update(LD_PRELOAD='/opt/m4-apitrace/usr/lib/apitrace/wrappers/egltrace.so',
+                                    TRACE_FILE=str(trace_file))
+                    (result/'graphics-trace.json').write_text(json.dumps({'path':str(trace_file),'api':'egl'})+'\n')
                 game_args = ['/opt/m4-sauerbraten/sauer_client', '-q'+str(game_home),
                              '-g', '-t0', '-w1024', '-h768', '-lmetl4',
-                             '-xshowfps 1; echo M4_SAUERBRATEN_MAP_READY']
+                             '-xshowfps 1; echo M4_SAUERBRATEN_MAP_READY; '
+                             'm4stats = [echo M4_SAUERBRATEN_FPS (getfps); sleep 5000 [m4stats]]; m4stats']
                 (result/'sauerbraten-command.json').write_text(json.dumps(game_args, indent=2)+'\n')
                 subprocess.run(['hyprctl', 'eval',
                     'hl.window_rule({name="m4-sauerbraten-test", match={class=".*[Ss]auer.*"}, '
