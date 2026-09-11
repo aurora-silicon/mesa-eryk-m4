@@ -24,13 +24,19 @@ agx3_slot_assign(const struct agx3_slot_instr *instrs, unsigned n,
     * allocated, so later consumers need not wait it again. */
    bool slot_waited[9] = {false};
 
+   /* Device loads can still be reading their physical address registers
+    * when later instructions issue. Track all outstanding readers, not only
+    * the last one: several loads may share an address before it is reused. */
+   uint8_t readers[AGX3_SLOT_GPR_TOKENS] = {0};
+
    unsigned next = 0; /* round-robin cursor into 0..nslots-1 */
 
    for (unsigned i = 0; i < n; ++i) {
       const struct agx3_slot_instr *I = &instrs[i];
       if (I->nr_srcs > AGX3_SLOT_MAX_REGS || I->nr_dsts > AGX3_SLOT_MAX_REGS)
          return false;
-      if (I->preferred_slot > nslots || (!I->is_async && I->preferred_slot))
+      if ((I->reads_async && !I->is_async) ||
+          I->preferred_slot > nslots || (!I->is_async && I->preferred_slot))
          return false;
 
       uint16_t wait_mask = 0;
@@ -68,6 +74,22 @@ agx3_slot_assign(const struct agx3_slot_instr *instrs, unsigned n,
          }
       }
 
+      /* Write-after-read: preserve asynchronous load addresses until every
+       * reader has retired. A read of the same address needs no such wait. */
+      for (unsigned d = 0; d < I->nr_dsts; ++d) {
+         const unsigned r = I->dst[d];
+         if (r >= AGX3_SLOT_GPR_TOKENS)
+            continue;
+         for (unsigned slot = 1; slot <= nslots; ++slot) {
+            if ((readers[r] & (1u << (slot - 1))) && !slot_waited[slot]) {
+               wait_mask |= 1u << (slot - 1);
+               slot_waited[slot] = true;
+            }
+         }
+      }
+      for (unsigned r = 0; r < AGX3_SLOT_GPR_TOKENS; ++r)
+         readers[r] &= (uint8_t)~wait_mask;
+
       out[i].wait_mask = wait_mask;
 
       if (I->is_async) {
@@ -88,6 +110,12 @@ agx3_slot_assign(const struct agx3_slot_instr *instrs, unsigned n,
             }
          }
          slot_waited[slot] = false; /* freshly outstanding */
+         if (I->reads_async) {
+            for (unsigned s = 0; s < I->nr_srcs; ++s) {
+               if (I->src[s] < AGX3_SLOT_GPR_TOKENS)
+                  readers[I->src[s]] |= 1u << (slot - 1);
+            }
+         }
          for (unsigned d = 0; d < I->nr_dsts; ++d) {
             if (I->dst[d] >= AGX3_SLOT_NUM_TOKENS)
                return false;

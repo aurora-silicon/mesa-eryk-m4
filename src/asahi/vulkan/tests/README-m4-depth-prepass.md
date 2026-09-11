@@ -69,3 +69,22 @@ full serialization and the simple reference rasterization floor. Evidence IDs
 155913,160119,160254 under the workspace experiment collection; all completed,
 three thermal samples each, peak50.5C. This supports an asynchronous source
 lifetime bug; the complete original game prefix remains to be qualified.
+
+### Normal load source dependencies
+
+The slot core now tracks all outstanding GPR readers for AGX3B device loads,
+derives write-after-read dependencies, and releases readers when their slot
+retires. Interpolation/LDCF forms without an inline wait field use explicit
+waits before overwriting such an address. Seventy host slot checks pass.
+The original material probe160518 matches the simple rasterization floor
+without debug flags. The self-contained `m4_gl_load_lifetime.c` exercises
+matrix/plane uniform loads and tangent-frame arithmetic across a48:1 W range,
+checking393216 pixels on24 alternating-uniform draws against independent CPU
+math. Host llvmpipe and M4 experiment161132 pass exactly, including cold first
+draw. Build with `-lEGL -lGL -lm`; use the mandatory M4 guard.
+
+The complete original prefix160833 still has fog patches (87497pixels>8),
+whereas full vertex serialization161033 removes them (1349pixels>8,mean.21558).
+Thus the address dependency fix is partial; it is not a complete game result.
+Peak temperature across these runs51.5C. Remaining vertex timing issue under
+investigation. The synthetic test has not yet been run on the pre-fix compiler.

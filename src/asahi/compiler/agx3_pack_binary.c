@@ -3966,6 +3966,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
          if (I->op == AGX_OPCODE_EXPORT)
             continue;
          e->is_async = agx3_is_async(I);
+         e->reads_async = enc == AGX_ISA_ENCODING_AGX3B &&
+                          I->op == AGX_OPCODE_DEVICE_LOAD;
          if (g17p_storage_image_protocol &&
              (I->op == AGX_OPCODE_IMAGE_LOAD ||
               I->op == AGX_OPCODE_TEXTURE_SAMPLE))
@@ -4092,6 +4094,16 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
              (!strcmp(explicit_waits, "all") ||
               (!strcmp(explicit_waits, "fma") && I->op == AGX_OPCODE_FFMA) ||
               (!strcmp(explicit_waits, "load") && I->op == AGX_OPCODE_DEVICE_LOAD))) {
+            if (!agx3_retire_slots_noop(emission, enc, wait))
+               AGX3_REFUSE(I);
+            outstanding &= (uint16_t)~wait;
+            wait = 0;
+         }
+         /* Interpolation has no inline wait field. Its destination may
+          * overwrite an address still being read by a device load. */
+         if (wait && (I->op == AGX_OPCODE_INTERP_AGX3 ||
+                      I->op == AGX_OPCODE_RHW_INTERP_AGX3 ||
+                      I->op == AGX_OPCODE_LDCF)) {
             if (!agx3_retire_slots_noop(emission, enc, wait))
                AGX3_REFUSE(I);
             outstanding &= (uint16_t)~wait;

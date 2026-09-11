@@ -48,6 +48,7 @@ extern "C" {
 
 struct agx3_slot_instr {
    bool is_async;   /* produces a scoreboard-tracked result */
+   bool reads_async; /* GPR inputs remain live until this slot retires */
    uint8_t preferred_slot; /* 0=round-robin, otherwise required slot */
    uint8_t nr_dsts; /* dependency tokens this instruction writes */
    uint8_t nr_srcs; /* dependency tokens this instruction reads */
