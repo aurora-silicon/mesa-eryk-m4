@@ -188,3 +188,18 @@ trace changes to2048x1536 at startup call810, rather than after loading at
 52085. Mesa production Vulkan remains a4cd, with native register-free waits.
 This qualifies the sampled scene/loading path, not every game effect or good
 performance. Guards and338MHz unchanged. Original failed170257 verdict remains.
+
+### SuperTux performance measurements
+
+User corrected an FPS-overlay reading:4.5FPS, not45. Discard the earlier
+35–45FPS interpretation. InstalledSuperTux0.7 requests OpenGL3.3Core, not3.1.
+Explicitopengl33core run172509 passed403thermals53C and user confirmed visuals.
+
+OptionalSDLswap CPU-clock hook gives a reproducible baseline173352:531rows,
+401completeintervals after explicit20s startup exclusion,5.05034FPS,198.006ms
+frame,193.600ms swap. CPUprofile identifies allocation/page metadata/clearing
+overhead. Kernelqueuecache678d174430 passes5.50245FPS. Existing Zink uniform
+specialization enabled only for game174748 passes7.36096FPS,135.852ms/frame,
+130.903ms swap,224thermals52.5C. Still below requested5x target25.25FPS. Need
+visual/reference checks before accepting specialization as default. No game
+shader replacements, quality reduction or GPUclock change.
