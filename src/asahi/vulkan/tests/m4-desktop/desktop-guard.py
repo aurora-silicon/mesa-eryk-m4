@@ -48,6 +48,7 @@ try:
         kernel_pending=''
         last_kernel_feed=0
         last_kernel_report=0
+        last_kernel_job=-1
         while proc.poll() is None:
             t.check()
             if time.monotonic()>deadline:
@@ -68,12 +69,18 @@ try:
                     # forward progress throughout the bounded experiment. Never feed from an old buffered line.
                     match=re.search(r'^\[\s*([0-9.]+)\].*userspace GPU job (\d+) retired',kline)
                     now=time.monotonic()
+                    exact=re.search(r'\bmonotonic_ns=(\d+)',kline)
+                    retired_at=int(exact[1])/1e9 if exact else (float(match[1]) if match else 0)
                     if match and now-last_kernel_report >= 5:
-                        print(json.dumps({'event':'kernel-progress-age','job':int(match[2]),'age':now-float(match[1]),'startup_elapsed':now-began}),flush=True)
+                        print(json.dumps({'event':'kernel-progress-age','job':int(match[2]),'age':now-retired_at,'startup_elapsed':now-began}),flush=True)
                         last_kernel_report=now
-                    if match and now-last_kernel_feed >= 5 and 0 <= now-float(match[1]) < 3:
+                    if match and int(match[2])>last_kernel_job and 0 <= now-retired_at < 3:
+                        last_kernel_job=int(match[2])
+                    else:
+                        continue
+                    if now-last_kernel_feed >= 5:
                         t.check()
-                        health.write(json.dumps({'event':'startup-gpu-retirement','timestamp':float(match[1]),'job':int(match[2])})+'\n')
+                        health.write(json.dumps({'event':'startup-gpu-retirement','timestamp':retired_at,'job':last_kernel_job})+'\n')
                         health.flush(); os.fsync(health.fileno())
                         w.integer(KEEPALIVE)
                         last_kernel_feed=now
