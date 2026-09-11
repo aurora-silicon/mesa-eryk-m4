@@ -1231,3 +1231,18 @@ TextureFetch2DLod0Immediate expects the old unstaged coordinate layout, and
 TextureExportRetiresAtPartBoundary has nullNIR and crashes at the existing
 helper-invocation metadata read. These pre-existing fixture issues were
 confirmed against unchanged HEAD code; do not report the whole suite passing.
+
+### Widened integer products (2026-09-11)
+
+Native block uploads need 64-bit buffer-row addressing. NIR's signed and
+unsigned 32×32→64 multiply forms previously bypassed the existing AGX3
+partial-product lowering and reached an unsupported 64-bit IMAD. They now use
+that lowering, with signed high-word correction; AGX2 retains its native path.
+
+`m4_wide_multiply.py OUTPUT_DIRECTORY` generates 1024 boundary and deterministic
+random operand pairs. Compile `m4_wide_multiply.comp` with `glslangValidator -V`
+and run it through the workspace `tools/vk-buffer-oracle.c`, inside the mandatory
+watchdog/thermal guard. The shader dispatch is 32 workgroups of 32 threads. All
+6144 words passed on M4 in `20260911T103145538063Z`, including unchanged input
+words and both halves of signed and unsigned products. Peak exposed temperature
+was 52 C; actual output bytes were retained. ARM64 Mesa build also passed.
