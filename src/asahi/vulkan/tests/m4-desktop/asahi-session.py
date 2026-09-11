@@ -165,7 +165,10 @@ def main():
     env.pop('DISPLAY', None)
     env.pop('HYPRLAND_INSTANCE_SIGNATURE', None)
     config = Path('/opt/m4-hyprland/omarchy.lua') if account else Path(__file__).with_name('minimal.lua')
-    command = [*(['start-hyprland', '--'] if account else ['Hyprland', '--i-am-really-stupid']),
+    hyprland = Path(os.environ.get('M4_HYPRLAND_BINARY', '/usr/bin/Hyprland'))
+    if not hyprland.is_absolute() or not hyprland.is_file():
+        raise RuntimeError('Expected an installed absolute Hyprland binary path')
+    command = [*(['start-hyprland', '--path', str(hyprland), '--'] if account else [str(hyprland), '--i-am-really-stupid']),
                '--config', str(config)]
     if account:
         command = ['python3', str(Path(__file__).with_name('seat-user.py')), account.pw_name, *command]
