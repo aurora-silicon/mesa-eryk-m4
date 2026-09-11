@@ -1407,3 +1407,10 @@ No Mesa rendering workaround was needed. Vulkan run194615 passed20seconds,
 Apple M4. Final desktop, menu and audio popup screenshots visually inspected
 with correct text, icons, transparency and wallpaper. These are bounded
 functional checks, not whole-shell or long-duration stability qualification.
+
+Interactive app launch also requires `seat-user.py` to change to the desktop
+account home before starting Hyprland. Otherwise `runuser` preserves `/root`,
+and Foot launched from the normal menu exits with a working-directory
+permission error. The validation terminal already supplied its own cwd and
+therefore missed this defect. Run20260911T200205618477Z confirms Quickshell
+cwd=/home/e and normal uwsm/gtk-launch Foot windows mapped with working shells.
