@@ -1414,3 +1414,37 @@ and Foot launched from the normal menu exits with a working-directory
 permission error. The validation terminal already supplied its own cwd and
 therefore missed this defect. Run20260911T200205618477Z confirms Quickshell
 cwd=/home/e and normal uwsm/gtk-launch Foot windows mapped with working shells.
+
+### Menu upload diagnosis (2026-09-11)
+
+`HK_M4_COPY_TRACE=1` logs buffer-to-image formats, image sizes and every copy
+region. Workspace `desktop-experiment.py --copy-trace` passes this option
+through the guarded launcher. It is off by default and does not enable shader
+or command-buffer hex dumps or change transfer behavior.
+
+Run20260911T200816955439Z, same Quickshell Vulkan backend, records the first
+menu opening as two R8 glyph atlas initializations (1810x63 and502x164) followed
+by batches of41 and24 glyph regions. `hk_CmdCopyBufferToImage2` splits native
+regions/layers into individual `vk_meta_copy_buffer_to_image` calls; common
+`copy_draw` opens/closes rendering for each region. The kernel therefore
+executes42+25=67 separate render passes for these four API calls.
+Kernel jobs12368..12434:159.641ms prepare,113.720ms active polling/retirement,
+only0.814ms summed TA+fragment GPU stage timestamps (24MHz counter). These
+are different timing scopes; the GPU stage sum is not total firmware time.
+65 reused owners clear at least36MiB each (32MiB private+4MiB parameter buffer),
+2340MiB total, before rebuilding allocator/control state. No clearing has yet
+been removed. This is within the same client VM; correctness and ownership
+must still be established before reducing resets.
+
+Earlier uninstrumented repeated opens in run20260911T195511762533Z had IPC
+completion130/202ms and first sampled centre-card pixel changes596/613ms.
+The profile therefore explains a substantial part of the warm-open delay,
+not the user's entire approximately2second initial observation. Retain the
+normal texture clear required around glyphs; optimize driver copy batching
+or GPU transfer kernels, then remove only proven redundant scratch resets.
+No menu simplification, font-quality reduction or software renderer was used.
+
+Supporting Qt6.11.2 sources: `QSGRhiDistanceFieldGlyphCache::storeGlyphs`
+batches glyph entries by atlas; `QRhiVulkan::recordPrimaryCommandBuffer`
+passes the full region count to vkCmdCopyBufferToImage. The batch is lost in
+our native Mesa path, not in Qt's API calls.

@@ -36,6 +36,8 @@
 #define TILE_WIDTH  32
 #define TILE_HEIGHT 32
 
+DEBUG_GET_ONCE_BOOL_OPTION(hk_m4_copy_trace, "HK_M4_COPY_TRACE", false)
+
 static VkResult
 hk_cmd_bind_map_buffer(struct vk_command_buffer *vk_cmd,
                        struct vk_meta_device *meta, VkBuffer _buffer,
@@ -2285,6 +2287,27 @@ hk_CmdCopyBufferToImage2(VkCommandBuffer commandBuffer,
    VK_FROM_HANDLE(hk_cmd_buffer, cmd, commandBuffer);
    VK_FROM_HANDLE(hk_image, dst_image, pCopyBufferToImageInfo->dstImage);
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
+
+   if (debug_get_option_hk_m4_copy_trace()) {
+      fprintf(stderr,
+              "asahi upload: image=%p format=%s size=%ux%u regions=%u\n",
+              (void *)dst_image, vk_Format_to_str(dst_image->vk.format),
+              dst_image->vk.extent.width, dst_image->vk.extent.height,
+              pCopyBufferToImageInfo->regionCount);
+      for (unsigned i = 0; i < pCopyBufferToImageInfo->regionCount; i++) {
+         const VkBufferImageCopy2 *r = &pCopyBufferToImageInfo->pRegions[i];
+         fprintf(stderr,
+                 "asahi upload region: image=%p index=%u mip=%u layer=%u "
+                 "layers=%u xy=%d,%d extent=%ux%ux%u offset=%" PRIu64
+                 " row=%u rows=%u\n",
+                 (void *)dst_image, i, r->imageSubresource.mipLevel,
+                 r->imageSubresource.baseArrayLayer,
+                 r->imageSubresource.layerCount, r->imageOffset.x,
+                 r->imageOffset.y, r->imageExtent.width, r->imageExtent.height,
+                 r->imageExtent.depth, (uint64_t)r->bufferOffset,
+                 r->bufferRowLength, r->bufferImageHeight);
+      }
+   }
 
    bool gfx = hk_copy_requires_gfx(dst_image);
    if (agx_native_graphics(&dev->dev)) {
