@@ -358,9 +358,10 @@ def main():
                 game_env = {**env, 'SDL_VIDEODRIVER': 'wayland',
                             'MESA_GL_VERSION_OVERRIDE': '3.3',
                             'LD_PRELOAD': '/opt/asahi-m4-port/lib/gl-renderer-audit.so'}
+                game_env['XDG_CONFIG_HOME'] = str(Path(account.pw_dir)/'.config/m4-asahi-supertux')
                 with (result / 'supertux.log').open('w') as game_log:
                     game = subprocess.Popen([*user_command, '/usr/bin/supertux2',
-                        '--renderer', 'opengl', '--window', '--geometry', '800x450',
+                        '--renderer', 'opengl33core', '--window', '--geometry', '800x450',
                         '--disable-sound', '--disable-music', '--show-fps', '--verbose',
                         '/usr/share/games/supertux2/levels/world1/welcome_antarctica.stl'],
                         env=game_env, stdout=game_log, stderr=game_log,
@@ -402,6 +403,8 @@ def main():
                     text = (result/'supertux.log').read_text()
                     if not ('zink' in text.lower() and 'M4' in text):
                         raise RuntimeError('SuperTux did not identify the M4 Zink renderer')
+                    if 'Requesting OpenGL 3.3 Core context' not in text or 'OpenGL: 3.3 (Core Profile)' not in text:
+                        raise RuntimeError('SuperTux did not verify its requested OpenGL 3.3 Core context')
                     path,status = native_kms_status()
                     (result/'supertux-scanout.m4fb').write_bytes(path.with_name('m4_scanout').read_bytes())
                     layers = subprocess.check_output(['hyprctl','-j','layers'],env=env,text=True,timeout=2)
@@ -430,6 +433,12 @@ def main():
                 deadline = time.monotonic() + live_seconds
                 checks = 0
                 while time.monotonic() < deadline and not stop_file.exists() and not Path('/run/m4-hyprland-stop').exists():
+                    if summary.get('supertux'):
+                        if game.poll() is not None:
+                            raise RuntimeError(f'SuperTux exited during level test: {game.returncode}')
+                        game_text = (result/'supertux.log').read_text()
+                        if any(x in game_text for x in ('MESA: error:', 'no grounded AGX3 encoding', 'Assertion `')):
+                            raise RuntimeError('SuperTux driver error; see game log')
                     if summary.get('zeroad_started'):
                         if game.poll() is not None:
                             raise RuntimeError(f'0 A.D. exited during the map test: {game.returncode}')
@@ -477,6 +486,12 @@ def main():
                     time.sleep(min(5, max(0, deadline - time.monotonic())))
                 if summary.get('supertuxkart_started') and not summary.get('supertuxkart_demo',{}).get('completed'):
                     raise RuntimeError('SuperTuxKart demo did not finish before the test deadline or stop request')
+                if summary.get('supertux'):
+                    if game.poll() is not None:
+                        raise RuntimeError('SuperTux exited before final screenshot')
+                    subprocess.run(['grim','-t','ppm','-o',output_name,str(result/'supertux-final.ppm')],env=env,check=True,timeout=6)
+                    summary['supertux_gl_profile'] = 'OpenGL 3.3 Core'
+                    (result/'supertux-result.json').write_text(json.dumps(summary,indent=2)+'\n')
                 if summary.get('zeroad_started'):
                     game_text = (Path(game_env['XDG_STATE_HOME'])/'0ad/log/system_info.txt').read_text()
                     if not ('zink' in game_text.lower() and 'M4' in game_text):
