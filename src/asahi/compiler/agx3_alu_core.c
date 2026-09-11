@@ -8,6 +8,21 @@
 #include <string.h>
 
 bool
+agx3_alu_wait_nop(enum agx_isa_encoding enc, uint16_t wait_mask,
+                  uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len)
+{
+   if (enc != AGX_ISA_ENCODING_AGX3B || !out || !len || (wait_mask & ~0x3fu))
+      return false;
+   /* Composer fields2..7 are the six NOP dependency bits. Unlike identity
+    * ALU preludes, this instruction has no source/destination GPR hazards.
+    * M4 shadow/fog repro and equal-size no-wait control qualify the waits. */
+   struct agx3_field_kv fields[6];
+   for (unsigned i = 0; i < 6; ++i)
+      fields[i] = (struct agx3_field_kv){2 + i, !!(wait_mask & (1u << i))};
+   return agx3_bind_compose(enc, "nop", 0, NULL, 0, fields, 6, out, len);
+}
+
+bool
 agx3_alu_ft1_u32(enum agx_isa_encoding enc, uint16_t dest, uint16_t src,
                  enum agx3_alu_hint hint, bool dest_cache,
                  uint16_t wait_mask, uint8_t out[AGX3_ALU_MAX_LENGTH],

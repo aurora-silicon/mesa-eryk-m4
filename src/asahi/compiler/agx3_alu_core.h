@@ -20,6 +20,10 @@
 extern "C" {
 #endif
 #define AGX3_ALU_MAX_LENGTH 16u
+/* Register-free AGX3B scoreboard wait; all six slot bits can be combined. */
+bool agx3_alu_wait_nop(enum agx_isa_encoding enc, uint16_t wait_mask,
+                       uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len);
+
 /* Ops that alu_compose can carry a wait on (fmin/fmax's tied-operand fsel form
  * is not modeled here; the backend keeps those on the compact packer). */
 bool agx3_alu_wait_supported(enum agx3_alu_op op);

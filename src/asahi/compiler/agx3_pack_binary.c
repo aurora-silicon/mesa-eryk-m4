@@ -2173,6 +2173,11 @@ agx3_emit_alu(struct util_dynarray *emission, enum agx_isa_encoding enc,
       return agx3_append(emission, bytes, len);
    }
 
+   if (enc == AGX_ISA_ENCODING_AGX3B) {
+      return agx3_alu_wait_nop(enc, wait_mask, bytes, &len) &&
+             agx3_append(emission, bytes, len) && agx3_emit(emission, enc, S);
+   }
+
    /* Some compact ALU forms cannot carry the needed scoreboard wait. Retire
     * it with a synchronous prelude, then emit the ordinary no-wait form.
     * A fresh destination can take an ldimm; an in-place accumulator instead
@@ -2832,47 +2837,27 @@ agx3_emit_cnd(struct util_dynarray *emission, enum agx_isa_encoding enc,
 /* Returns 1 when I is a grounded control-flow instruction and was emitted,
  * zero when it is not control flow, and -1 when it is control flow but falls
  * outside the grounded domain. */
-/*
- * Retire scoreboard slots ahead of a control-flow boundary.
- *
- * agx3_slot_assign() is a linear pass, so its "waited once = satisfied
- * globally" rule is only sound when every path into a block sees the same
- * scoreboard. The sufficient condition is an empty one. A result that is
- * still in flight at a divergence would otherwise have its wait land inside
- * ONE arm -- the atomic lowering does exactly this, hoisting the descriptor
- * load above the branch and consuming it in the taken arm -- and the other
- * arm would then read it unwaited.
- *
- * Waiting early is always semantically safe (it only costs latency), so
- * rather than refusing, retire everything here. `band(r0, r0, r0)` is a true
- * no-op -- x & x == x preserves every bit -- and it is the same wait-carrying
- * form agx3_emit_alu() already uses as a prelude. Writing r0 is safe even if
- * r0 is an in-flight load's destination, because the wait retires before the
- * write, so the band stores back exactly what the load delivered.
- *
- * Emits one instruction per slot, matching the witnessed prelude usage.
- */
+/* Retire dependencies without writing a GPR. An identity operation such as
+ * BAND(r0,r0,r0) is not safe when an unrelated load is still writing r0:
+ * waiting one slot at a time can clobber a later slot's returned value. */
 static bool
 agx3_retire_slots_noop(struct util_dynarray *emission, enum agx_isa_encoding enc,
                        uint16_t mask)
 {
-   if (enc == AGX_ISA_ENCODING_AGX3B &&
-       debug_get_bool_option("AGX3_WAIT_NATIVE_NOP", false)) {
-      struct agx3_field_kv fields[6];
-      for (unsigned i = 0; i < 6; ++i)
-         fields[i] = (struct agx3_field_kv){2 + i,
-            !debug_get_bool_option("AGX3_WAIT_EMPTY_NOP", false) &&
-            !!(mask & (1u << i))};
+   if (!mask)
+      return true;
+   if (enc == AGX_ISA_ENCODING_AGX3B) {
       uint8_t bytes[AGX3_ALU_MAX_LENGTH], len;
-      return agx3_bind_compose(enc, "nop", 0, NULL, 0, fields, 6, bytes, &len) &&
+      return agx3_alu_wait_nop(enc, mask, bytes, &len) &&
              agx3_append(emission, bytes, len);
    }
+   /* AGX3C retains its existing unqualified fallback; the compact NOP wait
+    * layout below is grounded only for AGX3B. */
    while (mask != 0) {
       const uint16_t one = mask & (uint16_t)-(int16_t)mask;
       uint8_t bytes[AGX3_ALU_MAX_LENGTH];
       uint8_t len = 0;
-      const unsigned reg = debug_get_bool_option("AGX3_WAIT_NOOP_R1", false) ? 2 : 0;
-      if (!agx3_alu_compose(enc, AGX3_ALU_BAND, reg, reg, reg, 0, 0, one, bytes,
+      if (!agx3_alu_compose(enc, AGX3_ALU_BAND, 0, 0, 0, 0, 0, one, bytes,
                             &len) ||
           !agx3_append(emission, bytes, len))
          return false;
@@ -3978,9 +3963,6 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
          if (I->op == AGX_OPCODE_EXPORT)
             continue;
          e->is_async = agx3_is_async(I);
-         e->reads_async = enc == AGX_ISA_ENCODING_AGX3B &&
-                          I->op == AGX_OPCODE_DEVICE_LOAD &&
-                          !debug_get_bool_option("AGX3_NO_SOURCE_WAITS", false);
          if (g17p_storage_image_protocol &&
              (I->op == AGX_OPCODE_IMAGE_LOAD ||
               I->op == AGX_OPCODE_TEXTURE_SAMPLE))
@@ -4127,8 +4109,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             outstanding &= (uint16_t)~wait;
             wait = 0;
          }
-         /* Interpolation has no inline wait field. Its destination may
-          * overwrite an address still being read by a device load. */
+         /* Interpolation has no inline wait field. Retire pending producers
+          * before reusing their physical destination registers. */
          if (wait && (I->op == AGX_OPCODE_INTERP_AGX3 ||
                       I->op == AGX_OPCODE_RHW_INTERP_AGX3 ||
                       I->op == AGX_OPCODE_LDCF)) {
@@ -6345,16 +6327,13 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                uint8_t bytes[AGX3_ALU_MAX_LENGTH], len = 0;
                if (!agx3_alu_float_reg(enc, op, I->dest[0].value, src, hints,
                                         wait, bytes, &len)) {
-                  /* Compact forms cannot carry every wait combination. Drain
-                   * all outstanding work before the r0-preserving prelude,
-                   * then retry the same operands/hints without waits. */
+                  /* Retire only the required dependencies with a register-free
+                   * NOP, then retry the original operands without inline waits. */
                   if (wait == 0 ||
-                      !agx3_retire_slots_noop(emission, enc,
-                                              wait | outstanding_here) ||
+                      !agx3_retire_slots_noop(emission, enc, wait) ||
                       !agx3_alu_float_reg(enc, op, I->dest[0].value, src,
                                            hints, 0, bytes, &len))
                      AGX3_REFUSE(I);
-                  outstanding = 0;
                }
                if (!agx3_append(emission, bytes, len))
                   AGX3_REFUSE(I);

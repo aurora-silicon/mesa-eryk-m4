@@ -22,38 +22,6 @@ int main(void)
 {
    struct agx3_slot_result r[64];
 
-   /* Loads retain physical GPR address inputs until every reader retires. */
-   {
-      struct agx3_slot_instr a = ld(10), b = ld(12);
-      a.reads_async = b.reads_async = true;
-      a.nr_srcs = b.nr_srcs = 1;
-      a.src[0] = b.src[0] = 2;
-      struct agx3_slot_instr p[] = {a, b, st(2), alu(2, 20, 22), st(10)};
-      CHECK(agx3_slot_assign(p, 5, 6, r));
-      CHECK(r[1].wait_mask == 0); /* read/read is independent */
-      CHECK(r[2].wait_mask == 0);
-      CHECK(r[3].wait_mask == 3); /* overwriting the address waits both */
-      CHECK(r[4].wait_mask == 0); /* result now retired too */
-   }
-
-   /* A result wait retires its address read; slot reuse must not resurrect it. */
-   {
-      struct agx3_slot_instr a = ld(10), b = ld(12);
-      a.reads_async = b.reads_async = true;
-      a.nr_srcs = b.nr_srcs = 1;
-      a.src[0] = 2;
-      b.src[0] = 4;
-      struct agx3_slot_instr p[] = {
-         a, st(10), b, alu(2, 20, 22), alu(4, 20, 22),
-      };
-      CHECK(agx3_slot_assign(p, 5, 1, r));
-      CHECK(r[1].wait_mask == 1);
-      CHECK(r[3].wait_mask == 0);
-      CHECK(r[4].wait_mask == 1);
-      a.is_async = false;
-      CHECK(!agx3_slot_assign(&a, 1, 6, r));
-   }
-
    /* Two loads then an add consuming both: each load gets a distinct slot, the
     * add waits both. */
    {

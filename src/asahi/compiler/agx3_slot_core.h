@@ -4,8 +4,8 @@
  *
  * AGX3 scoreboard slot assignment.
  *
- * AGX3 has no standalone wait instruction and no AGX2-style two-slot scoreboard.
- * Instead every async result (device/threadgroup load, texture sample, atomic,
+ * AGX3B NOP can carry a six-slot wait mask without reading or writing GPRs.
+ * Every async result (device/threadgroup load, texture sample, atomic,
  * stack fill) is tagged with a scoreboard slot, and every later instruction that
  * consumes such a result carries a wait-bit mask naming the slots it must first
  * synchronise. A slot waited once is satisfied for all later instructions until
@@ -48,7 +48,6 @@ extern "C" {
 
 struct agx3_slot_instr {
    bool is_async;   /* produces a scoreboard-tracked result */
-   bool reads_async; /* GPR inputs remain live until this slot retires */
    uint8_t preferred_slot; /* 0=round-robin, otherwise required slot */
    uint8_t nr_dsts; /* dependency tokens this instruction writes */
    uint8_t nr_srcs; /* dependency tokens this instruction reads */

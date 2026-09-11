@@ -118,3 +118,24 @@ bits in the same-size NOP163923 fails257609pixels>1; ordinary instruction
 padding does not explain the result. Peaks51C. Next control removes the
 recent address-source waits, which may merely have hidden the original
 identity-helper race by prematurely retiring the preceding load.
+
+### Final dependency fix (2026-09-11 16:44 UTC)
+
+AGX3B explicit dependency waits now use register-free NOP, including compact
+ALU fallback. This avoids the asynchronous write race and combines required
+slots without draining unrelated producers. Reverted the address-source
+reader tracking from7ac0df03ea2: it only masked the identity-helper race by
+retiring an earlier load. With those added stalls disabled, the shadow probe
+164052 still matches the one-pixel rasterization floor, and complete original
+prefix164233 exactly matches the clean full-serialization image (1349pixels
+exceed8 levels,meanRGBA.2155814/255). No game shaders or features replaced.
+
+Encoder checks cover all64 NOP masks plus invalid masks/encodings/pointers.
+Focused ALU suite passes (71 reported legacy checks,13 known unsupported
+forms skipped, plus the detailed native/field checks); slot suite60checks
+passes. Native NOP semantics qualified by the M4 positive/negative controls,
+not by scanning embedded bytes in a native archive. AGX3C retains its old
+fallback and is not covered by this hardware claim. Default-code hardware
+regressions and actual game qualification follow. Diagnostic NATIVE_NOP,
+EMPTY_NOP,NO_SOURCE_WAITS and R1 selectors have been removed from production
+source; old experiment binaries/patches preserve these controls.

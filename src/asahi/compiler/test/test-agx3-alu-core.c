@@ -1422,7 +1422,26 @@ static void test_native_high_float_registers(void)
    puts("Native full-bank FMUL/FMA:16 exact high-register/lifetime/wait vectors PASS");
 }
 
+static void test_register_free_wait_nop(void)
+{
+   /* The independently recovered composer deposits NOP's six slot fields
+    * into bits10..15. Hardware tests distinguish these from a same-size
+    * empty NOP and preserve an in-flight r0 result across combined waits. */
+   for (unsigned mask = 0; mask < 64; ++mask) {
+      uint8_t bytes[AGX3_ALU_MAX_LENGTH], len;
+      assert(agx3_alu_wait_nop(AGX_ISA_ENCODING_AGX3B, mask, bytes, &len));
+      assert(len == 2 && bytes[0] == 6 && bytes[1] == (mask << 2));
+   }
+   uint8_t bytes[AGX3_ALU_MAX_LENGTH], len;
+   assert(!agx3_alu_wait_nop(AGX_ISA_ENCODING_AGX3B, 64, bytes, &len));
+   assert(!agx3_alu_wait_nop(AGX_ISA_ENCODING_AGX3C, 1, bytes, &len));
+   assert(!agx3_alu_wait_nop(AGX_ISA_ENCODING_AGX3B, 1, NULL, &len));
+   assert(!agx3_alu_wait_nop(AGX_ISA_ENCODING_AGX3B, 1, bytes, NULL));
+   puts("Register-free NOP waits: all64 masks and invalid-input checks PASS");
+}
+
 int main(void){
+   test_register_free_wait_nop();
    test_native_minifloat_half_select();
    test_native_bit_andc();
    test_native_ft1();
