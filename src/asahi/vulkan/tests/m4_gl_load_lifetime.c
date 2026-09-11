@@ -110,17 +110,30 @@ main(void)
       "layout(location=2)in vec2 uv2;layout(location=3)in vec3 n;"
       "layout(location=4)in vec4 t;uniform mat4 matrix;uniform vec2 scroll;"
       "uniform vec3 camera;uniform vec4 plane;out vec2 a,b;out vec3 c;"
-      "out float fog;void main(){gl_Position=matrix*p;"
+      "out float fog;\n#if SHADOW_LOADS\nuniform mat4 sp;out vec3 sc;\n#endif\n"
+      "void main(){gl_Position=matrix*p;"
       "a=uv+scroll;b=uv2*(1.0/32768.0);vec3 q=camera-p.xyz;"
       "c=vec3(dot(q,t.xyz),dot(q,cross(n,t.xyz)*t.w),dot(q,n));"
-      "fog=dot(plane,gl_Position);}";
+      "fog=dot(plane,gl_Position);\n#if SHADOW_LOADS\nsc=(sp*p).xyz;\n#endif\n}";
    const char *fs =
       "#version 330\nin vec2 a,b;in vec3 c;in float fog;uniform vec2 fp;"
+      "\n#if SHADOW_LOADS\nin vec3 sc;uniform sampler2D sm;uniform vec3 sa;\n#endif\n"
       "out vec4 color;void main(){color=vec4(clamp(fog*fp.x+fp.y,0.,1.),"
       "a.x+a.y*.37+b.x*.25+b.y*.125,"
-      "dot(normalize(c),vec3(.25,.125,.0625))+.5,1);}";
-   GLuint p = glCreateProgram(), v = shader(GL_VERTEX_SHADER, vs),
-          f = shader(GL_FRAGMENT_SHADER, fs);
+      "dot(normalize(c),vec3(.25,.125,.0625))+.5,1);\n#if SHADOW_LOADS\n"
+      "vec4 t=texture(sm,sc.xy);vec2 d=clamp(t.xz-sc.zz*t.y,0.,1.);"
+      "float h=clamp((d.x>0.?t.w:0.)-8.*d.y,0.,1.);"
+      "color.rgb-=h*clamp(color.rgb-sa,0.,1.);\n#endif\n}";
+   bool shadow_loads = getenv("M4_TEST_SHADOW_LOADS") != NULL;
+   char vertex_source[4096], fragment_source[4096];
+   snprintf(vertex_source, sizeof(vertex_source),
+            "#version 330\n#define SHADOW_LOADS %u\n%s", shadow_loads,
+            strchr(vs, '\n') + 1);
+   snprintf(fragment_source, sizeof(fragment_source),
+            "#version 330\n#define SHADOW_LOADS %u\n%s", shadow_loads,
+            strchr(fs, '\n') + 1);
+   GLuint p = glCreateProgram(), v = shader(GL_VERTEX_SHADER, vertex_source),
+          f = shader(GL_FRAGMENT_SHADER, fragment_source);
    glAttachShader(p, v);
    glAttachShader(p, f);
    glLinkProgram(p);
@@ -133,6 +146,20 @@ main(void)
    glUniform2f(glGetUniformLocation(p, "scroll"), 0, 0);
    glUniform3f(glGetUniformLocation(p, "camera"), 4, 8, 16);
    glUniform4f(glGetUniformLocation(p, "plane"), 0, 0, 0, -1);
+   if (shadow_loads) {
+      glUniformMatrix4fv(glGetUniformLocation(p, "sp"), 1, GL_FALSE, matrix);
+      glUniform3f(glGetUniformLocation(p, "sa"), 1, 1, 1);
+      glUniform1i(glGetUniformLocation(p, "sm"), 0);
+      GLuint shadow;
+      const unsigned char zero[4] = {0};
+      glGenTextures(1, &shadow);
+      glBindTexture(GL_TEXTURE_2D, shadow);
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 1, 1, 0, GL_RGBA,
+                   GL_UNSIGNED_BYTE, zero);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+   }
+   printf("shadow_matrix_loads=%u\n", shadow_loads);
    glViewport(0, 0, W, W);
    unsigned total_bad = 0, max_error = 0;
    const unsigned repeats = 24;

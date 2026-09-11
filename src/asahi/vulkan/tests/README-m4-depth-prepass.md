@@ -139,3 +139,16 @@ fallback and is not covered by this hardware claim. Default-code hardware
 regressions and actual game qualification follow. Diagnostic NATIVE_NOP,
 EMPTY_NOP,NO_SOURCE_WAITS and R1 selectors have been removed from production
 source; old experiment binaries/patches preserve these controls.
+
+The optional `M4_TEST_SHADOW_LOADS=1` mode adds a second matrix and neutral
+shadow sampler to the self-contained oracle. Current binary165153 and old
+369e72 baseline165358 both pass393216pixels exactly. Thus both synthetic
+modes remain broad regression controls, not reproducers; retain the captured
+original shader551 mesh for the demonstrated pre-fix failure. All18 extracted
+program sources exactly match independently dumped Mesa GLSL.
+
+Full unchanged capture164533 now completes with663thermal samples,peak53.5C.
+Three frames535830/885915/1240918 visually inspected: no broad fog corruption;
+meanRGBAerror.217213/.211190/.210931 out of255 and1341/1033/1025pixels>8
+(0.0326–0.0426%). This is correct sampled scene rendering, not pixel-identical
+rasterization or complete game conformance. Actual live-session check pending.
