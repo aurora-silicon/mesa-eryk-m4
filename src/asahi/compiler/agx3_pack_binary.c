@@ -4005,9 +4005,14 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
 
    const char *explicit_waits = ctx->stage == MESA_SHADER_VERTEX &&
       enc == AGX_ISA_ENCODING_AGX3B ? getenv("AGX3_VERTEX_EXPLICIT_WAITS") : NULL;
+   const char *serialize_scope = getenv("AGX3_VERTEX_SERIALIZE_SCOPE");
+   const char *serialize_before = getenv("AGX3_VERTEX_SERIALIZE_BEFORE");
    const bool serialize_vertex = ctx->stage == MESA_SHADER_VERTEX &&
       enc == AGX_ISA_ENCODING_AGX3B &&
-      debug_get_bool_option("AGX3_VERTEX_SERIALIZE", false);
+      debug_get_bool_option("AGX3_VERTEX_SERIALIZE", false) &&
+      (!serialize_scope ||
+       (!strcmp(serialize_scope, "main") && !ctx->nir->info.internal) ||
+       (!strcmp(serialize_scope, "internal") && ctx->nir->info.internal));
 
    const bool source_waits = ctx->stage == MESA_SHADER_VERTEX &&
       enc == AGX_ISA_ENCODING_AGX3B &&
@@ -4056,7 +4061,11 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
 
          /* Diagnostic only: retire the previous physical producer before
           * any next instruction, using the existing bit-preserving wait. */
-         if (serialize_vertex && outstanding) {
+         if (serialize_vertex && outstanding &&
+             (!serialize_before ||
+              (!strcmp(serialize_before, "load") && agx3_is_async(I)) ||
+              (!strcmp(serialize_before, "alu") && !agx3_is_async(I)) ||
+              (!strcmp(serialize_before, "output") && I->op == AGX_OPCODE_ST_VARY))) {
             if (!agx3_retire_slots_noop(emission, enc, outstanding))
                AGX3_REFUSE(I);
             outstanding = 0;

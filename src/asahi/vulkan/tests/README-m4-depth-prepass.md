@@ -88,3 +88,13 @@ whereas full vertex serialization161033 removes them (1349pixels>8,mean.21558).
 Thus the address dependency fix is partial; it is not a complete game result.
 Peak temperature across these runs51.5C. Remaining vertex timing issue under
 investigation. The synthetic test has not yet been run on the pre-fix compiler.
+
+The synthetic oracle also passes on preserved pre-fix binary369e72f027b6
+(experiment161624,51C). It is a broad arithmetic regression control, not a
+reproducer of the address-lifetime failure; the captured material test remains
+the reproducer. Combined address+slot-reuse retirement161224 leaves13179
+pixels>8; address+explicit existing waits161326 leaves53101. Neither removes
+all game patches. `AGX3_VERTEX_SERIALIZE_SCOPE=main|internal` now narrows the
+existing serialization diagnostic by NIR shader identity; optional
+`AGX3_VERTEX_SERIALIZE_BEFORE=load|alu|output` narrows the instruction boundary.
+Both require AGX3_VERTEX_SERIALIZE=1 and have no default effect.
