@@ -30,3 +30,10 @@ script reports its built-in FPS every five seconds after map loading. These
 reports never renew the watchdog; only the existing GPU/thermal checks do.
 On failure the guard prints the selected game's log tail before recovery, so
 missing features can be identified while the reboot is still finishing.
+
+143430 map survived the full180-second capture,380 thermal samples,peak51.5C,
+about3FPS later in the run. The runner then failed its identity check because
+Sauerbraten writes Renderer/map-ready to its engine log, not redirected stdout.
+The launcher now reads a unique per-run engine log and saves it with evidence;
+stale logs are refused. Screenshot shows missing geometry, so this is not yet
+correct rendering. The original68MiB trace is retained for same-frame comparison.

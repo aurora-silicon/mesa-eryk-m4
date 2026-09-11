@@ -50,3 +50,14 @@ The unqualified render-timestamp kernel patch is separately retained at workspac
 build/0ad/native-timestamp-delivery-wip.patch; current kernel source returned to
 the qualified implementation plus host phase diagnostics. No fixed sleeps or
 CPU readback substitution were accepted as a synchronization fix.
+
+## Occlusion counts (separate from timestamp ordering)
+
+`m4_gl_occlusion_query.c` tests eight reuses of four queries:16384 full-screen
+samples,77 scissored samples,zero samples, and a positive ANY_SAMPLES_PASSED
+query. It also verifies131072 green pixels. Host llvmpipe passed; guarded M4 run
+143947 passed all32 exact query results and pixels, peak50.25C. The tested Mesa
+includes the native reset/availability/result-copy helpers. This is a bounded
+basic occlusion qualification, not proof of arbitrary query ordering or timers.
+
+Build with `-lEGL -lGL`; execute hardware only inside the existing J713 guard.

@@ -334,8 +334,11 @@ def main():
                     game_env.update(LD_PRELOAD='/opt/m4-apitrace/usr/lib/apitrace/wrappers/egltrace.so',
                                     TRACE_FILE=str(trace_file))
                     (result/'graphics-trace.json').write_text(json.dumps({'path':str(trace_file),'api':'egl'})+'\n')
+                game_engine_log = game_home/(result.name+'.log')
+                if game_engine_log.exists():
+                    raise RuntimeError('refusing to overwrite a game engine log')
                 game_args = ['/opt/m4-sauerbraten/sauer_client', '-q'+str(game_home),
-                             '-g', '-t0', '-w1024', '-h768', '-lmetl4',
+                             '-g'+str(game_engine_log), '-t0', '-w1024', '-h768', '-lmetl4',
                              '-xshowfps 1; echo M4_SAUERBRATEN_MAP_READY; '
                              'm4stats = [echo M4_SAUERBRATEN_FPS (getfps); sleep 5000 [m4stats]]; m4stats']
                 (result/'sauerbraten-command.json').write_text(json.dumps(game_args, indent=2)+'\n')
@@ -510,7 +513,7 @@ def main():
                     summary['zeroad_scope'] = 'Bounded process/window survival; inspect screenshots for map rendering'
                     (result/'0ad-result.json').write_text(json.dumps(summary,indent=2)+'\n')
                 if summary.get('sauerbraten_started'):
-                    game_text = (result/'sauerbraten.log').read_text()
+                    game_text = game_engine_log.read_text()
                     if not any('Renderer:' in line and 'zink' in line.lower() and 'M4' in line
                                for line in game_text.splitlines()):
                         raise RuntimeError('Sauerbraten did not identify the M4 Zink renderer')
@@ -539,7 +542,9 @@ def main():
                     shutil.copytree(logs, result/'0ad-engine-logs', dirs_exist_ok=True)
             if os.environ.get('M4_TEST_SAUERBRATEN') == '1' and account:
                 home = Path(account.pw_dir)/'.config/m4-asahi-sauerbraten'
-                for name in ('log.txt', 'init.cfg', 'config.cfg'):
+                if (home/(result.name+'.log')).is_file():
+                    shutil.copyfile(home/(result.name+'.log'), result/'sauerbraten-engine.log')
+                for name in ('init.cfg', 'config.cfg'):
                     if (home/name).is_file():
                         shutil.copyfile(home/name, result/('sauerbraten-'+name))
             for process in (game, terminal, child):
