@@ -2856,11 +2856,23 @@ static bool
 agx3_retire_slots_noop(struct util_dynarray *emission, enum agx_isa_encoding enc,
                        uint16_t mask)
 {
+   if (enc == AGX_ISA_ENCODING_AGX3B &&
+       debug_get_bool_option("AGX3_WAIT_NATIVE_NOP", false)) {
+      struct agx3_field_kv fields[6];
+      for (unsigned i = 0; i < 6; ++i)
+         fields[i] = (struct agx3_field_kv){2 + i,
+            !debug_get_bool_option("AGX3_WAIT_EMPTY_NOP", false) &&
+            !!(mask & (1u << i))};
+      uint8_t bytes[AGX3_ALU_MAX_LENGTH], len;
+      return agx3_bind_compose(enc, "nop", 0, NULL, 0, fields, 6, bytes, &len) &&
+             agx3_append(emission, bytes, len);
+   }
    while (mask != 0) {
       const uint16_t one = mask & (uint16_t)-(int16_t)mask;
       uint8_t bytes[AGX3_ALU_MAX_LENGTH];
       uint8_t len = 0;
-      if (!agx3_alu_compose(enc, AGX3_ALU_BAND, 0, 0, 0, 0, 0, one, bytes,
+      const unsigned reg = debug_get_bool_option("AGX3_WAIT_NOOP_R1", false) ? 2 : 0;
+      if (!agx3_alu_compose(enc, AGX3_ALU_BAND, reg, reg, reg, 0, 0, one, bytes,
                             &len) ||
           !agx3_append(emission, bytes, len))
          return false;
@@ -3967,7 +3979,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             continue;
          e->is_async = agx3_is_async(I);
          e->reads_async = enc == AGX_ISA_ENCODING_AGX3B &&
-                          I->op == AGX_OPCODE_DEVICE_LOAD;
+                          I->op == AGX_OPCODE_DEVICE_LOAD &&
+                          !debug_get_bool_option("AGX3_NO_SOURCE_WAITS", false);
          if (g17p_storage_image_protocol &&
              (I->op == AGX_OPCODE_IMAGE_LOAD ||
               I->op == AGX_OPCODE_TEXTURE_SAMPLE))
@@ -4071,6 +4084,12 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             outstanding = 0;
          }
 
+         if (debug_get_bool_option("AGX3_SLOT_TRACE", false) &&
+             ctx->stage == MESA_SHADER_VERTEX && !ctx->nir->info.internal) {
+            fprintf(stderr, "SLOT k=%u outstanding=%02x wait=%02x issue=%u ",
+                    k, outstanding, res[k].wait_mask, res[k].slot);
+            agx_print_instr(I, stderr);
+         }
          const uint8_t slot = res[k].slot;
          uint16_t wait = res[k].wait_mask;
          if (reuse_waits && slot) {

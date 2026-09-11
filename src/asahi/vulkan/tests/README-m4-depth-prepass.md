@@ -98,3 +98,23 @@ all game patches. `AGX3_VERTEX_SERIALIZE_SCOPE=main|internal` now narrows the
 existing serialization diagnostic by NIR shader identity; optional
 `AGX3_VERTEX_SERIALIZE_BEFORE=load|alu|output` narrows the instruction boundary.
 Both require AGX3_VERTEX_SERIALIZE=1 and have no default effect.
+
+### Wait-helper register clobber
+
+The original shadowed shader551 is a short residual reproducer when supplied
+complete neutral1x1 materials by gl-mesh-replay. It fails44959pixels>1. Its
+slot timeline162854 shows the final r14 scale load in slot2, then r0 bias
+load in slot3. The FMA's two-wait fallback emits BAND(r0,r0,r0) waiting slot2
+first, although r0's slot3 writer remains in flight. That identity operation
+can overwrite the load's returned value. Moving only diagnostic wait scratch
+to r1 fixes the short probe163455 and original prefix163556 (matches the
+full-serialization image exactly). This is causal isolation, not a general
+r1 workaround.
+
+The composer exposes register-free two-byte AGX3B NOP: fields2..7 correspond
+to the six dependency bits, encoding0604/0608/0610/0620/0640/0680. Replacing
+identity waits by this NOP fixes the shadowed probe163815. Clearing those
+bits in the same-size NOP163923 fails257609pixels>1; ordinary instruction
+padding does not explain the result. Peaks51C. Next control removes the
+recent address-source waits, which may merely have hidden the original
+identity-helper race by prematurely retiring the preceding load.
