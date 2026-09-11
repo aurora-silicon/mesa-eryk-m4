@@ -2510,6 +2510,43 @@ agx_lower_agx3_fma_sources(agx_context *ctx)
    }
 }
 
+/* The native half-width branch encoder supports register/register and
+ * register/zero comparisons. Materialize other constants while SSA temporaries
+ * can still be allocated; never invent a scratch register in the packer. */
+bool
+agx_lower_agx3_cf_constants(agx_context *ctx)
+{
+   if (ctx->key->dev.encoding != AGX_ISA_ENCODING_AGX3B)
+      return false;
+
+   bool progress = false;
+   agx_foreach_instr_global_safe(ctx, I) {
+      switch (I->op) {
+      case AGX_OPCODE_IF_ICMP:
+      case AGX_OPCODE_ELSE_ICMP:
+      case AGX_OPCODE_WHILE_ICMP:
+      case AGX_OPCODE_BREAK_IF_ICMP:
+         break;
+      default:
+         continue;
+      }
+      if (I->nr_srcs != 2)
+         continue;
+      for (unsigned s = 0; s < 2; ++s) {
+         agx_index src = I->src[s], other = I->src[1 - s];
+         if (src.type != AGX_INDEX_IMMEDIATE || src.value == 0 ||
+             src.value > UINT8_MAX || src.abs || src.neg ||
+             other.type == AGX_INDEX_IMMEDIATE || other.size != AGX_SIZE_16 ||
+             agx_channels(other) != 1)
+            continue;
+         agx_builder b = agx_init_builder(ctx, agx_before_instr(I));
+         I->src[s] = agx_mov_imm(&b, 16, src.value);
+         progress = true;
+      }
+   }
+   return progress;
+}
+
 static void
 agx_materialize_agx3_alu_constants(agx_context *ctx)
 {
@@ -4529,6 +4566,8 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
 
    if (key->dev.encoding != AGX_ISA_ENCODING_AGX2)
       agx_materialize_agx3_alu_constants(ctx);
+
+   AGX_PASS(ctx, agx_lower_agx3_cf_constants);
 
    /* For correctness, lower uniform sources after copyprop (for correctness,
     * as copyprop creates uniform sources). To keep register pressure in

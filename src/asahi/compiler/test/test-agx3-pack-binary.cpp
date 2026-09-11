@@ -5483,6 +5483,37 @@ TEST_F(AGX3PackBinary, CachedHalfIdentityUnconditionalLoopBreak)
    EXPECT_EQ(pack(b), want);
 }
 
+TEST_F(AGX3PackBinary, HalfBranchConstantsMaterializedBeforeRegisterAllocation)
+{
+   for (unsigned side = 0; side < 2; ++side) {
+      for (unsigned value : {0u, 2u, 255u}) {
+         agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+         agx_index half = agx_temp(b->shader, AGX_SIZE_16);
+         agx_instr *branch = agx_if_icmp(b,
+            side ? half : agx_immediate(value),
+            side ? agx_immediate(value) : half, 1, AGX_ICOND_SLT, true, NULL);
+         EXPECT_EQ(agx_lower_agx3_cf_constants(b->shader), value != 0);
+         EXPECT_TRUE(agx_is_equiv(branch->src[1-side], half));
+         EXPECT_EQ(branch->icond, AGX_ICOND_SLT);
+         EXPECT_TRUE(branch->invert_cond);
+         if (value) {
+            EXPECT_EQ(branch->src[side].type, AGX_INDEX_NORMAL);
+            EXPECT_EQ(branch->src[side].size, AGX_SIZE_16);
+            agx_instr *constant = list_first_entry(&agx_start_block(b->shader)->instructions, agx_instr, link);
+            EXPECT_EQ(constant->op, AGX_OPCODE_MOV_IMM);
+            EXPECT_EQ(constant->imm, value);
+            EXPECT_TRUE(agx_is_equiv(constant->dest[0], branch->src[side]));
+         } else {
+            EXPECT_EQ(branch->src[side].type, AGX_INDEX_IMMEDIATE);
+         }
+      }
+   }
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3C);
+   agx_if_icmp(b, agx_temp(b->shader, AGX_SIZE_16), agx_immediate(2),
+               1, AGX_ICOND_UEQ, false, NULL);
+   EXPECT_FALSE(agx_lower_agx3_cf_constants(b->shader));
+}
+
 TEST_F(AGX3PackBinary, ZeroLeftHalfComparisonsPreserveRelationAndHints)
 {
    const struct {
