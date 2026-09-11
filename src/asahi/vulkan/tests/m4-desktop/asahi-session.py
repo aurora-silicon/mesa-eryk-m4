@@ -363,6 +363,20 @@ def main():
                     game_env['ZINK_INLINE_UNIFORMS'] = '1'
                 if os.getenv('M4_TEST_FRAME_TIMINGS') == '1':
                     game_env['M4_SWAP_TIMING'] = '1'
+                if os.getenv('M4_SUPERTUX_TRACE') == '1':
+                    trace_dir = Path(account.pw_dir)/'.local/state/m4-asahi-traces'
+                    trace_dir.mkdir(parents=True, exist_ok=True)
+                    os.chown(trace_dir, account.pw_uid, account.pw_gid)
+                    trace_file = trace_dir/(result.name+'.trace')
+                    if trace_file.exists():
+                        raise RuntimeError('refusing to overwrite graphics trace')
+                    wrapper = Path('/opt/m4-apitrace/usr/lib/apitrace/wrappers/egltrace.so')
+                    if not wrapper.is_file():
+                        raise RuntimeError('apitrace EGL wrapper is missing')
+                    game_env['LD_PRELOAD'] += ':' + str(wrapper)
+                    game_env['TRACE_FILE'] = str(trace_file)
+                    (result/'graphics-trace.json').write_text(json.dumps(
+                        {'path': str(trace_file), 'api': 'egl'}, indent=2)+'\n')
                 with (result / 'supertux.log').open('w') as game_log:
                     game = subprocess.Popen([*user_command, '/usr/bin/supertux2',
                         '--renderer', 'opengl33core', '--window', '--geometry', '800x450',
