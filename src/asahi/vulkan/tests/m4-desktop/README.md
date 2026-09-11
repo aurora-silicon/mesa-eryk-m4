@@ -1246,3 +1246,35 @@ watchdog/thermal guard. The shader dispatch is 32 workgroups of 32 threads. All
 6144 words passed on M4 in `20260911T103145538063Z`, including unchanged input
 words and both halves of signed and unsigned products. Peak exposed temperature
 was 52 C; actual output bytes were retained. ARM64 Mesa build also passed.
+
+### Compressed textures restored (2026-09-11)
+
+0 A.D. now completes the shadowed acropolis scene with its normal S3TC assets,
+postprocessing, and ordinary Zink batching. `20260911T102730456784Z` passed a
+180-second run under native Hyprland: 35 health checks, 383 thermal samples,
+peak 54.25 C. Both live and final screenshots show correct buildings, terrain,
+foliage and shadows. The installed Vulkan library was `02e90cf0584fe837...`;
+Gallium was `466c2760a71bf216...`, kernel module `829ee846d167e53e...`.
+
+The driver now copies encoded BC1 RGB/RGBA, BC2 and BC3 blocks with a GPU compute
+shader, including their sRGB forms. Uploads use linear source addressing and
+Morton tiled destinations; image copies use tiled endpoints. This fixes the
+unsupported BC1 RGB/BC3 uploads and the crash caused by trying to render into a
+compressed texture during Zink's mip-chain migration. Work is dispatched per
+region/layer instead of once per block. Large BC1 tiles are 64×32 blocks;
+mip-tail tiles may be square. Buffer row addressing retains 64-bit products.
+No CPU decompression, game texture override or enlarged fixed driver pool is
+part of this change.
+
+`m4_zink_bc_upload.c` checks eight formats over ten levels of a 512×272 image,
+including alpha, multiple rectangular tiles, small tails, texture migration,
+and a nonzero-offset interior subimage update. Both llvmpipe and the M4 passed
+all 1,310,720 pixels (`20260911T103417414407Z`, peak 51.75 C). The preceding full
+image test also passed; the actual game exercised full 1024×1024 BC1 uploads.
+Host meta-copy region tests passed 3672 layer cases. ARM64 Mesa builds passed.
+
+This qualifies the tested scene and operations, not every graphics option or
+an entire match. Performance remains about 2 FPS. The separate cold first
+GPU-readback issue remains open. GPU surface compression is still disabled by
+`ASAHI_MESA_DEBUG=nocompress`; that is separate from S3TC texture compression.
+GPU clocks remain at the qualified low setting with watchdog and thermal guards.
