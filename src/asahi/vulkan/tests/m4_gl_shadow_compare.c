@@ -3,6 +3,7 @@
  * Live J713 execution requires watchdog and thermal guards.
  */
 #include <math.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -117,7 +118,11 @@ main(void)
          depths[y * 4 + x] = ((x + 2 * y) % 5) * .25f;
    glGenTextures(1, &depth);
    glBindTexture(GL_TEXTURE_2D, depth);
-   glTexStorage2D(GL_TEXTURE_2D, 1, GL_DEPTH_COMPONENT32F, 4, 4);
+   const GLenum depth_format = getenv("M4_TEST_DEPTH24")
+                                  ? GL_DEPTH_COMPONENT24
+                                  : GL_DEPTH_COMPONENT32F;
+   printf("Depth format: %#x\n", depth_format);
+   glTexStorage2D(GL_TEXTURE_2D, 1, depth_format, 4, 4);
    /* Create the depth map through rendering, as a game's shadow pass does.
     * This also checks depth attachment -> sampled texture visibility. */
    const char *depth_sources[] = {
@@ -149,6 +154,12 @@ main(void)
    glReadBuffer(GL_NONE);
    CHECK(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
    glViewport(0, 0, 4, 4);
+   GLint depth_bits, depth_type;
+   glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+      GL_FRAMEBUFFER_ATTACHMENT_DEPTH_SIZE, &depth_bits);
+   glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+      GL_FRAMEBUFFER_ATTACHMENT_COMPONENT_TYPE, &depth_type);
+   printf("Depth attachment: bits=%d type=%#x\n", depth_bits, depth_type);
    glEnable(GL_DEPTH_TEST);
    glDepthFunc(GL_ALWAYS);
    glEnable(GL_SCISSOR_TEST);
@@ -161,6 +172,14 @@ main(void)
    }
    glDisable(GL_DEPTH_TEST);
    glDisable(GL_SCISSOR_TEST);
+   /* This optional control isolates Zink's D24->D32F backing promotion. It is
+    * not a D24 conformance pass: keep the strict quantized oracle available. */
+   const bool float_reference = getenv("M4_TEST_DEPTH_FLOAT_REFERENCE") != NULL;
+   printf("Reference storage: %s\n", float_reference ? "float control" : "requested format");
+   if (depth_format == GL_DEPTH_COMPONENT24 && !float_reference) {
+      for (unsigned i = 0; i < 16; i++)
+         depths[i] = (float)(round((double)depths[i] * 16777215.0) / 16777215.0);
+   }
    glBindFramebuffer(GL_FRAMEBUFFER, fb);
    glUseProgram(prog);
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);

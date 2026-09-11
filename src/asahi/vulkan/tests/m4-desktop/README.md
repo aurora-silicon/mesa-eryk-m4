@@ -1278,3 +1278,29 @@ an entire match. Performance remains about 2 FPS. The separate cold first
 GPU-readback issue remains open. GPU surface compression is still disabled by
 `ASAHI_MESA_DEBUG=nocompress`; that is separate from S3TC texture compression.
 GPU clocks remain at the qualified low setting with watchdog and thermal guards.
+
+### Exact-frame and depth-precision checks (2026-09-11)
+
+A fresh trace of the normal compressed/postprocessed scene completed a guarded
+60-second capture (`103629477621Z`). Replaying the full trace on M4 and host
+llvmpipe produced the same three selected frames without shader/API errors
+(`103941711456Z`, peak 53.25 C). Mean channel differences were 0.893, 0.871 and
+0.895 on a 0–255 scale; 2.09–2.26% of pixels exceeded eight channel levels.
+Geometry and shadows visually agree; localized differences remain at raster
+edges and filtered shadows. These results are not pixel-identical and should
+not be represented as such. Full traces, unmodified reference calls, images,
+difference montages and hashes are retained in the workspace provenance.
+
+`m4_gl_shadow_compare` now accepts `M4_TEST_DEPTH24=1`. Its strict reference
+rounds stored depths to 24-bit UNORM before evaluating comparisons and PCF.
+This passes all 24576 pixels on llvmpipe, but fails 2304 on M4, specifically at
+reference 0.5 and comparison functions sensitive to equality. Zink's existing
+`zink_get_format()` maps unsupported X8_D24_UNORM to D32_SFLOAT; this is not a
+new native sampler encoding failure. The explicit diagnostic
+`M4_TEST_DEPTH_FLOAT_REFERENCE=1` retains the requested D24 texture but evaluates
+the reference using float-backed depth. That control passes all 24576 pixels
+on M4 (`105208023376Z`, peak 52.25 C), while the strict failure (`104653901421Z`)
+remains recorded. The GL attachment reports 24 bits and unsigned-normalized
+type despite its Vulkan backing. Do not call this a D24 conformance pass or
+change the game's depth format to conceal it. Whether this explains every
+localized game-frame difference has not been established.
