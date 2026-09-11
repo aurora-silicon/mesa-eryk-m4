@@ -1321,3 +1321,15 @@ one reverse scan (`111848`) pass. Extra GPU work and reversed scan order both
 change observation timing, so neither establishes a synchronization fix.
 All tests retain first-read failures and use the 60-second watchdog and thermal
 guards; peaks are 50.75–52.5 C. Full evidence is in workspace experiment folders.
+
+The reverse-read repeat `20260911T112040022354Z-cold-fill-reverse-repeat`
+failed 190,128 words at the high end of the buffer (the portion read first),
+then passed the second read. This supports a timing/visibility defect rather
+than fixed damaged addresses. The earlier reverse-read pass is not a fix.
+
+`M4_DESKTOP_CPU_PROFILE=1` optionally records software CPU-clock samples with
+private perf at 99 Hz, inside the existing desktop guard. Keep analysis offline:
+the first profile's on-target report exceeded its 20-second limit after the
+180-second game completed, triggering guarded reboot. All sample data survived;
+no GPU failure was observed. The corrected launcher only records and finalizes
+perf data while live. It does not extend or renew the watchdog itself.
