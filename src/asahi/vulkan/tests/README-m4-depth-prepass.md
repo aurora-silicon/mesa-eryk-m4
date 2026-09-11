@@ -234,3 +234,20 @@ submission; the implementation now uses the uploaded root descriptor table.
 The successful control includes pooled Ioto executable uploads, removal of
 duplicate validation scans, and lazy candidate-state snapshots in the generic
 encoder. Those changes retain instruction validation and diagnostic facilities.
+
+### 2026-09-11: fixed descriptor UBO prefetch
+
+`HK_M4_PREFETCH_UBOS=1` promotes scalar, bounds-checked read-only UBO loads
+from ordinary immutable descriptor bindings into per-draw GPU uniform loads.
+The CPU reads descriptor metadata; the GPU reads the actual UBO contents.
+Dynamic, mutable, update-after-bind, partially-bound and descriptor-buffer
+bindings retain the existing shader path. Original zero-page bounds behavior
+and uniform-file capacity fallback are preserved. Disabled by default.
+
+The focused descriptor-prefetch host test passes. A guarded 20-second SuperTux
+run with Zink inline uniforms promoted three scalar loads and measured
+13.660367 FPS (260 frames / 19.033 seconds), versus 11.604468 before UBO
+prefetch. Peak monitored temperature was 52 C; no firmware fault occurred.
+This is timing/retirement evidence, not a same-frame image comparison.
+The nested constant descriptor-address matcher also passes the host test;
+that final matcher extension has not yet been deployed to the GPU.

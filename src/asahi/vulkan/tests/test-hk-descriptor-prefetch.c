@@ -17,8 +17,46 @@ load(nir_builder *b, unsigned base, nir_def *index, unsigned shift,
    return nir_instr_as_intrinsic(nir_builder_last_instr(b));
 }
 
+static bool allow_ubo(void *data, unsigned set, unsigned offset)
+{
+   return *(bool *)data && set == 0 && offset == 64;
+}
+
+static void test_ubo(void)
+{
+   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT, NULL,
+                                                 "bounded UBO prefetch");
+   nir_def *table = nir_load_preamble(&b, 1, 64, .base = 24);
+   nir_def *desc = nir_load_global_constant(&b, 4, 32,
+                         nir_iadd_imm(&b, table, 64), .align_mul = 16);
+   nir_def *pointer = nir_pack_64_2x32_split(&b, nir_channel(&b, desc, 0),
+                                               nir_channel(&b, desc, 1));
+   nir_def *valid = nir_ult(&b, nir_imm_int(&b, 43), nir_channel(&b, desc, 2));
+   nir_def *base = nir_bcsel(&b, valid, pointer, nir_imm_int64(&b, 1ull << 32));
+   nir_def *value = nir_load_global(&b, 1, 32, nir_iadd_imm(&b, base, 40),
+                     .align_mul = 4, .access = ACCESS_NON_WRITEABLE | ACCESS_CAN_REORDER);
+   nir_store_global(&b, value, nir_imm_int64(&b, 0x1000), .align_mul = 4);
+   nir_intrinsic_instr *store = nir_instr_as_intrinsic(nir_builder_last_instr(&b));
+   struct hk_ubo_prefetch loads[HK_UBO_PREFETCH_MAX] = {0};
+   unsigned end = 28, count = 0;
+   bool allowed = false;
+   assert(!hk_nir_prefetch_ubos(b.shader, 24, 1, &end, loads, &count,
+                               allow_ubo, &allowed));
+   assert(count == 0 && end == 28);
+   allowed = true;
+   assert(hk_nir_prefetch_ubos(b.shader, 24, 1, &end, loads, &count,
+                              allow_ubo, &allowed));
+   assert(count == 1 && end == 32 && loads[0].set == 0);
+   assert(loads[0].descriptor_offset_B == 64 && loads[0].offset_B == 40);
+   assert(loads[0].size_B == 4 && loads[0].uniform_half == 28);
+   assert(nir_src_as_intrinsic(store->src[0])->intrinsic == nir_intrinsic_load_preamble);
+   nir_validate_shader(b.shader, "bounded UBO prefetch");
+   ralloc_free(b.shader);
+}
+
 int main(void)
 {
+   test_ubo();
    nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT, NULL, "descriptor prefetch");
    nir_intrinsic_instr *ubo = load(&b, 24, nir_imm_int(&b, 4), 2, 4, 32);
    nir_intrinsic_instr *sampler = load(&b, 32, nir_imm_int(&b, 5), 2, 2, 16);
@@ -44,7 +82,8 @@ int main(void)
    ralloc_free(b.shader);
 
    b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT, NULL, "generic descriptor address");
-   nir_def *address = nir_iadd_imm(&b, nir_load_preamble(&b, 1, 64, .base = 24), 64);
+   nir_def *address = nir_iadd_imm(&b, nir_iadd_imm(&b,
+      nir_load_preamble(&b, 1, 64, .base = 24), 32), 32);
    nir_def *value = nir_load_global_constant(&b, 4, 32, address, .align_mul = 16);
    nir_store_global(&b, value, nir_imm_int64(&b, 0x1000), .align_mul = 16);
    ubo = nir_instr_as_intrinsic(nir_builder_last_instr(&b));

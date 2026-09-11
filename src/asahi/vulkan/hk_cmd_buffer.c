@@ -1223,6 +1223,33 @@ hk_g17p_graphics_uniform_ranges(
    }
 
    static_assert(HK_MAX_SETS == 8, "descriptor prefetch range budget");
+   static_assert(HK_UBO_PREFETCH_MAX == 128, "uniform prefetch range capacity");
+   for (unsigned i = 0; i < s->info.ubo_prefetch_count; ++i) {
+      const struct hk_ubo_prefetch *load = &s->info.ubo_prefetch[i];
+      const struct hk_descriptor_state *state = &cmd->state.gfx.descriptors;
+      struct hk_descriptor_set *set = state->sets[load->set];
+      const uint8_t *data = set ? set->mapped_ptr :
+         state->push[load->set] ? state->push[load->set]->data : NULL;
+      uint32_t size = state->set_sizes[load->set];
+      if (!data || load->descriptor_offset_B > size ||
+          sizeof(struct hk_buffer_address) > size - load->descriptor_offset_B)
+         return false;
+      struct hk_buffer_address address;
+      memcpy(&address, data + load->descriptor_offset_B, sizeof(address));
+      const bool valid = load->offset_B <= address.size &&
+                         load->size_B <= address.size - load->offset_B;
+      /* UBO contents are loaded by the GPU at execution. The CPU only reads
+       * immutable descriptor metadata and implements the original bound test. */
+      uint64_t source = valid ? address.base_addr + load->offset_B :
+                                AGX_ZERO_PAGE_ADDRESS;
+      if (valid && source < address.base_addr)
+         return false;
+      ranges[count++] = (struct agx3_ioto_uniform_range){
+         .start_halfs = load->uniform_half, .size_halfs = load->size_B / 2,
+         .address = source,
+      };
+   }
+
    for (unsigned set = 0; set < s->info.set_count; ++set) {
       const struct hk_descriptor_prefetch *span = &s->info.descriptor_prefetch[set];
       if (!span->size_B)

@@ -359,6 +359,12 @@ def main():
                             'MESA_GL_VERSION_OVERRIDE': '3.3',
                             'LD_PRELOAD': '/opt/asahi-m4-port/lib/gl-renderer-audit.so'}
                 game_env['XDG_CONFIG_HOME'] = str(Path(account.pw_dir)/'.config/m4-asahi-supertux')
+                if os.getenv('M4_TEST_PREFETCH_DESCRIPTORS') == '1':
+                    game_env['HK_M4_PREFETCH_DESCRIPTORS'] = '1'
+                if os.getenv('M4_TEST_PREFETCH_UBOS') == '1':
+                    game_env['HK_M4_PREFETCH_UBOS'] = '1'
+                if os.getenv('M4_TEST_SHADER_DUMP') == '1':
+                    game_env['AGX_MESA_DEBUG'] = 'shaders,internal'
                 if os.getenv('M4_TEST_INLINE_UNIFORMS') == '1':
                     game_env['ZINK_INLINE_UNIFORMS'] = '1'
                 if os.getenv('M4_TEST_PREFETCH_AUDIT') == '1':

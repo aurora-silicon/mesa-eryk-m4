@@ -1129,13 +1129,37 @@ hk_lower_hw_vs(nir_shader *nir, struct hk_shader *shader, bool kill_psiz)
    NIR_PASS(_, nir, agx_nir_lower_uvs, &shader->info.uvs);
 }
 
+static bool
+hk_ubo_prefetch_binding_allowed(void *data, unsigned set, unsigned offset)
+{
+   struct vk_descriptor_set_layout *const *layouts = data;
+   if (!layouts || !layouts[set])
+      return false;
+   const struct hk_descriptor_set_layout *layout =
+      vk_to_hk_descriptor_set_layout(layouts[set]);
+   if (layout->vk.flags & VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT)
+      return false;
+   for (unsigned i = 0; i < layout->binding_count; ++i) {
+      const struct hk_descriptor_set_binding_layout *b = &layout->binding[i];
+      if (b->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER && b->stride &&
+          !(b->flags & (VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT |
+                        VK_DESCRIPTOR_BINDING_UPDATE_UNUSED_WHILE_PENDING_BIT |
+                        VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT)) &&
+          offset >= b->offset && (offset - b->offset) % b->stride == 0 &&
+          (offset - b->offset) / b->stride < b->array_size)
+         return true;
+   }
+   return false;
+}
+
 static VkResult
 hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
                nir_shader *nir, VkShaderCreateFlagsEXT shader_flags,
                const struct vk_pipeline_robustness_state *rs,
                const union hk_key *key, enum hk_feature_key features,
                struct hk_shader *shader, mesa_shader_stage sw_stage, bool hw,
-               nir_xfb_info *xfb_info, unsigned set_count)
+               nir_xfb_info *xfb_info, unsigned set_count,
+               struct vk_descriptor_set_layout *const *set_layouts)
 {
    unsigned nr_vbos = 0;
    bool kill_psiz = false;
@@ -1373,6 +1397,15 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
    }
 
    unsigned reserved = root + (4 * (1 + set_count));
+   if (dev->dev.chip == AGX_CHIP_G16G && sw_stage == MESA_SHADER_FRAGMENT &&
+       debug_get_bool_option("HK_M4_PREFETCH_UBOS", false)) {
+      NIR_PASS(_, nir, hk_nir_prefetch_ubos, root + 4, set_count, &reserved,
+               shader->info.ubo_prefetch, &shader->info.ubo_prefetch_count,
+               hk_ubo_prefetch_binding_allowed, (void *)set_layouts);
+      if (debug_get_bool_option("HK_M4_PREFETCH_AUDIT", false))
+         fprintf(stderr, "M4 UBO prefetch: loads=%u reserved=%u\n",
+                 shader->info.ubo_prefetch_count, reserved);
+   }
    if (dev->dev.chip == AGX_CHIP_G16G &&
        debug_get_bool_option("HK_M4_PREFETCH_DESCRIPTORS", false) &&
        (sw_stage == MESA_SHADER_FRAGMENT || (sw_stage == MESA_SHADER_VERTEX && hw))) {
@@ -1700,7 +1733,7 @@ hk_compile_shader(struct hk_device *dev, struct vk_shader_compile_info *info,
             result =
                hk_compile_nir(dev, pAllocator, variants[v].in, info->flags,
                               info->robustness, NULL, features, variants[v].out,
-                              sw_stage, true, NULL, info->set_layout_count);
+                              sw_stage, true, NULL, info->set_layout_count, info->set_layouts);
 
             if (result != VK_SUCCESS) {
                hk_api_shader_destroy(&dev->vk, &obj->vk, pAllocator);
@@ -1816,7 +1849,7 @@ hk_compile_shader(struct hk_device *dev, struct vk_shader_compile_info *info,
          result =
             hk_compile_nir(dev, pAllocator, clone, info->flags,
                            info->robustness, key, features, shader, sw_stage,
-                           hw, nir->xfb_info, info->set_layout_count);
+                           hw, nir->xfb_info, info->set_layout_count, info->set_layouts);
          if (result != VK_SUCCESS) {
             hk_api_shader_destroy(&dev->vk, &obj->vk, pAllocator);
             ralloc_free(nir);
@@ -1829,7 +1862,7 @@ hk_compile_shader(struct hk_device *dev, struct vk_shader_compile_info *info,
       /* hk_compile_nir takes ownership of nir */
       result = hk_compile_nir(dev, pAllocator, nir, info->flags,
                               info->robustness, key, features, shader, sw_stage,
-                              true, NULL, info->set_layout_count);
+                              true, NULL, info->set_layout_count, info->set_layouts);
       if (result != VK_SUCCESS) {
          hk_api_shader_destroy(&dev->vk, &obj->vk, pAllocator);
          return result;

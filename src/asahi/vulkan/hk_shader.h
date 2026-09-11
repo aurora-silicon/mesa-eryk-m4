@@ -113,6 +113,8 @@ struct hk_shader_info {
    uint8_t cull_distance_array_size;
    uint8_t set_count;
    struct hk_descriptor_prefetch descriptor_prefetch[HK_MAX_SETS];
+   struct hk_ubo_prefetch ubo_prefetch[HK_UBO_PREFETCH_MAX];
+   unsigned ubo_prefetch_count;
 
    /* The bounded G17P graphics/compute path lowers one Gen9 combined
     * image/sampler to native texture/sampler state 0. Command recording joins
