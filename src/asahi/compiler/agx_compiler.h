@@ -1062,7 +1062,9 @@ void agx_ra(agx_context *ctx);
  * SSA three-address form before RA so the allocator can enforce that physical
  * two-address ABI without clobbering the independently evaluated index. */
 bool agx_lower_agx3_device_atomic_sources(agx_context *ctx);
+void agx_lower_agx3_half_converts(agx_context *ctx);
 bool agx_lower_agx3_cf_constants(agx_context *ctx);
+bool agx_lower_agx3_widening_iadd(agx_context *ctx);
 bool agx_lower_agx3_half_iadd_constants(agx_context *ctx);
 void agx_lower_64bit_postra(agx_context *ctx);
 void agx_insert_waits(agx_context *ctx);

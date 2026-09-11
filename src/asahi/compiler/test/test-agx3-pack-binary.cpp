@@ -5483,6 +5483,77 @@ TEST_F(AGX3PackBinary, CachedHalfIdentityUnconditionalLoopBreak)
    EXPECT_EQ(pack(b), want);
 }
 
+TEST_F(AGX3PackBinary, FloatToHalfIntegerUsesIntegerNarrowing)
+{
+   for (unsigned mode : {AGX_CONVERT_F_TO_S16, AGX_CONVERT_F_TO_U16}) {
+      for (enum agx_size size : {AGX_SIZE_16, AGX_SIZE_32}) {
+         agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+         agx_index source = agx_temp(b->shader, size);
+         agx_index dest = agx_temp(b->shader, AGX_SIZE_16);
+         agx_instr *convert = agx_convert_to(b, dest, agx_immediate(mode),
+                                              source, AGX_ROUND_RTZ);
+         agx_lower_agx3_half_converts(b->shader);
+         EXPECT_EQ(convert->dest[0].size, AGX_SIZE_32);
+         EXPECT_EQ(convert->src[1].size, AGX_SIZE_32);
+         EXPECT_EQ(convert->round, AGX_ROUND_RTZ);
+         EXPECT_EQ(convert->src[0].value, mode == AGX_CONVERT_F_TO_S16 ?
+                   AGX_CONVERT_F_TO_S32 : AGX_CONVERT_F_TO_U32);
+         agx_instr *narrow = list_last_entry(
+            &agx_start_block(b->shader)->instructions, agx_instr, link);
+         EXPECT_EQ(narrow->op, AGX_OPCODE_SPLIT);
+         EXPECT_EQ(narrow->nr_dests, 2u);
+         EXPECT_TRUE(agx_is_equiv(narrow->dest[0], dest));
+         EXPECT_TRUE(agx_is_equiv(narrow->src[0], convert->dest[0]));
+      }
+   }
+}
+
+TEST_F(AGX3PackBinary, WideningZeroAddPreservesSignedness)
+{
+   for (unsigned side = 0; side < 2; ++side) {
+      for (bool is_unsigned : {false, true}) {
+         agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+         agx_index half = agx_temp(b->shader, AGX_SIZE_16);
+         agx_index source = half;
+         source.abs = is_unsigned;
+         agx_index dest = agx_temp(b->shader, AGX_SIZE_32);
+         agx_iadd_to(b, dest, side ? source : agx_zero(),
+                     side ? agx_zero() : source, 0);
+         ASSERT_TRUE(agx_lower_agx3_widening_iadd(b->shader));
+         agx_instr *extension = list_first_entry(
+            &agx_start_block(b->shader)->instructions, agx_instr, link);
+         EXPECT_EQ(extension->op, is_unsigned ? AGX_OPCODE_MOV : AGX_OPCODE_SIGNEXT);
+         EXPECT_TRUE(agx_is_equiv(extension->src[0], half));
+         EXPECT_TRUE(agx_is_equiv(extension->dest[0], dest));
+      }
+   }
+   for (unsigned side = 0; side < 2; ++side) {
+      for (unsigned shift : {1u, 4u}) {
+         agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+         agx_index half = agx_temp(b->shader, AGX_SIZE_16);
+         agx_index dest = agx_temp(b->shader, AGX_SIZE_32);
+         agx_iadd_to(b, dest, side ? half : agx_zero(),
+                     side ? agx_zero() : half, shift);
+         EXPECT_TRUE(agx_lower_agx3_widening_iadd(b->shader));
+         unsigned shifts = 0;
+         agx_foreach_instr_global(b->shader, I) {
+            if (I->op == AGX_OPCODE_BFI) {
+               shifts++;
+               EXPECT_TRUE(agx_is_equiv(I->dest[0], dest));
+            }
+            if (I->op == AGX_OPCODE_MOV_IMM) {
+               EXPECT_EQ(I->imm, shift);
+            }
+         }
+         EXPECT_EQ(shifts, side ? 0u : 1u);
+      }
+   }
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+   agx_iadd_to(b, agx_temp(b->shader, AGX_SIZE_32), agx_immediate(1),
+               agx_temp(b->shader, AGX_SIZE_16), 0);
+   EXPECT_FALSE(agx_lower_agx3_widening_iadd(b->shader));
+}
+
 TEST_F(AGX3PackBinary, HalfAddConstantsPreserveModuloArithmetic)
 {
    for (unsigned side = 0; side < 2; ++side) {

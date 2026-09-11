@@ -186,7 +186,11 @@ agx_print_instr(const agx_instr *I, FILE *fp)
    }
 
    /* TODO: Do better for enums, truth tables, etc */
-   if (info.immediates) {
+   if (info.immediates & AGX_IMMEDIATE_SHIFT) {
+      fprintf(fp, ", shift=%u", I->shift);
+   }
+
+   if (info.immediates & ~AGX_IMMEDIATE_SHIFT) {
       if (print_comma)
          fprintf(fp, ", ");
       else

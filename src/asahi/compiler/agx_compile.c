@@ -6,6 +6,18 @@
  */
 
 #include "agx_compile.h"
+#include "agx_replay_abi.h"
+#include "nir_serialize.h"
+#include "util/mesa-blake3.h"
+#include <dirent.h>
+#include <fcntl.h>
+#include <sys/file.h>
+#include <unistd.h>
+#include <limits.h>
+
+/* Only active for opt-in compiler failure capture. Never shared by threads. */
+static _Thread_local FILE *agx_failure_ir;
+
 #include "asahi/clc/asahi_clc.h"
 #include "asahi/isa/disasm.h"
 #include "asahi/layout/layout.h"
@@ -2410,7 +2422,7 @@ agx_fminmax_to(agx_builder *b, agx_index dst, agx_index s0, agx_index s1,
    return agx_fcmpsel_to(b, dst, s0, s1, s0, s1, fcond);
 }
 
-static void
+void
 agx_lower_agx3_half_converts(agx_context *ctx)
 {
    if (ctx->key->dev.encoding != AGX_ISA_ENCODING_AGX3B)
@@ -2419,10 +2431,33 @@ agx_lower_agx3_half_converts(agx_context *ctx)
    agx_foreach_instr_global_safe(ctx, I) {
       if (I->op != AGX_OPCODE_CONVERT || I->nr_dests != 1 ||
           I->nr_srcs != 2 || I->dest[0].size != AGX_SIZE_16 ||
-          I->src[0].type != AGX_INDEX_IMMEDIATE ||
-          I->round != AGX_ROUND_RTE || I->saturate)
+          I->src[0].type != AGX_INDEX_IMMEDIATE || I->saturate)
          continue;
 
+      if ((I->src[0].value == AGX_CONVERT_F_TO_S16 ||
+           I->src[0].value == AGX_CONVERT_F_TO_U16) &&
+          I->round == AGX_ROUND_RTZ) {
+         /* NIR f2i16/f2u16 is defined for representable integer results.
+          * Convert to the corresponding 32-bit integer then retain its low
+          * half. This is exact throughout that defined range, including
+          * negative signed results; do not use a floating-point narrowing. */
+         agx_builder before = agx_init_builder(ctx, agx_before_instr(I));
+         if (I->src[1].size == AGX_SIZE_16 || I->src[1].abs || I->src[1].neg) {
+            agx_index wide = agx_temp(ctx, AGX_SIZE_32);
+            agx_fmov_to(&before, wide, I->src[1]);
+            I->src[1] = wide;
+         }
+         I->src[0].value = I->src[0].value == AGX_CONVERT_F_TO_S16 ?
+            AGX_CONVERT_F_TO_S32 : AGX_CONVERT_F_TO_U32;
+         agx_index half = I->dest[0];
+         I->dest[0] = agx_temp(ctx, AGX_SIZE_32);
+         agx_builder after = agx_init_builder(ctx, agx_after_instr(I));
+         agx_subdivide_to(&after, half, I->dest[0], 0);
+         continue;
+      }
+
+      if (I->round != AGX_ROUND_RTE)
+         continue;
       switch (I->src[0].value) {
       case AGX_CONVERT_S32_TO_F:
       case AGX_CONVERT_U32_TO_F:
@@ -2575,6 +2610,47 @@ agx_lower_agx3_half_iadd_constants(agx_context *ctx)
    return progress;
 }
 
+/* Adding zero with IADD computes an extension and, for source 1, a left
+ * shift. AGX IR plain half sources are signed; abs selects zero extension.
+ * Legalize before SIGNEXT lowering and allocation, preserving shift/order. */
+bool
+agx_lower_agx3_widening_iadd(agx_context *ctx)
+{
+   if (ctx->key->dev.encoding != AGX_ISA_ENCODING_AGX3B)
+      return false;
+
+   bool progress = false;
+   agx_foreach_instr_global_safe(ctx, I) {
+      if (I->op != AGX_OPCODE_IADD || I->nr_dests != 1 || I->nr_srcs != 2 ||
+          I->dest[0].size != AGX_SIZE_32 || agx_channels(I->dest[0]) != 1 ||
+          I->saturate)
+         continue;
+      bool imm_first = I->src[0].type == AGX_INDEX_IMMEDIATE;
+      agx_index zero = I->src[imm_first ? 0 : 1];
+      agx_index half = I->src[imm_first ? 1 : 0];
+      if (zero.type != AGX_INDEX_IMMEDIATE || zero.value || zero.abs || zero.neg ||
+          half.type == AGX_INDEX_IMMEDIATE || half.type == AGX_INDEX_NULL ||
+          (half.size != AGX_SIZE_16 && half.size != AGX_SIZE_32) ||
+          agx_channels(half) != 1 || half.neg)
+         continue;
+      agx_builder b = agx_init_builder(ctx, agx_before_instr(I));
+      bool is_unsigned = half.abs || half.size == AGX_SIZE_32;
+      unsigned shift = imm_first ? I->shift : 0;
+      agx_index extended = shift ? agx_temp(ctx, AGX_SIZE_32) : I->dest[0];
+      half.abs = false;
+      if (is_unsigned)
+         agx_mov_to(&b, extended, half);
+      else
+         agx_signext_to(&b, extended, half);
+      if (shift)
+         agx_bfi_to(&b, I->dest[0], agx_zero(), extended,
+                     agx_mov_imm(&b, 32, shift), 0);
+      agx_remove_instruction(I);
+      progress = true;
+   }
+   return progress;
+}
+
 static void
 agx_materialize_agx3_alu_constants(agx_context *ctx)
 {
@@ -2601,20 +2677,32 @@ agx_materialize_agx3_alu_constants(agx_context *ctx)
        * FCMP is lowered to a boolean FSEL later, so normalize it here too.
        */
       if (I->op == AGX_OPCODE_FCMPSEL || I->op == AGX_OPCODE_FCMP) {
-         /* The native mixed-width FSEL routes F32/F16 comparators, not
-          * F16/F32. Widen the first comparator exactly before RA when the
-          * result is full-width; retain the original condition and selected
-          * bit patterns, including unordered/NaN behavior. */
+         /* The native F32/F16 route is qualified for EQ/LT and two full
+          * register alternatives. Other full-result shapes use the general
+          * F32 comparator route. F16->F32 is exact, including signed zero;
+          * retain the condition, inversion, and selected bit patterns. */
          if (ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
-             I->op == AGX_OPCODE_FCMPSEL &&
-             I->dest[0].size == AGX_SIZE_32 &&
-             I->src[0].type != AGX_INDEX_IMMEDIATE &&
-             I->src[0].size == AGX_SIZE_16 &&
-             I->src[1].type != AGX_INDEX_IMMEDIATE &&
-             I->src[1].size == AGX_SIZE_32) {
-            agx_index wide = agx_temp(ctx, AGX_SIZE_32);
-            agx_fmov_to(&b, wide, I->src[0]);
-            I->src[0] = wide;
+             I->op == AGX_OPCODE_FCMPSEL && I->dest[0].size == AGX_SIZE_32) {
+            const bool native_mixed =
+               I->src[0].size == AGX_SIZE_32 &&
+               I->src[0].type != AGX_INDEX_IMMEDIATE &&
+               I->src[1].size == AGX_SIZE_16 &&
+               I->src[1].type != AGX_INDEX_IMMEDIATE &&
+               !I->invert_cond &&
+               (I->fcond == AGX_FCOND_EQ || I->fcond == AGX_FCOND_LT) &&
+               I->src[2].type != AGX_INDEX_IMMEDIATE &&
+               I->src[3].type != AGX_INDEX_IMMEDIATE &&
+               I->src[2].size == AGX_SIZE_32 && I->src[3].size == AGX_SIZE_32;
+            if (!native_mixed) {
+               for (unsigned c = 0; c < 2; ++c) {
+                  if (I->src[c].type == AGX_INDEX_IMMEDIATE ||
+                      I->src[c].size != AGX_SIZE_16)
+                     continue;
+                  agx_index wide = agx_temp(ctx, AGX_SIZE_32);
+                  agx_fmov_to(&b, wide, I->src[c]);
+                  I->src[c] = wide;
+               }
+            }
          }
          const bool modified = I->src[0].abs || I->src[0].neg ||
                                I->src[1].abs || I->src[1].neg;
@@ -4592,6 +4680,8 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
    agx_lower_agx3_half_converts(ctx);
    agx_lower_agx3_fma_sources(ctx);
 
+   AGX_PASS(ctx, agx_lower_agx3_widening_iadd);
+
    if (key->dev.encoding != AGX_ISA_ENCODING_AGX2)
       agx_materialize_agx3_alu_constants(ctx);
 
@@ -4713,6 +4803,8 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
        * aborts -- on any ungrounded op and rolls the emitted shader prefix back
        * before returning false. */
       if (!agx3_pack_binary(ctx, binary)) {
+         if (agx_failure_ir)
+            agx_print_shader(ctx, agx_failure_ir);
          binary->size = initial_binary_size;
          ralloc_free(ctx);
          return false;
@@ -5005,8 +5097,8 @@ has_unlowered_printf_address(const nir_shader *nir)
    return false;
 }
 
-bool
-agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
+static bool
+agx_compile_shader_nir_inner(nir_shader *nir, struct agx_shader_key *key,
                        struct agx_shader_part *out)
 {
    agx_compiler_debug = agx_get_compiler_debug();
@@ -5232,4 +5324,126 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
    out->binary = binary.data;
    info->binary_size = binary.size;
    return true;
+}
+
+/* Development-only, same-serialization-ABI reproducer. The caller creates a
+ * private directory; no process environment or application credentials are
+ * copied. Publication is atomic, deduplicated, and capped at 32 bundles (8 MiB input and 8 MiB IR each).
+ * Capture errors must never alter the compiler result. */
+static void
+agx_publish_failure(const char *directory, struct blob *input, FILE *ir)
+{
+   if (input->size > 8 * 1024 * 1024)
+      return;
+   char lockpath[PATH_MAX], final[PATH_MAX], temporary[PATH_MAX];
+   if (snprintf(lockpath, sizeof(lockpath), "%s/.lock", directory) >= sizeof(lockpath))
+      return;
+   int lock = open(lockpath, O_CREAT | O_RDWR | O_CLOEXEC | O_NOFOLLOW, 0600);
+   if (lock < 0)
+      return;
+   if (flock(lock, LOCK_EX | LOCK_NB)) {
+      close(lock);
+      return;
+   }
+   DIR *dir = opendir(directory);
+   unsigned count = 0;
+   if (!dir) {
+      close(lock);
+      return;
+   }
+   struct dirent *entry;
+   while ((entry = readdir(dir)))
+      count += strcmp(entry->d_name, ".") && strcmp(entry->d_name, "..") &&
+               strcmp(entry->d_name, ".lock");
+   closedir(dir);
+   if (count >= 32) {
+      close(lock);
+      return;
+   }
+   blake3_hash hash;
+   char hex[65];
+   _mesa_blake3_compute(input->data, input->size, hash);
+   _mesa_blake3_format(hex, hash);
+   if (snprintf(final, sizeof(final), "%s/%s", directory, hex) >= sizeof(final) ||
+       snprintf(temporary, sizeof(temporary), "%s/.pending-XXXXXX", directory) >= sizeof(temporary) ||
+       access(final, F_OK) == 0 || !mkdtemp(temporary)) {
+      close(lock);
+      return;
+   }
+   char path[PATH_MAX];
+   bool ok = false;
+   snprintf(path, sizeof(path), "%s/input.bin", temporary);
+   FILE *f = fopen(path, "wb");
+   if (f) {
+      ok = fwrite(input->data, 1, input->size, f) == input->size;
+      ok &= fflush(f) == 0;
+      ok &= fsync(fileno(f)) == 0;
+      ok &= fclose(f) == 0;
+   }
+   if (ok && ir) {
+      fflush(ir);
+      long length = ftell(ir);
+      snprintf(path, sizeof(path), "%s/backend-ir.txt", temporary);
+      f = fopen(path, "wb");
+      if (f && length >= 0 && length < 8 * 1024 * 1024) {
+         rewind(ir);
+         char buffer[4096];
+         size_t n;
+         while ((n = fread(buffer, 1, sizeof(buffer), ir)))
+            if (fwrite(buffer, 1, n, f) != n) break;
+      }
+      if (f) { fflush(f); fsync(fileno(f)); fclose(f); }
+   }
+   if (ok) {
+      snprintf(path, sizeof(path), "%s/manifest.json", temporary);
+      f = fopen(path, "w");
+      if (f) {
+         fprintf(f, "{\"version\":1,\"serialization_abi\":\"%s\","
+                    "\"input_blake3\":\"%s\",\"input_bytes\":%zu,"
+                    "\"entrypoint\":\"agx_compile_shader_nir\"}\n",
+                 AGX_REPLAY_ABI, hex, input->size);
+         fflush(f); fsync(fileno(f)); fclose(f);
+      }
+      if (f && rename(temporary, final) == 0)
+         fprintf(stderr, "AGX compiler failure saved: %s\n", final);
+   }
+   /* On publication failure do not leave partial evidence consuming quota. */
+   const char *names[] = {"input.bin", "backend-ir.txt", "manifest.json"};
+   for (unsigned i = 0; i < ARRAY_SIZE(names); ++i) {
+      snprintf(path, sizeof(path), "%s/%s", temporary, names[i]);
+      unlink(path);
+   }
+   rmdir(temporary);
+   int directory_fd = open(directory, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+   if (directory_fd >= 0) { fsync(directory_fd); close(directory_fd); }
+   close(lock);
+}
+
+bool
+agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
+                       struct agx_shader_part *out)
+{
+   const char *directory = getenv("AGX_COMPILER_CAPTURE_DIR");
+   struct blob input;
+   blob_init(&input);
+   FILE *previous = agx_failure_ir;
+   FILE *ir = NULL;
+   /* The initial consumer uses the standard Asahi options. Reject capture
+    * of other options (including callbacks) rather than serializing pointers. */
+   if (directory && !memcmp(nir->options, &agx_nir_options, sizeof(agx_nir_options))) {
+      blob_write_bytes(&input, "AGXREPLAYv1", 12);
+      blob_write_bytes(&input, AGX_REPLAY_ABI, 65);
+      blob_write_uint32(&input, sizeof(*key));
+      blob_write_bytes(&input, key, sizeof(*key));
+      nir_serialize(&input, nir, false);
+      ir = tmpfile();
+      agx_failure_ir = ir;
+   }
+   bool result = agx_compile_shader_nir_inner(nir, key, out);
+   agx_failure_ir = previous;
+   if (!result && input.size && !input.out_of_memory)
+      agx_publish_failure(directory, &input, ir);
+   if (ir) fclose(ir);
+   blob_finish(&input);
+   return result;
 }

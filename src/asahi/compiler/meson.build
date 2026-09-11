@@ -126,9 +126,18 @@ idep_agx_builder_h = declare_dependency(
   include_directories : include_directories('.'),
 )
 
+agx_replay_abi = custom_target(
+  'agx_replay_abi.h',
+  input : files('agx_compile.h', '../../compiler/nir/nir_serialize.c',
+                '../../compiler/nir/nir.h', '../../compiler/nir/nir_shader_compiler_options.h',
+                '../../compiler/nir/nir_intrinsics.py', '../../compiler/nir/nir_opcodes.py'),
+  output : 'agx_replay_abi.h',
+  command : [prog_python, files('agx_replay_abi.py'), '@OUTPUT@', '@INPUT@'],
+)
+
 libasahi_compiler = static_library(
   'asahi_compiler',
-  [libasahi_agx_files, agx_opcodes_c, agx_nir_algebraic_c],
+  [libasahi_agx_files, agx_opcodes_c, agx_nir_algebraic_c, agx_replay_abi],
   dependencies: [idep_nir, idep_agx_opcodes_h, idep_agx_builder_h, idep_mesautil, idep_libagx],
   link_with : [libagx2_disasm],
   c_args : [no_override_init_args, '-Wno-c2x-extensions'],
@@ -137,6 +146,11 @@ libasahi_compiler = static_library(
 )
 
 if with_tests
+  executable('agx_shader_replay', ['agx_shader_replay.c', agx_replay_abi],
+    dependencies : [idep_nir, idep_mesautil],
+    link_with : [libasahi_compiler],
+    c_args : [no_override_init_args],
+  )
   test(
     'agx3_subgroup_core',
     executable(
