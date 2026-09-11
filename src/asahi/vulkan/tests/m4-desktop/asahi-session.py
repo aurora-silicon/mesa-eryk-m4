@@ -557,7 +557,10 @@ def main():
                         _, evidence['native_kms_status'] = native_kms_status()
                     # Parent validates all fields before feeding the hardware watchdog.
                     print(json.dumps({'event': 'gpu-progress', 'check': evidence}), flush=True)
-                    if (checks in (2,4,8) or
+                    # Shell latency tests retain strict startup and final
+                    # screenshots. Repeated in-flight screencopies stall the
+                    # compositor's input thread and contaminate that workload.
+                    if ((os.getenv('M4_TEST_SHELL') != '1' and checks in (2,4,8)) or
                         ((summary.get('supertuxkart_started') or summary.get('zeroad_started') or summary.get('sauerbraten_started')) and checks % 12 == 0)):
                         subprocess.run(['grim','-t','ppm','-o',output_name,str(result/f'live-{checks}.ppm')],env=env,check=True,timeout=120 if (summary.get('supertuxkart_started') or summary.get('zeroad_started') or summary.get('sauerbraten_started')) else 6)
                     if os.getenv('M4_TEST_SHELL_UI') == '1' and checks < 3:
