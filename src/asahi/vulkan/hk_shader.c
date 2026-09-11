@@ -1372,6 +1372,24 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
       root += AGX_ABI_VUNI_NATIVE_PREFIX;
    }
 
+   unsigned reserved = root + (4 * (1 + set_count));
+   if (dev->dev.chip == AGX_CHIP_G16G &&
+       debug_get_bool_option("HK_M4_PREFETCH_DESCRIPTORS", false) &&
+       (sw_stage == MESA_SHADER_FRAGMENT || (sw_stage == MESA_SHADER_VERTEX && hw))) {
+      NIR_PASS(_, nir, hk_nir_prefetch_descriptors, root + 4, set_count,
+               &reserved, shader->info.descriptor_prefetch);
+      if (debug_get_bool_option("HK_M4_PREFETCH_AUDIT", false)) {
+         fprintf(stderr, "M4 descriptor prefetch: stage=%u reserved=%u", sw_stage, reserved);
+         for (unsigned set = 0; set < set_count; ++set) {
+            const struct hk_descriptor_prefetch *span = &shader->info.descriptor_prefetch[set];
+            if (span->size_B)
+               fprintf(stderr, " set%u+%u:%u->u%u", set, span->offset_B,
+                       span->size_B, span->uniform_half);
+         }
+         fprintf(stderr, "\n");
+      }
+   }
+
    /* Report every uniform half this shader actually reads.
     *
     * The disassembled G17P binary references uniform halves the declared
@@ -1387,7 +1405,13 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
       fprintf(stderr,
               "G17P uniforms: stage=%u set_count=%u root=%u reserved=%u ",
               (unsigned)sw_stage, set_count, root,
-              root + (4 * (1 + set_count)));
+              reserved);
+      for (unsigned set = 0; set < set_count; ++set) {
+         const struct hk_descriptor_prefetch *span = &shader->info.descriptor_prefetch[set];
+         if (span->size_B)
+            fprintf(stderr, "prefetch[set%u+%u:%u->u%u] ", set,
+                    span->offset_B, span->size_B, span->uniform_half);
+      }
       nir_foreach_function_impl(impl, nir) {
          nir_foreach_block(block, impl) {
             nir_foreach_instr(instr, block) {
@@ -1412,7 +1436,7 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
 #endif
 
    struct agx_shader_key backend_key = {
-      .reserved_preamble = root + (4 * (1 + set_count)),
+      .reserved_preamble = reserved,
       .dev = agx_gather_device_key(&dev->dev),
       .no_stop = nir->info.stage == MESA_SHADER_FRAGMENT,
       .has_scratch = !nir->info.internal,

@@ -21,6 +21,7 @@
 #include "hk_device.h"
 #include "hk_device_memory.h"
 #include "hk_private.h"
+#include "hk_descriptor_prefetch.h"
 
 #include "nir_xfb_info.h"
 #include "shader_enums.h"
@@ -111,6 +112,7 @@ struct hk_shader_info {
    uint8_t clip_distance_array_size;
    uint8_t cull_distance_array_size;
    uint8_t set_count;
+   struct hk_descriptor_prefetch descriptor_prefetch[HK_MAX_SETS];
 
    /* The bounded G17P graphics/compute path lowers one Gen9 combined
     * image/sampler to native texture/sampler state 0. Command recording joins

@@ -361,6 +361,8 @@ def main():
                 game_env['XDG_CONFIG_HOME'] = str(Path(account.pw_dir)/'.config/m4-asahi-supertux')
                 if os.getenv('M4_TEST_INLINE_UNIFORMS') == '1':
                     game_env['ZINK_INLINE_UNIFORMS'] = '1'
+                if os.getenv('M4_TEST_PREFETCH_AUDIT') == '1':
+                    game_env['HK_M4_PREFETCH_AUDIT'] = '1'
                 if os.getenv('M4_TEST_FRAME_TIMINGS') == '1':
                     game_env['M4_SWAP_TIMING'] = '1'
                 if os.getenv('M4_SUPERTUX_TRACE') == '1':

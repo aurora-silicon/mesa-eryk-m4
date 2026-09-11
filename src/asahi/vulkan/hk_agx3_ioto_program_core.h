@@ -71,7 +71,8 @@ struct hk_agx3_g17p_graphics_program_desc {
 
 #define HK_AGX3_G17P_GRAPHICS_PROGRAM_MAX_SIZE 6144u
 /* VBO bases/clamps, draw parameters/ID, texture heaps, root/sets, constants. */
-#define HK_AGX3_G17P_GRAPHICS_MAX_RANGES (2u + 2u + 1u + 1u + 1u)
+/* Plus one prefetched span for each of the eight Vulkan descriptor sets. */
+#define HK_AGX3_G17P_GRAPHICS_MAX_RANGES (2u + 2u + 1u + 1u + 1u + 8u)
 #define HK_AGX3_G17P_GRAPHICS_MAX_LOAD_CHUNKS 128u
 
 bool hk_agx3_g17p_graphics_program_bound(

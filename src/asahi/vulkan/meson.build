@@ -61,6 +61,7 @@ hk_files = files(
   'hk_instance.c',
   'hk_instance.h',
   'hk_nir_lower_descriptors.c',
+  'hk_nir_prefetch_descriptors.c',
   'hk_nir_passthrough_gs.c',
   'hk_native_descriptor.h',
   'hk_native_descriptor_pack.c',
@@ -180,6 +181,18 @@ if with_tests
                             '../../virtio/vdrm'),
         inc_include, inc_src, inc_asahi,
       ],
+      dependencies : [idep_nir, idep_mesautil],
+      gnu_symbol_visibility : 'hidden',
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
+    'hk_descriptor_prefetch',
+    executable(
+      'hk_descriptor_prefetch_test',
+      files('tests/test-hk-descriptor-prefetch.c', 'hk_nir_prefetch_descriptors.c'),
+      include_directories : [include_directories('.'), inc_include, inc_src, inc_asahi],
       dependencies : [idep_nir, idep_mesautil],
       gnu_symbol_visibility : 'hidden',
     ),

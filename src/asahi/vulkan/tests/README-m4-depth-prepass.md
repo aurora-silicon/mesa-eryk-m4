@@ -213,3 +213,24 @@ permissions; command-buffer reset owns lifetime; platform sync retained at
 EndCommandBuffer. No standalone GEM per bind, no game/clock/logging changes.
 Still below5x target; continue profiling. EGLtrace180111 captures directGL
 calls but missesGLEW's GLXlookups; do not use as complete replay reference.
+
+## SuperTux descriptor prefetch experiment (2026-09-11)
+
+The compiler can promote constant descriptor reads into Ioto-loaded uniforms.
+This covers ordinary and push descriptors and preserves dynamic/oversized loads.
+It is opt-in with `HK_M4_PREFETCH_DESCRIPTORS=1`; use a fresh shader cache or
+`MESA_SHADER_CACHE_DISABLE=true` when changing this experimental compiler option.
+`HK_M4_PREFETCH_AUDIT=1` reports the promoted spans.
+
+Host NIR and Ioto tests pass. A guarded 90-second SuperTux run passed with all
+six thermal channels below 53 C, but measured only 8.572745 FPS versus the
+10.487096 FPS control. This is a performance regression, so prefetch is disabled
+by default pending further investigation. Both use inline uniforms, the same
+1600x900 physical window, and the restored full scratch clears.
+Evidence: `20260911T183957175020Z-supertux-prefetch-push-sets`.
+The earlier push-descriptor omission rejected Hyprland pipelines before GPU
+submission; the implementation now uses the uploaded root descriptor table.
+
+The successful control includes pooled Ioto executable uploads, removal of
+duplicate validation scans, and lazy candidate-state snapshots in the generic
+encoder. Those changes retain instruction validation and diagnostic facilities.

@@ -1222,6 +1222,27 @@ hk_g17p_graphics_uniform_ranges(
       count++;
    }
 
+   static_assert(HK_MAX_SETS == 8, "descriptor prefetch range budget");
+   for (unsigned set = 0; set < s->info.set_count; ++set) {
+      const struct hk_descriptor_prefetch *span = &s->info.descriptor_prefetch[set];
+      if (!span->size_B)
+         continue;
+      /* The uploaded root covers both allocated and push descriptor sets.
+       * Push sets deliberately have no hk_descriptor_set object. */
+      const struct hk_descriptor_state *descriptors = &cmd->state.gfx.descriptors;
+      uint64_t address = descriptors->root.sets[set];
+      uint32_t size = descriptors->set_sizes[set];
+      if (!address || span->offset_B > size ||
+          span->size_B > size - span->offset_B ||
+          count >= HK_AGX3_G17P_GRAPHICS_MAX_RANGES)
+         return false;
+      ranges[count++] = (struct agx3_ioto_uniform_range){
+         .start_halfs = span->uniform_half,
+         .size_halfs = span->size_B / 2,
+         .address = address + span->offset_B,
+      };
+   }
+
    /*
     * Promoted constants. agx_opt_promote_constants() parks a shader's
     * constant pool in the binary's rodata section and addresses it through a
