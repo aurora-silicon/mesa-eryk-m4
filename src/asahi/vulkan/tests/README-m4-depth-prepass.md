@@ -29,3 +29,10 @@ c83cf477661de94365ae498d34084dc0bf6c633ef10edd0c7c87c70769100317:
 These controls did not reproduce Sauerbraten's visible geometry gaps. They are
 bounded regression evidence, not proof that the game or all query ordering is
 correct. The original game trace still differs visibly from llvmpipe.
+
+`m4_gl_wide_varyings.c` now also checks 8/11-scalar interfaces and optionally
+uses clip W spanning16..752 with `M4_TEST_PERSPECTIVE=1`. The reference uses
+screen barycentrics divided by each original vertex W, independently of the
+GPU interpolation path. Host llvmpipe and guarded J713151431 passed all1966080
+pixels across8/11/28/29/32 scalar varyings, peak50.25C. This does not reproduce
+the game artifact or establish behavior across clipped negative-W triangles.

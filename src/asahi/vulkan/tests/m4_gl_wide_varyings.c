@@ -5,6 +5,7 @@
  */
 #define GL_GLEXT_PROTOTYPES
 #include <math.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -69,13 +70,17 @@ main(void)
    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
                           target, 0);
    CHECK(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
+   const bool perspective = getenv("M4_TEST_PERSPECTIVE") != NULL;
    /* Each vec4 attribute supplies four separately interpolated components. */
    float vertices[6][36] = {0};
    const float pos[6][2] = {{-1, -1}, {1, -1}, {-1, 1},
                             {1, -1},  {1, 1},  {-1, 1}};
    for (unsigned v = 0; v < 6; v++) {
-      vertices[v][0] = pos[v][0];
-      vertices[v][1] = pos[v][1];
+      float w = perspective ? 16 + (pos[v][0] + 1) * 120 +
+                                      (pos[v][1] + 1) * 248 : 1;
+      vertices[v][0] = pos[v][0] * w;
+      vertices[v][1] = pos[v][1] * w;
+      vertices[v][3] = w;
       for (unsigned i = 0; i < 32; i++)
          vertices[v][4 + i] = (i + 1) / 64.0f +
                               pos[v][0] * (i % 3 + 1) / 128.0f +
@@ -91,8 +96,8 @@ main(void)
    }
    glViewport(0, 0, W, W);
    unsigned total_bad = 0;
-   const unsigned counts[] = {28, 29, 32};
-   for (unsigned test = 0; test < 3; test++) {
+   const unsigned counts[] = {8, 11, 28, 29, 32};
+   for (unsigned test = 0; test < sizeof(counts) / sizeof(counts[0]); test++) {
       unsigned n = counts[test];
       char vs[16384] = "#version 330\nlayout(location=0) in vec4 pos;\n",
            fs[16384] = "#version 330\nout vec4 color;\n";
@@ -105,7 +110,7 @@ main(void)
          fo += snprintf(fs + fo, sizeof(fs) - fo, "in float v%u;\n", i);
       }
       vo += snprintf(vs + vo, sizeof(vs) - vo,
-                     "void main(){gl_Position=vec4(pos.xy,0,1);\n");
+                     "void main(){gl_Position=pos;\n");
       fo += snprintf(fs + fo, sizeof(fs) - fo, "void main(){float s=0;\n");
       for (unsigned i = 0; i < n; i++) {
          vo += snprintf(vs + vo, sizeof(vs) - vo, "v%u=a%u.%c;\n", i, i / 4,
@@ -144,6 +149,24 @@ main(void)
             for (unsigned x = 0; x < W; x++) {
                double px = (x + .5) * 2 / W - 1, py = (y + .5) * 2 / W - 1,
                       s = 0;
+               if (perspective) {
+                  const double a = (px + 1) / 2, b = (py + 1) / 2;
+                  unsigned base = a + b <= 1 ? 0 : 3;
+                  double weights[3];
+                  if (base == 0) {
+                     weights[0] = 1 - a - b; weights[1] = a; weights[2] = b;
+                  } else {
+                     weights[0] = 1 - b; weights[1] = a + b - 1;
+                     weights[2] = 1 - a;
+                  }
+                  double den = 0, tx = 0, ty = 0;
+                  for (unsigned k = 0; k < 3; k++) {
+                     double q = weights[k] / vertices[base + k][3];
+                     den += q; tx += q * pos[base + k][0];
+                     ty += q * pos[base + k][1];
+                  }
+                  px = tx / den; py = ty / den;
+               }
                for (unsigned i = 0; i < n; i++)
                   s += ((i + 1) / 64.0 + px * (i % 3 + 1) / 128.0 +
                         py * (i % 5 + 1) / 256.0) *
