@@ -240,6 +240,18 @@ libasahi_lib = static_library(
 
 if with_tests
   test(
+    'asahi-native-uniform-prefix',
+    executable(
+      'asahi-native-uniform-prefix',
+      files('tests/test-native-uniform-prefix.c'),
+      include_directories : [inc_include, inc_src, inc_asahi],
+      dependencies : [idep_nir, idep_mesautil],
+      link_with : [libasahi_lib, libasahi_compiler, libasahi_layout],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
     'asahi-agx-rt-bvh',
     executable(
       'asahi-agx-rt-bvh',
