@@ -1860,14 +1860,17 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
 
       if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
           !b->shader->key->fs.inside_sample_loop) {
-         /* SR39 carries the original target and covered sample sets. Apply
-          * TARGET per sample, preserving the coverage nibbles for MOVMSK. */
-         agx_index input = agx_get_sr(b, 16, AGX_SR_INPUT_SAMPLE_MASK);
-         agx_index target = agx_and(b, agx_src_index(&instr->src[0]),
-                                      agx_and(b, input, agx_immediate(15)));
-         agx_index coverage = agx_and(b, target,
+         /* Read current coverage for every update. The immutable input mask
+          * can resurrect samples killed by an earlier discard. Preserve the
+          * target and covered nibbles independently, restricting each by the
+          * samples affected by this operation. */
+         agx_index input = agx_get_sr_coverage(b, 16, AGX_SR_COVERAGE_MASK);
+         agx_index affected = agx_and(b, agx_src_index(&instr->src[0]),
+                                        agx_immediate(15));
+         agx_index target = agx_and(b, affected, input);
+         agx_index coverage = agx_and(b, affected,
                                       agx_ushr(b, input, agx_immediate(4)));
-         agx_index live = agx_and(b, coverage, agx_src_index(&instr->src[1]));
+         agx_index live = agx_and(b, affected, agx_src_index(&instr->src[1]));
          agx_index mid = agx_iadd(b, coverage, target, 4);
          agx_index word = agx_iadd(b, live, mid, 4);
          agx_index zero = agx_mov_imm(b, 16, 0);

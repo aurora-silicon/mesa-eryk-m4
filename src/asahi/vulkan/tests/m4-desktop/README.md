@@ -1611,3 +1611,11 @@ intersects LSTCOL writes with SR39's low live-coverage nibble, including
 background clears, and constructs MOVMSK's target/live nibbles per sample.
 The input mask is not truncated to bit zero. Fourteen focused compiler tests
 pass; this is not a claim that the entire legacy compiler test suite passes.
+
+Coverage updates must read current SR39 with a coverage dependency. Reusing
+immutable input coverage revives samples after earlier discard operations;
+a simple single-update mask test does not catch this. The saved Firefox
+WebRender/WebGL frame90 exposed the regression (3754 pixels above 8/255 error).
+Current-coverage updates restore the previous M4 frame byte-for-byte and its
+maximum 2/255 difference from lavapipe, while the seven-case multisample matrix
+still passes (2026-09-12, peak 56.75 C in the replay).
