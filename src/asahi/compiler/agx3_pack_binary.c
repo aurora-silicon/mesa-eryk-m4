@@ -489,6 +489,7 @@ agx3_is_async(const agx_instr *I)
 
    return I->op == AGX_OPCODE_DEVICE_LOAD || I->op == AGX_OPCODE_LOCAL_LOAD ||
           I->op == AGX_OPCODE_LDCF || I->op == AGX_OPCODE_GET_SR ||
+          I->op == AGX_OPCODE_GET_SR_COVERAGE ||
           I->op == AGX_OPCODE_GET_COVERAGE_1X_AGX3 ||
           I->op == AGX_OPCODE_TEXTURE_LOAD || I->op == AGX_OPCODE_IMAGE_LOAD ||
           I->op == AGX_OPCODE_TEXTURE_SAMPLE || I->op == AGX_OPCODE_IMAGE_WRITE ||
@@ -531,8 +532,10 @@ agx3_map_sr(enum agx_sr sr, uint8_t *apple, enum agx3_sr_width *width)
       SR(AGX_SR_THREAD_POSITION_IN_GRID_X, 23, AGX3_SR_W32);
       SR(AGX_SR_THREAD_POSITION_IN_GRID_Y, 24, AGX3_SR_W32);
       SR(AGX_SR_THREAD_POSITION_IN_GRID_Z, 25, AGX3_SR_W32);
-      /* The semantic enum carries the hardware SR byte (0xd8/0xdd), while
-       * agx3_sr_core consumes Apple's anonymous normalized f21 value. */
+      SR(AGX_SR_INPUT_SAMPLE_MASK, 39, AGX3_SR_W16);
+      SR(AGX_SR_COVERAGE_MASK, 39, AGX3_SR_W16);
+      /* The invocation enums carry hardware SR bytes (0xd8/0xdd), while
+       * agx3_sr_core consumes Apple's normalized f21 value. */
       SR(AGX_SR_INSTANCE_ID, 46, AGX3_SR_W32);
       SR(AGX_SR_VERTEX_ID, 51, AGX3_SR_W32);
    default:
@@ -567,6 +570,7 @@ agx3_translate_sr(const agx_instr *I, uint8_t slot, uint16_t wait_mask,
    d->dest = dst.value;
    d->width = width;
    d->sr = apple;
+   d->original_coverage = I->sr == AGX_SR_INPUT_SAMPLE_MASK;
    d->slot = slot;
    d->wait_mask = wait_mask;
    return true;
@@ -1221,8 +1225,8 @@ agx3_tile_value_ok(agx_index value, uint8_t mask, int width)
 }
 
 
-/* Native f51=1 carries an immediate sample mask in f43. Dynamic masks
- * use the separately witnessed register group and are not accepted here yet.
+/* Native f51=1 carries an immediate sample mask in f43. Register masks use
+ * the separate f51=2 group below.
  */
 static bool
 agx3_tile_immediate_sample(agx_index sample)
@@ -1249,11 +1253,15 @@ agx3_emit_tile(struct util_dynarray *emission, enum agx_isa_encoding enc,
    const agx_index value = load ? I->dest[0] : I->src[0];
    const agx_index sample = load ? I->src[0] : I->src[1];
    const agx_index coords = load ? I->src[1] : I->src[2];
+   const bool register_mask = !load && enc == AGX_ISA_ENCODING_AGX3B &&
+      agx3_src_is_register(sample) && sample.size == AGX_SIZE_16 &&
+      agx_channels(sample) == 1 && sample.value < 128 && !sample.memory &&
+      !sample.abs && !sample.neg && !sample.cache;
    const int width = agx3_tile_format_width(I->format);
    if ((I->format == AGX_FORMAT_RGB10A2 &&
         (I->mask != 1 || value.size != AGX_SIZE_32)) ||
        width < 0 || !agx3_tile_value_ok(value, I->mask, width) ||
-       !agx3_tile_immediate_sample(sample) || !agx_is_null(coords))
+       (!register_mask && !agx3_tile_immediate_sample(sample)) || !agx_is_null(coords))
       return false;
 
    /* AGX3b f13 varies independently in high-register store witnesses.  The
@@ -1268,6 +1276,10 @@ agx3_emit_tile(struct util_dynarray *emission, enum agx_isa_encoding enc,
       load ? agx3_tile_load_mask(enc, value.value, (enum agx3_tile_width)width,
                             slot, I->mask, I->pixel_offset, sample.value,
                             wait_mask, first_load, last_load, bytes, &length)
+           : register_mask ? agx3_tile_store_register_mask(enc, value.value,
+                             (enum agx3_tile_width)width, I->mask,
+                             I->pixel_offset, sample.value, sample.discard,
+                             wait_mask, bytes, &length)
            : agx3_tile_store_mask(enc, value.value,
                              (enum agx3_tile_width)width, I->mask,
                              I->pixel_offset, sample.value, wait_mask,
@@ -4740,7 +4752,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
          }
 
          /* Special-register read. */
-         if (I->op == AGX_OPCODE_GET_SR) {
+         if (I->op == AGX_OPCODE_GET_SR || I->op == AGX_OPCODE_GET_SR_COVERAGE) {
             struct agx3_sr_desc d;
             uint8_t bytes[AGX3_SR_MAX_LENGTH];
             uint8_t len = 0;

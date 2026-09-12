@@ -1884,6 +1884,13 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
       return agx_get_sr_to(b, dst, AGX_SR_SAMPLES_LOG2);
 
    case nir_intrinsic_load_sample_mask_in:
+      if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B) {
+         /* Original SR39 packs coverage and target masks into nibbles. */
+         agx_index input = agx_get_sr(b, 16, AGX_SR_INPUT_SAMPLE_MASK);
+         agx_index mask = agx_and(b, agx_ushr(b, input, agx_immediate(4)),
+                                  agx_immediate(15));
+         return agx_mov_to(b, dst, mask);
+      }
       return agx_get_sr_to(b, dst, AGX_SR_INPUT_SAMPLE_MASK);
 
    case nir_intrinsic_load_sample_mask:

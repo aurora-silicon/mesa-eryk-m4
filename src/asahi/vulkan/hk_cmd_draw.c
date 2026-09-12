@@ -504,15 +504,20 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
       memcpy(program_map, program.bytes, program.length);
       program_length = program.length;
       resource_spec = AGX_IOTO_G17P_EOT_RESOURCE_SPEC;
-      if (debug_get_bool_option("HK_G17P_LAUNCH_TRACE", false))
+      if (debug_get_bool_option("HK_G17P_LAUNCH_TRACE", false)) {
          fprintf(stderr,
                  "G17P EOT launch: program=%" PRIx64 " length=%zu "
                  "pbe=%" PRIx64 " attachments=%u offsets=%u,%u "
-                 "gprs=%u staging=%u\n",
+                 "gprs=%u staging=%u samples=%u tile=%u stride=%u descriptor=",
                  program_bo->va->addr, program_length, pbe_argument_va,
                  desc.attachment_count, desc.imageblock_offset_B,
                  desc.imageblock_offset1_B, desc.nr_gprs,
-                 desc.staging_halfs);
+                 desc.staging_halfs, desc.nr_samples, desc.tile_size,
+                 desc.sample_size_B);
+         for (unsigned i = 0; i < sizeof(pbe_arguments[0]); ++i)
+            fprintf(stderr, "%02x", ((const uint8_t *)pbe_arguments)[i]);
+         fputc('\n', stderr);
+      }
    } else if (op == AGX_BG_EOT_NONE) {
       const struct hk_agx3_g17p_graphics_program_desc desc = {
          .sample_size_B = key->tib.sample_size_B,

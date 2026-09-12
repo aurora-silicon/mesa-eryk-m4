@@ -71,6 +71,7 @@ class AGX3PackBinary : public testing::Test {
       agx_builder *b = agx_test_builder(mem_ctx);
       b->shader->key = &key;
       b->shader->out = rzalloc(mem_ctx, agx_shader_info);
+      b->shader->nir = rzalloc(mem_ctx, nir_shader);
       return b;
    }
 
@@ -2721,6 +2722,35 @@ TEST_F(AGX3PackBinary, TextureFetchWaitSurvivesFallthroughBlock)
       append(want, end.bytes, end.length);
       EXPECT_EQ(pack(b), want);
    }
+}
+
+TEST_F(AGX3PackBinary, NativeInputCoverageRead)
+{
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+   b->shader->stage = MESA_SHADER_FRAGMENT;
+   agx_get_sr_to(b, agx_register(0, AGX_SIZE_16), AGX_SR_INPUT_SAMPLE_MASK);
+   agx_stop(b);
+   const auto bin = pack(b);
+   const uint8_t native[] = {0x04,0xc2,0x11,0x06,0x01,0,0,0};
+   ASSERT_GE(bin.size(), sizeof(native));
+   EXPECT_TRUE(std::equal(std::begin(native), std::end(native), bin.begin()));
+}
+
+TEST_F(AGX3PackBinary, NativeRegisterSampleMask)
+{
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+   b->shader->stage = MESA_SHADER_FRAGMENT;
+   agx_index value = agx_register(0, AGX_SIZE_16);
+   value.channels_m1 = 1;
+   agx_index mask = agx_register(2, AGX_SIZE_16);
+   mask.discard = true;
+   agx_wait_pix(b, 0xc);
+   agx_st_tile(b, value, mask, agx_null(), AGX_FORMAT_U8NORM, 15, 0, false);
+   agx_stop(b);
+   const auto bin = pack(b);
+   /* Native write-mask LSTCOL, with no outstanding scoreboard producer. */
+   const uint8_t native[] = {0xe7,0x06,0x54,0,0,0,2,0x4e,8,0,0,8};
+   EXPECT_NE(std::search(bin.begin(),bin.end(),std::begin(native),std::end(native)),bin.end());
 }
 
 TEST_F(AGX3PackBinary, TileStoreSingleSampleFormats)
