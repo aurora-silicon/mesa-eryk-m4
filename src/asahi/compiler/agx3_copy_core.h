@@ -36,7 +36,7 @@ extern "C" {
 #endif
 
 /* Apple's `copy` ep0 is 4 bytes in both encodings. */
-#define AGX3_COPY_MAX_LENGTH 8u
+#define AGX3_COPY_MAX_LENGTH 10u
 
 /*
  * Encode `copy dest32, uniform32`.  Both indices are 16-bit half-register

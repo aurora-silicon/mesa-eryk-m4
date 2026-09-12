@@ -45,7 +45,7 @@ agx3_copy_encode_reg16(enum agx_isa_encoding encoding, uint16_t dest_half,
                        uint8_t out[AGX3_COPY_MAX_LENGTH], uint8_t *len)
 {
    if (out == NULL || len == NULL || encoding != AGX_ISA_ENCODING_AGX3B ||
-       dest_half >= 128 || src_half >= 256 || wait_mask >= (1u << 6) ||
+       dest_half >= 256 || src_half >= 256 || wait_mask >= (1u << 6) ||
        (src_cache && src_discard))
       return false;
 
@@ -61,9 +61,16 @@ agx3_copy_encode_reg16(enum agx_isa_encoding encoding, uint16_t dest_half,
       if (wait_mask & (1u << i))
          overrides[n++] = (struct agx3_field_kv)KV(30 + i, 1);
    }
-   return agx3_bind_compose(encoding, "copy", 0, baseline,
+   /* The compact destination is seven bits. The long encoding preserves
+    * the same operand/hint fields and addresses the full half-register file.
+    */
+   for (unsigned ep = 0; ep < 2; ep++) {
+      if (agx3_bind_compose(encoding, "copy", ep, baseline,
                             AGX3_COPY_ARRAY_SIZE(baseline), overrides, n,
-                            out, len);
+                            out, len))
+         return true;
+   }
+   return false;
 }
 
 bool

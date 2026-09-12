@@ -103,7 +103,14 @@ main(void)
       }
       uint8_t o[AGX3_COPY_MAX_LENGTH];
       uint8_t l = 0;
-      CHECK(!agx3_copy_encode_reg16(AGX_ISA_ENCODING_AGX3B, 128, 5, true, false, true, 0, o, &l));
+      for (unsigned dest = 128; dest < 256; dest++) {
+         for (unsigned source = 0; source < 256; source += 17) {
+            CHECK(agx3_copy_encode_reg16(AGX_ISA_ENCODING_AGX3B, dest, source,
+                                        false, false, false, 0, o, &l));
+            CHECK(l == 10);
+         }
+      }
+      CHECK(!agx3_copy_encode_reg16(AGX_ISA_ENCODING_AGX3B, 256, 5, true, false, true, 0, o, &l));
       CHECK(!agx3_copy_encode_reg16(AGX_ISA_ENCODING_AGX3B, 0, 256, true, false, true, 0, o, &l));
       CHECK(!agx3_copy_encode_reg16(AGX_ISA_ENCODING_AGX2, 0, 5, true, false, true, 0, o, &l));
 
