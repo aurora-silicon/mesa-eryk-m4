@@ -1931,6 +1931,13 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
       return agx_get_sr_coverage_to(b, dst, AGX_SR_COVERAGE_MASK);
 
    case nir_intrinsic_load_helper_invocation:
+      if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B) {
+         /* G16G's simd_is_helper_thread reads original SR2 as a half and
+          * compares it with zero. NIR tracks subsequent demotes separately. */
+         return agx_icmp_to(b, dst,
+                            agx_get_sr_coverage(b, 16, AGX_SR_IS_ACTIVE_THREAD),
+                            agx_zero(), AGX_ICOND_UEQ, false);
+      }
       /* Compare special register to zero. We could lower this in NIR (letting
        * us fold in an inot) but meh?
        */

@@ -6512,3 +6512,22 @@ TEST_F(AGX3PackBinary, FloatBranchAbsoluteModifiersUseAllocatedRegisters)
       }
    }
 }
+
+TEST_F(AGX3PackBinary, DeviceAtomicPositiveImmediateIgnoresExtensionMode)
+{
+   std::vector<uint8_t> baseline;
+   for (unsigned zero_extend = 0; zero_extend < 2; ++zero_extend) {
+      agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+      agx_index offset = agx_immediate(3072);
+      offset.abs = zero_extend;
+      agx_atomic_to(b, agx_null(), agx_register(6, AGX_SIZE_32),
+                    agx_uniform(0, AGX_SIZE_64), offset, AGX_ATOMIC_OPC_ADD);
+      agx_stop(b);
+      auto bytes = pack(b);
+      ASSERT_FALSE(bytes.empty());
+      if (!zero_extend)
+         baseline = bytes;
+      else
+         EXPECT_EQ(bytes, baseline);
+   }
+}

@@ -534,6 +534,7 @@ agx3_map_sr(enum agx_sr sr, uint8_t *apple, enum agx3_sr_width *width)
       SR(AGX_SR_THREAD_POSITION_IN_GRID_Z, 25, AGX3_SR_W32);
       SR(AGX_SR_INPUT_SAMPLE_MASK, 39, AGX3_SR_W16);
       SR(AGX_SR_COVERAGE_MASK, 39, AGX3_SR_W16);
+      SR(AGX_SR_IS_ACTIVE_THREAD, 2, AGX3_SR_W16);
       /* The invocation enums carry hardware SR bytes (0xd8/0xdd), while
        * agx3_sr_core consumes Apple's normalized f21 value. */
       SR(AGX_SR_INSTANCE_ID, 46, AGX3_SR_W32);
@@ -570,7 +571,8 @@ agx3_translate_sr(const agx_instr *I, uint8_t slot, uint16_t wait_mask,
    d->dest = dst.value;
    d->width = width;
    d->sr = apple;
-   d->original_coverage = I->sr == AGX_SR_INPUT_SAMPLE_MASK;
+   d->original_coverage = I->sr == AGX_SR_INPUT_SAMPLE_MASK ||
+                          I->sr == AGX_SR_IS_ACTIVE_THREAD;
    d->slot = slot;
    d->wait_mask = wait_mask;
    return true;
@@ -1861,7 +1863,10 @@ agx3_translate_device_atomic(const agx_instr *I,
    }
 
    const agx_index index = I->src[2];
-   if (index.memory || index.abs || index.neg || index.kill ||
+   /* .abs marks zero extension of the address index, not integer abs.
+    * A nonnegative immediate has the same folded byte offset in either mode. */
+   if (index.memory || (index.abs && index.type != AGX_INDEX_IMMEDIATE) ||
+       index.neg || index.kill ||
        (index.cache && index.discard) || agx_channels(index) != 1)
       return false;
 

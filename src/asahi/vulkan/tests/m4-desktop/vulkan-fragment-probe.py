@@ -33,6 +33,7 @@ def main():
                         default=Path(__file__).resolve().parent.parent)
     parser.add_argument('--vertex', type=Path)
     parser.add_argument('--geometry', type=Path)
+    parser.add_argument('--indexed', action='store_true')
     parser.add_argument('--extent', type=int, nargs=2, default=[32, 32])
     parser.add_argument('--storage-stage', choices=['vertex', 'fragment', 'geometry'])
     parser.add_argument('--storage-expected', type=Path,
@@ -157,6 +158,23 @@ def main():
             '   puts("PASS: exact shader storage output and 64-byte guard");\n')
         replace_once('   printf(PROBE_NAME ": retired %u submissions\\n", repeats);', validation +
             '   printf(PROBE_NAME ": retired %u submissions\\n", repeats);')
+    if args.indexed:
+        for function in ('vkCmdBindIndexBuffer', 'vkCmdDrawIndexed'):
+            replace_once('VK_FN(vkCreateBuffer);', 'VK_FN(vkCreateBuffer);\nVK_FN(' + function + ');')
+            replace_once('   LOAD_DEVICE(device, vkCreateBuffer);',
+                         '   LOAD_DEVICE(device, vkCreateBuffer);\n   LOAD_DEVICE(device, ' + function + ');')
+        replace_once('      .size = sizeof(vertices),', '      .size = sizeof(vertices) + 12,')
+        replace_once('      .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,',
+                     '      .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,')
+        replace_once('vkMapMemory(device, vertex_memory, 0, sizeof(vertices), 0,',
+                     'vkMapMemory(device, vertex_memory, 0, sizeof(vertices) + 12, 0,')
+        replace_once('   memcpy(vertex_map, vertices, sizeof(vertices));',
+            '   memcpy(vertex_map, vertices, sizeof(vertices));\n'
+            '   const uint32_t indices[] = {0, 1, 2};\n'
+            '   memcpy((char *)vertex_map + sizeof(vertices), indices, sizeof(indices));')
+        replace_once('   vkCmdDraw(command_buffer, 3, 1, 0, 0);',
+            '   vkCmdBindIndexBuffer(command_buffer, vertex_buffer, sizeof(vertices), VK_INDEX_TYPE_UINT32);\n'
+            '   vkCmdDrawIndexed(command_buffer, 3, 1, 0, 0, 0);')
     if args.reference_host:
         replace_once('      if (candidate.deviceID != T8140_DEVICE_ID)',
                      '      if (!strstr(candidate.deviceName, "llvmpipe"))')
@@ -408,7 +426,7 @@ def main():
         'allow_unadvertised_samples': args.allow_unadvertised_samples,
         'host_compile_only': args.host_compile_only,
         'record_command_buffer': args.record_command_buffer,
-        'extent': args.extent, 'geometry': bool(args.geometry), 'storage_stage': args.storage_stage,
+        'indexed': args.indexed, 'extent': args.extent, 'geometry': bool(args.geometry), 'storage_stage': args.storage_stage,
         'reference_host': args.reference_host,
         'fixture_sha256': hashlib.sha256(fixture.read_bytes()).hexdigest(),
         'commands': commands, 'sha256': files,

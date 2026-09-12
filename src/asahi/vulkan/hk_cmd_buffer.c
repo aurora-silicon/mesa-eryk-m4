@@ -986,8 +986,7 @@ hk_g17p_smooth_varyings_supported(struct hk_cmd_buffer *cmd,
    const struct hk_graphics_state *gfx = &cmd->state.gfx;
    const struct hk_shader *vs = gfx->shaders[MESA_SHADER_VERTEX]
       ? hk_bound_hw_vs(&cmd->state.gfx) : NULL;
-   const struct hk_api_shader *gs = gfx->shaders[MESA_SHADER_GEOMETRY];
-   if (!vs || (gs && !gs->is_passthrough) ||
+   if (!vs ||
        gfx->shaders[MESA_SHADER_TESS_EVAL] ||
        cf->nr_bindings > HK_AGX3_G17P_MAX_USER_WORDS + 2 ||
        cf->nr_cf > HK_AGX3_G17P_MAX_USER_WORDS + 2 ||
@@ -1046,10 +1045,12 @@ hk_g17p_basic_graphics_program_supported(struct hk_cmd_buffer *cmd,
                                          struct hk_shader *s,
                                          struct hk_linked_shader *linked)
 {
+   /* Main-shader TPS storage is declared by the native SPECTPR builder.
+    * Atomics with returned values use it even without register spilling.
+    * The legacy preamble/scratch-helper ABI remains unsupported here. */
    if (!linked || !linked->b.bo || !linked->b.bo->va || linked->b.size == 0 ||
        linked->b.size > UINT32_MAX || s->b.info.has_preamble ||
-       s->b.info.scratch_size != 0 ||
-       s->b.info.preamble_scratch_size != 0 || linked->b.scratch_size != 0 ||
+       s->b.info.preamble_scratch_size != 0 ||
        s->b.info.texture_state_count != 0 ||
        (s->b.info.sampler_state_count != 0 &&
         !(s->info.agx3_indexed_sampler_valid &&

@@ -65,7 +65,8 @@ agx3_sr_encode(enum agx_isa_encoding enc, const struct agx3_sr_desc *d,
    if (d == NULL || d->dest >= 256)
       return false;
    if (d->original_coverage &&
-       (enc != AGX_ISA_ENCODING_AGX3B || d->sr != 39 || d->width != AGX3_SR_W16))
+       (enc != AGX_ISA_ENCODING_AGX3B || (d->sr != 39 && d->sr != 2) ||
+        d->width != AGX3_SR_W16))
       return false;
    if (!agx3_sr_witnessed(d->sr, d->width))
       return false;

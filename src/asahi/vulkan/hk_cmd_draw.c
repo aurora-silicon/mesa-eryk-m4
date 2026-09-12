@@ -4821,14 +4821,12 @@ hk_flush_gfx_state(struct hk_cmd_buffer *cmd, uint32_t draw_id,
       vk_topology_to_mesa(dyn->ia.primitive_topology));
    adj &= !geom;
    *needs_idx_robust = hk_needs_index_robustness(cmd, draw);
-   /* The XFB passthrough GS runs in compute and feeds an ordinary Index List
-    * draw through its generated hardware VS. The latter must still satisfy
-    * the native VertexProgramVariant metadata checks below. */
-   const bool xfb_draw_path = geom &&
-      gfx->shaders[MESA_SHADER_GEOMETRY]->is_passthrough &&
-      !tess && !adj && !*needs_idx_robust;
+   /* Software GS lowering runs in compute and feeds an ordinary Index List
+    * through its generated hardware VS, for both application and XFB shaders.
+    * That VS must still satisfy the native program metadata checks below. */
+   const bool geometry_draw_path = geom && !tess && !adj && !*needs_idx_robust;
    const bool native_index_list_path =
-      (!geom && !tess && !adj && !*needs_idx_robust) || xfb_draw_path;
+      (!geom && !tess && !adj && !*needs_idx_robust) || geometry_draw_path;
 
    if (desc->push_dirty)
       hk_cmd_buffer_flush_push_descriptors(cmd, desc);
@@ -5012,7 +5010,6 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
            draw_.index_size != AGX_INDEX_SIZE_U16 &&
            draw_.index_size != AGX_INDEX_SIZE_U32) ||
           robust_indirect || ia_stats ||
-          cmd->state.gfx.shaders[MESA_SHADER_GEOMETRY] ||
           cmd->state.gfx.shaders[MESA_SHADER_TESS_EVAL] ||
           (agx_is_indirect(draw_.b)
               ? (!draw_.b.ptr || !draw_.index_buffer ||
@@ -5022,7 +5019,7 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
                    draw_.b.count[0], agx_index_size_to_B(draw_.index_size),
                    &address, &size_word))) {
          mesa_loge("native G17P indexed draw requires an in-bounds "
-                   "uint8/uint16/uint32 span without geometry, query, or "
+                   "uint8/uint16/uint32 span without tessellation, query, or "
                    "indirect robustness lowering");
          vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
          return;

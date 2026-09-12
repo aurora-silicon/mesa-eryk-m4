@@ -32,3 +32,13 @@ Apple offline compiler witness `helper.metal`, AIR-NT32023.883 targeting G16G:
 `simd_is_helper_thread()` reads original SR2 as a 16-bit value (f48=1), then
 compares it with zero. The read bytes are `0484110601000000`. Original archive,
 metadata and field decode are retained in `build/native-helper-thread/`.
+
+The adapter also supports `--indexed` (uint32 input indices). Native indexed
+GS amplification with smooth varyings matches the two-color software oracle
+in 215512224981Z. Odd 31x29 fragment storage/atomic-return checks pass in
+215255889302Z after implementing initial helper coverage and allowing folded
+unsigned immediate atomic offsets. Peak temperatures remain <=56.25 C.
+
+Do not assume one fragment invocation per pixel with MSAA: clipping/coverage
+can split invocations even with sample shading disabled. The attempted fixed
+count oracle at 4x failed on both lavapipe and M4 and is not qualification.
