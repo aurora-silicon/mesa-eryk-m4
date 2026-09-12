@@ -65,3 +65,11 @@ fix, write/read returned the old texels exactly while the final RG16F transfer
 already contained the new values. The descriptor interpretation was correct.
 The native compiler witness is retained under the workspace
 `_provenance/vkquake-reference-20260912/native-image-read-write-probe/`.
+
+## Shifted integer subtraction
+
+`m4_vulkan_integer_math.comp` exercises shifts by one and four, negative
+intermediate results, and masked wraparound before formatted image writes.
+`20260912T071759321326Z-native-shifted-integer-subtract` matched all 5120
+bytes on M4 (peak54.25C). The original vkQuake mip compute shader also
+compiles to 11096 bytes after lowering shifted subtraction to shift + subtract.
