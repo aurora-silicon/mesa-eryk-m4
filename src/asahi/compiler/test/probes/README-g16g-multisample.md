@@ -61,3 +61,9 @@ Do not enable public four-sample capabilities based on this checkpoint.
 PBE zero-based selector and full32x32 tile diagnostic changes did not fix the
 four-sample failure; both were reverted. Native SR39 coverage-word lowering
 alone did not fix selective writes either and was retained only as evidence.
+
+The descriptor oracle accepts `--layout 1|2` (default1). The runtime
+2D multisample attachment uses layout2. For 4x32x32 RGBA8 the native
+constructor produces word0 `0x8007c01fe40a24`, matching the runtime
+descriptor. This rules out that descriptor arithmetic as a standalone
+explanation for the remaining zero-output 4x case.

@@ -1562,3 +1562,13 @@ oracle. Build with `-lEGL -lGL -lm`, pass sample count 1/2/4, and run under the
 mandatory hardware guard. `M4_MSAA_ALL_SAMPLES=1` disables selective masks to
 isolate ordinary multisample rendering. `M4_TEST_LLVMPIPE=1` admits llvmpipe
 for the software reference. Every step compares all 4096 pixels, including alpha.
+
+`vulkan-fragment-probe.py SOURCE --output NEW_DIR --samples 1|2|4
+--rgba R G B A` builds a custom fragment shader into the existing Vulkan
+triangle fixture and retains hashes, commands and exact expected RGBA bytes.
+It does not execute hardware. The versioned mirror needs `--fixture` pointing
+to `../g17p_offscreen_triangle.c`; the workspace helper finds it automatically.
+Use the watchdog/thermal experiment wrapper to run `NEW_DIR/probe-arm64`.
+The fixture clears to black with alpha 255 before drawing. Use its actual
+`g17p-msaa2-triangle: PASS` success marker for 2x tests. Diagnostic fixtures are
+not application captures and cannot by themselves qualify application support.
