@@ -79,8 +79,10 @@ check_exact_gen9_linear_vector(void)
 static int
 check_exact_gen9_multisample(void)
 {
-   /* Offline native G16G PBE constructor 0x33620c. Same synthetic 64x64
-    * RGBA8 resource, varying only the sample count and native MS type. */
+   /* J713/25G83 live 1x/2x/4x EOT descriptor captures (2026-09-12).
+    * Sample count belongs in bits 56:57; the old emulated constructor
+    * fixture varied rotation (bits 54:55), not samples. Dimensions and
+    * buffer here are synthetic; compressed native descriptors are separate. */
    for (unsigned log2 = 0; log2 <= 2; ++log2) {
       struct agx_pbe_agx3_2d_fields fields = {
          .samples_log2 = log2, .layout = 1, .channels = 0x28, .type = 0,
@@ -91,12 +93,30 @@ check_exact_gen9_multisample(void)
          0x12,0x0a,0xe4,0x3f,0xc0,0x0f,0,0,
          0,0x40,0x23,1,0,0,0,0,
       };
-      if (log2) { expected[0] = 0x14; expected[6] = log2 << 6; }
+      if (log2) { expected[0] = 0x14; expected[7] = log2 - 1; }
       struct agx_pbe_agx3_descriptor packed;
       CHECK(agx_pbe_agx3_2d_pack(9, &fields, &packed));
       CHECK(!memcmp(packed.bytes, expected, sizeof(expected)));
       CHECK(agx_pbe_agx3_2d_unpack(9, expected, sizeof(expected), &decoded));
       CHECK(same_fields(9, &fields, &decoded));
+      /* Native complete EOT descriptors were compressed. Compare word0
+       * with only that independently identified compression bit removed;
+       * this does not admit compressed textures to the codec. */
+      static const uint8_t captured_word0[3][8] = {
+         {0x22,0x0a,0xe4,0xff,0xc3,0xff,0x00,0x08},
+         {0x24,0x0a,0xe4,0xff,0xc3,0xff,0x00,0x08},
+         {0x24,0x0a,0xe4,0xff,0xc3,0xff,0x00,0x09},
+      };
+      struct agx_pbe_agx3_2d_fields native_fields = fields;
+      native_fields.layout = 2;
+      native_fields.width = native_fields.height = 1024;
+      CHECK(agx_pbe_agx3_2d_pack(9, &native_fields, &packed));
+      uint8_t word0[8];
+      memcpy(word0, captured_word0[log2], 8);
+      word0[7] &= ~0x08;
+      CHECK(!memcmp(packed.bytes, word0, 8));
+      expected[6] |= 0x40; /* Rotation is outside the admitted subset. */
+      CHECK(!agx_pbe_agx3_2d_unpack(9, expected, sizeof(expected), &decoded));
       if (log2) {
          CHECK(!agx_pbe_agx3_2d_pack(10, &fields, &packed));
          CHECK(!agx_pbe_agx3_2d_mip_pack(9, &fields, 0, 2, &packed));

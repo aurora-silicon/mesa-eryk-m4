@@ -120,8 +120,11 @@ agx_pbe_agx3_2d_pack(uint32_t generation,
       return false;
 
    uint64_t word0 = fields->samples_log2 ? 4 : AGX_PBE_DIMENSION_2D;
-   /* Pinned G16G constructor 0x33620c, table 0x7c5e58. */
-   word0 |= (uint64_t)fields->samples_log2 << 54;
+   /* Native J713/25G83 EOT descriptors: dimension 4 selects MSAA,
+    * bits 56:57 encode log2(samples)-1. Bits 54:55 are rotation.
+    * The earlier constructor experiment mislabeled its rotation input. */
+   if (fields->samples_log2)
+      word0 |= (uint64_t)(fields->samples_log2 - 1) << 56;
    word0 |= (uint64_t)fields->layout << 4;
    word0 |= (uint64_t)fields->channels << 6;
    word0 |= (uint64_t)fields->type << 13;
@@ -200,7 +203,7 @@ agx_pbe_agx3_2d_unpack(uint32_t generation, const void *bytes, size_t size,
    const uint64_t word3 = load_le64(&raw[24]);
    const uint64_t word0_mask =
       generation == AGX_PBE_AGX3_GENERATION_9
-         ? ((UINT64_C(1) << 52) - 1) | (UINT64_C(3) << 54)
+         ? ((UINT64_C(1) << 52) - 1) | (UINT64_C(3) << 56)
          : (UINT64_C(1) << 54) - 1;
 
    const uint8_t layout = (word0 >> 4) & 0x3;
@@ -208,7 +211,10 @@ agx_pbe_agx3_2d_unpack(uint32_t generation, const void *bytes, size_t size,
       ? (UINT64_C(1) << 61) - 1
       : ((UINT64_C(1) << 44) - 1) |
            (generation == AGX_PBE_AGX3_GENERATION_10 ? UINT64_C(1) << 60 : 0);
-   const unsigned samples_log2 = generation == 9 ? (word0 >> 54) & 3 : 0;
+   const bool multisampled = generation == 9 && (word0 & 0xf) == 4;
+   const unsigned samples_log2 = multisampled ? ((word0 >> 56) & 3) + 1 : 0;
+   if (generation == 9 && !multisampled && ((word0 >> 56) & 3))
+      return false;
    if ((word0 & 0xf) != (samples_log2 ? 4 : AGX_PBE_DIMENSION_2D) ||
        (word0 & ~word0_mask) || (word1 & ~word1_mask) || word2 || word3)
       return false;
