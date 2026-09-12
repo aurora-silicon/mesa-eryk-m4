@@ -1743,3 +1743,13 @@ Fragment writeout evidence (J713,2026-09-12):200729 and200752 validate exact1x
 color/depth and typed/formatless image outputs;201415 validates attachmentless
 image output.201447 replays Chromium's retained failing capture successfully,
 with explicit external-sharing/rebinding adaptations and no replay pixel claim.
+
+`fragment-image-probe sampled buffer attachmentless` reproduces a sampled
+texture copied by a fragment shader into a storage texel buffer, as used by
+Chromium screenshot readback. It checks all4096 destination texels against
+known quadrants. Omit`buffer` to check a2D storage-image destination instead.
+The202608 lavapipe capture passes;202655 reproduces4096/4096 incorrect native
+texels with the old null storage-texel-buffer descriptor.
+Native descriptor fix202826 passes all4096 texels;202844 replays the retained
+Chromium capture without a GPU or Vulkan error. The latter is an adapted
+process replay, not a pixel or external-sharing qualification.

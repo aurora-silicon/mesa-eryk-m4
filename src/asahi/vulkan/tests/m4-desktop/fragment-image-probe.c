@@ -33,9 +33,11 @@ static GLuint shader(GLenum type, const char *text) {
   return s;
 }
 int main(int argc, char **argv) {
-  bool typed=false,attachmentless=false;
+  bool typed=false,attachmentless=false,sampled=false,buffer=false;
   for(int i=1;i<argc;i++) {
     if(!strcmp(argv[i],"typed"))typed=true;
+    else if(!strcmp(argv[i],"sampled"))sampled=true;
+    else if(!strcmp(argv[i],"buffer"))buffer=true;
     else {CHECK(!strcmp(argv[i],"attachmentless"));attachmentless=true;}
   }
   EGLDisplay d=eglGetPlatformDisplay(EGL_PLATFORM_SURFACELESS_MESA,0,0);
@@ -53,21 +55,40 @@ int main(int argc, char **argv) {
     "#version 330 core\nvoid main(){vec2 p=vec2((gl_VertexID<<1)&2,gl_VertexID&2);gl_Position=vec4(p*2.-1.,0.,1.);}"));
   char fs[2048];snprintf(fs,sizeof(fs),
     "#version 330 core\n#extension GL_ARB_shader_image_load_store : require\n"
-    "%s uniform writeonly image2D dst;out vec4 color;void main(){"
-    "ivec2 p=ivec2(gl_FragCoord.xy);imageStore(dst,p,vec4(p.x<32?0.25:0.75,p.y<32?0.75:0.25,0.5,1));"
-    "color=vec4(1,0,0,1);}",typed?"layout(rgba8)":"");
+    "%s uniform writeonly %s dst;uniform sampler2D input_image;out vec4 color;void main(){"
+    "ivec2 p=ivec2(gl_FragCoord.xy);imageStore(dst,%s,%s);"
+    "color=vec4(1,0,0,1);}",typed?"layout(rgba8)":"",buffer?"imageBuffer":"image2D",buffer?"p.x+p.y*64":"p",sampled?"texture(input_image,gl_FragCoord.xy/64.)":"vec4(p.x<32?0.25:0.75,p.y<32?0.75:0.25,0.5,1)");
   glAttachShader(program,shader(GL_FRAGMENT_SHADER,fs));glLinkProgram(program);
   GLint ok;glGetProgramiv(program,GL_LINK_STATUS,&ok);CHECK(ok);glUseProgram(program);
   GLint loc=glGetUniformLocation(program,"dst");CHECK(loc>=0);glUniform1i(loc,0);
   GLuint vao;glGenVertexArrays(1,&vao);glBindVertexArray(vao);
-  GLuint tex;glGenTextures(1,&tex);glBindTexture(GL_TEXTURE_2D,tex);
+  GLuint tex,bo=0;glGenTextures(1,&tex);
+  glBindTexture(buffer?GL_TEXTURE_BUFFER:GL_TEXTURE_2D,tex);
   unsigned char pixels[64*64*4];memset(pixels,0xa5,sizeof(pixels));
-  glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA8,64,64,0,GL_RGBA,GL_UNSIGNED_BYTE,pixels);
-  glGetTexImage(GL_TEXTURE_2D,0,GL_RGBA,GL_UNSIGNED_BYTE,pixels);
+  if(buffer) {
+    glGenBuffers(1,&bo);glBindBuffer(GL_TEXTURE_BUFFER,bo);
+    glBufferData(GL_TEXTURE_BUFFER,sizeof(pixels),pixels,GL_DYNAMIC_COPY);
+    glTexBuffer(GL_TEXTURE_BUFFER,GL_RGBA8,bo);
+    glGetBufferSubData(GL_TEXTURE_BUFFER,0,sizeof(pixels),pixels);
+  } else {
+    glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA8,64,64,0,GL_RGBA,GL_UNSIGNED_BYTE,pixels);
+    glGetTexImage(GL_TEXTURE_2D,0,GL_RGBA,GL_UNSIGNED_BYTE,pixels);
+  }
   CHECK(glGetError()==GL_NO_ERROR);
   for(unsigned i=0;i<sizeof(pixels);i++) CHECK(pixels[i]==0xa5);
   puts("PASS: initial image readback");
   glBindImageTexture(0,tex,0,GL_FALSE,0,GL_WRITE_ONLY,GL_RGBA8);
+  GLuint source=0;
+  if(sampled) {
+    glGenTextures(1,&source);glBindTexture(GL_TEXTURE_2D,source);
+    for(unsigned i=0;i<4096;i++) {
+      pixels[4*i]=i%64<32?64:191;pixels[4*i+1]=i/64<32?191:64;pixels[4*i+2]=128;pixels[4*i+3]=255;
+    }
+    glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA8,64,64,0,GL_RGBA,GL_UNSIGNED_BYTE,pixels);
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
+    loc=glGetUniformLocation(program,"input_image");CHECK(loc>=0);glUniform1i(loc,0);
+  }
   GLuint fb,rb;glGenFramebuffers(1,&fb);glBindFramebuffer(GL_FRAMEBUFFER,fb);
   glGenRenderbuffers(1,&rb);glBindRenderbuffer(GL_RENDERBUFFER,rb);
   glRenderbufferStorage(GL_RENDERBUFFER,GL_RGBA8,64,64);
@@ -78,8 +99,13 @@ int main(int argc, char **argv) {
   } else glFramebufferRenderbuffer(GL_FRAMEBUFFER,GL_COLOR_ATTACHMENT0,GL_RENDERBUFFER,rb);
   CHECK(glCheckFramebufferStatus(GL_FRAMEBUFFER)==GL_FRAMEBUFFER_COMPLETE);
   glViewport(0,0,64,64);glDrawArrays(GL_TRIANGLES,0,3);
-  glMemoryBarrier(GL_TEXTURE_UPDATE_BARRIER_BIT|GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
-  glGetTexImage(GL_TEXTURE_2D,0,GL_RGBA,GL_UNSIGNED_BYTE,pixels);CHECK(glGetError()==GL_NO_ERROR);
+  glMemoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT|GL_TEXTURE_UPDATE_BARRIER_BIT|GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+  if(buffer) glGetBufferSubData(GL_TEXTURE_BUFFER,0,sizeof(pixels),pixels);
+  else {
+    glBindTexture(GL_TEXTURE_2D,tex);
+    glGetTexImage(GL_TEXTURE_2D,0,GL_RGBA,GL_UNSIGNED_BYTE,pixels);
+  }
+  CHECK(glGetError()==GL_NO_ERROR);
   unsigned bad=0;
   for(unsigned i=0;i<64*64;i++) {
     int red=i%64<32?64:191,green=i/64<32?191:64;
@@ -93,9 +119,10 @@ int main(int argc, char **argv) {
   glReadPixels(0,0,64,64,GL_RGBA,GL_UNSIGNED_BYTE,pixels);CHECK(glGetError()==GL_NO_ERROR);
   for(unsigned i=0;i<64*64;i++) if(pixels[4*i]!=255 || pixels[4*i+1] || pixels[4*i+2] || pixels[4*i+3]!=255)bad++;
   }
+  glDeleteTextures(1,&source);glDeleteBuffers(1,&bo);
   glFinish();glDeleteFramebuffers(1,&fb);glDeleteRenderbuffers(1,&rb);glDeleteTextures(1,&tex);
   glDeleteVertexArrays(1,&vao);glDeleteProgram(program);
   eglMakeCurrent(d,EGL_NO_SURFACE,EGL_NO_SURFACE,EGL_NO_CONTEXT);eglDestroyContext(d,c);eglTerminate(d);
-  printf("mode attachmentless=%u\n",attachmentless);
+  printf("mode attachmentless=%u sampled=%u buffer=%u\n",attachmentless,sampled,buffer);
   printf("%s: fragment image %s\n",bad?"FAIL":"PASS",attachmentless?"writes without attachments":"and color writes");return bad?1:0;
 }

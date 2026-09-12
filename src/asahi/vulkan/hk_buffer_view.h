@@ -23,6 +23,8 @@ struct hk_buffer_view {
    struct hk_native_texture_descriptor tex;
    struct hk_native_pbe_descriptor pbe;
    uint32_t sampled_heap_index;
+   uint32_t storage_heap_index;
+   bool storage_pbe_valid;
 };
 
 VK_DEFINE_NONDISP_HANDLE_CASTS(hk_buffer_view, vk.base, VkBufferView,

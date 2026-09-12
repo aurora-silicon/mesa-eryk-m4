@@ -135,9 +135,8 @@ hk_CreateBufferView(VkDevice _device, const VkBufferViewCreateInfo *pCreateInfo,
       return vk_error(device, VK_ERROR_FORMAT_NOT_SUPPORTED);
    }
 
-   if (hk_native_pbe_supported(generation)) {
-      struct agx_pbe_packed packed;
-      agx_pack(&packed, PBE, cfg) {
+   if (hk_native_pbe_hardware_supported(generation)) {
+      struct AGX_PBE cfg = {AGX_PBE_header};
       cfg.dimension = AGX_TEXTURE_DIMENSION_2D;
       cfg.layout = AGX_LAYOUT_LINEAR;
       cfg.channels = ail_pixel_format[format].channels;
@@ -166,9 +165,9 @@ hk_CreateBufferView(VkDevice _device, const VkBufferViewCreateInfo *pCreateInfo,
       cfg.stride = (cfg.width * util_format_get_blocksize(format)) - 4;
       cfg.layers = 1;
       cfg.levels = 1;
-      };
 
-      memcpy(&view->pbe, &packed, sizeof(packed));
+      view->storage_pbe_valid =
+         hk_pack_native_pbe(generation, &view->pbe, &cfg);
    } else {
       memset(&view->pbe, 0, sizeof(view->pbe));
    }
@@ -178,6 +177,21 @@ hk_CreateBufferView(VkDevice _device, const VkBufferViewCreateInfo *pCreateInfo,
          device, &device->sampled_images, &view->tex,
          hk_texture_descriptor_size(generation), &view->sampled_heap_index);
       if (result != VK_SUCCESS) {
+         vk_buffer_view_destroy(&device->vk, pAllocator, &view->vk);
+         return result;
+      }
+   }
+
+   /* Native image stores address the PBE through the shared descriptor heap,
+    * including buffer images lowered to a linear 2D view. */
+   if (agx_native_graphics(&device->dev) && view->storage_pbe_valid &&
+       (buffer->vk.usage & VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT)) {
+      VkResult result = hk_descriptor_table_add(
+         device, &device->sampled_images, &view->pbe,
+         hk_pbe_descriptor_size(generation), &view->storage_heap_index);
+      if (result != VK_SUCCESS) {
+         hk_descriptor_table_remove(device, &device->sampled_images,
+                                    view->sampled_heap_index);
          vk_buffer_view_destroy(&device->vk, pAllocator, &view->vk);
          return result;
       }
@@ -197,6 +211,10 @@ hk_DestroyBufferView(VkDevice _device, VkBufferView bufferView,
 
    if (!view)
       return;
+
+   if (view->storage_heap_index)
+      hk_descriptor_table_remove(device, &device->sampled_images,
+                                 view->storage_heap_index);
 
    if (view->sampled_heap_index)
       hk_descriptor_table_remove(device, &device->sampled_images,
