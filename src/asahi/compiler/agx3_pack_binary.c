@@ -3511,118 +3511,131 @@ agx3_g17p_rt0_eot_kind(const agx_context *ctx, enum agx_isa_encoding enc)
    return AGX3_G17P_RT0_EOT_SELECTOR_75;
 }
 
-/* Native mask-3 EOT programs for {RGBA16F, R8} and {R11G11B10, R11G11B10}
- * share coordinates, offset bindings and a 120-byte envelope. The first store
- * selector is typed; match the complete post-RA graph and both tile offsets. */
+/* Recognize the compiler-generated EOT intrinsic wrapper. The native ABI
+ * supplies the PBE table and per-attachment tile offsets in uniforms; shader
+ * coordinates come from the tile grid. Keep typed stores in attachment order. */
 static unsigned
-agx3_g17p_dual_mrt_eot_kind(const agx_context *ctx,
-                           enum agx_isa_encoding enc)
+agx3_native_mrt_eot(const agx_context *ctx, enum agx_isa_encoding enc,
+                    uint8_t selectors[(FRAG_RESULT_MAX - FRAG_RESULT_DATA0)])
 {
    if (enc != AGX_ISA_ENCODING_AGX3B || ctx->stage != MESA_SHADER_COMPUTE ||
        ctx->is_preamble || ctx->key->no_stop)
-      return false;
-
-   unsigned instructions = 0, get_x = 0, get_y = 0, stores = 0;
-   unsigned x_reg = UINT_MAX, y_reg = UINT_MAX, coord_reg = UINT_MAX;
-   unsigned zero_reg = UINT_MAX, second_offset_reg = UINT_MAX;
-   unsigned second_offset = 0, first_format = AGX_NUM_FORMATS;
-   bool second_i16 = false;
-
-   agx_foreach_block(ctx, block) {
-      agx_foreach_instr_in_block(block, I) {
-         if (I->op == AGX_OPCODE_STOP)
-            continue;
-         instructions++;
-
-         if (I->op == AGX_OPCODE_GET_SR) {
-            if (I->nr_dests != 1 || I->nr_srcs != 0 ||
-                !agx3_src_is_register(I->dest[0]) || I->dest[0].memory ||
-                I->dest[0].size != AGX_SIZE_32 ||
-                agx_channels(I->dest[0]) != 1)
-               return false;
-
-            if (I->sr == AGX_SR_THREAD_POSITION_IN_GRID_X) {
-               get_x++;
-               x_reg = I->dest[0].value;
-            } else if (I->sr == AGX_SR_THREAD_POSITION_IN_GRID_Y) {
-               get_y++;
-               y_reg = I->dest[0].value;
-            } else {
-               return false;
-            }
-         } else if (I->op == AGX_OPCODE_MOV_IMM) {
-            if (I->nr_dests != 1 || I->nr_srcs != 0 ||
-                !agx3_src_is_register(I->dest[0]) || I->dest[0].memory ||
-                I->dest[0].size != AGX_SIZE_32 ||
-                agx_channels(I->dest[0]) != 1)
-               return false;
-
-            if (I->imm == 0)
-               zero_reg = I->dest[0].value;
-            else if (I->imm == 4 || I->imm == 8) {
-               second_offset = I->imm;
-               second_offset_reg = I->dest[0].value;
-            }
-            else
-               return false;
-         } else if (I->op == AGX_OPCODE_BLOCK_IMAGE_STORE) {
-            if (I->nr_dests != 0 || I->nr_srcs != 4 ||
-                I->dim != AGX_DIM_2D || !I->explicit_coords ||
-                I->src[0].type != AGX_INDEX_IMMEDIATE ||
-                I->src[0].value != 0 || I->src[0].size != AGX_SIZE_16 ||
-                I->src[1].type != AGX_INDEX_IMMEDIATE ||
-                I->src[1].value != stores || I->src[1].size != AGX_SIZE_16 ||
-                !agx3_src_is_register(I->src[2]) || I->src[2].memory ||
-                I->src[2].abs || I->src[2].neg ||
-                I->src[2].size != AGX_SIZE_32 ||
-                agx_channels(I->src[2]) != 1 ||
-                !agx3_src_is_register(I->src[3]) || I->src[3].memory ||
-                I->src[3].abs || I->src[3].neg ||
-                I->src[3].size != AGX_SIZE_32 ||
-                agx_channels(I->src[3]) != 2)
-               return false;
-
-            if (stores >= 2)
+      return 0;
+   unsigned constants[AGX_NUM_REGS];
+   for (unsigned i = 0; i < ARRAY_SIZE(constants); ++i)
+      constants[i] = UINT_MAX;
+   unsigned x = UINT_MAX, y = UINT_MAX, count = 0;
+   agx_foreach_instr_global(ctx, I) {
+      if (I->op == AGX_OPCODE_STOP)
+         continue;
+      if (I->op == AGX_OPCODE_GET_SR || I->op == AGX_OPCODE_MOV_IMM) {
+         if (I->nr_dests != 1 || I->nr_srcs ||
+             !agx3_src_is_register(I->dest[0]) || I->dest[0].memory ||
+             I->dest[0].size != AGX_SIZE_32 ||
+             agx_channels(I->dest[0]) != 1 || I->dest[0].value >= AGX_NUM_REGS)
+            return 0;
+         unsigned reg = I->dest[0].value;
+         if (I->op == AGX_OPCODE_MOV_IMM) {
+            if (I->imm > UINT8_MAX)
                return 0;
-            if (stores == 0) {
-               first_format = I->format;
-               if (I->src[2].value != zero_reg ||
-                   (first_format != AGX_FORMAT_F16 &&
-                    first_format != AGX_FORMAT_I16 &&
-                    first_format != AGX_FORMAT_U8NORM &&
-                    first_format != AGX_FORMAT_RG11B10F))
-                  return 0;
-            } else {
-               bool packed = first_format == AGX_FORMAT_RG11B10F ||
-                             first_format == AGX_FORMAT_U8NORM;
-               if (I->src[2].value != second_offset_reg ||
-                   second_offset != (packed ? 4 : 8) ||
-                   (packed ? I->format != first_format :
-                    (I->format != AGX_FORMAT_U8NORM &&
-                     I->format != AGX_FORMAT_I16)))
-                  return 0;
-            }
-
-            if (stores == 1)
-               second_i16 = I->format == AGX_FORMAT_I16;
-            if (stores == 0)
-               coord_reg = I->src[3].value;
-            else if (I->src[3].value != coord_reg)
-               return false;
-            stores++;
-         } else {
-            return false;
-         }
+            constants[reg] = I->imm;
+         } else if (I->sr == AGX_SR_THREAD_POSITION_IN_GRID_X && x == UINT_MAX)
+            x = reg;
+         else if (I->sr == AGX_SR_THREAD_POSITION_IN_GRID_Y && y == UINT_MAX)
+            y = reg;
+         else
+            return 0;
+         continue;
+      }
+      if (I->op != AGX_OPCODE_BLOCK_IMAGE_STORE ||
+          count >= (FRAG_RESULT_MAX - FRAG_RESULT_DATA0) || I->nr_dests || I->nr_srcs != 4 ||
+          I->dim != AGX_DIM_2D || !I->explicit_coords ||
+          !agx3_tex_imm(I->src[0], 0) || !agx3_tex_imm(I->src[1], count) ||
+          !agx3_tex_plain_reg(I->src[2]) || I->src[2].size != AGX_SIZE_32 ||
+          agx_channels(I->src[2]) != 1 || I->src[2].value >= AGX_NUM_REGS ||
+          constants[I->src[2].value] == UINT_MAX ||
+          !agx3_tex_plain_reg(I->src[3]) || I->src[3].size != AGX_SIZE_32 ||
+          agx_channels(I->src[3]) != 2 || I->src[3].value != x || y != x + 2)
+         return 0;
+      switch (I->format) {
+      case AGX_FORMAT_F16:
+      case AGX_FORMAT_I16:
+         selectors[count++] = 1;
+         break;
+      case AGX_FORMAT_U8NORM:
+      case AGX_FORMAT_RG11B10F:
+         selectors[count++] = 3;
+         break;
+      default:
+         return 0;
       }
    }
+   return count >= 2 ? count : 0;
+}
 
-   bool valid = instructions == 6 && get_x == 1 && get_y == 1 && stores == 2 &&
-          zero_reg != UINT_MAX && second_offset_reg != UINT_MAX &&
-          x_reg == coord_reg && y_reg == coord_reg + 2;
-   if (valid && second_i16)
-      return 3;
-   return valid ? ((first_format == AGX_FORMAT_RG11B10F ||
-                    first_format == AGX_FORMAT_U8NORM) ? 2 : 1) : 0;
+static bool
+agx3_emit_native_mrt_eot(struct util_dynarray *emission,
+                         enum agx_isa_encoding enc, unsigned count,
+                         const uint8_t *selectors)
+{
+   /* Native tile-grid coordinate ABI, shared by same-partition EOTs.
+    * GPR halves0/2 hold Y/X; halves4/5 are the grid scales. */
+   static const uint8_t header[] = {
+      0x1c,0x9c,0x10,0x06,0x24,0xa8,0x14,0x06,
+      0x0c,0x9d,0x10,0x26,0x24,0xa9,0x10,0x26,
+      0x9f,0x10,0x54,0x02,0x03,0x04,0x14,0x00,0x50,0x26,0x0a,0x00,
+      0x9f,0x20,0x54,0x00,0x03,0x00,0x10,0x00,0x50,0x26,0x0a,0x00,
+   };
+   if (!agx3_append(emission, header, sizeof(header)))
+      return false;
+   const unsigned slots = 6;
+   for (unsigned first = 0; first < count; first += slots) {
+      const unsigned end = MIN2(first + slots, count);
+      /* Reuse completion slots only after all writes from the prior batch. */
+      if (first && !agx3_retire_slots_noop(emission, enc, BITFIELD_MASK(slots)))
+         return false;
+      for (unsigned rt = first; rt < end; ++rt) {
+         const unsigned slot = rt - first + 1;
+         uint8_t bytes[AGX3_MAX_WORDS * 2], len;
+         const struct agx3_field_kv pack[] = {
+            {9,5},{10,2},{12,slot},{5,8*rt+4},{23,3},{24,1},
+            {17,4*rt+4},{38,1},{37,1},{52,2},{51,1},
+            {74,8},{75,16},{76,7},{77,24},
+         };
+         if (!agx3_bind_compose(enc, "pack_imgwir", 0, pack, ARRAY_SIZE(pack),
+                                 NULL, 0, bytes, &len) ||
+             !agx3_append(emission, bytes, len))
+            return false;
+         for (unsigned c = 0; c < 2; ++c) {
+            const struct agx3_field_kv copy[] = {
+               {9,5},{10,2},{23,2},{24,2},{12,slot},
+               {5,8*rt+2*c},{16,c ? 0 : 2},
+               {25,rt+1<count},{27,rt+1==count},
+            };
+            if ((!agx3_bind_compose(enc, "copy", 0, copy, ARRAY_SIZE(copy),
+                                      NULL, 0, bytes, &len) &&
+                 !agx3_bind_compose(enc, "copy", 1, copy, ARRAY_SIZE(copy),
+                                      NULL, 0, bytes, &len)) ||
+                !agx3_append(emission, bytes, len))
+               return false;
+         }
+      }
+      for (unsigned rt = first; rt < end; ++rt) {
+         unsigned slot = rt - first + 1;
+         const struct agx3_field_kv store[] = {
+            {9,5},{5,8*rt},{12,slot},{13,1},{16+slot,1},
+            {32,1},{73,1},{29,selectors[rt]},{30,1},{45,3},{46,3},
+            {59,1},{60,1},{51,rt},
+         };
+         uint8_t bytes[AGX3_MAX_WORDS * 2], len;
+         if (!agx3_bind_compose(enc, "imgwblk", 0, store, ARRAY_SIZE(store),
+                                 NULL, 0, bytes, &len) ||
+             !agx3_append(emission, bytes, len))
+            return false;
+      }
+   }
+   static const uint8_t stop[] = {0x0e,0,0,0};
+   return agx3_append(emission, stop, sizeof(stop));
 }
 
 static bool
@@ -3790,41 +3803,12 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
    ctx->agx3_staging_known = true;
    ctx->agx3_fltnorm_start = false;
 
-   unsigned dual_mrt = agx3_g17p_dual_mrt_eot_kind(ctx, enc);
-   if (dual_mrt) {
-      static const uint8_t g17p_wboit_mrt_eot[] = {
-         0x1c, 0x9c, 0x10, 0x06, 0x24, 0xa8, 0x14, 0x06,
-         0x0c, 0x9d, 0x10, 0x26, 0x24, 0xa9, 0x10, 0x26,
-         0x9f, 0x10, 0x54, 0x02, 0x03, 0x04, 0x14, 0x00,
-         0x50, 0x26, 0x0a, 0x00, 0x9f, 0x20, 0x54, 0x00,
-         0x03, 0x00, 0x10, 0x00, 0x50, 0x26, 0x0a, 0x00,
-         0x97, 0x05, 0x54, 0x04, 0x00, 0x08, 0x00, 0x00,
-         0xd0, 0x40, 0x10, 0x00, 0x0b, 0x82, 0x21, 0x04,
-         0x1b, 0x80, 0x21, 0x04, 0x97, 0x05, 0x54, 0x0c,
-         0x00, 0x10, 0x00, 0x00, 0xd0, 0x44, 0x10, 0x00,
-         0x4b, 0x03, 0x2f, 0x00, 0x42, 0x00, 0x00, 0x04,
-         0x00, 0x00, 0x5b, 0x01, 0x2f, 0x00, 0x42, 0x00,
-         0x00, 0x04, 0x00, 0x00, 0x57, 0x10, 0x54, 0x00,
-         0x00, 0x00, 0x00, 0x80, 0xa8, 0x15, 0x00, 0x00,
-         0x57, 0x20, 0x54, 0x08, 0x00, 0x10, 0x00, 0x90,
-         0xa8, 0x75, 0x00, 0x00, 0x0e, 0x00, 0x00, 0x00,
-      };
-      /* Native common field0=3 is three 32-bit GPRs. The text's only GPR
-       * COPY destinations are halves4/5, so retain the eight-half bound used
-       * by the matching RT0 builtin. D=32 independently needs16 staging. */
+   uint8_t selectors[(FRAG_RESULT_MAX - FRAG_RESULT_DATA0)];
+   unsigned mrt_count = agx3_native_mrt_eot(ctx, enc, selectors);
+   if (mrt_count) {
       ctx->max_reg = MAX2(ctx->max_reg, 7);
-      ctx->agx3_staging_halfs = MAX2(ctx->agx3_staging_halfs, 16);
-      uint8_t native[sizeof(g17p_wboit_mrt_eot)];
-      memcpy(native, g17p_wboit_mrt_eot, sizeof(native));
-      /* G16G builtin key {0x0c021500, 0x0c021500}, mask 3. */
-      if (dual_mrt == 2)
-         native[101] = 0x75;
-      /* G16G {RGBA16F, R16_UINT}, same-partition mask3: the second
-       * imageblock store uses the I16 selector. Apple AIR-NT32023.917
-       * emits the identical 120-byte program apart from this field. */
-      if (dual_mrt == 3)
-         native[113] = 0x15;
-      return agx3_append(emission, native, sizeof(native));
+      ctx->agx3_staging_halfs = MAX2(ctx->agx3_staging_halfs, 8 * mrt_count);
+      return agx3_emit_native_mrt_eot(emission, enc, mrt_count, selectors);
    }
 
    const enum agx3_g17p_rt0_eot_kind rt0_eot =

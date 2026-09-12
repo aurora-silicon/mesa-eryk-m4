@@ -94,7 +94,15 @@ hk_agx3_g17p_rt0_tile_layout_supported(struct agx_tilebuffer_layout *tib)
       !tib->spilled[1] && tib->_offset_B[0] == 0 &&
       tib->_offset_B[1] == 4 && tib->sample_size_B == 8;
 
-   for (unsigned rt = (mixed_mrt || packed_mrt) ? 2 : 1;
+   const bool triple_mrt = tib->nr_samples == 1 &&
+      tib->logical_format[0] == PIPE_FORMAT_R16G16B16A16_FLOAT &&
+      tib->logical_format[1] == PIPE_FORMAT_R16G16_FLOAT &&
+      tib->logical_format[2] == PIPE_FORMAT_R16_UINT &&
+      !tib->spilled[1] && !tib->spilled[2] &&
+      tib->_offset_B[0] == 0 && tib->_offset_B[1] == 8 &&
+      tib->_offset_B[2] == 12 && tib->sample_size_B == 16;
+
+   for (unsigned rt = triple_mrt ? 3 : (mixed_mrt || packed_mrt) ? 2 : 1;
         rt < AGX_MAX_RENDER_TARGETS; ++rt) {
       if (tib->logical_format[rt] != PIPE_FORMAT_NONE)
          return false;
@@ -130,7 +138,7 @@ hk_agx3_g17p_rt0_tile_layout_supported(struct agx_tilebuffer_layout *tib)
        tib->logical_format[0] == PIPE_FORMAT_R32G32B32A32_SINT ||
        tib->logical_format[0] == PIPE_FORMAT_R32G32B32A32_UINT);
 
-   return mixed_mrt || packed_mrt || rgba32 ||
+   return triple_mrt || mixed_mrt || packed_mrt || rgba32 ||
           (tib->sample_size_B == 8 &&
            (agx_tilebuffer_physical_format(tib, 0) == PIPE_FORMAT_R8_UNORM ||
             agx_tilebuffer_physical_format(tib, 0) == PIPE_FORMAT_R8G8B8A8_SRGB ||
@@ -506,10 +514,8 @@ hk_agx3_g17p_rt0_bg_shader_resources_match(
 {
    switch (op) {
    case HK_AGX3_G17P_RT0_BG_CLEAR:
-      return (push_count == HK_AGX3_G17P_RT0_CLEAR_PUSH_HALFS ||
-              push_count == HK_AGX3_G17P_WBOIT_MRT_CLEAR_PUSH_HALFS ||
-              push_count == HK_AGX3_DUAL_MRT_CLEAR_PUSH_HALFS) &&
-             !uses_txf;
+      return push_count >= 6 && push_count <= 4 + 8 * AGX_IOTO_MAX_COLOR_ATTACHMENTS &&
+             !(push_count & 1) && !uses_txf;
    case HK_AGX3_G17P_RT0_BG_RELOAD:
       return push_count == 0 && uses_txf;
    default:
@@ -533,9 +539,9 @@ hk_agx3_g17p_rt0_bg_program_generate(
          ? desc->clear_push_halfs : HK_AGX3_G17P_RT0_CLEAR_PUSH_HALFS;
       if (!desc->clear_value_va || desc->texture_pointer_va ||
           desc->sampler_pointer_va ||
-          (clear_push_halfs != HK_AGX3_G17P_RT0_CLEAR_PUSH_HALFS &&
-           clear_push_halfs != HK_AGX3_G17P_WBOIT_MRT_CLEAR_PUSH_HALFS &&
-           clear_push_halfs != HK_AGX3_DUAL_MRT_CLEAR_PUSH_HALFS))
+          (clear_push_halfs < 6 ||
+           clear_push_halfs > 4 + 8 * AGX_IOTO_MAX_COLOR_ATTACHMENTS ||
+           (clear_push_halfs & 1)))
          return false;
       ranges[0] = (struct agx3_ioto_uniform_range){
          .start_halfs = 4,
@@ -650,20 +656,12 @@ hk_agx3_g17p_rt0_eot_program_generate(
    enum agx_chip chip, const struct hk_agx3_g17p_rt0_eot_program_desc *desc,
    struct hk_agx3_g17p_rt0_eot_program *program)
 {
-   const bool rt0 = desc &&
-                    (desc->shader_binary_size == 68 ||
-                     desc->shader_binary_size == 84) &&
-                    desc->nr_gprs == 8 && desc->staging_halfs == 8 &&
-                    (desc->attachment_count == 0 ||
-                     desc->attachment_count == 1);
-   const bool wboit_mrt = desc && desc->shader_binary_size == 120 &&
-                          desc->nr_gprs == 8 &&
-                          desc->staging_halfs == 16 &&
-                          desc->attachment_count == 2;
-   if (!program || !agx_chip_uses_hal200_ioto(chip) || !desc || (!rt0 && !wboit_mrt) ||
+   const unsigned count = desc ? MAX2(desc->attachment_count, 1) : 0;
+   if (!program || !agx_chip_uses_hal200_ioto(chip) || !desc ||
+       count > AGX_IOTO_MAX_COLOR_ATTACHMENTS || !desc->shader_binary_size ||
+       desc->nr_gprs < 8 || desc->staging_halfs != count * 8 ||
        !desc->pbe_argument_va ||
-       desc->pbe_argument_va > UINT64_C(0xffffffffffff) -
-          (wboit_mrt ? 63 : 31) ||
+       desc->pbe_argument_va > UINT64_C(0xffffffffffff) - (32 * count - 1) ||
        (desc->pbe_argument_va & 31))
       return false;
 
@@ -694,7 +692,7 @@ hk_agx3_g17p_rt0_eot_program_generate(
     * uses0..3 before the final
     * COPYs. No descriptor-memory load or load-completion wait is needed.
     */
-   uint8_t body[4 * AGX_IOTO_LOAD_LDIMM_MAX_SIZE];
+   uint8_t body[(2 + AGX_IOTO_MAX_COLOR_ATTACHMENTS) * AGX_IOTO_LOAD_LDIMM_MAX_SIZE];
    size_t body_size = 0;
    for (unsigned i = 0; i < 2; ++i) {
       uint8_t bytes[AGX_IOTO_LOAD_LDIMM_MAX_SIZE], length;
@@ -708,15 +706,11 @@ hk_agx3_g17p_rt0_eot_program_generate(
    /* Native kind5 supplies the byte offset inside an imageblock sample.
     * Keep it in CProg GPR8 across profile scratch0..3, independently of the
     * fragment program's register allocation. */
-   uint8_t offset_length;
-   if (!agx_ioto_load_pack_ldimm(chip, 8, desc->imageblock_offset_B,
-                                   body + body_size, &offset_length))
-      return false;
-   body_size += offset_length;
-
-   if (wboit_mrt) {
-      if (!agx_ioto_load_pack_ldimm(chip, 10, desc->imageblock_offset1_B,
-                                    body + body_size, &offset_length))
+   for (unsigned rt = 0; rt < count; ++rt) {
+      uint8_t offset_length;
+      if (!agx_ioto_load_pack_ldimm(chip, 8 + 2 * rt,
+                                      desc->imageblock_offsets_B[rt],
+                                      body + body_size, &offset_length))
          return false;
       body_size += offset_length;
    }
@@ -724,13 +718,12 @@ hk_agx3_g17p_rt0_eot_program_generate(
    /* Preserve the proven EOT COPY source-file and no-kill policy. Publish
     * pointer dwords in halves0/2 and the imageblock byte offset in half4.
     */
-   uint8_t copies[20];
+   uint8_t copies[4 * (2 * AGX_IOTO_MAX_COLOR_ATTACHMENTS + 1)];
    const struct agx3_field_kv baseline[] = {{9,3},{10,2},{23,2},{24,2}};
-   const unsigned copy_count = wboit_mrt ? 5 : 3;
-   const unsigned copy_sources[] = {4, 6, 8, 8, 10};
+   const unsigned copy_count = 2 * count + 1;
    for (unsigned i = 0; i < copy_count; ++i) {
       const struct agx3_field_kv operands[] = {
-         {3, 2u * i}, {16, copy_sources[i]},
+         {3, 2u * i}, {16, i < 2 ? 4 + 2 * i : 8 + 2 * ((i - 2) / 2)},
       };
       uint8_t bytes[AGX3_MAX_WORDS * 2], length = 0;
       if (!agx3_bind_compose(AGX_ISA_ENCODING_AGX3B, "copy", 0,
@@ -740,9 +733,8 @@ hk_agx3_g17p_rt0_eot_program_generate(
       memcpy(copies + 4 * i, bytes, length);
    }
 
-   /* Keep the existing174-byte allocation capacity. The zero RT0 offset
-    * uses a compact LDIMM (at most120 bytes); offsets128..255 need126.
-    */
+   /* Capacity covers the API attachment limit. The generated body and
+    * uniform copies grow with active attachments, not shader text size. */
    struct hk_agx3_g17p_rt0_eot_program staged = {0};
    size_t written = 0;
    if (!agx_ioto_g17p_resource_program_compose(

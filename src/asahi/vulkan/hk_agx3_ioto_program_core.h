@@ -208,9 +208,8 @@ struct hk_agx3_g17p_rt0_eot_program_desc {
    uint64_t pbe_argument_va;
    /* RT0 byte offset inside one imageblock sample (native kind5 argument).
     * Published as a zero-extended32-bit value in uniform halves4..5. */
-   uint8_t imageblock_offset_B;
+   uint8_t imageblock_offsets_B[AGX_IOTO_MAX_COLOR_ATTACHMENTS];
    uint8_t attachment_count;
-   uint8_t imageblock_offset1_B;
    uint32_t shader_binary_size;
    uint32_t scratch_size;
    uint16_t nr_gprs;

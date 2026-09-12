@@ -1945,3 +1945,20 @@ Zink/lavapipe and M4: `20260912T231419550352Z-float-uint-mrt`, peak55.5 C.
 The native120-byte EOT differs from the existing mixed float/R8 program only
 in its second typed-store selector. Compiler unit tests verify that complete
 program against the retained Apple witness. Case3 remains under development.
+
+### Three-target EOT and attachment bindings
+
+`mrt-attachment-probe 3` now passes RGBA16F/RG16F/R16_UINT clear, partial draw
+and reload on M4 (`20260912T232433342510Z-triple-mrt-general`, peak55.5 C).
+Cases0/1/2 and the existing HDR clear/draw/blend/reload oracle also passed
+`20260912T232514651135Z-mrt-general-regressions`.
+
+The EOT compiler now generates typed imageblock instructions from attachment
+count rather than patching a fixed dual-target text. Native two-target120-byte
+and three-target164-byte outputs match byte-for-byte. Descriptor/clear/offset
+arrays grow with the active attachment count; shader acceptance validates ABI
+metadata instead of whitelisting binary lengths. The packet unit suite passes
+6841 checks. This qualifies the listed formats up through the three-target
+layout; it does not claim arbitrary MRT formats or eight-target hardware tests.
+Blender's host replay proceeds past attachment setup, but API4004 now exposes
+a separate fragment-varying state restriction. No live Blender qualification yet.

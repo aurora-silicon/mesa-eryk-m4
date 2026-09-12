@@ -1059,10 +1059,10 @@ test_g17p_rt0_eot_program(void)
    struct hk_agx3_g17p_rt0_eot_program program;
    CHECK(hk_agx3_g17p_rt0_eot_program_generate(AGX_CHIP_G17P, &desc,
                                                &program));
-   CHECK(AGX_IOTO_G17P_RT0_EOT_PROGRAM_SIZE == 190);
+   CHECK(AGX_IOTO_G17P_RT0_EOT_PROGRAM_SIZE >= 190);
    CHECK(program.length == 120);
    size_t prefix_size;
-   CHECK(check_eot_pointer_prefix(&program, desc.pbe_argument_va, desc.imageblock_offset_B,
+   CHECK(check_eot_pointer_prefix(&program, desc.pbe_argument_va, desc.imageblock_offsets_B[0],
                                  &prefix_size) == 0);
    CHECK(prefix_size == 18);
 
@@ -1137,7 +1137,7 @@ test_g17p_rt0_eot_program(void)
     * Runtime supplies the validated tilebuffer layout, not a fixed literal. */
    for (unsigned offset = 0; offset <= UINT8_MAX; ++offset) {
       moved = desc;
-      moved.imageblock_offset_B = offset;
+      moved.imageblock_offsets_B[0] = offset;
       CHECK(hk_agx3_g17p_rt0_eot_program_generate(AGX_CHIP_G17P, &moved,
                                                    &relocated));
       size_t relocated_prefix;
@@ -1188,12 +1188,9 @@ test_g17p_rt0_eot_program(void)
       CHECK(memcmp(&program, &before, sizeof(program)) == 0);
    }
    moved = desc;
-   moved.shader_binary_size = 64;
+   moved.shader_binary_size = 0;
    CHECK(
       !hk_agx3_g17p_rt0_eot_program_generate(AGX_CHIP_G17P, &moved, &program));
-   CHECK(memcmp(&program, &before, sizeof(program)) == 0);
-   moved.shader_binary_size = 128;
-   CHECK(!hk_agx3_g17p_rt0_eot_program_generate(AGX_CHIP_G17P, &moved, &program));
    CHECK(memcmp(&program, &before, sizeof(program)) == 0);
    moved = desc;
    moved.nr_gprs = 6;
@@ -1230,10 +1227,17 @@ test_g17p_rt0_eot_program(void)
    mrt.nr_gprs = 8;
    mrt.staging_halfs = 16;
    mrt.attachment_count = 2;
-   mrt.imageblock_offset1_B = 8;
+   mrt.imageblock_offsets_B[1] = 8;
    CHECK(hk_agx3_g17p_rt0_eot_program_generate(AGX_CHIP_G17P, &mrt,
                                                 &relocated));
    CHECK(relocated.length <= AGX_IOTO_G17P_RT0_EOT_PROGRAM_SIZE);
+   struct hk_agx3_g17p_rt0_eot_program_desc triple = mrt;
+   triple.attachment_count = 3;
+   triple.shader_binary_size = 164;
+   triple.staging_halfs = 24;
+   triple.imageblock_offsets_B[2] = 12;
+   CHECK(hk_agx3_g17p_rt0_eot_program_generate(AGX_CHIP_G16G, &triple, &relocated));
+   CHECK(relocated.length <= sizeof(relocated.bytes));
    mrt.attachment_count = 1;
    CHECK(!hk_agx3_g17p_rt0_eot_program_generate(AGX_CHIP_G17P, &mrt,
                                                  &program));
