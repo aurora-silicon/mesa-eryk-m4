@@ -47,7 +47,7 @@ agx3_sr_witnessed(uint8_t sr, enum agx3_sr_width width)
       case 17: case 18: case 19: case 20: case 21: case 22:
       case 34: case 36:
       /* fragment-only, see the comment above */
-      case 2: case 39:
+      case 2: case 39: case 41:
          return true;
       default:
          return false;
@@ -65,7 +65,7 @@ agx3_sr_encode(enum agx_isa_encoding enc, const struct agx3_sr_desc *d,
    if (d == NULL || d->dest >= 256)
       return false;
    if (d->original_coverage &&
-       (enc != AGX_ISA_ENCODING_AGX3B || (d->sr != 39 && d->sr != 2) ||
+       (enc != AGX_ISA_ENCODING_AGX3B || (d->sr != 39 && d->sr != 2 && d->sr != 41) ||
         d->width != AGX3_SR_W16))
       return false;
    if (!agx3_sr_witnessed(d->sr, d->width))

@@ -535,6 +535,7 @@ agx3_map_sr(enum agx_sr sr, uint8_t *apple, enum agx3_sr_width *width)
       SR(AGX_SR_INPUT_SAMPLE_MASK, 39, AGX3_SR_W16);
       SR(AGX_SR_COVERAGE_MASK, 39, AGX3_SR_W16);
       SR(AGX_SR_IS_ACTIVE_THREAD, 2, AGX3_SR_W16);
+      SR(AGX_SR_BACKFACING, 41, AGX3_SR_W16);
       /* The invocation enums carry hardware SR bytes (0xd8/0xdd), while
        * agx3_sr_core consumes Apple's normalized f21 value. */
       SR(AGX_SR_INSTANCE_ID, 46, AGX3_SR_W32);
@@ -572,7 +573,8 @@ agx3_translate_sr(const agx_instr *I, uint8_t slot, uint16_t wait_mask,
    d->width = width;
    d->sr = apple;
    d->original_coverage = I->sr == AGX_SR_INPUT_SAMPLE_MASK ||
-                          I->sr == AGX_SR_IS_ACTIVE_THREAD;
+                          I->sr == AGX_SR_IS_ACTIVE_THREAD ||
+                          I->sr == AGX_SR_BACKFACING;
    d->slot = slot;
    d->wait_mask = wait_mask;
    return true;

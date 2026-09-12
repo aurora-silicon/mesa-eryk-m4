@@ -41,7 +41,7 @@ struct agx3_sr_desc {
    uint8_t sr;         /* Apple's normalized special-register field f21 */
    uint8_t slot;       /* scoreboard slot this read signals: 1..6 (b) / 1..8 (c) */
    uint16_t wait_mask; /* bit i sets wait on slot i+1 */
-   bool original_coverage; /* G16 SR2/SR39 long-form f48, before coverage updates. */
+   bool original_coverage; /* G16 original SR2/SR39/SR41 long-form f48. */
 };
 
 /* True if (sr, width) has a byte-exact corpus witness. Unwitnessed pairs must

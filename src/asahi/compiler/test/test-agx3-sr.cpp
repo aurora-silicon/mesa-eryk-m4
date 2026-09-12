@@ -206,3 +206,21 @@ TEST(AGX3SrCore, NativeInitialHelperCoverage)
    EXPECT_EQ(0, memcmp(out, witness, len));
    EXPECT_FALSE(agx3_sr_encode(AGX_ISA_ENCODING_AGX3C, &d, out, &len));
 }
+
+TEST(AGX3SrCore, NativeBackFacing)
+{
+   /* Apple AIR-NT 32023.883, G16G front_facing, 2026-09-12.
+    * Original SR41 is zero for a front-facing fragment. */
+   const uint8_t witness[] = {0x04, 0xc5, 0x11, 0x06, 1, 0, 0, 0};
+   struct agx3_sr_desc d = {};
+   d.width = AGX3_SR_W16;
+   d.sr = 41;
+   d.slot = 1;
+   d.original_coverage = true;
+   uint8_t out[AGX3_SR_MAX_LENGTH], len;
+   ASSERT_TRUE(agx3_sr_encode(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
+   ASSERT_EQ(len, sizeof(witness));
+   EXPECT_EQ(0, memcmp(out, witness, len));
+   d.width = AGX3_SR_W32;
+   EXPECT_FALSE(agx3_sr_encode(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
+}

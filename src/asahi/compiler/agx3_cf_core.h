@@ -137,4 +137,3 @@ bool agx3_cf_cndcf(enum agx_isa_encoding enc, unsigned slot, bool invert,
 #ifdef __cplusplus
 }
 #endif
-

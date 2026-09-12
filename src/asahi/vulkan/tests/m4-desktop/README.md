@@ -1838,3 +1838,10 @@ checks both source and destination readbacks. Build with `cc -O2 -Wall -Wextra
 permits a separately selected software ICD. The three M4 cases passed on
 2026-09-12 (212444,212840,212954), so they do not yet reproduce Firefox's
 external-image/MSAA readback discrepancy. Do not treat these as a Firefox fix.
+
+Front-facing regression: `graphics-features/front-face.frag` with
+`vulkan-fragment-probe.py --front-face ccw --rgba 0 0 255 255` and
+`--front-face cw --rgba 255 0 0 255`. Positive Vulkan viewport reverses
+these screen-space windings. Both passed exact M4 readback in guarded runs
+20260912T221648924202Z and 20260912T221704299332Z (55.75 C). The adjacent
+Metal source produced the native original-SR41 witness for the encoder test.

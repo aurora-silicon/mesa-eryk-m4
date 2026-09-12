@@ -34,6 +34,7 @@ def main():
     parser.add_argument('--vertex', type=Path)
     parser.add_argument('--geometry', type=Path)
     parser.add_argument('--indexed', action='store_true')
+    parser.add_argument('--front-face', choices=['cw', 'ccw'], default='ccw')
     parser.add_argument('--extent', type=int, nargs=2, default=[32, 32])
     parser.add_argument('--storage-stage', choices=['vertex', 'fragment', 'geometry'])
     parser.add_argument('--storage-expected', type=Path,
@@ -158,6 +159,9 @@ def main():
             '   puts("PASS: exact shader storage output and 64-byte guard");\n')
         replace_once('   printf(PROBE_NAME ": retired %u submissions\\n", repeats);', validation +
             '   printf(PROBE_NAME ": retired %u submissions\\n", repeats);')
+    if args.front_face == 'cw':
+        replace_once('      .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,',
+                     '      .frontFace = VK_FRONT_FACE_CLOCKWISE,')
     if args.indexed:
         for function in ('vkCmdBindIndexBuffer', 'vkCmdDrawIndexed'):
             replace_once('VK_FN(vkCreateBuffer);', 'VK_FN(vkCreateBuffer);\nVK_FN(' + function + ');')
@@ -426,7 +430,7 @@ def main():
         'allow_unadvertised_samples': args.allow_unadvertised_samples,
         'host_compile_only': args.host_compile_only,
         'record_command_buffer': args.record_command_buffer,
-        'indexed': args.indexed, 'extent': args.extent, 'geometry': bool(args.geometry), 'storage_stage': args.storage_stage,
+        'front_face': args.front_face, 'indexed': args.indexed, 'extent': args.extent, 'geometry': bool(args.geometry), 'storage_stage': args.storage_stage,
         'reference_host': args.reference_host,
         'fixture_sha256': hashlib.sha256(fixture.read_bytes()).hexdigest(),
         'commands': commands, 'sha256': files,

@@ -1913,6 +1913,12 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
    }
 
    case nir_intrinsic_load_back_face_agx:
+      if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B) {
+         /* Native front_facing is original SR41 == 0. Return a canonical
+          * NIR boolean for the back-facing intrinsic, not the raw half. */
+         return agx_icmp_to(b, dst, agx_get_sr(b, 16, AGX_SR_BACKFACING),
+                            agx_zero(), AGX_ICOND_UEQ, true);
+      }
       return agx_get_sr_to(b, dst, AGX_SR_BACKFACING);
 
    case nir_intrinsic_load_samples_log2_agx:
