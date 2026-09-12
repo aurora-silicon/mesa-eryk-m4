@@ -369,6 +369,9 @@ struct hk_cs {
    /* Whether there is more than just the root chunk */
    bool stream_linked;
 
+   /* GPU timestamp resets must retire before firmware writes query results. */
+   bool ends_timestamp_reset;
+
    /* Active-context selector consumed by AGX3 VertexProgramVariant. */
    bool agx3_active_context_selector_valid;
    uint32_t agx3_raw_active_context_selector;
@@ -466,6 +469,7 @@ hk_cs_merge_cdm(struct hk_cs *a, const struct hk_cs *b)
    a->scratch.cs.preamble |= b->scratch.cs.preamble;
 
    a->timestamp = b->timestamp;
+   a->ends_timestamp_reset |= b->ends_timestamp_reset;
 
    a->stats.calls += b->stats.calls;
    a->stats.cmds += b->stats.cmds;

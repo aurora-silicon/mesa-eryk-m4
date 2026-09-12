@@ -71,3 +71,18 @@ publication of timestamp results. It does not qualify timestamp support.
 Guarded experiment20260912T104734436215Z passed this isolation with the same
 reset/read sequence, peak51.5C. Ordinary reset-plus-timestamp still failed on
 that kernel; uncached query allocation did not fix it (104846,peak51.75C).
+
+## Native timestamp-reset ownership boundary
+
+A timestamp reset writes query storage on the GPU; the timestamp operation
+publishes through firmware. End the reset CDM and preserve that boundary
+through command-stream merging so the reset retires before firmware writes
+its results. This applies to timestamp resets only; ordinary CDM merging
+remains enabled. No sleeps, host clock values or global nomerge setting are
+part of the implementation.
+
+Guarded111731 passed with an explicit unmerged boundary. Targeted boundary
+112027 passed with ordinary merging enabled (peak53.5C). These runs used
+firmware user destinations and an experimental post-finalize publication;
+the final kernel removes that unsuccessful sequence experiment. Final kernel
+and original vkQuake capture validation are recorded separately below.

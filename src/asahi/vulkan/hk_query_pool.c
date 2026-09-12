@@ -232,6 +232,12 @@ emit_zero_queries_g17p(struct hk_cmd_buffer *cmd, struct hk_query_pool *pool,
       const uint64_t size = (uint64_t)num_queries * pool->query_stride;
       hk_g17p_meta_fill_addr(cmd, &cmd->current_cs.cs, address, size,
                              set_available ? 0 : UINT32_MAX);
+      /* Firmware writes timestamp results through a different memory agent.
+       * Retire GPU reset writes before handing those cache lines to it. Keep
+       * this ownership boundary when EndCommandBuffer merges CDM streams. */
+      if (cmd->current_cs.cs)
+         cmd->current_cs.cs->ends_timestamp_reset = true;
+      hk_cmd_buffer_end_compute(cmd);
       return;
    }
 
