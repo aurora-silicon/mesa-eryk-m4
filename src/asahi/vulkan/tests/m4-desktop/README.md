@@ -1779,3 +1779,11 @@ support: denying it makes Zink reject Firefox's multisample RGBA-to-BGRA blit.
 Integer/depth/stencil texture sample limits are not expanded by this test.
 Library staging now compresses SSH transfers while retaining SHA256 validation
 and atomic installation; existing processes retain their previous mapping.
+
+`app-observe.py` cleans up descendants by their exact per-run shader-cache path
+using pidfds, including GNOME processes that outlive their launcher or ignore
+SIGTERM. This prevents a stale compositor from occupying the next test socket.
+`fragment-image-probe pbo-bgra` checks explicit BGRA byte ordering through a
+pixel pack buffer;204656LVP and204802M4 pass all4096color pixels. Firefox's
+204212 live scanout has correct colors, but its page screenshot swaps R/B in
+the WebGLcanvas. The latter remains a readback gap, not a live-display claim.

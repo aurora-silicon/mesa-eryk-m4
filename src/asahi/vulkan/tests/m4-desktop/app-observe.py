@@ -47,6 +47,28 @@ for f in [Path(command[0]),Path('/opt/asahi-m4-port/lib/libvulkan_asahi.so'),Pat
 for i,f in enumerate(a.retain):(out/f'config-{i}-{f.name}').write_bytes(f.read_bytes())
 (out/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
 child=None;result={}
+def stop_test_processes():
+    # Session leaders may exit while GNOME/D-Bus descendants ignore SIGTERM.
+    # Match the exact per-run cache path, and hold pidfds to avoid PID reuse.
+    marker=('MESA_SHADER_CACHE_DIR='+str(scratch/'mesa-cache')).encode()
+    fds=[]
+    for proc in Path('/proc').glob('[0-9]*'):
+        fd=None
+        try:
+            fd=os.pidfd_open(int(proc.name))
+            if marker in (proc/'environ').read_bytes().split(b'\0'):
+                fds.append(fd);fd=None
+        except (OSError,ProcessLookupError):pass
+        finally:
+            if fd is not None:os.close(fd)
+    try:
+        for sig in (signal.SIGTERM,signal.SIGKILL):
+            for fd in fds:
+                try:signal.pidfd_send_signal(fd,sig)
+                except ProcessLookupError:pass
+            if sig==signal.SIGTERM:time.sleep(1)
+    finally:
+        for fd in fds:os.close(fd)
 def interrupt(signum,frame):raise InterruptedError(f'signal {signum}')
 signal.signal(signal.SIGTERM,interrupt);signal.signal(signal.SIGINT,interrupt)
 try:
@@ -73,6 +95,7 @@ finally:
         os.killpg(child.pid,signal.SIGTERM)
         try:child.wait(timeout=3)
         except subprocess.TimeoutExpired:os.killpg(child.pid,signal.SIGKILL);child.wait(timeout=3)
+    stop_test_processes()
     import shutil
     shutil.copytree(scratch,out/'diagnostics')
     (out/'result.json').write_text(json.dumps(result,indent=2)+'\n')
