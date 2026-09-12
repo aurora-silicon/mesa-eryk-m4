@@ -61,3 +61,13 @@ includes the native reset/availability/result-copy helpers. This is a bounded
 basic occlusion qualification, not proof of arbitrary query ordering or timers.
 
 Build with `-lEGL -lGL`; execute hardware only inside the existing J713 guard.
+
+## Reset-only isolation
+
+`M4_TEST_RESET_ONLY=1` records the GPU reset without either timestamp write.
+It requires VK_NOT_READY and zero availability for both queries on the first
+read after the submission fence. This distinguishes reset visibility from
+publication of timestamp results. It does not qualify timestamp support.
+Guarded experiment20260912T104734436215Z passed this isolation with the same
+reset/read sequence, peak51.5C. Ordinary reset-plus-timestamp still failed on
+that kernel; uncached query allocation did not fix it (104846,peak51.75C).

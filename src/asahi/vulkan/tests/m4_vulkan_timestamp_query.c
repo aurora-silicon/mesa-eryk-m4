@@ -238,10 +238,12 @@ main(void)
    else
       vkCmdResetQueryPool(command_buffer, query_pool, 0, 2);
    printf("query reset source=%s\n", host_reset ? "host API" : "GPU command");
-   vkCmdWriteTimestamp(command_buffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                       query_pool, 0);
-   vkCmdWriteTimestamp(command_buffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-                       query_pool, 1);
+   if (!getenv("M4_TEST_RESET_ONLY")) {
+      vkCmdWriteTimestamp(command_buffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                          query_pool, 0);
+      vkCmdWriteTimestamp(command_buffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                          query_pool, 1);
+   }
    check(vkEndCommandBuffer(command_buffer), "vkEndCommandBuffer");
 
    if (getenv("M4_TEST_RECORD_ONLY")) {
@@ -281,12 +283,18 @@ main(void)
          (unsigned long long)second[1], (unsigned long long)second[3]);
       fflush(stdout);
    }
-   check(first_result, "first vkGetQueryPoolResults");
-   if (!values[0] || values[2] < values[0] || values[2] == UINT64_MAX ||
-       !values[1] || !values[3])
-      die("FAIL: standalone query timestamps or availability invalid");
+   if (getenv("M4_TEST_RESET_ONLY")) {
+      if (first_result != VK_NOT_READY || values[1] || values[3])
+         die("FAIL: GPU reset not visible after fence");
+      puts("PASS: GPU reset unavailable immediately after fence");
+   } else {
+      check(first_result, "first vkGetQueryPoolResults");
+      if (!values[0] || values[2] < values[0] || values[2] == UINT64_MAX ||
+          !values[1] || !values[3])
+         die("FAIL: standalone query timestamps or availability invalid");
+      puts("PASS: standalone M4 Vulkan timestamps and availability");
+   }
    vkDestroyFence(device, fence, NULL);
-   puts("PASS: standalone M4 Vulkan timestamps and availability");
    vkDestroyCommandPool(device, command_pool, NULL);
    vkDestroyQueryPool(device, query_pool, NULL);
    vkDestroyDevice(device, NULL);
