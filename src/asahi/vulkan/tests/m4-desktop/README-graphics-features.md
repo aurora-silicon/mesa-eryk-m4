@@ -56,3 +56,16 @@ matches every expected float bit (128 words), peak55.75 C. The implementation
 materializes sign modifiers as GPU bit operations before register allocation.
 The original Blender pipeline at capture API608 now compiles; replay proceeds
 to a separate deep-break control-flow failure at API617.
+
+`nested-break/` tests exits through two nested conditionals with divergent
+per-thread bounds and observable atomics. CPU and lavapipe agree with guarded
+M4 220737762002Z (256 words, <=55.75 C). Apple offline `break2.metal` and
+`break3.metal` establish CNDCF depth fields3/4: `8f0554030000` and
+`8f0554040000`. The backend now uses CNDCF for nested exits, retaining CNDLT
+for direct loop tests; no guessed unwind/pop sequence is needed.
+
+`high-compare/` keeps80 volatile floats live across a negated branch. The M4
+compiler actually compares r83 against -r2, exercising the upper half-register
+range. 221006716398Z matches5248 words (<=55.75 C). The old encoder rejected
+half-register indices>=128 despite the field carrying8 bits. The normal
+alignment, sign and operand-hint checks remain enforced.

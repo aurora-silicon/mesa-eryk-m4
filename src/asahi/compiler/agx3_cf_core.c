@@ -175,7 +175,7 @@ agx3_cf_fcmp_reg_neg(enum agx_isa_encoding enc, enum agx3_cf_fcond cond,
    if (enc != AGX_ISA_ENCODING_AGX3B || !src_in || !neg_in || !hints_in ||
        !out || !len || !slot_ok(slot) || or_nan ||
        (cond != AGX3_CF_FCOND_LT && cond != AGX3_CF_FCOND_GT) ||
-       (neg_in[0] == neg_in[1]) || src_in[0] >= 128 || src_in[1] >= 128 ||
+       (neg_in[0] == neg_in[1]) || src_in[0] >= 256 || src_in[1] >= 256 ||
        (src_in[0] & 1) || (src_in[1] & 1) ||
        (hints_in[0].cache && hints_in[0].discard) ||
        (hints_in[1].cache && hints_in[1].discard))
@@ -340,4 +340,18 @@ bool agx3_cf_fcmp_zero(enum agx_isa_encoding enc, enum agx3_cf_fcond cond,
    for(unsigned ep=0;ep<=1;ep++)
       if(agx3_bind_compose(enc,"fcmp",ep,base,4,fields,13,out,len))return true;
    return false;
+}
+
+bool
+agx3_cf_cndcf(enum agx_isa_encoding enc, unsigned slot, bool invert,
+              unsigned depth, uint8_t out[AGX3_CF_MAX_LENGTH], uint8_t *len)
+{
+   if (enc != AGX_ISA_ENCODING_AGX3B || !slot_ok(slot) || depth < 3)
+      return false;
+   /* Native nested-break ladder: depth3 = 8f0554030000, depth4 =
+    * 8f0554040000. The composer checks the depth field's representable range. */
+   const struct agx3_field_kv fields[] = {
+      KV(0, invert), KV(1, slot), KV(12, depth),
+   };
+   return agx3_bind_compose(enc, "cndcf", 0, NULL, 0, fields, 3, out, len);
 }

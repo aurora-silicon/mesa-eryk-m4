@@ -2977,13 +2977,7 @@ agx3_try_control_flow(struct util_dynarray *emission,
        * flow fail-closed. */
       if (wait_mask != 0)
          return -1;
-      /* CNDLT's native operation owns two architectural exec-mask levels.
-       * Mesa's ordinary fused loop break arrives with nest=1; a break from
-       * the loop's final nested block arrives with nest=2 and uses the same
-       * compare+CNDLT transition before the shared backedge/CNDEND(2) footer.
-       * Deeper exits need an independently grounded unwind sequence. */
-      if ((is_if && I->nest != 1) ||
-          (is_break_if && (I->nest == 0 || I->nest > 2)))
+      if ((is_if && I->nest != 1) || (is_break_if && I->nest == 0))
          return -1;
 
       bool invert = I->invert_cond;
@@ -3000,6 +2994,13 @@ agx3_try_control_flow(struct util_dynarray *emission,
           !agx3_emit_cf_compare(emission, enc, I, is_float, flag_slot,
                                 &invert))
          return -1;
+      if (is_break_if && I->nest > 1) {
+         /* CNDLT is a loop test, not a general nested exit. CNDCF marks
+          * breaking lanes without resurrecting them at intermediate pops. */
+         uint8_t bytes[AGX3_CF_MAX_LENGTH], len;
+         return agx3_cf_cndcf(enc, flag_slot, invert, I->nest + 1, bytes, &len) &&
+                      agx3_append(emission, bytes, len) ? 1 : -1;
+      }
       /* CNDLT retains lanes for which its consumed predicate is true. A
        * WHILE predicate already means "continue", whereas BREAK_IF names
        * the complementary lanes that must leave the loop. */

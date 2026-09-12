@@ -129,6 +129,12 @@ bool agx3_cf_branch(enum agx_isa_encoding enc, bool is_bn,
 bool agx3_cf_patch_branch(enum agx_isa_encoding enc, bool is_bn,
                           uint8_t *branch, int64_t displacement);
 
+/* CND(CF) marks breaking lanes across nested conditionals. The depth counts
+ * the loop's two mask levels plus its enclosing conditionals. */
+bool agx3_cf_cndcf(enum agx_isa_encoding enc, unsigned slot, bool invert,
+                   unsigned depth, uint8_t out[AGX3_CF_MAX_LENGTH], uint8_t *len);
+
 #ifdef __cplusplus
 }
 #endif
+

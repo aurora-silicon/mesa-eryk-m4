@@ -236,6 +236,20 @@ main(void)
                               false, 0, 0, 2, out, &len));
    }
 
+   {
+      const uint8_t depth3[] = {0x8f,0x05,0x54,0x03,0,0};
+      const uint8_t depth4[] = {0x8f,0x05,0x54,0x04,0,0};
+      const struct cf_vec witnesses[] = {
+         {"native CNDCF3", 0, 0, 0, 3, 0, sizeof(depth3), depth3},
+         {"native CNDCF4", 0, 0, 0, 4, 0, sizeof(depth4), depth4},
+      };
+      for (unsigned i = 0; i < 2; ++i) {
+         uint8_t out[AGX3_CF_MAX_LENGTH], len = 0;
+         bool ok = agx3_cf_cndcf(AGX_ISA_ENCODING_AGX3B, 0, false,
+                                 witnesses[i].a2, out, &len);
+         expect(&witnesses[i], out, len, ok);
+      }
+   }
    if (failures) {
       fprintf(stderr, "agx3_cf_core: %u of %u checks failed\n", failures,
               checks);

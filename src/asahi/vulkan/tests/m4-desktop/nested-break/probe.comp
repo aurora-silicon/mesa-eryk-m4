@@ -1,0 +1,16 @@
+#version 450
+layout(local_size_x=32) in;
+layout(set=0,binding=0,std430) buffer B{uint w[];};
+void main(){uint b=gl_GlobalInvocationID.x*8;uint sum=0;
+ for(uint j=0;j<w[b];j++){
+  if(w[b+2]>j){atomicAdd(w[b+4],1u);
+   if(w[b+3]>j){atomicAdd(w[b+4],2u);
+    if(w[b+1]==j)break;
+    atomicAdd(w[b+4],3u);
+   }
+   atomicAdd(w[b+4],5u);
+  }
+  sum+=j*7u;
+ }
+ w[b+5]=sum;
+}
