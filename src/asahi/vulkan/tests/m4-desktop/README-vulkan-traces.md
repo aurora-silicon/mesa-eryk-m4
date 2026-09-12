@@ -388,3 +388,11 @@ The unchanged nine-frame Blender reference now completes on host lavapipe in
 2.88 seconds; its first frame remains byte-identical. The software helper now
 retains a structured timeout result too. This repairs replay synchronization,
 not the driver, and does not remove waits or claim native application support.
+
+`vulkan-draw-dump.py --draw INDEX --draw INDEX` selects sparse checkpoints
+instead of a contiguous range. This avoids hundreds of attachment dumps while
+bisecting Blender's composition graph. Its first UI draw differs by at most
+one byte; later comparison traces incorrect panel inputs back into the overlay
+passes. Five earlier apps and GNOME retain their prior qualification boundaries;
+Blender is not yet visually correct. The unchanged nine-frame capture completes
+on M4 in5.29s after the replay presentation-fence fix (234038, peak56.25 C).

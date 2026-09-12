@@ -8,12 +8,18 @@ import argparse, json
 from pathlib import Path
 p=argparse.ArgumentParser(description=__doc__)
 p.add_argument('jsonl',type=Path)
-p.add_argument('--first',required=True,type=int)
-p.add_argument('--last',required=True,type=int)
+p.add_argument('--first',type=int)
+p.add_argument('--last',type=int)
+p.add_argument('--draw',type=int,action='append',default=[],help='Select an exact draw index; repeat for sparse checkpoints')
 p.add_argument('--output',required=True,type=Path)
 p.add_argument('--inputs',action='store_true')
 a=p.parse_args()
-if a.first>a.last:p.error('Reversed draw range')
+if a.draw:
+ if a.first is not None or a.last is not None:p.error('Use --draw or --first/--last, not both')
+ selected=set(a.draw)
+else:
+ if a.first is None or a.last is None or a.first>a.last:p.error('Provide --draw or an ordered --first/--last range')
+ selected=range(a.first,a.last+1)
 commands={}; records=[]; used=set()
 for line in a.jsonl.open():
  d=json.loads(line); f=d.get('function',{}); n=f.get('name',''); v=f.get('args',{}); i=d.get('index')
@@ -23,7 +29,7 @@ for line in a.jsonl.open():
   c=commands[v['commandBuffer']];c['current']=[i];c['passes'].append(c['current'])
  elif n.startswith(('vkCmdEndRenderPass','vkCmdEndRendering','vkCmdNextSubpass')):
   commands[v['commandBuffer']]['current'].append(i)
- elif n.startswith('vkCmdDraw') and a.first<=i<=a.last:
+ elif n.startswith('vkCmdDraw') and i in selected:
   if n.startswith('vkCmdDrawMulti') and v['drawCount'] != 1:
    raise ValueError(f'Draw {i}: this dump build supports multi-draw checkpoints only for drawCount=1')
   commands[v['commandBuffer']]['draws'].append(i)
