@@ -1,0 +1,21 @@
+#version 450
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+layout(local_size_x=32) in;
+layout(set=0,binding=0,std430) buffer Data { uint v[]; } data;
+void main() {
+ uint i=gl_LocalInvocationID.x, bits=data.v[i];
+ uint16_t a=uint16_t(bits), b=uint16_t(bits>>16), c=uint16_t(i+17);
+ uint result;
+ switch (i%8) {
+ case 0: { f16vec2 h=unpackFloat2x16(bits); result=packFloat2x16(f16vec2(h.x-h.y,float16_t(0.0))); break; }
+ case 1: { float16_t h=unpackFloat2x16(bits).x; result=floatBitsToUint(1.0/float(h)); break; }
+ case 2: result=uint(uint16_t(a*b+c)); break;
+ case 3: result=uint(uint16_t(a*uint16_t(5)+c)); break;
+ case 4: result=uint(int(bits)+int(int16_t(a))); break;
+ case 5: result=uint(int(int16_t(a))*int(int16_t(b))); break;
+ case 6: result=uint(uint16_t(int16_t(a)>>1)); break;
+ default: result=uint(a>>(uint(b)&15)); break;
+ }
+ data.v[i]=result;
+}

@@ -2484,12 +2484,111 @@ agx_lower_agx3_half_converts(agx_context *ctx)
 }
 
 static void
+agx_lower_agx3_half_integer_sources(agx_context *ctx)
+{
+   if (ctx->key->dev.encoding != AGX_ISA_ENCODING_AGX3B)
+      return;
+
+   agx_foreach_instr_global_safe(ctx, I) {
+      if (I->op == AGX_OPCODE_BFEIL && I->nr_dests == 1 && I->nr_srcs == 3 &&
+          I->dest[0].size == AGX_SIZE_16 && I->src[1].size == AGX_SIZE_16 &&
+          I->src[0].type == AGX_INDEX_IMMEDIATE && I->src[0].value == 0 &&
+          !I->src[0].abs && !I->src[0].neg && !I->src[1].abs &&
+          !I->src[1].neg && !I->saturate) {
+         /* Unsigned extraction from a half register has no high source
+          * bits. Widen with zeroes and retain the original mask and shift. */
+         agx_builder b = agx_init_builder(ctx, agx_before_instr(I));
+         agx_index wide = agx_temp(ctx, AGX_SIZE_32);
+         agx_mov_to(&b, wide, I->src[1]);
+         I->src[1] = wide;
+         agx_index half = I->dest[0];
+         I->dest[0] = agx_temp(ctx, AGX_SIZE_32);
+         b.cursor = agx_after_instr(I);
+         agx_mov_to(&b, half, I->dest[0]);
+         continue;
+      }
+      if (I->op == AGX_OPCODE_ASR && I->nr_dests == 1 && I->nr_srcs == 2 &&
+          I->dest[0].size == AGX_SIZE_16 && I->src[0].size == AGX_SIZE_16 &&
+          I->src[0].type != AGX_INDEX_IMMEDIATE && !I->src[0].abs &&
+          !I->src[0].neg && I->src[1].type == AGX_INDEX_IMMEDIATE &&
+          I->src[1].value > 0 && I->src[1].value < 16 &&
+          !I->src[1].abs && !I->src[1].neg && !I->saturate) {
+         /* A signed 16-bit shift equals a signed 32-bit shift of the
+          * sign-extended input, followed by truncation to 16 bits. */
+         agx_builder b = agx_init_builder(ctx, agx_before_instr(I));
+         agx_index wide = agx_temp(ctx, AGX_SIZE_32);
+         agx_signext_to(&b, wide, I->src[0]);
+         I->src[0] = wide;
+         agx_index half = I->dest[0];
+         I->dest[0] = agx_temp(ctx, AGX_SIZE_32);
+         b.cursor = agx_after_instr(I);
+         agx_mov_to(&b, half, I->dest[0]);
+         continue;
+      }
+      if (I->op != AGX_OPCODE_IMAD || I->nr_dests != 1 || I->nr_srcs != 3 ||
+          (I->dest[0].size != AGX_SIZE_16 && I->dest[0].size != AGX_SIZE_32) ||
+          I->shift || I->saturate)
+         continue;
+      bool plain_half = true;
+      agx_foreach_src(I, s) {
+         plain_half &= (I->src[s].size == AGX_SIZE_16 ||
+                        I->src[s].size == AGX_SIZE_32) &&
+                       I->src[s].type != AGX_INDEX_NULL &&
+                       !I->src[s].neg;
+      }
+      if (!plain_half)
+         continue;
+
+      /* Multiplication and addition modulo 2^16 are unchanged by zero
+       * extending the inputs, computing modulo 2^32 and truncating once. */
+      agx_builder b = agx_init_builder(ctx, agx_before_instr(I));
+      const bool narrow_result = I->dest[0].size == AGX_SIZE_16;
+      agx_foreach_src(I, s) {
+         if (I->src[s].type == AGX_INDEX_IMMEDIATE) {
+            I->src[s] = agx_mov_imm(&b, 32, I->src[s].value);
+            continue;
+         }
+         if (I->src[s].size == AGX_SIZE_32)
+            continue;
+         agx_index wide = agx_temp(ctx, AGX_SIZE_32);
+         agx_index src = I->src[s];
+         bool zero_extend = narrow_result || src.abs;
+         src.abs = false;
+         if (zero_extend)
+            agx_mov_to(&b, wide, src);
+         else
+            agx_signext_to(&b, wide, src);
+         I->src[s] = wide;
+      }
+      if (!narrow_result)
+         continue;
+      agx_index half = I->dest[0];
+      I->dest[0] = agx_temp(ctx, AGX_SIZE_32);
+      b.cursor = agx_after_instr(I);
+      agx_mov_to(&b, half, I->dest[0]);
+   }
+}
+
+static void
 agx_lower_agx3_fma_sources(agx_context *ctx)
 {
    if (ctx->key->dev.encoding != AGX_ISA_ENCODING_AGX3B)
       return;
 
    agx_foreach_instr_global_safe(ctx, I) {
+      if ((I->op == AGX_OPCODE_RCP || I->op == AGX_OPCODE_RSQRT) &&
+          I->dest[0].size == AGX_SIZE_32 &&
+          I->src[0].size == AGX_SIZE_16 &&
+          I->src[0].type != AGX_INDEX_IMMEDIATE &&
+          I->src[0].type != AGX_INDEX_NULL) {
+         /* Copyprop may fold an exact F16 widening into a F32 reciprocal.
+          * Materialize it before RA so the reciprocal retains F32 precision. */
+         agx_builder b = agx_init_builder(ctx, agx_before_instr(I));
+         agx_index wide = agx_temp(ctx, AGX_SIZE_32);
+         agx_fmov_to(&b, wide, I->src[0]);
+         I->src[0] = wide;
+         continue;
+      }
       if ((I->op == AGX_OPCODE_FADD || I->op == AGX_OPCODE_FMUL) &&
           I->dest[0].size == AGX_SIZE_32 &&
           I->src[0].type != AGX_INDEX_IMMEDIATE &&
@@ -2704,8 +2803,29 @@ agx_lower_agx3_widening_iadd(agx_context *ctx)
       if (zero.type != AGX_INDEX_IMMEDIATE || zero.value || zero.abs || zero.neg ||
           half.type == AGX_INDEX_IMMEDIATE || half.type == AGX_INDEX_NULL ||
           (half.size != AGX_SIZE_16 && half.size != AGX_SIZE_32) ||
-          agx_channels(half) != 1 || half.neg)
+          agx_channels(half) != 1 || half.neg) {
+         /* General mixed-width addition needs the same signed/unsigned
+          * extension even when the other operand is nonzero. Keep the add
+          * and its source-1 shift after materializing the extension. */
+         agx_builder b = agx_init_builder(ctx, agx_before_instr(I));
+         agx_foreach_src(I, s) {
+            agx_index src = I->src[s];
+            if (src.size != AGX_SIZE_16 || src.neg ||
+                src.type == AGX_INDEX_IMMEDIATE || src.type == AGX_INDEX_NULL ||
+                agx_channels(src) != 1)
+               continue;
+            bool is_unsigned = src.abs;
+            src.abs = false;
+            agx_index wide = agx_temp(ctx, AGX_SIZE_32);
+            if (is_unsigned)
+               agx_mov_to(&b, wide, src);
+            else
+               agx_signext_to(&b, wide, src);
+            I->src[s] = wide;
+            progress = true;
+         }
          continue;
+      }
       agx_builder b = agx_init_builder(ctx, agx_before_instr(I));
       bool is_unsigned = half.abs || half.size == AGX_SIZE_32;
       unsigned shift = imm_first ? I->shift : 0;
@@ -4751,6 +4871,7 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
    }
 
    agx_lower_agx3_half_converts(ctx);
+   agx_lower_agx3_half_integer_sources(ctx);
    agx_lower_agx3_fma_sources(ctx);
 
    AGX_PASS(ctx, agx_lower_agx3_widening_iadd);

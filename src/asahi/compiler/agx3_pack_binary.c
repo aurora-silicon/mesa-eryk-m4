@@ -5946,17 +5946,23 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             if (!agx3_src_is_register(dst) || dst.memory ||
                 dst.size != AGX_SIZE_16 || agx_channels(dst) != 1)
                AGX3_REFUSE(I);
+            /* Native half subtraction encodes negate on the second source.
+             * Exchange a single negated first operand into that position. */
+            if (I->src[0].neg && I->src[1].neg)
+               AGX3_REFUSE(I);
+            const unsigned swap = I->src[0].neg ? 1 : 0;
             for (unsigned i = 0; i < 2; ++i) {
-               agx_index x = I->src[i];
+               agx_index x = I->src[i ^ swap];
                if (!agx3_src_is_register(x) || x.memory ||
                    x.size != AGX_SIZE_16 || agx_channels(x) != 1 || x.abs ||
-                   x.neg || x.kill || (x.cache && x.discard))
+                   x.kill || (x.cache && x.discard))
                   AGX3_REFUSE(I);
                src[i] = x.value;
                hints[i] = agx3_post_ra_hint(x);
             }
             uint8_t bytes[AGX3_ALU_MAX_LENGTH], len;
-            if (!agx3_alu_hadd(enc, dst.value, src, hints, dst.cache, wait,
+            if (!agx3_alu_hadd(enc, dst.value, src, hints,
+                               I->src[1 ^ swap].neg, dst.cache, wait,
                                bytes, &len) ||
                 !agx3_append(emission, bytes, len))
                AGX3_REFUSE(I);

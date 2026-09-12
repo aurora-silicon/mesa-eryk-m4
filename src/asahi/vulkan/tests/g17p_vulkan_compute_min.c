@@ -50,6 +50,10 @@
 #include "m4_vulkan_compare_select_spv.h"
 #define COMPUTE_SPV m4_vulkan_compare_select_spv
 #define TEST_NAME "m4-vulkan-compare-select"
+#elif defined(M4_HALF_ARITHMETIC)
+#include "m4_vulkan_half_arithmetic_spv.h"
+#define COMPUTE_SPV m4_vulkan_half_arithmetic_spv
+#define TEST_NAME "m4-vulkan-half-arithmetic"
 #elif defined(M4_HALF_CONVERSION)
 #include "m4_vulkan_half_convert_spv.h"
 #define COMPUTE_SPV m4_vulkan_half_convert_spv
@@ -309,6 +313,9 @@ main(int argc, char **argv)
 #endif
    const VkDeviceCreateInfo device_info = {
       .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+#ifdef M4_HALF_ARITHMETIC
+      .pEnabledFeatures = &(VkPhysicalDeviceFeatures){.shaderInt16 = VK_TRUE},
+#endif
 #ifdef G17P_NULL_DESCRIPTOR
       .pNext = &enabled_robustness2,
       .enabledExtensionCount = 1,
@@ -729,6 +736,8 @@ main(int argc, char **argv)
    printf(TEST_NAME ": PASS — 32 exact saturated float add/multiply results\n");
 #elif defined(M4_COMPARE_SELECT)
    printf(TEST_NAME ": PASS — 32 exact constant float compare/select results\n");
+#elif defined(M4_HALF_ARITHMETIC)
+   printf(TEST_NAME ": PASS — 32 exact half subtraction, reciprocal, integer multiply/add/shift results\n");
 #elif defined(M4_HALF_CONVERSION)
    printf(TEST_NAME ": PASS — 32 exact signed/unsigned binary16 boundary conversions\n");
 #else

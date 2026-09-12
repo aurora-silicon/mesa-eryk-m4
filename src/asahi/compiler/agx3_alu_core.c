@@ -1358,7 +1358,7 @@ agx3_alu_hmul(enum agx_isa_encoding enc, uint16_t dest,
 bool
 agx3_alu_hadd(enum agx_isa_encoding enc, uint16_t dest,
               const uint16_t src[2], const enum agx3_alu_hint hints[2],
-              bool dest_cache, uint16_t wait_mask,
+              bool src1_neg, bool dest_cache, uint16_t wait_mask,
               uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len)
 {
    if (enc != AGX_ISA_ENCODING_AGX3B || !src || !hints || !out || !len ||
@@ -1371,7 +1371,7 @@ agx3_alu_hadd(enum agx_isa_encoding enc, uint16_t dest,
    const struct agx3_field_kv base[] = {
       {9, 2}, {10, 1}, {24, 2}, {25, 1}, {41, 2}, {42, 1},
    };
-   struct agx3_field_kv fields[14] = {
+   struct agx3_field_kv fields[15] = {
       {2, dest},
       {17, src[0]},
       {34, src[1]},
@@ -1380,13 +1380,15 @@ agx3_alu_hadd(enum agx_isa_encoding enc, uint16_t dest,
       {28, hints[0] == AGX3_ALU_HINT_DISCARD},
       {43, hints[1] == AGX3_ALU_HINT_CACHE},
       {45, hints[1] == AGX3_ALU_HINT_DISCARD},
+      /* G16G native half subtraction: 10021c0300c8, field47 = 1. */
+      {47, src1_neg},
    };
    for (unsigned i = 0; i < 6; ++i)
-      fields[8 + i] =
+      fields[9 + i] =
          (struct agx3_field_kv){51 + i, !!(wait_mask & (1u << i))};
 
    for (unsigned ep = 0; ep < 4; ++ep) {
-      if (agx3_bind_compose(enc, "f16add", ep, base, 6, fields, 14, out, len))
+      if (agx3_bind_compose(enc, "f16add", ep, base, 6, fields, 15, out, len))
          return true;
    }
 
