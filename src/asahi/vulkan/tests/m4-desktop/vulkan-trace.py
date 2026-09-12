@@ -31,6 +31,7 @@ def main():
     p.add_argument('--profile', type=Path, help='Capture with Khronos Profiles feature/extension limits')
     p.add_argument('--frames', help='Capture frame range, or replay screenshot frames (1-based)')
     p.add_argument('--end-frame', type=int, help='Replay through this frame, retaining all preceding state')
+    p.add_argument('--replace-shaders', type=Path, help='Explicit diagnostic SPIR-V replacements; never application-support evidence')
     p.add_argument('--dump-config', type=Path, help='GFXReconstruct resource dump selection for replay')
     p.add_argument('--memory-translation', choices=['none', 'rebind'], default='none')
     p.add_argument('--omit-pipeline-cache', action='store_true')
@@ -50,6 +51,8 @@ def main():
         p.error('--remove-unsupported is only a diagnostic replay adaptation')
     if a.profile and (a.mode != 'capture' or a.renderer != 'lavapipe'):
         p.error('Profiles are only supported for lavapipe reference capture')
+    if a.replace_shaders and a.mode != 'replay':
+        p.error('--replace-shaders requires replay')
     if a.dump_config and a.mode != 'replay':
         p.error('--dump-config requires replay')
     if a.end_frame is not None and (a.mode != 'replay' or a.end_frame < 1):
@@ -117,12 +120,23 @@ def main():
                         str(out / 'measurements.json')]
         if a.dump_config:
             command += ['--dump-resources', str(a.dump_config.resolve(strict=True)), '--dump-resources-dir', str(out)]
+        if a.replace_shaders:
+            command += ['--replace-shaders', str(a.replace_shaders.resolve(strict=True))]
         command.append(str(a.trace.resolve(strict=True)))
+    replacement_files = []
+    if a.replace_shaders:
+        import re
+        replacement_files = sorted(a.replace_shaders.iterdir())
+        if not replacement_files or any(not f.is_file() or not re.fullmatch(r'sh[0-9]+', f.name) for f in replacement_files):
+            raise ValueError('Replacement directory must contain only sh<decimal-handle> files')
+        saved = out / 'shader-replacements'; saved.mkdir()
+        for f in replacement_files: (saved / f.name).write_bytes(f.read_bytes())
     library = Path(json.loads(icd.read_text())['ICD']['library_path'])
     if not library.is_absolute():
         library = Path('/usr/lib') / library
     files = [icd, library, layer, replay, Path(__file__), Path(__file__).with_name('firmware-snapshot.py'),
              a.tool_prefix / 'build-manifest.json', Path('/opt/asahi-m4-port/lib/libgallium-26.1.4.so')]
+    files += replacement_files
     if a.profile:
         files += [a.profile, Path('/usr/lib/libVkLayer_khronos_profiles.so')]
         (out / 'capture-profile.json').write_bytes(a.profile.read_bytes())
@@ -141,6 +155,7 @@ def main():
                     hashes={str(f): sha(f) for f in files}, adaptations=dict(
                         memory_translation=a.memory_translation, omit_pipeline_cache=a.omit_pipeline_cache,
                         remove_unsupported=a.remove_unsupported,
+                        shader_replacements=[f.name for f in replacement_files],
                         swapchain='offscreen' if a.mode == 'replay' else 'application'),
                     seconds=a.seconds, guard=str(guard))
     for index, source in enumerate(a.retain):

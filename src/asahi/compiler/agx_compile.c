@@ -5562,7 +5562,7 @@ agx_compile_shader_nir_inner(nir_shader *nir, struct agx_shader_key *key,
  * copied. Publication is atomic, deduplicated, and capped at 32 bundles (8 MiB input and 8 MiB IR each).
  * Capture errors must never alter the compiler result. */
 static void
-agx_publish_failure(const char *directory, struct blob *input, FILE *ir)
+agx_publish_capture(const char *directory, struct blob *input, FILE *ir, bool success)
 {
    if (input->size > 8 * 1024 * 1024)
       return;
@@ -5631,12 +5631,12 @@ agx_publish_failure(const char *directory, struct blob *input, FILE *ir)
       if (f) {
          fprintf(f, "{\"version\":1,\"serialization_abi\":\"%s\","
                     "\"input_blake3\":\"%s\",\"input_bytes\":%zu,"
-                    "\"entrypoint\":\"agx_compile_shader_nir\"}\n",
-                 AGX_REPLAY_ABI, hex, input->size);
+                    "\"entrypoint\":\"agx_compile_shader_nir\",\"success\":%s}\n",
+                 AGX_REPLAY_ABI, hex, input->size, success ? "true" : "false");
          fflush(f); fsync(fileno(f)); fclose(f);
       }
       if (f && rename(temporary, final) == 0)
-         fprintf(stderr, "AGX compiler failure saved: %s\n", final);
+         fprintf(stderr, "AGX compiler %s saved: %s\n", success ? "input" : "failure", final);
    }
    /* On publication failure do not leave partial evidence consuming quota. */
    const char *names[] = {"input.bin", "backend-ir.txt", "manifest.json"};
@@ -5655,6 +5655,12 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
                        struct agx_shader_part *out)
 {
    const char *directory = getenv("AGX_COMPILER_CAPTURE_DIR");
+   const char *capture_success = getenv("AGX_COMPILER_CAPTURE_SUCCESS");
+   const bool save_success = capture_success &&
+      (!strcmp(capture_success, "all") ||
+       (!strcmp(capture_success, "vertex") && nir->info.stage == MESA_SHADER_VERTEX) ||
+       (!strcmp(capture_success, "fragment") && nir->info.stage == MESA_SHADER_FRAGMENT) ||
+       (!strcmp(capture_success, "compute") && nir->info.stage == MESA_SHADER_COMPUTE));
    struct blob input;
    blob_init(&input);
    FILE *previous = agx_failure_ir;
@@ -5672,8 +5678,8 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
    }
    bool result = agx_compile_shader_nir_inner(nir, key, out);
    agx_failure_ir = previous;
-   if (!result && input.size && !input.out_of_memory)
-      agx_publish_failure(directory, &input, ir);
+   if ((!result || save_success) && input.size && !input.out_of_memory)
+      agx_publish_capture(directory, &input, ir, result);
    if (ir) fclose(ir);
    blob_finish(&input);
    return result;

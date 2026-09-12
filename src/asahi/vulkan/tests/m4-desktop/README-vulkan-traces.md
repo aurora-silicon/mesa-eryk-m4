@@ -268,3 +268,30 @@ application-support result. Trim profiles now use private layer manifests with
 absolute library paths, so a missing system Profiles layer cannot silently
 leave the trim unrestricted. Replay creates its compiler-capture directory
 before setting `AGX_COMPILER_CAPTURE_DIR`, retaining failure bundles reliably.
+
+
+## Inspecting shaders that compile but render incorrectly
+
+Set `AGX_COMPILER_CAPTURE_SUCCESS=vertex|fragment|compute|all` alongside
+`AGX_COMPILER_CAPTURE_DIR` to retain accepted compiler inputs too. This is
+opt-in and shares the existing 32-bundle quota and 8 MiB per-input limits.
+The manifest records `success`; accepted backend IR can be printed offline
+with the matching `agx_shader_replay` build and `AGX_MESA_DEBUG=shaders`.
+No application launch is needed to inspect the saved NIR again.
+
+`vulkan-trace.py replay --replace-shaders DIRECTORY` retains and hashes explicit
+SPIR-V substitutions named `sh<captured shader handle>`. This is diagnostic
+adaptation, never evidence that the original application works.
+
+`vulkan-shader-probe.py --name NAME --trace LOCAL.gfxr --remote-trace REMOTE.gfxr
+--shader PROBE.spv --handle ID --dump-config DRAWS.json --output NEW_DIRECTORY`
+runs the same replacement on host lavapipe and guarded M4, then compares raw
+attachments. It checks capture hashes, saves binaries/configuration and records
+both renderer results. Default end frame is 2; use `--end-frame` when needed.
+Use this to isolate inputs/operations, then qualify a fix with the original
+shader and capture. Firefox's blur diagnosis used it to distinguish correct
+fragment texture queries from incorrectly relocated vertex descriptor handles.
+
+Firefox probes retain a page screenshot and a compositor screenshot in addition
+to native scanout when available. DPMS can make `m4_scanout` return ENODATA;
+that condition is recorded explicitly rather than discarding the browser run.

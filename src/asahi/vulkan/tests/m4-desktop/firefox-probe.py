@@ -184,9 +184,27 @@ def main():
                 except (FileNotFoundError, ProcessLookupError):
                     pass
             check()
+            # Preserve the page even when DPMS disables the hardware scanout.
+            # This is separate from the compositor screenshot below.
+            import base64
+            shot = remote.call('WebDriver:TakeScreenshot', {})
+            (out / 'page.png').write_bytes(base64.b64decode(shot))
             nodes = {f.resolve() for f in Path('/sys/kernel/debug/dri').glob('*/m4_scanout')}
             if len(nodes) == 1:
-                (out / 'desktop.m4fb').write_bytes(nodes.pop().read_bytes())
+                try:
+                    (out / 'desktop.m4fb').write_bytes(nodes.pop().read_bytes())
+                except OSError as error:
+                    import errno
+                    if error.errno != errno.ENODATA:
+                        raise
+                    result['scanout_unavailable'] = str(error)
+            check()
+            screenshot = subprocess.run(['runuser', '-u', 'e', '--', 'grim', '-'],
+                                        env=env, capture_output=True, timeout=5)
+            if screenshot.returncode == 0:
+                (out / 'compositor.png').write_bytes(screenshot.stdout)
+            else:
+                result['compositor_screenshot_error'] = screenshot.stderr.decode(errors='replace')
             result['completed'] = True
     except BaseException as error:
         result['error'] = repr(error)
