@@ -284,7 +284,10 @@ void
 agx_nir_vs_prolog_raw(nir_builder *b, const void *key)
 {
    agx_nir_vs_prolog_impl(b, key, true);
-   agx_nir_reserve_native_vertex_prefix(b->shader);
+   /* Only VDM hardware vertices consume the native varying prefix. A VS
+    * lowered to CDM keeps the compute ABI used by its main shader. */
+   if (((const struct agx_vs_prolog_key *)key)->hw)
+      agx_nir_reserve_native_vertex_prefix(b->shader);
 }
 
 static bool

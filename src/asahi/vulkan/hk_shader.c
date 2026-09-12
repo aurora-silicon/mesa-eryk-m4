@@ -1527,7 +1527,10 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
    shader->info.cull_distance_array_size = nir->info.cull_distance_array_size;
    shader->b.info.outputs = outputs;
 
-   if (agx_chip_uses_hal200_ioto(dev->dev.chip) && sw_stage == MESA_SHADER_VERTEX && hw) {
+   /* Geometry lowering also produces a hardware vertex shader. Its native
+    * VDM metadata follows the compiled stage, not the originating API stage. */
+   if (agx_chip_uses_hal200_ioto(dev->dev.chip) &&
+       shader->b.info.stage == MESA_SHADER_VERTEX && hw) {
       const struct hk_agx3_g17p_vertex_compile_info compiler_info = {
          .hardware_vertex = shader->b.info.stage == MESA_SHADER_VERTEX,
          .position_only = shader->b.info.outputs == VARYING_BIT_POS,

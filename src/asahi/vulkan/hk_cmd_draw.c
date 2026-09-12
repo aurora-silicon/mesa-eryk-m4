@@ -1981,14 +1981,17 @@ hk_launch_gs_prerast(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
       grid_gs.count[0] = u_decomposed_prims_for_vertices(mode, draw.b.count[0]);
    }
 
-   /* Launch the vertex shader first */
+   /* Launch the vertex shader first, preserving the linked vertex-input
+    * prolog and graphics root when the hardware stage is compute. */
    hk_reserve_scratch(cmd, cs, vs);
-   hk_dispatch_with_usc(dev, cs, &vs->b.info,
-                        hk_upload_usc_words(cmd, vs,
-                                            vs->info.stage == MESA_SHADER_VERTEX
-                                               ? gfx->linked[MESA_SHADER_VERTEX]
-                                               : vs->only_linked),
-                        grid_vs, wg);
+   struct hk_linked_shader *linked_vs = vs->info.stage == MESA_SHADER_VERTEX
+      ? gfx->linked[MESA_SHADER_VERTEX] : vs->only_linked;
+   if (agx_chip_uses_hal200_ioto(dev->dev.chip)) {
+      hk_dispatch_g17p_native_linked(cmd, cs, vs, linked_vs, grid_vs, wg);
+   } else {
+      hk_dispatch_with_usc(dev, cs, &vs->b.info,
+                          hk_upload_usc_words(cmd, vs, linked_vs), grid_vs, wg);
+   }
 
    /* Transform feedback and various queries require extra dispatching,
     * determine if we need that here.
@@ -2927,6 +2930,13 @@ hk_flush_index(struct hk_cmd_buffer *cmd, struct hk_cs *cs)
       index = BITFIELD_MASK(8 * poly_gs_index_size(shape));
    }
 
+   /* HAL200 embeds the restart index in each Index List record. Remember the
+    * effective (possibly generated-GS) index without emitting AGX2 state. */
+   if (agx_native_graphics(&hk_cmd_buffer_device(cmd)->dev)) {
+      cs->restart_index = index;
+      return;
+   }
+
    /* VDM State updates are relatively expensive, so only emit them when the
     * restart index changes. This is simpler than accurate dirty tracking.
     */
@@ -3819,7 +3829,7 @@ agx_fill_velem_keys(const struct vk_vertex_input_state *vi,
 static void
 hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
                        uint32_t draw_id, struct agx_draw draw,
-                       bool ordinary_draw_path,
+                       bool native_index_list_path,
                        bool *g17p_native_bind_tail_emitted_out)
 {
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
@@ -3833,13 +3843,12 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
    bool g17p_native_bind_tail_emitted = false;
    *g17p_native_bind_tail_emitted_out = false;
 
-   /* The grounded VertexProgramVariant producer covers only the four ordinary
-    * Index List entry points.  Reject software-transformed draw paths even if
-    * no dynamic state happens to be dirty, otherwise they could inherit a
-    * preceding ordinary draw's admitted AGX3 state. */
+   /* The native producer requires an Index List draw and complete hardware
+    * VS metadata. Reject unported transformed paths even if no state is dirty,
+    * so they cannot inherit a preceding draw's admitted state. */
    if (agx_chip_command_stream_generation(dev->dev.chip) !=
           AGX_CS_GENERATION_AGX2 &&
-       !ordinary_draw_path) {
+       !native_index_list_path) {
       mesa_loge("no grounded AGX3 VertexProgramVariant state for transformed "
                 "draw path on %s",
                 agx_chip_name(dev->dev.chip));
@@ -4403,7 +4412,7 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
             pipeline_va_valid &&
             hk_agx3_vdm_live_source_layout(
                program, cs->agx3_active_context_selector_valid,
-               ordinary_draw_path) ==
+               native_index_list_path) ==
                AGX_VDM_STATE_UPDATE_SOURCE_LAYOUT_AGX3_VERTEX_PROGRAM_VARIANT;
          struct agx_vdm_state_update_draw_info info = {
             .source_layout = complete_program
@@ -4434,11 +4443,11 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
          if (!hk_agx3_encode_vdm_state_update_draw(dev->dev.chip, &info,
                                                     &encoded)) {
             mesa_loge("no complete AGX3 VertexProgramVariant state for %s: "
-                      "pipeline=%#llx layout=%u ordinary=%u selector=%u "
+                      "pipeline=%#llx layout=%u index-list=%u selector=%u "
                       "sw-index=%u scratch=%u/%u preamble=%u data=%zu tex=%u sampler=%u root=%#llx",
                       agx_chip_name(dev->dev.chip),
                       (unsigned long long)pipeline_program,
-                      program->source_layout, ordinary_draw_path,
+                      program->source_layout, native_index_list_path,
                       cs->agx3_active_context_selector_valid,
                       linked_hw_vs->sw_indexing, hw_vs->b.info.scratch_size,
                       linked_hw_vs->b.scratch_size, hw_vs->b.info.has_preamble,
@@ -4797,8 +4806,14 @@ hk_flush_gfx_state(struct hk_cmd_buffer *cmd, uint32_t draw_id,
       vk_topology_to_mesa(dyn->ia.primitive_topology));
    adj &= !geom;
    *needs_idx_robust = hk_needs_index_robustness(cmd, draw);
-   const bool ordinary_draw_path =
-      !geom && !tess && !adj && !*needs_idx_robust;
+   /* The XFB passthrough GS runs in compute and feeds an ordinary Index List
+    * draw through its generated hardware VS. The latter must still satisfy
+    * the native VertexProgramVariant metadata checks below. */
+   const bool xfb_draw_path = geom &&
+      gfx->shaders[MESA_SHADER_GEOMETRY]->is_passthrough &&
+      !tess && !adj && !*needs_idx_robust;
+   const bool native_index_list_path =
+      (!geom && !tess && !adj && !*needs_idx_robust) || xfb_draw_path;
 
    if (desc->push_dirty)
       hk_cmd_buffer_flush_push_descriptors(cmd, desc);
@@ -4806,7 +4821,7 @@ hk_flush_gfx_state(struct hk_cmd_buffer *cmd, uint32_t draw_id,
    if (draw->restart || geom)
       hk_flush_index(cmd, cs);
 
-   hk_flush_dynamic_state(cmd, cs, draw_id, *draw, ordinary_draw_path,
+   hk_flush_dynamic_state(cmd, cs, draw_id, *draw, native_index_list_path,
                           g17p_native_bind_tail_emitted);
    return cs;
 }
@@ -5137,7 +5152,7 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
                   .index_size_B =
                      draw.indexed ? agx_index_size_to_B(draw.index_size) : 0,
                   .restart_enable = draw.restart,
-                  .restart_index = cmd->state.gfx.index.restart,
+                  .restart_index = cs->restart_index,
                   .index_buffer = draw.index_buffer,
                   .index_buffer_range_B = draw.index_buffer_range_B,
                   .indirect_buffer = draw.b.ptr,
@@ -5162,7 +5177,7 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
                   .primitive = (uint8_t)topology,
                   .index_size_B = agx_index_size_to_B(draw.index_size),
                   .restart_enable = draw.restart,
-                  .restart_index = cmd->state.gfx.index.restart,
+                  .restart_index = cs->restart_index,
                   .draw_state_context_offset = draw_state_offset,
                   .index_buffer = draw.index_buffer,
                   .index_buffer_range_B = draw.index_buffer_range_B,

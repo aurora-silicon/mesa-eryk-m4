@@ -418,11 +418,12 @@ test_agx3_live_vdm_draw(void)
    CHECK_EQ(
       agx_vdm_draw_supported(AGX_CHIP_G17S, rejected, (enum agx_primitive)6),
       false);
-   rejected = agx_draw_indexed(1, 1, 0, 0, 0, UINT64_C(0x1000), 4,
-                               AGX_INDEX_SIZE_U8, false);
+   /* Native Index List packing supports all three index widths. */
+   struct agx_draw byte_indexed = agx_draw_indexed(
+      1, 1, 0, 0, 0, UINT64_C(0x1000), 4, AGX_INDEX_SIZE_U8, false);
    CHECK_EQ(
-      agx_vdm_draw_supported(AGX_CHIP_G17S, rejected, (enum agx_primitive)6),
-      false);
+      agx_vdm_draw_supported(AGX_CHIP_G17S, byte_indexed, (enum agx_primitive)6),
+      true);
 }
 
 static void

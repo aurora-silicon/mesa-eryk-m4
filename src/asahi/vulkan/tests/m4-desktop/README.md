@@ -1666,3 +1666,13 @@ and saves the first Vulkan error's backtrace, or a compiler crash backtrace.
 It validates the compile-only manifest and probe hash and breaks at the
 non-inlined Vulkan error logger, avoiding misleading optimized inline locations.
 This helper is for offline recording only, not hardware execution.
+
+M4 transform-feedback bring-up (2026-09-12): the exact triangle passed guarded
+hardware execution in `20260912T185413008652Z-xfb-exact-generated-restart`, with
+all three vec4 positions, buffer guard and 32x32 RGBA8 pixels exact. The checksum
+`d9f0ab0040382b25` matches the lavapipe reference. Peak PMP temperature: 57.25 C;
+no firmware fault. This qualifies the basic path, not complete transform-feedback
+feature coverage or Chromium support; feature exposure remains a local candidate.
+The probe now evaluates pixels even after an XFB mismatch and uses a three-second
+fence timeout. Portable libagx NIR is compiled through Honeykrisp's native compute
+path; no AGX2 precompiled binary is submitted on M4.

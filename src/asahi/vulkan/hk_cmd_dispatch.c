@@ -168,7 +168,11 @@ hk_g17p_compute_shader_supported(struct hk_shader *s,
          s->b.info.has_preamble,
          s->b.info.local_size,s->b.info.texture_state_count,s->b.info.sampler_state_count,
          s->b.info.uses_sampler_heap,s->b.info.scratch_size,linked->b.scratch_size);
-   return s && linked && s->info.stage == MESA_SHADER_COMPUTE &&
+   /* poly lowers GS I/O to global memory while retaining its logical stage.
+    * Its main variant is dispatched by CDM just like the VS compute variant. */
+   return s && linked &&
+          (s->b.info.stage == MESA_SHADER_COMPUTE ||
+           s->b.info.stage == MESA_SHADER_GEOMETRY) &&
           linked->b.bo && linked->b.bo->va && linked->b.size != 0 &&
           linked->b.size <= UINT32_MAX && linked->b.nr_gprs != 0 &&
           !s->b.info.has_preamble && s->b.info.preamble_scratch_size == 0 &&
@@ -285,12 +289,12 @@ hk_g17p_compute_uniform_ranges(
 }
 
 void
-hk_dispatch_g17p_native(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
-                        struct hk_shader *s, struct agx_grid grid,
+hk_dispatch_g17p_native_linked(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
+                        struct hk_shader *s, struct hk_linked_shader *linked,
+                        struct agx_grid grid,
                         struct agx_workgroup local_size)
 {
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
-   struct hk_linked_shader *linked = s ? s->only_linked : NULL;
    static_assert(HK_MAX_SETS == HK_AGX3_G17P_MAX_ROOT_SETS,
                  "G17P root range must cover every Honeykrisp set");
 
@@ -315,7 +319,8 @@ hk_dispatch_g17p_native(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
       cmd->state.cs.descriptors.root.cs.constant_data_addr = 0;
    }
 
-   const uint64_t root_ptr =
+   const bool graphics = s->info.stage != MESA_SHADER_COMPUTE;
+   const uint64_t root_ptr = graphics ? cmd->state.gfx.root :
       hk_cmd_buffer_upload_root(cmd, VK_PIPELINE_BIND_POINT_COMPUTE);
    if (!root_ptr)
       return;
@@ -535,10 +540,12 @@ hk_dispatch_g17p_native(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
       }
    }
 
-   struct agx3_ioto_uniform_range ranges[3];
+   struct agx3_ioto_uniform_range ranges[HK_AGX3_G17P_GRAPHICS_MAX_RANGES];
    size_t range_count;
-   if (!hk_g17p_compute_uniform_ranges(s, root_ptr, texture_pointers,
-                                      ranges, &range_count)) {
+   if (!(graphics
+         ? hk_g17p_graphics_uniform_ranges(cmd, s, ranges, &range_count)
+         : hk_g17p_compute_uniform_ranges(s, root_ptr, texture_pointers,
+                                          ranges, &range_count))) {
       vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
       return;
    }
@@ -836,4 +843,13 @@ hk_CmdDispatchIndirect(VkCommandBuffer commandBuffer, VkBuffer _buffer,
 
    desc->root.cs.group_count_addr = dispatch_addr;
    dispatch(cmd, agx_grid_indirect(dispatch_addr));
+}
+
+void
+hk_dispatch_g17p_native(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
+                        struct hk_shader *s, struct agx_grid grid,
+                        struct agx_workgroup local_size)
+{
+   hk_dispatch_g17p_native_linked(cmd, cs, s, s ? s->only_linked : NULL,
+                                  grid, local_size);
 }

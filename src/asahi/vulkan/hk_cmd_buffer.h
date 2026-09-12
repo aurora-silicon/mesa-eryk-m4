@@ -942,6 +942,17 @@ void hk_dispatch_with_usc(struct hk_device *dev, struct hk_cs *cs,
                           struct agx_grid grid,
                           struct agx_workgroup local_size);
 
+struct agx3_ioto_uniform_range;
+bool hk_g17p_graphics_uniform_ranges(struct hk_cmd_buffer *cmd,
+                                     struct hk_shader *s,
+                                     struct agx3_ioto_uniform_range *ranges,
+                                     size_t *range_count);
+void hk_dispatch_g17p_native_linked(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
+                                    struct hk_shader *s,
+                                    struct hk_linked_shader *linked,
+                                    struct agx_grid grid,
+                                    struct agx_workgroup local_size);
+
 void hk_dispatch_g17p_native(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
                              struct hk_shader *s, struct agx_grid grid,
                              struct agx_workgroup local_size);

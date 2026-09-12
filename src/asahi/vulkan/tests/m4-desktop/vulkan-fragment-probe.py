@@ -121,18 +121,28 @@ def main():
         replace_once('   printf(PROBE_NAME ": retired %u submissions\\n", repeats);', '''   static const float xfb_expected[3][4] = {
       {-1, -1, 0, 1}, {3, -1, 0, 1}, {-1, 3, 0, 1},
    };
-   if (memcmp(xfb_map, xfb_expected, sizeof(xfb_expected))) {
+   bool xfb_failed = memcmp(xfb_map, xfb_expected, sizeof(xfb_expected)) != 0;
+   if (xfb_failed) {
       const float *f = xfb_map;
       for (unsigned i = 0; i < 3; ++i)
          fprintf(stderr, "XFB[%u] = %g %g %g %g\\n", i,
                  f[4*i], f[4*i+1], f[4*i+2], f[4*i+3]);
-      die("transform feedback vertex mismatch");
+      fprintf(stderr, "FAIL: transform feedback vertex mismatch\\n");
    }
    for (unsigned i = sizeof(xfb_expected); i < xfb_size; ++i)
-      if (((unsigned char *)xfb_map)[i] != 0xcd)
-         die("transform feedback wrote beyond the three vertices");
-   puts("PASS: transform feedback three exact vec4 positions and buffer guard");
+      if (((unsigned char *)xfb_map)[i] != 0xcd) {
+         fprintf(stderr, "FAIL: transform feedback guard byte %u overwritten\\n", i);
+         xfb_failed = true;
+      }
+   if (!xfb_failed)
+      puts("PASS: transform feedback three exact vec4 positions and buffer guard");
    printf(PROBE_NAME ": retired %u submissions\\n", repeats);''')
+        # Finish the pixel oracle even if XFB is wrong, but preserve failure.
+        end = source.rfind('   return EXIT_SUCCESS;')
+        source = source[:end] + source[end:].replace('   return EXIT_SUCCESS;',
+            '   return xfb_failed ? EXIT_FAILURE : EXIT_SUCCESS;', 1)
+        replace_once('vkWaitForFences(device, 1, &fence, true, UINT64_MAX)',
+                     'vkWaitForFences(device, 1, &fence, true, UINT64_C(3000000000))')
     if args.occlusion_query:
         query_functions = ('vkCreateQueryPool', 'vkCmdResetQueryPool',
                            'vkCmdBeginQuery', 'vkCmdEndQuery',

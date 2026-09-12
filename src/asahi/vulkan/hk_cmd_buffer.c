@@ -25,6 +25,8 @@
 #include "hk_image_view.h"
 #include "hk_physical_device.h"
 #include "hk_shader.h"
+#include "nir_serialize.h"
+#include "nir_builder.h"
 
 #include "util/log.h"
 #include "util/u_debug.h"
@@ -1057,9 +1059,9 @@ hk_g17p_basic_graphics_program_supported(struct hk_cmd_buffer *cmd,
        s->data_size != 0 || s->info.set_count > HK_AGX3_G17P_MAX_ROOT_SETS)
       return false;
 
-   if (s->info.stage == MESA_SHADER_VERTEX) {
-      const unsigned nr_attribs = DIV_ROUND_UP(
-         BITSET_LAST_BIT(s->info.vs.attrib_components_read), 4);
+   if (s->b.info.stage == MESA_SHADER_VERTEX) {
+      const unsigned nr_attribs = s->info.stage == MESA_SHADER_VERTEX ? DIV_ROUND_UP(
+         BITSET_LAST_BIT(s->info.vs.attrib_components_read), 4) : 0;
 
       return !linked->sw_indexing &&
              nr_attribs <= AGX_MAX_VBUFS &&
@@ -1081,16 +1083,18 @@ hk_g17p_basic_graphics_program_supported(struct hk_cmd_buffer *cmd,
    return s->info.stage == MESA_SHADER_FRAGMENT && varyings && tile;
 }
 
-static bool
+bool
 hk_g17p_graphics_uniform_ranges(
    struct hk_cmd_buffer *cmd, struct hk_shader *s,
-   struct agx3_ioto_uniform_range ranges[HK_AGX3_G17P_GRAPHICS_MAX_RANGES],
+   struct agx3_ioto_uniform_range *ranges,
    size_t *range_count)
 {
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
    const uint64_t root_ptr = cmd->state.gfx.root;
    size_t count = 0;
    unsigned root_uniform = 0;
+   const unsigned vertex_prefix = s->b.info.stage == MESA_SHADER_VERTEX
+      ? AGX_ABI_VUNI_NATIVE_PREFIX : 0;
 
    if (s->info.stage == MESA_SHADER_VERTEX) {
       const unsigned nr_attribs = DIV_ROUND_UP(
@@ -1103,13 +1107,13 @@ hk_g17p_graphics_uniform_ranges(
             return false;
 
          ranges[count++] = (struct agx3_ioto_uniform_range){
-            .start_halfs = AGX_ABI_VUNI_NATIVE_PREFIX + AGX_ABI_VUNI_VBO_BASE(0),
+            .start_halfs = vertex_prefix + AGX_ABI_VUNI_VBO_BASE(0),
             .size_halfs = 4 * nr_attribs,
             .address =
                root_ptr + hk_root_descriptor_offset(draw.attrib_base),
          };
          ranges[count++] = (struct agx3_ioto_uniform_range){
-            .start_halfs = AGX_ABI_VUNI_NATIVE_PREFIX + AGX_ABI_VUNI_VBO_CLAMP(nr_attribs, 0),
+            .start_halfs = vertex_prefix + AGX_ABI_VUNI_VBO_CLAMP(nr_attribs, 0),
             .size_halfs = 2 * nr_attribs,
             .address =
                root_ptr + hk_root_descriptor_offset(draw.attrib_clamps),
@@ -1122,20 +1126,27 @@ hk_g17p_graphics_uniform_ranges(
        * specialization, shader patch or pre-render compute dispatch. */
       if (cmd->state.gfx.draw_params) {
          ranges[count++] = (struct agx3_ioto_uniform_range){
-            .start_halfs = AGX_ABI_VUNI_NATIVE_PREFIX + AGX_ABI_VUNI_FIRST_VERTEX(nr_attribs),
+            .start_halfs = vertex_prefix + AGX_ABI_VUNI_FIRST_VERTEX(nr_attribs),
             .size_halfs = 4,
             .address = cmd->state.gfx.draw_params,
          };
       }
       if (cmd->state.gfx.draw_id_ptr) {
          ranges[count++] = (struct agx3_ioto_uniform_range){
-            .start_halfs = AGX_ABI_VUNI_NATIVE_PREFIX + AGX_ABI_VUNI_DRAW_ID(nr_attribs),
+            .start_halfs = vertex_prefix + AGX_ABI_VUNI_DRAW_ID(nr_attribs),
             .size_halfs = 1,
             .address = cmd->state.gfx.draw_id_ptr,
          };
       }
 
-      root_uniform = AGX_ABI_VUNI_NATIVE_PREFIX + AGX_ABI_VUNI_COUNT_VK(nr_attribs);
+      if (s->b.info.stage == MESA_SHADER_COMPUTE) {
+         ranges[count++] = (struct agx3_ioto_uniform_range){
+            .start_halfs = AGX_ABI_VUNI_VERTEX_PARAMS(nr_attribs),
+            .size_halfs = 4,
+            .address = root_ptr + hk_root_descriptor_offset(draw.vertex_params),
+         };
+      }
+      root_uniform = vertex_prefix + AGX_ABI_VUNI_COUNT_VK(nr_attribs);
    } else if (s->info.stage == MESA_SHADER_FRAGMENT) {
       root_uniform = AGX_ABI_FUNI_NATIVE_PREFIX + AGX_ABI_FUNI_ROOT;
       if (cmd->state.gfx.uses_blend_constant) {
@@ -1147,6 +1158,8 @@ hk_g17p_graphics_uniform_ranges(
             .address = root_ptr + hk_root_descriptor_offset(draw.blend_constant),
          };
       }
+   } else if (s->info.stage == MESA_SHADER_GEOMETRY) {
+      root_uniform = vertex_prefix;
    } else {
       return false;
    }
@@ -1555,12 +1568,70 @@ hk_upload_usc_words(struct hk_cmd_buffer *cmd, struct hk_shader *s,
    return agx_usc_addr(&dev->dev, t.gpu);
 }
 
+static bool
+hk_precomp_lower_input(nir_builder *b, nir_intrinsic_instr *intr, void *data)
+{
+   if (intr->intrinsic != nir_intrinsic_load_preamble)
+      return false;
+
+   b->cursor = nir_before_instr(&intr->instr);
+   nir_def *address = nir_iadd_imm(b, nir_load_root_agx(b),
+      hk_root_descriptor_offset(push) + nir_intrinsic_base(intr) * 2);
+   nir_def *value = nir_load_global_constant(b, intr->def.num_components,
+      intr->def.bit_size, address, .align_mul = 8,
+      .align_offset = (hk_root_descriptor_offset(push) +
+                       nir_intrinsic_base(intr) * 2) % 8);
+   nir_def_replace(&intr->def, value);
+   return true;
+}
+
+static void
+hk_build_precomp_nir(nir_builder *b, const void *key)
+{
+   enum libagx_program idx = *(const enum libagx_program *)key;
+   const uint32_t *serialized = libagx_nir[idx];
+   struct blob_reader reader;
+   blob_reader_init(&reader, serialized + 1, serialized[0]);
+   ralloc_free(b->shader);
+   nir_shader *nir = nir_deserialize(NULL, &agx_nir_options, &reader);
+   assert(!reader.overrun);
+   NIR_PASS(_, nir, nir_shader_intrinsics_pass, hk_precomp_lower_input,
+            nir_metadata_control_flow, NULL);
+   *b = nir_builder_at(nir_after_impl(nir_shader_get_entrypoint(nir)));
+}
+
 void
 hk_dispatch_precomp(struct hk_cmd_buffer *cmd, struct agx_grid grid,
                     enum agx_barrier barrier, enum libagx_program idx,
                     void *data, size_t data_size)
 {
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
+   if (agx_chip_uses_hal200_ioto(dev->dev.chip)) {
+      struct hk_api_shader *api =
+         hk_meta_shader(dev, hk_build_precomp_nir, &idx, sizeof(idx));
+      if (!api) {
+         mesa_loge("native precompiled kernel %u failed to compile", idx);
+         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+         return;
+      }
+      struct hk_shader *s = hk_only_variant(api);
+      struct hk_cs **target = (barrier & AGX_POSTGFX) ? &cmd->current_cs.post_gfx
+         : (barrier & AGX_PREGFX) ? &cmd->current_cs.pre_gfx : &cmd->current_cs.cs;
+      struct hk_cs *cs = hk_cmd_buffer_get_cs_general(cmd, target, true);
+      if (!cs)
+         return;
+
+      /* Internal kernels must not overwrite the application's compute push
+       * constants. The native dispatch uploads its root before returning. */
+      struct hk_root_descriptor_table saved = cmd->state.cs.descriptors.root;
+      assert(data_size <= sizeof(saved.push));
+      memcpy(cmd->state.cs.descriptors.root.push, data, data_size);
+      hk_dispatch_with_local_size(cmd, cs, s, grid,
+         agx_workgroup(s->b.info.workgroup_size[0], s->b.info.workgroup_size[1],
+                       s->b.info.workgroup_size[2]));
+      cmd->state.cs.descriptors.root = saved;
+      return;
+   }
    struct agx_precompiled_shader *prog = agx_get_precompiled(&dev->bg_eot, idx);
    if (!prog) {
       vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);

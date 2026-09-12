@@ -330,6 +330,21 @@ main(int argc, char **argv)
             libfunc->pass_flags |= BITFIELD_BIT(v);
          }
 
+         /* Retain portable NIR for command-stream generations that cannot
+          * execute the precompiled AGX2 binaries. The first word is the
+          * serialized length; the remaining bytes are consumed by NIR's
+          * reader using the same build's compiler options. */
+         struct blob portable;
+         blob_init(&portable);
+         blob_write_uint32(&portable, 0);
+         nir_serialize(&portable, s, true);
+         uint32_t nir_size = portable.size - sizeof(uint32_t);
+         memcpy(portable.data, &nir_size, sizeof(nir_size));
+         nir_precomp_print_blob(fp_c, libfunc->name, "nir", v,
+                               (const uint32_t *)portable.data,
+                               portable.size, true);
+         blob_finish(&portable);
+
          foreach_target(target)
          {
             /* Skip unused variants */
@@ -375,6 +390,8 @@ main(int argc, char **argv)
 
    nir_precomp_print_program_enum(fp_h, nir, "libagx");
    nir_precomp_print_dispatch_macros(fp_h, &opt, nir);
+   nir_precomp_print_extern_binary_map(fp_h, "libagx", "nir");
+   nir_precomp_print_binary_map(fp_c, nir, "libagx", "nir", NULL);
 
    /* For each target, generate a table mapping programs to binaries */
    foreach_target(target)
