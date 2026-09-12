@@ -28,7 +28,7 @@ else:
     source = args.source.resolve(strict=True)
     digest = hashlib.sha256(source.read_bytes()).hexdigest()
     staged = '/root/mesa-' + args.component + '-' + label + '-' + digest + '.so'
-    subprocess.run(['scp', '-o', 'ConnectTimeout=10', str(source), 'root@omarchy-m4:' + staged], check=True, timeout=90)
+    subprocess.run(['scp', '-C', '-o', 'ConnectTimeout=10', str(source), 'root@omarchy-m4:' + staged], check=True, timeout=90)
 remote = '''import hashlib, os, pathlib, shutil, subprocess, sys
 source, digest, component, allow_live = pathlib.Path(sys.argv[1]), sys.argv[2], sys.argv[3], sys.argv[4] == '1'
 assert hashlib.sha256(source.read_bytes()).hexdigest() == digest, 'staged checksum mismatch'

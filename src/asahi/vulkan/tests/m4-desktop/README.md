@@ -1768,3 +1768,14 @@ Evidence transfers use rsync compression to retain full raw scanouts without
 repeated transport timeouts. Native203330 qualifies Chromium WebGL live
 output;203436 validates STK raceclock15.050s with correct visible scene and
 M4 Zink renderer. Peak temperatures60.25C and59.5C respectively.
+
+`sample-fetch-probe.c` creates a2x or4x color texture, writes a different known
+color to each sample using sample masks, and fetches every sample separately
+into a single-sample framebuffer. All4096 pixels per sample are checked. Build
+with`-lEGL -lGL -lm`, run through the GPU guard.203931 captures the4x lavapipe
+reference;204115(native4x) and204146(native2x) pass onJ713 at57C maximum.
+The Vulkan sampledImageColorSampleCounts limit must include qualified2x/4x
+support: denying it makes Zink reject Firefox's multisample RGBA-to-BGRA blit.
+Integer/depth/stencil texture sample limits are not expanded by this test.
+Library staging now compresses SSH transfers while retaining SHA256 validation
+and atomic installation; existing processes retain their previous mapping.
