@@ -2617,6 +2617,32 @@ agx_lower_agx3_fma_sources(agx_context *ctx)
          I->src[0] = wide;
          continue;
       }
+      if (I->op == AGX_OPCODE_FADD && I->saturate &&
+          I->dest[0].size == AGX_SIZE_16) {
+         /* The native saturated narrowing ADD has plain F32 sources.
+          * Apply sign modifiers exactly before that operation; retain its
+          * clamp and final half rounding rather than moving either earlier. */
+         agx_builder b = agx_init_builder(ctx, agx_before_instr(I));
+         agx_foreach_src(I, s) {
+            agx_index src = I->src[s];
+            if (src.type == AGX_INDEX_IMMEDIATE || src.size != AGX_SIZE_32 ||
+                (!src.abs && !src.neg))
+               continue;
+            const bool absolute = src.abs, negate = src.neg;
+            src.abs = src.neg = false;
+            if (absolute) {
+               agx_index plain = agx_temp(ctx, AGX_SIZE_32);
+               agx_bitop_to(&b, plain, src, agx_mov_imm(&b, 32, 0x7fffffff), 0x8);
+               src = plain;
+            }
+            if (negate) {
+               agx_index plain = agx_temp(ctx, AGX_SIZE_32);
+               agx_bitop_to(&b, plain, src, agx_mov_imm(&b, 32, 0x80000000), 0x6);
+               src = plain;
+            }
+            I->src[s] = src;
+         }
+      }
       if (I->op == AGX_OPCODE_FMUL && I->dest[0].size == AGX_SIZE_16) {
          agx_builder b = agx_init_builder(ctx, agx_before_instr(I));
          agx_foreach_src(I, s) {
