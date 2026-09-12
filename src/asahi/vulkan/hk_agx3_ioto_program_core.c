@@ -87,7 +87,8 @@ hk_agx3_g17p_rt0_tile_layout_supported(struct agx_tilebuffer_layout *tib)
    const bool packed_mrt = tib->nr_samples == 1 &&
       ((tib->logical_format[0] == PIPE_FORMAT_R11G11B10_FLOAT &&
         tib->logical_format[1] == PIPE_FORMAT_R11G11B10_FLOAT) ||
-       (tib->logical_format[0] == PIPE_FORMAT_R8G8B8A8_UNORM &&
+       ((tib->logical_format[0] == PIPE_FORMAT_R8G8B8A8_UNORM ||
+         tib->logical_format[0] == PIPE_FORMAT_R8G8B8A8_SRGB) &&
         tib->logical_format[1] == PIPE_FORMAT_R8G8B8A8_UNORM)) &&
       !tib->spilled[1] && tib->_offset_B[0] == 0 &&
       tib->_offset_B[1] == 4 && tib->sample_size_B == 8;
@@ -145,6 +146,7 @@ hk_agx3_g17p_rt0_tile_layout_supported(struct agx_tilebuffer_layout *tib)
             tib->logical_format[0] == PIPE_FORMAT_R8G8B8A8_SNORM ||
             tib->logical_format[0] == PIPE_FORMAT_R8G8B8A8_UINT ||
             tib->logical_format[0] == PIPE_FORMAT_R8G8B8A8_SINT ||
+            tib->logical_format[0] == PIPE_FORMAT_R16_UINT ||
             tib->logical_format[0] == PIPE_FORMAT_R16_UNORM ||
             tib->logical_format[0] == PIPE_FORMAT_R16_SNORM ||
             tib->logical_format[0] == PIPE_FORMAT_R16G16B16A16_SNORM ||

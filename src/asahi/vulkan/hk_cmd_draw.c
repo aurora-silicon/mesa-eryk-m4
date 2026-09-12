@@ -324,6 +324,16 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
    if (!key->tib.nr_samples && !key->tib.sample_size_B)
       agx_tilebuffer_set_samples(&key->tib, 1);
    if (!hk_agx3_g17p_rt0_tile_layout_supported(&key->tib)) {
+      if (getenv("AGX_NATIVE_RESOURCE_DIAGNOSTICS")) {
+         fprintf(stderr, "Native tile layout refused: samples=%u bytes=%u tile=%u layered=%u formats=",
+                 key->tib.nr_samples, key->tib.sample_size_B,
+                 key->tib.tile_size, key->tib.layered);
+         for (unsigned i = 0; i < AGX_MAX_RENDER_TARGETS; ++i)
+            fprintf(stderr, "%s%s@%u", i ? "," : "",
+                    util_format_short_name(key->tib.logical_format[i]),
+                    key->tib._offset_B[i]);
+         fprintf(stderr, "\n");
+      }
       vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
       return (struct hk_bg_eot){0};
    }
@@ -331,7 +341,8 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
    const bool packed_mrt =
       (key->tib.logical_format[0] == PIPE_FORMAT_R11G11B10_FLOAT &&
        key->tib.logical_format[1] == PIPE_FORMAT_R11G11B10_FLOAT) ||
-      (key->tib.logical_format[0] == PIPE_FORMAT_R8G8B8A8_UNORM &&
+      ((key->tib.logical_format[0] == PIPE_FORMAT_R8G8B8A8_UNORM ||
+        key->tib.logical_format[0] == PIPE_FORMAT_R8G8B8A8_SRGB) &&
        key->tib.logical_format[1] == PIPE_FORMAT_R8G8B8A8_UNORM);
    const bool dual_mrt = packed_mrt ||
       (key->tib.logical_format[0] == PIPE_FORMAT_R16G16B16A16_FLOAT &&

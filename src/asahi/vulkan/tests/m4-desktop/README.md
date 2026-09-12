@@ -1910,3 +1910,14 @@ Lavapipe and M4 passed all six exact byte comparisons on 2026-09-12, guarded
 experiment `20260912T230401875508Z-image-dimensionality`, peak55.25 C. Blender's
 retained reference capture no longer reports unsupported raw uploads in the
 host noop-shim replay; attachment layouts still stop API4004.
+
+### Mixed render-target oracle
+
+`mrt-attachment-probe.c CASE` uses Zink to check full clears, a left-half draw,
+then a right-half draw while preserving prior pixels across readback/reload.
+Case0 is R16_UINT; case1 is sRGB RGBA8 plus linear RGBA8; case2 is RGBA16F plus
+R16_UINT; case3 adds RG16F between those attachments. Compile with
+`cc -O2 mrt-attachment-probe.c -lEGL -lGL -lm`. Cases0/1 passed Zink/lavapipe
+and M4 on 2026-09-12 (`20260912T230756398204Z-scalar-integer-srgb-mrt`, peak
+55.5 C). Cases2/3 are retained targets for ongoing Blender bring-up, not passes.
+Always run hardware through `gpu-experiment.py`.
