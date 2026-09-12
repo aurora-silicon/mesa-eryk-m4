@@ -1921,3 +1921,27 @@ R16_UINT; case3 adds RG16F between those attachments. Compile with
 and M4 on 2026-09-12 (`20260912T230756398204Z-scalar-integer-srgb-mrt`, peak
 55.5 C). Cases2/3 are retained targets for ongoing Blender bring-up, not passes.
 Always run hardware through `gpu-experiment.py`.
+
+### Offline capture replay and native EOT inputs
+
+`replay-driver-shim.py TRACE --output DIR --graphics-feature-probe` runs a
+bounded host-only noop-DRM-shim replay. It retains the Mesa patch/HEAD and
+binary/trace hashes. Offscreen swapchains, memory rebinding, omitted pipeline
+cache and removed unsupported capture capabilities are explicit diagnostics;
+this is a compiler/recording check and never evidence of GPU application support.
+
+`native-eot-input.py 12:4 9:1 --output build/float-uint.btnf` constructs the
+witnessed EOT flatbuffer for RGBA16F and R16_UINT. Add `12:2` between them for
+the three-attachment case. Native format numbers and component counts are
+explicit. Default partition0 means one tile partition; `--split-partitions`
+is only a compiler diagnostic. The same-partition dual input matches the
+existing witness byte-for-byte. Compile with `native-metal-compile.py --stage
+builtin --compiler /Users/m1/m4-metal-917/Metal.xctoolchain/usr/bin/metal-nt`.
+The default883 compiler crashed on these BTNF inputs;917 succeeded. Neither
+helper executes a GPU workload.
+
+Mixed float/integer case2 now passes clear/partial draw/reload through
+Zink/lavapipe and M4: `20260912T231419550352Z-float-uint-mrt`, peak55.5 C.
+The native120-byte EOT differs from the existing mixed float/R8 program only
+in its second typed-store selector. Compiler unit tests verify that complete
+program against the retained Apple witness. Case3 remains under development.

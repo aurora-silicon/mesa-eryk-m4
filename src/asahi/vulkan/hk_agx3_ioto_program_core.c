@@ -80,7 +80,8 @@ hk_agx3_g17p_rt0_tile_layout_supported(struct agx_tilebuffer_layout *tib)
 
    const bool mixed_mrt =
       tib->logical_format[0] == PIPE_FORMAT_R16G16B16A16_FLOAT &&
-      tib->logical_format[1] == PIPE_FORMAT_R8_UNORM &&
+      (tib->logical_format[1] == PIPE_FORMAT_R8_UNORM ||
+       tib->logical_format[1] == PIPE_FORMAT_R16_UINT) &&
       !tib->spilled[1] && tib->_offset_B[0] == 0 &&
       tib->_offset_B[1] == 8 && tib->sample_size_B == 16;
 

@@ -3526,6 +3526,7 @@ agx3_g17p_dual_mrt_eot_kind(const agx_context *ctx,
    unsigned x_reg = UINT_MAX, y_reg = UINT_MAX, coord_reg = UINT_MAX;
    unsigned zero_reg = UINT_MAX, second_offset_reg = UINT_MAX;
    unsigned second_offset = 0, first_format = AGX_NUM_FORMATS;
+   bool second_i16 = false;
 
    agx_foreach_block(ctx, block) {
       agx_foreach_instr_in_block(block, I) {
@@ -3596,11 +3597,14 @@ agx3_g17p_dual_mrt_eot_kind(const agx_context *ctx,
                              first_format == AGX_FORMAT_U8NORM;
                if (I->src[2].value != second_offset_reg ||
                    second_offset != (packed ? 4 : 8) ||
-                   I->format != (packed ? first_format
-                                        : AGX_FORMAT_U8NORM))
+                   (packed ? I->format != first_format :
+                    (I->format != AGX_FORMAT_U8NORM &&
+                     I->format != AGX_FORMAT_I16)))
                   return 0;
             }
 
+            if (stores == 1)
+               second_i16 = I->format == AGX_FORMAT_I16;
             if (stores == 0)
                coord_reg = I->src[3].value;
             else if (I->src[3].value != coord_reg)
@@ -3615,6 +3619,8 @@ agx3_g17p_dual_mrt_eot_kind(const agx_context *ctx,
    bool valid = instructions == 6 && get_x == 1 && get_y == 1 && stores == 2 &&
           zero_reg != UINT_MAX && second_offset_reg != UINT_MAX &&
           x_reg == coord_reg && y_reg == coord_reg + 2;
+   if (valid && second_i16)
+      return 3;
    return valid ? ((first_format == AGX_FORMAT_RG11B10F ||
                     first_format == AGX_FORMAT_U8NORM) ? 2 : 1) : 0;
 }
@@ -3813,6 +3819,11 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
       /* G16G builtin key {0x0c021500, 0x0c021500}, mask 3. */
       if (dual_mrt == 2)
          native[101] = 0x75;
+      /* G16G {RGBA16F, R16_UINT}, same-partition mask3: the second
+       * imageblock store uses the I16 selector. Apple AIR-NT32023.917
+       * emits the identical 120-byte program apart from this field. */
+      if (dual_mrt == 3)
+         native[113] = 0x15;
       return agx3_append(emission, native, sizeof(native));
    }
 

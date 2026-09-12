@@ -346,7 +346,8 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
        key->tib.logical_format[1] == PIPE_FORMAT_R8G8B8A8_UNORM);
    const bool dual_mrt = packed_mrt ||
       (key->tib.logical_format[0] == PIPE_FORMAT_R16G16B16A16_FLOAT &&
-       key->tib.logical_format[1] == PIPE_FORMAT_R8_UNORM);
+       (key->tib.logical_format[1] == PIPE_FORMAT_R8_UNORM ||
+        key->tib.logical_format[1] == PIPE_FORMAT_R16_UINT));
 
    for (unsigned rt = 0; rt < HK_MAX_RTS; ++rt) {
       const enum agx_bg_eot_op op = key->op[rt];

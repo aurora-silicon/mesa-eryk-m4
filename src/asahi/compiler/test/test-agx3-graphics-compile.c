@@ -1932,6 +1932,30 @@ test_g17p_eot_block_store(void)
       free(part.binary);
    ralloc_free(mrt.shader);
 
+   /* AIR-NT32023.917, native BTNF {12:4,9:1}, same partition: float
+    * and integer RTs share the 120-byte protocol and both use selector15. */
+   nir_builder uint_mrt = nir_builder_init_simple_shader(
+      MESA_SHADER_COMPUTE, &agx_nir_options, "G16G float uint MRT EOT");
+   coords = nir_trim_vector(
+      &uint_mrt, nir_load_global_invocation_id(&uint_mrt, 32), 2);
+   for (unsigned rt = 0; rt < 2; ++rt)
+      nir_image_store_block_agx(
+         &uint_mrt, nir_imm_intN_t(&uint_mrt, rt, 16),
+         nir_imm_int(&uint_mrt, rt * 8), coords,
+         .format = rt ? PIPE_FORMAT_R16_UINT : PIPE_FORMAT_R16_FLOAT,
+         .image_dim = GLSL_SAMPLER_DIM_2D, .explicit_coord = true);
+   agx_preprocess_nir(uint_mrt.shader);
+   memset(&part, 0, sizeof(part));
+   const bool uint_compiled = agx_compile_shader_nir(uint_mrt.shader, &key, &part);
+   uint8_t expected_uint[sizeof(expected_mrt)];
+   memcpy(expected_uint, expected_mrt, sizeof(expected_uint));
+   expected_uint[113] = 0x15;
+   ok &= uint_compiled && part.info.binary_size == sizeof(expected_uint) &&
+         part.info.nr_gprs == 8 && part.info.agx3_staging_halfs == 16 &&
+         memcmp(part.binary, expected_uint, sizeof(expected_uint)) == 0;
+   free(part.binary);
+   ralloc_free(uint_mrt.shader);
+
    nir_builder hdr_mrt = nir_builder_init_simple_shader(
       MESA_SHADER_COMPUTE, &agx_nir_options, "G16G packed HDR MRT EOT");
    coords = nir_trim_vector(
