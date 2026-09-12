@@ -20,6 +20,8 @@ def main():
     parser.add_argument('source', type=Path)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--samples', type=int, choices=[1, 2, 4], default=1)
+    parser.add_argument('--occlusion-query', action='store_true',
+        help='Report a non-precise samples-passed query around the diagnostic draw')
     parser.add_argument('--allow-unadvertised-samples', action='store_true',
         help='Diagnostic only: attempt the requested sample count even when unadvertised')
     parser.add_argument('--rgba', type=int, nargs=4, required=True)
@@ -54,6 +56,45 @@ def main():
         raise RuntimeError('Fixture oracle changed; update adapter')
     source = source.replace(old, 'static const uint8_t expected[4] = {' +
                             ', '.join(map(str, args.rgba)) + '};')
+    if args.occlusion_query:
+        def replace_once(old, new):
+            nonlocal source
+            if source.count(old) != 1:
+                raise RuntimeError('Occlusion fixture anchor changed: ' + old)
+            source = source.replace(old, new)
+        query_functions = ('vkCreateQueryPool', 'vkCmdResetQueryPool',
+                           'vkCmdBeginQuery', 'vkCmdEndQuery',
+                           'vkGetQueryPoolResults')
+        replace_once('VK_FN(vkCreateBuffer);', 'VK_FN(vkCreateBuffer);\n' +
+            '\n'.join('VK_FN(' + name + ');' for name in query_functions))
+        replace_once('   LOAD_DEVICE(device, vkCreateBuffer);',
+            '   LOAD_DEVICE(device, vkCreateBuffer);\n' + '\n'.join(
+                '   LOAD_DEVICE(device, ' + name + ');' for name in query_functions))
+        replace_once('   VkCommandBuffer command_buffer;', '''   VkQueryPool visibility_query;
+   const VkQueryPoolCreateInfo visibility_info = {
+      .sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO,
+      .queryType = VK_QUERY_TYPE_OCCLUSION,
+      .queryCount = 1,
+   };
+   check(vkCreateQueryPool(device, &visibility_info, NULL, &visibility_query),
+         "vkCreateQueryPool(visibility)");
+   VkCommandBuffer command_buffer;''')
+        replace_once('   vkCmdBeginRenderPass(command_buffer, &render_begin,',
+            '   vkCmdResetQueryPool(command_buffer, visibility_query, 0, 1);\n'
+            '   vkCmdBeginRenderPass(command_buffer, &render_begin,')
+        replace_once('   vkCmdDraw(command_buffer, 3, 1, 0, 0);',
+            '   vkCmdBeginQuery(command_buffer, visibility_query, 0, 0);\n'
+            '   vkCmdDraw(command_buffer, 3, 1, 0, 0);\n'
+            '   vkCmdEndQuery(command_buffer, visibility_query, 0);')
+        replace_once('   printf(PROBE_NAME ": retired %u submissions\\n", repeats);',
+            '''   uint64_t visibility_samples = UINT64_MAX;
+   check(vkGetQueryPoolResults(device, visibility_query, 0, 1,
+         sizeof(visibility_samples), &visibility_samples, sizeof(visibility_samples),
+         VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT),
+         "vkGetQueryPoolResults(visibility)");
+   printf("SAMPLES-PASSED non-precise: %llu\\n",
+          (unsigned long long)visibility_samples);
+   printf(PROBE_NAME ": retired %u submissions\\n", repeats);''')
     if args.allow_unadvertised_samples:
         check = '      die("requested color sample count is not advertised");'
         if source.count(check) != 1:
@@ -108,6 +149,7 @@ def main():
              for f in output.iterdir() if f.is_file()}
     manifest = {
         'samples': args.samples, 'rgba': args.rgba,
+        'occlusion_query': args.occlusion_query,
         'allow_unadvertised_samples': args.allow_unadvertised_samples,
         'host_compile_only': args.host_compile_only,
         'record_command_buffer': args.record_command_buffer,

@@ -1592,3 +1592,11 @@ Add `--record-command-buffer` with `--run-host-shim` to also record a single
 draw, still without any submission. This compiles helper shaders generated at
 draw time, such as the XFB passthrough geometry shader. A command-buffer error
 is a failed diagnostic, even if the initial pipeline compilation succeeded.
+
+`vulkan-fragment-probe.py --occlusion-query` wraps the diagnostic draw in a
+Vulkan occlusion query and reports `SAMPLES-PASSED non-precise` after fence
+completion, before the pixel oracle. This distinguishes zero visibility from
+later color/store failures. A non-precise positive result is not an exact
+sample count. This adds query operations to the diagnostic fixture, preserves
+its shader and pixel expectation, and records the option in its manifest.
+Run only through the same watchdog/thermal guard as ordinary ARM probes.
