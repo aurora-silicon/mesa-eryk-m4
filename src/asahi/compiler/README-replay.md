@@ -36,6 +36,18 @@ directories count toward that quota. Writing failure must not change compilation
 success/failure. This captures returned failures, not an assertion/signal inside
 the compiler or a later GPU execution fault.
 
+## Firefox saturated FMA, 2026-09-12
+
+WebRender startup input `8094828236c4e7b3732c5f30af8a12d3936b159e4aeac60a73307a009b0f484f`
+(1788 bytes) rejected `ffma.sat -r0, r1, #0.5`. The saturated native form
+requires three F32 registers. Materializing minifloats and widening F16 inputs
+before register allocation preserves the fused operation, modifiers and final
+saturation without selecting an ungrounded immediate encoding. The original
+input now compiles to 516 bytes; all 384 existing modifier encoding tests pass.
+Workspace evidence: `build/firefox-fma-before`, `build/firefox-fma-after`, and
+`_provenance/experiments/20260912T025755127471Z-firefox-startup-shader-capture/`.
+This is offline compiler evidence; Firefox hardware validation follows separately.
+
 ## First real regression, 2026-09-12
 
 J713 SDDM/Hyprland fragment input:

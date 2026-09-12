@@ -2508,10 +2508,39 @@ agx_lower_agx3_fma_sources(agx_context *ctx)
          continue;
       }
 
-      if (I->op != AGX_OPCODE_FFMA || I->nr_srcs != 3 || I->saturate)
+      if (I->op != AGX_OPCODE_FFMA || I->nr_srcs != 3)
          continue;
 
       agx_builder b = agx_init_builder(ctx, agx_before_instr(I));
+      if (I->saturate) {
+         if (I->dest[0].size != AGX_SIZE_32)
+            continue;
+
+         /* The grounded saturated FMA form accepts F32 registers, including
+          * source sign/absolute modifiers. Materialize minifloats and widen
+          * half inputs exactly before RA, keeping the original fused rounding
+          * and final saturation. Firefox's WebRender emits -x*y + 0.5 here.
+          */
+         agx_foreach_src(I, s) {
+            agx_index src = I->src[s];
+            if (src.type == AGX_INDEX_IMMEDIATE && src.value <= UINT8_MAX) {
+               float value = agx_minifloat_decode(src.value);
+               if (src.abs)
+                  value = fabsf(value);
+               if (src.neg)
+                  value = -value;
+               I->src[s] = agx_mov_imm(&b, 32, fui(value));
+            } else if (src.size == AGX_SIZE_16 &&
+                       src.type != AGX_INDEX_IMMEDIATE &&
+                       src.type != AGX_INDEX_NULL) {
+               agx_index wide = agx_temp(ctx, AGX_SIZE_32);
+               agx_fmov_to(&b, wide, src);
+               I->src[s] = wide;
+            }
+         }
+         continue;
+      }
+
       agx_foreach_src(I, s) {
          if (I->src[s].size != AGX_SIZE_16 ||
              I->src[s].type == AGX_INDEX_IMMEDIATE ||
