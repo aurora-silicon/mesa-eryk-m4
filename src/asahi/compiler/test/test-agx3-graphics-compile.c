@@ -2039,13 +2039,43 @@ test_g17p_eot_block_store(void)
    key.g17p_rt0_eot_words = 0;
    key.g17p_rt0_eot_i16_signed_two_words = false;
 
-   /* A different store format must not inherit RT0's byte string. */
+   /* Actual G16G native half-float and packed HDR EOT programs. */
+   for (unsigned hdr = 0; hdr < 2; ++hdr) {
+      nir_builder b = nir_builder_init_simple_shader(
+         MESA_SHADER_COMPUTE, &agx_nir_options, "G16G HDR EOT");
+      coords = nir_trim_vector(
+         &b, nir_load_global_invocation_id(&b, 32), 2);
+      nir_image_store_block_agx(
+         &b, nir_imm_intN_t(&b, 0, 16), nir_imm_int(&b, 0), coords,
+         .format = hdr ? PIPE_FORMAT_R11G11B10_FLOAT : PIPE_FORMAT_R16_FLOAT,
+         .image_dim = GLSL_SAMPLER_DIM_2D, .explicit_coord = true);
+      agx_preprocess_nir(b.shader);
+      memset(&part, 0, sizeof(part));
+      bool compiled = agx_compile_shader_nir(b.shader, &key, &part);
+      const uint8_t native[] = {
+         0x1c,0x9c,0x10,0x06,0x24,0xa8,0x14,0x06,0x0c,0x9d,0x10,0x26,
+         0x24,0xa9,0x10,0x26,0x9f,0x10,0x54,0x00,0x00,0x04,0x14,0x00,
+         0x50,0x06,0x0b,0x00,0x9f,0x20,0x54,0x02,0x00,0x00,0x10,0x00,
+         0x50,0x06,0x0b,0x00,0x97,0x05,0x54,0x04,0x00,0x08,0x00,0x00,
+         0xd0,0x40,0x10,0x00,0x57,0x10,0x54,0x00,0x00,0x00,0x00,0x80,
+         0xa8,hdr ? 0x75 : 0x15,0x00,0x00,0x0e,0x00,0x00,0x00,
+      };
+      ok &= compiled && part.info.binary_size == sizeof(native) &&
+            part.info.main_offset == 0 && part.info.main_size == sizeof(native) &&
+            part.info.nr_gprs == 8 && part.info.agx3_staging_known &&
+            part.info.agx3_staging_halfs == 8 &&
+            memcmp(part.binary, native, sizeof(native)) == 0;
+      free(part.binary);
+      ralloc_free(b.shader);
+   }
+
+   /* An ungrounded store format must not inherit RT0's byte string. */
    nir_builder bad = nir_builder_init_simple_shader(
       MESA_SHADER_COMPUTE, &agx_nir_options, "unsupported G17P EOT");
    coords = nir_trim_vector(&bad, nir_load_global_invocation_id(&bad, 32), 2);
    nir_image_store_block_agx(
       &bad, nir_imm_intN_t(&bad, 0, 16), nir_imm_int(&bad, 0), coords,
-      .format = PIPE_FORMAT_R16_FLOAT, .image_dim = GLSL_SAMPLER_DIM_2D,
+      .format = PIPE_FORMAT_R9G9B9E5_FLOAT, .image_dim = GLSL_SAMPLER_DIM_2D,
       .explicit_coord = true);
    agx_preprocess_nir(bad.shader);
    memset(&part, 0xa5, sizeof(part));

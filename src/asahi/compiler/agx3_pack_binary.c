@@ -3314,6 +3314,8 @@ agx3_g17p_rt0_eot_kind(const agx_context *ctx, enum agx_isa_encoding enc)
                  I->format != AGX_FORMAT_I8 &&
                  I->format != AGX_FORMAT_U16NORM &&
                  I->format != AGX_FORMAT_I16 &&
+                 I->format != AGX_FORMAT_F16 &&
+                 I->format != AGX_FORMAT_RG11B10F &&
                  I->format != AGX_FORMAT_RGB10A2 &&
                  I->format != AGX_FORMAT_I32) || I->dim != AGX_DIM_2D ||
                 !I->explicit_coords ||
@@ -3410,6 +3412,12 @@ agx3_g17p_rt0_eot_kind(const agx_context *ctx, enum agx_isa_encoding enc)
                 ? AGX3_G17P_RT0_EOT_SELECTOR_55
                 : AGX3_G17P_RT0_EOT_NONE;
 
+   /* G16G native builtin keys 0x04020c00, 0x08020c00 and 0x10020c00
+    * produce the same F16 program. The PBE carries the component count.
+    * Packed R11G11B10 (key 0x0c021500) uses the one-word selector below. */
+   if (store_format == AGX_FORMAT_F16)
+      return AGX3_G17P_RT0_EOT_SELECTOR_15;
+
    if (ctx->key->g17p_rt0_eot_i32_selector_15 ||
        ctx->key->g17p_rt0_eot_i32_selector_75)
       return AGX3_G17P_RT0_EOT_NONE;
@@ -3496,7 +3504,7 @@ agx3_is_g17p_wboit_mrt_eot(const agx_context *ctx,
                return false;
 
             if ((stores == 0 &&
-                 (I->format != AGX_FORMAT_I16 ||
+                 ((I->format != AGX_FORMAT_I16 && I->format != AGX_FORMAT_F16) ||
                   I->src[2].value != zero_reg)) ||
                 (stores == 1 &&
                  (I->format != AGX_FORMAT_U8NORM ||

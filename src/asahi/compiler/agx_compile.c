@@ -1253,8 +1253,9 @@ agx_emit_block_image_store(agx_builder *b, nir_intrinsic_instr *instr)
       assert(index.size == AGX_SIZE_16);
    }
 
-   // XXX: how does this possibly work
-   if (format == AGX_FORMAT_F16)
+   /* Preserve the typed F16 store for native AGX3 EOT selection. */
+   if (format == AGX_FORMAT_F16 &&
+       b->shader->key->dev.encoding != AGX_ISA_ENCODING_AGX3B)
       format = AGX_FORMAT_I16;
 
    return agx_block_image_store(b, base, index, offset, coords, format, dim,
