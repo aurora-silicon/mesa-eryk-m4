@@ -1660,3 +1660,9 @@ checks all captured bytes as well as the normal pixel oracle. It requests
 VK_EXT_transform_feedback; unsupported drivers fail at device creation. Use
 `--run-host-shim --record-command-buffer` for offline compiler/recording triage,
 then run the ARM executable only through the mandatory experiment guard.
+
+`shim-first-error.py build/PROBE` reruns a retained host-shim probe under GDB
+and saves the first Vulkan error's backtrace, or a compiler crash backtrace.
+It validates the compile-only manifest and probe hash and breaks at the
+non-inlined Vulkan error logger, avoiding misleading optimized inline locations.
+This helper is for offline recording only, not hardware execution.
