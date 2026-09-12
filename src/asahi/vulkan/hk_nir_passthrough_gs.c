@@ -38,6 +38,9 @@ hk_nir_passthrough_gs(nir_builder *b, const void *key_)
       key->outputs & ~(VARYING_BIT_BOUNDING_BOX0 | VARYING_BIT_BOUNDING_BOX1);
 
    s->info.outputs_written = s->info.inputs_read = outputs;
+   s->info.known_interpolation_qualifiers = key->known_interpolation_qualifiers;
+   s->info.linear_varyings = key->linear_varyings;
+   s->info.perspective_varyings = key->perspective_varyings;
    s->info.clip_distance_array_size = key->clip_distance_array_size;
    s->info.cull_distance_array_size = key->cull_distance_array_size;
    s->info.stage = MESA_SHADER_GEOMETRY;

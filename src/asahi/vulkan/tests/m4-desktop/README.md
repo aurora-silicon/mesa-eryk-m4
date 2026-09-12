@@ -1676,3 +1676,18 @@ feature coverage or Chromium support; feature exposure remains a local candidate
 The probe now evaluates pixels even after an XFB mismatch and uses a three-second
 fence timeout. Portable libagx NIR is compiled through Honeykrisp's native compute
 path; no AGX2 precompiled binary is submitted on M4.
+
+Transform-feedback extensions to the probe: `--rasterizer-discard` verifies
+feedback without color writes; `--transform-feedback-resume` verifies two
+draws, six positions and a 96-byte saved counter; `--right-rgba R G B A`
+checks a different color in the right half. With xfb-varying.vert/frag use
+`--rgba 0 0 0 255 --right-rgba 255 0 0 255` for a nonconstant interpolation
+oracle that cannot pass with a missing/constant varying.
+
+Guarded M4 evidence: 185711 xfb-discard-exact passed; 185907
+xfb-varying-and-resume passed counter save/resume (its constant color was
+optimized away and does not qualify interpolation). 190320
+xfb-split-interpolation passed all positions and pixels with checksum
+`c6714fd7dac17725`, matching lavapipe. Peaks 57 C, no GPU faults. These
+checks qualify enabling transformFeedback on the experimental M4 path;
+geometryStreams remains disabled. Chromium application validation is pending.

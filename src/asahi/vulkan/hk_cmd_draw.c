@@ -4622,10 +4622,12 @@ hk_needs_index_robustness(struct hk_cmd_buffer *cmd, struct agx_draw *draw)
 static void
 hk_handle_passthrough_gs(struct hk_cmd_buffer *cmd, struct agx_draw draw)
 {
+   struct hk_device *dev = hk_cmd_buffer_device(cmd);
    struct hk_graphics_state *gfx = &cmd->state.gfx;
    struct hk_api_shader *gs = gfx->shaders[MESA_SHADER_GEOMETRY];
 
-   if (!IS_SHADER_DIRTY(VERTEX) && !IS_SHADER_DIRTY(GEOMETRY))
+   if (!IS_SHADER_DIRTY(VERTEX) && !IS_SHADER_DIRTY(GEOMETRY) &&
+       !(agx_native_graphics(&dev->dev) && IS_SHADER_DIRTY(FRAGMENT)))
       return;
 
    /* If there's an application geometry shader, there's nothing to un/bind */
@@ -4657,6 +4659,14 @@ hk_handle_passthrough_gs(struct hk_cmd_buffer *cmd, struct agx_draw draw)
       .cull_distance_array_size = last_sw->info.cull_distance_array_size,
    };
 
+   if (agx_native_graphics(&dev->dev)) {
+      struct hk_shader *fs = hk_only_variant(gfx->shaders[MESA_SHADER_FRAGMENT]);
+      key->known_interpolation_qualifiers = true;
+      key->linear_varyings = fs->info.fs.interp.linear;
+      key->perspective_varyings =
+         ~(fs->info.fs.interp.flat | fs->info.fs.interp.linear);
+   }
+
    if (xfb_outputs) {
       typed_memcpy(key->xfb_stride, last_sw->info.xfb_stride,
                    ARRAY_SIZE(key->xfb_stride));
@@ -4665,7 +4675,6 @@ hk_handle_passthrough_gs(struct hk_cmd_buffer *cmd, struct agx_draw draw)
              nir_xfb_info_size(xfb_outputs));
    }
 
-   struct hk_device *dev = hk_cmd_buffer_device(cmd);
    perf_debug(cmd, "Binding passthrough GS for%s\n", xfb_outputs ? " XFB" : "");
 
    gs = hk_meta_shader(dev, hk_nir_passthrough_gs, key, key_size);

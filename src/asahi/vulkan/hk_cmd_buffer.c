@@ -984,10 +984,10 @@ hk_g17p_smooth_varyings_supported(struct hk_cmd_buffer *cmd,
       return cf->nr_cf == 0;
 
    const struct hk_graphics_state *gfx = &cmd->state.gfx;
-   const struct hk_api_shader *api_vs = gfx->shaders[MESA_SHADER_VERTEX];
-   const struct hk_shader *vs =
-      api_vs ? &api_vs->variants[HK_VS_VARIANT_HW] : NULL;
-   if (!vs || gfx->shaders[MESA_SHADER_GEOMETRY] ||
+   const struct hk_shader *vs = gfx->shaders[MESA_SHADER_VERTEX]
+      ? hk_bound_hw_vs(&cmd->state.gfx) : NULL;
+   const struct hk_api_shader *gs = gfx->shaders[MESA_SHADER_GEOMETRY];
+   if (!vs || (gs && !gs->is_passthrough) ||
        gfx->shaders[MESA_SHADER_TESS_EVAL] ||
        cf->nr_bindings > HK_AGX3_G17P_MAX_USER_WORDS + 2 ||
        cf->nr_cf > HK_AGX3_G17P_MAX_USER_WORDS + 2 ||

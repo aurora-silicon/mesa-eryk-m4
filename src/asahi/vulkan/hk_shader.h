@@ -414,6 +414,11 @@ struct hk_passthrough_gs_key {
    /* Bit mask of outputs written by the VS/TES, to be passed through */
    uint64_t outputs;
 
+   /* Native UVSW indices depend on the consuming fragment interpolation. */
+   uint64_t linear_varyings;
+   uint64_t perspective_varyings;
+   bool known_interpolation_qualifiers;
+
    /* Clip/cull sizes, implies clip/cull written in output */
    uint8_t clip_distance_array_size;
    uint8_t cull_distance_array_size;

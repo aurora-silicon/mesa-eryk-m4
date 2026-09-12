@@ -707,7 +707,6 @@ hk_get_device_features(
       features->sparseResidencyImage2D = false;
       features->sparseResidencyBuffer = false;
       features->multiview = false;
-      features->transformFeedback = false;
       features->geometryStreams = false;
       /* HAL200's native storage-image fetch is memory-safe, but its TEX
        * descriptor does not bounds-check against the Vulkan image view.

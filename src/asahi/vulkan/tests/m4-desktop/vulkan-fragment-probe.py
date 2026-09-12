@@ -25,12 +25,18 @@ def main():
     parser.add_argument('--allow-unadvertised-samples', action='store_true',
         help='Diagnostic only: attempt the requested sample count even when unadvertised')
     parser.add_argument('--rgba', type=int, nargs=4, required=True)
+    parser.add_argument('--right-rgba', type=int, nargs=4,
+        help='Expected RGBA for the right half; --rgba describes the left half')
     parser.add_argument('--fixture', type=Path)
     parser.add_argument('--workspace-root', type=Path,
                         default=Path(__file__).resolve().parent.parent)
     parser.add_argument('--vertex', type=Path)
     parser.add_argument('--transform-feedback', action='store_true', help=
         'Capture three vec4 positions into buffer 0 and verify them plus pixels')
+    parser.add_argument('--transform-feedback-resume', action='store_true', help=
+        'End to a counter buffer, resume, and verify six vertices and a 96-byte counter')
+    parser.add_argument('--rasterizer-discard', action='store_true', help=
+        'Disable rasterization; the caller must supply the unchanged clear RGBA oracle')
     parser.add_argument('--host-compile-only', action='store_true')
     parser.add_argument('--run-host-shim', action='store_true', help=
         'Build and run the host compile-only probe under the M4 no-op DRM shim')
@@ -44,10 +50,12 @@ def main():
         parser.error('--record-command-buffer requires --run-host-shim')
     if args.transform_feedback and not args.vertex:
         parser.error('--transform-feedback requires an XFB-decorated --vertex')
+    if args.transform_feedback_resume and not args.transform_feedback:
+        parser.error('--transform-feedback-resume requires --transform-feedback')
     for path in (args.source, args.vertex):
         if path is not None and not path.is_file():
             parser.error(f'Input does not exist: {path}')
-    if any(x < 0 or x > 255 for x in args.rgba):
+    if any(x < 0 or x > 255 for x in args.rgba + (args.right_rgba or [])):
         parser.error('RGBA bytes must be in 0..255')
 
     root = args.workspace_root.resolve()
@@ -65,6 +73,21 @@ def main():
         if source.count(old) != 1:
             raise RuntimeError('Probe fixture anchor changed: ' + old)
         source = source.replace(old, new)
+    if args.right_rgba:
+        left = ', '.join(map(str, args.rgba))
+        right = ', '.join(map(str, args.right_rgba))
+        replace_once('static const uint8_t expected[4] = {' + left + '};',
+            'static const uint8_t expected_left[4] = {' + left + '};\n'
+            '   static const uint8_t expected_right[4] = {' + right + '};')
+        replace_once('      const uint8_t *actual = &pixels[pixel * sizeof(expected)];',
+            '      uint8_t expected[4];\n'
+            '      memcpy(expected, pixel % IMAGE_WIDTH < IMAGE_WIDTH / 2\n'
+            '                       ? expected_left : expected_right, sizeof(expected));\n'
+            '      const uint8_t *actual = &pixels[pixel * sizeof(expected)];')
+    if args.rasterizer_discard:
+        replace_once('      .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,',
+            '      .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,\n'
+            '      .rasterizerDiscardEnable = VK_TRUE,')
     if args.transform_feedback:
         functions = ('vkCmdBindTransformFeedbackBuffersEXT',
                      'vkCmdBeginTransformFeedbackEXT',
@@ -143,6 +166,56 @@ def main():
             '   return xfb_failed ? EXIT_FAILURE : EXIT_SUCCESS;', 1)
         replace_once('vkWaitForFences(device, 1, &fence, true, UINT64_MAX)',
                      'vkWaitForFences(device, 1, &fence, true, UINT64_C(3000000000))')
+        if args.transform_feedback_resume:
+            replace_once('const VkDeviceSize xfb_size = 64, xfb_offset = 0;',
+                         'const VkDeviceSize xfb_size = 112, xfb_offset = 0;')
+            replace_once('   memset(xfb_map, 0xcd, xfb_size);', '''   memset(xfb_map, 0xcd, xfb_size);
+   xfb_info.size = 4;
+   xfb_info.usage = VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_COUNTER_BUFFER_BIT_EXT;
+   VkBuffer counter_buffer;
+   check(vkCreateBuffer(device, &xfb_info, NULL, &counter_buffer), "vkCreateBuffer(counter)");
+   vkGetBufferMemoryRequirements(device, counter_buffer, &xfb_req);
+   xfb_alloc.allocationSize = xfb_req.size;
+   xfb_alloc.memoryTypeIndex = find_memory_type(&memory_properties, xfb_req.memoryTypeBits,
+      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+   VkDeviceMemory counter_memory;
+   check(vkAllocateMemory(device, &xfb_alloc, NULL, &counter_memory), "vkAllocateMemory(counter)");
+   check(vkBindBufferMemory(device, counter_buffer, counter_memory, 0), "vkBindBufferMemory(counter)");
+   uint32_t *counter_map;
+   check(vkMapMemory(device, counter_memory, 0, 4, 0, (void **)&counter_map), "vkMapMemory(counter)");
+   *counter_map = 0xcdcdcdcd;''')
+            replace_once('   vkCmdEndTransformFeedbackEXT(command_buffer, 0, 0, NULL, NULL);',
+                '''   vkCmdEndTransformFeedbackEXT(command_buffer, 0, 1, &counter_buffer, &xfb_offset);
+   vkCmdEndRenderPass(command_buffer);
+   const VkMemoryBarrier counter_resume = {
+      .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
+      .srcAccessMask = VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT,
+      .dstAccessMask = VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT,
+   };
+   vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT,
+      VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT, 0, 1, &counter_resume, 0, NULL, 0, NULL);
+   vkCmdBeginRenderPass(command_buffer, &render_begin, VK_SUBPASS_CONTENTS_INLINE);
+   vkCmdBeginTransformFeedbackEXT(command_buffer, 0, 1, &counter_buffer, &xfb_offset);
+   vkCmdDraw(command_buffer, 3, 1, 0, 0);
+   vkCmdEndTransformFeedbackEXT(command_buffer, 0, 1, &counter_buffer, &xfb_offset);''')
+            replace_once('      .srcAccessMask = VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT,',
+                '      .srcAccessMask = VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT |\n'
+                '                       VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT,')
+            replace_once('static const float xfb_expected[3][4]',
+                         'static const float xfb_expected[6][4]')
+            replace_once('      {-1, -1, 0, 1}, {3, -1, 0, 1}, {-1, 3, 0, 1},',
+                '      {-1, -1, 0, 1}, {3, -1, 0, 1}, {-1, 3, 0, 1},\n'
+                '      {-1, -1, 0, 1}, {3, -1, 0, 1}, {-1, 3, 0, 1},')
+            replace_once('for (unsigned i = 0; i < 3; ++i)',
+                         'for (unsigned i = 0; i < 6; ++i)')
+            replace_once('   if (!xfb_failed)\n', '''   if (*counter_map != 96) {
+      fprintf(stderr, "FAIL: transform feedback counter %u, expected 96\\n", *counter_map);
+      xfb_failed = true;
+   }
+   if (!xfb_failed)
+''')
+            source = source.replace('three exact vec4 positions and buffer guard',
+                                    'six exact vec4 positions, resumed counter and buffer guard')
     if args.occlusion_query:
         query_functions = ('vkCreateQueryPool', 'vkCmdResetQueryPool',
                            'vkCmdBeginQuery', 'vkCmdEndQuery',
@@ -230,9 +303,11 @@ def main():
     files = {f.name: hashlib.sha256(f.read_bytes()).hexdigest()
              for f in output.iterdir() if f.is_file()}
     manifest = {
-        'samples': args.samples, 'rgba': args.rgba,
+        'samples': args.samples, 'rgba': args.rgba, 'right_rgba': args.right_rgba,
         'occlusion_query': args.occlusion_query,
         'transform_feedback': args.transform_feedback,
+        'transform_feedback_resume': args.transform_feedback_resume,
+        'rasterizer_discard': args.rasterizer_discard,
         'allow_unadvertised_samples': args.allow_unadvertised_samples,
         'host_compile_only': args.host_compile_only,
         'record_command_buffer': args.record_command_buffer,
