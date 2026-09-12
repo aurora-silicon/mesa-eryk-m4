@@ -30,6 +30,7 @@ def main():
     p.add_argument('--trace', type=Path, help='Existing trace for replay')
     p.add_argument('--profile', type=Path, help='Capture with Khronos Profiles feature/extension limits')
     p.add_argument('--frames', help='Capture frame range, or replay screenshot frames (1-based)')
+    p.add_argument('--end-frame', type=int, help='Replay through this frame, retaining all preceding state')
     p.add_argument('--dump-config', type=Path, help='GFXReconstruct resource dump selection for replay')
     p.add_argument('--memory-translation', choices=['none', 'rebind'], default='none')
     p.add_argument('--omit-pipeline-cache', action='store_true')
@@ -48,6 +49,8 @@ def main():
         p.error('Profiles are only supported for lavapipe reference capture')
     if a.dump_config and a.mode != 'replay':
         p.error('--dump-config requires replay')
+    if a.end_frame is not None and (a.mode != 'replay' or a.end_frame < 1):
+        p.error('--end-frame requires replay and a positive frame number')
     guard = a.guard_output.resolve(strict=True)
     spec = importlib.util.spec_from_file_location('guard_check', Path(__file__).with_name('firmware-snapshot.py'))
     guard_check = importlib.util.module_from_spec(spec)
@@ -99,6 +102,10 @@ def main():
             command += ['--screenshots', a.frames]
         if a.omit_pipeline_cache:
             command += ['--omit-pipeline-cache-data']
+        if a.end_frame:
+            command += ['--measurement-frame-range', f'1-{a.end_frame + 1}',
+                        '--quit-after-measurement-range', '--measurement-file',
+                        str(out / 'measurements.json')]
         if a.dump_config:
             command += ['--dump-resources', str(a.dump_config.resolve(strict=True)), '--dump-resources-dir', str(out)]
         command.append(str(a.trace.resolve(strict=True)))

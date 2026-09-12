@@ -44,3 +44,45 @@ returns VK_ERROR_UNKNOWN. Binding only the page-rounded buffer storage passes.
 Evidence: `20260912T032338882082Z-capture-buffer-bind-before` fails;
 `20260912T032407605031Z-capture-buffer-bind-after` passes. This tests binding
 and address acquisition, not shader execution.
+
+## Bounded capture tools
+
+`firefox-probe.py` runs as a child of the workspace watchdog/thermal guard,
+uses an isolated e-user profile and Mesa shader cache, and records Firefox's
+Troubleshoot graphics data, browser/compiler logs, process mappings, one native
+scanout and optionally Vulkan captures. Example target argv inside
+`tools/gpu-experiment.py --seconds 40 --expect '^PASS: Firefox probe completed'`:
+
+```
+python3 /root/firefox-probe.py --guard-output '{output}' --observe-seconds 2 \
+  --force-gpu --capture
+```
+
+The default page is MDN's sample6 rotating WebGL textured cube. `--renderer
+lavapipe --capture-profile /root/m4-firefox-common-profile-v3.json` selects the
+software reference with explicit capability simulation. A fresh Mesa cache
+prevents cached shaders from a previous capability profile being reused.
+Keep the profile, trace and environment with the reference; simulation does
+not make different devices equivalent. `--force-gpu` is a test preference;
+probe completion alone does not establish GPU acceleration or correct pixels.
+
+GFXReconstruct 11891af36f7f0d75213613be96f23d16c36f88d8 plus
+`patches/gfxreconstruct-process-id.patch` adds `${ProcessId}` to capture paths,
+preventing Firefox's multiple processes from overwriting a single trace.
+The patch changes capture naming only. The private replay executable is
+`/opt/gfxreconstruct/bin/gfxrecon-replay`.
+
+`vulkan-trace.py replay --end-frame N` starts from the original beginning,
+retains initialization and exits after N frames using the replay measurement
+range. `--frames` selects screenshot frames, not the endpoint. Native Firefox
+BDA captures currently need explicit `--memory-translation rebind` when replay
+allocations differ; retain that adaptation in evidence. Use
+`--omit-pipeline-cache` after driver changes. Replaying the native startup
+capture in `20260912T032428296751Z-firefox-native-buffer-fixed` reproduces the
+RGBA32 failure in a fraction of a second without browser navigation.
+
+`install-mesa-library.py BUILD --label LABEL --allow-live` stages, hashes,
+backs up and atomically installs a compatible private Mesa library. Existing
+processes retain the previous inode; only fresh processes test the new build.
+Without `--allow-live`, GPU clients must be stopped. This is not a kernel/UAPI
+upgrade mechanism and does not replace the experiment guard.

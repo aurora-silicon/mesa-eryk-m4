@@ -109,7 +109,11 @@ while (start:=data.find(b'\xcf\xfa\xed\xfe',start)) >= 0:
                 section_index+=1
                 q=cursor+72+80*j
                 name=data[q:q+16].split(b'\0')[0].decode()
+                segment=data[q+16:q+32].split(b'\0')[0].decode()
                 length,offset=struct.unpack_from('<QI',data,q+40)
+                if segment in ('__GPU_LD_MD', '__GPU_ARCH_LD_MD'):
+                    if start+offset+length>len(data): raise RuntimeError('Metadata out of bounds')
+                    (a.output/f'{segment}-{name}-{start:x}.bin').write_bytes(data[start+offset:start+offset+length])
                 if name=='__text':
                     if start+offset+length>len(data): raise RuntimeError('Text out of bounds')
                     path=f'text-{start:x}.bin'

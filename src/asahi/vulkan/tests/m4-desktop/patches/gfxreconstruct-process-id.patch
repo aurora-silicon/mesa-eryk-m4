@@ -1,0 +1,30 @@
+diff --git a/framework/util/file_path.cpp b/framework/util/file_path.cpp
+index fd8e5e7..a6ab7fb 100644
+--- a/framework/util/file_path.cpp
++++ b/framework/util/file_path.cpp
+@@ -599,6 +599,7 @@ enum PathVariable : uint32_t
+ {
+     kAppName,
+     kInternalDataPath,
++    kProcessId,
+ 
+     kMaxValue,
+ };
+@@ -610,6 +611,7 @@ std::vector<const char*> GetPathVariables()
+ 
+     path_variables[PathVariable::kAppName]          = "${AppName}";
+     path_variables[PathVariable::kInternalDataPath] = "${InternalDataPath}";
++    path_variables[PathVariable::kProcessId]        = "${ProcessId}";
+ 
+     return path_variables;
+ }
+@@ -643,6 +645,9 @@ std::string ExpandPathVariables(const FileInfo& info, const std::string& path)
+                 case PathVariable::kAppName:
+                     replacement = info.AppName;
+                     break;
++                case PathVariable::kProcessId:
++                    replacement = std::to_string(platform::GetCurrentProcessId());
++                    break;
+                 case PathVariable::kInternalDataPath:
+ #ifdef __ANDROID__
+                 {
