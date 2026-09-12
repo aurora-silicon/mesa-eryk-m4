@@ -76,11 +76,14 @@ try:
         tabs=json.load(urllib.request.urlopen('http://127.0.0.1:'+port+'/json/list',timeout=5))
         tab=next(t for t in tabs if t['type']=='page')
         page=websocket.create_connection(tab['webSocketDebuggerUrl'],timeout=8,suppress_origin=True);sessions.append(page)
+        call(page,'Page.bringToFront')
         until=time.monotonic()+5
         while time.monotonic()<until:check();time.sleep(.2)
-        state=call(page,'Runtime.evaluate',{'expression':'JSON.stringify({url:location.href,title:document.title,ready:document.readyState,canvases:Array.from(document.querySelectorAll("canvas")).map(c=>({width:c.width,height:c.height}))})','returnByValue':True})
+        state=call(page,'Runtime.evaluate',{'expression':'JSON.stringify({url:location.href,title:document.title,ready:document.readyState,visibility:document.visibilityState,canvases:Array.from(document.querySelectorAll("canvas")).map(c=>({width:c.width,height:c.height}))})','returnByValue':True})
         (out/'page.json').write_text(json.dumps(state,indent=2)+'\n')
-        webgl=call(page,'Runtime.evaluate',{'expression':"""new Promise(resolve => requestAnimationFrame(() => {
+        webgl=call(page,'Runtime.evaluate',{'expression':"""new Promise(resolve => {
+          const timeout=setTimeout(() => resolve({animationFrameTimeout:true,visibility:document.visibilityState}),3000);
+          requestAnimationFrame(() => { clearTimeout(timeout);
           resolve(Array.from(document.querySelectorAll('canvas')).map(c => {
             const gl=c.getContext('webgl2') || c.getContext('webgl') || c.getContext('experimental-webgl');
             if (!gl) return {context:false};
@@ -94,7 +97,7 @@ try:
               renderer:ext?gl.getParameter(ext.UNMASKED_RENDERER_WEBGL):gl.getParameter(gl.RENDERER),
               error:gl.getError(),width,height,nonblack,hash};
           }));
-        }))""",'returnByValue':True,'awaitPromise':True})
+        }); })""",'returnByValue':True,'awaitPromise':True})
         (out/'webgl.json').write_text(json.dumps(webgl,indent=2)+'\n')
         shot=call(page,'Page.captureScreenshot',{'format':'png'});(out/'page.png').write_bytes(base64.b64decode(shot['data']))
         nodes={f.resolve() for f in Path('/sys/kernel/debug/dri').glob('*/m4_scanout')};assert len(nodes)==1
@@ -114,4 +117,6 @@ finally:
     shutil.copytree(profile/'compiler',out/'compiler')
     for f in profile.glob('*.gfxr'):shutil.copyfile(f,out/f.name)
     print((out/'browser.log').read_text(errors='replace')[-4000:]);os.sync()
+webgl_value=webgl.get('result',{}).get('value')
+assert not (isinstance(webgl_value,dict) and webgl_value.get('animationFrameTimeout')), 'animation frame timeout; retained screenshot and diagnostics'
 print('PASS: Chromium probe completed; inspect GPU diagnostics and screenshots')

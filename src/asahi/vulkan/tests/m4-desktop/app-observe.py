@@ -9,7 +9,7 @@ import argparse, hashlib, importlib.util, json, os, pwd, signal, stat, subproces
 from pathlib import Path
 p=argparse.ArgumentParser(description=__doc__)
 p.add_argument('--guard-output',type=Path,required=True)
-p.add_argument('--seconds',type=int,default=15,choices=range(2,31))
+p.add_argument('--seconds',type=int,default=15,choices=range(2,46))
 p.add_argument('--capture',action='store_true')
 p.add_argument('--renderer', choices=['asahi','lavapipe'], default='asahi')
 p.add_argument('--capture-profile',type=Path)

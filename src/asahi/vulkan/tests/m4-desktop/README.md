@@ -1753,3 +1753,13 @@ texels with the old null storage-texel-buffer descriptor.
 Native descriptor fix202826 passes all4096 texels;202844 replays the retained
 Chromium capture without a GPU or Vulkan error. The latter is an adapted
 process replay, not a pixel or external-sharing qualification.
+
+Chromium probe explicitly foregrounds the tested page and records document
+visibility. An animation callback has a3s diagnostic timeout so a stalled
+callback does not prevent saving the page image; timeout still fails the test.
+203030 confirms visible correct CDP WebGL output after the texel-buffer fix,
+but native display capture fails because DCP had latched its idle callback
+failure at20:19; retained screenshot alone does not qualify live presentation.
+`app-observe.py --seconds40` allows enough loading time before a≥10s STK race
+observation. The enclosing watchdog/thermal guard remains mandatory and must
+allow cleanup time; the helper does not infer racing from process survival.
