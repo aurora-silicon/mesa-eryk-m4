@@ -192,7 +192,8 @@ sample_ok(enum agx_isa_encoding enc, const struct agx3_tex_sample_desc *d)
       return false;
 
    if (d->cube && (enc != AGX_ISA_ENCODING_AGX3B || d->array ||
-                   d->lod != AGX3_TEX_LOD_AUTO))
+                   (d->lod != AGX3_TEX_LOD_AUTO &&
+                    d->lod != AGX3_TEX_LOD_LEVEL)))
       return false;
 
    /* M4 also qualifies immediate array LODs. Register LOD and layer still

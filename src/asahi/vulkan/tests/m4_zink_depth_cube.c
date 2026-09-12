@@ -80,13 +80,14 @@ main(int argc, char **argv)
    bool reference = argc > 1 && !strcmp(argv[argc - 1], "--reference");
    if (reference)
       argc--;
+   const int cube_lod = argc == 2 && !strcmp(argv[1], "--cube-lod");
    const int cube_seams = argc == 2 && !strcmp(argv[1], "--cube-seams");
    const int array_face = argc == 2 && !strcmp(argv[1], "--array-face");
    const int array = array_face || (argc == 2 && !strcmp(argv[1], "--array"));
    const int direction = argc == 2 && !strcmp(argv[1], "--direction");
    const int face_math = argc == 2 && !strcmp(argv[1], "--face-math");
    const int cube_grid = argc == 2 && !strcmp(argv[1], "--cube-grid");
-   CHECK(argc == 1 || array || direction || face_math || cube_grid || cube_seams);
+   CHECK(argc == 1 || array || direction || face_math || cube_grid || cube_seams || cube_lod);
    EGLDisplay d = eglGetPlatformDisplay(EGL_PLATFORM_SURFACELESS_MESA,
                                        EGL_DEFAULT_DISPLAY, NULL);
    CHECK(d != EGL_NO_DISPLAY && eglInitialize(d, NULL, NULL) &&
@@ -101,7 +102,10 @@ main(int argc, char **argv)
           !strstr(renderer, "llvmpipe"))));
    GLuint flat = program("#version 300 es\nprecision highp float; "
       "uniform vec4 colour; out vec4 result; void main(){result=colour;}");
-   GLuint cube = program(array_face ?
+   GLuint cube = program(cube_lod ?
+      "#version 300 es\nprecision highp float; "
+      "uniform highp samplerCube tex; uniform vec3 direction; out vec4 result; "
+      "void main(){result=textureLod(tex,direction,1.0);}" : array_face ?
       "#version 300 es\nprecision highp float; precision highp int; "
       "uniform highp sampler2DArray tex; uniform vec3 direction; out vec4 result; void main(){"
       "vec3 q=direction*direction; "
@@ -151,7 +155,7 @@ main(int argc, char **argv)
    glDepthMask(GL_TRUE);
    glClearDepthf(1);
    const uint8_t green[] = {0,255,0,255};
-   for (unsigned pressure = 0; pressure < 2; ++pressure) {
+   for (unsigned pressure = 0; pressure < (cube_lod ? 0 : 2); ++pressure) {
       glClearColor(1, 0, 1, 1);
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
       glUniform1f(glGetUniformLocation(flat, "z"), -0.5f);
@@ -190,7 +194,15 @@ main(int argc, char **argv)
          glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, GL_RGBA8, 4, 4,
                       0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
    }
-   glTexParameteri(target, GL_TEXTURE_MIN_FILTER, cube_seams ? GL_LINEAR : GL_NEAREST);
+   if (cube_lod) {
+      for (unsigned face=0; face<6; ++face) {
+         uint8_t pixels[4][4];
+         for (unsigned i=0; i<4; ++i) memcpy(pixels[i], faces[(face+1)%6], 4);
+         glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X+face,1,GL_RGBA8,2,2,0,GL_RGBA,GL_UNSIGNED_BYTE,pixels);
+      }
+      glTexParameteri(target, GL_TEXTURE_MAX_LEVEL, 1);
+   }
+   glTexParameteri(target, GL_TEXTURE_MIN_FILTER, cube_lod ? GL_NEAREST_MIPMAP_NEAREST : cube_seams ? GL_LINEAR : GL_NEAREST);
    glTexParameteri(target, GL_TEXTURE_MAG_FILTER, cube_seams ? GL_LINEAR : GL_NEAREST);
    glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
    glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -225,7 +237,7 @@ main(int argc, char **argv)
       const uint8_t axes[3][4] = {{255,0,0,255},{0,255,0,255},{0,0,255,255}};
       const uint8_t face_value[4] = {face,0,0,255};
       verify(face_math ? "face selection math" : direction ? "direction uniform" : array ? "array layer" : "cubemap face",
-             face, face_math ? face_value : direction ? axes[face / 2] : faces[face]);
+             face, face_math ? face_value : direction ? axes[face / 2] : faces[(face + cube_lod) % 6]);
    }
    if (cube_seams) {
       tolerance = 1;

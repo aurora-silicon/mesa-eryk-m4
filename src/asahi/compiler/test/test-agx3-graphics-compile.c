@@ -1079,7 +1079,7 @@ lower_test_descriptor_set(nir_builder *b, nir_intrinsic_instr *intr,
 }
 
 static bool
-test_g17p_cube_sample_lowering_mode(bool native_cube)
+test_g17p_cube_sample_lowering_mode(bool native_cube, float level)
 {
    nir_builder b = nir_builder_init_simple_shader(
       MESA_SHADER_FRAGMENT, &agx_nir_options, "G17P cube sample lowering");
@@ -1097,14 +1097,16 @@ test_g17p_cube_sample_lowering_mode(bool native_cube)
       .access = ACCESS_CAN_SPECULATE);
    nir_def *sampler = nir_bindless_sampler_agx(
       &b, nir_imm_int(&b, 32), heap_index, .desc_set = 0);
-   nir_tex_instr *tex = nir_tex_instr_create(b.shader, 3);
-   tex->op = nir_texop_tex;
+   nir_tex_instr *tex = nir_tex_instr_create(b.shader, level >= 0 ? 4 : 3);
+   tex->op = level >= 0 ? nir_texop_txl : nir_texop_tex;
    tex->sampler_dim = GLSL_SAMPLER_DIM_CUBE;
    tex->dest_type = nir_type_float32;
    tex->coord_components = 3;
    tex->src[0] = nir_tex_src_for_ssa(nir_tex_src_coord, coord);
    tex->src[1] = nir_tex_src_for_ssa(nir_tex_src_texture_handle, image);
    tex->src[2] = nir_tex_src_for_ssa(nir_tex_src_sampler_handle, sampler);
+   if (level >= 0)
+      tex->src[3] = nir_tex_src_for_ssa(nir_tex_src_lod, nir_imm_float(&b, level));
    nir_def_init(&tex->instr, &tex->def, 4, 32);
    nir_builder_instr_insert(&b, &tex->instr);
    fs_store_colour(&b, &tex->def);
@@ -1142,8 +1144,10 @@ test_g17p_cube_sample_lowering_mode(bool native_cube)
 static bool
 test_g17p_cube_sample_lowering(void)
 {
-   return test_g17p_cube_sample_lowering_mode(false) &&
-          test_g17p_cube_sample_lowering_mode(true);
+   return test_g17p_cube_sample_lowering_mode(false, -1) &&
+          test_g17p_cube_sample_lowering_mode(true, -1) &&
+          test_g17p_cube_sample_lowering_mode(true, 0) &&
+          test_g17p_cube_sample_lowering_mode(true, 2.25f);
 }
 
 static nir_tex_instr *

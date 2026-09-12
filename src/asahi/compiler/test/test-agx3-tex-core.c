@@ -1156,6 +1156,29 @@ test_m4_integer_fetch_lod(void)
    return 0;
 }
 
+static int
+test_cube_level_witnesses(void)
+{
+   const uint8_t expected[2][14] = {
+      {0x05,0x80,0x0c,0xb8,0xb0,0x00,0x13,0x00,0x00,0x00,0x10,0x00,0x01,0x00},
+      {0x05,0x80,0x0c,0xb8,0xb0,0x00,0x13,0x80,0x00,0x00,0x10,0x08,0x01,0x00},
+   };
+   struct agx3_tex_sample_desc d = {
+      .dest=0, .coord=0, .width=AGX3_TEX_W32, .mask=15,
+      .slot=1, .wait_mask=1, .coord_kill=true, .cube=true,
+      .lod=AGX3_TEX_LOD_LEVEL,
+   };
+   uint8_t out[AGX3_TEX_MAX_LENGTH], len;
+   for (unsigned i=0; i<2; i++) {
+      d.lod_x64 = i * 144;
+      CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+      CHECK(len == 14 && !memcmp(out,expected[i],14));
+   }
+   d.lod=AGX3_TEX_LOD_REGISTER; d.lod_x64=0;
+   CHECK(!agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+   return 0;
+}
+
 int
 main(void)
 {
