@@ -1628,3 +1628,13 @@ An optional third argument `depth16`, `depth24`, or `depth32f` adds a depth
 attachment. Near red samples must reject a farther green draw; unresolved
 samples stay green. Every step resolves and reads all pixels, forcing depth
 store/reload between draws. The default `none` keeps the color-only oracle.
+
+`gfxreconstruct-external-rebind.patch` makes external-memory translation
+consistent during Vulkan replay. The rebind allocator already removes external
+image/import metadata; it must not export the resulting non-exportable VMA
+allocation. The patch reports the omitted export and returns an invalid FD
+sentinel without submitting that invalid Vulkan operation to the driver.
+This mode does not reproduce inter-process DMA-BUF sharing and is only a
+rendering diagnostic; retain native application validation for sharing.
+Apply to the matching GFXReconstruct source and rebuild `gfxrecon-replay`.
+The replay manifest hashes the actual binary and records memory adaptation.

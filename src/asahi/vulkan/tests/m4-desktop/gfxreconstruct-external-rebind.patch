@@ -1,0 +1,23 @@
+--- a/framework/decode/vulkan_replay_consumer_base.cpp
++++ b/framework/decode/vulkan_replay_consumer_base.cpp
+@@ -14719,6 +14719,20 @@
+                                                  StructPointerDecoder<Decoded_VkMemoryGetFdInfoKHR>* pGetFdInfo,
+                                                  PointerDecoder<int>*                                pFd)
+ {
++    // Rebinding already removes external-memory create/import information.
++    // These allocations cannot legally be exported. The receiving process is
++    // outside this replay; its captured contents are restored separately.
++    if (!CanPreserveExternalMemory(device_info))
++    {
++        if (!pFd->IsNull())
++        {
++            *pFd->AllocateOutputData(1, static_cast<int>(-1)) = -1;
++        }
++        GFXRECON_LOG_WARNING("External-memory translation: omitting vkGetMemoryFdKHR for non-exportable replay "
++                            "memory. Inter-process sharing is not reproduced.");
++        return original_result;
++    }
++
+     const auto* meta_get_fd_info = pGetFdInfo->GetMetaStructPointer();
+     const auto* get_fd_info      = pGetFdInfo->GetPointer();
+     auto*       fd               = pFd->IsNull() ? nullptr : pFd->AllocateOutputData(1, static_cast<int>(0));
