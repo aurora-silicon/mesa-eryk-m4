@@ -969,9 +969,9 @@ hk_g17p_basic_fragment_layout(struct hk_cmd_buffer *cmd)
  * by hk_agx3_g17p_vertex_program_info: position plus up to 116 user words.
  * HAL200 updateVaryingTable (0x3efa58) uses the same CF entry encoding for
  * smooth, linear and flat inputs, including their mixture in one shader.
- * Flat inputs are restricted to non-fan triangle primitives; the compiler
- * selects C and therefore must not admit the first-fan layout. Position Z and
- * reciprocal W use the native system coefficient sources.
+ * Flat inputs support points, lines and non-fan triangles. The compiler
+ * selects C and therefore must not admit the first-fan layout. Position Z,
+ * reciprocal W and point coordinates use native system coefficient sources.
  */
 bool
 hk_g17p_smooth_varyings_supported(struct hk_cmd_buffer *cmd,
@@ -1004,7 +1004,8 @@ hk_g17p_smooth_varyings_supported(struct hk_cmd_buffer *cmd,
          return false;
       if (!b->smooth &&
           (b->perspective ||
-           (gfx->topology != AGX_PRIMITIVE_TRIANGLES &&
+           (gfx->topology != AGX_PRIMITIVE_POINTS &&
+            gfx->topology != AGX_PRIMITIVE_TRIANGLES &&
             gfx->topology != AGX_PRIMITIVE_TRIANGLE_STRIP &&
             gfx->topology != AGX_PRIMITIVE_LINES &&
             gfx->topology != AGX_PRIMITIVE_LINE_STRIP) ||
@@ -1026,6 +1027,12 @@ hk_g17p_smooth_varyings_supported(struct hk_cmd_buffer *cmd,
          } else {
             return false;
          }
+      } else if (b->slot == VARYING_SLOT_PNTC) {
+         /* The rasterizer supplies point coordinates; they have no vertex
+          * UVS slot. The common linker selects POINT_COORD coefficients. */
+         if (gfx->topology != AGX_PRIMITIVE_POINTS || b->offset != 0 ||
+             b->count != 2 || !b->smooth || !b->perspective || !has_rhw)
+            return false;
       } else {
          if (b->slot < VARYING_SLOT_VAR0 || b->slot > VARYING_SLOT_VAR31 ||
              (b->perspective && !has_rhw) ||
@@ -1059,8 +1066,16 @@ hk_g17p_basic_graphics_program_supported(struct hk_cmd_buffer *cmd,
           s->b.info.sampler_state_count == 1)) ||
        s->b.info.uses_sampler_heap ||
        (linked->b.uses_txf && !s->info.agx3_indexed_sampler_valid) ||
-       s->data_size != 0 || s->info.set_count > HK_AGX3_G17P_MAX_ROOT_SETS)
+       s->data_size != 0 || s->info.set_count > HK_AGX3_G17P_MAX_ROOT_SETS) {
+      mesa_loge("HAL200 resources: preamble=%u preamble-scratch=%u tex-state=%u "
+                "sampler-state=%u heap=%u txf=%u indexed=%u data=%zu sets=%u",
+                s->b.info.has_preamble, s->b.info.preamble_scratch_size,
+                s->b.info.texture_state_count, s->b.info.sampler_state_count,
+                s->b.info.uses_sampler_heap, linked ? linked->b.uses_txf : 0,
+                s->info.agx3_indexed_sampler_valid, (size_t)s->data_size,
+                s->info.set_count);
       return false;
+   }
 
    if (s->b.info.stage == MESA_SHADER_VERTEX) {
       const unsigned nr_attribs = s->info.stage == MESA_SHADER_VERTEX ? DIV_ROUND_UP(
@@ -1082,6 +1097,24 @@ hk_g17p_basic_graphics_program_supported(struct hk_cmd_buffer *cmd,
                 tib->logical_format[0], tib->logical_format[1],
                 tib->logical_format[2], tib->nr_samples, tib->layered,
                 tib->sample_size_B);
+      struct hk_graphics_state *gfx = &cmd->state.gfx;
+      const struct hk_shader *vs = gfx->shaders[MESA_SHADER_VERTEX]
+         ? hk_bound_hw_vs(gfx) : NULL;
+      mesa_loge("HAL200 varying state: topology=%u provoking=%u tess=%u "
+                "vs-layout=%u uvs=%u user=%u reads-z=%u",
+                gfx->topology, gfx->provoking,
+                !!gfx->shaders[MESA_SHADER_TESS_EVAL],
+                vs ? vs->agx3_vdm_state_update.source_layout : 0,
+                vs ? vs->info.uvs.size : 0, vs ? vs->info.uvs.user_size : 0,
+                linked->b.cf.reads_z);
+      for (unsigned i = 0; i < linked->b.cf.nr_bindings; ++i) {
+         const struct agx_cf_binding *b = &linked->b.cf.bindings[i];
+         mesa_loge("HAL200 varying %u: slot=%u offset=%u count=%u base=%u "
+                   "smooth=%u perspective=%u vertex-components=%u linked-slot=%u",
+                   i, b->slot, b->offset, b->count, b->cf_base, b->smooth,
+                   b->perspective, vs ? vs->info.uvs.components[b->slot] : 0,
+                   gfx->linked_varyings.slots[b->slot]);
+      }
    }
    return s->info.stage == MESA_SHADER_FRAGMENT && varyings && tile;
 }

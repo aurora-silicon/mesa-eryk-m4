@@ -1962,3 +1962,16 @@ metadata instead of whitelisting binary lengths. The packet unit suite passes
 layout; it does not claim arbitrary MRT formats or eight-target hardware tests.
 Blender's host replay proceeds past attachment setup, but API4004 now exposes
 a separate fragment-varying state restriction. No live Blender qualification yet.
+
+### Point sprites and generated coordinates
+
+`point-coord-probe.c` checks a shader-sized 16-pixel point, generated coordinate
+gradients, both coordinate origins and both provoking-vertex conventions with
+a flat vertex input. Build with `cc -O2 point-coord-probe.c -lEGL -lGL -lm`;
+run hardware only through gpu-experiment.py and run-m4-gl.py. Host Zink/lavapipe
+and M4 pass all four pixel checks (one-byte tolerance). Evidence:
+`20260912T233209116887Z-point-size-output-select`, peak55.5 C. The native
+OUTPUT_SELECT packet must preserve vertex point-size export bit18; otherwise
+these points produce no fragments. Point coordinates come from the rasterizer,
+not a vertex UVS slot. The saved Blender host shim replay now records all nine
+frames without a rejection; that shim result executes no GPU work.

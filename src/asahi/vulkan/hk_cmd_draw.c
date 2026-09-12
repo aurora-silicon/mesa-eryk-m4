@@ -2957,8 +2957,10 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
        * context+0x1f90 and viewport_count-1 at +0x1f94; both are zero
        * for this single-viewport layout. VIT supplies interpolation.
        * FragmentProgramVariant 0x373eb4..0x373ee0 sets output-select bit16
-       * for nonempty iteration metadata, merged by 0x4824fc..0x482518. */
-      .words = {(linked_fs->b.cf.nr_bindings ? UINT32_C(0x10000) : 0) |
+       * for nonempty iteration metadata, merged by 0x4824fc..0x482518.
+       * Preserve point-size bit18 from the vertex export layout. */
+      .words = {(vs->info.uvs.osel.opaque[0] & UINT32_C(0x40000)) |
+                   (linked_fs->b.cf.nr_bindings ? UINT32_C(0x10000) : 0) |
                    (linked_fs->b.cf.reads_z ? UINT32_C(0x200000) : 0),
                 0, 0, output_size,
                 AGX_PPP_HAL200_PRIMARY_FACE_HEADER, 0},
