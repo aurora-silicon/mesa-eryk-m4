@@ -29,6 +29,8 @@ extern "C" {
  * zero by the decoder.
  */
 struct agx_pbe_agx3_2d_fields {
+   /* Gen9 MSAA: zero for ordinary 2D, one/two for 2x/4x. */
+   uint8_t samples_log2;
    uint8_t layout;
    uint8_t channels;
    uint8_t type;

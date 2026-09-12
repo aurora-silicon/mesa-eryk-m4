@@ -28,7 +28,7 @@ static bool
 same_fields(uint32_t generation, const struct agx_pbe_agx3_2d_fields *a,
             const struct agx_pbe_agx3_2d_fields *b)
 {
-   return a->layout == b->layout && a->channels == b->channels &&
+   return a->samples_log2 == b->samples_log2 && a->layout == b->layout && a->channels == b->channels &&
           a->type == b->type && a->swizzle_r == b->swizzle_r &&
           a->swizzle_g == b->swizzle_g &&
           a->swizzle_b == b->swizzle_b &&
@@ -73,6 +73,35 @@ check_exact_gen9_linear_vector(void)
    bad = fields;
    bad.layout = 2;
    CHECK(!agx_pbe_agx3_2d_pack(9, &bad, &packed));
+   return 0;
+}
+
+static int
+check_exact_gen9_multisample(void)
+{
+   /* Offline native G16G PBE constructor 0x33620c. Same synthetic 64x64
+    * RGBA8 resource, varying only the sample count and native MS type. */
+   for (unsigned log2 = 0; log2 <= 2; ++log2) {
+      struct agx_pbe_agx3_2d_fields fields = {
+         .samples_log2 = log2, .layout = 1, .channels = 0x28, .type = 0,
+         .swizzle_r = 0, .swizzle_g = 1, .swizzle_b = 2, .swizzle_a = 3,
+         .width = 64, .height = 64, .buffer = 0x12340000,
+      }, decoded;
+      uint8_t expected[32] = {
+         0x12,0x0a,0xe4,0x3f,0xc0,0x0f,0,0,
+         0,0x40,0x23,1,0,0,0,0,
+      };
+      if (log2) { expected[0] = 0x14; expected[6] = log2 << 6; }
+      struct agx_pbe_agx3_descriptor packed;
+      CHECK(agx_pbe_agx3_2d_pack(9, &fields, &packed));
+      CHECK(!memcmp(packed.bytes, expected, sizeof(expected)));
+      CHECK(agx_pbe_agx3_2d_unpack(9, expected, sizeof(expected), &decoded));
+      CHECK(same_fields(9, &fields, &decoded));
+      if (log2) {
+         CHECK(!agx_pbe_agx3_2d_pack(10, &fields, &packed));
+         CHECK(!agx_pbe_agx3_2d_mip_pack(9, &fields, 0, 2, &packed));
+      }
+   }
    return 0;
 }
 
@@ -380,6 +409,7 @@ check_gen9_native_mips(void)
 int
 main(void)
 {
+   if (check_exact_gen9_multisample()) return 1;
    if (check_exact_generation_vectors() || check_exact_gen9_linear_vector() ||
        check_exhaustive_format_axes() ||
        check_dimension_and_address_bits() || check_fail_closed_axes() ||

@@ -92,7 +92,9 @@ fields_valid(uint32_t generation,
    const bool address_valid =
       fields->buffer && !(fields->buffer & 0xf) &&
       !(fields->buffer >> (linear ? 44 : 48));
-   return (!linear || generation == AGX_PBE_AGX3_GENERATION_9) &&
+   return (!fields->samples_log2 ||
+           (generation == 9 && !linear && fields->samples_log2 <= 2)) &&
+          (!linear || generation == AGX_PBE_AGX3_GENERATION_9) &&
           (linear || fields->layout == AGX_PBE_LAYOUT_TWIDDLED ||
            fields->layout == AGX_PBE_LAYOUT_GPU) &&
           channel_is_uncompressed(fields->channels) && fields->type <= 5 &&
@@ -117,7 +119,9 @@ agx_pbe_agx3_2d_pack(uint32_t generation,
    if (!generation_geometry(generation, &height_shift, &dimension_bits))
       return false;
 
-   uint64_t word0 = AGX_PBE_DIMENSION_2D;
+   uint64_t word0 = fields->samples_log2 ? 4 : AGX_PBE_DIMENSION_2D;
+   /* Pinned G16G constructor 0x33620c, table 0x7c5e58. */
+   word0 |= (uint64_t)fields->samples_log2 << 54;
    word0 |= (uint64_t)fields->layout << 4;
    word0 |= (uint64_t)fields->channels << 6;
    word0 |= (uint64_t)fields->type << 13;
@@ -155,7 +159,8 @@ agx_pbe_agx3_2d_mip_pack(
    if (out)
       memset(out, 0, sizeof(*out));
    if (generation != AGX_PBE_AGX3_GENERATION_9 || !levels || levels > 16 ||
-       (fields && fields->layout == AGX_PBE_LAYOUT_LINEAR &&
+       (fields && (fields->layout == AGX_PBE_LAYOUT_LINEAR ||
+                   fields->samples_log2) &&
         (level || levels != 1)) ||
        level >= levels || !agx_pbe_agx3_2d_pack(generation, fields, out))
       return false;
@@ -195,7 +200,7 @@ agx_pbe_agx3_2d_unpack(uint32_t generation, const void *bytes, size_t size,
    const uint64_t word3 = load_le64(&raw[24]);
    const uint64_t word0_mask =
       generation == AGX_PBE_AGX3_GENERATION_9
-         ? (UINT64_C(1) << 52) - 1
+         ? ((UINT64_C(1) << 52) - 1) | (UINT64_C(3) << 54)
          : (UINT64_C(1) << 54) - 1;
 
    const uint8_t layout = (word0 >> 4) & 0x3;
@@ -203,10 +208,12 @@ agx_pbe_agx3_2d_unpack(uint32_t generation, const void *bytes, size_t size,
       ? (UINT64_C(1) << 61) - 1
       : ((UINT64_C(1) << 44) - 1) |
            (generation == AGX_PBE_AGX3_GENERATION_10 ? UINT64_C(1) << 60 : 0);
-   if ((word0 & 0xf) != AGX_PBE_DIMENSION_2D ||
+   const unsigned samples_log2 = generation == 9 ? (word0 >> 54) & 3 : 0;
+   if ((word0 & 0xf) != (samples_log2 ? 4 : AGX_PBE_DIMENSION_2D) ||
        (word0 & ~word0_mask) || (word1 & ~word1_mask) || word2 || word3)
       return false;
 
+   fields->samples_log2 = samples_log2;
    fields->layout = layout;
    fields->channels = (word0 >> 6) & 0x7f;
    fields->type = (word0 >> 13) & 0x7;

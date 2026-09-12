@@ -20,3 +20,16 @@ its four load instructions start at76,88,100,112.
 At this checkpoint the bounded Vulkan/GL hardware probes still fail during
 MSAA attachment store/reload. Neither four-sample support nor Chromium ES3
 is qualified. Do not infer hardware validation from byte-exact encoders.
+
+## Native PBE sample geometry
+
+`pbe-state.py UMD --samples 1|2|4` executes the pinned constructor at
+0x33620c with synthetic RGBA8, 64x64, tiled, one-layer arguments. The UMD
+SHA is edd46e01416e595b51734428ece82aa0104868b35d585f492b2efa3ceebbce3a.
+It bypasses only pointer-authentication return in its isolated emulator.
+The ordinary kind2 changes to kind4 for MSAA; word0[55:54] is log2(samples).
+The sample table at0x7c5e58 receives log2(samples)-1. Word1 remains the
+buffer address shifted right by four for this ordinary one-layer resource.
+All32 output bytes are checked in `test-pbe-agx3-core.c`, including round
+trips and refusal of unqualified Gen10 MSAA and mipmapped MSAA.
+This establishes the descriptor arithmetic, independently of render success.
