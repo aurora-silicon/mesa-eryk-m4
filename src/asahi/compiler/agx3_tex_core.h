@@ -152,7 +152,7 @@ struct agx3_tex_sample_desc {
    bool shadow;         /* M4: scalar depth compare, reference in staging half4 */
    bool gather;         /* Four neighbouring texels from one colour channel. */
    uint8_t gather_component;
-   uint8_t gather_offset; /* Signed x/y nibbles, as in NIR's packed offset. */
+   uint8_t sample_offset; /* Signed x/y nibbles, as in NIR's packed offset. */
    bool array;          /* 2D array: register layer already in operand bank 6 */
    bool cube;           /* M4 projected UV plus packed face in operand bank 6 */
    enum agx3_tex_operand_kind texture_kind;

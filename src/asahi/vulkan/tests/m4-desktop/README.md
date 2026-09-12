@@ -1854,3 +1854,8 @@ MESA_LOADER_DRIVER_OVERRIDE=zink VK_DRIVER_FILES=... probe`.
 Hardware: gpu-experiment.py wrapping run-m4-gl.py. M4 passed run
 20260912T221956435252Z, 55.75 C, zero mismatches; high bits and negative
 values distinguish integer sampling from accidental float conversion.
+
+Integer-texture `--offset` tests explicit LOD-zero sampling at (-1,+2),
+including wrap boundaries. M4 run 20260912T222412997102Z passed all components,
+55.75 C. Native `graphics-features/sample-offset.metal` reproduces the SMP
+signed-offset fields byte-for-byte; texture encoder tests pass 6228 checks.

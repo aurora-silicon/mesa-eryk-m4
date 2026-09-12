@@ -17,7 +17,9 @@ static GLuint compile(GLenum stage, const char *s) {
  if(!ok){char log[8192];glGetShaderInfoLog(shader,sizeof(log),NULL,log);fputs(log,stderr);}CHECK(ok);return shader;
 }
 
-int main(void) {
+int main(int argc, char **argv) {
+ const int offset = argc==2 && !strcmp(argv[1],"--offset");
+ CHECK(argc==1 || offset);
  EGLDisplay d=eglGetPlatformDisplay(EGL_PLATFORM_SURFACELESS_MESA,NULL,NULL);
  CHECK(eglInitialize(d,NULL,NULL)&&eglBindAPI(EGL_OPENGL_API));
  EGLint attrs[]={EGL_CONTEXT_MAJOR_VERSION,3,EGL_CONTEXT_MINOR_VERSION,3,EGL_CONTEXT_OPENGL_PROFILE_MASK,EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT,EGL_NONE};
@@ -41,14 +43,14 @@ int main(void) {
   CHECK(glCheckFramebufferStatus(GL_FRAMEBUFFER)==GL_FRAMEBUFFER_COMPLETE);
   GLuint program=glCreateProgram();
   glAttachShader(program,compile(GL_VERTEX_SHADER,"#version 330 core\nvoid main(){vec2 p=vec2((gl_VertexID<<1)&2,gl_VertexID&2);gl_Position=vec4(p*2.-1.,0,1);}"));
-  char src[512];snprintf(src,sizeof(src),"#version 330 core\nuniform %csampler2D tex;out %cvec4 color;void main(){color=texture(tex,gl_FragCoord.xy/16.);}",sign?'i':'u',sign?'i':'u');
+  char src[512];snprintf(src,sizeof(src),"#version 330 core\nuniform %csampler2D tex;out %cvec4 color;void main(){color=%s;}",sign?'i':'u',sign?'i':'u',offset?"textureLodOffset(tex,gl_FragCoord.xy/16.,0.,ivec2(-1,2))":"texture(tex,gl_FragCoord.xy/16.)");
   glAttachShader(program,compile(GL_FRAGMENT_SHADER,src));glLinkProgram(program);GLint ok;glGetProgramiv(program,GL_LINK_STATUS,&ok);CHECK(ok);glUseProgram(program);
   glBindTexture(GL_TEXTURE_2D,textures[0]);glUniform1i(glGetUniformLocation(program,"tex"),0);
   glGenVertexArrays(1,&vao);glBindVertexArray(vao);glViewport(0,0,16,16);glDrawArrays(GL_TRIANGLES,0,3);
   glReadPixels(0,0,16,16,GL_RGBA_INTEGER,type,actual);CHECK(glGetError()==GL_NO_ERROR);
-  for(unsigned i=0;i<16*16*4;i++)if(actual[i]!=pixels[i]){if(bad<4)fprintf(stderr,"%s word %u: %08x expected %08x\n",sign?"signed":"unsigned",i,actual[i],pixels[i]);bad++;}
+  for(unsigned i=0;i<16*16*4;i++){unsigned x=(i/4)%16,y=i/64,c=i%4;unsigned j=offset?((((y+2)%16)*16+(x+15)%16)*4+c):i;if(actual[i]!=pixels[j]){if(bad<4)fprintf(stderr,"%s word %u: %08x expected %08x\n",sign?"signed":"unsigned",i,actual[i],pixels[j]);bad++;}}
   glDeleteProgram(program);glDeleteTextures(2,textures);glDeleteFramebuffers(1,&fb);glDeleteVertexArrays(1,&vao);
  }
- printf("%s: signed/unsigned normalized-coordinate nearest texture samples (%u mismatches)\n",bad?"FAIL":"PASS",bad);
+ printf("%s: signed/unsigned normalized-coordinate nearest texture samples offset=%d (%u mismatches)\n",bad?"FAIL":"PASS",offset,bad);
  eglMakeCurrent(d,EGL_NO_SURFACE,EGL_NO_SURFACE,EGL_NO_CONTEXT);eglDestroyContext(d,c);eglTerminate(d);return !!bad;
 }

@@ -1025,13 +1025,13 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
    const bool cube = I->dim == AGX_DIM_CUBE;
    const bool shadow = I->shadow;
    const bool gather = I->gather != AGX_GATHER_NONE;
-   const bool gather_offset = gather && I->offset &&
+   const bool sample_offset = !shadow && !array && !cube && I->offset &&
       I->src[5].type == AGX_INDEX_IMMEDIATE && I->src[5].value <= 0xff;
    const bool valid_compare = shadow ?
       (enc == AGX_ISA_ENCODING_AGX3B && !cube &&
        agx3_tex_plain_reg(I->src[5]) && I->src[5].size == AGX_SIZE_32 &&
        agx_channels(I->src[5]) == 1 && !(I->src[5].value & 1) &&
-       I->src[5].value < 256) : (gather_offset || agx_is_null(I->src[5]));
+       I->src[5].value < 256) : (sample_offset || agx_is_null(I->src[5]));
    const bool valid_lod = (explicit_lod || bias) ?
       (enc == AGX_ISA_ENCODING_AGX3B &&
        ((explicit_lod && valid_immediate_lod) ||
@@ -1072,7 +1072,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
        (array && (enc != AGX_ISA_ENCODING_AGX3B ||
                   (explicit_lod && !immediate_lod))) ||
        (I->mask == 0 || (I->mask & ~15u)) ||
-       (I->offset && !gather_offset) || I->query_lod ||
+       (I->offset && !sample_offset) || I->query_lod ||
        (gather && (enc != AGX_ISA_ENCODING_AGX3B || shadow || array || cube ||
                    explicit_lod || I->mask != 15)) || I->sparse)
       return false;
@@ -1164,7 +1164,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
       .shadow = shadow,
       .gather = gather,
       .gather_component = gather ? (I->gather - AGX_GATHER_R) / 2 : 0,
-      .gather_offset = gather_offset ? I->src[5].value : 0,
+      .sample_offset = sample_offset ? I->src[5].value : 0,
    };
    return agx3_tex_encode_sample(enc, &d, bytes, &len) &&
           agx3_append(emission, bytes, len);

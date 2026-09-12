@@ -38,7 +38,7 @@ g17p_sample_shape(const nir_tex_instr *tex)
    const bool has_lod = nir_tex_instr_src_index(tex, nir_tex_src_lod) >= 0;
    const int compare = nir_tex_instr_src_index(tex, nir_tex_src_comparator);
    const int offset = nir_tex_instr_src_index(tex, nir_tex_src_backend2);
-   const bool literal_offset = gather && offset >= 0 &&
+   const bool literal_offset = !cube && !tex->is_array && !tex->is_shadow && offset >= 0 &&
       nir_src_is_const(tex->src[offset].src) &&
       nir_src_as_uint(tex->src[offset].src) <= 0xff;
    if (tex->is_shadow != (compare >= 0) ||

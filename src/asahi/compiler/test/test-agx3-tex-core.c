@@ -1275,12 +1275,29 @@ test_m4_gather_witnesses(void)
    const uint8_t green[] = {0x05,0x80,0x0c,0xac,0x90,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x01,0x00};
    CHECK(len == sizeof(green) && !memcmp(out, green, len));
    d.gather_component=0;
-   d.gather_offset=0x11;
+   d.sample_offset=0x11;
    const uint8_t offset_bytes[] = {0x05,0x80,0x0c,0xa4,0x90,0x00,0x01,0x02,0x00,0x88,0x00,0x00,0x01,0x00};
    CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
    CHECK(len == sizeof(offset_bytes) && !memcmp(out,offset_bytes,len));
    d.gather_component=4;
    CHECK(!agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
+   return 0;
+}
+
+static int
+test_m4_sample_offset_witness(void)
+{
+   /* Apple AIR-NT 32023.883 G16G, sample(level(0), int2(-1,2)). */
+   const uint8_t expected[] = {0x05,0x80,0x0c,0xb8,0xb0,0x00,0x1b,
+                              0x02,0x01,0x78,0x10,0x00,0x01,0x02};
+   struct agx3_tex_sample_desc d = {
+      .dest=0, .coord=0, .width=AGX3_TEX_W32, .mask=15, .slot=1,
+      .wait_mask=1, .coord_kill=true, .final=true,
+      .sample_offset=0x2f, .lod=AGX3_TEX_LOD_LEVEL,
+   };
+   uint8_t out[AGX3_TEX_MAX_LENGTH], len;
+   CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
+   CHECK(len == sizeof(expected) && !memcmp(out, expected, len));
    return 0;
 }
 
@@ -1302,6 +1319,7 @@ test_m4_pointer_write_witnesses(void)
 int
 main(void)
 {
+   CHECK(test_m4_sample_offset_witness() == 0);
    CHECK(test_native_multisample_fetch() == 0);
    CHECK(test_multisample_aux() == 0);
    if (test_m4_register_bias() || test_m4_pointer_write_witnesses() || test_m4_gather_witnesses() || test_m4_integer_fetch_lod() || test_m4_shadow_witnesses() || test_sample_helper_retention() || test_staging_source_banks() || test_register_lod() || test_register_array_layer() ||

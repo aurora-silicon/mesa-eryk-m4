@@ -3866,7 +3866,9 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
       case nir_tex_src_backend2:
          packed_offset = index;
          if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
-             instr->op == nir_texop_tg4 && nir_src_is_const(instr->src[i].src) &&
+             !instr->is_shadow && !instr->is_array &&
+             instr->sampler_dim == GLSL_SAMPLER_DIM_2D &&
+             nir_src_is_const(instr->src[i].src) &&
              nir_src_as_uint(instr->src[i].src) <= 0xff) {
             packed_offset = agx_immediate(nir_src_as_uint(instr->src[i].src));
          }

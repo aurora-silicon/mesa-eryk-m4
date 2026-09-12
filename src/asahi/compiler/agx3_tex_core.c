@@ -171,6 +171,12 @@ sample_ok(enum agx_isa_encoding enc, const struct agx3_tex_sample_desc *d)
        (enc != AGX_ISA_ENCODING_AGX3B || d->array || d->cube || d->shadow || d->gather))
       return false;
 
+   /* G16G sample(level(0), int2(-1,2)) uses the same packed signed
+    * nibbles as gather. Array, cube and shadow offset forms lack a witness. */
+   if (d->sample_offset &&
+       (enc != AGX_ISA_ENCODING_AGX3B || d->array || d->cube || d->shadow))
+      return false;
+
    if (d->retain_helpers && enc != AGX_ISA_ENCODING_AGX3B)
       return false;
 
@@ -282,11 +288,11 @@ agx3_tex_encode_sample(enum agx_isa_encoding enc,
    if (d->gather) {
       ov[n++] = (struct agx3_field_kv)KV(144, 1);
       ov[n++] = (struct agx3_field_kv)KV(145, d->gather_component);
-      if (d->gather_offset) {
-         ov[n++] = (struct agx3_field_kv)KV(141, 1);
-         ov[n++] = (struct agx3_field_kv)KV(51, 1);
-         ov[n++] = (struct agx3_field_kv)KV(43, d->gather_offset);
-      }
+   }
+   if (d->sample_offset) {
+      ov[n++] = (struct agx3_field_kv)KV(141, 1);
+      ov[n++] = (struct agx3_field_kv)KV(51, 1);
+      ov[n++] = (struct agx3_field_kv)KV(43, d->sample_offset);
    }
    if (d->shadow)
       ov[n++] = (struct agx3_field_kv)KV(143, 1);
@@ -317,7 +323,7 @@ agx3_tex_encode_sample(enum agx_isa_encoding enc,
       ov[n++] = (struct agx3_field_kv)KV(37, 1);  /* immediate LOD operand */
       ov[n++] = (struct agx3_field_kv)KV(139, 2); /* explicit-level mode */
       ov[n++] = (struct agx3_field_kv)KV(29, d->lod_x64);
-      if (d->shadow)
+      if (d->shadow || d->sample_offset)
          ov[n++] = (struct agx3_field_kv)KV(156, !d->retain_helpers);
    }
    if (enc == AGX_ISA_ENCODING_AGX3B)
