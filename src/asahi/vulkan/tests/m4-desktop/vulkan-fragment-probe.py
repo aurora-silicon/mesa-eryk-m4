@@ -29,6 +29,8 @@ def main():
     parser.add_argument('--workspace-root', type=Path,
                         default=Path(__file__).resolve().parent.parent)
     parser.add_argument('--vertex', type=Path)
+    parser.add_argument('--transform-feedback', action='store_true', help=
+        'Capture three vec4 positions into buffer 0 and verify them plus pixels')
     parser.add_argument('--host-compile-only', action='store_true')
     parser.add_argument('--run-host-shim', action='store_true', help=
         'Build and run the host compile-only probe under the M4 no-op DRM shim')
@@ -40,6 +42,8 @@ def main():
     args.host_compile_only |= args.run_host_shim
     if args.record_command_buffer and not args.run_host_shim:
         parser.error('--record-command-buffer requires --run-host-shim')
+    if args.transform_feedback and not args.vertex:
+        parser.error('--transform-feedback requires an XFB-decorated --vertex')
     for path in (args.source, args.vertex):
         if path is not None and not path.is_file():
             parser.error(f'Input does not exist: {path}')
@@ -56,12 +60,80 @@ def main():
         raise RuntimeError('Fixture oracle changed; update adapter')
     source = source.replace(old, 'static const uint8_t expected[4] = {' +
                             ', '.join(map(str, args.rgba)) + '};')
+    def replace_once(old, new):
+        nonlocal source
+        if source.count(old) != 1:
+            raise RuntimeError('Probe fixture anchor changed: ' + old)
+        source = source.replace(old, new)
+    if args.transform_feedback:
+        functions = ('vkCmdBindTransformFeedbackBuffersEXT',
+                     'vkCmdBeginTransformFeedbackEXT',
+                     'vkCmdEndTransformFeedbackEXT', 'vkCmdPipelineBarrier')
+        replace_once('VK_FN(vkCreateBuffer);', 'VK_FN(vkCreateBuffer);\n' +
+            '\n'.join('VK_FN(' + name + ');' for name in functions))
+        replace_once('   LOAD_DEVICE(device, vkCreateBuffer);',
+            '   LOAD_DEVICE(device, vkCreateBuffer);\n' + '\n'.join(
+                '   LOAD_DEVICE(device, ' + name + ');' for name in functions))
+        replace_once('   const VkDeviceCreateInfo device_info = {', '''   const VkPhysicalDeviceTransformFeedbackFeaturesEXT xfb_features = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT,
+      .transformFeedback = VK_TRUE,
+   };
+   const char *xfb_extension = VK_EXT_TRANSFORM_FEEDBACK_EXTENSION_NAME;
+   const VkDeviceCreateInfo device_info = {''')
+        replace_once('      .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,', '''      .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+      .pNext = &xfb_features,
+      .enabledExtensionCount = 1,
+      .ppEnabledExtensionNames = &xfb_extension,''')
+        replace_once('   memcpy(vertex_map, vertices, sizeof(vertices));', '''   memcpy(vertex_map, vertices, sizeof(vertices));
+   const VkDeviceSize xfb_size = 64, xfb_offset = 0;
+   VkBufferCreateInfo xfb_info = vertex_info;
+   xfb_info.size = xfb_size;
+   xfb_info.usage = VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_BUFFER_BIT_EXT;
+   VkBuffer xfb_buffer;
+   check(vkCreateBuffer(device, &xfb_info, NULL, &xfb_buffer), "vkCreateBuffer(xfb)");
+   VkMemoryRequirements xfb_req;
+   vkGetBufferMemoryRequirements(device, xfb_buffer, &xfb_req);
+   VkMemoryAllocateInfo xfb_alloc = {
+      .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+      .allocationSize = xfb_req.size,
+      .memoryTypeIndex = find_memory_type(&memory_properties, xfb_req.memoryTypeBits,
+         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+   };
+   VkDeviceMemory xfb_memory;
+   check(vkAllocateMemory(device, &xfb_alloc, NULL, &xfb_memory), "vkAllocateMemory(xfb)");
+   check(vkBindBufferMemory(device, xfb_buffer, xfb_memory, 0), "vkBindBufferMemory(xfb)");
+   void *xfb_map;
+   check(vkMapMemory(device, xfb_memory, 0, xfb_size, 0, &xfb_map), "vkMapMemory(xfb)");
+   memset(xfb_map, 0xcd, xfb_size);''')
+        replace_once('   vkCmdDraw(command_buffer, 3, 1, 0, 0);', '''   vkCmdBindTransformFeedbackBuffersEXT(command_buffer, 0, 1, &xfb_buffer,
+                                        &xfb_offset, &xfb_size);
+   vkCmdBeginTransformFeedbackEXT(command_buffer, 0, 0, NULL, NULL);
+   vkCmdDraw(command_buffer, 3, 1, 0, 0);
+   vkCmdEndTransformFeedbackEXT(command_buffer, 0, 0, NULL, NULL);''')
+        replace_once('   vkCmdEndRenderPass(command_buffer);', '''   vkCmdEndRenderPass(command_buffer);
+   const VkMemoryBarrier xfb_host = {
+      .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
+      .srcAccessMask = VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT,
+      .dstAccessMask = VK_ACCESS_HOST_READ_BIT,
+   };
+   vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT,
+      VK_PIPELINE_STAGE_HOST_BIT, 0, 1, &xfb_host, 0, NULL, 0, NULL);''')
+        replace_once('   printf(PROBE_NAME ": retired %u submissions\\n", repeats);', '''   static const float xfb_expected[3][4] = {
+      {-1, -1, 0, 1}, {3, -1, 0, 1}, {-1, 3, 0, 1},
+   };
+   if (memcmp(xfb_map, xfb_expected, sizeof(xfb_expected))) {
+      const float *f = xfb_map;
+      for (unsigned i = 0; i < 3; ++i)
+         fprintf(stderr, "XFB[%u] = %g %g %g %g\\n", i,
+                 f[4*i], f[4*i+1], f[4*i+2], f[4*i+3]);
+      die("transform feedback vertex mismatch");
+   }
+   for (unsigned i = sizeof(xfb_expected); i < xfb_size; ++i)
+      if (((unsigned char *)xfb_map)[i] != 0xcd)
+         die("transform feedback wrote beyond the three vertices");
+   puts("PASS: transform feedback three exact vec4 positions and buffer guard");
+   printf(PROBE_NAME ": retired %u submissions\\n", repeats);''')
     if args.occlusion_query:
-        def replace_once(old, new):
-            nonlocal source
-            if source.count(old) != 1:
-                raise RuntimeError('Occlusion fixture anchor changed: ' + old)
-            source = source.replace(old, new)
         query_functions = ('vkCreateQueryPool', 'vkCmdResetQueryPool',
                            'vkCmdBeginQuery', 'vkCmdEndQuery',
                            'vkGetQueryPoolResults')
@@ -150,6 +222,7 @@ def main():
     manifest = {
         'samples': args.samples, 'rgba': args.rgba,
         'occlusion_query': args.occlusion_query,
+        'transform_feedback': args.transform_feedback,
         'allow_unadvertised_samples': args.allow_unadvertised_samples,
         'host_compile_only': args.host_compile_only,
         'record_command_buffer': args.record_command_buffer,

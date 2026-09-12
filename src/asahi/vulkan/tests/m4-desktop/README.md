@@ -1653,3 +1653,10 @@ quantum would leave red in front and fail the full-image oracle.
 `depth32fs8` and `depth24s8` select combined depth/stencil attachments.
 Red writes stencil1 per sample; green requires stencil0 with depth testing
 disabled, so successful depth rejection cannot conceal a broken stencil test.
+
+`vulkan-fragment-probe.py --transform-feedback --vertex xfb-pipeline.vert`
+builds a triangle that captures three vec4 positions into a guarded buffer and
+checks all captured bytes as well as the normal pixel oracle. It requests
+VK_EXT_transform_feedback; unsupported drivers fail at device creation. Use
+`--run-host-shim --record-command-buffer` for offline compiler/recording triage,
+then run the ARM executable only through the mandatory experiment guard.
