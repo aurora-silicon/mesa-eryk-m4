@@ -73,3 +73,9 @@ intermediate results, and masked wraparound before formatted image writes.
 `20260912T071759321326Z-native-shifted-integer-subtract` matched all 5120
 bytes on M4 (peak54.25C). The original vkQuake mip compute shader also
 compiles to 11096 bytes after lowering shifted subtraction to shift + subtract.
+
+`m4_vulkan_half_integer.comp` uses `M4_TEST_FLOAT16=1` and checks signed and
+unsigned truncating conversions from half floats. All 5120 bytes matched in
+`20260912T071942994076Z-native-half-to-integer-casts` (peak54.5C), including
+negative signed inputs. The captured vkQuake filter shader compiles to 2834
+bytes after exact half widening before its integer conversion.

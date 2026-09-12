@@ -2439,8 +2439,24 @@ agx_lower_agx3_half_converts(agx_context *ctx)
 
    agx_foreach_instr_global_safe(ctx, I) {
       if (I->op != AGX_OPCODE_CONVERT || I->nr_dests != 1 ||
-          I->nr_srcs != 2 || I->dest[0].size != AGX_SIZE_16 ||
+          I->nr_srcs != 2 ||
           I->src[0].type != AGX_INDEX_IMMEDIATE || I->saturate)
+         continue;
+
+      if (I->dest[0].size == AGX_SIZE_32 &&
+          (I->src[0].value == AGX_CONVERT_F_TO_S32 ||
+           I->src[0].value == AGX_CONVERT_F_TO_U32) &&
+          I->round == AGX_ROUND_RTZ &&
+          (I->src[1].size == AGX_SIZE_16 || I->src[1].abs || I->src[1].neg)) {
+         /* Every binary16 value is exactly representable in binary32.
+          * Widen first and preserve the original integer rounding mode. */
+         agx_builder b = agx_init_builder(ctx, agx_before_instr(I));
+         agx_index wide = agx_temp(ctx, AGX_SIZE_32);
+         agx_fmov_to(&b, wide, I->src[1]);
+         I->src[1] = wide;
+         continue;
+      }
+      if (I->dest[0].size != AGX_SIZE_16)
          continue;
 
       if ((I->src[0].value == AGX_CONVERT_F_TO_S16 ||
