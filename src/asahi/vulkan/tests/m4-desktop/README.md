@@ -1845,3 +1845,12 @@ Front-facing regression: `graphics-features/front-face.frag` with
 these screen-space windings. Both passed exact M4 readback in guarded runs
 20260912T221648924202Z and 20260912T221704299332Z (55.75 C). The adjacent
 Metal source produced the native original-SR41 witness for the encoder test.
+
+`integer-texture-probe.c` checks all 2048 signed/unsigned 32-bit components
+through normalized-coordinate nearest sampling and integer render targets.
+Compile with `cc -O2 ... -lEGL -lGL` (ARM64 sysroot for hardware).
+Reference: `M4_TEST_LLVMPIPE=1 GALLIUM_DRIVER=zink LIBGL_ALWAYS_SOFTWARE=1
+MESA_LOADER_DRIVER_OVERRIDE=zink VK_DRIVER_FILES=... probe`.
+Hardware: gpu-experiment.py wrapping run-m4-gl.py. M4 passed run
+20260912T221956435252Z, 55.75 C, zero mismatches; high bits and negative
+values distinguish integer sampling from accidental float conversion.
