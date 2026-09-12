@@ -354,3 +354,8 @@ probe-output offset. Compile `probe.comp` with glslangValidator and execute usin
 selects only lavapipe's CPU device for host reference generation. Comparing a
 reference-generation run against its unchanged input intentionally reports a
 mismatch; retain its output and validate expected semantics before reusing it.
+
+`atomic-oracle.py --output NEW_DIRECTORY` generates a64-lane exact integer
+regression for eight SSBO atomic operations with divergent inactive lanes.
+Use the same guarded vk-buffer-oracle workflow; host lavapipe independently
+checks the CPU-calculated reference.

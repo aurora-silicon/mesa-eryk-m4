@@ -1825,8 +1825,7 @@ agx3_map_atomic_op(enum agx_atomic_opc in, enum agx3_atomic_op *out)
 /* Translate Mesa's global atomic IR into the fully witnessed 32-bit AGX3
  * family.  The address lowering represents a constant byte displacement as a
  * 32-bit element index; fold it back into the signed byte-offset field when it
- * fits, matching Apple.  AGX3b returned atomics are physically in-place, so
- * only an RA-coalesced value/result pair is accepted on that encoding. */
+ * fits, matching Apple. AGX3b results are transferred from TPS by the caller. */
 static bool
 agx3_translate_device_atomic(const agx_instr *I,
                              enum agx_isa_encoding enc, bool exec_masked,
@@ -1852,8 +1851,7 @@ agx3_translate_device_atomic(const agx_instr *I,
    const agx_index result = I->dest[0];
    d->returns_value = !agx_is_null(result);
    if (d->returns_value) {
-      if (!agx3_atomic_plain_reg(result, AGX_SIZE_32, 1) ||
-          (enc == AGX_ISA_ENCODING_AGX3B && result.value != value.value))
+      if (!agx3_atomic_plain_reg(result, AGX_SIZE_32, 1))
          return false;
       d->result = result.value;
       d->slot = slot;
@@ -3729,6 +3727,9 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
    const enum agx_isa_encoding enc = ctx->key->dev.encoding;
    const unsigned nslots = (enc == AGX_ISA_ENCODING_AGX3C) ? 8 : 6;
    const unsigned initial_size = emission->size;
+   /* One reusable atomic return word, disjoint from NIR scratch and RA spills.
+    * Each return is reloaded before the next operation can reuse this word. */
+   const uint32_t atomic_tps_half = ALIGN_POT(ctx->scratch_size_B, 4) / 2;
    ctx->agx3_staging_known = true;
    ctx->agx3_fltnorm_start = false;
 
@@ -4753,11 +4754,40 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             struct agx3_device_atomic_desc d;
             uint8_t bytes[AGX3_ATOMIC_MAX_LENGTH];
             uint8_t len = 0;
+            const bool tps_return = enc == AGX_ISA_ENCODING_AGX3B && slot;
+            if (tps_return) {
+               /* Native CLR -> ATOMIC -> RLD. The result is written to TPS,
+                * not the value GPR. Retire prior users before reusing slot1. */
+               const struct agx3_field_kv fields[] = {
+                  {9, 4}, {10, 2}, {12, 1}, {4, atomic_tps_half},
+               };
+               if (!agx3_retire_slots_noop(emission, enc, wait | outstanding_here) ||
+                   !agx3_bind_compose(enc, "clr", 0, fields, ARRAY_SIZE(fields),
+                                     NULL, 0, bytes, &len) ||
+                   !agx3_append(emission, bytes, len))
+                  AGX3_REFUSE(I);
+               outstanding = 1u << (slot - 1);
+               ctx->out->scratch_size = MAX2(ctx->out->scratch_size,
+                                             atomic_tps_half * 2 + 4);
+            }
             if (!agx3_translate_device_atomic(I, enc, block->divergent,
-                                              slot, wait, &d) ||
-                !agx3_atomic_encode_device(enc, &d, bytes, &len) ||
+                                              tps_return ? 1 : slot,
+                                              tps_return ? 1 : wait, &d))
+               AGX3_REFUSE(I);
+            d.tps_half = tps_return ? atomic_tps_half : 0;
+            if (!agx3_atomic_encode_device(enc, &d, bytes, &len) ||
                 !agx3_append(emission, bytes, len))
                AGX3_REFUSE(I);
+            if (tps_return) {
+               const struct agx3_static_spill_load_desc load = {
+                  .dest = I->dest[0].value, .tps_half = atomic_tps_half,
+                  .width = AGX3_MEM_W32, .slot = slot,
+                  .slot_mirror = 0, .wait_mask = 1,
+               };
+               if (!agx3_static_spill_encode_load(enc, &load, bytes, &len) ||
+                   !agx3_append(emission, bytes, len))
+                  AGX3_REFUSE(I);
+            }
             continue;
          }
 

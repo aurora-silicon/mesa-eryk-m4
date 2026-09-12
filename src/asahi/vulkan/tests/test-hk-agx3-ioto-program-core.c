@@ -578,7 +578,7 @@ test_g17p_dynamic_compute_program(void)
 
    const struct hk_agx3_g17p_compute_program before = program;
    struct hk_agx3_g17p_compute_program_desc invalid = desc;
-   invalid.scratch_size = 16;
+   invalid.scratch_size = UINT32_MAX;
    CHECK(!hk_agx3_g17p_compute_program_generate(AGX_CHIP_G17P, &invalid,
                                                 &program));
    CHECK(memcmp(&program, &before, sizeof(program)) == 0);

@@ -766,7 +766,7 @@ hk_agx3_g17p_compute_state_tail(
    struct agx_ioto_state_tail_output *tail)
 {
    if (!desc || !tail || desc->shader_binary_size == 0 ||
-       desc->nr_gprs == 0 || desc->scratch_size != 0)
+       desc->nr_gprs == 0)
       return false;
 
    /* The direct-dispatch program kind, exactly as the add3 witness announces

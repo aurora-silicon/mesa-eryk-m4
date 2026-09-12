@@ -1241,33 +1241,6 @@ agx_ra_assign_local(struct ra_ctx *rctx)
          continue;
       }
 
-      /* AGX3b device atomics return the old value in-place over their value
-       * operand.  When that operand dies here, assign the destination to its
-       * exact base before the generic allocator can choose a different free
-       * region.  This also handles cmpxchg: its two-channel
-       * [replacement, compare] source dies as a unit while the scalar return
-       * occupies the first channel.  Scalar returned atomics were given a
-       * private value above, so their source is guaranteed to die here.
-       */
-      if (rctx->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
-          I->op == AGX_OPCODE_ATOMIC && I->nr_dests == 1 &&
-          !agx_is_null(I->dest[0]) && I->src[0].type == AGX_INDEX_NORMAL &&
-          I->src[0].kill) {
-         const unsigned reg = ssa_to_reg[I->src[0].value];
-
-         kill_source(rctx, I, 0);
-         assign_regs(rctx, I->dest[0], reg);
-
-         for (unsigned s = 1; s < I->nr_srcs; ++s) {
-            if (I->src[s].type == AGX_INDEX_NORMAL && I->src[s].kill)
-               kill_source(rctx, I, s);
-         }
-
-         agx_set_sources(rctx, I);
-         agx_set_dests(rctx, I);
-         continue;
-      }
-
       /* Search for regions of contiguous killed sources to early-kill. */
       rctx->early_killed = false;
 
@@ -1771,20 +1744,6 @@ agx_ra(agx_context *ctx)
       agx_foreach_ssa_src(ins, s) {
          agx_replace_src(ins, s, agx_as_register(ins->src[s]));
       }
-
-      /* Native AGX3b returned add/cmpxchg/xchg marks its consumed in-place
-       * value discardable, while the standalone min/max return form does not.
-       * RA has made the operand private and coalesced it with the destination
-       * above. Set the physical hint only after SSA lowering, which
-       * intentionally strips SSA liveness flags. */
-      if (ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
-          ins->op == AGX_OPCODE_ATOMIC && ins->nr_dests == 1 &&
-          !agx_is_null(ins->dest[0]) &&
-          ins->atomic_opc != AGX_ATOMIC_OPC_UMIN &&
-          ins->atomic_opc != AGX_ATOMIC_OPC_IMIN &&
-          ins->atomic_opc != AGX_ATOMIC_OPC_UMAX &&
-          ins->atomic_opc != AGX_ATOMIC_OPC_IMAX)
-         ins->src[0].discard = true;
 
       /* Lower away RA pseudo-instructions */
       agx_builder b = agx_init_builder(ctx, agx_after_instr(ins));

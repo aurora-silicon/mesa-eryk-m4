@@ -310,7 +310,7 @@ main(void)
    bad.op = (enum agx3_atomic_op)11;
    CHECK(!agx3_atomic_encode_device(AGX_ISA_ENCODING_AGX3B, &bad, bytes, &len));
    bad = ret;
-   bad.result = 8;
+   bad.tps_half = 1;
    CHECK(!agx3_atomic_encode_device(AGX_ISA_ENCODING_AGX3B, &bad, bytes, &len));
    bad = base;
    bad.base = 2;

@@ -5,8 +5,8 @@
  * Exact AGX3 device/threadgroup atomic encoders.
  *
  * The 32-bit operation selector and every operand below were isolated in
- * Apple's G15G/G16G/G17S compiler output.  AGX3b device atomics are in-place;
- * AGX3c device atomics split value and return registers.  Threadgroup atomics
+ * Apple's G15G/G16G/G17S compiler output. AGX3b device atomics return through
+ * thread-private storage; AGX3c splits value and return registers. Threadgroup atomics
  * split them on both encodings.  G17P additionally grounds no-result
  * threadgroup atomics with immediate and register byte addresses.  No 64-bit
  * encoding has been witnessed, so the interface deliberately has no width
@@ -57,7 +57,8 @@ struct agx3_device_atomic_desc {
    bool exec_masked; /* instruction is inside partial/elected execution */
 
    bool returns_value;
-   uint16_t result; /* GPR half index; equals value on AGX3b */
+   uint16_t result; /* AGX3c GPR half index */
+   uint32_t tps_half; /* AGX3b return destination; requires CLR and RLD */
    uint8_t slot;    /* 1..6 (AGX3b), 1..8 (AGX3c) when returning */
 
    enum agx3_atomic_base_kind base_kind;
