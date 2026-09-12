@@ -3918,7 +3918,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             tile_loads_left++;
          if (scan_I->op == AGX_OPCODE_ST_TILE)
             tile_stores_left++;
-         if (scan_I->op == AGX_OPCODE_SAMPLE_MASK_1X_AGX3)
+         if (scan_I->op == AGX_OPCODE_SAMPLE_MASK_AGX3)
             has_coverage_write = true;
          if (scan_I->op == AGX_OPCODE_DEVICE_LOAD)
             device_loads_left++;
@@ -3984,7 +3984,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                                   g17p_deferred_write != NULL);
    ctx->agx3_colour_link.straight_line = list_length(&ctx->blocks) == 1;
    agx_foreach_instr_global(ctx, entry_I) {
-      if (agx3_is_cf_op(entry_I) || entry_I->op == AGX_OPCODE_SAMPLE_MASK_1X_AGX3)
+      if (agx3_is_cf_op(entry_I) || entry_I->op == AGX_OPCODE_SAMPLE_MASK_AGX3)
          ctx->agx3_colour_link.straight_line = false;
    }
    unsigned g17p_link_packs_seen = 0;
@@ -4703,7 +4703,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             continue;
          }
 
-         if (I->op == AGX_OPCODE_SAMPLE_MASK_1X_AGX3) {
+         if (I->op == AGX_OPCODE_SAMPLE_MASK_AGX3) {
             if (enc != AGX_ISA_ENCODING_AGX3B || ctx->stage != MESA_SHADER_FRAGMENT ||
                 I->nr_dests || I->nr_srcs != 2 ||
                 !agx3_src_is_register(I->src[0]) || I->src[0].memory ||
@@ -4726,7 +4726,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                 !agx3_append(emission, bytes, len))
                AGX3_REFUSE(I);
             /* Native simple and sampled-alpha fragments produce and stage
-             * SR2's complete coverage word before acquiring class1. Keep
+             * the complete coverage word before acquiring class1. Keep
              * this ordering within the atomic pseudo rather than inheriting
              * the AGX2 wait-before-mask-calculation schedule. */
             if ((I->imm & 2) &&

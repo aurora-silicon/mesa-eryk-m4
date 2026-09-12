@@ -1600,3 +1600,14 @@ later color/store failures. A non-precise positive result is not an exact
 sample count. This adds query operations to the diagnostic fixture, preserves
 its shader and pixel expectation, and records the option in its manifest.
 Run only through the same watchdog/thermal guard as ordinary ARM probes.
+
+The `sample-mask.frag` regression keeps two of four samples over an opaque
+black clear. Build it with `vulkan-fragment-probe.py --samples 4 --rgba 128 0 0
+255 --output NEW_DIR`; use `--allow-unadvertised-samples` only for explicit
+bring-up diagnostics while 4x capability qualification remains incomplete.
+On J713/25G83, the 2026-09-12 coverage matrix verified empty/full/selective
+masks across 1x, 2x and 4x with exact RGBA8 readback (peak 54.75 C). The fix
+intersects LSTCOL writes with SR39's low live-coverage nibble, including
+background clears, and constructs MOVMSK's target/live nibbles per sample.
+The input mask is not truncated to bit zero. Fourteen focused compiler tests
+pass; this is not a claim that the entire legacy compiler test suite passes.

@@ -576,7 +576,7 @@ op("unpack_rgb10a2_agx3", _, dests=1, srcs=1, agx3_mnemonic="unpack")
 # G17P's native single-sample coverage word is prepared before RA. Keep the
 # general sample-mask target explicit while selecting its native zero no-op.
 op("get_coverage_1x_agx3", _, dests = 1, schedule_class = "coverage")
-op("sample_mask_1x_agx3", _, dests = 0, srcs = 2, imms = [IMM],
+op("sample_mask_agx3", _, dests = 0, srcs = 2, imms = [IMM],
    can_eliminate = False, schedule_class = "coverage")
 
 # Native multisample auxiliary coordinate packing (pure register operations).

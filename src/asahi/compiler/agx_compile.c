@@ -906,8 +906,19 @@ agx_emit_local_store_pixel(agx_builder *b, nir_intrinsic_instr *instr)
                 : agx_emit_collect(b, compact_count, compacted);
    agx_index coords = explicit ? agx_src_index(&instr->src[2]) : agx_null();
 
+   agx_index samples = agx_src_index(&instr->src[1]);
+   if (b->shader->stage == MESA_SHADER_FRAGMENT &&
+       b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B) {
+      /* SR39's low nibble is the live store coverage. The upper nibble
+       * retains the original target set and must not reach LSTCOL. This
+       * applies to background clears too: a partially covered pixel invokes
+       * its background only for samples not supplied by foreground draws. */
+      agx_index coverage = agx_get_sr_coverage(b, 16, AGX_SR_COVERAGE_MASK);
+      coverage = agx_and(b, coverage, agx_immediate(15));
+      samples = agx_and(b, coverage, samples);
+   }
    b->shader->out->tag_write_disable = false;
-   return agx_st_tile(b, collected, agx_src_index(&instr->src[1]), coords,
+   return agx_st_tile(b, collected, samples, coords,
                       format, (nr_packed && format == AGX_FORMAT_RGB10A2) ? 1 :
                          nir_intrinsic_write_mask(instr),
                       nir_intrinsic_base(instr), explicit);
@@ -1849,25 +1860,20 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
 
       if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
           !b->shader->key->fs.inside_sample_loop) {
-         /* Native early-fragment-tests code uses MOVMSK word zero for a
-          * no-op. Keep TARGET dynamic and select that word without changing
-          * EXEC around a coverage operation. */
+         /* SR39 carries the original target and covered sample sets. Apply
+          * TARGET per sample, preserving the coverage nibbles for MOVMSK. */
+         agx_index input = agx_get_sr(b, 16, AGX_SR_INPUT_SAMPLE_MASK);
          agx_index target = agx_and(b, agx_src_index(&instr->src[0]),
-                                    agx_immediate(1));
-         agx_index live = agx_and(b, agx_src_index(&instr->src[1]),
-                                  agx_immediate(1));
-         agx_index t16 = agx_temp(b->shader, AGX_SIZE_16);
-         agx_get_coverage_1x_agx3_to(b, t16);
-         agx_index mid = agx_iadd(b, t16, t16, 4);
+                                      agx_and(b, input, agx_immediate(15)));
+         agx_index coverage = agx_and(b, target,
+                                      agx_ushr(b, input, agx_immediate(4)));
+         agx_index live = agx_and(b, coverage, agx_src_index(&instr->src[1]));
+         agx_index mid = agx_iadd(b, coverage, target, 4);
          agx_index word = agx_iadd(b, live, mid, 4);
          agx_index zero = agx_mov_imm(b, 16, 0);
-         agx_index target32 = agx_temp(b->shader, AGX_SIZE_32);
-         agx_index word32 = agx_temp(b->shader, AGX_SIZE_32);
-         agx_emit_collect_to(b, target32, 2, (agx_index[]){target, zero});
-         agx_emit_collect_to(b, word32, 2, (agx_index[]){word, zero});
          agx_index selected = agx_temp(b->shader, AGX_SIZE_32);
-         agx_imad_to(b, selected, target32, word32, agx_zero(), 0);
-         return agx_sample_mask_1x_agx3(b, target, selected, !no_tests ? 2 : 0);
+         agx_emit_collect_to(b, selected, 2, (agx_index[]){word, zero});
+         return agx_sample_mask_agx3(b, target, selected, !no_tests ? 2 : 0);
       }
 
       if (!no_tests)

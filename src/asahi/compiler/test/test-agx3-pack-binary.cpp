@@ -2783,7 +2783,7 @@ TEST_F(AGX3PackBinary, TileStoreSingleSampleFormats)
          agx_index value = agx_register(0, f.width == AGX3_TILE_W8 ?
                                           AGX_SIZE_16 : AGX_SIZE_32);
          value.channels_m1 = f.width == AGX3_TILE_W8 ? 1 : rgb10 ? 0 : 3;
-         agx_st_tile(b, value, agx_immediate(AGX_ALL_SAMPLES), agx_null(),
+         agx_st_tile(b, value, agx_immediate(1), agx_null(),
                      f.format, mask, 24, false);
          agx_stop(b);
 
@@ -2810,14 +2810,14 @@ TEST_F(AGX3PackBinary, TileLoadStoreWaitSurvivesFallthroughBlock)
       agx_block *first = agx_start_block(b->shader);
       agx_index value = agx_register(0, AGX_SIZE_32);
       value.channels_m1 = 3;
-      agx_ld_tile_to(b, value, agx_immediate(AGX_ALL_SAMPLES), agx_null(),
+      agx_ld_tile_to(b, value, agx_immediate(1), agx_null(),
                      AGX_FORMAT_I32, 15, 16, false);
 
       agx_block *second = agx_test_block(b->shader);
       agx_block_add_successor(first, second);
       b->cursor = agx_after_block(second);
       value.discard = true; /* nonsemantic post-RA last-use hint */
-      agx_st_tile(b, value, agx_immediate(AGX_ALL_SAMPLES), agx_null(),
+      agx_st_tile(b, value, agx_immediate(1), agx_null(),
                   AGX_FORMAT_I32, 15, 16, false);
       agx_stop(b);
 
@@ -2847,9 +2847,9 @@ TEST_F(AGX3PackBinary, TileLoadSequenceBoundaryMarkers)
       agx_index a = agx_register(0, AGX_SIZE_32);
       agx_index c = agx_register(8, AGX_SIZE_32);
       a.channels_m1 = c.channels_m1 = 3;
-      agx_ld_tile_to(b, a, agx_immediate(AGX_ALL_SAMPLES), agx_null(),
+      agx_ld_tile_to(b, a, agx_immediate(1), agx_null(),
                      AGX_FORMAT_I32, 15, 0, false);
-      agx_ld_tile_to(b, c, agx_immediate(AGX_ALL_SAMPLES), agx_null(),
+      agx_ld_tile_to(b, c, agx_immediate(1), agx_null(),
                      AGX_FORMAT_I32, 15, 16, false);
       agx_stop(b);
 
@@ -4237,9 +4237,9 @@ TEST_F(AGX3PackBinary, DiscardOnlyUpdatesDoNotReleasePixelOrdering)
       b->shader->stage = MESA_SHADER_FRAGMENT;
       b->shader->nir = rzalloc(mem_ctx, nir_shader);
       for (unsigned i = 0; i < early_discards; ++i)
-         agx_sample_mask_1x_agx3(b, agx_register(8, AGX_SIZE_16),
+         agx_sample_mask_agx3(b, agx_register(8, AGX_SIZE_16),
                                 agx_register(4, AGX_SIZE_32), 0);
-      agx_sample_mask_1x_agx3(b, agx_register(8, AGX_SIZE_16),
+      agx_sample_mask_agx3(b, agx_register(8, AGX_SIZE_16),
                              agx_register(4, AGX_SIZE_32), 2);
       agx_wait_pix(b, 12);
       agx_index colour = agx_register(12, AGX_SIZE_16);
