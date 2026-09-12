@@ -55,6 +55,32 @@ static const struct drm_asahi_params_global params_g17p = {
    .gpu_hal_generation = DRM_ASAHI_GPU_HAL_200,
 };
 
+/* Synthetic full-core T8132 profile for offline compilation and recording.
+ * GPU identity, address ranges and limits follow g16_drm.rs/file.rs. The
+ * physical core mask is fused per machine; this models all ten cores.
+ * Unlike the hardware, this shim does not implement VM-status queries, so
+ * it must not advertise that extension. Neither profile executes GPU work.
+ */
+static const struct drm_asahi_params_global params_g16g = {
+   .gpu_generation = 16,
+   .gpu_variant = 'G',
+   .gpu_revision = 0x10, /* B0, UABI enum (not firmware enum). */
+   .chip_id = 0x8132,
+   .num_dies = 1,
+   .num_clusters_total = 1,
+   .num_cores_per_cluster = 10,
+   .core_masks = {0x3ff},
+   .vm_start = 0x4000,
+   .vm_end = (1ull << 42) - 0x8000ull,
+   .vm_kernel_min_size = 0x20000000,
+   .max_commands_per_submission = 64,
+   .max_attachments = 16,
+   .max_frequency_khz = 1470000,
+   .command_timestamp_frequency_hz = 1000000000,
+   .usc_generation = 3,
+   .gpu_hal_generation = DRM_ASAHI_GPU_HAL_200,
+};
+
 static const struct drm_asahi_params_global *
 shim_params(void)
 {
@@ -62,6 +88,8 @@ shim_params(void)
 
    if (chip && !strcmp(chip, "g17p"))
       return &params_g17p;
+   if (chip && !strcmp(chip, "g16g"))
+      return &params_g16g;
 
    return &params_g13g;
 }
@@ -269,8 +297,13 @@ drm_shim_driver_init(void)
 
    const char *chip = getenv("ASAHI_SHIM_CHIP");
    const bool g17p = chip && !strcmp(chip, "g17p");
+   const bool g16g = chip && !strcmp(chip, "g16g");
 
-   drm_shim_override_file(g17p ? "DRIVER=asahi\n"
+   drm_shim_override_file(g16g ? "DRIVER=asahi\n"
+                                 "OF_FULLNAME=/soc/agx\n"
+                                 "OF_COMPATIBLE_0=apple,gpu-g16g\n"
+                                 "OF_COMPATIBLE_N=1\n"
+                          : g17p ? "DRIVER=asahi\n"
                                  "OF_FULLNAME=/soc/agx\n"
                                  "OF_COMPATIBLE_0=apple,gpu-g17p\n"
                                  "OF_COMPATIBLE_N=1\n"

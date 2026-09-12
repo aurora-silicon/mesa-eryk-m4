@@ -1572,3 +1572,18 @@ Use the watchdog/thermal experiment wrapper to run `NEW_DIR/probe-arm64`.
 The fixture clears to black with alpha 255 before drawing. Use its actual
 `g17p-msaa2-triangle: PASS` success marker for 2x tests. Diagnostic fixtures are
 not application captures and cannot by themselves qualify application support.
+
+For offline pipeline compilation, add `--run-host-shim`. This builds an x86
+probe that exits immediately after pipeline creation, then runs it under
+`ASAHI_SHIM_CHIP=g16g` with a 20-second deadline. It retains compiler inputs,
+library/shim hashes, source changes and logs. Build the host Vulkan library and
+Asahi DRM shim first. The versioned helper also needs `--workspace-root` for
+the host build paths. No commands are submitted and no hardware is exercised.
+
+`--vertex xfb-pipeline.vert` with `solid-red.frag` exercises transform-feedback
+shader compilation, including the compute vertex variant. This is deliberately
+an unsupported-capability diagnostic: the production driver still disables
+transform feedback, and the fixture does not enable that device feature.
+A compilation pass is not valid Vulkan application or transform-feedback
+execution qualification. It reproduced an unaligned uniform-pointer rejection
+and a double-free on failure; both were fixed before the local compile passed.
