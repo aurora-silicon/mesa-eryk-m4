@@ -1783,7 +1783,7 @@ test_indexed_compute_storage_format(enum pipe_format format, bool gather, bool d
    nir_bindless_image_store(
       &b, pbe, coord, zero, data, zero, .image_dim = GLSL_SAMPLER_DIM_2D,
       .image_array = false, .format = format,
-      .access = ACCESS_RESTRICT);
+      .access = ACCESS_RESTRICT, .src_type = nir_type_float32);
 
    NIR_PASS(_, b.shader, agx_nir_lower_texture_for_generation,
             AGX_DESCRIPTOR_GENERATION_9);
@@ -1805,6 +1805,11 @@ test_indexed_compute_storage_format(enum pipe_format format, bool gather, bool d
             nir_instr_as_intrinsic(instr)->intrinsic;
          bindless_stores += op == nir_intrinsic_bindless_image_store;
          ordinary_stores += op == nir_intrinsic_image_store;
+         if (op == nir_intrinsic_image_store) {
+            nir_intrinsic_instr *store = nir_instr_as_intrinsic(instr);
+            ok &= nir_intrinsic_src_type(store) == nir_type_float32 &&
+                  nir_intrinsic_range_base(store) == 0;
+         }
       }
    }
    ok &= bindless_stores == 0 && ordinary_stores == 1;
@@ -1829,7 +1834,8 @@ test_indexed_compute_storage(void)
    return test_indexed_compute_storage_format(PIPE_FORMAT_R10G10B10A2_UNORM, false, false) &&
           test_indexed_compute_storage_format(PIPE_FORMAT_R16G16_FLOAT, false, false) &&
           test_indexed_compute_storage_format(PIPE_FORMAT_R16G16_FLOAT, true, false) &&
-          test_indexed_compute_storage_format(PIPE_FORMAT_R8_UNORM, true, true);
+          test_indexed_compute_storage_format(PIPE_FORMAT_R8_UNORM, true, true) &&
+          test_indexed_compute_storage_format(PIPE_FORMAT_NONE, false, true);
 }
 
 static bool
@@ -2429,6 +2435,8 @@ static const struct agx3_graphics_case cases[] = {
     AGX_ABI_FUNI_ROOT + 4},
    {"fs-transcendentals", build_fs_funops, true},
 
+   {"fs-depth-write", build_fs_depth, true, .g17p_only = true},
+
    /*
     * Deliberate refusals. Each one names a specific missing witness, not a
     * missing line of routing:
@@ -2440,16 +2448,8 @@ static const struct agx3_graphics_case cases[] = {
     *   ABI are not isolated. Mesa's mask+value operand split has no
     *   witnessed encoding either way.
     *
-    * - a depth write lowers to zs_emit, whose counterpart is depthf. depthf's
-    *   enable bits are grounded, but it carries no value register: every
-    *   witness stages the value through a copy whose destination field is 0,
-    *   behind an un-decomposed iadd/fsel cluster that may be a required
-    *   format transform, so the staging ABI is a correlation rather than a
-    *   traced contract (see agx3_pack_binary.c).
-    *
     */
    {"fs-discard", build_fs_discard, false},
-   {"fs-depth-write", build_fs_depth, false},
 };
 
 static bool
@@ -2668,6 +2668,12 @@ main(int argc, char **argv)
       printf("indexed graphics/compute sampler sets and live roots: %s\n",
              ok ? "PASS" : "FAIL");
       return ok ? 0 : 1;
+   }
+   if (argc == 2 && !strcmp(argv[1], "--depth-only")) {
+      const struct agx3_graphics_case c = {
+         "fs-depth-write", build_fs_depth, true, .g17p_only = true,
+      };
+      return run_case(&c, AGX_ISA_ENCODING_AGX3B) ? 0 : 1;
    }
    if (argc == 2 && !strcmp(argv[1], "--indexed-storage-only")) {
       const bool ok = test_indexed_compute_storage();

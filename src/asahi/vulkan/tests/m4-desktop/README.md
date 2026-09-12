@@ -1710,3 +1710,36 @@ six 64x64 readbacks. Build with `-lEGL -lGL -lm`; run J713 only through the GPU
 guard and `run-m4-gl.py`. Explicit `M4_TEST_LLVMPIPE=1` enables the reference.
 The Vulkan capture uses the same Zink build over lavapipe; rebinding, omitted
 pipeline cache and removed unsupported features are recorded replay adaptations.
+
+`fragment-image-probe.c` writes a four-quadrant RGBA8 image and a red framebuffer
+from one fragment shader, then checks both complete64x64 outputs. Its default
+uses a formatless writeonly image; `typed` adds the rgba8 shader qualifier.
+Build with `-lEGL -lGL -lm`, run only under the hardware guard, or use explicit
+`M4_TEST_LLVMPIPE=1` for the reference. Vulkan capture retains the commands.
+The Chromium probe now records WebGL context/device/loss status and a small
+central readback in `webgl.json`. This is supplementary evidence: a later
+screenshot failure or GPU-process crash still means the browser test failed.
+
+`fragment-depth-probe.c` checks three explicit fragment depths against a depth
+attachment cleared to0.6, reading both color and float depth. Its `constant`
+mode exports the same per-draw depth as red to isolate staging failures from
+source arithmetic. Build with `-lEGL -lGL -lm`; run through the mandatory GPU
+guard or explicitly select the llvmpipe reference. Each mode checks4096pixels
+per draw; neither a compiler success nor a correct color alone counts as pass.
+
+`fragment-image-probe attachmentless` tests storage writes with no color/depth
+attachment. `fragment-depth-probe 2|4` additionally attempts color and depth
+resolves; the current Zink path rejects the multisample depth blit, so these
+modes intentionally fail even when their color depth-test result is correct.
+`M4_PROBE_OUTPUT=DIR` retains raw depth and RGBA data from the depth probe.
+
+`shim-first-error.py NEW_DIRECTORY --trace CAPTURE.gfxr` diagnoses an existing
+Vulkan capture under the host no-op DRM shim. It records exact binary/trace
+hashes and rebinding/offscreen/feature adaptations, and stops at the first
+actual Vulkan error logger. It never proves GPU output or external sharing.
+The host replay must include the documented external-memory rebinding patch.
+
+Fragment writeout evidence (J713,2026-09-12):200729 and200752 validate exact1x
+color/depth and typed/formatless image outputs;201415 validates attachmentless
+image output.201447 replays Chromium's retained failing capture successfully,
+with explicit external-sharing/rebinding adaptations and no replay pixel claim.

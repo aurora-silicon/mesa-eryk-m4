@@ -579,6 +579,10 @@ op("get_coverage_1x_agx3", _, dests = 1, schedule_class = "coverage")
 op("sample_mask_agx3", _, dests = 0, srcs = 2, imms = [IMM],
    can_eliminate = False, schedule_class = "coverage")
 
+# Native depth writeout: complete coverage word and unmodified float depth.
+op("zs_emit_agx3", _, dests=0, srcs=2, can_eliminate=False,
+   schedule_class="coverage")
+
 # Native multisample auxiliary coordinate packing (pure register operations).
 op("pack_layer_agx3", _, dests=1, srcs=1, agx3_mnemonic="pack_smpir")
 op("pack_sample_agx3", _, dests=1, srcs=2, agx3_mnemonic="pack_smpir")

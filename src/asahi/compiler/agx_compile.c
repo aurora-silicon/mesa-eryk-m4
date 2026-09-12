@@ -950,6 +950,25 @@ agx_emit_store_zs(agx_builder *b, nir_intrinsic_instr *instr)
     */
    b->shader->out->writes_sample_mask = true;
 
+   if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+       write_z && !write_s && !b->shader->key->fs.inside_sample_loop) {
+      /* DEPTHF consumes coverage at staging[0] and float depth at staging[2].
+       * Build the same current-coverage word as MOVMSK before RA. Keeping
+       * depth as float also preserves the NaN used for forced NEVER tests. */
+      agx_index input = agx_get_sr_coverage(b, 16, AGX_SR_COVERAGE_MASK);
+      agx_index affected = agx_and(b, agx_src_index(&instr->src[0]),
+                                    agx_immediate(15));
+      agx_index target = agx_and(b, affected, input);
+      agx_index coverage = agx_and(b, affected,
+                                    agx_ushr(b, input, agx_immediate(4)));
+      agx_index mid = agx_iadd(b, coverage, target, 4);
+      agx_index word = agx_iadd(b, affected, mid, 4);
+      agx_index selected = agx_temp(b->shader, AGX_SIZE_32);
+      agx_emit_collect_to(b, selected, 2,
+                         (agx_index[]){word, agx_mov_imm(b, 16, 0)});
+      return agx_zs_emit_agx3(b, selected, z);
+   }
+
    agx_wait_pixel_mask(b, 0x1);
    return agx_zs_emit(b, agx_src_index(&instr->src[0]), zs, base);
 }
@@ -1683,6 +1702,12 @@ agx_emit_image_store(agx_builder *b, nir_intrinsic_instr *instr)
                                       nir_is_coherent(instr));
    if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B) {
       switch (nir_intrinsic_format(instr)) {
+      case PIPE_FORMAT_NONE:
+         /* Formatless floating writes still supply F32 lanes. The PBE,
+          * rather than a shader format qualifier, converts the destination. */
+         write->format = nir_intrinsic_src_type(instr) == nir_type_float32
+                            ? AGX_FORMAT_F16 : AGX_NUM_FORMATS;
+         break;
       case PIPE_FORMAT_R8G8B8A8_UINT:
          write->format = AGX_FORMAT_I8;
          break;

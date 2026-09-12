@@ -317,6 +317,12 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
                      const VkRenderingInfo *info, bool store)
 {
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
+   /* Attachmentless passes determine raster samples at draw time. Their
+    * empty BG/EOT programs do not use per-sample tile storage, so compile
+    * the same one-sample placeholder as the ordinary Asahi path. Only the
+    * private shader key changes; retain the deferred count in render state. */
+   if (!key->tib.nr_samples && !key->tib.sample_size_B)
+      agx_tilebuffer_set_samples(&key->tib, 1);
    if (!hk_agx3_g17p_rt0_tile_layout_supported(&key->tib)) {
       vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
       return (struct hk_bg_eot){0};

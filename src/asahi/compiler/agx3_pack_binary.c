@@ -942,10 +942,10 @@ agx3_emit_storage_image_write(struct util_dynarray *emission,
         !((I->src[4].value == 0 && I->format == AGX_FORMAT_I8) ||
           (I->src[4].value == 1 && normalized))))) {
       if (agx_compiler_debug & AGX_DBG_SHADERS)
-         fprintf(stderr, "G17P imgwci shape refusal: wait=0x%x data=%u/%u/%u coord=%u/%u/%u dim=%u coherent=%u\n",
+         fprintf(stderr, "G17P imgwci shape refusal: wait=0x%x data=%u/%u/%u coord=%u/%u/%u dim=%u coherent=%u format=%u direct=%u\n",
                  wait_mask, I->src[0].value, I->src[0].size,
                  agx_channels(I->src[0]), I->src[1].value, I->src[1].size,
-                 agx_channels(I->src[1]), I->dim, I->coherent);
+                 agx_channels(I->src[1]), I->dim, I->coherent, I->format, direct);
       return false;
    }
 
@@ -1289,31 +1289,10 @@ agx3_emit_tile(struct util_dynarray *emission, enum agx_isa_encoding enc,
    return ok && agx3_append(emission, bytes, length);
 }
 
-/*
- * Fragment ops that stay refused, and why. Each is a missing *witness*, not
- * missing routing, so grounding one is a corpus session rather than a patch:
- *
- * - sample_mask (Mesa's mask+value write, from discard or an explicit
- *   gl_SampleMask). Apple's discard and [[sample_mask]] shaders both use the
- *   same writeout group as depthf -- a staging `copy` whose destination field
- *   is 0 in every witness, then `movmsk` under the class-1 pixwait/pixrel
- *   bracket -- and never `cmsk` (cmsk appears only in alpha-to-coverage
- *   shaders). movmsk's operand roles (f13/f17) are not isolated and the
- *   staged-register ABI below applies equally, so both spellings stay closed.
- *
- * - zs_emit (depthf). depthf's enable bits are grade A (f25 depth, f26
- *   stencil), but the instruction carries no value register: the values are
- *   staged by a preceding `copy` whose destination field is 0 (r0) in all
- *   nine witnesses (five corpus + four fresh RA-contrast probes, 2026-08-27),
- *   with the stencil byte reaching r0h via a 32-bit copy in the stencil
- *   probes. Two things are still missing before emitting it: the depth value
- *   is produced by an un-decomposed iadd(imm15)/fsel cluster whose
- *   destination-field identity is unproven (so "r0" is a strong correlation,
- *   not a traced ABI), and that cluster may be a required format transform --
- *   Apple never stages the raw float. Emitting depthf against a guessed ABI
- *   would write undefined bits into the depth test.
- *
- * See research/gpu/GPU_AGX3_TILE_OPS_2026-08-24.md sections 4 and 6.
+/* Native coverage updates use SAMPLE_MASK_AGX3. Depth-only writes use
+ * ZS_EMIT_AGX3 with float staging and a separate coverage word. Stencil
+ * exports and writes inside the external sample-shading loop remain on the
+ * refused AGX2 ZS_EMIT path until their native data protocol is implemented.
  */
 
 /*
@@ -3923,7 +3902,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             tile_loads_left++;
          if (scan_I->op == AGX_OPCODE_ST_TILE)
             tile_stores_left++;
-         if (scan_I->op == AGX_OPCODE_SAMPLE_MASK_AGX3)
+         if (scan_I->op == AGX_OPCODE_SAMPLE_MASK_AGX3 ||
+             scan_I->op == AGX_OPCODE_ZS_EMIT_AGX3)
             has_coverage_write = true;
          if (scan_I->op == AGX_OPCODE_DEVICE_LOAD)
             device_loads_left++;
@@ -3989,7 +3969,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                                   g17p_deferred_write != NULL);
    ctx->agx3_colour_link.straight_line = list_length(&ctx->blocks) == 1;
    agx_foreach_instr_global(ctx, entry_I) {
-      if (agx3_is_cf_op(entry_I) || entry_I->op == AGX_OPCODE_SAMPLE_MASK_AGX3)
+      if (agx3_is_cf_op(entry_I) || entry_I->op == AGX_OPCODE_SAMPLE_MASK_AGX3 ||
+          entry_I->op == AGX_OPCODE_ZS_EMIT_AGX3)
          ctx->agx3_colour_link.straight_line = false;
    }
    unsigned g17p_link_packs_seen = 0;
@@ -4706,6 +4687,56 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                 !agx3_append(emission, bytes, len))
                AGX3_REFUSE(I);
             interpolation_started = true;
+            continue;
+         }
+
+         if (I->op == AGX_OPCODE_ZS_EMIT_AGX3) {
+            if (enc != AGX_ISA_ENCODING_AGX3B || ctx->stage != MESA_SHADER_FRAGMENT ||
+                I->nr_dests || I->nr_srcs != 2 ||
+                !agx3_vary_reg32(I->src[0]) || agx_channels(I->src[0]) != 1 ||
+                !agx3_vary_reg32(I->src[1]) || agx_channels(I->src[1]) != 1)
+               AGX3_REFUSE(I);
+            uint8_t bytes[AGX3_ALU_MAX_LENGTH], len;
+            if (!agx3_retire_slots_noop(emission, enc, wait | outstanding_here))
+               AGX3_REFUSE(I);
+            if (!g17p_colour_open) {
+               if (!agx3_pixel_colour_entry(enc, bytes, &len) ||
+                   !agx3_append(emission, bytes, len))
+                  AGX3_REFUSE(I);
+               ctx->agx3_colour_link.entry_emitted = true;
+               ctx->agx3_colour_link.entry_offset = emission->size - len - initial_size;
+               g17p_colour_open = true;
+            }
+            /* Match native DEPTHF's ALU staging producer and publication
+             * flags, then publish coverage. Both selected operands are the
+             * original float, preserving the NaN used for forced NEVER. */
+            const uint16_t depth = I->src[1].value;
+            const struct agx3_field_kv fields[] = {
+               {10,5}, {11,2}, {6,2}, {13,1}, {14,1},
+               {42,2}, {43,2}, {35,depth},
+               {59,2}, {60,2}, {52,depth},
+               {76,2}, {77,2}, {69,depth},
+               {93,2}, {94,2}, {86,depth}, {110,2},
+            };
+            if (!agx3_bind_compose(enc, "fsel", 35, fields, ARRAY_SIZE(fields),
+                                    NULL, 0, bytes, &len) ||
+                !agx3_append(emission, bytes, len) ||
+                !agx3_stage_copy_flags(enc, 0, I->src[0].value,
+                                        I->src[0].discard, true, 1, 0, bytes, &len) ||
+                !agx3_append(emission, bytes, len))
+               AGX3_REFUSE(I);
+            const struct agx3_zs_desc zs = {
+               .value = 0, .value_kill = true, .slot = 1, .wait_mask = 1,
+            };
+            if (!agx3_pixel_wait(enc, 1, 0, bytes, &len) ||
+                !agx3_append(emission, bytes, len) ||
+                !agx3_zs_encode_depth_stencil(enc, &zs, true, false, bytes, &len) ||
+                !agx3_append(emission, bytes, len) ||
+                !agx3_pixel_release(enc, 1, false, 0, bytes, &len) ||
+                !agx3_append(emission, bytes, len))
+               AGX3_REFUSE(I);
+            outstanding = 0;
+            ctx->agx3_staging_halfs = MAX2(ctx->agx3_staging_halfs, 4);
             continue;
          }
 

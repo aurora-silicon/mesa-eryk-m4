@@ -396,7 +396,8 @@ agx_nir_lower_g17p_indexed_samplers(nir_shader *shader)
    nir_foreach_function_impl(impl, shader) {
       nir_foreach_block(block, impl) {
          nir_foreach_instr(instr, block) {
-            if (shader->info.stage == MESA_SHADER_COMPUTE &&
+            if ((shader->info.stage == MESA_SHADER_COMPUTE ||
+                 shader->info.stage == MESA_SHADER_FRAGMENT) &&
                 instr->type == nir_instr_type_intrinsic &&
                 nir_instr_as_intrinsic(instr)->intrinsic ==
                    nir_intrinsic_bindless_image_store)
@@ -787,7 +788,8 @@ g17p_storage_handle_offset(const nir_intrinsic_instr *intr,
 bool
 agx_nir_lower_g17p_bindless_storage(nir_shader *shader)
 {
-   if (shader->info.stage != MESA_SHADER_COMPUTE)
+   if (shader->info.stage != MESA_SHADER_COMPUTE &&
+       shader->info.stage != MESA_SHADER_FRAGMENT)
       return false;
    bool progress = false;
    nir_foreach_function_impl(impl, shader) {
@@ -807,7 +809,9 @@ agx_nir_lower_g17p_bindless_storage(nir_shader *shader)
                 (format != PIPE_FORMAT_R8_UNORM &&
                  format != PIPE_FORMAT_R8G8B8A8_UNORM &&
                  format != PIPE_FORMAT_R10G10B10A2_UNORM &&
-                 format != PIPE_FORMAT_R16G16_FLOAT) ||
+                 format != PIPE_FORMAT_R16G16_FLOAT &&
+                 !(format == PIPE_FORMAT_NONE &&
+                   nir_intrinsic_src_type(intr) == nir_type_float32)) ||
                 (nir_intrinsic_access(intr) & (ACCESS_COHERENT | ACCESS_VOLATILE)))
                continue;
             b.cursor = nir_before_instr(instr);
@@ -819,8 +823,9 @@ agx_nir_lower_g17p_bindless_storage(nir_shader *shader)
             nir_def *address = nir_iadd(&b, set, nir_u2u64(&b, offset));
             nir_def *index = nir_load_global_constant(&b, 1, 32, address,
                                                        .align_mul = 4);
-            nir_src_rewrite(&intr->src[0], nir_u2u64(&b, index));
-            intr->intrinsic = nir_intrinsic_image_store;
+            nir_rewrite_image_intrinsic(intr, nir_u2u64(&b, index),
+                                        nir_image_intrinsic_type_default);
+            nir_intrinsic_set_range_base(intr, 0);
             progress = true;
          }
       }
@@ -889,8 +894,9 @@ agx_nir_lower_g17p_indexed_storage(
       return false;
 
    nir_builder b = nir_builder_at(nir_before_instr(&store->instr));
-   nir_src_rewrite(&store->src[0], nir_imm_intN_t(&b, 1, 16));
-   store->intrinsic = nir_intrinsic_image_store;
+   nir_rewrite_image_intrinsic(store, nir_imm_intN_t(&b, 1, 16),
+                               nir_image_intrinsic_type_default);
+   nir_intrinsic_set_range_base(store, 0);
    nir_progress(true, nir_shader_get_entrypoint(shader),
                 nir_metadata_control_flow);
    NIR_PASS(_, shader, nir_opt_dce);
@@ -1150,8 +1156,9 @@ agx_nir_lower_g17p_sampled_storage(
 
    nir_builder b = nir_builder_create(nir_shader_get_entrypoint(shader));
    b.cursor = nir_before_instr(&store->instr);
-   nir_src_rewrite(&store->src[0], nir_imm_intN_t(&b, 1, 16));
-   store->intrinsic = nir_intrinsic_image_store;
+   nir_rewrite_image_intrinsic(store, nir_imm_intN_t(&b, 1, 16),
+                               nir_image_intrinsic_type_default);
+   nir_intrinsic_set_range_base(store, 0);
 
    NIR_PASS(_, shader, nir_opt_dce);
    if (g17p_has_bindless_texture_access(shader))

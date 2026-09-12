@@ -1227,15 +1227,18 @@ hk_g17p_graphics_uniform_ranges(
            s->info.stage != MESA_SHADER_VERTEX) ||
           !dev->sampled_images.bo || !dev->samplers.table.bo)
          return false;
-      const uint64_t pointers[2] = {
+      const uint64_t pointers[4] = {
          dev->sampled_images.bo->va->addr,
          dev->samplers.table.bo->va->addr,
+         0,
+         0xffff, /* Native image coordinate routing reads the clamp at u12. */
       };
-      const uint64_t pointers_va = hk_pool_upload(cmd, pointers, sizeof(pointers), 8);
+      const unsigned pointer_halfs = s->info.agx3_indexed_images_valid ? 16 : 8;
+      const uint64_t pointers_va = hk_pool_upload(cmd, pointers, pointer_halfs * 2, 8);
       if (!pointers_va)
          return false;
       ranges[count++] = (struct agx3_ioto_uniform_range){
-         .start_halfs = 0, .size_halfs = 8, .address = pointers_va,
+         .start_halfs = 0, .size_halfs = pointer_halfs, .address = pointers_va,
       };
    }
 

@@ -69,6 +69,13 @@ bool agx3_stage_copy_source(enum agx_isa_encoding enc, uint16_t dest,
                             uint16_t wait_mask,
                             uint8_t out[AGX3_STAGE_MAX_LENGTH], uint8_t *len);
 
+/* Source GPR and staging last-use flags are independent. DEPTHF's coverage
+ * producer uses the staging flag while preserving any live GPR source. */
+bool agx3_stage_copy_flags(enum agx_isa_encoding enc, uint16_t dest, uint16_t src,
+                            bool src_kill, bool staging_kill, uint8_t slot,
+                            uint16_t wait_mask,
+                            uint8_t out[AGX3_STAGE_MAX_LENGTH], uint8_t *len);
+
 /* staging[dest] <- imm32, 32-bit, taking scoreboard slot `slot`. */
 bool agx3_stage_ldimm(enum agx_isa_encoding enc, uint16_t dest, uint32_t imm,
                       bool kill, uint8_t slot, uint16_t wait_mask,

@@ -12,7 +12,7 @@ p.add_argument('--guard-output',type=Path,required=True)
 p.add_argument('--renderer',choices=['asahi','lavapipe'],default='asahi')
 p.add_argument('--capture',action='store_true')
 p.add_argument('--browser-flag',action='append',default=[])
-p.add_argument('--angle',choices=['gl','vulkan'],default='gl')
+p.add_argument('--angle',choices=['gl','gles','vulkan'],default='gl')
 p.add_argument('--ozone',choices=['wayland','x11'],default='wayland')
 p.add_argument('--capture-profile',type=Path)
 p.add_argument('--url',default='https://mdn.github.io/dom-examples/webgl-examples/tutorial/sample6/')
@@ -80,6 +80,22 @@ try:
         while time.monotonic()<until:check();time.sleep(.2)
         state=call(page,'Runtime.evaluate',{'expression':'JSON.stringify({url:location.href,title:document.title,ready:document.readyState,canvases:Array.from(document.querySelectorAll("canvas")).map(c=>({width:c.width,height:c.height}))})','returnByValue':True})
         (out/'page.json').write_text(json.dumps(state,indent=2)+'\n')
+        webgl=call(page,'Runtime.evaluate',{'expression':"""new Promise(resolve => requestAnimationFrame(() => {
+          resolve(Array.from(document.querySelectorAll('canvas')).map(c => {
+            const gl=c.getContext('webgl2') || c.getContext('webgl') || c.getContext('experimental-webgl');
+            if (!gl) return {context:false};
+            const ext=gl.getExtension('WEBGL_debug_renderer_info');
+            const width=Math.min(64,gl.drawingBufferWidth),height=Math.min(64,gl.drawingBufferHeight);
+            const pixels=new Uint8Array(width*height*4);
+            gl.readPixels(Math.max(0,(gl.drawingBufferWidth-width)>>1),Math.max(0,(gl.drawingBufferHeight-height)>>1),width,height,gl.RGBA,gl.UNSIGNED_BYTE,pixels);
+            let nonblack=0,hash=2166136261;
+            for(let i=0;i<pixels.length;i++){hash=Math.imul(hash^pixels[i],16777619)>>>0;if(i%4!==3 && pixels[i]) nonblack++;}
+            return {context:true,lost:gl.isContextLost(),version:gl.getParameter(gl.VERSION),
+              renderer:ext?gl.getParameter(ext.UNMASKED_RENDERER_WEBGL):gl.getParameter(gl.RENDERER),
+              error:gl.getError(),width,height,nonblack,hash};
+          }));
+        }))""",'returnByValue':True,'awaitPromise':True})
+        (out/'webgl.json').write_text(json.dumps(webgl,indent=2)+'\n')
         shot=call(page,'Page.captureScreenshot',{'format':'png'});(out/'page.png').write_bytes(base64.b64decode(shot['data']))
         nodes={f.resolve() for f in Path('/sys/kernel/debug/dri').glob('*/m4_scanout')};assert len(nodes)==1
         (out/'desktop.m4fb').write_bytes(nodes.pop().read_bytes())
