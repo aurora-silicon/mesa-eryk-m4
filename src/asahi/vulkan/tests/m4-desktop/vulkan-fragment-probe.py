@@ -20,6 +20,8 @@ def main():
     parser.add_argument('source', type=Path)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--samples', type=int, choices=[1, 2, 4], default=1)
+    parser.add_argument('--allow-unadvertised-samples', action='store_true',
+        help='Diagnostic only: attempt the requested sample count even when unadvertised')
     parser.add_argument('--rgba', type=int, nargs=4, required=True)
     parser.add_argument('--fixture', type=Path)
     parser.add_argument('--workspace-root', type=Path,
@@ -52,6 +54,13 @@ def main():
         raise RuntimeError('Fixture oracle changed; update adapter')
     source = source.replace(old, 'static const uint8_t expected[4] = {' +
                             ', '.join(map(str, args.rgba)) + '};')
+    if args.allow_unadvertised_samples:
+        check = '      die("requested color sample count is not advertised");'
+        if source.count(check) != 1:
+            raise RuntimeError('Sample capability check changed; update adapter')
+        source = source.replace(check,
+            '      fprintf(stderr, "DIAGNOSTIC: sample count is unadvertised; '
+            'this is not Vulkan capability qualification\\n");')
     if args.record_command_buffer:
         marker = '   const bool record_only ='
         if source.count(marker) != 1:
@@ -99,6 +108,7 @@ def main():
              for f in output.iterdir() if f.is_file()}
     manifest = {
         'samples': args.samples, 'rgba': args.rgba,
+        'allow_unadvertised_samples': args.allow_unadvertised_samples,
         'host_compile_only': args.host_compile_only,
         'record_command_buffer': args.record_command_buffer,
         'fixture_sha256': hashlib.sha256(fixture.read_bytes()).hexdigest(),
