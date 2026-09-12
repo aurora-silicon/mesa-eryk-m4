@@ -34,7 +34,7 @@ int main(int argc, char **argv)
  for(int frame=0;frame<4;frame++) {
   glClearColor(frame&1,!(frame&1),0,1);glClear(GL_COLOR_BUFFER_BIT);
   unsigned char pixel[4];glReadPixels(32,32,1,1,GL_RGBA,GL_UNSIGNED_BYTE,pixel);
-  CHECK(glGetError()==GL_NO_ERROR); CHECK(pixel[0]==((frame&1)?255:0) && pixel[1]==((frame&1)?0:255));
+  CHECK(glGetError()==GL_NO_ERROR); if(pixel[0]!=((frame&1)?255:0) || pixel[1]!=((frame&1)?0:255)) { fprintf(stderr,"FAIL: frame=%d pixel=%u,%u,%u,%u\n",frame,pixel[0],pixel[1],pixel[2],pixel[3]);exit(1); }
   CHECK(eglSwapBuffers(d,es));
   struct gbm_bo *bo=gbm_surface_lock_front_buffer(s); CHECK(bo && bo!=previous);
   int dma=gbm_bo_get_fd(bo);CHECK(dma>=0);close(dma);

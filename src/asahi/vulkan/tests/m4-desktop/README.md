@@ -1812,3 +1812,20 @@ lock/release calls unchanged. It logs process/surface identity, timing and resul
 without consuming EGL error state or adding synchronization. Build as a shared
 library (`cc -shared -fPIC -O2 -Wall -Wextra ... -ldl`); supply its absolute target
 path with the session probe's `--egl-trace` only during a bounded diagnosis.
+
+The permanent Zink display-node correction is in Gallium's DRM target and kmsro:
+when Zink is explicitly selected for a node without rendering capability, select
+a compatible render node through kmsro and retain Zink (do not choose a different
+native Gallium driver). The normal `MESA_LOADER_DRIVER_OVERRIDE=zink` remains
+required by this installation's Hyprland/GL loader. Clearing it globally broke
+the greeter and was reverted; the earlier cleared-override probe is diagnostic.
+Native GNOME run `20260912T212138983849Z-gnome-native-zink-kmsro-first-frame`
+shows the desktop/top bar without GBM presentation errors, peak 58.25 C.
+The runner now waits for first scanout instead of treating cold-start ENODATA
+as a rendering failure. `normal-login-check.py` likewise waits for compositor
+IPC sockets after observing the process.
+
+`scanout-image.py --allow-kms-allocation` explicitly accepts display-allocated
+buffers in addition to GPU-exported scanout. Its output records the allocation
+origin. Kmsro can import a display allocation into the GPU and render directly
+into it; the origin flag alone proves neither GPU nor CPU rendering.

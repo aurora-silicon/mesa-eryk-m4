@@ -6,7 +6,7 @@ Normal boot configuration stays intact. Restores SDDM and its remembered session
 on exit; retains native scanout, maps and journal. Never an unattended desktop
 stress runner. Requires an existing watchdog/thermal experiment guard.
 """
-import argparse, hashlib, importlib.util, json, os, signal, subprocess, time, shutil, shlex
+import argparse, errno, hashlib, importlib.util, json, os, signal, subprocess, time, shutil, shlex
 from pathlib import Path
 p=argparse.ArgumentParser(description=__doc__)
 p.add_argument('--guard-output',type=Path,required=True)
@@ -51,7 +51,6 @@ start=time.time();result=dict(session=a.session,boot=boot,passed=False,
 try:
  env={'VK_DRIVER_FILES':'/opt/asahi-m4-port/asahi_icd.json' if a.renderer=='asahi' else '/usr/share/vulkan/icd.d/lvp_icd.json',
       'LIBGL_ALWAYS_SOFTWARE':'0' if a.renderer=='asahi' else '1',
-      'MESA_LOADER_DRIVER_OVERRIDE':'',
       'MESA_SHADER_CACHE_DIR':str(scratch/'mesa-cache'),'AGX_COMPILER_CAPTURE_DIR':str(scratch/'compiler')}
  if a.egl_trace:
   assert a.egl_trace.is_absolute() and a.egl_trace.is_file()
@@ -82,7 +81,15 @@ try:
   until=time.monotonic()+stamp if stamp==2 else time.monotonic()+max(0,a.seconds-2)
   while time.monotonic()<until:check();time.sleep(.25)
   nodes={p.resolve() for p in Path('/sys/kernel/debug/dri').glob('*/m4_scanout')};assert len(nodes)==1
-  (out/f'desktop-{stamp}.m4fb').write_bytes(nodes.pop().read_bytes())
+  node=nodes.pop();deadline=time.monotonic()+8
+  while True:
+   check()
+   try:
+    snapshot=node.read_bytes();break
+   except OSError as error:
+    if error.errno!=errno.ENODATA or time.monotonic()>=deadline:raise
+    time.sleep(.1)
+  (out/f'desktop-{stamp}.m4fb').write_bytes(snapshot)
   for name,paths in found.items():
    for path in paths:
     maps=(path/'maps').read_text();(out/f'{name}-{path.name}-maps.txt').write_text(maps)
