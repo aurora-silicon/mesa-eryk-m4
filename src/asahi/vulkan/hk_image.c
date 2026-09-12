@@ -493,9 +493,12 @@ hk_GetPhysicalDeviceImageFormatProperties2(
             !(pImageFormatInfo->usage & VK_IMAGE_USAGE_STORAGE_BIT) &&
             native_rt0;
 
+         const bool native_depth_stencil =
+            vk_format_is_depth_or_stencil(pImageFormatInfo->format) &&
+            !(pImageFormatInfo->usage & VK_IMAGE_USAGE_STORAGE_BIT);
          sampleCounts = VK_SAMPLE_COUNT_1_BIT |
-                        (bounded_color ? VK_SAMPLE_COUNT_2_BIT |
-                                         VK_SAMPLE_COUNT_4_BIT : 0);
+                        ((bounded_color || native_depth_stencil)
+                           ? VK_SAMPLE_COUNT_2_BIT | VK_SAMPLE_COUNT_4_BIT : 0);
       }
    }
 

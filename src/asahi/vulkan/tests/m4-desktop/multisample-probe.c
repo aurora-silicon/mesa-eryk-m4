@@ -7,6 +7,7 @@
 #include <GL/gl.h>
 #include <GL/glext.h>
 #include <math.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -41,8 +42,13 @@ int main(int argc, char **argv) {
   const char *depth_name = argc > 3 ? argv[3] : "none";
   GLenum depth_format = !strcmp(depth_name, "depth16") ? GL_DEPTH_COMPONENT16 :
                         !strcmp(depth_name, "depth24") ? GL_DEPTH_COMPONENT24 :
-                        !strcmp(depth_name, "depth32f") ? GL_DEPTH_COMPONENT32F : 0;
+                        !strcmp(depth_name, "depth32f") ? GL_DEPTH_COMPONENT32F :
+                        !strcmp(depth_name, "depth32fs8") ? GL_DEPTH32F_STENCIL8 :
+                        !strcmp(depth_name, "depth24s8") ? GL_DEPTH24_STENCIL8 : 0;
+  bool stencil = depth_format == GL_DEPTH32F_STENCIL8 || depth_format == GL_DEPTH24_STENCIL8;
   CHECK(depth_format || !strcmp(depth_name, "none"));
+  bool depth_bias = getenv("M4_MSAA_DEPTH_BIAS") != NULL;
+  CHECK(!depth_bias || depth_format == GL_DEPTH_COMPONENT16);
   EGLDisplay d = eglGetPlatformDisplay(EGL_PLATFORM_SURFACELESS_MESA, 0, 0);
   CHECK(eglInitialize(d, 0, 0));
   CHECK(eglBindAPI(EGL_OPENGL_API));
@@ -58,6 +64,7 @@ int main(int argc, char **argv) {
   CHECK(eglMakeCurrent(d, EGL_NO_SURFACE, EGL_NO_SURFACE, c));
   const char *renderer = (const char *)glGetString(GL_RENDERER);
   printf("Renderer: %s samples=%u format=%s depth=%s\n", renderer, samples, format, depth_name);
+  printf("Integer depth-bias test: %s\n", depth_bias ? "enabled" : "disabled");
   fflush(stdout);
   CHECK((strstr(renderer, "zink") && strstr(renderer, "M4")) ||
         (getenv("M4_TEST_LLVMPIPE") && strstr(renderer, "llvmpipe")));
@@ -121,12 +128,14 @@ int main(int argc, char **argv) {
     GLint actual;
     glGetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_SAMPLES, &actual);
     CHECK(actual == (samples == 1 ? 0 : (int)samples));
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth_rb);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, stencil ? GL_DEPTH_STENCIL_ATTACHMENT : GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth_rb);
     CHECK(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
     glClearDepth(1);
-    glClear(GL_DEPTH_BUFFER_BIT);
+    glClearStencil(0);
+    glClear(GL_DEPTH_BUFFER_BIT | (stencil ? GL_STENCIL_BUFFER_BIT : 0));
+    if (stencil) glEnable(GL_STENCIL_TEST);
   }
   glClearColor(0, 0, 0, 1);
   glClear(GL_COLOR_BUFFER_BIT);
@@ -137,12 +146,29 @@ int main(int argc, char **argv) {
   for (unsigned step = 0; step <= samples; ++step) {
     glBindFramebuffer(GL_FRAMEBUFFER, fb[0]);
     if (step) {
+      if (stencil) {
+        glEnable(GL_DEPTH_TEST);
+        glStencilFunc(GL_ALWAYS, 1, 0xff);
+        glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+      }
+      if (depth_bias) {
+        glEnable(GL_POLYGON_OFFSET_FILL);
+        glPolygonOffset(0, 32768);
+      }
       glUniform1f(z_location, 0);
       glUniform4f(color_location, 1, 0, 0, 1);
       glSampleMaski(0, 1u << (step - 1));
       glDrawArrays(GL_TRIANGLES, 0, 3);
     }
     if (depth_format) {
+      glDisable(GL_POLYGON_OFFSET_FILL);
+      if (stencil) {
+        // Depth cannot conceal a broken stencil test: reject red solely by
+        // stencil while drawing green over the remaining samples.
+        glDisable(GL_DEPTH_TEST);
+        glStencilFunc(GL_EQUAL, 0, 0xff);
+        glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+      }
       /* Farther green must fail only samples already written by nearer red.
        * Each readback separates draws, exercising depth store and reload. */
       glUniform1f(z_location, .5f);
@@ -163,6 +189,9 @@ int main(int argc, char **argv) {
     unsigned bad = 0;
     int red = getenv("M4_MSAA_ALL_SAMPLES") ? (step ? 255 : 0)
                                             : lroundf(255.f * step / samples);
+    // 32768 D16 units push nominally nearer red behind the green plane.
+    // A floating-point bias formula would leave red nearer and fail this.
+    if (depth_bias) red = 0;
     int green = depth_format ? 255 - red : 0;
     for (unsigned i = 0; i < 64 * 64; ++i) {
       if (abs(px[4 * i] - red) > 1 || abs(px[4 * i + 1] - green) > 1 || px[4 * i + 2] ||

@@ -1645,3 +1645,11 @@ hash, preserves the current library, installs atomically, and checks the result.
 The same client checks apply; `--allow-live` permits compatible userspace-only
 updates while existing processes retain their old mappings. Source-library
 installation and restoration are mutually exclusive.
+
+Set `M4_MSAA_DEPTH_BIAS=1` with `depth16` to verify the integer depth-bias
+formula: 32768 units must move red behind green. The ordinary float-depth
+quantum would leave red in front and fail the full-image oracle.
+
+`depth32fs8` and `depth24s8` select combined depth/stencil attachments.
+Red writes stencil1 per sample; green requires stencil0 with depth testing
+disabled, so successful depth rejection cannot conceal a broken stencil test.
