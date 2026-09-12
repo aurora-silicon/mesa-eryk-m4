@@ -413,7 +413,9 @@ agx_nir_lower_g17p_indexed_samplers(nir_shader *shader)
                return false;
             if (!fetch && (!g17p_sample_shape(tex) ||
                            (tex->op != nir_texop_tex && tex->op != nir_texop_txl &&
-                            tex->op != nir_texop_tg4))) {
+                            tex->op != nir_texop_tg4 &&
+                            !(tex->op == nir_texop_txb && !tex->is_array &&
+                              !tex->is_shadow && tex->sampler_dim == GLSL_SAMPLER_DIM_2D)))) {
                if (getenv("AGX_NATIVE_RESOURCE_DIAGNOSTICS")) {
                   fprintf(stderr, "Native indexed texture shape refused: op=%u dim=%u flags=%u coords=%u sources=%u\n",
                           tex->op, tex->sampler_dim, tex->backend_flags,

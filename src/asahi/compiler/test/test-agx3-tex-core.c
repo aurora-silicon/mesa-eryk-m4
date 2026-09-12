@@ -1069,6 +1069,26 @@ test_register_lod(void)
 }
 
 static int
+test_m4_register_bias(void)
+{
+   /* AIR-NT 32023.917 G16G: texture2d.sample(..., bias(uv.x + u[0])).
+    * The half packing matches explicit LOD; SMP selects implicit+bias. */
+   const uint8_t expected[] = {0x05,0x80,0x0c,0xb8,0xb0,0,0x04,0,1,0,0x10,0,1,0};
+   struct agx3_tex_sample_desc d = {.dest=0,.coord=0,.width=AGX3_TEX_W32,
+      .mask=15,.lod=AGX3_TEX_LOD_BIAS_REGISTER,.slot=1,.wait_mask=1,
+      .coord_kill=true,.final=true};
+   uint8_t bytes[AGX3_TEX_MAX_LENGTH], len;
+   CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B,&d,bytes,&len));
+   CHECK(len == sizeof(expected) && !memcmp(bytes,expected,len));
+   CHECK(!agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3C,&d,bytes,&len));
+   d.array=true;
+   CHECK(!agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B,&d,bytes,&len));
+   d.array=false; d.shadow=true;
+   CHECK(!agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B,&d,bytes,&len));
+   return 0;
+}
+
+static int
 test_register_array_layer(void)
 {
    /* Native direct/uniform sample: discarded r2 publishes on slot 1. */
@@ -1284,7 +1304,7 @@ main(void)
 {
    CHECK(test_native_multisample_fetch() == 0);
    CHECK(test_multisample_aux() == 0);
-   if (test_m4_pointer_write_witnesses() || test_m4_gather_witnesses() || test_m4_integer_fetch_lod() || test_m4_shadow_witnesses() || test_sample_helper_retention() || test_staging_source_banks() || test_register_lod() || test_register_array_layer() ||
+   if (test_m4_register_bias() || test_m4_pointer_write_witnesses() || test_m4_gather_witnesses() || test_m4_integer_fetch_lod() || test_m4_shadow_witnesses() || test_sample_helper_retention() || test_staging_source_banks() || test_register_lod() || test_register_array_layer() ||
        test_staging_source_lifetime() || test_exact_witnesses() ||
        test_supported_axes() || test_fail_closed() ||
        test_sample_witnesses() || test_copy_witnesses() ||

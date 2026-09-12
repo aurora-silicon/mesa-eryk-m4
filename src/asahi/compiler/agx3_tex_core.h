@@ -115,12 +115,14 @@ bool agx3_tex_decode_fetch(enum agx_isa_encoding enc, const void *instruction,
  *  - AGX3_TEX_LOD_REGISTER: G17P fragment per-lane half-float level, packed
  *    by PACK_SMPIR and selected with f139=4. The f156 marker in the native
  *    terminal specimens is independent of LOD mode.
+ *  - AGX3_TEX_LOD_BIAS_REGISTER: M4 2D fragment implicit LOD plus a
+ *    shader bias, using the same PACK_SMPIR half operand with f139=3.
  *
  * G17P also supports the witnessed 2D-array implicit-LOD form with a
  * register-valued layer packed into the same auxiliary operand bank.
  * M4 runtime tests qualify this layer with immediate explicit levels too.
  * Register-valued LOD plus an array layer remains unsupported.
- * Everything else about the sampler family -- other dimensions, bias,
+ * Everything else about the sampler family -- other dimensions,
  * gradients, min-LOD, offsets,
  * gather -- remains a deliberate refusal: those axes need additional operand
  * marshalling and qualification. M4 2D/array shadow comparisons are admitted
@@ -130,6 +132,7 @@ enum agx3_tex_lod {
    AGX3_TEX_LOD_AUTO,
    AGX3_TEX_LOD_LEVEL,
    AGX3_TEX_LOD_REGISTER, /* PACK_SMPIR publishes the per-lane level. */
+   AGX3_TEX_LOD_BIAS_REGISTER, /* Same half operand bank, implicit LOD + bias. */
 };
 
 struct agx3_tex_sample_desc {

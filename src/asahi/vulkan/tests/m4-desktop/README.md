@@ -1702,3 +1702,11 @@ sample resolves/reloads against linear averaging followed by sRGB encoding.
 The same oracle supports 1x/2x and explicit llvmpipe reference execution.
 `vulkan-fragment-probe.py --format srgb8` selects an sRGB attachment while
 retaining the supplied byte oracle; its host-shim mode never submits to GPU.
+
+`mip-bias-probe.c` tests implicit derivatives plus varying positive/negative
+shader mip bias and a separate sampler bias. Seven constant-color mip levels
+provide an exact oracle, including fractional trilinear interpolation across
+six 64x64 readbacks. Build with `-lEGL -lGL -lm`; run J713 only through the GPU
+guard and `run-m4-gl.py`. Explicit `M4_TEST_LLVMPIPE=1` enables the reference.
+The Vulkan capture uses the same Zink build over lavapipe; rebinding, omitted
+pipeline cache and removed unsupported features are recorded replay adaptations.

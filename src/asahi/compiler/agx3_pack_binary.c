@@ -1008,6 +1008,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
                          bool retain_helpers)
 {
    const bool explicit_lod = I->lod_mode == AGX_LOD_MODE_LOD_MIN;
+   const bool bias = I->lod_mode == AGX_LOD_MODE_AUTO_LOD_BIAS;
    const bool immediate_lod = explicit_lod &&
                               I->src[1].type == AGX_INDEX_IMMEDIATE;
    const float immediate_level = immediate_lod ?
@@ -1027,9 +1028,9 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
        agx3_tex_plain_reg(I->src[5]) && I->src[5].size == AGX_SIZE_32 &&
        agx_channels(I->src[5]) == 1 && !(I->src[5].value & 1) &&
        I->src[5].value < 256) : (gather_offset || agx_is_null(I->src[5]));
-   const bool valid_lod = explicit_lod ?
+   const bool valid_lod = (explicit_lod || bias) ?
       (enc == AGX_ISA_ENCODING_AGX3B &&
-       (valid_immediate_lod ||
+       ((explicit_lod && valid_immediate_lod) ||
         (agx3_tex_plain_reg(I->src[1]) && I->src[1].size == AGX_SIZE_16 &&
          agx_channels(I->src[1]) == 1))) :
       (I->lod_mode == AGX_LOD_MODE_AUTO_LOD && agx3_tex_imm(I->src[1], 0));
@@ -1039,7 +1040,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
    /* Fixed-bank samples copy their coordinates before SMP. COPY and
     * PACK_SMPIR accept the full 256-half source bank; the last component must
     * fit. Only unstaged 2D samples retain SMP's narrower coordinate bound. */
-   const bool fixed_coord = explicit_lod || array || cube || shadow;
+   const bool fixed_coord = explicit_lod || bias || array || cube || shadow;
    const unsigned coord_components = (array || cube) ? 3 : 2;
    const unsigned max_coord = fixed_coord ? 256 - 2 * coord_components : 60;
    if (I->nr_dests != 1 || I->nr_srcs != 6 ||
@@ -1062,7 +1063,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
          I->src[3].size != AGX_SIZE_64 || I->src[4].size != AGX_SIZE_64 ||
          agx_channels(I->src[3]) != 1 || agx_channels(I->src[4]) != 1 ||
          (I->src[3].value & 1) || (I->src[4].value & 1))) ||
-       !valid_compare ||
+       !valid_compare || (bias && (array || cube || shadow || gather)) ||
        (I->dim != AGX_DIM_2D && I->dim != AGX_DIM_2D_ARRAY && !cube) ||
        (array && (enc != AGX_ISA_ENCODING_AGX3B ||
                   (explicit_lod && !immediate_lod))) ||
@@ -1093,7 +1094,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
    uint8_t bytes[AGX3_TEX_MAX_LENGTH];
    uint8_t len = 0;
 
-   if (explicit_lod && !immediate_lod) {
+   if ((explicit_lod && !immediate_lod) || bias) {
       if (!agx3_tex_stage_lod(enc, I->src[1].value, stage_slot, wait_mask,
                              I->src[1].cache, I->src[1].discard,
                              bytes, &len) ||
@@ -1145,7 +1146,8 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
       .sampler_value = immediate ? 0 : I->src[4].value,
       .texture_kill = !immediate && I->src[3].kill,
       .sampler_kill = !immediate && I->src[4].kill,
-      .lod = immediate_lod ? AGX3_TEX_LOD_LEVEL :
+      .lod = bias ? AGX3_TEX_LOD_BIAS_REGISTER :
+             immediate_lod ? AGX3_TEX_LOD_LEVEL :
              explicit_lod ? AGX3_TEX_LOD_REGISTER : AGX3_TEX_LOD_AUTO,
       .lod_x64 = immediate_lod ? (uint16_t)immediate_level_x64 : 0,
       .array = array,
@@ -4515,6 +4517,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             ctx->agx3_staging_halfs =
                MAX2(ctx->agx3_staging_halfs,
                     (I->shadow || I->lod_mode == AGX_LOD_MODE_LOD_MIN ||
+                     I->lod_mode == AGX_LOD_MODE_AUTO_LOD_BIAS ||
                      I->dim == AGX_DIM_2D_ARRAY || I->dim == AGX_DIM_CUBE)
                        ? 8 : I->src[0].value + 4);
             continue;
