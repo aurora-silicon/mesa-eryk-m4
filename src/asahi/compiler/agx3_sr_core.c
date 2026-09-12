@@ -64,6 +64,9 @@ agx3_sr_encode(enum agx_isa_encoding enc, const struct agx3_sr_desc *d,
 {
    if (d == NULL || d->dest >= 256)
       return false;
+   if (d->original_coverage &&
+       (enc != AGX_ISA_ENCODING_AGX3B || d->sr != 39 || d->width != AGX3_SR_W16))
+      return false;
    if (!agx3_sr_witnessed(d->sr, d->width))
       return false;
    /* 32-bit reads write a register pair; every witness is 2-aligned. */
@@ -84,13 +87,14 @@ agx3_sr_encode(enum agx_isa_encoding enc, const struct agx3_sr_desc *d,
       base[nbase++] = (struct agx3_field_kv)KV(29, 144);
    }
 
-   struct agx3_field_kv ov[13];
+   struct agx3_field_kv ov[14];
    unsigned n = 0;
    ov[n++] = (struct agx3_field_kv)KV(2, d->dest);
    ov[n++] = (struct agx3_field_kv)KV(10, d->width);
    ov[n++] = (struct agx3_field_kv)KV(24, d->width);
    ov[n++] = (struct agx3_field_kv)KV(21, d->sr);
    ov[n++] = (struct agx3_field_kv)KV(12, d->slot);
+   ov[n++] = (struct agx3_field_kv)KV(48, d->original_coverage);
 
    /* Wait mask -> f30+i. */
    for (unsigned i = 0; i < 8; ++i) {
@@ -101,7 +105,8 @@ agx3_sr_encode(enum agx_isa_encoding enc, const struct agx3_sr_desc *d,
    /* The compact form's selector requires every wait bit zero and a narrow
     * destination field; the composer refuses it otherwise and the long form
     * carries the same operands. */
-   if (agx3_bind_compose(enc, "rld", 0, base, nbase, ov, n, out, len))
+   if (!d->original_coverage &&
+       agx3_bind_compose(enc, "rld", 0, base, nbase, ov, n, out, len))
       return true;
    return agx3_bind_compose(enc, "rld", 1, base, nbase, ov, n, out, len);
 }

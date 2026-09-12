@@ -61,6 +61,11 @@ bool agx3_tile_store_mask(enum agx_isa_encoding enc, uint16_t data,
                          enum agx3_tile_width width, uint8_t chan_mask,
                          uint16_t tile_off, uint8_t sample_mask,
                          uint16_t wait_mask, uint8_t out[AGX3_TILE_MAX_LENGTH], uint8_t *len);
+bool agx3_tile_store_register_mask(enum agx_isa_encoding enc, uint16_t data,
+                             enum agx3_tile_width width, uint8_t chan_mask,
+                             uint16_t tile_off, uint8_t mask_half, bool mask_kill,
+                             uint16_t wait_mask,
+                             uint8_t out[AGX3_TILE_MAX_LENGTH], uint8_t *len);
 bool agx3_tile_load_mask(enum agx_isa_encoding enc, uint16_t dest,
                         enum agx3_tile_width width, uint8_t slot, uint8_t chan_mask,
                         uint16_t tile_off, uint8_t sample_mask, uint16_t wait_mask,

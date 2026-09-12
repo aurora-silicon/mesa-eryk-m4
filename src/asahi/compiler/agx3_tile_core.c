@@ -51,10 +51,10 @@ wait_overrides(enum agx_isa_encoding enc, uint16_t wait_mask,
    return n;
 }
 
-bool
-agx3_tile_store_mask(enum agx_isa_encoding enc, uint16_t data,
+static bool
+store_sample(enum agx_isa_encoding enc, uint16_t data,
                 enum agx3_tile_width width, uint8_t chan_mask,
-                uint16_t tile_off, uint8_t sample_mask,
+                uint16_t tile_off, uint8_t sample_mask, bool reg_mask, bool mask_kill,
                 uint16_t wait_mask, uint8_t out[AGX3_TILE_MAX_LENGTH],
                 uint8_t *len)
 {
@@ -63,7 +63,8 @@ agx3_tile_store_mask(enum agx_isa_encoding enc, uint16_t data,
    memset(out, 0, AGX3_TILE_MAX_LENGTH);
    *len = 0;
 
-   if (!sample_mask || (!is_b(enc) && sample_mask != 1) ||
+   if ((reg_mask ? !is_b(enc) || sample_mask >= 128 : !sample_mask) ||
+       (!is_b(enc) && sample_mask != 1) ||
        !common_ok(data, width, chan_mask, AGX3_TILE_COV_1X, enc, wait_mask, tile_off))
       return false;
    const struct agx3_field_kv base_b[] = {KV(9, 2),  KV(35, 9), KV(37, 7),
@@ -80,8 +81,12 @@ agx3_tile_store_mask(enum agx_isa_encoding enc, uint16_t data,
    ov[n++] = (struct agx3_field_kv)KV(10, width);
    ov[n++] = (struct agx3_field_kv)KV(26, chan_mask);
    ov[n++] = (struct agx3_field_kv)KV(57, tile_off);
-   ov[n++] = (struct agx3_field_kv)KV(51, AGX3_TILE_COV_1X);
-   ov[n++] = (struct agx3_field_kv)KV(43, sample_mask);
+   ov[n++] = (struct agx3_field_kv)KV(51, reg_mask ? 2 : 1);
+   ov[n++] = (struct agx3_field_kv)KV(reg_mask ? 44 : 43, sample_mask);
+   if (reg_mask) {
+      ov[n++] = (struct agx3_field_kv)KV(43, 0);
+      ov[n++] = (struct agx3_field_kv)KV(55, mask_kill);
+   }
    n = wait_overrides(enc, wait_mask, ov, n);
    if (!agx3_bind_compose(enc, "lstcol", 0, is_b(enc) ? base_b : base_c,
                           is_b(enc) ? 8 : 9, ov, n, out, len)) {
@@ -90,6 +95,28 @@ agx3_tile_store_mask(enum agx_isa_encoding enc, uint16_t data,
       return false;
    }
    return true;
+}
+
+bool
+agx3_tile_store_mask(enum agx_isa_encoding enc, uint16_t data,
+                    enum agx3_tile_width width, uint8_t chan_mask,
+                    uint16_t tile_off, uint8_t sample_mask,
+                    uint16_t wait_mask, uint8_t out[AGX3_TILE_MAX_LENGTH],
+                    uint8_t *len)
+{
+   return store_sample(enc, data, width, chan_mask, tile_off, sample_mask,
+                       false, false, wait_mask, out, len);
+}
+
+bool
+agx3_tile_store_register_mask(enum agx_isa_encoding enc, uint16_t data,
+                             enum agx3_tile_width width, uint8_t chan_mask,
+                             uint16_t tile_off, uint8_t mask_half, bool mask_kill,
+                             uint16_t wait_mask,
+                             uint8_t out[AGX3_TILE_MAX_LENGTH], uint8_t *len)
+{
+   return store_sample(enc, data, width, chan_mask, tile_off, mask_half,
+                       true, mask_kill, wait_mask, out, len);
 }
 
 bool

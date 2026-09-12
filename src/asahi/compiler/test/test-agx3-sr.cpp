@@ -164,3 +164,28 @@ TEST(AGX3SrCore, FailsClosed)
    EXPECT_FALSE(agx3_sr_encode(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
    EXPECT_TRUE(agx3_sr_encode(AGX_ISA_ENCODING_AGX3C, &d, out, &len));
 }
+
+TEST(AGX3SrCore, NativeOriginalCoverage)
+{
+   /* G16G write-mask4 reads SR39 before MOVMSK with f48=1. The later
+    * updated coverage read uses the compact form without this flag. */
+   const uint8_t original[] = {0x04,0xc2,0x11,0x06,1,0,0,0};
+   const uint8_t current[] = {0x04,0xc2,0x10,0x06};
+   struct agx3_sr_desc d = {};
+   d.width = AGX3_SR_W16;
+   d.sr = 39;
+   d.slot = 1;
+   d.original_coverage = true;
+   uint8_t out[AGX3_SR_MAX_LENGTH], len;
+   ASSERT_TRUE(agx3_sr_encode(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
+   ASSERT_EQ(len, sizeof(original));
+   EXPECT_EQ(0, memcmp(out, original, len));
+   EXPECT_FALSE(agx3_sr_encode(AGX_ISA_ENCODING_AGX3C, &d, out, &len));
+   d.original_coverage = false;
+   ASSERT_TRUE(agx3_sr_encode(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
+   ASSERT_EQ(len, sizeof(current));
+   EXPECT_EQ(0, memcmp(out, current, len));
+   d.original_coverage = true;
+   d.sr = 2;
+   EXPECT_FALSE(agx3_sr_encode(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
+}

@@ -66,6 +66,23 @@ int main(void){
          } else pass++;
       }
    }
+   /* G16G native write-mask4: LSTCOL at182 selects SR39 in half2. */
+   {
+      const uint8_t native[] = {0xe7,0x26,0x54,0,0,0,2,0x4e,8,0,0,8};
+      uint8_t out[AGX3_TILE_MAX_LENGTH], len;
+      if (!agx3_tile_store_register_mask(AGX_ISA_ENCODING_AGX3B, 0,
+              AGX3_TILE_W8, 15, 0, 2, true, 2, out, &len) ||
+          len != sizeof(native) || memcmp(out, native, len)) {
+         fprintf(stderr, "native register sample mask mismatch: ");
+         for (unsigned i = 0; i < len; i++) fprintf(stderr, "%02x", out[i]);
+         fprintf(stderr, " len=%u\n", len);
+         fail++;
+      } else pass++;
+      if (agx3_tile_store_register_mask(AGX_ISA_ENCODING_AGX3B, 0,
+              AGX3_TILE_W8, 15, 0, 128, true, 2, out, &len) || len) fail++; else pass++;
+      if (agx3_tile_store_register_mask(AGX_ISA_ENCODING_AGX3C, 0,
+              AGX3_TILE_W8, 15, 0, 2, true, 2, out, &len) || len) fail++; else pass++;
+   }
    if(fail){ fprintf(stderr,"agx3_tile_core: %u of %zu failed\n",fail,tile_vec_count); return 1; }
    printf("agx3_tile_core: all %u tile ops reproduced\n",pass); return 0;
 }
