@@ -1587,3 +1587,8 @@ transform feedback, and the fixture does not enable that device feature.
 A compilation pass is not valid Vulkan application or transform-feedback
 execution qualification. It reproduced an unaligned uniform-pointer rejection
 and a double-free on failure; both were fixed before the local compile passed.
+
+Add `--record-command-buffer` with `--run-host-shim` to also record a single
+draw, still without any submission. This compiles helper shaders generated at
+draw time, such as the XFB passthrough geometry shader. A command-buffer error
+is a failed diagnostic, even if the initial pipeline compilation succeeded.

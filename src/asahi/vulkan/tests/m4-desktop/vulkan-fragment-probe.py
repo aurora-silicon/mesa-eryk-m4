@@ -28,10 +28,14 @@ def main():
     parser.add_argument('--host-compile-only', action='store_true')
     parser.add_argument('--run-host-shim', action='store_true', help=
         'Build and run the host compile-only probe under the M4 no-op DRM shim')
+    parser.add_argument('--record-command-buffer', action='store_true', help=
+        'With --run-host-shim, also record one draw without submitting it')
     parser.add_argument('--sysroot', type=Path, default=Path(
         '/home/council/omarchy/graphics-build/sysroot'))
     args = parser.parse_args()
     args.host_compile_only |= args.run_host_shim
+    if args.record_command_buffer and not args.run_host_shim:
+        parser.error('--record-command-buffer requires --run-host-shim')
     for path in (args.source, args.vertex):
         if path is not None and not path.is_file():
             parser.error(f'Input does not exist: {path}')
@@ -48,7 +52,14 @@ def main():
         raise RuntimeError('Fixture oracle changed; update adapter')
     source = source.replace(old, 'static const uint8_t expected[4] = {' +
                             ', '.join(map(str, args.rgba)) + '};')
-    if args.host_compile_only:
+    if args.record_command_buffer:
+        marker = '   const bool record_only ='
+        if source.count(marker) != 1:
+            raise RuntimeError('Recording fixture changed; update adapter')
+        source = source.replace(marker, marker + ' true ||')
+        source = source.replace('feature advertised, shaders compiled, ',
+            'host shim shaders compiled; no GPU submission, ')
+    elif args.host_compile_only:
         marker = '         "vkCreateGraphicsPipelines");'
         if source.count(marker) != 1:
             raise RuntimeError('Pipeline fixture changed; update adapter')
@@ -89,6 +100,7 @@ def main():
     manifest = {
         'samples': args.samples, 'rgba': args.rgba,
         'host_compile_only': args.host_compile_only,
+        'record_command_buffer': args.record_command_buffer,
         'fixture_sha256': hashlib.sha256(fixture.read_bytes()).hexdigest(),
         'commands': commands, 'sha256': files,
         'limitation': 'Adapted diagnostic fixture; not an application capture '
