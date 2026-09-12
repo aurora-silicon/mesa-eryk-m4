@@ -126,9 +126,13 @@ def main():
         if a.capture_profile:
             import shutil
             shutil.copyfile(a.capture_profile, profile / 'capture-profile.json')
+            report_path = a.capture_profile.with_suffix('.report.json')
+            report = json.loads(report_path.read_text())
+            shutil.copyfile(report_path, out / 'capture-profile.report.json')
             env.update(VK_INSTANCE_LAYERS=env['VK_INSTANCE_LAYERS']+':VK_LAYER_KHRONOS_profiles',
                        VK_KHRONOS_PROFILES_PROFILE_FILE=str(profile/'capture-profile.json'),
-                       VK_KHRONOS_PROFILES_SIMULATE_CAPABILITIES='SIMULATE_API_VERSION_BIT,SIMULATE_FEATURES_BIT,SIMULATE_EXTENSIONS_BIT,SIMULATE_PROPERTIES_BIT',
+                       VK_KHRONOS_PROFILES_SIMULATE_CAPABILITIES='SIMULATE_API_VERSION_BIT,SIMULATE_FEATURES_BIT,SIMULATE_EXTENSIONS_BIT,SIMULATE_PROPERTIES_BIT,SIMULATE_FORMATS_BIT',
+                       VK_KHRONOS_PROFILES_EXCLUDE_DEVICE_EXTENSIONS=','.join(report['removed_reference_extensions']),
                        VK_KHRONOS_PROFILES_DEFAULT_FEATURE_VALUES='DEFAULT_FEATURE_VALUES_FALSE')
     command = ['runuser', '-u', 'e', '--', '/usr/bin/firefox', '--no-remote', '--new-instance',
                '--marionette', '--remote-allow-system-access', '--profile', str(profile), 'about:blank']

@@ -34,6 +34,7 @@ def main():
     p.add_argument('--dump-config', type=Path, help='GFXReconstruct resource dump selection for replay')
     p.add_argument('--memory-translation', choices=['none', 'rebind'], default='none')
     p.add_argument('--omit-pipeline-cache', action='store_true')
+    p.add_argument('--remove-unsupported', action='store_true', help='Explicit diagnostic adaptation; never proves unmodified application support')
     p.add_argument('--retain', type=Path, action='append', default=[], help='Copy an application config into evidence')
     # The command follows an explicit --, so ordinary options remain parseable.
     import sys
@@ -45,6 +46,8 @@ def main():
         p.error('capture requires -- PROGRAM ARGS; replay requires --trace and no command')
     if a.mode == 'capture' and (a.memory_translation != 'none' or a.omit_pipeline_cache):
         p.error('Replay adaptations do not apply to capture')
+    if a.remove_unsupported and a.mode != 'replay':
+        p.error('--remove-unsupported is only a diagnostic replay adaptation')
     if a.profile and (a.mode != 'capture' or a.renderer != 'lavapipe'):
         p.error('Profiles are only supported for lavapipe reference capture')
     if a.dump_config and a.mode != 'replay':
@@ -78,6 +81,7 @@ def main():
                MESA_LOADER_DRIVER_OVERRIDE='zink', GALLIUM_DRIVER='zink',
                LIBGL_ALWAYS_SOFTWARE='1' if a.renderer == 'lavapipe' else '0',
                ASAHI_M4_EXPERIMENTAL='1', ASAHI_MESA_DEBUG='nocompress',
+               HK_DEBUG_LOG='1', MESA_LOG_LEVEL='debug',
                MESA_GL_VERSION_OVERRIDE='3.3', MESA_GLES_VERSION_OVERRIDE='3.0')
     layer = a.tool_prefix / 'lib/libVkLayer_gfxreconstruct.so'
     replay = a.tool_prefix / 'bin/gfxrecon-replay'
@@ -100,6 +104,8 @@ def main():
                    '--screenshot-dir', str(out), '--screenshot-format', 'png']
         if a.frames:
             command += ['--screenshots', a.frames]
+        if a.remove_unsupported:
+            command += ['--remove-unsupported']
         if a.omit_pipeline_cache:
             command += ['--omit-pipeline-cache-data']
         if a.end_frame:
@@ -131,6 +137,7 @@ def main():
                         ('VK_', 'GFXRECON_', 'MESA_', 'LIBGL_', 'GALLIUM_', 'ASAHI_', 'AGX_', 'HK_', 'ZINK_', 'LD_LIBRARY_', 'GBM_', '__EGL_'))},
                     hashes={str(f): sha(f) for f in files}, adaptations=dict(
                         memory_translation=a.memory_translation, omit_pipeline_cache=a.omit_pipeline_cache,
+                        remove_unsupported=a.remove_unsupported,
                         swapchain='offscreen' if a.mode == 'replay' else 'application'),
                     seconds=a.seconds, guard=str(guard))
     for index, source in enumerate(a.retain):

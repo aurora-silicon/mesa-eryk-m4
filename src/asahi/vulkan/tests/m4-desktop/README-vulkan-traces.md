@@ -203,9 +203,34 @@ report's `removed_reference_extensions`. The STK host helper does this and
 retains that report. Query the simulated device and check formats/features as
 well as extension aliases; the layer can inject additional promoted aliases.
 
-`vulkan-trim-host.py TRACE --output NEW_DIR --first N --last M` recaptures a
+`vulkan-trim-host.py TRACE --output NEW_DIR --profile PROFILE --first N --last M` recaptures a
 software replay into a short trace with GFXReconstruct's retained initial
-state. This is x86-only and bounded. It uses virtual X11 presentation under
+state. This is x86-only and bounded. It uses captured X11 presentation under
 private Xvfb because lavapipe lacks the frame-boundary extension required by
 offscreen recapture. Retain the original, validate the trim on software, then
 use the target's guarded runner. Trim creation alone proves no GPU result.
+
+## Submission-state tracking and explicit replay adaptations
+
+Apply gfxreconstruct-submit-state.patch to GFXReconstruct11891af. The tracker
+previously skipped every command buffer in a submit array whenever its first
+entry was wait-only. Zink uses this pattern, so image layouts stayed UNDEFINED
+and the trim omitted live textures. Inspect every entry for both Submit variants.
+Rebuild gfxrecon-replay as well as the capture layer: --capture uses a statically
+linked encoder. Rebuilding the layer alone does not update recapture.
+
+The corrected11-frame SuperTuxKart trim (full frames5095-5105) matches original
+frame5104 exactly on software. Before:198402 pixels differed by more than8;
+after:0 differing pixels. Evidence: _provenance/stk-reference-20260912/trim-linked-diff.
+Original, broken trims and validation logs remain retained.
+
+Recapture automatically enables optional maintenance10 and creates unused
+ShaderLayer modules, even with the application profile. The hardware replay
+rejects maintenance10. vulkan-trace.py --remove-unsupported is an explicit
+diagnostic adaptation recorded in its manifest and GFXReconstruct log; it must
+never be counted as unmodified application support. Native application validation
+is still required. HK_DEBUG_LOG=1 and MESA_LOG_LEVEL=debug retain Mesa source
+locations for command-recording errors, avoiding blind retries.
+
+Firefox reference profiles now also apply format simulation and the explicit
+removed_reference_extensions list from their adjacent .report.json file.
