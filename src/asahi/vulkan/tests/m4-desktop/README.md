@@ -1787,3 +1787,28 @@ SIGTERM. This prevents a stale compositor from occupying the next test socket.
 pixel pack buffer;204656LVP and204802M4 pass all4096color pixels. Firefox's
 204212 live scanout has correct colors, but its page screenshot swaps R/B in
 the WebGLcanvas. The latter remains a readback gap, not a live-display claim.
+
+## GNOME presentation diagnostics
+
+`sddm-session-probe.py --session gnome --renderer asahi --capture` uses temporary
+SDDM autologin and a runtime user environment generator under the existing GPU
+experiment guard. It restores the ordinary display manager configuration and
+retains process maps, native scanout, per-process Vulkan captures and the journal.
+The generator preserves GFXReconstruct's literal `${ProcessId}` filename token;
+`environment.d` would expand it prematurely. Presentation errors fail the probe.
+A successful observation still needs a meaningful visual check.
+
+`gbm-window-probe.c /dev/dri/card2` reduces standalone compositor buffer handoff
+to four 64x64 alternating-color frames. It verifies GL pixel results, distinct
+locked front buffers and exportable DMA-BUFs without taking DRM master or changing
+display state. Compile with `cc -O2 -Wall -Wextra ... -lgbm -lEGL -lGLESv2` and
+run through `gpu-experiment.py` and `run-m4-gl.py`. The latter forces the old Zink
+loader override; to test normal display-node selection pass `/usr/bin/env
+MESA_LOADER_DRIVER_OVERRIDE= /root/gbm-window-probe /dev/dri/card2`. Keep
+`GALLIUM_DRIVER=zink` and the selected native ICD.
+
+`egl-swap-timing.c` forwards EGL swaps, extension-proc lookups and GBM front-buffer
+lock/release calls unchanged. It logs process/surface identity, timing and results,
+without consuming EGL error state or adding synchronization. Build as a shared
+library (`cc -shared -fPIC -O2 -Wall -Wextra ... -ldl`); supply its absolute target
+path with the session probe's `--egl-trace` only during a bounded diagnosis.
