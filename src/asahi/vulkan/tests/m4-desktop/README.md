@@ -1859,3 +1859,9 @@ Integer-texture `--offset` tests explicit LOD-zero sampling at (-1,+2),
 including wrap boundaries. M4 run 20260912T222412997102Z passed all components,
 55.75 C. Native `graphics-features/sample-offset.metal` reproduces the SMP
 signed-offset fields byte-for-byte; texture encoder tests pass 6228 checks.
+
+`cf-sign-relations/probe.comp` with vk-buffer-oracle covers all pairs of
++0, -0, +/-infinity, NaN and three finite values through six negated/absolute
+branch relations and distinct atomic side effects. Dispatch two 32-lane groups.
+M4 20260912T222644922275Z passed 512 words, 55.75 C, matching lavapipe and
+independently computed reference bytes.

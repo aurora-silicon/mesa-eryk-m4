@@ -1,0 +1,11 @@
+#version 450
+layout(local_size_x=32) in;
+layout(set=0,binding=0,std430) buffer B {uint w[];};
+void main(){uint b=gl_GlobalInvocationID.x*8;float x=uintBitsToFloat(w[b]),y=uintBitsToFloat(w[b+1]);
+if(x == -y) atomicAdd(w[b+2],11); else atomicAdd(w[b+2],23);
+if(x != -y) atomicAdd(w[b+3],11); else atomicAdd(w[b+3],23);
+if(x <= -y) atomicAdd(w[b+4],11); else atomicAdd(w[b+4],23);
+if(x >= -y) atomicAdd(w[b+5],11); else atomicAdd(w[b+5],23);
+if(-x < -y) atomicAdd(w[b+6],11); else atomicAdd(w[b+6],23);
+if(abs(x) >= -y) atomicAdd(w[b+7],11); else atomicAdd(w[b+7],23);
+}
