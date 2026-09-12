@@ -1875,3 +1875,24 @@ Native HAL200 encodeISPPrimitiveType arm64 0x41d458..0x41d464 sets the
 secondary-face object class to line (1), replacing the triangle (0) template.
 This probe exposed and fixed missing line rasterization, not a shader-color
 approximation. Dynamic line width still needs separate qualification.
+
+### Scratch lifetime and forced-spill oracle
+
+`tps-oracle.py repeat --output build/tps-repeat` produces a 512-byte private
+array with overlapping dynamic and static reads across all 32 lanes.
+`tps-oracle.py spill --vectors 8 --output build/tps-spill` keeps eight vectors
+live; run with `AGX_MESA_DEBUG=spill` to exercise scalar and 64-bit pointer
+spills. The tool generates SPIR-V, exact SSBO input/reference bytes and hashes;
+it executes no GPU work. Use `vk-buffer-oracle` with one workgroup inside
+`gpu-experiment.py` for hardware execution, with the normal watchdog/thermals.
+
+G16G Apple `graphics-features/repeat-tps.metal` demonstrates RLD f27 and
+LDTPS f66 clear on retained reads and set on consuming reads. Tests on
+2026-09-12 initially failed only at overlapping array locations (12/4224
+words), and all outputs of forced pointer-spilling shaders were zero.
+Preserving TPS across reloads passed the 512-word minimal spill and the
+4224/2048/10240-word array/eight-vector/40-vector tests, peak 55.75 C.
+Evidence: experiments `20260912T225839789763Z-forced-spill-retain-tps` and
+`20260912T225930577131Z-tps-retention-regressions`. Encoding unit tests retain
+byte-exact consuming and non-consuming Apple witnesses. Dynamic stores and
+16-bit scratch lowering remain unimplemented.

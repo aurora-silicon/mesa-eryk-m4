@@ -41,7 +41,8 @@ extern "C" {
 #define AGX3_SLOT_STAGING_HALF_TOKENS 256u
 #define AGX3_SLOT_IMAGE_WRITE_TOKEN \
    (AGX3_SLOT_STAGING_TOKEN_BASE + AGX3_SLOT_STAGING_HALF_TOKENS)
-#define AGX3_SLOT_NUM_TOKENS (AGX3_SLOT_IMAGE_WRITE_TOKEN + 1u)
+#define AGX3_SLOT_DYNAMIC_TPS_TOKEN (AGX3_SLOT_IMAGE_WRITE_TOKEN + 1u)
+#define AGX3_SLOT_NUM_TOKENS (AGX3_SLOT_DYNAMIC_TPS_TOKEN + 1u)
 
 /* Image writes reserve sixteen staging halves plus their memory completion
  * token. Keep room for the register operands independently. */

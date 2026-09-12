@@ -45,6 +45,7 @@ struct agx3_static_spill_store_desc {
 struct agx3_static_spill_load_desc {
    uint16_t dest;             /* GPR destination in half-register units */
    uint32_t tps_half;         /* static TPS source in half-register units */
+   bool retain_tps;         /* another read may use this location */
    enum agx3_mem_width width; /* witnessed W16 or W32 */
    uint8_t slot;              /* signalled scoreboard slot */
    /* f26: usually mirrors slot, but a grounded long-form subset uses zero.
