@@ -3512,13 +3512,15 @@ agx3_g17p_dual_mrt_eot_kind(const agx_context *ctx,
                if (I->src[2].value != zero_reg ||
                    (first_format != AGX_FORMAT_F16 &&
                     first_format != AGX_FORMAT_I16 &&
+                    first_format != AGX_FORMAT_U8NORM &&
                     first_format != AGX_FORMAT_RG11B10F))
                   return 0;
             } else {
-               bool packed = first_format == AGX_FORMAT_RG11B10F;
+               bool packed = first_format == AGX_FORMAT_RG11B10F ||
+                             first_format == AGX_FORMAT_U8NORM;
                if (I->src[2].value != second_offset_reg ||
                    second_offset != (packed ? 4 : 8) ||
-                   I->format != (packed ? AGX_FORMAT_RG11B10F
+                   I->format != (packed ? first_format
                                         : AGX_FORMAT_U8NORM))
                   return 0;
             }
@@ -3537,7 +3539,8 @@ agx3_g17p_dual_mrt_eot_kind(const agx_context *ctx,
    bool valid = instructions == 6 && get_x == 1 && get_y == 1 && stores == 2 &&
           zero_reg != UINT_MAX && second_offset_reg != UINT_MAX &&
           x_reg == coord_reg && y_reg == coord_reg + 2;
-   return valid ? (first_format == AGX_FORMAT_RG11B10F ? 2 : 1) : 0;
+   return valid ? ((first_format == AGX_FORMAT_RG11B10F ||
+                    first_format == AGX_FORMAT_U8NORM) ? 2 : 1) : 0;
 }
 
 static bool

@@ -323,8 +323,10 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
    }
 
    const bool packed_mrt =
-      key->tib.logical_format[0] == PIPE_FORMAT_R11G11B10_FLOAT &&
-      key->tib.logical_format[1] == PIPE_FORMAT_R11G11B10_FLOAT;
+      (key->tib.logical_format[0] == PIPE_FORMAT_R11G11B10_FLOAT &&
+       key->tib.logical_format[1] == PIPE_FORMAT_R11G11B10_FLOAT) ||
+      (key->tib.logical_format[0] == PIPE_FORMAT_R8G8B8A8_UNORM &&
+       key->tib.logical_format[1] == PIPE_FORMAT_R8G8B8A8_UNORM);
    const bool dual_mrt = packed_mrt ||
       (key->tib.logical_format[0] == PIPE_FORMAT_R16G16B16A16_FLOAT &&
        key->tib.logical_format[1] == PIPE_FORMAT_R8_UNORM);

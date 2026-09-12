@@ -1939,6 +1939,30 @@ test_g17p_eot_block_store(void)
    free(part.binary);
    ralloc_free(hdr_mrt.shader);
 
+   nir_builder rgba8_mrt = nir_builder_init_simple_shader(
+      MESA_SHADER_COMPUTE, &agx_nir_options, "G16G RGBA8 MRT EOT");
+   coords = nir_trim_vector(
+      &rgba8_mrt, nir_load_global_invocation_id(&rgba8_mrt, 32), 2);
+   for (unsigned rt = 0; rt < 2; ++rt) {
+      nir_image_store_block_agx(
+         &rgba8_mrt, nir_imm_intN_t(&rgba8_mrt, rt, 16),
+         nir_imm_int(&rgba8_mrt, rt * 4), coords,
+         .format = PIPE_FORMAT_R8_UNORM,
+         .image_dim = GLSL_SAMPLER_DIM_2D, .explicit_coord = true);
+   }
+   agx_preprocess_nir(rgba8_mrt.shader);
+   memset(&part, 0, sizeof(part));
+   bool rgba8_compiled = agx_compile_shader_nir(rgba8_mrt.shader, &key, &part);
+   uint8_t expected_rgba8[sizeof(expected_mrt)];
+   memcpy(expected_rgba8, expected_mrt, sizeof(expected_rgba8));
+   expected_rgba8[101] = 0x75;
+   ok &= rgba8_compiled && part.info.binary_size == sizeof(expected_rgba8) &&
+         part.info.nr_gprs == 8 && part.info.agx3_staging_known &&
+         part.info.agx3_staging_halfs == 16 &&
+         memcmp(part.binary, expected_rgba8, sizeof(expected_rgba8)) == 0;
+   free(part.binary);
+   ralloc_free(rgba8_mrt.shader);
+
    /* Genuine applegpu-nt builtin EOT key0x04021100: scalar I32 tile store. */
    nir_builder i32 = nir_builder_init_simple_shader(
       MESA_SHADER_COMPUTE, &agx_nir_options, "G17P I32 RT0 EOT");
