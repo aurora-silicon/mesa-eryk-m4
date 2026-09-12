@@ -359,3 +359,19 @@ mismatch; retain its output and validate expected semantics before reusing it.
 regression for eight SSBO atomic operations with divergent inactive lanes.
 Use the same guarded vk-buffer-oracle workflow; host lavapipe independently
 checks the CPU-calculated reference.
+
+## Standalone desktop qualification
+
+`sddm-session-probe.py --guard-output '{output}' --session plasma --seconds 10`
+runs inside `gpu-experiment.py` (65-second outer bound). It temporarily supplies
+SDDM autologin through a runtime systemd mount namespace, captures native
+scanout and renderer maps, and restores the normal greeter and remembered
+session. It never changes the default boot target. A detected GPU fault retains
+evidence and leaves login stopped for recovery. `--session gnome` uses the same
+runner once GNOME is installed. A process/map pass still requires reviewing the
+final desktop image; it is not evidence for every desktop application.
+
+Plasma 6 standalone run `20260912T120807742380Z-plasma6-standalone-sddm` passed
+with KWin and plasmashell using the private M4 Asahi library, a correct native
+desktop image, and peak monitored temperature 56.75 C. This complements the
+earlier nested Plasma/Konsole validation.
