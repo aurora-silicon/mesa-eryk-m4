@@ -17,6 +17,7 @@ p.add_argument('reference', type=Path)
 p.add_argument('--output', type=Path, required=True)
 p.add_argument('--registry', type=Path, default=Path(__file__).resolve().parent.parent / 'reference/gfxreconstruct/external/Vulkan-Headers/registry/vk.xml')
 p.add_argument('--exclude-extension', action='append', default=[], help='Explicit application-specific restriction, retained in report')
+p.add_argument('--formats', action='store_true', help='Also intersect per-format feature flags, including explicit unsupported formats')
 a = p.parse_args()
 target, reference = [json.loads(f.read_text()) for f in (a.target, a.reference)]
 t, r = [d['capabilities']['device'] for d in (target, reference)]
@@ -58,6 +59,14 @@ profile['api-version'] = min((next(iter(d['profiles'].values()))['api-version'] 
 properties = {k: v for k, v in r['properties'].items() if canonical(k) in allowed}
 result = {'$schema': target['$schema'], 'capabilities': {'device': {'features': features, 'extensions': extensions, 'properties': properties}},
           'profiles': {'VP_M4_reference_intersection': profile}}
+if a.formats:
+    formats = {}
+    for name in sorted(t['formats'].keys() | r['formats'].keys()):
+        tf = t['formats'].get(name, {}).get('VkFormatProperties', {})
+        rf = r['formats'].get(name, {}).get('VkFormatProperties', {})
+        formats[name] = {'VkFormatProperties': {field: sorted(set(tf.get(field, [])) & set(rf.get(field, [])))
+            for field in ('linearTilingFeatures', 'optimalTilingFeatures', 'bufferFeatures')}}
+    result['capabilities']['device']['formats'] = formats
 with a.output.open('x') as f:
     json.dump(result, f, indent=2); f.write('\n')
 report = dict(inputs={str(f): hashlib.sha256(f.read_bytes()).hexdigest() for f in (a.target, a.reference, a.registry)},
@@ -66,6 +75,7 @@ report = dict(inputs={str(f): hashlib.sha256(f.read_bytes()).hexdigest() for f i
               removed_target_extensions=sorted(t['extensions'].keys() - extensions.keys()),
               removed_reference_extensions=sorted(r['extensions'].keys() - extensions.keys()),
               changed_features=changes,
-              note='Explicit shared subset; not an unmodified M4 application-support claim. Limits and formats are not simulated.')
+              formats_intersected=a.formats,
+              note='Explicit shared subset; not an unmodified M4 application-support claim. Software limits retained. Format simulation requires SIMULATE_FORMATS_BIT.')
 a.output.with_suffix('.report.json').write_text(json.dumps(report, indent=2)+'\n')
 print(f'Shared extensions: {len(extensions)}; differing feature fields: {len(changes)}')

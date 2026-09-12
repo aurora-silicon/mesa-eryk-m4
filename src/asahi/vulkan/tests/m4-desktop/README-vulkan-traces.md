@@ -157,3 +157,24 @@ Primary tool documentation:
 [GFXReconstruct Vulkan usage](https://github.com/LunarG/gfxreconstruct/blob/dev/USAGE_desktop_Vulkan.md),
 [resource dumps](https://github.com/LunarG/gfxreconstruct/blob/dev/vulkan_dump_resources.md),
 [Khronos Profiles](https://github.com/KhronosGroup/Vulkan-Profiles/blob/main/layer/TUTORIAL.md).
+
+## Host STK reference
+
+`stk-reference-host.py --output NEW_DIR --config ORIGINAL_CONFIG_0_10_DIR
+--profile SHARED_PROFILE --seconds 180` runs a private x86 Zink/lavapipe build
+under an isolated Xvfb display. It retains the original XML files, binary hashes,
+capability profile, input requests, images and Vulkan trace. The ARM hardware
+path still uses the mandatory guarded tools. Write ordered JSON requests to
+`NEW_DIR/requests/NNN.json` with action `snapshot`, `key` (xdotool key name),
+`click` (x/y), or `finish`. Reuse input requests instead of navigating again.
+
+Build the reference with the same Mesa source (Zink plus lavapipe), host
+GFXReconstruct, and privately extracted STK/Profiles packages under the paths
+in the helper. Do not change game graphics settings to obtain a pass.
+`vulkan-profile-intersect.py --formats` now includes the intersection of format
+feature flags as well as features/extensions. Enable `SIMULATE_FORMATS_BIT` in
+the Profiles layer and verify the reported capabilities before capture. The
+initial STK reference without format simulation used unsupported D24 depth;
+it is retained as evidence but is not an M4-compatible replay. The corrected
+profile reports D32S8 and excludes D24. Software limits and X11/offscreen WSI
+remain explicit replay adaptations; final native application checks are required.

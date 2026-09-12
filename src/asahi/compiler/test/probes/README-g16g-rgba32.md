@@ -50,11 +50,15 @@ float/signed/unsigned values. The llvmpipe reference passes all9 readbacks:
 G17P_RGBA32_SFLOAT=1, G17P_HOST_IMAGE_COPY=1 and TEST_DEVICE_ID=0x8132
 isolates rendering from GPU meta-copy.
 
-## Pending hardware qualification
+## Hardware qualification, 2026-09-12
 
 The ARM64 library builds and 6,812 Ioto checks plus14 EOT byte tests pass.
-J713 became unreachable before installing the stride change on2026-09-12
-at approximately03:49UTC. The current patch has **not** passed GPU pixels.
-Next: guarded RGBA32 oracle, unchanged native Firefox prefix replay, fresh
-Firefox WebGL capture and normal-launch validation. Also rerun the existing
-mixed-width HDR oracle because it previously used the same constant stride.
+After the user restarted J713, library SHA256
+`47a5144872f6004a8bb68f600731c0ca282d1425173d69871f7a85be6146358a`
+passed all nine RGBA32 float/int/uint clear/draw/reload readbacks: 36,864
+pixels, exact full-width values. Evidence `20260912T041244710512Z-rgba32-correct-stride`.
+The existing HDR oracle also passed all fifteen attachment readbacks, including
+mixed-width MRT, additive blend and reload: `20260912T041324447503Z-hdr-correct-imageblock-stride`.
+Both used the 60-second watchdog with exclusive broker leases, six-channel
+thermal monitoring, and fresh processes. Peaks were 57.25 C and 55 C respectively.
+Full Firefox and SuperTuxKart application qualification remains separate.
