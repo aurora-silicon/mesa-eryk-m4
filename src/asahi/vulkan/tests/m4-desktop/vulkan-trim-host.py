@@ -32,7 +32,11 @@ for k in list(env):
     if k.startswith(('VK_', 'GFXRECON_', 'ASAHI_', 'AGX_', 'HK_', 'MESA_')):
         del env[k]
 restrictions = json.loads(a.profile.with_suffix('.report.json').read_text())
-env.update(VK_LAYER_PATH=str(root/'build/stk-reference-host/usr/share/vulkan/explicit_layer.d'),
+layer_dir = out / 'layers'; layer_dir.mkdir()
+layer = json.loads((root/'build/stk-reference-host/usr/share/vulkan/explicit_layer.d/VkLayer_khronos_profiles.json').read_text())
+layer['layer']['library_path'] = str(root/'build/stk-reference-host/usr/lib/libVkLayer_khronos_profiles.so')
+(layer_dir/'VkLayer_khronos_profiles.json').write_text(json.dumps(layer))
+env.update(VK_LAYER_PATH=str(layer_dir),
            VK_INSTANCE_LAYERS='VK_LAYER_KHRONOS_profiles',
            VK_KHRONOS_PROFILES_PROFILE_FILE=str(a.profile.resolve()),
            VK_KHRONOS_PROFILES_SIMULATE_CAPABILITIES='SIMULATE_API_VERSION_BIT,SIMULATE_FEATURES_BIT,SIMULATE_EXTENSIONS_BIT,SIMULATE_PROPERTIES_BIT,SIMULATE_FORMATS_BIT',

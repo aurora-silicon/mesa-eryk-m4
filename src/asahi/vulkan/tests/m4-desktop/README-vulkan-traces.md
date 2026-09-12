@@ -234,3 +234,37 @@ locations for command-recording errors, avoiding blind retries.
 
 Firefox reference profiles now also apply format simulation and the explicit
 removed_reference_extensions list from their adjacent .report.json file.
+
+## Draw-by-draw attachment comparisons
+
+`vulkan-draw-dump.py TRACE.jsonl --first CALL --last CALL --output NEW.json`
+selects submitted primary draws and their command-buffer/render-pass boundaries.
+Pass this configuration to guarded `vulkan-trace.py replay --dump-config`.
+`--inputs` also requests descriptors and vertex/index buffers; raw attachment
+comparison is the smaller starting point. Secondary command buffers, repeated
+selected submissions and multi-draw arrays larger than one element currently
+require explicit additional implementation and are rejected by this helper.
+The underlying native multi-draw command is retained; it is not decomposed.
+
+`vulkan-dump-compare.py SOFTWARE_DIR HARDWARE_DIR --output NEW.json` correlates
+raw attachments by draw, image and subresource, reports hashes and byte errors,
+and distinguishes bytes changed by the reference draw. It does not qualify
+floating-point tolerances or undefined attachment regions as rendering failures.
+
+The replay build also needs `patches/gfxreconstruct-draw-dump.patch`: GFXR's
+original diagnostic path missed multi-draw checkpoints, dropped semaphore-only
+submissions, and implicitly reset an auxiliary buffer in application pools that
+forbid individual resets. The core-push-descriptor patch now dispatches the
+matching core/KHR function in cloned command buffers too. Firefox's first-three
+checkpoint software test completes and preserves its final frame byte for byte.
+Captured `sampleShadingEnable` validation warnings remain in this reference;
+the dump fixes do not silently rewrite that application's pipeline state.
+
+Reference capture profiles may use `vulkan-profile-intersect.py --formats
+--sample-counts` to intersect image formats and sample-count masks. This prevents
+lavapipe-only 4x MSAA from entering the reference when the actual M4 path uses
+single samples. It remains an explicitly restricted reference, not a native
+application-support result. Trim profiles now use private layer manifests with
+absolute library paths, so a missing system Profiles layer cannot silently
+leave the trim unrestricted. Replay creates its compiler-capture directory
+before setting `AGX_COMPILER_CAPTURE_DIR`, retaining failure bundles reliably.

@@ -1,0 +1,307 @@
+diff --git a/framework/decode/vulkan_replay_dump_resources.cpp b/framework/decode/vulkan_replay_dump_resources.cpp
+index 29a7e4a..7fd5c90 100644
+--- a/framework/decode/vulkan_replay_dump_resources.cpp
++++ b/framework/decode/vulkan_replay_dump_resources.cpp
+@@ -547,6 +547,62 @@ VkResult VulkanReplayDumpResourcesBase::BeginCommandBuffer(uint64_t
+     return VK_SUCCESS;
+ }
+ 
++void VulkanReplayDumpResourcesBase::OverrideCmdDrawMultiEXT(const ApiCallInfo& call_info, PFN_vkCmdDrawMultiEXT func, VkCommandBuffer commandBuffer, uint32_t drawCount, const VkMultiDrawInfoEXT* pVertexInfo, uint32_t instanceCount, uint32_t firstInstance, uint32_t stride)
++{
++    for (auto context : FindDrawCallDumpingContexts(commandBuffer))
++    {
++        // Preserve the original multi-draw command and DrawID semantics. This
++        // incremental diagnostic implementation qualifies one-element arrays.
++        if (drawCount == 1)
++        {
++            context->CmdDraw(call_info, [&](VkCommandBuffer cb, auto... ignored) { func(cb, drawCount, pVertexInfo, instanceCount, firstInstance, stride); }, commandBuffer,
++                pVertexInfo->vertexCount, instanceCount, pVertexInfo->firstVertex, firstInstance, true);
++        }
++        else
++        {
++            if (context->MustDumpDrawCall(call_info.index))
++                GFXRECON_LOG_FATAL("Resource dumping multi-draw arrays requires drawCount=1 (call %llu)",
++                                  static_cast<unsigned long long>(call_info.index));
++            CommandBufferIterator first, last;
++            context->GetDrawCallActiveCommandBuffers(first, last);
++            for (auto it = first; it != last; ++it) func(*it, drawCount, pVertexInfo, instanceCount, firstInstance, stride);
++        }
++    }
++    for (auto context : FindDispatchTraceRaysContexts(commandBuffer))
++    {
++        auto cb = context->GetDispatchRaysCommandBuffer();
++        if (cb != VK_NULL_HANDLE) func(cb, drawCount, pVertexInfo, instanceCount, firstInstance, stride);
++    }
++}
++
++void VulkanReplayDumpResourcesBase::OverrideCmdDrawMultiIndexedEXT(const ApiCallInfo& call_info, PFN_vkCmdDrawMultiIndexedEXT func, VkCommandBuffer commandBuffer, uint32_t drawCount, const VkMultiDrawIndexedInfoEXT* pIndexInfo, uint32_t instanceCount, uint32_t firstInstance, uint32_t stride, const int32_t* pVertexOffset)
++{
++    for (auto context : FindDrawCallDumpingContexts(commandBuffer))
++    {
++        // Preserve the original multi-draw command and DrawID semantics. This
++        // incremental diagnostic implementation qualifies one-element arrays.
++        if (drawCount == 1)
++        {
++            context->CmdDrawIndexed(call_info, [&](VkCommandBuffer cb, auto... ignored) { func(cb, drawCount, pIndexInfo, instanceCount, firstInstance, stride, pVertexOffset); }, commandBuffer,
++                pIndexInfo->indexCount, instanceCount, pIndexInfo->firstIndex, pVertexOffset ? *pVertexOffset : pIndexInfo->vertexOffset, firstInstance, true);
++        }
++        else
++        {
++            if (context->MustDumpDrawCall(call_info.index))
++                GFXRECON_LOG_FATAL("Resource dumping multi-draw arrays requires drawCount=1 (call %llu)",
++                                  static_cast<unsigned long long>(call_info.index));
++            CommandBufferIterator first, last;
++            context->GetDrawCallActiveCommandBuffers(first, last);
++            for (auto it = first; it != last; ++it) func(*it, drawCount, pIndexInfo, instanceCount, firstInstance, stride, pVertexOffset);
++        }
++    }
++    for (auto context : FindDispatchTraceRaysContexts(commandBuffer))
++    {
++        auto cb = context->GetDispatchRaysCommandBuffer();
++        if (cb != VK_NULL_HANDLE) func(cb, drawCount, pIndexInfo, instanceCount, firstInstance, stride, pVertexOffset);
++    }
++}
++
+ void VulkanReplayDumpResourcesBase::OverrideCmdDraw(const ApiCallInfo& call_info,
+                                                     PFN_vkCmdDraw      func,
+                                                     VkCommandBuffer    original_command_buffer,
+@@ -2102,7 +2158,8 @@ VkResult VulkanReplayDumpResourcesBase::QueueSubmit2(std::span<const VkSubmitInf
+             }
+         }
+ 
+-        if (!submit_cbs.empty())
++        // Semaphore-only submissions still carry application synchronization.
++        if (!submit_cbs.empty() || submit_infos[si].commandBufferInfoCount == 0)
+         {
+             modified_submit_info.commandBufferInfoCount = static_cast<uint32_t>(submit_cbs.size());
+             modified_submit_info.pCommandBufferInfos    = submit_cbs.data();
+diff --git a/framework/decode/vulkan_replay_dump_resources.h b/framework/decode/vulkan_replay_dump_resources.h
+index bd7eafe..df996cd 100644
+--- a/framework/decode/vulkan_replay_dump_resources.h
++++ b/framework/decode/vulkan_replay_dump_resources.h
+@@ -69,6 +69,8 @@ class VulkanReplayDumpResourcesBase
+                                 const graphics::VulkanInstanceTable*       inst_table,
+                                 const VkCommandBufferBeginInfo*            begin_info);
+ 
++    void OverrideCmdDrawMultiEXT(const ApiCallInfo& call_info, PFN_vkCmdDrawMultiEXT func, VkCommandBuffer commandBuffer, uint32_t drawCount, const VkMultiDrawInfoEXT* pVertexInfo, uint32_t instanceCount, uint32_t firstInstance, uint32_t stride);
++    void OverrideCmdDrawMultiIndexedEXT(const ApiCallInfo& call_info, PFN_vkCmdDrawMultiIndexedEXT func, VkCommandBuffer commandBuffer, uint32_t drawCount, const VkMultiDrawIndexedInfoEXT* pIndexInfo, uint32_t instanceCount, uint32_t firstInstance, uint32_t stride, const int32_t* pVertexOffset);
+     void OverrideCmdDraw(const ApiCallInfo& call_info,
+                          PFN_vkCmdDraw      func,
+                          VkCommandBuffer    original_command_buffer,
+diff --git a/framework/decode/vulkan_replay_dump_resources_delegate.cpp b/framework/decode/vulkan_replay_dump_resources_delegate.cpp
+index b48de52..1a10d87 100644
+--- a/framework/decode/vulkan_replay_dump_resources_delegate.cpp
++++ b/framework/decode/vulkan_replay_dump_resources_delegate.cpp
+@@ -915,6 +915,12 @@ void DefaultVulkanDumpResourcesDelegate::GenerateOutputJsonDrawCallInfo(
+     // Write draw call params
+     auto& dc_params_json_entry           = draw_call_entry["parameters"];
+     dc_params_json_entry["drawCallType"] = DrawCallsDumpingContext::DrawCallTypeToStr(dc_params->type);
++    if (dc_params->single_multi)
++    {
++        dc_params_json_entry["drawCallType"] = dc_params->type == DrawCallsDumpingContext::kDraw
++            ? "vkCmdDrawMultiEXT" : "vkCmdDrawMultiIndexedEXT";
++        dc_params_json_entry["drawCount"] = 1;
++    }
+     switch (dc_params->type)
+     {
+         case DrawCallsDumpingContext::DrawCallType::kDraw:
+diff --git a/framework/decode/vulkan_replay_dump_resources_draw_calls.cpp b/framework/decode/vulkan_replay_dump_resources_draw_calls.cpp
+index a452fae..7f88489 100644
+--- a/framework/decode/vulkan_replay_dump_resources_draw_calls.cpp
++++ b/framework/decode/vulkan_replay_dump_resources_draw_calls.cpp
+@@ -351,12 +351,12 @@ DrawCallsDumpingContext::InsertNewDrawIndexedIndirectCountParameters(uint64_t
+ }
+ 
+ void DrawCallsDumpingContext::CmdDraw(const ApiCallInfo& call_info,
+-                                      PFN_vkCmdDraw      func,
++                                      std::function<void(VkCommandBuffer, uint32_t, uint32_t, uint32_t, uint32_t)>      func,
+                                       VkCommandBuffer    original_command_buffer,
+                                       uint32_t           vertex_count,
+                                       uint32_t           instance_count,
+                                       uint32_t           first_vertex,
+-                                      uint32_t           first_instance)
++                                      uint32_t           first_instance, bool single_multi)
+ {
+     const uint64_t dc_index  = call_info.index;
+     const bool     must_dump = MustDumpDrawCall(dc_index);
+@@ -383,18 +383,19 @@ void DrawCallsDumpingContext::CmdDraw(const ApiCallInfo& call_info,
+ 
+     if (must_dump)
+     {
++        dc_params->single_multi = single_multi;
+         FinalizeCommandBuffer(dc_params);
+     }
+ }
+ 
+ void DrawCallsDumpingContext::CmdDrawIndexed(const ApiCallInfo&   call_info,
+-                                             PFN_vkCmdDrawIndexed func,
++                                             std::function<void(VkCommandBuffer, uint32_t, uint32_t, uint32_t, int32_t, uint32_t)> func,
+                                              VkCommandBuffer      original_command_buffer,
+                                              uint32_t             index_count,
+                                              uint32_t             instance_count,
+                                              uint32_t             first_index,
+                                              int32_t              vertex_offset,
+-                                             uint32_t             first_instance)
++                                             uint32_t             first_instance, bool single_multi)
+ {
+     const uint64_t dc_index  = call_info.index;
+     const bool     must_dump = MustDumpDrawCall(dc_index);
+@@ -423,6 +424,7 @@ void DrawCallsDumpingContext::CmdDrawIndexed(const ApiCallInfo&   call_info,
+ 
+     if (must_dump)
+     {
++        dc_params->single_multi = single_multi;
+         FinalizeCommandBuffer(dc_params);
+     }
+ }
+@@ -1398,6 +1400,19 @@ VkResult DrawCallsDumpingContext::RevertRenderTargetImageLayouts(VkQueue queue,
+     if (!img_barriers.empty())
+     {
+         const VkCommandBufferBeginInfo bi{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, nullptr, 0, nullptr };
++        const auto* aux_device_info = object_info_table_.GetVkDeviceInfo(original_command_buffer_info_->parent_id);
++        const auto* pool = object_info_table_.GetVkCommandPoolInfo(original_command_buffer_info_->pool_id);
++        if (!(pool->create_flags & VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT))
++        {
++            // The application's pool may forbid implicit command-buffer reset.
++            // Reallocate only our auxiliary buffer after its previous fence wait.
++            injected->FreeCommandBuffers(aux_device_info->handle, pool->handle, 1, &aux_command_buffer_);
++            aux_command_buffer_ = VK_NULL_HANDLE;
++            const VkCommandBufferAllocateInfo allocation{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
++                nullptr, pool->handle, VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1};
++            VkResult allocation_result = injected->AllocateCommandBuffers(aux_device_info->handle, &allocation, &aux_command_buffer_);
++            if (allocation_result != VK_SUCCESS) return allocation_result;
++        }
+         VkResult                       res = injected.BeginCommandBuffer(aux_command_buffer_, &bi, __func__);
+         if (res != VK_SUCCESS)
+         {
+diff --git a/framework/decode/vulkan_replay_dump_resources_draw_calls.h b/framework/decode/vulkan_replay_dump_resources_draw_calls.h
+index 5615442..e4a73ad 100644
+--- a/framework/decode/vulkan_replay_dump_resources_draw_calls.h
++++ b/framework/decode/vulkan_replay_dump_resources_draw_calls.h
+@@ -37,6 +37,7 @@
+ #include "util/logging.h"
+ 
+ #include <cstddef>
++#include <functional>
+ #include <cstdint>
+ #include <memory>
+ #include <map>
+@@ -82,21 +83,21 @@ class DrawCallsDumpingContext
+     ~DrawCallsDumpingContext();
+ 
+     void CmdDraw(const ApiCallInfo& call_info,
+-                 PFN_vkCmdDraw      func,
++                 std::function<void(VkCommandBuffer, uint32_t, uint32_t, uint32_t, uint32_t)> func,
+                  VkCommandBuffer    original_command_buffer,
+                  uint32_t           vertex_count,
+                  uint32_t           instance_count,
+                  uint32_t           first_vertex,
+-                 uint32_t           first_instance);
++                 uint32_t           first_instance, bool single_multi = false);
+ 
+     void CmdDrawIndexed(const ApiCallInfo&   call_info,
+-                        PFN_vkCmdDrawIndexed func,
++                        std::function<void(VkCommandBuffer, uint32_t, uint32_t, uint32_t, int32_t, uint32_t)> func,
+                         VkCommandBuffer      original_command_buffer,
+                         uint32_t             index_count,
+                         uint32_t             instance_count,
+                         uint32_t             first_index,
+                         int32_t              vertex_offset,
+-                        uint32_t             first_instance);
++                        uint32_t             first_instance, bool single_multi = false);
+ 
+     void CmdDrawIndirect(const ApiCallInfo&      call_info,
+                          PFN_vkCmdDrawIndirect   func,
+@@ -796,6 +797,7 @@ class DrawCallsDumpingContext
+                 type == DrawCallType::kDrawIndirectCountAMD || type == DrawCallType::kDrawIndexedIndirectCountAMD);
+         }
+ 
++        bool single_multi = false;
+         DrawCallType type;
+ 
+         // Store the vertex input state taken either from the current pipeline or from
+diff --git a/framework/generated/generated_vulkan_replay_dump_resources.cpp b/framework/generated/generated_vulkan_replay_dump_resources.cpp
+index 4466046..8c8102f 100644
+--- a/framework/generated/generated_vulkan_replay_dump_resources.cpp
++++ b/framework/generated/generated_vulkan_replay_dump_resources.cpp
+@@ -7147,31 +7147,8 @@ void VulkanReplayDumpResources::Process_vkCmdDrawMultiEXT(
+ {
+     if (IsRecording())
+     {
+-        const std::vector<std::shared_ptr<DrawCallsDumpingContext>> dc_contexts = FindDrawCallDumpingContexts(commandBuffer);
+-        const std::vector<std::shared_ptr<DispatchTraceRaysDumpingContext>> dr_contexts = FindDispatchTraceRaysContexts(commandBuffer);
+-        if (!dc_contexts.empty() || !dr_contexts.empty())
+-        {
+-            auto injected = device_table.Open();
+-            const auto func = injected->CmdDrawMultiEXT;
+-            for (auto dc_context : dc_contexts)
+-            {
+-                CommandBufferIterator first, last;
+-                dc_context->GetDrawCallActiveCommandBuffers(first, last);
+-                for (CommandBufferIterator it = first; it < last; ++it)
+-                {
+-                    func(*it, drawCount, pVertexInfo, instanceCount, firstInstance, stride);
+-                }
+-            }
+-
+-            for (auto dr_context : dr_contexts)
+-            {
+-                VkCommandBuffer dispatch_rays_command_buffer = dr_context->GetDispatchRaysCommandBuffer();
+-                if (dispatch_rays_command_buffer != VK_NULL_HANDLE)
+-                {
+-                    func(dispatch_rays_command_buffer, drawCount, pVertexInfo, instanceCount, firstInstance, stride);
+-                }
+-            }
+-        }
++        auto injected = device_table.Open();
++        OverrideCmdDrawMultiEXT(call_info, injected->CmdDrawMultiEXT, commandBuffer, drawCount, pVertexInfo, instanceCount, firstInstance, stride);
+     }
+ }
+ 
+@@ -7188,31 +7165,8 @@ void VulkanReplayDumpResources::Process_vkCmdDrawMultiIndexedEXT(
+ {
+     if (IsRecording())
+     {
+-        const std::vector<std::shared_ptr<DrawCallsDumpingContext>> dc_contexts = FindDrawCallDumpingContexts(commandBuffer);
+-        const std::vector<std::shared_ptr<DispatchTraceRaysDumpingContext>> dr_contexts = FindDispatchTraceRaysContexts(commandBuffer);
+-        if (!dc_contexts.empty() || !dr_contexts.empty())
+-        {
+-            auto injected = device_table.Open();
+-            const auto func = injected->CmdDrawMultiIndexedEXT;
+-            for (auto dc_context : dc_contexts)
+-            {
+-                CommandBufferIterator first, last;
+-                dc_context->GetDrawCallActiveCommandBuffers(first, last);
+-                for (CommandBufferIterator it = first; it < last; ++it)
+-                {
+-                    func(*it, drawCount, pIndexInfo, instanceCount, firstInstance, stride, pVertexOffset);
+-                }
+-            }
+-
+-            for (auto dr_context : dr_contexts)
+-            {
+-                VkCommandBuffer dispatch_rays_command_buffer = dr_context->GetDispatchRaysCommandBuffer();
+-                if (dispatch_rays_command_buffer != VK_NULL_HANDLE)
+-                {
+-                    func(dispatch_rays_command_buffer, drawCount, pIndexInfo, instanceCount, firstInstance, stride, pVertexOffset);
+-                }
+-            }
+-        }
++        auto injected = device_table.Open();
++        OverrideCmdDrawMultiIndexedEXT(call_info, injected->CmdDrawMultiIndexedEXT, commandBuffer, drawCount, pIndexInfo, instanceCount, firstInstance, stride, pVertexOffset);
+     }
+ }
+ 
+diff --git a/framework/generated/khronos_generators/vulkan_generators/dump_resources_overrides.json b/framework/generated/khronos_generators/vulkan_generators/dump_resources_overrides.json
+index 5d155fd..d5339ad 100644
+--- a/framework/generated/khronos_generators/vulkan_generators/dump_resources_overrides.json
++++ b/framework/generated/khronos_generators/vulkan_generators/dump_resources_overrides.json
+@@ -27,6 +27,8 @@
+     "vkCmdTraceRaysIndirectKHR": "OverrideCmdTraceRaysIndirectKHR",
+     "vkCmdTraceRaysIndirect2KHR": "OverrideCmdTraceRaysIndirect2KHR",
+     "vkCmdDraw": "OverrideCmdDraw",
++    "vkCmdDrawMultiEXT": "OverrideCmdDrawMultiEXT",
++    "vkCmdDrawMultiIndexedEXT": "OverrideCmdDrawMultiIndexedEXT",
+     "vkCmdDrawIndexed": "OverrideCmdDrawIndexed",
+     "vkCmdDrawIndirect": "OverrideCmdDrawIndirect",
+     "vkCmdDrawIndexedIndirect": "OverrideCmdDrawIndexedIndirect",

@@ -68,6 +68,8 @@ def main():
     check()
     out = guard / ('vulkan-' + a.mode)
     out.mkdir(exist_ok=False)
+    compiler_capture = out / 'compiler-capture'
+    compiler_capture.mkdir(mode=0o700)
     env = dict(os.environ)
     # A previous shell's capture/ICD selection must not leak into replay.
     for key in list(env):
@@ -82,6 +84,7 @@ def main():
                LIBGL_ALWAYS_SOFTWARE='1' if a.renderer == 'lavapipe' else '0',
                ASAHI_M4_EXPERIMENTAL='1', ASAHI_MESA_DEBUG='nocompress',
                HK_DEBUG_LOG='1', MESA_LOG_LEVEL='debug',
+               AGX_COMPILER_CAPTURE_DIR=str(compiler_capture),
                MESA_GL_VERSION_OVERRIDE='3.3', MESA_GLES_VERSION_OVERRIDE='3.0')
     layer = a.tool_prefix / 'lib/libVkLayer_gfxreconstruct.so'
     replay = a.tool_prefix / 'bin/gfxrecon-replay'

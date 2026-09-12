@@ -115,10 +115,10 @@ index 617de99..e8a89da 100644
  
      auto& jargs = function[format::kNameArgs];
 diff --git a/framework/decode/vulkan_replay_consumer_base.cpp b/framework/decode/vulkan_replay_consumer_base.cpp
-index a8e738a..2ad8d11 100644
+index a8e738a..cd52925 100644
 --- a/framework/decode/vulkan_replay_consumer_base.cpp
 +++ b/framework/decode/vulkan_replay_consumer_base.cpp
-@@ -12976,9 +12976,9 @@ void VulkanReplayConsumerBase::Process_vkCmdPushDescriptorSetWithTemplateKHR(
+@@ -12976,19 +12976,22 @@ void VulkanReplayConsumerBase::Process_vkCmdPushDescriptorSetWithTemplateKHR(
          in_descriptorUpdateTemplate = update_template_info->handle;
      }
  
@@ -131,7 +131,27 @@ index a8e738a..2ad8d11 100644
  
      if (options_.dumping_resources)
      {
-@@ -13014,7 +13014,9 @@ void VulkanReplayConsumerBase::Process_vkCmdPushDescriptorSetWithTemplate2KHR(
+-        resource_dumper_->Process_vkCmdPushDescriptorSetWithTemplateKHR(call_info,
+-                                                                        GetInjectedDeviceCalls(in_commandBuffer),
+-                                                                        in_commandBuffer,
+-                                                                        in_descriptorUpdateTemplate,
+-                                                                        in_layout,
+-                                                                        args.set,
+-                                                                        args.pData.GetPointer());
++        auto dump = args.core_alias
++                        ? &VulkanReplayDumpResources::Process_vkCmdPushDescriptorSetWithTemplate
++                        : &VulkanReplayDumpResources::Process_vkCmdPushDescriptorSetWithTemplateKHR;
++        (resource_dumper_.get()->*dump)(call_info,
++                                       GetInjectedDeviceCalls(in_commandBuffer),
++                                       in_commandBuffer,
++                                       in_descriptorUpdateTemplate,
++                                       in_layout,
++                                       args.set,
++                                       args.pData.GetPointer());
+     }
+ }
+ 
+@@ -13014,11 +13017,16 @@ void VulkanReplayConsumerBase::Process_vkCmdPushDescriptorSetWithTemplate2KHR(
          value->descriptorUpdateTemplate = update_template_info->handle;
      }
  
@@ -142,3 +162,11 @@ index a8e738a..2ad8d11 100644
  
      if (options_.dumping_resources)
      {
+-        resource_dumper_->Process_vkCmdPushDescriptorSetWithTemplate2KHR(
++        auto dump = args.core_alias
++                        ? &VulkanReplayDumpResources::Process_vkCmdPushDescriptorSetWithTemplate2
++                        : &VulkanReplayDumpResources::Process_vkCmdPushDescriptorSetWithTemplate2KHR;
++        (resource_dumper_.get()->*dump)(
+             call_info, GetInjectedDeviceCalls(in_commandBuffer), in_commandBuffer, value);
+     }
+ }

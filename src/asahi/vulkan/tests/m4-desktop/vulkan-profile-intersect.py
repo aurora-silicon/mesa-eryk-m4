@@ -17,6 +17,7 @@ p.add_argument('reference', type=Path)
 p.add_argument('--output', type=Path, required=True)
 p.add_argument('--registry', type=Path, default=Path(__file__).resolve().parent.parent / 'reference/gfxreconstruct/external/Vulkan-Headers/registry/vk.xml')
 p.add_argument('--exclude-extension', action='append', default=[], help='Explicit application-specific restriction, retained in report')
+p.add_argument('--sample-counts', action='store_true', help='Intersect sample-count masks in device limits')
 p.add_argument('--formats', action='store_true', help='Also intersect per-format feature flags, including explicit unsupported formats')
 a = p.parse_args()
 target, reference = [json.loads(f.read_text()) for f in (a.target, a.reference)]
@@ -67,6 +68,13 @@ if a.formats:
         formats[name] = {'VkFormatProperties': {field: sorted(set(tf.get(field, [])) & set(rf.get(field, [])))
             for field in ('linearTilingFeatures', 'optimalTilingFeatures', 'bufferFeatures')}}
     result['capabilities']['device']['formats'] = formats
+if a.sample_counts:
+    limits = result['capabilities']['device']['properties']['VkPhysicalDeviceProperties']['limits']
+    target_limits = t['properties']['VkPhysicalDeviceProperties']['limits']
+    reference_limits = r['properties']['VkPhysicalDeviceProperties']['limits']
+    for field in target_limits:
+        if field.endswith('SampleCounts'):
+            limits[field] = sorted(set(target_limits[field]) & set(reference_limits.get(field, [])))
 with a.output.open('x') as f:
     json.dump(result, f, indent=2); f.write('\n')
 report = dict(inputs={str(f): hashlib.sha256(f.read_bytes()).hexdigest() for f in (a.target, a.reference, a.registry)},
@@ -75,7 +83,7 @@ report = dict(inputs={str(f): hashlib.sha256(f.read_bytes()).hexdigest() for f i
               removed_target_extensions=sorted(t['extensions'].keys() - extensions.keys()),
               removed_reference_extensions=sorted(r['extensions'].keys() - extensions.keys()),
               changed_features=changes,
-              formats_intersected=a.formats,
+              formats_intersected=a.formats, sample_counts_intersected=a.sample_counts,
               note='Explicit shared subset; not an unmodified M4 application-support claim. Software limits retained. Format simulation requires SIMULATE_FORMATS_BIT.')
 a.output.with_suffix('.report.json').write_text(json.dumps(report, indent=2)+'\n')
 print(f'Shared extensions: {len(extensions)}; differing feature fields: {len(changes)}')
