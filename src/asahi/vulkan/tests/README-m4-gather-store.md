@@ -48,3 +48,20 @@ that reference limitation is not a target pass.
 bytes exactly on J713, peak54C. The vkQuake SSAO compiler capture
 `aafaef2ceef40676f38b6a30129d06b78395a511470c91cefaa3f2760d650277`
 also compiles after these fixes; that is not proof of complete game execution.
+
+## Storage reads and image visibility
+
+`m4_vulkan_image_read_write.comp` writes RG16F, executes an image memory
+barrier, reads the written texel, and uses that value in its R8 output.
+Use the same harness and reference comparison. `M4_TEST_PREFILL=1` optionally
+initializes the RG16F image to (0.5, 0.25) through a transfer before dispatch,
+which distinguishes stale reads from forced zero results.
+
+`20260912T071613140503Z-native-image-read-write-dependencies` matched every
+byte on J713. The image-write completion token makes the texture fence wait
+for outstanding writes; repeated fences without new writes add no wait.
+A separate prefilled read and image-size probe passed. Before the completion
+fix, write/read returned the old texels exactly while the final RG16F transfer
+already contained the new values. The descriptor interpretation was correct.
+The native compiler witness is retained under the workspace
+`_provenance/vkquake-reference-20260912/native-image-read-write-probe/`.

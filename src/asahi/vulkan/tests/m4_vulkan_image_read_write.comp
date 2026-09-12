@@ -1,0 +1,15 @@
+#version 450
+layout(local_size_x=4,local_size_y=4) in;
+layout(set=0,binding=0) uniform sampler2D src;
+layout(rg16f,set=0,binding=1) uniform image2D rg;
+layout(r8,set=0,binding=2) writeonly uniform image2D red;
+void main() {
+ ivec2 p=ivec2(gl_GlobalInvocationID.xy);
+ vec2 uv=(vec2(p)+vec2(0.8,0.9))/32.0;
+ vec4 a=textureGather(src,uv,0);
+ vec4 b=textureGatherOffset(src,uv,ivec2(1),1);
+ imageStore(rg,p,vec4(a.xy,0,0));
+ memoryBarrierImage();
+ vec4 stored=imageLoad(rg,p);
+ imageStore(red,p,vec4(stored.x + b.z * 0.25));
+}

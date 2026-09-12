@@ -221,6 +221,20 @@ int main(void)
       CHECK(!agx3_slot_assign(p, 2, 6, r));
    }
 
+   /* A storage write has no GPR result. Its image token still requires a
+    * completion wait before the texture cache fence. A second fence is free;
+    * another image write starts a fresh dependency. */
+   {
+      struct agx3_slot_instr write = ld(AGX3_SLOT_IMAGE_WRITE_TOKEN);
+      write.preferred_slot = 2;
+      struct agx3_slot_instr fence = st(AGX3_SLOT_IMAGE_WRITE_TOKEN);
+      struct agx3_slot_instr p[] = {write, fence, fence, write, fence};
+      CHECK(agx3_slot_assign(p, 5, 6, r));
+      CHECK(r[0].slot == 2 && r[0].wait_mask == 0);
+      CHECK(r[1].wait_mask == 2 && r[2].wait_mask == 0);
+      CHECK(r[3].slot == 2 && r[4].wait_mask == 2);
+   }
+
    /* Malformed inputs. */
    CHECK(!agx3_slot_assign(NULL, 1, 6, r));
    { struct agx3_slot_instr p=ld(0); CHECK(!agx3_slot_assign(&p,1,0,r)); CHECK(!agx3_slot_assign(&p,1,9,r)); }

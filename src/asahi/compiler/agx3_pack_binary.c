@@ -491,7 +491,8 @@ agx3_is_async(const agx_instr *I)
           I->op == AGX_OPCODE_LDCF || I->op == AGX_OPCODE_GET_SR ||
           I->op == AGX_OPCODE_GET_COVERAGE_1X_AGX3 ||
           I->op == AGX_OPCODE_TEXTURE_LOAD || I->op == AGX_OPCODE_IMAGE_LOAD ||
-          I->op == AGX_OPCODE_TEXTURE_SAMPLE || I->op == AGX_OPCODE_LD_TILE ||
+          I->op == AGX_OPCODE_TEXTURE_SAMPLE || I->op == AGX_OPCODE_IMAGE_WRITE ||
+          I->op == AGX_OPCODE_LD_TILE ||
           I->op == AGX_OPCODE_SCS_LOAD_AGX3 ||
           I->op == AGX_OPCODE_SCS_LOAD_UNIFORM_INDEXED_AGX3 ||
           I->op == AGX_OPCODE_STACK_LOAD ||
@@ -2051,7 +2052,14 @@ agx3_append_texture_staging_tokens(const agx_instr *I, mesa_shader_stage stage,
       base = I->op == AGX_OPCODE_IMAGE_LOAD ? 16 : 0;
       halves = I->dim == AGX_DIM_2D_ARRAY ||
                I->lod_mode == AGX_LOD_MODE_LOD_MIN ? 8 : 4;
+   } else if (I->op == AGX_OPCODE_IMAGE_WRITE) {
+      base = 0;
+      halves = 16;
+      e->dst[e->nr_dsts++] = AGX3_SLOT_IMAGE_WRITE_TOKEN;
    } else {
+      if (I->op == AGX_OPCODE_SCOPED_BARRIER_AGX3 &&
+          I->imm == AGX3_BARRIER_SCOPE_TEXTURE)
+         e->src[e->nr_srcs++] = AGX3_SLOT_IMAGE_WRITE_TOKEN;
       return true;
    }
 
@@ -4016,6 +4024,12 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
          if (I->op == AGX_OPCODE_EXPORT)
             continue;
          e->is_async = agx3_is_async(I);
+         /* IMGWCI completes on the slot used by its staging COPYs. Retain
+          * that dependency until a texture fence or overlapping publisher
+          * consumes it. A barrier without the completion wait reads stale
+          * texels even though its cache-operation bytes are correct. */
+         if (I->op == AGX_OPCODE_IMAGE_WRITE)
+            e->preferred_slot = 2;
          if (g17p_storage_image_protocol &&
              (I->op == AGX_OPCODE_IMAGE_LOAD ||
               I->op == AGX_OPCODE_TEXTURE_SAMPLE))
@@ -4852,7 +4866,9 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
          }
 
          if (I->op == AGX_OPCODE_SCOPED_BARRIER_AGX3) {
-            if (!agx3_emit_scoped_barrier(emission, enc, I, wait))
+            if (wait && !agx3_retire_slots_noop(emission, enc, wait))
+               AGX3_REFUSE(I);
+            if (!agx3_emit_scoped_barrier(emission, enc, I, 0))
                AGX3_REFUSE(I);
             continue;
          }

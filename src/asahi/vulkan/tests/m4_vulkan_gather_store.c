@@ -149,7 +149,8 @@ main(int argc, char **argv)
          .samples = VK_SAMPLE_COUNT_1_BIT,
          .tiling = VK_IMAGE_TILING_OPTIMAL,
          .usage =
-            j ? VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT
+            j ? VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+                    VK_IMAGE_USAGE_TRANSFER_DST_BIT
               : VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT};
       CK(vkCreateImage(dev, &ii, 0, &im[j]));
       vkGetImageMemoryRequirements(dev, im[j], &req);
@@ -273,6 +274,21 @@ main(int argc, char **argv)
    for (unsigned j = 1; j < 3; j++)
       barrier(cb, im[j], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL, 0,
               VK_ACCESS_SHADER_WRITE_BIT);
+   if (getenv("M4_TEST_PREFILL")) {
+      uint16_t *half_data = (uint16_t *)((char *)map + 32768);
+      for (unsigned k = 0; k < 1024; ++k) {
+         half_data[2*k] = 0x3800; /* 0.5 */
+         half_data[2*k+1] = 0x3400; /* 0.25 */
+      }
+      barrier(cb, im[1], VK_IMAGE_LAYOUT_GENERAL,
+              VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, VK_ACCESS_TRANSFER_WRITE_BIT);
+      VkBufferImageCopy prefill = region;
+      prefill.bufferOffset = 32768;
+      vkCmdCopyBufferToImage(cb, buf, im[1], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &prefill);
+      barrier(cb, im[1], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+              VK_IMAGE_LAYOUT_GENERAL, VK_ACCESS_TRANSFER_WRITE_BIT,
+              VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
+   }
    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_COMPUTE, pl, 0, 1, &ds, 0,
                            0);

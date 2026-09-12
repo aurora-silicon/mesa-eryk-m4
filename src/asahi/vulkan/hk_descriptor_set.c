@@ -201,6 +201,8 @@ write_storage_image_view_desc(struct hk_descriptor_set *set,
       VK_FROM_HANDLE(hk_image_view, view, info->imageView);
       memcpy(packed + AGX_G17P_STORAGE_HEAP_INDEX_OFFSET,
              &view->planes[0].storage_heap_index, sizeof(uint32_t));
+      memcpy(packed + AGX_G17P_SAMPLED_HEAP_INDEX_OFFSET,
+             &view->planes[0].storage_read_heap_index, sizeof(uint32_t));
    }
    if (debug_get_bool_option("HK_G17P_LAUNCH_TRACE", false) && generation == 9) {
       fprintf(stderr,

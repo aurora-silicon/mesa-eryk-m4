@@ -39,12 +39,13 @@ extern "C" {
 #define AGX3_SLOT_STAGING_TOKEN_BASE                                      \
    (AGX3_SLOT_TPS_TOKEN_BASE + AGX3_SLOT_TPS_HALF_TOKENS)
 #define AGX3_SLOT_STAGING_HALF_TOKENS 256u
-#define AGX3_SLOT_NUM_TOKENS                                             \
+#define AGX3_SLOT_IMAGE_WRITE_TOKEN \
    (AGX3_SLOT_STAGING_TOKEN_BASE + AGX3_SLOT_STAGING_HALF_TOKENS)
+#define AGX3_SLOT_NUM_TOKENS (AGX3_SLOT_IMAGE_WRITE_TOKEN + 1u)
 
-/* Up to 16 half-register or storage-token sources/dests per instruction is far
- * more than any AGX3 form uses. */
-#define AGX3_SLOT_MAX_REGS 16u
+/* Image writes reserve sixteen staging halves plus their memory completion
+ * token. Keep room for the register operands independently. */
+#define AGX3_SLOT_MAX_REGS 32u
 
 struct agx3_slot_instr {
    bool is_async;   /* produces a scoreboard-tracked result */
