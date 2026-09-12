@@ -46,6 +46,26 @@ int main(void){
       if(agx3_tile_load(AGX_ISA_ENCODING_AGX3C,0,AGX3_TILE_W32,1,15,0,
                         AGX3_TILE_COV_PER_SAMPLE,0,true,true,out,&len)) fail++; else pass++;
    }
+   /* Native G16G four-sample framebuffer fetch, entry offset 64 in the
+    * retained sample-fragment4 object. Each load selects one sample. */
+   {
+      const struct { uint8_t reg, slot, mask; bool first; uint8_t bytes[12]; } v[] = {
+         {12, 1, 1, true, {0x67,0x0e,0x54,0x0c,0,0,1,0x4e,0,0,0,0}},
+         {10, 2, 2, false,{0x67,0x06,0x54,0x0a,0,0,2,0xce,0,0,0,0}},
+         {8, 3, 4, false, {0x67,0x06,0x54,8,0,0,4,0x4e,1,0,0,0}},
+         {14, 6, 8, false,{0x67,0x06,0x54,0x0e,0,0,8,0xce,2,0,0,0}},
+      };
+      for (unsigned i = 0; i < sizeof(v) / sizeof(v[0]); ++i) {
+         uint8_t out[AGX3_TILE_MAX_LENGTH], len = 0;
+         if (!agx3_tile_load_mask(AGX_ISA_ENCODING_AGX3B, v[i].reg,
+                                  AGX3_TILE_W8, v[i].slot, 15, 0, v[i].mask,
+                                  0, v[i].first, false, out, &len) ||
+             len != 12 || memcmp(out, v[i].bytes, 12)) {
+            fprintf(stderr, "native MSAA load %u differs\n", i);
+            fail++;
+         } else pass++;
+      }
+   }
    if(fail){ fprintf(stderr,"agx3_tile_core: %u of %zu failed\n",fail,tile_vec_count); return 1; }
    printf("agx3_tile_core: all %u tile ops reproduced\n",pass); return 0;
 }

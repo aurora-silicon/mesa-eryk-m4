@@ -4,8 +4,8 @@
  *
  * AGX3 tile / framebuffer encoders: st_tile -> lstcol (fragment color output)
  * and ld_tile -> lldcol (framebuffer fetch).  This core intentionally exposes
- * only the directly witnessed single-sample forms.  The per-sample selector is
- * not understood well enough to bind Mesa IR yet and therefore fails closed.
+ * single-sample forms and G16 immediate sample masks. Register sample masks
+ * remain separate from the legacy coverage-mode API.
  * Composer-driven; reproduces Apple's witnessed bytes. Blend and depth-compare
  * are render state, not ISA. Evidence:
  * research/gpu/GPU_AGX3_TILE_OPS_2026-08-24.md.
@@ -54,6 +54,17 @@ bool agx3_tile_load(enum agx_isa_encoding enc, uint16_t dest,
                     uint16_t tile_off, enum agx3_tile_coverage cov,
                     uint16_t wait_mask, bool first, bool last,
                     uint8_t out[AGX3_TILE_MAX_LENGTH], uint8_t *len);
+
+/* G16 immediate sample masks, witnessed by native 4x framebuffer fetch.
+ * The legacy entry points retain their single-sample mask of one. */
+bool agx3_tile_store_mask(enum agx_isa_encoding enc, uint16_t data,
+                         enum agx3_tile_width width, uint8_t chan_mask,
+                         uint16_t tile_off, uint8_t sample_mask,
+                         uint16_t wait_mask, uint8_t out[AGX3_TILE_MAX_LENGTH], uint8_t *len);
+bool agx3_tile_load_mask(enum agx_isa_encoding enc, uint16_t dest,
+                        enum agx3_tile_width width, uint8_t slot, uint8_t chan_mask,
+                        uint16_t tile_off, uint8_t sample_mask, uint16_t wait_mask,
+                        bool first, bool last, uint8_t out[AGX3_TILE_MAX_LENGTH], uint8_t *len);
 
 #ifdef __cplusplus
 }

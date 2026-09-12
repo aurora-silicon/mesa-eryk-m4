@@ -52,9 +52,9 @@ wait_overrides(enum agx_isa_encoding enc, uint16_t wait_mask,
 }
 
 bool
-agx3_tile_store(enum agx_isa_encoding enc, uint16_t data,
+agx3_tile_store_mask(enum agx_isa_encoding enc, uint16_t data,
                 enum agx3_tile_width width, uint8_t chan_mask,
-                uint16_t tile_off, enum agx3_tile_coverage cov,
+                uint16_t tile_off, uint8_t sample_mask,
                 uint16_t wait_mask, uint8_t out[AGX3_TILE_MAX_LENGTH],
                 uint8_t *len)
 {
@@ -63,7 +63,8 @@ agx3_tile_store(enum agx_isa_encoding enc, uint16_t data,
    memset(out, 0, AGX3_TILE_MAX_LENGTH);
    *len = 0;
 
-   if (!common_ok(data, width, chan_mask, cov, enc, wait_mask, tile_off))
+   if (!sample_mask || (!is_b(enc) && sample_mask != 1) ||
+       !common_ok(data, width, chan_mask, AGX3_TILE_COV_1X, enc, wait_mask, tile_off))
       return false;
    const struct agx3_field_kv base_b[] = {KV(9, 2),  KV(35, 9), KV(37, 7),
                                           KV(38, 1), KV(43, 1), KV(52, 1),
@@ -79,7 +80,8 @@ agx3_tile_store(enum agx_isa_encoding enc, uint16_t data,
    ov[n++] = (struct agx3_field_kv)KV(10, width);
    ov[n++] = (struct agx3_field_kv)KV(26, chan_mask);
    ov[n++] = (struct agx3_field_kv)KV(57, tile_off);
-   ov[n++] = (struct agx3_field_kv)KV(51, cov);
+   ov[n++] = (struct agx3_field_kv)KV(51, AGX3_TILE_COV_1X);
+   ov[n++] = (struct agx3_field_kv)KV(43, sample_mask);
    n = wait_overrides(enc, wait_mask, ov, n);
    if (!agx3_bind_compose(enc, "lstcol", 0, is_b(enc) ? base_b : base_c,
                           is_b(enc) ? 8 : 9, ov, n, out, len)) {
@@ -91,9 +93,9 @@ agx3_tile_store(enum agx_isa_encoding enc, uint16_t data,
 }
 
 bool
-agx3_tile_load(enum agx_isa_encoding enc, uint16_t dest,
+agx3_tile_load_mask(enum agx_isa_encoding enc, uint16_t dest,
                enum agx3_tile_width width, uint8_t slot, uint8_t chan_mask,
-               uint16_t tile_off, enum agx3_tile_coverage cov,
+               uint16_t tile_off, uint8_t sample_mask,
                uint16_t wait_mask, bool first, bool last,
                uint8_t out[AGX3_TILE_MAX_LENGTH], uint8_t *len)
 {
@@ -104,7 +106,8 @@ agx3_tile_load(enum agx_isa_encoding enc, uint16_t dest,
 
    /* Full-component loads, plus fresh G17P scalar R8/R16 and RGB10A2 native
     * fetches carrying exactly one component. None carries an incoming wait. */
-   if (!common_ok(dest, width, chan_mask, cov, enc, wait_mask, tile_off) ||
+   if (!sample_mask || (!is_b(enc) && sample_mask != 1) ||
+       !common_ok(dest, width, chan_mask, AGX3_TILE_COV_1X, enc, wait_mask, tile_off) ||
        (chan_mask != 15 && !(is_b(enc) && chan_mask == 1)) ||
        wait_mask != 0 || slot < 1 ||
        slot > (is_b(enc) ? 6 : 8))
@@ -122,8 +125,8 @@ agx3_tile_load(enum agx_isa_encoding enc, uint16_t dest,
    ov[n++] = (struct agx3_field_kv)KV(12, slot);
    ov[n++] = (struct agx3_field_kv)KV(26, chan_mask);
    ov[n++] = (struct agx3_field_kv)KV(57, tile_off);
-   ov[n++] = (struct agx3_field_kv)KV(51, cov);
-   ov[n++] = (struct agx3_field_kv)KV(43, 1);
+   ov[n++] = (struct agx3_field_kv)KV(51, AGX3_TILE_COV_1X);
+   ov[n++] = (struct agx3_field_kv)KV(43, sample_mask);
    ov[n++] = (struct agx3_field_kv)KV(78, first ? 1 : 0);
    if (!is_b(enc))
       ov[n++] = (struct agx3_field_kv)KV(74, last ? 2 : 0);
@@ -134,4 +137,31 @@ agx3_tile_load(enum agx_isa_encoding enc, uint16_t dest,
       return false;
    }
    return true;
+}
+
+bool
+agx3_tile_store(enum agx_isa_encoding enc, uint16_t data,
+               enum agx3_tile_width width, uint8_t chan_mask,
+               uint16_t tile_off, enum agx3_tile_coverage cov,
+               uint16_t wait_mask, uint8_t out[AGX3_TILE_MAX_LENGTH], uint8_t *len)
+{
+   if (out)
+      memset(out, 0, AGX3_TILE_MAX_LENGTH);
+   if (len)
+      *len = 0;
+   return cov == AGX3_TILE_COV_1X && agx3_tile_store_mask(enc, data, width,
+          chan_mask, tile_off, 1, wait_mask, out, len);
+}
+bool
+agx3_tile_load(enum agx_isa_encoding enc, uint16_t dest,
+              enum agx3_tile_width width, uint8_t slot, uint8_t chan_mask,
+              uint16_t tile_off, enum agx3_tile_coverage cov, uint16_t wait_mask,
+              bool first, bool last, uint8_t out[AGX3_TILE_MAX_LENGTH], uint8_t *len)
+{
+   if (out)
+      memset(out, 0, AGX3_TILE_MAX_LENGTH);
+   if (len)
+      *len = 0;
+   return cov == AGX3_TILE_COV_1X && agx3_tile_load_mask(enc, dest, width, slot,
+          chan_mask, tile_off, 1, wait_mask, first, last, out, len);
 }

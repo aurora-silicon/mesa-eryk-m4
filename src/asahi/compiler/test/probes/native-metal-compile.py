@@ -13,6 +13,7 @@ p.add_argument('--function', default='cs')
 p.add_argument('--stage', choices=['compute', 'render', 'builtin'], default='compute')
 p.add_argument('--compiler', help='Absolute offline compiler path on the Mac; defaults to xcrun')
 p.add_argument('--vertex-function', default='vs', help='Vertex function for render pipelines')
+p.add_argument('--samples',type=int,default=1,choices=[1,2,4],help='Render pipeline raster sample count')
 p.add_argument('--pixel-format',default='RGBA8Unorm',help='Native color attachment format for render pipelines')
 p.add_argument('--host', default='m1@51.159.120.23')
 a = p.parse_args()
@@ -30,6 +31,7 @@ if request['stage']=='compute':
 elif request['stage']=='render':
     pipelines={'render_pipelines':[{
         'vertex_function':'alias:probe#'+request['vertex_function'],
+        'raster_sample_count':request['samples'],
         'fragment_function':'alias:probe#'+request['function'],
         'color_attachments':[{'pixel_format':request['pixel_format']}]}]}
 if request['stage']!='builtin':
@@ -54,7 +56,7 @@ print(json.dumps({'ok':ok,'target':'applegpu_g16g','remote_directory':str(root),
 '''
 r = subprocess.run(['ssh','-o','ConnectTimeout=10',a.host,shlex.join(['python3','-c',remote])],
                    input=json.dumps({'source':base64.b64encode(source).decode(),'function':a.function,
-                                     'stage':a.stage,'vertex_function':a.vertex_function,'pixel_format':a.pixel_format,
+                                     'stage':a.stage,'vertex_function':a.vertex_function,'pixel_format':a.pixel_format,'samples':a.samples,
                                      'source_name':source_name,'compiler':a.compiler}),
                    text=True,capture_output=True,timeout=180)
 (a.output/'transport-stderr.log').write_text(r.stderr)
