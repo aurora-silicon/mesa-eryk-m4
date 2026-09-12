@@ -287,7 +287,8 @@ g17p_indexed_fetch_shape(const nir_tex_instr *tex, bool allow_lod)
       tex->coord_components == 1 && coord >= 0 &&
       tex->src[coord].src.ssa->num_components == 2;
 
-   if (tex->op != nir_texop_txf || tex->sampler_dim != GLSL_SAMPLER_DIM_2D ||
+   const bool ms = tex->op == nir_texop_txf_ms && tex->sampler_dim == GLSL_SAMPLER_DIM_MS;
+   if ((!ms && (tex->op != nir_texop_txf || tex->sampler_dim != GLSL_SAMPLER_DIM_2D)) ||
        tex->is_shadow || tex->is_sparse || tex->texture_index ||
        tex->sampler_index || tex->def.bit_size != 32 ||
        tex->def.num_components != 4 ||
@@ -299,6 +300,10 @@ g17p_indexed_fetch_shape(const nir_tex_instr *tex, bool allow_lod)
       return false;
    const int handle = nir_tex_instr_src_index(tex, nir_tex_src_texture_handle);
    const int lod = nir_tex_instr_src_index(tex, nir_tex_src_lod);
+   if (ms)
+      return handle >= 0 && lod < 0 && coord >= 0 && tex->num_srcs == 2 &&
+             nir_src_bit_size(tex->src[coord].src) == 32 &&
+             nir_src_num_components(tex->src[coord].src) == 3;
    return handle >= 0 && lod >= 0 && coord >= 0 && tex->num_srcs == 3 &&
       ((nir_src_is_const(tex->src[lod].src) &&
         nir_src_as_uint(tex->src[lod].src) == 0) ||
@@ -434,7 +439,7 @@ agx_nir_lower_g17p_indexed_samplers(nir_shader *shader)
             b.cursor = nir_before_instr(instr);
             nir_intrinsic_instr *image = nir_src_as_intrinsic(
                tex->src[nir_tex_instr_src_index(tex, nir_tex_src_texture_handle)].src);
-            const bool fetch = tex->op == nir_texop_txf;
+            const bool fetch = tex->op == nir_texop_txf || tex->op == nir_texop_txf_ms;
             nir_def *sampler = fetch ? NULL : g17p_sample_heap_index(tex);
             nir_def *set = nir_load_descriptor_set_agx(&b, nir_intrinsic_desc_set(image));
             /* Descriptor offsets are 32-bit and valid sets fit far below

@@ -30,7 +30,8 @@ fetch_ok(enum agx_isa_encoding enc, const struct agx3_tex_fetch_desc *d)
        (enc == AGX_ISA_ENCODING_AGX3B ? (!d->mask || d->mask > 15)
                                     : (d->mask != 1 && d->mask != 15)) ||
        d->texture > 15 ||
-       (d->register_lod && (enc != AGX_ISA_ENCODING_AGX3B || d->array)))
+       (d->register_lod && (enc != AGX_ISA_ENCODING_AGX3B || d->array || d->multisample)) ||
+       (d->multisample && enc != AGX_ISA_ENCODING_AGX3B))
       return false;
 
    const unsigned tk = d->texture_kind ?: AGX3_TEX_OPERAND_IMMEDIATE;
@@ -98,9 +99,9 @@ agx3_tex_encode_fetch(enum agx_isa_encoding enc,
    ov[n++] = (struct agx3_field_kv)KV(19, d->coord);
    ov[n++] = (struct agx3_field_kv)KV(26, d->slot);
    ov[n++] = (struct agx3_field_kv)KV(27, d->coord_kill ? 1 : 0);
-   ov[n++] = (struct agx3_field_kv)KV(37, d->register_lod ? 0 : 1);
+   ov[n++] = (struct agx3_field_kv)KV(37, (d->register_lod || d->multisample) ? 0 : 1);
    ov[n++] = (struct agx3_field_kv)KV(75, d->mask);
-   ov[n++] = (struct agx3_field_kv)KV(76, 1);  /* 2D */
+   ov[n++] = (struct agx3_field_kv)KV(76, d->multisample ? 2 : 1);
    if (d->array)
       ov[n++] = (struct agx3_field_kv)KV(77, 2); /* array, register layer */
    ov[n++] = (struct agx3_field_kv)KV(78, 1);  /* texel fetch */
@@ -117,7 +118,7 @@ agx3_tex_encode_fetch(enum agx_isa_encoding enc,
                                          : 126,
       d->sampler_value);
    ov[n++] = (struct agx3_field_kv)KV(107, d->texture_kill);
-   ov[n++] = (struct agx3_field_kv)KV(139, d->register_lod ? 4 : 2);
+   ov[n++] = (struct agx3_field_kv)KV(139, d->multisample ? 0 : d->register_lod ? 4 : 2);
    if (enc == AGX_ISA_ENCODING_AGX3B)
       ov[n++] = (struct agx3_field_kv)KV(147, d->final ? 2 : 0);
    else {
@@ -572,9 +573,10 @@ agx3_tex_decode_fetch(enum agx_isa_encoding enc, const void *instruction,
            kind <= AGX3_TEX_OPERAND_UNIFORM; ++kind) {
          d.texture_kind = kind;
          d.texture_kill = kind == AGX3_TEX_OPERAND_REGISTER && (p[15] & 8);
-         for (unsigned axis = 0; axis < 4; ++axis) {
+         for (unsigned axis = 0; axis < 8; ++axis) {
             d.array = axis & 1;
             d.register_lod = axis & 2;
+            d.multisample = axis & 4;
             uint8_t canonical[AGX3_TEX_MAX_LENGTH], length;
             if (agx3_tex_encode_fetch(enc, &d, canonical, &length) &&
                 length == instruction_size &&
@@ -599,11 +601,12 @@ agx3_tex_decode_fetch(enum agx_isa_encoding enc, const void *instruction,
    /* The array axis is a single selector the hand decoders above do not
     * extract; recover it the same way everything else here is validated, by
     * requiring one of the two readings to repack byte-for-byte. */
-   for (unsigned a = 0; a < 4; ++a) {
+   for (unsigned a = 0; a < 8; ++a) {
       uint8_t canonical[AGX3_TEX_MAX_LENGTH];
       uint8_t length = 0;
       d.array = a & 1;
       d.register_lod = a & 2;
+      d.multisample = a & 4;
       if (agx3_tex_encode_fetch(enc, &d, canonical, &length) &&
           length == instruction_size &&
           memcmp(canonical, instruction, length) == 0) {
@@ -713,5 +716,51 @@ agx3_tex_stage_array_layer(enum agx_isa_encoding enc, uint16_t src,
       return false;
 
    out[6] |= (src >> 7) & 1;
+   return true;
+}
+
+/* Witnessed by native G16G read-layer Metal compute pipeline. Both operations
+ * use ordinary GPR destinations so register allocation owns all temporaries. */
+bool
+agx3_tex_pack_aux(enum agx_isa_encoding enc, bool sample,
+                 uint16_t dest_half, uint16_t source_half,
+                 uint16_t layer_half, uint16_t wait_mask,
+                 uint8_t out[AGX3_TEX_MAX_LENGTH], uint8_t *len)
+{
+   if (!out || !len)
+      return false;
+   memset(out, 0, AGX3_TEX_MAX_LENGTH);
+   *len = 0;
+   /* The second source's upper bank bit is not qualified yet. */
+   if (enc != AGX_ISA_ENCODING_AGX3B ||
+       dest_half > 254 || (dest_half & 1) || source_half > 255 ||
+       (layer_half != UINT16_MAX && ((layer_half & 1) || layer_half >= 128)) ||
+       (wait_mask & ~0x3f))
+      return false;
+   const struct agx3_field_kv base[] = {
+      KV(9, 2), KV(10, 2), KV(11, 1), KV(23, 2), KV(24, 1),
+      KV(38, 1), KV(52, 2),
+   };
+   struct agx3_field_kv ov[20];
+   unsigned n = 0;
+   ov[n++] = (struct agx3_field_kv)KV(2, dest_half);
+   ov[n++] = (struct agx3_field_kv)KV(16, source_half & 127);
+   ov[n++] = (struct agx3_field_kv)KV(74, sample ? 9 : 4);
+   ov[n++] = (struct agx3_field_kv)KV(51, sample && layer_half != UINT16_MAX ? 2 : 1);
+   if (sample) {
+      ov[n++] = (struct agx3_field_kv)KV(37, 1);
+      ov[n++] = (struct agx3_field_kv)KV(75, 12);
+      ov[n++] = (struct agx3_field_kv)KV(76, 1);
+      ov[n++] = (struct agx3_field_kv)KV(77, 16);
+      if (layer_half != UINT16_MAX)
+         ov[n++] = (struct agx3_field_kv)KV(44, layer_half & 127);
+   }
+   for (unsigned i = 0; i < 6; ++i)
+      if (wait_mask & (1u << i))
+         ov[n++] = (struct agx3_field_kv)KV(58 + i, 1);
+   if (!agx3_bind_compose(enc, "pack_smpir", 0, base, sizeof(base) / sizeof(base[0]),
+                        ov, n, out, len))
+      return false;
+   out[6] |= (source_half >> 7) & 1;
    return true;
 }

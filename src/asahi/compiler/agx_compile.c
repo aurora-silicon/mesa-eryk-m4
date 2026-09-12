@@ -3858,6 +3858,27 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
    else if (!agx_is_null(compare))
       compare_offset = compare;
 
+   if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+       instr->op == nir_texop_txf_ms) {
+      /* The common lowering carries sample/layer as two 16-bit halves.
+       * G16 uses PACK_SMPIR's native sample/array auxiliary bank instead. */
+      agx_index xy_aux[3] = {agx_null(), agx_null(), agx_null()};
+      agx_emit_split(b, xy_aux, coords, 3);
+      agx_index sample = agx_temp(b->shader, AGX_SIZE_16);
+      agx_subdivide_to(b, sample, xy_aux[2], 0);
+      agx_index packed_layer = agx_zero();
+      if (instr->is_array) {
+         agx_index layer = agx_temp(b->shader, AGX_SIZE_16);
+         agx_subdivide_to(b, layer, xy_aux[2], 1);
+         packed_layer = agx_temp(b->shader, AGX_SIZE_32);
+         agx_pack_layer_agx3_to(b, packed_layer, layer);
+      }
+      agx_index aux = agx_temp(b->shader, AGX_SIZE_32);
+      agx_pack_sample_agx3_to(b, aux, sample, packed_layer);
+      xy_aux[2] = aux;
+      coords = agx_emit_collect(b, 3, xy_aux);
+   }
+
    agx_index tmp = agx_vec_temp(b->shader, dst.size, instr->is_sparse ? 8 : 4);
    agx_instr *I = agx_texture_sample_to(
       b, tmp, coords, lod, bindless, texture, sampler, compare_offset,

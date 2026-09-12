@@ -821,21 +821,19 @@ lower_g17p_1x_tile_sample(nir_builder *b, nir_intrinsic_instr *intr,
    }
 
    if (nir_src_is_const(intr->src[src]) &&
-       nir_src_as_uint(intr->src[src]) == 0xff)
+       nir_src_as_uint(intr->src[src]) == 1)
       return false;
 
    b->cursor = nir_before_instr(&intr->instr);
-   nir_src_rewrite(&intr->src[src], nir_imm_intN_t(b, 0xff, 16));
+   nir_src_rewrite(&intr->src[src], nir_imm_intN_t(b, 1, 16));
    return true;
 }
 
 bool
 agx_nir_lower_g17p_1x_tile_samples(nir_shader *s)
 {
-   /* Honeykrisp advertises only one sample on G17P.  Per-sample epilog
-    * lowering still materializes `1 << sample_id`, but sample_id can only be
-    * zero.  Native 1x fragments encode the ordinary whole-pixel LSTCOL/LLDCOL
-    * forms, which carry no sample operand. */
+   /* A sample-shaded epilog can still carry a dynamic sample ID at 1x.
+    * Only sample zero exists, represented by mask one in native tile ops. */
    return nir_shader_intrinsics_pass(s, lower_g17p_1x_tile_sample,
                                      nir_metadata_control_flow, NULL);
 }

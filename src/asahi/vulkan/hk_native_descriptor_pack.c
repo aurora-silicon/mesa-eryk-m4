@@ -215,7 +215,9 @@ hk_pack_native_pbe(unsigned generation,
     * semantic placement is incomplete: arrays, compression, sparse mode,
     * gamma and the software-addressing sideband.
     */
-   if (legacy->dimension != AGX_TEXTURE_DIMENSION_2D ||
+   const bool ms = generation == 9 &&
+                   legacy->dimension == AGX_TEXTURE_DIMENSION_2D_MULTISAMPLED;
+   if ((!ms && legacy->dimension != AGX_TEXTURE_DIMENSION_2D) ||
        (legacy->layout == AGX_LAYOUT_LINEAR &&
         (generation != 9 || legacy->level != 0 || legacy->levels != 1 ||
          legacy->unk_mipmapped)) ||
@@ -223,7 +225,9 @@ hk_pack_native_pbe(unsigned generation,
         legacy->layout != AGX_LAYOUT_TWIDDLED &&
         legacy->layout != AGX_LAYOUT_GPU) ||
        legacy->unk_52 || legacy->rotate_90 || legacy->flip_vertical ||
-       legacy->samples != AGX_SAMPLE_COUNT_2 ||
+       (ms ? legacy->samples > AGX_SAMPLE_COUNT_4 ||
+              legacy->layout == AGX_LAYOUT_LINEAR
+           : legacy->samples != AGX_SAMPLE_COUNT_2) ||
        legacy->compressed || legacy->mode != AGX_IMAGE_MODE_NORMAL ||
        legacy->layers != 1 ||
        (generation != 9 && (legacy->level != 0 || legacy->levels != 1 ||
@@ -241,6 +245,7 @@ hk_pack_native_pbe(unsigned generation,
       return false;
 
    const struct agx_pbe_agx3_2d_fields fields = {
+      .samples_log2 = ms ? legacy->samples + 1 : 0,
       .layout = legacy->layout,
       .channels = legacy->channels,
       .type = legacy->type,

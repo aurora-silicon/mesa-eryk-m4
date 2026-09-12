@@ -28,7 +28,7 @@ same(const struct agx3_tex_fetch_desc *a,
           a->texture == b->texture && a->slot == b->slot &&
           a->wait_mask == b->wait_mask && a->coord_kill == b->coord_kill &&
           a->final == b->final &&
-          a->array == b->array &&
+          a->array == b->array && a->multisample == b->multisample &&
           (a->texture_kind ?: AGX3_TEX_OPERAND_IMMEDIATE) ==
              (b->texture_kind ?: AGX3_TEX_OPERAND_IMMEDIATE) &&
           (a->sampler_kind ?: AGX3_TEX_OPERAND_IMMEDIATE) ==
@@ -51,6 +51,62 @@ roundtrip(enum agx_isa_encoding enc, const struct agx3_tex_fetch_desc *d)
         d->sampler_kind <= AGX3_TEX_OPERAND_IMMEDIATE) ? 14 : 20) : 8));
    CHECK(agx3_tex_decode_fetch(enc, bytes, length, &decoded));
    CHECK(same(d, &decoded));
+   return 0;
+}
+
+static int
+test_multisample_aux(void)
+{
+   /* Native G16G read-layer PACK_SMPIR with the source discard hint cleared.
+    * This is a register destination, not the asynchronous staging form.
+    */
+   const uint8_t layer[] = {0x17,0x05,0x54,0x02,0x03,0x04,
+                            0x00,0x00,0x70,0x88,0x04,0x00};
+   uint8_t out[AGX3_TEX_MAX_LENGTH], len;
+   CHECK(agx3_tex_pack_aux(AGX_ISA_ENCODING_AGX3B, false, 2, 2,
+                            UINT16_MAX, 0, out, &len));
+   CHECK(len == sizeof(layer) && !memcmp(out, layer, len));
+   for (unsigned src = 0; src < 128; ++src) {
+      uint8_t low[AGX3_TEX_MAX_LENGTH], high[AGX3_TEX_MAX_LENGTH], a, b;
+      CHECK(agx3_tex_pack_aux(AGX_ISA_ENCODING_AGX3B, true, 4, src,
+                               2, 0, low, &a));
+      CHECK(agx3_tex_pack_aux(AGX_ISA_ENCODING_AGX3B, true, 4, src + 128,
+                               2, 0, high, &b));
+      CHECK(a == b);
+      low[6] |= 1;
+      CHECK(!memcmp(low, high, a));
+   }
+   CHECK(!agx3_tex_pack_aux(AGX_ISA_ENCODING_AGX3C, true, 0, 0,
+                             UINT16_MAX, 0, out, &len));
+   CHECK(len == 0);
+   CHECK(!agx3_tex_pack_aux(AGX_ISA_ENCODING_AGX3B, true, 0, 0,
+                             128, 0, out, &len));
+   CHECK(len == 0);
+   CHECK(!agx3_tex_pack_aux(AGX_ISA_ENCODING_AGX3B, true, 1, 0,
+                             UINT16_MAX, 0, out, &len));
+   return 0;
+}
+
+static int
+test_native_multisample_fetch(void)
+{
+   struct agx3_tex_fetch_desc d = {
+      .dest = 0, .coord = 0, .width = AGX3_TEX_W32, .mask = 15,
+      .texture = 0, .slot = 1, .wait_mask = 1, .coord_kill = true,
+      .final = true, .multisample = true,
+   };
+   /* Native G16G texture2d_ms read and texture2d_ms_array dynamic-layer
+    * read. The packed auxiliary coordinate selects the sample and layer. */
+   uint8_t expected[14] = {0x05,0x80,0x0c,0xb8,0xb0,0,0x80,0x14,0,0,0,0,1,0};
+   for (unsigned array = 0; array < 2; ++array) {
+      uint8_t bytes[AGX3_TEX_MAX_LENGTH], len;
+      d.array = array;
+      expected[6] = array ? 0xa0 : 0x80;
+      CHECK(agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3B, &d, bytes, &len));
+      CHECK(len == sizeof(expected) && !memcmp(bytes, expected, len));
+      CHECK(roundtrip(AGX_ISA_ENCODING_AGX3B, &d) == 0);
+      CHECK(!agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3C, &d, bytes, &len));
+   }
    return 0;
 }
 
@@ -1226,6 +1282,8 @@ test_m4_pointer_write_witnesses(void)
 int
 main(void)
 {
+   CHECK(test_native_multisample_fetch() == 0);
+   CHECK(test_multisample_aux() == 0);
    if (test_m4_pointer_write_witnesses() || test_m4_gather_witnesses() || test_m4_integer_fetch_lod() || test_m4_shadow_witnesses() || test_sample_helper_retention() || test_staging_source_banks() || test_register_lod() || test_register_array_layer() ||
        test_staging_source_lifetime() || test_exact_witnesses() ||
        test_supported_axes() || test_fail_closed() ||

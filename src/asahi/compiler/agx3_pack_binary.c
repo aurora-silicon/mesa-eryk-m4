@@ -785,6 +785,8 @@ agx3_emit_texture_fetch(struct util_dynarray *emission,
                         uint8_t slot, uint16_t wait_mask, bool final,
                         bool stage_coordinates, uint16_t staging_coord)
 {
+   const bool ms = I->dim == AGX_DIM_2D_MS || I->dim == AGX_DIM_2D_MS_ARRAY;
+   const bool array = I->dim == AGX_DIM_2D_ARRAY || I->dim == AGX_DIM_2D_MS_ARRAY;
    const bool register_lod = I->lod_mode == AGX_LOD_MODE_LOD_MIN;
    const bool valid_lod = register_lod ?
       enc == AGX_ISA_ENCODING_AGX3B && stage_coordinates && staging_coord == 0 &&
@@ -804,7 +806,7 @@ agx3_emit_texture_fetch(struct util_dynarray *emission,
        (I->dest[0].size == AGX_SIZE_32 && (I->dest[0].value & 1)) ||
        !agx3_tex_plain_reg(I->src[0]) ||
        I->src[0].size != AGX_SIZE_32 ||
-       agx_channels(I->src[0]) != (I->dim == AGX_DIM_2D_ARRAY ? 3 : 2) ||
+       agx_channels(I->src[0]) != (array || ms ? 3 : 2) ||
        (stage_coordinates ? ((I->src[0].value & 1) ||
          I->src[0].value + 2 * agx_channels(I->src[0]) > 256) :
          ((I->src[0].value & 3) || I->src[0].value > 60)) ||
@@ -817,7 +819,7 @@ agx3_emit_texture_fetch(struct util_dynarray *emission,
        I->src[3].memory || I->src[3].abs || I->src[3].neg ||
        !agx3_tex_imm(I->src[4], 0) ||
        !agx_is_null(I->src[5]) ||
-       (I->dim != AGX_DIM_2D && I->dim != AGX_DIM_2D_ARRAY) ||
+       (I->dim != AGX_DIM_2D && !array && !ms) ||
        (enc == AGX_ISA_ENCODING_AGX3B ? (!I->mask || (I->mask & ~15u))
                                     : (I->mask != 1 && I->mask != 15)) ||
        I->offset || I->shadow ||
@@ -839,7 +841,7 @@ agx3_emit_texture_fetch(struct util_dynarray *emission,
       for (unsigned i = 0; i < agx_channels(I->src[0]); i++) {
          uint8_t copy[AGX3_TEX_MAX_LENGTH], copy_len = 0;
          /* The auxiliary array layer follows the reserved LOD pair. */
-         const unsigned offset = i == 2 ? 6 : 2 * i;
+         const unsigned offset = i == 2 ? (ms ? 4 : 6) : 2 * i;
          if (!agx3_tex_stage_copy_hints(enc, staging_coord + offset,
                                   I->src[0].value + 2 * i,
                                   slot, i == 0 ? wait_mask : 0,
@@ -867,7 +869,8 @@ agx3_emit_texture_fetch(struct util_dynarray *emission,
       .wait_mask = stage_coordinates ? (1u << (slot - 1)) : wait_mask,
       .coord_kill = stage_coordinates || I->src[0].kill,
       .final = final,
-      .array = I->dim == AGX_DIM_2D_ARRAY,
+      .array = array,
+      .multisample = ms,
       .register_lod = register_lod,
    };
    uint8_t bytes[AGX3_TEX_MAX_LENGTH];
@@ -1218,31 +1221,19 @@ agx3_tile_value_ok(agx_index value, uint8_t mask, int width)
 }
 
 
-/*
- * AGX3's single-sample coverage group (f51=1) encodes no sample selector at
- * all: it stores or loads the whole pixel. The only sample source it can
- * faithfully represent is therefore one that names every sample, which
- * agx_nir_lower_tilebuffer spells as the ALL_SAMPLES immediate 0xFF.
- *
- * A narrower immediate, and any register source, mean per-sample traffic. That
- * is the f51=2 group, whose f44 selector is not grounded (its register-versus-
- * selector meaning is an open question in the corpus), so both fail closed
- * rather than silently becoming a whole-pixel access.
+/* Native f51=1 carries an immediate sample mask in f43. Dynamic masks
+ * use the separately witnessed register group and are not accepted here yet.
  */
-#define AGX3_TILE_ALL_SAMPLES 0xFFu
-
 static bool
-agx3_tile_pixel_rate_sample(agx_index sample)
+agx3_tile_immediate_sample(agx_index sample)
 {
-   return sample.type == AGX_INDEX_IMMEDIATE &&
-          sample.value == AGX3_TILE_ALL_SAMPLES && sample.size == AGX_SIZE_16 &&
+   return sample.type == AGX_INDEX_IMMEDIATE && sample.value > 0 &&
+          sample.value <= UINT8_MAX && sample.size == AGX_SIZE_16 &&
           !sample.memory && !sample.abs && !sample.neg && !sample.cache &&
           !sample.discard && !sample.kill;
 }
 
-/* Bind the directly witnessed single-sample tile subset.  Explicit pixel
- * coordinates and the per-sample selector remain closed because f44's exact
- * register/selector meaning is not yet grounded. */
+/* Explicit pixel coordinates and register sample masks remain unsupported. */
 static bool
 agx3_emit_tile(struct util_dynarray *emission, enum agx_isa_encoding enc,
                const agx_instr *I, uint8_t slot, uint16_t wait_mask,
@@ -1262,7 +1253,7 @@ agx3_emit_tile(struct util_dynarray *emission, enum agx_isa_encoding enc,
    if ((I->format == AGX_FORMAT_RGB10A2 &&
         (I->mask != 1 || value.size != AGX_SIZE_32)) ||
        width < 0 || !agx3_tile_value_ok(value, I->mask, width) ||
-       !agx3_tile_pixel_rate_sample(sample) || !agx_is_null(coords))
+       !agx3_tile_immediate_sample(sample) || !agx_is_null(coords))
       return false;
 
    /* AGX3b f13 varies independently in high-register store witnesses.  The
@@ -1274,12 +1265,12 @@ agx3_emit_tile(struct util_dynarray *emission, enum agx_isa_encoding enc,
    uint8_t bytes[AGX3_TILE_MAX_LENGTH];
    uint8_t length = 0;
    const bool ok =
-      load ? agx3_tile_load(enc, value.value, (enum agx3_tile_width)width,
-                            slot, I->mask, I->pixel_offset, AGX3_TILE_COV_1X,
+      load ? agx3_tile_load_mask(enc, value.value, (enum agx3_tile_width)width,
+                            slot, I->mask, I->pixel_offset, sample.value,
                             wait_mask, first_load, last_load, bytes, &length)
-           : agx3_tile_store(enc, value.value,
+           : agx3_tile_store_mask(enc, value.value,
                              (enum agx3_tile_width)width, I->mask,
-                             I->pixel_offset, AGX3_TILE_COV_1X, wait_mask,
+                             I->pixel_offset, sample.value, wait_mask,
                              bytes, &length);
    return ok && agx3_append(emission, bytes, length);
 }
@@ -2049,6 +2040,7 @@ agx3_append_texture_staging_tokens(const agx_instr *I, mesa_shader_stage stage,
          return true;
       base = I->op == AGX_OPCODE_IMAGE_LOAD ? 16 : 0;
       halves = I->dim == AGX_DIM_2D_ARRAY ||
+               I->dim == AGX_DIM_2D_MS || I->dim == AGX_DIM_2D_MS_ARRAY ||
                I->lod_mode == AGX_LOD_MODE_LOD_MIN ? 8 : 4;
    } else if (I->op == AGX_OPCODE_IMAGE_WRITE) {
       base = 0;
@@ -3287,6 +3279,7 @@ enum agx3_g17p_rt0_eot_kind {
    AGX3_G17P_RT0_EOT_SELECTOR_55,
    AGX3_G17P_RT0_EOT_NORM16,
    AGX3_G17P_RT0_EOT_I16_SIGNED_TWO_WORDS,
+   AGX3_G17P_RT0_EOT_MS_RGBA8,
 };
 
 static enum agx3_g17p_rt0_eot_kind
@@ -3300,6 +3293,7 @@ agx3_g17p_rt0_eot_kind(const agx_context *ctx, enum agx_isa_encoding enc)
    unsigned x_reg = UINT_MAX, y_reg = UINT_MAX, zero_reg = UINT_MAX;
    unsigned coord_reg = UINT_MAX, offset_reg = UINT_MAX;
    enum agx_format store_format = AGX_FORMAT_I8;
+   bool multisample = false;
 
    agx_foreach_block(ctx, block) {
       agx_foreach_instr_in_block(block, I) {
@@ -3342,7 +3336,9 @@ agx3_g17p_rt0_eot_kind(const agx_context *ctx, enum agx_isa_encoding enc)
                  I->format != AGX_FORMAT_F16 &&
                  I->format != AGX_FORMAT_RG11B10F &&
                  I->format != AGX_FORMAT_RGB10A2 &&
-                 I->format != AGX_FORMAT_I32) || I->dim != AGX_DIM_2D ||
+                 I->format != AGX_FORMAT_I32) ||
+                (I->dim != AGX_DIM_2D &&
+                 !(I->dim == AGX_DIM_2D_MS && I->format == AGX_FORMAT_U8NORM)) ||
                 !I->explicit_coords ||
                 I->src[0].type != AGX_INDEX_IMMEDIATE ||
                 I->src[0].value != 0 || I->src[0].size != AGX_SIZE_16 ||
@@ -3361,6 +3357,7 @@ agx3_g17p_rt0_eot_kind(const agx_context *ctx, enum agx_isa_encoding enc)
                return false;
             stores++;
             store_format = I->format;
+            multisample = I->dim == AGX_DIM_2D_MS;
             offset_reg = I->src[2].value;
             coord_reg = I->src[3].value;
          } else {
@@ -3373,6 +3370,9 @@ agx3_g17p_rt0_eot_kind(const agx_context *ctx, enum agx_isa_encoding enc)
        stores != 1 || x_reg != coord_reg || y_reg != coord_reg + 2 ||
        zero_reg != offset_reg)
       return AGX3_G17P_RT0_EOT_NONE;
+
+   if (multisample)
+      return AGX3_G17P_RT0_EOT_MS_RGBA8;
 
    if (ctx->key->g17p_rt0_eot_i16_signed_two_words &&
        (store_format != AGX_FORMAT_I16 ||
@@ -3768,6 +3768,25 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
    const enum agx3_g17p_rt0_eot_kind rt0_eot =
       agx3_g17p_rt0_eot_kind(ctx, enc);
    if (rt0_eot != AGX3_G17P_RT0_EOT_NONE) {
+      if (rt0_eot == AGX3_G17P_RT0_EOT_MS_RGBA8) {
+         /* G16G builtin key: format3, native dimension4, four components.
+          * MSAA IMGW consumes its sample geometry from the PBE descriptor. */
+         static const uint8_t native[] = {
+            0x1c, 0x9c, 0x10, 0x06, 0x24, 0xa8, 0x14, 0x06,
+            0x0c, 0x9d, 0x10, 0x26, 0x24, 0xa9, 0x10, 0x26,
+            0x9f, 0x10, 0x54, 0x00, 0x00, 0x04, 0x14, 0x00,
+            0x50, 0x06, 0x0b, 0x00, 0x9f, 0x20, 0x54, 0x02,
+            0x00, 0x00, 0x10, 0x00, 0x50, 0x06, 0x0b, 0x00,
+            0x97, 0x05, 0x54, 0x06, 0x00, 0x08, 0x00, 0x00,
+            0xd0, 0x40, 0x10, 0x00, 0x57, 0x10, 0x54, 0x00,
+            0x00, 0x00, 0x00, 0x80, 0x28, 0x72, 0x00, 0x00,
+            0x0e, 0x00, 0x00, 0x00,
+         };
+         ctx->max_reg = MAX2(ctx->max_reg, 7);
+         ctx->agx3_staging_halfs = MAX2(ctx->agx3_staging_halfs, 8);
+         return agx3_append(emission, native, sizeof(native));
+      }
+
       static const uint8_t g17p_rgba16_sint_eot[] = {
          0x1c,0x9c,0x10,0x06,0x34,0xa8,0x10,0x06,0x0c,0x9d,0x10,0x26,
          0x24,0xa9,0x14,0x26,0x24,0xc3,0x10,0x46,0x9f,0x10,0x54,0x00,
@@ -4414,6 +4433,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                ctx->agx3_staging_halfs = MAX2(
                   ctx->agx3_staging_halfs,
                   coord_base + ((I->dim == AGX_DIM_2D_ARRAY ||
+                                 I->dim == AGX_DIM_2D_MS ||
+                                 I->dim == AGX_DIM_2D_MS_ARRAY ||
                                  I->lod_mode == AGX_LOD_MODE_LOD_MIN) ? 8 : 4));
             }
             else
@@ -4508,6 +4529,22 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                g17p_colour_open = true;
             }
             if (!agx3_emit_pixel(emission, enc, I, wait))
+               AGX3_REFUSE(I);
+            continue;
+         }
+
+         if (I->op == AGX_OPCODE_PACK_LAYER_AGX3 ||
+             I->op == AGX_OPCODE_PACK_SAMPLE_AGX3) {
+            const bool sample = I->op == AGX_OPCODE_PACK_SAMPLE_AGX3;
+            if (!agx3_tex_plain_reg(I->dest[0]) || I->dest[0].size != AGX_SIZE_32 ||
+                !agx3_tex_plain_reg(I->src[0]) || I->src[0].size != AGX_SIZE_16 ||
+                (sample && !agx3_tex_imm(I->src[1], 0) &&
+                 (!agx3_tex_plain_reg(I->src[1]) || I->src[1].size != AGX_SIZE_32)))
+               AGX3_REFUSE(I);
+            uint8_t bytes[AGX3_TEX_MAX_LENGTH], len;
+            if (!agx3_tex_pack_aux(enc, sample, I->dest[0].value, I->src[0].value,
+                    sample && !agx3_tex_imm(I->src[1], 0) ? I->src[1].value : UINT16_MAX,
+                    wait, bytes, &len) || !agx3_append(emission, bytes, len))
                AGX3_REFUSE(I);
             continue;
          }

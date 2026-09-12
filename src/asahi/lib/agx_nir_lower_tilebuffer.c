@@ -101,7 +101,7 @@ store_tilebuffer(nir_builder *b, struct agx_tilebuffer_layout *tib,
    }
 
    if (!samples)
-      samples = nir_imm_intN_t(b, ALL_SAMPLES, 16);
+      samples = nir_imm_intN_t(b, BITFIELD_MASK(tib->nr_samples), 16);
 
    uint8_t offset_B = agx_tilebuffer_offset_B(tib, rt);
    nir_store_local_pixel_agx(b, value, samples, nir_undef(b, 2, 16),
@@ -142,7 +142,8 @@ load_tilebuffer(nir_builder *b, struct agx_tilebuffer_layout *tib,
    uint8_t offset_B = agx_tilebuffer_offset_B(tib, rt);
    nir_def *res = nir_load_local_pixel_agx(
       b, MIN2(load_comps, comps), f16 ? 16 : bit_size,
-      nir_imm_intN_t(b, ALL_SAMPLES, 16), .base = offset_B, .format = format);
+      nir_imm_intN_t(b, BITFIELD_MASK(tib->nr_samples), 16),
+      .base = offset_B, .format = format);
 
    /* Extend floats */
    if (f16 && bit_size != 16) {

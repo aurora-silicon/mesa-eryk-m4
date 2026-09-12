@@ -378,6 +378,11 @@ agx_read_registers(const agx_context *ctx, const agx_instr *I, unsigned s)
       }
 
    case AGX_OPCODE_BLOCK_IMAGE_STORE:
+      /* Native G16 block stores address the block origin (x,y). Samples
+       * belong to the block and are selected by its MS PBE descriptor. */
+      if (s == 3 && I->explicit_coords && I->dim == AGX_DIM_2D_MS &&
+          ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B)
+         return 2 * size;
       if (s == 3 && I->explicit_coords)
          return agx_coordinate_registers(I, I->src[3].size);
       else

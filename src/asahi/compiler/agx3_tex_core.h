@@ -69,6 +69,7 @@ struct agx3_tex_fetch_desc {
    bool coord_kill;
    bool final;          /* witnessed final texture-op marker */
    bool array;          /* 2D array: layer in the register after the pair */
+   bool multisample;    /* Native MS fetch auxiliary word at coord + 4. */
    bool register_lod;   /* Integer LOD published by PACK_SMPIR in bank 6. */
    bool texture_kill;   /* Last use of an indirect texture index */
    /* Operand kinds. Zero is treated as IMMEDIATE so existing callers, which
@@ -80,6 +81,14 @@ struct agx3_tex_fetch_desc {
    uint16_t texture_value;
    uint16_t sampler_value;
 };
+
+/* G16 native register PACK_SMPIR: layer converts U16 to the array word;
+ * sample combines U16 sample and that word. layer_half == UINT16_MAX selects
+ * immediate zero for a non-array sample. */
+bool agx3_tex_pack_aux(enum agx_isa_encoding enc, bool sample,
+                      uint16_t dest_half, uint16_t source_half,
+                      uint16_t layer_half, uint16_t wait_mask,
+                      uint8_t out[AGX3_TEX_MAX_LENGTH], uint8_t *len);
 
 bool agx3_tex_encode_fetch(enum agx_isa_encoding enc,
                            const struct agx3_tex_fetch_desc *d,

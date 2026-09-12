@@ -43,3 +43,21 @@ state. The retained eight-byte native witnesses cover 1x/2x/4x and 32x32,
 32x16 and16x16 tile shapes. Four samples at eight bytes per sample select
 32x16 tiles with the existing tilebuffer budget. The offline Honeykrisp
 Ioto program test checks these bytes; it does not qualify MSAA rendering.
+
+## Two-sample execution checkpoint
+
+The 2026-09-12 J713 Vulkan RGBA8 two-sample triangle passes exact render,
+store and resolve readback (experiment131549, peak54.5C). The GL oracle's
+unmasked two-sample draws also pass all4096 pixels after each store/reload
+(experiment132947, peak54.75C). Texture fetches now build the native auxiliary
+sample/layer word, and EOT uses the independently compiled dimension4 RGBA8
+builtin. Tile operations must name actual attachment samples: mask3 passes
+where mask255 lost one sample. True single-sample control132407 passes.
+
+This is deliberately narrower than complete MSAA support. Selective sample
+writes remain black, four-sample attachment storage remains zero, and depth
+MSAA is unqualified. Chromium ES3 still needs these and transform feedback.
+Do not enable public four-sample capabilities based on this checkpoint.
+PBE zero-based selector and full32x32 tile diagnostic changes did not fix the
+four-sample failure; both were reverted. Native SR39 coverage-word lowering
+alone did not fix selective writes either and was retained only as evidence.

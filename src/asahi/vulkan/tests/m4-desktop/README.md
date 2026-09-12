@@ -1556,3 +1556,9 @@ host tests also cover metadata prefix preservation and extension-alias rejection
 Evidence: `20260912T051358210808Z-texel-buffer-baseline` and
 `20260912T051724623603Z-texel-buffer-heap-fixed`; peak six-channel temperature
 54.25 C. These numerical results do not by themselves qualify full Firefox.
+
+`multisample-probe.c` is a surfaceless GL sample-coverage/store/reload/resolve
+oracle. Build with `-lEGL -lGL -lm`, pass sample count 1/2/4, and run under the
+mandatory hardware guard. `M4_MSAA_ALL_SAMPLES=1` disables selective masks to
+isolate ordinary multisample rendering. `M4_TEST_LLVMPIPE=1` admits llvmpipe
+for the software reference. Every step compares all 4096 pixels, including alpha.

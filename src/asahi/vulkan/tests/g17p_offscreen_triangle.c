@@ -385,8 +385,8 @@
 #define G17P_MSAA_SAMPLES 1
 #endif
 
-#if G17P_MSAA_SAMPLES != 1 && G17P_MSAA_SAMPLES != 2
-#error "the G17P qualification fixture covers only 1x and native-default 2x"
+#if G17P_MSAA_SAMPLES != 1 && G17P_MSAA_SAMPLES != 2 && G17P_MSAA_SAMPLES != 4
+#error "the G17P qualification fixture covers 1x, 2x and 4x"
 #endif
 
 #if G17P_HOST_IMAGE_COPY && G17P_MSAA_SAMPLES != 1
@@ -653,6 +653,11 @@
 #define READBACK_IMAGE_USAGE 0
 #define READBACK_GUARD_BYTES 64
 #define READBACK_BYTES (IMAGE_BYTES + 2 * READBACK_GUARD_BYTES)
+#elif G17P_MSAA_SAMPLES == 4
+#define PROBE_NAME "g17p-msaa4-triangle"
+#define READBACK_IMAGE_USAGE 0
+#define READBACK_GUARD_BYTES 64
+#define READBACK_BYTES (IMAGE_BYTES + 2 * READBACK_GUARD_BYTES)
 #elif G17P_MSAA_SAMPLES == 2
 #define PROBE_NAME "g17p-msaa2-triangle"
 #define READBACK_IMAGE_USAGE 0
@@ -693,6 +698,7 @@ VK_FN(vkAllocateMemory);
 VK_FN(vkBindBufferMemory);
 VK_FN(vkBindImageMemory);
 VK_FN(vkMapMemory);
+VK_FN(vkUnmapMemory);
 VK_FN(vkCreateImageView);
 VK_FN(vkCreateRenderPass);
 VK_FN(vkCreateShaderModule);
@@ -1105,6 +1111,7 @@ main(void)
    LOAD_DEVICE(device, vkBindBufferMemory);
    LOAD_DEVICE(device, vkBindImageMemory);
    LOAD_DEVICE(device, vkMapMemory);
+   LOAD_DEVICE(device, vkUnmapMemory);
    LOAD_DEVICE(device, vkCreateImageView);
    LOAD_DEVICE(device, vkCreateRenderPass);
    LOAD_DEVICE(device, vkCreateShaderModule);
@@ -1212,13 +1219,13 @@ main(void)
    check(vkBindImageMemory(device, image, image_memory, 0),
          "vkBindImageMemory");
 
-#if G17P_MSAA_SAMPLES == 2
+#if G17P_MSAA_SAMPLES > 1
    VkImageCreateInfo msaa_image_info = image_info;
-   msaa_image_info.samples = VK_SAMPLE_COUNT_2_BIT;
+   msaa_image_info.samples = (VkSampleCountFlagBits)G17P_MSAA_SAMPLES;
    msaa_image_info.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
    VkImage msaa_image;
    check(vkCreateImage(device, &msaa_image_info, NULL, &msaa_image),
-         "vkCreateImage(msaa2)");
+         "vkCreateImage(msaa)");
    VkMemoryRequirements msaa_image_requirements;
    vkGetImageMemoryRequirements(device, msaa_image, &msaa_image_requirements);
    const uint32_t msaa_image_memory_type =
@@ -1233,9 +1240,9 @@ main(void)
    VkDeviceMemory msaa_image_memory;
    check(vkAllocateMemory(device, &msaa_image_memory_info, NULL,
                           &msaa_image_memory),
-         "vkAllocateMemory(msaa2)");
+         "vkAllocateMemory(msaa)");
    check(vkBindImageMemory(device, msaa_image, msaa_image_memory, 0),
-         "vkBindImageMemory(msaa2)");
+         "vkBindImageMemory(msaa)");
 #endif
 
 #if G17P_HOST_IMAGE_COPY
@@ -1302,19 +1309,19 @@ main(void)
    check(vkCreateImageView(device, &view_info, NULL, &view),
          "vkCreateImageView");
 
-#if G17P_MSAA_SAMPLES == 2
+#if G17P_MSAA_SAMPLES > 1
    VkImageViewCreateInfo msaa_view_info = view_info;
    msaa_view_info.image = msaa_image;
    VkImageView msaa_view;
    check(vkCreateImageView(device, &msaa_view_info, NULL, &msaa_view),
-         "vkCreateImageView(msaa2)");
+         "vkCreateImageView(msaa)");
 #endif
 
    const VkAttachmentDescription attachments[] = {{
       .format = IMAGE_FORMAT,
       .samples = (VkSampleCountFlagBits)G17P_MSAA_SAMPLES,
       .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-#if G17P_MSAA_SAMPLES == 2
+#if G17P_MSAA_SAMPLES > 1
       .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
 #else
       .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
@@ -1322,13 +1329,13 @@ main(void)
       .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
       .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
       .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-#if G17P_MSAA_SAMPLES == 2
+#if G17P_MSAA_SAMPLES > 1
       .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 #else
       .finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
 #endif
    },
-#if G17P_MSAA_SAMPLES == 2
+#if G17P_MSAA_SAMPLES > 1
    {
       .format = IMAGE_FORMAT,
       .samples = VK_SAMPLE_COUNT_1_BIT,
@@ -1345,7 +1352,7 @@ main(void)
       .attachment = 0,
       .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
    };
-#if G17P_MSAA_SAMPLES == 2
+#if G17P_MSAA_SAMPLES > 1
    const VkAttachmentReference resolve_ref = {
       .attachment = 1,
       .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
@@ -1355,7 +1362,7 @@ main(void)
       .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
       .colorAttachmentCount = 1,
       .pColorAttachments = &color_ref,
-#if G17P_MSAA_SAMPLES == 2
+#if G17P_MSAA_SAMPLES > 1
       .pResolveAttachments = &resolve_ref,
 #endif
    };
@@ -1499,7 +1506,7 @@ main(void)
                                    NULL, &pipeline),
          "vkCreateGraphicsPipelines");
 
-#if G17P_MSAA_SAMPLES == 2
+#if G17P_MSAA_SAMPLES > 1
    const VkImageView framebuffer_views[] = {msaa_view, view};
 #else
    const VkImageView framebuffer_views[] = {view};
@@ -1662,7 +1669,7 @@ main(void)
    if (waited == VK_TIMEOUT)
       die("vkWaitForFences timed out after three seconds");
    check(waited, "vkWaitForFences");
-#elif G17P_HOST_IMAGE_COPY || G17P_MSAA_SAMPLES == 2
+#elif G17P_HOST_IMAGE_COPY || G17P_MSAA_SAMPLES > 1
    const VkResult waited =
       vkWaitForFences(device, 1, &fence, true, UINT64_C(5000000000));
    if (waited == VK_TIMEOUT)
@@ -1674,6 +1681,26 @@ main(void)
 #endif
 
    printf(PROBE_NAME ": retired %u submissions\n", repeats);
+#if G17P_MSAA_SAMPLES > 1
+   if (getenv("ASAHI_TEST_RAW_MSAA")) {
+      /* Diagnostic only: inspect the opaque optimal image allocation after
+       * its fence. This is not portable image readback or a pass criterion. */
+      void *raw = NULL;
+      check(vkMapMemory(device, msaa_image_memory, 0, VK_WHOLE_SIZE, 0, &raw),
+            "vkMapMemory(raw MSAA diagnostic)");
+      unsigned counts[256] = {0};
+      for (size_t i = 0; i < msaa_image_requirements.size; ++i)
+         counts[((const uint8_t *)raw)[i]]++;
+      printf("RAW-MSAA bytes=%llu histogram:", (unsigned long long)msaa_image_requirements.size);
+      for (unsigned i = 0; i < 256; ++i)
+         if (counts[i]) printf(" %02x:%u", i, counts[i]);
+      printf("\nRAW-resolve first pixels:");
+      for (unsigned i = 0; i < 16; ++i) printf(" %02x", readback_map[READBACK_GUARD_BYTES+i]);
+      printf("\n");
+      vkUnmapMemory(device, msaa_image_memory);
+   }
+#endif
+
 
 #if G17P_HOST_IMAGE_COPY
    const VkImageToMemoryCopyEXT host_copy_region = {
@@ -1699,7 +1726,7 @@ main(void)
    if (!verify_readback(readback_map))
       return EXIT_FAILURE;
 
-#if G17P_MSAA_SAMPLES == 2 || G17P_F16_IO || G17P_RG16_UNORM ||         \
+#if G17P_MSAA_SAMPLES > 1 || G17P_F16_IO || G17P_RG16_UNORM ||         \
    G17P_RGBA16_UNORM || G17P_RG16_SNORM || G17P_R32_UINT ||             \
    G17P_R32_SFLOAT || G17P_R32_SINT || G17P_RG16_UINT ||                \
    G17P_RG16_SINT || G17P_RG32_SINT || G17P_RG32_SFLOAT ||            \
