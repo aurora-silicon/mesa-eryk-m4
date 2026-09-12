@@ -3064,6 +3064,12 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
                 UINT32_C(0x07e00000), UINT32_C(0x0001ffff)},
    };
 
+   /* HAL200 encodeISPPrimitiveType (arm64 0x41d458..0x41d464)
+    * sets the object class in bits 31:28 of both secondary face words.
+    * Leaving the triangle template here makes line primitives degenerate. */
+   secondary_fields.words[1] |= (uint32_t)gfx->object_type << 28;
+   secondary_fields.words[2] |= (uint32_t)gfx->object_type << 28;
+
    struct agx_ppp_hal200_graphics_core cull_record;
    struct agx_ppp_hal200_graphics_fields cull_fields = {
       .words = {UINT32_C(0x00000480)},

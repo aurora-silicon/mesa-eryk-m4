@@ -1005,7 +1005,9 @@ hk_g17p_smooth_varyings_supported(struct hk_cmd_buffer *cmd,
       if (!b->smooth &&
           (b->perspective ||
            (gfx->topology != AGX_PRIMITIVE_TRIANGLES &&
-            gfx->topology != AGX_PRIMITIVE_TRIANGLE_STRIP) ||
+            gfx->topology != AGX_PRIMITIVE_TRIANGLE_STRIP &&
+            gfx->topology != AGX_PRIMITIVE_LINES &&
+            gfx->topology != AGX_PRIMITIVE_LINE_STRIP) ||
            (gfx->provoking != 0 && gfx->provoking != 2)))
          return false;
       if (b->slot == VARYING_SLOT_POS) {

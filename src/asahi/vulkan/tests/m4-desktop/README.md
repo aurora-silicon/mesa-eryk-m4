@@ -1865,3 +1865,13 @@ signed-offset fields byte-for-byte; texture encoder tests pass 6228 checks.
 branch relations and distinct atomic side effects. Dispatch two 32-lane groups.
 M4 20260912T222644922275Z passed 512 words, 55.75 C, matching lavapipe and
 independently computed reference bytes.
+
+`flat-line-probe.c` checks full-frame output for line lists and strips,
+first and last provoking vertex (4096 pixels); `--constant` isolates raster
+coverage from varying interpolation. Build with -lEGL -lGL; run references
+with the same Zink/lavapipe environment as integer-texture-probe, hardware
+under gpu-experiment.py. M4 20260912T223221136775Z passed, 55.75 C.
+Native HAL200 encodeISPPrimitiveType arm64 0x41d458..0x41d464 sets the
+secondary-face object class to line (1), replacing the triangle (0) template.
+This probe exposed and fixed missing line rasterization, not a shader-color
+approximation. Dynamic line width still needs separate qualification.
