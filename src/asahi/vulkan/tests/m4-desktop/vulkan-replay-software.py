@@ -50,10 +50,15 @@ if a.dump_config:
     manifest["hashes"][str(config)] = sha(config)
 (out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
 start = time.monotonic()
-with (out / "replay.log").open("w") as log:
-    result = subprocess.run(command, env=env, stdout=log, stderr=subprocess.STDOUT,
-                            timeout=a.seconds)
+try:
+    with (out / "replay.log").open("w") as log:
+        result = subprocess.run(command, env=env, stdout=log, stderr=subprocess.STDOUT,
+                                timeout=a.seconds)
+except subprocess.TimeoutExpired:
+    (out / "result.json").write_text(json.dumps(dict(returncode=None, timed_out=True,
+        seconds=time.monotonic() - start), indent=2) + "\n")
+    raise SystemExit(f"FAIL: software replay exceeded {a.seconds}s: {out}")
 (out / "result.json").write_text(json.dumps(dict(returncode=result.returncode,
-    seconds=time.monotonic() - start), indent=2) + "\n")
+    timed_out=False, seconds=time.monotonic() - start), indent=2) + "\n")
 result.check_returncode()
 print("PASS: software replay completed:", out)

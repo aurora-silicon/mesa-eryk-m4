@@ -1,0 +1,44 @@
+diff --git a/framework/decode/vulkan_offscreen_swapchain.cpp b/framework/decode/vulkan_offscreen_swapchain.cpp
+index f7f0556..7e56307 100644
+--- a/framework/decode/vulkan_offscreen_swapchain.cpp
++++ b/framework/decode/vulkan_offscreen_swapchain.cpp
+@@ -256,10 +256,37 @@ VkResult VulkanOffscreenSwapchain::QueuePresentKHR(VkResult
+         submit_info.pNext = &frame_boundary_;
+     }
+ 
+-    if (swapchain_options_.offscreen_swapchain_frame_boundary || present_info->waitSemaphoreCount > 0)
++    // There is no presentation engine in offscreen mode. Signal maintenance1
++    // presentation fences after the submission that consumes the application's
++    // wait semaphores, so recorded fence queries can observe completion.
++    std::vector<VkFence> present_fences;
++    for (auto next = reinterpret_cast<const VkBaseInStructure*>(present_info->pNext); next; next = next->pNext)
++    {
++        if (next->sType == VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_FENCE_INFO_KHR)
++        {
++            const auto* info = reinterpret_cast<const VkSwapchainPresentFenceInfoKHR*>(next);
++            for (uint32_t i = 0; i < info->swapchainCount; ++i)
++            {
++                if (info->pFences[i] != VK_NULL_HANDLE)
++                    present_fences.push_back(info->pFences[i]);
++            }
++        }
++    }
++
++    if (swapchain_options_.offscreen_swapchain_frame_boundary || present_info->waitSemaphoreCount > 0 ||
++        !present_fences.empty())
+     {
+         auto injected = injected_calls_->Open();
+-        result        = injected->QueueSubmit(queue_info->handle, 1, &submit_info, VK_NULL_HANDLE);
++        result        = injected->QueueSubmit(queue_info->handle, 1, &submit_info,
++                                               present_fences.empty() ? VK_NULL_HANDLE : present_fences.front());
++
++        // One VkPresentInfoKHR may cover several swapchains. Empty submissions
++        // signal the remaining fences in queue order without consuming binary
++        // wait semaphores or emitting a frame boundary more than once.
++        for (size_t i = 1; result == VK_SUCCESS && i < present_fences.size(); ++i)
++        {
++            result = injected->QueueSubmit(queue_info->handle, 0, nullptr, present_fences[i]);
++        }
+ 
+         if (result != VK_SUCCESS)
+         {

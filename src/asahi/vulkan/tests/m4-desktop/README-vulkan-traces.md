@@ -375,3 +375,16 @@ Plasma 6 standalone run `20260912T120807742380Z-plasma6-standalone-sddm` passed
 with KWin and plasmashell using the private M4 Asahi library, a correct native
 desktop image, and peak monitored temperature 56.75 C. This complements the
 earlier nested Plasma/Konsole validation.
+
+## Offscreen presentation fences
+
+Apply `gfxreconstruct-offscreen-present-fences.patch` and rebuild replay on host
+and target. The offscreen swapchain consumed present wait semaphores but ignored
+maintenance1 presentation fences, so Blender's first successful fence query
+waited forever on both lavapipe and M4. Signal the first presentation fence on
+the wait submission and additional swapchain fences with ordered empty submits;
+consume the binary wait semaphores and emit the frame boundary only once.
+The unchanged nine-frame Blender reference now completes on host lavapipe in
+2.88 seconds; its first frame remains byte-identical. The software helper now
+retains a structured timeout result too. This repairs replay synchronization,
+not the driver, and does not remove waits or claim native application support.
