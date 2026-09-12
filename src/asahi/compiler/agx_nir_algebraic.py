@@ -143,10 +143,13 @@ for start in range(32):
 
 fuse_ubfe = []
 for bits in range(1, 32):
-    fuse_ubfe.extend([
-        (('iand', ('ushr', 'a@32', b), (1 << bits) - 1),
-         ('ubitfield_extract', a, b, bits))
-    ])
+    # ushr wraps its count modulo 32, whereas GLSL ubitfield_extract requires
+    # offset + width <= 32. Fuse only literal, in-bounds extracts. Keep other
+    # shifts intact so lower_sm5_shift preserves their wraparound semantics.
+    for offset in range(33 - bits):
+        fuse_ubfe.append(
+            (('iand', ('ushr', 'a@32', offset), (1 << bits) - 1),
+             ('ubitfield_extract', a, offset, bits)))
 
 # (x * y) + s = (x * y) + (s << 0)
 def imad(x, y, z):

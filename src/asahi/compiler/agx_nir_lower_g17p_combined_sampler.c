@@ -392,10 +392,15 @@ agx_nir_lower_g17p_indexed_samplers(nir_shader *shader)
       }
    }
 
-   unsigned samples = 0;
+   unsigned samples = 0, storage_writes = 0;
    nir_foreach_function_impl(impl, shader) {
       nir_foreach_block(block, impl) {
          nir_foreach_instr(instr, block) {
+            if (shader->info.stage == MESA_SHADER_COMPUTE &&
+                instr->type == nir_instr_type_intrinsic &&
+                nir_instr_as_intrinsic(instr)->intrinsic ==
+                   nir_intrinsic_bindless_image_store)
+               storage_writes++;
             if (instr->type != nir_instr_type_tex)
                continue;
             nir_tex_instr *tex = nir_instr_as_tex(instr);
@@ -426,7 +431,9 @@ agx_nir_lower_g17p_indexed_samplers(nir_shader *shader)
          }
       }
    }
-   if (!samples)
+   /* Storage-only compute shaders need the same heap/root ABI. Their stores
+    * are validated and lowered by the subsequent bindless-storage pass. */
+   if (!samples && !storage_writes)
       return false;
 
    nir_foreach_function_impl(impl, shader) {

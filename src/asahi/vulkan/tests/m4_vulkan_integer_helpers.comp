@@ -1,0 +1,28 @@
+#version 450
+layout(local_size_x=4, local_size_y=4) in;
+layout(set=0, binding=0) uniform sampler2D unused_source;
+layout(rg16f, set=0, binding=1) writeonly uniform image2D bytes_out;
+layout(r8, set=0, binding=2) writeonly uniform image2D count_out;
+void main()
+{
+   ivec2 p = ivec2(gl_GlobalInvocationID.xy);
+   uint pixel = uint(p.y * 32 + p.x);
+   uint i = pixel >> 3;
+   uint a = (i * 2654435761u) ^ 0x80000000u;
+   uint b = (i * 2246822519u) ^ 0xffffffffu;
+   uint uh, ul;
+   int sh, sl;
+   umulExtended(a, b, uh, ul);
+   imulExtended(int(a), int(b), sh, sl);
+   uint value;
+   switch ((pixel >> 1) & 3u) {
+   case 0: value = uh; break;
+   case 1: value = uint(sh); break;
+   case 2: value = a >= b ? a - b : 0u; break;
+   default: value = uint(bitCount(a)); break;
+   }
+   value >>= (pixel & 1u) * 16u;
+   imageStore(bytes_out, p, vec4(float(value & 255u),
+                                float((value >> 8) & 255u), 0, 0));
+   imageStore(count_out, p, vec4(float(bitCount(b)) / 255.0));
+}

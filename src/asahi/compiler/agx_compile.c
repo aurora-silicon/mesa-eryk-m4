@@ -3236,21 +3236,10 @@ agx_g17p_and_imm(agx_builder *b, agx_index value, uint32_t mask)
    return agx_and(b, value, agx_mov_imm(b, 32, mask));
 }
 
-static agx_instr *
-agx_emit_g17p_ufind_msb(agx_builder *b, agx_index dst, agx_index value)
+static agx_index
+agx_g17p_popcount(agx_builder *b, agx_index scan)
 {
-   /* FT1 on G17P exposes a non-architectural logarithmic intermediate. Find
-    * the top bit with the integer forms already qualified on hardware:
-    * smear the top bit downward, popcount the resulting prefix with SWAR,
-    * then subtract one. Zero smears/counts to zero and therefore returns -1
-    * without a compare or select. */
-   assert(value.size == AGX_SIZE_32 && dst.size == AGX_SIZE_32);
-
-   agx_index scan = value;
-   static const unsigned smear_shifts[] = {1, 2, 4, 8, 16};
-   for (unsigned i = 0; i < ARRAY_SIZE(smear_shifts); ++i)
-      scan = agx_or(b, scan, agx_g17p_ushr_imm(b, scan, smear_shifts[i]));
-
+   assert(scan.size == AGX_SIZE_32);
    agx_index odd = agx_g17p_and_imm(
       b, agx_g17p_ushr_imm(b, scan, 1), UINT32_C(0x55555555));
    scan = agx_iadd(b, scan, agx_neg(odd), 0);
@@ -3266,7 +3255,21 @@ agx_emit_g17p_ufind_msb(agx_builder *b, agx_index dst, agx_index value)
    scan = agx_iadd(b, scan, agx_g17p_ushr_imm(b, scan, 8), 0);
    scan = agx_iadd(b, scan, agx_g17p_ushr_imm(b, scan, 16), 0);
 
-   agx_index count = agx_g17p_and_imm(b, scan, 0x3f);
+   return agx_g17p_and_imm(b, scan, 0x3f);
+}
+
+static agx_instr *
+agx_emit_g17p_ufind_msb(agx_builder *b, agx_index dst, agx_index value)
+{
+   /* Smear the highest bit, count the prefix, then subtract one. Zero
+    * naturally returns -1. Use the same integer SWAR sequence as bitCount.
+    */
+   assert(value.size == AGX_SIZE_32 && dst.size == AGX_SIZE_32);
+   agx_index scan = value;
+   static const unsigned smear_shifts[] = {1, 2, 4, 8, 16};
+   for (unsigned i = 0; i < ARRAY_SIZE(smear_shifts); ++i)
+      scan = agx_or(b, scan, agx_g17p_ushr_imm(b, scan, smear_shifts[i]));
+   agx_index count = agx_g17p_popcount(b, scan);
    return agx_iadd_to(b, dst, count, agx_neg(agx_immediate(1)), 0);
 }
 
@@ -3317,7 +3320,17 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
       UNOP(mov, mov);
       UNOP(u2u32, mov);
       UNOP(bitfield_reverse, bitrev);
-      UNOP(bit_count, popcount);
+   case nir_op_bit_count:
+      if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+          s0.size <= AGX_SIZE_32) {
+         if (s0.size == AGX_SIZE_16) {
+            agx_index wide = agx_temp(b->shader, AGX_SIZE_32);
+            agx_mov_to(b, wide, s0);
+            s0 = wide;
+         }
+         return agx_mov_to(b, dst, agx_g17p_popcount(b, s0));
+      }
+      return agx_popcount_to(b, dst, s0);
    case nir_op_ufind_msb:
       if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
           src_sz == 32)
@@ -4346,13 +4359,17 @@ agx_optimize_loop_nir(nir_shader *nir)
 }
 
 static bool
-agx_nir_lower_imul64_filter(const nir_instr *instr, const void *_)
+agx_nir_lower_imul64_filter(const nir_instr *instr, const void *lower_full)
 {
    if (instr->type != nir_instr_type_alu)
       return false;
 
    const nir_alu_instr *alu = nir_instr_as_alu(instr);
-   return (alu->op == nir_op_imul || alu->op == nir_op_umul_2x32_64 ||
+   if ((alu->op == nir_op_umul_high || alu->op == nir_op_imul_high) &&
+       alu->def.bit_size == 32)
+      return true;
+   return lower_full &&
+          (alu->op == nir_op_imul || alu->op == nir_op_umul_2x32_64 ||
            alu->op == nir_op_imul_2x32_64) &&
           alu->def.bit_size == 64;
 }
@@ -4384,13 +4401,16 @@ agx_nir_lower_imul64_instr(nir_builder *b, nir_instr *instr, void *_)
    nir_alu_instr *alu = nir_instr_as_alu(instr);
    nir_def *x = nir_ssa_for_alu_src(b, alu, 0);
    nir_def *y = nir_ssa_for_alu_src(b, alu, 1);
-   if (alu->op == nir_op_umul_2x32_64 || alu->op == nir_op_imul_2x32_64) {
+   if (alu->op == nir_op_umul_2x32_64 || alu->op == nir_op_imul_2x32_64 ||
+       alu->op == nir_op_umul_high || alu->op == nir_op_imul_high) {
       nir_def *hi = agx_nir_umul_high32(b, x, y);
-      if (alu->op == nir_op_imul_2x32_64) {
+      if (alu->op == nir_op_imul_2x32_64 || alu->op == nir_op_imul_high) {
          /* Convert the unsigned high word to the signed product. */
          hi = nir_isub(b, hi, nir_iand(b, nir_ishr_imm(b, x, 31), y));
          hi = nir_isub(b, hi, nir_iand(b, nir_ishr_imm(b, y, 31), x));
       }
+      if (alu->def.bit_size == 32)
+         return hi;
       return nir_pack_64_2x32_split(b, nir_imul(b, x, y), hi);
    }
    nir_def *xl = nir_unpack_64_2x32_split_x(b, x);
@@ -4405,10 +4425,11 @@ agx_nir_lower_imul64_instr(nir_builder *b, nir_instr *instr, void *_)
 }
 
 static bool
-agx_nir_lower_imul64(nir_shader *nir)
+agx_nir_lower_imul64(nir_shader *nir, bool lower_full)
 {
    return nir_shader_lower_instructions(
-      nir, agx_nir_lower_imul64_filter, agx_nir_lower_imul64_instr, NULL);
+      nir, agx_nir_lower_imul64_filter, agx_nir_lower_imul64_instr,
+      (void *)(uintptr_t)lower_full);
 }
 
 static bool
@@ -5677,6 +5698,7 @@ agx_compile_shader_nir_inner(nir_shader *nir, struct agx_shader_key *key,
    if (is_g17p) {
       agx3_options = *original_options;
       agx3_options.lower_iabs = false;
+      agx3_options.lower_usub_sat = true;
       if (source_iadd64)
          agx3_options.lower_int64_options |= nir_lower_iadd64;
       if (source_imul64)
@@ -5693,8 +5715,8 @@ agx_compile_shader_nir_inner(nir_shader *nir, struct agx_shader_key *key,
       (form_preamble && key->promote_textures) ? &info->sampler_state_count
                                               : NULL);
 
-   if (is_g17p && source_imul64)
-      NIR_PASS(_, nir, agx_nir_lower_imul64);
+   if (is_g17p)
+      NIR_PASS(_, nir, agx_nir_lower_imul64, source_imul64);
 
    if (is_g17p)
       nir->options = original_options;

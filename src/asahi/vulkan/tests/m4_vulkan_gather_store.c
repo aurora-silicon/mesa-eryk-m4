@@ -245,6 +245,10 @@ main(int argc, char **argv)
       .layout = pl};
    VkPipeline pipeline;
    CK(vkCreateComputePipelines(dev, VK_NULL_HANDLE, 1, &pi, 0, &pipeline));
+   if (getenv("M4_TEST_COMPILE_ONLY")) {
+      puts("INFO: pipeline compiled; no GPU commands recorded or submitted");
+      return 0;
+   }
    VkCommandPoolCreateInfo cpi = {
       .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
       .queueFamilyIndex = family};

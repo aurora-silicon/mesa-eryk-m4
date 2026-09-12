@@ -1,5 +1,21 @@
 # M4 gather and storage-image oracle
 
+## Integer helpers and shift wrapping
+
+`m4_vulkan_integer_helpers.comp` uses the same harness with no sampled reads.
+It checks 128 input pairs for unsigned/signed multiply-high, unsigned saturating
+subtraction and population count. Results are encoded as individual bytes in
+exact binary16 values, exercising variable shifts past 31 as well. Generate an
+independent 5120-byte oracle with `m4-desktop/integer-helper-reference.py OUTPUT`.
+The identical shader matched both lavapipe and J713 exactly in
+`20260912T151144026704Z-m4-integer-helpers-shift-wrap`, peak55.25C, watchdog60s.
+The preceding shader produced 937 differing bytes because an invalid bitfield
+fusion lost shift-count wrapping. The oracle was unchanged when fixing it.
+
+`M4_TEST_COMPILE_ONLY=1` stops the harness immediately after compute pipeline
+creation, before command recording or submission. Use it under the host DRM
+shim to capture compiler inputs; its INFO message is not a GPU execution pass.
+
 `m4_vulkan_gather_store.c` uploads a deterministic 32x32 RGBA32F image,
 executes `m4_vulkan_gather_store.comp`, and downloads RG16F and R8 outputs.
 The shader gathers red without an offset and green with offset (1,1), then
