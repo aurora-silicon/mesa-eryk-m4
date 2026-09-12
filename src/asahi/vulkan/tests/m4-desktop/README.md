@@ -1829,3 +1829,12 @@ IPC sockets after observing the process.
 buffers in addition to GPU-exported scanout. Its output records the allocation
 origin. Kmsro can import a display allocation into the GPU and render directly
 into it; the origin flag alone proves neither GPU nor CPU rendering.
+
+`vulkan-color-blit.c` isolates BGRA-to-RGBA readback with exact per-byte checks.
+It uploads patterned BGRA bytes, or uses `--clear`/`--render-clear` to produce
+the source through transfer clear or render-pass clear, then blits to RGBA and
+checks both source and destination readbacks. Build with `cc -O2 -Wall -Wextra
+... -lvulkan`. Hardware requires gpu-experiment.py and run-m4-gl.py; `--reference`
+permits a separately selected software ICD. The three M4 cases passed on
+2026-09-12 (212444,212840,212954), so they do not yet reproduce Firefox's
+external-image/MSAA readback discrepancy. Do not treat these as a Firefox fix.
