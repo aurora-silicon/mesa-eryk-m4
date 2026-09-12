@@ -295,3 +295,35 @@ fragment texture queries from incorrectly relocated vertex descriptor handles.
 Firefox probes retain a page screenshot and a compositor screenshot in addition
 to native scanout when available. DPMS can make `m4_scanout` return ENODATA;
 that condition is recorded explicitly rather than discarding the browser run.
+
+
+`app-observe.py --guard-output DIR --seconds 20 --retain CONFIG -- /absolute/program ARGS`
+observes a real program in the normal logged-in desktop under gpu-experiment.py.
+It saves two native screenshots, renderer mappings, exact binary/config hashes
+and compiler diagnostics, then stops its process group. `--capture` retains
+native Vulkan calls. Survival is not a visual correctness verdict.
+
+`chromium-probe.py --guard-output DIR --renderer lavapipe --capture
+--capture-profile SHARED_PROFILE.json` records Chromium through ANGLE/GL/Zink.
+It retains local CDP GPU diagnostics, page/native screenshots and process maps.
+Use the same command with `--renderer asahi` and no profile for actual hardware
+validation. A profile is a recorded reference adaptation; native runs retain
+all application requests. CDP is isolated to this temporary browser profile.
+
+`vkquake-reference-host.py --output NEW_DIR --profile SHARED_PROFILE.json
+--seconds 12` creates an isolated x86 lavapipe/Xvfb shareware-map reference.
+Shareware vkQuake ignores +commands (cmdline is set only in its registered-data
+branch), so the helper uses an ordinary autoexec.cfg to select e1m1. The run is
+time-bounded and retains a screenshot, mappings, trace and configuration.
+
+`mesa-loader-install.py` fixes private EGL/DRI/GBM library discovery for clients
+such as KWin with file capabilities, retaining exact backups and SHA256s. It
+also registers the private Asahi ICD in the standard system ICD directory;
+secure loaders ignore VK_DRIVER_FILES. Reapply loader RUNPATHs after replacing
+those DSOs. Existing clients keep their previous mappings.
+
+Plasma tests use `plasma-nested-probe.sh` and `plasma-nested-shell.sh` with
+`app-observe.py`. A byte-identical KWin copy without file capabilities, retaining
+the basename `kwin_wayland`, is used only for capture instrumentation. The
+original capability-bearing executable suppresses loader environment settings.
+Nested success establishes compositor/desktop rendering, not standalone login.
