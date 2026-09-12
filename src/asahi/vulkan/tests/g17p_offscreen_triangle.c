@@ -28,6 +28,10 @@
 #include <string.h>
 #include <unistd.h>
 
+#ifndef G17P_RGBA32_SFLOAT
+#define G17P_RGBA32_SFLOAT 0
+#endif
+
 #ifndef G17P_F16_IO
 #define G17P_F16_IO 0
 #endif
@@ -363,6 +367,9 @@
 #elif G17P_RG16_UNORM
 #define IMAGE_FORMAT VK_FORMAT_R16G16_UNORM
 #define IMAGE_PIXEL_BYTES 4
+#elif G17P_RGBA32_SFLOAT
+#define IMAGE_FORMAT VK_FORMAT_R32G32B32A32_SFLOAT
+#define IMAGE_PIXEL_BYTES 16
 #else
 #define IMAGE_FORMAT VK_FORMAT_R8G8B8A8_UNORM
 #define IMAGE_PIXEL_BYTES 4
@@ -860,7 +867,13 @@ verify_readback(const uint8_t *map)
       0xff, 0xff, 0xae, 0x47, 0xcd, 0x0c, 0xff, 0xff,
    };
 #else
+#if G17P_RGBA32_SFLOAT
+   static const uint8_t expected[16] = {
+      0,0,0x80,0x3f, 0x29,0x5c,0x8f,0x3e, 0xcd,0xcc,0x4c,0x3d, 0,0,0x80,0x3f,
+   };
+#else
    static const uint8_t expected[4] = {255, 71, 13, 255};
+#endif
 #endif
    for (size_t pixel = 0; pixel < IMAGE_WIDTH * IMAGE_HEIGHT; ++pixel) {
       const uint8_t *actual = &pixels[pixel * sizeof(expected)];

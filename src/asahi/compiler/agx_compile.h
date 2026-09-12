@@ -343,7 +343,7 @@ struct agx_shader_key {
 
    /* Exact number of 32-bit imageblock words in the G17P RT0 EOT store.
     * U16NORM is shared by RG16 and RGBA16, while I32 is shared by scalar R32
-    * and R32G32 after tilebuffer lowering, so the backend cannot recover the
+    * R32G32 and RGBA32 after tilebuffer lowering, so the backend cannot recover the
     * logical layout from the final AGX IR alone. */
    uint8_t g17p_rt0_eot_words;
 
@@ -360,11 +360,11 @@ struct agx_shader_key {
    bool g17p_rt0_eot_i32;
 
    /* Select the native 0x15 imgwblk variant for an I32 store. This is
-    * independently grounded only for the two-word R32G32 SINT layout. */
+    * grounded for the two-word R32G32 SINT layout. */
    bool g17p_rt0_eot_i32_selector_15;
 
    /* Select the native 0x75 imgwblk variant for an I32 store. This is
-    * independently grounded only for the two-word R32G32 UINT layout. */
+    * grounded for the two-word R32G32 UINT layout. */
    bool g17p_rt0_eot_i32_selector_75;
 
    /* Set if this is a secondary shader part (prolog or epilog). This prevents

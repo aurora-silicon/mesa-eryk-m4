@@ -145,6 +145,7 @@ TEST_F(AGX3PackBinary, G17PRG16IntegerEOTUsesExactNativeI16Program)
 
    agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
    b->shader->stage = MESA_SHADER_COMPUTE;
+   key.g17p_rt0_eot_words = 1;
    agx_index coords = agx_register(0, AGX_SIZE_32);
    coords.channels_m1 = 1;
    agx_get_sr_to(b, agx_register(0, AGX_SIZE_32),
@@ -323,7 +324,7 @@ TEST_F(AGX3PackBinary, G17PScalarI32EOTUsesExactNativeProgram)
    EXPECT_EQ(b->shader->agx3_staging_halfs, 8);
 }
 
-TEST_F(AGX3PackBinary, G17PRG32FloatEOTUsesExactTwoWordNativeProgram)
+TEST_F(AGX3PackBinary, G16GFloat32EOTUsesExactNativeProgram)
 {
    /* Fresh Apple G17P builtin EOT key 0x08021100. Its exact text is
     * byte-identical to scalar key 0x04021100; PBE carries channels R32G32.
@@ -341,27 +342,29 @@ TEST_F(AGX3PackBinary, G17PRG32FloatEOTUsesExactTwoWordNativeProgram)
       0xa8, 0x35, 0x00, 0x00, 0x0e, 0x00, 0x00, 0x00,
    };
 
-   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
-   b->shader->stage = MESA_SHADER_COMPUTE;
-   key.g17p_rt0_eot_i32 = true;
-   key.g17p_rt0_eot_words = 2;
-   agx_index coords = agx_register(0, AGX_SIZE_32);
-   coords.channels_m1 = 1;
-   agx_get_sr_to(b, agx_register(0, AGX_SIZE_32),
-                 AGX_SR_THREAD_POSITION_IN_GRID_X);
-   agx_get_sr_to(b, agx_register(2, AGX_SIZE_32),
-                 AGX_SR_THREAD_POSITION_IN_GRID_Y);
-   agx_mov_imm_to(b, agx_register(4, AGX_SIZE_32), 0);
-   agx_block_image_store(b, agx_immediate(0), agx_immediate(0),
-                         agx_register(4, AGX_SIZE_32), coords,
-                         AGX_FORMAT_I32, AGX_DIM_2D, true);
-   agx_stop(b);
+   for (unsigned words : {2u, 4u}) {
+      agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+      b->shader->stage = MESA_SHADER_COMPUTE;
+      key.g17p_rt0_eot_i32 = true;
+      key.g17p_rt0_eot_words = words;
+      agx_index coords = agx_register(0, AGX_SIZE_32);
+      coords.channels_m1 = 1;
+      agx_get_sr_to(b, agx_register(0, AGX_SIZE_32),
+                    AGX_SR_THREAD_POSITION_IN_GRID_X);
+      agx_get_sr_to(b, agx_register(2, AGX_SIZE_32),
+                    AGX_SR_THREAD_POSITION_IN_GRID_Y);
+      agx_mov_imm_to(b, agx_register(4, AGX_SIZE_32), 0);
+      agx_block_image_store(b, agx_immediate(0), agx_immediate(0),
+                            agx_register(4, AGX_SIZE_32), coords,
+                            AGX_FORMAT_I32, AGX_DIM_2D, true);
+      agx_stop(b);
 
-   EXPECT_EQ(pack(b), std::vector<uint8_t>(std::begin(native),
-                                           std::end(native)));
-   EXPECT_EQ(b->shader->max_reg, 7);
-   EXPECT_TRUE(b->shader->agx3_staging_known);
-   EXPECT_EQ(b->shader->agx3_staging_halfs, 8);
+      EXPECT_EQ(pack(b), std::vector<uint8_t>(std::begin(native),
+                                              std::end(native)));
+      EXPECT_EQ(b->shader->max_reg, 7);
+      EXPECT_TRUE(b->shader->agx3_staging_known);
+      EXPECT_EQ(b->shader->agx3_staging_halfs, 8);
+   }
 }
 
 TEST_F(AGX3PackBinary, G17PRG32UintEOTUsesExactTwoWordNativeProgram)
@@ -381,7 +384,7 @@ TEST_F(AGX3PackBinary, G17PRG32UintEOTUsesExactTwoWordNativeProgram)
       0xa8, 0x75, 0x00, 0x00, 0x0e, 0x00, 0x00, 0x00,
    };
 
-   for (unsigned words = 0; words <= 2; ++words) {
+   for (unsigned words = 0; words <= 4; ++words) {
       agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
       b->shader->stage = MESA_SHADER_COMPUTE;
       key.g17p_rt0_eot_i32 = true;

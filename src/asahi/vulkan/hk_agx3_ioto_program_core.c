@@ -119,7 +119,12 @@ hk_agx3_g17p_rt0_tile_layout_supported(struct agx_tilebuffer_layout *tib)
       tib->nr_samples == 1 &&
       tib->logical_format[0] == PIPE_FORMAT_R16G16B16A16_SINT;
 
-   return mixed_mrt || packed_mrt ||
+   const bool rgba32 = tib->nr_samples == 1 && tib->sample_size_B == 16 &&
+      (tib->logical_format[0] == PIPE_FORMAT_R32G32B32A32_FLOAT ||
+       tib->logical_format[0] == PIPE_FORMAT_R32G32B32A32_SINT ||
+       tib->logical_format[0] == PIPE_FORMAT_R32G32B32A32_UINT);
+
+   return mixed_mrt || packed_mrt || rgba32 ||
           (tib->sample_size_B == 8 &&
            (agx_tilebuffer_physical_format(tib, 0) == PIPE_FORMAT_R8_UNORM ||
             agx_tilebuffer_physical_format(tib, 0) == PIPE_FORMAT_R16_FLOAT ||
@@ -153,7 +158,8 @@ hk_agx3_g17p_graphics_state_tail(
    struct agx_ioto_state_tail_output *tail, bool ordinary)
 {
    if (!desc || !tail || desc->shader_binary_size == 0 ||
-       desc->nr_gprs == 0)
+       desc->nr_gprs == 0 ||
+       (desc->sample_size_B & 7) || desc->sample_size_B > 248)
       return false;
 
    static const uint8_t vertex_speclm[AGX_IOTO_SPECLM_SIZE] = {
@@ -204,6 +210,17 @@ hk_agx3_g17p_graphics_state_tail(
    };
    memcpy(staged.bytes, desc->fragment ? fragment_speclm : vertex_speclm,
           AGX_IOTO_SPECLM_SIZE);
+   if (desc->fragment && desc->sample_size_B) {
+      /* G16G SpecLM::encodeImageBlockData (0x3155ac..0x3155bc)
+       * produces the stride in 8-byte units in semantic hi[39:35].
+       * AGX3EncodedInstr<SPECLM_0> (0x2a79a0..0x2a79cc) copies that
+       * field to encoded bits[29:25]. The old constant declared 8 bytes
+       * for every target and truncated a 128-bit tile store to 64 bits.
+       * Geometry and coverage retain the existing 32x32 pixel-rate ABI.
+       */
+      staged.bytes[3] = (staged.bytes[3] & 0xc1) |
+                        ((desc->sample_size_B / 8) << 1);
+   }
    if (!agx_ioto_state_pack_ldshdr(AGX_CHIP_G17P, &ldshdr,
                                    staged.bytes + AGX_IOTO_SPECLM_SIZE,
                                    AGX_IOTO_LDSHDR_SIZE) ||
@@ -524,6 +541,7 @@ hk_agx3_g17p_rt0_bg_program_generate(
    }
 
    const struct hk_agx3_g17p_graphics_program_desc shader = {
+      .sample_size_B = desc->sample_size_B,
       .program_va = desc->program_va,
       .shader_va = desc->shader_va,
       .shader_binary_size = desc->shader_binary_size,
@@ -624,6 +642,7 @@ hk_agx3_g17p_rt0_eot_program_generate(
       return false;
 
    const struct hk_agx3_g17p_graphics_program_desc shader = {
+      .sample_size_B = desc->sample_size_B,
       .program_va = desc->program_va,
       .shader_va = desc->shader_va,
       .shader_binary_size = desc->shader_binary_size,

@@ -1062,9 +1062,18 @@ hk_g17p_basic_graphics_program_supported(struct hk_cmd_buffer *cmd,
                 AGX_VDM_STATE_UPDATE_SOURCE_LAYOUT_AGX3_VERTEX_PROGRAM_VARIANT;
    }
 
-   return s->info.stage == MESA_SHADER_FRAGMENT &&
-          hk_g17p_smooth_varyings_supported(cmd, linked) &&
-          hk_g17p_basic_fragment_layout(cmd);
+   bool varyings = hk_g17p_smooth_varyings_supported(cmd, linked);
+   bool tile = hk_g17p_basic_fragment_layout(cmd);
+   if (s->info.stage == MESA_SHADER_FRAGMENT && (!varyings || !tile)) {
+      struct agx_tilebuffer_layout *tib = &cmd->state.gfx.render.tilebuffer;
+      mesa_loge("HAL200 fragment rejected varyings=%u tile=%u cf=%u/%u "
+                "formats=%u/%u/%u samples=%u layered=%u size=%u",
+                varyings, tile, linked->b.cf.nr_bindings, linked->b.cf.nr_cf,
+                tib->logical_format[0], tib->logical_format[1],
+                tib->logical_format[2], tib->nr_samples, tib->layered,
+                tib->sample_size_B);
+   }
+   return s->info.stage == MESA_SHADER_FRAGMENT && varyings && tile;
 }
 
 static bool
@@ -1409,6 +1418,8 @@ hk_upload_usc_words(struct hk_cmd_buffer *cmd, struct hk_shader *s,
       }
 
       const struct hk_agx3_g17p_graphics_program_desc desc = {
+         .sample_size_B = s->info.stage == MESA_SHADER_FRAGMENT
+            ? cmd->state.gfx.render.tilebuffer.sample_size_B : 0,
          .program_va = upload.gpu,
          /* The container's entry point, not the allocation base: the
        * shader loader reads the block-size dword at entry - 0x80. */

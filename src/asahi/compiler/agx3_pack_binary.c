@@ -3386,23 +3386,22 @@ agx3_g17p_rt0_eot_kind(const agx_context *ctx, enum agx_isa_encoding enc)
          return AGX3_G17P_RT0_EOT_NONE;
 
       if (ctx->key->g17p_rt0_eot_i32_selector_15) {
-         /* Only the exact two-word signed pair has native evidence for this
-          * I32 selector. Reject an ambiguous or scalar shape. */
+         /* Native RG32 SINT expands lanes; RGBA32 uses full-width I32. */
          return ctx->key->g17p_rt0_eot_words == 2
                    ? AGX3_G17P_RT0_EOT_SELECTOR_15
                    : AGX3_G17P_RT0_EOT_NONE;
       }
 
       if (ctx->key->g17p_rt0_eot_i32_selector_75) {
-         /* Only the exact two-word unsigned pair has native evidence for
-          * this I32 selector. Reject an ambiguous or scalar shape. */
+         /* Native RG32 UINT expands lanes; RGBA32 uses full-width I32. */
          return ctx->key->g17p_rt0_eot_words == 2
                    ? AGX3_G17P_RT0_EOT_SELECTOR_75
                    : AGX3_G17P_RT0_EOT_NONE;
       }
 
       return (ctx->key->g17p_rt0_eot_words == 1 ||
-              ctx->key->g17p_rt0_eot_words == 2)
+              ctx->key->g17p_rt0_eot_words == 2 ||
+              ctx->key->g17p_rt0_eot_words == 4)
                 ? AGX3_G17P_RT0_EOT_I32
                 : AGX3_G17P_RT0_EOT_NONE;
    }

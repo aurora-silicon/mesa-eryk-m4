@@ -351,6 +351,9 @@ agx_build_end_of_tile_shader(struct agx_bg_eot_cache *cache,
          agx_native_graphics(cache->dev) &&
          (key->tib.logical_format[0] == PIPE_FORMAT_R32_FLOAT ||
           key->tib.logical_format[0] == PIPE_FORMAT_R32G32_FLOAT ||
+          key->tib.logical_format[0] == PIPE_FORMAT_R32G32B32A32_FLOAT ||
+          key->tib.logical_format[0] == PIPE_FORMAT_R32G32B32A32_SINT ||
+          key->tib.logical_format[0] == PIPE_FORMAT_R32G32B32A32_UINT ||
           key->tib.logical_format[0] == PIPE_FORMAT_R32_UINT ||
           key->tib.logical_format[0] == PIPE_FORMAT_R32_SINT ||
           key->tib.logical_format[0] == PIPE_FORMAT_R32G32_SINT ||
@@ -398,6 +401,11 @@ agx_build_end_of_tile_shader(struct agx_bg_eot_cache *cache,
       case PIPE_FORMAT_R32G32_SINT:
       case PIPE_FORMAT_R32G32_UINT:
          compiler_key.g17p_rt0_eot_words = 2;
+         break;
+      case PIPE_FORMAT_R32G32B32A32_FLOAT:
+      case PIPE_FORMAT_R32G32B32A32_SINT:
+      case PIPE_FORMAT_R32G32B32A32_UINT:
+         compiler_key.g17p_rt0_eot_words = 4;
          break;
       default:
          break;

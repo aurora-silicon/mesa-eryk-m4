@@ -771,6 +771,26 @@ test_g17p_basic_graphics_program(void)
    CHECK(memcmp(program.bytes, expected_fragment, sizeof(expected_fragment)) ==
          0);
 
+   /* Native SPECLM encoding: 16/24/248-byte imageblocks differ only in
+    * the 8-byte stride field. Keep no-resource and resource paths identical. */
+   const uint16_t strides[] = {8, 16, 24, 248};
+   for (unsigned i = 0; i < ARRAY_SIZE(strides); ++i) {
+      struct hk_agx3_g17p_graphics_program_desc wide = fragment;
+      wide.sample_size_B = strides[i];
+      CHECK(hk_agx3_g17p_basic_graphics_program_generate(AGX_CHIP_G16G,
+                                                       &wide, &program));
+      CHECK(program.bytes[3] == (uint8_t)(0x41 | (strides[i] / 8 << 1)));
+      program.bytes[3] = expected_fragment[3];
+      CHECK(!memcmp(program.bytes, expected_fragment, sizeof(expected_fragment)));
+   }
+   const uint16_t invalid_strides[] = {1, 7, 12, 249, 256};
+   for (unsigned i = 0; i < ARRAY_SIZE(invalid_strides); ++i) {
+      struct hk_agx3_g17p_graphics_program_desc wide = fragment;
+      wide.sample_size_B = invalid_strides[i];
+      CHECK(!hk_agx3_g17p_basic_graphics_program_generate(AGX_CHIP_G16G,
+                                                        &wide, &program));
+   }
+
    const struct hk_agx3_g17p_graphics_program_desc vertex = {
       .program_va = UINT64_C(0x10000128000),
       .shader_va = UINT64_C(0x10000000000),
@@ -1058,6 +1078,16 @@ test_g17p_rt0_eot_program(void)
    };
    CHECK(memcmp(program.bytes + prefix_size, eot_state_tail,
                 sizeof(eot_state_tail)) == 0);
+
+   struct hk_agx3_g17p_rt0_eot_program_desc wide = desc;
+   struct hk_agx3_g17p_rt0_eot_program wide_program;
+   wide.sample_size_B = 16;
+   CHECK(hk_agx3_g17p_rt0_eot_program_generate(AGX_CHIP_G16G, &wide,
+                                              &wide_program));
+   CHECK(wide_program.length == program.length);
+   CHECK(wide_program.bytes[prefix_size + 3] == 0x45);
+   wide_program.bytes[prefix_size + 3] = 0x43;
+   CHECK(!memcmp(wide_program.bytes, program.bytes, program.length));
 
    /* RGBA16_SINT's distinct 84-byte builtin has the same rounded 128-byte
     * LDSHDR span and therefore the same bounded launch program. */
@@ -1436,6 +1466,16 @@ test_g17p_rt0_background_programs(void)
    CHECK(memcmp(program.bytes + program.length - sizeof(background_termination),
                 background_termination, sizeof(background_termination)) == 0);
 
+   struct hk_agx3_g17p_rt0_bg_program_desc wide = clear;
+   struct hk_agx3_g17p_rt0_bg_program wide_program;
+   wide.sample_size_B = 16;
+   CHECK(hk_agx3_g17p_rt0_bg_program_generate(AGX_CHIP_G16G, &wide,
+                                             &wide_program));
+   CHECK(wide_program.length == program.length);
+   CHECK(wide_program.bytes[sizeof(clear_pre_copy) + 3] == 0x45);
+   wide_program.bytes[sizeof(clear_pre_copy) + 3] = 0x43;
+   CHECK(!memcmp(wide_program.bytes, program.bytes, program.length));
+
    struct hk_agx3_g17p_rt0_bg_program relocated;
    struct hk_agx3_g17p_rt0_bg_program_desc moved = clear;
    moved.clear_value_va += UINT64_C(0x10000);
@@ -1700,6 +1740,19 @@ test_g17p_single_layer_rt0_layout(void)
    CHECK(hk_agx3_g17p_rt0_tile_layout_supported(&tib));
    CHECK(tib.sample_size_B == 8);
    CHECK(agx_tilebuffer_offset_B(&tib, 0) == 0);
+
+   const enum pipe_format rgba32_formats[] = {
+      PIPE_FORMAT_R32G32B32A32_FLOAT,
+      PIPE_FORMAT_R32G32B32A32_SINT,
+      PIPE_FORMAT_R32G32B32A32_UINT,
+   };
+   for (unsigned i = 0; i < ARRAY_SIZE(rgba32_formats); ++i) {
+      enum pipe_format formats[AGX_MAX_RENDER_TARGETS] = {rgba32_formats[i]};
+      tib = agx_build_tilebuffer_layout(formats, 1, 1, false);
+      CHECK(hk_agx3_g17p_rt0_tile_layout_supported(&tib));
+      CHECK(tib.sample_size_B == 16);
+      CHECK(agx_tilebuffer_offset_B(&tib, 0) == 0);
+   }
 
    enum pipe_format rgba8_sint[AGX_MAX_RENDER_TARGETS] = {
       PIPE_FORMAT_R8G8B8A8_SINT,

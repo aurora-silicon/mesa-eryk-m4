@@ -56,6 +56,8 @@ bool hk_agx3_g17p_no_resource_program_generate(
    size_t capacity, size_t *written);
 
 struct hk_agx3_g17p_graphics_program_desc {
+   /* Zero retains the 8-byte attachmentless/default imageblock. */
+   uint16_t sample_size_B;
    uint64_t program_va;
    uint64_t shader_va;
    const struct agx3_ioto_uniform_range *uniform_ranges;
@@ -159,6 +161,8 @@ bool hk_agx3_g17p_rt0_bg_resource_spec(
    enum agx_chip chip, enum hk_agx3_g17p_rt0_bg_op op, uint64_t *resource_spec);
 
 struct hk_agx3_g17p_rt0_bg_program_desc {
+   /* Zero retains the 8-byte attachmentless/default imageblock. */
+   uint16_t sample_size_B;
    uint64_t program_va;
    uint64_t shader_va;
    uint64_t clear_value_va;
@@ -189,6 +193,8 @@ bool hk_agx3_g17p_rt0_bg_shader_resources_match(
    enum hk_agx3_g17p_rt0_bg_op op, unsigned push_count, bool uses_txf);
 
 struct hk_agx3_g17p_rt0_eot_program_desc {
+   /* Zero retains the 8-byte attachmentless/default imageblock. */
+   uint16_t sample_size_B;
    uint64_t program_va;
    uint64_t shader_va;
    /* Raw 32-byte-aligned GPU VA to the owned RT0 PBE32 descriptor. The
