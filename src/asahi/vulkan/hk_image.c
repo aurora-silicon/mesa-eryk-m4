@@ -494,8 +494,7 @@ hk_GetPhysicalDeviceImageFormatProperties2(
             native_rt0;
 
          sampleCounts = VK_SAMPLE_COUNT_1_BIT |
-                        (bounded_color ? VK_SAMPLE_COUNT_2_BIT |
-                                         VK_SAMPLE_COUNT_4_BIT : 0);
+                        (bounded_color ? VK_SAMPLE_COUNT_2_BIT : 0);
       }
    }
 
