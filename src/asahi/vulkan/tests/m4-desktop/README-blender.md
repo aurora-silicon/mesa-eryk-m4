@@ -34,3 +34,14 @@ and produced executable SHA256
 Run UI/Vulkan probes only with `gpu-experiment.py` plus `app-observe.py`, capturing
 a software reference first. A successful cross-build or `--version` is not GPU
 support or a stability test.
+
+`blender-wayland-color.patch` fixes the first real startup failure: only claim
+Wayland color-management ownership when that surface actually supports the
+R16-float/passthrough swapchain. Otherwise the SDR Vulkan WSI path owns it.
+It also checks failed surface-format/present-mode queries before using counts;
+surface loss previously caused an uninitialized allocation size and OOM/abort.
+The patched binary `e565309e5dbc029ad5d8508f9d12d840258af6bbd24cc235b63d1e54da3b8e20`
+opened on lavapipe in `20260912T213109755531Z-blender-vulkan-color-ownership-reference`,
+retaining a nine-frame Vulkan capture. This establishes startup, not yet a clean
+viewport or M4 support. Also hydrate `assets/**` (separate from release/datafiles)
+before installing; otherwise Blender reports Git LFS pointers as invalid assets.

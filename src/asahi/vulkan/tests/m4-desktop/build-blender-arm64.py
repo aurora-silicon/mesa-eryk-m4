@@ -19,12 +19,16 @@ assert a.jobs>0
 for name in ['clang','clang++','ninja','cmake','qemu-aarch64-static','wayland-scanner']:
  assert shutil.which(name),name
 assert (source/'release/datafiles/startup.blend').read_bytes()[:7]==b'BLENDER','Hydrate release/datafiles with Git LFS first'
+for asset in (source/'assets').rglob('*.blend'):
+ with asset.open('rb') as f: prefix=f.read(128)
+ assert not prefix.startswith(b'version https://git-lfs.github.com/spec/'),f'Hydrate assets/** with Git LFS: {asset}'
 gcc=list((sysroot/'usr/lib/gcc/aarch64-unknown-linux-gnu').glob('*'))
 assert len(gcc)==1,'Select a sysroot containing one target GCC installation'
-patch=Path(__file__).with_name('blender-linux-cross.patch').resolve()
-if subprocess.run(['git','-C',str(source),'apply','--reverse','--check',str(patch)],capture_output=True).returncode:
- subprocess.run(['git','-C',str(source),'apply','--check',str(patch)],check=True)
- subprocess.run(['git','-C',str(source),'apply',str(patch)],check=True)
+for name in ['blender-linux-cross.patch','blender-wayland-color.patch']:
+ patch=Path(__file__).with_name(name).resolve()
+ if subprocess.run(['git','-C',str(source),'apply','--reverse','--check',str(patch)],capture_output=True).returncode:
+  subprocess.run(['git','-C',str(source),'apply','--check',str(patch)],check=True)
+  subprocess.run(['git','-C',str(source),'apply',str(patch)],check=True)
 build.mkdir(parents=True,exist_ok=True)
 # Quote CMake paths; this helper rejects syntax-bearing path characters.
 for path in [source,sysroot,build,*gcc]:assert not any(c in str(path) for c in '\n";$')

@@ -1,0 +1,93 @@
+diff --git a/intern/ghost/intern/GHOST_ContextVK.cc b/intern/ghost/intern/GHOST_ContextVK.cc
+index 7ccfafac..4330ccc9 100644
+--- a/intern/ghost/intern/GHOST_ContextVK.cc
++++ b/intern/ghost/intern/GHOST_ContextVK.cc
+@@ -1243,10 +1243,12 @@ static GHOST_TSuccess selectPresentMode(const GHOST_TVSyncModes vsync,
+                                         VkSurfaceKHR surface,
+                                         VkPresentModeKHR *r_presentMode)
+ {
+-  uint32_t present_count;
+-  vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &present_count, nullptr);
++  uint32_t present_count = 0;
++  VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &present_count, nullptr),
++           GHOST_kFailure);
+   vector<VkPresentModeKHR> presents(present_count);
+-  vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &present_count, presents.data());
++  VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &present_count, presents.data()),
++           GHOST_kFailure);
+ 
+   if (vsync != GHOST_kVSyncModeUnset) {
+     const bool vsync_off = (vsync == GHOST_kVSyncModeOff);
+@@ -1292,10 +1294,12 @@ static bool selectSurfaceFormat(const VkPhysicalDevice physical_device,
+                                 bool use_hdr_swapchain,
+                                 VkSurfaceFormatKHR &r_surfaceFormat)
+ {
+-  uint32_t format_count;
+-  vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &format_count, nullptr);
++  uint32_t format_count = 0;
++  VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &format_count, nullptr),
++           false);
+   vector<VkSurfaceFormatKHR> formats(format_count);
+-  vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &format_count, formats.data());
++  VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &format_count, formats.data()),
++           false);
+ 
+   array<VkSurfaceFormatKHR, 3> selection_order = {{
+ #if defined(_WIN32) || defined(__APPLE__)
+@@ -1895,6 +1899,28 @@ GHOST_TSuccess GHOST_ContextVK::supportsWaylandColorManagement()
+   }
+ 
+   GHOST_DeviceVK &device_vk = vulkan_instance->device.value();
++  /* Owning wp_color_management_surface_v1 requires a passthrough swapchain.
++   * If the compositor cannot import float buffers, selectSurfaceFormat falls
++   * back to SDR and Vulkan WSI owns that protocol object instead. Do not create
++   * a second object for the same wl_surface or describe SDR pixels as linear.
++   */
++  uint32_t format_count = 0;
++  VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(
++               device_vk.vk_physical_device, surface_, &format_count, nullptr),
++           GHOST_kFailure);
++  vector<VkSurfaceFormatKHR> formats(format_count);
++  VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(
++               device_vk.vk_physical_device, surface_, &format_count, formats.data()),
++           GHOST_kFailure);
++  const bool has_hdr_passthrough = std::any_of(
++      formats.begin(), formats.end(), [](const VkSurfaceFormatKHR &format) {
++        return format.format == VK_FORMAT_R16G16B16A16_SFLOAT &&
++               format.colorSpace == VK_COLOR_SPACE_PASS_THROUGH_EXT;
++      });
++  if (!has_hdr_passthrough) {
++    return GHOST_kFailure;
++  }
++
+   if (device_vk.properties_12.driverID != VK_DRIVER_ID_NVIDIA_PROPRIETARY) {
+     return GHOST_kSuccess;
+   }
+diff --git a/intern/ghost/intern/GHOST_ContextVK.hh b/intern/ghost/intern/GHOST_ContextVK.hh
+index 3a89cabb..cf997380 100644
+--- a/intern/ghost/intern/GHOST_ContextVK.hh
++++ b/intern/ghost/intern/GHOST_ContextVK.hh
+@@ -186,7 +186,7 @@ class GHOST_ContextVK : public GHOST_Context {
+    * NVIDIA driver before 595 don't support wayland color management protocol as expected resulting
+    * in to bright output.
+    */
+-  static GHOST_TSuccess supportsWaylandColorManagement();
++  GHOST_TSuccess supportsWaylandColorManagement();
+ #endif
+ 
+   /**
+diff --git a/intern/ghost/intern/GHOST_WindowWayland.cc b/intern/ghost/intern/GHOST_WindowWayland.cc
+index 2bcb31ee..671d4739 100644
+--- a/intern/ghost/intern/GHOST_WindowWayland.cc
++++ b/intern/ghost/intern/GHOST_WindowWayland.cc
+@@ -1800,8 +1800,8 @@ GHOST_WindowWayland::GHOST_WindowWayland(GHOST_SystemWayland *system,
+   /* Color management */
+   wp_color_manager_v1 *color_manager = nullptr;
+ #ifdef WITH_VULKAN_BACKEND
+-  if (type == GHOST_kDrawingContextTypeVulkan &&
+-      GHOST_ContextVK::supportsWaylandColorManagement() == GHOST_kSuccess)
++  if (window_->is_valid_setup && type == GHOST_kDrawingContextTypeVulkan &&
++      static_cast<GHOST_ContextVK *>(getDrawingContext())->supportsWaylandColorManagement() == GHOST_kSuccess)
+   {
+     color_manager = system->wp_color_manager_get();
+   }
