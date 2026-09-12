@@ -173,6 +173,16 @@ hk_CreateBufferView(VkDevice _device, const VkBufferViewCreateInfo *pCreateInfo,
       memset(&view->pbe, 0, sizeof(view->pbe));
    }
 
+   if (agx_native_graphics(&device->dev)) {
+      VkResult result = hk_descriptor_table_add(
+         device, &device->sampled_images, &view->tex,
+         hk_texture_descriptor_size(generation), &view->sampled_heap_index);
+      if (result != VK_SUCCESS) {
+         vk_buffer_view_destroy(&device->vk, pAllocator, &view->vk);
+         return result;
+      }
+   }
+
    *pBufferView = hk_buffer_view_to_handle(view);
 
    return VK_SUCCESS;
@@ -187,6 +197,10 @@ hk_DestroyBufferView(VkDevice _device, VkBufferView bufferView,
 
    if (!view)
       return;
+
+   if (view->sampled_heap_index)
+      hk_descriptor_table_remove(device, &device->sampled_images,
+                                 view->sampled_heap_index);
 
    vk_buffer_view_destroy(&device->vk, pAllocator, &view->vk);
 }

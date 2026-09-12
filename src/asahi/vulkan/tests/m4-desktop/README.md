@@ -1525,3 +1525,34 @@ restore normal login when driver state permits; recover first if a fault makes
 that unsafe. Workspace `tools/restore-display-manager.py` provides a bounded
 watchdog/thermal startup check. Normal SDDM currently uses the existing software
 rendering configuration; this change does not install accelerated login startup.
+
+### Native texel buffers, 2026-09-12
+
+Firefox's first captured draw writes an R8 glyph atlas from a texel buffer.
+Draw-resource comparison found 307 software-written bytes and zero GPU-written
+bytes. Native buffer descriptors had lost their software element count; all
+fetches consequently became out of bounds. They also lacked a global texture
+heap entry, while the indexed shader path read the sampled-image heap-index
+slot beyond their old 64-byte descriptor stride. RGB32's emulated raw-load path
+additionally decoded the AGX2 address layout.
+
+Gen9 now retains element counts in the non-extended buffer descriptor's unused
+word, decodes buffer sizes/RGB32 addresses with the native layout, and allocates
+buffer-view texture heap entries with the same lifetime rules as image views.
+Native texel descriptors have a 72-byte stride to retain the heap-index field.
+Hardware descriptor prefixes and AGX2 descriptor strides remain unchanged.
+Nonzero unaligned tails and other existing unsupported storage-buffer-image
+paths are not qualified by this change.
+
+`texel-buffer-probe.c` checks constant drawing, `textureSize`, 1,500 buffer
+texels across the hardware's 1,024-texel row boundary, and 548 out-of-range
+indices for R8, R32F and RGB32F. Compile with EGL/OpenGL libraries, then use
+`gpu-experiment.py` with `run-m4-gl.py` for hardware. Host llvmpipe needs the
+explicit `M4_TEST_LLVMPIPE=1` reference override. All nine readbacks pass on
+software and J713, with zero mismatches (tolerance one RGBA8 level). Before the
+fix the same J713 oracle recorded 19,758 mismatching channels. Native descriptor
+host tests also cover metadata prefix preservation and extension-alias rejection.
+
+Evidence: `20260912T051358210808Z-texel-buffer-baseline` and
+`20260912T051724623603Z-texel-buffer-heap-fixed`; peak six-channel temperature
+54.25 C. These numerical results do not by themselves qualify full Firefox.

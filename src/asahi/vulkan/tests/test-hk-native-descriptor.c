@@ -871,6 +871,44 @@ main(void)
    assert(memcmp(&null_pbe10, &(struct hk_native_pbe_descriptor){0},
                  sizeof(null_pbe10)) != 0);
 
+   assert(hk_texel_buffer_descriptor_stride(7) == 48);
+   assert(hk_texel_buffer_descriptor_stride(8) == 48);
+   assert(hk_texel_buffer_descriptor_stride(9) == 72);
+   assert(hk_texel_buffer_descriptor_stride(10) == 72);
+   assert(hk_texel_buffer_descriptor_stride(0) == 0);
+
+   /* Buffer bounds are software metadata in the unused non-extended word.
+    * Keep the hardware prefix identical and reject extension aliasing. */
+   struct AGX_TEXTURE buffer_tex = {
+      AGX_TEXTURE_header,
+      .dimension = AGX_TEXTURE_DIMENSION_2D,
+      .layout = AGX_LAYOUT_LINEAR,
+      .channels = AGX_CHANNELS_R8,
+      .type = AGX_TEXTURE_TYPE_UNORM,
+      .width = 1024,
+      .height = 2,
+      .depth = 1,
+      .stride = 1024 - 16,
+      .address = 0x1234567890ull,
+   };
+   struct hk_native_texture_descriptor empty_buffer, full_buffer;
+   assert(hk_pack_native_texture(9, &empty_buffer, &buffer_tex));
+   buffer_tex.buffer_size_sw = 1500;
+   assert(hk_pack_native_texture(9, &full_buffer, &buffer_tex));
+   assert(!memcmp(empty_buffer.opaque, full_buffer.opaque, 16));
+   assert(full_buffer.opaque[4] == 1500);
+   assert(full_buffer.opaque[5] == 0);
+   struct AGX_TEXTURE_GEN9 decoded_buffer;
+   AGX_TEXTURE_GEN9_unpack(NULL, (const uint8_t *)full_buffer.opaque, &decoded_buffer);
+   assert(decoded_buffer.buffer_size_sw == 1500);
+   assert(decoded_buffer.address == buffer_tex.address);
+   assert(!decoded_buffer.extended);
+   buffer_tex.extended = true;
+   assert(!hk_pack_native_texture(9, &full_buffer, &buffer_tex));
+   buffer_tex.extended = false;
+   buffer_tex.last_level = 1;
+   assert(!hk_pack_native_texture(9, &full_buffer, &buffer_tex));
+
    puts("honeykrisp native descriptor geometry/policy: passed");
    return 0;
 }

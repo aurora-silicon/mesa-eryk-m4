@@ -257,6 +257,7 @@ write_buffer_view_desc(struct hk_descriptor_set *set,
                        uint32_t elem, bool storage)
 {
    struct hk_storage_image_descriptor desc = {};
+   uint32_t heap_index = 0;
    const unsigned generation = set->layout->descriptor_generation;
    const struct hk_storage_image_descriptor_layout native =
       hk_storage_image_descriptor_layout(generation);
@@ -266,6 +267,7 @@ write_buffer_view_desc(struct hk_descriptor_set *set,
       VK_FROM_HANDLE(hk_buffer_view, view, bufferView);
 
       desc.tex = view->tex;
+      heap_index = view->sampled_heap_index;
       if (storage)
          desc.pbe = view->pbe;
    } else {
@@ -277,7 +279,13 @@ write_buffer_view_desc(struct hk_descriptor_set *set,
    memcpy(packed + native.texture, &desc.tex,
           hk_texture_descriptor_size(generation));
    memcpy(packed + native.pbe, &desc.pbe, hk_pbe_descriptor_size(generation));
-   write_desc(set, binding, elem, packed, native.stride);
+   if (hk_descriptor_generation_is_agx3(generation)) {
+      const unsigned heap_offset = hk_sampled_image_descriptor_layout(generation).sampler +
+         offsetof(struct hk_sampled_image_descriptor_sw, sampled_heap_index);
+      memcpy(packed + heap_offset, &heap_index, sizeof(heap_index));
+   }
+   write_desc(set, binding, elem, packed,
+              hk_texel_buffer_descriptor_stride(generation));
 }
 
 static void

@@ -108,6 +108,16 @@ hk_storage_image_descriptor_layout(unsigned generation)
    };
 }
 
+/* Texel buffers keep texture/PBE descriptors followed by the same native
+ * heap-index slot used by sampled images. AGX2 still uses its inline pair. */
+static inline unsigned
+hk_texel_buffer_descriptor_stride(unsigned generation)
+{
+   return hk_descriptor_generation_is_agx3(generation)
+      ? hk_sampled_image_descriptor_layout(generation).stride
+      : hk_storage_image_descriptor_layout(generation).stride;
+}
+
 /* AGX3 buffer descriptors have no recovered equivalent for AGX2's software
  * tail offset.  Keep those unavailable rather than aliasing unknown bits in a
  * native descriptor.  Multisample descriptor representation is recovered on

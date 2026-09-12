@@ -77,6 +77,14 @@ hk_pack_native_texture(unsigned generation,
           legacy->height > 16384)
          return false;
 
+      /* Word 2 is software-owned for non-extended linear buffer views.
+       * Do not alias buffer metadata with a hardware extension or mip range. */
+      if (legacy->buffer_size_sw &&
+          (legacy->dimension != AGX_TEXTURE_DIMENSION_2D ||
+           legacy->layout != AGX_LAYOUT_LINEAR || extended ||
+           legacy->compressed || legacy->depth != 1))
+         return false;
+
       /* HAL200 encodeImageReadState (4d238c, 4d2270..4d22e8) clears
        * word1[62] for an ordinary non-array 2D texture. Its conditional
        * layer-mode writer is not the inherited AIL page-aligned-allocation
@@ -124,6 +132,8 @@ hk_pack_native_texture(unsigned generation,
                                     : 0,
          .first_level = legacy->first_level,
          .last_level = legacy->last_level,
+         .buffer_size_sw = legacy->buffer_size_sw,
+         .buffer_offset_sw = legacy->buffer_offset_sw,
       };
 
       AGX_TEXTURE_GEN9_pack(out->opaque, &cfg);

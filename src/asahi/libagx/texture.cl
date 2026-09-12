@@ -237,6 +237,17 @@ libagx_texture_load_rgb32(constant struct agx_texture_packed *ptr, uint coord,
    return (uint4)(*data, is_float ? as_uint(1.0f) : 1);
 }
 
+/* RGB32 uses raw loads, so its address must use the native 44-bit field. */
+uint4
+libagx_texture_load_rgb32_gen9(constant struct agx_texture_gen9_packed *ptr,
+                              uint coord, bool is_float)
+{
+   agx_unpack(NULL, ptr, TEXTURE_GEN9, d);
+   uint64_t addr = d.address + ((uint64_t)(coord * 3)) * 4;
+   constant uint3 *data = (constant uint3 *)addr;
+   return (uint4)(*data, is_float ? as_uint(1.0f) : 1);
+}
+
 uint
 libagx_buffer_texture_offset(constant struct agx_texture_packed *ptr, uint x)
 {
@@ -258,7 +269,7 @@ libagx_buffer_image_offset(constant struct agx_pbe_packed *ptr, uint x)
  * arrays retain their native tiled/linear depth fields. */
 uint3
 libagx_txs_gen9(constant struct agx_texture_gen9_packed *ptr, uint16_t lod,
-           unsigned nr_comps, bool is_1d, bool is_2d,
+           unsigned nr_comps, bool is_buffer, bool is_1d, bool is_2d,
            bool is_cube, bool is_array)
 {
    agx_unpack(NULL, ptr, TEXTURE_GEN9, d);
@@ -269,6 +280,9 @@ libagx_txs_gen9(constant struct agx_texture_gen9_packed *ptr, uint16_t lod,
     */
    if (d.address == AGX_ZERO_PAGE_ADDRESS)
       return 0;
+
+   if (is_buffer)
+      return d.buffer_size_sw;
 
    /* Load standard dimensions */
    uint3 size = (uint3)(d.width, d.height, d.depth);

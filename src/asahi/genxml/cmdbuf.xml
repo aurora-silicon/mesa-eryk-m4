@@ -364,6 +364,10 @@
     <field name="Last level" size="4" start="176" type="uint"/>
     <field name="Unk word 3 bits 0-1" size="2" start="192" type="hex"/>
     <field name="Unk word 3 bits 8-10" size="3" start="200" type="hex"/>
+    <!-- Software-only buffer metadata reuses word 2 when Extended is clear.
+         Buffer views have no mip chain, compression or linear array payload. -->
+    <field name="Buffer size (sw)" size="32" start="128" type="uint"/>
+    <field name="Buffer offset (sw)" size="32" start="160" type="uint"/>
   </struct>
 
   <!-- HAL300 / M5 live-measured texture heap element. -->

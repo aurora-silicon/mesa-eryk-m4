@@ -92,9 +92,9 @@ lower_tex_crawl(nir_builder *b, nir_instr *instr, void *data)
 
    nir_def *res;
    const bool gen9 = data && *(const bool *)data;
-   if (gen9 && tex->op == nir_texop_txs &&
-       tex->sampler_dim != GLSL_SAMPLER_DIM_BUF) {
+   if (gen9 && tex->op == nir_texop_txs) {
       res = libagx_txs_gen9(b, ptr, lod, nir_imm_int(b, nr_comps),
+                    nir_imm_bool(b, tex->sampler_dim == GLSL_SAMPLER_DIM_BUF),
                     nir_imm_bool(b, tex->sampler_dim == GLSL_SAMPLER_DIM_1D),
                     nir_imm_bool(b, tex->sampler_dim == GLSL_SAMPLER_DIM_2D),
                     nir_imm_bool(b, tex->sampler_dim == GLSL_SAMPLER_DIM_CUBE),
@@ -146,7 +146,7 @@ coords_for_buffer_texture(nir_builder *b, nir_def *coord)
  *       return txf(texture_as_2d, vec2(x % 1024, x / 1024));
  */
 static bool
-lower_buffer_texture(nir_builder *b, nir_tex_instr *tex)
+lower_buffer_texture(nir_builder *b, nir_tex_instr *tex, bool gen9)
 {
    nir_def *coord = nir_steal_tex_src(tex, nir_tex_src_coord);
    nir_def *size = nir_get_texture_size(b, tex);
@@ -169,9 +169,10 @@ lower_buffer_texture(nir_builder *b, nir_tex_instr *tex)
    nir_if *nif = nir_push_if(
       b, nir_iand(b, libagx_texture_is_rgb32(b, desc), nir_inot(b, oob)));
 
-   nir_def *rgb32 = nir_trim_vector(
-      b, libagx_texture_load_rgb32(b, desc, coord, nir_imm_bool(b, is_float)),
-      nir_tex_instr_result_size(tex));
+   nir_def *raw = gen9
+      ? libagx_texture_load_rgb32_gen9(b, desc, coord, nir_imm_bool(b, is_float))
+      : libagx_texture_load_rgb32(b, desc, coord, nir_imm_bool(b, is_float));
+   nir_def *rgb32 = nir_trim_vector(b, raw, nir_tex_instr_result_size(tex));
 
    /* Raw loads do not return residency information, but residency queries are
     * supported on buffer textures. Fortunately, we do not need to support
@@ -226,7 +227,7 @@ lower_regular_texture(nir_builder *b, nir_instr *instr, void *data)
       return false;
 
    if (tex->sampler_dim == GLSL_SAMPLER_DIM_BUF)
-      return lower_buffer_texture(b, tex);
+      return lower_buffer_texture(b, tex, data && *(const bool *)data);
 
    /* Don't lower twice */
    if (nir_tex_instr_src_index(tex, nir_tex_src_backend1) >= 0)
