@@ -23,6 +23,7 @@ static _Thread_local FILE *agx_failure_ir;
 #include "asahi/layout/layout.h"
 #include "asahi/lib/agx_abi.h"
 #include "compiler/nir/nir_builder.h"
+#include "compiler/nir/nir_format_convert.h"
 #include "util/bitset.h"
 #include "util/glheader.h"
 #include "util/list.h"
@@ -2488,6 +2489,24 @@ agx_lower_agx3_fma_sources(agx_context *ctx)
       return;
 
    agx_foreach_instr_global_safe(ctx, I) {
+      if ((I->op == AGX_OPCODE_FADD || I->op == AGX_OPCODE_FMUL) &&
+          I->dest[0].size == AGX_SIZE_32 &&
+          I->src[0].type != AGX_INDEX_IMMEDIATE &&
+          I->src[1].type != AGX_INDEX_IMMEDIATE &&
+          I->src[0].size != I->src[1].size) {
+         /* F16 inputs widen exactly. Keep the F32 operation and its rounding
+          * when copy propagation folds a half-width source into arithmetic. */
+         agx_builder b = agx_init_builder(ctx, agx_before_instr(I));
+         agx_foreach_src(I, s) {
+            if (I->src[s].size == AGX_SIZE_16) {
+               agx_index wide = agx_temp(ctx, AGX_SIZE_32);
+               agx_fmov_to(&b, wide, I->src[s]);
+               I->src[s] = wide;
+            }
+         }
+         continue;
+      }
+
       if (I->op != AGX_OPCODE_FFMA || I->nr_srcs != 3 || I->saturate)
          continue;
 
@@ -5121,6 +5140,39 @@ has_unlowered_printf_address(const nir_shader *nir)
    return false;
 }
 
+/* AGX3 tile instructions transfer raw words. Packed HDR pixels occupy one
+ * W32 word; their RGB arithmetic is performed on unpacked floating values. */
+static bool
+lower_agx3_packed_tile(nir_builder *b, nir_intrinsic_instr *intr, void *data)
+{
+   bool load = intr->intrinsic == nir_intrinsic_load_local_pixel_agx;
+   bool store = intr->intrinsic == nir_intrinsic_store_local_pixel_agx;
+   if ((!load && !store) ||
+       nir_intrinsic_format(intr) != PIPE_FORMAT_R11G11B10_FLOAT ||
+       (load && (intr->def.bit_size != 32 || intr->def.num_components > 3)) ||
+       (store && (nir_intrinsic_explicit_coord(intr) ||
+                  nir_intrinsic_write_mask(intr) != 7)))
+      return false;
+
+   b->cursor = nir_before_instr(&intr->instr);
+   if (load) {
+      nir_def *packed = nir_load_local_pixel_agx(
+         b, 1, 32, intr->src[0].ssa, .base = nir_intrinsic_base(intr),
+         .format = PIPE_FORMAT_R32_UINT);
+      nir_def *rgb = nir_format_unpack_11f11f10f(b, packed);
+      nir_def_rewrite_uses(
+         &intr->def, nir_trim_vector(b, rgb, intr->def.num_components));
+   } else {
+      nir_def *packed = nir_format_pack_11f11f10f(b, intr->src[0].ssa);
+      nir_store_local_pixel_agx(
+         b, packed, intr->src[1].ssa, intr->src[2].ssa,
+         .base = nir_intrinsic_base(intr), .format = PIPE_FORMAT_R32_UINT,
+         .write_mask = 1);
+   }
+   nir_instr_remove(&intr->instr);
+   return true;
+}
+
 static bool
 agx_compile_shader_nir_inner(nir_shader *nir, struct agx_shader_key *key,
                        struct agx_shader_part *out)
@@ -5164,6 +5216,10 @@ agx_compile_shader_nir_inner(nir_shader *nir, struct agx_shader_key *key,
 
    NIR_PASS(_, nir, nir_shader_intrinsics_pass, lower_printf_buffer,
             nir_metadata_control_flow, &key->dev);
+
+   if (key->dev.encoding == AGX_ISA_ENCODING_AGX3B)
+      NIR_PASS(_, nir, nir_shader_intrinsics_pass, lower_agx3_packed_tile,
+               nir_metadata_control_flow, NULL);
 
    NIR_PASS(_, nir, nir_lower_frag_coord_to_pixel_coord);
    NIR_PASS(_, nir, nir_lower_vars_to_ssa);

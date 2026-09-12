@@ -872,6 +872,29 @@ build_fs_tilebuffer_load(void)
    return fs_finish(&b);
 }
 
+/* SuperTuxKart's light accumulation epilog reads and adds RGB in two packed
+ * HDR attachments. Treating each attachment as three raw F32 words rejects
+ * the tile load, and would also use the wrong storage representation. */
+static nir_shader *
+build_fs_packed_hdr_blend(void)
+{
+   nir_builder b = nir_builder_init_simple_shader(
+      MESA_SHADER_FRAGMENT, &agx_nir_options, "AGX3 packed HDR blend FS");
+
+   for (unsigned rt = 0; rt < 2; ++rt) {
+      nir_def *old = nir_load_local_pixel_agx(
+         &b, 3, 32, nir_imm_intN_t(&b, 0xff, 16), .base = rt * 4,
+         .format = PIPE_FORMAT_R11G11B10_FLOAT);
+      nir_def *sum = nir_fadd(&b, old, nir_imm_vec3(&b, 0.25, 2.0, 64.0));
+      nir_store_local_pixel_agx(
+         &b, sum, nir_imm_intN_t(&b, 0xff, 16), nir_undef(&b, 2, 16),
+         .base = rt * 4, .format = PIPE_FORMAT_R11G11B10_FLOAT,
+         .write_mask = 7);
+   }
+
+   return fs_finish(&b);
+}
+
 /* Fragment shader matching vkcube's statically indexed set-0 combined image
  * sampler after Honeykrisp descriptor lowering. The Gen9 texture starts at
  * byte 64, followed by the native sampler word at byte 96.
@@ -2305,6 +2328,7 @@ static const struct agx3_graphics_case cases[] = {
     .expected_g17p_binary_size = sizeof(g17p_flat_colour)},
    {"fs-interpolated-varying", build_fs_interpolated, true},
    {"fs-tilebuffer-load", build_fs_tilebuffer_load, true},
+   {"fs-packed-hdr-blend", build_fs_packed_hdr_blend, true, .g17p_only = true},
    {"fs-textured-triangle", build_fs_texture_imm, true},
    {"fs-vkcube-combined-sampler", build_fs_texture, true, true},
    {"fs-descriptor-resource", build_fs_descriptor_resource, true},
@@ -2511,6 +2535,14 @@ test_g17p_half2_varying(void)
 int
 main(int argc, char **argv)
 {
+   if (argc == 2 && !strcmp(argv[1], "--packed-hdr-only")) {
+      const struct agx3_graphics_case c = {
+         "fs-packed-hdr-blend", build_fs_packed_hdr_blend, true,
+      };
+      const bool ok = run_case(&c, AGX_ISA_ENCODING_AGX3B);
+      printf("AGX3 packed HDR blend: %s\n", ok ? "PASS" : "FAIL");
+      return ok ? 0 : 1;
+   }
    if (argc == 2 && !strcmp(argv[1], "--half-vbo-only")) {
       const bool ok = test_g17p_half2_varying();
       fprintf(stderr, "G17P R16G16_SFLOAT vertex attribute: %s\n",

@@ -77,4 +77,16 @@ rejected `if_fcmp register, 1.0`. Materializing nonzero floating branch constant
 before register allocation compiles the complete input to 2070 bytes offline.
 Both operand orders and signed minifloats have focused legalization coverage.
 This fixes compiler acceptance only; the same workload also exposes an F16 EOT
-store and partial-component tile loads that remain separate work.
+store and packed HDR tile accesses that remain separate work.
+
+The 804-byte fragment epilog input
+`4eb59fe32f720c35b2c31e2b61a6c1ca39cadd3cf5bbe5d004a91adf90f52cfa`
+adds into two R11G11B10_FLOAT targets at tile offsets 0 and 4. Those pixels
+occupy one raw 32-bit word each, not three F32 words. Lowering their full RGB
+loads/stores through Mesa's NIR format unpack/pack helpers compiles the captured
+input to 682 bytes. A two-attachment HDR blend regression also exercises exact
+F16-to-F32 widening after copy propagation folds a half source into F32
+arithmetic. Run `agx3_graphics_compile_test --packed-hdr-only` on the host.
+This is offline compiler coverage; native EOT support and pixel readback remain
+necessary before qualifying the game. Partial write masks and explicit tile
+store coordinates are not enabled by this lowering.
