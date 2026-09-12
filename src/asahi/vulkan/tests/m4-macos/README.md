@@ -18,7 +18,7 @@ Add `--resolve-compute` for store-only MSAA followed by an explicit GPU compute
 resolve. The default uses native StoreAndMultisampleResolve. Record which path
 was used: these are behavioral comparison probes, not identical Vulkan streams.
 Use `--render-active --repeat N` only when the submitted/complete snapshots
-miss needed runtime state; repeats remain finite (1..256). No shader waits for
+miss needed runtime state; multisample repeats remain finite (1..2048). No shader waits for
 the collector. Output must not be called an active fragment capture without
 matching command/firmware evidence. The existing collector output-allocation
 and ready/release protocol is retained.
@@ -30,3 +30,12 @@ Mac16,12 and25G83. The Objective-C and Metal sources compile on the compiler
 Mac with the documented warnings-as-errors command; this is not M4 execution
 validation. The versioned runner mirror accepts `--workspace-root` pointing
 to the development workspace so evidence is retained in its provenance tree.
+
+The multisample repeat bound is 2048 so trivial shaders remain queued long
+enough to capture descriptors (about 210 ms for the native 4x fixture).
+This changes the diagnostic only. No shader gate is added. Match canonical
+SKU identities with firmware completion events and check both output reads.
+The private collector now polls the executing marker every 1 ms, captures
+render before compute, and writes the submitted manifest before releasing
+the finite render batch. Some descriptors may still retire during collection;
+failed identity/backlink checks remain excluded.

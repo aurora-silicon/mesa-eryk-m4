@@ -40,7 +40,7 @@ int main(int argc, const char **argv)
         CHECK(sourcePath && outputPath && (!gate || pausePath));
         CHECK(!capture || (gate && pausePath));
         CHECK(samples==1 || samples==2 || samples==4);
-        CHECK(mask < (1u<<samples) && repeats>=1 && repeats<=256);
+        CHECK(mask < (1u<<samples) && repeats>=1 && repeats<=2048);
         CHECK(width==32 || width==128 || width==1024);
         NSError *error=nil;
         NSFileManager *files=[NSFileManager defaultManager];

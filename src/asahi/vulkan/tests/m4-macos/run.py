@@ -17,7 +17,7 @@ p.add_argument('--resolve-compute', action='store_true')
 p.add_argument('--workspace-root', type=pathlib.Path)
 p.add_argument('--host', default='root@mac-m4')
 a = p.parse_args()
-if (not 0 <= a.iterations <= 4096 or not 1 <= a.repeat <= 256
+if (not 0 <= a.iterations <= 4096 or not 1 <= a.repeat <= (2048 if a.kind == "multisample" else 256)
     or (a.repeat != 1 and a.kind not in ("fragment", "multisample"))
     or (a.active and not a.capture)
     or (a.render_active and (not a.capture or a.active or a.kind not in ("fragment", "multisample")))):
