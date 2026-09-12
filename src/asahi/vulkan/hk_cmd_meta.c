@@ -2098,32 +2098,42 @@ hk_native_raw_copy_format(VkFormat format)
 }
 
 static bool
-hk_native_copy_raw_buffer_to_image(
-   struct hk_cmd_buffer *cmd, struct hk_image *image,
-   const VkCopyBufferToImageInfo2 *info)
+hk_native_copy_raw_buffer_image(
+   struct hk_cmd_buffer *cmd, struct hk_image *image, VkBuffer buffer_handle,
+   uint32_t region_count, const VkBufferImageCopy2 *regions,
+   VkImageLayout image_layout, bool to_image)
 {
-   if (!hk_native_raw_copy_format(image->vk.format) ||
-       image->plane_count != 1 || image->vk.image_type != VK_IMAGE_TYPE_2D ||
+   if (image->vk.image_type != VK_IMAGE_TYPE_2D ||
        image->vk.samples != VK_SAMPLE_COUNT_1_BIT ||
-       image->planes[0].layout.tiling != AIL_TILING_GPU ||
-       image->planes[0].layout.compressed ||
-       (info->dstImageLayout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL &&
-        info->dstImageLayout != VK_IMAGE_LAYOUT_GENERAL))
+       (image_layout != (to_image ? VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL :
+                                     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) &&
+        image_layout != VK_IMAGE_LAYOUT_GENERAL))
       return false;
 
-   VK_FROM_HANDLE(hk_buffer, buffer, info->srcBuffer);
-   const enum pipe_format format = hk_format_to_pipe_format(image->vk.format);
-   const uint32_t block_w = util_format_get_blockwidth(format);
-   const uint32_t block_h = util_format_get_blockheight(format);
-   const uint32_t block_B = util_format_get_blocksize(format);
-   /* Packed 16-bit texels and compressed blocks both require bit-exact
-    * transfers. The image layout supplies geometry in format elements. */
-   if (!((block_w == 1 && block_h == 1 && block_B == 2) ||
-         (block_w == 4 && block_h == 4 && (block_B == 8 || block_B == 16))))
-      return false;
+   VK_FROM_HANDLE(hk_buffer, buffer, buffer_handle);
+   for (unsigned r = 0; r < region_count; ++r) {
+      const VkBufferImageCopy2 *region = &regions[r];
+      const VkImageAspectFlags aspect = region->imageSubresource.aspectMask;
+      if (util_bitcount(aspect) != 1 || (aspect & ~image->vk.aspects) ||
+          !(aspect & (VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_DEPTH_BIT |
+                      VK_IMAGE_ASPECT_STENCIL_BIT)))
+         return false;
 
-   for (unsigned r = 0; r < info->regionCount; ++r) {
-      const VkBufferImageCopy2 *region = &info->pRegions[r];
+      const unsigned plane = hk_image_aspects_to_plane(image, aspect);
+      const struct ail_layout *layout = &image->planes[plane].layout;
+      const enum pipe_format format = layout->format;
+      const uint32_t block_w = util_format_get_blockwidth(format);
+      const uint32_t block_h = util_format_get_blockheight(format);
+      const uint32_t block_B = util_format_get_blocksize(format);
+      /* Copy each format element verbatim, including separate depth/stencil
+       * planes. No render-target format conversion or attachment support is
+       * required. Packed depth/stencil aspects need a masked transfer instead.
+       */
+      if (layout->tiling != AIL_TILING_GPU || layout->compressed ||
+          util_format_is_depth_and_stencil(format) ||
+          !util_is_power_of_two_nonzero(block_B) || block_B > 16)
+         return false;
+
       const uint32_t level = region->imageSubresource.mipLevel;
       const uint32_t layers = vk_image_subresource_layer_count(
          &image->vk, &region->imageSubresource);
@@ -2138,8 +2148,7 @@ hk_native_copy_raw_buffer_to_image(
       const uint32_t image_h_px = region->bufferImageHeight ?
                                      region->bufferImageHeight : height;
 
-      if (region->imageSubresource.aspectMask != VK_IMAGE_ASPECT_COLOR_BIT ||
-          level >= image->vk.mip_levels || layers == 0 ||
+      if (level >= image->vk.mip_levels || layers == 0 ||
           region->imageSubresource.baseArrayLayer >= image->vk.array_layers ||
           layers > image->vk.array_layers -
                       region->imageSubresource.baseArrayLayer ||
@@ -2162,12 +2171,11 @@ hk_native_copy_raw_buffer_to_image(
          (uint64_t)util_format_get_nblocksy(format, image_h_px) * src_row_B;
       const uint64_t base_src =
          hk_buffer_address_ro(buffer, region->bufferOffset);
-      const uint64_t base_dst = hk_image_base_address(image, 0);
+      const uint64_t base_dst = hk_image_base_address(image, plane);
       const uint32_t base_x_el = x / block_w;
       const uint32_t base_y_el = y / block_h;
-      const struct ail_layout *layout = &image->planes[0].layout;
       const struct ail_tile tile = layout->tilesize_el[level];
-      const struct hk_block_copy_key key = {
+      struct hk_block_copy_key key = {
          .type = HK_META_OBJECT_KEY_BLOCK_COPY,
          .block_B = block_B,
          .src_tile_log2_w = -1,
@@ -2176,10 +2184,16 @@ hk_native_copy_raw_buffer_to_image(
          .dst_tile_log2_h = util_logbase2(tile.height_el),
       };
 
+      if (!to_image) {
+         key.src_tile_log2_w = key.dst_tile_log2_w;
+         key.src_tile_log2_h = key.dst_tile_log2_h;
+         key.dst_tile_log2_w = key.dst_tile_log2_h = -1;
+      }
+
       for (uint32_t layer = 0; layer < layers; ++layer) {
          const uint32_t dst_layer =
             region->imageSubresource.baseArrayLayer + layer;
-         const struct hk_block_copy_push push = {
+         struct hk_block_copy_push push = {
             .src = base_src + layer * src_layer_B,
             .dst = base_dst + ail_get_layer_level_B(layout, dst_layer, level),
             .src_stride = src_row_B / block_B,
@@ -2189,6 +2203,17 @@ hk_native_copy_raw_buffer_to_image(
             .width = blocks_x,
             .height = blocks_y,
          };
+         if (!to_image) {
+            uint64_t address = push.src;
+            push.src = push.dst;
+            push.dst = address;
+            uint32_t stride = push.src_stride;
+            push.src_stride = push.dst_stride;
+            push.dst_stride = stride;
+            push.src_x = push.dst_x;
+            push.src_y = push.dst_y;
+            push.dst_x = push.dst_y = 0;
+         }
          hk_dispatch_block_copy(cmd, &key, &push);
          if (vk_command_buffer_has_error(&cmd->vk))
             return true;
@@ -2312,11 +2337,16 @@ hk_CmdCopyBufferToImage2(VkCommandBuffer commandBuffer,
 
    bool gfx = hk_copy_requires_gfx(dst_image);
    if (agx_native_graphics(&dev->dev)) {
-      if (hk_native_raw_copy_format(dst_image->vk.format)) {
+      if (hk_native_raw_copy_format(dst_image->vk.format) ||
+          !hk_g17p_copy_buffer_to_image_supported(
+             dev, dst_image, pCopyBufferToImageInfo)) {
          struct hk_meta_save save;
          hk_meta_begin(cmd, &save, VK_PIPELINE_BIND_POINT_COMPUTE);
-         if (!hk_native_copy_raw_buffer_to_image(cmd, dst_image,
-                                                      pCopyBufferToImageInfo)) {
+         if (!hk_native_copy_raw_buffer_image(
+                cmd, dst_image, pCopyBufferToImageInfo->srcBuffer,
+                pCopyBufferToImageInfo->regionCount,
+                pCopyBufferToImageInfo->pRegions,
+                pCopyBufferToImageInfo->dstImageLayout, true)) {
             fprintf(
                stderr,
                "asahi: unsupported raw upload format=%u type=%u planes=%u samples=%u tiling=%u compressed=%u layout=%u levels=%u layers=%u extent=%ux%u\n",
@@ -2345,16 +2375,6 @@ hk_CmdCopyBufferToImage2(VkCommandBuffer commandBuffer,
                                         VK_ERROR_FEATURE_NOT_PRESENT);
          }
          hk_meta_end(cmd, &save, VK_PIPELINE_BIND_POINT_COMPUTE);
-         return;
-      }
-      if (!hk_g17p_copy_buffer_to_image_supported(
-             dev, dst_image, pCopyBufferToImageInfo)) {
-         fprintf(
-            stderr,
-            "asahi: unsupported buffer-to-image upload format=%u regions=%u layout=%u\n",
-            dst_image->vk.format, pCopyBufferToImageInfo->regionCount,
-            pCopyBufferToImageInfo->dstImageLayout);
-         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
          return;
       }
       gfx = true;
@@ -2448,7 +2468,22 @@ hk_CmdCopyImageToBuffer2(VkCommandBuffer commandBuffer,
 
    struct hk_meta_save save;
    hk_meta_begin(cmd, &save, VK_PIPELINE_BIND_POINT_COMPUTE);
-   hk_meta_copy_image_to_buffer2(&cmd->vk, &dev->meta, pCopyImageToBufferInfo);
+   VK_FROM_HANDLE(hk_image, image, pCopyImageToBufferInfo->srcImage);
+   if (agx_native_graphics(&dev->dev) &&
+       image->vk.image_type == VK_IMAGE_TYPE_2D &&
+       image->vk.samples == VK_SAMPLE_COUNT_1_BIT &&
+       image->planes[0].layout.tiling == AIL_TILING_GPU &&
+       !image->planes[0].layout.compressed &&
+       !util_format_is_depth_and_stencil(image->planes[0].layout.format)) {
+      if (!hk_native_copy_raw_buffer_image(
+             cmd, image, pCopyImageToBufferInfo->dstBuffer,
+             pCopyImageToBufferInfo->regionCount,
+             pCopyImageToBufferInfo->pRegions,
+             pCopyImageToBufferInfo->srcImageLayout, false))
+         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+   } else {
+      hk_meta_copy_image_to_buffer2(&cmd->vk, &dev->meta, pCopyImageToBufferInfo);
+   }
    hk_meta_end(cmd, &save, VK_PIPELINE_BIND_POINT_COMPUTE);
 }
 

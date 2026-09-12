@@ -1600,10 +1600,9 @@ agx3_translate_mem(const agx_instr *I, bool is_store, uint8_t slot,
    d->shift = (uint8_t)I->shift;
 
    const agx_index data = is_store ? I->src[0] : I->dest[0];
-   /* Native scalar byte stores also address individual halves. Apple's
-    * byte_halves_odd_zero stores ushort2.y from half3 with W8/mask1. */
+   /* Native scalar byte accesses also address individual halves. */
    const bool scalar_half = data.size == AGX_SIZE_16 &&
-      (w == AGX3_MEM_W16 || (is_store && w == AGX3_MEM_W8)) &&
+      (w == AGX3_MEM_W16 || w == AGX3_MEM_W8) &&
       I->mask == 1 && agx_channels(data) == 1;
    if (!agx3_src_is_register(data) || data.memory ||
        (!scalar_half && (data.value & 1)) || data.value >= 256)

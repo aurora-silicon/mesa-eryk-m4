@@ -5808,6 +5808,33 @@ TEST_F(AGX3PackBinary, ScalarByteStoreReadsOddNativeHalf)
    EXPECT_EQ(pack(b),want);
 }
 
+TEST_F(AGX3PackBinary, ScalarByteLoadWritesOddNativeHalf)
+{
+   auto enc = AGX_ISA_ENCODING_AGX3B;
+   auto *b = builder(enc);
+   b->shader->stage = MESA_SHADER_COMPUTE;
+   agx_device_load_to(b, agx_register(1, AGX_SIZE_16),
+                     agx_register(20, AGX_SIZE_64),
+                     agx_abs(agx_register(6, AGX_SIZE_32)),
+                     AGX_FORMAT_I8, 1, 0, false);
+   agx_stop(b);
+   struct agx3_mem_desc d = {};
+   d.data = 1;
+   d.width = AGX3_MEM_W8;
+   d.mask = 1;
+   d.base = 20;
+   d.idx_kind = AGX3_MEM_IDX_REG;
+   d.idx_reg = 6;
+   d.slot = 1;
+   uint8_t bytes[AGX3_MEM_MAX_LENGTH], length;
+   ASSERT_TRUE(agx3_mem_encode_load(enc, &d, bytes, &length));
+   std::vector<uint8_t> want(bytes, bytes + length);
+   struct agx3_encoded_end end;
+   ASSERT_TRUE(agx3_pack_end(enc, &end));
+   append(want, end.bytes, end.length);
+   EXPECT_EQ(pack(b), want);
+}
+
 TEST_F(AGX3PackBinary, ExplicitLodStagingAndLifetime)
 {
    for (unsigned lod_reg : {0u, 1u, 127u, 254u, 255u}) {
