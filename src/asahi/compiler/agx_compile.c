@@ -1721,6 +1721,7 @@ agx_emit_image_store(agx_builder *b, nir_intrinsic_instr *instr)
          write->format = AGX_FORMAT_RGB10A2;
          break;
       case PIPE_FORMAT_R16G16_FLOAT:
+      case PIPE_FORMAT_R16G16B16A16_FLOAT:
          /* imgwci consumes float32 lanes; the PBE converts to half storage. */
          write->format = AGX_FORMAT_F16;
          break;
@@ -2647,6 +2648,32 @@ agx_lower_agx3_fma_sources(agx_context *ctx)
          agx_index wide = agx_temp(ctx, AGX_SIZE_32);
          agx_fmov_to(&b, wide, I->src[0]);
          I->src[0] = wide;
+         continue;
+      }
+      if ((I->op == AGX_OPCODE_RCP || I->op == AGX_OPCODE_RSQRT ||
+           I->op == AGX_OPCODE_SRSQRT) &&
+          I->src[0].size == AGX_SIZE_32 &&
+          I->src[0].type != AGX_INDEX_IMMEDIATE &&
+          I->src[0].type != AGX_INDEX_NULL &&
+          (I->src[0].abs || I->src[0].neg)) {
+         /* Native reciprocal forms consume an unmodified F32 register.
+          * Materialize abs/neg as sign-bit operations before RA, preserving
+          * signed zeros and infinities without an extra floating rounding. */
+         agx_builder b = agx_init_builder(ctx, agx_before_instr(I));
+         agx_index src = I->src[0];
+         const bool absolute = src.abs, negate = src.neg;
+         src.abs = src.neg = false;
+         if (absolute) {
+            agx_index plain = agx_temp(ctx, AGX_SIZE_32);
+            agx_bitop_to(&b, plain, src, agx_mov_imm(&b, 32, 0x7fffffff), 0x8);
+            src = plain;
+         }
+         if (negate) {
+            agx_index plain = agx_temp(ctx, AGX_SIZE_32);
+            agx_bitop_to(&b, plain, src, agx_mov_imm(&b, 32, 0x80000000), 0x6);
+            src = plain;
+         }
+         I->src[0] = src;
          continue;
       }
       if (I->op == AGX_OPCODE_FADD && I->saturate &&

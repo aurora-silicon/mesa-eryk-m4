@@ -42,3 +42,17 @@ unsigned immediate atomic offsets. Peak temperatures remain <=56.25 C.
 Do not assume one fragment invocation per pixel with MSAA: clipping/coverage
 can split invocations even with sample shading disabled. The attempted fixed
 count oracle at 4x failed on both lavapipe and M4 and is not qualification.
+
+`half-image-store-probe.c` exercises RGBA16F storage writes via Zink in compute
+(default) or fragment (`fragment`) shaders. Four channels include negatives,
+values above one, and exact fractions. It verifies all 1024 pixels after GPU
+readback. Compile with `cc -O2 -Wall -Wextra ... -lEGL -lGL`. Software references
+set `M4_TEST_LLVMPIPE=1`; hardware must use the guard. M4 220032/220100 both pass
+at <=55.75 C. Blender's captured RGBA16F compute pipeline now compiles in replay.
+
+`reciprocal-signs/` is a vk-buffer-oracle fixture covering abs/neg inputs to
+reciprocal and reciprocal square root over powers of four. M4 220439398493Z
+matches every expected float bit (128 words), peak55.75 C. The implementation
+materializes sign modifiers as GPU bit operations before register allocation.
+The original Blender pipeline at capture API608 now compiles; replay proceeds
+to a separate deep-break control-flow failure at API617.
