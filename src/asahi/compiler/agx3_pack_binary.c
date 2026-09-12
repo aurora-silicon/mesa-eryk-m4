@@ -4619,9 +4619,14 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                .value = 0, .value_kill = true, .slot = 1, .wait_mask = 1,
             };
             if (!agx3_zs_encode_sample_mask(enc, &zs, bytes, &len) ||
-                !agx3_append(emission, bytes, len) ||
-                !agx3_pixel_release(enc, 1, false, 0, bytes, &len) ||
                 !agx3_append(emission, bytes, len))
+               AGX3_REFUSE(I);
+            /* Only the operation running tests acquired class 1 above.
+             * An earlier discard-only update must not release that class
+             * before the final coverage operation has acquired it. */
+            if ((I->imm & 2) &&
+                (!agx3_pixel_release(enc, 1, false, 0, bytes, &len) ||
+                 !agx3_append(emission, bytes, len)))
                AGX3_REFUSE(I);
             outstanding = 0;
             ctx->agx3_staging_halfs = MAX2(ctx->agx3_staging_halfs, 2);

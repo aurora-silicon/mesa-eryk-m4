@@ -48,5 +48,21 @@ After legalization, the same input exposed F32-to-I16 conversion and mixed-width
 FCMPSEL with a selected immediate. All three were fixed and the full input now
 compiles to 6026 bytes offline. Focused generated tests cover shift/order and
 integer narrowing. This establishes compiler acceptance, not rendering
-conformance: the subsequent normal desktop/Foot test hit a fragment-stage timeout
-and remains under investigation.
+conformance: the subsequent normal desktop/Foot test hit a fragment-stage timeout.
+
+The captured GL stream subsequently isolated that timeout to a render pass
+mixing textured draws with the border's two coverage updates. The early
+discard-only update emitted a class-1 release without acquiring class 1; the
+later discard/test update then acquired and released it again. Releasing only
+after the testing update's matching wait fixes the full captured frame with
+normal batching. All 4,259,840 pixels match llvmpipe within one RGB level, with
+identical alpha. A real SDDM password login then passed with Quickshell, wallpaper
+and a bordered Foot window, verified using native scanout screenshots.
+
+Evidence in the development workspace:
+`_provenance/experiments/20260912T005331460114Z-hypr-gl-final-release-ready/`
+and `_provenance/normal-login-20260912/m4-normal-final-coverage-20260912/`.
+Both used the 60-second watchdog and six-channel temperature guard (peaks
+55.75 C and 58 C). No per-draw synchronization or disabled borders are required.
+This is one reproduced hang and normal-login qualification, not full conformance
+or long-duration stability qualification.

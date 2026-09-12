@@ -4195,6 +4195,46 @@ TEST_F(AGX3PackBinary, G17PColourPackingKeepsNativeUniformSources)
       AGX_OPCODE_IADD, 0, 16, AGX_SIZE_32));
 }
 
+TEST_F(AGX3PackBinary, DiscardOnlyUpdatesDoNotReleasePixelOrdering)
+{
+   /* Hyprland's border has an early discard and a final discard/test update.
+    * A premature class-1 release hung its mixed textured/coverage render pass
+    * on J713. Only the final testing update owns a wait/release pair. */
+   for (unsigned early_discards : {0u, 1u, 2u}) {
+      agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+      b->shader->stage = MESA_SHADER_FRAGMENT;
+      b->shader->nir = rzalloc(mem_ctx, nir_shader);
+      for (unsigned i = 0; i < early_discards; ++i)
+         agx_sample_mask_1x_agx3(b, agx_register(8, AGX_SIZE_16),
+                                agx_register(4, AGX_SIZE_32), 0);
+      agx_sample_mask_1x_agx3(b, agx_register(8, AGX_SIZE_16),
+                             agx_register(4, AGX_SIZE_32), 2);
+      agx_wait_pix(b, 12);
+      agx_index colour = agx_register(12, AGX_SIZE_16);
+      colour.channels_m1 = 1;
+      agx_st_tile(b, colour, agx_immediate(AGX_ALL_SAMPLES), agx_null(),
+                  AGX_FORMAT_U8NORM, 15, 0, false);
+      agx_stop(b);
+
+      const auto binary = pack(b);
+      /* Independently witnessed class-1 instructions, checked in order
+       * through the real packer, not only through their encoding helpers. */
+      const uint8_t wait[] = {0x87, 0x02, 0x54, 0x01, 0, 0};
+      const uint8_t release[] = {0x07, 0x02, 0x54, 0x01, 0, 0};
+      const auto acquired = std::search(binary.begin(), binary.end(),
+                                        std::begin(wait), std::end(wait));
+      const auto released = std::search(binary.begin(), binary.end(),
+                                        std::begin(release), std::end(release));
+      ASSERT_NE(acquired, binary.end());
+      ASSERT_NE(released, binary.end());
+      EXPECT_LT(acquired, released);
+      EXPECT_EQ(std::search(acquired + sizeof(wait), binary.end(),
+                            std::begin(wait), std::end(wait)), binary.end());
+      EXPECT_EQ(std::search(released + sizeof(release), binary.end(),
+                            std::begin(release), std::end(release)), binary.end());
+   }
+}
+
 TEST_F(AGX3PackBinary, G17PFltnormStartMatchesNativeF32Uniforms)
 {
    agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
