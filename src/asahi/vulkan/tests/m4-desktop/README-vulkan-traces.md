@@ -178,3 +178,34 @@ initial STK reference without format simulation used unsupported D24 depth;
 it is retained as evidence but is not an M4-compatible replay. The corrected
 profile reports D32S8 and excludes D24. Software limits and X11/offscreen WSI
 remain explicit replay adaptations; final native application checks are required.
+
+## Core push-descriptor decoder fix
+
+`gfxreconstruct-core-push-descriptors.patch` fixes a replay/JSON decoder omission
+in revision 11891af: the Vulkan 1.4 core commands
+`vkCmdPushDescriptorSetWithTemplate` and `...WithTemplate2` were captured but
+silently skipped by the decoder. They share the KHR payload layouts; the patch
+keeps the original core/KHR identity and dispatches the matching entrypoint.
+Apply alongside the process-ID capture patch, rebuild replay and convert for
+host/ARM64, and record their hashes. C++ export is not qualified by this change.
+
+Before: STK software replay reported missing descriptor set0 and crashed in
+lavapipe's generated shader. After: the unchanged capture completed3470 frames
+through the race. M4 frame50 matched software with maximum RGB channel error3
+and no pixels above threshold8, under the guarded thermal runner. The reference
+still contained unwanted ShaderLayer capabilities from Profiles retaining
+unlisted extensions; that is a separate capture-profile issue, not a pass of
+unsupported M4 features.
+
+Profiles extension simulation retains unlisted device extensions by default.
+Use `VK_KHRONOS_PROFILES_EXCLUDE_DEVICE_EXTENSIONS` from the intersection
+report's `removed_reference_extensions`. The STK host helper does this and
+retains that report. Query the simulated device and check formats/features as
+well as extension aliases; the layer can inject additional promoted aliases.
+
+`vulkan-trim-host.py TRACE --output NEW_DIR --first N --last M` recaptures a
+software replay into a short trace with GFXReconstruct's retained initial
+state. This is x86-only and bounded. It uses virtual X11 presentation under
+private Xvfb because lavapipe lacks the frame-boundary extension required by
+offscreen recapture. Retain the original, validate the trim on software, then
+use the target's guarded runner. Trim creation alone proves no GPU result.

@@ -57,6 +57,12 @@ env.update(VK_DRIVER_FILES=str(mesa/'src/gallium/targets/lavapipe/lvp_devenv_icd
     VK_KHRONOS_PROFILES_SIMULATE_CAPABILITIES='SIMULATE_API_VERSION_BIT,SIMULATE_FEATURES_BIT,SIMULATE_EXTENSIONS_BIT,SIMULATE_PROPERTIES_BIT,SIMULATE_FORMATS_BIT',
     VK_KHRONOS_PROFILES_DEFAULT_FEATURE_VALUES='DEFAULT_FEATURE_VALUES_FALSE',
     GFXRECON_CAPTURE_FILE=str(out/'capture.gfxr'),GFXRECON_CAPTURE_FILE_TIMESTAMP='false',GFXRECON_CAPTURE_FILE_FLUSH='true')
+report = a.profile.with_suffix('.report.json')
+if not report.is_file():
+    raise RuntimeError('Intersection report required to exclude reference-only extensions')
+restrictions = json.loads(report.read_text())
+env['VK_KHRONOS_PROFILES_EXCLUDE_DEVICE_EXTENSIONS'] = ','.join(restrictions['removed_reference_extensions'])
+shutil.copy2(report, out/'capture-profile.report.json')
 files=[binary,gfx/'layer/libVkLayer_gfxreconstruct.so',pkg/'usr/lib/libVkLayer_khronos_profiles.so',
        mesa/'src/gallium/targets/dri/libgallium-26.1.4.so',mesa/'src/gallium/targets/lavapipe/libvulkan_lvp.so',a.profile,Path(__file__)]
 def sha(f):

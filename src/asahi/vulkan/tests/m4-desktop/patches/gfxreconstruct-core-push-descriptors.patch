@@ -1,0 +1,144 @@
+diff --git a/framework/decode/vulkan_decoder_args.h b/framework/decode/vulkan_decoder_args.h
+index 296c330..ed88750 100644
+--- a/framework/decode/vulkan_decoder_args.h
++++ b/framework/decode/vulkan_decoder_args.h
+@@ -65,6 +65,7 @@ struct UpdateDescriptorSetWithTemplateKHR
+ 
+ struct CmdPushDescriptorSetWithTemplateKHR
+ {
++    bool core_alias = false; // Original Vulkan 1.4 command, same serialized payload.
+     format::HandleId                commandBuffer;
+     format::HandleId                descriptorUpdateTemplate;
+     format::HandleId                layout;
+@@ -74,6 +75,7 @@ struct CmdPushDescriptorSetWithTemplateKHR
+ 
+ struct CmdPushDescriptorSetWithTemplate2KHR
+ {
++    bool core_alias = false; // Original Vulkan 1.4 command, same serialized payload.
+     format::HandleId                                                  commandBuffer;
+     StructPointerDecoder<Decoded_VkPushDescriptorSetWithTemplateInfo> pPushDescriptorSetWithTemplateInfo;
+ };
+diff --git a/framework/decode/vulkan_decoder_base.cpp b/framework/decode/vulkan_decoder_base.cpp
+index b9aef14..f7de99a 100644
+--- a/framework/decode/vulkan_decoder_base.cpp
++++ b/framework/decode/vulkan_decoder_base.cpp
+@@ -377,11 +377,13 @@ size_t VulkanDecoderBase::Decode_vkUpdateDescriptorSetWithTemplate(const ApiCall
+ 
+ size_t VulkanDecoderBase::Decode_vkCmdPushDescriptorSetWithTemplateKHR(const ApiCallInfo& call_info,
+                                                                        const uint8_t*     parameter_buffer,
+-                                                                       size_t             buffer_size)
++                                                                       size_t             buffer_size,
++                                                        bool core_alias)
+ {
+     size_t bytes_read = 0;
+ 
+     args::CmdPushDescriptorSetWithTemplateKHR args;
++    args.core_alias = core_alias;
+ 
+     bytes_read += ValueDecoder::DecodeHandleIdValue(
+         (parameter_buffer + bytes_read), (buffer_size - bytes_read), &args.commandBuffer);
+@@ -403,11 +405,13 @@ size_t VulkanDecoderBase::Decode_vkCmdPushDescriptorSetWithTemplateKHR(const Api
+ 
+ size_t VulkanDecoderBase::Decode_vkCmdPushDescriptorSetWithTemplate2KHR(const ApiCallInfo& call_info,
+                                                                         const uint8_t*     parameter_buffer,
+-                                                                        size_t             buffer_size)
++                                                                        size_t             buffer_size,
++                                                        bool core_alias)
+ {
+     size_t bytes_read = 0;
+ 
+     args::CmdPushDescriptorSetWithTemplate2KHR args;
++    args.core_alias = core_alias;
+ 
+     bytes_read += ValueDecoder::DecodeHandleIdValue(
+         (parameter_buffer + bytes_read), (buffer_size - bytes_read), &args.commandBuffer);
+@@ -528,6 +532,9 @@ void VulkanDecoderBase::DecodeFunctionCall(format::ApiCallId  call_id,
+         case format::ApiCallId::ApiCall_vkUpdateDescriptorSetWithTemplate:
+             Decode_vkUpdateDescriptorSetWithTemplate(call_info, parameter_buffer, buffer_size);
+             break;
++        case format::ApiCallId::ApiCall_vkCmdPushDescriptorSetWithTemplate:
++            Decode_vkCmdPushDescriptorSetWithTemplateKHR(call_info, parameter_buffer, buffer_size, true);
++            break;
+         case format::ApiCallId::ApiCall_vkCmdPushDescriptorSetWithTemplateKHR:
+             Decode_vkCmdPushDescriptorSetWithTemplateKHR(call_info, parameter_buffer, buffer_size);
+             break;
+@@ -537,6 +544,9 @@ void VulkanDecoderBase::DecodeFunctionCall(format::ApiCallId  call_id,
+         case format::ApiCallId::ApiCall_vkCreateRayTracingPipelinesKHR:
+             Decode_vkCreateRayTracingPipelinesKHR(call_info, parameter_buffer, buffer_size);
+             break;
++        case format::ApiCallId::ApiCall_vkCmdPushDescriptorSetWithTemplate2:
++            Decode_vkCmdPushDescriptorSetWithTemplate2KHR(call_info, parameter_buffer, buffer_size, true);
++            break;
+         case format::ApiCallId::ApiCall_vkCmdPushDescriptorSetWithTemplate2KHR:
+             Decode_vkCmdPushDescriptorSetWithTemplate2KHR(call_info, parameter_buffer, buffer_size);
+             break;
+diff --git a/framework/decode/vulkan_decoder_base.h b/framework/decode/vulkan_decoder_base.h
+index 474038b..78d7c42 100644
+--- a/framework/decode/vulkan_decoder_base.h
++++ b/framework/decode/vulkan_decoder_base.h
+@@ -233,11 +233,13 @@ class VulkanDecoderBase : public ApiDecoder
+ 
+     size_t Decode_vkCmdPushDescriptorSetWithTemplateKHR(const ApiCallInfo& call_info,
+                                                         const uint8_t*     parameter_buffer,
+-                                                        size_t             buffer_size);
++                                                        size_t             buffer_size,
++                                                        bool core_alias = false);
+ 
+     size_t Decode_vkCmdPushDescriptorSetWithTemplate2KHR(const ApiCallInfo& call_info,
+                                                          const uint8_t*     parameter_buffer,
+-                                                         size_t             buffer_size);
++                                                         size_t             buffer_size,
++                                                        bool core_alias = false);
+ 
+     size_t Decode_vkUpdateDescriptorSetWithTemplateKHR(const ApiCallInfo& call_info,
+                                                        const uint8_t*     parameter_buffer,
+diff --git a/framework/decode/vulkan_json_consumer_base.cpp b/framework/decode/vulkan_json_consumer_base.cpp
+index 617de99..e8a89da 100644
+--- a/framework/decode/vulkan_json_consumer_base.cpp
++++ b/framework/decode/vulkan_json_consumer_base.cpp
+@@ -231,7 +231,7 @@ void VulkanExportJsonConsumerBase::Process_vkUpdateDescriptorSetWithTemplateKHR(
+ void VulkanExportJsonConsumerBase::Process_vkCmdPushDescriptorSetWithTemplateKHR(
+     const ApiCallInfo& call_info, args::CmdPushDescriptorSetWithTemplateKHR& args)
+ {
+-    auto& function                      = WriteApiCallStart(call_info, "vkCmdPushDescriptorSetWithTemplateKHR");
++    auto& function                      = WriteApiCallStart(call_info, args.core_alias ? "vkCmdPushDescriptorSetWithTemplate" : "vkCmdPushDescriptorSetWithTemplateKHR");
+     function[format::kNameCommandIndex] = GetCommandBufferRecordIndex(args.commandBuffer);
+ 
+     auto& jargs = function[format::kNameArgs];
+@@ -247,7 +247,7 @@ void VulkanExportJsonConsumerBase::Process_vkCmdPushDescriptorSetWithTemplateKHR
+ void VulkanExportJsonConsumerBase::Process_vkCmdPushDescriptorSetWithTemplate2KHR(
+     const ApiCallInfo& call_info, args::CmdPushDescriptorSetWithTemplate2KHR& args)
+ {
+-    auto& function                      = WriteApiCallStart(call_info, "vkCmdPushDescriptorSetWithTemplate2KHR");
++    auto& function                      = WriteApiCallStart(call_info, args.core_alias ? "vkCmdPushDescriptorSetWithTemplate2" : "vkCmdPushDescriptorSetWithTemplate2KHR");
+     function[format::kNameCommandIndex] = GetCommandBufferRecordIndex(args.commandBuffer);
+ 
+     auto& jargs = function[format::kNameArgs];
+diff --git a/framework/decode/vulkan_replay_consumer_base.cpp b/framework/decode/vulkan_replay_consumer_base.cpp
+index a8e738a..2ad8d11 100644
+--- a/framework/decode/vulkan_replay_consumer_base.cpp
++++ b/framework/decode/vulkan_replay_consumer_base.cpp
+@@ -12976,9 +12976,9 @@ void VulkanReplayConsumerBase::Process_vkCmdPushDescriptorSetWithTemplateKHR(
+         in_descriptorUpdateTemplate = update_template_info->handle;
+     }
+ 
+-    GetDeviceTable(in_commandBuffer)
+-        ->CmdPushDescriptorSetWithTemplateKHR(
+-            in_commandBuffer, in_descriptorUpdateTemplate, in_layout, args.set, args.pData.GetPointer());
++    auto table = GetDeviceTable(in_commandBuffer);
++    auto push = args.core_alias ? table->CmdPushDescriptorSetWithTemplate : table->CmdPushDescriptorSetWithTemplateKHR;
++    push(in_commandBuffer, in_descriptorUpdateTemplate, in_layout, args.set, args.pData.GetPointer());
+ 
+     if (options_.dumping_resources)
+     {
+@@ -13014,7 +13014,9 @@ void VulkanReplayConsumerBase::Process_vkCmdPushDescriptorSetWithTemplate2KHR(
+         value->descriptorUpdateTemplate = update_template_info->handle;
+     }
+ 
+-    GetDeviceTable(in_commandBuffer)->CmdPushDescriptorSetWithTemplate2KHR(in_commandBuffer, value);
++    auto table = GetDeviceTable(in_commandBuffer);
++    auto push = args.core_alias ? table->CmdPushDescriptorSetWithTemplate2 : table->CmdPushDescriptorSetWithTemplate2KHR;
++    push(in_commandBuffer, value);
+ 
+     if (options_.dumping_resources)
+     {
