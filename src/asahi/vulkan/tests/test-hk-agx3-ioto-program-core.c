@@ -1404,6 +1404,14 @@ test_g17p_rt0_background_programs(void)
    CHECK(mrt_clear_program.length ==
          AGX_IOTO_G17P_WBOIT_MRT_CLEAR_PROGRAM_SIZE);
 
+   mrt_clear.clear_push_halfs = HK_AGX3_DUAL_MRT_CLEAR_PUSH_HALFS;
+   CHECK(hk_agx3_g17p_rt0_bg_shader_resources_match(
+      HK_AGX3_G17P_RT0_BG_CLEAR, mrt_clear.clear_push_halfs, false));
+   CHECK(hk_agx3_g17p_rt0_bg_program_generate(
+      AGX_CHIP_G16G, &mrt_clear, &mrt_clear_program));
+   CHECK(mrt_clear_program.length > AGX_IOTO_G17P_WBOIT_MRT_CLEAR_PROGRAM_SIZE);
+   CHECK(mrt_clear_program.length <= sizeof(mrt_clear_program.bytes));
+
    /* m1n1 g17p_triangle_source.py, split where HAL200 inserts LoadShader and
     * the default profile-loader prefix before the trailing COPY records. */
    static const uint8_t clear_pre_copy[] = {
@@ -1866,6 +1874,18 @@ test_g17p_single_layer_rt0_layout(void)
       PIPE_FORMAT_R8G8B8A8_UNORM,
    };
    tib = agx_build_tilebuffer_layout(mrt, 2, 1, false);
+   CHECK(!hk_agx3_g17p_rt0_tile_layout_supported(&tib));
+
+   enum pipe_format hdr[AGX_MAX_RENDER_TARGETS] = {
+      PIPE_FORMAT_R11G11B10_FLOAT,
+      PIPE_FORMAT_R11G11B10_FLOAT,
+   };
+   tib = agx_build_tilebuffer_layout(hdr, 2, 1, false);
+   CHECK(hk_agx3_g17p_rt0_tile_layout_supported(&tib));
+   CHECK(tib.sample_size_B == 8 && tib._offset_B[0] == 0 && tib._offset_B[1] == 4);
+   tib._offset_B[1] = 8;
+   CHECK(!hk_agx3_g17p_rt0_tile_layout_supported(&tib));
+   tib = agx_build_tilebuffer_layout(hdr, 2, 2, false);
    CHECK(!hk_agx3_g17p_rt0_tile_layout_supported(&tib));
 
    enum pipe_format wboit[AGX_MAX_RENDER_TARGETS] = {

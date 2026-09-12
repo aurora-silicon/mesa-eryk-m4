@@ -82,7 +82,13 @@ hk_agx3_g17p_rt0_tile_layout_supported(struct agx_tilebuffer_layout *tib)
       !tib->spilled[1] && tib->_offset_B[0] == 0 &&
       tib->_offset_B[1] == 8 && tib->sample_size_B == 16;
 
-   for (unsigned rt = mixed_mrt ? 2 : 1;
+   const bool packed_mrt = tib->nr_samples == 1 &&
+      tib->logical_format[0] == PIPE_FORMAT_R11G11B10_FLOAT &&
+      tib->logical_format[1] == PIPE_FORMAT_R11G11B10_FLOAT &&
+      !tib->spilled[1] && tib->_offset_B[0] == 0 &&
+      tib->_offset_B[1] == 4 && tib->sample_size_B == 8;
+
+   for (unsigned rt = (mixed_mrt || packed_mrt) ? 2 : 1;
         rt < AGX_MAX_RENDER_TARGETS; ++rt) {
       if (tib->logical_format[rt] != PIPE_FORMAT_NONE)
          return false;
@@ -113,7 +119,7 @@ hk_agx3_g17p_rt0_tile_layout_supported(struct agx_tilebuffer_layout *tib)
       tib->nr_samples == 1 &&
       tib->logical_format[0] == PIPE_FORMAT_R16G16B16A16_SINT;
 
-   return mixed_mrt ||
+   return mixed_mrt || packed_mrt ||
           (tib->sample_size_B == 8 &&
            (agx_tilebuffer_physical_format(tib, 0) == PIPE_FORMAT_R8_UNORM ||
             agx_tilebuffer_physical_format(tib, 0) == PIPE_FORMAT_R16_FLOAT ||
@@ -135,6 +141,8 @@ hk_agx3_g17p_rt0_tile_layout_supported(struct agx_tilebuffer_layout *tib)
             tib->logical_format[0] == PIPE_FORMAT_R16G16_UINT ||
             tib->logical_format[0] == PIPE_FORMAT_R16G16_SINT ||
             tib->logical_format[0] == PIPE_FORMAT_R16G16B16A16_UNORM ||
+            (tib->nr_samples == 1 &&
+             tib->logical_format[0] == PIPE_FORMAT_R11G11B10_FLOAT) ||
             scalar_r32f || scalar_r32i || pair_r32f || pair_r32i ||
             pair_r32u || scalar_r8u || scalar_r8i || rgba16u || rgba16i));
 }
@@ -458,7 +466,8 @@ hk_agx3_g17p_rt0_bg_shader_resources_match(
    switch (op) {
    case HK_AGX3_G17P_RT0_BG_CLEAR:
       return (push_count == HK_AGX3_G17P_RT0_CLEAR_PUSH_HALFS ||
-              push_count == HK_AGX3_G17P_WBOIT_MRT_CLEAR_PUSH_HALFS) &&
+              push_count == HK_AGX3_G17P_WBOIT_MRT_CLEAR_PUSH_HALFS ||
+              push_count == HK_AGX3_DUAL_MRT_CLEAR_PUSH_HALFS) &&
              !uses_txf;
    case HK_AGX3_G17P_RT0_BG_RELOAD:
       return push_count == 0 && uses_txf;
@@ -484,7 +493,8 @@ hk_agx3_g17p_rt0_bg_program_generate(
       if (!desc->clear_value_va || desc->texture_pointer_va ||
           desc->sampler_pointer_va ||
           (clear_push_halfs != HK_AGX3_G17P_RT0_CLEAR_PUSH_HALFS &&
-           clear_push_halfs != HK_AGX3_G17P_WBOIT_MRT_CLEAR_PUSH_HALFS))
+           clear_push_halfs != HK_AGX3_G17P_WBOIT_MRT_CLEAR_PUSH_HALFS &&
+           clear_push_halfs != HK_AGX3_DUAL_MRT_CLEAR_PUSH_HALFS))
          return false;
       ranges[0] = (struct agx3_ioto_uniform_range){
          .start_halfs = 4,
@@ -583,12 +593,7 @@ hk_agx3_g17p_rt0_bg_program_generate(
           desc->program_va, body, copy_offset, body + copy_offset,
           body_size - copy_offset, &tail, staged.bytes, sizeof(staged.bytes),
           &written) ||
-       written > UINT16_MAX ||
-       (desc->op == HK_AGX3_G17P_RT0_BG_CLEAR &&
-        written > (desc->clear_push_halfs ==
-                      HK_AGX3_G17P_WBOIT_MRT_CLEAR_PUSH_HALFS
-                      ? AGX_IOTO_G17P_WBOIT_MRT_CLEAR_PROGRAM_SIZE
-                      : AGX_IOTO_G17P_RT0_CLEAR_PROGRAM_SIZE)))
+       written > UINT16_MAX)
       return false;
 
    staged.length = (uint16_t)written;

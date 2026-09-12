@@ -1911,6 +1911,30 @@ test_g17p_eot_block_store(void)
       free(part.binary);
    ralloc_free(mrt.shader);
 
+   nir_builder hdr_mrt = nir_builder_init_simple_shader(
+      MESA_SHADER_COMPUTE, &agx_nir_options, "G16G packed HDR MRT EOT");
+   coords = nir_trim_vector(
+      &hdr_mrt, nir_load_global_invocation_id(&hdr_mrt, 32), 2);
+   for (unsigned rt = 0; rt < 2; ++rt) {
+      nir_image_store_block_agx(
+         &hdr_mrt, nir_imm_intN_t(&hdr_mrt, rt, 16),
+         nir_imm_int(&hdr_mrt, rt * 4), coords,
+         .format = PIPE_FORMAT_R11G11B10_FLOAT,
+         .image_dim = GLSL_SAMPLER_DIM_2D, .explicit_coord = true);
+   }
+   agx_preprocess_nir(hdr_mrt.shader);
+   memset(&part, 0, sizeof(part));
+   bool hdr_compiled = agx_compile_shader_nir(hdr_mrt.shader, &key, &part);
+   uint8_t expected_hdr[sizeof(expected_mrt)];
+   memcpy(expected_hdr, expected_mrt, sizeof(expected_hdr));
+   expected_hdr[101] = 0x75;
+   ok &= hdr_compiled && part.info.binary_size == sizeof(expected_hdr) &&
+         part.info.nr_gprs == 8 && part.info.agx3_staging_known &&
+         part.info.agx3_staging_halfs == 16 &&
+         memcmp(part.binary, expected_hdr, sizeof(expected_hdr)) == 0;
+   free(part.binary);
+   ralloc_free(hdr_mrt.shader);
+
    /* Genuine applegpu-nt builtin EOT key0x04021100: scalar I32 tile store. */
    nir_builder i32 = nir_builder_init_simple_shader(
       MESA_SHADER_COMPUTE, &agx_nir_options, "G17P I32 RT0 EOT");

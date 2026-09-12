@@ -3436,11 +3436,11 @@ agx3_g17p_rt0_eot_kind(const agx_context *ctx, enum agx_isa_encoding enc)
    return AGX3_G17P_RT0_EOT_SELECTOR_75;
 }
 
-/* Native EOT key {RGBA16F RT0, R8 RT1} (mask 3) has a distinct, complete
- * 120-byte program.  As above, match the whole post-RA graph before replacing
- * it: this is the exact mixed-width layout used by Quake's WBOIT pass. */
-static bool
-agx3_is_g17p_wboit_mrt_eot(const agx_context *ctx,
+/* Native mask-3 EOT programs for {RGBA16F, R8} and {R11G11B10, R11G11B10}
+ * share coordinates, offset bindings and a 120-byte envelope. The first store
+ * selector is typed; match the complete post-RA graph and both tile offsets. */
+static unsigned
+agx3_g17p_dual_mrt_eot_kind(const agx_context *ctx,
                            enum agx_isa_encoding enc)
 {
    if (enc != AGX_ISA_ENCODING_AGX3B || ctx->stage != MESA_SHADER_COMPUTE ||
@@ -3449,7 +3449,8 @@ agx3_is_g17p_wboit_mrt_eot(const agx_context *ctx,
 
    unsigned instructions = 0, get_x = 0, get_y = 0, stores = 0;
    unsigned x_reg = UINT_MAX, y_reg = UINT_MAX, coord_reg = UINT_MAX;
-   unsigned zero_reg = UINT_MAX, eight_reg = UINT_MAX;
+   unsigned zero_reg = UINT_MAX, second_offset_reg = UINT_MAX;
+   unsigned second_offset = 0, first_format = AGX_NUM_FORMATS;
 
    agx_foreach_block(ctx, block) {
       agx_foreach_instr_in_block(block, I) {
@@ -3482,8 +3483,10 @@ agx3_is_g17p_wboit_mrt_eot(const agx_context *ctx,
 
             if (I->imm == 0)
                zero_reg = I->dest[0].value;
-            else if (I->imm == 8)
-               eight_reg = I->dest[0].value;
+            else if (I->imm == 4 || I->imm == 8) {
+               second_offset = I->imm;
+               second_offset_reg = I->dest[0].value;
+            }
             else
                return false;
          } else if (I->op == AGX_OPCODE_BLOCK_IMAGE_STORE) {
@@ -3503,14 +3506,23 @@ agx3_is_g17p_wboit_mrt_eot(const agx_context *ctx,
                 agx_channels(I->src[3]) != 2)
                return false;
 
-            if ((stores == 0 &&
-                 ((I->format != AGX_FORMAT_I16 && I->format != AGX_FORMAT_F16) ||
-                  I->src[2].value != zero_reg)) ||
-                (stores == 1 &&
-                 (I->format != AGX_FORMAT_U8NORM ||
-                  I->src[2].value != eight_reg)) ||
-                stores >= 2)
-               return false;
+            if (stores >= 2)
+               return 0;
+            if (stores == 0) {
+               first_format = I->format;
+               if (I->src[2].value != zero_reg ||
+                   (first_format != AGX_FORMAT_F16 &&
+                    first_format != AGX_FORMAT_I16 &&
+                    first_format != AGX_FORMAT_RG11B10F))
+                  return 0;
+            } else {
+               bool packed = first_format == AGX_FORMAT_RG11B10F;
+               if (I->src[2].value != second_offset_reg ||
+                   second_offset != (packed ? 4 : 8) ||
+                   I->format != (packed ? AGX_FORMAT_RG11B10F
+                                        : AGX_FORMAT_U8NORM))
+                  return 0;
+            }
 
             if (stores == 0)
                coord_reg = I->src[3].value;
@@ -3523,9 +3535,10 @@ agx3_is_g17p_wboit_mrt_eot(const agx_context *ctx,
       }
    }
 
-   return instructions == 6 && get_x == 1 && get_y == 1 && stores == 2 &&
-          zero_reg != UINT_MAX && eight_reg != UINT_MAX &&
+   bool valid = instructions == 6 && get_x == 1 && get_y == 1 && stores == 2 &&
+          zero_reg != UINT_MAX && second_offset_reg != UINT_MAX &&
           x_reg == coord_reg && y_reg == coord_reg + 2;
+   return valid ? (first_format == AGX_FORMAT_RG11B10F ? 2 : 1) : 0;
 }
 
 static bool
@@ -3690,7 +3703,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
    ctx->agx3_staging_known = true;
    ctx->agx3_fltnorm_start = false;
 
-   if (agx3_is_g17p_wboit_mrt_eot(ctx, enc)) {
+   unsigned dual_mrt = agx3_g17p_dual_mrt_eot_kind(ctx, enc);
+   if (dual_mrt) {
       static const uint8_t g17p_wboit_mrt_eot[] = {
          0x1c, 0x9c, 0x10, 0x06, 0x24, 0xa8, 0x14, 0x06,
          0x0c, 0x9d, 0x10, 0x26, 0x24, 0xa9, 0x10, 0x26,
@@ -3713,8 +3727,12 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
        * by the matching RT0 builtin. D=32 independently needs16 staging. */
       ctx->max_reg = MAX2(ctx->max_reg, 7);
       ctx->agx3_staging_halfs = MAX2(ctx->agx3_staging_halfs, 16);
-      return agx3_append(emission, g17p_wboit_mrt_eot,
-                         sizeof(g17p_wboit_mrt_eot));
+      uint8_t native[sizeof(g17p_wboit_mrt_eot)];
+      memcpy(native, g17p_wboit_mrt_eot, sizeof(native));
+      /* G16G builtin key {0x0c021500, 0x0c021500}, mask 3. */
+      if (dual_mrt == 2)
+         native[101] = 0x75;
+      return agx3_append(emission, native, sizeof(native));
    }
 
    const enum agx3_g17p_rt0_eot_kind rt0_eot =

@@ -150,6 +150,7 @@ enum hk_agx3_g17p_rt0_bg_op {
 
 #define HK_AGX3_G17P_RT0_CLEAR_PUSH_HALFS 12u
 #define HK_AGX3_G17P_WBOIT_MRT_CLEAR_PUSH_HALFS 14u
+#define HK_AGX3_DUAL_MRT_CLEAR_PUSH_HALFS 20u
 
 /* Resource spec for the bounded one-RT background shaders, not an ordinary
  * fragment shader or EOT. CLEAR/RELOAD write every live RT0 component; NONE

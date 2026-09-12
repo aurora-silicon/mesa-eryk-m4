@@ -39,3 +39,36 @@ The captured 664-byte SuperTuxKart F16 EOT input now compiles to the identical
 68-byte program offline. The focused graphics --eot-only tests compare native
 bytes/resources and retain unsupported-format rejection. Hardware rendering
 qualification remains separate; these changes alone do not qualify an STK race.
+
+## Two packed HDR targets
+
+The two-attachment BTNF input keeps both attachments in partition 0 and mask 3.
+The native G16G output is the same 120-byte envelope as the existing
+{RGBA16F, R8} reference, with only byte 101 changed from 0x15 to 0x75.
+Regenerating the existing mixed-width reference is byte-identical. Inputs with
+partition 1 were exploratory controls and are not the supported tile layout.
+
+The two packed pixels occupy offsets 0 and 4 in an 8-byte sample. Bind both
+PBE descriptors and both imageblock offset arguments. For background clears,
+upload both complete vec4 values and reserve uniform halves 4 through 19;
+the scalar RT1 clear path previously reserved only through half 13. The generic
+uniform loader builds the body into its checked output capacity; the old
+single-clear byte-count maximum is not an architectural limit. Background
+shader size likewise uses the compiler container and loader span validation,
+not the previous arbitrary 256-byte admission limit.
+
+`hdr-attachment-probe.c` is a desktop GL oracle (EGL, GL, libm). It checks R16F,
+RGBA16F, and one/two R11G11B10 attachments through clear, draw, additive blend,
+and reload. Each 128x64 readback checks every channel against exact test values,
+including HDR values above one. Half-float readback avoids an unrelated missing
+RGBA32F render-target path; it does not disable any operation being tested.
+Host llvmpipe and J713 private Zink both pass all 15 readbacks (122,880 pixels),
+with zero bad channels. No per-draw synchronization override is used.
+
+Hardware evidence: _provenance/experiments/
+20260912T020735229728Z-hdr-attachments-half-readback. Installed Vulkan SHA256
+3bf3ceef76e3bd8702848d7785ef42361066244b16fb1d0e265fc22158542e0c.
+Watchdog60 and six-channel thermal guard remained enabled; peak 54.5 C.
+The first F32-readback diagnostic failed on the RGBA32F conversion target and
+is retained separately, not counted as passing. A game race is still a separate
+qualification target. Host native-EOT byte tests and 6,778 Ioto checks pass.
