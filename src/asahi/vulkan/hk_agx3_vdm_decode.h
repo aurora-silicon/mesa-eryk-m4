@@ -25,8 +25,10 @@ extern "C" {
  * layouts are rejected before any fields are consumed. */
 #define HK_AGX3_SHADER_BINARY_VERSION 9u
 
-/* Native VS witnesses export position plus seven float4 user locations. */
-#define HK_AGX3_G17P_MAX_USER_WORDS 28u
+/* G16G native VS metadata for 29 float4 user locations reports 120 f32
+ * words (position + 116 user words), with the f16 output count absent. This
+ * matches the component limit advertised by hk_get_device_properties(). */
+#define HK_AGX3_G17P_MAX_USER_WORDS 116u
 
 bool hk_agx3_shader_binary_version_supported(uint32_t version);
 
@@ -58,8 +60,8 @@ struct hk_agx3_g17p_vertex_compile_info {
 };
 
 /* Build the exact G17P VertexProgramVariant fields for a hardware vertex
- * shader with position and, optionally, up to two ordinary user-varying
- * slots.  System outputs and preambles are separate state shapes. */
+ * shader with position and up to 116 ordinary f32 user-varying words.
+ * System outputs and preambles are separate state shapes. */
 bool hk_agx3_g17p_vertex_program_info(
    enum agx_chip chip,
    const struct hk_agx3_g17p_vertex_compile_info *compiler_info,

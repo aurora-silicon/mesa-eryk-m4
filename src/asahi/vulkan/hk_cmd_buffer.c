@@ -959,7 +959,7 @@ hk_g17p_basic_fragment_layout(struct hk_cmd_buffer *cmd)
 }
 
 /* Keep native interpolation bounded to the f32 UVS layout already supported
- * by hk_agx3_g17p_vertex_program_info: position plus up to 28 user words.
+ * by hk_agx3_g17p_vertex_program_info: position plus up to 116 user words.
  * HAL200 updateVaryingTable (0x3efa58) uses the same CF entry encoding for
  * smooth, linear and flat inputs, including their mixture in one shader.
  * Flat inputs are restricted to non-fan triangle primitives; the compiler
@@ -1317,6 +1317,20 @@ hk_upload_usc_words(struct hk_cmd_buffer *cmd, struct hk_shader *s,
        AGX_CS_GENERATION_HAL200) {
       if (!agx_native_graphics(&dev->dev) ||
           !hk_g17p_basic_graphics_program_supported(cmd, s, linked)) {
+         mesa_loge("HAL200 program rejected stage=%u layout=%u outputs=%#llx "
+                   "uvs=%u user=%u groups=%u/%u/%u/%u/%u indexed-sampler=%u "
+                   "sets=%u prefetch=%u linked=%p size=%zu",
+                   s->info.stage, s->agx3_vdm_state_update.source_layout,
+                   (unsigned long long)s->b.info.outputs,
+                   s->info.uvs.size, s->info.uvs.user_size,
+                   s->info.uvs.group_offs[UVS_POSITION],
+                   s->info.uvs.group_offs[UVS_VARYINGS],
+                   s->info.uvs.group_offs[UVS_PSIZ],
+                   s->info.uvs.group_offs[UVS_LAYER_VIEWPORT],
+                   s->info.uvs.group_offs[UVS_CLIP_DIST],
+                   s->info.agx3_indexed_sampler_valid, s->info.set_count,
+                   s->info.ubo_prefetch_count, (void *)linked,
+                   linked ? linked->b.size : 0);
          vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
          return 0;
       }
@@ -1324,6 +1338,8 @@ hk_upload_usc_words(struct hk_cmd_buffer *cmd, struct hk_shader *s,
       struct agx3_ioto_uniform_range ranges[HK_AGX3_G17P_GRAPHICS_MAX_RANGES];
       size_t range_count;
       if (!hk_g17p_graphics_uniform_ranges(cmd, s, ranges, &range_count)) {
+         mesa_loge("HAL200 uniform ranges rejected stage=%u sets=%u prefetch=%u",
+                   s->info.stage, s->info.set_count, s->info.ubo_prefetch_count);
          vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
          return 0;
       }
@@ -1331,6 +1347,8 @@ hk_upload_usc_words(struct hk_cmd_buffer *cmd, struct hk_shader *s,
       size_t program_capacity;
       if (!hk_agx3_g17p_graphics_program_bound(dev->dev.chip, ranges,
                                               range_count, &program_capacity)) {
+         mesa_loge("HAL200 program bounds rejected stage=%u ranges=%zu",
+                   s->info.stage, range_count);
          vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
          return 0;
       }

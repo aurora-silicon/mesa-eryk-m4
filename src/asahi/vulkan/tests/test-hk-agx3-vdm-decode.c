@@ -262,6 +262,17 @@ test_g17p_vertex_program_info(void)
    CHECK(program.template_info.raw_vs_output_count_0 == 32);
    CHECK(program.template_info.raw_vs_output_count_2 == 0);
 
+   /* Apple G16G: 29 float4 locations use the same all-f32 count, 120.
+    * Firefox's 46-word WebRender VS previously hit the 28-word lab bound. */
+   struct hk_agx3_g17p_vertex_compile_info native120 = native32;
+   native120.user_size = 116;
+   native120.psiz_off = native120.layer_viewport_off = native120.clip_off = 120;
+   native120.uvs_size = 120;
+   native120.uvs_written = BITFIELD64_MASK(29) << VARYING_SLOT_VAR0;
+   CHECK(hk_agx3_g17p_vertex_program_info(AGX_CHIP_G16G, &native120, &program));
+   CHECK(program.template_info.raw_vs_output_count_0 == 120);
+   CHECK(program.template_info.raw_vs_output_count_2 == 0);
+
    struct hk_agx3_g17p_vertex_compile_info invalid_info = vkcube_info;
    invalid_info.has_preamble = true;
    CHECK(!hk_agx3_g17p_vertex_program_info(AGX_CHIP_G17P, &invalid_info,
