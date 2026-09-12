@@ -32,6 +32,13 @@ def main():
     parser.add_argument('--workspace-root', type=Path,
                         default=Path(__file__).resolve().parent.parent)
     parser.add_argument('--vertex', type=Path)
+    parser.add_argument('--geometry', type=Path)
+    parser.add_argument('--extent', type=int, nargs=2, default=[32, 32])
+    parser.add_argument('--storage-stage', choices=['vertex', 'fragment', 'geometry'])
+    parser.add_argument('--storage-expected', type=Path,
+        help='Exact little-endian uint32 output; storage starts at zero, plus 64 guard bytes')
+    parser.add_argument('--reference-host', action='store_true',
+        help='Build an executing host oracle restricted to the lavapipe device')
     parser.add_argument('--transform-feedback', action='store_true', help=
         'Capture three vec4 positions into buffer 0 and verify them plus pixels')
     parser.add_argument('--transform-feedback-resume', action='store_true', help=
@@ -47,13 +54,19 @@ def main():
         '/home/council/omarchy/graphics-build/sysroot'))
     args = parser.parse_args()
     args.host_compile_only |= args.run_host_shim
+    if args.reference_host and args.host_compile_only:
+        parser.error('--reference-host conflicts with compile-only')
+    if bool(args.storage_stage) != bool(args.storage_expected):
+        parser.error('--storage-stage and --storage-expected are required together')
+    if args.storage_stage and args.transform_feedback:
+        parser.error('storage and XFB probes must be separate')
     if args.record_command_buffer and not args.run_host_shim:
         parser.error('--record-command-buffer requires --run-host-shim')
     if args.transform_feedback and not args.vertex:
         parser.error('--transform-feedback requires an XFB-decorated --vertex')
     if args.transform_feedback_resume and not args.transform_feedback:
         parser.error('--transform-feedback-resume requires --transform-feedback')
-    for path in (args.source, args.vertex):
+    for path in (args.source, args.vertex, args.geometry, args.storage_expected):
         if path is not None and not path.is_file():
             parser.error(f'Input does not exist: {path}')
     if any(x < 0 or x > 255 for x in args.rgba + (args.right_rgba or [])):
@@ -74,6 +87,79 @@ def main():
         if source.count(old) != 1:
             raise RuntimeError('Probe fixture anchor changed: ' + old)
         source = source.replace(old, new)
+    if any(x < 1 or x > 512 for x in args.extent):
+        parser.error('extent must be between 1 and 512')
+    replace_once('#define IMAGE_WIDTH 32', '#define IMAGE_WIDTH ' + str(args.extent[0]))
+    replace_once('#define IMAGE_HEIGHT 32', '#define IMAGE_HEIGHT ' + str(args.extent[1]))
+    if args.geometry or args.storage_stage:
+        features = []
+        if args.geometry:
+            features.append('.geometryShader = VK_TRUE')
+        if args.storage_stage:
+            features.append(('.fragmentStoresAndAtomics' if args.storage_stage == 'fragment'
+                             else '.vertexPipelineStoresAndAtomics') + ' = VK_TRUE')
+        replace_once('   const VkDeviceCreateInfo device_info = {',
+            '   const VkPhysicalDeviceFeatures test_features = {' + ', '.join(features) + '};\n'
+            '   const VkDeviceCreateInfo device_info = {\n      .pEnabledFeatures = &test_features,')
+    if args.geometry:
+        replace_once('   VkShaderModule vert_module, frag_module;',
+            '   VkShaderModule geom_module;\n'
+            '   const VkShaderModuleCreateInfo geom_info = {\n'
+            '      .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,\n'
+            '      .codeSize = sizeof(probe_geom_spv), .pCode = probe_geom_spv};\n'
+            '   check(vkCreateShaderModule(device, &geom_info, NULL, &geom_module), "geometry module");\n'
+            '   VkShaderModule vert_module, frag_module;')
+        replace_once('   const VkPipelineShaderStageCreateInfo stages[] = {',
+            '   const VkPipelineShaderStageCreateInfo stages[] = {\n'
+            '      {.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,\n'
+            '       .stage = VK_SHADER_STAGE_GEOMETRY_BIT, .module = geom_module, .pName = "main"},')
+        replace_once('      .stageCount = 2,', '      .stageCount = 3,')
+        source = '#include <stdint.h>\n#include "probe_geom.h"\n' + source
+    if args.storage_stage:
+        expected = args.storage_expected.read_bytes()
+        if not expected or len(expected) % 4:
+            parser.error('storage expected data must contain uint32 words')
+        words = [int.from_bytes(expected[i:i+4], 'little') for i in range(0, len(expected), 4)]
+        functions = ('vkCreateDescriptorSetLayout', 'vkCreateDescriptorPool',
+                     'vkAllocateDescriptorSets', 'vkUpdateDescriptorSets',
+                     'vkCmdBindDescriptorSets', 'vkCmdPipelineBarrier')
+        replace_once('VK_FN(vkCreateBuffer);', 'VK_FN(vkCreateBuffer);\n' +
+            '\n'.join('VK_FN(' + f + ');' for f in functions))
+        replace_once('   LOAD_DEVICE(device, vkCreateBuffer);',
+            '   LOAD_DEVICE(device, vkCreateBuffer);\n' + '\n'.join(
+                '   LOAD_DEVICE(device, ' + f + ');' for f in functions))
+        setup = Path(__file__).with_name('vulkan-probe-storage.inc.c').read_text()
+        setup = setup.replace('PROBE_WORD_COUNT', str(len(words)))
+        setup = setup.replace('PROBE_STAGE', 'VK_SHADER_STAGE_' + args.storage_stage.upper() + '_BIT')
+        replace_once('   const VkPipelineLayoutCreateInfo layout_info = {', setup +
+            '\n   const VkPipelineLayoutCreateInfo layout_info = {\n'
+            '      .setLayoutCount = 1, .pSetLayouts = &storage_layout,')
+        replace_once('   vkCmdDraw(command_buffer, 3, 1, 0, 0);',
+            '   vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,\n'
+            '      pipeline_layout, 0, 1, &storage_set, 0, NULL);\n'
+            '   vkCmdDraw(command_buffer, 3, 1, 0, 0);')
+        replace_once('   check(vkEndCommandBuffer(command_buffer), "vkEndCommandBuffer");',
+            '   VkMemoryBarrier storage_host = {.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,\n'
+            '      .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT, .dstAccessMask = VK_ACCESS_HOST_READ_BIT};\n'
+            '   vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,\n'
+            '      VK_PIPELINE_STAGE_HOST_BIT, 0, 1, &storage_host, 0, NULL, 0, NULL);\n'
+            '   check(vkEndCommandBuffer(command_buffer), "vkEndCommandBuffer");')
+        validation = ('   const uint32_t storage_expected[] = {' + ','.join(str(x)+'u' for x in words) + '};\n'
+            '   bool storage_failed = false;\n'
+            '   for (unsigned i = 0; i < sizeof(storage_expected)/4 + 16; ++i) {\n'
+            '      uint32_t expected = i < sizeof(storage_expected)/4 ? storage_expected[i] : 0xcdcdcdcdu;\n'
+            '      if (storage_map[i] != expected) {\n'
+            '         fprintf(stderr, "SSBO[%u]=%u expected=%u\\n", i, storage_map[i], expected);\n'
+            '         storage_failed = true;\n'
+            '      }\n'
+            '   }\n'
+            '   if (storage_failed) return EXIT_FAILURE;\n'
+            '   puts("PASS: exact shader storage output and 64-byte guard");\n')
+        replace_once('   printf(PROBE_NAME ": retired %u submissions\\n", repeats);', validation +
+            '   printf(PROBE_NAME ": retired %u submissions\\n", repeats);')
+    if args.reference_host:
+        replace_once('      if (candidate.deviceID != T8140_DEVICE_ID)',
+                     '      if (!strstr(candidate.deviceName, "llvmpipe"))')
     if args.format == 'srgb8':
         replace_once('#define IMAGE_FORMAT VK_FORMAT_R8G8B8A8_UNORM',
                      '#define IMAGE_FORMAT VK_FORMAT_R8G8B8A8_SRGB')
@@ -290,12 +376,19 @@ def main():
             'glslangValidator', '-V', '--target-env', 'vulkan1.1', '--vn',
             'g17p_wsi_triangle_vert_spv', '-o',
             str(output / 'g17p_wsi_triangle_vert.h'), str(output / 'probe.vert')])
-    target_flags = [] if args.host_compile_only else [
+    if args.geometry:
+        shutil.copyfile(args.geometry, output / 'probe.geom')
+        commands.append(['glslangValidator', '-V', '--target-env', 'vulkan1.1',
+                         '--vn', 'probe_geom_spv', '-o', str(output / 'probe_geom.h'),
+                         str(output / 'probe.geom')])
+    if args.storage_expected:
+        shutil.copyfile(args.storage_expected, output / 'storage-expected.bin')
+    target_flags = [] if (args.host_compile_only or args.reference_host) else [
          '--target=aarch64-linux-gnu', '--sysroot=' + str(args.sysroot),
          '--gcc-install-dir=' + str(args.sysroot /
              'usr/lib/gcc/aarch64-unknown-linux-gnu/16.1.1'), '-fuse-ld=lld']
     binary = output / ('probe-host-compile-only' if args.host_compile_only
-                       else 'probe-arm64')
+                       else 'probe-reference-host' if args.reference_host else 'probe-arm64')
     commands.append(['clang', *target_flags,
          '-DTEST_DEVICE_ID=0x8132', '-DG17P_MSAA_SAMPLES=' + str(args.samples),
          '-I' + str(fixture.parent), str(output / 'probe.c'), '-o',
@@ -315,6 +408,8 @@ def main():
         'allow_unadvertised_samples': args.allow_unadvertised_samples,
         'host_compile_only': args.host_compile_only,
         'record_command_buffer': args.record_command_buffer,
+        'extent': args.extent, 'geometry': bool(args.geometry), 'storage_stage': args.storage_stage,
+        'reference_host': args.reference_host,
         'fixture_sha256': hashlib.sha256(fixture.read_bytes()).hexdigest(),
         'commands': commands, 'sha256': files,
         'limitation': 'Adapted diagnostic fixture; not an application capture '
