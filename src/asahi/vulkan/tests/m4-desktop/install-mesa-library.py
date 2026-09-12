@@ -8,18 +8,27 @@ import subprocess
 import sys
 
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument('source', type=Path)
+parser.add_argument('source', type=Path, nargs='?')
+parser.add_argument('--restore-sha256', help='Restore an existing verified target backup without retransferring the library')
 parser.add_argument('--label', required=True)
 parser.add_argument('--component', choices=('vulkan', 'gallium'), default='vulkan')
 parser.add_argument('--allow-live', action='store_true',
                     help='Atomic compatible userspace update; existing processes keep their old mapping. Never use for kernel/UAPI changes.')
 args = parser.parse_args()
-source = args.source.resolve(strict=True)
+if bool(args.source) == bool(args.restore_sha256):
+    parser.error('provide a source library or --restore-sha256, exclusively')
 label = args.label
 assert re.fullmatch(r'[a-z0-9-]+', label)
-digest = hashlib.sha256(source.read_bytes()).hexdigest()
-staged = '/root/mesa-' + args.component + '-' + label + '-' + digest + '.so'
-subprocess.run(['scp', '-o', 'ConnectTimeout=10', str(source), 'root@omarchy-m4:' + staged], check=True, timeout=90)
+if args.restore_sha256:
+    assert re.fullmatch(r'[0-9a-f]{64}', args.restore_sha256)
+    digest = args.restore_sha256
+    name = 'libvulkan_asahi.so' if args.component == 'vulkan' else 'libgallium-26.1.4.so'
+    staged = '/opt/asahi-m4-port/lib/' + name + '.before-' + digest
+else:
+    source = args.source.resolve(strict=True)
+    digest = hashlib.sha256(source.read_bytes()).hexdigest()
+    staged = '/root/mesa-' + args.component + '-' + label + '-' + digest + '.so'
+    subprocess.run(['scp', '-o', 'ConnectTimeout=10', str(source), 'root@omarchy-m4:' + staged], check=True, timeout=90)
 remote = '''import hashlib, os, pathlib, shutil, subprocess, sys
 source, digest, component, allow_live = pathlib.Path(sys.argv[1]), sys.argv[2], sys.argv[3], sys.argv[4] == '1'
 assert hashlib.sha256(source.read_bytes()).hexdigest() == digest, 'staged checksum mismatch'

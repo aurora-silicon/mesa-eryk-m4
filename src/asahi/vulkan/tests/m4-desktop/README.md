@@ -1638,3 +1638,10 @@ This mode does not reproduce inter-process DMA-BUF sharing and is only a
 rendering diagnostic; retain native application validation for sharing.
 Apply to the matching GFXReconstruct source and rebuild `gfxrecon-replay`.
 The replay manifest hashes the actual binary and records memory adaptation.
+
+`install-mesa-library.py --restore-sha256 SHA256 --label LABEL` restores a
+previous target library without transferring it again. It verifies the backup
+hash, preserves the current library, installs atomically, and checks the result.
+The same client checks apply; `--allow-live` permits compatible userspace-only
+updates while existing processes retain their old mappings. Source-library
+installation and restoration are mutually exclusive.
