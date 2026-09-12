@@ -138,6 +138,9 @@ struct agx3_tex_sample_desc {
    bool final;          /* witnessed final texture-op marker */
    bool retain_helpers; /* AGX3B: keep helper coordinates for later samples */
    bool shadow;         /* M4: scalar depth compare, reference in staging half4 */
+   bool gather;         /* Four neighbouring texels from one colour channel. */
+   uint8_t gather_component;
+   uint8_t gather_offset; /* Signed x/y nibbles, as in NIR's packed offset. */
    bool array;          /* 2D array: register layer already in operand bank 6 */
    bool cube;           /* M4 projected UV plus packed face in operand bank 6 */
    enum agx3_tex_operand_kind texture_kind;
@@ -198,6 +201,10 @@ bool agx3_tex_encode_sample(enum agx_isa_encoding enc,
 bool agx3_tex_encode_image_write_rgba8_2d(
    enum agx_isa_encoding enc, uint16_t wait_mask, uint8_t image_index,
    bool normalized,
+   uint8_t out[AGX3_IMAGE_WRITE_LENGTH], uint8_t *len);
+
+bool agx3_tex_encode_image_write_indexed_2d(
+   enum agx_isa_encoding enc, uint16_t pointer, bool uniform, bool kill, uint16_t staging_base, uint8_t staging_slot,
    uint8_t out[AGX3_IMAGE_WRITE_LENGTH], uint8_t *len);
 
 /* A native staging COPY must preserve a coordinate GPR if later work uses

@@ -13,8 +13,10 @@ static bool
 g17p_sample_shape(const nir_tex_instr *tex)
 {
    const bool cube = tex->sampler_dim == GLSL_SAMPLER_DIM_CUBE;
+   const bool gather = tex->op == nir_texop_tg4;
    if ((tex->op != nir_texop_tex && tex->op != nir_texop_txb &&
-       tex->op != nir_texop_txl) ||
+       tex->op != nir_texop_txl && !gather) ||
+       (gather && (cube || tex->is_array || tex->is_shadow)) ||
        (tex->sampler_dim != GLSL_SAMPLER_DIM_2D &&
         !(cube && !tex->is_array &&
           (tex->op == nir_texop_tex || tex->op == nir_texop_txl))) ||
@@ -33,10 +35,14 @@ g17p_sample_shape(const nir_tex_instr *tex)
       nir_tex_instr_src_index(tex, nir_tex_src_bias) >= 0;
    const bool has_lod = nir_tex_instr_src_index(tex, nir_tex_src_lod) >= 0;
    const int compare = nir_tex_instr_src_index(tex, nir_tex_src_comparator);
+   const int offset = nir_tex_instr_src_index(tex, nir_tex_src_backend2);
+   const bool literal_offset = gather && offset >= 0 &&
+      nir_src_is_const(tex->src[offset].src) &&
+      nir_src_as_uint(tex->src[offset].src) <= 0xff;
    if (tex->is_shadow != (compare >= 0) ||
        (compare >= 0 && (nir_src_bit_size(tex->src[compare].src) != 32 ||
                         nir_src_num_components(tex->src[compare].src) != 1)) ||
-       tex->num_srcs != ((has_bias || has_lod) ? 4 : 3) + tex->is_shadow ||
+       tex->num_srcs != ((has_bias || has_lod) ? 4 : 3) + tex->is_shadow + literal_offset ||
        has_lod != (tex->op == nir_texop_txl) ||
        has_bias != (tex->op == nir_texop_txb))
       return false;
@@ -345,8 +351,16 @@ agx_nir_lower_g17p_indexed_samplers(nir_shader *shader)
             if (shader->info.stage == MESA_SHADER_VERTEX && !fetch)
                return false;
             if (!fetch && (!g17p_sample_shape(tex) ||
-                           (tex->op != nir_texop_tex && tex->op != nir_texop_txl)))
+                           (tex->op != nir_texop_tex && tex->op != nir_texop_txl &&
+                            tex->op != nir_texop_tg4))) {
+               if (getenv("AGX_NATIVE_RESOURCE_DIAGNOSTICS")) {
+                  fprintf(stderr, "Native indexed texture shape refused: op=%u dim=%u flags=%u coords=%u sources=%u\n",
+                          tex->op, tex->sampler_dim, tex->backend_flags,
+                          tex->coord_components, tex->num_srcs);
+                  nir_print_instr(instr, stderr);
+               }
                return false;
+            }
             nir_intrinsic_instr *image = nir_src_as_intrinsic(
                tex->src[nir_tex_instr_src_index(tex, nir_tex_src_texture_handle)].src);
             if (!image || image->intrinsic != nir_intrinsic_bindless_image_agx ||
@@ -700,6 +714,58 @@ g17p_storage_handle_offset(const nir_intrinsic_instr *intr,
    return g17p_storage_handle_binding(intr, &set, offset_B) && set == 0;
 }
 
+/* Native imgwci accepts a zero-extended descriptor-heap index in a GPR
+ * pair. Load it from the bound descriptor set on the GPU so descriptor arrays
+ * and updates use their current contents. Sampled and storage descriptors
+ * share the native 32-byte heap addressed through u0.
+ */
+bool
+agx_nir_lower_g17p_bindless_storage(nir_shader *shader)
+{
+   if (shader->info.stage != MESA_SHADER_COMPUTE)
+      return false;
+   bool progress = false;
+   nir_foreach_function_impl(impl, shader) {
+      nir_builder b = nir_builder_create(impl);
+      nir_foreach_block(block, impl) {
+         nir_foreach_instr_safe(instr, block) {
+            if (instr->type != nir_instr_type_intrinsic)
+               continue;
+            nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+            if (intr->intrinsic != nir_intrinsic_bindless_image_store)
+               continue;
+            const enum pipe_format format = nir_intrinsic_format(intr);
+            nir_intrinsic_instr *handle = nir_src_as_intrinsic(intr->src[0]);
+            if (!handle || handle->intrinsic != nir_intrinsic_bindless_image_agx ||
+                nir_intrinsic_image_dim(intr) != GLSL_SAMPLER_DIM_2D ||
+                nir_intrinsic_image_array(intr) ||
+                (format != PIPE_FORMAT_R8_UNORM &&
+                 format != PIPE_FORMAT_R8G8B8A8_UNORM &&
+                 format != PIPE_FORMAT_R10G10B10A2_UNORM &&
+                 format != PIPE_FORMAT_R16G16_FLOAT) ||
+                (nir_intrinsic_access(intr) & (ACCESS_COHERENT | ACCESS_VOLATILE)))
+               continue;
+            b.cursor = nir_before_instr(instr);
+            nir_def *set = nir_load_descriptor_set_agx(&b, nir_intrinsic_desc_set(handle));
+            /* The image handle points at the inline PBE descriptor. The
+             * native heap index follows the complete descriptor pair. */
+            nir_def *offset = nir_iadd_imm(&b, handle->src[0].ssa,
+               AGX_G17P_STORAGE_HEAP_INDEX_OFFSET - 32);
+            nir_def *address = nir_iadd(&b, set, nir_u2u64(&b, offset));
+            nir_def *index = nir_load_global_constant(&b, 1, 32, address,
+                                                       .align_mul = 4);
+            nir_src_rewrite(&intr->src[0], nir_u2u64(&b, index));
+            intr->intrinsic = nir_intrinsic_image_store;
+            progress = true;
+         }
+      }
+      nir_progress(progress, impl, nir_metadata_control_flow);
+   }
+   if (progress)
+      NIR_PASS(_, shader, nir_opt_dce);
+   return progress;
+}
+
 bool
 agx_nir_lower_g17p_indexed_storage(
    nir_shader *shader, struct agx_g17p_indexed_storage_binding *binding)
@@ -723,7 +789,8 @@ agx_nir_lower_g17p_indexed_storage(
                    nir_intrinsic_image_dim(intr) != GLSL_SAMPLER_DIM_2D ||
                    nir_intrinsic_image_array(intr) ||
                    (format != PIPE_FORMAT_R8G8B8A8_UNORM &&
-                    format != PIPE_FORMAT_R10G10B10A2_UNORM) ||
+                    format != PIPE_FORMAT_R10G10B10A2_UNORM &&
+                    format != PIPE_FORMAT_R16G16_FLOAT) ||
                    nir_src_num_components(intr->src[1]) != 4 ||
                    nir_src_bit_size(intr->src[1]) != 32 ||
                    nir_src_num_components(intr->src[3]) != 4 ||

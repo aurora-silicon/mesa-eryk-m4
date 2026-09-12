@@ -367,6 +367,11 @@ agx_read_registers(const agx_context *ctx, const agx_instr *I, unsigned s)
          }
       } else if (s == 5) {
          /* Compare/offset */
+         if (ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+             I->op == AGX_OPCODE_TEXTURE_SAMPLE &&
+             I->gather != AGX_GATHER_NONE && I->offset && !I->shadow &&
+             I->src[s].type == AGX_INDEX_IMMEDIATE)
+            return size;
          return 2 * ((!!I->shadow) + (!!I->offset));
       } else {
          return size;

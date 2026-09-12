@@ -1739,7 +1739,7 @@ test_indexed_compute_sample(void)
 }
 
 static bool
-test_indexed_compute_storage(void)
+test_indexed_compute_storage_format(enum pipe_format format, bool gather, bool direct)
 {
    nir_builder b = nir_builder_init_simple_shader(
       MESA_SHADER_COMPUTE, &agx_nir_options,
@@ -1759,7 +1759,7 @@ test_indexed_compute_storage(void)
    nir_def *sampler = nir_bindless_sampler_agx(
       &b, nir_iadd_imm(&b, offset, 32), sampler_index, .desc_set = 4);
    nir_tex_instr *tex = nir_tex_instr_create(b.shader, 4);
-   tex->op = nir_texop_txl;
+   tex->op = gather ? nir_texop_tg4 : nir_texop_txl;
    tex->sampler_dim = GLSL_SAMPLER_DIM_2D;
    tex->dest_type = nir_type_float32;
    tex->coord_components = 2;
@@ -1769,7 +1769,8 @@ test_indexed_compute_storage(void)
       nir_vec2(&b, nir_u2f32(&b, element), nir_imm_float(&b, 0.5f)));
    tex->src[1] = nir_tex_src_for_ssa(nir_tex_src_texture_handle, image);
    tex->src[2] = nir_tex_src_for_ssa(nir_tex_src_sampler_handle, sampler);
-   tex->src[3] =
+   tex->src[3] = gather ?
+      nir_tex_src_for_ssa(nir_tex_src_backend2, nir_imm_int(&b, 0x11)) :
       nir_tex_src_for_ssa(nir_tex_src_lod, nir_imm_float(&b, 0.0f));
    nir_def_init(&tex->instr, &tex->def, 4, 32);
    nir_builder_instr_insert(&b, &tex->instr);
@@ -1781,7 +1782,7 @@ test_indexed_compute_storage(void)
    nir_def *data = nir_fadd_imm(&b, &tex->def, 0.25f);
    nir_bindless_image_store(
       &b, pbe, coord, zero, data, zero, .image_dim = GLSL_SAMPLER_DIM_2D,
-      .image_array = false, .format = PIPE_FORMAT_R10G10B10A2_UNORM,
+      .image_array = false, .format = format,
       .access = ACCESS_RESTRICT);
 
    NIR_PASS(_, b.shader, agx_nir_lower_texture_for_generation,
@@ -1791,8 +1792,9 @@ test_indexed_compute_storage(void)
       .pbe_set = UINT8_MAX,
    };
    bool ok = agx_nir_lower_g17p_indexed_samplers(b.shader) &&
-             agx_nir_lower_g17p_indexed_storage(b.shader, &binding) &&
-             binding.pbe_set == 0 && binding.pbe_offset_B == 176;
+             (direct ? agx_nir_lower_g17p_bindless_storage(b.shader) :
+              (agx_nir_lower_g17p_indexed_storage(b.shader, &binding) &&
+               binding.pbe_set == 0 && binding.pbe_offset_B == 176));
 
    unsigned bindless_stores = 0, ordinary_stores = 0;
    nir_foreach_block(block, nir_shader_get_entrypoint(b.shader)) {
@@ -1819,6 +1821,15 @@ test_indexed_compute_storage(void)
    free(part.binary);
    ralloc_free(b.shader);
    return ok;
+}
+
+static bool
+test_indexed_compute_storage(void)
+{
+   return test_indexed_compute_storage_format(PIPE_FORMAT_R10G10B10A2_UNORM, false, false) &&
+          test_indexed_compute_storage_format(PIPE_FORMAT_R16G16_FLOAT, false, false) &&
+          test_indexed_compute_storage_format(PIPE_FORMAT_R16G16_FLOAT, true, false) &&
+          test_indexed_compute_storage_format(PIPE_FORMAT_R8_UNORM, true, true);
 }
 
 static bool

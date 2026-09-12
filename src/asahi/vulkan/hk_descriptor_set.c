@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: MIT
  */
 #include "hk_descriptor_set.h"
+#include "asahi/compiler/agx_nir.h"
 #include "asahi/lib/agx_bo.h"
 #include "util/half_float.h"
 #include "vulkan/vulkan_core.h"
@@ -175,8 +176,6 @@ write_storage_image_view_desc(struct hk_descriptor_set *set,
          view->plane_count == 1 &&
          view->vk.image->samples == VK_SAMPLE_COUNT_1_BIT &&
          view->vk.view_type == VK_IMAGE_VIEW_TYPE_2D &&
-         (view->vk.format == VK_FORMAT_R8G8B8A8_UINT ||
-          view->vk.format == VK_FORMAT_R8G8B8A8_UNORM) &&
          view->planes[0].storage_pbe_valid;
       supported = hk_native_pbe_supported(generation) || native_basic;
       if (supported) {
@@ -198,6 +197,11 @@ write_storage_image_view_desc(struct hk_descriptor_set *set,
    memcpy(packed + native.texture, &desc.tex,
           hk_texture_descriptor_size(generation));
    memcpy(packed + native.pbe, &desc.pbe, hk_pbe_descriptor_size(generation));
+   if (generation == 9 && supported) {
+      VK_FROM_HANDLE(hk_image_view, view, info->imageView);
+      memcpy(packed + AGX_G17P_STORAGE_HEAP_INDEX_OFFSET,
+             &view->planes[0].storage_heap_index, sizeof(uint32_t));
+   }
    if (debug_get_bool_option("HK_G17P_LAUNCH_TRACE", false) && generation == 9) {
       fprintf(stderr,
               "G17P storage descriptor set=0x%" PRIx64

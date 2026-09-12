@@ -1179,10 +1179,54 @@ test_cube_level_witnesses(void)
    return 0;
 }
 
+static int
+test_m4_gather_witnesses(void)
+{
+   /* applegpu-nt G16G float texture2d gather(R/G), 2026-09-12. */
+   uint8_t expected[] = {0x05,0x80,0x0c,0xa4,0x90,0x00,0x00,0x00,
+                         0x00,0x00,0x00,0x00,0x01,0x00};
+   struct agx3_tex_sample_desc d = {
+      .dest=0, .coord=0, .width=AGX3_TEX_W32, .mask=15, .slot=1,
+      .wait_mask=1, .coord_kill=true, .final=true,
+      .retain_helpers=true, .gather=true, .lod=AGX3_TEX_LOD_AUTO,
+   };
+   uint8_t out[AGX3_TEX_MAX_LENGTH], len;
+   CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
+   CHECK(len == sizeof(expected) && !memcmp(out, expected, len));
+   d.gather_component=1;
+   /* field145 selects the source channel. */
+   CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
+   const uint8_t green[] = {0x05,0x80,0x0c,0xac,0x90,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x01,0x00};
+   CHECK(len == sizeof(green) && !memcmp(out, green, len));
+   d.gather_component=0;
+   d.gather_offset=0x11;
+   const uint8_t offset_bytes[] = {0x05,0x80,0x0c,0xa4,0x90,0x00,0x01,0x02,0x00,0x88,0x00,0x00,0x01,0x00};
+   CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+   CHECK(len == sizeof(offset_bytes) && !memcmp(out,offset_bytes,len));
+   d.gather_component=4;
+   CHECK(!agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
+   return 0;
+}
+
+static int
+test_m4_pointer_write_witnesses(void)
+{
+   const uint8_t uniform_bytes[] = {0xd7,0x10,0x54,0x00,0x00,0x40,0x00,0x10,
+                                  0x20,0x04,0x00,0x00,0x88,0x3a,0x09,0x01};
+   const uint8_t register_bytes[] = {0xd7,0x10,0x54,0x00,0x00,0x40,0x00,0x08,
+                                   0x21,0x04,0x00,0x00,0x88,0x3a,0x89,0x00};
+   uint8_t out[AGX3_IMAGE_WRITE_LENGTH], len;
+   CHECK(agx3_tex_encode_image_write_indexed_2d(AGX_ISA_ENCODING_AGX3B,16,true,false,0,1,out,&len));
+   CHECK(len == sizeof(uniform_bytes) && !memcmp(out,uniform_bytes,len));
+   CHECK(agx3_tex_encode_image_write_indexed_2d(AGX_ISA_ENCODING_AGX3B,8,false,true,0,1,out,&len));
+   CHECK(len == sizeof(register_bytes) && !memcmp(out,register_bytes,len));
+   return 0;
+}
+
 int
 main(void)
 {
-   if (test_m4_integer_fetch_lod() || test_m4_shadow_witnesses() || test_sample_helper_retention() || test_staging_source_banks() || test_register_lod() || test_register_array_layer() ||
+   if (test_m4_pointer_write_witnesses() || test_m4_gather_witnesses() || test_m4_integer_fetch_lod() || test_m4_shadow_witnesses() || test_sample_helper_retention() || test_staging_source_banks() || test_register_lod() || test_register_array_layer() ||
        test_staging_source_lifetime() || test_exact_witnesses() ||
        test_supported_axes() || test_fail_closed() ||
        test_sample_witnesses() || test_copy_witnesses() ||

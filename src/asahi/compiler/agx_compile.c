@@ -1660,7 +1660,9 @@ agx_emit_image_store(agx_builder *b, nir_intrinsic_instr *instr)
       base = agx_zero();
       index = agx_src_index(&instr->src[0]);
 
-      assert(index.size == AGX_SIZE_16);
+      assert(index.size == AGX_SIZE_16 ||
+             (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+              index.size == AGX_SIZE_64));
    }
 
    agx_index coords4 = agx_src_index(&instr->src[1]);
@@ -1704,6 +1706,7 @@ agx_emit_image_store(agx_builder *b, nir_intrinsic_instr *instr)
       case PIPE_FORMAT_R8G8B8A8_UINT:
          write->format = AGX_FORMAT_I8;
          break;
+      case PIPE_FORMAT_R8_UNORM:
       case PIPE_FORMAT_R8G8B8A8_UNORM:
          write->format = AGX_FORMAT_U8NORM;
          break;
@@ -1711,6 +1714,10 @@ agx_emit_image_store(agx_builder *b, nir_intrinsic_instr *instr)
          /* Formatted float writes share the native normalized imgwci path;
           * the PBE descriptor supplies the packed destination format. */
          write->format = AGX_FORMAT_RGB10A2;
+         break;
+      case PIPE_FORMAT_R16G16_FLOAT:
+         /* imgwci consumes float32 lanes; the PBE converts to half storage. */
+         write->format = AGX_FORMAT_F16;
          break;
       default:
          /* The AGX3 packer remains fail-closed for unqualified formats. */
@@ -3515,6 +3522,11 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
 
       case nir_tex_src_backend2:
          packed_offset = index;
+         if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+             instr->op == nir_texop_tg4 && nir_src_is_const(instr->src[i].src) &&
+             nir_src_as_uint(instr->src[i].src) <= 0xff) {
+            packed_offset = agx_immediate(nir_src_as_uint(instr->src[i].src));
+         }
          break;
 
       case nir_tex_src_lod:

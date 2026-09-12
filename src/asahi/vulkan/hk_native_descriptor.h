@@ -104,7 +104,8 @@ hk_storage_image_descriptor_layout(unsigned generation)
    return (struct hk_storage_image_descriptor_layout){
       .texture = 0,
       .pbe = texture_size,
-      .stride = texture_size + pbe_size,
+      /* Gen9 software tail carries the native storage heap index. */
+      .stride = texture_size + pbe_size + (generation == 9 ? 8 : 0),
    };
 }
 

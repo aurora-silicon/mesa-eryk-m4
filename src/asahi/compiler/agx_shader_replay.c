@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MIT
  * Replay trusted development compiler captures, without opening a GPU. */
 #include "agx_compile.h"
+#include "agx_nir.h"
 #include "agx_replay_abi.h"
 #include "nir_serialize.h"
 #include "glsl_types.h"
@@ -10,8 +11,8 @@
 
 int main(int argc, char **argv)
 {
-   if (argc != 2) {
-      fprintf(stderr, "Usage: %s BUNDLE/input.bin\n", argv[0]);
+   if (argc != 2 && !(argc == 3 && !strcmp(argv[2], "--check-native-resources"))) {
+      fprintf(stderr, "Usage: %s BUNDLE/input.bin [--check-native-resources]\n", argv[0]);
       return 2;
    }
    FILE *f = fopen(argv[1], "rb");
@@ -38,6 +39,18 @@ int main(int argc, char **argv)
    nir_shader *nir = nir_deserialize(NULL, &agx_nir_options, &reader);
    if (!nir || reader.overrun || reader.current != reader.end) return 2;
    nir_print_shader(nir, stdout);
+   if (argc == 3) {
+      bool indexed = agx_nir_lower_g17p_indexed_samplers(nir);
+      bool images = indexed && agx_nir_lower_g17p_bindless_storage(nir);
+      fprintf(stderr, "Native resource shape check: indexed=%d direct_images=%d\n",
+              indexed, images);
+      /* Late compiler captures use uniform-half indices for descriptor roots;
+       * this is only a shape check, not an executable re-lowering. */
+      ralloc_free(nir);
+      glsl_type_singleton_decref();
+      free(data);
+      return indexed ? 0 : 1;
+   }
    struct agx_shader_part out = {0};
    bool ok = agx_compile_shader_nir(nir, &key, &out);
    fprintf(stderr, "Compiler replay: %s (%u bytes)\n", ok ? "PASS" : "REJECT", out.info.binary_size);

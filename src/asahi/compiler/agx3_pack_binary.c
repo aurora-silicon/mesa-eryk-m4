@@ -877,15 +877,15 @@ agx3_emit_texture_fetch(struct util_dynarray *emission,
  * so the select is a routing operation, not a source-level conditional. */
 static bool
 agx3_emit_image_coord(struct util_dynarray *emission,
-                      enum agx_isa_encoding enc, uint16_t dest, uint16_t src)
+                      enum agx_isa_encoding enc, uint16_t dest, uint16_t src, bool discard)
 {
-   if (enc != AGX_ISA_ENCODING_AGX3B || (dest & 1) || dest > 2 ||
+   if (enc != AGX_ISA_ENCODING_AGX3B || (dest & 1) || dest > 242 ||
        (src & 1) || src > 254)
       return false;
 
    const struct agx3_field_kv base[] = {
-      {10, 5}, {11, 2}, {13, 2}, {42, 2}, {43, 2}, {46, 1},
-      {51, 12}, {57, 3}, {58, 2}, {72, 2}, {73, 2}, {76, 1},
+      {10, 5}, {11, 2}, {13, 2}, {42, 2}, {43, 2}, {46, discard},
+      {51, 12}, {57, 3}, {58, 2}, {72, 2}, {73, 2}, {76, discard},
       {83, 12}, {89, 3}, {90, 2}, {106, 1},
    };
    const struct agx3_field_kv values[] = {
@@ -909,10 +909,15 @@ agx3_emit_image_coord(struct util_dynarray *emission,
 static bool
 agx3_emit_storage_image_write(struct util_dynarray *emission,
                               enum agx_isa_encoding enc, const agx_instr *I,
-                              uint16_t wait_mask)
+                              uint16_t wait_mask, unsigned staging_base)
 {
    const bool normalized = I->format == AGX_FORMAT_U8NORM ||
-                           I->format == AGX_FORMAT_RGB10A2;
+                           I->format == AGX_FORMAT_RGB10A2 ||
+                           I->format == AGX_FORMAT_F16;
+   const bool direct = I->nr_srcs == 5 && normalized &&
+      (I->src[4].type == AGX_INDEX_REGISTER || I->src[4].type == AGX_INDEX_UNIFORM) &&
+      I->src[4].size == AGX_SIZE_64 && agx_channels(I->src[4]) == 1 &&
+      !I->src[4].memory && !I->src[4].abs && !I->src[4].neg;
    if (enc != AGX_ISA_ENCODING_AGX3B || I->nr_dests != 0 ||
        I->nr_srcs != 5 ||
        I->dim != AGX_DIM_2D || I->coherent || (wait_mask & ~1u) != 0 ||
@@ -922,9 +927,9 @@ agx3_emit_storage_image_write(struct util_dynarray *emission,
        I->src[1].size != AGX_SIZE_32 || agx_channels(I->src[1]) != 2 ||
        (I->src[1].value & 1) || I->src[1].value > 252 ||
        !agx3_tex_imm(I->src[2], 0) || !agx3_tex_imm(I->src[3], 0) ||
-       I->src[4].type != AGX_INDEX_IMMEDIATE ||
-       !((I->src[4].value == 0 && I->format == AGX_FORMAT_I8) ||
-         (I->src[4].value == 1 && normalized))) {
+       (!direct && (I->src[4].type != AGX_INDEX_IMMEDIATE ||
+        !((I->src[4].value == 0 && I->format == AGX_FORMAT_I8) ||
+          (I->src[4].value == 1 && normalized))))) {
       if (agx_compiler_debug & AGX_DBG_SHADERS)
          fprintf(stderr, "G17P imgwci shape refusal: wait=0x%x data=%u/%u/%u coord=%u/%u/%u dim=%u coherent=%u\n",
                  wait_mask, I->src[0].value, I->src[0].size,
@@ -936,8 +941,8 @@ agx3_emit_storage_image_write(struct util_dynarray *emission,
    struct util_dynarray staged;
    util_dynarray_init(&staged, NULL);
    const uint16_t data_dest[4] = {4, 6, 12, 14};
-   if (!agx3_emit_image_coord(&staged, enc, 0, I->src[1].value) ||
-       !agx3_emit_image_coord(&staged, enc, 2, I->src[1].value + 2)) {
+   if (!agx3_emit_image_coord(&staged, enc, staging_base, I->src[1].value, I->src[1].discard) ||
+       !agx3_emit_image_coord(&staged, enc, staging_base + 2, I->src[1].value + 2, I->src[1].discard)) {
       if (agx_compiler_debug & AGX_DBG_SHADERS)
          fprintf(stderr, "G17P imgwci coordinate compose refusal\n");
       goto fail;
@@ -945,7 +950,7 @@ agx3_emit_storage_image_write(struct util_dynarray *emission,
 
    for (unsigned c = 0; c < 4; ++c) {
       uint8_t bytes[AGX3_STAGE_MAX_LENGTH], len = 0;
-      if (!agx3_stage_copy_source(enc, data_dest[c],
+      if (!agx3_stage_copy_source(enc, staging_base + data_dest[c],
                                   I->src[0].value + 2 * c,
                                   I->src[0].discard, 2,
                                   c == 0 ? wait_mask : 0,
@@ -958,8 +963,13 @@ agx3_emit_storage_image_write(struct util_dynarray *emission,
    }
 
    uint8_t imgwci[AGX3_IMAGE_WRITE_LENGTH], imgwci_len = 0;
-   if (!agx3_tex_encode_image_write_rgba8_2d(
-          enc, 1, I->src[4].value, normalized, imgwci, &imgwci_len) ||
+   const bool encoded = direct ?
+      agx3_tex_encode_image_write_indexed_2d(enc, I->src[4].value,
+         I->src[4].type == AGX_INDEX_UNIFORM, I->src[4].kill, staging_base, 2,
+         imgwci, &imgwci_len) :
+      agx3_tex_encode_image_write_rgba8_2d(
+         enc, 1, I->src[4].value, normalized, imgwci, &imgwci_len);
+   if (!encoded ||
        !agx3_append(&staged, imgwci, imgwci_len) ||
        !agx3_append(emission, staged.data, staged.size)) {
       if (agx_compiler_debug & AGX_DBG_SHADERS)
@@ -998,11 +1008,14 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
    const bool array = I->dim == AGX_DIM_2D_ARRAY;
    const bool cube = I->dim == AGX_DIM_CUBE;
    const bool shadow = I->shadow;
+   const bool gather = I->gather != AGX_GATHER_NONE;
+   const bool gather_offset = gather && I->offset &&
+      I->src[5].type == AGX_INDEX_IMMEDIATE && I->src[5].value <= 0xff;
    const bool valid_compare = shadow ?
       (enc == AGX_ISA_ENCODING_AGX3B && !cube &&
        agx3_tex_plain_reg(I->src[5]) && I->src[5].size == AGX_SIZE_32 &&
        agx_channels(I->src[5]) == 1 && !(I->src[5].value & 1) &&
-       I->src[5].value < 256) : agx_is_null(I->src[5]);
+       I->src[5].value < 256) : (gather_offset || agx_is_null(I->src[5]));
    const bool valid_lod = explicit_lod ?
       (enc == AGX_ISA_ENCODING_AGX3B &&
        (valid_immediate_lod ||
@@ -1043,8 +1056,9 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
        (array && (enc != AGX_ISA_ENCODING_AGX3B ||
                   (explicit_lod && !immediate_lod))) ||
        (I->mask == 0 || (I->mask & ~15u)) ||
-       I->offset || I->query_lod ||
-       I->gather != AGX_GATHER_NONE || I->sparse)
+       (I->offset && !gather_offset) || I->query_lod ||
+       (gather && (enc != AGX_ISA_ENCODING_AGX3B || shadow || array || cube ||
+                   explicit_lod || I->mask != 15)) || I->sparse)
       return false;
 
    /* The witnessed copy form carries at most one producer dependency. */
@@ -1131,6 +1145,9 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
       .final = final,
       .retain_helpers = retain_helpers,
       .shadow = shadow,
+      .gather = gather,
+      .gather_component = gather ? (I->gather - AGX_GATHER_R) / 2 : 0,
+      .gather_offset = gather_offset ? I->src[5].value : 0,
    };
    return agx3_tex_encode_sample(enc, &d, bytes, &len) &&
           agx3_append(emission, bytes, len);
@@ -4406,9 +4423,16 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
          }
 
          if (I->op == AGX_OPCODE_IMAGE_WRITE) {
-            if (!agx3_emit_storage_image_write(emission, enc, I, wait))
+            /* Coordinates, values and descriptor indices can arrive from
+             * different memory/texture slots. Retire their dependencies
+             * before the first coordinate-routing instruction consumes them. */
+            if (wait && !agx3_retire_slots_noop(emission, enc, wait))
                AGX3_REFUSE(I);
-            ctx->agx3_staging_halfs = MAX2(ctx->agx3_staging_halfs, 16);
+            const unsigned staging_base = 0;
+            if (staging_base > 240 ||
+                !agx3_emit_storage_image_write(emission, enc, I, 0, staging_base))
+               AGX3_REFUSE(I);
+            ctx->agx3_staging_halfs = MAX2(ctx->agx3_staging_halfs, staging_base + 16);
             continue;
          }
 
@@ -4420,8 +4444,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
              * outside one. Apple's explicit immediate-level form is a
              * compute kernel witness and does not consume derivatives. */
             const bool compute_level = ctx->stage == MESA_SHADER_COMPUTE &&
-               I->lod_mode == AGX_LOD_MODE_LOD_MIN &&
-               I->src[1].type == AGX_INDEX_IMMEDIATE;
+               (I->lod_mode == AGX_LOD_MODE_LOD_MIN ||
+                I->gather != AGX_GATHER_NONE);
             uint16_t sample_wait = wait;
             if (sample_wait & (sample_wait - 1)) {
                if (!agx3_retire_slots_noop(emission, enc, sample_wait))

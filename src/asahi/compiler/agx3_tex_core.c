@@ -169,6 +169,12 @@ sample_ok(enum agx_isa_encoding enc, const struct agx3_tex_sample_desc *d)
    if (d->retain_helpers && enc != AGX_ISA_ENCODING_AGX3B)
       return false;
 
+   if (d->gather &&
+       (enc != AGX_ISA_ENCODING_AGX3B || d->shadow || d->array || d->cube ||
+        d->gather_component > 3 || d->mask != 15 ||
+        d->width != AGX3_TEX_W32 || d->lod != AGX3_TEX_LOD_AUTO))
+      return false;
+
    /* M4 25G83 sample_compare witnesses: 2D/array, scalar F32 result,
     * reference in coordinate bank half4. Only level(0) was captured. */
    if (d->shadow &&
@@ -240,7 +246,7 @@ agx3_tex_encode_sample(enum agx_isa_encoding enc,
    base[nb++] = (struct agx3_field_kv)KV(23, 5);
    base[nb++] = (struct agx3_field_kv)KV(38, 1);
    base[nb++] = (struct agx3_field_kv)KV(52, 1);
-   base[nb++] = (struct agx3_field_kv)KV(74, !d->shadow);
+   base[nb++] = (struct agx3_field_kv)KV(74, !d->shadow && !d->gather);
    base[nb++] = (struct agx3_field_kv)KV(89, 3);
    base[nb++] = (struct agx3_field_kv)KV(90, 3);
    base[nb++] = (struct agx3_field_kv)KV(103, tk);
@@ -257,7 +263,7 @@ agx3_tex_encode_sample(enum agx_isa_encoding enc,
       base[nb++] = (struct agx3_field_kv)KV(61, 164);
    }
 
-   struct agx3_field_kv ov[26];
+   struct agx3_field_kv ov[31];
    unsigned n = 0;
    ov[n++] = (struct agx3_field_kv)KV(2, d->dest);
    ov[n++] = (struct agx3_field_kv)KV(10, d->width);
@@ -268,6 +274,15 @@ agx3_tex_encode_sample(enum agx_isa_encoding enc,
    ov[n++] = (struct agx3_field_kv)KV(75, d->mask);
    ov[n++] = (struct agx3_field_kv)KV(76, d->cube ? 4 : 1);  /* M4 cube / 2D */
    ov[n++] = (struct agx3_field_kv)KV(78, 2);  /* filtered sample */
+   if (d->gather) {
+      ov[n++] = (struct agx3_field_kv)KV(144, 1);
+      ov[n++] = (struct agx3_field_kv)KV(145, d->gather_component);
+      if (d->gather_offset) {
+         ov[n++] = (struct agx3_field_kv)KV(141, 1);
+         ov[n++] = (struct agx3_field_kv)KV(51, 1);
+         ov[n++] = (struct agx3_field_kv)KV(43, d->gather_offset);
+      }
+   }
    if (d->shadow)
       ov[n++] = (struct agx3_field_kv)KV(143, 1);
    if (d->array)
@@ -287,7 +302,7 @@ agx3_tex_encode_sample(enum agx_isa_encoding enc,
     * request retention until the normal colour termination protocol.
     */
    if (d->lod == AGX3_TEX_LOD_AUTO) {
-      ov[n++] = (struct agx3_field_kv)KV(156, !d->retain_helpers);
+      ov[n++] = (struct agx3_field_kv)KV(156, !d->retain_helpers && !d->gather);
    } else if (d->lod == AGX3_TEX_LOD_REGISTER) {
       ov[n++] = (struct agx3_field_kv)KV(28, 0); /* packed level bank */
       ov[n++] = (struct agx3_field_kv)KV(139, 4);
@@ -427,6 +442,33 @@ agx3_tex_encode_image_write_rgba8_2d(
    }
 
    return true;
+}
+
+/* G16G applegpu-nt argument-buffer writes. The operand supplies an index
+ * into the descriptor heap addressed by u0, in a GPR or uniform pair.
+ * Pixel comparison qualifies this ABI on M4 for R8 and RG16F writes. */
+bool
+agx3_tex_encode_image_write_indexed_2d(
+   enum agx_isa_encoding enc, uint16_t pointer, bool uniform, bool kill, uint16_t staging_base, uint8_t staging_slot,
+   uint8_t out[AGX3_IMAGE_WRITE_LENGTH], uint8_t *len)
+{
+   if (!out || !len)
+      return false;
+   memset(out, 0, AGX3_IMAGE_WRITE_LENGTH);
+   *len = 0;
+   if (staging_base > 240 || (staging_base & 15) ||
+       enc != AGX_ISA_ENCODING_AGX3B || (pointer & 1) || pointer > 252 ||
+       (uniform && kill) || (staging_slot != 1 && staging_slot != 2))
+      return false;
+   const struct agx3_field_kv fields[] = {
+      KV(5,staging_base), KV(9,5), KV(12,staging_slot), KV(13,1), KV(24,1), KV(38,1),
+      KV(51,1), KV(52,1), KV(58 + staging_slot,1), KV(70,1), KV(71,2), KV(72,1),
+      KV(74,1), KV(85,3), KV(86,3), KV(99,uniform ? 3 : 2),
+      KV(100,2), KV(113,1), KV(uniform ? 93 : 92,pointer), KV(103,kill),
+   };
+   return agx3_bind_compose(enc, "imgwci", 0, fields, sizeof(fields) / sizeof(fields[0]),
+                            NULL, 0, out, len) &&
+          *len == AGX3_IMAGE_WRITE_LENGTH;
 }
 
 static uint16_t

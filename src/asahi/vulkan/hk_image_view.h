@@ -25,6 +25,7 @@ struct hk_image_view {
       uint8_t image_plane;
       uint32_t sampled_heap_index;
       uint32_t input_heap_index;
+      uint32_t storage_heap_index;
 
       struct hk_native_texture_descriptor ia, sampled, ro_storage, background,
          layered_background, emrt_texture;

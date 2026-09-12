@@ -235,7 +235,8 @@ hk_g17p_compute_uniform_ranges(
 
    const unsigned root_uniform = (s->info.agx3_storage_image_valid ||
                                   s->info.agx3_sampled_storage_valid ||
-                                  s->info.agx3_indexed_storage_valid)
+                                  s->info.agx3_indexed_storage_valid ||
+                                  s->info.agx3_indexed_images_valid)
                                     ? AGX_G17P_STORAGE_ROOT_HALFS
                                  : texture_pointers
                                     ? AGX_G17P_TXF_ROOT_HALFS
@@ -368,6 +369,12 @@ hk_dispatch_g17p_native(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
                                            VK_ERROR_FEATURE_NOT_PRESENT);
                return;
             }
+            pointer_count = 4;
+         }
+         if (s->info.agx3_indexed_images_valid) {
+            /* Image coordinate routing reads the 16-bit clamp from u12,
+             * including when the PBE pointer is supplied by the shader. */
+            pointers[3] = 0xffff;
             pointer_count = 4;
          }
          texture_pointers = hk_pool_upload(
