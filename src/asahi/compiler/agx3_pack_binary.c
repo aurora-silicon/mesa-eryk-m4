@@ -3291,7 +3291,7 @@ enum agx3_g17p_rt0_eot_kind {
    AGX3_G17P_RT0_EOT_SELECTOR_55,
    AGX3_G17P_RT0_EOT_NORM16,
    AGX3_G17P_RT0_EOT_I16_SIGNED_TWO_WORDS,
-   AGX3_G17P_RT0_EOT_MS_RGBA8,
+   AGX3_G17P_RT0_EOT_MS_PACKED32,
 };
 
 static enum agx3_g17p_rt0_eot_kind
@@ -3350,7 +3350,9 @@ agx3_g17p_rt0_eot_kind(const agx_context *ctx, enum agx_isa_encoding enc)
                  I->format != AGX_FORMAT_RGB10A2 &&
                  I->format != AGX_FORMAT_I32) ||
                 (I->dim != AGX_DIM_2D &&
-                 !(I->dim == AGX_DIM_2D_MS && I->format == AGX_FORMAT_U8NORM)) ||
+                 !(I->dim == AGX_DIM_2D_MS &&
+                   (I->format == AGX_FORMAT_U8NORM ||
+                    I->format == AGX_FORMAT_RGB10A2))) ||
                 !I->explicit_coords ||
                 I->src[0].type != AGX_INDEX_IMMEDIATE ||
                 I->src[0].value != 0 || I->src[0].size != AGX_SIZE_16 ||
@@ -3384,7 +3386,7 @@ agx3_g17p_rt0_eot_kind(const agx_context *ctx, enum agx_isa_encoding enc)
       return AGX3_G17P_RT0_EOT_NONE;
 
    if (multisample)
-      return AGX3_G17P_RT0_EOT_MS_RGBA8;
+      return AGX3_G17P_RT0_EOT_MS_PACKED32;
 
    if (ctx->key->g17p_rt0_eot_i16_signed_two_words &&
        (store_format != AGX_FORMAT_I16 ||
@@ -3780,9 +3782,10 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
    const enum agx3_g17p_rt0_eot_kind rt0_eot =
       agx3_g17p_rt0_eot_kind(ctx, enc);
    if (rt0_eot != AGX3_G17P_RT0_EOT_NONE) {
-      if (rt0_eot == AGX3_G17P_RT0_EOT_MS_RGBA8) {
-         /* G16G builtin key: format3, native dimension4, four components.
-          * MSAA IMGW consumes its sample geometry from the PBE descriptor. */
+      if (rt0_eot == AGX3_G17P_RT0_EOT_MS_PACKED32) {
+         /* G16G builtin format3 and format19, native dimension4, four
+          * components compile to the same 68-byte program (AIR-NT 32023.917).
+          * The PBE selects packed RGBA8 versus RGB10A2 and sample geometry. */
          static const uint8_t native[] = {
             0x1c, 0x9c, 0x10, 0x06, 0x24, 0xa8, 0x14, 0x06,
             0x0c, 0x9d, 0x10, 0x26, 0x24, 0xa9, 0x10, 0x26,

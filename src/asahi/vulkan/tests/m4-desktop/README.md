@@ -1619,3 +1619,12 @@ WebRender/WebGL frame90 exposed the regression (3754 pixels above 8/255 error).
 Current-coverage updates restore the previous M4 frame byte-for-byte and its
 maximum 2/255 difference from lavapipe, while the seven-case multisample matrix
 still passes (2026-09-12, peak 56.75 C in the replay).
+
+The multisample oracle accepts a second argument `rgba8` (default) or
+`rgb10a2` to check both exposed color storage formats with the same per-sample
+resolve/reload oracle, for example `multisample-probe 4 rgb10a2`.
+
+An optional third argument `depth16`, `depth24`, or `depth32f` adds a depth
+attachment. Near red samples must reject a farther green draw; unresolved
+samples stay green. Every step resolves and reads all pixels, forcing depth
+store/reload between draws. The default `none` keeps the color-only oracle.
