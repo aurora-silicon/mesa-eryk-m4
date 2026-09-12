@@ -1,0 +1,24 @@
+#version 450
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+layout(local_size_x=4,local_size_y=4) in;
+layout(set=0,binding=0) uniform sampler2D src;
+layout(rg16f,set=0,binding=1) writeonly uniform image2D rg;
+layout(r8,set=0,binding=2) writeonly uniform image2D red;
+void main() {
+ ivec2 p=ivec2(gl_GlobalInvocationID.xy);
+ vec4 v=textureLod(src,(vec2(p)+.5)/32.0,0.0);
+ float16_t a=float16_t(v.r*8.0-2.0), b=float16_t(v.g+.25), c=float16_t(v.b-.5);
+ float16_t x, y;
+ switch(p.y % 8) {
+ case 0: x=clamp(fma(-a,b,c),float16_t(0),float16_t(1)); y=clamp(a*b,float16_t(0),float16_t(1)); break;
+ case 1: x=roundEven(a); y=floor(a); break;
+ case 2: x=ceil(a); y=trunc(a); break;
+ case 3: x=float16_t(fma(v.r,.25,.5)); y=float16_t(fma(-v.r,v.g,v.b)); break;
+ case 4: x=float16_t(10)-abs(a); y=float16_t(0)-abs(b); break;
+ case 5: x=float(a)<v.g ? b : c; y=a<b ? c : float16_t(0); break;
+ case 6: { float16_t u=float16_t(uintBitsToFloat(uint((p.x & 3)+125)<<23)); x=float16_t(1)/u; y=u; break; }
+ default: { float16_t u=float16_t(uintBitsToFloat(uint((p.x & 3)+125)<<23)); x=inversesqrt(u*u); y=sqrt(u*u); break; }
+ }
+ imageStore(rg,p,vec4(float(x),float(y),0,0));
+ imageStore(red,p,vec4(clamp(float(x)*.125+.5,0,1)));
+}

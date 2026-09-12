@@ -127,7 +127,7 @@ runtime_vectors(void)
       const struct agx3_falu_mods m = {.src0_abs = 0, .src0_neg = 0, .src1_abs = 0, .src1_neg = 0, .addend_abs = 0, .addend_neg = 1, .saturate = 0};
       const struct agx3_falu_runtime rt = {.cache = {0, 0, 0}, .discard = {1, 1, 1}, .dest_cache = 0, .wait_mask = 32};
       uint8_t out[16], len;
-      if (!agx3_falu_fma_mod_runtime(AGX_ISA_ENCODING_AGX3B, 0, 2, 0, 4,
+      if (!agx3_falu_fma_mod_runtime(AGX_ISA_ENCODING_AGX3B, 0, false, 2, 0, 4,
                                       &m, &rt, out, &len) ||
           len != sizeof(expected) || memcmp(out, expected, len)) {
          fprintf(stderr, "native modified FMA vector 0 failed\n");
@@ -139,7 +139,7 @@ runtime_vectors(void)
       const struct agx3_falu_mods m = {.src0_abs = 0, .src0_neg = 0, .src1_abs = 0, .src1_neg = 0, .addend_abs = 0, .addend_neg = 1, .saturate = 0};
       const struct agx3_falu_runtime rt = {.cache = {0, 0, 0}, .discard = {0, 0, 0}, .dest_cache = 0, .wait_mask = 32};
       uint8_t out[16], len;
-      if (!agx3_falu_fma_mod_runtime(AGX_ISA_ENCODING_AGX3B, 0, 4, 2, 6,
+      if (!agx3_falu_fma_mod_runtime(AGX_ISA_ENCODING_AGX3B, 0, false, 4, 2, 6,
                                       &m, &rt, out, &len) ||
           len != sizeof(expected) || memcmp(out, expected, len)) {
          fprintf(stderr, "native modified FMA vector 1 failed\n");
@@ -151,7 +151,7 @@ runtime_vectors(void)
       const struct agx3_falu_mods m = {.src0_abs = 0, .src0_neg = 0, .src1_abs = 1, .src1_neg = 0, .addend_abs = 0, .addend_neg = 0, .saturate = 0};
       const struct agx3_falu_runtime rt = {.cache = {0, 0, 0}, .discard = {1, 1, 1}, .dest_cache = 0, .wait_mask = 32};
       uint8_t out[16], len;
-      if (!agx3_falu_fma_mod_runtime(AGX_ISA_ENCODING_AGX3B, 0, 2, 0, 4,
+      if (!agx3_falu_fma_mod_runtime(AGX_ISA_ENCODING_AGX3B, 0, false, 2, 0, 4,
                                       &m, &rt, out, &len) ||
           len != sizeof(expected) || memcmp(out, expected, len)) {
          fprintf(stderr, "native modified FMA vector 2 failed\n");
@@ -163,7 +163,7 @@ runtime_vectors(void)
       const struct agx3_falu_mods m = {.src0_abs = 0, .src0_neg = 1, .src1_abs = 0, .src1_neg = 0, .addend_abs = 0, .addend_neg = 0, .saturate = 0};
       const struct agx3_falu_runtime rt = {.cache = {0, 0, 0}, .discard = {1, 1, 1}, .dest_cache = 0, .wait_mask = 32};
       uint8_t out[16], len;
-      if (!agx3_falu_fma_mod_runtime(AGX_ISA_ENCODING_AGX3B, 0, 0, 2, 4,
+      if (!agx3_falu_fma_mod_runtime(AGX_ISA_ENCODING_AGX3B, 0, false, 0, 2, 4,
                                       &m, &rt, out, &len) ||
           len != sizeof(expected) || memcmp(out, expected, len)) {
          fprintf(stderr, "native modified FMA vector 3 failed\n");
@@ -175,7 +175,7 @@ runtime_vectors(void)
       const struct agx3_falu_mods m = {.src0_abs = 0, .src0_neg = 0, .src1_abs = 0, .src1_neg = 0, .addend_abs = 1, .addend_neg = 0, .saturate = 0};
       const struct agx3_falu_runtime rt = {.cache = {0, 0, 0}, .discard = {1, 1, 1}, .dest_cache = 0, .wait_mask = 32};
       uint8_t out[16], len;
-      if (!agx3_falu_fma_mod_runtime(AGX_ISA_ENCODING_AGX3B, 0, 2, 0, 4,
+      if (!agx3_falu_fma_mod_runtime(AGX_ISA_ENCODING_AGX3B, 0, false, 2, 0, 4,
                                       &m, &rt, out, &len) ||
           len != sizeof(expected) || memcmp(out, expected, len)) {
          fprintf(stderr, "native modified FMA vector 4 failed\n");
@@ -187,7 +187,7 @@ runtime_vectors(void)
       const struct agx3_falu_mods m = {.src0_abs = 0, .src0_neg = 0, .src1_abs = 0, .src1_neg = 0, .addend_abs = 0, .addend_neg = 0, .saturate = 1};
       const struct agx3_falu_runtime rt = {.cache = {0, 0, 0}, .discard = {1, 1, 1}, .dest_cache = 0, .wait_mask = 32};
       uint8_t out[16], len;
-      if (!agx3_falu_fma_mod_runtime(AGX_ISA_ENCODING_AGX3B, 0, 2, 0, 4,
+      if (!agx3_falu_fma_mod_runtime(AGX_ISA_ENCODING_AGX3B, 0, false, 2, 0, 4,
                                       &m, &rt, out, &len) ||
           len != sizeof(expected) || memcmp(out, expected, len)) {
          fprintf(stderr, "native modified FMA vector 5 failed\n");
@@ -201,7 +201,7 @@ runtime_vectors(void)
       struct agx3_falu_runtime rt = {.wait_mask = waits};
       uint8_t out[16], len;
       const unsigned wait_bits[] = {61, 62, 63, 77, 78, 79};
-      if (!agx3_falu_fma_mod_runtime(AGX_ISA_ENCODING_AGX3B, 0, 2, 0, 4,
+      if (!agx3_falu_fma_mod_runtime(AGX_ISA_ENCODING_AGX3B, 0, false, 2, 0, 4,
                                     &m, &rt, out, &len) || len != 12) {
          fail++;
          continue;
@@ -217,7 +217,7 @@ runtime_vectors(void)
             rt.cache[i] = (v % 3) == 1;
             rt.discard[i] = (v % 3) == 2;
          }
-         if (!agx3_falu_fma_mod_runtime(AGX_ISA_ENCODING_AGX3B, 0, 2, 0, 4,
+         if (!agx3_falu_fma_mod_runtime(AGX_ISA_ENCODING_AGX3B, 0, false, 2, 0, 4,
                                        &m, &rt, out, &len) || len != 12) {
             fail++;
             continue;
@@ -234,20 +234,28 @@ runtime_vectors(void)
    struct agx3_falu_runtime rt = {.wait_mask = 64};
    uint8_t out[16], len = 0xa5;
    memset(out, 0xa5, sizeof(out));
-   fail += agx3_falu_fma_mod_runtime(AGX_ISA_ENCODING_AGX3B, 0, 2, 4, 6,
+   fail += agx3_falu_fma_mod_runtime(AGX_ISA_ENCODING_AGX3B, 0, false, 2, 4, 6,
                                     &m, &rt, out, &len);
    rt.wait_mask = 0;
    rt.cache[0] = rt.discard[0] = true;
-   fail += agx3_falu_fma_mod_runtime(AGX_ISA_ENCODING_AGX3B, 0, 2, 4, 6,
+   fail += agx3_falu_fma_mod_runtime(AGX_ISA_ENCODING_AGX3B, 0, false, 2, 4, 6,
                                     &m, &rt, out, &len);
    rt.cache[0] = false;
-   fail += agx3_falu_fma_mod_runtime(AGX_ISA_ENCODING_AGX3B, 0, 2, 4, 255,
+   fail += agx3_falu_fma_mod_runtime(AGX_ISA_ENCODING_AGX3B, 0, false, 2, 4, 255,
                                     &m, &rt, out, &len);
-   fail += agx3_falu_fma_mod_runtime(AGX_ISA_ENCODING_AGX3C, 0, 2, 4, 6,
+   fail += agx3_falu_fma_mod_runtime(AGX_ISA_ENCODING_AGX3C, 0, false, 2, 4, 6,
                                     &m, &rt, out, &len);
    fail += len != 0xa5;
    for (unsigned i = 0; i < sizeof(out); ++i)
       fail += out[i] != 0xa5;
+   {
+      const struct agx3_falu_mods narrow_mod = {.src0_neg=true};
+      const struct agx3_falu_runtime narrow_rt = {.discard={1,1,1}, .wait_mask=32};
+      const uint8_t expected[] = {0x11,0x03,0x1e,0x01,0x81,0x04,0x02,0xc8};
+      fail += !agx3_falu_fma_mod_runtime(AGX_ISA_ENCODING_AGX3B,2,true,0,2,4,
+                    &narrow_mod,&narrow_rt,out,&len) || len != sizeof(expected) ||
+                    memcmp(out,expected,sizeof(expected));
+   }
    printf("native modified FMA: six Apple byte vectors, 64 wait masks, "
           "27 independent lifetime combinations: %u failures\n", fail);
    return fail;
@@ -366,11 +374,19 @@ fma_two_vectors(void)
    unsigned fail=0;
    for(unsigned i=0;i<sizeof(vectors)/sizeof(vectors[0]);++i){
       uint8_t out[16],size=0;
-      if(!agx3_falu_fma_two_imm(AGX_ISA_ENCODING_AGX3B,vectors[i].dst,
+      if(!agx3_falu_fma_two_imm(AGX_ISA_ENCODING_AGX3B,vectors[i].dst,false,
              vectors[i].src,vectors[i].mul,vectors[i].add,&vectors[i].rt,out,&size)||
          size!=vectors[i].size||memcmp(out,vectors[i].bytes,size)){
          fprintf(stderr,"FMA two-immediate vector %u failed\n",i);fail++;
       }
+   }
+   {
+      uint8_t out[16], size = 0;
+      const uint8_t expected[] = {0x11,0x03,0x0e,0x91,0x21,0xa0,0x02,0xc2};
+      const struct agx3_falu_runtime rt = {.discard={1}, .wait_mask=32};
+      if (!agx3_falu_fma_two_imm(AGX_ISA_ENCODING_AGX3B,2,true,2,16,32,&rt,out,&size) ||
+          size != sizeof(expected) || memcmp(out,expected,size))
+         fail++;
    }
    printf("native FMA two minifloats: six Apple live/dead vectors: %u failures\n",fail);
    return fail;

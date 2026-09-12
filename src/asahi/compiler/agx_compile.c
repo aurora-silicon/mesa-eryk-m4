@@ -2583,7 +2583,27 @@ agx_lower_agx3_fma_sources(agx_context *ctx)
       return;
 
    agx_foreach_instr_global_safe(ctx, I) {
-      if ((I->op == AGX_OPCODE_RCP || I->op == AGX_OPCODE_RSQRT) &&
+      if ((I->op == AGX_OPCODE_ROUNDEVEN || I->op == AGX_OPCODE_FLOOR ||
+           I->op == AGX_OPCODE_CEIL || I->op == AGX_OPCODE_TRUNC ||
+           I->op == AGX_OPCODE_RCP || I->op == AGX_OPCODE_RSQRT ||
+           I->op == AGX_OPCODE_SRSQRT || I->op == AGX_OPCODE_LOG2 || I->op == AGX_OPCODE_EXP2) &&
+          I->dest[0].size == AGX_SIZE_16) {
+         /* Native unary math uses F32. Widen the input exactly and round
+          * the result to half. Integral rounding is exact in both widths;
+          * approximate reciprocal/transcendental operations retain the F32
+          * unit's higher internal precision before the final half rounding. */
+         agx_builder before = agx_init_builder(ctx, agx_before_instr(I));
+         agx_index source = agx_temp(ctx, AGX_SIZE_32);
+         agx_fmov_to(&before, source, I->src[0]);
+         I->src[0] = source;
+         agx_index half = I->dest[0];
+         I->dest[0] = agx_temp(ctx, AGX_SIZE_32);
+         agx_builder after = agx_init_builder(ctx, agx_after_instr(I));
+         agx_fmov_to(&after, half, I->dest[0]);
+         continue;
+      }
+      if ((I->op == AGX_OPCODE_RCP || I->op == AGX_OPCODE_RSQRT ||
+           I->op == AGX_OPCODE_SRSQRT) &&
           I->dest[0].size == AGX_SIZE_32 &&
           I->src[0].size == AGX_SIZE_16 &&
           I->src[0].type != AGX_INDEX_IMMEDIATE &&
@@ -2596,16 +2616,42 @@ agx_lower_agx3_fma_sources(agx_context *ctx)
          I->src[0] = wide;
          continue;
       }
+      if (I->op == AGX_OPCODE_FMUL && I->dest[0].size == AGX_SIZE_16) {
+         agx_builder b = agx_init_builder(ctx, agx_before_instr(I));
+         agx_foreach_src(I, s) {
+            agx_index src = I->src[s];
+            if (src.type == AGX_INDEX_IMMEDIATE) {
+               float value = agx_minifloat_decode(src.value);
+               if (src.abs) value = fabsf(value);
+               if (src.neg) value = -value;
+               I->src[s] = agx_mov_imm(&b, 32, fui(value));
+            } else if (src.size == AGX_SIZE_16 || src.abs || src.neg) {
+               agx_index wide = agx_temp(ctx, AGX_SIZE_32);
+               agx_fmov_to(&b, wide, src);
+               I->src[s] = wide;
+            }
+         }
+         if (I->saturate) {
+            /* FMA(a,b,-0) preserves multiplication, including signed zero,
+             * and has a native saturated half-result form. */
+            agx_instr *fma = agx_ffma_to(&b, I->dest[0], I->src[0], I->src[1],
+                                        agx_mov_imm(&b, 32, 0x80000000));
+            fma->saturate = true;
+            agx_remove_instruction(I);
+         }
+         continue;
+      }
       if ((I->op == AGX_OPCODE_FADD || I->op == AGX_OPCODE_FMUL) &&
-          I->dest[0].size == AGX_SIZE_32 &&
-          I->src[0].type != AGX_INDEX_IMMEDIATE &&
-          I->src[1].type != AGX_INDEX_IMMEDIATE &&
-          I->src[0].size != I->src[1].size) {
+          (I->dest[0].size == AGX_SIZE_32 ||
+           (I->op == AGX_OPCODE_FMUL && I->dest[0].size == AGX_SIZE_16)) &&
+          ((I->src[0].type != AGX_INDEX_IMMEDIATE && I->src[0].size == AGX_SIZE_16) ||
+           (I->src[1].type != AGX_INDEX_IMMEDIATE && I->src[1].size == AGX_SIZE_16))) {
          /* F16 inputs widen exactly. Keep the F32 operation and its rounding
           * when copy propagation folds a half-width source into arithmetic. */
          agx_builder b = agx_init_builder(ctx, agx_before_instr(I));
          agx_foreach_src(I, s) {
-            if (I->src[s].size == AGX_SIZE_16) {
+            if (I->src[s].size == AGX_SIZE_16 &&
+                I->src[s].type != AGX_INDEX_IMMEDIATE) {
                agx_index wide = agx_temp(ctx, AGX_SIZE_32);
                agx_fmov_to(&b, wide, I->src[s]);
                I->src[s] = wide;
@@ -2618,6 +2664,24 @@ agx_lower_agx3_fma_sources(agx_context *ctx)
          continue;
 
       agx_builder b = agx_init_builder(ctx, agx_before_instr(I));
+      if (I->dest[0].size == AGX_SIZE_16) {
+         /* Native F32 FMA can round directly to half. Keep that single
+          * operation and make its full-width register operands explicit. */
+         agx_foreach_src(I, s) {
+            agx_index src = I->src[s];
+            if (src.type == AGX_INDEX_IMMEDIATE) {
+               float value = agx_minifloat_decode(src.value);
+               if (src.abs) value = fabsf(value);
+               if (src.neg) value = -value;
+               I->src[s] = agx_mov_imm(&b, 32, fui(value));
+            } else if (src.size == AGX_SIZE_16) {
+               agx_index wide = agx_temp(ctx, AGX_SIZE_32);
+               agx_fmov_to(&b, wide, src);
+               I->src[s] = wide;
+            }
+         }
+         continue;
+      }
       if (I->saturate) {
          if (I->dest[0].size != AGX_SIZE_32)
             continue;
@@ -2728,6 +2792,22 @@ agx_lower_agx3_cf_constants(agx_context *ctx)
       }
       if (I->nr_srcs != 2)
          continue;
+      /* Native FCMP branches compare full floats. Widen actual half
+       * operands after copy propagation, which could otherwise fold this
+       * conversion back into the branch. Binary16 values are exact in F32.
+       * Immediate zero keeps the separately supported register/zero form. */
+      if (floating) {
+         for (unsigned s = 0; s < 2; ++s) {
+            if (I->src[s].type == AGX_INDEX_IMMEDIATE ||
+                I->src[s].size != AGX_SIZE_16)
+               continue;
+            agx_builder b = agx_init_builder(ctx, agx_before_instr(I));
+            agx_index wide = agx_temp(ctx, AGX_SIZE_32);
+            agx_fmov_to(&b, wide, I->src[s]);
+            I->src[s] = wide;
+            progress = true;
+         }
+      }
       for (unsigned s = 0; s < 2; ++s) {
          agx_index src = I->src[s], other = I->src[1 - s];
          if (floating) {
@@ -2877,6 +2957,14 @@ agx_materialize_agx3_alu_constants(agx_context *ctx)
        * FCMP is lowered to a boolean FSEL later, so normalize it here too.
        */
       if (I->op == AGX_OPCODE_FCMPSEL || I->op == AGX_OPCODE_FCMP) {
+         if (ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+             I->op == AGX_OPCODE_FCMPSEL && I->dest[0].size == AGX_SIZE_16) {
+            /* Select alternatives are bit patterns, not minifloats. */
+            for (unsigned s = 2; s < 4; ++s) {
+               if (I->src[s].type == AGX_INDEX_IMMEDIATE)
+                  I->src[s] = agx_mov_imm(&b, 16, I->src[s].value);
+            }
+         }
          /* The native F32/F16 route is qualified for EQ/LT and two full
           * register alternatives. Other full-result shapes use the general
           * F32 comparator route. F16->F32 is exact, including signed zero;
@@ -2904,6 +2992,21 @@ agx_materialize_agx3_alu_constants(agx_context *ctx)
                }
             }
          }
+         if (ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+             I->op == AGX_OPCODE_FCMPSEL &&
+             I->dest[0].size == AGX_SIZE_16 &&
+             (I->src[0].size != I->src[1].size ||
+              I->src[0].type == AGX_INDEX_IMMEDIATE ||
+              I->src[1].type == AGX_INDEX_IMMEDIATE)) {
+            for (unsigned c = 0; c < 2; ++c) {
+               if (I->src[c].type == AGX_INDEX_IMMEDIATE ||
+                   I->src[c].size != AGX_SIZE_16)
+                  continue;
+               agx_index wide = agx_temp(ctx, AGX_SIZE_32);
+               agx_fmov_to(&b, wide, I->src[c]);
+               I->src[c] = wide;
+            }
+         }
          const bool modified = I->src[0].abs || I->src[0].neg ||
                                I->src[1].abs || I->src[1].neg;
          for (unsigned s = 0; s < 2; ++s) {
@@ -2927,13 +3030,96 @@ agx_materialize_agx3_alu_constants(agx_context *ctx)
          }
       }
 
+      /* Same-width F16 fmov is an FADD with negative zero. Apply sign
+       * modifiers to the bits, preserving the half value and signed zero. */
+      if (ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+          I->op == AGX_OPCODE_FADD && !I->saturate &&
+          I->dest[0].size == AGX_SIZE_16 &&
+          (I->src[0].size == AGX_SIZE_16 ||
+           (I->src[0].size == AGX_SIZE_32 && (I->src[0].abs || I->src[0].neg))) &&
+          I->src[0].type != AGX_INDEX_IMMEDIATE &&
+          I->src[1].type == AGX_INDEX_IMMEDIATE &&
+          ((I->src[1].value == 0 && I->src[1].neg) ||
+           (I->src[1].value == agx_minifloat_encode(-0.0f) &&
+            !I->src[1].neg && !I->src[1].abs))) {
+         agx_index source = I->src[0];
+         const bool absolute = source.abs, negate = source.neg;
+         source.abs = source.neg = false;
+         if (absolute) {
+            agx_index cleared = agx_temp(ctx, source.size);
+            agx_bitop_to(&b, cleared, source,
+                         agx_mov_imm(&b, agx_size_align_16(source.size) * 16,
+                            source.size == AGX_SIZE_16 ? 0x7fff : 0x7fffffff), 0x8);
+            source = cleared;
+         }
+         if (negate) {
+            agx_index flipped = agx_temp(ctx, source.size);
+            agx_bitop_to(&b, flipped, source,
+                         agx_mov_imm(&b, agx_size_align_16(source.size) * 16,
+                            source.size == AGX_SIZE_16 ? 0x8000 : 0x80000000), 0x6);
+            source = flipped;
+         }
+         if (source.size == AGX_SIZE_16)
+            agx_mov_to(&b, I->dest[0], source);
+         else
+            agx_fmov_to(&b, I->dest[0], source);
+         agx_remove_instruction(I);
+         continue;
+      }
+
+      /* Half arithmetic uses register operands. Materialize minifloats
+       * without changing the operation, fused behavior or half rounding. */
+      if (ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+          (I->op == AGX_OPCODE_HFMA || I->op == AGX_OPCODE_HADD ||
+           I->op == AGX_OPCODE_HMUL)) {
+         agx_foreach_src(I, s) {
+            agx_index src = I->src[s];
+            if (src.type != AGX_INDEX_IMMEDIATE) {
+               const bool lower_neg = I->op == AGX_OPCODE_HMUL ||
+                  (I->op == AGX_OPCODE_HADD && I->src[0].neg && I->src[1].neg);
+               if (!src.abs && !(src.neg && lower_neg))
+                  continue;
+               const bool absolute = src.abs, negate = src.neg;
+               src.abs = src.neg = false;
+               if (absolute) {
+                  agx_index cleared = agx_temp(ctx, AGX_SIZE_16);
+                  agx_bitop_to(&b, cleared, src, agx_mov_imm(&b, 16, 0x7fff), 0x8);
+                  src = cleared;
+               }
+               if (negate && lower_neg) {
+                  agx_index flipped = agx_temp(ctx, AGX_SIZE_16);
+                  agx_bitop_to(&b, flipped, src, agx_mov_imm(&b, 16, 0x8000), 0x6);
+                  src = flipped;
+               } else {
+                  src.neg = negate;
+               }
+               I->src[s] = src;
+               continue;
+            }
+            float value = agx_minifloat_decode(src.value);
+            if (src.abs)
+               value = fabsf(value);
+            if (src.neg)
+               value = -value;
+            I->src[s] = agx_mov_imm(&b, 16, _mesa_float_to_half(value));
+         }
+         if (I->op == AGX_OPCODE_HADD && I->saturate) {
+            /* a*1+b has the same half rounding as a+b and a native clamp. */
+            agx_instr *fma = agx_hfma_to(&b, I->dest[0], I->src[0],
+                                        agx_mov_imm(&b, 16, 0x3c00), I->src[1]);
+            fma->saturate = true;
+            agx_remove_instruction(I);
+         }
+      }
+
       /* Compact add/multiply immediates cannot carry absolute-value
        * modifiers, and multiply's compact form cannot saturate. The native
        * register form supports these combinations without splitting the
        * arithmetic or changing its rounding.
        */
       if ((I->op == AGX_OPCODE_FADD || I->op == AGX_OPCODE_FMUL) &&
-          I->dest[0].size == AGX_SIZE_32 &&
+          (I->dest[0].size == AGX_SIZE_32 ||
+           (I->op == AGX_OPCODE_FMUL && I->dest[0].size == AGX_SIZE_16)) &&
           (I->src[0].abs || I->src[1].abs ||
            (I->op == AGX_OPCODE_FMUL && I->saturate))) {
          for (unsigned s = 0; s < 2; ++s) {
@@ -4884,12 +5070,13 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
 
    agx_lower_agx3_half_converts(ctx);
    agx_lower_agx3_half_integer_sources(ctx);
-   agx_lower_agx3_fma_sources(ctx);
-
    AGX_PASS(ctx, agx_lower_agx3_widening_iadd);
 
    if (key->dev.encoding != AGX_ISA_ENCODING_AGX2)
       agx_materialize_agx3_alu_constants(ctx);
+
+   /* Constant materialization can introduce mixed-width FADD operands. */
+   agx_lower_agx3_fma_sources(ctx);
 
    AGX_PASS(ctx, agx_lower_agx3_cf_constants);
    AGX_PASS(ctx, agx_lower_agx3_half_iadd_constants);

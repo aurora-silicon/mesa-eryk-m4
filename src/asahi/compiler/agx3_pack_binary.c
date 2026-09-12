@@ -336,7 +336,9 @@ agx3_try_float_modifier(struct util_dynarray *emission,
    if (!is_add && !is_mul && !is_fma)
       return 0;
 
-   bool has_mod = I->saturate;
+   const bool narrow_fma = is_fma && enc == AGX_ISA_ENCODING_AGX3B &&
+                           I->dest[0].size == AGX_SIZE_16;
+   bool has_mod = I->saturate || narrow_fma;
    for (unsigned s = 0; s < I->nr_srcs; ++s)
       has_mod |= I->src[s].abs || I->src[s].neg;
    if (!has_mod)
@@ -344,7 +346,8 @@ agx3_try_float_modifier(struct util_dynarray *emission,
 
    const unsigned want = is_fma ? 3 : 2;
    if (I->nr_dests < 1 || I->dest[0].type == AGX_INDEX_NULL ||
-       I->dest[0].size != AGX_SIZE_32 || (I->dest[0].value & 1) != 0 ||
+       (!narrow_fma && (I->dest[0].size != AGX_SIZE_32 ||
+                        (I->dest[0].value & 1) != 0)) ||
        I->dest[0].value >= 256 || I->nr_srcs != want)
       return -1;
    for (unsigned s = 0; s < want; ++s)
@@ -396,7 +399,7 @@ agx3_try_float_modifier(struct util_dynarray *emission,
             runtime.cache[i] = I->src[i].cache;
             runtime.discard[i] = I->src[i].discard;
          }
-         ok = agx3_falu_fma_mod_runtime(enc, d, s0, s1, I->src[2].value,
+         ok = agx3_falu_fma_mod_runtime(enc, d, narrow_fma, s0, s1, I->src[2].value,
                                        &m, &runtime, bytes, &len);
       } else {
          ok = agx3_falu_fma_mod(enc, d, s0, s1, I->src[2].value,
@@ -5943,7 +5946,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
          }
 
          if (enc == AGX_ISA_ENCODING_AGX3B && I->op == AGX_OPCODE_HMUL &&
-             I->nr_dests == 1 && I->nr_srcs == 2 && !I->saturate) {
+             I->nr_dests == 1 && I->nr_srcs == 2) {
             uint16_t src[2]; enum agx3_alu_hint hints[2];
             agx_index dst=I->dest[0];
             if (!agx3_src_is_register(dst) || dst.memory || dst.size != AGX_SIZE_16 ||
@@ -5958,7 +5961,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                src[i]=x.value; hints[i]=agx3_post_ra_hint(x);
             }
             uint8_t bytes[AGX3_ALU_MAX_LENGTH],len;
-            if (!agx3_alu_hmul(enc,dst.value,src,hints,dst.cache,wait,bytes,&len) ||
+            if (!agx3_alu_hmul(enc,dst.value,src,hints,dst.cache,I->saturate,wait,bytes,&len) ||
                 !agx3_append(emission,bytes,len))
                AGX3_REFUSE(I);
             continue;
@@ -5996,7 +5999,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
          }
 
          if (enc == AGX_ISA_ENCODING_AGX3B && I->op == AGX_OPCODE_HFMA &&
-             I->nr_dests == 1 && I->nr_srcs == 3 && !I->saturate) {
+             I->nr_dests == 1 && I->nr_srcs == 3) {
             uint16_t src[3];
             enum agx3_alu_hint hints[3];
             agx_index dst = I->dest[0];
@@ -6024,7 +6027,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             }
             uint8_t bytes[AGX3_ALU_MAX_LENGTH], len;
             if (!agx3_alu_hfma(enc, dst.value, src, hints, product_neg,
-                               I->src[2].neg, dst.cache, wait, bytes, &len) ||
+                               I->src[2].neg, dst.cache, I->saturate, wait, bytes, &len) ||
                 !agx3_append(emission, bytes, len))
                AGX3_REFUSE(I);
             continue;
@@ -6312,7 +6315,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
 
          if (enc == AGX_ISA_ENCODING_AGX3B && I->op == AGX_OPCODE_FFMA &&
              !I->saturate && I->nr_dests == 1 && I->nr_srcs == 3 &&
-             agx3_vary_reg32(I->dest[0]) && agx_channels(I->dest[0]) == 1 &&
+             agx3_src_is_register(I->dest[0]) && !I->dest[0].memory &&
+             (I->dest[0].size == AGX_SIZE_16 || I->dest[0].size == AGX_SIZE_32) && agx_channels(I->dest[0]) == 1 &&
              I->src[2].type == AGX_INDEX_IMMEDIATE && I->src[2].value <= 255 &&
              !I->src[2].abs && !I->src[2].neg && !I->src[2].memory) {
             const bool imm_first = I->src[0].type == AGX_INDEX_IMMEDIATE;
@@ -6329,6 +6333,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                };
                uint8_t bytes[AGX3_FALU_MOD_MAX_LENGTH], length;
                if (!agx3_falu_fma_two_imm(enc, I->dest[0].value,
+                       I->dest[0].size == AGX_SIZE_16,
                        reg.value, imm.value, I->src[2].value,
                        &runtime, bytes, &length) ||
                    !agx3_append(emission, bytes, length))

@@ -198,6 +198,13 @@ agx_nir_lower_g17p_combined_sampler(
    nir_foreach_function_impl(impl, shader) {
       nir_foreach_block(block, impl) {
          nir_foreach_instr(instr, block) {
+            /* This ABI binds u0 to one inline sampled descriptor. Indexed
+             * image writes require u0 to address the shared descriptor heap;
+             * leave such kernels to the indexed sampler/image lowering. */
+            if (instr->type == nir_instr_type_intrinsic &&
+                nir_instr_as_intrinsic(instr)->intrinsic ==
+                   nir_intrinsic_bindless_image_store)
+               return false;
             if (instr->type != nir_instr_type_tex)
                continue;
 
@@ -248,7 +255,7 @@ agx_nir_lower_g17p_combined_sampler(
    NIR_PASS(_, shader, nir_opt_dce);
    /* The initial fragment ABI replaces the whole descriptor root. Compute
     * reserves the same native texture/sampler pointer prefix but may keep
-    * unrelated storage-image/SSBO descriptors in the ordinary root. */
+    * unrelated SSBO descriptors in the ordinary root. */
    if (shader->info.stage == MESA_SHADER_FRAGMENT &&
        g17p_has_descriptor_access(shader))
       return false;

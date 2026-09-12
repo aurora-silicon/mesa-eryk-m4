@@ -71,7 +71,7 @@ main(int argc, char **argv)
    fclose(f);
    VkApplicationInfo app = {.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
                             .pApplicationName = "m4-gather-store",
-                            .apiVersion = VK_API_VERSION_1_1};
+                            .apiVersion = VK_API_VERSION_1_2};
    VkInstanceCreateInfo ici = {.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
                                .pApplicationInfo = &app};
    VkInstance instance;
@@ -104,7 +104,11 @@ main(int argc, char **argv)
       .pQueuePriorities = &priority};
    VkPhysicalDeviceFeatures features = {.shaderStorageImageExtendedFormats =
                                            VK_TRUE};
+   VkPhysicalDeviceShaderFloat16Int8Features half = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES,
+      .shaderFloat16 = VK_TRUE};
    VkDeviceCreateInfo di = {.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+                            .pNext = getenv("M4_TEST_FLOAT16") ? &half : NULL,
                             .queueCreateInfoCount = 1,
                             .pQueueCreateInfos = &qi,
                             .pEnabledFeatures = &features};

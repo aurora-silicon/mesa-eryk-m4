@@ -32,3 +32,19 @@ native image-write instructions and GPU descriptor loads; transfers are GPU
 copies. This qualifies the small oracle, not vkQuake or a Vulkan conformance
 claim. Other image dimensions, coherent stores and additional formats remain
 outside this lowering's accepted domain.
+
+## Half-precision arithmetic
+
+The same harness accepts `m4_vulkan_half_math.comp` when
+`M4_TEST_FLOAT16=1` enables Vulkan shaderFloat16. Generate the lavapipe reference
+and run the guarded target with that environment variable and the same SPIR-V.
+The test covers fused and saturated half arithmetic, mixed float widths,
+rounding, sign modifiers, comparisons, reciprocals and square roots. Power-of-two
+inputs are formed from float bit patterns. The host LLVM22 lavapipe build
+crashes in its half `exp2` path, so this oracle does not test half `exp2`/`log2`;
+that reference limitation is not a target pass.
+
+`20260912T070423896733Z-native-half-math-indexed-resources` matched all 5120
+bytes exactly on J713, peak54C. The vkQuake SSAO compiler capture
+`aafaef2ceef40676f38b6a30129d06b78395a511470c91cefaa3f2760d650277`
+also compiles after these fixes; that is not proof of complete game execution.

@@ -6443,3 +6443,20 @@ TEST_F(AGX3PackBinary, FloatBranchConstantsUseAllocatedRegisters)
       }
    }
 }
+
+TEST_F(AGX3PackBinary, FloatBranchWidensHalfOperands)
+{
+   for (unsigned side = 0; side < 2; ++side) {
+      auto *b = builder(AGX_ISA_ENCODING_AGX3B);
+      agx_index half = agx_temp(b->shader, AGX_SIZE_16);
+      agx_index full = agx_temp(b->shader, AGX_SIZE_32);
+      auto *branch = agx_if_fcmp(b, side ? full : half,
+         side ? half : full, 1, AGX_FCOND_GE, true, NULL);
+      ASSERT_TRUE(agx_lower_agx3_cf_constants(b->shader));
+      EXPECT_EQ(branch->src[side].size, AGX_SIZE_32);
+      EXPECT_TRUE(agx_is_equiv(branch->src[1-side], full));
+      EXPECT_EQ(branch->fcond, AGX_FCOND_GE);
+      EXPECT_TRUE(branch->invert_cond);
+      EXPECT_FALSE(agx_lower_agx3_cf_constants(b->shader));
+   }
+}

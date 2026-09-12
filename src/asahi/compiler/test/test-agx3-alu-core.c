@@ -1029,8 +1029,16 @@ static void test_native_half_multiply(void)
       const enum agx3_alu_hint hints[]={hint,hint};
       uint8_t bytes[AGX3_ALU_MAX_LENGTH],len;
       assert(agx3_alu_hmul(AGX_ISA_ENCODING_AGX3B,live?4:2,src,hints,
-                           false,32,bytes,&len));
+                           false,false,32,bytes,&len));
       exact(bytes,len,live?"2000050100c0":"10021d0300c0");
+   }
+   {
+      const uint16_t src[] = {5, 4};
+      const enum agx3_alu_hint hints[] = {AGX3_ALU_HINT_CACHE, AGX3_ALU_HINT_CACHE};
+      uint8_t bytes[AGX3_ALU_MAX_LENGTH], len;
+      assert(agx3_alu_hmul(AGX_ISA_ENCODING_AGX3B, 0, src, hints,
+                           false, true, 32, bytes, &len));
+      exact(bytes, len, "0085058401000082");
    }
    puts("Native half multiply: two complete Apple live/dead vectors PASS");
 }
@@ -1083,7 +1091,7 @@ static void test_native_half_fma(void)
       AGX3_ALU_HINT_CACHE, AGX3_ALU_HINT_CACHE, AGX3_ALU_HINT_CACHE,
    };
    assert(agx3_alu_hfma(AGX_ISA_ENCODING_AGX3B, 1, live_src, live_hints,
-                        false, false, true, 0, bytes, &len));
+                        false, false, true, false, 0, bytes, &len));
    exact(bytes, len, "08822683018400c0");
 
    const uint16_t dead_src[] = {0, 1, 2};
@@ -1092,29 +1100,34 @@ static void test_native_half_fma(void)
       AGX3_ALU_HINT_DISCARD,
    };
    assert(agx3_alu_hfma(AGX_ISA_ENCODING_AGX3B, 0, dead_src, dead_hints,
-                        false, false, false, 0, bytes, &len));
+                        false, false, false, false, 0, bytes, &len));
    exact(bytes, len, "00001e01810200c0");
    assert(agx3_alu_hfma(AGX_ISA_ENCODING_AGX3B, 1, live_src, live_hints,
-                        false, true, true, 0, bytes, &len));
+                        false, true, true, false, 0, bytes, &len));
    exact(bytes, len, "08822683118400c0");
    assert(agx3_alu_hfma(AGX_ISA_ENCODING_AGX3B, 0, dead_src, dead_hints,
-                        false, true, false, 0, bytes, &len));
+                        false, true, false, false, 0, bytes, &len));
    exact(bytes, len, "00001e01910200c0");
    assert(agx3_alu_hfma(AGX_ISA_ENCODING_AGX3B, 1, live_src, live_hints,
-                        true, false, true, 0, bytes, &len));
+                        true, false, true, false, 0, bytes, &len));
    exact(bytes, len, "08822683018400c8");
    const uint16_t neg0_src[] = {3, 2, 4};
    assert(agx3_alu_hfma(AGX_ISA_ENCODING_AGX3B, 1, neg0_src, live_hints,
-                        true, false, true, 0, bytes, &len));
+                        true, false, true, false, 0, bytes, &len));
    exact(bytes, len, "08832682018400c8");
    assert(!agx3_alu_hfma(AGX_ISA_ENCODING_AGX3C, 0, dead_src, dead_hints,
-                         false, false, false, 0, bytes, &len));
+                         false, false, false, false, 0, bytes, &len));
    assert(!agx3_alu_hfma(AGX_ISA_ENCODING_AGX3B, 256, dead_src, dead_hints,
-                         false, false, false, 0, bytes, &len));
+                         false, false, false, false, 0, bytes, &len));
    assert(!agx3_alu_hfma(AGX_ISA_ENCODING_AGX3B, 0, dead_src, dead_hints,
-                         false, false, false, 0x40, bytes, &len));
+                         false, false, false, false, 0x40, bytes, &len));
    puts("Native half FMA/FMS: six complete Apple modifier/lifetime vectors "
         "and refusals PASS");
+   const uint16_t sat_src[] = {5, 4, 6};
+   assert(agx3_alu_hfma(AGX_ISA_ENCODING_AGX3B, 0, sat_src, live_hints,
+                       true, false, false, true, 32, bytes, &len));
+   exact(bytes, len, "00850684028600080082");
+
 }
 
 static void test_native_widen_half(void)

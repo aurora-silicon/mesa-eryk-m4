@@ -248,22 +248,23 @@ agx3_falu_fma_mod(enum agx_isa_encoding enc, uint16_t dest, uint16_t src0,
  * This keeps fog subtraction fused while waiting only on its dependencies.
  */
 bool
-agx3_falu_fma_mod_runtime(enum agx_isa_encoding enc, uint16_t dest,
+agx3_falu_fma_mod_runtime(enum agx_isa_encoding enc, uint16_t dest, bool dest_16,
                           uint16_t src0, uint16_t src1, uint16_t addend,
                           const struct agx3_falu_mods *m,
                           const struct agx3_falu_runtime *runtime,
                           uint8_t out[AGX3_FALU_MOD_MAX_LENGTH], uint8_t *len)
 {
    if (enc != AGX_ISA_ENCODING_AGX3B || m == NULL || runtime == NULL ||
-       out == NULL || len == NULL || !regs_ok(dest, src0, src1) ||
+       out == NULL || len == NULL || dest >= 256 || (!dest_16 && (dest & 1)) || !regs_ok(0, src0, src1) ||
        (addend & 1) || addend >= 256 || runtime->wait_mask > 0x3f)
       return false;
    for (unsigned i = 0; i < 3; ++i)
       if (runtime->cache[i] && runtime->discard[i])
          return false;
 
-   struct agx3_field_kv ov[24];
+   struct agx3_field_kv ov[25];
    unsigned n = common_mods(dest, src0, src1, m, ov);
+   ov[n++] = (struct agx3_field_kv)KV(10, dest_16 ? 1 : 2);
    ov[n++] = (struct agx3_field_kv)KV(52, addend);
    ov[n++] = (struct agx3_field_kv)KV(64, m->addend_abs);
    ov[n++] = (struct agx3_field_kv)KV(65, m->addend_neg);
@@ -340,17 +341,17 @@ agx3_falu_fma_addend_imm(enum agx_isa_encoding enc, uint16_t dest,
 /* The immediate multiplier and addend occupy independent native fields.
  * This is still one fused operation with one rounding, e.g. depth*2-1. */
 bool
-agx3_falu_fma_two_imm(enum agx_isa_encoding enc, uint16_t dest,
+agx3_falu_fma_two_imm(enum agx_isa_encoding enc, uint16_t dest, bool dest_16,
                      uint16_t src, uint8_t multiplier, uint8_t addend,
                      const struct agx3_falu_runtime *runtime,
                      uint8_t out[AGX3_FALU_MOD_MAX_LENGTH], uint8_t *len)
 {
    if (enc != AGX_ISA_ENCODING_AGX3B || !runtime || !out || !len ||
-       !regs_ok(dest, src, 0) || runtime->wait_mask > 0x3f ||
+       dest >= 256 || (!dest_16 && (dest & 1)) || !regs_ok(0, src, 0) || runtime->wait_mask > 0x3f ||
        (runtime->cache[0] && runtime->discard[0]))
       return false;
    const struct agx3_field_kv base[] = {
-      KV(9,2), KV(10,2), KV(25,2), KV(26,2), KV(42,1), KV(43,2),
+      KV(9,2), KV(10,dest_16 ? 1 : 2), KV(25,2), KV(26,2), KV(42,1), KV(43,2),
       KV(59,1), KV(60,2), KV(77,2), KV(91,2),
    };
    struct agx3_field_kv ov[14] = {
