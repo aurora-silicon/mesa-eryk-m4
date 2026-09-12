@@ -34,3 +34,13 @@ Offline native compilation and packet tests alone are not hardware validation.
   UVS special-word layout nor layered framebuffer rendering is implemented.
 
 All hardware runs use the 60-second watchdog and fresh six-channel thermals.
+
+## Captured BDA buffer binding
+
+`vk-capture-buffer-bind.c` reproduces Firefox's 1MiB buffer suballocated at
+1MiB into a2MiB memory allocation, with capture/replay enabled. Before the fix,
+`hk_BindBufferMemory2` includes the extra virtual guard in the BO mapping and
+returns VK_ERROR_UNKNOWN. Binding only the page-rounded buffer storage passes.
+Evidence: `20260912T032338882082Z-capture-buffer-bind-before` fails;
+`20260912T032407605031Z-capture-buffer-bind-after` passes. This tests binding
+and address acquisition, not shader execution.
