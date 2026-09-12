@@ -327,3 +327,30 @@ Plasma tests use `plasma-nested-probe.sh` and `plasma-nested-shell.sh` with
 the basename `kwin_wayland`, is used only for capture instrumentation. The
 original capability-bearing executable suppresses loader environment settings.
 Nested success establishes compositor/desktop rendering, not standalone login.
+
+## Exact software reference frames
+
+`vulkan-replay-software.py TRACE --output NEW_DIRECTORY --frames 60` replays
+an existing trace on the x86 host lavapipe build with four CPU threads and a
+60-second default bound. It records the capture, replay and ICD/library hashes,
+logs, exact rebind/offscreen/no-pipeline-cache adaptations and PNG frames.
+Compare those frames with the guarded hardware replay using image-compare.py.
+This helper never selects the M4 or any host hardware GPU.
+
+Optional `--dump-config FILE` retains and applies a GFXReconstruct resource-dump
+selection for numerical comparison of intermediate resources.
+
+`vkquake-indirect-probe.py --dump capture_dr.json --dispatch INDEX
+--push-constants VALUES.bin --globals reference/vkQuake/Shaders/globals.inc
+--output NEW_DIRECTORY [--mode generate]` creates a one-buffer numerical probe
+from the captured indirect-generator inputs. The default records visibility and
+backface decisions; `generate` retains early returns, atomics and index generation
+and adds per-surface stage markers. These are explicit diagnostic adaptations,
+not proof of the original application's correctness. Index allocation order from
+contended atomics may differ legitimately; compare draw counts and triangle sets.
+The manifest records captured input hashes, constants, invocation count and
+probe-output offset. Compile `probe.comp` with glslangValidator and execute using
+`vk-buffer-oracle.c`, with gpu-experiment.py for hardware. `M4_ORACLE_SOFTWARE=1`
+selects only lavapipe's CPU device for host reference generation. Comparing a
+reference-generation run against its unchanged input intentionally reports a
+mismatch; retain its output and validate expected semantics before reusing it.
