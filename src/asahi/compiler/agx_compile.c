@@ -2809,6 +2809,32 @@ agx_lower_agx3_cf_constants(agx_context *ctx)
             progress = true;
          }
       }
+      /* Native branch predicates have no qualified absolute-value operand.
+       * Clear the IEEE sign bit before RA, preserving zeros, infinities and
+       * NaN payloads. If abs is followed by negation, materialize that bit too
+       * so the register/zero predicate remains a plain operand. */
+      if (floating) {
+         for (unsigned s = 0; s < 2; ++s) {
+            agx_index src = I->src[s];
+            if (!src.abs || src.type == AGX_INDEX_IMMEDIATE ||
+                src.size != AGX_SIZE_32 || agx_channels(src) != 1)
+               continue;
+            agx_builder b = agx_init_builder(ctx, agx_before_instr(I));
+            const bool negate = src.neg;
+            src.abs = src.neg = false;
+            agx_index absolute = agx_temp(ctx, AGX_SIZE_32);
+            agx_bitop_to(&b, absolute, src,
+                         agx_mov_imm(&b, 32, 0x7fffffff), 0x8);
+            if (negate) {
+               agx_index negative = agx_temp(ctx, AGX_SIZE_32);
+               agx_bitop_to(&b, negative, absolute,
+                            agx_mov_imm(&b, 32, 0x80000000), 0x6);
+               absolute = negative;
+            }
+            I->src[s] = absolute;
+            progress = true;
+         }
+      }
       for (unsigned s = 0; s < 2; ++s) {
          agx_index src = I->src[s], other = I->src[1 - s];
          if (floating) {
