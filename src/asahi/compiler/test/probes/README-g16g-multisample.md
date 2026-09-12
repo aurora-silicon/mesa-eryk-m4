@@ -33,3 +33,13 @@ buffer address shifted right by four for this ordinary one-layer resource.
 All32 output bytes are checked in `test-pbe-agx3-core.c`, including round
 trips and refusal of unqualified Gen10 MSAA and mipmapped MSAA.
 This establishes the descriptor arithmetic, independently of render success.
+
+## SPECLM geometry
+
+`speclm-imageblock.py UMD --stride 8 --samples 4 --width 32 --height 16`
+runs the native imageblock arithmetic and state encoder. Explicit sample
+count and tile area now travel through ordinary, background and EOT shader
+state. The retained eight-byte native witnesses cover 1x/2x/4x and 32x32,
+32x16 and16x16 tile shapes. Four samples at eight bytes per sample select
+32x16 tiles with the existing tilebuffer budget. The offline Honeykrisp
+Ioto program test checks these bytes; it does not qualify MSAA rendering.

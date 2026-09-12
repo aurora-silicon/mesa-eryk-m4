@@ -72,8 +72,10 @@ hk_agx3_g17p_single_layer_rendering(uint32_t view_mask, uint32_t layer_count)
 bool
 hk_agx3_g17p_rt0_tile_layout_supported(struct agx_tilebuffer_layout *tib)
 {
-   if (!tib || (tib->nr_samples != 1 && tib->nr_samples != 2) || tib->layered ||
-       tib->tile_size != 32 * 32 || tib->spilled[0])
+   if (!tib || (tib->nr_samples != 1 && tib->nr_samples != 2 &&
+                tib->nr_samples != 4) || tib->layered ||
+       (tib->tile_size != 32 * 32 && tib->tile_size != 32 * 16 &&
+        tib->tile_size != 16 * 16) || tib->spilled[0])
       return false;
 
    const bool mixed_mrt =
@@ -222,6 +224,22 @@ hk_agx3_g17p_graphics_state_tail(
        */
       staged.bytes[3] = (staged.bytes[3] & 0xc1) |
                         ((desc->sample_size_B / 8) << 1);
+   }
+   if (desc->fragment) {
+      const unsigned samples = desc->nr_samples ?: 1;
+      const unsigned tile = desc->tile_size ?: 32 * 32;
+      if ((samples != 1 && samples != 2 && samples != 4) ||
+          (tile != 32 * 32 && tile != 32 * 16 && tile != 16 * 16))
+         return false;
+      /* Native SpecLM::encodeImageBlockData + SPECLM_0 encoder, independently
+       * executed by tools/macos-native/speclm-imageblock.py. Sample codes
+       * 1x/2x/4x map to bits[24:23] = 2/0/1. The utile geometry changes both
+       * word1 bit14 and word2 bits[3:1], not the sample stride. */
+      staged.bytes[2] = (staged.bytes[2] & 0x7f) | (samples == 4 ? 0x80 : 0);
+      staged.bytes[3] = (staged.bytes[3] & 0xbe) |
+                        (samples == 1 ? 1 : 0) | (tile == 32 * 32 ? 0x40 : 0);
+      staged.bytes[4] = (staged.bytes[4] & 0xf5) |
+                        (tile == 32 * 32 ? 0xa : tile == 32 * 16 ? 2 : 0);
    }
    if (!agx_ioto_state_pack_ldshdr(AGX_CHIP_G17P, &ldshdr,
                                    staged.bytes + AGX_IOTO_SPECLM_SIZE,
@@ -544,6 +562,8 @@ hk_agx3_g17p_rt0_bg_program_generate(
 
    const struct hk_agx3_g17p_graphics_program_desc shader = {
       .sample_size_B = desc->sample_size_B,
+      .tile_size = desc->tile_size,
+      .nr_samples = desc->nr_samples,
       .program_va = desc->program_va,
       .shader_va = desc->shader_va,
       .shader_binary_size = desc->shader_binary_size,
@@ -645,6 +665,8 @@ hk_agx3_g17p_rt0_eot_program_generate(
 
    const struct hk_agx3_g17p_graphics_program_desc shader = {
       .sample_size_B = desc->sample_size_B,
+      .tile_size = desc->tile_size,
+      .nr_samples = desc->nr_samples,
       .program_va = desc->program_va,
       .shader_va = desc->shader_va,
       .shader_binary_size = desc->shader_binary_size,

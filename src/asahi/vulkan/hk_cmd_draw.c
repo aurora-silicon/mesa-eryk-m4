@@ -475,6 +475,8 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
 
       const struct hk_agx3_g17p_rt0_eot_program_desc desc = {
          .sample_size_B = key->tib.sample_size_B,
+         .tile_size = key->tib.tile_size,
+         .nr_samples = key->tib.nr_samples,
          .program_va = program_bo->va->addr,
          .shader_va = shader->ptr + shader->info.main_offset,
          .pbe_argument_va = pbe_argument_va,
@@ -514,6 +516,8 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
    } else if (op == AGX_BG_EOT_NONE) {
       const struct hk_agx3_g17p_graphics_program_desc desc = {
          .sample_size_B = key->tib.sample_size_B,
+         .tile_size = key->tib.tile_size,
+         .nr_samples = key->tib.nr_samples,
          .program_va = program_bo->va->addr,
          .shader_va = shader->ptr + shader->info.main_offset,
          .shader_binary_size = shader->info.binary_size,
@@ -561,6 +565,8 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
 
       struct hk_agx3_g17p_rt0_bg_program_desc desc = {
          .sample_size_B = key->tib.sample_size_B,
+         .tile_size = key->tib.tile_size,
+         .nr_samples = key->tib.nr_samples,
          .program_va = program_bo->va->addr,
          .shader_va = shader->ptr + shader->info.main_offset,
          .shader_binary_size = shader->info.binary_size,

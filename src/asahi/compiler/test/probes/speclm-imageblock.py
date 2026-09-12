@@ -16,6 +16,9 @@ from unicorn.arm64_const import UC_ARM64_REG_X0, UC_ARM64_REG_X1, UC_ARM64_REG_X
 p = argparse.ArgumentParser(description=__doc__)
 p.add_argument('umd', type=Path)
 p.add_argument('--stride', type=int, action='append')
+p.add_argument('--samples',type=int,default=1,choices=[1,2,4])
+p.add_argument('--width',type=int,default=32,choices=[16,32])
+p.add_argument('--height',type=int,default=32,choices=[16,32])
 a = p.parse_args()
 blob = a.umd.read_bytes()
 digest = hashlib.sha256(blob).hexdigest()
@@ -41,13 +44,13 @@ rows = []
 for stride in a.stride or [8, 16, 24, 248]:
     if stride < 8 or stride > 248 or stride % 8:
         p.error('stride must be a multiple of eight between 8 and 248')
-    lo, hi = call(0x315428, [stride//4, 1, 32, 32])
+    lo, hi = call(0x315428, [stride//4, a.samples, a.width, a.height])
     # SpecLM semantic object: active H, imageblock low and high pairs,
     # then default flags/resource fields. No native pointers escape this call.
     data = struct.pack('<QQQ', 1<<32, lo, hi) + bytes(24)
     u.mem_write(base, data); u.mem_write(base+0x100, bytes(16))
     call(0x2a7834, [base+0x100, base])
     result = bytes(u.mem_read(base+0x100, 8))
-    rows.append(dict(stride_B=stride, semantic=data.hex(), speclm=result.hex()))
+    rows.append(dict(stride_B=stride, samples=a.samples, width=a.width, height=a.height, semantic=data.hex(), speclm=result.hex()))
 print(json.dumps(dict(umd_sha256=digest, functions=['0x315428','0x2a7834'], results=rows,
     limitation='Offline arithmetic and encoder execution only; no hardware validation.'), indent=2))

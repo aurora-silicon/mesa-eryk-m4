@@ -1476,6 +1476,23 @@ test_g17p_rt0_background_programs(void)
    wide_program.bytes[sizeof(clear_pre_copy) + 3] = 0x43;
    CHECK(!memcmp(wide_program.bytes, program.bytes, program.length));
 
+   /* Pinned G16G native imageblock constructor + SPECLM encoder. */
+   const struct { unsigned samples, tile; uint8_t bytes[8]; } ms[] = {
+      {2, 32*32, {0x77,0,0x2a,0x42,0x4b,0,0,0}},
+      {4, 32*32, {0x77,0,0xaa,0x42,0x4b,0,0,0}},
+      {4, 32*16, {0x77,0,0xaa,0x02,0x43,0,0,0}},
+      {1, 16*16, {0x77,0,0x2a,0x03,0x41,0,0,0}},
+   };
+   for (unsigned i = 0; i < ARRAY_SIZE(ms); ++i) {
+      wide = clear;
+      wide.sample_size_B = 8;
+      wide.nr_samples = ms[i].samples;
+      wide.tile_size = ms[i].tile;
+      CHECK(hk_agx3_g17p_rt0_bg_program_generate(AGX_CHIP_G16G, &wide,
+                                                 &wide_program));
+      CHECK(!memcmp(wide_program.bytes + sizeof(clear_pre_copy), ms[i].bytes, 8));
+   }
+
    struct hk_agx3_g17p_rt0_bg_program relocated;
    struct hk_agx3_g17p_rt0_bg_program_desc moved = clear;
    moved.clear_value_va += UINT64_C(0x10000);
@@ -1963,7 +1980,8 @@ test_g17p_single_layer_rt0_layout(void)
    CHECK(tib.nr_samples == 2 && tib.sample_size_B == 8 &&
          tib.tile_size == 32 * 32 && !tib.spilled[0]);
    tib = agx_build_tilebuffer_layout(rgba, 1, 4, false);
-   CHECK(!hk_agx3_g17p_rt0_tile_layout_supported(&tib));
+   CHECK(hk_agx3_g17p_rt0_tile_layout_supported(&tib));
+   CHECK(tib.tile_size == 32 * 16 && tib.sample_size_B == 8);
    CHECK(!hk_agx3_g17p_rt0_tile_layout_supported(NULL));
    return 0;
 }

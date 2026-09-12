@@ -58,6 +58,8 @@ bool hk_agx3_g17p_no_resource_program_generate(
 struct hk_agx3_g17p_graphics_program_desc {
    /* Zero retains the 8-byte attachmentless/default imageblock. */
    uint16_t sample_size_B;
+   uint16_t tile_size; /* Zero retains 32x32; otherwise pixels per utile. */
+   uint8_t nr_samples; /* Zero retains one sample. */
    uint64_t program_va;
    uint64_t shader_va;
    const struct agx3_ioto_uniform_range *uniform_ranges;
@@ -163,6 +165,8 @@ bool hk_agx3_g17p_rt0_bg_resource_spec(
 struct hk_agx3_g17p_rt0_bg_program_desc {
    /* Zero retains the 8-byte attachmentless/default imageblock. */
    uint16_t sample_size_B;
+   uint16_t tile_size; /* Zero retains 32x32; otherwise pixels per utile. */
+   uint8_t nr_samples; /* Zero retains one sample. */
    uint64_t program_va;
    uint64_t shader_va;
    uint64_t clear_value_va;
@@ -195,6 +199,8 @@ bool hk_agx3_g17p_rt0_bg_shader_resources_match(
 struct hk_agx3_g17p_rt0_eot_program_desc {
    /* Zero retains the 8-byte attachmentless/default imageblock. */
    uint16_t sample_size_B;
+   uint16_t tile_size; /* Zero retains 32x32; otherwise pixels per utile. */
+   uint8_t nr_samples; /* Zero retains one sample. */
    uint64_t program_va;
    uint64_t shader_va;
    /* Raw 32-byte-aligned GPU VA to the owned RT0 PBE32 descriptor. The
