@@ -1896,3 +1896,17 @@ Evidence: experiments `20260912T225839789763Z-forced-spill-retain-tps` and
 `20260912T225930577131Z-tps-retention-regressions`. Encoding unit tests retain
 byte-exact consuming and non-consuming Apple witnesses. Dynamic stores and
 16-bit scratch lowering remain unimplemented.
+
+### Image dimensions and copy strides
+
+`vulkan-image-dimensions.c` checks 1D, 1D-array and 3D optimal images at mip1,
+RGBA8 and RGBA32F. It uploads a full subresource, patches a rectangle/slice
+range with padded buffer rows, then reads the whole image and a padded partial
+region. Untouched texels, source bytes and destination padding are checked.
+Compile with `cc -O2 vulkan-image-dimensions.c -lvulkan`; `--reference` allows
+lavapipe. Hardware execution requires `gpu-experiment.py`.
+
+Lavapipe and M4 passed all six exact byte comparisons on 2026-09-12, guarded
+experiment `20260912T230401875508Z-image-dimensionality`, peak55.25 C. Blender's
+retained reference capture no longer reports unsupported raw uploads in the
+host noop-shim replay; attachment layouts still stop API4004.

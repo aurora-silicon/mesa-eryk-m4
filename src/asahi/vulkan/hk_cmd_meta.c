@@ -2103,8 +2103,7 @@ hk_native_copy_raw_buffer_image(
    uint32_t region_count, const VkBufferImageCopy2 *regions,
    VkImageLayout image_layout, bool to_image)
 {
-   if (image->vk.image_type != VK_IMAGE_TYPE_2D ||
-       image->vk.samples != VK_SAMPLE_COUNT_1_BIT ||
+   if (image->vk.samples != VK_SAMPLE_COUNT_1_BIT ||
        (image_layout != (to_image ? VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL :
                                      VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) &&
         image_layout != VK_IMAGE_LAYOUT_GENERAL))
@@ -2135,10 +2134,19 @@ hk_native_copy_raw_buffer_image(
          return false;
 
       const uint32_t level = region->imageSubresource.mipLevel;
+      if (level >= image->vk.mip_levels)
+         return false;
+      const bool is_3d = image->vk.image_type == VK_IMAGE_TYPE_3D;
       const uint32_t layers = vk_image_subresource_layer_count(
          &image->vk, &region->imageSubresource);
       const uint32_t mip_w = u_minify(image->vk.extent.width, level);
       const uint32_t mip_h = u_minify(image->vk.extent.height, level);
+      const uint32_t mip_d = u_minify(image->vk.extent.depth, level);
+      const uint32_t z = region->imageOffset.z;
+      const uint32_t depth = region->imageExtent.depth;
+      const uint32_t slices = is_3d ? depth : layers;
+      const uint32_t base_slice = is_3d ? z :
+         region->imageSubresource.baseArrayLayer;
       const uint32_t x = region->imageOffset.x;
       const uint32_t y = region->imageOffset.y;
       const uint32_t width = region->imageExtent.width;
@@ -2148,12 +2156,15 @@ hk_native_copy_raw_buffer_image(
       const uint32_t image_h_px = region->bufferImageHeight ?
                                      region->bufferImageHeight : height;
 
-      if (level >= image->vk.mip_levels || layers == 0 ||
+      if (layers == 0 ||
           region->imageSubresource.baseArrayLayer >= image->vk.array_layers ||
           layers > image->vk.array_layers -
                       region->imageSubresource.baseArrayLayer ||
           region->imageOffset.x < 0 || region->imageOffset.y < 0 ||
-          region->imageOffset.z != 0 || region->imageExtent.depth != 1 ||
+          region->imageOffset.z < 0 || !depth ||
+          (is_3d ? (region->imageSubresource.baseArrayLayer != 0 || layers != 1 ||
+                    z >= mip_d || depth > mip_d - z) : (z != 0 || depth != 1)) ||
+          (image->vk.image_type == VK_IMAGE_TYPE_1D && (y != 0 || height != 1)) ||
           !width || !height || x >= mip_w || y >= mip_h ||
           width > mip_w - x || height > mip_h - y ||
           (x % block_w) || (y % block_h) ||
@@ -2190,9 +2201,9 @@ hk_native_copy_raw_buffer_image(
          key.dst_tile_log2_w = key.dst_tile_log2_h = -1;
       }
 
-      for (uint32_t layer = 0; layer < layers; ++layer) {
+      for (uint32_t layer = 0; layer < slices; ++layer) {
          const uint32_t dst_layer =
-            region->imageSubresource.baseArrayLayer + layer;
+            base_slice + layer;
          struct hk_block_copy_push push = {
             .src = base_src + layer * src_layer_B,
             .dst = base_dst + ail_get_layer_level_B(layout, dst_layer, level),
@@ -2470,7 +2481,6 @@ hk_CmdCopyImageToBuffer2(VkCommandBuffer commandBuffer,
    hk_meta_begin(cmd, &save, VK_PIPELINE_BIND_POINT_COMPUTE);
    VK_FROM_HANDLE(hk_image, image, pCopyImageToBufferInfo->srcImage);
    if (agx_native_graphics(&dev->dev) &&
-       image->vk.image_type == VK_IMAGE_TYPE_2D &&
        image->vk.samples == VK_SAMPLE_COUNT_1_BIT &&
        image->planes[0].layout.tiling == AIL_TILING_GPU &&
        !image->planes[0].layout.compressed &&
