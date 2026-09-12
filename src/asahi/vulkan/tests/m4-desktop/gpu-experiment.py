@@ -191,7 +191,7 @@ print(json.dumps(dict(boot_id=pathlib.Path('/proc/sys/kernel/random/boot_id').re
         with (output / "fetch.log").open("a") as log:
             try:
                 fetched = subprocess.run(
-                    ["rsync", "-a", "--partial", "--partial-dir=.rsync-partial",
+                    ["rsync", "-az", "--partial", "--partial-dir=.rsync-partial",
                      "-e", "ssh -o ConnectTimeout=10", "--timeout=20",
                      HOST + ":" + remote_output + "/", str(output / "remote") + "/"],
                     stdout=log, stderr=subprocess.STDOUT, timeout=40).returncode == 0

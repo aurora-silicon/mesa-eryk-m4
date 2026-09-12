@@ -1763,3 +1763,8 @@ failure at20:19; retained screenshot alone does not qualify live presentation.
 `app-observe.py --seconds40` allows enough loading time before a≥10s STK race
 observation. The enclosing watchdog/thermal guard remains mandatory and must
 allow cleanup time; the helper does not infer racing from process survival.
+
+Evidence transfers use rsync compression to retain full raw scanouts without
+repeated transport timeouts. Native203330 qualifies Chromium WebGL live
+output;203436 validates STK raceclock15.050s with correct visible scene and
+M4 Zink renderer. Peak temperatures60.25C and59.5C respectively.
