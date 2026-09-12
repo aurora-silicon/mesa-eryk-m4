@@ -6367,3 +6367,27 @@ TEST_F(AGX3PackBinary, M4IntegerMipFetchStagesUniformAndRegister)
       EXPECT_EQ(b->shader->agx3_staging_halfs,8u);
    }
 }
+
+TEST_F(AGX3PackBinary, FloatBranchConstantsUseAllocatedRegisters)
+{
+   for (unsigned side = 0; side < 2; ++side) {
+      for (float value : {1.0f, -1.0f, 2.0f, 0.5f}) {
+         auto *b = builder(AGX_ISA_ENCODING_AGX3B);
+         agx_index source = agx_temp(b->shader, AGX_SIZE_32);
+         agx_index constant = agx_immediate(agx_minifloat_encode(value));
+         auto *branch = agx_if_fcmp(b, side ? source : constant,
+            side ? constant : source, 1, AGX_FCOND_GE, true, NULL);
+         ASSERT_TRUE(agx_lower_agx3_cf_constants(b->shader));
+         EXPECT_TRUE(agx_is_equiv(branch->src[1-side], source));
+         EXPECT_EQ(branch->fcond, AGX_FCOND_GE);
+         EXPECT_TRUE(branch->invert_cond);
+         EXPECT_EQ(branch->src[side].type, AGX_INDEX_NORMAL);
+         EXPECT_EQ(branch->src[side].size, AGX_SIZE_32);
+         auto *move = list_first_entry(&agx_start_block(b->shader)->instructions, agx_instr, link);
+         EXPECT_EQ(move->op, AGX_OPCODE_MOV_IMM);
+         EXPECT_EQ(move->imm, fui(value));
+         EXPECT_TRUE(agx_is_equiv(move->dest[0], branch->src[side]));
+         EXPECT_FALSE(agx_lower_agx3_cf_constants(b->shader));
+      }
+   }
+}

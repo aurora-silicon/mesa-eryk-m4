@@ -2556,7 +2556,13 @@ agx_lower_agx3_cf_constants(agx_context *ctx)
 
    bool progress = false;
    agx_foreach_instr_global_safe(ctx, I) {
+      bool floating = false;
       switch (I->op) {
+      case AGX_OPCODE_IF_FCMP:
+      case AGX_OPCODE_WHILE_FCMP:
+      case AGX_OPCODE_BREAK_IF_FCMP:
+         floating = true;
+         break;
       case AGX_OPCODE_IF_ICMP:
       case AGX_OPCODE_ELSE_ICMP:
       case AGX_OPCODE_WHILE_ICMP:
@@ -2569,6 +2575,24 @@ agx_lower_agx3_cf_constants(agx_context *ctx)
          continue;
       for (unsigned s = 0; s < 2; ++s) {
          agx_index src = I->src[s], other = I->src[1 - s];
+         if (floating) {
+            /* FCMP has a register/zero form, but arbitrary minifloats must
+             * use its register/register form. Preserve IEEE value and source
+             * modifiers while allocating the temporary through normal SSA. */
+            if (src.type != AGX_INDEX_IMMEDIATE || src.value == 0 ||
+                src.value > UINT8_MAX || other.type == AGX_INDEX_IMMEDIATE ||
+                other.size != AGX_SIZE_32 || agx_channels(other) != 1)
+               continue;
+            float value = agx_minifloat_decode(src.value);
+            if (src.abs)
+               value = fabsf(value);
+            if (src.neg)
+               value = -value;
+            agx_builder b = agx_init_builder(ctx, agx_before_instr(I));
+            I->src[s] = agx_mov_imm(&b, 32, fui(value));
+            progress = true;
+            continue;
+         }
          if (src.type != AGX_INDEX_IMMEDIATE || src.value == 0 ||
              src.value > UINT8_MAX || src.abs || src.neg ||
              other.type == AGX_INDEX_IMMEDIATE || other.size != AGX_SIZE_16 ||

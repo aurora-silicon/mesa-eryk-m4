@@ -66,3 +66,15 @@ Both used the 60-second watchdog and six-channel temperature guard (peaks
 55.75 C and 58 C). No per-draw synchronization or disabled borders are required.
 This is one reproduced hang and normal-login qualification, not full conformance
 or long-duration stability qualification.
+
+## SuperTuxKart kart preview, 2026-09-12
+
+Ordinary GUI startup (real user graphics configuration) reached the profile and
+main menus. Opening Singleplayer then aborted in Zink after pipeline creation
+failed. Captured vertex input `0a4657c3a65992ef5212ca378961f573f4bf3ff002a98ac1dc90bcbe62d1a04f`
+(5056 bytes, SHA256 `706b3d6a45d86d27ee191107a4c9ce5e6d8a6507bf25c4d25f53acba6d743921`)
+rejected `if_fcmp register, 1.0`. Materializing nonzero floating branch constants
+before register allocation compiles the complete input to 2070 bytes offline.
+Both operand orders and signed minifloats have focused legalization coverage.
+This fixes compiler acceptance only; the same workload also exposes an F16 EOT
+store and partial-component tile loads that remain separate work.
