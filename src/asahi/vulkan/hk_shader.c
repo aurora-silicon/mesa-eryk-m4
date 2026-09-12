@@ -1512,19 +1512,7 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
       mesa_loge("AGX backend rejected %s shader for %s (name=%s)",
                 _mesa_shader_stage_to_string(nir->info.stage),
                 agx_chip_name(dev->dev.chip), nir->info.name ? nir->info.name : "unnamed");
-      /* On G17P this is currently the single biggest functional gap in the
-       * driver, and it is not a shader-specific accident: the AGX3 packer
-       * encodes AT MOST ONE SSBO ACCESS PER SHADER and no atomics at all.
-       * One store encodes; one load plus one store does not; two stores do
-       * not.  Uniform/`load_preamble` reads and constant-data (rodata) loads
-       * do not count against it.
-       *
-       * That means no real compute workload compiles, and a conformance run
-       * is blocked behind this regardless of the command-stream, launch and
-       * memory work being correct.  The measured matrix, the reproduction
-       * (which needs no hardware -- it runs under the G17P drm-shim) and the
-       * two traps that make the bisect lie are in
-       * src/asahi/isa/README-agx3-packer-limits.md. */
+      /* Ownership is consumed on failure as well as success. */
       ralloc_free(nir);
       return vk_errorf(dev, VK_ERROR_FEATURE_NOT_PRESENT,
                        "AGX backend cannot encode shader for %s",
@@ -1734,17 +1722,18 @@ hk_compile_shader(struct hk_device *dev, struct vk_shader_compile_info *info,
 
       for (unsigned v = 0; v < ARRAY_SIZE(variants); ++v) {
          if (variants[v].in) {
+            nir_shader *input = variants[v].in;
+            variants[v].in = NULL; /* hk_compile_nir consumes this input. */
             result =
-               hk_compile_nir(dev, pAllocator, variants[v].in, info->flags,
+               hk_compile_nir(dev, pAllocator, input, info->flags,
                               info->robustness, NULL, features, variants[v].out,
                               sw_stage, true, NULL, info->set_layout_count, info->set_layouts);
 
             if (result != VK_SUCCESS) {
                hk_api_shader_destroy(&dev->vk, &obj->vk, pAllocator);
-               ralloc_free(nir);
-               ralloc_free(pre_gs);
-               ralloc_free(count);
-               ralloc_free(rast);
+               for (unsigned pending = v + 1; pending < ARRAY_SIZE(variants);
+                    ++pending)
+                  ralloc_free(variants[pending].in);
                return result;
             }
          }
@@ -1856,7 +1845,8 @@ hk_compile_shader(struct hk_device *dev, struct vk_shader_compile_info *info,
                            hw, nir->xfb_info, info->set_layout_count, info->set_layouts);
          if (result != VK_SUCCESS) {
             hk_api_shader_destroy(&dev->vk, &obj->vk, pAllocator);
-            ralloc_free(nir);
+            if (!last)
+               ralloc_free(nir);
             return result;
          }
       }
