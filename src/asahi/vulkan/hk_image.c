@@ -487,7 +487,8 @@ hk_GetPhysicalDeviceImageFormatProperties2(
          const enum pipe_format physical = ail_pixel_format[pipe].renderable;
          const bool native_rt0 =
             physical == PIPE_FORMAT_R8_UNORM ||
-            physical == PIPE_FORMAT_R10G10B10A2_UNORM;
+            physical == PIPE_FORMAT_R10G10B10A2_UNORM ||
+            physical == PIPE_FORMAT_R8G8B8A8_SRGB;
          const bool bounded_color =
             (features & VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT) &&
             !(pImageFormatInfo->usage & VK_IMAGE_USAGE_STORAGE_BIT) &&

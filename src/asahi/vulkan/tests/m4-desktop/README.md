@@ -1691,3 +1691,14 @@ xfb-split-interpolation passed all positions and pixels with checksum
 `c6714fd7dac17725`, matching lavapipe. Peaks 57 C, no GPU faults. These
 checks qualify enabling transformFeedback on the experimental M4 path;
 geometryStreams remains disabled. Chromium application validation is pending.
+
+## ANGLE format admission and sRGB resolve
+
+`gl-format-caps.c` queries the required ES3 renderbuffer sample counts and
+transform-feedback component limit. Build with `-lEGL -lGL`; run under the GPU
+guard through `run-m4-gl.py`. A query pass is not rendering qualification.
+`multisample-probe 4 srgb8` enables framebuffer sRGB and compares incremental
+sample resolves/reloads against linear averaging followed by sRGB encoding.
+The same oracle supports 1x/2x and explicit llvmpipe reference execution.
+`vulkan-fragment-probe.py --format srgb8` selects an sRGB attachment while
+retaining the supplied byte oracle; its host-shim mode never submits to GPU.

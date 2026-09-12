@@ -336,9 +336,16 @@ agx_build_end_of_tile_shader(struct agx_bg_eot_cache *cache,
          explicit = true;
       }
 
+      /* Native tile lowering encodes sRGB in the shader and stores packed
+       * UNORM bytes. EOT must use that same representation; it must not
+       * request the legacy hardware sRGB tile conversion again. */
+      enum pipe_format format = agx_tilebuffer_physical_format(&key->tib, rt);
+      if (agx_native_graphics(cache->dev) && util_format_is_srgb(format))
+         format = (enum pipe_format)AIL_ISA_FORMAT_U8NORM;
+
       nir_image_store_block_agx(
          &b, nir_imm_intN_t(&b, rt, 16), nir_imm_int(&b, offset_B), coords,
-         .format = agx_tilebuffer_physical_format(&key->tib, rt),
+         .format = format,
          .image_dim = dim, .image_array = key->tib.layered,
          .explicit_coord = explicit);
    }

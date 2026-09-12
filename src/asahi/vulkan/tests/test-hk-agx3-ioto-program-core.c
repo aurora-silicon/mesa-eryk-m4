@@ -1673,6 +1673,19 @@ test_g17p_single_layer_rt0_layout(void)
    CHECK(hk_agx3_g17p_rt0_tile_layout_supported(&tib));
    CHECK(agx_tilebuffer_offset_B(&tib, 0) == 0);
 
+   const enum pipe_format srgb[] = {
+      PIPE_FORMAT_R8G8B8A8_SRGB, PIPE_FORMAT_B8G8R8A8_SRGB,
+   };
+   for (unsigned i = 0; i < ARRAY_SIZE(srgb); ++i) {
+      enum pipe_format format[AGX_MAX_RENDER_TARGETS] = {srgb[i]};
+      for (unsigned samples = 1; samples <= 4; samples *= 2) {
+         tib = agx_build_tilebuffer_layout(format, 1, samples, false);
+         CHECK(hk_agx3_g17p_rt0_tile_layout_supported(&tib));
+         CHECK(tib.sample_size_B == 8);
+         CHECK(agx_tilebuffer_offset_B(&tib, 0) == 0);
+      }
+   }
+
    enum pipe_format narrow[] = {
       PIPE_FORMAT_R8_UNORM,
       PIPE_FORMAT_R8G8_UNORM,

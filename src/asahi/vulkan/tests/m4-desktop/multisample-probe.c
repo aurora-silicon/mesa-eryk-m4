@@ -37,7 +37,8 @@ int main(int argc, char **argv) {
   CHECK(samples == 1 || samples == 2 || samples == 4);
   const char *format = argc > 2 ? argv[2] : "rgba8";
   GLenum color_format = !strcmp(format, "rgba8") ? GL_RGBA8 :
-                        !strcmp(format, "rgb10a2") ? GL_RGB10_A2 : 0;
+                        !strcmp(format, "rgb10a2") ? GL_RGB10_A2 :
+                        !strcmp(format, "srgb8") ? GL_SRGB8_ALPHA8 : 0;
   CHECK(color_format);
   const char *depth_name = argc > 3 ? argv[3] : "none";
   GLenum depth_format = !strcmp(depth_name, "depth16") ? GL_DEPTH_COMPONENT16 :
@@ -137,6 +138,7 @@ int main(int argc, char **argv) {
     glClear(GL_DEPTH_BUFFER_BIT | (stencil ? GL_STENCIL_BUFFER_BIT : 0));
     if (stencil) glEnable(GL_STENCIL_TEST);
   }
+  if (color_format == GL_SRGB8_ALPHA8) glEnable(GL_FRAMEBUFFER_SRGB);
   glClearColor(0, 0, 0, 1);
   glClear(GL_COLOR_BUFFER_BIT);
   glEnable(GL_MULTISAMPLE);
@@ -193,6 +195,12 @@ int main(int argc, char **argv) {
     // A floating-point bias formula would leave red nearer and fail this.
     if (depth_bias) red = 0;
     int green = depth_format ? 255 - red : 0;
+    if (color_format == GL_SRGB8_ALPHA8) {
+      float r = depth_bias ? 0 : getenv("M4_MSAA_ALL_SAMPLES") ? !!step : (float)step / samples;
+      float g = depth_format ? 1 - r : 0;
+      red = lroundf(255 * (r <= .0031308f ? 12.92f * r : 1.055f * powf(r, 1.f / 2.4f) - .055f));
+      green = lroundf(255 * (g <= .0031308f ? 12.92f * g : 1.055f * powf(g, 1.f / 2.4f) - .055f));
+    }
     for (unsigned i = 0; i < 64 * 64; ++i) {
       if (abs(px[4 * i] - red) > 1 || abs(px[4 * i + 1] - green) > 1 || px[4 * i + 2] ||
           px[4 * i + 3] != 255) {

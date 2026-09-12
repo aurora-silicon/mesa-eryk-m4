@@ -19,6 +19,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('source', type=Path)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--format', choices=['rgba8', 'srgb8'], default='rgba8')
     parser.add_argument('--samples', type=int, choices=[1, 2, 4], default=1)
     parser.add_argument('--occlusion-query', action='store_true',
         help='Report a non-precise samples-passed query around the diagnostic draw')
@@ -73,6 +74,9 @@ def main():
         if source.count(old) != 1:
             raise RuntimeError('Probe fixture anchor changed: ' + old)
         source = source.replace(old, new)
+    if args.format == 'srgb8':
+        replace_once('#define IMAGE_FORMAT VK_FORMAT_R8G8B8A8_UNORM',
+                     '#define IMAGE_FORMAT VK_FORMAT_R8G8B8A8_SRGB')
     if args.right_rgba:
         left = ', '.join(map(str, args.rgba))
         right = ', '.join(map(str, args.right_rgba))
@@ -303,7 +307,7 @@ def main():
     files = {f.name: hashlib.sha256(f.read_bytes()).hexdigest()
              for f in output.iterdir() if f.is_file()}
     manifest = {
-        'samples': args.samples, 'rgba': args.rgba, 'right_rgba': args.right_rgba,
+        'format': args.format, 'samples': args.samples, 'rgba': args.rgba, 'right_rgba': args.right_rgba,
         'occlusion_query': args.occlusion_query,
         'transform_feedback': args.transform_feedback,
         'transform_feedback_resume': args.transform_feedback_resume,
