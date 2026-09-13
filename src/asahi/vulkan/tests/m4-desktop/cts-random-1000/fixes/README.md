@@ -41,3 +41,12 @@ Index 9 passes with the separately recorded CTS binary correcting its invalid
 zero-sized render area to the existing 1x1 framebuffer extent. This repeats the
 previously identified tessellation-control CTS correction; no driver validation
 was relaxed. Combined patch and exact binary manifest are retained here.
+
+## SNORM image stores and RG32 float framebuffer loads
+
+`20260913T185916978817Z-cts-snorm-rg32`: baseline indices 148, 907, 462,
+and 707 Pass; index 29 remains a pixel mismatch. SNORM storage takes F32 input
+through the existing imgwci path and its PBE descriptor converts to SNORM.
+RG32Float native framebuffer-fetch text at offset 76 confirms W32/mask=3 with
+no new packet fields; source, text, compiler identity and decoded fields are
+retained in `native-rg32-fetch/`. All 55 tile-core regression checks pass.

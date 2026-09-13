@@ -1777,6 +1777,7 @@ agx_emit_image_store(agx_builder *b, nir_intrinsic_instr *instr)
          write->format = AGX_FORMAT_I32;
          break;
       case PIPE_FORMAT_R11G11B10_FLOAT:
+      case PIPE_FORMAT_R8G8B8A8_SNORM:
       case PIPE_FORMAT_R32_FLOAT:
       case PIPE_FORMAT_R32G32_FLOAT:
       case PIPE_FORMAT_R32G32B32A32_FLOAT:
