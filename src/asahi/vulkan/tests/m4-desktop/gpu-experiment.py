@@ -96,6 +96,8 @@ def classify(directory, facts, expected):
         return "gpu_fault"
     if re.search(r"compilation failed|link failed|major shader compiler error|no grounded AGX3 encoding|failed to compile or link required", stdout, re.I):
         return "shader_error"
+    if re.search(r"(?:ERROR.*VUID-|SYNC-HAZARD-)", stdout):
+        return "validation_error"
     if re.search(r"VK_ERROR_(?:DEVICE_LOST|FEATURE_NOT_PRESENT)|vkEndCommandBuffer failed|GL_INVALID_OPERATION|major api error|ZINK: blit unsupported", stdout, re.I):
         return "api_error"
     if re.search(r"\bbad=[1-9][0-9]*(?:/|\b)|^FAIL:|\bpixels(?: checked)?, [1-9][0-9]* failures$|^pixels=\d+ incorrect=[1-9]|\bpixel \d+ differs at byte \d+", stdout, re.M):

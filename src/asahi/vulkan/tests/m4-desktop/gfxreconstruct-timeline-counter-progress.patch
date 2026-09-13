@@ -1,0 +1,114 @@
+--- a/framework/decode/vulkan_replay_consumer_base.cpp
++++ b/framework/decode/vulkan_replay_consumer_base.cpp
+@@ -4557,6 +4557,39 @@
+     return result;
+ }
+ 
++VkResult VulkanReplayConsumerBase::OverrideGetSemaphoreCounterValue(
++    PFN_vkGetSemaphoreCounterValue func,
++    VkResult original_result,
++    const VulkanDeviceInfo* device_info,
++    const VulkanSemaphoreInfo* semaphore_info,
++    PointerDecoder<uint64_t>* pValue)
++{
++    assert(device_info != nullptr && semaphore_info != nullptr && pValue != nullptr);
++    const uint64_t captured_value = pValue->IsNull() ? 0 : *pValue->GetPointer();
++    uint64_t* value = pValue->IsNull() ? nullptr : pValue->AllocateOutputData(1, uint64_t{0});
++    const VkDevice device = device_info->handle;
++    const VkSemaphore semaphore = semaphore_info->handle;
++    VkResult result = func(device, semaphore, value);
++    if (original_result == VK_SUCCESS && result == VK_SUCCESS && value && *value < captured_value)
++    {
++        // Recorded host control flow may free resources after observing this
++        // timeline value. Reproduce that progress before the next recorded
++        // call, just as OverrideGetFenceStatus waits for a captured success.
++        const VkSemaphoreWaitInfo wait_info = {
++            VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO, nullptr, 0, 1, &semaphore, &captured_value};
++        auto device_table = GetInjectedDeviceCalls(device);
++        auto injected = device_table.Open();
++        if (GetDeviceTable(device)->WaitSemaphores)
++            result = injected->WaitSemaphores(device, &wait_info, std::numeric_limits<uint64_t>::max());
++        else
++            result = injected->WaitSemaphoresKHR(device, &wait_info, std::numeric_limits<uint64_t>::max());
++        if (result != VK_SUCCESS)
++            return result;
++        result = func(device, semaphore, value);
++    }
++    return result;
++}
++
+ VkResult VulkanReplayConsumerBase::OverrideGetEventStatus(PFN_vkGetEventStatus    func,
+                                                           VkResult                original_result,
+                                                           const VulkanDeviceInfo* device_info,
+--- a/framework/decode/vulkan_replay_consumer_base.h
++++ b/framework/decode/vulkan_replay_consumer_base.h
+@@ -694,6 +694,12 @@
+                                     const VulkanDeviceInfo* device_info,
+                                     const VulkanFenceInfo*  fence_info);
+ 
++    VkResult OverrideGetSemaphoreCounterValue(PFN_vkGetSemaphoreCounterValue func,
++                                               VkResult original_result,
++                                               const VulkanDeviceInfo* device_info,
++                                               const VulkanSemaphoreInfo* semaphore_info,
++                                               PointerDecoder<uint64_t>* pValue);
++
+     VkResult OverrideGetEventStatus(PFN_vkGetEventStatus    func,
+                                     VkResult                original_result,
+                                     const VulkanDeviceInfo* device_info,
+--- a/framework/generated/generated_vulkan_replay_consumer.cpp
++++ b/framework/generated/generated_vulkan_replay_consumer.cpp
+@@ -2323,14 +2323,13 @@
+ }
+ 
+ void VulkanReplayConsumer::Process_vkGetSemaphoreCounterValue(
+-    const ApiCallInfo&                          call_info,
+-    args::GetSemaphoreCounterValue&             args)
+-{
+-    VkDevice in_device = MapHandle<VulkanDeviceInfo>(args.device, &CommonObjectInfoTable::GetVkDeviceInfo);
+-    VkSemaphore in_semaphore = MapHandle<VulkanSemaphoreInfo>(args.semaphore, &CommonObjectInfoTable::GetVkSemaphoreInfo);
+-    uint64_t* out_pValue = args.pValue.IsNull() ? nullptr : args.pValue.AllocateOutputData(1, static_cast<uint64_t>(0));
+-
+-    VkResult replay_result = GetDeviceTable(in_device)->GetSemaphoreCounterValue(in_device, in_semaphore, out_pValue);
++    const ApiCallInfo& call_info, args::GetSemaphoreCounterValue& args)
++{
++    auto in_device = GetObjectInfoTable().GetVkDeviceInfo(args.device);
++    auto in_semaphore = GetObjectInfoTable().GetVkSemaphoreInfo(args.semaphore);
++    VkResult replay_result = OverrideGetSemaphoreCounterValue(
++        GetDeviceTable(in_device->handle)->GetSemaphoreCounterValue, args.result,
++        in_device, in_semaphore, &args.pValue);
+     CheckResult("vkGetSemaphoreCounterValue", args.result, replay_result, call_info);
+ }
+ 
+@@ -4825,14 +4824,13 @@
+ }
+ 
+ void VulkanReplayConsumer::Process_vkGetSemaphoreCounterValueKHR(
+-    const ApiCallInfo&                          call_info,
+-    args::GetSemaphoreCounterValueKHR&          args)
+-{
+-    VkDevice in_device = MapHandle<VulkanDeviceInfo>(args.device, &CommonObjectInfoTable::GetVkDeviceInfo);
+-    VkSemaphore in_semaphore = MapHandle<VulkanSemaphoreInfo>(args.semaphore, &CommonObjectInfoTable::GetVkSemaphoreInfo);
+-    uint64_t* out_pValue = args.pValue.IsNull() ? nullptr : args.pValue.AllocateOutputData(1, static_cast<uint64_t>(0));
+-
+-    VkResult replay_result = GetDeviceTable(in_device)->GetSemaphoreCounterValueKHR(in_device, in_semaphore, out_pValue);
++    const ApiCallInfo& call_info, args::GetSemaphoreCounterValueKHR& args)
++{
++    auto in_device = GetObjectInfoTable().GetVkDeviceInfo(args.device);
++    auto in_semaphore = GetObjectInfoTable().GetVkSemaphoreInfo(args.semaphore);
++    VkResult replay_result = OverrideGetSemaphoreCounterValue(
++        GetDeviceTable(in_device->handle)->GetSemaphoreCounterValueKHR, args.result,
++        in_device, in_semaphore, &args.pValue);
+     CheckResult("vkGetSemaphoreCounterValueKHR", args.result, replay_result, call_info);
+ }
+ 
+--- a/framework/generated/khronos_generators/vulkan_generators/replay_overrides.json
++++ b/framework/generated/khronos_generators/vulkan_generators/replay_overrides.json
+@@ -22,6 +22,8 @@
+     "vkGetDeviceQueue2": "OverrideGetDeviceQueue2",
+     "vkWaitForFences": "OverrideWaitForFences",
+     "vkGetFenceStatus": "OverrideGetFenceStatus",
++    "vkGetSemaphoreCounterValue": "OverrideGetSemaphoreCounterValue",
++    "vkGetSemaphoreCounterValueKHR": "OverrideGetSemaphoreCounterValue",
+     "vkGetEventStatus": "OverrideGetEventStatus",
+     "vkSetEvent": "OverrideSetEvent",
+     "vkResetEvent": "OverrideResetEvent",

@@ -32,6 +32,7 @@ def main():
     p.add_argument('--frames', help='Capture frame range, or replay screenshot frames (1-based)')
     p.add_argument('--end-frame', type=int, help='Replay through this frame, retaining all preceding state')
     p.add_argument('--replace-shaders', type=Path, help='Explicit diagnostic SPIR-V replacements; never application-support evidence')
+    p.add_argument('--validation-layer', type=Path, help='Explicit diagnostic Khronos validation manifest for replay')
     p.add_argument('--dump-config', type=Path, help='GFXReconstruct resource dump selection for replay')
     p.add_argument('--memory-translation', choices=['none', 'rebind'], default='none')
     p.add_argument('--omit-pipeline-cache', action='store_true')
@@ -89,6 +90,24 @@ def main():
                HK_DEBUG_LOG='1', MESA_LOG_LEVEL='debug',
                AGX_COMPILER_CAPTURE_DIR=str(compiler_capture),
                MESA_GL_VERSION_OVERRIDE='3.3', MESA_GLES_VERSION_OVERRIDE='3.0')
+    if a.validation_layer:
+        if a.mode != 'replay':
+            p.error('--validation-layer is replay-only')
+        manifest = a.validation_layer.resolve(strict=True)
+        metadata = json.loads(manifest.read_text())
+        assert metadata['layer']['name'] == 'VK_LAYER_KHRONOS_validation'
+        env.update(VK_LAYER_PATH=str(manifest.parent),
+                   VK_INSTANCE_LAYERS='VK_LAYER_KHRONOS_validation',
+                   VK_LAYER_ENABLES='VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT')
+        (out/'validation-manifest.json').write_bytes(manifest.read_bytes())
+        (out/'validation-manifest.sha256').write_text(sha(manifest)+'\n')
+        layer_library = Path(metadata['layer']['library_path'])
+        if not layer_library.is_absolute():
+            candidates = [manifest.parent / layer_library, Path('/usr/lib') / layer_library]
+            layer_library = next(candidate for candidate in candidates if candidate.is_file())
+        layer_library = layer_library.resolve(strict=True)
+        (out/'validation-library.json').write_text(json.dumps({
+            'path': str(layer_library), 'sha256': sha(layer_library)}, indent=2) + '\n')
     layer = a.tool_prefix / 'lib/libVkLayer_gfxreconstruct.so'
     replay = a.tool_prefix / 'bin/gfxrecon-replay'
     if a.mode == 'capture':

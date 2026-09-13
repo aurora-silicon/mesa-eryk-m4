@@ -404,3 +404,21 @@ offscreen compiler tests while GPU retirement continued; this is a separate
 known display issue, not a GPU test success or an inferred idle/DPMS state.
 Evidence is retained in `_provenance/dcp-20260913`; recovery reboot requested
 at00:12 UTC. The display-manager boot policy is unchanged.
+
+`gfxreconstruct-timeline-counter-progress.patch` preserves a captured successful
+vkGetSemaphoreCounterValue observation by waiting only when replay is behind
+that recorded value. Both core and KHR entry points and generator overrides
+are covered. Recorded host control flow can destroy resources immediately
+after this query; comparing only VkResult permits use-after-free during replay.
+Blender's native17-frame trace previously reported pending image-view/buffer
+destruction at frame2 and timed out at frame16. With this patch, native replay
+20260913T015038083051Z passes all17 frames with synchronization validation,
+no VUIDs and peak57.25 C. No per-frame device-idle workaround was added.
+The native final image retains the correct grid/axes; lavapipe's replay omits
+those overlays, so the comparison is not a pixel-identical qualification.
+
+`vulkan-trace.py replay --validation-layer PATH` explicitly enables Khronos
+synchronization validation and retains the manifest and library hashes.
+`gpu-experiment.py` treats VUID errors/SYNC-HAZARD diagnostics as a failed
+experiment even when the replay process exits successfully. Guards, thermal
+limits and trace adaptation records remain mandatory.
