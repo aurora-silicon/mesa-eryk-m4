@@ -1,0 +1,14 @@
+{
+  "source": "/home/council/dev/dirtyroom_m4/reference/vk-gl-cts-1.0.2.6",
+  "source_commit": "6b3bca439862e986409ffd76e857ada0cc7c9080",
+  "patch_sha256": "2e5303becb7b34e6406bae357bb3b78ce2773c5e8c6bc3ecb4e06cdfe702951d",
+  "original_binary_sha256": "d296ca5f77238367933e88b99babefe050e841d3c7e1fbcb6e95e4d424814b06",
+  "source_sha256": {
+    "external/vulkancts/modules/vulkan/renderpass/vktRenderPassTests.cpp": "3502f8b5493c9170d4083db0f7b4954fe4d10ba02a4b1793fa6f7435ff86c509",
+    "external/vulkancts/modules/vulkan/ycbcr/vktYCbCrUtil.cpp": "91f5500c1dcc17b8e3ff8361f244aa2290dfbf30e0e8261967646826431aa733",
+    "external/vulkancts/modules/vulkan/api/vktApiImageClearingTests.cpp": "d3212ea1213fe78932fdc3f6327822acbbad96a88e236903eca50f282631d394",
+    "external/vulkancts/modules/vulkan/api/vktApiCopiesAndBlittingTests.cpp": "60830e6e78e59659ae1a2199728e698fe00c196ac12e71318cbd0bc07b442412"
+  },
+  "diagnostic_binary_sha256": "05fe8fb047c04a7bb9097cbf1822afd543008f3dad3b12146e835ee01a550132",
+  "restored": true
+}
