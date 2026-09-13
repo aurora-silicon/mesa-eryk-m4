@@ -82,6 +82,14 @@ int main(void){
                                6, 3, 0, 1, 0, true, true, out, &len) ||
           len != sizeof(native) || memcmp(out, native, len)) fail++; else pass++;
    }
+   /* G16G B5G6R5Unorm stores three F16 lanes in its tilebuffer. */
+   {
+      const uint8_t native[] = {0x67,0x0e,0x54,0,0,0,1,0x9a,2,0,0,0};
+      uint8_t out[AGX3_TILE_MAX_LENGTH], len;
+      if (!agx3_tile_load_mask(AGX_ISA_ENCODING_AGX3B, 0, AGX3_TILE_W16,
+                               6, 7, 0, 1, 0, true, true, out, &len) ||
+          len != sizeof(native) || memcmp(out, native, len)) fail++; else pass++;
+   }
    /* G16G RG8Unorm framebuffer fetch, native fragment text offset76. */
    {
       const uint8_t native[] = {0x67,0x0e,0x54,0,0,0,1,0xd2,2,0,0,0};

@@ -367,9 +367,11 @@ agx_build_end_of_tile_shader(struct agx_bg_eot_cache *cache,
           key->tib.logical_format[0] == PIPE_FORMAT_R32G32_UINT),
       .g17p_rt0_eot_i32_selector_15 =
          agx_native_graphics(cache->dev) &&
+         cache->dev->chip != AGX_CHIP_G16G &&
          key->tib.logical_format[0] == PIPE_FORMAT_R32G32_SINT,
       .g17p_rt0_eot_i32_selector_75 =
          agx_native_graphics(cache->dev) &&
+         cache->dev->chip != AGX_CHIP_G16G &&
          key->tib.logical_format[0] == PIPE_FORMAT_R32G32_UINT,
       .g17p_rt0_eot_norm16_selector_95 =
          agx_native_graphics(cache->dev) &&

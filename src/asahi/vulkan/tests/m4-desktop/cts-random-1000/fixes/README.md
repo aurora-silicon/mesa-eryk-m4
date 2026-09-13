@@ -83,3 +83,18 @@ Baseline index 396 Pass in `20260913T190737203629Z-cts-pixel-mismatches` with th
 CTS variant. It includes the previously established correction of reversed
 0.25/0.75 midpoint weights, retaining hardware filtering and the complete image
 comparison. This is a CTS oracle correction, not a new driver change.
+
+## Integer and mixed render targets
+
+`20260913T192310726640Z-cts-mrt-final`: all eight cases Pass (baseline 29, 153, 428, 911, 74, 357, 787,
+975). G16G RG32 integer fragments export raw W32 lanes, as the native witness
+confirms, so use the established I32 end-of-tile program rather than Neo's
+format-specific conversions. Mixed end-of-tile sequences now select the same
+integer/normalized/float conversions already used by single targets.
+
+Integer byte framebuffer reads now unpack their physical byte pairs before
+NIR applies signed extension. Their vector widths are reflected in validation;
+sample-mask reads tolerate the optional cache hint without requiring a new
+encoding. Both saved failing integer shaders compile offline (302/308 bytes).
+RGB565 uses three F16 tile lanes; the retained B5G6R5 native fetch confirms
+W16/mask=7 and its exact encoding is covered by the 56-check tile-core test.

@@ -1,0 +1,17 @@
+{
+  "bundle": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T191651027837Z-cts-mixed-render/remote/cts/compiler-captures/9164bfaa87d23bb3a7f8361c2b7f0d5a94e55352f93472a46a85416301191600",
+  "capture": {
+    "version": 1,
+    "serialization_abi": "416c39d8686d3168514177c70c091106a8272d9ee8b400e402a187acd2a3c823",
+    "input_blake3": "9164bfaa87d23bb3a7f8361c2b7f0d5a94e55352f93472a46a85416301191600",
+    "input_bytes": 840,
+    "entrypoint": "agx_compile_shader_nir",
+    "success": false
+  },
+  "input_sha256": "b99fd2bb6602e616f44624e9d95deb5a08dc7c4a83b139e04d597178a4c4ff17",
+  "replayer_sha256": "1355a468eadd96b36011830b84e7bf847404a51fcb8caf6e0ecb5d8229c70754",
+  "mesa_commit": "683ef3fff32d43f56871e9d147e7d14d5d4e6242",
+  "untracked_sha256": {},
+  "source_patch_sha256": "daa0004300345f0726cbbb4e96d65281a8fa9a906cf7e969ee34d7b2794eb029",
+  "returncode": 0
+}

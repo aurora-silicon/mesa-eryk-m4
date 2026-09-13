@@ -1319,7 +1319,7 @@ agx3_emit_tile(struct util_dynarray *emission, enum agx_isa_encoding enc,
    const bool register_mask = !load && enc == AGX_ISA_ENCODING_AGX3B &&
       agx3_src_is_register(sample) && sample.size == AGX_SIZE_16 &&
       agx_channels(sample) == 1 && sample.value < 128 && !sample.memory &&
-      !sample.abs && !sample.neg && !sample.cache;
+      !sample.abs && !sample.neg;
    const int width = agx3_tile_format_width(I->format);
    if ((I->format == AGX_FORMAT_RGB10A2 &&
         (I->mask != 1 || value.size != AGX_SIZE_32)) ||
@@ -3711,6 +3711,7 @@ agx3_mrt_eot_selector(enum pipe_format logical, enum agx_format physical,
    case PIPE_FORMAT_R16_FLOAT:
    case PIPE_FORMAT_R16G16_FLOAT:
    case PIPE_FORMAT_R16G16B16A16_FLOAT:
+   case PIPE_FORMAT_B5G6R5_UNORM:
       *selector = 1;
       return physical == AGX_FORMAT_F16;
    case PIPE_FORMAT_R8_UNORM:
@@ -3721,6 +3722,19 @@ agx3_mrt_eot_selector(enum pipe_format logical, enum agx_format physical,
    case PIPE_FORMAT_B8G8R8A8_SRGB:
       *selector = 3;
       return physical == AGX_FORMAT_U8NORM;
+   case PIPE_FORMAT_R8_SNORM:
+   case PIPE_FORMAT_R8G8_SNORM:
+   case PIPE_FORMAT_R8G8B8A8_SNORM:
+      *selector = 3;
+      return physical == AGX_FORMAT_S8NORM;
+   case PIPE_FORMAT_R8_UINT:
+   case PIPE_FORMAT_R8_SINT:
+   case PIPE_FORMAT_R8G8_UINT:
+   case PIPE_FORMAT_R8G8_SINT:
+   case PIPE_FORMAT_R8G8B8A8_UINT:
+   case PIPE_FORMAT_R8G8B8A8_SINT:
+      *selector = 0;
+      return physical == AGX_FORMAT_I8;
    case PIPE_FORMAT_R11G11B10_FLOAT:
       *selector = 3;
       return physical == AGX_FORMAT_RG11B10F;
@@ -3740,6 +3754,7 @@ agx3_mrt_eot_selector(enum pipe_format logical, enum agx_format physical,
    case PIPE_FORMAT_R16_UINT:
    case PIPE_FORMAT_R16_SINT:
    case PIPE_FORMAT_R16G16_UINT:
+   case PIPE_FORMAT_R16G16_SINT:
    case PIPE_FORMAT_R16G16B16A16_UINT:
       *selector = 1;
       return physical == AGX_FORMAT_I16;
@@ -3748,6 +3763,8 @@ agx3_mrt_eot_selector(enum pipe_format logical, enum agx_format physical,
    case PIPE_FORMAT_R32G32B32A32_FLOAT:
    case PIPE_FORMAT_R32_UINT:
    case PIPE_FORMAT_R32_SINT:
+   case PIPE_FORMAT_R32G32_UINT:
+   case PIPE_FORMAT_R32G32_SINT:
    case PIPE_FORMAT_R32G32B32A32_UINT:
    case PIPE_FORMAT_R32G32B32A32_SINT:
       *selector = 2;

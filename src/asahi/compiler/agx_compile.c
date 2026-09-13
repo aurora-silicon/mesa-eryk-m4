@@ -1049,6 +1049,34 @@ agx_emit_local_load_pixel(agx_builder *b, agx_index dest,
    if (agx_unpack_normalized_agx3(b, dest, instr, format, nr_comps))
       return;
 
+   if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+       format == AGX_FORMAT_I8) {
+      /* LLDCOL moves packed bytes. Unpack to integer lanes; the tilebuffer
+       * NIR lowering applies signed extension for logical SINT formats. */
+      const unsigned pairs = DIV_ROUND_UP(nr_comps, 2);
+      agx_index packed = agx_vec_temp(b->shader, AGX_SIZE_16, pairs);
+      agx_ld_tile_to(b, packed, agx_src_index(&instr->src[0]), agx_null(),
+                    format, BITFIELD_MASK(nr_comps),
+                    nir_intrinsic_base(instr), false);
+      agx_index halves[2], channels[4];
+      agx_emit_split(b, halves, packed, pairs);
+      for (unsigned c = 0; c < nr_comps; ++c) {
+         agx_index wide = agx_pad_to_32(b, halves[c / 2]);
+         agx_index byte = agx_temp(b->shader, AGX_SIZE_32);
+         agx_bfeil_to(b, byte, agx_zero(), wide,
+                      agx_immediate(8 * (c % 2)), 8);
+         if (dest.size == AGX_SIZE_16) {
+            channels[c] = agx_temp(b->shader, AGX_SIZE_16);
+            agx_subdivide_to(b, channels[c], byte, 0);
+         } else {
+            channels[c] = byte;
+         }
+      }
+      agx_emit_collect_to(b, dest, nr_comps, channels);
+      agx_emit_cached_split(b, dest, nr_comps);
+      return;
+   }
+
    agx_ld_tile_to(b, dest, agx_src_index(&instr->src[0]), agx_null(), format,
                   BITFIELD_MASK(nr_comps), nir_intrinsic_base(instr), false);
    agx_emit_cached_split(b, dest, nr_comps);
