@@ -226,6 +226,11 @@ pack_texture(struct hk_device *dev, struct hk_image_view *view,
                       texture_type != view->vk.view_type;
 
    enum pipe_format p_format = format_for_plane(view, view_plane);
+   if (agx_native_graphics(&dev->dev)) {
+      enum pipe_format integer = hk_scaled_texture_format(p_format);
+      if (integer != PIPE_FORMAT_NONE)
+         p_format = integer;
+   }
    const struct util_format_description *desc =
       util_format_description(p_format);
 

@@ -386,3 +386,17 @@ controls pass (experiment ending cts-scaled-clear-corrected). These are adapted
 controls, not original CTS passes. Corrected diagnostic executable SHA256:
 9e4acc7d384cc9dca547fe0968f2ffd5ea0acf3e2bf27749ced3e248784efb32.
 Original CTS source/binary restored. Full watchdog/thermal guards; kernel unchanged.
+
+Scaled sampled images: native 8/16-bit integer descriptors plus GPU conversion
+to float implement signed/unsigned scaled formats. A reserved descriptor-tail
+word selects conversion at runtime, preserving descriptor updates and arrays.
+The shader binary ABI is now 11 so old binaries cannot omit the conversion.
+Linear filtering and scaled attachments remain unadvertised. Float texture
+shaders now read this descriptor metadata; performance impact is not measured.
+20260913T153520366551Z-cts-scaled-image-sampling: original cases 38 and 96 Pass.
+Unsigned scalar/RG and signed RGBA16 controls all Pass (experiment ending
+cts-scaled-sampler-controls). Library
+353adcd7c87b10be333d246d450f2816ed85936f36a42b1414dd6533d02f415a.
+Fresh original 100 cases: 64 Pass, 35 NotSupported, 1 known CTS Crash, zero Fail.
+Seven former skips now Pass: 13, 27, 38, 49, 56, 60, 96. Exact results/evidence:
+format-capability-results.json. Full watchdog/thermal guards; kernel unchanged.
