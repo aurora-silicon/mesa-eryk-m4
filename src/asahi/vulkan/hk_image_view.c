@@ -235,8 +235,11 @@ pack_texture(struct hk_device *dev, struct hk_image_view *view,
    if (padded_rgb)
       p_format = hk_padded_image_format(p_format);
    if (agx_native_graphics(&dev->dev)) {
+      enum pipe_format normalized = hk_uscaled_normalized_format(p_format);
       enum pipe_format integer = hk_scaled_texture_format(p_format);
-      if (integer != PIPE_FORMAT_NONE)
+      if (normalized != PIPE_FORMAT_NONE)
+         p_format = normalized;
+      else if (integer != PIPE_FORMAT_NONE)
          p_format = integer;
    }
    const struct util_format_description *desc =

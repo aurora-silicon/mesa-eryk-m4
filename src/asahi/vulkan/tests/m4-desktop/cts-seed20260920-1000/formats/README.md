@@ -33,3 +33,33 @@ X8 D24: original case 428 now passes its shadow sampling oracle. Physical
 depth uses float32, with the existing packed-D24 GPU transfer conversion.
 Views, host-transfer restrictions, sample counts and depth bias follow the
 existing D24S8 emulation. This is one-case evidence; a regression rerun follows.
+
+Unsigned scaled filtering and packed scaled sampling: the full frozen 1,000-case
+rerun is 932 Pass / 68 NotSupported / zero failures or crashes. All 871 previous
+passes remain Pass; 61 of 89 selected format skips become Pass, leaving 28
+format skips. Each case ran once in this final report with twenty workers,
+30-second per-case bounds and the watchdog/thermal guards. See
+filtering-regression-summary.json for exact identities, timing and evidence.
+
+USCALED 8/16-bit textures filter through native UNORM descriptors and shader
+rescaling. Descriptor metadata follows view swizzles and leaves absent/constant
+channels unscaled. Custom borders use the independently bound image's scale;
+gathers select the original border value. Packed 10-bit scaled sampling uses
+integer descriptors; unsupported packed scaled stores remain unadvertised.
+The direct SNORM10 descriptor experiment failed seven pixel oracles and was
+removed; no SNORM10 feature is enabled by this change.
+
+Historical CTS correction: ImageTest, ImageViewTest and SamplerTest inferred
+integer shader types from mapVkFormat's integer backing representation of
+USCALED/SSCALED. The captured original shader uses uint32 tex with a USCALED
+view, contrary to Vulkan's numeric format / OpTypeFloat requirement:
+https://docs.vulkan.org/spec/latest/chapters/formats.html#formats-numericformat
+The patch changes only generated shader type selection; CPU backing data,
+lookup scale/bias and pixel comparisons are unchanged. Keep the original CTS
+binary/results and identify the corrected binary by scaled-cts-build.json.
+No driver workaround for invalid integer-typed scaled sampling was added.
+
+The initial border-query marker used NIR's gather-only component field and
+asserted in original case 287. Its dedicated backend flag fixes the assertion;
+case 287 and the complete final regression pass. Initial experiment evidence
+is retained separately under build/cts-seed20-formats and _provenance/experiments.

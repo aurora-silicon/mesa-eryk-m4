@@ -90,6 +90,7 @@ static enum agx_border_colour
 is_border_color_custom(VkBorderColor color, bool workaround_rgba4)
 {
    switch (color) {
+   case VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE:
    case VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK:
       /* We may need to workaround RGBA4 UNORM issues with opaque black. This
        * only affects float opaque black, there are no pure integer RGBA4
@@ -213,7 +214,8 @@ hk_CreateSampler(VkDevice device,
          sampler->ycbcr.chroma_reconstruction = false;
    }
 
-   bool workaround_rgba4 = dev->vk.enabled_features.customBorderColors;
+   bool workaround_rgba4 = dev->vk.enabled_features.customBorderColors ||
+                           agx_native_graphics(&dev->dev);
    bool custom_border =
       uses_border(info) &&
       is_border_color_custom(info->borderColor, workaround_rgba4);

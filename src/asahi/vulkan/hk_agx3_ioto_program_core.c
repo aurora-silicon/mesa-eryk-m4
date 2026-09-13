@@ -143,6 +143,7 @@ hk_native_single_target_layout_supported(struct agx_tilebuffer_layout *tib)
             tib->logical_format[0] == PIPE_FORMAT_R8G8B8A8_SINT ||
             tib->logical_format[0] == PIPE_FORMAT_B8G8R8A8_SINT ||
             tib->logical_format[0] == PIPE_FORMAT_R10G10B10A2_UINT ||
+            tib->logical_format[0] == PIPE_FORMAT_B10G10R10A2_UINT ||
             tib->logical_format[0] == PIPE_FORMAT_R16_UINT ||
             tib->logical_format[0] == PIPE_FORMAT_R16_SINT ||
             tib->logical_format[0] == PIPE_FORMAT_R16_UNORM ||

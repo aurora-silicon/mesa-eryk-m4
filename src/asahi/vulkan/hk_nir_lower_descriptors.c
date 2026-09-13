@@ -696,6 +696,28 @@ lower_tex(nir_builder *b, nir_tex_instr *tex,
          plane_offset_B + offs, ctx);
 
       nir_alu_type T = nir_alu_type_get_base_type(tex->dest_type);
+      if (ctx->descriptor_generation == 9 && T == nir_type_float &&
+          !(tex->backend_flags & AGX_TEXTURE_FLAG_BORDER_UNFILTERED)) {
+         /* Scaled samples rescale the zero/one border probes as well as
+          * interior texels. Divide only their interpolation coefficient.
+          * Look up the image independently: separate samplers have no format. */
+         nir_def *kind = load_resource_deref_desc(
+            b, 1, 16, nir_src_as_deref(nir_src_for_ssa(texture)),
+            plane_offset_B + native.texture + 32 +
+               offsetof(struct hk_sampled_image_descriptor_sw, scaled_conversion), ctx);
+         nir_def *normalized = nir_ieq_imm(b, nir_iand_imm(b, kind, 3), 3);
+         nir_def *reciprocal = nir_bcsel(b,
+            nir_ine_imm(b, nir_iand_imm(b, kind, 4), 0),
+            nir_imm_float(b, 1.0 / 65535.0), nir_imm_float(b, 1.0 / 255.0));
+         nir_def *channels[4];
+         for (unsigned c = 0; c < 4; ++c) {
+            nir_def *scaled = nir_iand(b, normalized,
+               nir_ine_imm(b, nir_iand_imm(b, kind, BITFIELD_BIT(3 + c)), 0));
+            channels[c] = nir_fmul(b, nir_channel(b, border, c),
+               nir_bcsel(b, scaled, reciprocal, nir_imm_float(b, 1)));
+         }
+         border = nir_vec(b, channels, 4);
+      }
       border = nir_convert_to_bit_size(b, border, T, tex->def.bit_size);
 
       nir_def_replace(&tex->def, border);
