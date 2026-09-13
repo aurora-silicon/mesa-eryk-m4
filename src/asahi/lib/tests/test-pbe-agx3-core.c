@@ -426,9 +426,36 @@ check_gen9_native_mips(void)
    return 0;
 }
 
+static int
+check_gen9_3d_native(void)
+{
+   /* Pinned G16G StateFields run on owned 8x8x4 RGBA8 synthetic input. */
+   const uint8_t native[] = {0x15,0x0a,0xe4,0x07,0xc0,0x01,0,0,
+                             0,0x40,0x23,0x01,0,0x30,0,0,
+                             0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+   struct agx_pbe_agx3_2d_fields f = {
+      .layout=1, .channels=0x28, .type=0,
+      .swizzle_r=0, .swizzle_g=1, .swizzle_b=2, .swizzle_a=3,
+      .width=8, .height=8, .buffer=0x12340000,
+   };
+   struct agx_pbe_agx3_descriptor p;
+   CHECK(agx_pbe_agx3_3d_pack(9,&f,4,0,1,&p));
+   CHECK(!memcmp(p.bytes,native,sizeof(native)));
+   f.page_aligned_layers=true;
+   CHECK(agx_pbe_agx3_3d_pack(9,&f,4,0,1,&p));
+   CHECK(p.bytes[15] == 0x10);
+   p.bytes[15]=0;
+   CHECK(!memcmp(p.bytes,native,sizeof(native)));
+   CHECK(!agx_pbe_agx3_3d_pack(10,&f,4,0,1,&p));
+   CHECK(!agx_pbe_agx3_3d_pack(9,&f,0,0,1,&p));
+   CHECK(!agx_pbe_agx3_3d_pack(9,&f,65537,0,1,&p));
+   return 0;
+}
+
 int
 main(void)
 {
+   if (check_gen9_3d_native()) return 1;
    if (check_exact_gen9_multisample()) return 1;
    if (check_exact_generation_vectors() || check_exact_gen9_linear_vector() ||
        check_exhaustive_format_axes() ||

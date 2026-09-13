@@ -165,8 +165,11 @@ clr_common(enum agx_isa_encoding enc, const struct agx3_field_kv *ov,
            unsigned n, uint8_t out[AGX3_STAGE_MAX_LENGTH], uint8_t *len)
 {
    const struct agx3_field_kv base[] = {KV(10, 2)};
-   if (agx3_bind_compose(enc, "clr", 0, base, 1, ov, n, out, len))
-      return true;
+   /* Upper half-register indices require the long destination field. */
+   for (unsigned ep = 0; ep < 2; ++ep) {
+      if (agx3_bind_compose(enc, "clr", ep, base, 1, ov, n, out, len))
+         return true;
+   }
    memset(out, 0, AGX3_STAGE_MAX_LENGTH);
    *len = 0;
    return false;

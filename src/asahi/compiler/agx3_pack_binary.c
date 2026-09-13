@@ -793,6 +793,7 @@ agx3_emit_texture_fetch(struct util_dynarray *emission,
                         uint8_t slot, uint16_t wait_mask, bool final,
                         bool stage_coordinates, uint16_t staging_coord)
 {
+   const bool three_d = I->dim == AGX_DIM_3D;
    const bool ms = I->dim == AGX_DIM_2D_MS || I->dim == AGX_DIM_2D_MS_ARRAY;
    const bool array = I->dim == AGX_DIM_2D_ARRAY || I->dim == AGX_DIM_2D_MS_ARRAY;
    const bool register_lod = I->lod_mode == AGX_LOD_MODE_LOD_MIN;
@@ -814,7 +815,7 @@ agx3_emit_texture_fetch(struct util_dynarray *emission,
        (I->dest[0].size == AGX_SIZE_32 && (I->dest[0].value & 1)) ||
        !agx3_tex_plain_reg(I->src[0]) ||
        I->src[0].size != AGX_SIZE_32 ||
-       agx_channels(I->src[0]) != (array || ms ? 3 : 2) ||
+       agx_channels(I->src[0]) != (array || ms || three_d ? 3 : 2) ||
        (stage_coordinates ? ((I->src[0].value & 1) ||
          I->src[0].value + 2 * agx_channels(I->src[0]) > 256) :
          ((I->src[0].value & 3) || I->src[0].value > 60)) ||
@@ -827,7 +828,7 @@ agx3_emit_texture_fetch(struct util_dynarray *emission,
        I->src[3].memory || I->src[3].abs || I->src[3].neg ||
        !agx3_tex_imm(I->src[4], 0) ||
        !agx_is_null(I->src[5]) ||
-       (I->dim != AGX_DIM_2D && !array && !ms) ||
+       (I->dim != AGX_DIM_2D && !array && !ms && !three_d) ||
        (enc == AGX_ISA_ENCODING_AGX3B ? (!I->mask || (I->mask & ~15u))
                                     : (I->mask != 1 && I->mask != 15)) ||
        I->offset || I->shadow ||
@@ -849,7 +850,7 @@ agx3_emit_texture_fetch(struct util_dynarray *emission,
       for (unsigned i = 0; i < agx_channels(I->src[0]); i++) {
          uint8_t copy[AGX3_TEX_MAX_LENGTH], copy_len = 0;
          /* The auxiliary array layer follows the reserved LOD pair. */
-         const unsigned offset = i == 2 ? (ms ? 4 : 6) : 2 * i;
+         const unsigned offset = i == 2 ? (ms || three_d ? 4 : 6) : 2 * i;
          if (!agx3_tex_stage_copy_hints(enc, staging_coord + offset,
                                   I->src[0].value + 2 * i,
                                   slot, i == 0 ? wait_mask : 0,
@@ -879,6 +880,7 @@ agx3_emit_texture_fetch(struct util_dynarray *emission,
       .final = final,
       .array = array,
       .multisample = ms,
+      .three_d = three_d,
       .register_lod = register_lod,
    };
    uint8_t bytes[AGX3_TEX_MAX_LENGTH];
@@ -887,19 +889,19 @@ agx3_emit_texture_fetch(struct util_dynarray *emission,
           agx3_append(emission, bytes, len);
 }
 
-/* Native G17P imgwci reads its integer coordinates through a dedicated pair
- * populated by this exact isel.ep35 form. Both selected values are the same,
- * so the select is a routing operation, not a source-level conditional. */
+/* Native imgwci consumes staged integer coordinates. ISEL clamps each
+ * coordinate against the ABI limit in u12 before publishing it; Apple uses
+ * the same instruction with a pipeline-specific uniform index. */
 static bool
 agx3_emit_image_coord(struct util_dynarray *emission,
-                      enum agx_isa_encoding enc, uint16_t dest, uint16_t src, bool discard)
+                      enum agx_isa_encoding enc, uint16_t dest, uint16_t src, bool discard, bool three_d)
 {
    if (enc != AGX_ISA_ENCODING_AGX3B || (dest & 1) || dest > 242 ||
        (src & 1) || src > 254)
       return false;
 
    const struct agx3_field_kv base[] = {
-      {10, 5}, {11, 2}, {13, 2}, {42, 2}, {43, 2}, {46, discard},
+      {10, 5}, {11, 2}, {13, three_d ? 3 : 2}, {42, 2}, {43, 2}, {46, discard},
       {51, 12}, {57, 3}, {58, 2}, {72, 2}, {73, 2}, {76, discard},
       {83, 12}, {89, 3}, {90, 2}, {106, 1},
    };
@@ -926,23 +928,26 @@ agx3_emit_storage_image_write(struct util_dynarray *emission,
                               enum agx_isa_encoding enc, const agx_instr *I,
                               uint16_t wait_mask, unsigned staging_base)
 {
+   const bool three_d = I->dim == AGX_DIM_3D;
+   const unsigned staging_slot = three_d ? 3 : 2;
    const bool normalized = I->format == AGX_FORMAT_U8NORM ||
                            I->format == AGX_FORMAT_RGB10A2 ||
-                           I->format == AGX_FORMAT_F16;
-   const bool direct = I->nr_srcs == 5 && normalized &&
+                           I->format == AGX_FORMAT_F16 ||
+                           I->format == AGX_FORMAT_U16NORM;
+   const bool direct = I->nr_srcs == 5 && (normalized || I->format == AGX_FORMAT_I32) &&
       (I->src[4].type == AGX_INDEX_REGISTER || I->src[4].type == AGX_INDEX_UNIFORM) &&
       I->src[4].size == AGX_SIZE_64 && agx_channels(I->src[4]) == 1 &&
       !I->src[4].memory && !I->src[4].abs && !I->src[4].neg;
    if (enc != AGX_ISA_ENCODING_AGX3B || I->nr_dests != 0 ||
        I->nr_srcs != 5 ||
-       I->dim != AGX_DIM_2D || I->coherent || (wait_mask & ~1u) != 0 ||
+       (I->dim != AGX_DIM_2D && !three_d) || I->coherent || (wait_mask & ~1u) != 0 ||
        !agx3_tex_plain_reg(I->src[0]) || I->src[0].size != AGX_SIZE_32 ||
        agx_channels(I->src[0]) != 4 || (I->src[0].value & 1) ||
        I->src[0].value > 248 || !agx3_tex_plain_reg(I->src[1]) ||
-       I->src[1].size != AGX_SIZE_32 || agx_channels(I->src[1]) != 2 ||
-       (I->src[1].value & 1) || I->src[1].value > 252 ||
+       I->src[1].size != AGX_SIZE_32 || agx_channels(I->src[1]) != (three_d ? 3 : 2) ||
+       (I->src[1].value & 1) || I->src[1].value > (three_d ? 250 : 252) ||
        !agx3_tex_imm(I->src[2], 0) || !agx3_tex_imm(I->src[3], 0) ||
-       (!direct && (I->src[4].type != AGX_INDEX_IMMEDIATE ||
+       (!direct && (three_d || I->src[4].type != AGX_INDEX_IMMEDIATE ||
         !((I->src[4].value == 0 && I->format == AGX_FORMAT_I8) ||
           (I->src[4].value == 1 && normalized))))) {
       if (agx_compiler_debug & AGX_DBG_SHADERS)
@@ -955,19 +960,19 @@ agx3_emit_storage_image_write(struct util_dynarray *emission,
 
    struct util_dynarray staged;
    util_dynarray_init(&staged, NULL);
-   const uint16_t data_dest[4] = {4, 6, 12, 14};
-   if (!agx3_emit_image_coord(&staged, enc, staging_base, I->src[1].value, I->src[1].discard) ||
-       !agx3_emit_image_coord(&staged, enc, staging_base + 2, I->src[1].value + 2, I->src[1].discard)) {
-      if (agx_compiler_debug & AGX_DBG_SHADERS)
-         fprintf(stderr, "G17P imgwci coordinate compose refusal\n");
-      goto fail;
+   const uint16_t data_dest[4] = {three_d ? 8 : 4, three_d ? 10 : 6, 12, 14};
+   for (unsigned c = 0; c < (three_d ? 3 : 2); ++c) {
+      if (!agx3_emit_image_coord(&staged, enc, staging_base + 2 * c,
+                                I->src[1].value + 2 * c,
+                                I->src[1].discard, three_d))
+         goto fail;
    }
 
    for (unsigned c = 0; c < 4; ++c) {
       uint8_t bytes[AGX3_STAGE_MAX_LENGTH], len = 0;
       if (!agx3_stage_copy_source(enc, staging_base + data_dest[c],
                                   I->src[0].value + 2 * c,
-                                  I->src[0].discard, 2,
+                                  I->src[0].discard, staging_slot,
                                   c == 0 ? wait_mask : 0,
                                   bytes, &len) ||
           !agx3_append(&staged, bytes, len)) {
@@ -979,8 +984,8 @@ agx3_emit_storage_image_write(struct util_dynarray *emission,
 
    uint8_t imgwci[AGX3_IMAGE_WRITE_LENGTH], imgwci_len = 0;
    const bool encoded = direct ?
-      agx3_tex_encode_image_write_indexed_2d(enc, I->src[4].value,
-         I->src[4].type == AGX_INDEX_UNIFORM, I->src[4].kill, staging_base, 2,
+      agx3_tex_encode_image_write_indexed_typed(enc, I->src[4].value,
+         I->src[4].type == AGX_INDEX_UNIFORM, I->src[4].kill, normalized, three_d, staging_base, staging_slot,
          imgwci, &imgwci_len) :
       agx3_tex_encode_image_write_rgba8_2d(
          enc, 1, I->src[4].value, normalized, imgwci, &imgwci_len);
@@ -4481,7 +4486,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             if (staged) {
                ctx->agx3_staging_halfs = MAX2(
                   ctx->agx3_staging_halfs,
-                  coord_base + ((I->dim == AGX_DIM_2D_ARRAY ||
+                  coord_base + ((I->dim == AGX_DIM_3D ||
+                                 I->dim == AGX_DIM_2D_ARRAY ||
                                  I->dim == AGX_DIM_2D_MS ||
                                  I->dim == AGX_DIM_2D_MS_ARRAY ||
                                  I->lod_mode == AGX_LOD_MODE_LOD_MIN) ? 8 : 4));

@@ -31,7 +31,9 @@ fetch_ok(enum agx_isa_encoding enc, const struct agx3_tex_fetch_desc *d)
                                     : (d->mask != 1 && d->mask != 15)) ||
        d->texture > 15 ||
        (d->register_lod && (enc != AGX_ISA_ENCODING_AGX3B || d->array || d->multisample)) ||
-       (d->multisample && enc != AGX_ISA_ENCODING_AGX3B))
+       (d->multisample && enc != AGX_ISA_ENCODING_AGX3B) ||
+       (d->three_d && (enc != AGX_ISA_ENCODING_AGX3B || d->array ||
+                       d->multisample || d->register_lod)))
       return false;
 
    const unsigned tk = d->texture_kind ?: AGX3_TEX_OPERAND_IMMEDIATE;
@@ -101,7 +103,7 @@ agx3_tex_encode_fetch(enum agx_isa_encoding enc,
    ov[n++] = (struct agx3_field_kv)KV(27, d->coord_kill ? 1 : 0);
    ov[n++] = (struct agx3_field_kv)KV(37, (d->register_lod || d->multisample) ? 0 : 1);
    ov[n++] = (struct agx3_field_kv)KV(75, d->mask);
-   ov[n++] = (struct agx3_field_kv)KV(76, d->multisample ? 2 : 1);
+   ov[n++] = (struct agx3_field_kv)KV(76, d->three_d ? 3 : d->multisample ? 2 : 1);
    if (d->array)
       ov[n++] = (struct agx3_field_kv)KV(77, 2); /* array, register layer */
    ov[n++] = (struct agx3_field_kv)KV(78, 1);  /* texel fetch */
@@ -460,8 +462,8 @@ agx3_tex_encode_image_write_rgba8_2d(
  * into the descriptor heap addressed by u0, in a GPR or uniform pair.
  * Pixel comparison qualifies this ABI on M4 for R8 and RG16F writes. */
 bool
-agx3_tex_encode_image_write_indexed_2d(
-   enum agx_isa_encoding enc, uint16_t pointer, bool uniform, bool kill, uint16_t staging_base, uint8_t staging_slot,
+agx3_tex_encode_image_write_indexed_typed(
+   enum agx_isa_encoding enc, uint16_t pointer, bool uniform, bool kill, bool floating, bool three_d, uint16_t staging_base, uint8_t staging_slot,
    uint8_t out[AGX3_IMAGE_WRITE_LENGTH], uint8_t *len)
 {
    if (!out || !len)
@@ -470,17 +472,27 @@ agx3_tex_encode_image_write_indexed_2d(
    *len = 0;
    if (staging_base > 240 || (staging_base & 15) ||
        enc != AGX_ISA_ENCODING_AGX3B || (pointer & 1) || pointer > 252 ||
-       (uniform && kill) || (staging_slot != 1 && staging_slot != 2))
+       (uniform && kill) || (staging_slot < 1 || staging_slot > 3))
       return false;
    const struct agx3_field_kv fields[] = {
-      KV(5,staging_base), KV(9,5), KV(12,staging_slot), KV(13,1), KV(24,1), KV(38,1),
-      KV(51,1), KV(52,1), KV(58 + staging_slot,1), KV(70,1), KV(71,2), KV(72,1),
+      KV(5,staging_base), KV(9,5), KV(12,1), KV(13,1), KV(24,1), KV(38,1),
+      KV(51,1), KV(52,1), KV(58 + staging_slot,1), KV(70,floating), KV(71,2), KV(72,three_d ? 3 : 1),
       KV(74,1), KV(85,3), KV(86,3), KV(99,uniform ? 3 : 2),
       KV(100,2), KV(113,1), KV(uniform ? 93 : 92,pointer), KV(103,kill),
    };
    return agx3_bind_compose(enc, "imgwci", 0, fields, sizeof(fields) / sizeof(fields[0]),
                             NULL, 0, out, len) &&
           *len == AGX3_IMAGE_WRITE_LENGTH;
+}
+
+bool
+agx3_tex_encode_image_write_indexed_2d(
+   enum agx_isa_encoding enc, uint16_t pointer, bool uniform, bool kill,
+   uint16_t staging_base, uint8_t staging_slot,
+   uint8_t out[AGX3_IMAGE_WRITE_LENGTH], uint8_t *len)
+{
+   return agx3_tex_encode_image_write_indexed_typed(
+      enc, pointer, uniform, kill, true, false, staging_base, staging_slot, out, len);
 }
 
 static uint16_t
@@ -584,10 +596,11 @@ agx3_tex_decode_fetch(enum agx_isa_encoding enc, const void *instruction,
            kind <= AGX3_TEX_OPERAND_UNIFORM; ++kind) {
          d.texture_kind = kind;
          d.texture_kill = kind == AGX3_TEX_OPERAND_REGISTER && (p[15] & 8);
-         for (unsigned axis = 0; axis < 8; ++axis) {
+         for (unsigned axis = 0; axis < 16; ++axis) {
             d.array = axis & 1;
             d.register_lod = axis & 2;
             d.multisample = axis & 4;
+            d.three_d = axis & 8;
             uint8_t canonical[AGX3_TEX_MAX_LENGTH], length;
             if (agx3_tex_encode_fetch(enc, &d, canonical, &length) &&
                 length == instruction_size &&
@@ -612,12 +625,13 @@ agx3_tex_decode_fetch(enum agx_isa_encoding enc, const void *instruction,
    /* The array axis is a single selector the hand decoders above do not
     * extract; recover it the same way everything else here is validated, by
     * requiring one of the two readings to repack byte-for-byte. */
-   for (unsigned a = 0; a < 8; ++a) {
+   for (unsigned a = 0; a < 16; ++a) {
       uint8_t canonical[AGX3_TEX_MAX_LENGTH];
       uint8_t length = 0;
       d.array = a & 1;
       d.register_lod = a & 2;
       d.multisample = a & 4;
+      d.three_d = a & 8;
       if (agx3_tex_encode_fetch(enc, &d, canonical, &length) &&
           length == instruction_size &&
           memcmp(canonical, instruction, length) == 0) {

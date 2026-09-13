@@ -63,6 +63,12 @@ bool agx_pbe_agx3_2d_mip_pack(
    uint32_t generation, const struct agx_pbe_agx3_2d_fields *fields,
    uint32_t level, uint32_t levels, struct agx_pbe_agx3_descriptor *out);
 
+/* Gen9 uncompressed tiled 3D PBE: full-chain depth and mip selection. */
+bool agx_pbe_agx3_3d_pack(
+   uint32_t generation, const struct agx_pbe_agx3_2d_fields *fields,
+   uint32_t depth, uint32_t level, uint32_t levels,
+   struct agx_pbe_agx3_descriptor *out);
+
 bool agx_pbe_agx3_2d_unpack(
    uint32_t generation, const void *bytes, size_t size,
    struct agx_pbe_agx3_2d_fields *fields);

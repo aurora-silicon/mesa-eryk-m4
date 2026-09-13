@@ -289,15 +289,16 @@ g17p_indexed_fetch_shape(const nir_tex_instr *tex, bool allow_lod)
       tex->coord_components == 1 && coord >= 0 &&
       tex->src[coord].src.ssa->num_components == 2;
 
+   const bool three_d = tex->sampler_dim == GLSL_SAMPLER_DIM_3D;
    const bool ms = tex->op == nir_texop_txf_ms && tex->sampler_dim == GLSL_SAMPLER_DIM_MS;
-   if ((!ms && (tex->op != nir_texop_txf || tex->sampler_dim != GLSL_SAMPLER_DIM_2D)) ||
-       tex->is_shadow || tex->is_sparse || tex->texture_index ||
+   if ((!ms && (tex->op != nir_texop_txf || (tex->sampler_dim != GLSL_SAMPLER_DIM_2D && !three_d))) ||
+       (three_d && tex->is_array) || tex->is_shadow || tex->is_sparse || tex->texture_index ||
        tex->sampler_index || tex->def.bit_size != 32 ||
        tex->def.num_components != 4 ||
        (tex->dest_type != nir_type_float32 && tex->dest_type != nir_type_int32 &&
         tex->dest_type != nir_type_uint32) ||
        (!lowered_buffer &&
-        tex->coord_components != (tex->is_array ? 3 : 2)) ||
+        tex->coord_components != (tex->is_array || three_d ? 3 : 2)) ||
        (tex->backend_flags & ~AGX_TEXTURE_FLAG_NO_CLAMP))
       return false;
    const int handle = nir_tex_instr_src_index(tex, nir_tex_src_texture_handle);
@@ -309,7 +310,7 @@ g17p_indexed_fetch_shape(const nir_tex_instr *tex, bool allow_lod)
    return handle >= 0 && lod >= 0 && coord >= 0 && tex->num_srcs == 3 &&
       ((nir_src_is_const(tex->src[lod].src) &&
         nir_src_as_uint(tex->src[lod].src) == 0) ||
-       (allow_lod && !tex->is_array)) &&
+       (allow_lod && !tex->is_array && !three_d)) &&
       nir_src_bit_size(tex->src[coord].src) == 32 &&
       nir_src_num_components(tex->src[coord].src) ==
          (lowered_buffer ? 2 : tex->coord_components);
@@ -806,9 +807,15 @@ agx_nir_lower_g17p_bindless_storage(nir_shader *shader)
             const enum pipe_format format = nir_intrinsic_format(intr);
             nir_intrinsic_instr *handle = nir_src_as_intrinsic(intr->src[0]);
             if (!handle || handle->intrinsic != nir_intrinsic_bindless_image_agx ||
-                nir_intrinsic_image_dim(intr) != GLSL_SAMPLER_DIM_2D ||
+                (nir_intrinsic_image_dim(intr) != GLSL_SAMPLER_DIM_2D &&
+                 nir_intrinsic_image_dim(intr) != GLSL_SAMPLER_DIM_3D) ||
                 nir_intrinsic_image_array(intr) ||
-                (format != PIPE_FORMAT_R8_UNORM &&
+                (format != PIPE_FORMAT_R32_UINT &&
+                 format != PIPE_FORMAT_R32G32B32A32_UINT &&
+                 format != PIPE_FORMAT_R32_FLOAT &&
+                 format != PIPE_FORMAT_R32G32B32A32_FLOAT &&
+                 format != PIPE_FORMAT_R16G16_UNORM &&
+                 format != PIPE_FORMAT_R8_UNORM &&
                  format != PIPE_FORMAT_R8G8B8A8_UNORM &&
                  format != PIPE_FORMAT_R10G10B10A2_UNORM &&
                  format != PIPE_FORMAT_R16G16_FLOAT &&

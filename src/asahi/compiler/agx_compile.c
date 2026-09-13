@@ -1757,6 +1757,19 @@ agx_emit_image_store(agx_builder *b, nir_intrinsic_instr *instr)
           * the PBE descriptor supplies the packed destination format. */
          write->format = AGX_FORMAT_RGB10A2;
          break;
+      case PIPE_FORMAT_R32_UINT:
+      case PIPE_FORMAT_R32G32B32A32_UINT:
+         write->format = AGX_FORMAT_I32;
+         break;
+      case PIPE_FORMAT_R32_FLOAT:
+      case PIPE_FORMAT_R32G32B32A32_FLOAT:
+         /* AGX3 uses this tag for floating input lanes; the PBE
+          * descriptor controls whether storage is F16 or F32. */
+         write->format = AGX_FORMAT_F16;
+         break;
+      case PIPE_FORMAT_R16G16_UNORM:
+         write->format = AGX_FORMAT_U16NORM;
+         break;
       case PIPE_FORMAT_R16G16_FLOAT:
       case PIPE_FORMAT_R16G16B16A16_FLOAT:
          /* imgwci consumes float32 lanes; the PBE converts to half storage. */
@@ -2574,6 +2587,15 @@ agx_lower_agx3_half_integer_sources(agx_context *ctx)
       return;
 
    agx_foreach_instr_global_safe(ctx, I) {
+      if (I->op == AGX_OPCODE_ASR && I->nr_srcs == 2 &&
+          I->src[0].type == AGX_INDEX_IMMEDIATE &&
+          !I->src[0].abs && !I->src[0].neg) {
+         /* The native signed shift takes its value from a register. Keep
+          * immediate folding out of that operand before register allocation. */
+         agx_builder b = agx_init_builder(ctx, agx_before_instr(I));
+         I->src[0] = agx_mov_imm(&b, 32, I->src[0].value);
+      }
+
       if (I->op == AGX_OPCODE_BFEIL && I->nr_dests == 1 && I->nr_srcs == 3 &&
           I->dest[0].size == AGX_SIZE_16 && I->src[1].size == AGX_SIZE_16 &&
           I->src[0].type == AGX_INDEX_IMMEDIATE && I->src[0].value == 0 &&

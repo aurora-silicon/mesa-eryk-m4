@@ -2076,3 +2076,12 @@ Normal Firefox MDN sample6 now has correct orange/blue page and compositor
 colors with hardware WebRender and WebGL1/2 via Zink/M4 (020103,58.25 C).
 A requestAnimationFrame freeze was used only to compare the final snapshot;
 three seconds of animation ran first. Capture-only behavior remains unresolved.
+
+`eevee-image-probe.c` isolates Eevee storage operations through Zink. Modes
+`fetch3d`, `float`, `uint`, `3d`, and `array` compare 256 texels against exact CPU
+inputs. Compile with EGL/GL; run only through the mandatory GPU experiment guard
+on M4. `array` is an outstanding qualification case. The software reference
+accepts llvmpipe only with `M4_TEST_LLVMPIPE=1`.
+`macos-native/pbe-state.py --kind 3 --depth N --layer-stride B` extends the
+pinned offline constructor witness to volume descriptors. Requires Unicorn;
+executes no GPU commands and does not establish hardware correctness itself.

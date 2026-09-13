@@ -28,7 +28,7 @@ same(const struct agx3_tex_fetch_desc *a,
           a->texture == b->texture && a->slot == b->slot &&
           a->wait_mask == b->wait_mask && a->coord_kill == b->coord_kill &&
           a->final == b->final &&
-          a->array == b->array && a->multisample == b->multisample &&
+          a->three_d == b->three_d && a->array == b->array && a->multisample == b->multisample &&
           (a->texture_kind ?: AGX3_TEX_OPERAND_IMMEDIATE) ==
              (b->texture_kind ?: AGX3_TEX_OPERAND_IMMEDIATE) &&
           (a->sampler_kind ?: AGX3_TEX_OPERAND_IMMEDIATE) ==
@@ -1316,9 +1316,51 @@ test_m4_pointer_write_witnesses(void)
    return 0;
 }
 
+static int
+test_m4_typed_image_write_witnesses(void)
+{
+   /* Apple G16G argument-buffer texture2d<uint> and texture3d<float> writes. */
+   const uint8_t uint_2d[] = {0xd7,0x20,0x54,0x00,0x00,0x40,0x00,0x10,
+                             0x20,0x04,0x00,0x00,0x88,0x1a,0x09,0x01};
+   const uint8_t float_3d[] = {0xd7,0x40,0x54,0x00,0x00,0x40,0x00,0x10,
+                              0x20,0x08,0x00,0x00,0x88,0x3a,0x09,0x01};
+   uint8_t out[AGX3_IMAGE_WRITE_LENGTH], len;
+   CHECK(agx3_tex_encode_image_write_indexed_typed(
+      AGX_ISA_ENCODING_AGX3B,16,true,false,false,false,0,2,out,&len));
+   CHECK(len == sizeof(uint_2d) && !memcmp(out,uint_2d,len));
+   CHECK(agx3_tex_encode_image_write_indexed_typed(
+      AGX_ISA_ENCODING_AGX3B,16,true,false,true,true,0,3,out,&len));
+   CHECK(len == sizeof(float_3d) && !memcmp(out,float_3d,len));
+   return 0;
+}
+
+static int
+test_m4_3d_fetch_witness(void)
+{
+   /* Apple G16G texture3d<float, access::read>::read(uint3), level zero.
+    * The native staging COPYs publish x/y/z at half offsets 0/2/4. */
+   const uint8_t expected[] = {0x05,0x80,0x0c,0xb8,0xb0,0x00,0x79,
+                              0x00,0x00,0x00,0x00,0x00,0x01,0x00};
+   struct agx3_tex_fetch_desc d = {
+      .dest=0, .coord=0, .width=AGX3_TEX_W32, .mask=15, .slot=1,
+      .wait_mask=1, .coord_kill=true, .final=true, .three_d=true,
+   };
+   uint8_t out[AGX3_TEX_MAX_LENGTH], len;
+   CHECK(agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
+   CHECK(len == sizeof(expected) && !memcmp(out, expected, len));
+   CHECK(roundtrip(AGX_ISA_ENCODING_AGX3B, &d) == 0);
+   d.array=true;
+   CHECK(!agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
+   d.array=false;
+   CHECK(!agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3C, &d, out, &len));
+   return 0;
+}
+
 int
 main(void)
 {
+   CHECK(test_m4_typed_image_write_witnesses() == 0);
+   CHECK(test_m4_3d_fetch_witness() == 0);
    CHECK(test_m4_sample_offset_witness() == 0);
    CHECK(test_native_multisample_fetch() == 0);
    CHECK(test_multisample_aux() == 0);

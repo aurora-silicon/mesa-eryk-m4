@@ -215,9 +215,11 @@ hk_pack_native_pbe(unsigned generation,
     * semantic placement is incomplete: arrays, compression, sparse mode,
     * gamma and the software-addressing sideband.
     */
+   const bool three_d = generation == 9 &&
+      legacy->dimension == AGX_TEXTURE_DIMENSION_3D;
    const bool ms = generation == 9 &&
                    legacy->dimension == AGX_TEXTURE_DIMENSION_2D_MULTISAMPLED;
-   if ((!ms && legacy->dimension != AGX_TEXTURE_DIMENSION_2D) ||
+   if ((!ms && !three_d && legacy->dimension != AGX_TEXTURE_DIMENSION_2D) ||
        (legacy->layout == AGX_LAYOUT_LINEAR &&
         (generation != 9 || legacy->level != 0 || legacy->levels != 1 ||
          legacy->unk_mipmapped)) ||
@@ -229,7 +231,7 @@ hk_pack_native_pbe(unsigned generation,
               legacy->layout == AGX_LAYOUT_LINEAR
            : legacy->samples != AGX_SAMPLE_COUNT_2) ||
        legacy->compressed || legacy->mode != AGX_IMAGE_MODE_NORMAL ||
-       legacy->layers != 1 ||
+       (!three_d && legacy->layers != 1) ||
        (generation != 9 && (legacy->level != 0 || legacy->levels != 1 ||
                             legacy->unk_mipmapped)) ||
        legacy->srgb || legacy->extended ||
@@ -262,7 +264,10 @@ hk_pack_native_pbe(unsigned generation,
       .page_aligned_layers = legacy->page_aligned_layers,
    };
    struct agx_pbe_agx3_descriptor packed;
-   const bool valid = generation == 9
+   const bool valid = three_d
+      ? agx_pbe_agx3_3d_pack(generation, &fields, legacy->layers,
+                             legacy->level, legacy->levels, &packed)
+      : generation == 9
       ? agx_pbe_agx3_2d_mip_pack(generation, &fields, legacy->level,
                                 legacy->levels, &packed)
       : agx_pbe_agx3_2d_pack(generation, &fields, &packed);

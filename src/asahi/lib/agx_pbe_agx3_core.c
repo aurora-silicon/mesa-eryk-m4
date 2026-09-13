@@ -185,6 +185,30 @@ agx_pbe_agx3_2d_mip_pack(
 }
 
 bool
+agx_pbe_agx3_3d_pack(
+   uint32_t generation, const struct agx_pbe_agx3_2d_fields *fields,
+   uint32_t depth, uint32_t level, uint32_t levels,
+   struct agx_pbe_agx3_descriptor *out)
+{
+   if (out)
+      memset(out, 0, sizeof(*out));
+   if (!fields || generation != AGX_PBE_AGX3_GENERATION_9 ||
+       !depth || depth > 65536 || fields->layout == AGX_PBE_LAYOUT_LINEAR ||
+       fields->samples_log2 ||
+       !agx_pbe_agx3_2d_mip_pack(generation, fields, level, levels, out))
+      return false;
+
+   /* Native G16G StateFields: kind 3 selects dimension 5. The complete
+    * volume depth minus one occupies word1[59:44], with the layer-padding
+    * flag at bit60. Keep the normal mip extension and buffer address. */
+   store_le64(out->bytes, (load_le64(out->bytes) & ~UINT64_C(15)) | 5);
+   store_le64(out->bytes + 8, load_le64(out->bytes + 8) |
+              ((uint64_t)(depth - 1) << 44) |
+              ((uint64_t)fields->page_aligned_layers << 60));
+   return true;
+}
+
+bool
 agx_pbe_agx3_2d_unpack(uint32_t generation, const void *bytes, size_t size,
                        struct agx_pbe_agx3_2d_fields *fields)
 {

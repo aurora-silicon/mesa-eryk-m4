@@ -69,6 +69,7 @@ struct agx3_tex_fetch_desc {
    bool coord_kill;
    bool final;          /* witnessed final texture-op marker */
    bool array;          /* 2D array: layer in the register after the pair */
+   bool three_d;        /* 3D level-zero fetch: z at staging coord + 4. */
    bool multisample;    /* Native MS fetch auxiliary word at coord + 4. */
    bool register_lod;   /* Integer LOD published by PACK_SMPIR in bank 6. */
    bool texture_kill;   /* Last use of an indirect texture index */
@@ -213,6 +214,10 @@ bool agx3_tex_encode_sample(enum agx_isa_encoding enc,
 bool agx3_tex_encode_image_write_rgba8_2d(
    enum agx_isa_encoding enc, uint16_t wait_mask, uint8_t image_index,
    bool normalized,
+   uint8_t out[AGX3_IMAGE_WRITE_LENGTH], uint8_t *len);
+
+bool agx3_tex_encode_image_write_indexed_typed(
+   enum agx_isa_encoding enc, uint16_t pointer, bool uniform, bool kill, bool floating, bool three_d, uint16_t staging_base, uint8_t staging_slot,
    uint8_t out[AGX3_IMAGE_WRITE_LENGTH], uint8_t *len);
 
 bool agx3_tex_encode_image_write_indexed_2d(
