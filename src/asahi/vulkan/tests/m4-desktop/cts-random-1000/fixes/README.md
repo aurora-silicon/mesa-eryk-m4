@@ -132,3 +132,14 @@ passes. Native compiler sources, identity and text witnesses are retained in
 `native-querylod/` and `native-array-bias-offset/`; texture-core unit tests match
 both native instruction sequences byte for byte (6,283 checks pass).
 Both guarded tests peaked at 56.75 C without GPU faults.
+
+## Cube-array register LOD
+
+Original indices 160 and 181 Pass in `20260913T201332855699Z-cts-cube-array-lod`,
+with full reference comparisons. The native compiler packs the cube-array layer
+into an allocated temporary, then combines it with face and register LOD in one
+three-source PACK_SMPIR. Keep that form paired across immediate optimization;
+separate layer and LOD staging would overwrite the same bank. The native source,
+identity and text are retained in `native-lodcube-dynamic/`. Texture-core tests
+match the exact three-source packet and sample (6,288 checks pass).
+The guarded batch peaked at 60.25 C without GPU faults.

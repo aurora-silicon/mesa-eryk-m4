@@ -228,7 +228,6 @@ sample_ok(enum agx_isa_encoding enc, const struct agx3_tex_sample_desc *d)
       return false;
 
    if (d->cube && (enc != AGX_ISA_ENCODING_AGX3B ||
-                   (d->array && d->lod == AGX3_TEX_LOD_REGISTER) ||
                    (d->lod != AGX3_TEX_LOD_AUTO &&
                     d->lod != AGX3_TEX_LOD_LEVEL &&
                     d->lod != AGX3_TEX_LOD_REGISTER)))
@@ -795,6 +794,40 @@ agx3_tex_stage_layer_lod(enum agx_isa_encoding enc, uint16_t layer,
       KV(23,2), KV(24,1), KV(27,layer_discard), KV(30,lod),
       KV(37,2), KV(38,1), KV(39,lod_discard),
       KV(41,1), KV(51,1), KV(52,2), KV(74,cube ? 10 : 4), KV(76,2), KV(77,16),
+   };
+   struct agx3_field_kv waits[6];
+   unsigned n = 0;
+   for (unsigned i = 0; i < 6; ++i)
+      if (wait_mask & (1u << i))
+         waits[n++] = (struct agx3_field_kv)KV(58+i,1);
+   return agx3_bind_compose(enc, "pack_smpir", 0, base, sizeof(base) / sizeof(base[0]),
+                            waits, n, out, len);
+}
+
+/* Native G16G dynamic cube-array level: prepacked layer + face + half LOD.
+ * All three must be published together; separate writes overwrite bank 6. */
+bool
+agx3_tex_stage_cube_array_lod(enum agx_isa_encoding enc, uint16_t face,
+                             uint16_t lod, uint16_t layer, uint8_t slot,
+                             uint16_t wait_mask, bool face_discard,
+                             bool lod_discard,
+                             uint8_t out[AGX3_TEX_MAX_LENGTH], uint8_t *len)
+{
+   if (!out || !len)
+      return false;
+   memset(out, 0, AGX3_TEX_MAX_LENGTH);
+   *len = 0;
+   /* The upper bank of the third operand is not yet qualified. */
+   if (enc != AGX_ISA_ENCODING_AGX3B || face >= 192 || lod >= 192 ||
+       layer >= 128 || (layer & 1) || slot < 1 || slot > 6 ||
+       (wait_mask & ~0x3f))
+      return false;
+   const struct agx3_field_kv base[] = {
+      KV(5,6), KV(9,5), KV(10,2), KV(12,slot), KV(16,face),
+      KV(23,2), KV(24,1), KV(27,face_discard), KV(30,lod),
+      KV(37,2), KV(38,1), KV(39,lod_discard), KV(41,1),
+      KV(44,layer), KV(51,2), KV(52,2), KV(55,1),
+      KV(74,10), KV(75,12), KV(76,2), KV(77,16),
    };
    struct agx3_field_kv waits[6];
    unsigned n = 0;

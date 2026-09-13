@@ -173,6 +173,11 @@ agx_optimizer_inline_imm(agx_context *ctx, agx_instr **defs, agx_instr *I)
       if (I->op == AGX_OPCODE_TEXTURE_SAMPLE && s == 1 && ctx->key &&
           ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
           I->lod_mode == AGX_LOD_MODE_LOD_MIN) {
+         /* Cube-array register LOD has a prepacked layer coordinate. Keep
+          * that form paired with its three-source auxiliary operand. Constants
+          * already selected by NIR emission retain the ordinary layer form. */
+         if (I->dim == AGX_DIM_CUBE_ARRAY)
+            continue;
          /* LOD is floating point even for integer textures. Do not inline
           * the raw half bits as an integer immediate: the sample packer
           * interprets immediates as minifloats. Preserve values that cannot

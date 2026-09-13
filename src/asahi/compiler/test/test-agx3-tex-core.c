@@ -1475,6 +1475,26 @@ test_m4_cube_register_lod(void)
 }
 
 static int
+test_m4_cube_array_register_lod(void)
+{
+   /* Native G16G lodcube-dynamic: text-1230 +236/+254. */
+   const uint8_t pack[] = {0x17,0x05,0x54,0x06,0,0x04,0x0c,0,0xf0,0xc2,0x17,0};
+   const uint8_t sample[] = {0x05,0x80,0x0c,0xb8,0xb0,0,0x08,3,1,0,0x10,0,1,0};
+   uint8_t out[AGX3_TEX_MAX_LENGTH], len;
+   CHECK(agx3_tex_stage_cube_array_lod(AGX_ISA_ENCODING_AGX3B,2,3,0,1,0,
+                                       true,false,out,&len));
+   CHECK(len == sizeof(pack) && !memcmp(out,pack,len));
+   struct agx3_tex_sample_desc d = {
+      .width=AGX3_TEX_W32, .mask=15, .slot=1, .wait_mask=1,
+      .coord_kill=true, .final=true, .cube=true, .array=true,
+      .lod=AGX3_TEX_LOD_REGISTER,
+   };
+   CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+   CHECK(len == sizeof(sample) && !memcmp(out,sample,len));
+   return 0;
+}
+
+static int
 test_m4_array_bias_offset(void)
 {
    /* Native G16G array-bias-offset.metal, text-13c0 +166/+184. */
@@ -1514,6 +1534,7 @@ test_m4_query_lod(void)
 int
 main(void)
 {
+   CHECK(test_m4_cube_array_register_lod() == 0);
    CHECK(test_m4_query_lod() == 0);
    CHECK(test_m4_array_bias_offset() == 0);
    CHECK(test_m4_cube_register_lod() == 0);

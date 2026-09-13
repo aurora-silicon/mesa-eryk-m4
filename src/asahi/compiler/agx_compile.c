@@ -4152,6 +4152,20 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
       coords = agx_emit_collect(b, 3, xy_aux);
    }
 
+   if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+       instr->sampler_dim == GLSL_SAMPLER_DIM_CUBE && instr->is_array &&
+       instr->op == nir_texop_txl && lod.type != AGX_INDEX_IMMEDIATE) {
+      /* Native three-source PACK_SMPIR consumes an already packed layer.
+       * Keep this temporary visible to allocation instead of stealing a GPR. */
+      agx_index xy_face_layer[4];
+      agx_emit_split(b, xy_face_layer, coords, 4);
+      agx_index layer = agx_temp(b->shader, AGX_SIZE_16);
+      agx_subdivide_to(b, layer, xy_face_layer[3], 0);
+      xy_face_layer[3] = agx_temp(b->shader, AGX_SIZE_32);
+      agx_pack_layer_agx3_to(b, xy_face_layer[3], layer);
+      coords = agx_emit_collect(b, 4, xy_face_layer);
+   }
+
    agx_index tmp = agx_vec_temp(b->shader, dst.size, instr->is_sparse ? 8 : 4);
    agx_instr *I = agx_texture_sample_to(
       b, tmp, coords, lod, bindless, texture, sampler, compare_offset,

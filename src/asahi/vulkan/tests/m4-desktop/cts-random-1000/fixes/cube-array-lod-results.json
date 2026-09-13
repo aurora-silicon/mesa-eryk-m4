@@ -1,0 +1,34 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.pipeline.sampler.view_type.cube_array.format.r8g8b8a8_srgb.mipmap.nearest.lod.select_bias_3_7",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.pipeline.sampler.view_type.cube_array.format.r8g8b8a8_srgb.mipmap.nearest.lod.select_bias_3_7",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T201332855699Z-cts-cube-array-lod/cts/000/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.6096847530000105
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.pipeline.sampler.view_type.cube_array.format.r8g8b8a8_sscaled.mipmap.nearest.lod.select_bias_2_5",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.pipeline.sampler.view_type.cube_array.format.r8g8b8a8_sscaled.mipmap.nearest.lod.select_bias_2_5",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T201332855699Z-cts-cube-array-lod/cts/001/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.40869967299994414
+  }
+]
