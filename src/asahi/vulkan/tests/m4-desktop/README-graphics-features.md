@@ -69,3 +69,38 @@ compiler actually compares r83 against -r2, exercising the upper half-register
 range. 221006716398Z matches5248 words (<=55.75 C). The old encoder rejected
 half-register indices>=128 despite the field carrying8 bits. The normal
 alignment, sign and operand-hint checks remain enforced.
+
+## Integer negation and right shifts (2026-09-13)
+
+Blender grid draw3476 first diverged at vertex304. Reducing its captured
+vertex calculation found `76 / 151 == 3` on M4: immediate-first IADD mistook
+full-width negation for narrow signed extension, preserving the operand and
+doubling the reciprocal estimate. Materialize the minuend before allocation
+and use native register ISUB. Reject full-width sign-extension descriptors.
+An older right-shift lowering had compensated for the same missing negation;
+remove that compensation and pass ordinary positive counts. The native Apple
+G16G `shift-negation.metal` witness emits SRL directly on its loaded count
+(text offset92, `a700540002101204f0100500`).
+
+`integer-division-oracle.py --output NEW` generates 1216 runtime input pairs
+and9728 CPU-calculated words: division/remainder, negation, constant subtraction
+and shifted negation, including full-width boundaries. Run generated SPIR-V
+with vk-buffer-oracle and the manifest's workgroup count. Host lavapipe and
+M4 both pass exactly. Native `20260913T000648273534Z-integer-negation-shift-correct`
+also passes the previous5120-byte integer-helper fixture and the new mixed
+line interpolation test, peak55.75 C. The IADD encoder unit suite passes157 checks.
+
+`vertex-compute-oracle.py SOURCE --draw-dump DRAW.json --push-constants PC.bin
+--vertices N --value 'vec4(EXPR)' --output NEW` converts attribute-free
+SPIRV-Cross Vulkan vertex GLSL into a numerical compute diagnostic. It packs
+set0 std140 UBOs and scalar push constants into one SSBO, preserving calculations
+and exporting positions/selected values. It records all source hashes and
+layout offsets, rejects unsupported input kinds, and executes no GPU itself.
+Generate the reference on lavapipe with vk-buffer-oracle, then use the guarded
+M4 runner. Floating results require an explicit tolerance comparison; a changed
+stage is not proof that the original vertex pipeline works.
+
+`line-interpolation-probe.c` checks simultaneous perspective, linear and flat
+inputs for lines/strips and both provoking conventions against rational pixel
+values (one-byte tolerance). Compile with EGL/GL/math libraries; use the normal
+Zink/lavapipe reference and guarded M4 run-m4-gl wrapper.

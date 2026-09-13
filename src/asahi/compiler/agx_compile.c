@@ -3129,6 +3129,19 @@ agx_materialize_agx3_alu_constants(agx_context *ctx)
 {
    agx_foreach_instr_global_safe(ctx, I) {
       agx_builder b = agx_init_builder(ctx, agx_before_instr(I));
+      /* A negated full-width IADD source means subtraction, not signed
+       * extension. Materialize the minuend so the native register ISUB can
+       * implement constant - value, including the negation in udiv refinement.
+       * Shifted subtraction has already been lowered to a separate shift. */
+      if (ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+          I->op == AGX_OPCODE_IADD && I->nr_dests == 1 && I->nr_srcs == 2 &&
+          !I->saturate && !I->shift && I->dest[0].size == AGX_SIZE_32 &&
+          I->src[0].type == AGX_INDEX_IMMEDIATE && !I->src[0].abs &&
+          !I->src[0].neg && I->src[1].size == AGX_SIZE_32 &&
+          I->src[1].neg && !I->src[1].abs &&
+          I->src[1].type != AGX_INDEX_IMMEDIATE) {
+         I->src[0] = agx_mov_imm(&b, 32, I->src[0].value);
+      }
       /* SIGNEXT becomes a signed half IADD on AGX2. Keep the AGX3 lowering
        * in SSA, where temporary registers are still available: preserve the
        * low 16 bits, move the sign bit to bit 31, then shift arithmetically.
@@ -3390,19 +3403,10 @@ agx_coerce_f16_src(agx_builder *b, agx_index src)
 }
 
 static agx_index
-agx_g17p_shift_boundary(agx_builder *b, unsigned shift)
-{
-   assert(shift >= 1 && shift <= 31);
-   agx_index positive = agx_mov_imm(b, 32, shift);
-   agx_index boundary = agx_temp(b->shader, AGX_SIZE_32);
-   agx_iadd_to(b, boundary, agx_zero(), agx_neg(positive), 0);
-   return boundary;
-}
-
-static agx_index
 agx_g17p_ushr_imm(agx_builder *b, agx_index value, unsigned shift)
 {
-   return agx_ushr(b, value, agx_g17p_shift_boundary(b, shift));
+   assert(shift >= 1 && shift <= 31);
+   return agx_ushr(b, value, agx_mov_imm(b, 32, shift));
 }
 
 static agx_index
@@ -3635,23 +3639,8 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
 
    case nir_op_ishl:
       return agx_bfi_to(b, dst, i0, s0, s1, 0);
-   case nir_op_ushr: {
-      /* G17P's native register `srl` operand is a signed bitfield boundary.
-       * Convert NIR's ordinary right-shift count to the full-width negative
-       * value before selecting the witnessed instruction.  The upper bits
-       * are significant: -1 performs x >> 1, whereas +31 is a different
-       * operation despite having the same low five bits. */
-      if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B) {
-         if (s1.type == AGX_INDEX_IMMEDIATE) {
-            s1 = agx_g17p_shift_boundary(b, s1.value);
-         } else {
-            agx_index boundary = agx_temp(b->shader, AGX_SIZE_32);
-            agx_iadd_to(b, boundary, i0, agx_neg(s1), 0);
-            s1 = boundary;
-         }
-      }
+   case nir_op_ushr:
       return agx_ushr_to(b, dst, s0, s1);
-   }
    case nir_op_ishr:
       return agx_asr_to(b, dst, s0, s1);
 

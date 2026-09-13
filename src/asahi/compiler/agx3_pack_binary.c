@@ -5766,7 +5766,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                 !constant.neg && constant.value <= 0xff &&
                 agx3_src_is_register(reg) && !reg.memory &&
                 agx_channels(reg) == 1 && !(reg.abs && reg.neg) &&
-                (reg.size == AGX_SIZE_32 ||
+                ((reg.size == AGX_SIZE_32 && !reg.abs && !reg.neg) ||
                  (reg.size == AGX_SIZE_16 && (reg.abs || reg.neg)))) {
                const struct agx3_iadd_desc d = {
                   .dest = I->dest[0].value,

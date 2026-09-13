@@ -30,6 +30,9 @@ agx3_iadd_encode(enum agx_isa_encoding encoding,
       return false;
    if (d->src_16 ? (d->src >= 256) : ((d->src & 1) || d->src + 2 > 256))
       return false;
+   /* Signed extension is a narrow-source operation, never 32-bit negation. */
+   if (d->sign_extend && !d->src_16)
+      return false;
 
    /* Only the witnessed shift range, and only real scoreboard slots. Apple's
     * shifted adds witness 1..4; shift 0 is the unshifted form. */

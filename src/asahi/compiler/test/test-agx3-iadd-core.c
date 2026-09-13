@@ -304,6 +304,11 @@ main(void)
    d.src = 0;
    d.src_16 = false;
 
+   d.sign_extend = true;
+   CHECK(!agx3_iadd_encode(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
+   CHECK(!agx3_iadd_encode(AGX_ISA_ENCODING_AGX3C, &d, out, &len));
+   d.sign_extend = false;
+
    d.wait_mask = 1u << 6; /* six scoreboard slots on AGX3b */
    CHECK(!agx3_iadd_encode(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
    d.wait_mask = 0;
