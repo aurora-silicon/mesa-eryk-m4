@@ -1,0 +1,721 @@
+{
+  "method": "Offline first-blocker classification from saved QPA/stdout and matching CTS/Mesa source; no reruns or changes to frozen outcomes. Pixel mismatch ownership remains unconfirmed.",
+  "counts": {
+    "NotSupported": {
+      "signed_scaled_linear_filter": 13,
+      "r4g4_unorm": 8,
+      "sparse_resources": 12,
+      "single_plane_disjoint": 19,
+      "storage_texel_buffer_format": 2,
+      "lazy_attachment_memory": 2,
+      "high_sample_count": 3,
+      "packed_snorm10": 5,
+      "packed_sscaled10_store": 2,
+      "shader_float64": 3,
+      "single_plane_rgb_ycbcr_conversion": 4,
+      "impossible_negative_cts": 2,
+      "r64_uint_image": 1
+    },
+    "Fail": {
+      "renderpass_store_compiler": 1,
+      "scaled_float_blit_mismatch": 4,
+      "tessellation_pipeline_state": 1,
+      "cube_gather_compiler": 1,
+      "tessellation_point_compiler": 1,
+      "compressed_scaled_view_mismatch": 1
+    },
+    "Crash": {
+      "depth_attachment_assertion": 1
+    }
+  },
+  "cases": [
+    {
+      "index": 4,
+      "status": "NotSupported",
+      "category": "signed_scaled_linear_filter",
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.a8b8g8r8_sscaled_pack32.r8g8b8_sscaled.optimal_general_linear",
+      "message": "Source format feature sampled image filter linear not supported at vktApiCopiesAndBlittingTests.cpp:1786",
+      "triage": "Missing SSCALED linear filtering. Thirteen first-blocker cases; some also have unsupported destinations."
+    },
+    {
+      "index": 40,
+      "status": "NotSupported",
+      "category": "r4g4_unorm",
+      "case": "dEQP-VK.pipeline.image.suballocation.sampling_type.separate.view_type.3d.format.r4g4_unorm_pack8.count_4.size.16x16x16",
+      "message": "Unsupported format for sampling: VK_FORMAT_R4G4_UNORM_PACK8",
+      "triage": "Missing packed two-channel 4-bit format path: sampling/blits/blending."
+    },
+    {
+      "index": 47,
+      "status": "NotSupported",
+      "category": "signed_scaled_linear_filter",
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16_sscaled.r8g8b8a8_snorm.optimal_general_linear",
+      "message": "Source format feature sampled image filter linear not supported at vktApiCopiesAndBlittingTests.cpp:1786",
+      "triage": "Missing SSCALED linear filtering. Thirteen first-blocker cases; some also have unsupported destinations."
+    },
+    {
+      "index": 58,
+      "status": "Fail",
+      "category": "renderpass_store_compiler",
+      "case": "dEQP-VK.renderpass.dedicated_allocation.attachment_allocation.roll.27",
+      "message": "vk.endCommandBuffer(cmdBuffer): VK_ERROR_FEATURE_NOT_PRESENT at vktRenderPassTests.cpp:397",
+      "triage": "Confirmed Mesa compiler rejection: block_image_store; inspect tilebuffer/store lowering."
+    },
+    {
+      "index": 60,
+      "status": "NotSupported",
+      "category": "sparse_resources",
+      "case": "dEQP-VK.api.buffer.suballocation.create_buffer_174_3",
+      "message": "No matching queue found at vktApiBufferTests.cpp:174",
+      "triage": "No sparse binding feature/queue: seven buffer-creation, three sparse texture shader, two sparse-resource tests. No matching queue does not mean graphics queues are broken."
+    },
+    {
+      "index": 67,
+      "status": "NotSupported",
+      "category": "single_plane_disjoint",
+      "case": "dEQP-VK.ycbcr.copy.g12x4_b12x4r12x4_2plane_422_unorm_3pack16_khr.a2r10g10b10_unorm_pack32.optimal_disjoint_optimal_disjoint",
+      "message": "Format doesn&apos;t disjoint planes at vktYCbCrCopyTests.cpp:138",
+      "triage": "Requests disjoint-plane support on a single-plane format. Eighteen copy tests and one packed-422 conversion test; not evidence that ordinary multi-plane YCbCr is broken."
+    },
+    {
+      "index": 68,
+      "status": "NotSupported",
+      "category": "storage_texel_buffer_format",
+      "case": "dEQP-VK.api.buffer_view.create.suballocation.create_buffer_view_18_storage",
+      "message": "Format not supported at vktApiBufferViewCreateTests.cpp:330",
+      "triage": "VK_FORMAT_R8G8_USCALED (enum 18)"
+    },
+    {
+      "index": 75,
+      "status": "NotSupported",
+      "category": "r4g4_unorm",
+      "case": "dEQP-VK.api.copy_and_blit.dedicated_allocation.blit_image.all_formats.color.r4g4_unorm_pack8.r8g8b8_uscaled.general_optimal_linear",
+      "message": "Format feature blit source not supported at vktApiCopiesAndBlittingTests.cpp:1773",
+      "triage": "Missing packed two-channel 4-bit format path: sampling/blits/blending."
+    },
+    {
+      "index": 83,
+      "status": "NotSupported",
+      "category": "lazy_attachment_memory",
+      "case": "dEQP-VK.renderpass.dedicated_allocation.attachment_allocation.input_output.16",
+      "message": "No compatible memory type found at vkMemUtil.cpp:76",
+      "triage": "QPA explicitly requests lazy allocation (Is lazy); no matching memory type. Not out of memory."
+    },
+    {
+      "index": 109,
+      "status": "NotSupported",
+      "category": "high_sample_count",
+      "case": "dEQP-VK.rasterization.fill_rules_multisample_32_bit.clipped_full",
+      "message": "Format not supported at vktRasterizationTests.cpp:240",
+      "triage": "32x rasterization; exceeds advertised M4 1x/2x/4x counts."
+    },
+    {
+      "index": 116,
+      "status": "Fail",
+      "category": "scaled_float_blit_mismatch",
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r8g8b8a8_uscaled.r16_sfloat.optimal_general_linear",
+      "message": "Result image is incorrect",
+      "triage": "USCALED-to-float linear blit: max red-channel error 0.125, tolerance 0.005. Driver/reference comparison pending."
+    },
+    {
+      "index": 125,
+      "status": "NotSupported",
+      "category": "packed_snorm10",
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.a2r10g10b10_snorm_pack32.r16g16b16_unorm.general_general_linear",
+      "message": "Format feature blit source not supported at vktApiCopiesAndBlittingTests.cpp:1773",
+      "triage": "Packed signed-normalized 10:10:10:2 source/destination format support withheld."
+    },
+    {
+      "index": 135,
+      "status": "NotSupported",
+      "category": "packed_snorm10",
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.a2r10g10b10_sscaled_pack32.a2b10g10r10_snorm_pack32.general_optimal_linear",
+      "message": "Format feature blit destination not supported at vktApiCopiesAndBlittingTests.cpp:1780",
+      "triage": "Packed signed-normalized 10:10:10:2 source/destination format support withheld."
+    },
+    {
+      "index": 153,
+      "status": "NotSupported",
+      "category": "packed_sscaled10_store",
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.a8b8g8r8_snorm_pack32.a2r10g10b10_sscaled_pack32.optimal_general_linear",
+      "message": "Format feature blit destination not supported at vktApiCopiesAndBlittingTests.cpp:1780",
+      "triage": "Packed signed-scaled 10:10:10:2 blit destination not supported."
+    },
+    {
+      "index": 163,
+      "status": "NotSupported",
+      "category": "sparse_resources",
+      "case": "dEQP-VK.api.buffer.suballocation.create_buffer_183_1",
+      "message": "No matching queue found at vktApiBufferTests.cpp:174",
+      "triage": "No sparse binding feature/queue: seven buffer-creation, three sparse texture shader, two sparse-resource tests. No matching queue does not mean graphics queues are broken."
+    },
+    {
+      "index": 166,
+      "status": "NotSupported",
+      "category": "shader_float64",
+      "case": "dEQP-VK.pipeline.spec_constant.graphics.fragment.composite.struct.dmat2",
+      "message": "Double-precision floats not supported",
+      "triage": "shaderFloat64=false; optional double-precision shader support."
+    },
+    {
+      "index": 173,
+      "status": "NotSupported",
+      "category": "signed_scaled_linear_filter",
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.a2b10g10r10_sscaled_pack32.r4g4b4a4_unorm_pack16.general_general_linear",
+      "message": "Source format feature sampled image filter linear not supported at vktApiCopiesAndBlittingTests.cpp:1786",
+      "triage": "Missing SSCALED linear filtering. Thirteen first-blocker cases; some also have unsupported destinations."
+    },
+    {
+      "index": 182,
+      "status": "NotSupported",
+      "category": "single_plane_disjoint",
+      "case": "dEQP-VK.ycbcr.copy.r10x6_unorm_pack16_khr.g8_b8r8_2plane_422_unorm_khr.optimal_disjoint_optimal",
+      "message": "Format doesn&apos;tsupport  disjoint planes at vktYCbCrCopyTests.cpp:114",
+      "triage": "Requests disjoint-plane support on a single-plane format. Eighteen copy tests and one packed-422 conversion test; not evidence that ordinary multi-plane YCbCr is broken."
+    },
+    {
+      "index": 189,
+      "status": "NotSupported",
+      "category": "single_plane_disjoint",
+      "case": "dEQP-VK.ycbcr.copy.r5g6b5_unorm_pack16.r12x4_unorm_pack16_khr.optimal_disjoint_linear_disjoint",
+      "message": "Format doesn&apos;tsupport  disjoint planes at vktYCbCrCopyTests.cpp:114",
+      "triage": "Requests disjoint-plane support on a single-plane format. Eighteen copy tests and one packed-422 conversion test; not evidence that ordinary multi-plane YCbCr is broken."
+    },
+    {
+      "index": 200,
+      "status": "NotSupported",
+      "category": "sparse_resources",
+      "case": "dEQP-VK.api.buffer.suballocation.create_buffer_207_5",
+      "message": "No matching queue found at vktApiBufferTests.cpp:174",
+      "triage": "No sparse binding feature/queue: seven buffer-creation, three sparse texture shader, two sparse-resource tests. No matching queue does not mean graphics queues are broken."
+    },
+    {
+      "index": 207,
+      "status": "NotSupported",
+      "category": "r4g4_unorm",
+      "case": "dEQP-VK.pipeline.blend.format.r4g4_unorm_pack8.states.color_cc_sa_add_alpha_1msa_ca_rsub-color_cc_1mca_sub_alpha_o_1mcc_max-color_z_z_sub_alpha_sa_sa_rsub-color_cc_sc_rsub_alpha_1mdc_dc_rsub",
+      "message": "Unsupported color blending format: VK_FORMAT_R4G4_UNORM_PACK8",
+      "triage": "Missing packed two-channel 4-bit format path: sampling/blits/blending."
+    },
+    {
+      "index": 214,
+      "status": "NotSupported",
+      "category": "single_plane_disjoint",
+      "case": "dEQP-VK.ycbcr.copy.r16_unorm.g12x4_b12x4_r12x4_3plane_420_unorm_3pack16_khr.linear_disjoint_linear_disjoint",
+      "message": "Format doesn&apos;tsupport  disjoint planes at vktYCbCrCopyTests.cpp:114",
+      "triage": "Requests disjoint-plane support on a single-plane format. Eighteen copy tests and one packed-422 conversion test; not evidence that ordinary multi-plane YCbCr is broken."
+    },
+    {
+      "index": 222,
+      "status": "NotSupported",
+      "category": "sparse_resources",
+      "case": "dEQP-VK.api.buffer.suballocation.create_buffer_250_5",
+      "message": "No matching queue found at vktApiBufferTests.cpp:174",
+      "triage": "No sparse binding feature/queue: seven buffer-creation, three sparse texture shader, two sparse-resource tests. No matching queue does not mean graphics queues are broken."
+    },
+    {
+      "index": 229,
+      "status": "NotSupported",
+      "category": "single_plane_disjoint",
+      "case": "dEQP-VK.ycbcr.copy.r5g6b5_unorm_pack16.g10x6_b10x6_r10x6_3plane_420_unorm_3pack16_khr.linear_disjoint_optimal",
+      "message": "Format doesn&apos;tsupport  disjoint planes at vktYCbCrCopyTests.cpp:114",
+      "triage": "Requests disjoint-plane support on a single-plane format. Eighteen copy tests and one packed-422 conversion test; not evidence that ordinary multi-plane YCbCr is broken."
+    },
+    {
+      "index": 235,
+      "status": "NotSupported",
+      "category": "signed_scaled_linear_filter",
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16g16b16a16_sscaled.r8g8b8_snorm.optimal_general_linear",
+      "message": "Source format feature sampled image filter linear not supported at vktApiCopiesAndBlittingTests.cpp:1786",
+      "triage": "Missing SSCALED linear filtering. Thirteen first-blocker cases; some also have unsupported destinations."
+    },
+    {
+      "index": 239,
+      "status": "NotSupported",
+      "category": "sparse_resources",
+      "case": "dEQP-VK.sparse_resources.image_sparse_binding.2d.rgba8ui.1024_128_1",
+      "message": "Device does not support sparse binding at vktSparseResourcesImageSparseBinding.cpp:126",
+      "triage": "No sparse binding feature/queue: seven buffer-creation, three sparse texture shader, two sparse-resource tests. No matching queue does not mean graphics queues are broken."
+    },
+    {
+      "index": 256,
+      "status": "NotSupported",
+      "category": "packed_snorm10",
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.a2r10g10b10_snorm_pack32.b8g8r8_unorm.optimal_optimal_linear",
+      "message": "Format feature blit source not supported at vktApiCopiesAndBlittingTests.cpp:1773",
+      "triage": "Packed signed-normalized 10:10:10:2 source/destination format support withheld."
+    },
+    {
+      "index": 257,
+      "status": "NotSupported",
+      "category": "shader_float64",
+      "case": "dEQP-VK.pipeline.spec_constant.graphics.vertex.composite.array.dvec2",
+      "message": "Double-precision floats not supported",
+      "triage": "shaderFloat64=false; optional double-precision shader support."
+    },
+    {
+      "index": 272,
+      "status": "NotSupported",
+      "category": "high_sample_count",
+      "case": "dEQP-VK.image.load_store_multisample.2d_array.r32_sint_single_layer.samples_64",
+      "message": "Requested sample count is not supported at vktImageMultisampleLoadStoreTests.cpp:196",
+      "triage": "64x storage-image load/store; exceeds advertised M4 1x/2x/4x counts."
+    },
+    {
+      "index": 292,
+      "status": "NotSupported",
+      "category": "single_plane_rgb_ycbcr_conversion",
+      "case": "dEQP-VK.ycbcr.query.levels.tess_control.r10x6g10x6b10x6a10x6_unorm_4pack16_khr",
+      "message": "YCbCr conversion is not supported for format at vktYCbCrUtil.cpp:218",
+      "triage": "YCbCr conversion/chroma-location format features absent for non-subsampled single-plane RGB/RGBA; ordinary sampling is a separate capability."
+    },
+    {
+      "index": 319,
+      "status": "NotSupported",
+      "category": "signed_scaled_linear_filter",
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16g16b16_sscaled.b5g5r5a1_unorm_pack16.general_general_linear",
+      "message": "Source format feature sampled image filter linear not supported at vktApiCopiesAndBlittingTests.cpp:1786",
+      "triage": "Missing SSCALED linear filtering. Thirteen first-blocker cases; some also have unsupported destinations."
+    },
+    {
+      "index": 326,
+      "status": "NotSupported",
+      "category": "single_plane_disjoint",
+      "case": "dEQP-VK.ycbcr.copy.r10x6_unorm_pack16_khr.g16_b16_r16_3plane_420_unorm_khr.linear_disjoint_linear_disjoint",
+      "message": "Format doesn&apos;tsupport  disjoint planes at vktYCbCrCopyTests.cpp:114",
+      "triage": "Requests disjoint-plane support on a single-plane format. Eighteen copy tests and one packed-422 conversion test; not evidence that ordinary multi-plane YCbCr is broken."
+    },
+    {
+      "index": 335,
+      "status": "NotSupported",
+      "category": "single_plane_disjoint",
+      "case": "dEQP-VK.ycbcr.conversion.g10x6b10x6g10x6r10x6_422_unorm_4pack16_khr.chroma_reconstruction.linear.explicit_nearest_tiling_optimal_disjoint_swapped_chroma",
+      "message": "Format doesn&apos;t disjoint planes at vktYCbCrConversionTests.cpp:1969",
+      "triage": "Requests disjoint-plane support on a single-plane format. Eighteen copy tests and one packed-422 conversion test; not evidence that ordinary multi-plane YCbCr is broken."
+    },
+    {
+      "index": 339,
+      "status": "NotSupported",
+      "category": "signed_scaled_linear_filter",
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16_sscaled.b5g5r5a1_unorm_pack16.general_optimal_linear",
+      "message": "Source format feature sampled image filter linear not supported at vktApiCopiesAndBlittingTests.cpp:1786",
+      "triage": "Missing SSCALED linear filtering. Thirteen first-blocker cases; some also have unsupported destinations."
+    },
+    {
+      "index": 342,
+      "status": "Fail",
+      "category": "tessellation_pipeline_state",
+      "case": "dEQP-VK.tessellation.invariance.tess_coord_component_range.quads_fractional_odd_spacing_cw",
+      "message": "vk.endCommandBuffer(commandBuffer): VK_ERROR_FEATURE_NOT_PRESENT at vktTessellationUtil.cpp:261",
+      "triage": "Confirmed Mesa HAL200 program rejection for tessellation evaluation, outputs=0, layout=0."
+    },
+    {
+      "index": 358,
+      "status": "NotSupported",
+      "category": "single_plane_disjoint",
+      "case": "dEQP-VK.ycbcr.copy.r12x4_unorm_pack16_khr.g10x6_b10x6_r10x6_3plane_422_unorm_3pack16_khr.optimal_disjoint_linear",
+      "message": "Format doesn&apos;tsupport  disjoint planes at vktYCbCrCopyTests.cpp:114",
+      "triage": "Requests disjoint-plane support on a single-plane format. Eighteen copy tests and one packed-422 conversion test; not evidence that ordinary multi-plane YCbCr is broken."
+    },
+    {
+      "index": 375,
+      "status": "NotSupported",
+      "category": "single_plane_disjoint",
+      "case": "dEQP-VK.ycbcr.copy.r16g16_unorm.g10x6_b10x6r10x6_2plane_420_unorm_3pack16_khr.optimal_disjoint_optimal_disjoint",
+      "message": "Format doesn&apos;tsupport  disjoint planes at vktYCbCrCopyTests.cpp:114",
+      "triage": "Requests disjoint-plane support on a single-plane format. Eighteen copy tests and one packed-422 conversion test; not evidence that ordinary multi-plane YCbCr is broken."
+    },
+    {
+      "index": 379,
+      "status": "NotSupported",
+      "category": "single_plane_disjoint",
+      "case": "dEQP-VK.ycbcr.copy.r5g5b5a1_unorm_pack16.g8_b8r8_2plane_422_unorm_khr.linear_disjoint_optimal_disjoint",
+      "message": "Format doesn&apos;tsupport  disjoint planes at vktYCbCrCopyTests.cpp:114",
+      "triage": "Requests disjoint-plane support on a single-plane format. Eighteen copy tests and one packed-422 conversion test; not evidence that ordinary multi-plane YCbCr is broken."
+    },
+    {
+      "index": 388,
+      "status": "Fail",
+      "category": "scaled_float_blit_mismatch",
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r8g8b8a8_uscaled.r32_sfloat.general_optimal_linear",
+      "message": "Result image is incorrect",
+      "triage": "USCALED-to-float linear blit: max error 0.0374908, tolerance 0.00392157. Driver/reference comparison pending."
+    },
+    {
+      "index": 406,
+      "status": "NotSupported",
+      "category": "signed_scaled_linear_filter",
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.a2r10g10b10_sscaled_pack32.r16g16_sscaled.general_general_linear",
+      "message": "Source format feature sampled image filter linear not supported at vktApiCopiesAndBlittingTests.cpp:1786",
+      "triage": "Missing SSCALED linear filtering. Thirteen first-blocker cases; some also have unsupported destinations."
+    },
+    {
+      "index": 412,
+      "status": "Fail",
+      "category": "cube_gather_compiler",
+      "case": "dEQP-VK.glsl.texture_gather.basic.cube.rgba8ui.no_corners.size_pot.mirrored_repeat_clamp_to_edge",
+      "message": "vk.createGraphicsPipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:38",
+      "triage": "Confirmed Mesa compiler rejection of a cube texture operation in the unsigned-integer gather case."
+    },
+    {
+      "index": 424,
+      "status": "Fail",
+      "category": "tessellation_point_compiler",
+      "case": "dEQP-VK.tessellation.invariance.outer_edge_index_independence.triangles_equal_spacing_cw_point_mode",
+      "message": "vk.createGraphicsPipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:38",
+      "triage": "Confirmed Mesa compiler rejection of st_vary #4 in the geometry-rasterization vertex shader."
+    },
+    {
+      "index": 446,
+      "status": "NotSupported",
+      "category": "single_plane_disjoint",
+      "case": "dEQP-VK.ycbcr.copy.g8_b8_r8_3plane_420_unorm_khr.r4g4_unorm_pack8.optimal_disjoint_linear_disjoint",
+      "message": "Format doesn&apos;t disjoint planes at vktYCbCrCopyTests.cpp:138",
+      "triage": "Requests disjoint-plane support on a single-plane format. Eighteen copy tests and one packed-422 conversion test; not evidence that ordinary multi-plane YCbCr is broken."
+    },
+    {
+      "index": 447,
+      "status": "NotSupported",
+      "category": "lazy_attachment_memory",
+      "case": "dEQP-VK.renderpass.suballocation.attachment_allocation.grow_shrink.21",
+      "message": "No compatible memory type found at vkMemUtil.cpp:76",
+      "triage": "QPA explicitly requests lazy allocation (Is lazy); no matching memory type. Not out of memory."
+    },
+    {
+      "index": 478,
+      "status": "NotSupported",
+      "category": "shader_float64",
+      "case": "dEQP-VK.pipeline.spec_constant.graphics.tess_eval.composite.matrix.dmat4x2",
+      "message": "Double-precision floats not supported",
+      "triage": "shaderFloat64=false; optional double-precision shader support."
+    },
+    {
+      "index": 481,
+      "status": "NotSupported",
+      "category": "single_plane_rgb_ycbcr_conversion",
+      "case": "dEQP-VK.ycbcr.conversion.r5g6b5_unorm_pack16.ycbcr_2020.itu_full.nearest_tiling_linear",
+      "message": "Format doesn&apos;t support YCbCr conversions at vktYCbCrConversionTests.cpp:1951",
+      "triage": "YCbCr conversion/chroma-location format features absent for non-subsampled single-plane RGB/RGBA; ordinary sampling is a separate capability."
+    },
+    {
+      "index": 528,
+      "status": "NotSupported",
+      "category": "single_plane_disjoint",
+      "case": "dEQP-VK.ycbcr.copy.r5g5b5a1_unorm_pack16.g10x6_b10x6_r10x6_3plane_444_unorm_3pack16_khr.linear_disjoint_optimal_disjoint",
+      "message": "Format doesn&apos;tsupport  disjoint planes at vktYCbCrCopyTests.cpp:114",
+      "triage": "Requests disjoint-plane support on a single-plane format. Eighteen copy tests and one packed-422 conversion test; not evidence that ordinary multi-plane YCbCr is broken."
+    },
+    {
+      "index": 541,
+      "status": "NotSupported",
+      "category": "single_plane_disjoint",
+      "case": "dEQP-VK.ycbcr.copy.b4g4r4a4_unorm_pack16.g10x6_b10x6_r10x6_3plane_444_unorm_3pack16_khr.optimal_disjoint_linear",
+      "message": "Format doesn&apos;tsupport  disjoint planes at vktYCbCrCopyTests.cpp:114",
+      "triage": "Requests disjoint-plane support on a single-plane format. Eighteen copy tests and one packed-422 conversion test; not evidence that ordinary multi-plane YCbCr is broken."
+    },
+    {
+      "index": 548,
+      "status": "NotSupported",
+      "category": "sparse_resources",
+      "case": "dEQP-VK.api.buffer.suballocation.create_buffer_101_7",
+      "message": "No matching queue found at vktApiBufferTests.cpp:174",
+      "triage": "No sparse binding feature/queue: seven buffer-creation, three sparse texture shader, two sparse-resource tests. No matching queue does not mean graphics queues are broken."
+    },
+    {
+      "index": 549,
+      "status": "NotSupported",
+      "category": "signed_scaled_linear_filter",
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16g16_sscaled.r16g16b16a16_snorm.general_optimal_linear",
+      "message": "Source format feature sampled image filter linear not supported at vktApiCopiesAndBlittingTests.cpp:1786",
+      "triage": "Missing SSCALED linear filtering. Thirteen first-blocker cases; some also have unsupported destinations."
+    },
+    {
+      "index": 556,
+      "status": "NotSupported",
+      "category": "packed_snorm10",
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.a2r10g10b10_snorm_pack32.r16g16b16_sfloat.optimal_general_linear",
+      "message": "Format feature blit source not supported at vktApiCopiesAndBlittingTests.cpp:1773",
+      "triage": "Packed signed-normalized 10:10:10:2 source/destination format support withheld."
+    },
+    {
+      "index": 561,
+      "status": "NotSupported",
+      "category": "signed_scaled_linear_filter",
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16g16b16a16_sscaled.r16g16_sscaled.optimal_general_linear",
+      "message": "Source format feature sampled image filter linear not supported at vktApiCopiesAndBlittingTests.cpp:1786",
+      "triage": "Missing SSCALED linear filtering. Thirteen first-blocker cases; some also have unsupported destinations."
+    },
+    {
+      "index": 570,
+      "status": "NotSupported",
+      "category": "r4g4_unorm",
+      "case": "dEQP-VK.api.copy_and_blit.dedicated_allocation.blit_image.all_formats.color.r8g8_sscaled.r4g4_unorm_pack8.general_general_nearest",
+      "message": "Format feature blit destination not supported at vktApiCopiesAndBlittingTests.cpp:1780",
+      "triage": "Missing packed two-channel 4-bit format path: sampling/blits/blending."
+    },
+    {
+      "index": 596,
+      "status": "NotSupported",
+      "category": "signed_scaled_linear_filter",
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.a8b8g8r8_sscaled_pack32.b8g8r8_unorm.optimal_optimal_linear",
+      "message": "Source format feature sampled image filter linear not supported at vktApiCopiesAndBlittingTests.cpp:1786",
+      "triage": "Missing SSCALED linear filtering. Thirteen first-blocker cases; some also have unsupported destinations."
+    },
+    {
+      "index": 632,
+      "status": "NotSupported",
+      "category": "r4g4_unorm",
+      "case": "dEQP-VK.pipeline.sampler.view_type.2d.format.r4g4_unorm_pack8.address_modes.uvw_mode_repeat_mode_clamp_to_edge_mode_mirrored_repeat",
+      "message": "Unsupported format for sampling: VK_FORMAT_R4G4_UNORM_PACK8",
+      "triage": "Missing packed two-channel 4-bit format path: sampling/blits/blending."
+    },
+    {
+      "index": 642,
+      "status": "NotSupported",
+      "category": "single_plane_rgb_ycbcr_conversion",
+      "case": "dEQP-VK.ycbcr.conversion.r8g8b8a8_unorm.ycbcr_601.itu_full.linear_tiling_optimal",
+      "message": "Format doesn&apos;t support YCbCr conversions at vktYCbCrConversionTests.cpp:1951",
+      "triage": "YCbCr conversion/chroma-location format features absent for non-subsampled single-plane RGB/RGBA; ordinary sampling is a separate capability."
+    },
+    {
+      "index": 666,
+      "status": "NotSupported",
+      "category": "r4g4_unorm",
+      "case": "dEQP-VK.api.copy_and_blit.dedicated_allocation.blit_image.all_formats.color.r16g16b16a16_snorm.r4g4_unorm_pack8.general_general_linear",
+      "message": "Format feature blit destination not supported at vktApiCopiesAndBlittingTests.cpp:1780",
+      "triage": "Missing packed two-channel 4-bit format path: sampling/blits/blending."
+    },
+    {
+      "index": 686,
+      "status": "NotSupported",
+      "category": "impossible_negative_cts",
+      "case": "dEQP-VK.image.extended_usage_bit.texture_read.r16_sint",
+      "message": "All formats in group contain tested feature. Test is impossible. at vktImageTranscodingSupportTests.cpp:889",
+      "triage": "All formats in compatibility group support the feature; CTS cannot construct its negative extended-usage case. Do not remove support to make it run."
+    },
+    {
+      "index": 688,
+      "status": "NotSupported",
+      "category": "packed_snorm10",
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.a2r10g10b10_snorm_pack32.b8g8r8a8_unorm.optimal_general_linear",
+      "message": "Format feature blit source not supported at vktApiCopiesAndBlittingTests.cpp:1773",
+      "triage": "Packed signed-normalized 10:10:10:2 source/destination format support withheld."
+    },
+    {
+      "index": 696,
+      "status": "NotSupported",
+      "category": "single_plane_disjoint",
+      "case": "dEQP-VK.ycbcr.copy.r8g8b8a8_unorm.r12x4g12x4_unorm_2pack16_khr.linear_disjoint_linear_disjoint",
+      "message": "Format doesn&apos;tsupport  disjoint planes at vktYCbCrCopyTests.cpp:114",
+      "triage": "Requests disjoint-plane support on a single-plane format. Eighteen copy tests and one packed-422 conversion test; not evidence that ordinary multi-plane YCbCr is broken."
+    },
+    {
+      "index": 697,
+      "status": "Crash",
+      "category": "depth_attachment_assertion",
+      "case": "dEQP-VK.pipeline.depth.format.x8_d24_unorm_pack32.compare_ops.never_less_greater_or_equal_less_or_equal",
+      "message": "Process signal 6",
+      "triage": "Confirmed Mesa SIGABRT in hk_CmdBeginRendering: logical X8_D24 depth format missing from assert. Physical depth is emulated; audit the depth-format path, do not only remove the assert."
+    },
+    {
+      "index": 702,
+      "status": "NotSupported",
+      "category": "sparse_resources",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_binding_aliased.buffer_size_2_12",
+      "message": "Sparse binding not supported at vktSparseResourcesBufferMemoryAliasing.cpp:159",
+      "triage": "No sparse binding feature/queue: seven buffer-creation, three sparse texture shader, two sparse-resource tests. No matching queue does not mean graphics queues are broken."
+    },
+    {
+      "index": 704,
+      "status": "Fail",
+      "category": "scaled_float_blit_mismatch",
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16g16b16a16_uscaled.r32_sfloat.optimal_general_linear",
+      "message": "Result image is incorrect",
+      "triage": "USCALED-to-float linear blit: max error 1.59961, tolerance 0.001. Driver/reference comparison pending."
+    },
+    {
+      "index": 711,
+      "status": "NotSupported",
+      "category": "r4g4_unorm",
+      "case": "dEQP-VK.api.copy_and_blit.dedicated_allocation.blit_image.all_formats.color.r4g4_unorm_pack8.a2r10g10b10_uscaled_pack32.general_optimal_linear",
+      "message": "Format feature blit source not supported at vktApiCopiesAndBlittingTests.cpp:1773",
+      "triage": "Missing packed two-channel 4-bit format path: sampling/blits/blending."
+    },
+    {
+      "index": 725,
+      "status": "NotSupported",
+      "category": "single_plane_disjoint",
+      "case": "dEQP-VK.ycbcr.copy.g12x4_b12x4_r12x4_3plane_422_unorm_3pack16_khr.a1r5g5b5_unorm_pack16.linear_disjoint_linear_disjoint",
+      "message": "Format doesn&apos;t disjoint planes at vktYCbCrCopyTests.cpp:138",
+      "triage": "Requests disjoint-plane support on a single-plane format. Eighteen copy tests and one packed-422 conversion test; not evidence that ordinary multi-plane YCbCr is broken."
+    },
+    {
+      "index": 737,
+      "status": "NotSupported",
+      "category": "r4g4_unorm",
+      "case": "dEQP-VK.pipeline.sampler.view_type.2d_array.format.r4g4_unorm_pack8.mipmap.nearest.lod.select_bias_2_5",
+      "message": "Unsupported format for sampling: VK_FORMAT_R4G4_UNORM_PACK8",
+      "triage": "Missing packed two-channel 4-bit format path: sampling/blits/blending."
+    },
+    {
+      "index": 746,
+      "status": "NotSupported",
+      "category": "impossible_negative_cts",
+      "case": "dEQP-VK.image.extended_usage_bit.texture_read.r16g16_snorm",
+      "message": "All formats in group contain tested feature. Test is impossible. at vktImageTranscodingSupportTests.cpp:889",
+      "triage": "All formats in compatibility group support the feature; CTS cannot construct its negative extended-usage case. Do not remove support to make it run."
+    },
+    {
+      "index": 758,
+      "status": "NotSupported",
+      "category": "storage_texel_buffer_format",
+      "case": "dEQP-VK.api.buffer_view.create.dedicated_alloc.create_buffer_view_89_storage",
+      "message": "Format not supported at vktApiBufferViewCreateTests.cpp:330",
+      "triage": "VK_FORMAT_R16G16B16_SINT (enum 89)"
+    },
+    {
+      "index": 781,
+      "status": "NotSupported",
+      "category": "signed_scaled_linear_filter",
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16g16b16_sscaled.b8g8r8_unorm.general_general_linear",
+      "message": "Source format feature sampled image filter linear not supported at vktApiCopiesAndBlittingTests.cpp:1786",
+      "triage": "Missing SSCALED linear filtering. Thirteen first-blocker cases; some also have unsupported destinations."
+    },
+    {
+      "index": 799,
+      "status": "NotSupported",
+      "category": "signed_scaled_linear_filter",
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.a2b10g10r10_sscaled_pack32.r8_sscaled.optimal_optimal_linear",
+      "message": "Source format feature sampled image filter linear not supported at vktApiCopiesAndBlittingTests.cpp:1786",
+      "triage": "Missing SSCALED linear filtering. Thirteen first-blocker cases; some also have unsupported destinations."
+    },
+    {
+      "index": 852,
+      "status": "NotSupported",
+      "category": "sparse_resources",
+      "case": "dEQP-VK.glsl.texture_functions.texture.sparse_samplercube_fixed_fragment",
+      "message": "No matching queue found at vktShaderRender.cpp:610",
+      "triage": "No sparse binding feature/queue: seven buffer-creation, three sparse texture shader, two sparse-resource tests. No matching queue does not mean graphics queues are broken."
+    },
+    {
+      "index": 859,
+      "status": "NotSupported",
+      "category": "sparse_resources",
+      "case": "dEQP-VK.glsl.texture_gather.basic.cube.rgba8i.no_corners.size_npot.sparse_repeat_mirrored_repeat",
+      "message": "No matching queue found at vktShaderRender.cpp:610",
+      "triage": "No sparse binding feature/queue: seven buffer-creation, three sparse texture shader, two sparse-resource tests. No matching queue does not mean graphics queues are broken."
+    },
+    {
+      "index": 885,
+      "status": "NotSupported",
+      "category": "sparse_resources",
+      "case": "dEQP-VK.api.buffer.suballocation.create_buffer_225_3",
+      "message": "No matching queue found at vktApiBufferTests.cpp:174",
+      "triage": "No sparse binding feature/queue: seven buffer-creation, three sparse texture shader, two sparse-resource tests. No matching queue does not mean graphics queues are broken."
+    },
+    {
+      "index": 891,
+      "status": "NotSupported",
+      "category": "sparse_resources",
+      "case": "dEQP-VK.api.buffer.suballocation.create_buffer_101_1",
+      "message": "No matching queue found at vktApiBufferTests.cpp:174",
+      "triage": "No sparse binding feature/queue: seven buffer-creation, three sparse texture shader, two sparse-resource tests. No matching queue does not mean graphics queues are broken."
+    },
+    {
+      "index": 894,
+      "status": "NotSupported",
+      "category": "high_sample_count",
+      "case": "dEQP-VK.pipeline.multisample.sampled_image.64x64_4.r8g8b8a8_unorm.samples_64",
+      "message": "Requested sample count is not supported at vktPipelineMultisampleImageTests.cpp:524",
+      "triage": "64x sampled image; exceeds advertised M4 1x/2x/4x counts."
+    },
+    {
+      "index": 908,
+      "status": "NotSupported",
+      "category": "r64_uint_image",
+      "case": "dEQP-VK.api.granularity.single.r64_uint",
+      "message": "Format not supported at vktApiGranularityTests.cpp:132",
+      "triage": "R64_UINT sampled-image format query unsupported; not the shaderFloat64 feature."
+    },
+    {
+      "index": 921,
+      "status": "NotSupported",
+      "category": "packed_sscaled10_store",
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.b5g5r5a1_unorm_pack16.a2r10g10b10_sscaled_pack32.general_general_linear",
+      "message": "Format feature blit destination not supported at vktApiCopiesAndBlittingTests.cpp:1780",
+      "triage": "Packed signed-scaled 10:10:10:2 blit destination not supported."
+    },
+    {
+      "index": 927,
+      "status": "NotSupported",
+      "category": "single_plane_rgb_ycbcr_conversion",
+      "case": "dEQP-VK.ycbcr.conversion.r16g16b16a16_unorm.ycbcr_709.itu_narrow.nearest_tiling_optimal",
+      "message": "Format doesn&apos;t support YCbCr conversions at vktYCbCrConversionTests.cpp:1951",
+      "triage": "YCbCr conversion/chroma-location format features absent for non-subsampled single-plane RGB/RGBA; ordinary sampling is a separate capability."
+    },
+    {
+      "index": 928,
+      "status": "NotSupported",
+      "category": "signed_scaled_linear_filter",
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16_sscaled.r8g8b8a8_uscaled.general_optimal_linear",
+      "message": "Source format feature sampled image filter linear not supported at vktApiCopiesAndBlittingTests.cpp:1786",
+      "triage": "Missing SSCALED linear filtering. Thirteen first-blocker cases; some also have unsupported destinations."
+    },
+    {
+      "index": 931,
+      "status": "NotSupported",
+      "category": "single_plane_disjoint",
+      "case": "dEQP-VK.ycbcr.copy.g8_b8r8_2plane_420_unorm_khr.r10x6_unorm_pack16_khr.optimal_optimal_disjoint",
+      "message": "Format doesn&apos;t disjoint planes at vktYCbCrCopyTests.cpp:138",
+      "triage": "Requests disjoint-plane support on a single-plane format. Eighteen copy tests and one packed-422 conversion test; not evidence that ordinary multi-plane YCbCr is broken."
+    },
+    {
+      "index": 935,
+      "status": "NotSupported",
+      "category": "sparse_resources",
+      "case": "dEQP-VK.glsl.texture_gather.basic.2d_array.rgba8.size_pot.sparse_mirrored_repeat_clamp_to_edge",
+      "message": "No matching queue found at vktShaderRender.cpp:610",
+      "triage": "No sparse binding feature/queue: seven buffer-creation, three sparse texture shader, two sparse-resource tests. No matching queue does not mean graphics queues are broken."
+    },
+    {
+      "index": 957,
+      "status": "NotSupported",
+      "category": "single_plane_disjoint",
+      "case": "dEQP-VK.ycbcr.copy.g10x6_b10x6r10x6_2plane_422_unorm_3pack16_khr.r12x4g12x4_unorm_2pack16_khr.optimal_linear_disjoint",
+      "message": "Format doesn&apos;t disjoint planes at vktYCbCrCopyTests.cpp:138",
+      "triage": "Requests disjoint-plane support on a single-plane format. Eighteen copy tests and one packed-422 conversion test; not evidence that ordinary multi-plane YCbCr is broken."
+    },
+    {
+      "index": 963,
+      "status": "NotSupported",
+      "category": "single_plane_disjoint",
+      "case": "dEQP-VK.ycbcr.copy.g8_b8_r8_3plane_444_unorm_khr.r4g4_unorm_pack8.linear_disjoint_optimal_disjoint",
+      "message": "Format doesn&apos;t disjoint planes at vktYCbCrCopyTests.cpp:138",
+      "triage": "Requests disjoint-plane support on a single-plane format. Eighteen copy tests and one packed-422 conversion test; not evidence that ordinary multi-plane YCbCr is broken."
+    },
+    {
+      "index": 970,
+      "status": "Fail",
+      "category": "compressed_scaled_view_mismatch",
+      "case": "dEQP-VK.image.texel_view_compatible.graphic.basic.texture_write.etc2_r8g8b8a1_srgb_block.r16g16b16a16_uscaled",
+      "message": "Images difference detected",
+      "triage": "ETC2 punch-through-alpha sRGB blocks written via RGBA16_USCALED texel view; error 115.846 vs 0.001 threshold. Driver/reference comparison pending."
+    },
+    {
+      "index": 977,
+      "status": "Fail",
+      "category": "scaled_float_blit_mismatch",
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.a2b10g10r10_uscaled_pack32.r16_sfloat.general_optimal_linear",
+      "message": "Result image is incorrect",
+      "triage": "USCALED-to-float linear blit: max red-channel error 0.5, tolerance 0.005. Driver/reference comparison pending."
+    },
+    {
+      "index": 997,
+      "status": "NotSupported",
+      "category": "single_plane_disjoint",
+      "case": "dEQP-VK.ycbcr.copy.g8_b8r8_2plane_422_unorm_khr.r5g6b5_unorm_pack16.optimal_optimal_disjoint",
+      "message": "Format doesn&apos;t disjoint planes at vktYCbCrCopyTests.cpp:138",
+      "triage": "Requests disjoint-plane support on a single-plane format. Eighteen copy tests and one packed-422 conversion test; not evidence that ordinary multi-plane YCbCr is broken."
+    }
+  ]
+}
