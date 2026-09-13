@@ -721,6 +721,22 @@ hk_dispatch_g17p_native_linked(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
       return;
    }
 
+   /* A compact recording-time correlation for fault-owned CDM pointers.
+    * Unlike the verbose trace, this neither maps shader BOs nor dumps every
+    * graphics stream, which can obscure timing-sensitive failures. */
+   if (debug_get_bool_option("HK_G17P_COMPUTE_TRACE", false)) {
+      fprintf(stderr, "G17P compute-record: cdm=%" PRIx64
+              " program=%" PRIx64 " shader=%" PRIx64
+              " root=%" PRIx64 " set0=%" PRIx64
+              " size=%zu gprs=%u scratch=%u grid=%u,%u,%u local=%u,%u,%u\n",
+              hk_cs_current_addr(cs), program_bo->va->addr,
+              linked->b.bo->va->addr + linked->b.entry_offset,
+              root_ptr, (uint64_t)cmd->state.cs.descriptors.root.sets[0],
+              linked->b.size, linked->b.nr_gprs, linked->b.scratch_size,
+              grid.count[0], grid.count[1], grid.count[2],
+              local_size.x, local_size.y, local_size.z);
+   }
+
    /* One-shot ground truth for the GMMU fault forensics: the fault bank only
     * reports a 64-byte-granular address, and reconstructing it by hand from
     * dmesg has already produced two mutually inconsistent readings.  Print the

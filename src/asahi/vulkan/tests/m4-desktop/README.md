@@ -2035,3 +2035,15 @@ redirected low-half destinations to their upper neighbour; guarded run
 `webgl-readback.html` draws four fixed colours and records four synchronous
 WebGL pixel reads in documentElement.dataset.m4Probe. firefox-probe retains
 that JSON in its page metadata; normal profile settings are preserved.
+
+`HK_G17P_COMPUTE_TRACE=1` emits one recording-time line per native compute
+launch: CDM, Ioto, shader/root/set addresses, register/scratch use and grid.
+It avoids mapping shader BOs and dumping graphics streams. Correlate the last
+record for a fault-owned CDM address; command-pool reuse may repeat addresses.
+`g16-fault-dump.py decode DUMP --scheduler` also decodes optional compute
+command/mapping/UMA records added by kernel89161783ee5c. Collection was verified
+in012356/job1992: bootstrap/client physical pages agree and the hardware UMA
+slot points at the current pool. These snapshots do not prove TLB contents,
+retirement, or timeout resolution. Old dumps still decode unchanged.
+`webgl-readback.html?read=0&animate=1` omits early point reads and redraws on
+requestAnimationFrame. The runner records frame count and explicit mode.
