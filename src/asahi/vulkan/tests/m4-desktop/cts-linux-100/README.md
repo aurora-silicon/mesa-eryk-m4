@@ -46,3 +46,24 @@ and multisampling of this emulated format remain unadvertised. Three target
 stencil cases pass in 20260913T162648763042Z-cts-d24-stencil, bringing known
 target passes to 85; this is not yet a fresh full-target run. Watchdog and
 thermal guards active, no reset.
+
+Explicit chroma reconstruction: immutable filter state selects luma-centre
+reconstruction followed by full-resolution filtering. Nearest chroma ignores
+chroma location; linear retains cosited/midpoint coordinates. Target 98 Pass
+in 20260913T164314522092Z-cts-explicit-chroma-flrp (86 known target passes).
+Two implementation-time userspace compiler crashes are retained, diagnosed and
+fixed: editing an unattached NIR clone, and stale flrp_lowered state. No GPU reset.
+
+Ten extra controls cover nearest/linear texture and reconstruction filters,
+2/3 planes, 420/422 and 8/10-bit values. Initial 6 Pass / 4 Fail in
+20260913T164354617458Z-cts-explicit-controls-000 exposed a CTS oracle error:
+reconstructLinearXYChromaSample reverses midpoint weights. For i=2k,
+i_RB = 0.5*(i-0.5) = k-0.25, so the upper sample weight is 0.75, not 0.25;
+for i=2k+1 it is 0.25. This agrees with CTS's own 422 oracle and the equations at
+https://docs.vulkan.org/spec/latest/chapters/textures.html#textures-explicit-reconstruction
+The same inverted XY weights were found in Khronos CTS main on this date.
+chroma-midpoint-reference.patch corrects just these two expressions; no
+tolerances or pixel checks are removed. All ten controls Pass using the
+separately built diagnostic in 20260913T164603014781Z-cts-chroma-midpoint-oracle-000.
+Exact combined patch/manifest are retained. The fixed 100 target still uses its
+previous diagnostic binary: its explicit-nearest case needs no oracle change.
