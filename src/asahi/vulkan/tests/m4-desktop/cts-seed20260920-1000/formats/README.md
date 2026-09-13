@@ -82,3 +82,24 @@ A second hardware chroma sampler is unnecessary for shader reconstruction and
 would overflow a single-plane descriptor binding, so it is not allocated.
 
 These are focused hardware results, not an application/video-player claim.
+
+Packed unsigned 10:10:10:2 filtering: original 238 and 332 now pass. The
+89-format subset is 63 Pass / 26 NotSupported / zero failures or crashes.
+Normalized descriptors rescale RGB by 1023 and alpha by 3; descriptor metadata
+tracks component swizzles and applies matching custom-border coefficients.
+The guard summary covers these 89 cases plus eight separately recorded YCbCr
+LOD checks; packed-linear-results.json contains only the 89 format cases.
+
+An old CTS border setup defect initially made original 787 fail. Its scaled
+view requires a FLOAT border, but getFormatBorderColor inferred INT from the
+CPU backing format. Correct the API border type and store the same numeric
+0/1 border in the integer-backed CPU reference sampler (not the float bit
+pattern). No texture values, comparison thresholds, or pixel checks are
+relaxed. The corrected output outside the image is (1,1,1,1) before the
+existing display normalization. Separate patches and binary hashes are in
+scaled-border*.patch and scaled-border-cts-build.json. Prior failing runs
+remain in build/cts-seed20-formats/packed-linear-{qualified,corrected}.
+
+The Vulkan sampling specification requires border type to match image numeric
+type: https://docs.vulkan.org/spec/latest/chapters/textures.html
+These two passes raise the image-format gain from 61 to 63 original cases.

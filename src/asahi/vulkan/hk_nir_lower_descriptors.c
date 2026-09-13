@@ -709,12 +709,17 @@ lower_tex(nir_builder *b, nir_tex_instr *tex,
          nir_def *reciprocal = nir_bcsel(b,
             nir_ine_imm(b, nir_iand_imm(b, kind, 4), 0),
             nir_imm_float(b, 1.0 / 65535.0), nir_imm_float(b, 1.0 / 255.0));
+         reciprocal = nir_bcsel(b, nir_ine_imm(b, nir_iand_imm(b, kind, 128), 0),
+                                  nir_imm_float(b, 1.0 / 1023.0), reciprocal);
          nir_def *channels[4];
          for (unsigned c = 0; c < 4; ++c) {
             nir_def *scaled = nir_iand(b, normalized,
                nir_ine_imm(b, nir_iand_imm(b, kind, BITFIELD_BIT(3 + c)), 0));
             channels[c] = nir_fmul(b, nir_channel(b, border, c),
-               nir_bcsel(b, scaled, reciprocal, nir_imm_float(b, 1)));
+               nir_bcsel(b, scaled,
+                  nir_bcsel(b, nir_ine_imm(b, nir_iand_imm(b, kind, BITFIELD_BIT(8 + c)), 0),
+                                nir_imm_float(b, 1.0 / 3.0), reciprocal),
+                  nir_imm_float(b, 1)));
          }
          border = nir_vec(b, channels, 4);
       }

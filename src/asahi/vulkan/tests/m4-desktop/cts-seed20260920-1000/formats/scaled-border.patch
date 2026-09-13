@@ -1,0 +1,24 @@
+--- a/external/vulkancts/modules/vulkan/pipeline/vktPipelineImageUtil.cpp
++++ b/external/vulkancts/modules/vulkan/pipeline/vktPipelineImageUtil.cpp
+@@ -24,6 +24,7 @@
+ 
+ #include "vktPipelineImageUtil.hpp"
+ #include "vkImageUtil.hpp"
++#include "vkStrUtil.hpp"
+ #include "vkMemUtil.hpp"
+ #include "vkQueryUtil.hpp"
+ #include "vkRefUtil.hpp"
+@@ -137,7 +138,12 @@
+ 
+ VkBorderColor getFormatBorderColor (BorderColor color, VkFormat format)
+ {
+-	if (!isCompressedFormat(format) && (isIntFormat(format) || isUintFormat(format)))
++	// Scaled formats have integer backing bytes but floating-point samples.
++	// Match the sampler border type to the Vulkan numeric format.
++	const std::string name = getFormatName(format);
++	const bool scaled = name.find("_USCALED") != std::string::npos ||
++						name.find("_SSCALED") != std::string::npos;
++	if (!scaled && !isCompressedFormat(format) && (isIntFormat(format) || isUintFormat(format)))
+ 	{
+ 		switch (color)
+ 		{
