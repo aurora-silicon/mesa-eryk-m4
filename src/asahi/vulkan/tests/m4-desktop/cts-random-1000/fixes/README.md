@@ -50,3 +50,12 @@ through the existing imgwci path and its PBE descriptor converts to SNORM.
 RG32Float native framebuffer-fetch text at offset 76 confirms W32/mask=3 with
 no new packet fields; source, text, compiler identity and decoded fields are
 retained in `native-rg32-fetch/`. All 55 tile-core regression checks pass.
+
+## Dynamic 3D LOD and fragment input arrays
+
+`20260913T190648828062Z-cts-lod-input-clean`: indices 116 and 201 Pass. The 3D LOD
+register form uses the native packed LOD bank, with byte-exact level/bias
+compiler witnesses and 6,274 texture-core checks. The saved index-116 shader
+also compiles offline. Dynamic fragment inputs are lowered through Mesa's
+existing indirect-dereference control-flow pass before coefficient selection,
+so no legacy ITERPROJ or mixed-width coefficient-address arithmetic remains.

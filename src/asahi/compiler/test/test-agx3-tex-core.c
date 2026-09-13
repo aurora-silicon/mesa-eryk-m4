@@ -1081,6 +1081,21 @@ test_m4_register_bias(void)
    CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B,&d,bytes,&len));
    CHECK(len == sizeof(expected) && !memcmp(bytes,expected,len));
    CHECK(!agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3C,&d,bytes,&len));
+   /* G16G texture3d.sample(..., bias(v.uv.x)), native SMP at text+166. */
+   const uint8_t native_3d[] = {
+      0x05,0x80,0x0c,0xb8,0xb0,0,0x90,1,1,0,0x10,0,1,0,
+   };
+   d.three_d = true;
+   CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B,&d,bytes,&len));
+   CHECK(len == sizeof(native_3d) && !memcmp(bytes,native_3d,len));
+   const uint8_t native_3d_level[] = {
+      0x05,0x80,0x0c,0xb8,0xb0,0,0x88,0x21,1,0,0x10,0,1,0,
+   };
+   d.lod = AGX3_TEX_LOD_REGISTER;
+   CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B,&d,bytes,&len));
+   CHECK(len == sizeof(native_3d_level) && !memcmp(bytes,native_3d_level,len));
+   d.lod = AGX3_TEX_LOD_BIAS_REGISTER;
+   d.three_d = false;
    d.array=true;
    CHECK(!agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B,&d,bytes,&len));
    d.array=false; d.shadow=true;
