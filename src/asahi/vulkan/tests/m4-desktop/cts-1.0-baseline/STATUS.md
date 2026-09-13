@@ -422,3 +422,14 @@ bundle a6782e1597371c13869bae49caeb136a7036f0024cf90ac30f09b1b8bf70db0a
 now compiles offline (build/cts-formats/rgb-compiler-replay-2), and the actual
 RGB8 blit passes in 20260913T155007213569Z-cts-padded-rgb-fixed. The RGB format
 implementation used in that experiment is recorded separately below.
+
+Optimal RGB images: RGB8/16/32 use corresponding physical RGBA texels, with
+sampled alpha forced to one. GPU buffer transfers pack/unpack the three API
+components; no CPU image conversion is used. Same-format and reinterpretation
+copies use raw physical texels. Linear/external modifier layouts, attachment,
+storage and host-copy capabilities are not added by this path.
+20260913T155007213569Z-cts-padded-rgb-fixed: original skips 12 and 36 Pass.
+20260913T155108242986Z-cts-padded-rgb-controls: RGB8/16/32 clear and RGB8/16 image
+copy controls Pass; RGB32 copy exposed incorrect path selection, then passed
+after correction in 20260913T155139945612Z-cts-padded-rgb32-copy.
+All hardware tests used watchdog/thermal guards; no GPU hang or reboot.

@@ -1954,6 +1954,8 @@ hk_g17p_copy_buffer_to_image_supported(
 struct hk_block_copy_key {
    enum hk_meta_object_key_type type;
    uint32_t block_B;
+   uint32_t packed_rgb_buffer_B;
+   bool to_image;
    int32_t src_tile_log2_w, src_tile_log2_h;
    int32_t dst_tile_log2_w, dst_tile_log2_h;
 };
@@ -2010,14 +2012,19 @@ hk_build_block_copy(const struct hk_block_copy_key *key)
       &b, nir_iadd(&b, x, block_push(&b, dst_x)),
       nir_iadd(&b, y, block_push(&b, dst_y)), block_push(&b, dst_stride),
       key->dst_tile_log2_w, key->dst_tile_log2_h);
+   const bool rgb = key->packed_rgb_buffer_B != 0;
+   const unsigned src_B = rgb && key->to_image ? key->packed_rgb_buffer_B : key->block_B;
+   const unsigned dst_B = rgb && !key->to_image ? key->packed_rgb_buffer_B : key->block_B;
    nir_def *src =
-      nir_iadd(&b, block_push(&b, src), nir_imul_imm(&b, src_el, key->block_B));
+      nir_iadd(&b, block_push(&b, src), nir_imul_imm(&b, src_el, src_B));
    nir_def *dst =
-      nir_iadd(&b, block_push(&b, dst), nir_imul_imm(&b, dst_el, key->block_B));
-   const unsigned bits = MIN2(key->block_B * 8, 32);
-   nir_def *value = nir_load_global(&b, MAX2(key->block_B / 4, 1), bits, src,
-                                    .align_mul = key->block_B);
-   nir_store_global(&b, value, dst, .align_mul = key->block_B);
+      nir_iadd(&b, block_push(&b, dst), nir_imul_imm(&b, dst_el, dst_B));
+   const unsigned bits = rgb ? (key->packed_rgb_buffer_B / 3) * 8 :
+                               MIN2(key->block_B * 8, 32);
+   const unsigned align = rgb ? bits / 8 : key->block_B;
+   nir_def *value = nir_load_global(&b, rgb ? 3 : MAX2(key->block_B / 4, 1), bits, src,
+                                    .align_mul = align);
+   nir_store_global(&b, value, dst, .align_mul = align);
    nir_pop_if(&b, NULL);
    return b.shader;
 }
@@ -2152,6 +2159,9 @@ hk_native_copy_raw_buffer_image(
       const uint32_t block_w = util_format_get_blockwidth(format);
       const uint32_t block_h = util_format_get_blockheight(format);
       const uint32_t block_B = util_format_get_blocksize(format);
+      const enum pipe_format api_format = hk_format_to_pipe_format(image->vk.format);
+      const bool rgb = hk_padded_image_format(api_format) != api_format;
+      const unsigned buffer_block_B = rgb ? util_format_get_blocksize(api_format) : block_B;
       /* Copy each format element verbatim, including separate depth/stencil
        * planes. No render-target format conversion or attachment support is
        * required. Packed depth/stencil aspects need a masked transfer instead.
@@ -2200,13 +2210,13 @@ hk_native_copy_raw_buffer_image(
           ((width % block_w) && x + width != mip_w) ||
           ((height % block_h) && y + height != mip_h) ||
           row_px < width || image_h_px < height ||
-          (region->bufferOffset % block_B))
+          (region->bufferOffset % (rgb ? buffer_block_B / 3 : block_B)))
          return false;
 
       const uint32_t blocks_x = util_format_get_nblocksx(format, width);
       const uint32_t blocks_y = util_format_get_nblocksy(format, height);
       const uint64_t src_row_B =
-         (uint64_t)util_format_get_nblocksx(format, row_px) * block_B;
+         (uint64_t)util_format_get_nblocksx(format, row_px) * buffer_block_B;
       const uint64_t src_layer_B =
          (uint64_t)util_format_get_nblocksy(format, image_h_px) * src_row_B;
       const uint64_t base_src =
@@ -2217,6 +2227,8 @@ hk_native_copy_raw_buffer_image(
       struct hk_block_copy_key key = {
          .type = HK_META_OBJECT_KEY_BLOCK_COPY,
          .block_B = block_B,
+         .packed_rgb_buffer_B = rgb ? buffer_block_B : 0,
+         .to_image = to_image,
          .src_tile_log2_w = -1,
          .src_tile_log2_h = -1,
          .dst_tile_log2_w = hk_native_copy_tile_log2(layout, level, false),
@@ -2235,7 +2247,7 @@ hk_native_copy_raw_buffer_image(
          struct hk_block_copy_push push = {
             .src = base_src + layer * src_layer_B,
             .dst = base_dst + ail_get_layer_level_B(layout, dst_layer, level),
-            .src_stride = src_row_B / block_B,
+            .src_stride = src_row_B / buffer_block_B,
             .dst_stride = hk_native_copy_stride(layout, level),
             .dst_x = base_x_el,
             .dst_y = base_y_el,
@@ -2570,8 +2582,12 @@ hk_CmdCopyImage2(VkCommandBuffer commandBuffer,
          dst_image->vk.aspects == VK_IMAGE_ASPECT_COLOR_BIT &&
          src_image->vk.samples == VK_SAMPLE_COUNT_1_BIT &&
          dst_image->vk.samples == VK_SAMPLE_COUNT_1_BIT) ||
-        (!ail_pixel_format[hk_format_to_pipe_format(src_image->vk.format)].texturable ||
+       (!ail_pixel_format[hk_format_to_pipe_format(src_image->vk.format)].texturable ||
          !ail_pixel_format[hk_format_to_pipe_format(dst_image->vk.format)].texturable) ||
+       hk_padded_image_format(hk_format_to_pipe_format(src_image->vk.format)) !=
+          hk_format_to_pipe_format(src_image->vk.format) ||
+       hk_padded_image_format(hk_format_to_pipe_format(dst_image->vk.format)) !=
+          hk_format_to_pipe_format(dst_image->vk.format) ||
         ((hk_split_depth_stencil(src_image->vk.format) ||
           hk_split_depth_stencil(dst_image->vk.format)) &&
          src_image->vk.samples == VK_SAMPLE_COUNT_1_BIT &&

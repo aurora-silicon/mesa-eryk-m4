@@ -229,6 +229,10 @@ pack_texture(struct hk_device *dev, struct hk_image_view *view,
                       texture_type != view->vk.view_type;
 
    enum pipe_format p_format = format_for_plane(view, view_plane);
+   const bool padded_rgb = agx_native_graphics(&dev->dev) &&
+                          hk_padded_image_format(p_format) != p_format;
+   if (padded_rgb)
+      p_format = hk_padded_image_format(p_format);
    if (agx_native_graphics(&dev->dev)) {
       enum pipe_format integer = hk_scaled_texture_format(p_format);
       if (integer != PIPE_FORMAT_NONE)
@@ -245,6 +249,9 @@ pack_texture(struct hk_device *dev, struct hk_image_view *view,
       desc->swizzle[2],
       desc->swizzle[3],
    };
+
+   if (padded_rgb)
+      format_swizzle[3] = PIPE_SWIZZLE_1;
 
    /* Different APIs have different depth/stencil swizzle rules. Vulkan expects
     * R001 behaviour, override here because Mesa's format table is not that.

@@ -57,6 +57,22 @@ hk_get_image_plane_format_features(struct hk_physical_device *pdev,
    if (p_format == PIPE_FORMAT_NONE)
       return 0;
 
+   enum pipe_format padded = hk_padded_image_format(p_format);
+   if (agx_native_graphics(&pdev->dev) && padded != p_format) {
+      /* Linear and external modifier layouts must retain the API's packed
+       * texel stride. This path is restricted to driver-owned optimal images. */
+      if (tiling != VK_IMAGE_TILING_OPTIMAL)
+         return 0;
+      VkFormatFeatureFlags2 rgb = VK_FORMAT_FEATURE_2_TRANSFER_SRC_BIT |
+         VK_FORMAT_FEATURE_2_TRANSFER_DST_BIT;
+      if (ail_pixel_format[padded].texturable) {
+         rgb |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT | VK_FORMAT_FEATURE_2_BLIT_SRC_BIT;
+         if (!util_format_is_pure_integer(padded))
+            rgb |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
+      }
+      return rgb;
+   }
+
    /* NPOT formats only supported for texel buffers */
    if (!util_is_power_of_two_nonzero(util_format_get_blocksize(p_format)))
       return 0;
@@ -963,7 +979,9 @@ hk_image_init(struct hk_device *dev, struct hk_image *image,
          .tiling = hk_map_tiling(dev, pCreateInfo, image->vk.drm_format_mod),
          .compressed = compressed,
          .mipmapped_z = pCreateInfo->imageType == VK_IMAGE_TYPE_3D,
-         .format = hk_format_to_pipe_format(format),
+         .format = agx_native_graphics(&dev->dev)
+            ? hk_padded_image_format(hk_format_to_pipe_format(format))
+            : hk_format_to_pipe_format(format),
 
          .linear_stride_B = linear_stride_B,
 

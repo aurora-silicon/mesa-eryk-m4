@@ -126,6 +126,23 @@ hk_scaled_texture_format(enum pipe_format format)
    }
 }
 
+/* Optimal RGB images use four-component storage. Transfers pack/unpack the
+ * three API components on the GPU; descriptors force alpha to one. */
+static inline enum pipe_format
+hk_padded_image_format(enum pipe_format format)
+{
+   switch (format) {
+#define RGB(bits, type) \
+   case PIPE_FORMAT_R##bits##G##bits##B##bits##_##type: \
+      return PIPE_FORMAT_R##bits##G##bits##B##bits##A##bits##_##type;
+   RGB(8, UNORM) RGB(8, SNORM) RGB(8, UINT) RGB(8, SINT) RGB(8, SRGB)
+   RGB(16, UNORM) RGB(16, SNORM) RGB(16, UINT) RGB(16, SINT) RGB(16, FLOAT)
+   RGB(32, UINT) RGB(32, SINT) RGB(32, FLOAT)
+#undef RGB
+   default: return format;
+   }
+}
+
 static inline bool
 hk_split_depth_stencil(VkFormat format)
 {
