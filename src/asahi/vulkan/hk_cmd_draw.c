@@ -1112,6 +1112,7 @@ hk_CmdBeginRendering(VkCommandBuffer commandBuffer,
       assert(desc->format == PIPE_FORMAT_Z32_FLOAT ||
              desc->format == PIPE_FORMAT_Z16_UNORM ||
              desc->format == PIPE_FORMAT_Z16_UNORM_S8_UINT ||
+             desc->format == PIPE_FORMAT_Z24_UNORM_S8_UINT ||
              desc->format == PIPE_FORMAT_Z32_FLOAT_S8X24_UINT);
 
       render->cr.depth.buffer =
@@ -3776,7 +3777,7 @@ hk_depth_bias_factor(VkFormat format, bool exact, bool force_unorm)
 {
    if (hk_depth_stencil_plane_format(format, 0) == VK_FORMAT_D16_UNORM) {
       return exact ? (1 << 16) : (1 << 15);
-   } else if (force_unorm) {
+   } else if (force_unorm || format == VK_FORMAT_D24_UNORM_S8_UINT) {
       return exact ? (1ull << 24) : (1ull << 23);
    } else {
       return 1.0;
@@ -4736,6 +4737,7 @@ hk_flush_gfx_state(struct hk_cmd_buffer *cmd, uint32_t draw_id,
        dyn->rs.depth_bias.enable) {
 
       bool dbias_is_int =
+         gfx->render.depth_att.vk_format == VK_FORMAT_D24_UNORM_S8_UINT ||
          (dyn->rs.depth_bias.representation ==
           VK_DEPTH_BIAS_REPRESENTATION_LEAST_REPRESENTABLE_VALUE_FORCE_UNORM_EXT) ||
          (hk_depth_stencil_plane_format(gfx->render.depth_att.vk_format, 0) ==

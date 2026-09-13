@@ -1,1567 +1,938 @@
-# J713 native desktop qualification
-
-These are opt-in hardware tests for the identified T8132/G16G firmware and
-experimental common Asahi driver. They do not enable another SKU or prove
-conformance. Use only with the J713 watchdog and thermal workflow.
-
-`asahi-session.py` starts the actual Omarchy user configuration under seatd,
-checks its M4 Zink renderer, compares a red test terminal in Wayland screencopy
-and imported DCP scanout, then starts SuperTux's first level. It records the
-application's loaded libraries, actual GL renderer, screenshots, panel layers
-and KMS completions. `gl-renderer-audit.c` only logs the active context's renderer
-when SuperTux queries GL_VERSION; it forwards every query unchanged.
-
-The interactive path runs a fresh real Vulkan computation, verifying 32 output
-values, and checks Hyprland IPC and DCP import/completion status every five
-seconds. `desktop-guard.py` verifies a 60-second hardware watchdog before any
-work, and renews it only for a fresh, sequential successful GPU/compositor
-check with a live thermal monitor. It never runs an unconditional heartbeat.
-During long game upload batches it also accepts newly observed, at most
-three-second-old kernel GPU-job retirements. The thermal check remains
-mandatory for every renewal. Compute and screencopy requests may wait up to
-120 seconds behind SuperTuxKart's upload work; without continuing GPU
-retirements the 60-second watchdog still expires independently.
-All six PMP channels are monitored at 0.5-second intervals, with enabled CPU
-thermal policy, startup below 65 C and workload termination at 75 C. No GPU
-clock increase or qualified dedicated GPU sensor is assumed.
-
-The guard defaults to a bounded 1800-second session (maximum 3600). The user
-can end it with Super+Shift+Escape using the existing supervised Omarchy
-configuration. Failed progress stops GPU clients and requests reboot while
-leaving watchdog recovery armed. Normal completion saves evidence before
-explicitly disarming. DCP remains pinned until reboot.
-
-Deployed layout on the qualification machine:
-
-- `/root/asahi-desktop/{desktop-guard.py,desktop-launch.py}`
-- `/root/hyprland-validation/{asahi-session.py,seat-user.py}`
-- `/root/g16-submit-test/{experiment_watchdog.py,experiment_thermals.py}`:
-  existing guard helpers only; no lab GPU driver is loaded.
-- `/root/m4-vulkan-compute-min`: the Vulkan compute test compiled with
-  `TEST_DEVICE_ID=0x8132`.
-- `/root/m4_dcp_rtkit-asahi.ko`: existing native DCP driver rebuilt against
-  the running kernel; it supplies display scanout, separate from Asahi GPU.
-- `/opt/asahi-m4-port`: isolated Mesa, explicit Vulkan/EGL JSON files, and the
-  existing split-render/display Aquamarine build (`3939123` in the workspace
-  `reference/aquamarine-m4` checkout).
-- `/opt/m4-hyprland/omarchy.lua`: existing supervised user configuration.
-
-Build the context logger for arm64 with `-O2 -Wall -Wextra -fPIC -shared -ldl`
-and install it as `/opt/asahi-m4-port/lib/gl-renderer-audit.so`.
-Start from root, choosing a new evidence directory each time:
-
-```
-systemd-run --unit=m4-asahi-desktop --collect \
-  --property=RuntimeMaxSec=1900 --property=TimeoutStopSec=8 \
-  python3 /root/asahi-desktop/desktop-guard.py --seconds 1800 \
-  --output /root/asahi-evidence/UNIQUE-NAME
-```
-
-Do not start competing watchdog owners or reload a stopped firmware session
-without a fresh reboot. The launch script retains an already-running Asahi/DCP
-session. `g16_lab` must be absent. This is a supervised bring-up desktop, not an
-automatic boot service or a claim of GPU recovery/thermal throttling support.
-
-## SuperTuxKart full-race test
-
-Set `M4_TEST_SUPERTUXKART=1` when invoking the guard to run SuperTuxKart 1.5
-through Zink/Honeykrisp in an 800x450 logical Wayland window. The isolated
-configuration uses Lighthouse, four AI karts, one lap, `--profile-laps=1`,
-and disables dynamic lights and texture compression. This test requires the
-game to exit successfully after printing nonzero frame-count and timing
-statistics; mapping a loading window, reaching the deadline, or ending the
-session manually does not count as completing the demo. It saves the result
-as `supertuxkart-demo.json`, with game logs and intermediate screen captures.
-
-## J713 rendering correctness probes (2026-09-09)
-
-The standalone `m4_zink_depth_cube.c` test uses surfaceless Zink/Honeykrisp and
-requires an M4 renderer. Run each invocation inside `bounded-guard.py`; it
-arms the 60-second watchdog and samples all six thermal channels before the
-probe can submit GPU work. The test covers ordinary depth ordering and depth
-preservation across a 65,536-instance parameter-pressure draw, then samples
-six solid cube faces. `--cube-grid` instead verifies every texel of a 4x4
-pattern on each face against CPU-generated directions: 96 draws and 98,304
-exact RGBA8 pixel comparisons. This checks orientation as well as face choice.
-The `--direction`, `--face-math`, `--array` and `--array-face` modes isolate
-uniform loading, major-axis arithmetic and ordinary array sampling.
-
-Native cubemap descriptors must retain six 2D array layers, and the late cube
-lowering must produce an integer layer in backend coordinates. With those
-changes, the previous independent reciprocal-per-axis calculation still
-failed the positive-Y direction on J713. Selecting the face before computing
-one reciprocal magnitude passes all six axes and all 96 patterned samples.
-This avoids evaluating reciprocals of the unused zero axes and reduces the
-coordinate calculation. The precise cause of the old combined shader's
-failure is not established by these tests; isolated face arithmetic passed.
-
-Evidence under the workspace `_provenance/asahi-stk-20260909/`:
-
-- `cube-major-axis-1`: two depth cases and six axis directions passed.
-- `cube-grid-1`: two depth cases and 96 patterned face samples passed;
-  peak exposed PMP temperature 51.25 C.
-- `float-texture-1`: RGBA32F upload/subimage and vertex-stage `texelFetch`
-  passed 4,096 exact output pixels using `m4_zink_vertex_fetch --float-texture`.
-- `minmax-1`: 32 exact finite float min/max results passed using
-  `m4_vulkan_minmax.c`; includes positive, negative and equal operands.
-
-Both ARM64 and host Mesa builds passed. Host `hk_native_descriptor`,
-`hk_native_sampler`, and `agx3_graphics_compile_test
---cube-sample-lowering-only` passed. These bounded checks do not establish
-seamless filtering, mip selection, cube arrays, Vulkan conformance or a
-correct completed SuperTuxKart race. The full game remains the acceptance
-workload.
-
-`m4_zink_perspective.c` independently checks a triangle with a 4:1 clip-W
-ratio against CPU barycentric perspective equations, with a one-unit UNORM8
-tolerance. `perspective-clip-1` passed 1,830 interpolation pixels and five
-near/far/negative-W clipping cases. `m4_zink_stk_vertex_layout.c` uses STK's
-48-byte skinned vertex and 44-byte instance layouts, four instances and an
-offset 16-bit index buffer. `stk-vertex-layout-5` passed all twelve tested
-attributes (12,288 pixels), including packed signed normals, half floats,
-signed bone indices, instance divisors and normalized signed texture offsets.
-The probe exposed two compiler refusals: instance-ID reads incorrectly vetoed
-terminal vertex output bundling, and FCMP pseudo-ops escaped the nonzero
-float-comparator constant lowering already used for FCMPSEL. Both now use the
-existing qualified encoders; four focused vertex-output host tests passed.
-
-Full race `stk-demo-19` still showed stretched geometry and damaged kart
-surfaces. It was stopped for further isolation, not accepted as a completed
-race. Opt-in `M4_STK_APITRACE=1` records the game's EGL/GL commands using the
-isolated `/opt/m4-apitrace` wrapper. The trace path is recorded in
-`graphics-trace.json`; each trace has a unique name under the desktop user's
-`.local/state/m4-asahi-traces/`. The usual watchdog and thermal requirements
-also apply during recording and GPU replay.
-
-`bounded-guard.py --seconds N` permits a bounded command longer than the
-normal 40-second no-renewal probe. For N > 40 it records a new kernel log
-stream and renews only for newly observed, monotonically increasing Asahi
-job retirements at most three seconds old, at most once every five seconds.
-The thermal monitor must remain healthy; an exited kernel monitor stops the
-command and leaves the watchdog armed. A deadline or loss of GPU progress
-cannot be hidden by an unconditional heartbeat. This mode is used for the
-resource uploads needed to replay a captured game frame. Maximum duration is
-1,800 seconds; it is a test deadline, not a hardware limit.
-
-`stk-demo-20` captured 392 EGL frames (about 144 MiB compressed). A local
-llvmpipe replay produced intact sky and kart geometry from those same calls,
-providing a software reference rather than an M4 success claim. Additional
-J713 probes `culling-1`, `float-texture-tall-1`, and `float-texture-multi-1`
-passed winding/cull combinations, 72 samples spanning the 4x2049 skinning
-texture, and eight groups of sixteen vertex fetches respectively. The X11
-replay setup exposed a separate loader bug: explicit GALLIUM_DRIVER=zink
-with a software presentation winsys was given an empty driver option table.
-The loader now supplies Zink's option descriptions for that explicit choice.
-
-### Live unary operands and the stretched grass regression
-
-The ten draw checkpoints in `stk-replay-5` isolate the large sky/grass streaks
-between calls 23332 and 23360, where program 47 executes `sp_grass_pass.vert`.
-Its wind uniform is 190.6785 and its vertex displacement evaluates sin/cos.
-`trig-1` failed 10/32 numeric comparisons, with huge negative-input outputs;
-`round-1` showed correct floor results but fract(x) equal to -floor(x).
-The rounding encoder retained the canonical specimen's source-discard bit,
-although the allocator needed x again after floor(x). Runtime unary encoding
-now carries actual source/destination cache hints and scoreboard waits.
-
-- `round-3`: all 32 floor/fract results passed bit-for-bit.
-- `trig-2`: all 32 sin/cos results passed absolute tolerance 0.002, including
-  the captured wind input. This qualifies the existing approximation for
-  these inputs; it is not a general trigonometric accuracy claim.
-- `stk-replay-6`: the full captured first scene replayed successfully with
-  the huge stretched polygons gone. At call 23360, pixels differing from the
-  llvmpipe reference by more than three UNORM8 values fell from 639,708 to
-  58,031. Differences in the karts, shading and sky remain under investigation.
-- `unary-1` exposed the same destructive lifetime assumption in reciprocal
-  and inverse square root: rsqrt(x) discarded x before rcp(x), producing
-  infinity and dropping x from the final addition.
-- `unary-2`: after preserving actual reciprocal/rsqrt lifetimes and their
-  distinct wait-field layouts, all 32 live-source reciprocal/rsqrt/exp2/log2
-  results passed absolute tolerance 0.002.
-
-The canonical funop byte-replay test still passes all 55 checks. ARM64 and
-host builds pass, as does the targeted cube-lowering test. The broad graphics
-compiler suite still has unrelated stale exact-binary/refusal expectations
-and unsupported AGX3c cases; it is not reported as a passing suite. These
-results do not yet qualify a correct full SuperTuxKart race.
-
-### Skinning texture coordinates (2026-09-09)
-
-`m4_zink_skinning.c` combines packed 48-byte vertices, 44-byte instances,
-sixteen vertex texture fetches, four weighted bone matrices, quaternion
-rotation and the associated normals/tangents. Each of four input vertices
-and four instances writes seven vec4 results. The fragment shader encodes
-one float's bits at a time into RGBA8, avoiding any dependence on float
-render-target support. All 448 values are compared with independent CPU math
-at absolute tolerance 0.0002. `--reference` explicitly selects a local
-llvmpipe reference; normal mode requires Zink and an M4 renderer.
-`--matrices`, `--identity-bones` and `--identity-rotation` isolate the data
-while keeping the shader's calculations present.
-
-The test reproduced the game's bad positions and normals. `skinning-3`
-failed geometry while color/UV passed; both identity diagnostics also failed.
-Individual three-channel texture reads passed (`fetch-xyz-1`). Two independent
-encoder mistakes were involved:
-
-- Coordinate staging masked the source half-register index with 0x7f,
-  aliasing high registers with unrelated low registers. Unlike PACK_SMPIR,
-  this COPY path did not subsequently restore the high bit.
-- Independent vertex texture loads overwrote the same staging coordinates
-  while earlier fetches could still read them. Vertex fetches now use one
-  eight-half coordinate bank per scoreboard slot and retire that slot before
-  reusing its bank. Other texture/image protocols keep their existing layout.
-
-With just these changes, `skinning-11` passed all 448 values. The earlier
-plain-ALU destination and register-MOV experiments did not fix the reproducer
-and are not part of this change; their patch is saved in the workspace
-provenance. The host texture-core suite passes 5,571 checks, including high
-coordinate source registers with all cache hints and six dependency slots.
-The complete correct race remains the acceptance target.
-
-The skinning oracle now also covers 40-byte vertices, divergent bone indices,
-indexed drawing from a nonzero offset, and the view/projection uniform block
-(512 float results). `--fixture DIR` accepts four external vertex records,
-four instance records, a bone atlas and a matrices block; captured application
-assets are kept outside this MIT source tree. `skinning-camera-1` passed all
-512 results with the captured first kart's data. This is a numeric shader test,
-not a claim about the complete game's appearance.
-
-`stk-coverage-1` replayed the unchanged kart shaders with clear alpha zero and
-saved alpha as well as RGB. The first kart draw (254 covered pixels) and all
-kart draws (1,751 covered pixels) matched the llvmpipe reference's coverage
-exactly. RGB remained incorrect, directing further investigation to shading
-and texture sampling. The guarded replay completed with no thermal failure;
-the hottest exposed sensor reached 53 C.
-
-### Mipmap selection and helper pixels (2026-09-09)
-
-The captured kart's coverage, UVs and vertex colors matched the reference,
-and linear filtering without mipmaps differed by at most one UNORM8 step.
-With mipmaps enabled, 226 of its 254 pixels differed by more than three steps.
-A fixture replay with each mip filled with a distinct constant color showed
-that levels 1–10 selected correctly, while explicit level zero incorrectly
-used implicit derivatives. Keep AGX3B `txl(..., 0)` explicit in every stage,
-not just compute (`stk-modes-3`).
-
-Small procedural triangles then reproduced invalid derivatives at primitive
-edges. Pixel-position derivatives were correct, while texture-coordinate
-helper values were wrong. The f63 marker previously emitted on the first
-interpolation suppressed those helper values. With that marker clear,
-`stk-marker-1` matched the small-triangle derivative reference exactly and its
-mipmap reference within one UNORM8 step. The isolated captured kart dropped
-from 226 to eight pixels above the three-step threshold (maximum nine steps);
-this remaining difference is not claimed to be exact rendering.
-
-Use NIR's coarse/full-quad helper requirements to retain helper values during
-interpolation and coefficient loads. Plain varying shaders keep the existing
-native marker. The ordinary color writeout protocol remains responsible for
-completion. Primary/secondary triangle-merging bit experiments did not fix
-this error and are not included.
-
-Derivative instructions also need their own source-lifetime handling: their
-composer root requires f29=0, so optional last-use discard must not be encoded.
-Retire pending input producers with the existing slot-wait sequence rather
-than requiring unqualified inline derivative waits.
-
-`m4_zink_mipmaps.c` is a self-contained regression with generated mip colors,
-explicit levels 0–8, automatic selection and XY derivatives on full-size and
-small triangles. It verifies both covered-pixel counts and RGB values against
-an analytic oracle (tolerance two UNORM8 steps). `--explicit-only` isolates
-explicit selection. `--reference` requires llvmpipe; normal mode requires an M4
-Zink renderer. Build like the other EGL/GLES3 tests and run inside the guards.
-`mipmaps-2` passed all 46,048 pixel checks with the conditional helper fix;
-the host oracle passed as well. The host funop, texture and varying suites
-passed 59, 5,571 and 977 checks respectively, and both Mesa builds passed.
-Full-scene and complete-race validation are separate acceptance checks.
-
-### Array mip levels and texture growth (2026-09-09)
-
-The mipmap test now accepts `--array` (three independently colored layers)
-and `--immutable` (allocate all levels before uploading). It additionally
-checks implicit sampling clamped to level zero and integer `texelFetch`.
-Exactly representable constant explicit LODs use the immediate encoding,
-leaving the auxiliary staging bank available for the array layer. Dynamic
-register LOD combined with an array layer remains unsupported.
-
-Mutable texture growth initially corrupted level zero of layers one and two.
-Allocating immutable storage isolated this to integer array reads: filtered
-sampling was correct, but `texelFetch` selected layer zero. The fetch staging
-layout places the layer at half-register offset six, after the reserved LOD
-pair, rather than immediately after XY at offset four. Reserve the full eight
-half-register bank as well.
-
-With this correction, `mipmaps-immutable-2` and `mipmaps-array-4` each passed
-162,720 pixel checks on J713, including texture growth/copying. Both guards
-verified a 60-second watchdog and healthy thermal monitoring; peak exposed
-temperatures were 51.5 C and 51.25 C respectively. The host llvmpipe oracle
-also passed. Host texture, funop and varying suites passed 5,571, 59 and 977
-checks. These tests do not establish complete Vulkan conformance.
-
-### Complete Lighthouse race (2026-09-09)
-
-`stk-replay-11` with Mesa `d693fcdee6d` completed the captured first frame.
-Against llvmpipe, pixels whose largest RGB error exceeds three UNORM8 steps
-fell from 136,605 in replay 10 to 2,978 in replay 11. The kart group has 55
-such pixels; the opaque track checkpoint has 125. Thin cube-face seams remain
-visible in the sky, and foliage has smaller residual differences. This is
-substantial progress, not a pixel-perfect rendering claim.
-
-`stk-demo-21` then completed the normal Lighthouse race under the actual
-Omarchy Hyprland session: four AI karts, one lap, `--profile-laps=1`, exit 0,
-7,321 frames in 175.244003 seconds, reported average 41.776035 FPS. The path
-was Asahi kernel, Honeykrisp Vulkan, Zink and native DCP scanout. The guard
-verified 38 compute/compositor/scanout health checks and a 60-second watchdog.
-All six exposed thermal channels remained healthy; the peak was 54.75 C.
-GPU clocks remained at the boot setting and CPU thermal policy stayed enabled.
-This qualifies this bounded race on J713, not general long-term stability.
-
-### Native M4 cubemap filtering (2026-09-09)
-
-The earlier cube-to-array lowering selected the right faces but discarded
-cube-aware edge filtering and derivative handling. The captured sky had
-1,809 pixels more than three UNORM8 steps from the reference, including
-visible dashed seams. M4's native SMP cube selector is f76=4. It takes
-projected UV and a packed integer face, rather than the original XYZ ray.
-Use the existing face projection, coordinate bank zero and PACK_SMPIR bank
-six, and retain a cube image descriptor with a cube count. This M4 selection
-does not change the unqualified G17P cube path. Cube arrays and explicit cube
-LOD remain outside this qualified subset.
-
-`cube-native-grid-6` passed all 96 face/texel cases (98,304 exact pixels).
-`sky-native-normal-1` ran the isolated captured sky shader with its original
-textures and mip generation: all 1,440,000 pixels were within one UNORM8 step
-of llvmpipe and the seams disappeared. `cube-native-seams-3` passed all twelve
-edges at tolerance one and all eight constant-color corners exactly, using
-the self-contained `m4_zink_depth_cube.c --cube-seams` test. Host reference
-mode is available with `--reference` as the final argument. These guarded
-runs peaked at 51.75 C, with no thermal failures.
-
-An initial corner oracle required the arithmetic average of three differently
-colored faces. M4 differed from it by up to three color steps. That is not a
-portable conformance requirement: the [Vulkan sampling rules](https://github.com/KhronosGroup/Vulkan-Docs/blob/main/chapters/textures.adoc)
-allow different corner reconstruction, while requiring constant preservation
-when the incident texels agree. The committed corner oracle checks that
-requirement; the differing-color measurements remain in the evidence.
-
-The compiler test now compiles both native cube projection and the retained
-cube-to-array path. Host texture, funop and varying suites still pass 5,571,
-59 and 977 checks. Host and ARM64 builds pass. Combined texture-coordinate
-and descriptor dependencies retire through the existing slot-wait sequence
-before staging, instead of failing when more than one producer is outstanding.
-
-`stk-replay-12` confirmed the change in the complete captured scene. The sky
-adds no pixels above the three-step comparison threshold; the final frame has
-2,267 such pixels, largely in foliage. The replay peaked at 53.75 C.
-`stk-demo-22` then completed another normal Lighthouse/four-kart/one-lap race
-under Omarchy Hyprland, with exit 0, 7,182 frames in 169.127014 seconds and
-reported average 42.465126 FPS. All 36 compute/compositor/scanout health checks
-passed and the hottest exposed sensor reached 54.75 C. Both completed races
-used the same boot without a GPU reset. Moving screenshots show the sky seams
-removed. These are visual and bounded stability results, not pixel identity
-with llvmpipe or a full conformance claim.
-
-### Foliage filtering oracle (2026-09-09)
-
-Removing alpha discard from the whole scene changes depth occlusion, so its
-grayscale difference image is not a reliable isolated sampler test. An external
-fixture for the first foliage draw instead uses the original 127 packed
-24-byte vertices, 261 indices, fourteen 44-byte instances, camera block,
-wind uniform and texture mip levels. Application shaders/assets remain outside
-this MIT source tree. `grass-modes-1` reproduced the residual differences.
-With discard removed, both renderers covered exactly the same 77,231 pixels.
-
-`grass-uv-1` exported the interpolated U and V float32 bit patterns through
-RGBA8, separately from the texture reads. The median absolute U/V differences
-from llvmpipe were 0.00000730 and 0.00000441; some overlapping/thin geometry
-has larger differences. Feed each renderer's own measured UVs into independent
-nearest and bilinear repeat-wrap equations. On M4 all 77,231 nearest alpha
-samples match exactly, and every linear alpha sample is within one UNORM8
-step (maximum 0.971135). The texture reads are consistent with their UV inputs;
-the remaining cross-renderer differences originate earlier than those reads.
-This does not establish exact interpolation or depth-tie behavior.
-
-`texture-filter-oracle.py` implements that independent check using NumPy. Its
-inputs are a raw RGBA8 texture, separate U/V bit-pattern images, and nearest/
-linear grayscale samples with alpha 255 for coverage and zero for the clear.
-All inputs use the same row order; width/height describe the texture. It checks
-base-level repeat filtering only and leaves interpolation validation separate.
-
-## 0 A.D. bring-up (2026-09-09 onward)
-
-The real game reached a visible map under native M4 Hyprland in
-`0ad-map-22`: terrain, units, buildings and interface are present. This is
-an initial boot milestone, not rendering correctness or performance parity.
-Building surfaces have conspicuous artifacts and the FPS overlay reads 1.
-Normal batched submission still hangs; the boot profile separates every
-draw into its own render pass using Zink's diagnostic synchronization mode:
-
-```
-M4_TEST_0AD=1 M4_0AD_UNCOMPRESSED=1 M4_0AD_NO_SHADOWS=1 \
-M4_0AD_NO_POSTPROC=1 M4_0AD_SYNC_DRAWS=1 \
-python3 /root/asahi-desktop/desktop-guard.py \
-  --seconds 180 --output /root/asahi-evidence/UNIQUE-NAME
-```
-
-`M4_0AD_SYNC_DRAWS=1` adds `sync` to the game's `ZINK_DEBUG`; it is separate
-from the older flush-thread-only diagnostic. Rendering stays on M4 through
-Zink/Honeykrisp. Disabling S3TC selects CPU asset decompression, while shadows
-and postprocessing avoid unsupported shader paths. No GPU clocks are raised.
-The captured full scene also completed in `0ad-sync-unwritten-color` after
-the depth-clear preservation fix, with a 53 C maximum monitored temperature.
-
-`0ad-map-22` recorded 16 successful GPU/compositor health checks and a
-54.5 C maximum across all six PMP channels, without a thermal trip or
-recorded GPU fault. Its final process check nevertheless failed and the
-guard rebooted: the engine's `EarlyInit()` calls `debug_SetThreadName("main")`,
-so `pgrep -x pyrogenesis` missed the surviving game. This run remains marked
-failed. The runner now identifies the mapped Wayland client and validates
-its executable and UID through `/proc`; thermal-stop matching uses the
-executable argv instead of the renamed comm. Final screencopy uses the same
-bounded allowance as live screenshots. Successful tests stop the game and
-compositor after collecting evidence, before disarming the watchdog.
-
-The corrected repeat, `0ad-map-23`, passed its 180-second interval with
-17 validated GPU/compositor health checks, 389 thermal samples, a 54.5 C
-peak, no thermal trip, and no recorded GPU fault. The final process evidence
-confirms comm `main`, UID 1000, and the private pyrogenesis executable; the
-engine identifies M4 Zink/Honeykrisp. Live and final screencopies show the
-actual map. The game and compositor were stopped and the watchdog disarmed
-after evidence sync. This is bounded boot validation, not a completed match.
-The kernel is `08f7797b248d`; deployed Mesa includes the runtime changes
-through `2ae4d60b693` (its embedded build-version string predates that commit).
-Evidence lives in workspace `_provenance/asahi-0ad-20260909/0ad-map-23/`.
-
-### Setup and earlier failures
-
-`M4_TEST_0AD=1` selects 0 A.D. instead of either SuperTux test. The runner
-starts release 28 on `skirmishes/acropolis_bay_2p`, Athens versus a Sparta
-Petra AI, deterministic seeds, a 1024x768 requested Wayland window, the GL
-backend through Zink, no sound, and the FPS overlay. The installed private
-Debian ARM64 package is `0.28.0-3+b2`, with data `0.28.0-1`, under
-`/opt/m4-0ad`; `/usr/share/games/0ad` points to its data directory. Its missing
-versioned libraries are private too. Package URLs and SHA256 checks against
-the Debian package index are in workspace
-`_provenance/asahi-0ad-20260909/packages.json`.
-
-The game gets isolated configuration, cache and state directories, Honeykrisp
-error logging, and the same watchdog/thermal guards as the desktop tests.
-The guard explicitly stops `pyrogenesis` on failure and copies its engine
-logs before final evidence sync. The bounded result checks process/window
-survival and the engine-reported renderer; screenshots still need inspection
-to establish actual map rendering. It is not a full-match completion test.
-
-```
-M4_TEST_0AD=1 python3 /root/asahi-desktop/desktop-guard.py \
-  --seconds 180 --output /root/asahi-evidence/UNIQUE-NAME
-```
-
-`M4_0AD_UNCOMPRESSED=1` additionally hides S3TC from this game's GL context,
-selecting its existing texture decompression fallback. It changes asset
-upload, not GPU rendering, and is an explicitly experimental diagnostic.
-
-The first four configurations did not pass:
-
-- `0ad-map-1`: compositor screencopy timed out before the game launched.
-- `0ad-map-2` and `0ad-map-3`: the engine identified M4 Zink/Honeykrisp,
-  but command recording rejected buffer-to-image uploads. Detailed logging
-  localized `VK_ERROR_FEATURE_NOT_PRESENT` to `hk_cmd_meta.c:1850` at that
-  source revision. The native upload path covers only selected compressed
-  formats; the game's DXT family includes additional formats. Exact rejected
-  upload parameters were not captured, so this remains a likely cause.
-- `0ad-map-4`: disabling S3TC passed that initial rejection, then GPU job 89
-  failed retirement with EIO and Zink reported device loss. The guard saved
-  firmware trace/MMU diagnostics and requested reboot. The captured early
-  desktop frame contains only the wallpaper; no rendered map was verified.
-
-All four tests verified a 60-second watchdog. Peak of all monitored PMP
-channels across the attempts was 54 C, with no thermal trip. GPU clocks were
-not changed. Evidence is under `_provenance/asahi-0ad-20260909/` in the
-workspace. Next work is capturing exact rejected upload parameters and
-isolating the first uncompressed submission that loses the device; no
-kernel or Mesa rendering implementation was changed for these attempts.
-
-The next 0 A.D. vertex shader required `fma(-2, abs(x), 3)`. Mixed/minifloat
-FMA now lowers F32 absolute/negate source modifiers to sign-bit operations
-before register allocation, preserving a single fused operation. The native
-all-register modifier path remains unchanged. `m4_vulkan_fma_abs` verifies
-32 exact outputs for this expression and `fma(0.5, -abs(x), 1)`, including
-both signs of zero and infinities. Build its SPIR-V header with:
-
-```
-glslangValidator -V --vn m4_vulkan_fma_abs_spv m4_vulkan_fma_abs.comp \
-  -o m4_vulkan_fma_abs_spv.h
-```
-
-`0ad-fma-abs-2`, `-3`, and `-4` passed; `-4` removed the per-element diagnostic
-printing before verification. The first run returned unchanged input values;
-that initial failure is retained in evidence and its cause is not established.
-Both host and ARM64 Mesa builds passed. `0ad-map-11` passed the former vertex
-shader refusal and reached a separate fragment texture-sample refusal while
-creating its shadow map. This still does not establish a rendered game map.
-
-With shadows disabled (`M4_0AD_NO_SHADOWS=1`), `0ad-map-12` instead reached
-an F16/F32 compare-select with full-width alternatives. The compiler now
-widens that first comparator exactly before RA, preserving the condition
-and selected bit patterns. `0ad-map-13` passed this shader and reached a
-separate native draw-bind rejection; a rendered map is still unverified.
-
-`m4_vulkan_compare_half` checks 32 half/full comparisons, including signed
-zero, infinities, NaNs and half subnormals. `0ad-compare-half-2` passed all
-outputs. Its first cold run returned all original inputs, resembling the
-unresolved first FMA-probe behavior above; it is not qualified as a stable
-cold-start compute test. Both host and ARM64 Mesa builds passed.
-
-The isolated translucent-discard probe additionally exposed a half-register
-LDIMM carrying a wait mask, although that instruction has no wait field.
-The backend now emits the existing wait-retirement NOP before LDIMM. This
-preserves dependencies rather than dropping the requested wait.
-
-`0ad-map-14` localized the draw-bind refusal to pass type 3 (translucent
-punch-through). The native bind path now retains that pass type, conservatively
-disabling triangle merging for it. M4 B0's `updateFragmentShaderISPState` at
-0x44747c..0x4474cc confirms the pass-type bits and the conditional merge-disable
-bit. The exact draw-buffer predicate is not yet mapped, so this may sacrifice
-merging performance; it does not remove blending or coverage rejection.
-Reference arm64e slice SHA256:
-`edd46e01416e595b51734428ece82aa0104868b35d585f492b2efa3ceebbce3a`.
-
-`m4_gl_translucent_discard.c` creates a 64x64 RGBA8 target, clears blue,
-then draws red at half alpha while discarding the left half. Compile with
-EGL/GLESv2 and run under the mandatory bounded guard and M4 Zink environment;
-its optional first argument saves raw RGBA for inspection. `0ad-translucent-3`
-verified all 4096 pixels. Run 1 refused LDIMM before the wait fix; run 2 failed
-its first preserved-pixel check without a pixel dump. These failures remain
-in evidence. The isolated result is not a cold-start stability claim.
-
-`M4_0AD_NO_POSTPROC=1` disables post-processing for the first-playable
-profile: `0ad-map-15` otherwise rejects a blitter-style texel fetch with a
-varying LOD. The runner now installs a Lua Hyprland rule before launch to
-keep 0 A.D. floating at 1024x768 logical pixels (2048x1536 at the current
-2x scale). Previously tiling expanded it to almost the entire panel.
-Attempts 17/18 exposed launcher timing/legacy-IPC mistakes; the pre-map Lua
-rule in attempt 19 fixes both. The game still stalled in its first scene
-render in attempts 16/19; window size alone did not resolve it. No passing
-map run has yet been established at this commit.
-
-M4 now uses the existing retained-render transition when its 64 KiB VDM root
-runs out of room. This applies the same storage-capacity check already used
-on G17P; it does not impose a draw-count limit. `m4_gl_vdm_chain.c` emits 2048
-draws with alternating uniform colors. `0ad-vdm-chain-3` crossed four root
-boundaries and verified 256 exact green pixels, without a GPU fault. The
-first split-path run completed but failed its pixel check; this remains part
-of the unresolved cold-start behavior documented above. The preceding
-full-alias link experiment faulted and was reverted: high address bits in
-the native packet alone do not establish the command window's base semantics.
-
-This change does not fix the whole game: `0ad-scene-replay-split` still
-stalled in tiling in the first scene root, now with `linked=0`. The captured
-frame is black and is not passing evidence. A 10-second host render timeout
-and a 32 MiB initial parameter-buffer diagnostic also failed; both kernel
-changes were reverted. Keep the normal GPU clock and thermal guards.
-
-Native raster updates now use the immutable HAL200 bind tail even when
-only depth/stencil or fragment state changes. The old fallback could emit
-an AGX2 aggregate PPP packet, and the following draw lacked the selector
-required for a fresh native tail. `m4_gl_depth_update.c` keeps the program,
-uniforms and geometry constant while changing LESS to LEQUAL at equal depth.
-`0ad-depth-update-2` verified 256 green pixels. Run 1 failed its pixel check;
-the cold-start limitation remains. Host and ARM64 builds passed. Full-scene
-`0ad-scene-native-ppp` still stalled in tiling, so this is not a boot claim.
-
-Readback checkpoints allow the captured terrain and individual building
-draws to complete. `0ad-scene-checkpoints` passed the prefix through call
-23856; `0ad-dense-checkpoints` passed individual draws through 26623 and
-the group through 27873, then stalled in a later fragment pass. These are
-partial-scene diagnostics, not a rendered map or game stability result.
-
-The VDM boundary probe now preserves the first draw on the left half of a
-128x64 target while later draws affect only the right half. This checks
-retained color, not just the last overwrite. `0ad-vdm-retain-tiles-2` passed
-all 8192 pixels after 2048 draws. The first expanded test accidentally read
-only 16x16 pixels and is invalid; that readback extent was corrected.
-`0ad-vdm-retain-colors` also passed the original single-tile version.
-
-A depth-only meta clear exposed a separate color-loss bug: the implicit
-color mask (no fragment output at all) forced translucency but did not
-preserve the tile value. HAL200 then stored undefined color. Extend the
-existing zero-mask load/store preservation to bound, unspilled attachments
-that the shader does not write. This preserves physical sRGB values too.
-`0ad-depth-clear` returned black instead of red before the fix;
-`0ad-depth-clear-fixed` preserved all 256 red pixels. The complete
-`m4_gl_depth_clear.c` test additionally proves that the depth clear takes
-effect: after clearing color to blue, a LESS-tested half-screen draw passes
-against the new depth. `0ad-depth-clear-full-2` passed both checks; the first
-cold run failed and remains evidence of the separate cold-start issue.
-Host and ARM64 builds passed. Normal batched `0ad-scene-unwritten-color`
-still stalled. The synchronized replay and actual map described above are
-the subsequent boot evidence; they do not qualify ordinary batching.
-
-Native bind state now also preserves the linker's triangle-merging restriction
-(bit 26), and disables merging for points/lines as the common PPP path does.
-The compiler sets this restriction for coarse derivatives, wide subgroup
-operations and memory writes; it must survive independently of pass type.
-`m4_gl_derivatives.c` checks derivatives across 128 triangles with discontinuous
-varying values. `0ad-derivatives-merge-control-3` passed all 4096 pixels;
-run 2 returned zeros, consistent with the unresolved first-readback issue.
-The baseline also passed this probe, so it verifies compatibility rather than
-demonstrating a fixed pixel mismatch. The first probe version used integer
-division in its vertex shader and hit an unsupported IMAD form; geometry is
-now supplied through an ordinary vertex buffer. Host and ARM64 builds passed.
-
-Scene prefixes through calls 21462 and 22554 completed with ordinary batching
-(`0ad-batch-prefix-*`). Adding the first normal-mapped object (a rock) at 23123 stalled in fragment
-execution. An in-stream VDM barrier did not fix it and was reverted. A later
-cold-boot prefix failed even at 22554, so the boundary is not deterministic
-across boots. Preserving merging restrictions did not fix the batched scene
-(`0ad-building-merge-control`); the synchronized normal-mapped-object replay
-`0ad-building-sync-merge` completed. These tests retain the 60-second watchdog,
-six-channel thermal monitoring and unchanged GPU clock. No performance or
-rendering-correctness improvement is claimed from these diagnostics.
-
-
-### Differential parallax diagnosis (2026-09-10)
-
-The original captured frame through call 36525 now has matched llvmpipe and
-M4 replays, including snapshots at 22554, 23123, 23931, 26623 and 36525.
-Both receive identical captured inputs at 2048x1536. llvmpipe shows correct
-roof tiles and tower stonework; M4's original scene still corrupts those
-materials. The large discrepancy is already present at 26623, before the
-later depth-only pass. The displayed FPS number belongs to the capture,
-not to either replay's measured performance.
-
-`0ad-llvmpipe-reference-2` and `0ad-m4-reference-pair` preserve the original
-comparison. A separate diagnostic trace disables only the parallax branch
-in fragment shaders 62, 65 and 71, preserving source-string lengths. With
-that same variant on both renderers, pixels differing by more than 32/255
-in any RGB channel fall from 117,490 to 13,998 at call 36525. A separate
-fixed-eight-iteration variant leaves 39,102 such pixels. Neither variant
-is installed in the game or offered as a rendering fix. The original
-artifacts and the existing Zink synchronization requirement remain open.
-These diagnostics implicate the parallax path but do not prove a specific
-instruction or loop-control bug. Peak M4 temperatures remain at or below
-54 C, with the 60-second watchdog and six-sensor thermal guard throughout.
-Workspace evidence: `_provenance/asahi-0ad-20260909/`; the standalone
-`0ad-frame-comparison.html` there provides original-frame split/difference
-views without modifying the renderer outputs.
-
-`m4_gl_parallax_loop.c` checks analytical results for fragment loop counts,
-conditional entry, loop-carried coordinates/height, and final refinement.
-It includes a gradient texture, explicit LOD with uniform and divergent
-loop bounds, and implicit LOD with uniform bounds. All 28,672 pixel checks
-pass on llvmpipe and on M4 (`0ad-parallax-loop-gradient`, peak 51.75 C).
-This narrows the failure beyond these basic loop/sample combinations;
-it is not a reproducer for the remaining game corruption. The test requires
-M4 Zink unless M4_TEST_LLVMPIPE explicitly permits the reference renderer.
-Mesa commits remain local and this working checkout has no Git remotes.
-
-### Float-to-integer source lifetime fix (2026-09-10)
-
-The native `flt2int` language-cast specimen discarded its floating source
-unconditionally. The parallax shader converts a floating loop bound to an
-integer, then reuses that float for truncation and the reciprocal step.
-Discarding it produced invalid loop-carried height and final coordinates.
-The runtime encoder now uses the register allocator's source/destination
-cache hints and actual scoreboard waits for signed and unsigned casts.
-The canonical specimen API and AGX3c path remain separate.
-
-`m4_gl_parallax_loop.c` now accepts `M4_TEST_FLOAT_BOUND=1` or
-`M4_TEST_UNSIGNED_BOUND=1` to exercise a floating bound followed by reuse.
-A desktop-GL reduction failed 12,288 of 28,672 pixels before the fix and
-passed all pixels after (`parallax-loop-float`, `parallax-loop-float-fixed`).
-The tracked GLES test passes all 28,672 pixels for each cast variant on
-both M4 and llvmpipe (`parallax-float-regression`,
-`parallax-unsigned-regression`). A reduction using the game's full material
-shader and generated textures previously returned black for every case;
-afterward eight of nine 128x128 images match llvmpipe byte for byte, with
-15 pixels exceeding 8/255 in the remaining case (`parallax-material-fixed`).
-
-The original, unmodified game trace also improves: at call 36525, pixels
-exceeding 32/255 in any RGB channel fall from 117,490 to 39,091, and mean
-absolute RGB error falls from 3.8329 to 1.7875 (`0ad-f2i-lifetime-fixed`).
-Roof detail is restored. Tower/pavilion material differences and batching
-remain unresolved; this is not a claim of perfect rendering or higher FPS.
-No game shader, effect setting, renderer fallback or clock workaround is
-part of this fix. Guarded replay peaks at 53 C with the 60-second watchdog.
-
-Host and ARM64 builds and the `agx3_alu_core`/`agx3_funop_core` tests pass.
-Broader compiler suites still fail on existing half-abs, EOT, shuffle and
-stale binary expectations; rebuilding the parent packer reproduces those
-same failures (`build/0ad/f2i-baseline-testlog.txt` in the workspace).
-Mesa remains local, with no remotes and no push.
-
-
-### Retain fragment helpers through texture sampling (2026-09-10)
-
-After the float-cast fix, mipmapped material tests still differed along the
-boundary between two adjacent triangles: 256 of 16,384 pixels selected a
-coarse mip even with zero parallax displacement. The SMP f156 bit copied
-from native terminal samples was incorrectly treated as an implicit-LOD
-marker and set on every sample. Clearing it on G16G preserves helper
-coordinate updates needed by later texture operations. LOD mode is selected
-independently; register-LOD samples can also precede an implicit sample.
-
-The compiler now requests helper retention for AGX3B fragment shaders whose
-NIR metadata requires quad helpers. Both implicit and register-LOD samples
-honour that request. The normal colour termination protocol ends the shader;
-there is no additional synchronization, fixed staging address or game shader
-change. Canonical encoder callers retain their byte-exact native specimens,
-and AGX3C helper retention remains unsupported. Execution evidence here is
-J713/G16G only.
-
-`m4_gl_conditional_mipmap.c` is the asset-free reproducer. Two triangles
-sample generated mip chains: each base mip has a unique colour, and the
-height texture uses different coordinates to prevent staging-bank reuse
-from concealing the bug. The direct sample is a passing control. A uniform
-branch, uniform loop and register-LOD sample each precede another implicit
-sample. Before this fix those three cases fail 256 pixels each (768 total);
-after it all 65,536 pixels pass, as they do on llvmpipe. Evidence:
-`conditional-mipmap-four-before` and `conditional-mipmap-four-fixed`.
-Build with `-lEGL -lGL`; run through the mandatory watchdog/thermal wrapper.
-The reference run additionally requires `M4_TEST_LLVMPIPE=1`.
-
-The full material shader with generated mipmaps now has only three pixels
-exceeding 8/255 across nine 128x128 cases (maximum 9/255), versus roughly
-256 per case before. The zero-displacement images are byte-identical to
-llvmpipe (`parallax-smp156`). Serialization alone, coordinate retention,
-COPY cache/discard changes and branch mask probes did not fix it. Reusing
-one staging bank (0 or 32) only hid the zero-displacement failure; displaced
-samples still consumed stale helper coordinates. Those probes were reverted.
-
-The original game trace improves again at call 36525: pixels exceeding
-32/255 fall from 39,091 after the float-cast fix to 4,460, versus 117,490
-before both fixes. Mean absolute RGB error is now 1.0557, versus 3.8329
-originally (`0ad-smp-helper-fixed`). This is approximately a 96.2% reduction
-in large pixel differences, not perfect parity or a performance result.
-Existing per-draw Zink synchronization remains necessary. Host/ARM64 builds,
-5,622 texture-core checks and all 15 exact SMP-witness checks pass.
-
-The final helper-retention policy also passed 180 seconds of native DCP
-Hyprland with 0 A.D., 29 independent GPU/compositor health checks and 386
-thermal samples. Peak temperature was 53.75 C, with the 60-second watchdog,
-enabled CPU thermal policy and unchanged 338 MHz GPU clock throughout
-(`0ad-retain-helpers-desktop`). The GPU renders both the game and compositor;
-the existing Quickshell panel still uses its software backend. Indexed
-native graphics/compute sampler compilation also passes. The broader
-compiler-test failures described above remain; direct-IR fragment fixtures
-also lack the NIR helper metadata that the packer expects.
-
-During earlier float-cast desktop validation, a DCP flip failed with -5 and
-the startup screenshot timed out. The guard saved evidence and rebooted;
-the fresh-boot retry passed 180 seconds/30 health checks at 54 C
-(`0ad-f2i-fixed-desktop-fresh`). This display failure is recorded separately
-from the shader fixes, not presented as resolved by either one.
-
-
-### Native fragment blend constants (2026-09-10)
-
-The remaining large silhouette mismatch is draw 35357 (program 108): the
-blue occluded horse is visible on llvmpipe but mostly absent on M4. A reduced
-occluder/silhouette test reproduces this with ordinary depth/stencil state;
-disabling stencil does not help, while disabling constant-alpha blending
-does. The HAL200 launch path omitted the blend-constant upload performed
-by the AGX2 path. Merely adding that old upload would alias red/green
-constants with the native texture/sampler heap pointers in halves 0..7.
-
-The native fragment ABI now reserves those first eight halves before the
-ordinary fragment layout. Fragment main root/set loads, linked prolog root
-loads and epilog blend constants agree on the shifted layout. The launch
-program uploads RGBA blend constants at native halves 12..19; root and set
-pointers start at half 20. Each draw uses its existing immutable root table.
-No shader substitution, extra submission, wait or cache flush is introduced.
-AGX2 keeps its old layout; the existing native vertex prefix is unchanged.
-
-`m4_gl_blend_constants.c` checks eight depth/stencil/blend combinations plus
-textured constant-colour/constant-alpha blending with four changing RGBA
-constant vectors. The latter keeps both native texture heaps and blend
-constants live, so the ABI overlap cannot be hidden by an untextured shader.
-llvmpipe passes all 4,096 pixels. M4 fails 2,560 before and passes all pixels
-after (`blend-constants-regression-before`, `blend-constants-regression-fixed`).
-Build with `-lEGL -lGLESv2`; reference runs require M4_TEST_LLVMPIPE=1 and
-hardware runs require the watchdog/thermal wrapper. The focused Ioto core
-suite passes all 6,770 checks. The separate advanced-blend epilog test still
-refuses its unrelated mixed-half fcmpsel shape; this change does not implement
-advanced blend equations.
-
-The original scene's horse crop drops from 701 large pixel mismatches to
-2 (the crop already had 2 before the silhouette draw). At call 36525 the
-full-frame count above 32/255 drops from 4,460 to 3,750 and mean absolute
-RGB error from 1.0557 to 1.0396 (`0ad-blend-constants-fixed`). Remaining
-scattered sampling differences are under investigation. Builds pass on
-host and ARM64. Guarded regression peaks at 51 C and replay at 51.75 C,
-with the 60-second watchdog and the unchanged CPU/GPU thermal policy.
-Mesa changes remain local, without remotes or a push.
-
-The commit-labelled build then passed 180 seconds of native DCP Hyprland
-with 0 A.D., 29 independent GPU/compositor health checks and 390 thermal
-samples, peaking at 53.25 C (`0ad-blend-constants-desktop-fresh`). Its SHA256
-is `3535b9fa6e4b1971bbf25838af1f46084ec4345cdc5cb844ac588a104ad1fb6e`.
-The preceding startup attempt hit the already observed DCP flip -5 and
-screenshot timeout (`0ad-blend-constants-desktop`); the guard saved evidence
-and rebooted. The fresh retry is successful, not evidence that this display
-restart failure is fixed. Per-draw synchronization remains enabled; compression, shadows and
-post-processing remain disabled in that baseline test.
-
-
-### M4 shadow comparison capture and encoding (2026-09-10)
-
-Enabling shadows in `0ad-shadows-current` rejects the terrain fragment
-shader: one unsupported shadow sample prevents the whole native descriptor
-lowering, so the backend first reports an ordinary sample with AGX2 operands.
-The game exits; the guard records a 53.5 C maximum and reboots. This is a
-compiler refusal, not a passing shadowed scene.
-
-On macOS 25G83, 37 of 38 small Metal fragment pipeline probes compiled into native
-M4 binary archives, including 2D/array/cube comparisons, fixed and indirect
-resources, offsets, gradients, variable LOD and fetches. The optional color
-gather probe had an invalid Metal source signature, not a hardware failure.
-The 2D depth reference
-uses a signalling COPY to staging half4 after x/y at halves0/2. The array
-layer remains in separate auxiliary bank6. SMP uses f143=1, f74=0 and mask1;
-implicit and level-zero forms are byte-witnessed for M4. Eight exact
-fixed/uniform/varying-descriptor witnesses now pass the texture-core suite
-(5,654 checks). The remaining captured modes are not thereby implemented.
-
-The first implementation admits scalar 2D/array shadow samples through native
-descriptor lowering, stages the reference, and retains helper coordinates when
-later samples need them. The native sampler supplies the comparison function
-and filtering; there is no CPU shadow calculation in the driver.
-`m4_gl_shadow_compare.c` is the independent CPU-oracle test: eight comparison
-functions, nearest/linear PCF, three reference depths, and edge clamping.
-llvmpipe passes all 12,288 pixels. Native macOS M4 passes the equivalent Metal
-test at float precision (maximum error 0.000108). Linux hardware validation is
-pending at this checkpoint. Build the GLES test with EGL, GLESv2 and libm;
-M4_TEST_LLVMPIPE=1 allows the reference, live J713 uses the mandatory guards.
-All Mesa changes are local; the checkout has no remotes.
-
-The Linux probe now renders its depth map with a depth-only framebuffer,
-matching the game's shadow pass and testing attachment-to-sampler visibility.
-CPU uploads of D32_SFLOAT images are separately unsupported in the current
-native meta path. The GPU-rendered version passes llvmpipe's 12,288 pixels.
-Its first M4 run exposed a kernel validation bug: zero color tilebuffer bytes
-were rejected even for depth-only passes. Kernel commit `49ed361697e5` removes
-that rejection while retaining the storage bound; the module builds with the
-existing J713 configuration. Hardware validation follows after reboot.
-
-After reboot with `49ed361697e5`, the GPU-rendered shadow test passes all
-12,288 pixels on M4 Zink/Honeykrisp with zero byte error, matching llvmpipe.
-This covers all eight comparison functions, nearest and linear PCF, three
-reference depths, clamp-to-edge, and the depth-write-to-sample transition.
-The guard saved normal completion without a GPU fault; the peak PMP reading
-was 50.25 C, with the 60-second watchdog and thermal policy active.
-Evidence: `asahi-0ad-20260910-macos/shadow-compare-depth-kernel`.
-
-The actual shadowed scene next exposed two larger-shader boundaries. Its
-shadow coordinates in r32 exceeded the ordinary SMP coordinate field even
-though shadow samples copy them to bank zero. `8efc288d95c` validates those
-sources against COPY's full register bank instead. Then a model vertex shader
-needed 33 scalar outputs, beyond the old 32-output capture-derived limit.
-Output bundling now uses the 256-half staging-file capacity (128 F32 values),
-with occupancy tracking that does not overflow at 64 outputs. Host regressions
-check scheduling/RA/value preservation/slot retirement through the game's
-33-output case and already-terminal physical IR through 128 outputs.
-Very wide live producer sets can still cause RA to insert instructions between
-stores; those nonterminal shapes remain refused instead of risking GPR reuse.
-
-The first visible shadowed scene still had filter errors and two longer runs
-timed out in Fragment, both with and without API tracing. The single-tap test
-did not cover the game's four-tap PCF. Extending the analytic test to that
-weighted filter exposed 4,094 bad pixels of 24,576 on M4; llvmpipe had none.
-Independent shadow samples reused the same coordinate staging bank before
-earlier samples consumed it. Waiting for pending work removed the error.
-The permanent fix adds staging ownership tokens to the existing scoreboard:
-only overlapping coordinate publishers depend on the earlier texture result.
-This covers fixed-bank shadow/LOD/array samples, ordinary samples and staged
-fetches; per-slot vertex-fetch banks keep their existing reuse waits.
-
-With the token fix, the expanded M4 test passes all 24,576 pixels, maximum
-byte error 1 (tolerance 2). The backend regression checks both the overlapping
-wait and independent nonoverlapping samples. The slot core's 60 checks and
-texture core's 5,654 checks pass. The actual scene is being revalidated; the
-earlier desktop timeouts are not yet claimed fixed by this pixel result.
-Evidence: `asahi-0ad-20260910-macos/shadow-four-tap{,-wait,-tokens}`.
-
-The corrected original shadowed frame (call 40898, 2048x1536) completes on
-M4 and is compared with the identical llvmpipe replay. Pixels with an RGB
-channel error above 32 drop from 39,134 to 3,520; mean absolute RGB error
-falls from 2.464218 to 1.110645. The remaining fine filtering/rasterization
-differences are comparable to the earlier non-shadow scene, not zero.
-An interactive before/after/reference comparison is saved as
-`asahi-0ad-20260910-macos/0ad-shadows-comparison.html`.
-The tested commit build is `5ece7ba5b54`, Vulkan library SHA-256
-`1182488c0aac417f09e9e6940ffc7aa2c4e6e58efdb11f770bedb09c2688cf27`.
-
-Longer desktop testing still times out in Fragment, including after the
-staging fix. An eight-frame headless replay also timed out before its first
-snapshot, although the identical one-frame prefix passed independently.
-Thus the shadow-pixel fix is qualified, but these results do not establish
-stable sustained gameplay or blame Hyprland. Kernel render-backing reuse is
-being isolated next. Watchdog recovery and saved thermal evidence remain
-mandatory; the corrected single-frame run peaked at 52.25 C.
-
-
-Further guarded diagnostics did not resolve sustained replay retirement:
-allocating fresh render backing, allowing a 10-second kernel deadline, and
-retiring each SMP immediately all still failed. The original two-second
-kernel deadline and normal asynchronous texture scheduling were restored.
-The serialized-SMP run completed three PNG snapshots, then timed out during
-the fourth snapshot (which may be incomplete); peak temperature was 52.25 C.
-Disabling only the three parallax loops also ended in watchdog recovery,
-so that quality-reducing diagnostic is not a fix. These experiments do not
-change the qualified shadow-pixel result above.
-
-
-`m4_gl_wide_varyings.c` checks real interpolation of 28, 29 and 32 independent
-user scalars (32, 33 and 36 native outputs including position), with 24
-readbacks per interface. Its analytic CPU reference is independent of the
-shader compiler. llvmpipe and the second M4 invocation passed all 1,179,648
-pixels exactly. The first M4 invocation had one entire bad readback in the
-28-scalar control; its 29/32-scalar cases passed. That first-readback anomaly
-is retained as a failure, not dismissed as warmup. Evidence directories are
-`shadow-wide-varyings` and `shadow-wide-varyings-repeat`; peak 52.25 C.
-Build with `-lEGL -lGL -lm`, and use the same mandatory guards as other live
-tests. `M4_TEST_LLVMPIPE=1` permits the software reference only.
-
-Further isolation identifies the large model's material loop: omitting its
-27 draws lets the original eight-frame scene complete, while retaining only
-those draws reproduces the Fragment timeout. Disabling its parallax loop
-makes that isolated model pass all eight frames. An initial explicit-LOD-zero
-variant appeared to pass, but this result is INVALID: apitrace retained the
-original shader-string length and truncated the longer replacement. The
-model did not link, and replay continued despite API errors. The initial
-explicit-gradient variant has the same defect. Neither establishes anything
-about LOD selection or shader execution. Replacement strings must fit the
-captured length, and successful replay validation must reject shader, link
-and API errors independently of the process exit code. Uniform loop bounds,
-disabled scheduling and disabled register cache hints did not fix the
-original model. Valid evidence: `shadow-only-model-no-parallax` and
-`shadow-only-large-model` under the same dated evidence directory.
-
-Native shader compilation can now run on a separate macOS host. The tools
-`src/asahi/compiler/test/m4-metal-loop-probes.py` and
-`src/asahi/compiler/test/m4-metal-cross-compile.py` generate 18 loop variants
-and compile their render pipelines explicitly for `applegpu_g16g`. Run on
-the compiler host:
+# Development tools
+
+Shared tools for M4 GPU development and debugging live here. Add or improve a
+tool when real development work calls for it; the proposed tool suite is not a
+requirement to build everything upfront.
+
+Prefer reusable helpers over repeated manual commands and one-off script copies.
+Document purpose and usage as tools are added, and keep generated captures,
+builds, and experiment results outside the tool sources.
+
+The development workflow and hardware experiment requirements are in
+[AGENTS.md](../AGENTS.md).
+
+Existing tools include `g16-isa/`; preserve them when extending this directory.
+
+## Default Vulkan capture/replay workflow
+
+Reuse captures and small deterministic replays before launching games or
+reviewing desktop screenshots again. See [Vulkan trace tools](README-vulkan-traces.md)
+for `vulkan-trace.py`, capability matching, recorded adaptations, saved-output
+comparisons, build/deployment details and known tooling limitations. All target
+runs retain the mandatory watchdog and thermal supervision.
+
+## Persistent SSH watchdog
+
+See [SSH watchdog](README-watchdog.md) for the host heartbeat and target broker.
+It retains an armed 60-second watchdog between experiments and gives each test
+an exclusive descriptor lease without bypassing thermal or progress checks.
+
+## Bounded GPU experiments
+
+Normal boot starts the display manager. Stop SDDM before guarded experiments
+take over the seat; do not change the default boot to text mode.
+After the experiment releases its watchdog and the driver is healthy, deploy
+`restore-display-manager.py` to the target and run it with `--output NEW_DIRECTORY`.
+It arms a 60-second watchdog, monitors temperatures during a short SDDM startup
+check, saves evidence, then leaves the ordinary login screen running. A failed
+startup leaves watchdog recovery armed. It does not install GPU/display modules.
+
+`desktop-experiment.py --name NAME --seconds 180` runs the existing target desktop
+guard for a shadowed 0 A.D. map under native Hyprland, saving source state, target
+hashes, health/thermal evidence and screenshots. It verifies the guard hash and
+does not nest watchdog owners. Existing uncompressed assets, disabled postprocessing
+and per-draw synchronization are explicit in its manifest; `--batch-draws` removes
+the synchronization diagnostic. `--postprocessing` removes the forced postprocessing
+disable, and `--compressed-assets` removes the S3TC extension override. These
+options test one remaining limitation at a time; they do not declare support.
+Guard success still requires visual validation.
+
+`gpu-experiment.py` reports compact pixel checks and per-channel temperature peaks
+from fetched evidence, alongside the independently validated guard verdict.
+It runs one experiment on `root@omarchy-m4` through the existing
+mandatory watchdog/thermal guard. It saves source revisions and patches, target
+hashes, the guard log, fetched evidence and a classified result under
+`_provenance/experiments/`. It does not build or deploy binaries. The recorded
+installed hash identifies the binary actually tested independently of source HEAD.
 
 ```sh
-python3 m4-metal-loop-probes.py probes
-python3 m4-metal-cross-compile.py --output compiled probes/*.metal
+python3 tools/gpu-experiment.py --name lod-only --seconds 40 \
+  --hypothesis 'Does the conditional LOD sample stall without preceding draws?' \
+  --expect '^PASS: conditional mipmaps' \
+  -- python3 /root/probe-conditional-mipmap-large-lod.py
 ```
 
-Install a missing toolchain with `xcodebuild -downloadComponent MetalToolchain`.
-The compiler helper supplies a JSON render-pipeline description to
-`applegpu-nt -N`, records exact commands and source/archive hashes, and uses
-no GPU execution. The first corpus used Metal 32023.883 / toolchain 17F109,
-macOS 26.6.1 build 25G76, SDK 26.5. All 18 variants compiled; the reusable
-helper was also exercised separately on a loop/inner-if/shadow variant.
-These binaries are compiler evidence, not M4 hardware success. Sources,
-archives and extracted code are saved in
-`asahi-0ad-20260910-macos/remote-g16g-loop-compiler`.
-Apple documents the pipeline schema at
-<https://developer.apple.com/documentation/metal/compiling-binary-archives-from-a-custom-configuration-script>.
-
-The corrected, length-preserving LOD-zero shader compiles in llvmpipe but
-still times out on M4. Explicit gradients compile in llvmpipe but are
-rejected by the M4 backend. The original model also still fails with
-coordinate bank zero, without border emulation, without anisotropy, and
-with native control-flow or texture-marker diagnostics. All those encoder
-changes were reverted; these failures do not isolate implicit derivatives.
-
-Changing only the loop maximum from 20 to 4 does produce two validated
-eight-frame M4 completions, peak 54 C. The four-iteration version retains
-its backedge: its NIR and allocated IR differ from the failing maximum-8
-variant only in the constant, hashes and diagnostic pointers. This is not
-a loop-unrolling result and is not a quality-preserving fix. Replacing
-only the final refinement division with multiplication also fails with
-the original maximum 20. The small conditional-mipmap test's 20-iteration
-loop cases pass; its first control readback still returns zeros, so the
-overall test remains a failure. Evidence is saved under
-`shadow-only-model-loop-max{4,4-dump,8}`, `shadow-small-loop20` and
-`shadow-only-model-refinement-multiply` in the dated evidence directory.
-
-`AGX_MESA_DEBUG=shaders` now prints each packed AGX3 binary as one hexadecimal
-record with its shader stage, preamble status, encoding and byte count.
-This supports comparison with the offline native archives even though the
-compiler does not yet have an AGX3 instruction printer. The ARM64 build
-passes, and the small loop test produced complete, length-checked records.
-
-
-The conditional-mipmap regression now exercises 20 iterations, an inner
-conditional sample, and loops inside uniform and varying outer conditions.
-The last two cases encode their completed iteration counts in red. llvmpipe
-passes all 114,688 pixels. M4 passes all loop/conditional cases, including
-those counts, but its first direct-sample readback is entirely zero and the
-overall test fails (16,384 bad pixels). Keep this failure visible; do not
-discard the first readback as warmup. Evidence: `shadow-small-outer-loop20`,
-peak 53 C.
-
-Packed comparison confirms that the passing maximum-4 and failing maximum-8
-model fragments are each 5,648 bytes and differ only in the LDIMM constant
-(one byte at 0x375). The original maximum-20 fragment also runs in nine
-generated two-triangle/material scenes: its machine code differs from
-maximum-8 only in that same constant. Three of 147,456 pixels differ from
-llvmpipe by more than 8/255 (maximum 9); zero-displacement cases match
-exactly. The original game shaders are unchanged in this reduction; the
-textures, geometry and uniforms are generated, including a GPU-cleared
-depth texture. This is not a successful full-scene replay. Evidence:
-`shadow-model-generated`, `shadow-model-generated-reference` and
-`shadow-model-generated-comparison.json`.
-
-A zero-displacement shader diagnostic in the captured scene still times
-out, as does assigning the loop predicate to flag 0 and ordinary conditions
-to flag 5. The latter encoder change was reverted. Neither repetition
-alone nor the static shader binary now explains the scene failure; resource
-and input-dependent execution remain under investigation.
-
-
-The mipmap probe accepts `M4_TEST_WIDTH` (64..2048, default 128),
-`M4_TEST_MODES` (a comma-separated sequence of modes 0..6, default all),
-`M4_TEST_READS` (1..16 per draw, default 1), and
-`M4_TEST_READ_DELAY_MS` (0..1000 before each read, default 0). Repeated
-modes compile separate programs; repeated reads reuse the same draw. UV
-coverage scales with resolution to preserve expected base LOD 2. Every
-readback, including the first, contributes to the result; optional delays
-are diagnostics only. Pixel storage is heap allocated and initialized to
-0xa5 before each read.
-
-On J713 with the baseline encoder, 1024-square modes `3,3` with two reads
-each pass all 4,194,304 pixels, as does llvmpipe. The complete mode sequence
-still times out in mode 3 after modes 0..2 pass. A subsequent `0,3` run
-after reboot completes, but the first direct-sample read has 36,320 zero
-pixels; reading the same draw again returns all pixels correctly. These
-are separate observations, not proof that the timeout and readback defect
-have the same cause. Evidence is in workspace `_provenance/experiments/`:
-`20260910T100047738241Z-mipmap-lod-draw-repeat`,
-`20260910T100105866747Z-mipmap-all-parameterized`, and
-`20260910T100214401888Z-mipmap-direct-then-lod`.
-
-
-`M4_TEST_FINISH=1` additionally calls `glFinish` between each draw and its
-readbacks. This is a diagnostic, not a substitute for the API's implicit
-readback synchronization. A printed `finished` marker alone is not success:
-OpenGL can return after device loss, and the kernel fault evidence must be
-checked. With per-submit waits enabled and Gallium threading disabled, the
-large mode-2 loop itself times out; earlier mode-3-only attribution was
-misleading. Evidence: `20260910T102058014017Z-mipmap-loop-strict-waits`.
-
-`m4_vk_first_submit.c` isolates readback from Zink and render shaders. It
-creates one Vulkan device/queue, fills 4 MiB on the GPU, submits an empty
-batch carrying a fence, waits, and checks every word against a nonzero
-pattern. `M4_TEST_UNCACHED=1` selects a non-cached coherent memory type;
-`M4_TEST_READ_DELAY_MS` optionally delays the first read by up to 1000 ms.
-`M4_TEST_SECOND_READ=1` checks the same buffer again after 100 ms without
-new GPU work. Both reads count toward failure. Run only with watchdog and
-thermal guards; compile with `-lvulkan`. The default device check requires
-Apple M4; `M4_TEST_LLVMPIPE=1` allows a software Vulkan reference.
-
-On a fresh boot, the Vulkan test reports 31,885 stale sentinel words out
-of 1,048,576 despite a successful fence wait. Warm runs pass. Kernel and
-userspace clocks require correlation: `/dev/kmsg` timestamps differ from
-CLOCK_MONOTONIC, and the offset changes across boots. Paired markers show
-that kernel retirement precedes the fence return in both the cold failure
-and a warm success. This does not yet prove a cache or firmware cause.
-Evidence: `20260910T102144732616Z-vulkan-cold-clock-correlation` and
-`20260910T101952424515Z-vulkan-clock-correlation`.
-
-A queue-initial-counter change and withholding the cached memory type were
-tested and reverted. Neither is an established fix: uncached memory also
-failed, delayed cached reads passed, and warm baseline GL runs passed.
-Do not treat these diagnostics as a driver improvement or discard cold
-first-readback failures as warmup.
-
-
-The cold two-read Vulkan probe confirms that the missing data becomes
-visible without another GPU submission: first read 62,496/1,048,576 stale
-words, second read after 100 ms 0/1,048,576. Overall result remains FAIL.
-Evidence: `20260910T102657045013Z-vulkan-cold-second-read`. This identifies
-a completion/visibility problem independently of GL, textures, or game
-shaders. It does not justify a fixed sleep in the driver or establish the
-precise missing synchronization operation.
-
-
-Additional first-submit diagnostics: `M4_TEST_DIRECT_FENCE=1` attaches the
-fence directly to the GPU submission. `M4_TEST_CPU_BARRIER=1` executes
-AArch64 `dsb sy` before validation; `oshld` selects `dmb oshld`.
-`M4_TEST_SUBMIT_BARRIER=1` adds the selected barrier before submission.
-`M4_TEST_CLEAN_BEFORE=1` cleans the initialized host buffer to PoC with
-`dc cvac` and `dsb sy` (AArch64 only). These are opt-in experiments, not
-changes to the driver's synchronization contract.
-
-A cold direct-fence run also fails (45,443 stale words), excluding empty
-submission forwarding as the sole cause. A full CPU barrier passed once
-with a retirement-logging kernel, but failed on the baseline kernel repeat
-(43,888 stale words); the weaker read barrier also failed (31,800 words).
-All second reads were correct. Three subsequent warm direct-fence processes
-pass without barriers. Do not promote the single full-barrier success to a
-fix. Evidence: `20260910T151650754767Z-vulkan-cold-direct-fence`,
-`20260910T152307130040Z-vulkan-cold-host-read-barrier`,
-`20260910T152550793475Z-vulkan-cold-acquire-barrier`,
-`20260910T153000854621Z-vulkan-cold-full-barrier-baseline-kernel`, and
-`20260910T153119145685Z-vulkan-warm-direct-fence-repeat`.
-
-`M4_TEST_CLEAN_BEFORE=discard` also invalidates the initial host buffer's
-CPU cache lines before submission. Both clean-only and clean/invalidate
-cold tests failed (69,490 and 88,784 stale words respectively), with correct
-second reads. Neither CPU barrier nor pre-submit cache maintenance is an
-established fix.
-
-`m4_gl_conditional_mipmap.c` accepts `M4_TEST_ITERATIONS` (default 20,
-0..4096) to vary dynamic loop work without changing shader allocation.
-The iteration-count color checks saturate as the RGBA8 target does.
-llvmpipe passes all seven modes at 0, 8 and 40 iterations.
-
-Optional fault evidence: set `HK_M4_FAULT_CAPTURE_DIR` to an existing output
-directory and `HK_M4_FAULT_BO_BYTES` to the exact allocation size to inspect.
-On the first G16G VM error in the process, Mesa snapshots matching retained
-BOs directly, before returning device loss. Filenames include handles and
-GPU VAs; stderr records BO labels and byte counts. `HK_M4_FAULT_REPEAT_MS`
-(1..1000, omitted by default) takes a second snapshot after that diagnostic
-interval. No GPU work is submitted. These are unsynchronized fault
-snapshots, not valid replacement readbacks, and a delay does not fix a fence.
-
-At 1024 square, the mode-2 twenty-iteration fault snapshot contains 270,336
-expected blue words and 778,240 zero words. Forty iterations leave 168,960
-blue and 879,616 zero words. Thus the output is incomplete at the timeout;
-it is not a completed image with only a missing stamp. The changing amount
-of completed work motivates checking execution progress and timing rather
-than inferring an invalid static shader instruction from a timeout alone.
-Evidence: `20260910T153829237500Z-mipmap-loop-fault-image` and
-`20260910T154135004052Z-mipmap-loop40-fault-image`. Kernel baseline unchanged
-for these two runs. The small 128-square twenty-iteration draw retires, but
-its cold first read remains invalid (all 16,384 pixels), while its second
-read passes; retain that overall failure.
-
-The eight-iteration 1024-square probe passes all 1,048,576 pixels. Its
-fragment stage retires about 23.6 ms after the tiling retirement. A repeated
-twenty-iteration run leaves exactly 262,144 blue pixels; both fault snapshots
-200 ms apart have identical SHA-256 and contents. No output-memory progress
-was observed in that interval. The stopping point is close to the earlier
-270,336-pixel result, but its mechanism is not established.
-Evidence: `20260910T154551778585Z-mipmap-loop8-progress-after-fault` and
-`20260910T154646492195Z-mipmap-loop20-progress-after-fault`.
-
-Optional modes 7 and 8 separate arithmetic-only loop work from explicit-LOD
-texture loop work; the default mode sequence remains 0..6. Mode 7 encodes
-the exact iteration count in the red (low byte) and green (high byte) channels.
-`M4_TEST_CLEAR_FINISH=1` separates the magenta clear from the draw, useful
-when inspecting raw fault memory. This does not relax any readback check.
-llvmpipe passes modes 7/8 at 1024 square with 128 iterations and mode 7 at
-128 square with 4096 iterations. The latter at 1024 square stalls on M4:
-98,304 correct pixels, 950,272 pixels retaining the separately finished
-magenta clear; two raw snapshots 200 ms apart are identical. The loop
-contains no texture operations, although an implicit sample follows it.
-Evidence: `20260910T160800982598Z-mipmap-alu4096-large`.
-
-Mode 9 removes texture sampling entirely, including the final sample used by
-mode 7. It runs a uint32 xorshift recurrence seeded by the fragment's column
-and encodes the low two bytes in red/green. A separate CPU recurrence checks
-every pixel exactly; precomputing one reference per column avoids repeating
-the arithmetic for every row. No derivative-dependent input is used.
-The default modes stay 0..6. llvmpipe passes mode 9 at 128 square / 4096
-iterations and modes 0/2/7/9 at 128 square / 20 iterations; ARM64 compilation
-passes. This is a diagnostic, not a shader implementation change or an M4
-success claim.
-
-`M4_TEST_STALE_LINE=invalidate` samples the first stale 128-byte-spaced word,
-reads it immediately again, performs one AArch64 `dc civac` plus `dsb sy`,
-and samples again. Any other value uses only `dsb sy` as a control. The
-original stale observation counts as failure even if subsequent reads pass.
-One cold run retained the stale word across this operation and then had
-117,888 stale words in the full scan; its second read was correct.
-
-Queue initialization now initializes the host timeline counter to the point
-already signalled in the DRM syncobj (1), so the first real submission uses 2.
-This removes point reuse, but is not a complete cold-readback fix: a verified
-cold run still had 69,488 stale words. A later cold run with exact kernel
-CLOCK_MONOTONIC retirement logging passed. Kernel printk timestamps can differ
-from CLOCK_MONOTONIC by more than the paired userspace markers imply; use the
-explicit retirement `monotonic_ns` field when assessing fence ordering.
-Evidence: `20260910T171851600971Z-vulkan-cold-stale-line-invalidate`,
-`20260910T172202880405Z-vulkan-cold-queue-point-two`, and
-`20260910T172337363392Z-vulkan-cold-retirement-monotonic`.
-
-
-#### Compute-fill attachment metadata
-
-Native meta fills now record their writable destination ranges in the exact
-CDM stream that records the dispatch. Submission emits SET_COMPUTE_ATTACHMENTS
-before each compute command, including an empty list to clear preceding state.
-Only known meta destinations are collected; this is not a complete resource
-list for arbitrary compute shaders. Hardware range capacity remains the kernel
-reported attachment capacity, and dropped hints never truncate GPU work.
-
-The paired M4 kernel now forwards these lists to firmware. The ordinary
-4 MiB fill and firmware event 0x116 confirm the matching destination range.
-Cold first-read visibility still fails with either common Asahi 0x17/1 or
-native M4 0x18/3 descriptor attributes; neither is a visibility workaround.
-An independent Apple-compiled G16G uint4 fill main also reproduced stale
-first-read words followed by a correct later read. The temporary literal-VA
-shader replacement used for that experiment was removed; it is not part of
-the driver. Full 0 A.D. rendering remains unqualified.
-
-### Integer mip fetch and shadow-pass transitions (2026-09-11)
-
-The shadowed acropolis scene completed a180-second native Hyprland run with
-normal Zink batching (no per-draw sync). The kernel now permits partial
-fragments to share the active tiler's USC pool. Zink transitions written depth
-attachments before the next render pass, preserving its depth-store contract.
-Evidence:20260911T093322130169Z-zink-depth-transition-batched-shadows.
-
-`m4_zink_mipmaps --fetch-lod` checks constant texel-fetch levels0–8, uniform
-level3, and per-pixel levels0–7 against generated mip colors. Run it through
-`tools/gpu-experiment.py` and `/root/run-m4-gl.py`; `--reference --fetch-lod`
-requires llvmpipe. All45056pixels passed on M4 in095954608651Z and on the host.
-Native M4 integer PACK_SMPIR uses f74=3, unlike filtered half-float LOD(f74=2);
-the register-LOD fetch selects f37=0/f139=4. Both register and uniform integer
-operands have independent Apple offline-compiler witnesses. Array plus
-nonzero integer LOD remains outside this implementation. A single promoted
-16-bit mip constant also exposed an odd-sized constant-upload range, now
-aligned and padded inside the compiler-owned blob.
-
-The known cold-first-readback issue is still separate; the initial cold probe
-failed its first level-zero read, and that failure has not been discarded.
-Full default-settings game qualification remains in progress.
-
-Postprocessing was then restored: actual180-second game run100037959404Z
-completed32healthchecks,383thermal samples,peak54C. Live screenshots show
-correct geometry/shadows with postprocessing; normalZinkbatching retained.
-Compressed asset upload and cold first readback remain unqualified.
-The focused encoder(5672checks), constant-promotion and new IR mip-fetch
-tests pass. A broader historical packer test selection is not green: its
-TextureFetch2DLod0Immediate expects the old unstaged coordinate layout, and
-TextureExportRetiresAtPartBoundary has nullNIR and crashes at the existing
-helper-invocation metadata read. These pre-existing fixture issues were
-confirmed against unchanged HEAD code; do not report the whole suite passing.
-
-### Widened integer products (2026-09-11)
-
-Native block uploads need 64-bit buffer-row addressing. NIR's signed and
-unsigned 32×32→64 multiply forms previously bypassed the existing AGX3
-partial-product lowering and reached an unsupported 64-bit IMAD. They now use
-that lowering, with signed high-word correction; AGX2 retains its native path.
-
-`m4_wide_multiply.py OUTPUT_DIRECTORY` generates 1024 boundary and deterministic
-random operand pairs. Compile `m4_wide_multiply.comp` with `glslangValidator -V`
-and run it through the workspace `tools/vk-buffer-oracle.c`, inside the mandatory
-watchdog/thermal guard. The shader dispatch is 32 workgroups of 32 threads. All
-6144 words passed on M4 in `20260911T103145538063Z`, including unchanged input
-words and both halves of signed and unsigned products. Peak exposed temperature
-was 52 C; actual output bytes were retained. ARM64 Mesa build also passed.
-
-### Compressed textures restored (2026-09-11)
-
-0 A.D. now completes the shadowed acropolis scene with its normal S3TC assets,
-postprocessing, and ordinary Zink batching. `20260911T102730456784Z` passed a
-180-second run under native Hyprland: 35 health checks, 383 thermal samples,
-peak 54.25 C. Both live and final screenshots show correct buildings, terrain,
-foliage and shadows. The installed Vulkan library was `02e90cf0584fe837...`;
-Gallium was `466c2760a71bf216...`, kernel module `829ee846d167e53e...`.
-
-The driver now copies encoded BC1 RGB/RGBA, BC2 and BC3 blocks with a GPU compute
-shader, including their sRGB forms. Uploads use linear source addressing and
-Morton tiled destinations; image copies use tiled endpoints. This fixes the
-unsupported BC1 RGB/BC3 uploads and the crash caused by trying to render into a
-compressed texture during Zink's mip-chain migration. Work is dispatched per
-region/layer instead of once per block. Large BC1 tiles are 64×32 blocks;
-mip-tail tiles may be square. Buffer row addressing retains 64-bit products.
-No CPU decompression, game texture override or enlarged fixed driver pool is
-part of this change.
-
-`m4_zink_bc_upload.c` checks eight formats over ten levels of a 512×272 image,
-including alpha, multiple rectangular tiles, small tails, texture migration,
-and a nonzero-offset interior subimage update. Both llvmpipe and the M4 passed
-all 1,310,720 pixels (`20260911T103417414407Z`, peak 51.75 C). The preceding full
-image test also passed; the actual game exercised full 1024×1024 BC1 uploads.
-Host meta-copy region tests passed 3672 layer cases. ARM64 Mesa builds passed.
-
-This qualifies the tested scene and operations, not every graphics option or
-an entire match. Performance remains about 2 FPS. The separate cold first
-GPU-readback issue remains open. GPU surface compression is still disabled by
-`ASAHI_MESA_DEBUG=nocompress`; that is separate from S3TC texture compression.
-GPU clocks remain at the qualified low setting with watchdog and thermal guards.
-
-### Exact-frame and depth-precision checks (2026-09-11)
-
-A fresh trace of the normal compressed/postprocessed scene completed a guarded
-60-second capture (`103629477621Z`). Replaying the full trace on M4 and host
-llvmpipe produced the same three selected frames without shader/API errors
-(`103941711456Z`, peak 53.25 C). Mean channel differences were 0.893, 0.871 and
-0.895 on a 0–255 scale; 2.09–2.26% of pixels exceeded eight channel levels.
-Geometry and shadows visually agree; localized differences remain at raster
-edges and filtered shadows. These results are not pixel-identical and should
-not be represented as such. Full traces, unmodified reference calls, images,
-difference montages and hashes are retained in the workspace provenance.
-
-`m4_gl_shadow_compare` now accepts `M4_TEST_DEPTH24=1`. Its strict reference
-rounds stored depths to 24-bit UNORM before evaluating comparisons and PCF.
-This passes all 24576 pixels on llvmpipe, but fails 2304 on M4, specifically at
-reference 0.5 and comparison functions sensitive to equality. Zink's existing
-`zink_get_format()` maps unsupported X8_D24_UNORM to D32_SFLOAT; this is not a
-new native sampler encoding failure. The explicit diagnostic
-`M4_TEST_DEPTH_FLOAT_REFERENCE=1` retains the requested D24 texture but evaluates
-the reference using float-backed depth. That control passes all 24576 pixels
-on M4 (`105208023376Z`, peak 52.25 C), while the strict failure (`104653901421Z`)
-remains recorded. The GL attachment reports 24 bits and unsigned-normalized
-type despite its Vulkan backing. Do not call this a D24 conformance pass or
-change the game's depth format to conceal it. Whether this explains every
-localized game-frame difference has not been established.
-
-### First-read spatial and GPU-copy controls (2026-09-11)
-
-`m4_vk_first_submit.c` now supports `M4_TEST_GPU_COPY=1` to copy the filled
-buffer to a distinct sentinel-initialized buffer, with a transfer-write/read
-barrier before the copy and a transfer-write/host-read barrier before the fence.
-Both full buffers are checked. `M4_TEST_DUMP_DIR` saves the first observed words
-to `first-read.bin`, without rereading them for the snapshot. `M4_TEST_REVERSE_READ=1`
-scans from the end. These are diagnostic controls, never driver workarounds.
-
-The current kernel/Mesa baseline still fails cold (`111247`, 81,763 stale words).
-The first saved fill-only scan (`111710`) contains 93,568 stale words, all in
-64-byte-multiple runs below byte 1,015,488. A GPU-copy control (`111542`) and
-one reverse scan (`111848`) pass. Extra GPU work and reversed scan order both
-change observation timing, so neither establishes a synchronization fix.
-All tests retain first-read failures and use the 60-second watchdog and thermal
-guards; peaks are 50.75–52.5 C. Full evidence is in workspace experiment folders.
-
-The reverse-read repeat `20260911T112040022354Z-cold-fill-reverse-repeat`
-failed 190,128 words at the high end of the buffer (the portion read first),
-then passed the second read. This supports a timing/visibility defect rather
-than fixed damaged addresses. The earlier reverse-read pass is not a fix.
-
-`M4_DESKTOP_CPU_PROFILE=1` optionally records software CPU-clock samples with
-private perf at 99 Hz, inside the existing desktop guard. Keep analysis offline:
-the first profile's on-target report exceeded its 20-second limit after the
-180-second game completed, triggering guarded reboot. All sample data survived;
-no GPU failure was observed. The corrected launcher only records and finalizes
-perf data while live. It does not extend or renew the watchdog itself.
-
-### Single-dispatch completion counter
-
-`m4_completion_counter.comp` writes a 4 MiB buffer and then, after each
-workgroup's buffer memory barrier and workgroup barrier, atomically increments
-one completed-group counter. The workspace `tools/vk-buffer-oracle.c` runner
-uses 4096 groups and a 16-byte header followed by 262144 uvec4 values. Initialize
-counter zero, remaining words 0xa5a5a5a5; expect counter4096, unchanged padding,
-and all data0x7b2da916. `M4_ORACLE_WATCH_WORD=0` observes the counter immediately
-after the fence. The runner retains a snapshot before file I/O, preserving the
-first mismatch rather than accidentally delaying validation through fwrite.
-
-Cold test `20260911T114427646327Z` observed counter0 and stale data; it failed
-145410 comparisons (the watched failure is included separately in that count).
-Identical warm test `20260911T114525577379Z` passed all1048580 buffer words with
-counter4096. Both were guarded, fetched and fault-free, with peaks51.75/50.75 C.
-This supplies a second reproducer, not a synchronization fix. A zero CPU-visible
-counter alone does not distinguish unfinished GPU execution from delayed
-visibility of completed GPU writes.
-
-### Main-thread timing capture
-
-`M4_0AD_PROFILE=1` enables the loopback Profiler2 HTTP interface and captures
-its overview/main stream at guarded shutdown. This option requests CPU scope
-instrumentation only (`profiler2.gpu.enable:false`). It changes no rendering
-option. The initial GPU-profiler attempt `20260911T121525468572Z` exposed an
-unsupported timestamp-query helper and failed with FEATURE_NOT_PRESENT; its
-full evidence is retained. CPU-only profiling is not a GPU-query qualification.
-
-Run `20260911T122040990231Z` passed 180 seconds and34 health checks, peak52C.
-The last120 complete frames averaged2.0714FPS with452.5ms/frame inside swap
-buffers; those are main-thread wall times including waits, not GPU utilization.
-Offline `tools/0ad-profile-summary.py` retains the source hash and reports
-inclusive and exclusive nested scope times. No reports run under the live guard.
-
-The prior kernel/Mesa combination also passed an actual900second scene test
-`20260911T115703376071Z`,169 health checks, peak52.5C, with final buildings and
-shadows visually intact. This extends scene stability; it is not a full-match
-or every-setting qualification, and the cold readback defect remains open.
-
-## Omarchy Quickshell acceleration (2026-09-11)
-
-The active M4 launcher is now the `omarchy-launch-shell` file in this
-directory, installed at `/opt/m4-hyprland/bin/omarchy-launch-shell`. It clears
-the previous software override and defaults to Qt Quick Vulkan RHI, inheriting
-the private M4 ICD. The distribution launcher still owns shell supervision
-and journal logging. `M4_QUICKSHELL_BACKEND=opengl` selects GPU rendering via
-Zink; `software` remains an explicit reference option. The old lab launcher
-copy in the kernel tree is historical, not this supervised session's source.
-
-Workspace helper:
+`{output}` in an argument expands to the remote evidence directory. The success
+regex must name the workload's real validation result; exit zero alone is not
+accepted. Fault classification filters kernel timestamps to this experiment,
+and the original first readback remains part of validation. The initial tool
+supports bounded runs up to 1800 seconds. Runs over 40 seconds require the target
+guard to match the workspace helper by SHA-256. The guard renews the 60-second
+watchdog only after a fresh, increasing GPU retirement and fresh thermal evidence;
+a stalled GPU or thermal monitor cannot keep it alive. Use a workload timeout
+shorter than the outer bound so evidence can be saved before cleanup.
+
+`run-m4-gl.py` supplies the private M4 Zink/EGL environment for small GL probes.
+Copy it and the probe binary to `/root/`, then invoke it through the guarded
+runner; never run it directly on the target outside the guard. It rejects the
+lab module and leaves renderer verification and pixel checks to the probe.
 
 ```sh
-python3 tools/desktop-experiment.py --game shell --shell-ui \
-  --name quickshell-popups --seconds 20
+python3 tools/gpu-experiment.py --name mipmap-readbacks \
+  --hypothesis 'Does the same draw survive two readbacks?' \
+  --expect '^PASS: conditional mipmaps' -- env \
+  M4_TEST_WIDTH=1024 M4_TEST_MODES=3 M4_TEST_READS=2 \
+  python3 /root/run-m4-gl.py /root/m4-conditional-mipmap-parameters
 ```
 
-This runs the actual installed shell without a game, checks its Qt renderer
-log against Apple M4, confirms the private Vulkan library and DRM fds in the
-Quickshell process, and rejects device loss, software fallback or a shell
-restart. It retains panel/background layers, screenshots and renderer logs.
-`--shell-ui` opens and closes the normal menu and audio popup through shell
-IPC; no settings or volume are changed. Watchdog60 and 0.5-second six-channel
-thermal monitoring remain mandatory; thermal stop also terminates Quickshell.
+The target wrapper also writes paired `CLOCK_MONOTONIC` markers to stdout and
+`/dev/kmsg`. Use these to correlate fence/readback timing with kernel retirement;
+the raw clock domains have a boot-dependent offset. The wrapper can also run
+small Vulkan probes using the same private ICD; the extra GL settings are unused.
 
-Initial Vulkan and Zink runs exposed stale bootstrap command translations in
-the kernel, not a missing Qt shader feature. Kernel3587bfa1cba1 makes the
-permanent M4 low-root context0 visible to normal mapping teardown invalidation.
-No Mesa rendering workaround was needed. Vulkan run194615 passed20seconds,
-61 thermal samples,53.75C. Warm-session popup run194821 passed20seconds,
-58 samples,55.25C. Same Quickshell process survived; logs identify Vulkan on
-Apple M4. Final desktop, menu and audio popup screenshots visually inspected
-with correct text, icons, transparency and wallpaper. These are bounded
-functional checks, not whole-shell or long-duration stability qualification.
+The manifest also hashes the installed Asahi kernel module. When paired
+markers are available, kernel fault classification starts at the matching
+start marker rather than comparing unrelated uptime and kmsg clocks.
 
-Interactive app launch also requires `seat-user.py` to change to the desktop
-account home before starting Hyprland. Otherwise `runuser` preserves `/root`,
-and Foot launched from the normal menu exits with a working-directory
-permission error. The validation terminal already supplied its own cwd and
-therefore missed this defect. Run20260911T200205618477Z confirms Quickshell
-cwd=/home/e and normal uwsm/gtk-launch Foot windows mapped with working shells.
+## Inspecting GPU memory after a fault
 
-### Menu upload diagnosis (2026-09-11)
+`image-compare.py REFERENCE ACTUAL --output NEW_DIRECTORY` compares saved PNGs
+or raw `.rgba` GL readbacks (`--raw-size WIDTH HEIGHT`). It records hashes and
+pixel errors plus a reference/actual/8x-error montage. `--threshold` defaults to
+8 channel levels and is a reporting threshold, not proof of correct rendering.
+Raw GL rows are flipped for display. The tool runs offline and requires NumPy
+and Pillow; it never launches a renderer or changes input captures.
 
-`HK_M4_COPY_TRACE=1` logs buffer-to-image formats, image sizes and every copy
-region. Workspace `desktop-experiment.py --copy-trace` passes this option
-through the guarded launcher. It is off by default and does not enable shader
-or command-buffer hex dumps or change transfer behavior.
+`gpu-bo-summary.py` reports SHA-256, a little-endian word histogram, and optional
+expected-word mismatch counts for raw BO snapshots. With `--expected-word`, it
+also reports contiguous mismatch lengths and their distribution across
+`--regions` equal-sized regions (default 16), useful for distinguishing address
+patterns in cold readbacks. It does not guess image
+tiling. Constant-color probes can distinguish completed pixels from untouched
+storage without using a GL readback after device loss:
 
-Run20260911T200816955439Z, same Quickshell Vulkan backend, records the first
-menu opening as two R8 glyph atlas initializations (1810x63 and502x164) followed
-by batches of41 and24 glyph regions. `hk_CmdCopyBufferToImage2` splits native
-regions/layers into individual `vk_meta_copy_buffer_to_image` calls; common
-`copy_draw` opens/closes rendering for each region. The kernel therefore
-executes42+25=67 separate render passes for these four API calls.
-Kernel jobs12368..12434:159.641ms prepare,113.720ms active polling/retirement,
-only0.814ms summed TA+fragment GPU stage timestamps (24MHz counter). These
-are different timing scopes; the GPU stage sum is not total firmware time.
-65 reused owners clear at least36MiB each (32MiB private+4MiB parameter buffer),
-2340MiB total, before rebuilding allocator/control state. No clearing has yet
-been removed. This is within the same client VM; correctness and ownership
-must still be established before reducing resets.
+```sh
+python3 tools/gpu-bo-summary.py /path/to/bo-*.bin --expected-word 0xffff0000
+```
 
-Earlier uninstrumented repeated opens in run20260911T195511762533Z had IPC
-completion130/202ms and first sampled centre-card pixel changes596/613ms.
-The profile therefore explains a substantial part of the warm-open delay,
-not the user's entire approximately2second initial observation. Retain the
-normal texture clear required around glyphs; optimize driver copy batching
-or GPU transfer kernels, then remove only proven redundant scratch resets.
-No menu simplification, font-quality reduction or software renderer was used.
+The local Mesa diagnostic uses `HK_M4_FAULT_CAPTURE_DIR={output}` and
+`HK_M4_FAULT_BO_BYTES=4194304` with the guarded runner. On the first M4 VM
+failure in that process it snapshots live BOs of exactly the requested size.
+Files carry their handle and GPU VA; the command log records labels and write
+sizes. These are fault snapshots, not API-synchronized readbacks. A partial
+snapshot must not be interpreted as successful rendering.
+`HK_M4_FAULT_REPEAT_MS=200` requests a second fault snapshot to inspect
+whether memory changes after the first. This delay is solely a diagnostic;
+both snapshots still belong to a failed workload.
 
-Supporting Qt6.11.2 sources: `QSGRhiDistanceFieldGlyphCache::storeGlyphs`
-batches glyph entries by atlas; `QRhiVulkan::recordPrimaryCommandBuffer`
-passes the full region count to vkCmdCopyBufferToImage. The batch is lost in
-our native Mesa path, not in Qt's API calls.
+## Small firmware disassembly slices
 
-### Batched native atlas uploads
+`arm64-slice.py` prints a bounded ARM64 instruction range, or finds textual
+instruction operands with surrounding context. It requires Capstone; the
+existing `build/display-venv/bin/python` supplies it. Example:
 
-M4 now opts into graphics copy-region batching for compatible uncompressed,
-single-plane color images. Regions must target the same2D mip and single layer;
-other requests retain the established path. One render pass covers their union,
-with LOAD preserving untouched gaps. Rectangles keep separate source strides,
-descriptors and draws inside the same VDM stream. Atlas zero initialization
-remains intact; neither shaders nor text quality are simplified.
+```sh
+build/display-venv/bin/python tools/arm64-slice.py firmware-text.bin \
+  --offset 0x9c00 --length 0xb0
+```
 
-`m4_vulkan_atlas_upload.c` is a standalone Vulkan pixel oracle (`-lvulkan`).
-It checks R8 and RGBA8,193x129 textures,two mip levels,two layers,128 disjoint
-rectangles plus mixed-layer and multilayer fallback uploads. Padded input rows,
-nonzero offsets,edge tiles and untouched patterned texels are checked bytewise.
-Default requires device0x8132; `--reference` permits another explicitly selected
-ICD. Hardware must run inside the existing watchdog/thermal guard.
-Run20260911T202140988953Z passes62082+248328=310410 bytes,zero mismatches,
-peak55.25C. Host lavapipe is unavailable; no host reference run is claimed.
+`--find '#0xe48' --limit 4` searches the image. Search hits are operand
+matches, not resolved references; verify register bases before attributing a
+read or write to a firmware object. Default addresses are image-relative.
 
-Run20260911T202214071121Z uses the same Quickshell Vulkan menu. The previously
-67 glyph-upload passes become4 (two atlas initializations,two batched updates).
-Those4 jobs take16.024ms preparation+6.600ms active,versus159.641+113.720ms
-previously. Reused owners fall65->2; existing36MiB resets therefore fall2340MiB
-->72MiB without altering kernel scratch semantics. Sampled visible menu latency
-596/613ms ->337/334ms. Final native scanout screenshot visually correct.
-Watchdog60+0.5s temperature guard retained; interactive session continues bounded.
-Ordinary draws already share VDM streams; kernel render jobs remain serialized,
-and root-capacity boundaries use retained-render splits rather than unqualified
-hardware stream-link packets. This change removes unnecessary pass boundaries.
+## Installing a kernel module for the next boot
+
+`install-asahi-module.py PATH --label LABEL` stages the full module, verifies
+its SHA-256, module name and target kernel release, refuses active GPU clients,
+preserves the previous file by its hash, atomically installs and runs depmod.
+It does not hot-reload or reboot. Follow with a reboot through the guarded
+experiment runner, allow boot completion, then test. The installed module hash
+only identifies the loaded code after that reboot.
+
+## Selecting firmware trace events
+
+`gpu-trace-summary.py LOG --after-last TEXT --ids 0x4,0x5,0x14,0x35`
+selects draw-scoped firmware events into JSON. It retains firmware ticks when
+present and reports tick deltas without guessing their frequency. Kernel log
+seconds are drain times, not firmware execution timestamps. It reports logging
+suppression notices and excludes repeated recent-trace snapshots. Missing
+requested start markers are errors rather than silently selecting a whole boot.
+
+`guarded-command.py` is the target-side bounded watchdog/thermal command guard,
+used by `gpu-experiment.py` at `/root/guarded-command.py`. It saves a bounded
+current-boot kernel journal before disarming so verbose firmware logging cannot
+silently evict startup evidence from the saved dmesg ring. Its target dependencies
+remain the qualified watchdog and thermal modules under `/root/g16-submit-test`.
+When a sealed M4 firmware coredump is reported, the guard copies it through
+`g16-fault-dump.py` before fault recovery (five-second bound, no watchdog renewal).
+This covers long replay wrappers that do not use `run-m4-gl.py`.
+
+## Native M4 shader compiler
+
+`native-metal-compile.py SOURCE.metal --output NEW_DIRECTORY --function cs`
+uses the authorized macOS compiler host to compile a Metal compute kernel for
+`applegpu_g16g`, without executing it. It retains the source, pipeline definition,
+compiler version and command results, metallib/archive hashes, and checked
+Mach-O text sections. The pipeline filename must use `.mtlp-json`; `.json`
+is interpreted as a binary flatbuffer by this compiler.
+
+For a render pipeline, use `--stage render --function fs --vertex-function vs`.
+The source must provide both functions; the current comparison contract is a
+single RGBA8Unorm attachment. This still only compiles offline. Both extracted
+text sections and symbol offsets are retained; do not identify a section's stage
+from its filename. Use `_agc.main` rather than assuming offset 64: the compiler
+can hoist work into a constant program and move the main entry.
+
+## Direct firmware address references
+
+`build/display-venv/bin/python tools/arm64-xrefs.py TEXT.bin ADDRESS --size 8`
+finds candidate memory references using straight-line ADR/ADRP/ADD/MOV constant
+tracking. It clears tracked values at branches and caller-clobbered registers
+at calls. This intentionally misses indirect and cross-block references; it is
+not a control-flow-aware disassembler. Confirm surrounding instructions before
+assigning a firmware field's meaning.
+
+The long-command guard uses the kernel's explicit `monotonic_ns` retirement
+field when present to establish fresh progress. Kernel printk clocks on this
+port can differ from userspace CLOCK_MONOTONIC even within one boot. Thermal
+liveness and increasing job IDs remain mandatory for watchdog renewal.
+
+For structure fields, `arm64-xrefs.py IMAGE OFFSET --size SIZE --pointer-cell
+ADDRESS [--pointer-offset OFFSET ...]` follows a known pointer cell and optional
+nested pointers. For example, firmware cell `0x192758` then offset `0x469`
+reaches PowerPerformance. Results remain straight-line candidates: paths through
+function arguments, branches, and indexed accesses need separate inspection.
+
+Native macOS counterparts and bounded exact-build capture tools: [macos-native/README.md](macos-native/README.md).
+
+`render-state-extract.py KERNEL_LOG NEW_OUTPUT_DIRECTORY` reconstructs the last
+fault's complete retained M4 TA/fragment commands and firmware sequences.
+It refuses missing, duplicate, overlapping or out-of-bounds data. Its output
+includes hashes and can be passed to `macos-native/registers.py` for a native
+register comparison. These are sequential fault-time memory reads, not an
+atomic snapshot, and no status MMIO is acknowledged by the collector.
+
+## Offline native UAT translation
+
+`native-uat-read.py STAGE CONTEXT ADDRESS --translate-only` walks saved page
+tables from one macOS capture stage. Use `firmware` as CONTEXT for the independent
+firmware global root; use a numeric context for a GPU address. Without
+`--translate-only`, `--length` reads retained physical payload pages. Missing
+tables or payloads are errors: the tool never borrows another stage or accesses
+hardware. Output includes page-table entries and source hashes. Captures are
+sequential observations, not atomic snapshots.
+
+```sh
+python3 tools/native-uat-read.py /path/to/capture/executing firmware \
+  0xfffffc2000400000 --translate-only
+```
+
+## VDM batching diagnostics
+
+`vdm-trace-extract.py COMMAND.log NEW_DIRECTORY` extracts complete `vdm-stream`
+hex dumps from `HK_G17P_LAUNCH_TRACE=1`, saves exact bytes and hashes, and builds
+`vdm-decode.c` against the local Mesa strict G16G decoder. It reports packet
+boundaries, draw counts, barriers and links. It rejects interrupted/truncated
+dumps; a partial decode is recorded explicitly. Links are reported, not followed.
+Packet recognition does not prove barrier semantics or resource ordering.
+
+The Mesa `m4_gl_conditional_mipmap.c` probe accepts `M4_TEST_DRAWS=4` and
+`M4_TEST_SPLIT_DRAWS=0|1` for a paired scissor/texture descriptor test (modes 0/2).
+Each stripe alternates between a blue mip and a grey texture. All draws remain
+observable. The two variants differ only by `glFinish` after each draw; inspect
+actual streams before calling a variant batched. The target wrapper defaults to
+`ZINK_DEBUG=sync`, which itself inserts barriers and splits rendering. Use an
+explicit empty `ZINK_DEBUG=` for this comparison. Run only through the mandatory
+watchdog/thermal guard. The llvmpipe control requires `M4_TEST_LLVMPIPE=1`.
+
+`HK_M4_VDM_DRAW_BARRIER=1` is a local Mesa diagnostic: on G16G it inserts the
+native-witnessed type-1 packet before each subsequent draw's state in a VDM
+stream. It does not split the incomplete native bind tail. It is off by default
+and is not an established fix or justification for permanent per-draw barriers.
 
 
-Cold-start qualification limit: after reboot, experiments203427 (scratch-clear
-omission) and203718 (restored kernel3587bfa, module244b) both returned61864
-R8 mismatches and zero RGBA mismatches. The prior warm oracle passed both.
-The omission was discarded; this identical control result does not establish
-it caused the cold failure. Keep the failed first-read verdict; cold readback
-visibility still needs diagnosis. Test stdout is now line buffered so shader
-logs cannot bury format results, and the workspace classifier recognizes the
-standalone bad=N counts. No repeated readback is substituted for first-read
-correctness.
+Experiment evidence fetches retain interrupted files in `.rsync-partial` and
+resume them on retry. Per-attempt transport bounds and verdict requirements
+remain unchanged; partial fetches never count as complete evidence.
 
 
-### Menu cursor pacing and CPU clock control
+`verify-render-timestamps.py NATIVE_TA_SKU NATIVE_FRAGMENT_SKU` compiles the
+current kernel wire encoder offline and compares each complete timestamp pair,
+WFI, and restart displacement against the supplied M4 native records. It derives
+only command/queue/UUID identities from those records and reports source hashes.
+It does not compare the whole command or access hardware.
 
-Native KMS presentation counters, using an identical six-second120Hz cursor
-path outside the menu card, reproduce59.585 FPS hidden and29.972 FPS open in
-202214. Driver retirements show2.008 vs3.033 render jobs per displayed frame;
-preparation+active time8.687 vs16.744ms. The60Hz panel therefore loses alternate
-refresh opportunities once the extra pass and presentation overhead exceed
-16.667ms. These are displayed-frame counts, not application FPS estimates.
+`render-state-extract.py` reads sequence lengths from the complete retained run
+commands, supporting both the original and timestamp-bearing render sequences.
+It still rejects holes, duplicates and out-of-range data.
 
-The desktop guard now accepts the recorded M4_TEST_CPU_MAX_KHZ environment
-ceiling, retaining1860000 by default. The shared thermal helper only lowers
-existing limits; use a fresh boot before the normal-clock comparison. No
-thermal limits, watchdog checks or CPU thermal policy are removed.
-Run20260911T203903149694Z requests4104000, actualpolicy0=4104000 and
-policy1=2892000. Same kernel244b/Mesad1cc, same rendering and copy logging:
-59.424 FPS hidden and29.961 FPS open. CPU caps do not explain the30 FPS plateau.
-This is not a qualified driver speedup. Scratch-clearing omission remains
-reverted, and the existing per-pass reset semantics are unchanged.
+The native M4 collector also supports finite repeated fragment captures without
+its former compute dwell, and read-only firmware ktrace-ring capture. See
+[macos-native/README.md](macos-native/README.md) for `--render-active`, the offline
+`ktrace.py` decoder, validation and concurrent-snapshot interpretation limits.
 
-Comparable runuser-based menu latency at normal CPU limits was279/306ms.
-A new direct-user IPC launch (no extra PAM session) measured249/261ms, with
-IPC completion still122–143ms. Thus PAM is not established as the source of
-most IPC startup time. Neither path measures a physical click, and40ms scanout
-sampling limits precision; do not attribute a transport change to rendering.
-The normal-clock interactive session remains guarded for1800s, endingabout
-21:09UTC; this is bounded validation, not a long stability claim.
-# Normal boot policy — 2026-09-12
 
-Normal J713 boot starts SDDM. Guarded tests may terminate the user's desktop,
-but must not persistently change the boot target to text mode. The launcher
-stops SDDM before loading the experimental GPU/display stack. After testing,
-restore normal login when driver state permits; recover first if a fault makes
-that unsafe. Workspace `tools/restore-display-manager.py` provides a bounded
-watchdog/thermal startup check. Normal SDDM currently uses the existing software
-rendering configuration; this change does not install accelerated login startup.
+Native firmware diagnostics now include `macos-native/run.py --firmware-trace`
+for bounded macOS ktrace collection, `macos-native/trace-render.py` for canonical
+SKU/event correlation, and `macos-native/power-select.py` for offline execution
+of the exact 25G83 policy-selection arithmetic. See the native README for
+identity checks, bounds, examples and limits; Linux watchdog/thermal rules remain.
 
-### Native texel buffers, 2026-09-12
 
-Firefox's first captured draw writes an R8 glyph atlas from a texel buffer.
-Draw-resource comparison found 307 software-written bytes and zero GPU-written
-bytes. Native buffer descriptors had lost their software element count; all
-fetches consequently became out of bounds. They also lacked a global texture
-heap entry, while the indexed shader path read the sampled-image heap-index
-slot beyond their old 64-byte descriptor stride. RGB32's emulated raw-load path
-additionally decoded the AGX2 address layout.
+`uma-state.py NATIVE_TABLE.bin` decodes a retained M4/25G83 8192-byte USC
+private-memory hardware table. `--kernel-log KERNEL.log` decodes the existing
+Linux fault snapshots instead. It reports ring capacity, both advancing cursors,
+their indices and distance, and the total page count. Cursors are not free-page
+counts; the tool does not infer allocator health or GPU completion. It works
+entirely offline and retains the source hash and log line numbers.
 
-Gen9 now retains element counts in the non-extended buffer descriptor's unused
-word, decodes buffer sizes/RGB32 addresses with the native layout, and allocates
-buffer-view texture heap entries with the same lifetime rules as image views.
-Native texel descriptors have a 72-byte stride to retain the heap-index field.
-Hardware descriptor prefixes and AGX2 descriptor strides remain unchanged.
-Nonzero unaligned tails and other existing unsupported storage-buffer-image
-paths are not qualified by this change.
 
-`texel-buffer-probe.c` checks constant drawing, `textureSize`, 1,500 buffer
-texels across the hardware's 1,024-texel row boundary, and 548 out-of-range
-indices for R8, R32F and RGB32F. Compile with EGL/OpenGL libraries, then use
-`gpu-experiment.py` with `run-m4-gl.py` for hardware. Host llvmpipe needs the
-explicit `M4_TEST_LLVMPIPE=1` reference override. All nine readbacks pass on
-software and J713, with zero mismatches (tolerance one RGBA8 level). Before the
-fix the same J713 oracle recorded 19,758 mismatching channels. Native descriptor
-host tests also cover metadata prefix preservation and extension-alias rejection.
+`asm-slice.py SAVED_ASSEMBLY ADDRESS --lines 80` displays a bounded slice of
+existing objdump or `arm64-slice.py` output. It prints the containing symbol
+once and strips repeated branch-symbol annotations, retaining instruction
+operands and addresses. Use it for compact comparisons of the saved native
+kext and firmware listings; it does not disassemble or execute anything.
+The requested address must exist exactly; output is limited to 1–512 lines.
 
-Evidence: `20260912T051358210808Z-texel-buffer-baseline` and
-`20260912T051724623603Z-texel-buffer-heap-fixed`; peak six-channel temperature
-54.25 C. These numerical results do not by themselves qualify full Firefox.
 
-`multisample-probe.c` is a surfaceless GL sample-coverage/store/reload/resolve
-oracle. Build with `-lEGL -lGL -lm`, pass sample count 1/2/4, and run under the
-mandatory hardware guard. `M4_MSAA_ALL_SAMPLES=1` disables selective masks to
-isolate ordinary multisample rendering. `M4_TEST_LLVMPIPE=1` admits llvmpipe
-for the software reference. Every step compares all 4096 pixels, including alpha.
+`firmware-snapshot.py --guard-output DIRECTORY --label after-workload` is a
+target-side, read-only snapshot of the exact J713 firmware reservations. It
+requires a live ancestor guard owning the watchdog, its verified 60-second
+timeout, the current boot ID, and fresh readings from all six thermal channels.
+It resolves no-map regions from DT, verifies the same normalized firmware
+identity as the kernel, and saves the original text and two sequential data
+snapshots with hashes. Normalization changes only a private copy of the two
+qualified entropy TLVs. All mappings are read-only; there is no MMIO access.
+
+Set `M4_FIRMWARE_CAPTURE_DIR={output}` in a `gpu-experiment.py` invocation
+using `run-m4-gl.py` to capture before and after the workload. Each helper call
+is bounded to five seconds inside the existing watchdog/thermal guard. The
+workload retains its 30-second bound and the outer experiment its existing bound.
+A helper failure is a failure, not a substitute for a successful render.
+
+`g16-fault-dump.py collect --guard-output DIRECTORY --allow-missing` collects
+new sealed M4FWD001 device coredumps during that guard. The run wrapper calls
+it after the workload when firmware capture is enabled. It leaves the kernel
+copy intact and rejects old, truncated, or oversized dumps. It does not bypass
+`/dev/mem` restrictions: ordinary driver allocations are copied by their owning
+kernel code through devcoredump. The attempted userspace object walker was
+removed after it hit those restrictions; its partial evidence is retained.
+
+`g16-fault-dump.py decode DUMP.bin --extract NEW_DIRECTORY` works offline,
+validates the sealed archive, extracts named records and emits hashes, firmware
+VAs, job ID and observation intervals. No record is an atomic GPU snapshot,
+and the archive intentionally excludes MMIO and application buffer contents.
+
+`g16-fault-dump.py decode DUMP.bin --scheduler` summarizes 25G83 queue contexts, proportional scheduling weights and saved active-node cursors, validating associated record pointers. It works on the initial 18-record dump too (without contexts). Fields are sequential observations, not proof of completion.
+
+The scheduler summary also accepts a single shared `queue-context` record and reports runtime priority totals and shifts. Captured counters may precede the next firmware maintenance tick; a nonzero dirty flag alone is not an error.
+
+`g16-fault-dump.py decode DUMP --scheduler` also validates retained render allocator links and reports PB counts/statistics plus the TA peer-fragment event versus the fragment command event. Qualified on job815; zero TA peer fields exposed the missing partial-render dependency. Fault counts are not exact utilization measurements.
+
+`install-mesa-library.py SOURCE --label LABEL --component vulkan|gallium` extends the existing verified Vulkan deploy helper for the installed26.1.4 Gallium library. It waits for staging, verifies full-fileSHA, refuses activeGPU clients, retains a hash-named previous library, fsyncs and atomically replaces it. It only installs a library; execute tests separately with the mandatory watchdog/thermal guards.
+
+## Shader instruction fields
+
+`shader-fields.py BINARY smp pack_smpir --encoding AGX3b --offset 0x80`
+scans an explicit shader range for byte-exact composer matches. It reuses the
+previous native-trace decoder and leaves that original helper intact. Every
+reported candidate must re-encode exactly; matches are not control-flow or
+hardware validation. AGX3b is selected explicitly for M4. The older generated
+XML disassembler can reject valid native forms, so this scanner uses the full
+composer tables. Build its local shared library after table changes:
+
+```sh
+cc -shared -fPIC -O2 mesa/m4-asahi/src/asahi/compiler/agx3_compose/agx3_compose.c \
+ mesa/m4-asahi/src/asahi/compiler/agx3_compose/agx3b_tables.c \
+ mesa/m4-asahi/src/asahi/compiler/agx3_compose/agx3c_tables.c \
+ -o build/tools/agx3-compose.so
+```
+
+## Raw Vulkan buffer oracle
+
+`vk-buffer-oracle.c` runs a supplied compute SPIR-V module against one storage
+buffer at set 0, binding 0. It loads initial and independently generated expected
+bytes, checks every 32-bit word, and saves the actual buffer even on a mismatch.
+It requires the M4 device, a compute queue, coherent host-visible memory and
+`shaderInt64`; it never substitutes a CPU renderer. Its fence wait is bounded to
+20 seconds. Compile with the target sysroot and `-ldl`, deploy it to `/root/`,
+and **execute only through the mandatory watchdog/thermal guard**:
+
+```sh
+python3 tools/gpu-experiment.py --name wide-multiply \
+  --hypothesis 'Both halves of signed and unsigned products are correct' \
+  --expect 'PASS: buffer oracle bad=0/6144' -- \
+  env AGX_MESA_DEBUG= HK_G17P_LAUNCH_TRACE=0 \
+  python3 /root/run-m4-gl.py /root/vk-buffer-oracle \
+  /root/wide-multiply-cases/shader.spv /root/wide-multiply-cases/input.bin \
+  /root/wide-multiply-cases/expected.bin 32 '{output}/actual.bin'
+```
+
+The initial case generator and shader live in Mesa's Vulkan tests as
+`m4_wide_multiply.py` and `m4_wide_multiply.comp`. The generator creates a new
+output directory; compile the shader with `glslangValidator -V -o shader.spv`.
+The group count is checked against the device limit; the supplied shader must
+respect the supplied buffer size. Evidence `103145538063Z` qualified all 6144
+words on M4, including unchanged inputs and both halves of 1024 signed/unsigned
+boundary and deterministic random products.
+
+GPU experiment summaries also recognize the mip/BC tests' `pixels, N failures`
+output, retaining mismatches independently of the expected success expression.
+
+## Identical-frame llvmpipe reference
+
+`desktop-experiment.py --trace` enables the existing EGL capture while retaining
+its watchdog and thermal guard. The trace path is saved in
+`remote/graphics-trace.json`; fetch that file separately after the guarded run.
+The capture mode also enables the existing shader diagnostics, so it is not a
+performance benchmark.
+
+`replay-llvmpipe.py TRACE --output NEW_DIRECTORY --calls CALL1,CALL2` reuses the
+qualified host replay setup, forces llvmpipe with four threads, checks its
+renderer identity, saves trace SHA-256, logs and PNG snapshots, and rejects
+shader/API errors or missing frames. It needs the existing `build/apitrace-host`
+binaries, host EGL, `eglinfo` and `Xvfb`; display179 must be free. It never drops
+individual draw calls or runs a hardware experiment. Use `image-compare.py` to
+compare the corresponding hardware and reference snapshots.
+
+`desktop-experiment.py --cpu-profile` records system-wide software CPU-clock
+samples at 99 Hz, with call chains, during the guarded desktop run. It uses
+private `/opt/m4-profiling/usr/bin/perf` on the target and saves `perf.data` and
+`perf-record.log`. Decode after fetching, with `DEBUGINFOD_URLS=` to avoid
+network symbol lookup inside a hardware guard. Add the exact tested module and
+Mesa ELF files to `perf buildid-cache`, and pass the matching `--vmlinux` when
+reporting kernel symbols. Idle-poll samples are not useful game CPU work;
+report both the denominator and relevant process names. The first actual
+capture retained 188,630 samples with no lost samples. Its report step timed
+out on-target; report generation was moved offline in response.
+
+`perf-summary.py SAVED_PERF_DATA --output NEW_DIRECTORY --vmlinux VMLINUX
+--elf TESTED_LIBRARY_OR_MODULE` analyzes an existing capture offline. Repeat
+`--elf` for the actual tested artifacts; perf matches symbols by build ID. The
+helper disables network debuginfo lookups, saves artifact hashes and recorded
+build IDs, and writes flat symbol/process reports plus a compact JSON process
+summary. Percentages use all recorded CPU samples, including idle. It was first
+used on the saved 0 A.D. profile above; it never accesses or drives the GPU.
+
+`bo-cache-test.py HOST_MESA_BUILD --output NEW_DIRECTORY` compiles the real
+internal Mesa BO cache with synthetic BOs and a fake final free callback. It
+uses the host build's recorded compiler flags and retains command/build/result
+logs. No DRM device is opened. Tests cover incompatible flags including hash
+collisions, size/alignment rejection, LRU trimming, shared-object rejection,
+and complete eviction. This is not hardware validation.
+
+`desktop-experiment.py --game-profile` enables 0 A.D.'s built-in profiler on
+127.0.0.1, disables only its optional GPU timing instrumentation, and captures
+its overview and main-thread event stream before guarded
+shutdown. It preserves the normal renderer/options and watchdog/thermal rules.
+Analyze the saved JSON offline; capture bounds do not limit GPU workloads.
+
+`0ad-profile-summary.py MAIN_JSON --output NEW_JSON [--frames 120]` reports
+recent complete-frame rates and inclusive/exclusive main-thread scope times.
+Nested inclusive totals overlap, and wall time includes waits; these are not
+GPU or CPU utilization percentages. Source hashes and incomplete scope counts
+are retained. A synthetic nested-event fixture qualifies the arithmetic;
+real-game event captures are needed to establish any performance finding.
+
+The buffer oracle's optional `M4_ORACLE_WATCH_TRACE_US=1..100000` requires
+`M4_ORACLE_WATCH_WORD`. After its immediate fence observation it records changes
+to that word, stopping at the expected value or the bounded deadline. The full
+buffer snapshot then follows this diagnostic interval and is labelled as such.
+An incorrect immediate watched value still fails the whole test, even when later
+reads match. It adds no GPU submission and implements no driver wait/workaround.
+Observation records are bounded and any dropped records are explicitly counted.
+
+`native-uat-read.py STAGE resources GPU_VA --length N` reads a captured base
+buffer by the resource manifest's declared GPU VA when physical UAT payload
+pages are absent. This explicit mode reports resource/task identity and file
+hashes, performs no UAT walk, rejects views/ambiguous matches/truncated ranges,
+and never mixes capture stages. The ordinary numeric-context and `firmware`
+modes still require physical translation. Qualified on native061054 completed
+resource27: exact48-byte CDM prefix and a rejected range crossing its end.
+
+`gpu-phase-summary.py KERNEL_LOG` summarizes native24MHz tiler/fragment/compute
+intervals and the kernel's last_prepare_ns/last_active_ns/last_cleanup_ns fields.
+Use one complete kernel-live.log from an experiment, not concatenated snapshots.
+It selects final fragment snapshots, unions overlapping intervals, and excludes
+multi-command packets from host phase totals. Includes source SHA and explicit
+limits: all clients, firmware pauses possible, no GPU-utilization or completion
+correctness claim. Qualified on122040 retained0ADlog and a known-overlap fixture.
+
+`desktop-experiment.py --game sauerbraten --name NAME --seconds 180` runs the
+unmodified ARM64 Sauerbraten release on metl4 under native Hyprland through
+Zink/Honeykrisp. It uses the same mandatory watchdog/thermal guards, records
+binary/source identities, checks map loading, renderer identity and a surviving
+owned game window, and saves screenshots for separate visual inspection. Private
+installation is `/opt/m4-sauerbraten`, config is the user's
+`.config/m4-asahi-sauerbraten`; audio uses SDL's dummy device during graphics tests.
+No game rendering features are disabled. `--trace` captures the original EGL calls for same-frame llvmpipe comparison;
+`--game-profile` currently only applies to 0AD. 0AD remains the default game. Sauerbraten source and cross-build
+arguments are recorded in `build/sauerbraten/source.json` and `build-command.json`.
+
+## Shorter original-trace replays
+
+`trace-prefix.py TRACE --last-call EGL_SWAP_CALL --output NEW_DIR` keeps every
+call from trace start through the selected complete EGL frame. This shortens
+repeated experiments without guessing dependency closure or removing setup.
+It verifies the complete textual call/argument sequence against the original
+prefix and records both trace hashes. Blob contents are copied by apitrace;
+the textual check represents blobs by size and does not independently compare
+their bytes. The prefix must still reproduce the original observed failure
+before it is used for causal isolation. Host replays use `replay-llvmpipe.py`;
+hardware replays still require the mandatory watchdog and thermal wrapper.
+
+`gl-mesh-replay.c` is a small differential GL diagnostic for captured position
+and 16-bit triangle-index buffers. Build with `-lEGL -lGL`. Arguments are vertex
+file, index file, 64-byte column-major float matrix, output prefix, vertex stride.
+Positions are float3 at offset0; all indices must be in range. Its four modes
+render plain color in one draw, depth prepass plus color, the same prepass plus
+63-index draw batches, and perspective fog. The camera, winding (CW), D32F
+depth and 1024x768 target remain fixed between modes. It writes raw RGBA files
+for comparison with host llvmpipe (`M4_TEST_LLVMPIPE=1`). Saving output is not a
+pixel-correctness pass. Captured assets and matrices stay in build evidence;
+no game data is added to the tool. Run the hardware binary only through
+`gpu-experiment.py` and `run-m4-gl.py`, preserving both guards.
+
+`shader-variant.py DIRECTORY --contains TEXT --replace TEXT --with TEXT
+--output NEW_DIRECTORY` creates explicit diagnostic variants of Mesa's dumped
+GLSL sources, retaining original/replacement SHA-256 and transformation text.
+Use `--glob 'VS_*.glsl'` for vertex shaders; default is fragment shaders. Each
+selected source must contain exactly one replacement site. Original files are
+preserved. Use the output only as a temporary `MESA_SHADER_READ_PATH` inside a
+guarded replay; shader replacements are causal controls, never production fixes
+or game correctness evidence. Removing the environment variable restores the
+original shaders without modifying the game or driver.
+
+The mesh replay optionally accepts `MATERIAL_VERTEX_SHADER` as its final argument.
+This uses the captured Sauerbraten vertex interface and 32-byte attributes, keeps
+all eight outputs live through a diagnostic fragment shader, and uses recorded
+camera/fog uniforms. The original GLSL is loaded from evidence, not embedded in
+the tool. `M4_TEST_FOG_PLANE=1` instead selects the small dynamic plane-dot shader.
+These modes isolate compiler behavior; their output is compared to the matching
+host run, not to a fully textured game screenshot.
+
+`replay-m4.py OUTPUT TRACE CALLS [IGNORE_CALL_FILE]` consolidates the existing
+target-side EGL replay helper. Invoke only under `gpu-experiment.py`; it does not
+own or replace the mandatory guards. `M4_REPLAY_COMPILER_DEBUG` supplies explicit
+compiler flags, alongside the existing queue/draw-sync and shader-dump controls.
+Check that a selected flag actually applies to AGX3 before attributing a result
+to it (`AGX_MESA_DEBUG=wait` currently only changes AGX2 wait insertion).
+
+`trace-shaders.py DUMP --program ID... --output NEW_DIRECTORY` extracts
+linked GLSL sources from an apitrace textual dump, tracking attached shader
+objects and recording call IDs/source hashes. It extracts source only, not
+GL state or a runnable trace. Qualified545 sources exactly match earlier
+independent extraction and Mesa shader dumps; shader names may be reused.
+
+`gl-mesh-replay.c` can additionally accept an original fragment shader after
+the vertex shader. Original material samplers use complete1x1 diagnostic
+textures: diffuse/lightmap white, normal/direction neutral, shadowmap zero.
+Ambient1/specular0/parallax0/glow defaults produce a fog grayscale reference
+while the compiler retains the original shader interfaces. The optional
+shadow projection is identity. These are diagnostic material inputs, not
+actual-game validation. All modes in this case retain the original fragment
+shader, so compare them to matching host-pair outputs.
+
+### Private Sauerbraten build installation
+
+`python3 tools/install-sauerbraten.py SOURCE_BINARY` stages a checksummed
+binary, refuses installation while the game is running, preserves the previous
+binary by hash, and replaces `/opt/m4-sauerbraten/sauer_client` atomically.
+It performs no GPU experiment. Use `desktop-experiment.py --game sauerbraten`
+for all live validation; watchdog and thermal guards remain mandatory. The
+runner records the local game source commit and patch as well as the installed
+executable hash. The source repository is
+`reference/sauerbraten-2020/sauerbraten/src` (local, no remotes).
+
+### SuperTux modern OpenGL renderer
+
+`python3 tools/desktop-experiment.py --game supertux --name NAME --seconds 180`
+runs the installed SuperTux 0.7 `opengl33core` renderer on welcome_antarctica
+through M4 Zink. This version requests OpenGL 3.3 Core, not 3.1. The harness
+verifies the requested and returned profile, renderer identity, game survival,
+and GPU/compositor progress; saves initial/live/final images for inspection.
+Config is isolated under `~/.config/m4-asahi-supertux`. Sound/music disabled
+for the graphics experiment; watchdog/thermal guards remain mandatory.
+`--trace` records the game's EGL calls while preserving the renderer audit hook;
+fetch the trace named in `remote/graphics-trace.json` after completion. Tracing
+adds overhead, so do not compare its FPS with an untraced benchmark.
+`--inline-uniforms` tests Zink's existing uniform specialization for this game
+without changing its graphics options. Record this flag in comparisons.
+
+`desktop-experiment.py --game supertux --frame-timings --cpu-profile ...`
+adds optional CPU-clock SDL swap measurements and the existing perf capture.
+`frame-timing-summary.py EXPERIMENT/remote/supertux.log --after-seconds 20`
+reports measured FPS/frame/swap time with an explicit startup exclusion. All
+original rows remain in the log; no GPU commands or synchronization are added
+by the swap hook. Rejects missing/reset frame sequences. Use the same scene,
+resolution and graphics options for before/after performance comparisons.
+
+For SuperTux, EGL capture routes GLEW GLX procedure lookups through the EGL
+wrapper; direct GL calls alone are not a complete trace. Capture180741 replays
+with all shaders/API calls on host llvmpipe, three final frames, no API errors.
+`M4_REPLAY_LAUNCH_TRACE=0` suppresses per-launch byte dumps in `replay-m4.py`
+for an explicitly timed replay; default remains1. Guard/thermal requirements
+are unchanged, and all calls are still executed.
+
+For performance iterations use `--seconds 20 --frame-timings` and summarize with
+`--after-seconds 10`; save long runs for stability validation after a clear gain.
+`--prefetch-ubos` and `--prefetch-descriptors` enable their opt-in GPU uniform
+prefetch paths and compile-time audits. `--shader-dump` dumps compiled shaders
+once rather than tracing every draw. Keep the same flags across comparisons.
+
+### Omarchy Quickshell panel and background
+
+`desktop-experiment.py --game shell --shell-ui --seconds 20 --name NAME`
+runs the actual shell, opens/closes its menu and audio popup, captures images
+and validates Quickshell's own renderer identity. Default backend is Vulkan;
+`--quickshell-backend opengl` uses Zink and `software` selects a reference.
+The canonical GPU shell wrapper lives alongside Mesa's m4-desktop harness and
+is installed at `/opt/m4-hyprland/bin/omarchy-launch-shell`. The root helper
+records its deployed hash. No game is launched in shell mode. Renderer logs,
+process driver maps, DRM descriptors and same-process survival are retained;
+inspect screenshots separately. Watchdog and thermal guards remain mandatory.
+
+`quickshell-latency.py --guard-output /root/asahi-evidence/RUN --label NAME`
+ runs on J713 inside an already-running desktop guard. It refuses a completed
+ or stale guard, checks the recorded 60-second watchdog and live thermal health,
+ and measures two normal menu opens against sparse centre-card pixels from
+ native scanout. It saves IPC timings, scanout sampling times, first visible
+ change and full before/after snapshots under the guard evidence directory.
+ It never renews the watchdog itself. The visible-change threshold is a latency
+ diagnostic, not a rendering correctness oracle; inspect the saved images.
+
+`desktop-experiment.py --copy-trace` selects `HK_M4_COPY_TRACE=1`, a
+ concise Mesa buffer-to-image upload-region diagnostic. Useful for correlating
+ batched atlas uploads to native kernel render jobs without full launch dumps.
+
+`g16-job-summary.py LOG --start SECONDS --end SECONDS --extent WIDTHxHEIGHT
+--output JSON` summarizes saved serialized M4 render jobs, optionally filtering
+`--asid` or repeating `--extent`. Intervals use kernel bracket timestamps;
+exact monotonic timestamps are preserved separately. GPU stage durations use
+the qualified24MHz counter and exclude firmware, queue and CPU polling time.
+Used to verify glyph upload batching67->4 jobs without losing timing evidence.
+
+`quickshell-latency.py --motion` runs the same six-second,120Hz cursor path
+with the menu hidden and open, recording actual native KMS presentation counts
+and IPC response times. It restores cursor position and uses the existing
+live desktop guard. No frame readback occurs during motion. The status node
+is sampled only at the endpoints because reading it locks against presentation.
+`g16-job-summary.py --clock monotonic` aligns those phases with exact retirement
+timestamps instead of the printk bracket clock.
+
+`desktop-experiment.py --cpu-max-khz 4104000` compares normal CPU policy
+limits with the default 1860000 kHz test ceiling. The thermal helper still
+only lowers limits, so reboot before switching from a lower ceiling. This
+preserves CPU thermal throttling, six sensor samples every0.5s, startup65C,
+stop75C and progress-dependent watchdog60. Record the actual per-policy caps
+from evidence; this is a test configuration comparison, not a driver speedup.
+
+`quickshell-latency.py --direct-ipc` starts the IPC client with the desktop
+user's UID, groups and home, avoiding runuser's extra PAM session startup.
+The default retains the old method for comparable before/after measurements.
+Each latency row records its transport; do not compare unlike transports as
+a rendering improvement. Neither mode measures the complete physical click
+input path, and the40ms scanout sampling period limits timing precision.
+
+`quickshell-latency.py --motion --cpu-profile` adds a bounded199Hz CPU-clock
+profile during the existing hidden/open cursor phases. It stops perf before
+returning; analyze the saved perf.data with perf-summary.py and matching ELFs.
+Use unprofiled repetitions to report FPS after a change.
+
+`under-desktop-guard.py --guard-output RUN --label NAME -- COMMAND...` runs a
+short auxiliary probe while the named desktop guard already owns watchdog60.
+It checks guard identity, boot ID and live thermals throughout, kills its
+command on lost supervision or deadline, and saves output/result under RUN.
+It never renews a watchdog; do not use it without the parent guard.
+
+`wc-zero-bench.c` compares DC ZVA with scalar paired stores on a private32MiB
+WC Asahi GEM allocation. It never binds/submits that allocation to the GPU or
+writes scanout. Three interleaved repetitions check every64-bit word and two
+16KiB untouched borders. Cross-compile with the Mesa include/ UAPI directory
+and run via under-desktop-guard.py. This measures complete resets, not skipping
+zeroing; the initial J713 result found no benefit from replacing DC ZVA.
+
+### `hypr-ipc.py`
+
+Send one raw IPC request to the sole Hyprland instance under a runtime directory
+(default `/run/user/1000`). This avoids repeated socket-discovery snippets. Run
+configuration changes through `under-desktop-guard.py` inside an active test:
+`python3 /root/under-desktop-guard.py --guard-output /root/asahi-evidence/RUN
+--label scheduler-on --seconds 5 -- python3 /root/hypr-ipc.py
+'eval hl.config({render={new_render_scheduling=true}})'`. Read-only requests such
+as `j/getoption render:new_render_scheduling` use the same IPC helper.
+The helper itself does not start a watchdog or a compositor.
+
+### `present-timing.py`
+
+Collect the native DCP driver's small completion history without reading pixels
+or taking its presentation lock. Requires the `m4_present_history` debugfs file.
+Run `collect --seconds 25 --output /root/asahi-evidence/RUN/frames.json` through
+`under-desktop-guard.py --seconds 30`. Run a short motion benchmark alongside it,
+then analyze its exact monotonic interval offline with
+`analyze frames.json --start START --end END --output summary.json`.
+Reports frame-interval percentiles, missing records and long gaps split into
+time before the DCP submission and time waiting for DCP completion. An idle
+desktop has legitimate long gaps: select an interval with continuous motion.
+
+`install-asahi-module.py` also stages the development DCP module with
+`--module-name m4_dcp_rtkit --target /root/m4_dcp_rtkit-asahi.ko`. Both old and new
+module names must match; the previous file is backed up. This still never
+reloads a live module. Activate only after the guarded reboot.
+
+
+`quickshell-latency.py --motion --motion-seconds 20 --motion-path menu
+--motion-toggle --direct-ipc` continuously moves the pointer while opening and
+closing the menu every two seconds. It records action and IPC timestamps without
+reading scanout pixels. Run inside `under-desktop-guard.py --seconds 28`, alongside
+`present-timing.py collect`, to include opening stalls in the measurement.
+
+
+`guarded-reboot.py --output /root/asahi-evidence/UNIQUE-REBOOT` runs on an idle
+J713 after the prior guard has completed. It refuses active DRM clients, arms
+and verifies the 60-second watchdog, checks the thermal policy/sensors, saves
+pre-reboot evidence and requests reboot without further watchdog renewal.
+Allow at least 90 seconds before another SSH attempt. It never hot-reloads a
+module or bypasses the desktop experiment guard.
+
+
+`task-waits.py --pid PID --seconds 25 --output waits.json` samples the selected
+process's kernel wait channel, syscall and blocked stack every 5ms. Invoke via
+`under-desktop-guard.py --seconds 28`. For ARM64 DRM atomic ioctls only, it also
+reads the small userspace request to identify flags and property values. Reads
+can race with a task switching state; this is sampled evidence, not an exact
+scheduler trace. It requires root and never changes process state or renews a
+watchdog. Correlate timestamps with `quickshell-latency.py` slow IPC records.
+
+
+`bash tools/build-hyprland.sh [JOBS]` incrementally cross-builds the local Hyprland
+0.56.1 checkout against the existing Omarchy ARM64 sysroot. Default parallelism
+is 8; `M4_GRAPHICS_WORKSPACE` selects the sysroot/toolchain directory. Python3.14
+is required for the upstream Lua stub generator. The initial configuration
+fetches upstream's pinned Glaze7.2.0 and initializes the two required submodules.
+The resulting `build/hyprland-m4-arm64/Hyprland` is for private installation;
+this helper never installs or starts it.
+
+`desktop-experiment.py --hyprland-binary /opt/m4-hyprland/bin/Hyprland ...`
+selects a private compositor through start-hyprland's supported `--path` option.
+The selected target binary is hashed and local compositor source/patches are
+retained in the experiment manifest. The default is the qualified private binary; pass `/usr/bin/Hyprland` for
+an explicit unpatched baseline. Shell tests keep startup/final screenshots;
+scheduled intermediate screencopies are reserved for games or explicit UI
+capture tests because they stall the compositor input loop.
+
+### Normal accelerated login and compiler replay
+
+`normal-desktop/` contains the J713 normal SDDM and user-session configuration.
+`install-normal-desktop.py --backup NEW_DIRECTORY` runs on J713 after staging
+those files at `/root/m4-normal-desktop-stage`. It backs up replaced files,
+installs the native DCP module and initializes the Asahi/DCP stack before SDDM.
+It discovers the display card instead of relying on probe-order numbering.
+SDDM's explicit GreeterEnvironment and the user wrapper select the private M4
+Mesa stack; the user wrapper loads the complete normal Omarchy configuration.
+
+`normal-login-check.py --output NEW_DIRECTORY [--capture-compiler]` runs on J713;
+read the password from stdin. It arms watchdog60, starts the six-channel thermal
+guard, caps test CPU clocks, simulates SDDM keyboard login, checks mapped panel
+layers and private GPU libraries, opens Foot, pastes an ordinary SuperTuxKart
+launch command through the clipboard and saves screenshots. It uses the real
+user game configuration, including enabled dynamic lighting and compression;
+this does not replace a separate GUI menu-to-race test. Inspect those
+images before declaring success. Failure evidence is preserved and watchdog
+recovery remains conservative until a reliable GPU drain check is available.
+The optional compiler capture flag is removed at completion. On success, test CPU caps are restored after stopping the thermal monitor.
+On failure they remain until recovery. This is not an unattended stress runner.
+
+`compiler-replay.py BUNDLE --output NEW_DIRECTORY` runs entirely on the host,
+using `build/mesa-m4-asahi-host/src/asahi/compiler/agx_shader_replay`. It saves
+compiler diagnostics, input/build hashes and dirty-source identity. The Mesa
+`src/asahi/compiler/README-replay.md` describes capture limits and serialization
+compatibility. The original shader bundle remains unchanged for regression
+comparison. Compiler acceptance and GPU execution correctness are separate checks.
+
+For boot qualification, `normal-login-check.py --existing-greeter` uses the SDDM
+already started by normal boot. `--native-screenshots` saves `*.m4fb` directly
+from the DCP driver's read-only scanout snapshot (32-byte header followed by
+stride-padded XR24/AR24 pixels). This avoids adding compositor readback draws to
+a login test. It does not disable desktop effects or change GPU rendering.
+`scanout-image.py INPUT.m4fb OUTPUT.png` converts a saved native scanout snapshot
+to a viewable PNG on the host, validates its header/stride/format, and reports
+the framebuffer ID. It performs no hardware access.
+
+
+`hyprland-shader-source.py border.frag OUTPUT` expands the checked-out Hyprland
+shader includes with rounding enabled and color management disabled. It preserves
+the shader math; this is a diagnostic variant, not a replacement desktop shader.
+`hyprland-border-probe.c` runs it in a surfaceless GLES3 RGBA framebuffer and saves
+one- and two-color border readbacks as raw RGBA8. Compile with EGL/GLESv2; run M4
+only through `gpu-experiment.py` and `run-m4-gl.py`, with the desktop stopped.
+The host reference uses `M4_TEST_LLVMPIPE=1 LIBGL_ALWAYS_SOFTWARE=1
+GALLIUM_DRIVER=llvmpipe`. Arguments are `SHADER OUTPUT_PREFIX`.
+Optional environment controls reproduce concrete desktop state: `M4_TEST_BLEND`,
+`M4_TEST_SCISSOR`, `M4_TEST_SQUARE`, `M4_TEST_DEPTH_ATTACHMENT`, `M4_TEST_RGB10A2`,
+`M4_TEST_WIDTH`, `M4_TEST_HEIGHT`, and `M4_TEST_SECOND_GRADIENT` (default zero).
+A completed draw is execution evidence only; compare all four readback channels
+against the reference before claiming pixel correctness.
+
+### Export the actual Hyprland GL stream
+
+`gl-trace-reproducer.py TRACE --last-call NUMBER --output NEW_DIRECTORY` exports
+a trusted local apitrace capture to `replay.c`, content-addressed buffer/shader
+payloads, and a manifest. It retains GL mutations through that call and rejects
+unsupported import shapes. `--apitrace PATH` selects the executable and its
+adjacent `lib/apitrace/scripts` pickle modules; the workspace default is under
+`build/apitrace-host/usr`. The tracked source is also in Mesa's
+`src/asahi/vulkan/tests/m4-desktop/`.
+
+Compile `replay.c` with EGL and desktop GL (`cc replay.c -lEGL -lGL -o replay`).
+Run from the export directory so payload paths resolve. A host reference uses
+`M4_TEST_LLVMPIPE=1 LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe ./replay`.
+Cross-compile the same source to `m4-replay` and stage the complete directory on
+J713. Stage `run-gl-trace-export.py` and `run-m4-gl.py` in `/root`; invoke through
+`gpu-experiment.py`, for example:
+
+```
+python3 tools/gpu-experiment.py --name captured-frame \
+  --hypothesis 'Replay every captured draw with normal batching' \
+  --expect 'PASS: captured GL draws finished' --seconds 35 -- \
+  env ZINK_DEBUG= AGX_MESA_DEBUG= HK_G17P_LAUNCH_TRACE=1 \
+  python3 /root/run-gl-trace-export.py /root/hypr-gl-replay '{output}'
+```
+
+The target runner stops display clients with a bounded quiescence interval,
+records source/executable identities and diagnostic controls, and saves readback.
+It requires the outer watchdog/thermal guard; it never renews the watchdog.
+An application completion message is insufficient: Zink has returned from
+readback after device loss, so the outer kernel/guard verdict is authoritative.
+
+This is a rendering diagnostic, not a WSI replay: native XR24/AR24 renderbuffer
+imports become retained local RGBA8 storage; texture imports use apitrace's
+captured TexImage2D payload. EGL fences, presentation and context transitions
+are omitted. The manifest lists adaptations. Reject unsupported captures rather
+than replacing missing texture data. Do not use untrusted pickle input.
+
+Optional `M4_GL_REPLAY_FINISH_BEFORE=CALL`, `M4_GL_REPLAY_SKIP_DRAWS=CALL,...`
+and `M4_GL_REPLAY_REPEAT_DRAW=CALL` are explicit causal controls, never production
+fixes. With all three unset, the original 177-draw prefix through call 5170
+reproduced the Hyprland border hang. The compiler's coverage-ordering fix then
+passed that unchanged prefix and the normal SDDM login. The readback matched
+llvmpipe within one RGB level with exact alpha across all 4,259,840 pixels.
+
+`normal-login-check.py --trace-stk --trace-hyprland` captures EGL calls and native
+shader/command diagnostics from the actual applications. Hyprland traces are
+saved under `~/.cache/m4-login-traces/` with apitrace's process/timestamp names; game artifacts
+are under the run-named subdirectory. The Hyprland flag uses a temporary `/run`
+marker and is removed on completion. Kernel fault monitoring stops input at the
+first GPU retirement failure, before attempting further application startup.
+
+`normal-login-check.py --login-only` qualifies login and Foot, leaving the game
+for screenshot-guided interaction. `desktop-ui.py` supplies that interaction in
+an existing normal desktop. Copy it to `/root/desktop-ui.py`, then start it with
+`gpu-experiment.py --seconds 360 --expect 'PASS: bounded desktop UI session closed'
+-- python3 /root/desktop-ui.py serve '{output}' --seconds 300` (also provide the
+experiment name and hypothesis). The shorter server deadline bounds cleanup.
+Send requests on J713 with `desktop-ui.py send REMOTE_OUTPUT JSON`, for example
+`{"action":"paste","text":"/usr/bin/supertuxkart","name":"command"}`.
+Paste does not press Enter: fetch and inspect the saved native snapshot first.
+`{"action":"key","key":"Return","name":"launch"}` holds the key for
+150 ms so a game frame can observe it. Use `snapshot` between menu transitions
+and `finish` after the test. Every reply names a saved `.m4fb`; convert it with
+`scanout-image.py`. Completion only means the bounded UI capture closed: inspect
+the screenshots and game log separately to establish game/race success. The
+server terminates newly started SuperTuxKart processes on exit and requires the
+ancestor guard's live GPU retirement, watchdog60 and six-channel thermals.
+
+
+`native-metal-compile.py INPUT --stage builtin --compiler ABSOLUTE_MAC_PATH
+--output NEW_DIRECTORY` compiles a BTNF builtin on the authorized Mac without
+GPU execution. It saves the exact input, command/version, native archive and
+checked Mach-O text/symbols. Use Metal 32023.917 for the EOT factory; the host's
+32023.883 compiler does not implement it. A separate 27A5194o export is mounted
+read-only at /Users/m1/m4-metal-917. Render pipelines also accept
+`--pixel-format RGBA16Float` (default RGBA8Unorm).
+
+`hdr-attachment-probe.c` checks single half-float and single/dual packed HDR
+attachments through clear, draw, additive blend and reload. Build with EGL, GL
+and libm; run the ARM64 binary with `run-m4-gl.py` inside `gpu-experiment.py`.
+Set `ZINK_DEBUG=` explicitly to exercise ordinary batching. Its desktop GL
+half-float readbacks avoid an unrelated unsupported RGBA32F conversion target.
+Host llvmpipe is permitted only with explicit M4_TEST_LLVMPIPE=1. The tracked
+source/native references are in Mesa's src/asahi/compiler/test/probes/.
+
+`desktop-ui-remote.py REMOTE_OUTPUT JSON LOCAL_IMAGE_STEM` sends one request to
+an already guarded UI server, fetches its native snapshot, and runs the existing
+scanout decoder. It returns a PNG path for visual inspection before the next
+input. It does not own a watchdog or launch an experiment. The tracked copy
+lives with the kernel normal-desktop test helpers.
+
+`g16-fault-dump.py decode DUMP --scheduler` also compares the retained
+parameter manager's page-list address with its hardware descriptor and shows
+InitBuffer's full-reinit/incremental selector. A mismatch is evidence of stale
+slot state; the sequential snapshot alone does not identify who wrote it.
+
+The `build/linux-asahi-j713` running-kernel ABI uses Rust 1.98.0. Build modules
+with `/home/council/.rustup/toolchains/1.98.0-x86_64-unknown-linux-gnu/bin` first
+in PATH, then `make -C linux/linux-asahi O=$PWD/build/linux-asahi-j713 ARCH=arm64
+LLVM=1 -j8 drivers/gpu/drm/asahi/asahi.ko`. The system Rust 1.94.1 regenerates
+incompatible Rust symbols and fails modpost; never suppress those errors.
+
+`firefox-probe.py` runs bounded normal Wayland Firefox with an isolated profile
+and shader cache, records graphics diagnostics and native scanout, and optionally
+captures Vulkan through GFXReconstruct. Use only inside `gpu-experiment.py`,
+with target `--guard-output '{output}' --observe-seconds 2 --capture`.
+The default WebGL page is MDN sample6; `--renderer lavapipe` selects an explicit
+software reference. Tracked usage and evidence: Mesa's
+`src/asahi/vulkan/tests/m4-desktop/README-firefox.md`.
+
+`vulkan-trace.py replay --end-frame N` preserves all initialization and stops
+after the bounded frame prefix. It is separate from `--frames` screenshots.
+GFXReconstruct's local `${ProcessId}` capture-filename patch is retained in
+`tools/patches/gfxreconstruct-process-id.patch` and the tracked Mesa tools.
+
+`install-mesa-library.py BUILD --label LABEL --allow-live` atomically updates a
+compatible private userspace library with checksums and backup. New processes
+load it; already running processes retain their old mapping. Default refuses
+live GPU clients. Hardware experiments still require the full guard.
+
+`flatbuffer-field.py FILE --path 1.3 --type u32` reads explicit, zero-based
+native metadata table fields without inventing a schema. Missing fields fail
+because their schema defaults are unknown. `native-metal-compile.py` now retains
+both __GPU_LD_MD and __GPU_ARCH_LD_MD alongside code and compiler provenance.
+
+`macos-native/speclm-imageblock.py UMD` executes the exact retained G16G native
+imageblock arithmetic and SPECLM encoder offline under Unicorn. Run with
+`build/display-venv/bin/python`; it checks the UMD hash, bounds instructions and
+uses synthetic owned memory. This verifies encoding, not GPU rendering.
+
+`rgba32-attachment-probe.c` checks float, signed and unsigned RGBA32 clear,
+draw and reload using full-width exact channel values. Cross-build with EGL/GL,
+run under `run-m4-gl.py` and `gpu-experiment.py`. CPU llvmpipe is permitted only
+with explicit `M4_TEST_LLVMPIPE=1`. A separate Vulkan host-image-copy diagnostic
+is available by building `g17p_offscreen_triangle.c` with
+`G17P_RGBA32_SFLOAT=1`, `G17P_HOST_IMAGE_COPY=1` and `TEST_DEVICE_ID=0x8132`.
+
+## Saved firmware disassembly
+
+`firmware-disasm.py IMAGE --offset 0x19364 --size 0x268 --output NEW.txt`
+disassembles only a selected range of a saved ARM64 image. It records the full
+image hash, range and exact objdump command beside the output. Offsets are file
+offsets; extract a raw text segment first if the input is a container. This
+offline tool does not access hardware or require a hardware experiment guard.
+
+## Multisample coverage oracle
+
+`multisample-probe.c` renders a small surfaceless OpenGL FBO through Zink. Pass
+1, 2, or 4 for its sample count. It checks the actual allocated count, clears
+black, writes each sample red, and compares all 4,096 resolved pixels after each
+write. Each readback forces the attachment store/reload path. Use
+`M4_MSAA_ALL_SAMPLES=1` to draw every sample together, isolating storage from
+selective coverage. Neither mode changes application settings or qualifies an
+application. Host llvmpipe reference execution requires `M4_TEST_LLVMPIPE=1`.
+
+Build with EGL/GL development headers and `-lEGL -lGL -lm`; cross-build and deploy
+for the target. Hardware execution must run inside `gpu-experiment.py` with the
+watchdog and thermal guards, for example its existing `/root/run-m4-gl.py`
+wrapper. The versioned copy is in Mesa's `tests/m4-desktop/` directory.
 
 `vulkan-fragment-probe.py SOURCE --output NEW_DIR --samples 1|2|4
 --rgba R G B A` builds a custom fragment shader into the existing Vulkan
@@ -1572,26 +943,27 @@ Use the watchdog/thermal experiment wrapper to run `NEW_DIR/probe-arm64`.
 The fixture clears to black with alpha 255 before drawing. Use its actual
 `g17p-msaa2-triangle: PASS` success marker for 2x tests. Diagnostic fixtures are
 not application captures and cannot by themselves qualify application support.
+# Offline M4 pipeline compilation
 
-For offline pipeline compilation, add `--run-host-shim`. This builds an x86
-probe that exits immediately after pipeline creation, then runs it under
-`ASAHI_SHIM_CHIP=g16g` with a 20-second deadline. It retains compiler inputs,
-library/shim hashes, source changes and logs. Build the host Vulkan library and
-Asahi DRM shim first. The versioned helper also needs `--workspace-root` for
-the host build paths. No commands are submitted and no hardware is exercised.
+`integer-helper-reference.py NEW_FILE` generates the independent numerical
+oracle for `m4_vulkan_integer_helpers.comp` using exact Python arithmetic.
+Use the existing gather/store harness for lavapipe and guarded M4 comparison.
 
-`--vertex xfb-pipeline.vert` with `solid-red.frag` exercises transform-feedback
-shader compilation, including the compute vertex variant. This is deliberately
-an unsupported-capability diagnostic: the production driver still disables
-transform feedback, and the fixture does not enable that device feature.
-A compilation pass is not valid Vulkan application or transform-feedback
-execution qualification. It reproduced an unaligned uniform-pointer rejection
-and a double-free on failure; both were fixed before the local compile passed.
+`vulkan-fragment-probe.py FRAGMENT --vertex VERTEX --rgba 255 0 0 255
+--output NEW_DIR --run-host-shim` builds and compiles a pipeline through the
+host M4 DRM shim, retaining shader bundles, logs, exact library hashes and
+source changes. It exits before command recording/submission and times out
+after 20 seconds. Build the host Asahi Vulkan library and DRM shim first.
+Fixtures live in `mesa/m4-asahi/src/asahi/vulkan/tests/m4-desktop/`:
+`solid-red.frag` and `xfb-pipeline.vert`. The XFB fixture intentionally tests
+an unsupported compiler path; it does not establish valid application support.
+Ordinary ARM probe execution still requires the Linux watchdog/thermal guard.
 
-Add `--record-command-buffer` with `--run-host-shim` to also record a single
-draw, still without any submission. This compiles helper shaders generated at
-draw time, such as the XFB passthrough geometry shader. A command-buffer error
-is a failed diagnostic, even if the initial pipeline compilation succeeded.
+`vulkan-fragment-probe.py --allow-unadvertised-samples` explicitly opts into
+a diagnostic sample-count attempt. It retains the requested count, prints a
+warning and records the capability bypass in manifest.json. Default remains
+to refuse unadvertised counts. Neither a successful diagnostic nor host shim
+compilation qualifies public Vulkan capability support.
 
 `vulkan-fragment-probe.py --occlusion-query` wraps the diagnostic draw in a
 Vulkan occlusion query and reports `SAMPLES-PASSED non-precise` after fence
@@ -1600,25 +972,6 @@ later color/store failures. A non-precise positive result is not an exact
 sample count. This adds query operations to the diagnostic fixture, preserves
 its shader and pixel expectation, and records the option in its manifest.
 Run only through the same watchdog/thermal guard as ordinary ARM probes.
-
-The `sample-mask.frag` regression keeps two of four samples over an opaque
-black clear. Build it with `vulkan-fragment-probe.py --samples 4 --rgba 128 0 0
-255 --output NEW_DIR`; use `--allow-unadvertised-samples` only for explicit
-bring-up diagnostics while 4x capability qualification remains incomplete.
-On J713/25G83, the 2026-09-12 coverage matrix verified empty/full/selective
-masks across 1x, 2x and 4x with exact RGBA8 readback (peak 54.75 C). The fix
-intersects LSTCOL writes with SR39's low live-coverage nibble, including
-background clears, and constructs MOVMSK's target/live nibbles per sample.
-The input mask is not truncated to bit zero. Fourteen focused compiler tests
-pass; this is not a claim that the entire legacy compiler test suite passes.
-
-Coverage updates must read current SR39 with a coverage dependency. Reusing
-immutable input coverage revives samples after earlier discard operations;
-a simple single-update mask test does not catch this. The saved Firefox
-WebRender/WebGL frame90 exposed the regression (3754 pixels above 8/255 error).
-Current-coverage updates restore the previous M4 frame byte-for-byte and its
-maximum 2/255 difference from lavapipe, while the seven-case multisample matrix
-still passes (2026-09-12, peak 56.75 C in the replay).
 
 The multisample oracle accepts a second argument `rgba8` (default) or
 `rgb10a2` to check both exposed color storage formats with the same per-sample
@@ -1666,16 +1019,6 @@ and saves the first Vulkan error's backtrace, or a compiler crash backtrace.
 It validates the compile-only manifest and probe hash and breaks at the
 non-inlined Vulkan error logger, avoiding misleading optimized inline locations.
 This helper is for offline recording only, not hardware execution.
-
-M4 transform-feedback bring-up (2026-09-12): the exact triangle passed guarded
-hardware execution in `20260912T185413008652Z-xfb-exact-generated-restart`, with
-all three vec4 positions, buffer guard and 32x32 RGBA8 pixels exact. The checksum
-`d9f0ab0040382b25` matches the lavapipe reference. Peak PMP temperature: 57.25 C;
-no firmware fault. This qualifies the basic path, not complete transform-feedback
-feature coverage or Chromium support; feature exposure remains a local candidate.
-The probe now evaluates pixels even after an XFB mismatch and uses a three-second
-fence timeout. Portable libagx NIR is compiled through Honeykrisp's native compute
-path; no AGX2 precompiled binary is submitted on M4.
 
 Transform-feedback extensions to the probe: `--rasterizer-discard` verifies
 feedback without color writes; `--transform-feedback-resume` verifies two
@@ -1839,13 +1182,6 @@ permits a separately selected software ICD. The three M4 cases passed on
 2026-09-12 (212444,212840,212954), so they do not yet reproduce Firefox's
 external-image/MSAA readback discrepancy. Do not treat these as a Firefox fix.
 
-Front-facing regression: `graphics-features/front-face.frag` with
-`vulkan-fragment-probe.py --front-face ccw --rgba 0 0 255 255` and
-`--front-face cw --rgba 255 0 0 255`. Positive Vulkan viewport reverses
-these screen-space windings. Both passed exact M4 readback in guarded runs
-20260912T221648924202Z and 20260912T221704299332Z (55.75 C). The adjacent
-Metal source produced the native original-SR41 witness for the encoder test.
-
 `integer-texture-probe.c` checks all 2048 signed/unsigned 32-bit components
 through normalized-coordinate nearest sampling and integer render targets.
 Compile with `cc -O2 ... -lEGL -lGL` (ARM64 sysroot for hardware).
@@ -1854,17 +1190,6 @@ MESA_LOADER_DRIVER_OVERRIDE=zink VK_DRIVER_FILES=... probe`.
 Hardware: gpu-experiment.py wrapping run-m4-gl.py. M4 passed run
 20260912T221956435252Z, 55.75 C, zero mismatches; high bits and negative
 values distinguish integer sampling from accidental float conversion.
-
-Integer-texture `--offset` tests explicit LOD-zero sampling at (-1,+2),
-including wrap boundaries. M4 run 20260912T222412997102Z passed all components,
-55.75 C. Native `graphics-features/sample-offset.metal` reproduces the SMP
-signed-offset fields byte-for-byte; texture encoder tests pass 6228 checks.
-
-`cf-sign-relations/probe.comp` with vk-buffer-oracle covers all pairs of
-+0, -0, +/-infinity, NaN and three finite values through six negated/absolute
-branch relations and distinct atomic side effects. Dispatch two 32-lane groups.
-M4 20260912T222644922275Z passed 512 words, 55.75 C, matching lavapipe and
-independently computed reference bytes.
 
 `flat-line-probe.c` checks full-frame output for line lists and strips,
 first and last provoking vertex (4096 pixels); `--constant` isolates raster
@@ -2078,7 +1403,7 @@ A requestAnimationFrame freeze was used only to compare the final snapshot;
 three seconds of animation ran first. Capture-only behavior remains unresolved.
 
 `eevee-image-probe.c` isolates Eevee storage operations through Zink. Modes
-`fetch3d`, `float`, `uint`, `3d`, and `array` compare 256 texels against exact CPU
+`fetch3d`, `float`, `half` (R16F), `uint`, `3d`, and `array` compare 256 texels against exact CPU
 inputs. Compile with EGL/GL; run only through the mandatory GPU experiment guard
 on M4. `array` is an outstanding qualification case. The software reference
 accepts llvmpipe only with `M4_TEST_LLVMPIPE=1`.
@@ -2086,25 +1411,21 @@ accepts llvmpipe only with `M4_TEST_LLVMPIPE=1`.
 pinned offline constructor witness to volume descriptors. Requires Unicorn;
 executes no GPU commands and does not establish hardware correctness itself.
 
-`compiler-corpus.py CAPTURE/compiler --output NEW_DIRECTORY` batches the
-existing offline compiler replay with per-input hashes, source patches and a
-short failure index. No GPU execution; compilation is not rendering proof.
 
-### Eevee image and compiler probes
+`compiler-corpus.py CAPTURE/compiler --output NEW_DIRECTORY` replays every
+retained compiler bundle offline through compiler-replay.py. It retains each
+input/binary hash, source patch and diagnostic log, and emits a short JSON
+index of the first unsupported instructions. It never executes GPU code.
+Use it to iterate on a captured application without repeated GUI launches.
+A compiler pass is not evidence of rendering correctness.
 
-`eevee-image-probe.c` isolates storage operations through Zink. Modes `fetch3d`,
-`float`, `half` (R16F), `uint`, `3d`, `array`, and `array-oob` compare exact CPU
-inputs. Compile with EGL/GL and use the mandatory GPU experiment guard on M4.
-The software reference accepts llvmpipe only with `M4_TEST_LLVMPIPE=1`.
-Array controls accept `M4_TEST_WIDTH=32` or `M4_TEST_LAYERS=1`; default 8x8x4.
-`M4_TEST_2D_LAYER_VIEWS=1` writes separate 2D views of the same array.
+Eevee image-probe diagnostics: `array-oob` also checks invalid layers. Array
+controls accept `M4_TEST_WIDTH=32` or `M4_TEST_LAYERS=1`; the default is 8x8x4.
+`M4_TEST_2D_LAYER_VIEWS=1` writes each array layer through a separate 2D view.
 `M4_TEST_UPLOAD_ONLY=1` skips dispatch and checks uploaded reference data.
-These controls do not qualify the packed array-write instruction, which is
-still failing. `M4_TEST_SAMPLE_READBACK=1` reads the 8x8x4 array via texelFetch
-into an SSBO. Retain all selected modes in experiment evidence.
-
-`compiler-corpus.py` indexes both unsupported instructions and early compiler
-preflight refusals, including unresolved runtime printf addresses.
+Neither control qualifies the array-write instruction.
+`M4_TEST_SAMPLE_READBACK=1` reads the 8x8x4 result via array texelFetch into an
+SSBO. Record all selected modes in the experiment evidence.
 
 `native-ioto-shaders.py CAPTURE/encoded --shader-va 0x10000000440` locates
 GPU0 LDSHDR candidates for a known native shader and reports the adjacent
@@ -2154,6 +1475,12 @@ the image and function SHA256, symbol VA, file offset, bounded size and command.
 Use this for offline native-driver investigation; addresses are translated
 through Mach-O segments. Requires llvm-nm and aarch64-linux-gnu-objdump.
 It does not execute GPU code or modify the input image.
+
+`g16-layer-state-test.py --kernel linux/linux-asahi --output NEW_DIRECTORY`
+compiles the retained native-derived C and Rust state encoders and compares
+layer modes, metadata pointers and fragment state across 1/2/4/2048 layers
+and both empty-tile modes. Retains binary outputs and JSON result; offline
+encoder agreement is not hardware qualification. Tracked with kernel tools.
 
 `mrt-attachment-probe 3 sparse` discards RT0/RT1 between draws and checks that RT2 survives at its original tile offset. `3 mixed` clears RT1 while reloading RT0/RT2, then checks all attachment pixels. Build with `cc -O2 mrt-attachment-probe.c -lEGL -lGL -lm`; run only through `gpu-experiment.py` and `run-m4-gl.py` with the mandatory watchdog and thermal guard.
 
@@ -2233,3 +1560,31 @@ That mode alone did not expose the dependency bug; retain the gather case.
 `vulkan-shader-probe.py --descriptors` compares replaced compute shader
 dispatch resources against the same diagnostic shader on lavapipe. Shader
 replacement is diagnostic adaptation, not application qualification.
+
+### Shadertoy page diagnostics and rematerialized vertex outputs
+
+`firefox-probe.py --page-script /absolute/read-only-diagnostics.js` retains
+the diagnostic JavaScript and its JSON result after navigation. Use it to
+distinguish site verification/error pages from a working WebGL canvas; never
+create a context just to claim one exists. Existing guards/cleanup apply.
+
+XdsGDB investigation20260913: initial Firefox aborts on saved WebRender
+vertex bundle398b8af55d77. RA rematerialized1.0 between outputs47/48 after
+the pre-RA output bundling pass. Allow ordered wide exports separated only
+by MOV_IMM and retire their staging COPYs before GPR reuse. Contiguous tails
+keep batched waits. Offline replay now compiles6446bytes; guarded092843
+Firefox survives15s with WebRender/WebGL reportingZink/M4. Page remains
+Cloudflare verification, not Shadertoy content or shader qualification.
+Thirteen focused output tests pass; three older SixVertexOutputs tests fail
+identically on unmodified99b3302b66d and are recorded as baseline failures.
+An ordinary-profile40s run092942 faults the GPU later; snapshotjob8887
+retained and watchdog recovery completed. This fix is not a stability claim.
+
+`vulkan-image-dimensions.c --depth24` checks exact low-24-bit depth words
+through D24S8 mip1 uploads, partial updates and padded readbacks in 2D and
+2D arrays. Unused high bytes are ignored; meaningful bytes and padding are
+compared. Use the mandatory experiment guard on hardware.
+`depth24-normalization.c` exhaustively checks the host arithmetic model for
+all 2^24 values against correctly rounded double division and exact round trips.
+Build with `cc -O2 -ffp-contract=off tools/depth24-normalization.c -lm`. This
+CPU model complements, and does not replace, guarded GPU transfer checks.

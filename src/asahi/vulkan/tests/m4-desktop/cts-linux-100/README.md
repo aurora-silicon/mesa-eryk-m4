@@ -33,3 +33,16 @@ and opaque-white border sampling Pass in the subsequent cts-bgr-border-control
 experiment. The initial extra border-control name was invalid and selected zero
 tests, not a process or GPU crash; evidence is retained. These added controls
 are separate from the frozen 100-case target.
+
+D24S8 follow-up: separate Z32_FLOAT depth and S8 stencil planes with GPU packed
+24-bit transfer conversion. Fused normalization preserves all depth bits in
+the exhaustive host arithmetic model (build/cts-next/d24-arithmetic.log).
+Exact GPU mip/array/padded-copy probes Pass in
+20260913T163411496978Z-d24-exact-copy-probe. Original CTS depth image copy,
+three clears and three nearest/linear shadow comparison controls Pass in
+20260913T163443287457Z-cts-d24-controls-000. Depth blit destination remains
+unadvertised and its control reports NotSupported, not Pass. Host transfers
+and multisampling of this emulated format remain unadvertised. Three target
+stencil cases pass in 20260913T162648763042Z-cts-d24-stencil, bringing known
+target passes to 85; this is not yet a fresh full-target run. Watchdog and
+thermal guards active, no reset.

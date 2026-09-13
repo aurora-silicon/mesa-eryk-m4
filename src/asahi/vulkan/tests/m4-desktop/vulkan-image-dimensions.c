@@ -27,10 +27,10 @@ static uint32_t memory_type(uint32_t bits, VkMemoryPropertyFlags flags) {
 }
 
 static unsigned run(VkDevice dev, VkQueue queue, unsigned family, unsigned kind,
-                    unsigned bytes) {
-  const unsigned w = 16, h = kind == 2 ? 8 : 1, slices = kind == 0 ? 1 : 4;
-  const unsigned x = 3, y = kind == 2 ? 2 : 0, z = kind == 0 ? 0 : 1;
-  const unsigned pw = 9, ph = kind == 2 ? 5 : 1, ps = kind == 0 ? 1 : 2;
+                    unsigned bytes, int depth24) {
+  const unsigned w = 16, h = kind == 2 || depth24 ? 8 : 1, slices = kind == 0 ? 1 : 4;
+  const unsigned x = 3, y = kind == 2 || depth24 ? 2 : 0, z = kind == 0 ? 0 : 1;
+  const unsigned pw = 9, ph = kind == 2 || depth24 ? 5 : 1, ps = kind == 0 ? 1 : 2;
   const unsigned row = pw + 3, rows = ph + 2;
   const unsigned full = w * h * slices * bytes, patch = row * rows * ps * bytes;
   const unsigned patch_off = full, out_off = full + patch,
@@ -38,11 +38,13 @@ static unsigned run(VkDevice dev, VkQueue queue, unsigned family, unsigned kind,
   const unsigned total = 2 * (full + patch);
   VkFormat fmt =
       bytes == 4 ? VK_FORMAT_R8G8B8A8_UNORM : VK_FORMAT_R32G32B32A32_SFLOAT;
+  if (depth24) fmt = VK_FORMAT_D24_UNORM_S8_UINT;
+  const VkImageAspectFlags aspect = depth24 ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
   VkImageCreateInfo ci = {
       .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-      .imageType = kind == 2 ? VK_IMAGE_TYPE_3D : VK_IMAGE_TYPE_1D,
+      .imageType = depth24 ? VK_IMAGE_TYPE_2D : kind == 2 ? VK_IMAGE_TYPE_3D : VK_IMAGE_TYPE_1D,
       .format = fmt,
-      .extent = {2 * w, kind == 2 ? 2 * h : 1, kind == 2 ? 2 * slices : 1},
+      .extent = {2 * w, kind == 2 || depth24 ? 2 * h : 1, kind == 2 ? 2 * slices : 1},
       .mipLevels = 2,
       .arrayLayers = kind == 1 ? slices : 1,
       .samples = VK_SAMPLE_COUNT_1_BIT,
@@ -79,6 +81,8 @@ static unsigned run(VkDevice dev, VkQueue queue, unsigned family, unsigned kind,
     data[i] = (i * 113 + i / 251 + 17) & 255;
   for (unsigned i = 0; i < patch; i++)
     data[patch_off + i] = (i * 79 + i / 127 + 91) & 255;
+  if (depth24)
+    for (unsigned i = 3; i < full + patch; i += 4) data[i] = 0;
   memcpy(expected, data, total);
   memcpy(expected + out_off, data, full);
   for (unsigned s = 0; s < ps; s++)
@@ -112,12 +116,12 @@ static unsigned run(VkDevice dev, VkQueue queue, unsigned family, unsigned kind,
       .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
       .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
       .image = image,
-      .subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 1, 1, 0, ci.arrayLayers}};
+      .subresourceRange = {depth24 ? VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT : aspect, 1, 1, 0, ci.arrayLayers}};
   vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
                        VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, NULL, 0, NULL, 1,
                        &ib);
   VkBufferImageCopy copy = {
-      .imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 1, 0, ci.arrayLayers},
+      .imageSubresource = {aspect, 1, 0, ci.arrayLayers},
       .imageExtent = {w, h, kind == 2 ? slices : 1}};
   vkCmdCopyBufferToImage(cb, buffer, image, VK_IMAGE_LAYOUT_GENERAL, 1, &copy);
   VkMemoryBarrier barrier = {.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
@@ -131,7 +135,7 @@ static unsigned run(VkDevice dev, VkQueue queue, unsigned family, unsigned kind,
       .bufferOffset = patch_off,
       .bufferRowLength = row,
       .bufferImageHeight = rows,
-      .imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 1, kind == 1 ? z : 0,
+      .imageSubresource = {aspect, 1, kind == 1 ? z : 0,
                            kind == 1 ? ps : 1},
       .imageOffset = {(int)x, (int)y, kind == 2 ? (int)z : 0},
       .imageExtent = {pw, ph, kind == 2 ? ps : 1}};
@@ -158,7 +162,7 @@ static unsigned run(VkDevice dev, VkQueue queue, unsigned family, unsigned kind,
   CHECK(vkWaitForFences(dev, 1, &fence, VK_TRUE, UINT64_C(10000000000)));
   unsigned bad = 0;
   for (unsigned i = 0; i < total; i++)
-    if (data[i] != expected[i]) {
+    if (!(depth24 && i % 4 == 3) && data[i] != expected[i]) {
       if (bad++ < 4)
         fprintf(stderr, "byte %u got %02x expected %02x\n", i, data[i],
                 expected[i]);
@@ -177,10 +181,12 @@ static unsigned run(VkDevice dev, VkQueue queue, unsigned family, unsigned kind,
 }
 int main(int argc, char **argv) {
   setvbuf(stdout, NULL, _IOLBF, 0);
-  int reference = 0;
+  int reference = 0, depth24 = 0;
   for (int i = 1; i < argc; i++) {
     if (!strcmp(argv[i], "--reference"))
       reference = 1;
+    else if (!strcmp(argv[i], "--depth24"))
+      depth24 = 1;
     else
       return 2;
   }
@@ -230,9 +236,9 @@ int main(int argc, char **argv) {
   VkQueue queue;
   vkGetDeviceQueue(dev, family, 0, &queue);
   unsigned bad = 0;
-  for (unsigned type = 0; type < 3; type++)
-    for (unsigned bytes = 4; bytes <= 16; bytes *= 4)
-      bad += run(dev, queue, family, type, bytes);
+  for (unsigned type = 0; type < (depth24 ? 2u : 3u); type++)
+    for (unsigned bytes = 4; bytes <= (depth24 ? 4u : 16u); bytes *= 4)
+      bad += run(dev, queue, family, type, bytes, depth24);
   vkDestroyDevice(dev, NULL);
   vkDestroyInstance(instance, NULL);
   return bad ? 1 : 0;

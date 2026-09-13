@@ -1968,6 +1968,7 @@ struct hk_block_copy_key {
    enum hk_meta_object_key_type type;
    uint32_t block_B;
    uint32_t packed_rgb_buffer_B;
+   bool src_depth24, dst_depth24;
    bool to_image;
    int32_t src_tile_log2_w, src_tile_log2_h;
    int32_t dst_tile_log2_w, dst_tile_log2_h;
@@ -2037,6 +2038,22 @@ hk_build_block_copy(const struct hk_block_copy_key *key)
    const unsigned align = rgb ? bits / 8 : key->block_B;
    nir_def *value = nir_load_global(&b, rgb ? 3 : MAX2(key->block_B / 4, 1), bits, src,
                                     .align_mul = align);
+   if (key->src_depth24 != key->dst_depth24) {
+      assert(!rgb && key->block_B == 4);
+      if (key->dst_depth24) {
+         /* n / (2^24 - 1) = x + x / (2^24 - 1), x = n / 2^24.
+          * x is exact in float32. The fused correction avoids the rounded
+          * reciprocal multiply losing a bit on packed depth round trips. */
+         b.fp_math_ctrl = nir_fp_no_fast_math;
+         nir_def *x = nir_fmul_imm(&b, nir_u2f32(&b,
+            nir_iand_imm(&b, value, 0xffffff)), 0x1p-24);
+         value = nir_ffma(&b, x, nir_imm_float(&b, 1.0 / 16777215.0), x);
+         b.fp_math_ctrl = nir_fp_fast_math;
+      } else {
+         value = nir_f2u32(&b, nir_fround_even(&b,
+            nir_fmul_imm(&b, nir_fsat(&b, value), 16777215.0)));
+      }
+   }
    nir_store_global(&b, value, dst, .align_mul = align);
    nir_pop_if(&b, NULL);
    return b.shader;
@@ -2174,6 +2191,8 @@ hk_native_copy_raw_buffer_image(
       const uint32_t block_B = util_format_get_blocksize(format);
       const enum pipe_format api_format = hk_format_to_pipe_format(image->vk.format);
       const bool rgb = hk_padded_image_format(api_format) != api_format;
+      const bool depth24 = image->vk.format == VK_FORMAT_D24_UNORM_S8_UINT &&
+                           aspect == VK_IMAGE_ASPECT_DEPTH_BIT;
       const unsigned buffer_block_B = rgb ? util_format_get_blocksize(api_format) : block_B;
       /* Copy each format element verbatim, including separate depth/stencil
        * planes. No render-target format conversion or attachment support is
@@ -2241,6 +2260,8 @@ hk_native_copy_raw_buffer_image(
          .type = HK_META_OBJECT_KEY_BLOCK_COPY,
          .block_B = block_B,
          .packed_rgb_buffer_B = rgb ? buffer_block_B : 0,
+         .src_depth24 = depth24 && !to_image,
+         .dst_depth24 = depth24 && to_image,
          .to_image = to_image,
          .src_tile_log2_w = -1,
          .src_tile_log2_h = -1,
@@ -2358,6 +2379,10 @@ hk_native_copy_raw_image(struct hk_cmd_buffer *cmd, struct hk_image *src,
       const struct hk_block_copy_key key = {
          .type = HK_META_OBJECT_KEY_BLOCK_COPY,
          .block_B = block_B,
+         .src_depth24 = src->vk.format == VK_FORMAT_D24_UNORM_S8_UINT &&
+                        ss->aspectMask == VK_IMAGE_ASPECT_DEPTH_BIT,
+         .dst_depth24 = dst->vk.format == VK_FORMAT_D24_UNORM_S8_UINT &&
+                        ds->aspectMask == VK_IMAGE_ASPECT_DEPTH_BIT,
          .src_tile_log2_w = hk_native_copy_tile_log2(sl, sm, false),
          .src_tile_log2_h = hk_native_copy_tile_log2(sl, sm, true),
          .dst_tile_log2_w = hk_native_copy_tile_log2(dl, dm, false),
