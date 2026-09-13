@@ -1,0 +1,6 @@
+diff --git a/source/validate_cfg.cpp b/source/validate_cfg.cpp
+index 9234542..a2ab9d8 100644
+--- a/source/validate_cfg.cpp
++++ b/source/validate_cfg.cpp
+@@ -18,0 +19 @@
++#include <limits>

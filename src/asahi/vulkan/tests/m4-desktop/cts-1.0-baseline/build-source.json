@@ -1,0 +1,14 @@
+{
+  "cts_head": "6b3bca439862e986409ffd76e857ada0cc7c9080",
+  "dependencies": {
+    "glslang": "a5c5fb61180e8703ca85f36d618f98e16dc317e2",
+    "spirv-tools": "0b0454c42c6b6f6746434bd5c78c5c70f65d9c51",
+    "spirv-headers": "2bf02308656f97898c5f7e433712f21737c61e4e",
+    "zlib_archive_sha256": "c3e5e9fdd5004dcb542feda5ee4f0ff0744628baf8ed2dd5d66f8ca1197cb1a1",
+    "libpng_archive_sha256": "c9d164ec247f426a525a7b89936694aefbc91fb7a50182b198898b8fc91174b4"
+  },
+  "pypy_sha256": "aa3bb92dbb529fa2d4920895b16d67a810b0c709207857d56cfe4a6e3b41e02a",
+  "compiler": "clang version 22.1.8\nTarget: x86_64-pc-linux-gnu\nThread model: posix\nInstalledDir: /usr/bin\n",
+  "deqp_vk_sha256": "d296ca5f77238367933e88b99babefe050e841d3c7e1fbcb6e95e4d424814b06",
+  "runtime_image_libraries": "Default CTS CMake selected target sysroot shared libpng and zlib; fetched historical archives were not linked."
+}

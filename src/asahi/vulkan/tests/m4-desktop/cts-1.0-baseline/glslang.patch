@@ -1,0 +1,6 @@
+diff --git a/glslang/Include/PoolAlloc.h b/glslang/Include/PoolAlloc.h
+index 69bacb1..6646eb4 100644
+--- a/glslang/Include/PoolAlloc.h
++++ b/glslang/Include/PoolAlloc.h
+@@ -314 +313,0 @@ public:
+-    void setAllocator(TPoolAllocator* a) { allocator = *a; }
