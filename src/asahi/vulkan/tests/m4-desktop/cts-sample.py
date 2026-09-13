@@ -113,7 +113,7 @@ def batch(args):
         check()
         content = qpa.read_text(errors='replace') if qpa.exists() else ''
         codes = re.findall(r'<Result StatusCode="([^"]+)"[^>]*>(.*?)</Result>', content, re.S)
-        status, message = codes[-1] if codes else ('Crash', 'No completed CTS result')
+        status, message = codes[-1] if codes else ('HarnessError', 'No completed CTS result (check case selection and process output)')
         if timed_out:
             status, message = 'Timeout', 'Exceeded the recorded 20s per-case bound'
         elif proc.returncode < 0:
@@ -127,7 +127,7 @@ def batch(args):
         save(out / 'results.json', results)
         print(json.dumps(record), flush=True)
         output = (directory / 'stdout.log').read_text(errors='replace')
-        if status in ('Crash', 'Timeout') or 'VK_ERROR_DEVICE_LOST' in output + content:
+        if status in ('Crash', 'Timeout', 'HarnessError') or 'VK_ERROR_DEVICE_LOST' in output + content:
             break
     check()
     print(f'CTS_BATCH_COMPLETE: {len(results)} recorded outcomes; next index {args.start + len(results)}', flush=True)
