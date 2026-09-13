@@ -19,10 +19,11 @@ g17p_sample_shape(const nir_tex_instr *tex)
        tex->op != nir_texop_txl && !gather) ||
        (gather && (cube || tex->is_shadow)) ||
        (tex->sampler_dim != GLSL_SAMPLER_DIM_2D && !three_d &&
-        !(cube && !tex->is_array &&
+        !(cube &&
           (tex->op == nir_texop_tex || tex->op == nir_texop_txl))) ||
        (tex->is_shadow && cube) || tex->is_sparse ||
-       tex->coord_components != ((tex->is_array || cube || three_d) ? 3 : 2) ||
+       tex->coord_components != (cube && tex->is_array ? 4 :
+                                (tex->is_array || cube || three_d) ? 3 : 2) ||
        (tex->backend_flags & ~(AGX_TEXTURE_FLAG_CLAMP_TO_0 |
                                AGX_TEXTURE_FLAG_NO_CLAMP)) != 0 ||
        tex->backend_flags == (AGX_TEXTURE_FLAG_CLAMP_TO_0 |
@@ -510,8 +511,9 @@ g17p_cube_sample_shape(const nir_tex_instr *tex)
    const int lod = nir_tex_instr_src_index(tex, nir_tex_src_lod);
    if ((tex->op != nir_texop_tex && !level) ||
        (level && lod < 0) ||
-       tex->sampler_dim != GLSL_SAMPLER_DIM_CUBE || tex->is_array ||
-       tex->is_shadow || tex->is_sparse || tex->coord_components != 3 ||
+       tex->sampler_dim != GLSL_SAMPLER_DIM_CUBE ||
+       tex->is_shadow || tex->is_sparse ||
+       tex->coord_components != (tex->is_array ? 4 : 3) ||
        tex->num_srcs != (level ? 4 : 3) ||
        (tex->backend_flags & ~AGX_TEXTURE_FLAG_CLAMP_TO_0) != 0 ||
        (tex->dest_type != nir_type_float32 &&
@@ -526,11 +528,11 @@ g17p_cube_sample_shape(const nir_tex_instr *tex)
    if (coord < 0)
       coord = nir_tex_instr_src_index(tex, nir_tex_src_backend1);
 
-   return coord >= 0 && nir_src_num_components(tex->src[coord].src) == 3 &&
+   return coord >= 0 && nir_src_num_components(tex->src[coord].src) == (tex->is_array ? 4 : 3) &&
           nir_src_bit_size(tex->src[coord].src) == 32;
 }
 
-/* Project non-array cube samples to UV plus an integer face. Preserve
+/* Project cube samples to UV plus an integer face and optional cube index. Preserve
  * explicit levels through the projection, independently of the result type. M4's
  * native cube SMP takes these projected operands and retains cube-aware
  * filtering and derivatives. The earlier G17P path remains a 2D-array sample;
@@ -552,7 +554,7 @@ agx_nir_lower_g17p_cube_samples(nir_shader *shader, bool native_cube)
             nir_tex_instr *tex = nir_instr_as_tex(instr);
             if (tex->sampler_dim != GLSL_SAMPLER_DIM_CUBE)
                continue;
-            if (!g17p_cube_sample_shape(tex))
+            if ((tex->is_array && !native_cube) || !g17p_cube_sample_shape(tex))
                return false;
             cubes++;
          }
@@ -618,6 +620,13 @@ agx_nir_lower_g17p_cube_samples(nir_shader *shader, bool native_cube)
             nir_def *mapped = nir_vec3(&b, nir_ffma(&b, sc, scale, half),
                                        nir_ffma(&b, tc, scale, half), face);
 
+            if (tex->is_array) {
+               /* Ordinary texture lowering already rounded, clamped and
+                * converted the array index; preserve its integer bits. */
+               mapped = nir_vec4(&b, nir_channel(&b, mapped, 0),
+                                  nir_channel(&b, mapped, 1), face,
+                                  nir_channel(&b, coord, 3));
+            }
             nir_src_rewrite(&tex->src[coord_index].src, mapped);
             /* This runs after ordinary texture-source lowering. Native
              * backend coordinates contain float x/y and an integer layer;
@@ -626,7 +635,7 @@ agx_nir_lower_g17p_cube_samples(nir_shader *shader, bool native_cube)
             tex->src[coord_index].src_type = nir_tex_src_backend1;
             tex->sampler_dim = native_cube ? GLSL_SAMPLER_DIM_CUBE
                                            : GLSL_SAMPLER_DIM_2D;
-            tex->is_array = !native_cube;
+            tex->is_array |= !native_cube;
             tex->array_is_lowered_cube = !native_cube;
          }
       }

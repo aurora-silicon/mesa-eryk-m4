@@ -148,3 +148,12 @@ witness:compiler/test/probes/README-g16g-integer-copy-lod.md.
 --compute-lod-store-only passes through the full NIR/IR/native compiler path.
 20260913T113435091246Z-cts-compute-lod-sint16-store:original case19 Pass,
 peak58.25 C, full guards, libraryc99775a2887dc8720b8d3a920f5f53daadc44c8f0d9a4527547534345ddcf060. Kernel unchanged.
+
+Twelfth selection:index11, signed cube-array view with base mip and restricted
+array range. Preserve native cube-array descriptors on G16G and project XYZ
+while retaining the cube index. Pack index+face with the native combined
+auxiliary form. Witness:compiler/test/probes/README-g16g-cube-array.md.
+6268 texture-core checks, --cube-array-only and existing --cube-sample-lowering-only
+pass. 20260913T114027179419Z-cts-native-cube-array:original case11 Pass,
+result image matches reference, peak58.5 C, full guards.
+Library1f85037d07176963e0a14881d7edacf2b15768a380217351245821cf5082b59f. Kernel unchanged.

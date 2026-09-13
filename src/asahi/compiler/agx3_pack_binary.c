@@ -1052,8 +1052,8 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
       immediate_level_x64 <= 0xfff &&
       immediate_level_x64 == (float)(uint16_t)immediate_level_x64;
    const bool three_d = I->dim == AGX_DIM_3D;
-   const bool array = I->dim == AGX_DIM_2D_ARRAY;
-   const bool cube = I->dim == AGX_DIM_CUBE;
+   const bool array = I->dim == AGX_DIM_2D_ARRAY || I->dim == AGX_DIM_CUBE_ARRAY;
+   const bool cube = I->dim == AGX_DIM_CUBE || I->dim == AGX_DIM_CUBE_ARRAY;
    const bool shadow = I->shadow;
    const bool gather = I->gather != AGX_GATHER_NONE;
    const bool sample_offset = !shadow && (!array || gather) && !cube && I->offset &&
@@ -1076,7 +1076,8 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
     * PACK_SMPIR accept the full 256-half source bank; the last component must
     * fit. Only unstaged 2D samples retain SMP's narrower coordinate bound. */
    const bool fixed_coord = explicit_lod || bias || array || cube || three_d || shadow;
-   const unsigned coord_components = (array || cube || three_d) ? 3 : 2;
+   const unsigned coord_components = cube && array ? 4 :
+                                     (array || cube || three_d) ? 3 : 2;
    const unsigned max_coord = fixed_coord ? 256 - 2 * coord_components : 60;
    if (I->nr_dests != 1 || I->nr_srcs != 6 ||
        !agx3_tex_plain_reg(I->dest[0]) ||
@@ -1086,7 +1087,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
        (I->dest[0].size == AGX_SIZE_32 && (I->dest[0].value & 1)) ||
        !agx3_tex_plain_reg(I->src[0]) ||
        I->src[0].size != AGX_SIZE_32 ||
-       agx_channels(I->src[0]) != ((array || cube || three_d) ? 3 : 2) ||
+       agx_channels(I->src[0]) != coord_components ||
        (I->src[0].value & 3) || I->src[0].value > max_coord ||
        !valid_lod || !agx3_tex_imm(I->src[2], 0) ||
        (immediate && (I->src[3].value > 15 || I->src[4].value > 15)) ||
@@ -1099,6 +1100,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
          agx_channels(I->src[3]) != 1 || agx_channels(I->src[4]) != 1 ||
          (I->src[3].value & 1) || (I->src[4].value & 1))) ||
        !valid_compare || (bias && (array || cube || shadow || gather)) ||
+       (cube && array && explicit_lod && !immediate_lod) ||
        (I->dim != AGX_DIM_2D && I->dim != AGX_DIM_2D_ARRAY && !cube && !three_d) ||
        (array && enc != AGX_ISA_ENCODING_AGX3B) ||
        (I->mask == 0 || (I->mask & ~15u)) ||
@@ -1157,7 +1159,15 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
        !agx3_append(emission, bytes, len))
       return false;
 
-   if ((array || cube) && !array_lod &&
+   if (array && cube &&
+       (!agx3_tex_stage_cube_array(enc, I->src[0].value + 6,
+                                   I->src[0].value + 4, stage_slot,
+                                   I->src[0].discard, I->src[0].discard,
+                                   bytes, &len) ||
+        !agx3_append(emission, bytes, len)))
+      return false;
+
+   if ((array || cube) && !(array && cube) && !array_lod &&
        (!agx3_tex_stage_array_layer(enc, I->src[0].value + 4, stage_slot, 0,
                                    I->src[0].cache, I->src[0].discard,
                                    bytes, &len) ||

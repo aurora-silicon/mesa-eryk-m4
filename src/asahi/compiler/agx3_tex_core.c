@@ -218,7 +218,8 @@ sample_ok(enum agx_isa_encoding enc, const struct agx3_tex_sample_desc *d)
        d->mask != 8 && d->mask != 12 && d->mask != 15)
       return false;
 
-   if (d->cube && (enc != AGX_ISA_ENCODING_AGX3B || d->array ||
+   if (d->cube && (enc != AGX_ISA_ENCODING_AGX3B ||
+                   (d->array && d->lod == AGX3_TEX_LOD_REGISTER) ||
                    (d->lod != AGX3_TEX_LOD_AUTO &&
                     d->lod != AGX3_TEX_LOD_LEVEL &&
                     d->lod != AGX3_TEX_LOD_REGISTER)))
@@ -791,6 +792,32 @@ agx3_tex_stage_layer_lod(enum agx_isa_encoding enc, uint16_t layer,
          waits[n++] = (struct agx3_field_kv)KV(58+i,1);
    return agx3_bind_compose(enc, "pack_smpir", 0, base, sizeof(base) / sizeof(base[0]),
                             waits, n, out, len);
+}
+
+/* Cube arrays pack the cube index and projected face into one auxiliary
+ * operand. Native G16G layer11/face10 is 1705540600162800f0c02900. */
+bool
+agx3_tex_stage_cube_array(enum agx_isa_encoding enc, uint16_t layer,
+                          uint16_t face, uint8_t slot,
+                          bool layer_discard, bool face_discard, uint8_t out[AGX3_TEX_MAX_LENGTH],
+                          uint8_t *len)
+{
+   if (!out || !len)
+      return false;
+   memset(out, 0, AGX3_TEX_MAX_LENGTH);
+   *len = 0;
+   if (enc != AGX_ISA_ENCODING_AGX3B || layer >= 256 || face >= 256 ||
+       slot < 1 || slot > 6)
+      return false;
+   const struct agx3_field_kv fields[] = {
+      KV(5,6), KV(9,5), KV(10,2), KV(12,slot), KV(16,layer),
+      KV(23,2), KV(24,1), KV(27,layer_discard), KV(30,face),
+      KV(37,2), KV(38,1), KV(39,face_discard), KV(41,1),
+      KV(51,1), KV(52,2), KV(74,4), KV(76,10), KV(77,12),
+   };
+   return agx3_bind_compose(enc, "pack_smpir", 0, fields,
+                            sizeof(fields) / sizeof(fields[0]), NULL, 0,
+                            out, len);
 }
 
 /* Witnessed by native G16G read-layer Metal compute pipeline. Both operations

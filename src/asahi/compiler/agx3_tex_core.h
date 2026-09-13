@@ -185,6 +185,11 @@ bool agx3_tex_stage_layer_lod(enum agx_isa_encoding enc, uint16_t layer,
                             bool layer_discard, bool lod_discard, bool cube,
                             uint8_t out[AGX3_TEX_MAX_LENGTH], uint8_t *len);
 
+bool agx3_tex_stage_cube_array(enum agx_isa_encoding enc, uint16_t layer,
+                              uint16_t face, uint8_t slot, bool layer_discard,
+                              bool face_discard,
+                              uint8_t out[AGX3_TEX_MAX_LENGTH], uint8_t *len);
+
 bool agx3_tex_stage_array_layer(enum agx_isa_encoding enc, uint16_t src,
                                 uint8_t slot, uint16_t wait_mask,
                                 bool src_cache, bool src_discard,

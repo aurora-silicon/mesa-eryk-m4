@@ -1456,6 +1456,21 @@ int
 main(void)
 {
    CHECK(test_m4_cube_register_lod() == 0);
+   {
+      uint8_t out[AGX3_TEX_MAX_LENGTH], len;
+      const uint8_t pack[] = {0x17,0x05,0x54,0x06,0,0x16,0x28,0,0xf0,0xc0,0x29,0};
+      CHECK(agx3_tex_stage_cube_array(AGX_ISA_ENCODING_AGX3B, 11, 10,
+                                       1, true, false, out, &len));
+      CHECK(len == sizeof(pack) && !memcmp(out, pack, len));
+      const struct agx3_tex_sample_desc d = {
+         .width=AGX3_TEX_W32, .mask=15, .slot=1, .wait_mask=1,
+         .coord_kill=true, .array=true, .cube=true, .final=true,
+         .lod=AGX3_TEX_LOD_LEVEL,
+      };
+      const uint8_t smp[] = {0x05,0x80,0x0c,0xb8,0xb0,0,0x53,0,0,0,0x10,0,1,0};
+      CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
+      CHECK(len == sizeof(smp) && !memcmp(out, smp, len));
+   }
    CHECK(test_m4_array_gather_witness() == 0);
    CHECK(test_m4_3d_sample_witness() == 0);
    CHECK(test_m4_typed_image_write_witnesses() == 0);

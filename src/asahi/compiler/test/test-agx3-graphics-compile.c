@@ -1100,14 +1100,14 @@ lower_test_descriptor_set(nir_builder *b, nir_intrinsic_instr *intr,
 }
 
 static bool
-test_g17p_cube_sample_lowering_mode(bool native_cube, float level, nir_alu_type result_type)
+test_g17p_cube_sample_lowering_mode(bool native_cube, float level, nir_alu_type result_type, bool array)
 {
    nir_builder b = nir_builder_init_simple_shader(
       MESA_SHADER_FRAGMENT, &agx_nir_options, "G17P cube sample lowering");
    nir_def *bary = nir_load_barycentric_pixel(
       &b, 32, .interp_mode = INTERP_MODE_SMOOTH);
    nir_def *coord = nir_load_interpolated_input(
-      &b, 3, 32, bary, nir_imm_int(&b, 0), .base = 0, .component = 0,
+      &b, array ? 4 : 3, 32, bary, nir_imm_int(&b, 0), .base = 0, .component = 0,
       .io_semantics.location = VARYING_SLOT_VAR0,
       .io_semantics.num_slots = 1);
    nir_def *image =
@@ -1122,7 +1122,8 @@ test_g17p_cube_sample_lowering_mode(bool native_cube, float level, nir_alu_type 
    tex->op = level >= 0 ? nir_texop_txl : nir_texop_tex;
    tex->sampler_dim = GLSL_SAMPLER_DIM_CUBE;
    tex->dest_type = result_type;
-   tex->coord_components = 3;
+   tex->coord_components = array ? 4 : 3;
+   tex->is_array = array;
    tex->src[0] = nir_tex_src_for_ssa(nir_tex_src_coord, coord);
    tex->src[1] = nir_tex_src_for_ssa(nir_tex_src_texture_handle, image);
    tex->src[2] = nir_tex_src_for_ssa(nir_tex_src_sampler_handle, sampler);
@@ -1139,11 +1140,11 @@ test_g17p_cube_sample_lowering_mode(bool native_cube, float level, nir_alu_type 
    bool ok = agx_nir_lower_g17p_cube_samples(b.shader, native_cube) &&
              tex->sampler_dim == (native_cube ? GLSL_SAMPLER_DIM_CUBE
                                               : GLSL_SAMPLER_DIM_2D) &&
-             tex->is_array == !native_cube &&
+             tex->is_array == (array || !native_cube) &&
              tex->array_is_lowered_cube == !native_cube &&
-             tex->coord_components == 3;
+             tex->coord_components == (array ? 4 : 3);
    int ci = nir_tex_instr_src_index(tex, nir_tex_src_backend1);
-   ok &= ci >= 0 && nir_src_num_components(tex->src[ci].src) == 3 &&
+   ok &= ci >= 0 && nir_src_num_components(tex->src[ci].src) == (array ? 4 : 3) &&
          agx_nir_lower_g17p_indexed_samplers(b.shader);
 
    NIR_PASS(_, b.shader, nir_shader_intrinsics_pass,
@@ -1165,12 +1166,12 @@ test_g17p_cube_sample_lowering_mode(bool native_cube, float level, nir_alu_type 
 static bool
 test_g17p_cube_sample_lowering(void)
 {
-   return test_g17p_cube_sample_lowering_mode(false, -1, nir_type_float32) &&
-          test_g17p_cube_sample_lowering_mode(true, -1, nir_type_float32) &&
-          test_g17p_cube_sample_lowering_mode(true, 0, nir_type_float32) &&
-          test_g17p_cube_sample_lowering_mode(true, 2.25f, nir_type_float32) &&
-          test_g17p_cube_sample_lowering_mode(true, 0.00001f, nir_type_uint32) &&
-          test_g17p_cube_sample_lowering_mode(true, 0.1f, nir_type_int32);
+   return test_g17p_cube_sample_lowering_mode(false, -1, nir_type_float32, false) &&
+          test_g17p_cube_sample_lowering_mode(true, -1, nir_type_float32, false) &&
+          test_g17p_cube_sample_lowering_mode(true, 0, nir_type_float32, false) &&
+          test_g17p_cube_sample_lowering_mode(true, 2.25f, nir_type_float32, false) &&
+          test_g17p_cube_sample_lowering_mode(true, 0.00001f, nir_type_uint32, false) &&
+          test_g17p_cube_sample_lowering_mode(true, 0.1f, nir_type_int32, false);
 }
 
 static nir_tex_instr *
@@ -2839,6 +2840,14 @@ main(int argc, char **argv)
       const bool ok = test_sampled_storage_lowering();
       fprintf(stderr, "G17P sampled RGBA8 storage-image lowering: %s\n",
               ok ? "PASS" : "FAIL");
+      return ok ? 0 : 1;
+   }
+   if (argc == 2 && !strcmp(argv[1], "--cube-array-only")) {
+      const bool ok =
+         test_g17p_cube_sample_lowering_mode(true, -1, nir_type_int32, true) &&
+         test_g17p_cube_sample_lowering_mode(true, 0, nir_type_float32, true);
+      printf("native cube-array projection and packed face/layer: %s\n",
+             ok ? "PASS" : "FAIL");
       return ok ? 0 : 1;
    }
    if (argc == 2 && !strcmp(argv[1], "--cube-sample-lowering-only")) {

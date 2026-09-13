@@ -217,7 +217,8 @@ pack_texture(struct hk_device *dev, struct hk_image_view *view,
    VkImageViewType texture_type = view->vk.view_type;
    if (agx_native_graphics(&dev->dev) &&
        !(dev->dev.params.chip_id == 0x8132 &&
-         texture_type == VK_IMAGE_VIEW_TYPE_CUBE) &&
+         (texture_type == VK_IMAGE_VIEW_TYPE_CUBE ||
+          texture_type == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY)) &&
        (texture_type == VK_IMAGE_VIEW_TYPE_CUBE ||
         texture_type == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY))
       texture_type = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
