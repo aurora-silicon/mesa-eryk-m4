@@ -1076,8 +1076,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
          (I->src[3].value & 1) || (I->src[4].value & 1))) ||
        !valid_compare || (bias && (array || cube || shadow || gather)) ||
        (I->dim != AGX_DIM_2D && I->dim != AGX_DIM_2D_ARRAY && !cube) ||
-       (array && (enc != AGX_ISA_ENCODING_AGX3B ||
-                  (explicit_lod && !immediate_lod))) ||
+       (array && enc != AGX_ISA_ENCODING_AGX3B) ||
        (I->mask == 0 || (I->mask & ~15u)) ||
        (I->offset && !sample_offset) || I->query_lod ||
        (gather && (enc != AGX_ISA_ENCODING_AGX3B || shadow || array || cube ||
@@ -1105,7 +1104,16 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
    uint8_t bytes[AGX3_TEX_MAX_LENGTH];
    uint8_t len = 0;
 
-   if ((explicit_lod && !immediate_lod) || bias) {
+   const bool array_lod = array && explicit_lod && !immediate_lod;
+   if (array_lod) {
+      if (!agx3_tex_stage_array_lod(enc, I->src[0].value + 4,
+                                   I->src[1].value, stage_slot, wait_mask,
+                                   I->src[0].discard, I->src[1].discard,
+                                   bytes, &len) ||
+          !agx3_append(emission, bytes, len))
+         return false;
+      wait_mask = 0;
+   } else if ((explicit_lod && !immediate_lod) || bias) {
       if (!agx3_tex_stage_lod(enc, I->src[1].value, stage_slot, wait_mask,
                              I->src[1].cache, I->src[1].discard,
                              bytes, &len) ||
@@ -1125,7 +1133,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
        !agx3_append(emission, bytes, len))
       return false;
 
-   if ((array || cube) &&
+   if ((array || cube) && !array_lod &&
        (!agx3_tex_stage_array_layer(enc, I->src[0].value + 4, stage_slot, 0,
                                    I->src[0].cache, I->src[0].discard,
                                    bytes, &len) ||

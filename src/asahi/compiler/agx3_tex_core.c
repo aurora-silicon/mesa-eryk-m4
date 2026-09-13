@@ -215,10 +215,8 @@ sample_ok(enum agx_isa_encoding enc, const struct agx3_tex_sample_desc *d)
                     d->lod != AGX3_TEX_LOD_LEVEL)))
       return false;
 
-   /* M4 also qualifies immediate array LODs. Register LOD and layer still
-    * share an auxiliary operand bank whose combined layout is unsupported. */
-   if (d->array &&
-       (enc != AGX_ISA_ENCODING_AGX3B || d->lod == AGX3_TEX_LOD_REGISTER))
+   /* Register LOD and layer use one fused PACK_SMPIR operand. */
+   if (d->array && enc != AGX_ISA_ENCODING_AGX3B)
       return false;
 
    const unsigned tk = d->texture_kind ? d->texture_kind : 1;
@@ -742,6 +740,38 @@ agx3_tex_stage_array_layer(enum agx_isa_encoding enc, uint16_t src,
 
    out[6] |= (src >> 7) & 1;
    return true;
+}
+
+/* AIR-NT 32023.883 G16G texture2d_array.sample(level(v.w)) packs the
+ * integer layer and half-float LOD together. Two independent PACKs to bank6
+ * would overwrite one another. Native layer4/lod5 is 1705540600081400f0c02500.
+ * Carry the two source lifetime hints independently. */
+bool
+agx3_tex_stage_array_lod(enum agx_isa_encoding enc, uint16_t layer,
+                        uint16_t lod, uint8_t slot, uint16_t wait_mask,
+                        bool layer_discard, bool lod_discard,
+                        uint8_t out[AGX3_TEX_MAX_LENGTH], uint8_t *len)
+{
+   if (!out || !len)
+      return false;
+   memset(out, 0, AGX3_TEX_MAX_LENGTH);
+   *len = 0;
+   if (enc != AGX_ISA_ENCODING_AGX3B || layer >= 192 || lod >= 192 ||
+       slot < 1 || slot > 6 || (wait_mask & ~0x3f))
+      return false;
+   const struct agx3_field_kv base[] = {
+      KV(5,6), KV(9,5), KV(10,2), KV(12,slot), KV(16,layer),
+      KV(23,2), KV(24,1), KV(27,layer_discard), KV(30,lod),
+      KV(37,2), KV(38,1), KV(39,lod_discard),
+      KV(41,1), KV(51,1), KV(52,2), KV(74,4), KV(76,2), KV(77,16),
+   };
+   struct agx3_field_kv waits[6];
+   unsigned n = 0;
+   for (unsigned i = 0; i < 6; ++i)
+      if (wait_mask & (1u << i))
+         waits[n++] = (struct agx3_field_kv)KV(58+i,1);
+   return agx3_bind_compose(enc, "pack_smpir", 0, base, sizeof(base) / sizeof(base[0]),
+                            waits, n, out, len);
 }
 
 /* Witnessed by native G16G read-layer Metal compute pipeline. Both operations

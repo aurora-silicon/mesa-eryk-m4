@@ -2119,3 +2119,10 @@ packed RGB bits directly, avoiding a separate format-converting 3D blit. The
 selected quarter-integer inputs are exactly representable in each channel.
 Hardware atomic probes 042124/042233 and HDR3D 044242 passed all 256 texels
 on J713; this does not qualify ordinary packed array writes or complete Eevee.
+
+`array-lod-probe.c` uploads distinct texels at four mip levels/four array
+layers, then samples a varying layer and LOD in a fragment shader. All 128
+pixels compare exactly on llvmpipe and guarded J713 run 20260913T044705
+(57.5 C). Compile with EGL/GL; run through gpu-experiment.py and run-m4-gl.py.
+Native PACK_SMPIR must combine both values into bank6; separate packs overwrite
+one another. This test checks reads, not the outstanding array-write path.

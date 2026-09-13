@@ -1091,6 +1091,16 @@ test_m4_register_bias(void)
 static int
 test_register_array_layer(void)
 {
+   const uint8_t fused[] = {0x17,0x05,0x54,0x06,0,0x08,0x14,0,0xf0,0xc0,0x25,0};
+   uint8_t packed[AGX3_TEX_MAX_LENGTH], packed_len;
+   CHECK(agx3_tex_stage_array_lod(AGX_ISA_ENCODING_AGX3B,4,5,1,0,true,false,packed,&packed_len));
+   CHECK(packed_len == sizeof(fused) && !memcmp(packed,fused,packed_len));
+   const uint8_t sampled[] = {0x05,0x80,0x0c,0xb8,0xb0,0,0x08,0x01,0,0,0x10,0,1,0};
+   struct agx3_tex_sample_desc d = {.dest=0,.coord=0,.width=AGX3_TEX_W32,
+      .mask=15,.lod=AGX3_TEX_LOD_REGISTER,.array=true,.slot=1,.wait_mask=1,
+      .coord_kill=true,.final=true,.retain_helpers=true};
+   CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B,&d,packed,&packed_len));
+   CHECK(packed_len == sizeof(sampled) && !memcmp(packed,sampled,packed_len));
    /* Native direct/uniform sample: discarded r2 publishes on slot 1. */
    const uint8_t native_slot1[] = {
       0x17, 0x05, 0x54, 0x06, 0x00, 0x08,
