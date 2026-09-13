@@ -2217,3 +2217,19 @@ constant LODs in compute. Distinct face/texel patterns and SSBO readback check
 and run only through `gpu-experiment.py ... -- python3 /root/run-m4-gl.py
 /root/cube-compute-probe` on M4. The host software oracle uses
 `M4_TEST_LLVMPIPE=1 GALLIUM_DRIVER=llvmpipe LIBGL_ALWAYS_SOFTWARE=1`.
+
+### Depth gather and consecutive image writes
+
+`depth-gather-probe.c` checks 64 compute gathers from R32F, D32 and D32S8,
+including clamp-to-edge. Build with `cc -O2 -Wall -Wextra depth-gather-probe.c
+-o depth-gather-probe -lEGL -lGL`. Set `M4_TEST_GATHER_STORES=1` to route each
+gather into four consecutive R32F image writes; `M4_TEST_QUERY_SIZE=1` uses
+textureSize for normalization. Run hardware only through gpu-experiment.py.
+The four-store mode reproduced an IMGWCI completion-slot mismatch: before
+the fix 128/128/153 words differed, afterwards all three formats were exact.
+`eevee-image-probe.c float` additionally accepts `M4_TEST_QUAD_WRITES=1`,
+which writes four adjacent texels per invocation from independent SSBO loads.
+That mode alone did not expose the dependency bug; retain the gather case.
+`vulkan-shader-probe.py --descriptors` compares replaced compute shader
+dispatch resources against the same diagnostic shader on lavapipe. Shader
+replacement is diagnostic adaptation, not application qualification.

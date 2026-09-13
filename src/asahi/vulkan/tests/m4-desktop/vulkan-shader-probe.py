@@ -23,6 +23,7 @@ def main():
     p.add_argument('--handle',required=True,type=int)
     p.add_argument('--dump-config',required=True,type=Path)
     p.add_argument('--end-frame',type=int,default=2)
+    p.add_argument('--descriptors',action='store_true',help='Compare dispatch descriptors and before/after writes')
     p.add_argument('--output',required=True,type=Path)
     a=p.parse_args()
     if not re.fullmatch('[a-z0-9][a-z0-9-]*',a.name) or a.handle<1 or a.end_frame<1:p.error('Invalid name, shader handle or frame')
@@ -65,6 +66,8 @@ def main():
     (out/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
     print(text)
     result.check_returncode()
-    subprocess.run(['python3',str(ROOT/'tools/vulkan-dump-compare.py'),str(software),str(evidence/'remote/vulkan-replay'),
-                    '--output',str(out/'comparison.json')],check=True,timeout=30)
+    compare=['python3',str(ROOT/'tools/vulkan-dump-compare.py'),str(software),str(evidence/'remote/vulkan-replay'),
+             '--output',str(out/'comparison.json')]
+    if a.descriptors:compare.append('--descriptors')
+    subprocess.run(compare,check=True,timeout=30)
 if __name__=='__main__':main()

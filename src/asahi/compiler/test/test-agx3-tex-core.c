@@ -1329,11 +1329,13 @@ test_m4_pointer_write_witnesses(void)
 static int
 test_m4_typed_image_write_witnesses(void)
 {
-   /* Apple G16G argument-buffer texture2d<uint> and texture3d<float> writes. */
+   /* Apple G16G argument-buffer writes adapted to the compiler scoreboard:
+    * native completion slot 1 becomes the staging slot (2 for 2D, 3 for 3D).
+    * Native dual-array writes independently witness completion slots 1/2. */
    const uint8_t uint_2d[] = {0xd7,0x20,0x54,0x00,0x00,0x40,0x00,0x10,
-                             0x20,0x04,0x00,0x00,0x88,0x1a,0x09,0x01};
+                             0x20,0x04,0x00,0x00,0x89,0x1a,0x09,0x01};
    const uint8_t float_3d[] = {0xd7,0x40,0x54,0x00,0x00,0x40,0x00,0x10,
-                              0x20,0x08,0x00,0x00,0x88,0x3a,0x09,0x01};
+                              0x20,0x08,0x00,0x00,0x8a,0x3a,0x09,0x01};
    uint8_t out[AGX3_IMAGE_WRITE_LENGTH], len;
    CHECK(agx3_tex_encode_image_write_indexed_typed(
       AGX_ISA_ENCODING_AGX3B,16,true,false,false,false,false,0,2,out,&len));

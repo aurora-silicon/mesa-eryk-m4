@@ -479,7 +479,10 @@ agx3_tex_encode_image_write_indexed_typed(
        (uniform && kill) || (staging_slot < 1 || staging_slot > 3))
       return false;
    const struct agx3_field_kv fields[] = {
-      KV(5,staging_base), KV(9,5), KV(12,1), KV(13,1), KV(24,1), KV(38,1),
+      /* f12 publishes completion; f59..64 wait for staging producers.
+       * They are separate fields. Use the slot tracked by the compiler for
+       * both, so a subsequent publisher cannot overwrite live staging. */
+      KV(5,staging_base), KV(9,5), KV(12,staging_slot), KV(13,1), KV(24,1), KV(38,1),
       KV(51,1), KV(52,1), KV(58 + staging_slot,1), KV(70,floating), KV(71,2), KV(72,three_d ? 3 : 1),
       /* f79 selects the table-base uniform, in half-register units.
        * Native array witnesses use u4; Mesa's resolved PBE heap is in u0.

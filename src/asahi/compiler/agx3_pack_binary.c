@@ -4344,7 +4344,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
           * consumes it. A barrier without the completion wait reads stale
           * texels even though its cache-operation bytes are correct. */
          if (I->op == AGX_OPCODE_IMAGE_WRITE)
-            e->preferred_slot = 2;
+            e->preferred_slot = I->dim == AGX_DIM_3D ? 3 :
+               I->dim == AGX_DIM_2D_ARRAY ? 1 : 2;
          if (g17p_storage_image_protocol &&
              (I->op == AGX_OPCODE_IMAGE_LOAD ||
               I->op == AGX_OPCODE_TEXTURE_SAMPLE))
