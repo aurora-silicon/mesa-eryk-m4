@@ -2112,3 +2112,10 @@ SPECTPR staging allocation, source offsets and SHA256. It runs offline and
 scans records, not control flow; f1 is reported without semantic interpretation.
 The retained M4 array write has f1=2 and 64 staging bytes. Neither changing
 f1 alone nor matching that allocation alone fixed the packed-write failure.
+
+Eevee image probes also cover `atomic` and `atomic-array` (R32UI atomicAdd
+memory effects), plus `hdr`/`hdr3d` (R11G11B10F storage). HDR readback compares
+packed RGB bits directly, avoiding a separate format-converting 3D blit. The
+selected quarter-integer inputs are exactly representable in each channel.
+Hardware atomic probes 042124/042233 and HDR3D 044242 passed all 256 texels
+on J713; this does not qualify ordinary packed array writes or complete Eevee.
