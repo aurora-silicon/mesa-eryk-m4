@@ -133,3 +133,36 @@ resource lifetime/concurrency still needs investigation. Reference replay has
 small remaining image differences (mean byte error2.52); do not call it exact
 or claim working live Firefox. Profilev5 reference adaptations and native
 original traces remain in their experiment manifests.
+
+#### Live validation and capture-layer distinction
+
+Control095549 renders correctly in ordinary asynchronous Firefox/Zink/M4
+with the unchanged local page and no capture layer. Earlier sync, no-merge
+and immediate-readback probes also omitted capture, so those results do NOT
+isolate a driver synchronization defect. Dark bands were observed in native
+GFXReconstruct capture094255; retained replay renders correctly. Its cause
+remains unresolved. Do not install synchronization or no-merge workarounds.
+The original failed capture and successful software reference remain reusable.
+
+095642 runs the ordinary M4 path at1180x664 for10.06138s of shader animation
+(time10 to20.06138,186 animation draw calls). WebRender and WebGL2 report
+Zink/Vulkan Apple M4, GL/readback errors0, watchdog/thermal guard passes,
+peak62.25C. Final native readback/screenshot shows buoy, ocean/refraction.
+This is a short successful application run, not broad stability qualification.
+640x360,time10 native and reference replays differ by mean2.52/255 RGBA byte
+levels; remaining fine ocean differences are not an exact-pixel pass.
+
+`firefox-probe.py --start-script ACTION.js` retains and executes a page action
+after navigation, before its bounded observation (used to click Play10seconds).
+Diagnostic flags `--diagnostic-queue-sync` and `--diagnostic-no-merge` are
+explicit, recorded in the launch environment, and disabled by default. They
+are comparisons only and do not establish normal performance.
+
+On Omarchy, `/home/e/Buoy.html` links to `Shadertoy/Buoy.html`. Open it in
+Firefox; it starts paused and the Play button animates for ten seconds.
+
+Final matched-time reference095738 at1180x664,time20.06138: mean RGB
+absolute difference3.39/255, median1,90th percentile8;93844/783520 pixels
+have a channel difference>8. Native image is visually consistent overall,
+with fine ocean/refraction differences still visible; numerical identity is
+not claimed. Full raw readbacks and comparison are retained.

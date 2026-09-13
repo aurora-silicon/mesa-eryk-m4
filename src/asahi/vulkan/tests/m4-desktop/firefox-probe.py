@@ -71,7 +71,10 @@ def main():
     p.add_argument('--readback-trace', type=Path)
     p.add_argument('--freeze-animation', action='store_true')
     p.add_argument('--page-script', type=Path, help='Retained read-only page diagnostics after observation')
+    p.add_argument('--start-script', type=Path, help='Retained page action after navigation, before bounded observation')
     p.add_argument('--seed-profile', type=Path, help='Copy a closed existing profile into the isolated test profile')
+    p.add_argument('--diagnostic-queue-sync', action='store_true', help='Diagnostic only: wait for each GPU submission; not normal-performance evidence')
+    p.add_argument('--diagnostic-no-merge', action='store_true', help='Diagnostic only: disable control stream merging')
     a = p.parse_args()
     spec = importlib.util.spec_from_file_location('fw', Path(__file__).with_name('firmware-snapshot.py'))
     fw = importlib.util.module_from_spec(spec); spec.loader.exec_module(fw)
@@ -127,6 +130,10 @@ def main():
             env[key] = value
     env['VK_DRIVER_FILES'] = '/opt/asahi-m4-port/asahi_icd.json' if a.renderer == 'asahi' else '/usr/share/vulkan/icd.d/lvp_icd.json'
     env['LIBGL_ALWAYS_SOFTWARE'] = '0' if a.renderer == 'asahi' else '1'
+    if a.diagnostic_queue_sync:
+        env['ASAHI_MESA_DEBUG'] = env.get('ASAHI_MESA_DEBUG', '') + ',sync'
+    if a.diagnostic_no_merge:
+        env['ASAHI_MESA_DEBUG'] = env.get('ASAHI_MESA_DEBUG', '') + ',nomerge'
     traces = profile / 'vulkan-capture'
     traces.mkdir(); os.chown(traces, user.pw_uid, user.pw_gid)
     if a.capture:
@@ -188,6 +195,10 @@ def main():
             print('Firefox graphics:', json.dumps({k:gfx.get(k) for k in ('windowLayerManagerType','adapterDescription','numAcceleratedWindows','numTotalWindows')}), flush=True)
             remote.call('Marionette:SetContext', {'value': 'content'})
             remote.call('WebDriver:Navigate', {'url': a.url})
+            if a.start_script:
+                script = a.start_script.read_text()
+                (out / 'page-start.js').write_text(script)
+                result['page_start'] = remote.script(script)
             until = time.monotonic()+a.observe_seconds
             while time.monotonic() < until:
                 check(); time.sleep(.25)
