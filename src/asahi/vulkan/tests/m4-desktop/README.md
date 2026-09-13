@@ -2089,3 +2089,19 @@ executes no GPU commands and does not establish hardware correctness itself.
 `compiler-corpus.py CAPTURE/compiler --output NEW_DIRECTORY` batches the
 existing offline compiler replay with per-input hashes, source patches and a
 short failure index. No GPU execution; compilation is not rendering proof.
+
+### Eevee image and compiler probes
+
+`eevee-image-probe.c` isolates storage operations through Zink. Modes `fetch3d`,
+`float`, `half` (R16F), `uint`, `3d`, `array`, and `array-oob` compare exact CPU
+inputs. Compile with EGL/GL and use the mandatory GPU experiment guard on M4.
+The software reference accepts llvmpipe only with `M4_TEST_LLVMPIPE=1`.
+Array controls accept `M4_TEST_WIDTH=32` or `M4_TEST_LAYERS=1`; default 8x8x4.
+`M4_TEST_2D_LAYER_VIEWS=1` writes separate 2D views of the same array.
+`M4_TEST_UPLOAD_ONLY=1` skips dispatch and checks uploaded reference data.
+These controls do not qualify the packed array-write instruction, which is
+still failing. `M4_TEST_SAMPLE_READBACK=1` reads the 8x8x4 array via texelFetch
+into an SSBO. Retain all selected modes in experiment evidence.
+
+`compiler-corpus.py` indexes both unsupported instructions and early compiler
+preflight refusals, including unresolved runtime printf addresses.

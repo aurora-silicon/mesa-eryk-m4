@@ -1770,6 +1770,7 @@ agx_emit_image_store(agx_builder *b, nir_intrinsic_instr *instr)
       case PIPE_FORMAT_R16G16_UNORM:
          write->format = AGX_FORMAT_U16NORM;
          break;
+      case PIPE_FORMAT_R16_FLOAT:
       case PIPE_FORMAT_R16G16_FLOAT:
       case PIPE_FORMAT_R16G16B16A16_FLOAT:
          /* imgwci consumes float32 lanes; the PBE converts to half storage. */
@@ -2651,6 +2652,20 @@ agx_lower_agx3_half_integer_sources(agx_context *ctx)
       const bool narrow_result = I->dest[0].size == AGX_SIZE_16;
       agx_foreach_src(I, s) {
          if (I->src[s].type == AGX_INDEX_IMMEDIATE) {
+            /* IMAD's multiplier and a nonnegative byte addend already have
+             * native immediate forms. Preserve them while widening half
+             * register operands; materializing them needlessly increases
+             * pressure and can put IMAD operands outside its register bank. */
+            const bool byte = I->src[s].value <= UINT8_MAX &&
+                              !I->src[s].abs && !I->src[s].neg;
+            const bool immediate_multiplier =
+               I->src[1].type == AGX_INDEX_IMMEDIATE &&
+               I->src[1].value <= UINT8_MAX &&
+               !I->src[1].abs && !I->src[1].neg;
+            if (byte && (s == 1 ||
+                         (s == 2 && (I->src[s].value == 0 ||
+                                     immediate_multiplier))))
+               continue;
             I->src[s] = agx_mov_imm(&b, 32, I->src[s].value);
             continue;
          }
@@ -5794,8 +5809,10 @@ agx_compile_shader_nir_inner(nir_shader *nir, struct agx_shader_key *key,
 
    if ((key->dev.encoding == AGX_ISA_ENCODING_AGX3B ||
         key->dev.encoding == AGX_ISA_ENCODING_AGX3C) &&
-       has_unlowered_printf_address(nir))
+       has_unlowered_printf_address(nir)) {
+      fprintf(stderr, "AGX3 preflight: unlowered runtime printf buffer address\n");
       return false;
+   }
 
    assert(nir->info.io_lowered &&
           "agx_preprocess_nir is called first, then the shader is specalized,"
@@ -5808,8 +5825,10 @@ agx_compile_shader_nir_inner(nir_shader *nir, struct agx_shader_key *key,
     * contract; it does not prevent direct internal encoder tests. */
    if (nir->info.ray_queries != 0 &&
        (key->dev.encoding == AGX_ISA_ENCODING_AGX3B ||
-        key->dev.encoding == AGX_ISA_ENCODING_AGX3C))
+        key->dev.encoding == AGX_ISA_ENCODING_AGX3C)) {
+      fprintf(stderr, "AGX3 preflight: NIR ray-query lowering is unavailable\n");
       return false;
+   }
 
    /* If required, tag writes will be enabled by instruction selection */
    if (nir->info.stage == MESA_SHADER_FRAGMENT)

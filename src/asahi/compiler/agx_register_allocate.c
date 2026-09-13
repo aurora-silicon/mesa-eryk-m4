@@ -1530,6 +1530,14 @@ agx_ra(agx_context *ctx)
          agx_max_registers_for_occupancy(threads_per_workgroup);
    }
 
+   /* The native AGX3b arithmetic register operands are bounded to halves
+    * 0..191 (imadd, iadd, f32sqrtstep and the other long ALU forms).
+    * AGX2's 256-half occupancy table must not make RA allocate beyond that
+    * bank. Enforce the encoding limit before spilling, then also clamp the
+    * occupancy-rounded allocation below. Staging is accounted separately. */
+   if (ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B)
+      max_possible_regs = MIN2(max_possible_regs, 192);
+
    if (force_spilling) {
       /* Even when testing spilling, we need enough room for preloaded/exported
        * regs.
@@ -1682,7 +1690,8 @@ agx_ra(agx_context *ctx)
    if (ctx->key->is_helper || force_spilling)
       max_regs = max_possible_regs;
 
-   max_regs = ROUND_DOWN_TO(max_regs, reg_file_alignment);
+   max_regs = ROUND_DOWN_TO(MIN2(max_regs, max_possible_regs),
+                            reg_file_alignment);
 
    /* Or, we can bound tightly for debugging */
    if (agx_compiler_debug & AGX_DBG_DEMAND)

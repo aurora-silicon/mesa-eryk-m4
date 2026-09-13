@@ -20,7 +20,9 @@ for input_file in sorted(a.directory.glob('*/input.bin')):
  lines=diagnostic.splitlines()
  failures=[]
  for i,line in enumerate(lines):
-  if 'no grounded AGX3 encoding' in line:
+  if 'AGX3 preflight:' in line:
+   failures.append(line)
+  elif 'no grounded AGX3 encoding' in line:
    failures.append('\n'.join(lines[i:i+3]))
  record={'bundle':str(bundle.resolve()),'returncode':result.returncode,'failures':failures,'diagnostics':str(out.resolve())}
  records.append(record)

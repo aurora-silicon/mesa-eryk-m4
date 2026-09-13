@@ -59,6 +59,13 @@ main(void)
    };
    assert(hk_nir_lower_descriptors(b.shader, &robustness, 0, NULL));
 
+   /* Reproduce an assertion inserted by texture lowering after the first
+    * descriptor pass. The late driver-sysval pass must resolve it too. */
+   address = nir_load_printf_buffer_address(&b, 64);
+   nir_store_global(&b, address, nir_imm_int64(&b, UINT64_C(0x2000000008)),
+                    .align_mul = 8);
+   assert(hk_lower_uvs_index(b.shader, MESA_SHADER_COMPUTE, 0));
+
    const uint32_t expected = hk_root_descriptor_offset(printf_buffer_address);
    bool saw_root = false;
    bool saw_offset = false;

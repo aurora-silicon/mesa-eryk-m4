@@ -19,10 +19,12 @@ static GLuint compile(GLenum stage, const char *s) {
 }
 int main(int argc,char **argv) {
  CHECK(argc==2);
- int fetch=!strcmp(argv[1],"fetch3d"), array=!strcmp(argv[1],"array");
+ int oob=!strcmp(argv[1],"array-oob");
+ int fetch=!strcmp(argv[1],"fetch3d"), array=oob||!strcmp(argv[1],"array");
  int volume=fetch||!strcmp(argv[1],"3d");
- int integer=!strcmp(argv[1],"uint");
- CHECK(fetch||array||volume||integer||!strcmp(argv[1],"float"));
+ int layer_views=array && getenv("M4_TEST_2D_LAYER_VIEWS"); CHECK(!layer_views||!oob);
+ int integer=!strcmp(argv[1],"uint"), half=!strcmp(argv[1],"half");
+ CHECK(fetch||array||volume||integer||half||!strcmp(argv[1],"float"));
  EGLDisplay d=eglGetPlatformDisplay(EGL_PLATFORM_SURFACELESS_MESA,NULL,NULL);
  CHECK(eglInitialize(d,NULL,NULL)&&eglBindAPI(EGL_OPENGL_API));
  EGLint attrs[]={EGL_CONTEXT_MAJOR_VERSION,3,EGL_CONTEXT_MINOR_VERSION,3,EGL_CONTEXT_OPENGL_PROFILE_MASK,EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT,EGL_NONE};
@@ -30,27 +32,58 @@ int main(int argc,char **argv) {
  CHECK(c!=EGL_NO_CONTEXT&&eglMakeCurrent(d,EGL_NO_SURFACE,EGL_NO_SURFACE,c));
  const char *renderer=(const char*)glGetString(GL_RENDERER);printf("Renderer: %s\n",renderer);fflush(stdout);
  CHECK((strstr(renderer,"zink")&&strstr(renderer,"M4"))||(getenv("M4_TEST_LLVMPIPE")&&strstr(renderer,"llvmpipe")));
- const unsigned count=8*8*4,bytes=count*4*sizeof(float);
+ const unsigned width=getenv("M4_TEST_WIDTH")?atoi(getenv("M4_TEST_WIDTH")):8; CHECK(width==8||width==32);
+ CHECK(width==8 || (array && !getenv("M4_TEST_SAMPLE_READBACK")));
+ const unsigned layers=getenv("M4_TEST_LAYERS")?atoi(getenv("M4_TEST_LAYERS")):4; CHECK(layers==1||layers==4); CHECK(layers==4||array); CHECK(layers==4||(!oob&&!layer_views&&!getenv("M4_TEST_SAMPLE_READBACK")));
+ CHECK(!layer_views||!getenv("M4_TEST_UPLOAD_ONLY"));
+ const unsigned count=width*width*layers,bytes=count*4*sizeof(float);
  float reference[count*4],actual[count*4];unsigned expected_uint[count*4];
  for(unsigned i=0;i<count*4;i++){reference[i]=(float)i*.25f-16.f;expected_uint[i]=0x81000301u+i*65537u;}
  GLuint tex,buf;glGenTextures(1,&tex);glGenBuffers(1,&buf);
  GLenum target=volume?GL_TEXTURE_3D:array?GL_TEXTURE_2D_ARRAY:GL_TEXTURE_2D;
- GLenum format=integer?GL_RGBA32UI:GL_RGBA32F;
+ GLenum format=integer?GL_RGBA32UI:half?GL_R16F:GL_RGBA32F;
  glBindTexture(target,tex);
- if(volume||array)glTexImage3D(target,0,format,8,8,4,0,GL_RGBA,GL_FLOAT,fetch?reference:NULL);
+ if(volume||array)glTexImage3D(target,0,format,width,width,layers,0,GL_RGBA,GL_FLOAT,(fetch||getenv("M4_TEST_UPLOAD_ONLY"))?reference:NULL);
  else glTexImage2D(target,0,format,8,32,0,integer?GL_RGBA_INTEGER:GL_RGBA,integer?GL_UNSIGNED_INT:GL_FLOAT,NULL);
  glTexParameteri(target,GL_TEXTURE_MIN_FILTER,GL_NEAREST);glTexParameteri(target,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
  glBindBuffer(GL_SHADER_STORAGE_BUFFER,buf);glBufferData(GL_SHADER_STORAGE_BUFFER,bytes,integer?(void*)expected_uint:fetch?NULL:(void*)reference,GL_DYNAMIC_COPY);
  glBindBufferBase(GL_SHADER_STORAGE_BUFFER,0,buf);
- char src[2048];snprintf(src,sizeof(src),"#version 330 core\n#extension GL_ARB_compute_shader: require\n#extension GL_ARB_shader_storage_buffer_object: require\n#extension GL_ARB_shader_image_load_store: require\n#extension GL_ARB_shading_language_420pack: require\nlayout(local_size_x=4,local_size_y=4,local_size_z=1) in;\nlayout(std430,binding=0) buffer Data{%svec4 values[];};\n%s\nvoid main(){uvec3 p=gl_GlobalInvocationID;uint i=(p.z*%uu+p.y)*8u+p.x;%s;}\n",integer?"u":"",fetch?"uniform sampler3D src;":volume?"layout(rgba32f,binding=0) uniform writeonly image3D dst;":array?"layout(rgba32f,binding=0) uniform writeonly image2DArray dst;":integer?"layout(rgba32ui,binding=0) uniform writeonly uimage2D dst;":"layout(rgba32f,binding=0) uniform writeonly image2D dst;",volume||array?8:32,fetch?"values[i]=texelFetch(src,ivec3(p),0)":volume||array?"imageStore(dst,ivec3(p),values[i])":"imageStore(dst,ivec2(p.xy),values[i])");
+ char src[2048];snprintf(src,sizeof(src),"#version 330 core\n#extension GL_ARB_compute_shader: require\n#extension GL_ARB_shader_storage_buffer_object: require\n#extension GL_ARB_shader_image_load_store: require\n#extension GL_ARB_shading_language_420pack: require\nlayout(local_size_x=4,local_size_y=4,local_size_z=1) in;\nlayout(std430,binding=0) buffer Data{%svec4 values[];};\n%s\nvoid main(){uvec3 p=gl_GlobalInvocationID;uint i=(p.z*%uu+p.y )*%uu+p.x;%s;}\n",integer?"u":"",fetch?"uniform sampler3D src;":volume?"layout(rgba32f,binding=0) uniform writeonly image3D dst;":(array&&!layer_views)?(oob?"layout(rgba32f,binding=0) uniform writeonly image2DArray dst; uniform uint layer_offset;":"layout(rgba32f,binding=0) uniform writeonly image2DArray dst;"):half?"layout(r16f,binding=0) uniform writeonly image2D dst;":integer?"layout(rgba32ui,binding=0) uniform writeonly uimage2D dst;":"layout(rgba32f,binding=0) uniform writeonly image2D dst;",volume||array?width:32,width,fetch?"values[i]=texelFetch(src,ivec3(p),0)":(array&&!layer_views)?(oob?"imageStore(dst,ivec3(p.xy,p.z+layer_offset),values[i]+vec4(layer_offset==0u?0.:4096.))":"imageStore(dst,ivec3(p),values[i])"):volume?"imageStore(dst,ivec3(p),values[i])":"imageStore(dst,ivec2(p.xy),values[i])");
  GLuint program=glCreateProgram();glAttachShader(program,compile(GL_COMPUTE_SHADER,src));glLinkProgram(program);GLint ok;glGetProgramiv(program,GL_LINK_STATUS,&ok);CHECK(ok);glUseProgram(program);
  if(fetch)glUniform1i(glGetUniformLocation(program,"src"),0);
  else glBindImageTexture(0,tex,0,volume||array,0,GL_WRITE_ONLY,format);
- CHECK(glGetError()==GL_NO_ERROR);glDispatchCompute(2,volume||array?2:8,volume||array?4:1);
+ CHECK(glGetError()==GL_NO_ERROR);
+ if(layer_views){
+  for(unsigned layer=0;layer<4;layer++){
+   glBindImageTexture(0,tex,0,GL_FALSE,layer,GL_WRITE_ONLY,format);
+   glBindBufferRange(GL_SHADER_STORAGE_BUFFER,0,buf,layer*bytes/4,bytes/4);
+   glDispatchCompute(width/4,width/4,1);
+  }
+  glBindBufferBase(GL_SHADER_STORAGE_BUFFER,0,buf);
+  printf("Write path: separate 2D layer views\n");
+ }else if(!getenv("M4_TEST_UPLOAD_ONLY"))glDispatchCompute(width/4,volume||array?width/4:8,volume||array?layers:1);
+ if(oob){
+  const unsigned offsets[]={4,65536,0xfffffffc};
+  for(unsigned k=0;k<3;k++){
+   glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+   glUniform1ui(glGetUniformLocation(program,"layer_offset"),offsets[k]);
+   glDispatchCompute(width/4,width/4,4);
+  }
+ }
  glMemoryBarrier(fetch?GL_BUFFER_UPDATE_BARRIER_BIT:GL_TEXTURE_UPDATE_BARRIER_BIT);
- if(fetch)glGetBufferSubData(GL_SHADER_STORAGE_BUFFER,0,bytes,actual);
+ if(array && getenv("M4_TEST_SAMPLE_READBACK")) {
+  const char *read_src="#version 330 core\n#extension GL_ARB_compute_shader: require\n#extension GL_ARB_shader_storage_buffer_object: require\n#extension GL_ARB_shading_language_420pack: require\nlayout(local_size_x=4,local_size_y=4,local_size_z=1) in; layout(std430,binding=0) buffer Data{vec4 values[];}; uniform sampler2DArray src; void main(){uvec3 p=gl_GlobalInvocationID; values[(p.z*8u+p.y)*8u+p.x]=texelFetch(src,ivec3(p),0);}";
+  GLuint read=glCreateProgram();glAttachShader(read,compile(GL_COMPUTE_SHADER,read_src));glLinkProgram(read);glGetProgramiv(read,GL_LINK_STATUS,&ok);CHECK(ok);
+  glUseProgram(read);glUniform1i(glGetUniformLocation(read,"src"),0);
+  glMemoryBarrier(GL_TEXTURE_FETCH_BARRIER_BIT|GL_SHADER_STORAGE_BARRIER_BIT);
+  glDispatchCompute(2,2,4);glMemoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT);
+  glGetBufferSubData(GL_SHADER_STORAGE_BUFFER,0,bytes,actual);glDeleteProgram(read);
+  printf("Readback path: texture fetch to SSBO\n");
+ }
+ else if(fetch)glGetBufferSubData(GL_SHADER_STORAGE_BUFFER,0,bytes,actual);
  else glGetTexImage(target,0,integer?GL_RGBA_INTEGER:GL_RGBA,integer?GL_UNSIGNED_INT:GL_FLOAT,actual);
  CHECK(glGetError()==GL_NO_ERROR);
+ if(half)for(unsigned i=0;i<count;i++){reference[4*i+1]=0;reference[4*i+2]=0;reference[4*i+3]=1;}
  unsigned bad=0;const void *expected=integer?(void*)expected_uint:(void*)reference;
  for(unsigned i=0;i<count*4;i++)if(memcmp((char*)expected+4*i,(char*)actual+4*i,4)){if(bad<4)fprintf(stderr,"word %u: actual=%g expected=%g\n",i,actual[i],reference[i]);bad++;}
  printf("%s: %s exact %u texels (%u mismatched words)\n",bad?"FAIL":"PASS",argv[1],count,bad);

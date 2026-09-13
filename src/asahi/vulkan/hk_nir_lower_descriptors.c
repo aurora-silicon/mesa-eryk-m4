@@ -421,6 +421,12 @@ lower_uvs_index(nir_builder *b, nir_intrinsic_instr *intrin, void *data)
       return true;
    }
 
+   /* Texture helper lowering can introduce assertion printf calls after
+    * the initial descriptor pass. Resolve their process-local address before
+    * gathering root usage and converting root loads to preamble uniforms. */
+   case nir_intrinsic_load_printf_buffer_address:
+      return lower_sysval_to_root_table(b, intrin, printf_buffer_address);
+
    case nir_intrinsic_load_shader_part_tests_zs_agx:
       return lower_sysval_to_root_table(b, intrin, draw.no_epilog_discard);
 
