@@ -1,0 +1,10 @@
+Writing test log into /root/asahi-evidence/20260913T234007569081Z-cts-seed20260922-603/cts/697/result.qpa
+dEQP Core git-6b3bca439862e986409ffd76e857ada0cc7c9080 (0x6b3bca43) starting..
+  target implementation = 'Default'
+
+Test case 'dEQP-VK.pipeline.depth.format.x8_d24_unorm_pack32.compare_ops.never_less_greater_or_equal_less_or_equal'..
+Fragment shader compile time = 15.252000 ms
+Link time = 0.009000 ms
+Vertex shader compile time = 0.363000 ms
+Link time = 0.004000 ms
+deqp-vk-scaled-border-reference: ../../mesa/m4-asahi/src/asahi/vulkan/hk_cmd_draw.c:1118: void hk_CmdBeginRendering(VkCommandBuffer, const VkRenderingInfo *): Assertion `desc->format == PIPE_FORMAT_Z32_FLOAT || desc->format == PIPE_FORMAT_Z16_UNORM || desc->format == PIPE_FORMAT_Z16_UNORM_S8_UINT || desc->format == PIPE_FORMAT_Z24_UNORM_S8_UINT || desc->format == PIPE_FORMAT_Z32_FLOAT_S8X24_UINT' failed.

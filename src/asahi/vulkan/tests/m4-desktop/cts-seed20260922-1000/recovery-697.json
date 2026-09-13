@@ -1,0 +1,16 @@
+{
+  "crashed_index": 697,
+  "completed_through_index": 711,
+  "resume_index": 712,
+  "kind": "Mesa userspace SIGABRT",
+  "assertion": "hk_CmdBeginRendering hk_cmd_draw.c:1118 depth format allowlist excludes X8_D24",
+  "evidence": "_provenance/experiments/20260913T234007569081Z-cts-seed20260922-603",
+  "guard_verdict": "pass",
+  "watchdog_timeout_seconds": 60,
+  "watchdog_mode_after": "idle",
+  "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+  "display_failed_after": 0,
+  "reboot": false,
+  "software_changes": false,
+  "retries": false
+}
