@@ -697,8 +697,7 @@ hk_get_device_features(
       features->tessellationShader = false;
       features->sampleRateShading = false;
       features->pipelineStatisticsQuery = false;
-      features->vertexPipelineStoresAndAtomics =
-         graphics_storage && instance->vertex_stores;
+      features->vertexPipelineStoresAndAtomics = graphics_storage;
       features->fragmentStoresAndAtomics = graphics_storage;
       features->shaderTessellationAndGeometryPointSize = false;
       features->shaderResourceResidency = false;

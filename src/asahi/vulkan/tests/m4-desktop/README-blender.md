@@ -45,3 +45,15 @@ opened on lavapipe in `20260912T213109755531Z-blender-vulkan-color-ownership-ref
 retaining a nine-frame Vulkan capture. This establishes startup, not yet a clean
 viewport or M4 support. Also hydrate `assets/**` (separate from release/datafiles)
 before installing; otherwise Blender reports Git LFS pointers as invalid assets.
+
+### Native Blender vertex storage requirement
+
+Blender requires vertexPipelineStoresAndAtomics at startup. G16G now exposes its
+qualified vertex storage path by default as well; other chips retain the
+upstream M1-derived DRI policy. The prior paragraph records an intermediate
+state, superseded by this change. Native Vulkan Workbench startup and its cube,
+grid and axis rendering complete in
+`20260913T002807435127Z-blender-native-viewport-vertex-enabled`, peak56.75 C.
+The narrow tiled UI still needs a full-width check; this is not Eevee or Cycles
+qualification. The fresh software capture has malformed grid lines that the
+native run does not, so it is not a clean pixel correctness reference.
