@@ -410,3 +410,7 @@ path is not implemented. Existing multisample D32S8 selection is unchanged.
 20260913T153949125865Z-cts-d16s8-controls: D16S8 copy, image clear, full/partial attachment
 clear, and a D32S8 copy regression all Pass. Full watchdog/thermal guards;
 library 4e9aa30cee03b21fc0d939bf5bbafc775013ec01793afa195626657ea89ed7aa. Kernel unchanged.
+
+D16S8 follow-up: depth bias now uses the D16 fixed-point representation and
+scale for the combined format too. 20260913T154140761428Z-cts-d16s8-depth-controls: two depth comparison
+controls Pass. These controls check depth rendering, not depth-bias coverage.
