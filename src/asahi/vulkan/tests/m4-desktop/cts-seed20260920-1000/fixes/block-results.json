@@ -1,0 +1,21 @@
+[
+  {
+    "index": 36,
+    "case": "dEQP-VK.spirv_assembly.instruction.compute.variable_pointers.complex_types_compute.opcopyobject_float_single_buffer_second_input",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-block",
+      "--deqp-case=dEQP-VK.spirv_assembly.instruction.compute.variable_pointers.complex_types_compute.opcopyobject_float_single_buffer_second_input",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T205424440238Z-cts-seed20-block-fix/cts/036/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "started_unix": 1789332865.522649,
+    "message": "Output match with expected",
+    "returncode": 0,
+    "seconds": 0.10797520599999189,
+    "finished_unix": 1789332865.6366997,
+    "pid": 109432
+  }
+]

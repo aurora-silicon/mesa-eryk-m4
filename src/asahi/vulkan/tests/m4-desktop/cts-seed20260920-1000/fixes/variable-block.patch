@@ -1,0 +1,65 @@
+--- a/external/vulkancts/modules/vulkan/spirv_assembly/vktSpvAsmVariablePointersTests.cpp
++++ b/external/vulkancts/modules/vulkan/spirv_assembly/vktSpvAsmVariablePointersTests.cpp
+@@ -660,11 +660,12 @@
+ 		"OpDecorate %outdata Binding 3					\n"
+ 
+ 		// Set the Block decoration
+-		"OpDecorate %outer_struct	Block				\n"
++		"OpDecorate %single_input_buffer	Block				\n"
+ 		"OpDecorate %input_buffer	Block				\n"
+ 		"OpDecorate %output_buffer	Block				\n"
+ 
+ 		// Set the Offsets
++		"OpMemberDecorate %single_input_buffer 0 Offset 0\n"
+ 		"OpMemberDecorate %output_buffer 0 Offset 0		\n"
+ 		"OpMemberDecorate %input_buffer  0 Offset 0		\n"
+ 		"OpMemberDecorate %input_buffer  1 Offset 256	\n"
+@@ -715,6 +716,7 @@
+ 		//   outer_struct a;
+ 		//   outer_struct b;
+ 		// }
++		"%single_input_buffer = OpTypeStruct %outer_struct\n"
+ 		"%input_buffer			= OpTypeStruct %outer_struct %outer_struct			\n"
+ 
+ 		// struct output_struct {
+@@ -726,6 +728,7 @@
+ 		// POINTER TYPES //
+ 		///////////////////
+ 		"%output_buffer_ptr		= OpTypePointer StorageBuffer %output_buffer		\n"
++		"%single_input_buffer_ptr = OpTypePointer StorageBuffer %single_input_buffer\n"
+ 		"%input_buffer_ptr		= OpTypePointer StorageBuffer %input_buffer			\n"
+ 		"%outer_struct_ptr		= OpTypePointer StorageBuffer %outer_struct			\n"
+ 		"%mat2x2_ptr			= OpTypePointer StorageBuffer %mat2x2_inner_struct	\n"
+@@ -739,8 +742,8 @@
+ 		// VARIABLES //
+ 		///////////////
+ 		"%id					= OpVariable %uvec3ptr			Input				\n"
+-		"%inputA				= OpVariable %outer_struct_ptr	StorageBuffer		\n"
+-		"%inputB				= OpVariable %outer_struct_ptr	StorageBuffer		\n"
++		"%inputA				= OpVariable %single_input_buffer_ptr	StorageBuffer		\n"
++		"%inputB				= OpVariable %single_input_buffer_ptr	StorageBuffer		\n"
+ 		"%inputC				= OpVariable %input_buffer_ptr	StorageBuffer		\n"
+ 		"%outdata				= OpVariable %output_buffer_ptr	StorageBuffer		\n"
+ 	);
+@@ -782,6 +785,10 @@
+ 		"%main					= OpFunction %void None %voidf\n"
+ 		"%label					= OpLabel\n"
+ 
++		// The single-member block wrapper preserves the input byte layout.
++		"%inputA_value = OpAccessChain %outer_struct_ptr %inputA %c_i32_0\n"
++		"%inputB_value = OpAccessChain %outer_struct_ptr %inputB %c_i32_0\n"
++
+ 		// Here are the 2 nested structures within InputC.
+ 		"%inputC_a				= OpAccessChain %outer_struct_ptr %inputC %c_i32_0\n"
+ 		"%inputC_b				= OpAccessChain %outer_struct_ptr %inputC %c_i32_1\n"
+@@ -818,8 +825,8 @@
+ 			const string extraCap					= isSingleInputBuffer	? "OpCapability VariablePointersStorageBuffer\n" : "OpCapability VariablePointers\n";
+ 			const vector<float>& selectedInput		= isSingleInputBuffer	? inputC										 : (selectInputA ? inputA : inputB);
+ 			const string bufferType					= isSingleInputBuffer	? "single_buffer_"								 : "two_buffers_";
+-			const string baseA						= isSingleInputBuffer	? "%inputC_a"									 : "%inputA";
+-			const string baseB						= isSingleInputBuffer	? "%inputC_b"									 : "%inputB";
++			const string baseA						= isSingleInputBuffer	? "%inputC_a"									 : "%inputA_value";
++			const string baseB						= isSingleInputBuffer	? "%inputC_b"									 : "%inputB_value";
+ 			const string selectedInputStr			= selectInputA			? "first_input"									 : "second_input";
+ 			const string spirvSelectInputA			= selectInputA			? "%c_bool_true"								 : "%c_bool_false";
+ 			const int outerStructIndex				= isSingleInputBuffer	? (selectInputA ? 0 : 1)						 : 0;

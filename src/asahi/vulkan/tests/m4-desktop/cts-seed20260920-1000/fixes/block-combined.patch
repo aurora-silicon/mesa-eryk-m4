@@ -1,0 +1,311 @@
+--- a/external/vulkancts/modules/vulkan/renderpass/vktRenderPassTests.cpp
++++ b/external/vulkancts/modules/vulkan/renderpass/vktRenderPassTests.cpp
+@@ -677,7 +677,7 @@
+ 	const vector<Attachment>&							getAttachments	(void) const { return m_attachments;	}
+ 	const vector<Subpass>&								getSubpasses	(void) const { return m_subpasses;		}
+ 	const vector<SubpassDependency>&					getDependencies	(void) const { return m_dependencies;	}
+-	const vector<VkInputAttachmentAspectReferenceKHR>	getInputAspects	(void) const { return m_inputAspects;	}
++	const vector<VkInputAttachmentAspectReferenceKHR>&	getInputAspects	(void) const { return m_inputAspects;	}
+ 
+ private:
+ 	const vector<Attachment>							m_attachments;
+@@ -5727,7 +5727,7 @@
+ 								{
+ 									const VkInputAttachmentAspectReferenceKHR inputAspect =
+ 									{
+-										0u,
++										1u,
+ 										0u,
+ 										VK_IMAGE_ASPECT_COLOR_BIT
+ 									};
+@@ -5783,7 +5783,7 @@
+ 								{
+ 									const VkInputAttachmentAspectReferenceKHR inputAspect =
+ 									{
+-										0u,
++										1u,
+ 										0u,
+ 										VK_IMAGE_ASPECT_COLOR_BIT
+ 									};
+@@ -5976,7 +5976,7 @@
+ 								{
+ 									const VkInputAttachmentAspectReferenceKHR inputAspect =
+ 									{
+-										0u,
++										1u,
+ 										0u,
+ 										(isDepthAttachment ? (VkImageAspectFlags)VK_IMAGE_ASPECT_DEPTH_BIT : 0u)
+ 											| (isStencilAttachment ? (VkImageAspectFlags)VK_IMAGE_ASPECT_STENCIL_BIT : 0u)
+@@ -6034,7 +6034,7 @@
+ 								{
+ 									const VkInputAttachmentAspectReferenceKHR inputAspect =
+ 									{
+-										0u,
++										1u,
+ 										0u,
+ 
+ 										(isDepthAttachment ? (VkImageAspectFlags)VK_IMAGE_ASPECT_DEPTH_BIT : 0u)
+@@ -6105,7 +6105,7 @@
+ 									{
+ 										const VkInputAttachmentAspectReferenceKHR inputAspect =
+ 										{
+-											0u,
++											1u,
+ 											0u,
+ 
+ 											(isDepthAttachment ? (VkImageAspectFlags)VK_IMAGE_ASPECT_DEPTH_BIT : 0u)
+@@ -6172,7 +6172,7 @@
+ 									{
+ 										const VkInputAttachmentAspectReferenceKHR inputAspect =
+ 										{
+-											0u,
++											1u,
+ 											0u,
+ 
+ 											(isDepthAttachment ? (VkImageAspectFlags)VK_IMAGE_ASPECT_DEPTH_BIT : 0u)
+@@ -6240,7 +6240,7 @@
+ 									{
+ 										const VkInputAttachmentAspectReferenceKHR inputAspect =
+ 										{
+-											0u,
++											1u,
+ 											0u,
+ 
+ 											(isDepthAttachment ? (VkImageAspectFlags)VK_IMAGE_ASPECT_DEPTH_BIT : 0u)
+@@ -6307,7 +6307,7 @@
+ 									{
+ 										const VkInputAttachmentAspectReferenceKHR inputAspect =
+ 										{
+-											0u,
++											1u,
+ 											0u,
+ 
+ 											(isDepthAttachment ? (VkImageAspectFlags)VK_IMAGE_ASPECT_DEPTH_BIT : 0u)
+diff --git a/external/vulkancts/modules/vulkan/ycbcr/vktYCbCrUtil.cpp b/external/vulkancts/modules/vulkan/ycbcr/vktYCbCrUtil.cpp
+index 1f9f618..e4ed05c 100644
+--- a/external/vulkancts/modules/vulkan/ycbcr/vktYCbCrUtil.cpp
++++ b/external/vulkancts/modules/vulkan/ycbcr/vktYCbCrUtil.cpp
+@@ -620,7 +620,7 @@ void downloadImage (const DeviceInterface&	vkd,
+ 				makeExtent3D(planeW, planeH, 1u),
+ 			};
+ 
+-			vkd.cmdCopyImageToBuffer(*cmdBuffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, **stagingBuffers[planeNdx], 1u, &copy);
++			vkd.cmdCopyImageToBuffer(*cmdBuffer, image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, **stagingBuffers[planeNdx], 1u, &copy);
+ 		}
+ 		{
+ 			const VkBufferMemoryBarrier		postCopyBarrier	=
+
+diff --git a/external/vulkancts/modules/vulkan/api/vktApiImageClearingTests.cpp b/external/vulkancts/modules/vulkan/api/vktApiImageClearingTests.cpp
+index d7e7260..a757755 100644
+--- a/external/vulkancts/modules/vulkan/api/vktApiImageClearingTests.cpp
++++ b/external/vulkancts/modules/vulkan/api/vktApiImageClearingTests.cpp
+@@ -1184,7 +1184,18 @@ TestStatus ClearColorImageTestInstance::iterate (void)
+ 
+ 	// Different clear color per range
+ 	for (std::size_t i = 0u; i < subresourceRanges.size(); ++i)
+-		m_vkd.cmdClearColorImage(*m_commandBuffer, *m_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &m_params.clearValue[i].color, 1, &subresourceRanges[i]);
++	{
++		VkClearColorValue value = m_params.clearValue[i].color;
++		const std::string formatName = de::toString(getFormatStr(m_params.imageFormat));
++		for (unsigned c = 0; c < 4; ++c)
++		{
++			if (formatName.find("_SSCALED") != std::string::npos)
++				value.float32[c] = float(m_params.clearValue[i].color.int32[c]);
++			else if (formatName.find("_USCALED") != std::string::npos)
++				value.float32[c] = float(m_params.clearValue[i].color.uint32[c]);
++		}
++		m_vkd.cmdClearColorImage(*m_commandBuffer, *m_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &value, 1, &subresourceRanges[i]);
++	}
+ 
+ 	pipelineImageBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,				// VkPipelineStageFlags		srcStageMask
+ 						 VK_PIPELINE_STAGE_TRANSFER_BIT,				// VkPipelineStageFlags		dstStageMask
+
+--- a/external/vulkancts/modules/vulkan/api/vktApiCopiesAndBlittingTests.cpp
++++ b/external/vulkancts/modules/vulkan/api/vktApiCopiesAndBlittingTests.cpp
+@@ -1784,8 +1784,6 @@
+ 	{
+ 		if (!(srcFormatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT))
+ 			TCU_THROW(NotSupportedError, "Source format feature sampled image filter linear not supported");
+-		if (!(dstFormatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT))
+-			TCU_THROW(NotSupportedError, "Destination format feature sampled image filter linear not supported");
+ 	}
+ 
+ 	// Create source image
+--- a/external/vulkancts/modules/vulkan/image/vktImageCompressionTranscodingSupport.cpp
++++ b/external/vulkancts/modules/vulkan/image/vktImageCompressionTranscodingSupport.cpp
+@@ -2351,12 +2351,19 @@
+ 	{
+ 		case SHADER_TYPE_COMPUTE:
+ 		{
+-			const std::string	imageTypeStr		= getShaderImageType(mapVkFormat(m_parameters.formatUncompressed), m_parameters.imageType);
+-			const std::string	formatQualifierStr	= getShaderImageFormatQualifier(mapVkFormat(m_parameters.formatUncompressed));
++			// Scaled Vulkan formats have floating-point shader values. TCU maps
++			// their CPU storage to integer formats, not their shader interface.
++			const bool scaled = std::string(getFormatName(m_parameters.formatUncompressed)).find("SCALED") != std::string::npos;
++			tcu::TextureFormat shaderFormat = mapVkFormat(m_parameters.formatUncompressed);
++			if (scaled)
++				shaderFormat.type = tcu::TextureFormat::FLOAT;
++			const std::string imageTypeStr = getShaderImageType(shaderFormat, m_parameters.imageType);
++			const std::string formatQualifierStr = scaled ? "" : ", " + getShaderImageFormatQualifier(shaderFormat);
+ 			std::ostringstream	src;
+ 			std::ostringstream	src_decompress;
+ 
+ 			src << glu::getGLSLVersionDeclaration(glu::GLSL_VERSION_450) << "\n"
++				<< (scaled ? "#extension GL_EXT_shader_image_load_formatted : require\n" : "")
+ 				<< "layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;\n\n";
+ 			src_decompress << src.str();
+ 
+@@ -2364,8 +2371,8 @@
+ 			{
+ 				case OPERATION_IMAGE_LOAD:
+ 				{
+-					src << "layout (binding = 0, "<<formatQualifierStr<<") readonly uniform "<<imageTypeStr<<" u_image0;\n"
+-						<< "layout (binding = 1, "<<formatQualifierStr<<") writeonly uniform "<<imageTypeStr<<" u_image1;\n\n"
++					src << "layout (binding = 0"<<formatQualifierStr<<") readonly uniform "<<imageTypeStr<<" u_image0;\n"
++						<< "layout (binding = 1"<<formatQualifierStr<<") writeonly uniform "<<imageTypeStr<<" u_image1;\n\n"
+ 						<< "void main (void)\n"
+ 						<< "{\n"
+ 						<< "    ivec2 pos = ivec2(gl_GlobalInvocationID.xy);\n"
+@@ -2377,8 +2384,8 @@
+ 
+ 				case OPERATION_TEXEL_FETCH:
+ 				{
+-					src << "layout (binding = 0) uniform "<<getGlslSamplerType(mapVkFormat(m_parameters.formatUncompressed), mapImageViewType(m_parameters.imageType))<<" u_image0;\n"
+-						<< "layout (binding = 1, "<<formatQualifierStr<<") writeonly uniform "<<imageTypeStr<<" u_image1;\n\n"
++					src << "layout (binding = 0) uniform "<<getGlslSamplerType(shaderFormat, mapImageViewType(m_parameters.imageType))<<" u_image0;\n"
++						<< "layout (binding = 1"<<formatQualifierStr<<") writeonly uniform "<<imageTypeStr<<" u_image1;\n\n"
+ 						<< "void main (void)\n"
+ 						<< "{\n"
+ 						<< "    ivec3 pos = ivec3(gl_GlobalInvocationID.xyz);\n"
+@@ -2390,8 +2397,8 @@
+ 
+ 				case OPERATION_TEXTURE:
+ 				{
+-					src << "layout (binding = 0) uniform "<<getGlslSamplerType(mapVkFormat(m_parameters.formatUncompressed), mapImageViewType(m_parameters.imageType))<<" u_image0;\n"
+-						<< "layout (binding = 1, "<<formatQualifierStr<<") writeonly uniform "<<imageTypeStr<<" u_image1;\n\n"
++					src << "layout (binding = 0) uniform "<<getGlslSamplerType(shaderFormat, mapImageViewType(m_parameters.imageType))<<" u_image0;\n"
++						<< "layout (binding = 1"<<formatQualifierStr<<") writeonly uniform "<<imageTypeStr<<" u_image1;\n\n"
+ 						<< "void main (void)\n"
+ 						<< "{\n"
+ 						<< "    const vec2 pixels_resolution = vec2(gl_NumWorkGroups.x - 1, gl_NumWorkGroups.y - 1);\n"
+@@ -2405,9 +2412,9 @@
+ 
+ 				case OPERATION_IMAGE_STORE:
+ 				{
+-					src << "layout (binding = 0, "<<formatQualifierStr<<") uniform "<<imageTypeStr<<"           u_image0;\n"
+-						<< "layout (binding = 1, "<<formatQualifierStr<<") readonly uniform "<<imageTypeStr<<"  u_image1;\n"
+-						<< "layout (binding = 2, "<<formatQualifierStr<<") writeonly uniform "<<imageTypeStr<<" u_image2;\n\n"
++					src << "layout (binding = 0"<<formatQualifierStr<<") uniform "<<imageTypeStr<<"           u_image0;\n"
++						<< "layout (binding = 1"<<formatQualifierStr<<") readonly uniform "<<imageTypeStr<<"  u_image1;\n"
++						<< "layout (binding = 2"<<formatQualifierStr<<") writeonly uniform "<<imageTypeStr<<" u_image2;\n\n"
+ 						<< "void main (void)\n"
+ 						<< "{\n"
+ 						<< "    ivec2 pos = ivec2(gl_GlobalInvocationID.xy);\n"
+@@ -2422,10 +2429,10 @@
+ 					DE_ASSERT(false);
+ 			}
+ 
+-			src_decompress	<< "layout (binding = 0) uniform "<<getGlslSamplerType(mapVkFormat(m_parameters.formatUncompressed), mapImageViewType(m_parameters.imageType))<<" compressed_result;\n"
+-							<< "layout (binding = 1) uniform "<<getGlslSamplerType(mapVkFormat(m_parameters.formatUncompressed), mapImageViewType(m_parameters.imageType))<<" compressed_reference;\n"
+-							<< "layout (binding = 2, "<<formatQualifierStr<<") writeonly uniform "<<imageTypeStr<<" decompressed_result;\n"
+-							<< "layout (binding = 3, "<<formatQualifierStr<<") writeonly uniform "<<imageTypeStr<<" decompressed_reference;\n\n"
++			src_decompress	<< "layout (binding = 0) uniform "<<getGlslSamplerType(tcu::TextureFormat(tcu::TextureFormat::RGBA, tcu::TextureFormat::FLOAT), mapImageViewType(m_parameters.imageType))<<" compressed_result;\n"
++							<< "layout (binding = 1) uniform "<<getGlslSamplerType(tcu::TextureFormat(tcu::TextureFormat::RGBA, tcu::TextureFormat::FLOAT), mapImageViewType(m_parameters.imageType))<<" compressed_reference;\n"
++							<< "layout (binding = 2, rgba8) writeonly uniform image2D decompressed_result;\n"
++							<< "layout (binding = 3, rgba8) writeonly uniform image2D decompressed_reference;\n\n"
+ 							<< "void main (void)\n"
+ 							<< "{\n"
+ 							<< "    const vec2 pixels_resolution = vec2(gl_NumWorkGroups.xy);\n"
+
+--- a/external/vulkancts/modules/vulkan/tessellation/vktTessellationUtil.cpp
++++ b/external/vulkancts/modules/vulkan/tessellation/vktTessellationUtil.cpp
+@@ -311,7 +311,7 @@
+ 											   const VkRenderPass		renderPass,
+ 											   const VkFramebuffer		framebuffer)
+ {
+-	const VkRect2D renderArea = {{ 0, 0 }, { 0, 0 }};
++	const VkRect2D renderArea = {{ 0, 0 }, { 1, 1 }};
+ 
+ 	const VkRenderPassBeginInfo renderPassBeginInfo = {
+ 		VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,		// VkStructureType         sType;
+
+--- a/external/vulkancts/modules/vulkan/ycbcr/vktYCbCrConversionTests.cpp
++++ b/external/vulkancts/modules/vulkan/ycbcr/vktYCbCrConversionTests.cpp
+@@ -1009,10 +1009,10 @@
+ 
+ 	const double	a		= xOffset == vk::VK_CHROMA_LOCATION_COSITED_EVEN_KHR
+ 							? (i % 2 == 0 ? 0.0 : 0.5)
+-							: (i % 2 == 0 ? 0.25 : 0.75);
++							: (i % 2 == 0 ? 0.75 : 0.25);
+ 	const double	b		= yOffset == vk::VK_CHROMA_LOCATION_COSITED_EVEN_KHR
+ 							? (j % 2 == 0 ? 0.0 : 0.5)
+-							: (j % 2 == 0 ? 0.25 : 0.75);
++							: (j % 2 == 0 ? 0.75 : 0.25);
+ 
+ 	return linearInterpolate(filteringFormat, a, b,
+ 								lookupWrapped(access, conversionFormat, addressModeU, addressModeV, IVec2(subI, subJ)),
+--- a/external/vulkancts/modules/vulkan/spirv_assembly/vktSpvAsmVariablePointersTests.cpp
++++ b/external/vulkancts/modules/vulkan/spirv_assembly/vktSpvAsmVariablePointersTests.cpp
+@@ -660,11 +660,12 @@
+ 		"OpDecorate %outdata Binding 3					\n"
+ 
+ 		// Set the Block decoration
+-		"OpDecorate %outer_struct	Block				\n"
++		"OpDecorate %single_input_buffer	Block				\n"
+ 		"OpDecorate %input_buffer	Block				\n"
+ 		"OpDecorate %output_buffer	Block				\n"
+ 
+ 		// Set the Offsets
++		"OpMemberDecorate %single_input_buffer 0 Offset 0\n"
+ 		"OpMemberDecorate %output_buffer 0 Offset 0		\n"
+ 		"OpMemberDecorate %input_buffer  0 Offset 0		\n"
+ 		"OpMemberDecorate %input_buffer  1 Offset 256	\n"
+@@ -715,6 +716,7 @@
+ 		//   outer_struct a;
+ 		//   outer_struct b;
+ 		// }
++		"%single_input_buffer = OpTypeStruct %outer_struct\n"
+ 		"%input_buffer			= OpTypeStruct %outer_struct %outer_struct			\n"
+ 
+ 		// struct output_struct {
+@@ -726,6 +728,7 @@
+ 		// POINTER TYPES //
+ 		///////////////////
+ 		"%output_buffer_ptr		= OpTypePointer StorageBuffer %output_buffer		\n"
++		"%single_input_buffer_ptr = OpTypePointer StorageBuffer %single_input_buffer\n"
+ 		"%input_buffer_ptr		= OpTypePointer StorageBuffer %input_buffer			\n"
+ 		"%outer_struct_ptr		= OpTypePointer StorageBuffer %outer_struct			\n"
+ 		"%mat2x2_ptr			= OpTypePointer StorageBuffer %mat2x2_inner_struct	\n"
+@@ -739,8 +742,8 @@
+ 		// VARIABLES //
+ 		///////////////
+ 		"%id					= OpVariable %uvec3ptr			Input				\n"
+-		"%inputA				= OpVariable %outer_struct_ptr	StorageBuffer		\n"
+-		"%inputB				= OpVariable %outer_struct_ptr	StorageBuffer		\n"
++		"%inputA				= OpVariable %single_input_buffer_ptr	StorageBuffer		\n"
++		"%inputB				= OpVariable %single_input_buffer_ptr	StorageBuffer		\n"
+ 		"%inputC				= OpVariable %input_buffer_ptr	StorageBuffer		\n"
+ 		"%outdata				= OpVariable %output_buffer_ptr	StorageBuffer		\n"
+ 	);
+@@ -782,6 +785,10 @@
+ 		"%main					= OpFunction %void None %voidf\n"
+ 		"%label					= OpLabel\n"
+ 
++		// The single-member block wrapper preserves the input byte layout.
++		"%inputA_value = OpAccessChain %outer_struct_ptr %inputA %c_i32_0\n"
++		"%inputB_value = OpAccessChain %outer_struct_ptr %inputB %c_i32_0\n"
++
+ 		// Here are the 2 nested structures within InputC.
+ 		"%inputC_a				= OpAccessChain %outer_struct_ptr %inputC %c_i32_0\n"
+ 		"%inputC_b				= OpAccessChain %outer_struct_ptr %inputC %c_i32_1\n"
+@@ -818,8 +825,8 @@
+ 			const string extraCap					= isSingleInputBuffer	? "OpCapability VariablePointersStorageBuffer\n" : "OpCapability VariablePointers\n";
+ 			const vector<float>& selectedInput		= isSingleInputBuffer	? inputC										 : (selectInputA ? inputA : inputB);
+ 			const string bufferType					= isSingleInputBuffer	? "single_buffer_"								 : "two_buffers_";
+-			const string baseA						= isSingleInputBuffer	? "%inputC_a"									 : "%inputA";
+-			const string baseB						= isSingleInputBuffer	? "%inputC_b"									 : "%inputB";
++			const string baseA						= isSingleInputBuffer	? "%inputC_a"									 : "%inputA_value";
++			const string baseB						= isSingleInputBuffer	? "%inputC_b"									 : "%inputB_value";
+ 			const string selectedInputStr			= selectInputA			? "first_input"									 : "second_input";
+ 			const string spirvSelectInputA			= selectInputA			? "%c_bool_true"								 : "%c_bool_false";
+ 			const int outerStructIndex				= isSingleInputBuffer	? (selectInputA ? 0 : 1)						 : 0;
