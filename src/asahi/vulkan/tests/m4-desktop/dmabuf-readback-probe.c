@@ -32,6 +32,8 @@ int main(int argc,char **argv) {
  uint64_t requested_mod=argc>1?strtoull(argv[1],NULL,0):0;
  unsigned samples=argc>2?strtoul(argv[2],NULL,0):1;CHECK(samples==1||samples==4);
  int use_renderbuffer=argc>3 && !strcmp(argv[3],"renderbuffer");
+ int warm_readback=argc>3 && !strcmp(argv[3],"blit-prefetch");
+ int blit_readback=warm_readback || (argc>3 && !strcmp(argv[3],"blit"));
  setvbuf(stdout,NULL,_IOLBF,0);
  EGLDisplay d=eglGetPlatformDisplay(EGL_PLATFORM_SURFACELESS_MESA,NULL,NULL);
  CHECK(eglInitialize(d,NULL,NULL)&&eglBindAPI(EGL_OPENGL_API));
@@ -74,6 +76,11 @@ int main(int argc,char **argv) {
   }
   CHECK(glGetError()==GL_NO_ERROR);
   CHECK(glCheckFramebufferStatus(GL_FRAMEBUFFER)==GL_FRAMEBUFFER_COMPLETE);
+  if(warm_readback) {
+   unsigned char initial[64*64*4];
+   glReadPixels(0,0,64,64,GL_RGBA,GL_UNSIGNED_BYTE,initial);
+   CHECK(glGetError()==GL_NO_ERROR);
+  }
   GLuint msfb=0,msrb=0;
   if(samples>1) {
    glGenFramebuffers(1,&msfb);glBindFramebuffer(GL_FRAMEBUFFER,msfb);
@@ -88,7 +95,23 @@ int main(int argc,char **argv) {
    glBlitFramebuffer(0,0,64,64,0,0,64,64,GL_COLOR_BUFFER_BIT,GL_NEAREST);
    glBindFramebuffer(GL_FRAMEBUFFER,fb);CHECK(glGetError()==GL_NO_ERROR);
   }
-  printf("samples=%u\n",samples);
+  if(warm_readback) {
+   unsigned char intermediate[64*64*4];
+   glReadPixels(0,0,64,64,GL_BGRA,GL_UNSIGNED_BYTE,intermediate);
+   CHECK(glGetError()==GL_NO_ERROR);CHECK(check_pixels(intermediate,1)==0);
+  }
+  GLuint readfb=0,readtex=0;
+  if(blit_readback) {
+   glGenTextures(1,&readtex);glBindTexture(GL_TEXTURE_2D,readtex);
+   glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA8,64,64,0,GL_RGBA,GL_UNSIGNED_BYTE,NULL);
+   glGenFramebuffers(1,&readfb);glBindFramebuffer(GL_DRAW_FRAMEBUFFER,readfb);
+   glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER,GL_COLOR_ATTACHMENT0,GL_TEXTURE_2D,readtex,0);
+   CHECK(glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER)==GL_FRAMEBUFFER_COMPLETE);
+   glBindFramebuffer(GL_READ_FRAMEBUFFER,fb);
+   glBlitFramebuffer(0,0,64,64,0,0,64,64,GL_COLOR_BUFFER_BIT,GL_NEAREST);
+   glBindFramebuffer(GL_FRAMEBUFFER,readfb);CHECK(glGetError()==GL_NO_ERROR);
+  }
+  printf("samples=%u blit_readback=%d\n",samples,blit_readback);
   for(unsigned bgra=0;bgra<2;bgra++)for(unsigned pbo=0;pbo<2;pbo++) {
    unsigned char pixels[64*64*4];memset(pixels,0xa5,sizeof(pixels));GLuint pack=0;
    if(pbo){glGenBuffers(1,&pack);glBindBuffer(GL_PIXEL_PACK_BUFFER,pack);glBufferData(GL_PIXEL_PACK_BUFFER,sizeof(pixels),pixels,GL_STREAM_READ);}
@@ -97,6 +120,7 @@ int main(int argc,char **argv) {
    CHECK(glGetError()==GL_NO_ERROR);unsigned bad=check_pixels(pixels,bgra);total+=bad;
    printf("fourcc=%08x modifier=%llx bgra=%u pbo=%u bad=%u first=%u,%u,%u,%u\n",format,(unsigned long long)mod,bgra,pbo,bad,pixels[0],pixels[1],pixels[2],pixels[3]);
   }
+  glDeleteFramebuffers(1,&readfb);glDeleteTextures(1,&readtex);
   glFinish();glDeleteFramebuffers(1,&msfb);glDeleteRenderbuffers(1,&msrb);glDeleteFramebuffers(1,&fb);glDeleteTextures(1,&tex);glDeleteRenderbuffers(1,&rb);destroy(d,image);gbm_bo_destroy(bo);
  }
  glDeleteVertexArrays(1,&vao);glDeleteProgram(program);glDeleteShader(vs);glDeleteShader(fs);

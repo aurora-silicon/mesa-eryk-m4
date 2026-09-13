@@ -59,6 +59,9 @@ VK_FN(vkBeginCommandBuffer);
 VK_FN(vkCmdBindPipeline);
 VK_FN(vkCmdBindDescriptorSets);
 VK_FN(vkCmdDispatch);
+VK_FN(vkCmdFillBuffer);
+VK_FN(vkCmdCopyBuffer);
+VK_FN(vkResetFences);
 VK_FN(vkCmdPipelineBarrier);
 VK_FN(vkEndCommandBuffer);
 VK_FN(vkCreateFence);
@@ -149,6 +152,17 @@ int main(int argc, char **argv) {
   unsigned long groups = strtoul(argv[4], &end, 10);
   if (!groups || *end || groups > UINT32_MAX)
     die("invalid group count");
+  const char *fill_option = getenv("M4_ORACLE_FILL32");
+  const bool copy_option = getenv("M4_ORACLE_COPY") && !strcmp(getenv("M4_ORACLE_COPY"), "1");
+  const bool transfer_option = fill_option || copy_option;
+  if (fill_option && copy_option) die("choose fill or copy");
+  if (copy_option && input_size % 8) die("copy requires two equal word-aligned halves");
+  uint32_t fill_value = 0;
+  if (fill_option) {
+    unsigned long value = strtoul(fill_option, &end, 0);
+    if (*end || value > UINT32_MAX) die("invalid fill32 value");
+    fill_value = value;
+  }
   const size_t element_count = input_size / 4;
   uint32_t *snapshot = malloc(input_size);
   if (!snapshot)
@@ -324,6 +338,9 @@ int main(int argc, char **argv) {
   LOAD_DEVICE(device, vkCmdBindPipeline);
   LOAD_DEVICE(device, vkCmdBindDescriptorSets);
   LOAD_DEVICE(device, vkCmdDispatch);
+  LOAD_DEVICE(device, vkCmdFillBuffer);
+  LOAD_DEVICE(device, vkCmdCopyBuffer);
+  LOAD_DEVICE(device, vkResetFences);
   LOAD_DEVICE(device, vkCmdPipelineBarrier);
   LOAD_DEVICE(device, vkEndCommandBuffer);
   LOAD_DEVICE(device, vkCreateFence);
@@ -338,7 +355,7 @@ int main(int argc, char **argv) {
   const VkBufferCreateInfo buffer_info = {
       .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
       .size = buffer_size,
-      .usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+      .usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
       .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
   };
   VkBuffer buffer;
@@ -421,38 +438,41 @@ int main(int argc, char **argv) {
   };
   vkUpdateDescriptorSets(device, 1, &descriptor_write, 0, NULL);
 
-  const VkShaderModuleCreateInfo shader_info = {
-      .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-      .codeSize = shader_size,
-      .pCode = spv,
-  };
-  VkShaderModule shader;
-  check(vkCreateShaderModule(device, &shader_info, NULL, &shader),
-        "vkCreateShaderModule");
-  const VkPipelineLayoutCreateInfo pipeline_layout_info = {
-      .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-      .setLayoutCount = 1,
-      .pSetLayouts = &set_layout,
-  };
-  VkPipelineLayout pipeline_layout;
-  check(vkCreatePipelineLayout(device, &pipeline_layout_info, NULL,
-                               &pipeline_layout),
-        "vkCreatePipelineLayout");
-  const VkComputePipelineCreateInfo pipeline_info = {
-      .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
-      .stage =
-          {
-              .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-              .stage = VK_SHADER_STAGE_COMPUTE_BIT,
-              .module = shader,
-              .pName = "main",
-          },
-      .layout = pipeline_layout,
-  };
-  VkPipeline pipeline;
-  check(vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &pipeline_info,
-                                 NULL, &pipeline),
-        "vkCreateComputePipelines");
+  VkShaderModule shader = VK_NULL_HANDLE;
+  VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
+  VkPipeline pipeline = VK_NULL_HANDLE;
+  if (!transfer_option) {
+    const VkShaderModuleCreateInfo shader_info = {
+        .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+        .codeSize = shader_size,
+        .pCode = spv,
+    };
+    check(vkCreateShaderModule(device, &shader_info, NULL, &shader),
+          "vkCreateShaderModule");
+    const VkPipelineLayoutCreateInfo pipeline_layout_info = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .setLayoutCount = 1,
+        .pSetLayouts = &set_layout,
+    };
+    check(vkCreatePipelineLayout(device, &pipeline_layout_info, NULL,
+                                 &pipeline_layout),
+          "vkCreatePipelineLayout");
+    const VkComputePipelineCreateInfo pipeline_info = {
+        .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+        .stage =
+            {
+                .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+                .stage = VK_SHADER_STAGE_COMPUTE_BIT,
+                .module = shader,
+                .pName = "main",
+            },
+        .layout = pipeline_layout,
+    };
+    check(vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &pipeline_info,
+                                   NULL, &pipeline),
+          "vkCreateComputePipelines");
+
+  }
 
   const VkCommandPoolCreateInfo command_pool_info = {
       .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
@@ -472,17 +492,25 @@ int main(int argc, char **argv) {
         "vkAllocateCommandBuffers");
   const VkCommandBufferBeginInfo begin_info = {
       .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-      .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+      .flags = transfer_option ? 0 : VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
   };
   check(vkBeginCommandBuffer(command_buffer, &begin_info),
         "vkBeginCommandBuffer");
-  vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
-  vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE,
-                          pipeline_layout, 0, 1, &descriptor_set, 0, NULL);
-  vkCmdDispatch(command_buffer, groups, 1, 1);
+  if (!transfer_option) {
+    vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
+    vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE,
+                            pipeline_layout, 0, 1, &descriptor_set, 0, NULL);
+  }
+  if (fill_option)
+    vkCmdFillBuffer(command_buffer, buffer, 0, buffer_size, fill_value);
+  else if (copy_option) {
+    VkBufferCopy region = {.srcOffset=0, .dstOffset=buffer_size/2, .size=buffer_size/2};
+    vkCmdCopyBuffer(command_buffer, buffer, buffer, 1, &region);
+  } else
+    vkCmdDispatch(command_buffer, groups, 1, 1);
   const VkBufferMemoryBarrier host_barrier = {
       .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
-      .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
+      .srcAccessMask = transfer_option ? VK_ACCESS_TRANSFER_WRITE_BIT : VK_ACCESS_SHADER_WRITE_BIT,
       .dstAccessMask = VK_ACCESS_HOST_READ_BIT,
       .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
       .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
@@ -490,7 +518,7 @@ int main(int argc, char **argv) {
       .offset = 0,
       .size = buffer_size,
   };
-  vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+  vkCmdPipelineBarrier(command_buffer, transfer_option ? VK_PIPELINE_STAGE_TRANSFER_BIT : VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
                        VK_PIPELINE_STAGE_HOST_BIT, 0, 0, NULL, 1, &host_barrier,
                        0, NULL);
   check(vkEndCommandBuffer(command_buffer), "vkEndCommandBuffer");
@@ -508,6 +536,25 @@ int main(int argc, char **argv) {
   check(vkQueueSubmit(queue, 1, &submit_info, fence), "vkQueueSubmit");
   check(vkWaitForFences(device, 1, &fence, true, UINT64_C(20000000000)),
         "vkWaitForFences");
+
+  if (transfer_option) {
+    /* In transfer mode groups-x is the bounded submission count. Compare the
+     * first read after every fence; retries may not hide stale contents. */
+    for (unsigned long iteration = 0; iteration < groups; iteration++) {
+      for (size_t i = 0; i < element_count; i++) {
+        if (((volatile uint32_t *)mapped)[i] != expected[i]) {
+          fprintf(stderr, "FAIL: transfer submission %lu word %zu\n", iteration, i);
+          die("transfer readback mismatch");
+        }
+      }
+      if (iteration + 1 == groups) break;
+      check(vkResetFences(device, 1, &fence), "vkResetFences");
+      check(vkQueueSubmit(queue, 1, &submit_info, fence), "vkQueueSubmit(transfer)");
+      check(vkWaitForFences(device, 1, &fence, true, UINT64_C(20000000000)),
+            "vkWaitForFences(transfer)");
+    }
+    printf("Transfer %s submissions=%lu bytes=%zu value=%#x\n",copy_option?"copy":"fill",groups,input_size,fill_value);
+  }
 
   /* Preserve the first observations before any file I/O can conceal delayed
    * GPU visibility. All comparison and saved evidence use this same snapshot. */

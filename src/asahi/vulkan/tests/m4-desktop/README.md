@@ -2047,3 +2047,32 @@ slot points at the current pool. These snapshots do not prove TLB contents,
 retirement, or timeout resolution. Old dumps still decode unchanged.
 `webgl-readback.html?read=0&animate=1` omits early point reads and redraws on
 requestAnimationFrame. The runner records frame count and explicit mode.
+
+`vk-buffer-oracle` also accepts diagnostic M4_ORACLE_FILL32=0x12345678 or
+M4_ORACLE_COPY=1 (mutually exclusive). Copy moves the first half of the input
+buffer to the second, requiring two equal word-aligned halves. In these modes,
+the groups-x argument is the repeat count; the positional SPIR-V file is read
+but no shader pipeline is created. Each submission waits for its fence and
+checks the first CPU observation against expected.bin. Inputs remain unchanged
+between repeats, so these are serial transfer/retirement checks, not proof of
+independent per-iteration writes or asynchronous lifetime safety. Native32-repeat
+fill013519 and copy013647 pass all4096/8192 words; the copy generates the same
+138-byte internal compute shader found in Blender's fault records.
+
+`dmabuf-readback-probe MODIFIER 4 blit` resolves into the imported image then
+blits into ordinary RGBA8 before checking CPU/PBO reads. `blit-prefetch` adds
+an initial read and a checked BGRA read before that blit. Both pass with the
+Apple tiled modifier0xc00000000000001 (015534/020245, <=56.25 C). These exclude
+the simple imported BGRA-to-RGBA blit from Firefox's remaining capture-only issue.
+
+`webgl-readback-check.py GL_READBACK_DIR --output NEW.json` compares every saved
+640x480 GL_RGBA read with the independent four-quadrant oracle. It retains
+hashes, error counts and a failing exit status; requires NumPy, executes no GPU.
+The identical continuous-draw fixture passes79 lavapipe readbacks and the normal
+M4 snapshot (020017), while Vulkan capture enabled produces307200 swapped pixels
+(015254). Disabling disk cache also passed, but the no-capture/cache-enabled
+control excludes that as an established fix. Do not disable caching globally.
+Normal Firefox MDN sample6 now has correct orange/blue page and compositor
+colors with hardware WebRender and WebGL1/2 via Zink/M4 (020103,58.25 C).
+A requestAnimationFrame freeze was used only to compare the final snapshot;
+three seconds of animation ran first. Capture-only behavior remains unresolved.
