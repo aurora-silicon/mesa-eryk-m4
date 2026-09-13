@@ -153,3 +153,12 @@ output-select enable bits. Native position plus eight clip distances emits
 metadata are retained in `native-clip-distance-decl/`. VDM unit checks: 2,773.
 The same batch's tessellation/geometry case 368 still fails image comparison;
 this commit does not claim it fixed. Peak 58.5 C, no GPU fault.
+
+## Packed RGB10A2 integer render targets
+
+Original index 413 Pass in `20260913T202142951573Z-cts-packed-uint-eot`.
+The format's existing physical mapping is I16, with four integer lanes in the
+tilebuffer. Admit the layout and use the established two-word I16 end-of-tile
+program and integer MRT selector; the PBE packs the 10/10/10/2 destination.
+No normalized conversion is used. Full CTS subpass/input-attachment validation
+passes. The guarded test peaked at 58.5 C without GPU faults.

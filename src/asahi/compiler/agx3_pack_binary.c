@@ -3767,6 +3767,8 @@ agx3_mrt_eot_selector(enum pipe_format logical, enum agx_format physical,
    case PIPE_FORMAT_R16G16_UINT:
    case PIPE_FORMAT_R16G16_SINT:
    case PIPE_FORMAT_R16G16B16A16_UINT:
+   case PIPE_FORMAT_R10G10B10A2_UINT:
+   case PIPE_FORMAT_B10G10R10A2_UINT:
       *selector = 1;
       return physical == AGX_FORMAT_I16;
    case PIPE_FORMAT_R32_FLOAT:

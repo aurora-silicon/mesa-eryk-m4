@@ -1,0 +1,18 @@
+[
+  {
+    "index": 2,
+    "case": "dEQP-VK.renderpass.dedicated_allocation.formats.a2b10g10r10_uint_pack32.input.load.dont_care.self_dep_clear_draw_use_input_aspect",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.renderpass.dedicated_allocation.formats.a2b10g10r10_uint_pack32.input.load.dont_care.self_dep_clear_draw_use_input_aspect",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202142951573Z-cts-packed-uint-eot/cts/002/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.40995687200006614
+  }
+]
