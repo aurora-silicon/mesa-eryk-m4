@@ -1,0 +1,25 @@
+{
+  "four_processes": {
+    "elapsed_seconds": 129.12421776699193,
+    "batch_execution_seconds": 90.44746540900042,
+    "wall_span_seconds": 129.1242175102234,
+    "jobs": [
+      4
+    ],
+    "note": "Elapsed sums campaign segments including guard/transport overhead; wall span also includes any gaps between segments."
+  },
+  "twenty_processes": {
+    "elapsed_seconds": 86.531277719012,
+    "batch_execution_seconds": 58.332322643000225,
+    "wall_span_seconds": 86.53127670288086,
+    "jobs": [
+      20
+    ],
+    "note": "Elapsed sums campaign segments including guard/transport overhead; wall span also includes any gaps between segments."
+  },
+  "wall_speedup": 1.4922259461635308,
+  "execution_speedup": 1.5505548435392869,
+  "runtime_identities_equal": true,
+  "all_case_results_equal": true,
+  "note": "Sequential runs with unchanged runtime binaries and normal shader-cache policy. Cache state was not reset; not a controlled concurrency-only benchmark."
+}

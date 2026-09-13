@@ -1,0 +1,43 @@
+{
+  "requested": 1000,
+  "completed": 1000,
+  "jobs": 20,
+  "started_unix": 1789331952.41484,
+  "finished_unix": 1789332038.9461167,
+  "elapsed_seconds": 86.531277719012,
+  "batch_execution_seconds": 58.332322643000225,
+  "counts": {
+    "Pass": 849,
+    "NotSupported": 151
+  },
+  "batches": [
+    "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T203912445394Z-cts-parallel20-1000-000",
+    "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T203928790939Z-cts-parallel20-1000-204",
+    "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T203945921463Z-cts-parallel20-1000-402",
+    "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T204003179882Z-cts-parallel20-1000-592",
+    "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T204018624669Z-cts-parallel20-1000-795",
+    "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T204033444944Z-cts-parallel20-1000-977"
+  ],
+  "identity": [
+    "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    {
+      "/opt/asahi-m4-port/lib/libvulkan_asahi.so": "b3f9a96807a5e882e3ddb84f362b8aa0de43bcb5e376ebb509bd42315cd35591",
+      "/root/guarded-command.py": "e746929162cc01b809455e9dae4a6d3f8a32b313b8e39373e3d1b00f893b797d",
+      "/opt/asahi-m4-port/lib/libgallium-26.1.4.so": "14c9d843ca2131198ea3a61587e37fc8b7b79a3e39e98bb0c59da209ccae5ba5",
+      "/root/run-m4-gl.py": "6842d9bb244b52e7b358b63af9548c1a08d6c6a3244da61efe1b157006df8471",
+      "/root/firmware-snapshot.py": "be417c075b15da22832f05254b3fab247582c72c9dadccff5f7c56b56a9cedb8",
+      "/root/g16-fault-dump.py": "c3988ddf0ad9e10e2b9736582c9ab7c59c90a62090d0e34a32db1ba46c917bf3",
+      "/lib/modules/7.1.9-dirtyroom-asahi1+/kernel/drivers/gpu/drm/asahi/asahi.ko": "e40b70f2d192a9cb1649dab9aa395862a64481e22e5acb1d3f92b7b32860e85e",
+      "/root/g16-submit-test/experiment_watchdog.py": "28600768bceb930a3528471fd7982db9247ec86c00f4a522456b70e38001e18d",
+      "/root/g16-submit-test/experiment_thermals.py": "c394432327266b50f9c4c16d8f5900ddfb99ce014846f5288af75ff139361a33",
+      "/root/cts-sample.py": "d1b8c45c1dcbc97def5dc2042b11e39e381a00c02616b1e1930f0e0af9cac672",
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma": "5f4c53070d6bbb5d97fb6b4adf2523e2f49b0fcb39644cbc98aa167f2214ed2c",
+      "/root/cts-1.0.2.6/random-1000-frozen.txt": "618a12fca57caf3c0be31c0b6edf9cd1e4004efb74b1026296b5c336533b30e8"
+    },
+    {
+      "path": "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "sha256": "5f4c53070d6bbb5d97fb6b4adf2523e2f49b0fcb39644cbc98aa167f2214ed2c"
+    }
+  ],
+  "last_guard_verdict": "pass"
+}
