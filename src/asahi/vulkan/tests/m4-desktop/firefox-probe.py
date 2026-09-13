@@ -187,7 +187,7 @@ def main():
                 check(); time.sleep(.25)
             # Do not call getContext here: that can create a new context after
             # failed website startup and incorrectly suggest a working page.
-            page = remote.script('return {url:location.href,title:document.title,ready:document.readyState,canvases:Array.from(document.querySelectorAll("canvas")).map(c=>({width:c.width,height:c.height,clientWidth:c.clientWidth,clientHeight:c.clientHeight}))};')
+            page = remote.script('return {url:location.href,title:document.title,ready:document.readyState,probe:JSON.parse(document.documentElement.dataset.m4Probe||"null"),canvases:Array.from(document.querySelectorAll("canvas")).map(c=>({width:c.width,height:c.height,clientWidth:c.clientWidth,clientHeight:c.clientHeight}))};')
             result['page'] = page
             print('Firefox page:', json.dumps(page), flush=True)
             for proc in Path('/proc').glob('[0-9]*'):

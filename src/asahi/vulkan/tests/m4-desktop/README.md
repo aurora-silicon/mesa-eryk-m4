@@ -2024,3 +2024,14 @@ under gpu-experiment.py plus run-m4-gl.py. Compile with EGL/GL/GBM libraries.
 Linear and Apple-tiled imports, texture and renderbuffer attachment paths,
 and multisample resolve all pass the CPU-computed colour oracle (005235/005420,
 peak55.75 C). No host software DMA-BUF qualification is claimed.
+
+`half-select-oracle.py --output NEW` generates the static WebGL coordinate
+selection reduction with Python binary16 reference values. Run vk-buffer-oracle
+with M4_ORACLE_FLOAT16=1 to query and enable shaderFloat16 explicitly. The
+256-lane oracle checks both alternatives, negative/transformed coordinates,
+conversion and division across2048 words. The old cached half-select encoding
+redirected low-half destinations to their upper neighbour; guarded run
+20260913T011206399346Z-half-select-destination-fixed matches all2048 words (peak55.75 C).
+`webgl-readback.html` draws four fixed colours and records four synchronous
+WebGL pixel reads in documentElement.dataset.m4Probe. firefox-probe retains
+that JSON in its page metadata; normal profile settings are preserved.

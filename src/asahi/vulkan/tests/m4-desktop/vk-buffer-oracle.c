@@ -26,6 +26,7 @@ VK_FN(vkCreateInstance);
 VK_FN(vkDestroyInstance);
 VK_FN(vkEnumeratePhysicalDevices);
 VK_FN(vkGetPhysicalDeviceProperties);
+VK_FN(vkGetPhysicalDeviceFeatures2);
 VK_FN(vkGetPhysicalDeviceMemoryProperties);
 VK_FN(vkGetPhysicalDeviceQueueFamilyProperties);
 VK_FN(vkCreateDevice);
@@ -201,6 +202,7 @@ int main(int argc, char **argv) {
   LOAD_INSTANCE(instance, vkDestroyInstance);
   LOAD_INSTANCE(instance, vkEnumeratePhysicalDevices);
   LOAD_INSTANCE(instance, vkGetPhysicalDeviceProperties);
+  LOAD_INSTANCE(instance, vkGetPhysicalDeviceFeatures2);
   LOAD_INSTANCE(instance, vkGetPhysicalDeviceMemoryProperties);
   LOAD_INSTANCE(instance, vkGetPhysicalDeviceQueueFamilyProperties);
   LOAD_INSTANCE(instance, vkCreateDevice);
@@ -269,9 +271,22 @@ int main(int argc, char **argv) {
       .queueCount = 1,
       .pQueuePriorities = &priority,
   };
+  const bool want_half = getenv("M4_ORACLE_FLOAT16") && !strcmp(getenv("M4_ORACLE_FLOAT16"),"1");
+  VkPhysicalDeviceShaderFloat16Int8Features half = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES};
+  if (want_half) {
+    VkPhysicalDeviceFeatures2 query = {.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,.pNext=&half};
+    vkGetPhysicalDeviceFeatures2(physical,&query);
+    if(!half.shaderFloat16) die("shaderFloat16 unavailable");
+    half.shaderInt8=VK_FALSE;
+  }
+  const char *half_ext=VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME;
   const VkPhysicalDeviceFeatures features = {.shaderInt64 = VK_TRUE};
   const VkDeviceCreateInfo device_info = {
       .pEnabledFeatures = &features,
+      .pNext = want_half ? &half : NULL,
+      .enabledExtensionCount = want_half ? 1 : 0,
+      .ppEnabledExtensionNames = want_half ? &half_ext : NULL,
       .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
       .queueCreateInfoCount = 1,
       .pQueueCreateInfos = &queue_info,

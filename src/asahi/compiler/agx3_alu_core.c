@@ -1197,15 +1197,14 @@ agx3_alu_fcmp_select_half(enum agx_isa_encoding enc, uint16_t dest,
 
       /* The table admits an equivalent alias for two otherwise fixed bits.
        * Apple's G17P compiler canonicalizes scalar-half FSEL with bits62:63
-       * set and duplicates destination-cache in its bit3 alias.  Apply
-       * exactly that canonical choice, witnessed independently with cached
-       * and all-dead operands.  These bits decode to the same named fields.
+       * set. Bit 3 is the destination half-register index, not a cache
+       * alias: destination-cache is already encoded by field 12. Setting
+       * bit 3 here silently redirects cached low-half results to the high
+       * half of the register.
        */
       if (candidate_len != 10)
          continue;
       candidate[7] |= 0xc0;
-      if (dest_cache)
-         candidate[0] |= 0x08;
       for (unsigned i = 0; i < candidate_len; ++i)
          out[i] = candidate[i];
       *len = candidate_len;

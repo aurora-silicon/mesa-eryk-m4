@@ -1304,6 +1304,12 @@ static void test_native_half_compare_select(void)
    };
    assert(agx3_alu_fcmp_select_half(AGX_ISA_ENCODING_AGX3B, 0, src,
                                     cached, 1, true, 0, bytes, &len));
+   exact(bytes, len, "02822582028413c08005");
+
+   /* Cached low and high destinations remain distinct. Bit 3 carries the
+    * half-register index, independently of the destination-cache field. */
+   assert(agx3_alu_fcmp_select_half(AGX_ISA_ENCODING_AGX3B, 1, src,
+                                    cached, 1, true, 0, bytes, &len));
    exact(bytes, len, "0a822582028413c08005");
 
    const uint16_t dead_src[] = {0, 1, 2, 3};
