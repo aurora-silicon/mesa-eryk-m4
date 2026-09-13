@@ -82,3 +82,18 @@ peak59.25 C; its PNG shows both objects, highlights and shadows. The206-pipeline
 capture is retained for bounded M4 replay; native Eevee is not qualified yet.
 The build audit retains all actual bpy.app.build_options. Cycles, OpenVDB and
 other lite-preset modules are absent; enabling Eevee does not close those gaps.
+
+## Eevee checkpoint — September 13
+
+- Fixed array image stores, compute cube projection and consecutive image-write
+  completion dependencies. The saved scene now has correct-looking object
+  shading with no ghosts/striping; full support is not claimed.
+- Cast shadows remain missing. The shadow atlas receives too few fragment
+  writes; a four-viewport geometry probe independently fails because the
+  HAL200 path programs only one viewport.
+- First multi-viewport implementation stalled and was removed from active
+  sources. Its patch and reproducer are retained under
+  `tools/experiments/eevee-20260913/` (relative to the workspace root).
+- Revalidate the complete capture, original Blender application and larger
+  scenes after fixing viewport selection. Cycles and omitted Blender modules
+  remain outside the current qualification.

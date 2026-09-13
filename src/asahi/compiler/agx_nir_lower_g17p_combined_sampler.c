@@ -17,7 +17,7 @@ g17p_sample_shape(const nir_tex_instr *tex)
    const bool gather = tex->op == nir_texop_tg4;
    if ((tex->op != nir_texop_tex && tex->op != nir_texop_txb &&
        tex->op != nir_texop_txl && !gather) ||
-       (gather && (cube || tex->is_array || tex->is_shadow)) ||
+       (gather && (cube || tex->is_shadow)) ||
        (tex->sampler_dim != GLSL_SAMPLER_DIM_2D && !three_d &&
         !(cube && !tex->is_array &&
           (tex->op == nir_texop_tex || tex->op == nir_texop_txl))) ||
@@ -377,9 +377,13 @@ agx_nir_lower_g17p_indexed_samplers(nir_shader *shader)
                if (intr->intrinsic != nir_intrinsic_bindless_image_load)
                   continue;
                nir_intrinsic_instr *handle = nir_src_as_intrinsic(intr->src[0]);
+               const enum glsl_sampler_dim dim = nir_intrinsic_image_dim(intr);
+               const bool array = nir_intrinsic_image_array(intr);
+               const unsigned coords = (array || dim == GLSL_SAMPLER_DIM_3D) ? 3 : 2;
                if (!handle || handle->intrinsic != nir_intrinsic_bindless_image_agx ||
-                   nir_intrinsic_image_dim(intr) != GLSL_SAMPLER_DIM_2D ||
-                   nir_intrinsic_image_array(intr) || intr->def.num_components != 4 ||
+                   (dim != GLSL_SAMPLER_DIM_2D && dim != GLSL_SAMPLER_DIM_3D) ||
+                   (dim == GLSL_SAMPLER_DIM_3D && array) ||
+                   intr->def.num_components > 4 ||
                    intr->def.bit_size != 32 ||
                    (nir_intrinsic_access(intr) & (ACCESS_COHERENT | ACCESS_VOLATILE)) ||
                    !nir_src_is_const(intr->src[2]) || nir_src_as_uint(intr->src[2]) != 0 ||
@@ -388,16 +392,18 @@ agx_nir_lower_g17p_indexed_samplers(nir_shader *shader)
                b.cursor = nir_before_instr(instr);
                nir_tex_instr *tex = nir_tex_instr_create(shader, 3);
                tex->op = nir_texop_txf;
-               tex->sampler_dim = GLSL_SAMPLER_DIM_2D;
+               tex->sampler_dim = dim;
+               tex->is_array = array;
                tex->dest_type = nir_intrinsic_dest_type(intr);
-               tex->coord_components = 2;
+               tex->coord_components = coords;
                tex->src[0] = nir_tex_src_for_ssa(nir_tex_src_texture_handle, intr->src[0].ssa);
                tex->src[1] = nir_tex_src_for_ssa(nir_tex_src_backend1,
-                                                nir_trim_vector(&b, intr->src[1].ssa, 2));
+                                                nir_trim_vector(&b, intr->src[1].ssa, coords));
                tex->src[2] = nir_tex_src_for_ssa(nir_tex_src_lod, nir_imm_int(&b, 0));
                nir_def_init(&tex->instr, &tex->def, 4, intr->def.bit_size);
                nir_builder_instr_insert(&b, &tex->instr);
-               nir_def_rewrite_uses(&intr->def, &tex->def);
+               nir_def_rewrite_uses(&intr->def,
+                  nir_trim_vector(&b, &tex->def, intr->def.num_components));
                nir_instr_remove(instr);
                progress = true;
             }

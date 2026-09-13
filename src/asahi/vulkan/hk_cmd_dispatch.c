@@ -392,7 +392,10 @@ hk_dispatch_g17p_native_linked(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
              * including when the PBE pointer is supplied by the shader. */
             pointers[3] = 0xffff;
             pointer_count = 4;
-
+            if (hk_g17p_launch_trace_enabled())
+               fprintf(stderr, "G17P indexed image uniforms: %016" PRIx64
+                       " %016" PRIx64 " %016" PRIx64 " %016" PRIx64 "\n",
+                       pointers[0], pointers[1], pointers[2], pointers[3]);
          }
          texture_pointers = hk_pool_upload(
             cmd, pointers, pointer_count * sizeof(pointers[0]), 8);

@@ -12,6 +12,7 @@
 #include "agx_nir_texture.h"
 #include "agx_pack.h"
 #include "hk_device.h"
+#include "hk_cmd_buffer.h"
 #include "hk_entrypoints.h"
 #include "hk_image.h"
 #include "hk_physical_device.h"
@@ -642,6 +643,15 @@ hk_image_view_init(struct hk_device *dev, struct hk_image_view *view,
       }
       if (agx_native_graphics(&dev->dev) &&
           (view->vk.usage & VK_IMAGE_USAGE_STORAGE_BIT)) {
+         if (hk_g17p_launch_trace_enabled()) {
+            fprintf(stderr, "G17P storage view: type=%u valid=%u index=%u pbe=",
+                    view->vk.view_type, view->planes[p].storage_pbe_valid,
+                    view->planes[p].storage_heap_index);
+            const uint8_t *raw = (const uint8_t *)&view->planes[p].storage;
+            for (unsigned i = 0; i < 32; i++)
+               fprintf(stderr, "%02x", raw[i]);
+            fprintf(stderr, "\n");
+         }
          VkResult result = hk_descriptor_table_add(
             dev, &dev->sampled_images, &view->planes[p].ro_storage, 32,
             &view->planes[p].storage_read_heap_index);

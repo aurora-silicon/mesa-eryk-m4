@@ -18,7 +18,7 @@ static GLuint compile(GLenum stage, const char *s) {
 }
 
 int main(int argc, char **argv) {
- const int depth=argc==2 && !strcmp(argv[1],"depth");CHECK(argc==1||depth);
+ const int depth=argc==2 && !strcmp(argv[1],"depth");const int viewport=argc==2 && !strcmp(argv[1],"viewport");CHECK(argc==1||depth||viewport);
  EGLDisplay d=eglGetPlatformDisplay(EGL_PLATFORM_SURFACELESS_MESA,NULL,NULL);
  CHECK(eglInitialize(d,NULL,NULL)&&eglBindAPI(EGL_OPENGL_API));
  EGLint attrs[]={EGL_CONTEXT_MAJOR_VERSION,3,EGL_CONTEXT_MINOR_VERSION,3,EGL_CONTEXT_OPENGL_PROFILE_MASK,EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT,EGL_NONE};
@@ -27,18 +27,22 @@ int main(int argc, char **argv) {
  const char *renderer=(const char*)glGetString(GL_RENDERER);printf("Renderer: %s\n",renderer);fflush(stdout);
  CHECK((strstr(renderer,"zink")&&strstr(renderer,"M4"))||(getenv("M4_TEST_LLVMPIPE")&&strstr(renderer,"llvmpipe")));
  GLuint tex,fb,vao;glGenTextures(1,&tex);glBindTexture(GL_TEXTURE_2D_ARRAY,tex);
- glTexImage3D(GL_TEXTURE_2D_ARRAY,0,depth?GL_DEPTH_COMPONENT32F:GL_RGBA32F,8,8,4,0,depth?GL_DEPTH_COMPONENT:GL_RGBA,GL_FLOAT,NULL);
+ glTexImage3D(GL_TEXTURE_2D_ARRAY,0,depth?GL_DEPTH_COMPONENT32F:GL_RGBA32F,viewport?16:8,viewport?16:8,viewport?1:4,0,depth?GL_DEPTH_COMPONENT:GL_RGBA,GL_FLOAT,NULL);
  glGenFramebuffers(1,&fb);glBindFramebuffer(GL_FRAMEBUFFER,fb);glFramebufferTexture(GL_FRAMEBUFFER,depth?GL_DEPTH_ATTACHMENT:GL_COLOR_ATTACHMENT0,tex,0);if(depth){glDrawBuffer(GL_NONE);glReadBuffer(GL_NONE);glEnable(GL_DEPTH_TEST);glDepthFunc(GL_ALWAYS);}CHECK(glCheckFramebufferStatus(GL_FRAMEBUFFER)==GL_FRAMEBUFFER_COMPLETE);
  GLuint p=glCreateProgram();
  glAttachShader(p,compile(GL_VERTEX_SHADER,"#version 330 core\nvoid main(){vec2 p=vec2((gl_VertexID<<1)&2,gl_VertexID&2);gl_Position=vec4(p*2.-1.,0,1);}"));
- glAttachShader(p,compile(GL_GEOMETRY_SHADER,"#version 330 core\nlayout(triangles) in;layout(triangle_strip,max_vertices=12) out;flat out vec4 color;void main(){for(int layer=0;layer<4;layer++){for(int v=0;v<3;v++){gl_Position=gl_in[v].gl_Position;gl_Position.z=float(layer)*.5-1.;gl_Layer=layer;color=vec4(float(layer+1)*.25,.5,.75,1);EmitVertex();}EndPrimitive();}}"));
+ const char *gs="#version 330 core\nlayout(triangles) in;layout(triangle_strip,max_vertices=12) out;flat out vec4 color;void main(){for(int layer=0;layer<4;layer++){for(int v=0;v<3;v++){gl_Position=gl_in[v].gl_Position;gl_Position.z=float(layer)*.5-1.;gl_Layer=layer;color=vec4(float(layer+1)*.25,.5,.75,1);EmitVertex();}EndPrimitive();}}";
+ char gs_viewport[2048];
+ if(viewport){const char *decl="#version 330 core\n#extension GL_ARB_viewport_array: require\n";const char *body=strchr(gs,'\n')+1;const char *layer=strstr(body,"gl_Layer=layer;");CHECK(layer);snprintf(gs_viewport,sizeof(gs_viewport),"%s%.*sgl_Layer=0;gl_ViewportIndex=layer;%s",decl,(int)(layer-body),body,layer+strlen("gl_Layer=layer;"));gs=gs_viewport;}
+ glAttachShader(p,compile(GL_GEOMETRY_SHADER,gs));
  glAttachShader(p,compile(GL_FRAGMENT_SHADER,depth?"#version 330 core\nvoid main(){}":"#version 330 core\nflat in vec4 color;out vec4 outcolor;void main(){outcolor=color;}"));
- glLinkProgram(p);GLint ok;glGetProgramiv(p,GL_LINK_STATUS,&ok);CHECK(ok);glUseProgram(p);glGenVertexArrays(1,&vao);glBindVertexArray(vao);glViewport(0,0,8,8);glClearColor(0,0,0,0);glClear(depth?GL_DEPTH_BUFFER_BIT:GL_COLOR_BUFFER_BIT);glDrawArrays(GL_TRIANGLES,0,3);
+ glLinkProgram(p);GLint ok;glGetProgramiv(p,GL_LINK_STATUS,&ok);CHECK(ok);glUseProgram(p);glGenVertexArrays(1,&vao);glBindVertexArray(vao);glViewport(0,0,viewport?16:8,viewport?16:8);if(viewport){const GLfloat v[]={0,0,8,8,8,0,8,8,0,8,8,8,8,8,8,8};glViewportArrayv(0,4,v);}glClearColor(0,0,0,0);glClear(depth?GL_DEPTH_BUFFER_BIT:GL_COLOR_BUFFER_BIT);glDrawArrays(GL_TRIANGLES,0,3);
  float actual[8*8*4*4];glGetTexImage(GL_TEXTURE_2D_ARRAY,0,depth?GL_DEPTH_COMPONENT:GL_RGBA,GL_FLOAT,actual);CHECK(glGetError()==GL_NO_ERROR);
  unsigned bad=0;for(unsigned layer=0;layer<4;layer++)for(unsigned i=0;i<64;i++)for(unsigned c=0;c<(depth?1:4);c++){
-  float expected=depth?layer*.25f:c? (c+1)*.25f:(layer+1)*.25f;unsigned idx=(layer*64+i)*(depth?1:4)+c;
+  unsigned selected=viewport?((layer*64+i)%16)/8+2*((layer*64+i)/128):layer;
+  float expected=depth?layer*.25f:c? (c+1)*.25f:(selected+1)*.25f;unsigned idx=(layer*64+i)*(depth?1:4)+c;
   if(actual[idx]!=expected){if(bad<4)fprintf(stderr,"layer%u pixel%u channel%u=%g expected%g\n",layer,i,c,actual[idx],expected);bad++;}
  }
- printf("%s: layered geometry exact 256 pixels, bad=%u\n",bad?"FAIL":"PASS",bad);
+ printf("%s: %s geometry exact 256 pixels, bad=%u\n",bad?"FAIL":"PASS",viewport?"viewport":"layered",bad);
  glDeleteProgram(p);glDeleteTextures(1,&tex);glDeleteFramebuffers(1,&fb);glDeleteVertexArrays(1,&vao);eglMakeCurrent(d,EGL_NO_SURFACE,EGL_NO_SURFACE,EGL_NO_CONTEXT);eglDestroyContext(d,ctx);eglTerminate(d);return !!bad;
 }

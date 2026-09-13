@@ -1374,6 +1374,23 @@ test_m4_3d_fetch_witness(void)
    CHECK(!agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3C, &d, out, &len));
    return 0;
 }
+
+static int
+test_m4_array_gather_witness(void)
+{
+   /* Native G16G gatherarray.metal text+112, default red component. */
+   const uint8_t expected[] = {0x05,0x80,0x0c,0xa4,0x90,0x00,0x00,
+                              0x04,0x00,0x00,0x00,0x00,0x01,0x00};
+   struct agx3_tex_sample_desc d = {
+      .width=AGX3_TEX_W32, .mask=15, .slot=1, .wait_mask=1,
+      .coord_kill=true, .array=true, .gather=true, .final=true,
+   };
+   uint8_t out[AGX3_TEX_MAX_LENGTH], len;
+   CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+   CHECK(len==sizeof(expected) && !memcmp(out,expected,len));
+   return 0;
+}
+
 static int
 test_m4_3d_sample_witness(void)
 {
@@ -1397,6 +1414,7 @@ test_m4_3d_sample_witness(void)
 int
 main(void)
 {
+   CHECK(test_m4_array_gather_witness() == 0);
    CHECK(test_m4_3d_sample_witness() == 0);
    CHECK(test_m4_typed_image_write_witnesses() == 0);
    CHECK(test_m4_3d_fetch_witness() == 0);
