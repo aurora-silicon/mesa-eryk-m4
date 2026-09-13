@@ -365,53 +365,51 @@ agx_nir_lower_g17p_indexed_samplers(nir_shader *shader)
       return false;
 
    /* Image loads use the storage view's read descriptor in the same heap.
-    * Convert them before classifying samples so a kernel containing only
+    * Convert them before classifying samples so a shader containing only
     * image accesses also selects the indexed resource ABI. */
-   if (shader->info.stage == MESA_SHADER_COMPUTE) {
-      nir_foreach_function_impl(impl, shader) {
-         nir_builder b = nir_builder_create(impl);
-         bool progress = false;
-         nir_foreach_block(block, impl) {
-            nir_foreach_instr_safe(instr, block) {
-               if (instr->type != nir_instr_type_intrinsic)
-                  continue;
-               nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-               if (intr->intrinsic != nir_intrinsic_bindless_image_load)
-                  continue;
-               nir_intrinsic_instr *handle = nir_src_as_intrinsic(intr->src[0]);
-               const enum glsl_sampler_dim dim = nir_intrinsic_image_dim(intr);
-               const bool array = nir_intrinsic_image_array(intr);
-               const unsigned coords = (array || dim == GLSL_SAMPLER_DIM_3D) ? 3 : 2;
-               if (!handle || handle->intrinsic != nir_intrinsic_bindless_image_agx ||
-                   (dim != GLSL_SAMPLER_DIM_2D && dim != GLSL_SAMPLER_DIM_3D) ||
-                   (dim == GLSL_SAMPLER_DIM_3D && array) ||
-                   intr->def.num_components > 4 ||
-                   intr->def.bit_size != 32 ||
-                   (nir_intrinsic_access(intr) & (ACCESS_COHERENT | ACCESS_VOLATILE)) ||
-                   !nir_src_is_const(intr->src[2]) || nir_src_as_uint(intr->src[2]) != 0 ||
-                   !nir_src_is_const(intr->src[3]) || nir_src_as_uint(intr->src[3]) != 0)
-                  return false;
-               b.cursor = nir_before_instr(instr);
-               nir_tex_instr *tex = nir_tex_instr_create(shader, 3);
-               tex->op = nir_texop_txf;
-               tex->sampler_dim = dim;
-               tex->is_array = array;
-               tex->dest_type = nir_intrinsic_dest_type(intr);
-               tex->coord_components = coords;
-               tex->src[0] = nir_tex_src_for_ssa(nir_tex_src_texture_handle, intr->src[0].ssa);
-               tex->src[1] = nir_tex_src_for_ssa(nir_tex_src_backend1,
-                                                nir_trim_vector(&b, intr->src[1].ssa, coords));
-               tex->src[2] = nir_tex_src_for_ssa(nir_tex_src_lod, nir_imm_int(&b, 0));
-               nir_def_init(&tex->instr, &tex->def, 4, intr->def.bit_size);
-               nir_builder_instr_insert(&b, &tex->instr);
-               nir_def_rewrite_uses(&intr->def,
-                  nir_trim_vector(&b, &tex->def, intr->def.num_components));
-               nir_instr_remove(instr);
-               progress = true;
-            }
+   nir_foreach_function_impl(impl, shader) {
+      nir_builder b = nir_builder_create(impl);
+      bool progress = false;
+      nir_foreach_block(block, impl) {
+         nir_foreach_instr_safe(instr, block) {
+            if (instr->type != nir_instr_type_intrinsic)
+               continue;
+            nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+            if (intr->intrinsic != nir_intrinsic_bindless_image_load)
+               continue;
+            nir_intrinsic_instr *handle = nir_src_as_intrinsic(intr->src[0]);
+            const enum glsl_sampler_dim dim = nir_intrinsic_image_dim(intr);
+            const bool array = nir_intrinsic_image_array(intr);
+            const unsigned coords = (array || dim == GLSL_SAMPLER_DIM_3D) ? 3 : 2;
+            if (!handle || handle->intrinsic != nir_intrinsic_bindless_image_agx ||
+                (dim != GLSL_SAMPLER_DIM_2D && dim != GLSL_SAMPLER_DIM_3D) ||
+                (dim == GLSL_SAMPLER_DIM_3D && array) ||
+                intr->def.num_components > 4 ||
+                intr->def.bit_size != 32 ||
+                (nir_intrinsic_access(intr) & (ACCESS_COHERENT | ACCESS_VOLATILE)) ||
+                !nir_src_is_const(intr->src[2]) || nir_src_as_uint(intr->src[2]) != 0 ||
+                !nir_src_is_const(intr->src[3]) || nir_src_as_uint(intr->src[3]) != 0)
+               return false;
+            b.cursor = nir_before_instr(instr);
+            nir_tex_instr *tex = nir_tex_instr_create(shader, 3);
+            tex->op = nir_texop_txf;
+            tex->sampler_dim = dim;
+            tex->is_array = array;
+            tex->dest_type = nir_intrinsic_dest_type(intr);
+            tex->coord_components = coords;
+            tex->src[0] = nir_tex_src_for_ssa(nir_tex_src_texture_handle, intr->src[0].ssa);
+            tex->src[1] = nir_tex_src_for_ssa(nir_tex_src_backend1,
+                                             nir_trim_vector(&b, intr->src[1].ssa, coords));
+            tex->src[2] = nir_tex_src_for_ssa(nir_tex_src_lod, nir_imm_int(&b, 0));
+            nir_def_init(&tex->instr, &tex->def, 4, intr->def.bit_size);
+            nir_builder_instr_insert(&b, &tex->instr);
+            nir_def_rewrite_uses(&intr->def,
+               nir_trim_vector(&b, &tex->def, intr->def.num_components));
+            nir_instr_remove(instr);
+            progress = true;
          }
-         nir_progress(progress, impl, nir_metadata_control_flow);
       }
+      nir_progress(progress, impl, nir_metadata_control_flow);
    }
 
    unsigned samples = 0, storage_writes = 0;

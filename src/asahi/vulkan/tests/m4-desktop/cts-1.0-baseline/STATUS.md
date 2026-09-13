@@ -282,3 +282,12 @@ native I8 write operation, with channel layout supplied by the PBE descriptor.
 peak59.25 C, full watchdog and thermal guards. Library
 534d34a2ab0705a3ef3e3daca4f291fb86927fd28febea9baf67fcb1cc5dae59.
 Kernel unchanged.
+
+Random selection3: lower storage image reads to native indexed texel fetches
+in graphics stages as well as compute. The descriptor, coordinate and memory
+access checks are unchanged. 20260913T123103445244Z-cts-vertex-storage-load:
+original vertex3D descriptor-array test Pass. 20260913T123119010060Z-
+cts-storage-graphics-controls: matching fragment and vertex+fragment tests Pass.
+Full watchdog/thermal guards, library
+68cc4bbe6f9e478c7428accadeb1346d1c6671bf9224af91dab9da32fdd5e76d
+(before whitespace cleanup). Kernel unchanged.
