@@ -1,0 +1,116 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.renderpass.suballocation.attachment.3.374",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-xdg",
+      "--deqp-case=dEQP-VK.renderpass.suballocation.attachment.3.374",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T210227253218Z-cts-seed20-eot-cull/cts/000/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "started_unix": 1789333348.3227105,
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.10775904899992383,
+    "finished_unix": 1789333348.43656,
+    "pid": 110204
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.clipping.user_defined.clip_cull_distance.vert.4_4",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-xdg",
+      "--deqp-case=dEQP-VK.clipping.user_defined.clip_cull_distance.vert.4_4",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T210227253218Z-cts-seed20-eot-cull/cts/001/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "started_unix": 1789333348.4468424,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.10696151299998746,
+    "finished_unix": 1789333348.558735,
+    "pid": 110210
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.renderpass.dedicated_allocation.attachment.3.383",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-xdg",
+      "--deqp-case=dEQP-VK.renderpass.dedicated_allocation.attachment.3.383",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T210227253218Z-cts-seed20-eot-cull/cts/002/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "started_unix": 1789333348.5692677,
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.10777127599976666,
+    "finished_unix": 1789333348.6828978,
+    "pid": 110213
+  },
+  {
+    "index": 3,
+    "case": "dEQP-VK.pipeline.blend.format.r16g16b16a16_sfloat.states.color_cc_sa_add_alpha_1msa_ca_rsub-color_cc_1mca_sub_alpha_o_1mcc_max-color_z_z_sub_alpha_sa_sa_rsub-color_cc_sc_rsub_alpha_1mdc_dc_rsub",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-xdg",
+      "--deqp-case=dEQP-VK.pipeline.blend.format.r16g16b16a16_sfloat.states.color_cc_sa_add_alpha_1msa_ca_rsub-color_cc_1mca_sub_alpha_o_1mcc_max-color_z_z_sub_alpha_sa_sa_rsub-color_cc_sc_rsub_alpha_1mdc_dc_rsub",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T210227253218Z-cts-seed20-eot-cull/cts/003/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "started_unix": 1789333348.6935956,
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.25960268900007577,
+    "finished_unix": 1789333348.9589424,
+    "pid": 110216
+  },
+  {
+    "index": 4,
+    "case": "dEQP-VK.pipeline.input_assembly.primitive_restart.index_type_uint16.line_strip_with_adjacency",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-xdg",
+      "--deqp-case=dEQP-VK.pipeline.input_assembly.primitive_restart.index_type_uint16.line_strip_with_adjacency",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T210227253218Z-cts-seed20-eot-cull/cts/004/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "started_unix": 1789333348.9692647,
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.36083259199995155,
+    "finished_unix": 1789333349.3350341,
+    "pid": 110219
+  },
+  {
+    "index": 5,
+    "case": "dEQP-VK.renderpass.dedicated_allocation.attachment.8.667",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-xdg",
+      "--deqp-case=dEQP-VK.renderpass.dedicated_allocation.attachment.8.667",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T210227253218Z-cts-seed20-eot-cull/cts/005/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "started_unix": 1789333349.3457124,
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.1583554149997326,
+    "finished_unix": 1789333349.5097988,
+    "pid": 110223
+  }
+]

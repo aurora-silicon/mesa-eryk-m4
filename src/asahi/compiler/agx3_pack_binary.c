@@ -3750,6 +3750,7 @@ agx3_mrt_eot_selector(enum pipe_format logical, enum agx_format physical,
       *selector = 3;
       return physical == AGX_FORMAT_RG11B10F;
    case PIPE_FORMAT_R10G10B10A2_UNORM:
+   case PIPE_FORMAT_B10G10R10A2_UNORM:
       *selector = 3;
       return physical == AGX_FORMAT_RGB10A2;
    case PIPE_FORMAT_R16_UNORM:
@@ -3853,7 +3854,9 @@ agx3_native_mrt_eot(const agx_context *ctx, enum agx_isa_encoding enc,
          return 0;
       }
    }
-   return count >= 2 ? count : 0;
+   /* Compaction can leave one live attachment at a nonzero tile offset.
+    * The native uniform ABI supplies that offset even for a single store. */
+   return count;
 }
 
 static bool

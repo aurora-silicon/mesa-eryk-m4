@@ -33,3 +33,12 @@ comparisons with native operand shapes. Saved compiler bundles replay
 successfully offline, and both original CTS pixel comparisons pass on M4.
 Evidence: _provenance/experiments/20260913T205911233931Z-cts-seed20-compiler2
 (60-second watchdog, peak 57.5 C).
+
+## EOT compaction and cull-distance linkage (200, 359, 532, 987)
+
+Use the existing native offset-table EOT ABI when compaction leaves one
+attachment at a nonzero tile offset. B10G10R10A2 uses the same typed store as
+R10G10B10A2, with channel order supplied by the PBE descriptor. Recognize the
+CULL_PRIMITIVE UVS slots used by Asahi cull-distance lowering while retaining
+component, interpolation and slot-bound checks. All four cases, plus the two
+optimizer regressions, pass their original CTS comparisons. Evidence: _provenance/experiments/20260913T210227253218Z-cts-seed20-eot-cull
