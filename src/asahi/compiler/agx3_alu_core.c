@@ -94,8 +94,8 @@ agx3_alu_reciprocal(enum agx_isa_encoding enc, bool rsqrt, uint16_t dest,
                     uint16_t wait_mask, uint8_t out[AGX3_ALU_MAX_LENGTH],
                     uint8_t *len)
 {
-   if (enc != AGX_ISA_ENCODING_AGX3B || !out || !len || dest >= 128 ||
-       src >= 128 || ((dest | src) & 1) ||
+   if (enc != AGX_ISA_ENCODING_AGX3B || !out || !len || dest >= 256 ||
+       src >= 256 || ((dest | src) & 1) ||
        (unsigned)hint > AGX3_ALU_HINT_CACHE || (wait_mask & ~UINT16_C(0x3f)))
       return false;
    const struct agx3_alu_form *f =
@@ -901,7 +901,7 @@ agx3_alu_float_to_int(enum agx_isa_encoding enc, uint16_t dest,
                      uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len)
 {
    if (enc != AGX_ISA_ENCODING_AGX3B || !out || !len ||
-       dest >= 128 || src >= 128 || ((dest | src) & 1) ||
+       dest >= 256 || src >= 256 || ((dest | src) & 1) ||
        (unsigned)hint > AGX3_ALU_HINT_CACHE || (wait_mask & ~0x3fu))
       return false;
 
@@ -1479,4 +1479,23 @@ agx3_alu_widen_half(enum agx_isa_encoding enc, uint16_t dest, uint16_t src,
          return true;
       }
    return false;
+}
+
+bool
+agx3_alu_bitrev(enum agx_isa_encoding enc, uint16_t dest, uint16_t src,
+                enum agx3_alu_hint hint, bool dest_cache, uint16_t wait_mask,
+                uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len)
+{
+   if (!out || !len || enc != AGX_ISA_ENCODING_AGX3B || dest >= 256 ||
+       src >= 256 || ((dest | src) & 1) ||
+       (unsigned)hint > AGX3_ALU_HINT_CACHE || (wait_mask & ~0x3fu))
+      return false;
+   const struct agx3_field_kv base[] = {{9,2},{10,2},{23,2},{24,2}};
+   struct agx3_field_kv fields[11] = {
+      {2,dest},{16,src},{11,dest_cache},
+      {25,hint == AGX3_ALU_HINT_CACHE},{27,hint == AGX3_ALU_HINT_DISCARD},
+   };
+   for (unsigned i = 0; i < 6; ++i)
+      fields[5+i] = (struct agx3_field_kv){31+i, !!(wait_mask & (1u << i))};
+   return agx3_bind_compose(enc,"rev",0,base,4,fields,11,out,len);
 }

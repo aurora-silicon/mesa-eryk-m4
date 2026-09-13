@@ -428,6 +428,8 @@ static int
 agx3_map_funop(unsigned op)
 {
    switch (op) {
+   case AGX_OPCODE_ROUNDEVEN:
+      return AGX3_FUNOP_RINT;
    case AGX_OPCODE_FLOOR:
       return AGX3_FUNOP_FLOOR;
    case AGX_OPCODE_CEIL:
@@ -2596,14 +2598,13 @@ agx3_emit_scoped_barrier(struct util_dynarray *emission,
           agx3_append(emission, encoded.bytes, encoded.length);
 }
 
-/* The grounded AGX3 compare forms are 32-bit and address the lower 128
- * half-registers. Source modifiers and memory/uniform operands select forms
+/* AGX3B compare forms address the full 256-half register bank. Source modifiers and memory/uniform operands select forms
  * whose routing has not been proved. */
 static bool
 agx3_cf_reg32(agx_index src)
 {
    return agx3_src_is_register(src) && !src.memory && src.size == AGX_SIZE_32 &&
-          (src.value & 1) == 0 && src.value < 128 && !src.abs && !src.neg;
+          (src.value & 1) == 0 && src.value < 256 && !src.abs && !src.neg;
 }
 
 /* Native 16-bit register comparison addresses all 256 individual halves. */
@@ -5832,6 +5833,24 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             }
          }
 
+         /* The long native COPY addresses the full register file and preserves
+          * post-RA hints; compact IADD cannot encode every destination. */
+         if (enc == AGX_ISA_ENCODING_AGX3B && I->op == AGX_OPCODE_BITOP &&
+             (I->truth_table & 0xfu) == AGX3_SEL_TT_MOV &&
+             I->nr_dests == 1 && I->nr_srcs == 2 && !I->saturate &&
+             agx3_vary_reg32(I->dest[0]) && agx_channels(I->dest[0]) == 1 &&
+             agx3_vary_reg32(I->src[0]) && agx_channels(I->src[0]) == 1 &&
+             !I->src[0].abs && !I->src[0].neg && !I->src[0].kill &&
+             I->src[1].type == AGX_INDEX_IMMEDIATE && I->src[1].value == 0) {
+            uint8_t bytes[AGX3_COPY_MAX_LENGTH], len;
+            if (!agx3_copy_encode_reg32(enc, I->dest[0].value,
+                  I->src[0].value, I->dest[0].cache, I->src[0].cache,
+                  I->src[0].discard, wait, bytes, &len) ||
+                !agx3_append(emission, bytes, len))
+               AGX3_REFUSE(I);
+            continue;
+         }
+
          /*
           * Widening move: a 32-bit destination fed by a 16-bit half. Apple
           * does not have a widening `copy`; its compiler moves the half and
@@ -6720,6 +6739,18 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             if (!agx3_alu_bit_andc(enc, dest.value, src, hints, dest.cache,
                                    wait, bytes, &length) ||
                 !agx3_append(emission, bytes, length))
+               AGX3_REFUSE(I);
+            continue;
+         }
+
+         if (enc == AGX_ISA_ENCODING_AGX3B && I->op == AGX_OPCODE_BITREV) {
+            const agx_index dest = I->dest[0], src = I->src[0];
+            uint8_t bytes[AGX3_ALU_MAX_LENGTH], len;
+            if (I->nr_dests != 1 || I->nr_srcs != 1 || I->saturate ||
+                !agx3_vary_reg32(dest) || !agx3_vary_reg32(src) ||
+                !agx3_alu_bitrev(enc, dest.value, src.value,
+                                 agx3_post_ra_hint(src), dest.cache, wait,
+                                 bytes, &len) || !agx3_append(emission, bytes, len))
                AGX3_REFUSE(I);
             continue;
          }

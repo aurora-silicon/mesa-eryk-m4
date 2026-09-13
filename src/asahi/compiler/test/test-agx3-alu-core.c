@@ -28,7 +28,7 @@ test_float_to_int_lifetime(void)
    }
    assert(!agx3_alu_float_to_int(AGX_ISA_ENCODING_AGX3C, 0, 0, true,
                                 AGX3_ALU_HINT_NONE, false, 0, bytes, &len));
-   assert(!agx3_alu_float_to_int(AGX_ISA_ENCODING_AGX3B, 0, 128, true,
+   assert(!agx3_alu_float_to_int(AGX_ISA_ENCODING_AGX3B, 0, 256, true,
                                 AGX3_ALU_HINT_NONE, false, 0, bytes, &len));
    assert(!agx3_alu_float_to_int(AGX_ISA_ENCODING_AGX3B, 1, 0, true,
                                 AGX3_ALU_HINT_NONE, false, 0, bytes, &len));
@@ -1462,7 +1462,29 @@ static void test_register_free_wait_nop(void)
    puts("Register-free NOP waits: all64 masks and invalid-input checks PASS");
 }
 
+static void
+test_native_bit_reverse(void)
+{
+   /* Apple G16G bitrev.metal, native text+82: reverse_bits(uint). */
+   const uint8_t native[] = {0xa7,0x04,0x56,0x00,0x02,0x00,0x5c,0x04};
+   uint8_t bytes[AGX3_ALU_MAX_LENGTH], len;
+   assert(agx3_alu_bitrev(AGX_ISA_ENCODING_AGX3B, 0, 0,
+                           AGX3_ALU_HINT_DISCARD, false, 32, bytes, &len));
+   assert(len == sizeof(native) && !memcmp(bytes, native, len));
+   assert(agx3_alu_bitrev(AGX_ISA_ENCODING_AGX3B, 190, 128,
+                           AGX3_ALU_HINT_CACHE, true, 1, bytes, &len));
+   assert(!agx3_alu_bitrev(AGX_ISA_ENCODING_AGX3B, 256, 0,
+                            AGX3_ALU_HINT_NONE, false, 0, bytes, &len));
+   assert(!agx3_alu_bitrev(AGX_ISA_ENCODING_AGX3B, 0, 1,
+                            AGX3_ALU_HINT_NONE, false, 0, bytes, &len));
+   assert(!agx3_alu_bitrev(AGX_ISA_ENCODING_AGX3C, 0, 0,
+                            AGX3_ALU_HINT_NONE, false, 0, bytes, &len));
+   assert(agx3_alu_float_to_int(AGX_ISA_ENCODING_AGX3B, 132, 130,
+                                 true, AGX3_ALU_HINT_NONE, false, 0, bytes, &len));
+}
+
 int main(void){
+   test_native_bit_reverse();
    test_register_free_wait_nop();
    test_native_minifloat_half_select();
    test_native_bit_andc();

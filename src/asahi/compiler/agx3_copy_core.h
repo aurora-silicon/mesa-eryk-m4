@@ -61,6 +61,11 @@ bool agx3_copy_encode_reg16(enum agx_isa_encoding encoding, uint16_t dest_half,
                             bool src_discard, uint16_t wait_mask,
                             uint8_t out[AGX3_COPY_MAX_LENGTH], uint8_t *len);
 
+bool agx3_copy_encode_reg32(enum agx_isa_encoding encoding, uint16_t dest_half,
+                            uint16_t src_half, bool dest_cache, bool src_cache,
+                            bool src_discard, uint16_t wait_mask,
+                            uint8_t out[AGX3_COPY_MAX_LENGTH], uint8_t *len);
+
 /*
  * Encode `copy uniform, reg32` -- the preamble's uniform write, which is what
  * Mesa calls uniform_store.

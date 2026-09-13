@@ -53,6 +53,28 @@ static const struct copy_vec vectors[] = {
 int
 main(void)
 {
+   /* Real G16G GPR copies, corpus cases246..249. */
+   const uint8_t gpr_bytes[4][4] = {
+      {0xeb,0x0a,0x09,0}, {0xfb,0x56,0x09,0},
+      {0x0b,0x0c,0x49,0}, {0x1b,0x58,0x49,0},
+   };
+   const uint16_t gpr_src[] = {10,86,12,88};
+   for (unsigned i = 0; i < 4; i++) {
+      uint8_t out[AGX3_COPY_MAX_LENGTH], len;
+      CHECK(agx3_copy_encode_reg32(AGX_ISA_ENCODING_AGX3B, 28 + 2*i,
+                                   gpr_src[i], false, false, true, 0, out, &len));
+      CHECK(len == 4 && !memcmp(out, gpr_bytes[i], len));
+   }
+   {
+      uint8_t out[AGX3_COPY_MAX_LENGTH], len;
+      CHECK(agx3_copy_encode_reg32(AGX_ISA_ENCODING_AGX3B, 192, 170,
+                                   false, true, false, 0, out, &len));
+      CHECK(len == 10);
+      CHECK(!agx3_copy_encode_reg32(AGX_ISA_ENCODING_AGX3B, 193, 170,
+                                    false, true, false, 0, out, &len));
+      CHECK(!agx3_copy_encode_reg32(AGX_ISA_ENCODING_AGX3B, 192, 256,
+                                    false, false, false, 0, out, &len));
+   }
    for (unsigned i = 0; i < sizeof(vectors) / sizeof(vectors[0]); ++i) {
       const struct copy_vec *v = &vectors[i];
       uint8_t out[AGX3_COPY_MAX_LENGTH];

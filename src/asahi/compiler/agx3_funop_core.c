@@ -115,8 +115,9 @@ encode(enum agx_isa_encoding enc, enum agx3_funop op, uint16_t dest,
        op >= AGX3_FUNOP_COUNT)
       return false;
 
-   /* Witnessed operand domain: even 32-bit half-register pairs below 128. */
-   if (dest >= 128 || src >= 128 || (dest & 1) || (src & 1))
+   /* Gen9 fields address the complete 256-half register bank. */
+   const unsigned limit = is_b(enc) ? 256 : 128;
+   if (dest >= limit || src >= limit || (dest & 1) || (src & 1))
       return false;
 
    const struct funop_form *F = &forms[op];

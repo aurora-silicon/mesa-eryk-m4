@@ -77,7 +77,8 @@ agx3_cf_icmp_reg(enum agx_isa_encoding enc, enum agx3_cf_icond cond,
                  unsigned slot, uint16_t src0, uint16_t src1,
                  uint8_t out[AGX3_CF_MAX_LENGTH], uint8_t *len)
 {
-   if (!icond_ok(cond) || !slot_ok(slot) || src0 >= 128 || src1 >= 128)
+   if (!icond_ok(cond) || !slot_ok(slot) || src0 >= (agx3b(enc) ? 256 : 128) ||
+       src1 >= (agx3b(enc) ? 256 : 128))
       return false;
    const struct agx3_field_kv base_b[] = {KV(9, 2), KV(10, 2), KV(24, 2),
                                           KV(25, 2)};
@@ -94,7 +95,7 @@ agx3_cf_icmp_imm(enum agx_isa_encoding enc, enum agx3_cf_icond cond,
                  unsigned slot, uint16_t src0, uint8_t imm,
                  uint8_t out[AGX3_CF_MAX_LENGTH], uint8_t *len)
 {
-   if (!icond_ok(cond) || !slot_ok(slot) || src0 >= 128)
+   if (!icond_ok(cond) || !slot_ok(slot) || src0 >= (agx3b(enc) ? 256 : 128))
       return false;
    const struct agx3_field_kv base_b[] = {KV(9, 2), KV(10, 2), KV(24, 1),
                                           KV(25, 1)};
@@ -145,7 +146,8 @@ agx3_cf_fcmp_reg(enum agx_isa_encoding enc, enum agx3_cf_fcond cond,
                  bool or_nan, unsigned slot, uint16_t src0, uint16_t src1,
                  uint8_t out[AGX3_CF_MAX_LENGTH], uint8_t *len)
 {
-   if (!fcond_ok(cond) || !slot_ok(slot) || src0 >= 128 || src1 >= 128)
+   if (!fcond_ok(cond) || !slot_ok(slot) || src0 >= (agx3b(enc) ? 256 : 128) ||
+       src1 >= (agx3b(enc) ? 256 : 128))
       return false;
    const struct agx3_field_kv base_b[] = {KV(9, 2), KV(10, 2), KV(26, 2),
                                           KV(27, 2)};
