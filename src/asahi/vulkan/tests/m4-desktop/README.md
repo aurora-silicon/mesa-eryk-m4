@@ -1995,3 +1995,8 @@ diagnostic adaptation; it is retained in the command manifest and is not proof
 of unmodified support. Blender's splash-free reference and native captures
 replay with validation without reported VUIDs. Firefox's retained native capture
 needs the explicit adaptation and external-memory rebinding on lavapipe.
+
+`fragment-image-probe cpu-bgra` exercises client-memory GL_BGRA readback,
+complementing the PBO case. Both host Zink/lavapipe and native M4 pass all4096
+pixels (20260913T003710162106Z-firefox-cpu-bgra-readback, peak57.25 C).
+This does not reproduce the remaining Firefox screenshot-only R/B swap.

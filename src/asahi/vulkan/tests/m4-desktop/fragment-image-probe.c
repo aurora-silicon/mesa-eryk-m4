@@ -33,12 +33,13 @@ static GLuint shader(GLenum type, const char *text) {
   return s;
 }
 int main(int argc, char **argv) {
-  bool typed=false,attachmentless=false,sampled=false,buffer=false,pbo=false;
+  bool typed=false,attachmentless=false,sampled=false,buffer=false,pbo=false,cpu_bgra=false;
   for(int i=1;i<argc;i++) {
     if(!strcmp(argv[i],"typed"))typed=true;
     else if(!strcmp(argv[i],"sampled"))sampled=true;
     else if(!strcmp(argv[i],"buffer"))buffer=true;
     else if(!strcmp(argv[i],"pbo-bgra"))pbo=true;
+    else if(!strcmp(argv[i],"cpu-bgra"))cpu_bgra=true;
     else {CHECK(!strcmp(argv[i],"attachmentless"));attachmentless=true;}
   }
   EGLDisplay d=eglGetPlatformDisplay(EGL_PLATFORM_SURFACELESS_MESA,0,0);
@@ -123,11 +124,11 @@ int main(int argc, char **argv) {
     glReadPixels(0,0,64,64,GL_BGRA,GL_UNSIGNED_BYTE,0);
     glGetBufferSubData(GL_PIXEL_PACK_BUFFER,0,sizeof(pixels),pixels);
     glBindBuffer(GL_PIXEL_PACK_BUFFER,0);glDeleteBuffers(1,&pack);
-  } else glReadPixels(0,0,64,64,GL_RGBA,GL_UNSIGNED_BYTE,pixels);
+  } else glReadPixels(0,0,64,64,cpu_bgra?GL_BGRA:GL_RGBA,GL_UNSIGNED_BYTE,pixels);
   CHECK(glGetError()==GL_NO_ERROR);
   unsigned color_bad=0;
-  for(unsigned i=0;i<64*64;i++) if(pixels[4*i+(pbo?2:0)]!=255 || pixels[4*i+1] || pixels[4*i+(pbo?0:2)] || pixels[4*i+3]!=255)color_bad++;
-  printf("color pbo_bgra=%u bad=%u/4096 first=%u,%u,%u,%u\n",pbo,color_bad,pixels[0],pixels[1],pixels[2],pixels[3]);bad+=color_bad;
+  for(unsigned i=0;i<64*64;i++) if(pixels[4*i+((pbo||cpu_bgra)?2:0)]!=255 || pixels[4*i+1] || pixels[4*i+((pbo||cpu_bgra)?0:2)] || pixels[4*i+3]!=255)color_bad++;
+  printf("color bgra=%u pbo=%u bad=%u/4096 first=%u,%u,%u,%u\n",(pbo||cpu_bgra),pbo,color_bad,pixels[0],pixels[1],pixels[2],pixels[3]);bad+=color_bad;
   }
   glDeleteTextures(1,&source);glDeleteBuffers(1,&bo);
   glFinish();glDeleteFramebuffers(1,&fb);glDeleteRenderbuffers(1,&rb);glDeleteTextures(1,&tex);
