@@ -457,3 +457,10 @@ support is unchanged. Original case 31 now Pass in
 controls both Pass in 20260913T155934103668Z-cts-rgb-blit-format-controls.
 Mandatory watchdog/thermal guards; no reset. This targeted result brings known
 passes in the original sample to 69; no fresh full-100 claim yet.
+
+Scalar R16_SINT attachment storage: use the established I16 tile layout,
+word count and end-of-tile selector, matching unsigned scalar and signed RG16.
+20260913T160814884586Z-cts-scaled-blit-r16-eot: scalar scaled destination blit
+passes after conversion to the signed physical view. Independent original CTS
+R16_SINT attachment clear passes in
+20260913T160910892368Z-cts-scaled-blit-unsigned-controls. No GPU reset.

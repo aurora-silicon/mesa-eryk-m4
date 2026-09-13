@@ -400,6 +400,7 @@ agx_build_end_of_tile_shader(struct agx_bg_eot_cache *cache,
       case PIPE_FORMAT_R8G8B8A8_UINT:
       case PIPE_FORMAT_R8G8B8A8_SINT:
       case PIPE_FORMAT_R16_UINT:
+      case PIPE_FORMAT_R16_SINT:
       case PIPE_FORMAT_R16_UNORM:
       case PIPE_FORMAT_R16_SNORM:
       case PIPE_FORMAT_R16G16_UNORM:
