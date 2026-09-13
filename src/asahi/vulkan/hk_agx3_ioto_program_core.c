@@ -73,7 +73,8 @@ bool
 hk_agx3_g17p_rt0_tile_layout_supported(struct agx_tilebuffer_layout *tib)
 {
    if (!tib || (tib->nr_samples != 1 && tib->nr_samples != 2 &&
-                tib->nr_samples != 4) || tib->layered ||
+                tib->nr_samples != 4) ||
+       (tib->layered && tib->sample_size_B != 0) ||
        (tib->tile_size != 32 * 32 && tib->tile_size != 32 * 16 &&
         tib->tile_size != 16 * 16) || tib->spilled[0])
       return false;

@@ -2141,3 +2141,9 @@ inside gpu-experiment.py on hardware; software control accepts
 M4_TEST_LLVMPIPE=1. gpu-experiment.py now classifies both the outer command
 log and the retained application/application.log from the same experiment;
 a successful render marker cannot conceal Vulkan errors in the child log.
+
+`layered-geometry-probe.c [depth]` checks geometry-produced layer routing
+with four exact-color or exact-depth array layers. Build with `cc -O2 FILE
+-lEGL -lGL` and run inside the watchdog/thermal guard on M4. The llvmpipe
+control passes both modes. Native depth currently reaches the kernel
+one-layer rejection; native layered color also needs BG/EOT support.

@@ -211,6 +211,18 @@ test_g17p_vertex_program_info(void)
    point_info.layer_viewport_off = point_info.clip_off = point_info.uvs_size = 6;
    CHECK(!hk_agx3_g17p_vertex_program_info(AGX_CHIP_G17P, &point_info, &program));
 
+   /* AIR-NT G16G position + float varying + render_target_array_index:
+    * __GPU_LD_MD root.field1.field3=6, field4 absent. The packed layer word
+    * follows the user output in the same 32-bit UVS stream. */
+   struct hk_agx3_g17p_vertex_compile_info layer = vs2_info;
+   layer.user_size = 1;
+   layer.psiz_off = layer.layer_viewport_off = 5;
+   layer.clip_off = layer.uvs_size = 6;
+   CHECK(hk_agx3_g17p_vertex_program_info(AGX_CHIP_G16G, &layer, &program));
+   CHECK(program.template_info.raw_vs_output_count_0 == 6);
+   layer.clip_off = layer.uvs_size = 7;
+   CHECK(!hk_agx3_g17p_vertex_program_info(AGX_CHIP_G16G, &layer, &program));
+
    const struct hk_agx3_g17p_vertex_compile_info vkcube_info = {
       .hardware_vertex = true,
       .uvs_written = BITFIELD64_BIT(VARYING_SLOT_VAR0) |

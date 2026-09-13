@@ -2943,9 +2943,8 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
       .flags = 0,
    };
 
-   const struct hk_api_shader *api_vs = gfx->shaders[MESA_SHADER_VERTEX];
-   const struct hk_shader *vs =
-      api_vs ? &api_vs->variants[HK_VS_VARIANT_HW] : NULL;
+   /* Geometry/tessellation rasterizer variants own the final UVS layout. */
+   const struct hk_shader *vs = hk_bound_hw_vs(gfx);
    uint32_t output_size;
    if (!vs || !agx_ppp_hal200_output_size_pack(
                  vs->info.uvs.size, 0, &output_size))
@@ -2958,8 +2957,8 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
        * for this single-viewport layout. VIT supplies interpolation.
        * FragmentProgramVariant 0x373eb4..0x373ee0 sets output-select bit16
        * for nonempty iteration metadata, merged by 0x4824fc..0x482518.
-       * Preserve point-size bit18 from the vertex export layout. */
-      .words = {(vs->info.uvs.osel.opaque[0] & UINT32_C(0x40000)) |
+       * Preserve point size and the packed layer/viewport export selectors. */
+      .words = {(vs->info.uvs.osel.opaque[0] & UINT32_C(0x1c0000)) |
                    (linked_fs->b.cf.nr_bindings ? UINT32_C(0x10000) : 0) |
                    (linked_fs->b.cf.reads_z ? UINT32_C(0x200000) : 0),
                 0, 0, output_size,

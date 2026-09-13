@@ -1962,6 +1962,12 @@ test_g17p_single_layer_rt0_layout(void)
 
    tib.layered = true;
    CHECK(!hk_agx3_g17p_rt0_tile_layout_supported(&tib));
+   /* Empty BG/EOT programs neither address an image layer nor use tile
+    * storage. Layered depth is handled by the ISP ZLS state instead. */
+   const enum pipe_format none[AGX_MAX_RENDER_TARGETS] = {PIPE_FORMAT_NONE};
+   tib = agx_build_tilebuffer_layout(none, 0, 1, true);
+   CHECK(tib.sample_size_B == 0);
+   CHECK(hk_agx3_g17p_rt0_tile_layout_supported(&tib));
 
    enum pipe_format mrt[AGX_MAX_RENDER_TARGETS] = {
       PIPE_FORMAT_R8G8B8A8_UNORM,

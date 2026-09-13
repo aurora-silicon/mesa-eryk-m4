@@ -198,3 +198,16 @@ first run's firmware ktrace are retained under the workspace provenance tree.
 The native array PBE has dimension 3, layers-minus-one in word1[59:44], and
 word1 bit60 changes from zero to one for the larger allocation. These are
 native references; Linux array stores and Blender Eevee still fail validation.
+
+### Layered depth witness
+
+`layer-depth-probe.m` + `layer-depth.metal` render a full triangle to each
+Depth32Float array layer, with exact depths 0, 0.25, 0.5 and 0.75. A separate
+blit reads every layer; two raw readbacks and the original command state are
+retained. Use `run.py layer-depth --width 128 --layers 1` for a baseline and
+`--layers 4 --capture --firmware-trace` for the layered witness. A finite
+`--repeat 256 --render-active` capture can retain active render descriptors.
+Build with the same Foundation/Metal clang command above. Stage the executable,
+Metal source and native-common.h alongside the existing collector. This probe
+was compile-checked on macOS and its AIR-NT pipeline compiled for G16G; native
+M4 execution is still pending as of 2026-09-13 05:32 UTC.
