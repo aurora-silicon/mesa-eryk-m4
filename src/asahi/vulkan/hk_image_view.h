@@ -31,6 +31,8 @@ struct hk_image_view {
       struct hk_native_texture_descriptor ia, sampled, ro_storage, background,
          layered_background, emrt_texture;
 
+      struct hk_native_pbe_descriptor storage_software;
+      bool storage_software_valid;
       struct hk_native_pbe_descriptor storage, eot, layered_eot, emrt_pbe;
       bool storage_pbe_valid, eot_pbe_valid, layered_eot_pbe_valid,
          emrt_pbe_valid;

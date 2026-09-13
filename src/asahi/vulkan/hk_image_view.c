@@ -23,6 +23,7 @@
 enum hk_desc_usage {
    HK_DESC_USAGE_SAMPLED,
    HK_DESC_USAGE_STORAGE,
+   HK_DESC_USAGE_STORAGE_SOFTWARE,
    HK_DESC_USAGE_INPUT,
    HK_DESC_USAGE_BG_EOT,
    HK_DESC_USAGE_LAYERED_BG_EOT,
@@ -515,8 +516,10 @@ pack_pbe(struct hk_device *dev, struct hk_image_view *view, unsigned view_plane,
       /* When the descriptor isn't extended architecturally, we use
        * the last 8 bytes as a sideband to accelerate image atomics.
        */
-      if (hk_native_pbe_supported(generation) && !cfg.extended &&
-          (layout->writeable_image || usage == HK_DESC_USAGE_EMRT)) {
+      if ((hk_native_pbe_supported(generation) ||
+           usage == HK_DESC_USAGE_STORAGE_SOFTWARE) && !cfg.extended &&
+          (layout->writeable_image || usage == HK_DESC_USAGE_EMRT ||
+           usage == HK_DESC_USAGE_STORAGE_SOFTWARE)) {
 
          if (msaa) {
             assert(denom.x == 1 && "no MSAA of block-compressed");
@@ -540,6 +543,16 @@ pack_pbe(struct hk_device *dev, struct hk_image_view *view, unsigned view_plane,
       }
    }
 
+   if (usage == HK_DESC_USAGE_STORAGE_SOFTWARE) {
+      /* The descriptor-set copy is consumed by libagx address arithmetic,
+       * not imgwci. Keep its established PBE software ABI and sideband while
+       * the separately indexed hardware heap retains native Gen9 bytes. */
+      if (cfg.buffer >> 40)
+         return false;
+      memset(out, 0, sizeof(*out));
+      AGX_PBE_pack(out->opaque, &cfg);
+      return true;
+   }
    return hk_pack_native_pbe(generation, out, &cfg);
 }
 
@@ -613,6 +626,11 @@ hk_image_view_init(struct hk_device *dev, struct hk_image_view *view,
 
       view->planes[p].storage_pbe_valid = pack_pbe(
          dev, view, p, HK_DESC_USAGE_STORAGE, &view->planes[p].storage);
+      if (agx_chip_descriptor_generation(dev->dev.chip) == 9) {
+         view->planes[p].storage_software_valid = pack_pbe(
+            dev, view, p, HK_DESC_USAGE_STORAGE_SOFTWARE,
+            &view->planes[p].storage_software);
+      }
       if (agx_native_graphics(&dev->dev) &&
           (view->vk.usage & VK_IMAGE_USAGE_STORAGE_BIT) &&
           view->planes[p].storage_pbe_valid) {

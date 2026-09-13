@@ -177,7 +177,8 @@ write_storage_image_view_desc(struct hk_descriptor_set *set,
          view->vk.image->samples == VK_SAMPLE_COUNT_1_BIT &&
          (view->vk.view_type == VK_IMAGE_VIEW_TYPE_2D ||
           view->vk.view_type == VK_IMAGE_VIEW_TYPE_3D) &&
-         view->planes[0].storage_pbe_valid;
+         view->planes[0].storage_pbe_valid &&
+         (generation != 9 || view->planes[0].storage_software_valid);
       supported = hk_native_pbe_supported(generation) || native_basic;
       if (supported) {
          /* Storage images are always single plane */
@@ -185,13 +186,24 @@ write_storage_image_view_desc(struct hk_descriptor_set *set,
          uint8_t plane = 0;
 
          desc.tex = view->planes[plane].ro_storage;
-         desc.pbe = view->planes[plane].storage;
+         desc.pbe = generation == 9 ? view->planes[plane].storage_software
+                                    : view->planes[plane].storage;
       }
    }
 
    if (!supported) {
       hk_set_null_native_texture(generation, &desc.tex);
-      hk_set_null_native_pbe(generation, &desc.pbe);
+      if (generation == 9) {
+         /* Null atomics use the same software ABI as bound images. */
+         const struct AGX_PBE null = {
+            AGX_PBE_header,
+            .layout = AGX_LAYOUT_TWIDDLED,
+            .buffer = AGX_SCRATCH_PAGE_ADDRESS,
+         };
+         AGX_PBE_pack(desc.pbe.opaque, &null);
+      } else {
+         hk_set_null_native_pbe(generation, &desc.pbe);
+      }
    }
 
    uint8_t packed[HK_MAX_DESCRIPTOR_SIZE] = {0};
