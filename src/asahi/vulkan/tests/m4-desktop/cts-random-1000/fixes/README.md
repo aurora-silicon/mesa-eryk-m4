@@ -190,3 +190,12 @@ invocation IDs. This collapsed/corrupted the GS input buffer. Both original
 image comparisons now pass without a diagnostic override, peak 58.75 C.
 All original 47 Fail and two Crash cases have now passed individually; the
 frozen original 1,000-case results remain unchanged. A combined retest follows.
+
+## Final combined regression
+
+[Final report](final-49/README.md): **49/49 Pass** across the original 47 Fail and
+two Crash cases on the combined Mesa `360e3b04daa` build. Five bounded guarded
+batches, unchanged binary/guard hashes and boot, peak **59.25 C**. The baseline
+mapping, complete results and runtime identities are retained in `final-49/`.
+The original 1,000-case report remains frozen; its 800 Pass and 151 NotSupported
+were not rerun. The documented CTS input/oracle fixes remain separately identified.

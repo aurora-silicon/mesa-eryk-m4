@@ -1,0 +1,786 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.renderpass.dedicated_allocation.formats.d32_sfloat_s8_uint.input.dont_care.dont_care.self_dep_draw_use_input_aspect_stencil_read_only",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.renderpass.dedicated_allocation.formats.d32_sfloat_s8_uint.input.dont_care.dont_care.self_dep_draw_use_input_aspect_stencil_read_only",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202933669601Z-cts-final49-000/cts/000/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.20827487799988376
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.draw.basic_draw.draw_indexed_indirect.line_list.17_multi_command",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.draw.basic_draw.draw_indexed_indirect.line_list.17_multi_command",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202933669601Z-cts-final49-000/cts/001/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.20791418499993597
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.tessellation.invariance.one_minus_tess_coord_component.quads_fractional_even_spacing_ccw_point_mode",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.tessellation.invariance.one_minus_tess_coord_component.quads_fractional_even_spacing_ccw_point_mode",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202933669601Z-cts-final49-000/cts/002/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 1.2133271600000626
+  },
+  {
+    "index": 3,
+    "case": "dEQP-VK.image.texel_view_compatible.compute.basic.texture.astc_10x10_unorm_block.r32g32b32a32_sint",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.image.texel_view_compatible.compute.basic.texture.astc_10x10_unorm_block.r32g32b32a32_sint",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202933669601Z-cts-final49-000/cts/003/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.2068157500000325
+  },
+  {
+    "index": 4,
+    "case": "dEQP-VK.image.mutable.2d.r32g32_sfloat_r32g32_uint_draw_texture",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.image.mutable.2d.r32g32_sfloat_r32g32_uint_draw_texture",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202933669601Z-cts-final49-000/cts/004/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.20970741800010728
+  },
+  {
+    "index": 5,
+    "case": "dEQP-VK.renderpass.suballocation.attachment_allocation.input_output.49",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.renderpass.suballocation.attachment_allocation.input_output.49",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202933669601Z-cts-final49-000/cts/005/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.20893051600000945
+  },
+  {
+    "index": 6,
+    "case": "dEQP-VK.clipping.user_defined.clip_distance_dynamic_index.vert.8",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.clipping.user_defined.clip_distance_dynamic_index.vert.8",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202933669601Z-cts-final49-000/cts/006/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.20878526699993927
+  },
+  {
+    "index": 7,
+    "case": "dEQP-VK.pipeline.sampler.view_type.3d.format.b8g8r8a8_unorm.mipmap.linear.lod.select_bias_3_7",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.pipeline.sampler.view_type.3d.format.b8g8r8a8_unorm.mipmap.linear.lod.select_bias_3_7",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202933669601Z-cts-final49-000/cts/007/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.40746253100019203
+  },
+  {
+    "index": 8,
+    "case": "dEQP-VK.image.mutable.2d_array.r32_uint_r8g8b8a8_snorm_draw_texture_format_list",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.image.mutable.2d_array.r32_uint_r8g8b8a8_snorm_draw_texture_format_list",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202933669601Z-cts-final49-000/cts/008/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.20884406700020008
+  },
+  {
+    "index": 9,
+    "case": "dEQP-VK.image.texel_view_compatible.graphic.basic.attachment_read.etc2_r8g8b8_srgb_block.r32g32_uint",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.image.texel_view_compatible.graphic.basic.attachment_read.etc2_r8g8b8_srgb_block.r32g32_uint",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202933669601Z-cts-final49-000/cts/009/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.20780372699982763
+  },
+  {
+    "index": 10,
+    "case": "dEQP-VK.pipeline.sampler.view_type.cube_array.format.r8g8b8a8_srgb.mipmap.nearest.lod.select_bias_3_7",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.pipeline.sampler.view_type.cube_array.format.r8g8b8a8_srgb.mipmap.nearest.lod.select_bias_3_7",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202942831045Z-cts-final49-010/cts/010/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.41041141100004097
+  },
+  {
+    "index": 11,
+    "case": "dEQP-VK.synchronization.op.single_queue.fence.write_blit_image_read_image_vertex.image_64x64x8_r32_sfloat",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.synchronization.op.single_queue.fence.write_blit_image_read_image_vertex.image_64x64x8_r32_sfloat",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202942831045Z-cts-final49-010/cts/011/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.40784982200011655
+  },
+  {
+    "index": 12,
+    "case": "dEQP-VK.pipeline.sampler.view_type.cube_array.format.r8g8b8a8_sscaled.mipmap.nearest.lod.select_bias_2_5",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.pipeline.sampler.view_type.cube_array.format.r8g8b8a8_sscaled.mipmap.nearest.lod.select_bias_2_5",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202942831045Z-cts-final49-010/cts/012/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.4082357029999457
+  },
+  {
+    "index": 13,
+    "case": "dEQP-VK.image.mutable.2d_array.r32_sfloat_r16g16_sint_store_load_format_list",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.image.mutable.2d_array.r32_sfloat_r16g16_sint_store_load_format_list",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202942831045Z-cts-final49-010/cts/013/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.20766985699992802
+  },
+  {
+    "index": 14,
+    "case": "dEQP-VK.glsl.indexing.varying_array.vec2_dynamic_loop_write_dynamic_read",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.glsl.indexing.varying_array.vec2_dynamic_loop_write_dynamic_read",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202942831045Z-cts-final49-010/cts/014/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.2076560729999528
+  },
+  {
+    "index": 15,
+    "case": "dEQP-VK.synchronization.op.single_queue.event.write_copy_image_to_buffer_read_ubo_geometry.buffer_16384",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.synchronization.op.single_queue.event.write_copy_image_to_buffer_read_ubo_geometry.buffer_16384",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202942831045Z-cts-final49-010/cts/015/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.4091284060000362
+  },
+  {
+    "index": 16,
+    "case": "dEQP-VK.synchronization.op.multi_queue.semaphore.write_clear_color_image_read_blit_image.image_64x64x8_r32_sfloat_exclusive",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.synchronization.op.multi_queue.semaphore.write_clear_color_image_read_blit_image.image_64x64x8_r32_sfloat_exclusive",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202942831045Z-cts-final49-010/cts/016/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.40911741400009305
+  },
+  {
+    "index": 17,
+    "case": "dEQP-VK.image.mutable.2d_array.r16g16_uint_r32_sint_copy_texture",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.image.mutable.2d_array.r16g16_uint_r32_sint_copy_texture",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202942831045Z-cts-final49-010/cts/017/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.20675362200017844
+  },
+  {
+    "index": 18,
+    "case": "dEQP-VK.renderpass.suballocation.attachment_allocation.shrink.19",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.renderpass.suballocation.attachment_allocation.shrink.19",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202942831045Z-cts-final49-010/cts/018/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.20788526000001184
+  },
+  {
+    "index": 19,
+    "case": "dEQP-VK.clipping.user_defined.clip_distance.vert_tess_geom.2",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.clipping.user_defined.clip_distance.vert_tess_geom.2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202942831045Z-cts-final49-010/cts/019/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.4086314879998554
+  },
+  {
+    "index": 20,
+    "case": "dEQP-VK.ycbcr.conversion.g16_b16_r16_3plane_420_unorm_khr.chroma_reconstruction.nearest.explicit_linear_cosited_midpoint_tiling_linear_swapped_chroma",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.ycbcr.conversion.g16_b16_r16_3plane_420_unorm_khr.chroma_reconstruction.nearest.explicit_linear_cosited_midpoint_tiling_linear_swapped_chroma",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202950666398Z-cts-final49-020/cts/020/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.20833657999992283
+  },
+  {
+    "index": 21,
+    "case": "dEQP-VK.pipeline.blend.format.r8_snorm.states.color_1mca_1mca_sub_alpha_o_1mda_add-color_z_1mcc_max_alpha_sc_1mdc_add-color_1mca_1mdc_add_alpha_sc_sa_min-color_sas_o_max_alpha_1mcc_1mdc_add",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.pipeline.blend.format.r8_snorm.states.color_1mca_1mca_sub_alpha_o_1mda_add-color_z_1mcc_max_alpha_sc_1mdc_add-color_1mca_1mdc_add_alpha_sc_sa_min-color_sas_o_max_alpha_1mcc_1mdc_add",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202950666398Z-cts-final49-020/cts/021/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.4093910260000939
+  },
+  {
+    "index": 22,
+    "case": "dEQP-VK.renderpass.dedicated_allocation.formats.a2b10g10r10_uint_pack32.input.load.dont_care.self_dep_clear_draw_use_input_aspect",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.renderpass.dedicated_allocation.formats.a2b10g10r10_uint_pack32.input.load.dont_care.self_dep_clear_draw_use_input_aspect",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202950666398Z-cts-final49-020/cts/022/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.2079656780001642
+  },
+  {
+    "index": 23,
+    "case": "dEQP-VK.renderpass.suballocation.formats.r32g32_uint.input.dont_care.store.clear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.renderpass.suballocation.formats.r32g32_uint.input.dont_care.store.clear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202950666398Z-cts-final49-020/cts/023/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.20817074100000355
+  },
+  {
+    "index": 24,
+    "case": "dEQP-VK.image.mutable.2d_array.r16g16_sint_r16g16_uint_store_copy",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.image.mutable.2d_array.r16g16_sint_r16g16_uint_store_copy",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202950666398Z-cts-final49-020/cts/024/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.20653143499998805
+  },
+  {
+    "index": 25,
+    "case": "dEQP-VK.image.texel_view_compatible.graphic.basic.texture_read.eac_r11_unorm_block.r32g32_uint",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.image.texel_view_compatible.graphic.basic.texture_read.eac_r11_unorm_block.r32g32_uint",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202950666398Z-cts-final49-020/cts/025/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.2076035420000153
+  },
+  {
+    "index": 26,
+    "case": "dEQP-VK.image.qualifiers.volatile.1d_array.r32f",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.image.qualifiers.volatile.1d_array.r32f",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202950666398Z-cts-final49-020/cts/026/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "Passed",
+    "returncode": 0,
+    "seconds": 0.2081585810001343
+  },
+  {
+    "index": 27,
+    "case": "dEQP-VK.pipeline.blend.format.r32g32_sfloat.states.color_1mcc_1mcc_rsub_alpha_z_sa_rsub-color_ca_o_max_alpha_z_1mca_sub-color_1mcc_ca_add_alpha_cc_1mdc_rsub-color_dc_dc_rsub_alpha_o_1mcc_sub",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.pipeline.blend.format.r32g32_sfloat.states.color_1mcc_1mcc_rsub_alpha_z_sa_rsub-color_ca_o_max_alpha_z_1mca_sub-color_1mcc_ca_add_alpha_cc_1mdc_rsub-color_dc_dc_rsub_alpha_o_1mcc_sub",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202950666398Z-cts-final49-020/cts/027/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.4084360699998797
+  },
+  {
+    "index": 28,
+    "case": "dEQP-VK.image.mutable.2d.r16g16b16a16_sfloat_r32g32_sint_copy_texture",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.image.mutable.2d.r16g16b16a16_sfloat_r32g32_sint_copy_texture",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202950666398Z-cts-final49-020/cts/028/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.2076991060000637
+  },
+  {
+    "index": 29,
+    "case": "dEQP-VK.image.texel_view_compatible.graphic.extended.texture_read.bc3_srgb_block.r32g32b32a32_sint",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.image.texel_view_compatible.graphic.extended.texture_read.bc3_srgb_block.r32g32b32a32_sint",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202950666398Z-cts-final49-020/cts/029/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.6095253130001765
+  },
+  {
+    "index": 30,
+    "case": "dEQP-VK.synchronization.op.multi_queue.fence.write_ssbo_tess_control_read_ssbo_geometry.buffer_262144_concurrent",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.synchronization.op.multi_queue.fence.write_ssbo_tess_control_read_ssbo_geometry.buffer_262144_concurrent",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202957984907Z-cts-final49-030/cts/030/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.6111991699999635
+  },
+  {
+    "index": 31,
+    "case": "dEQP-VK.image.texel_view_compatible.compute.extended.texture.astc_8x6_unorm_block.r32g32b32a32_sint",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.image.texel_view_compatible.compute.extended.texture.astc_8x6_unorm_block.r32g32b32a32_sint",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202957984907Z-cts-final49-030/cts/031/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.8102557160000288
+  },
+  {
+    "index": 32,
+    "case": "dEQP-VK.image.texel_view_compatible.graphic.basic.texture_write.astc_12x12_unorm_block.r32g32b32a32_sint",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.image.texel_view_compatible.graphic.basic.texture_write.astc_12x12_unorm_block.r32g32b32a32_sint",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202957984907Z-cts-final49-030/cts/032/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.2082467350001025
+  },
+  {
+    "index": 33,
+    "case": "dEQP-VK.synchronization.cross_instance.suballocated.write_ssbo_vertex_read_ubo_geometry.buffer_16384_fd",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.synchronization.cross_instance.suballocated.write_ssbo_vertex_read_ubo_geometry.buffer_16384_fd",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202957984907Z-cts-final49-030/cts/033/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.40874271599977874
+  },
+  {
+    "index": 34,
+    "case": "dEQP-VK.tessellation.geometry_interaction.scatter.geometry_scatter_layers",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.tessellation.geometry_interaction.scatter.geometry_scatter_layers",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202957984907Z-cts-final49-030/cts/034/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.6082534800000303
+  },
+  {
+    "index": 35,
+    "case": "dEQP-VK.pipeline.blend.format.r8g8b8a8_snorm.states.color_da_1mda_add_alpha_cc_1msa_rsub-color_sas_1mca_sub_alpha_1mdc_1mca_rsub-color_da_da_min_alpha_sas_ca_rsub-color_1mca_dc_max_alpha_1mdc_sas_sub",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.pipeline.blend.format.r8g8b8a8_snorm.states.color_da_1mda_add_alpha_cc_1msa_rsub-color_sas_1mca_sub_alpha_1mdc_1mca_rsub-color_da_da_min_alpha_sas_ca_rsub-color_1mca_dc_max_alpha_1mdc_sas_sub",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202957984907Z-cts-final49-030/cts/035/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.40857445999995434
+  },
+  {
+    "index": 36,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r32_sfloat.b8g8r8a8_snorm.general_optimal_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r32_sfloat.b8g8r8a8_snorm.general_optimal_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202957984907Z-cts-final49-030/cts/036/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.2078299300001163
+  },
+  {
+    "index": 37,
+    "case": "dEQP-VK.image.mutable.2d_array.r32_uint_r32_sint_copy_load",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.image.mutable.2d_array.r32_uint_r32_sint_copy_load",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202957984907Z-cts-final49-030/cts/037/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.20660576699992816
+  },
+  {
+    "index": 38,
+    "case": "dEQP-VK.pipeline.blend.format.r8g8_snorm.states.color_1mcc_sc_sub_alpha_1mcc_ca_rsub-color_dc_1mda_max_alpha_ca_dc_add-color_1mca_o_rsub_alpha_1mcc_da_add-color_cc_cc_sub_alpha_o_z_max",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.pipeline.blend.format.r8g8_snorm.states.color_1mcc_sc_sub_alpha_1mcc_ca_rsub-color_dc_1mda_max_alpha_ca_dc_add-color_1mca_o_rsub_alpha_1mcc_da_add-color_cc_cc_sub_alpha_o_z_max",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202957984907Z-cts-final49-030/cts/038/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.4088093419998131
+  },
+  {
+    "index": 39,
+    "case": "dEQP-VK.pipeline.blend.format.r32g32_sfloat.states.color_sas_sa_min_alpha_sa_sas_sub-color_1mda_dc_max_alpha_1mdc_sa_add-color_1mdc_cc_min_alpha_1mcc_dc_max-color_da_z_rsub_alpha_1mda_cc_sub",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.pipeline.blend.format.r32g32_sfloat.states.color_sas_sa_min_alpha_sa_sas_sub-color_1mda_dc_max_alpha_1mdc_sa_add-color_1mdc_cc_min_alpha_1mcc_dc_max-color_da_z_rsub_alpha_1mda_cc_sub",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202957984907Z-cts-final49-030/cts/039/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.40918886300005397
+  },
+  {
+    "index": 40,
+    "case": "dEQP-VK.ycbcr.query.lod.fragment.g10x6_b10x6_r10x6_3plane_420_unorm_3pack16_khr_disjoint",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.ycbcr.query.lod.fragment.g10x6_b10x6_r10x6_3plane_420_unorm_3pack16_khr_disjoint",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T203006746413Z-cts-final49-040/cts/040/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "Queries passed",
+    "returncode": 0,
+    "seconds": 0.20825522899986026
+  },
+  {
+    "index": 41,
+    "case": "dEQP-VK.renderpass.dedicated_allocation.attachment_allocation.roll.39",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.renderpass.dedicated_allocation.attachment_allocation.roll.39",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T203006746413Z-cts-final49-040/cts/041/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.20787036800015812
+  },
+  {
+    "index": 42,
+    "case": "dEQP-VK.renderpass.dedicated_allocation.formats.d24_unorm_s8_uint.input.load.dont_care.self_dep_clear_draw_use_input_aspect_stencil_read_only",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.renderpass.dedicated_allocation.formats.d24_unorm_s8_uint.input.load.dont_care.self_dep_clear_draw_use_input_aspect_stencil_read_only",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T203006746413Z-cts-final49-040/cts/042/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.20911511500003144
+  },
+  {
+    "index": 43,
+    "case": "dEQP-VK.synchronization.cross_instance.suballocated.write_ssbo_tess_eval_read_ubo_geometry.buffer_16384_fence_fd",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.synchronization.cross_instance.suballocated.write_ssbo_tess_eval_read_ubo_geometry.buffer_16384_fence_fd",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T203006746413Z-cts-final49-040/cts/043/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.6105571660000351
+  },
+  {
+    "index": 44,
+    "case": "dEQP-VK.image.mutable.2d_array.r32_uint_r8g8b8a8_snorm_store_texture_format_list",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.image.mutable.2d_array.r32_uint_r8g8b8a8_snorm_store_texture_format_list",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T203006746413Z-cts-final49-040/cts/044/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.20826645000011013
+  },
+  {
+    "index": 45,
+    "case": "dEQP-VK.renderpass.dedicated_allocation.formats.r32g32_uint.input.clear.store.self_dep_clear_draw",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.renderpass.dedicated_allocation.formats.r32g32_uint.input.clear.store.self_dep_clear_draw",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T203006746413Z-cts-final49-040/cts/045/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.20736604199987596
+  },
+  {
+    "index": 46,
+    "case": "dEQP-VK.synchronization.op.single_queue.event.write_ssbo_fragment_read_ssbo_vertex.buffer_16384",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.synchronization.op.single_queue.event.write_ssbo_fragment_read_ssbo_vertex.buffer_16384",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T203006746413Z-cts-final49-040/cts/046/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.4082493460000478
+  },
+  {
+    "index": 47,
+    "case": "dEQP-VK.renderpass.dedicated_allocation.attachment_allocation.grow_shrink.82",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.renderpass.dedicated_allocation.attachment_allocation.grow_shrink.82",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T203006746413Z-cts-final49-040/cts/047/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.20660927500011894
+  },
+  {
+    "index": 48,
+    "case": "dEQP-VK.glsl.texture_functions.textureoffset.usampler2darray_bias_fragment",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.glsl.texture_functions.textureoffset.usampler2darray_bias_fragment",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T203006746413Z-cts-final49-040/cts/048/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.20710445100007746
+  }
+]
