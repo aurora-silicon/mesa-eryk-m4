@@ -1768,6 +1768,7 @@ agx_emit_image_store(agx_builder *b, nir_intrinsic_instr *instr)
          break;
       case PIPE_FORMAT_R11G11B10_FLOAT:
       case PIPE_FORMAT_R32_FLOAT:
+      case PIPE_FORMAT_R32G32_FLOAT:
       case PIPE_FORMAT_R32G32B32A32_FLOAT:
          /* AGX3 uses this tag for floating input lanes; the PBE
           * descriptor controls whether storage is F16 or F32. */

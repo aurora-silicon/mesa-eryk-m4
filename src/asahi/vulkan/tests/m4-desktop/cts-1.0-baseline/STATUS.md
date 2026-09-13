@@ -200,3 +200,13 @@ Pass, peak58.75 C, full guards. Library
 46f0d6289b4bf348edab0a3f2fc2fba5991771f048ab7235c9ff86ee051e7f17.
 20260913T120336440823Z-cts-vertex-sample-controls:16-bit YCbCr control now Pass;
 next selection,index47, mutable geometry2D sampler also Pass. Kernel unchanged.
+
+Nineteenth selection:index82, BC4 blocks viewed as RG32_FLOAT. Add the missing
+RG32_FLOAT entries alongside R32_FLOAT/RGBA32_FLOAT in indexed storage lowering
+and the existing F32-lane image-write path. The PBE supplies the channel count.
+20260913T120507843955Z-cts-rg32f-native-store:original case82 Pass, full guards,
+library0b18082c2c0056f0e63676d0c4140c909bc879bcaabd473293ad5d8a68e3a41d.
+All19 original Fail cases have been visited in the recorded random order:
+18 now Pass, index5 now correctly reaches the tessellation NotSupported check.
+This is cumulative targeted evidence, not yet a fresh complete100-case result.
+Five original userspace crashes remain to revisit separately. Kernel unchanged.
