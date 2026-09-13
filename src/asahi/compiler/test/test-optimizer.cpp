@@ -599,3 +599,29 @@ TEST_F(Optimizer, IfInvertedCondition)
          agx_zero(), 1, AGX_ICOND_UEQ, true, NULL),
       agx_if_fcmp(b, hx, hy, 1, AGX_FCOND_LT, true, NULL));
 }
+
+TEST_F(Optimizer, G16SampleLodConstantsAreFloatingPoint)
+{
+   for (float level : {0.0f, 2.25f, 0.00001f, -0.75f, 0.1f}) {
+      agx_builder *b = agx_test_builder(mem_ctx);
+      struct agx_shader_key key = {};
+      key.dev.encoding = AGX_ISA_ENCODING_AGX3B;
+      b->shader->key = &key;
+      agx_index lod = agx_temp(b->shader, AGX_SIZE_16);
+      agx_mov_imm_to(b, lod, _mesa_float_to_half(level));
+      agx_index coord = agx_register(4, AGX_SIZE_32);
+      coord.channels_m1 = 2;
+      agx_index dest = agx_temp(b->shader, AGX_SIZE_32);
+      dest.channels_m1 = 3;
+      agx_instr *sample = agx_texture_sample_to(
+         b, dest, coord, lod, agx_immediate(0), agx_immediate(0),
+         agx_immediate(0), agx_null(), AGX_DIM_CUBE,
+         AGX_LOD_MODE_LOD_MIN, 0, false, false, false, AGX_GATHER_NONE, false);
+      sample->mask = 15;
+      agx_optimizer_forward(b->shader);
+      if (level == 0.0f || level == 2.25f)
+         EXPECT_TRUE(agx_is_equiv(sample->src[1], agx_immediate_f(level)));
+      else
+         EXPECT_TRUE(agx_is_equiv(sample->src[1], lod));
+   }
+}

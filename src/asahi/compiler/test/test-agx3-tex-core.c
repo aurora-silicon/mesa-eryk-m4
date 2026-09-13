@@ -1093,7 +1093,7 @@ test_register_array_layer(void)
 {
    const uint8_t fused[] = {0x17,0x05,0x54,0x06,0,0x08,0x14,0,0xf0,0xc0,0x25,0};
    uint8_t packed[AGX3_TEX_MAX_LENGTH], packed_len;
-   CHECK(agx3_tex_stage_array_lod(AGX_ISA_ENCODING_AGX3B,4,5,1,0,true,false,packed,&packed_len));
+   CHECK(agx3_tex_stage_layer_lod(AGX_ISA_ENCODING_AGX3B,4,5,1,0,true,false,false,packed,&packed_len));
    CHECK(packed_len == sizeof(fused) && !memcmp(packed,fused,packed_len));
    const uint8_t sampled[] = {0x05,0x80,0x0c,0xb8,0xb0,0,0x08,0x01,0,0,0x10,0,1,0};
    struct agx3_tex_sample_desc d = {.dest=0,.coord=0,.width=AGX3_TEX_W32,
@@ -1411,9 +1411,31 @@ test_m4_3d_sample_witness(void)
    return 0;
 }
 
+/* AIR-NT 32023.883, applegpu_g16g, cube-register-lod.metal:
+ * text-750.bin offsets 158 and 170. */
+static int
+test_m4_cube_register_lod(void)
+{
+   const uint8_t native_pack[] = {0x17,0x05,0x54,0x06,0,0x14,0x2c,0,0xf0,0xc0,0x11,0};
+   const uint8_t native_sample[] = {0x05,0x80,0x0c,0xb8,0xb0,0,0,3,0,0,0x10,0,1,0};
+   uint8_t out[AGX3_TEX_MAX_LENGTH], len;
+   CHECK(agx3_tex_stage_layer_lod(AGX_ISA_ENCODING_AGX3B,10,11,1,0,
+                                  true,false,true,out,&len));
+   CHECK(len == sizeof(native_pack) && !memcmp(out,native_pack,len));
+   struct agx3_tex_sample_desc d = {
+      .width=AGX3_TEX_W32, .mask=15, .slot=1, .wait_mask=1,
+      .coord_kill=true, .final=true, .cube=true, .lod=AGX3_TEX_LOD_REGISTER,
+      .retain_helpers=true,
+   };
+   CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+   CHECK(len == sizeof(native_sample) && !memcmp(out,native_sample,len));
+   return 0;
+}
+
 int
 main(void)
 {
+   CHECK(test_m4_cube_register_lod() == 0);
    CHECK(test_m4_array_gather_witness() == 0);
    CHECK(test_m4_3d_sample_witness() == 0);
    CHECK(test_m4_typed_image_write_witnesses() == 0);

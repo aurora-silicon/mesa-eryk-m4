@@ -1124,11 +1124,11 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
    uint8_t bytes[AGX3_TEX_MAX_LENGTH];
    uint8_t len = 0;
 
-   const bool array_lod = array && explicit_lod && !immediate_lod;
+   const bool array_lod = (array || cube) && explicit_lod && !immediate_lod;
    if (array_lod) {
-      if (!agx3_tex_stage_array_lod(enc, I->src[0].value + 4,
+      if (!agx3_tex_stage_layer_lod(enc, I->src[0].value + 4,
                                    I->src[1].value, stage_slot, wait_mask,
-                                   I->src[0].discard, I->src[1].discard,
+                                   I->src[0].discard, I->src[1].discard, cube,
                                    bytes, &len) ||
           !agx3_append(emission, bytes, len))
          return false;

@@ -122,7 +122,7 @@ bool agx3_tex_decode_fetch(enum agx_isa_encoding enc, const void *instruction,
  * G17P also supports the witnessed 2D-array implicit-LOD form with a
  * register-valued layer packed into the same auxiliary operand bank.
  * M4 runtime tests qualify this layer with immediate explicit levels too.
- * Register-valued LOD plus an array layer remains unsupported.
+ * Register-valued LOD plus an array layer or cube face uses a fused PACK_SMPIR.
  * Everything else about the sampler family -- other dimensions,
  * gradients, min-LOD, offsets,
  * gather -- remains a deliberate refusal: those axes need additional operand
@@ -177,12 +177,12 @@ bool agx3_tex_stage_fetch_lod(enum agx_isa_encoding enc, uint16_t src,
                              bool src_cache, bool src_discard,
                              uint8_t out[AGX3_TEX_MAX_LENGTH], uint8_t *len);
 
-/* Pack a register-valued integer 2D-array layer into the separately witnessed
- * array-layer PACK_SMPIR form. Native register-indexed descriptors use slot 6;
+/* Pack an integer array layer or cube face together with a half-float LOD.
+ * Native register-indexed descriptors use slot 6;
  * the caller must make the corresponding SMP wait on that staging slot. */
-bool agx3_tex_stage_array_lod(enum agx_isa_encoding enc, uint16_t layer,
+bool agx3_tex_stage_layer_lod(enum agx_isa_encoding enc, uint16_t layer,
                             uint16_t lod, uint8_t slot, uint16_t wait_mask,
-                            bool layer_discard, bool lod_discard,
+                            bool layer_discard, bool lod_discard, bool cube,
                             uint8_t out[AGX3_TEX_MAX_LENGTH], uint8_t *len);
 
 bool agx3_tex_stage_array_layer(enum agx_isa_encoding enc, uint16_t src,

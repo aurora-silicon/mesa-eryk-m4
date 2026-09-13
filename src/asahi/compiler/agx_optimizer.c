@@ -170,6 +170,22 @@ agx_optimizer_inline_imm(agx_context *ctx, agx_instr **defs, agx_instr *I)
       if (!def || def->op != AGX_OPCODE_MOV_IMM)
          continue;
 
+      if (I->op == AGX_OPCODE_TEXTURE_SAMPLE && s == 1 && ctx->key &&
+          ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+          I->lod_mode == AGX_LOD_MODE_LOD_MIN) {
+         /* LOD is floating point even for integer textures. Do not inline
+          * the raw half bits as an integer immediate: the sample packer
+          * interprets immediates as minifloats. Preserve values that cannot
+          * use the native 1/64-level immediate in their half register. */
+         float level = def->dest[0].size == AGX_SIZE_16
+                          ? _mesa_half_to_float(def->imm) : uif(def->imm);
+         float scaled = level * 64.0f;
+         if (level >= 0.0f && scaled <= 0xfff &&
+             scaled == (float)(uint16_t)scaled && agx_minifloat_exact(level))
+            I->src[s] = agx_immediate_f(level);
+         continue;
+      }
+
       uint8_t value = def->imm;
       uint16_t value_u16 = def->imm;
 
@@ -179,9 +195,7 @@ agx_optimizer_inline_imm(agx_context *ctx, agx_instr **defs, agx_instr *I)
          continue;
       if (I->op == AGX_OPCODE_ZS_EMIT && s != 0)
          continue;
-      if (I->op == AGX_OPCODE_TEXTURE_SAMPLE && s != 4 &&
-          !(ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B && s == 1 &&
-            I->lod_mode == AGX_LOD_MODE_LOD_MIN))
+      if (I->op == AGX_OPCODE_TEXTURE_SAMPLE && s != 4)
          continue;
       if ((I->op == AGX_OPCODE_DEVICE_STORE ||
            I->op == AGX_OPCODE_LOCAL_STORE || I->op == AGX_OPCODE_ATOMIC ||

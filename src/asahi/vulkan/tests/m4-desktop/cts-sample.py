@@ -57,6 +57,10 @@ def batch(args):
                VK_ICD_FILENAMES='/opt/asahi-m4-port/asahi_icd.json',
                ASAHI_M4_EXPERIMENTAL='1', LD_LIBRARY_PATH='/opt/asahi-m4-port/lib',
                ASAHI_MESA_DEBUG='nocompress', XDG_RUNTIME_DIR='/run/user/1000')
+    if args.renderer == 'lavapipe':
+        env.update(VK_DRIVER_FILES='/usr/share/vulkan/icd.d/lvp_icd.json',
+                   VK_ICD_FILENAMES='/usr/share/vulkan/icd.d/lvp_icd.json',
+                   LD_LIBRARY_PATH='/usr/lib')
     displays = sorted(Path('/run/user/1000').glob('wayland-*'))
     env['WAYLAND_DISPLAY'] = next((p.name for p in displays if p.is_socket()), 'wayland-1')
     capture = out / 'compiler-captures'
@@ -78,7 +82,8 @@ def batch(args):
         directory.mkdir()
         qpa = directory / 'result.qpa'
         argv = [str(args.binary), '--deqp-case=' + case,
-                '--deqp-log-images=disable', '--deqp-log-shader-sources=disable',
+                '--deqp-log-images=disable',
+                '--deqp-log-shader-sources=' + ('enable' if args.log_sources else 'disable'),
                 '--deqp-log-filename=' + str(qpa)]
         record = dict(index=index, case=case, argv=argv, boot_id=boot, status='Started')
         save(directory / 'case.json', record)
@@ -138,6 +143,8 @@ def main():
     b.add_argument('--cases', type=Path, required=True)
     b.add_argument('--start', type=int, default=0)
     b.add_argument('--count', type=int, default=100)
+    b.add_argument('--renderer', choices=('m4', 'lavapipe'), default='m4')
+    b.add_argument('--log-sources', action='store_true')
     args = p.parse_args()
     if args.mode == 'select':
         select(args)

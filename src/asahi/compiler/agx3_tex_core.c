@@ -218,7 +218,8 @@ sample_ok(enum agx_isa_encoding enc, const struct agx3_tex_sample_desc *d)
 
    if (d->cube && (enc != AGX_ISA_ENCODING_AGX3B || d->array ||
                    (d->lod != AGX3_TEX_LOD_AUTO &&
-                    d->lod != AGX3_TEX_LOD_LEVEL)))
+                    d->lod != AGX3_TEX_LOD_LEVEL &&
+                    d->lod != AGX3_TEX_LOD_REGISTER)))
       return false;
 
    /* Register LOD and layer use one fused PACK_SMPIR operand. */
@@ -759,11 +760,13 @@ agx3_tex_stage_array_layer(enum agx_isa_encoding enc, uint16_t src,
 /* AIR-NT 32023.883 G16G texture2d_array.sample(level(v.w)) packs the
  * integer layer and half-float LOD together. Two independent PACKs to bank6
  * would overwrite one another. Native layer4/lod5 is 1705540600081400f0c02500.
- * Carry the two source lifetime hints independently. */
+ * Cube samples use the same fused operand with face selector f74=10:
+ * native face10/lod11 is 1705540600142c00f0c01100. Carry the two source
+ * lifetime hints independently. */
 bool
-agx3_tex_stage_array_lod(enum agx_isa_encoding enc, uint16_t layer,
+agx3_tex_stage_layer_lod(enum agx_isa_encoding enc, uint16_t layer,
                         uint16_t lod, uint8_t slot, uint16_t wait_mask,
-                        bool layer_discard, bool lod_discard,
+                        bool layer_discard, bool lod_discard, bool cube,
                         uint8_t out[AGX3_TEX_MAX_LENGTH], uint8_t *len)
 {
    if (!out || !len)
@@ -777,7 +780,7 @@ agx3_tex_stage_array_lod(enum agx_isa_encoding enc, uint16_t layer,
       KV(5,6), KV(9,5), KV(10,2), KV(12,slot), KV(16,layer),
       KV(23,2), KV(24,1), KV(27,layer_discard), KV(30,lod),
       KV(37,2), KV(38,1), KV(39,lod_discard),
-      KV(41,1), KV(51,1), KV(52,2), KV(74,4), KV(76,2), KV(77,16),
+      KV(41,1), KV(51,1), KV(52,2), KV(74,cube ? 10 : 4), KV(76,2), KV(77,16),
    };
    struct agx3_field_kv waits[6];
    unsigned n = 0;

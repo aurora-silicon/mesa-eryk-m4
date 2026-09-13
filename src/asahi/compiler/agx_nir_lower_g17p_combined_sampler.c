@@ -507,12 +507,14 @@ g17p_cube_sample_shape(const nir_tex_instr *tex)
    const bool level = tex->op == nir_texop_txl;
    const int lod = nir_tex_instr_src_index(tex, nir_tex_src_lod);
    if ((tex->op != nir_texop_tex && !level) ||
-       (level && (lod < 0 || !nir_src_is_const(tex->src[lod].src))) ||
+       (level && lod < 0) ||
        tex->sampler_dim != GLSL_SAMPLER_DIM_CUBE || tex->is_array ||
        tex->is_shadow || tex->is_sparse || tex->coord_components != 3 ||
        tex->num_srcs != (level ? 4 : 3) ||
        (tex->backend_flags & ~AGX_TEXTURE_FLAG_CLAMP_TO_0) != 0 ||
-       tex->dest_type != nir_type_float32 || tex->def.num_components != 4 ||
+       (tex->dest_type != nir_type_float32 &&
+        tex->dest_type != nir_type_int32 &&
+        tex->dest_type != nir_type_uint32) || tex->def.num_components != 4 ||
        tex->def.bit_size != 32 ||
        nir_tex_instr_src_index(tex, nir_tex_src_texture_handle) < 0 ||
        nir_tex_instr_src_index(tex, nir_tex_src_sampler_handle) < 0)
@@ -527,7 +529,7 @@ g17p_cube_sample_shape(const nir_tex_instr *tex)
 }
 
 /* Project non-array cube samples to UV plus an integer face. Preserve
- * explicit constant levels through the projection. M4's
+ * explicit levels through the projection, independently of the result type. M4's
  * native cube SMP takes these projected operands and retains cube-aware
  * filtering and derivatives. The earlier G17P path remains a 2D-array sample;
  * M4 runtime qualification does not establish native cube support on G17P. */

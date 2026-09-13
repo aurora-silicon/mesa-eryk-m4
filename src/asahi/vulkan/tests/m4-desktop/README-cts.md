@@ -71,3 +71,8 @@ zlib; the downloaded historical image-library archives were not linked. The
 shader compiler/validator use the pinned, locally built glslang and SPIRV-Tools.
 Dependency patches use zero context; apply with `git apply --unidiff-zero` in
 the corresponding dependency checkout.
+
+For targeted diagnosis, `batch --start N --count 1 --log-sources` retains the
+case's generated shader sources. `--renderer lavapipe` uses the system software
+Vulkan ICD explicitly; use a separate experiment name and never merge it into
+native M4 pass counts.

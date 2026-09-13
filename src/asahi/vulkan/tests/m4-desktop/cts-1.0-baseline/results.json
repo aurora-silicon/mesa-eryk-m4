@@ -1,0 +1,802 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.b8g8r8a8_unorm.r16_sscaled.general_general_linear",
+    "status": "NotSupported",
+    "message": "Format not supported at vktApiCopiesAndBlittingTests.cpp:1766",
+    "seconds": 0.20763159899979655,
+    "evidence": "_provenance/experiments/20260913T103703844994Z-cts-1-0-sample-000/remote/cts/000"
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.renderpass.dedicated_allocation.formats.a8b8g8r8_srgb_pack32.input.clear.dont_care.draw",
+    "status": "Pass",
+    "message": "Pass",
+    "seconds": 0.20661962900021535,
+    "evidence": "_provenance/experiments/20260913T103703844994Z-cts-1-0-sample-000/remote/cts/001"
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.synchronization.win32_keyed_mutex.write_blit_image_read_copy_image_to_buffer.image_128x128_r32g32b32a32_sfloat_nt",
+    "status": "NotSupported",
+    "message": "Required extensions not supported at vktSynchronizationWin32KeyedMutexTests.cpp:226",
+    "seconds": 0.20775188000015987,
+    "evidence": "_provenance/experiments/20260913T103703844994Z-cts-1-0-sample-000/remote/cts/002"
+  },
+  {
+    "index": 3,
+    "case": "dEQP-VK.pipeline.stencil.format.d16_unorm_s8_uint.states.front_fail_decc_pass_decw_dfail_keep_comp_always_back_fail_keep_pass_repl_dfail_keep_comp_less_or_equal",
+    "status": "NotSupported",
+    "message": "Unsupported depth/stencil format: VK_FORMAT_D16_UNORM_S8_UINT",
+    "seconds": 0.4078234200001134,
+    "evidence": "_provenance/experiments/20260913T103703844994Z-cts-1-0-sample-000/remote/cts/003"
+  },
+  {
+    "index": 4,
+    "case": "dEQP-VK.pipeline.blend.format.r8g8_srgb.states.color_dc_1mda_sub_alpha_1mcc_dc_sub-color_1mcc_o_sub_alpha_1mda_ca_sub-color_1mcc_ca_min_alpha_1mcc_cc_add-color_1mdc_da_min_alpha_dc_sa_sub",
+    "status": "Fail",
+    "message": "vk.endCommandBuffer(*m_cmdBuffer): VK_ERROR_FEATURE_NOT_PRESENT at vktPipelineBlendTests.cpp:755",
+    "seconds": 0.4070854579999832,
+    "evidence": "_provenance/experiments/20260913T103703844994Z-cts-1-0-sample-000/remote/cts/004"
+  },
+  {
+    "index": 5,
+    "case": "dEQP-VK.ycbcr.format.g10x6_b10x6r10x6_2plane_422_unorm_3pack16_khr.tess_eval_linear",
+    "status": "Fail",
+    "message": "vkd.endCommandBuffer(*cmdBuffer): VK_ERROR_FEATURE_NOT_PRESENT at vktYCbCrUtil.cpp:409",
+    "seconds": 0.20786437200013097,
+    "evidence": "_provenance/experiments/20260913T103703844994Z-cts-1-0-sample-000/remote/cts/005"
+  },
+  {
+    "index": 6,
+    "case": "dEQP-VK.ycbcr.conversion.g10x6_b10x6r10x6_2plane_420_unorm_3pack16_khr.chroma_reconstruction.nearest.default_linear_cosited_midpoint_tiling_optimal_swapped_chroma",
+    "status": "Fail",
+    "message": "vkd.endCommandBuffer(*cmdBuffer): VK_ERROR_FEATURE_NOT_PRESENT at vktYCbCrUtil.cpp:409",
+    "seconds": 0.20772144700003992,
+    "evidence": "_provenance/experiments/20260913T103703844994Z-cts-1-0-sample-000/remote/cts/006"
+  },
+  {
+    "index": 7,
+    "case": "dEQP-VK.synchronization.win32_keyed_mutex.write_draw_indexed_read_image_fragment.image_128x128_r32g32b32a32_sfloat_kmt",
+    "status": "NotSupported",
+    "message": "Required extensions not supported at vktSynchronizationWin32KeyedMutexTests.cpp:226",
+    "seconds": 0.20779873399987991,
+    "evidence": "_provenance/experiments/20260913T103703844994Z-cts-1-0-sample-000/remote/cts/007"
+  },
+  {
+    "index": 8,
+    "case": "dEQP-VK.texture.filtering.3d.combinations.linear_mipmap_nearest_nearest_repeat_clamp_to_border_clamp_to_border",
+    "status": "Pass",
+    "message": "Pass",
+    "seconds": 0.4084419579999121,
+    "evidence": "_provenance/experiments/20260913T103703844994Z-cts-1-0-sample-000/remote/cts/008"
+  },
+  {
+    "index": 9,
+    "case": "dEQP-VK.pipeline.sampler.view_type.3d.format.astc_6x6_srgb_block.address_modes.all_mode_clamp_to_border_opaque_white",
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "seconds": 0.4086173820001022,
+    "evidence": "_provenance/experiments/20260913T103703844994Z-cts-1-0-sample-000/remote/cts/009"
+  },
+  {
+    "index": 10,
+    "case": "dEQP-VK.pipeline.sampler.view_type.cube.format.r32_uint.mipmap.nearest.lod.select_bias_2_5",
+    "status": "Fail",
+    "message": "vk.createGraphicsPipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:38",
+    "seconds": 0.4086722120000559,
+    "evidence": "_provenance/experiments/20260913T103703844994Z-cts-1-0-sample-000/remote/cts/010"
+  },
+  {
+    "index": 11,
+    "case": "dEQP-VK.pipeline.image_view.view_type.cube_array.format.r32_sint.subresource_range.lod_base_mip_level_array_base_and_size",
+    "status": "Fail",
+    "message": "vk.createGraphicsPipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:38",
+    "seconds": 0.40853855399973327,
+    "evidence": "_provenance/experiments/20260913T103703844994Z-cts-1-0-sample-000/remote/cts/011"
+  },
+  {
+    "index": 12,
+    "case": "dEQP-VK.pipeline.sampler.view_type.1d.format.r32g32b32_uint.address_modes.uvw_mode_repeat_mode_clamp_to_border_mode_clamp_to_edge",
+    "status": "NotSupported",
+    "message": "Unsupported format for sampling: VK_FORMAT_R32G32B32_UINT",
+    "seconds": 0.20782381199978772,
+    "evidence": "_provenance/experiments/20260913T103703844994Z-cts-1-0-sample-000/remote/cts/012"
+  },
+  {
+    "index": 13,
+    "case": "dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.a2r10g10b10_sscaled_pack32.a2b10g10r10_sscaled_pack32.optimal_optimal",
+    "status": "NotSupported",
+    "message": "Format not supported at vktApiCopiesAndBlittingTests.cpp:850",
+    "seconds": 0.20766840900023453,
+    "evidence": "_provenance/experiments/20260913T103703844994Z-cts-1-0-sample-000/remote/cts/013"
+  },
+  {
+    "index": 14,
+    "case": "dEQP-VK.pipeline.sampler.view_type.3d.format.r8_srgb.mag_filter.linear",
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "seconds": 0.4089083590001792,
+    "evidence": "_provenance/experiments/20260913T103703844994Z-cts-1-0-sample-000/remote/cts/014"
+  },
+  {
+    "index": 15,
+    "case": "dEQP-VK.pipeline.image_view.view_type.2d.format.astc_5x5_unorm_block.subresource_range.lod_base_mip_level_array_layer_second",
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "seconds": 0.4074898230001054,
+    "evidence": "_provenance/experiments/20260913T103703844994Z-cts-1-0-sample-000/remote/cts/015"
+  },
+  {
+    "index": 16,
+    "case": "dEQP-VK.ycbcr.copy.b10g11r11_ufloat_pack32.g12x4_b12x4r12x4_2plane_422_unorm_3pack16_khr.linear_linear",
+    "status": "Crash",
+    "message": "Process signal 6",
+    "seconds": 0.4089723130000493,
+    "evidence": "_provenance/experiments/20260913T103703844994Z-cts-1-0-sample-000/remote/cts/016"
+  },
+  {
+    "index": 17,
+    "case": "dEQP-VK.pipeline.stencil.format.d24_unorm_s8_uint.states.front_fail_repl_pass_wrap_dfail_inv_comp_greater_back_fail_repl_pass_incc_dfail_inv_comp_less_or_equal",
+    "status": "NotSupported",
+    "message": "Unsupported depth/stencil format: VK_FORMAT_D24_UNORM_S8_UINT",
+    "seconds": 0.2070053940001344,
+    "evidence": "_provenance/experiments/20260913T103749587325Z-cts-1-0-sample-017/remote/cts/017"
+  },
+  {
+    "index": 18,
+    "case": "dEQP-VK.glsl.swizzles.vector_swizzles.mediump_bvec4_xyzw_vertex",
+    "status": "Pass",
+    "message": "All sub-cases passed",
+    "seconds": 0.20761066300019593,
+    "evidence": "_provenance/experiments/20260913T103749587325Z-cts-1-0-sample-017/remote/cts/018"
+  },
+  {
+    "index": 19,
+    "case": "dEQP-VK.image.texel_view_compatible.compute.extended.texel_fetch.etc2_r8g8b8_srgb_block.r16g16b16a16_sint",
+    "status": "Fail",
+    "message": "vk.createComputePipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:49",
+    "seconds": 0.2077465239999583,
+    "evidence": "_provenance/experiments/20260913T103749587325Z-cts-1-0-sample-017/remote/cts/019"
+  },
+  {
+    "index": 20,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r32g32_sfloat.r32_sfloat.optimal_general_linear",
+    "status": "Pass",
+    "message": "Pass",
+    "seconds": 0.20787347199984652,
+    "evidence": "_provenance/experiments/20260913T103749587325Z-cts-1-0-sample-017/remote/cts/020"
+  },
+  {
+    "index": 21,
+    "case": "dEQP-VK.image.texel_view_compatible.compute.extended.image_load.eac_r11_unorm_block.r16g16b16a16_uscaled",
+    "status": "NotSupported",
+    "message": "Operation not supported with this image format at vktImageCompressionTranscodingSupport.cpp:2582",
+    "seconds": 0.2067123760002687,
+    "evidence": "_provenance/experiments/20260913T103749587325Z-cts-1-0-sample-017/remote/cts/021"
+  },
+  {
+    "index": 22,
+    "case": "dEQP-VK.memory.mapping.dedicated_alloc.image.sub.4087.offset_129.size_1025.remap",
+    "status": "Pass",
+    "message": "Pass",
+    "seconds": 0.20725337599969862,
+    "evidence": "_provenance/experiments/20260913T103749587325Z-cts-1-0-sample-017/remote/cts/022"
+  },
+  {
+    "index": 23,
+    "case": "dEQP-VK.image.texel_view_compatible.graphic.basic.attachment_write.etc2_r8g8b8a1_unorm_block.r16g16b16a16_sint",
+    "status": "Fail",
+    "message": "Images difference detected",
+    "seconds": 0.2078947820000394,
+    "evidence": "_provenance/experiments/20260913T103749587325Z-cts-1-0-sample-017/remote/cts/023"
+  },
+  {
+    "index": 24,
+    "case": "dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.r16g16_unorm.r16g16_uint.optimal_general",
+    "status": "Pass",
+    "message": "CopiesAndBlitting test",
+    "seconds": 0.20764586599989343,
+    "evidence": "_provenance/experiments/20260913T103749587325Z-cts-1-0-sample-017/remote/cts/024"
+  },
+  {
+    "index": 25,
+    "case": "dEQP-VK.binding_model.shader_access.secondary_cmd_buf.with_template.sampler_mutable.tess_eval.descriptor_array.2d_base_mip",
+    "status": "NotSupported",
+    "message": "2 is not supported at vktBindingShaderAccessTests.cpp:942",
+    "seconds": 0.20780850099981762,
+    "evidence": "_provenance/experiments/20260913T103749587325Z-cts-1-0-sample-017/remote/cts/025"
+  },
+  {
+    "index": 26,
+    "case": "dEQP-VK.binding_model.shader_access.secondary_cmd_buf.with_template.combined_image_sampler_immutable.tess_ctrl.descriptor_array.cube_base_mip",
+    "status": "NotSupported",
+    "message": "2 is not supported at vktBindingShaderAccessTests.cpp:942",
+    "seconds": 0.4086130089999642,
+    "evidence": "_provenance/experiments/20260913T103749587325Z-cts-1-0-sample-017/remote/cts/026"
+  },
+  {
+    "index": 27,
+    "case": "dEQP-VK.api.copy_and_blit.dedicated_allocation.image_to_image.all_formats.color.a2b10g10r10_snorm_pack32.r8g8b8a8_unorm.general_optimal",
+    "status": "NotSupported",
+    "message": "Format not supported at vktApiCopiesAndBlittingTests.cpp:850",
+    "seconds": 0.20769201100029022,
+    "evidence": "_provenance/experiments/20260913T103749587325Z-cts-1-0-sample-017/remote/cts/027"
+  },
+  {
+    "index": 28,
+    "case": "dEQP-VK.pipeline.image_view.view_type.2d_array.format.astc_12x12_unorm_block.subresource_range.lod_base_mip_level_array_size",
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "seconds": 0.40845323099983943,
+    "evidence": "_provenance/experiments/20260913T103749587325Z-cts-1-0-sample-017/remote/cts/028"
+  },
+  {
+    "index": 29,
+    "case": "dEQP-VK.binding_model.shader_access.secondary_cmd_buf.uniform_texel_buffer.vertex.single_descriptor.offset_nonzero",
+    "status": "Fail",
+    "message": "vk.createGraphicsPipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:38",
+    "seconds": 0.20787709800015364,
+    "evidence": "_provenance/experiments/20260913T103749587325Z-cts-1-0-sample-017/remote/cts/029"
+  },
+  {
+    "index": 30,
+    "case": "dEQP-VK.pipeline.multisample.storage_image.79x31_4.r32_uint.samples_8",
+    "status": "NotSupported",
+    "message": "Multisampled storage images are not supported at vktPipelineMultisampleImageTests.cpp:514",
+    "seconds": 0.20680014000026858,
+    "evidence": "_provenance/experiments/20260913T103749587325Z-cts-1-0-sample-017/remote/cts/030"
+  },
+  {
+    "index": 31,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16g16b16_snorm.r8g8b8_snorm.general_optimal_linear",
+    "status": "NotSupported",
+    "message": "Format not supported at vktApiCopiesAndBlittingTests.cpp:1766",
+    "seconds": 0.2066776070000742,
+    "evidence": "_provenance/experiments/20260913T103749587325Z-cts-1-0-sample-017/remote/cts/031"
+  },
+  {
+    "index": 32,
+    "case": "dEQP-VK.synchronization.op.single_queue.semaphore.write_image_tess_control_read_image_vertex.image_128_r32_uint",
+    "status": "NotSupported",
+    "message": "Tessellation shader not supported",
+    "seconds": 0.2080614820001756,
+    "evidence": "_provenance/experiments/20260913T103749587325Z-cts-1-0-sample-017/remote/cts/032"
+  },
+  {
+    "index": 33,
+    "case": "dEQP-VK.pipeline.image.suballocation.sampling_type.combined.view_type.2d.format.r16g16_sfloat.count_1.size.32x16",
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "seconds": 0.40861379999978453,
+    "evidence": "_provenance/experiments/20260913T103749587325Z-cts-1-0-sample-017/remote/cts/033"
+  },
+  {
+    "index": 34,
+    "case": "dEQP-VK.synchronization.op.single_queue.event.write_image_compute_indirect_read_image_compute_indirect.image_128x128_r32g32b32a32_sfloat",
+    "status": "Pass",
+    "message": "OK",
+    "seconds": 0.40823899499991967,
+    "evidence": "_provenance/experiments/20260913T103749587325Z-cts-1-0-sample-017/remote/cts/034"
+  },
+  {
+    "index": 35,
+    "case": "dEQP-VK.ycbcr.conversion.g8_b8_r8_3plane_422_unorm_khr.chroma_reconstruction.linear.default_linear_cosited_tiling_linear_disjoint",
+    "status": "Pass",
+    "message": "Pass",
+    "seconds": 0.20770002899962492,
+    "evidence": "_provenance/experiments/20260913T103749587325Z-cts-1-0-sample-017/remote/cts/035"
+  },
+  {
+    "index": 36,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r8g8b8_unorm.r8g8_snorm.general_general_linear",
+    "status": "NotSupported",
+    "message": "Format not supported at vktApiCopiesAndBlittingTests.cpp:1766",
+    "seconds": 0.20781100100020922,
+    "evidence": "_provenance/experiments/20260913T103749587325Z-cts-1-0-sample-017/remote/cts/036"
+  },
+  {
+    "index": 37,
+    "case": "dEQP-VK.image.mutable.2d.r8g8b8a8_unorm_r8g8b8a8_uint_draw_load_format_list",
+    "status": "Fail",
+    "message": "vk.createComputePipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:49",
+    "seconds": 0.20796713500021724,
+    "evidence": "_provenance/experiments/20260913T103749587325Z-cts-1-0-sample-017/remote/cts/037"
+  },
+  {
+    "index": 38,
+    "case": "dEQP-VK.pipeline.image.suballocation.sampling_type.separate.view_type.3d.format.r8g8_sscaled.count_1.size.5x11x17",
+    "status": "NotSupported",
+    "message": "Unsupported format for sampling: VK_FORMAT_R8G8_SSCALED",
+    "seconds": 0.20789084800026103,
+    "evidence": "_provenance/experiments/20260913T103749587325Z-cts-1-0-sample-017/remote/cts/038"
+  },
+  {
+    "index": 39,
+    "case": "dEQP-VK.pipeline.sampler.view_type.3d.format.astc_4x4_unorm_block.address_modes.all_mode_mirrored_repeat",
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "seconds": 0.4084900180000659,
+    "evidence": "_provenance/experiments/20260913T103749587325Z-cts-1-0-sample-017/remote/cts/039"
+  },
+  {
+    "index": 40,
+    "case": "dEQP-VK.spirv_assembly.instruction.graphics.opspecconstantop.iequal_tessc",
+    "status": "NotSupported",
+    "message": "Tessellation not supported",
+    "seconds": 0.20682886700024028,
+    "evidence": "_provenance/experiments/20260913T103749587325Z-cts-1-0-sample-017/remote/cts/040"
+  },
+  {
+    "index": 41,
+    "case": "dEQP-VK.pipeline.stencil.format.d24_unorm_s8_uint.states.front_fail_decc_pass_decc_dfail_wrap_comp_greater_or_equal_back_fail_repl_pass_decc_dfail_incc_comp_greater",
+    "status": "NotSupported",
+    "message": "Unsupported depth/stencil format: VK_FORMAT_D24_UNORM_S8_UINT",
+    "seconds": 0.208096894999926,
+    "evidence": "_provenance/experiments/20260913T103749587325Z-cts-1-0-sample-017/remote/cts/041"
+  },
+  {
+    "index": 42,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.with_template.uniform_texel_buffer.geometry.single_descriptor.offset_zero",
+    "status": "Fail",
+    "message": "vk.createGraphicsPipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:38",
+    "seconds": 0.2078451029997268,
+    "evidence": "_provenance/experiments/20260913T103749587325Z-cts-1-0-sample-017/remote/cts/042"
+  },
+  {
+    "index": 43,
+    "case": "dEQP-VK.ycbcr.copy.g10x6_b10x6_r10x6_3plane_444_unorm_3pack16_khr.g10x6_b10x6_r10x6_3plane_420_unorm_3pack16_khr.optimal_linear",
+    "status": "Fail",
+    "message": "vkd.endCommandBuffer(*cmdBuffer): VK_ERROR_FEATURE_NOT_PRESENT at vktYCbCrUtil.cpp:409",
+    "seconds": 0.2076110980001431,
+    "evidence": "_provenance/experiments/20260913T103749587325Z-cts-1-0-sample-017/remote/cts/043"
+  },
+  {
+    "index": 44,
+    "case": "dEQP-VK.pipeline.stencil.format.d24_unorm_s8_uint.states.front_fail_incc_pass_incc_dfail_decc_comp_less_or_equal_back_fail_wrap_pass_inv_dfail_inv_comp_not_equal",
+    "status": "NotSupported",
+    "message": "Unsupported depth/stencil format: VK_FORMAT_D24_UNORM_S8_UINT",
+    "seconds": 0.20784553599969513,
+    "evidence": "_provenance/experiments/20260913T103749587325Z-cts-1-0-sample-017/remote/cts/044"
+  },
+  {
+    "index": 45,
+    "case": "dEQP-VK.renderpass.dedicated_allocation.formats.a8b8g8r8_unorm_pack32.input.load.dont_care.self_dep_clear_use_input_aspect",
+    "status": "Crash",
+    "message": "Process signal 6",
+    "seconds": 0.20650342999988425,
+    "evidence": "_provenance/experiments/20260913T103749587325Z-cts-1-0-sample-017/remote/cts/045"
+  },
+  {
+    "index": 46,
+    "case": "dEQP-VK.spirv_assembly.instruction.graphics.16bit_storage.input_output_int_16_to_32.scalar_uint4_vert",
+    "status": "Crash",
+    "message": "Process signal 6",
+    "seconds": 0.4089382550000664,
+    "evidence": "_provenance/experiments/20260913T103833635686Z-cts-1-0-sample-046/remote/cts/046"
+  },
+  {
+    "index": 47,
+    "case": "dEQP-VK.binding_model.shader_access.secondary_cmd_buf.with_push_template.sampler_mutable.geometry.multiple_discontiguous_descriptors.2d",
+    "status": "Fail",
+    "message": "vk.createGraphicsPipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:38",
+    "seconds": 0.20805038799971953,
+    "evidence": "_provenance/experiments/20260913T103901189471Z-cts-1-0-sample-047/remote/cts/047"
+  },
+  {
+    "index": 48,
+    "case": "dEQP-VK.glsl.texture_gather.offsets.min_required_offset.2d_array.rgba8i.texture_swizzle.blue_alpha_zero_one",
+    "status": "Fail",
+    "message": "vk.createGraphicsPipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:38",
+    "seconds": 0.20780565199947887,
+    "evidence": "_provenance/experiments/20260913T103901189471Z-cts-1-0-sample-047/remote/cts/048"
+  },
+  {
+    "index": 49,
+    "case": "dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.b8g8r8a8_uscaled.a8b8g8r8_sint_pack32.optimal_optimal",
+    "status": "NotSupported",
+    "message": "Format not supported at vktApiCopiesAndBlittingTests.cpp:850",
+    "seconds": 0.20755746699978772,
+    "evidence": "_provenance/experiments/20260913T103901189471Z-cts-1-0-sample-047/remote/cts/049"
+  },
+  {
+    "index": 50,
+    "case": "dEQP-VK.synchronization.op.single_queue.event.write_image_compute_read_copy_image.image_128x128_r32g32b32a32_sfloat",
+    "status": "Pass",
+    "message": "OK",
+    "seconds": 0.4084529780002413,
+    "evidence": "_provenance/experiments/20260913T103901189471Z-cts-1-0-sample-047/remote/cts/050"
+  },
+  {
+    "index": 51,
+    "case": "dEQP-VK.pipeline.image.suballocation.sampling_type.separate.view_type.1d_array.format.r16g16b16a16_unorm.count_1.size.3x1_array_of_6",
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "seconds": 0.40851805600050284,
+    "evidence": "_provenance/experiments/20260913T103901189471Z-cts-1-0-sample-047/remote/cts/051"
+  },
+  {
+    "index": 52,
+    "case": "dEQP-VK.ycbcr.copy.g10x6_b10x6r10x6_2plane_420_unorm_3pack16_khr.r4g4b4a4_unorm_pack16.linear_optimal_disjoint",
+    "status": "NotSupported",
+    "message": "Format doesn&apos;t disjoint planes at vktYCbCrCopyTests.cpp:138",
+    "seconds": 0.20773694400031673,
+    "evidence": "_provenance/experiments/20260913T103901189471Z-cts-1-0-sample-047/remote/cts/052"
+  },
+  {
+    "index": 53,
+    "case": "dEQP-VK.pipeline.sampler.view_type.2d.format.etc2_r8g8b8a1_unorm_block.address_modes.all_mode_clamp_to_border_transparent_black",
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "seconds": 0.40836234299968055,
+    "evidence": "_provenance/experiments/20260913T103901189471Z-cts-1-0-sample-047/remote/cts/053"
+  },
+  {
+    "index": 54,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.with_template.combined_image_sampler_mutable.geometry.descriptor_array.cube_array_base_mip",
+    "status": "Fail",
+    "message": "vk.createGraphicsPipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:38",
+    "seconds": 0.40895207199992,
+    "evidence": "_provenance/experiments/20260913T103901189471Z-cts-1-0-sample-047/remote/cts/054"
+  },
+  {
+    "index": 55,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.with_push_template.uniform_buffer.vertex_fragment.multiple_contiguous_descriptors.offset_view_zero",
+    "status": "Fail",
+    "message": "vk.createGraphicsPipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:38",
+    "seconds": 0.20779525200032367,
+    "evidence": "_provenance/experiments/20260913T103901189471Z-cts-1-0-sample-047/remote/cts/055"
+  },
+  {
+    "index": 56,
+    "case": "dEQP-VK.ycbcr.copy.g12x4_b12x4r12x4_2plane_420_unorm_3pack16_khr.b5g5r5a1_unorm_pack16.optimal_disjoint_linear",
+    "status": "NotSupported",
+    "message": "Source format doesn&apos;t support copies at vktYCbCrCopyTests.cpp:134",
+    "seconds": 0.20753229999991163,
+    "evidence": "_provenance/experiments/20260913T103901189471Z-cts-1-0-sample-047/remote/cts/056"
+  },
+  {
+    "index": 57,
+    "case": "dEQP-VK.ycbcr.copy.g10x6_b10x6_r10x6_3plane_422_unorm_3pack16_khr.r10x6_unorm_pack16_khr.linear_linear_disjoint",
+    "status": "NotSupported",
+    "message": "Format doesn&apos;t disjoint planes at vktYCbCrCopyTests.cpp:138",
+    "seconds": 0.2065738009996494,
+    "evidence": "_provenance/experiments/20260913T103901189471Z-cts-1-0-sample-047/remote/cts/057"
+  },
+  {
+    "index": 58,
+    "case": "dEQP-VK.binding_model.shader_access.secondary_cmd_buf.storage_buffer_dynamic.tess_eval.single_descriptor.offset_view_zero_dynamic_zero",
+    "status": "NotSupported",
+    "message": "2 is not supported at vktBindingShaderAccessTests.cpp:942",
+    "seconds": 0.20778636199975153,
+    "evidence": "_provenance/experiments/20260913T103901189471Z-cts-1-0-sample-047/remote/cts/058"
+  },
+  {
+    "index": 59,
+    "case": "dEQP-VK.pipeline.sampler.view_type.1d.format.r8g8_sint.address_modes.all_mode_mirror_clamp_to_edge",
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "seconds": 0.40854102699995565,
+    "evidence": "_provenance/experiments/20260913T103901189471Z-cts-1-0-sample-047/remote/cts/059"
+  },
+  {
+    "index": 60,
+    "case": "dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.a8b8g8r8_sscaled_pack32.a2r10g10b10_snorm_pack32.general_general",
+    "status": "NotSupported",
+    "message": "Format not supported at vktApiCopiesAndBlittingTests.cpp:850",
+    "seconds": 0.20784205499967356,
+    "evidence": "_provenance/experiments/20260913T103901189471Z-cts-1-0-sample-047/remote/cts/060"
+  },
+  {
+    "index": 61,
+    "case": "dEQP-VK.ycbcr.copy.r8g8b8a8_unorm.r12x4g12x4_unorm_2pack16_khr.linear_linear_disjoint",
+    "status": "NotSupported",
+    "message": "Format doesn&apos;t disjoint planes at vktYCbCrCopyTests.cpp:138",
+    "seconds": 0.20753165600035572,
+    "evidence": "_provenance/experiments/20260913T103901189471Z-cts-1-0-sample-047/remote/cts/061"
+  },
+  {
+    "index": 62,
+    "case": "dEQP-VK.spirv_assembly.instruction.graphics.16bit_storage.input_output_int_16_to_32.scalar_sint4_geom",
+    "status": "Crash",
+    "message": "Process signal 6",
+    "seconds": 0.4085545199995977,
+    "evidence": "_provenance/experiments/20260913T103901189471Z-cts-1-0-sample-047/remote/cts/062"
+  },
+  {
+    "index": 63,
+    "case": "dEQP-VK.synchronization.cross_instance.suballocated.write_draw_indexed_indirect_read_image_fragment.image_128x128_r8_unorm_win32",
+    "status": "NotSupported",
+    "message": "Required extensions not supported at vktSynchronizationCrossInstanceSharingTests.cpp:299",
+    "seconds": 0.20805338399986795,
+    "evidence": "_provenance/experiments/20260913T103927867673Z-cts-1-0-sample-063/remote/cts/063"
+  },
+  {
+    "index": 64,
+    "case": "dEQP-VK.pipeline.stencil.format.s8_uint.states.front_fail_decw_pass_keep_dfail_inv_comp_equal_back_fail_zero_pass_wrap_dfail_zero_comp_not_equal",
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "seconds": 0.40731125799993606,
+    "evidence": "_provenance/experiments/20260913T103927867673Z-cts-1-0-sample-063/remote/cts/064"
+  },
+  {
+    "index": 65,
+    "case": "dEQP-VK.pipeline.image.suballocation.sampling_type.combined.view_type.2d.format.r8_sint.count_1.size.32x32",
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "seconds": 0.40847409199977847,
+    "evidence": "_provenance/experiments/20260913T103927867673Z-cts-1-0-sample-063/remote/cts/065"
+  },
+  {
+    "index": 66,
+    "case": "dEQP-VK.ycbcr.copy.g12x4_b12x4_r12x4_3plane_420_unorm_3pack16_khr.g16_b16_r16_3plane_444_unorm_khr.optimal_linear",
+    "status": "Fail",
+    "message": "vkd.endCommandBuffer(*cmdBuffer): VK_ERROR_FEATURE_NOT_PRESENT at vktYCbCrUtil.cpp:409",
+    "seconds": 0.20782216000043263,
+    "evidence": "_provenance/experiments/20260913T103927867673Z-cts-1-0-sample-063/remote/cts/066"
+  },
+  {
+    "index": 67,
+    "case": "dEQP-VK.ycbcr.copy.g16_b16_r16_3plane_422_unorm_khr.g16_b16r16_2plane_420_unorm_khr.linear_disjoint_linear",
+    "status": "Crash",
+    "message": "Process signal 6",
+    "seconds": 0.40847478799969394,
+    "evidence": "_provenance/experiments/20260913T103927867673Z-cts-1-0-sample-063/remote/cts/067"
+  },
+  {
+    "index": 68,
+    "case": "dEQP-VK.synchronization.op.multi_queue.semaphore.write_blit_image_read_copy_image_to_buffer.image_128x128_r8_unorm_concurrent",
+    "status": "NotSupported",
+    "message": "Queue not found at vktSynchronizationOperationMultiQueueTests.cpp:202",
+    "seconds": 0.20805526999993162,
+    "evidence": "_provenance/experiments/20260913T103957262358Z-cts-1-0-sample-068/remote/cts/068"
+  },
+  {
+    "index": 69,
+    "case": "dEQP-VK.synchronization.op.multi_queue.fence.write_image_fragment_read_blit_image.image_128_r32_uint_concurrent",
+    "status": "NotSupported",
+    "message": "Queue not found at vktSynchronizationOperationMultiQueueTests.cpp:202",
+    "seconds": 0.2077047960001437,
+    "evidence": "_provenance/experiments/20260913T103957262358Z-cts-1-0-sample-068/remote/cts/069"
+  },
+  {
+    "index": 70,
+    "case": "dEQP-VK.api.info.sparse_image_format_properties2.3d.optimal.d32_sfloat_s8_uint",
+    "status": "Pass",
+    "message": "Querying sparse image format properties succeeded",
+    "seconds": 0.20799512800022057,
+    "evidence": "_provenance/experiments/20260913T103957262358Z-cts-1-0-sample-068/remote/cts/070"
+  },
+  {
+    "index": 71,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.sampler_immutable.tess_eval.multiple_contiguous_descriptors.3d_base_mip",
+    "status": "NotSupported",
+    "message": "2 is not supported at vktBindingShaderAccessTests.cpp:942",
+    "seconds": 0.2066591109996807,
+    "evidence": "_provenance/experiments/20260913T103957262358Z-cts-1-0-sample-068/remote/cts/071"
+  },
+  {
+    "index": 72,
+    "case": "dEQP-VK.synchronization.cross_instance.dedicated.write_image_tess_control_read_copy_image.image_64x64x8_r32_sfloat_fence_fd",
+    "status": "Pass",
+    "message": "Pass",
+    "seconds": 0.20794509299958008,
+    "evidence": "_provenance/experiments/20260913T103957262358Z-cts-1-0-sample-068/remote/cts/072"
+  },
+  {
+    "index": 73,
+    "case": "dEQP-VK.binding_model.shader_access.secondary_cmd_buf.with_template.sampler_mutable.tess_eval.single_descriptor.3d",
+    "status": "NotSupported",
+    "message": "2 is not supported at vktBindingShaderAccessTests.cpp:942",
+    "seconds": 0.20769283600020572,
+    "evidence": "_provenance/experiments/20260913T103957262358Z-cts-1-0-sample-068/remote/cts/073"
+  },
+  {
+    "index": 74,
+    "case": "dEQP-VK.api.copy_and_blit.dedicated_allocation.image_to_image.all_formats.color.a8b8g8r8_snorm_pack32.r8g8b8a8_unorm.general_general",
+    "status": "Pass",
+    "message": "CopiesAndBlitting test",
+    "seconds": 0.20772737100014638,
+    "evidence": "_provenance/experiments/20260913T103957262358Z-cts-1-0-sample-068/remote/cts/074"
+  },
+  {
+    "index": 75,
+    "case": "dEQP-VK.pipeline.sampler.view_type.1d_array.format.r8_unorm.address_modes.uvw_mode_mirrored_repeat_mode_clamp_to_edge_mode_repeat",
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "seconds": 0.4080546740005957,
+    "evidence": "_provenance/experiments/20260913T103957262358Z-cts-1-0-sample-068/remote/cts/075"
+  },
+  {
+    "index": 76,
+    "case": "dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.a2b10g10r10_unorm_pack32.b8g8r8a8_unorm.general_general",
+    "status": "Pass",
+    "message": "CopiesAndBlitting test",
+    "seconds": 0.20764757300003112,
+    "evidence": "_provenance/experiments/20260913T103957262358Z-cts-1-0-sample-068/remote/cts/076"
+  },
+  {
+    "index": 77,
+    "case": "dEQP-VK.ssbo.layout.single_basic_array.std140.row_major_mat2x3_comp_access",
+    "status": "Pass",
+    "message": "Result comparison and counter values are OK",
+    "seconds": 0.40825849900011235,
+    "evidence": "_provenance/experiments/20260913T103957262358Z-cts-1-0-sample-068/remote/cts/077"
+  },
+  {
+    "index": 78,
+    "case": "dEQP-VK.renderpass.suballocation.formats.r32g32_sfloat.input.clear.dont_care.self_dep_clear_draw",
+    "status": "Pass",
+    "message": "Pass",
+    "seconds": 0.20776151599966397,
+    "evidence": "_provenance/experiments/20260913T103957262358Z-cts-1-0-sample-068/remote/cts/078"
+  },
+  {
+    "index": 79,
+    "case": "dEQP-VK.pipeline.stencil.format.d32_sfloat_s8_uint.states.front_fail_inv_pass_decw_dfail_decc_comp_greater_back_fail_repl_pass_keep_dfail_decc_comp_not_equal",
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "seconds": 0.40792986700034817,
+    "evidence": "_provenance/experiments/20260913T103957262358Z-cts-1-0-sample-068/remote/cts/079"
+  },
+  {
+    "index": 80,
+    "case": "dEQP-VK.pipeline.sampler.view_type.2d.format.astc_5x4_srgb_block.address_modes.uvw_mode_repeat_mode_mirrored_repeat_mode_clamp_to_border",
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "seconds": 0.40848377699967386,
+    "evidence": "_provenance/experiments/20260913T103957262358Z-cts-1-0-sample-068/remote/cts/080"
+  },
+  {
+    "index": 81,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r8g8_sscaled.b4g4r4a4_unorm_pack16.general_optimal_linear",
+    "status": "NotSupported",
+    "message": "Format not supported at vktApiCopiesAndBlittingTests.cpp:1766",
+    "seconds": 0.207612493999477,
+    "evidence": "_provenance/experiments/20260913T103957262358Z-cts-1-0-sample-068/remote/cts/081"
+  },
+  {
+    "index": 82,
+    "case": "dEQP-VK.image.texel_view_compatible.compute.basic.texture.bc4_unorm_block.r32g32_sfloat",
+    "status": "Fail",
+    "message": "vk.createComputePipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:49",
+    "seconds": 0.207654270000603,
+    "evidence": "_provenance/experiments/20260913T103957262358Z-cts-1-0-sample-068/remote/cts/082"
+  },
+  {
+    "index": 83,
+    "case": "dEQP-VK.ycbcr.copy.b5g5r5a1_unorm_pack16.g10x6_b10x6_r10x6_3plane_422_unorm_3pack16_khr.linear_disjoint_linear",
+    "status": "NotSupported",
+    "message": "Source format doesn&apos;t support copies at vktYCbCrCopyTests.cpp:110",
+    "seconds": 0.20749971399982314,
+    "evidence": "_provenance/experiments/20260913T103957262358Z-cts-1-0-sample-068/remote/cts/083"
+  },
+  {
+    "index": 84,
+    "case": "dEQP-VK.api.info.image_format_properties.2d.linear.r8_srgb",
+    "status": "Pass",
+    "message": "Pass",
+    "seconds": 0.2078444879998642,
+    "evidence": "_provenance/experiments/20260913T103957262358Z-cts-1-0-sample-068/remote/cts/084"
+  },
+  {
+    "index": 85,
+    "case": "dEQP-VK.glsl.operator.binary_operator.mul_assign_effect.mediump_ivec2_fragment",
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "seconds": 0.2080100980001589,
+    "evidence": "_provenance/experiments/20260913T103957262358Z-cts-1-0-sample-068/remote/cts/085"
+  },
+  {
+    "index": 86,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16g16b16a16_snorm.r8g8_sscaled.general_general_linear",
+    "status": "NotSupported",
+    "message": "Format not supported at vktApiCopiesAndBlittingTests.cpp:1766",
+    "seconds": 0.20648711800004094,
+    "evidence": "_provenance/experiments/20260913T103957262358Z-cts-1-0-sample-068/remote/cts/086"
+  },
+  {
+    "index": 87,
+    "case": "dEQP-VK.pipeline.image.suballocation.sampling_type.separate.view_type.2d.format.b10g11r11_ufloat_pack32.count_1.size.8x16",
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "seconds": 0.40825176399994234,
+    "evidence": "_provenance/experiments/20260913T103957262358Z-cts-1-0-sample-068/remote/cts/087"
+  },
+  {
+    "index": 88,
+    "case": "dEQP-VK.pipeline.image.suballocation.sampling_type.separate.view_type.3d.format.astc_8x5_srgb_block.count_4.size.11x11x11",
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "seconds": 0.4084133500000462,
+    "evidence": "_provenance/experiments/20260913T103957262358Z-cts-1-0-sample-068/remote/cts/088"
+  },
+  {
+    "index": 89,
+    "case": "dEQP-VK.ycbcr.copy.g8_b8_r8_3plane_444_unorm_khr.r4g4_unorm_pack8.linear_disjoint_linear",
+    "status": "NotSupported",
+    "message": "Source format doesn&apos;t support copies at vktYCbCrCopyTests.cpp:134",
+    "seconds": 0.20650952699998015,
+    "evidence": "_provenance/experiments/20260913T103957262358Z-cts-1-0-sample-068/remote/cts/089"
+  },
+  {
+    "index": 90,
+    "case": "dEQP-VK.synchronization.win32_keyed_mutex.write_copy_image_to_buffer_read_ubo_tess_eval.buffer_16384_kmt",
+    "status": "NotSupported",
+    "message": "Required extensions not supported at vktSynchronizationWin32KeyedMutexTests.cpp:226",
+    "seconds": 0.20795541899951786,
+    "evidence": "_provenance/experiments/20260913T103957262358Z-cts-1-0-sample-068/remote/cts/090"
+  },
+  {
+    "index": 91,
+    "case": "dEQP-VK.synchronization.op.single_queue.barrier.write_image_compute_read_image_compute_indirect.image_128_r32_uint",
+    "status": "Fail",
+    "message": "Memory contents don&apos;t match",
+    "seconds": 0.20789453300039895,
+    "evidence": "_provenance/experiments/20260913T103957262358Z-cts-1-0-sample-068/remote/cts/091"
+  },
+  {
+    "index": 92,
+    "case": "dEQP-VK.synchronization.op.single_queue.event.write_image_tess_control_read_image_compute_indirect.image_64x64x8_r32_sfloat",
+    "status": "NotSupported",
+    "message": "Tessellation shader not supported",
+    "seconds": 0.2074938249998013,
+    "evidence": "_provenance/experiments/20260913T103957262358Z-cts-1-0-sample-068/remote/cts/092"
+  },
+  {
+    "index": 93,
+    "case": "dEQP-VK.texture.shadow.2d_array.nearest_mipmap_linear.never_d16_unorm_s8_uint",
+    "status": "NotSupported",
+    "message": "Format not supported: VK_FORMAT_D16_UNORM_S8_UINT at vktTextureTestUtil.cpp:326",
+    "seconds": 0.2077483310004027,
+    "evidence": "_provenance/experiments/20260913T103957262358Z-cts-1-0-sample-068/remote/cts/093"
+  },
+  {
+    "index": 94,
+    "case": "dEQP-VK.api.external.semaphore.opaque_win32_kmt.import_multiple_times_permanent",
+    "status": "NotSupported",
+    "message": "Semaphore doesn&apos;t support exporting in external type at vktApiExternalMemoryTests.cpp:346",
+    "seconds": 0.20672568600002705,
+    "evidence": "_provenance/experiments/20260913T103957262358Z-cts-1-0-sample-068/remote/cts/094"
+  },
+  {
+    "index": 95,
+    "case": "dEQP-VK.binding_model.shader_access.secondary_cmd_buf.with_push_template.sampler_mutable.fragment.single_descriptor.2d_array",
+    "status": "Fail",
+    "message": "vk.createGraphicsPipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:38",
+    "seconds": 0.20766404599999078,
+    "evidence": "_provenance/experiments/20260913T103957262358Z-cts-1-0-sample-068/remote/cts/095"
+  },
+  {
+    "index": 96,
+    "case": "dEQP-VK.pipeline.image_view.view_type.2d.format.r16_sscaled.subresource_range.lod_base_mip_level_array_layer_second",
+    "status": "NotSupported",
+    "message": "Unsupported format for sampling: VK_FORMAT_R16_SSCALED",
+    "seconds": 0.2080705879998277,
+    "evidence": "_provenance/experiments/20260913T103957262358Z-cts-1-0-sample-068/remote/cts/096"
+  },
+  {
+    "index": 97,
+    "case": "dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.r32_uint.r8g8b8a8_snorm.general_optimal",
+    "status": "Pass",
+    "message": "CopiesAndBlitting test",
+    "seconds": 0.20782955499998934,
+    "evidence": "_provenance/experiments/20260913T103957262358Z-cts-1-0-sample-068/remote/cts/097"
+  },
+  {
+    "index": 98,
+    "case": "dEQP-VK.synchronization.cross_instance.suballocated.write_image_compute_read_copy_image_to_buffer.image_128x128_r32g32b32a32_sfloat_win32_kmt",
+    "status": "NotSupported",
+    "message": "Required extensions not supported at vktSynchronizationCrossInstanceSharingTests.cpp:299",
+    "seconds": 0.20775078400038183,
+    "evidence": "_provenance/experiments/20260913T103957262358Z-cts-1-0-sample-068/remote/cts/098"
+  },
+  {
+    "index": 99,
+    "case": "dEQP-VK.pipeline.image.suballocation.sampling_type.separate.view_type.1d_array.format.r8_srgb.count_1.size.1x1_array_of_3",
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "seconds": 0.40846028000032675,
+    "evidence": "_provenance/experiments/20260913T103957262358Z-cts-1-0-sample-068/remote/cts/099"
+  }
+]
