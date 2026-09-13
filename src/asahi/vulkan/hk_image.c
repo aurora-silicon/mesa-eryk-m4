@@ -599,6 +599,21 @@ hk_GetPhysicalDeviceImageFormatProperties2(
       }
    }
 
+   /* Native image stores address individual samples through the physical
+    * tiled layout and a linear PBE alias; they do not require a renderable
+    * tilebuffer format. Keep attachment-capable requests within the existing
+    * render-pass restrictions above. */
+   if (pdev->dev.chip == AGX_CHIP_G16G &&
+       pImageFormatInfo->tiling == VK_IMAGE_TILING_OPTIMAL &&
+       pImageFormatInfo->type == VK_IMAGE_TYPE_2D && ycbcr_info == NULL &&
+       !(pImageFormatInfo->flags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) &&
+       !(pImageFormatInfo->usage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+                                   VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) &&
+       (features & VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT) &&
+       (features & VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT))
+      sampleCounts = VK_SAMPLE_COUNT_1_BIT | VK_SAMPLE_COUNT_2_BIT |
+                     VK_SAMPLE_COUNT_4_BIT;
+
    /* From the Vulkan 1.2.199 spec:
     *
     *    "VK_IMAGE_CREATE_EXTENDED_USAGE_BIT specifies that the image can be

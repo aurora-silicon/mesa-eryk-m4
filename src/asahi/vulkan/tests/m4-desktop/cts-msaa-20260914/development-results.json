@@ -1,0 +1,75 @@
+{
+  "first-v1": {
+    "counts": {
+      "Fail": 2
+    },
+    "batches": [
+      "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T231138672002Z-msaa-storage-v1-000"
+    ]
+  },
+  "first-v2": {
+    "counts": {
+      "Pass": 2
+    },
+    "batches": [
+      "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T231341174193Z-msaa-storage-v2-000"
+    ]
+  },
+  "formatless-only-v3": {
+    "counts": {
+      "Pass": 4,
+      "Fail": 8
+    },
+    "batches": [
+      "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T231851354590Z-msaa-formatless-only-v3-000"
+    ]
+  },
+  "formatless-only-v4": {
+    "counts": {
+      "Pass": 12
+    },
+    "batches": [
+      "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T232525249054Z-msaa-formatless-only-v4-000"
+    ]
+  },
+  "volatile-v5": {
+    "counts": {
+      "Fail": 12
+    },
+    "batches": [
+      "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T232720211769Z-msaa-volatile-v5-000"
+    ]
+  },
+  "volatile-v6": {
+    "counts": {
+      "Fail": 12
+    },
+    "batches": [
+      "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T232827899021Z-msaa-volatile-v6-000"
+    ]
+  },
+  "volatile-v7": {
+    "counts": {
+      "Fail": 12
+    },
+    "batches": [
+      "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T233100191080Z-msaa-volatile-v7-000"
+    ]
+  },
+  "volatile-v8": {
+    "counts": {
+      "Fail": 2
+    },
+    "batches": [
+      "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T233142846776Z-msaa-volatile-v8-000"
+    ]
+  },
+  "volatile-v9": {
+    "counts": {
+      "Pass": 12
+    },
+    "batches": [
+      "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T233304820488Z-msaa-volatile-v9-000"
+    ]
+  }
+}

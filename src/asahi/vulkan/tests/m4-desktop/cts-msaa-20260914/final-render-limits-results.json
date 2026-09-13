@@ -1,0 +1,268 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.pipeline.multisample.raster_samples.samples_2.primitive_triangle",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-scaled-border-reference",
+      "--deqp-case=dEQP-VK.pipeline.multisample.raster_samples.samples_2.primitive_triangle",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233413629055Z-msaa-render-limits-final-000/cts/000/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342454.7384784,
+    "message": "Primitive rendered, unique colors within expected bounds",
+    "returncode": 0,
+    "seconds": 0.34505847799982803,
+    "finished_unix": 1789342455.0895967,
+    "pid": 14881
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.pipeline.multisample.raster_samples.samples_2.primitive_line",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-scaled-border-reference",
+      "--deqp-case=dEQP-VK.pipeline.multisample.raster_samples.samples_2.primitive_line",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233413629055Z-msaa-render-limits-final-000/cts/001/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342454.7445922,
+    "message": "Primitive rendered, unique colors within expected bounds",
+    "returncode": 0,
+    "seconds": 0.35406839899997067,
+    "finished_unix": 1789342455.1042533,
+    "pid": 14882
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.pipeline.multisample.raster_samples.samples_2.primitive_point",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-scaled-border-reference",
+      "--deqp-case=dEQP-VK.pipeline.multisample.raster_samples.samples_2.primitive_point",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233413629055Z-msaa-render-limits-final-000/cts/002/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342454.7503479,
+    "message": "Primitive rendered, unique colors within expected bounds",
+    "returncode": 0,
+    "seconds": 0.3630710709999221,
+    "finished_unix": 1789342455.1192245,
+    "pid": 14883
+  },
+  {
+    "index": 3,
+    "case": "dEQP-VK.pipeline.multisample.raster_samples.samples_2.depth",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-scaled-border-reference",
+      "--deqp-case=dEQP-VK.pipeline.multisample.raster_samples.samples_2.depth",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233413629055Z-msaa-render-limits-final-000/cts/003/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342454.7563927,
+    "message": "Primitive rendered, unique colors within expected bounds",
+    "returncode": 0,
+    "seconds": 0.3704107620001196,
+    "finished_unix": 1789342455.1342413,
+    "pid": 14885
+  },
+  {
+    "index": 4,
+    "case": "dEQP-VK.pipeline.multisample.raster_samples.samples_2.stencil",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-scaled-border-reference",
+      "--deqp-case=dEQP-VK.pipeline.multisample.raster_samples.samples_2.stencil",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233413629055Z-msaa-render-limits-final-000/cts/004/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342454.7639616,
+    "message": "Primitive rendered, unique colors within expected bounds",
+    "returncode": 0,
+    "seconds": 0.37863736200006315,
+    "finished_unix": 1789342455.1492372,
+    "pid": 14887
+  },
+  {
+    "index": 5,
+    "case": "dEQP-VK.pipeline.multisample.raster_samples.samples_2.depth_stencil",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-scaled-border-reference",
+      "--deqp-case=dEQP-VK.pipeline.multisample.raster_samples.samples_2.depth_stencil",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233413629055Z-msaa-render-limits-final-000/cts/005/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342454.7708058,
+    "message": "Primitive rendered, unique colors within expected bounds",
+    "returncode": 0,
+    "seconds": 0.38392171300029077,
+    "finished_unix": 1789342455.1622138,
+    "pid": 14889
+  },
+  {
+    "index": 6,
+    "case": "dEQP-VK.pipeline.multisample.raster_samples.samples_4.primitive_triangle",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-scaled-border-reference",
+      "--deqp-case=dEQP-VK.pipeline.multisample.raster_samples.samples_4.primitive_triangle",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233413629055Z-msaa-render-limits-final-000/cts/006/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342455.1735,
+    "message": "Primitive rendered, unique colors within expected bounds",
+    "returncode": 0,
+    "seconds": 0.3844936589998724,
+    "finished_unix": 1789342455.5620515,
+    "pid": 14894
+  },
+  {
+    "index": 7,
+    "case": "dEQP-VK.pipeline.multisample.raster_samples.samples_4.primitive_line",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-scaled-border-reference",
+      "--deqp-case=dEQP-VK.pipeline.multisample.raster_samples.samples_4.primitive_line",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233413629055Z-msaa-render-limits-final-000/cts/007/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342455.177591,
+    "message": "Primitive rendered, unique colors within expected bounds",
+    "returncode": 0,
+    "seconds": 0.3961435870000969,
+    "finished_unix": 1789342455.5789065,
+    "pid": 14895
+  },
+  {
+    "index": 8,
+    "case": "dEQP-VK.pipeline.multisample.raster_samples.samples_4.primitive_point",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-scaled-border-reference",
+      "--deqp-case=dEQP-VK.pipeline.multisample.raster_samples.samples_4.primitive_point",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233413629055Z-msaa-render-limits-final-000/cts/008/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342455.1827967,
+    "message": "Primitive rendered, unique colors within expected bounds",
+    "returncode": 0,
+    "seconds": 0.40827392600021994,
+    "finished_unix": 1789342455.5948641,
+    "pid": 14896
+  },
+  {
+    "index": 9,
+    "case": "dEQP-VK.pipeline.multisample.raster_samples.samples_4.depth",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-scaled-border-reference",
+      "--deqp-case=dEQP-VK.pipeline.multisample.raster_samples.samples_4.depth",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233413629055Z-msaa-render-limits-final-000/cts/009/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342455.1866302,
+    "message": "Primitive rendered, unique colors within expected bounds",
+    "returncode": 0,
+    "seconds": 0.4194629880003049,
+    "finished_unix": 1789342455.6108682,
+    "pid": 14898
+  },
+  {
+    "index": 10,
+    "case": "dEQP-VK.pipeline.multisample.raster_samples.samples_4.stencil",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-scaled-border-reference",
+      "--deqp-case=dEQP-VK.pipeline.multisample.raster_samples.samples_4.stencil",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233413629055Z-msaa-render-limits-final-000/cts/010/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342455.1914322,
+    "message": "Primitive rendered, unique colors within expected bounds",
+    "returncode": 0,
+    "seconds": 0.4294672050000372,
+    "finished_unix": 1789342455.626909,
+    "pid": 14899
+  },
+  {
+    "index": 11,
+    "case": "dEQP-VK.pipeline.multisample.raster_samples.samples_4.depth_stencil",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-scaled-border-reference",
+      "--deqp-case=dEQP-VK.pipeline.multisample.raster_samples.samples_4.depth_stencil",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233413629055Z-msaa-render-limits-final-000/cts/011/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342455.1974869,
+    "message": "Primitive rendered, unique colors within expected bounds",
+    "returncode": 0,
+    "seconds": 0.4402937589998146,
+    "finished_unix": 1789342455.6428902,
+    "pid": 14901
+  },
+  {
+    "index": 12,
+    "case": "dEQP-VK.rasterization.interpolation_multisample_64_bit.lines",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-scaled-border-reference",
+      "--deqp-case=dEQP-VK.rasterization.interpolation_multisample_64_bit.lines",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233413629055Z-msaa-render-limits-final-000/cts/012/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "NotSupported",
+    "started_unix": 1789342455.6543403,
+    "message": "Format not supported at vktRasterizationTests.cpp:240",
+    "returncode": 0,
+    "seconds": 0.06178101100022104,
+    "finished_unix": 1789342455.7209785,
+    "pid": 14908
+  },
+  {
+    "index": 13,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r32g32b32a32_sfloat_single_layer.samples_32",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-scaled-border-reference",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r32g32b32a32_sfloat_single_layer.samples_32",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233413629055Z-msaa-render-limits-final-000/cts/013/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "NotSupported",
+    "started_unix": 1789342455.6592472,
+    "message": "Requested sample count is not supported at vktImageMultisampleLoadStoreTests.cpp:196",
+    "returncode": 0,
+    "seconds": 0.0729783380002118,
+    "finished_unix": 1789342455.7379253,
+    "pid": 14909
+  }
+]

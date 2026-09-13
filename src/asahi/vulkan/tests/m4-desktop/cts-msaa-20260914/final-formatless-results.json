@@ -1,0 +1,1484 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.image.load_store_multisample.2d.r32g32b32a32_sfloat.samples_2",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d.r32g32b32a32_sfloat.samples_2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/000/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342420.1633794,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.1807848710000144,
+    "finished_unix": 1789342420.3502247,
+    "pid": 14467
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.image.load_store_multisample.2d.r32g32b32a32_sfloat.samples_4",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d.r32g32b32a32_sfloat.samples_4",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/001/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342420.1694953,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.24910672600026373,
+    "finished_unix": 1789342420.424184,
+    "pid": 14468
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.image.load_store_multisample.2d.r16g16b16a16_sfloat.samples_2",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d.r16g16b16a16_sfloat.samples_2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/002/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342420.1752324,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.32003042199994525,
+    "finished_unix": 1789342420.5011604,
+    "pid": 14469
+  },
+  {
+    "index": 3,
+    "case": "dEQP-VK.image.load_store_multisample.2d.r16g16b16a16_sfloat.samples_4",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d.r16g16b16a16_sfloat.samples_4",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/003/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342420.1813033,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.3298863810000512,
+    "finished_unix": 1789342420.5184596,
+    "pid": 14471
+  },
+  {
+    "index": 4,
+    "case": "dEQP-VK.image.load_store_multisample.2d.r32_sfloat.samples_2",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d.r32_sfloat.samples_2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/004/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342420.188735,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.34075897100001384,
+    "finished_unix": 1789342420.5363507,
+    "pid": 14473
+  },
+  {
+    "index": 5,
+    "case": "dEQP-VK.image.load_store_multisample.2d.r32_sfloat.samples_4",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d.r32_sfloat.samples_4",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/005/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342420.1957629,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.49819238400004906,
+    "finished_unix": 1789342420.701115,
+    "pid": 14475
+  },
+  {
+    "index": 6,
+    "case": "dEQP-VK.image.load_store_multisample.2d.r32g32b32a32_uint.samples_2",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d.r32g32b32a32_uint.samples_2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/006/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342420.2033033,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.3365094959999624,
+    "finished_unix": 1789342420.552522,
+    "pid": 14478
+  },
+  {
+    "index": 7,
+    "case": "dEQP-VK.image.load_store_multisample.2d.r32g32b32a32_uint.samples_4",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d.r32g32b32a32_uint.samples_4",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/007/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342420.2162104,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.4954859670001497,
+    "finished_unix": 1789342420.7168696,
+    "pid": 14479
+  },
+  {
+    "index": 8,
+    "case": "dEQP-VK.image.load_store_multisample.2d.r16g16b16a16_uint.samples_2",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d.r16g16b16a16_uint.samples_2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/008/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342420.221434,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.3421802480002043,
+    "finished_unix": 1789342420.571996,
+    "pid": 14482
+  },
+  {
+    "index": 9,
+    "case": "dEQP-VK.image.load_store_multisample.2d.r16g16b16a16_uint.samples_4",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d.r16g16b16a16_uint.samples_4",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/009/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342420.2299476,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.3501714149997497,
+    "finished_unix": 1789342420.5902188,
+    "pid": 14483
+  },
+  {
+    "index": 10,
+    "case": "dEQP-VK.image.load_store_multisample.2d.r8g8b8a8_uint.samples_2",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d.r8g8b8a8_uint.samples_2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/010/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342420.41271,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.31372954500011474,
+    "finished_unix": 1789342420.732844,
+    "pid": 14490
+  },
+  {
+    "index": 11,
+    "case": "dEQP-VK.image.load_store_multisample.2d.r8g8b8a8_uint.samples_4",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d.r8g8b8a8_uint.samples_4",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/011/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342420.4892998,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.25345118900031594,
+    "finished_unix": 1789342420.7489352,
+    "pid": 14493
+  },
+  {
+    "index": 12,
+    "case": "dEQP-VK.image.load_store_multisample.2d.r32_uint.samples_2",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d.r32_uint.samples_2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/012/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342420.6547658,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.18418418100009148,
+    "finished_unix": 1789342420.844475,
+    "pid": 14495
+  },
+  {
+    "index": 13,
+    "case": "dEQP-VK.image.load_store_multisample.2d.r32_uint.samples_4",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d.r32_uint.samples_4",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/013/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342420.6603444,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.25528742300002705,
+    "finished_unix": 1789342420.9212723,
+    "pid": 14496
+  },
+  {
+    "index": 14,
+    "case": "dEQP-VK.image.load_store_multisample.2d.r32g32b32a32_sint.samples_2",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d.r32g32b32a32_sint.samples_2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/014/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342420.666155,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.2669246839996049,
+    "finished_unix": 1789342420.9389617,
+    "pid": 14497
+  },
+  {
+    "index": 15,
+    "case": "dEQP-VK.image.load_store_multisample.2d.r32g32b32a32_sint.samples_4",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d.r32g32b32a32_sint.samples_4",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/015/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342420.6722288,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.2764027470002475,
+    "finished_unix": 1789342420.9553776,
+    "pid": 14499
+  },
+  {
+    "index": 16,
+    "case": "dEQP-VK.image.load_store_multisample.2d.r16g16b16a16_sint.samples_2",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d.r16g16b16a16_sint.samples_2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/016/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342420.6791039,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.2881632050002736,
+    "finished_unix": 1789342420.9740362,
+    "pid": 14501
+  },
+  {
+    "index": 17,
+    "case": "dEQP-VK.image.load_store_multisample.2d.r16g16b16a16_sint.samples_4",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d.r16g16b16a16_sint.samples_4",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/017/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342420.6860583,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.301730359999965,
+    "finished_unix": 1789342420.9933066,
+    "pid": 14503
+  },
+  {
+    "index": 18,
+    "case": "dEQP-VK.image.load_store_multisample.2d.r8g8b8a8_sint.samples_2",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d.r8g8b8a8_sint.samples_2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/018/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342420.8112826,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.2807386110002881,
+    "finished_unix": 1789342421.0980294,
+    "pid": 14507
+  },
+  {
+    "index": 19,
+    "case": "dEQP-VK.image.load_store_multisample.2d.r8g8b8a8_sint.samples_4",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d.r8g8b8a8_sint.samples_4",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/019/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342420.8173528,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.2936490759998378,
+    "finished_unix": 1789342421.1178553,
+    "pid": 14508
+  },
+  {
+    "index": 20,
+    "case": "dEQP-VK.image.load_store_multisample.2d.r32_sint.samples_2",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d.r32_sint.samples_2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/020/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342420.8245735,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.30288320500039845,
+    "finished_unix": 1789342421.1338594,
+    "pid": 14509
+  },
+  {
+    "index": 21,
+    "case": "dEQP-VK.image.load_store_multisample.2d.r32_sint.samples_4",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d.r32_sint.samples_4",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/021/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342420.8311276,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.311369114000172,
+    "finished_unix": 1789342421.1498573,
+    "pid": 14511
+  },
+  {
+    "index": 22,
+    "case": "dEQP-VK.image.load_store_multisample.2d.r8g8b8a8_unorm.samples_2",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d.r8g8b8a8_unorm.samples_2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/022/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342420.9094014,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.25128759000017453,
+    "finished_unix": 1789342421.1658382,
+    "pid": 14516
+  },
+  {
+    "index": 23,
+    "case": "dEQP-VK.image.load_store_multisample.2d.r8g8b8a8_unorm.samples_4",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d.r8g8b8a8_unorm.samples_4",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/023/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342421.0563982,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.19907920600007856,
+    "finished_unix": 1789342421.2619088,
+    "pid": 14518
+  },
+  {
+    "index": 24,
+    "case": "dEQP-VK.image.load_store_multisample.2d.r8g8b8a8_snorm.samples_2",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d.r8g8b8a8_snorm.samples_2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/024/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342421.0629086,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.29159778299981554,
+    "finished_unix": 1789342421.3610692,
+    "pid": 14519
+  },
+  {
+    "index": 25,
+    "case": "dEQP-VK.image.load_store_multisample.2d.r8g8b8a8_snorm.samples_4",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d.r8g8b8a8_snorm.samples_4",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/025/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342421.0697415,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.3016027899998335,
+    "finished_unix": 1789342421.3790581,
+    "pid": 14520
+  },
+  {
+    "index": 26,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r32g32b32a32_sfloat.samples_2",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r32g32b32a32_sfloat.samples_2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/026/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342421.077787,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.1904330399997889,
+    "finished_unix": 1789342421.2768698,
+    "pid": 14522
+  },
+  {
+    "index": 27,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r32g32b32a32_sfloat.samples_4",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r32g32b32a32_sfloat.samples_4",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/027/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342421.0865474,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.3086173880001297,
+    "finished_unix": 1789342421.4001775,
+    "pid": 14523
+  },
+  {
+    "index": 28,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r32g32b32a32_sfloat_single_layer.samples_2",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r32g32b32a32_sfloat_single_layer.samples_2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/028/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342421.2275965,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.2600590540000667,
+    "finished_unix": 1789342421.492257,
+    "pid": 14528
+  },
+  {
+    "index": 29,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r32g32b32a32_sfloat_single_layer.samples_4",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r32g32b32a32_sfloat_single_layer.samples_4",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/029/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342421.2322335,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.4152080499998192,
+    "finished_unix": 1789342421.652385,
+    "pid": 14529
+  },
+  {
+    "index": 30,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r16g16b16a16_sfloat.samples_2",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r16g16b16a16_sfloat.samples_2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/030/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342421.237207,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.2713258149997273,
+    "finished_unix": 1789342421.5136373,
+    "pid": 14530
+  },
+  {
+    "index": 31,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r16g16b16a16_sfloat.samples_4",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r16g16b16a16_sfloat.samples_4",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/031/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342421.2423513,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.28756745700002284,
+    "finished_unix": 1789342421.5350919,
+    "pid": 14532
+  },
+  {
+    "index": 32,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r16g16b16a16_sfloat_single_layer.samples_2",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r16g16b16a16_sfloat_single_layer.samples_2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/032/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342421.2478375,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.2981395699998757,
+    "finished_unix": 1789342421.5554564,
+    "pid": 14533
+  },
+  {
+    "index": 33,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r16g16b16a16_sfloat_single_layer.samples_4",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r16g16b16a16_sfloat_single_layer.samples_4",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/033/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342421.3396308,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.3283471820000159,
+    "finished_unix": 1789342421.6752884,
+    "pid": 14538
+  },
+  {
+    "index": 34,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r32_sfloat.samples_2",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r32_sfloat.samples_2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/034/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342421.3470793,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.357031003999964,
+    "finished_unix": 1789342421.7120042,
+    "pid": 14539
+  },
+  {
+    "index": 35,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r32_sfloat.samples_4",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r32_sfloat.samples_4",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/035/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342421.4664266,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.38742061799985095,
+    "finished_unix": 1789342421.8610523,
+    "pid": 14542
+  },
+  {
+    "index": 36,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r32_sfloat_single_layer.samples_2",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r32_sfloat_single_layer.samples_2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/036/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342421.4738252,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.2520820959998673,
+    "finished_unix": 1789342421.732102,
+    "pid": 14543
+  },
+  {
+    "index": 37,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r32_sfloat_single_layer.samples_4",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r32_sfloat_single_layer.samples_4",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/037/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342421.4801846,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.2635908100000961,
+    "finished_unix": 1789342421.750912,
+    "pid": 14544
+  },
+  {
+    "index": 38,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r32g32b32a32_uint.samples_2",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r32g32b32a32_uint.samples_2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/038/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342421.6207824,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.2587180619998435,
+    "finished_unix": 1789342421.885871,
+    "pid": 14548
+  },
+  {
+    "index": 39,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r32g32b32a32_uint.samples_4",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r32g32b32a32_uint.samples_4",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/039/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342421.6272364,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.2679106710002088,
+    "finished_unix": 1789342421.900859,
+    "pid": 14549
+  },
+  {
+    "index": 40,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r32g32b32a32_uint_single_layer.samples_2",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r32g32b32a32_uint_single_layer.samples_2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/040/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342421.633097,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.2753517500000271,
+    "finished_unix": 1789342421.915856,
+    "pid": 14550
+  },
+  {
+    "index": 41,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r32g32b32a32_uint_single_layer.samples_4",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r32g32b32a32_uint_single_layer.samples_4",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/041/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342421.6405668,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.28789298499987126,
+    "finished_unix": 1789342421.9338605,
+    "pid": 14552
+  },
+  {
+    "index": 42,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r16g16b16a16_uint.samples_2",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r16g16b16a16_uint.samples_2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/042/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342421.8162458,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.21447040600014589,
+    "finished_unix": 1789342422.0369987,
+    "pid": 14556
+  },
+  {
+    "index": 43,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r16g16b16a16_uint.samples_4",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r16g16b16a16_uint.samples_4",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/043/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342421.8226151,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.22508864700012055,
+    "finished_unix": 1789342422.055068,
+    "pid": 14557
+  },
+  {
+    "index": 44,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r16g16b16a16_uint_single_layer.samples_2",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r16g16b16a16_uint_single_layer.samples_2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/044/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342421.8301165,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.23585162299968943,
+    "finished_unix": 1789342422.0718865,
+    "pid": 14558
+  },
+  {
+    "index": 45,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r16g16b16a16_uint_single_layer.samples_4",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r16g16b16a16_uint_single_layer.samples_4",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/045/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342421.8362243,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.24424662199999148,
+    "finished_unix": 1789342422.088842,
+    "pid": 14560
+  },
+  {
+    "index": 46,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r8g8b8a8_uint.samples_2",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r8g8b8a8_uint.samples_2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/046/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342421.8447535,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.2528582509999069,
+    "finished_unix": 1789342422.1100724,
+    "pid": 14562
+  },
+  {
+    "index": 47,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r8g8b8a8_uint.samples_4",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r8g8b8a8_uint.samples_4",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/047/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342421.9981918,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.21756726500007062,
+    "finished_unix": 1789342422.2218993,
+    "pid": 14566
+  },
+  {
+    "index": 48,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r8g8b8a8_uint_single_layer.samples_2",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r8g8b8a8_uint_single_layer.samples_2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/048/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342422.004573,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.22793905199978326,
+    "finished_unix": 1789342422.238896,
+    "pid": 14567
+  },
+  {
+    "index": 49,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r8g8b8a8_uint_single_layer.samples_4",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r8g8b8a8_uint_single_layer.samples_4",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/049/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342422.0110877,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.24301505899984477,
+    "finished_unix": 1789342422.260914,
+    "pid": 14568
+  },
+  {
+    "index": 50,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r32_uint.samples_2",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r32_uint.samples_2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/050/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342422.0180902,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.2535196850003558,
+    "finished_unix": 1789342422.277947,
+    "pid": 14570
+  },
+  {
+    "index": 51,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r32_uint.samples_4",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r32_uint.samples_4",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/051/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342422.0245023,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.26320466400011355,
+    "finished_unix": 1789342422.2948606,
+    "pid": 14571
+  },
+  {
+    "index": 52,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r32_uint_single_layer.samples_2",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r32_uint_single_layer.samples_2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/052/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342422.1754599,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.21631081000032282,
+    "finished_unix": 1789342422.3990204,
+    "pid": 14576
+  },
+  {
+    "index": 53,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r32_uint_single_layer.samples_4",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r32_uint_single_layer.samples_4",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/053/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342422.1827936,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.23575436100009028,
+    "finished_unix": 1789342422.425886,
+    "pid": 14577
+  },
+  {
+    "index": 54,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r32g32b32a32_sint.samples_2",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r32g32b32a32_sint.samples_2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/054/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342422.1903865,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.31411534400012897,
+    "finished_unix": 1789342422.5111666,
+    "pid": 14578
+  },
+  {
+    "index": 55,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r32g32b32a32_sint.samples_4",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r32g32b32a32_sint.samples_4",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/055/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342422.1972423,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.33516375499993956,
+    "finished_unix": 1789342422.5433226,
+    "pid": 14580
+  },
+  {
+    "index": 56,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r32g32b32a32_sint_single_layer.samples_2",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r32g32b32a32_sint_single_layer.samples_2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/056/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342422.2083263,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.34765283100023225,
+    "finished_unix": 1789342422.5641158,
+    "pid": 14582
+  },
+  {
+    "index": 57,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r32g32b32a32_sint_single_layer.samples_4",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r32g32b32a32_sint_single_layer.samples_4",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/057/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342422.3604186,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.49139652599978945,
+    "finished_unix": 1789342422.8569398,
+    "pid": 14586
+  },
+  {
+    "index": 58,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r16g16b16a16_sint.samples_2",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r16g16b16a16_sint.samples_2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/058/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342422.3656309,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.2790188459998717,
+    "finished_unix": 1789342422.651981,
+    "pid": 14587
+  },
+  {
+    "index": 59,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r16g16b16a16_sint.samples_4",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r16g16b16a16_sint.samples_4",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/059/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342422.3731031,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.2913378510002076,
+    "finished_unix": 1789342422.6717405,
+    "pid": 14589
+  },
+  {
+    "index": 60,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r16g16b16a16_sint_single_layer.samples_2",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r16g16b16a16_sint_single_layer.samples_2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/060/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342422.3809702,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.3034675040003094,
+    "finished_unix": 1789342422.690867,
+    "pid": 14590
+  },
+  {
+    "index": 61,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r16g16b16a16_sint_single_layer.samples_4",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r16g16b16a16_sint_single_layer.samples_4",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/061/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342422.3874662,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.31580432100008693,
+    "finished_unix": 1789342422.7079484,
+    "pid": 14594
+  },
+  {
+    "index": 62,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r8g8b8a8_sint.samples_2",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r8g8b8a8_sint.samples_2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/062/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342422.4886258,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.23270889000013995,
+    "finished_unix": 1789342422.726965,
+    "pid": 14600
+  },
+  {
+    "index": 63,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r8g8b8a8_sint.samples_4",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r8g8b8a8_sint.samples_4",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/063/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342422.494311,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.2463288979997742,
+    "finished_unix": 1789342422.746916,
+    "pid": 14601
+  },
+  {
+    "index": 64,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r8g8b8a8_sint_single_layer.samples_2",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r8g8b8a8_sint_single_layer.samples_2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/064/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342422.629995,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.23829854700034048,
+    "finished_unix": 1789342422.8739018,
+    "pid": 14607
+  },
+  {
+    "index": 65,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r8g8b8a8_sint_single_layer.samples_4",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r8g8b8a8_sint_single_layer.samples_4",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/065/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342422.6356826,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.24964846300008503,
+    "finished_unix": 1789342422.891869,
+    "pid": 14608
+  },
+  {
+    "index": 66,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r32_sint.samples_2",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r32_sint.samples_2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/066/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342422.6423526,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.2626157999998213,
+    "finished_unix": 1789342422.9099245,
+    "pid": 14609
+  },
+  {
+    "index": 67,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r32_sint.samples_4",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r32_sint.samples_4",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/067/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342422.8121173,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.3404866050000237,
+    "finished_unix": 1789342423.1591022,
+    "pid": 14614
+  },
+  {
+    "index": 68,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r32_sint_single_layer.samples_2",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r32_sint_single_layer.samples_2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/068/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342422.8187757,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.2357974629999262,
+    "finished_unix": 1789342423.060918,
+    "pid": 14615
+  },
+  {
+    "index": 69,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r32_sint_single_layer.samples_4",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r32_sint_single_layer.samples_4",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/069/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342422.8253624,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.34565775800001575,
+    "finished_unix": 1789342423.177959,
+    "pid": 14616
+  },
+  {
+    "index": 70,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r8g8b8a8_unorm.samples_2",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r8g8b8a8_unorm.samples_2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/070/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342422.8324618,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.24418058600031145,
+    "finished_unix": 1789342423.0828998,
+    "pid": 14618
+  },
+  {
+    "index": 71,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r8g8b8a8_unorm.samples_4",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r8g8b8a8_unorm.samples_4",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/071/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342422.8389184,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.3517239929997231,
+    "finished_unix": 1789342423.1975207,
+    "pid": 14620
+  },
+  {
+    "index": 72,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r8g8b8a8_unorm_single_layer.samples_2",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r8g8b8a8_unorm_single_layer.samples_2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/072/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342422.845995,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.3665466889997333,
+    "finished_unix": 1789342423.2185853,
+    "pid": 14622
+  },
+  {
+    "index": 73,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r8g8b8a8_unorm_single_layer.samples_4",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r8g8b8a8_unorm_single_layer.samples_4",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/073/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342422.9761376,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.32949211100003595,
+    "finished_unix": 1789342423.3120093,
+    "pid": 14626
+  },
+  {
+    "index": 74,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r8g8b8a8_snorm.samples_2",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r8g8b8a8_snorm.samples_2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/074/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342422.9825904,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.2511446890002844,
+    "finished_unix": 1789342423.240187,
+    "pid": 14627
+  },
+  {
+    "index": 75,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r8g8b8a8_snorm.samples_4",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r8g8b8a8_snorm.samples_4",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/075/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342422.98917,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.3331148149995897,
+    "finished_unix": 1789342423.3289397,
+    "pid": 14628
+  },
+  {
+    "index": 76,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r8g8b8a8_snorm_single_layer.samples_2",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r8g8b8a8_snorm_single_layer.samples_2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/076/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342422.9959579,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.34484427699999287,
+    "finished_unix": 1789342423.346942,
+    "pid": 14630
+  },
+  {
+    "index": 77,
+    "case": "dEQP-VK.image.load_store_multisample.2d_array.r8g8b8a8_snorm_single_layer.samples_4",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-msaa-formatless-only",
+      "--deqp-case=dEQP-VK.image.load_store_multisample.2d_array.r8g8b8a8_snorm_single_layer.samples_4",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T233339017834Z-msaa-formatless-final-000/cts/077/result.qpa"
+    ],
+    "boot_id": "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    "status": "Pass",
+    "started_unix": 1789342423.1470218,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.2119653230001859,
+    "finished_unix": 1789342423.3658876,
+    "pid": 14634
+  }
+]

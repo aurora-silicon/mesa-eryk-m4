@@ -1,0 +1,14 @@
+dEQP-VK.pipeline.multisample.raster_samples.samples_2.primitive_triangle
+dEQP-VK.pipeline.multisample.raster_samples.samples_2.primitive_line
+dEQP-VK.pipeline.multisample.raster_samples.samples_2.primitive_point
+dEQP-VK.pipeline.multisample.raster_samples.samples_2.depth
+dEQP-VK.pipeline.multisample.raster_samples.samples_2.stencil
+dEQP-VK.pipeline.multisample.raster_samples.samples_2.depth_stencil
+dEQP-VK.pipeline.multisample.raster_samples.samples_4.primitive_triangle
+dEQP-VK.pipeline.multisample.raster_samples.samples_4.primitive_line
+dEQP-VK.pipeline.multisample.raster_samples.samples_4.primitive_point
+dEQP-VK.pipeline.multisample.raster_samples.samples_4.depth
+dEQP-VK.pipeline.multisample.raster_samples.samples_4.stencil
+dEQP-VK.pipeline.multisample.raster_samples.samples_4.depth_stencil
+dEQP-VK.rasterization.interpolation_multisample_64_bit.lines
+dEQP-VK.image.load_store_multisample.2d_array.r32g32b32a32_sfloat_single_layer.samples_32

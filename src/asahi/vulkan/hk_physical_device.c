@@ -290,8 +290,8 @@ hk_get_device_features(
       .shaderTessellationAndGeometryPointSize = true,
       .shaderImageGatherExtended = true,
       .shaderStorageImageExtendedFormats = true,
-      /* TODO: hitting the vertex shader timeout in CTS, but should work */
-      .shaderStorageImageMultisample = false,
+      /* Native per-sample reads and linear-alias writes are qualified on M4. */
+      .shaderStorageImageMultisample = dev->chip == AGX_CHIP_G16G,
       .shaderStorageImageReadWithoutFormat = true,
       .shaderStorageImageWriteWithoutFormat = true,
       .shaderUniformBufferArrayDynamicIndexing = true,
@@ -853,10 +853,12 @@ hk_get_device_properties(const struct agx_device *dev,
       .framebufferStencilSampleCounts = sample_counts,
       .maxColorAttachments = HK_MAX_RTS,
       .sampledImageColorSampleCounts = color_sample_counts,
-      .sampledImageIntegerSampleCounts = other_sample_counts,
+      .sampledImageIntegerSampleCounts =
+         dev->chip == AGX_CHIP_G16G ? sample_counts : other_sample_counts,
       .sampledImageDepthSampleCounts = other_sample_counts,
       .sampledImageStencilSampleCounts = other_sample_counts,
-      .storageImageSampleCounts = other_sample_counts,
+      .storageImageSampleCounts =
+         dev->chip == AGX_CHIP_G16G ? sample_counts : other_sample_counts,
       .maxSampleMaskWords = 1,
       .timestampComputeAndGraphics = true,
       /* FIXME: Is timestamp period actually 1? */
