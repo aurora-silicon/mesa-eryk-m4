@@ -77,7 +77,9 @@ def classify(directory, facts, expected):
     stdout = experiment_output(directory)
     # A repaired driver may succeed at a call that failed in the retained
     # capture. Preserve that warning in evidence without calling it a new error.
-    stdout = re.sub(r"^\[gfxrecon\] WARNING - API call at index: [0-9]+ thread: [0-9]+ vk[A-Za-z0-9_]+ returned error value VK_SUCCESS that does not match the result from the capture file: VK_ERROR_[A-Z_]+\.\s*$", "", stdout, flags=re.M)
+    # GFXReconstruct versions differ on whether they print a function name;
+    # match the explicit actual/captured result pair, not the log prefix.
+    stdout = re.sub(r"returned error value VK_SUCCESS that does not match the result from the capture file: VK_ERROR_[A-Z_]+\.", "", stdout, flags=re.M)
     kernel = directory / "remote" / "kernel-journal.log"
     if not kernel.exists() or not kernel.stat().st_size:
         kernel = directory / "remote" / "dmesg.log"
