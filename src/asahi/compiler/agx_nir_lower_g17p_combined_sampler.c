@@ -430,10 +430,10 @@ agx_nir_lower_g17p_indexed_samplers(nir_shader *shader)
             const bool fetch = g17p_indexed_fetch_shape(
                tex, shader->info.stage == MESA_SHADER_FRAGMENT ||
                     shader->info.stage == MESA_SHADER_COMPUTE);
-            /* Vertex fetches use explicit integer coordinates and LOD zero;
-             * implicit sampling requires fragment derivatives.
-             */
-            if (shader->info.stage == MESA_SHADER_VERTEX && !fetch)
+            /* Vertex stages have no derivatives, but explicit-LOD sampling
+             * uses the same native operation as fragment/compute stages. */
+            if (shader->info.stage == MESA_SHADER_VERTEX && !fetch &&
+                tex->op != nir_texop_txl)
                return false;
             if (!fetch && (!g17p_sample_shape(tex) ||
                            (tex->op != nir_texop_tex && tex->op != nir_texop_txl &&
@@ -540,7 +540,8 @@ g17p_cube_sample_shape(const nir_tex_instr *tex)
 bool
 agx_nir_lower_g17p_cube_samples(nir_shader *shader, bool native_cube)
 {
-   if (!shader || (shader->info.stage != MESA_SHADER_FRAGMENT &&
+   if (!shader || (shader->info.stage != MESA_SHADER_VERTEX &&
+                   shader->info.stage != MESA_SHADER_FRAGMENT &&
                    shader->info.stage != MESA_SHADER_COMPUTE))
       return false;
 

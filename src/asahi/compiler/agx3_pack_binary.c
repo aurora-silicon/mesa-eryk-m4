@@ -4799,16 +4799,20 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
              * witness is a fragment shader and the hardware has no quad
              * outside one. Apple's explicit immediate-level form is a
              * compute kernel witness and does not consume derivatives. */
-            const bool compute_level = ctx->stage == MESA_SHADER_COMPUTE &&
-               (I->lod_mode == AGX_LOD_MODE_LOD_MIN ||
-                I->gather != AGX_GATHER_NONE);
+            const bool explicit_level =
+               (ctx->stage == MESA_SHADER_COMPUTE ||
+                ctx->stage == MESA_SHADER_VERTEX) &&
+               I->lod_mode == AGX_LOD_MODE_LOD_MIN;
+            const bool compute_gather = ctx->stage == MESA_SHADER_COMPUTE &&
+               I->gather != AGX_GATHER_NONE;
             uint16_t sample_wait = wait;
             if (sample_wait & (sample_wait - 1)) {
                if (!agx3_retire_slots_noop(emission, enc, sample_wait))
                   AGX3_REFUSE(I);
                sample_wait = 0;
             }
-            if ((ctx->stage != MESA_SHADER_FRAGMENT && !compute_level) ||
+            if ((ctx->stage != MESA_SHADER_FRAGMENT && !explicit_level &&
+                 !compute_gather) ||
                 !agx3_emit_texture_sample(emission, enc, I, slot, sample_wait,
                                           final, enc == AGX_ISA_ENCODING_AGX3B &&
                                              needs_quad_helpers))
@@ -4819,6 +4823,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                     (I->shadow || I->lod_mode == AGX_LOD_MODE_LOD_MIN ||
                      I->lod_mode == AGX_LOD_MODE_AUTO_LOD_BIAS ||
                      I->dim == AGX_DIM_2D_ARRAY || I->dim == AGX_DIM_CUBE ||
+                     I->dim == AGX_DIM_CUBE_ARRAY ||
                      I->dim == AGX_DIM_3D)
                        ? 8 : I->src[0].value + 4);
             continue;

@@ -187,3 +187,16 @@ Next random selection,index5, gets past its old upload failure and now reports
 NotSupported:tessellation shaders unavailable. Do not count it as passing.
 Standalone padded-format views without YCbCr conversion are outside this
 lowering; their format emulation still needs qualification. Kernel unchanged.
+
+Sixteenth selection:index95 already passes with the earlier register multiply
+minus-byte fix:20260913T120014438276Z-cts-mutable-array-sampler. No new fix.
+Seventeenth selection:index54, geometry cube-array descriptor arrays/base mip.
+The physical vertex shader was barred from all sampled textures, even explicit
+LOD operations without derivatives. Enable explicit-LOD resource lowering and
+backend emission, apply cube projection in that stage, and include cube arrays
+in fixed auxiliary staging accounting. Saved lowered shader10e026e3... compiles
+offline to5922bytes. 20260913T120311060543Z-cts-vertex-level-native:original54
+Pass, peak58.75 C, full guards. Library
+46f0d6289b4bf348edab0a3f2fc2fba5991771f048ab7235c9ff86ee051e7f17.
+20260913T120336440823Z-cts-vertex-sample-controls:16-bit YCbCr control now Pass;
+next selection,index47, mutable geometry2D sampler also Pass. Kernel unchanged.
