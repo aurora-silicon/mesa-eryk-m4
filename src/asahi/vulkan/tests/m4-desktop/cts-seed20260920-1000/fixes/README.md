@@ -15,3 +15,12 @@ Mesa, producing the expected output. Guard evidence:
 _provenance/experiments/20260913T205424440238Z-cts-seed20-block-fix
 (60-second watchdog, peak 57.75 C, unchanged boot). The original crash remains
 in the first-attempt baseline; this adapted CTS pass is recorded separately.
+
+## RGBA16 normalized storage images (cases 690 and 860)
+
+Enable UNORM and SNORM RGBA16 in native bindless storage lowering and select
+the existing formatted F32-lane write ABI; the PBE descriptor controls signed
+or unsigned normalized conversion. Both original CTS cases pass with expected
+output on M4. Evidence: _provenance/experiments/
+20260913T205635734916Z-cts-seed20-normalized-store (60-second watchdog,
+peak 57.5 C). Original Vulkan commands and output checks are unchanged.
