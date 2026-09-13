@@ -28,3 +28,16 @@ framing rule. Both indirect forms now use the same checked emitter.
 indexed/non-indexed line/triangle cases Pass, including the original reset.
 Launch traces retain the emitted bytes. Host framing/range regression passes;
 maximum monitored temperature 59 C, no GPU fault or recovery.
+
+## Integer image stores and zero-area tessellation setup
+
+`20260913T185453340373Z-cts-integer-tess`: 12/13 Pass. Baseline indices
+23, 191, 351, 432, 438, 490, 542, 545, 553 and 662 now Pass with signed and
+two-channel integer storage routed through the existing native I16/I32 writes.
+Index 29 now compiles but still fails image comparison and remains open.
+Index 6 also passes without launch tracing.
+
+Index 9 passes with the separately recorded CTS binary correcting its invalid
+zero-sized render area to the existing 1x1 framebuffer extent. This repeats the
+previously identified tessellation-control CTS correction; no driver validation
+was relaxed. Combined patch and exact binary manifest are retained here.
