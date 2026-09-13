@@ -338,3 +338,24 @@ compiler/test/probes/README-g16g-3d-level.md. Texture core: 6270 checks pass.
 Full fourth sample rerun: {'Pass': 16, 'NotSupported': 4}. Evidence: 20260913T124031783614Z-cts-fourth20-fixed-000.
 Library 32e11d82830ae213a9365b393a467d47647cc885127d36a74f741bcaa18c0547.
 Full guards; kernel unchanged. Runtime 3D LOD remains a separate boundary.
+
+Fifth sample: seed 20260917, 20 cases, same population/method.
+20260913T124112588589Z-cts-fifth20-000 stopped at the known CTS input-aspect
+lifetime assertion (case 0, r5g6b5 input attachment). The corrected separate
+binary passes (experiment ending cts-fifth20-corrected-input-aspect).
+Remaining 19 cases, experiment ending cts-fifth20-rest-001: 11 Pass,
+5 NotSupported, 3 Fail. Failure order 4, 2, 16. Cases 4 and 16 reproduce the
+known CTS download layout typo; both corrected controls pass (experiment ending
+cts-fifth-ycbcr-corrected). Keep original failures/crash in baseline results.
+
+Selection 2: native adjacency draws were rejected before drawing (black image),
+not corrupted by GPU execution. Reuse existing GPU passthrough geometry
+lowering to remove adjacency vertices. Compile the required VS compute variant
+for adjacency or dynamic topology and invalidate passthrough state on topology
+changes. No CPU vertex processing. The first diagnostic exposed the missing
+producer variant; its empty raster shader was correctly rejected.
+20260913T124641378535Z-cts-adjacency-variant: original CTS Pass.
+20260913T124702175898Z-cts-adjacency-controls: all eight indexed/nonindexed line/triangle list/strip
+adjacency controls Pass. Full guards, library
+0574966263f47c9fa3dd7350f2906e45562396c7a193434c05739e3a201f1136.
+Kernel unchanged.

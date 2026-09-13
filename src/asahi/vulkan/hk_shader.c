@@ -77,7 +77,7 @@ struct hk_vs_key {
    bool skip_prolog;
    bool static_strides;
    bool kill_psiz;
-   bool pad[1];
+   bool may_have_adjacency;
 };
 static_assert(sizeof(struct hk_vs_key) == 260, "packed");
 
@@ -222,11 +222,14 @@ hk_populate_vs_key(struct hk_vs_key *key,
                    const struct vk_graphics_pipeline_state *state)
 {
    memset(key, 0, sizeof(*key));
+   key->may_have_adjacency = true;
 
    if (state && state->ia &&
        !BITSET_TEST(state->dynamic, MESA_VK_DYNAMIC_IA_PRIMITIVE_TOPOLOGY)) {
 
       key->kill_psiz = state->ia->primitive_topology != MESA_PRIM_POINTS;
+      key->may_have_adjacency = mesa_prim_has_adjacency(
+         vk_topology_to_mesa(state->ia->primitive_topology));
    }
 
    if (state && state->vi && !BITSET_TEST(state->dynamic, MESA_VK_DYNAMIC_VI) &&
@@ -1826,11 +1829,12 @@ hk_compile_shader(struct hk_device *dev, struct vk_shader_compile_info *info,
 
       VkShaderStageFlags next_stage = info->next_stage_mask;
 
-      /* Transform feedback is layered on top of geometry shaders. If there is
-       * not a geometry shader in the pipeline, we will compile a geometry
-       * shader for the purpose. Update the next_stage mask accordingly.
-       */
-      if (nir->xfb_info != NULL) {
+      /* Transform feedback and native adjacency lowering may insert a
+       * passthrough GS even without an application geometry stage. Retain
+       * its producer variant, including when topology is dynamic. */
+      if (nir->xfb_info != NULL ||
+          (agx_native_graphics(&dev->dev) &&
+           (!key || key->vs.may_have_adjacency))) {
          next_stage |= VK_SHADER_STAGE_GEOMETRY_BIT;
       }
 

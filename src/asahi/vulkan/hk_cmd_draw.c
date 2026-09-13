@@ -4632,11 +4632,13 @@ hk_needs_index_robustness(struct hk_cmd_buffer *cmd, struct agx_draw *draw)
 static void
 hk_handle_passthrough_gs(struct hk_cmd_buffer *cmd, struct agx_draw draw)
 {
+   struct vk_dynamic_graphics_state *dyn = &cmd->vk.dynamic_graphics_state;
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
    struct hk_graphics_state *gfx = &cmd->state.gfx;
    struct hk_api_shader *gs = gfx->shaders[MESA_SHADER_GEOMETRY];
 
    if (!IS_SHADER_DIRTY(VERTEX) && !IS_SHADER_DIRTY(GEOMETRY) &&
+       !IS_DIRTY(IA_PRIMITIVE_TOPOLOGY) &&
        !(agx_native_graphics(&dev->dev) && IS_SHADER_DIRTY(FRAGMENT)))
       return;
 
@@ -4647,7 +4649,13 @@ hk_handle_passthrough_gs(struct hk_cmd_buffer *cmd, struct agx_draw draw)
    /* Determine if we need a geometry shader to emulate XFB or adjacency */
    struct hk_shader *last_sw = hk_bound_sw_vs_before_gs(gfx);
    uint32_t xfb_outputs = last_sw->info.xfb_info.output_count;
-   bool needs_gs = xfb_outputs;
+   /* Native VDM consumes ordinary primitive index lists. Reuse Poly's
+    * GPU geometry lowering to discard adjacency vertices while preserving
+    * API vertex IDs, indexed draws and strip winding. The generated raster
+    * shader then uses the same native path as application geometry shaders. */
+   const bool adjacency = agx_native_graphics(&dev->dev) &&
+                          mesa_prim_has_adjacency(hk_gs_in_prim(cmd));
+   bool needs_gs = xfb_outputs || adjacency;
 
    /* If we don't need a GS but we do have a passthrough, unbind it */
    if (!needs_gs) {
@@ -4685,7 +4693,8 @@ hk_handle_passthrough_gs(struct hk_cmd_buffer *cmd, struct agx_draw draw)
              nir_xfb_info_size(xfb_outputs));
    }
 
-   perf_debug(cmd, "Binding passthrough GS for%s\n", xfb_outputs ? " XFB" : "");
+   perf_debug(cmd, "Binding passthrough GS for%s%s\n",
+              xfb_outputs ? " XFB" : "", adjacency ? " adjacency" : "");
 
    gs = hk_meta_shader(dev, hk_nir_passthrough_gs, key, key_size);
    if (!gs) {
