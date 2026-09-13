@@ -2570,6 +2570,8 @@ hk_CmdCopyImage2(VkCommandBuffer commandBuffer,
          dst_image->vk.aspects == VK_IMAGE_ASPECT_COLOR_BIT &&
          src_image->vk.samples == VK_SAMPLE_COUNT_1_BIT &&
          dst_image->vk.samples == VK_SAMPLE_COUNT_1_BIT) ||
+        (!ail_pixel_format[hk_format_to_pipe_format(src_image->vk.format)].texturable ||
+         !ail_pixel_format[hk_format_to_pipe_format(dst_image->vk.format)].texturable) ||
         vk_format_get_plane_count(src_image->vk.format) > 1 ||
         vk_format_get_plane_count(dst_image->vk.format) > 1 ||
         vk_format_is_compressed(src_image->vk.format) ||

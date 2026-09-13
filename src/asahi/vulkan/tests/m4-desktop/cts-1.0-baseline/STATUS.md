@@ -367,3 +367,22 @@ historical CTS input-aspect bug; no tests or expectations were changed.
 All cases ran on boot 99ddcbd0-1a1d-4f25-9fc0-e7a213acfad8 with mandatory
 watchdog/thermal guards. Peak 60.00 C, no GPU hangs or watchdog resets.
 SDDM remains enabled and active. Kernel source unchanged at 0df60d539ba3.
+
+Format capability work: native raw transfers now admit plain power-of-two
+color texels (up to 16 bytes, channels up to 32 bits) independently of sampling
+and attachment support. Same-format copies also select the raw GPU path when
+there is no texture descriptor. Existing GPU packed clears need no format ISA.
+20260913T152751670371Z-cts-new-packed-transfers: original previously skipped
+copy cases 13, 27, 49, 60 now Pass. Library
+72396cba265cd2a95d430a9fa3577880c4205f323e8f855a631cebba30527150
+adds the final 32-bit channel limit (initial test library in experiment manifest).
+
+The original scaled-format clear tests use the wrong VkClearColorValue union
+member. Scaled types require floating-point values per
+https://docs.vulkan.org/refpages/latest/refpages/source/VkClearColorValue.html .
+The retained scaled-clear-union.patch converts only the command's clear value;
+reference/readback comparisons remain intact. All nine 1D/2D/3D corrected
+controls pass (experiment ending cts-scaled-clear-corrected). These are adapted
+controls, not original CTS passes. Corrected diagnostic executable SHA256:
+9e4acc7d384cc9dca547fe0968f2ffd5ea0acf3e2bf27749ced3e248784efb32.
+Original CTS source/binary restored. Full watchdog/thermal guards; kernel unchanged.

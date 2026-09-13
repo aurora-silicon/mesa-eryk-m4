@@ -104,6 +104,21 @@ hk_get_image_plane_format_features(struct hk_physical_device *pdev,
       features |= VK_FORMAT_FEATURE_2_STORAGE_IMAGE_ATOMIC_BIT;
    }
 
+   /* Native raw copies and packed clears operate on bytes, independently
+    * of texture sampling or render-target conversion support. AIL can lay
+    * out these power-of-two plain color texels even without a pixel-format
+    * descriptor. Keep sampling, blitting and attachments unadvertised. */
+   if (agx_native_graphics(&pdev->dev) &&
+       !vk_format_is_depth_or_stencil(vk_format) &&
+       !util_format_is_compressed(p_format) &&
+       util_format_get_blockwidth(p_format) == 1 &&
+       util_format_get_blockheight(p_format) == 1 &&
+       util_format_get_blocksize(p_format) <= 16 &&
+       util_format_get_max_channel_size(p_format) <= 32) {
+      features |= VK_FORMAT_FEATURE_2_TRANSFER_SRC_BIT |
+                  VK_FORMAT_FEATURE_2_TRANSFER_DST_BIT;
+   }
+
    if (features != 0) {
       features |= VK_FORMAT_FEATURE_2_TRANSFER_SRC_BIT;
       features |= VK_FORMAT_FEATURE_2_TRANSFER_DST_BIT;
