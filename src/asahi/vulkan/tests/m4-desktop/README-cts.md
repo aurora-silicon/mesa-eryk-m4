@@ -76,3 +76,15 @@ For targeted diagnosis, `batch --start N --count 1 --log-sources` retains the
 case's generated shader sources. `--renderer lavapipe` uses the system software
 Vulkan ICD explicitly; use a separate experiment name and never merge it into
 native M4 pass counts.
+
+Use `--log-images` for a pixel mismatch to retain CTS reference/result images
+in the QPA. Leave it disabled for routine compilation and passing-case checks.
+
+`--capture-success` saves successful compiler inputs as well as refusals and
+disables the disk shader cache for that run. Use it only for a selected pixel
+failure; replay the retained bundles offline with `compiler-replay.py`.
+
+`cts-images.py result.qpa --output NEW_DIRECTORY` extracts exact embedded PNGs,
+source/image hashes, unique-color counts and unequal result/reference pixels.
+It needs Pillow and runs offline. These byte comparisons are diagnostics; the
+CTS verdict retains its format-specific tolerance and remains authoritative.

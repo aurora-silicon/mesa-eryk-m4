@@ -379,8 +379,10 @@ agx_build_end_of_tile_shader(struct agx_bg_eot_cache *cache,
           key->tib.logical_format[0] == PIPE_FORMAT_R16_SNORM ||
           key->tib.logical_format[0] == PIPE_FORMAT_R16G16_SNORM ||
           key->tib.logical_format[0] == PIPE_FORMAT_R16G16B16A16_SNORM),
+      /* G17P's signed RGBA16 builtin is 84 bytes. G16G uses the ordinary
+       * 68-byte I16 program (native key 0x10020800), shared with UINT. */
       .g17p_rt0_eot_i16_signed_two_words =
-         agx_native_graphics(cache->dev) &&
+         cache->dev->chip == AGX_CHIP_G17P &&
          key->tib.logical_format[0] == PIPE_FORMAT_R16G16B16A16_SINT,
    };
 

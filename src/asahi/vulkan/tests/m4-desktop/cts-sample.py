@@ -67,8 +67,11 @@ def batch(args):
     capture.mkdir()
     env['AGX_COMPILER_CAPTURE_DIR'] = str(capture)
     env.pop('AGX_COMPILER_CAPTURE_SUCCESS', None)
+    if args.capture_success:
+        env['AGX_COMPILER_CAPTURE_SUCCESS'] = 'all'
+        env['MESA_SHADER_CACHE_DISABLE'] = 'true'
     save(out / 'environment.json', {k: v for k, v in env.items() if k.startswith(
-         ('VK_', 'ASAHI_', 'AGX_', 'LD_LIBRARY', 'WAYLAND_', 'XDG_RUNTIME'))})
+         ('VK_', 'ASAHI_', 'AGX_', 'HK_', 'MESA_', 'LD_LIBRARY', 'WAYLAND_', 'XDG_RUNTIME'))})
     save(out / 'binary.json', dict(path=str(args.binary), sha256=hashlib.sha256(args.binary.read_bytes()).hexdigest()))
     results = []
     begin = time.monotonic()
@@ -82,7 +85,7 @@ def batch(args):
         directory.mkdir()
         qpa = directory / 'result.qpa'
         argv = [str(args.binary), '--deqp-case=' + case,
-                '--deqp-log-images=disable',
+                '--deqp-log-images=' + ('enable' if args.log_images else 'disable'),
                 '--deqp-log-shader-sources=' + ('enable' if args.log_sources else 'disable'),
                 '--deqp-log-filename=' + str(qpa)]
         record = dict(index=index, case=case, argv=argv, boot_id=boot, status='Started')
@@ -145,6 +148,8 @@ def main():
     b.add_argument('--count', type=int, default=100)
     b.add_argument('--renderer', choices=('m4', 'lavapipe'), default='m4')
     b.add_argument('--log-sources', action='store_true')
+    b.add_argument('--log-images', action='store_true')
+    b.add_argument('--capture-success', action='store_true')
     args = p.parse_args()
     if args.mode == 'select':
         select(args)

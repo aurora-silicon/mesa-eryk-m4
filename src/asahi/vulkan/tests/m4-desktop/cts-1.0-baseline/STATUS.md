@@ -96,3 +96,22 @@ A separate diagnostic binary applies only ycbcr-read-layout.patch, SHA256
 including linear/linear, linear/optimal, optimal/optimal, disjoint planes and
 case66. This is corrected-test evidence, not five original-CTS passes.
 Semantics checked against https://docs.vulkan.org/spec/latest/chapters/copies.html.
+
+Seventh selection:index23, ETC2 punchthrough blocks viewed as RGBA16_SINT
+attachments. Original output was uniformly black; the retained QPA/reference
+and compact statistics are in 20260913T111116577746Z-cts-block-view-pixels and
+build/cts-fixes/block-view-images. Diagnostic readback confirmed the upload
+was byte-exact but the attachment output was zero before decompression
+(20260913T111820243687Z-cts-block-view-source-readback). Successful shader bundles are retained at
+20260913T111540483190Z-cts-block-view-compiler-inputs.
+RGBA16_UINT and RGBA16_UNORM controls passed, isolating format-dependent EOT.
+
+Apple G16G AIR-NT32023.917 builtin format8/components4 compiles to the ordinary
+68-byte I16 EOT (selector0x15), unlike inherited G17P's84-byte special program.
+Restrict the special program to G17P. Native input/archive/tool hashes:
+build/cts-fixes/native-rgba16-sint-eot; tracked reproducible input and witness
+are in compiler/test/probes/README-g16g-sint16-eot.md.
+20260913T112057102686Z-cts-m4-sint16-eot:original case23 Pass, peak58 C,
+library44d03aabcb5f82a67bffc58eb71f2cd514874355523c40a0d88804a7339db80e.
+No CTS assertion, application shader, kernel or software-rendering fallback
+changed. The original CTS source and binary have been restored after diagnostics.
