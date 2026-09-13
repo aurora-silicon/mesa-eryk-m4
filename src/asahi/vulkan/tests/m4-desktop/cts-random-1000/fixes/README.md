@@ -67,3 +67,12 @@ for S8NORM tile reads. The previous unpack always treated the bytes as UNORM.
 Native RG8Snorm text at offset 88 confirms f40=1; all 95 producer-core checks
 pass, including the exact signed witness. The batch also validates the volume
 blit correction documented separately below.
+
+## Volume blits without vertex-layer output
+
+The shared meta blitter binds one destination slice at a time when layer output
+is unavailable, adjusting the source Z transform while retaining filtering and
+source volume sampling. HK routes volume blits to that path rather than the
+2D-only slice helper. Both original failures (161 and 260) Pass in the retained
+`cts-snorm-blit` batch. The CPU records draws; sampling and pixel writes execute
+on the GPU. This is not a qualification of every 3D/array/mip blit combination.

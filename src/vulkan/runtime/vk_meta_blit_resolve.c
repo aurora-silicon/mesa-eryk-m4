@@ -647,7 +647,10 @@ do_blit(struct vk_command_buffer *cmd,
          .pNext = &dst_view_usage,
          .flags = VK_IMAGE_VIEW_CREATE_DRIVER_INTERNAL_BIT_MESA,
          .image = vk_image_to_handle(dst_image),
-         .viewType = vk_image_sampled_view_type(dst_image),
+         .viewType = !meta->use_layer_output &&
+                     dst_image->image_type == VK_IMAGE_TYPE_3D
+                        ? VK_IMAGE_VIEW_TYPE_2D_ARRAY
+                        : vk_image_sampled_view_type(dst_image),
          .format = dst_format,
          .subresourceRange = {
             .aspectMask = dst_subres.aspectMask,
@@ -828,6 +831,26 @@ vk_meta_blit_image(struct vk_command_buffer *cmd,
          dst_layer_count = dst_subres.layerCount;
          push.arr_delta = dst_subres.baseArrayLayer -
                           src_subres.baseArrayLayer;
+      }
+
+      if (!meta->use_layer_output && key.dim == GLSL_SAMPLER_DIM_3D) {
+         /* Bind each destination slice as layer zero. Keep the original
+          * volume transform, including flipped/scaled Z, in its push data. */
+         struct vk_meta_rect slice_rect = dst_rect;
+         slice_rect.layer = 0;
+         for (uint32_t slice = 0; slice < dst_layer_count; ++slice) {
+            struct vk_meta_blit_push_data slice_push = push;
+            slice_push.z_off += (dst_rect.layer + slice) * push.z_scale;
+            VkImageSubresourceLayers slice_subres = dst_subres;
+            slice_subres.baseArrayLayer += dst_rect.layer + slice;
+            slice_subres.layerCount = 1;
+            do_blit(cmd, meta, src_image, src_format, src_image_layout,
+                    src_subres, dst_image, dst_format, dst_image_layout,
+                    slice_subres, sampler, &key, &slice_push, &slice_rect, 1);
+            if (vk_command_buffer_has_error(cmd))
+               return;
+         }
+         continue;
       }
 
       do_blit(cmd, meta,
