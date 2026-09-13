@@ -433,3 +433,19 @@ storage and host-copy capabilities are not added by this path.
 copy controls Pass; RGB32 copy exposed incorrect path selection, then passed
 after correction in 20260913T155139945612Z-cts-padded-rgb32-copy.
 All hardware tests used watchdog/thermal guards; no GPU hang or reboot.
+
+Format checkpoint, Mesa 54b803899b9: fresh original unmodified 100-case sample
+now 68 Pass, 31 NotSupported, 1 known CTS Crash, zero Fail. Eleven previous
+skips now pass: 3, 12, 13, 27, 36, 38, 49, 56, 60, 93, 96. No regressions in
+the original passing cases. Complete results and guarded experiment references:
+format-final-results.json. Installed library SHA256:
+2603436d74c9ac8f9a81120f1fdeeab26a06500c5a758173289d94ef63f7d3a8.
+Peak in final campaign 60.25 C; no GPU reset or reboot. SDDM enabled and
+active, default graphical.target. Existing desktop processes retain their prior
+library mappings; this checkpoint validates fresh CTS processes, not a new
+real-application or conformance claim. Kernel unchanged.
+
+Remaining image-related sample skips: D24S8 (17/41/44), compression/storage
+transcoding (21), blit destinations (0/31/86), scaled linear filtering (81),
+and YCbCr/plane requests (52/57/61/83/89). Several of the latter request
+disjoint planes on single-plane formats and must not be enabled artificially.
