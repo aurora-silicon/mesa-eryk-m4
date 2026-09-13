@@ -116,3 +116,12 @@ runner. Keep adapted outcomes separate from the original release results.
 
 CTS batches enable `HK_DEBUG_LOG=1` so command-recording errors include the
 Mesa source file and line instead of appearing only at vkEndCommandBuffer.
+
+`crash-backtrace.c` is an opt-in native crash-stack preload for a target whose
+GDB ptrace path fails (the J713 currently rejects SVE vector-length queries).
+Build with `cc -shared -fPIC -O2 tools/crash-backtrace.c -o crash-backtrace.so`;
+set `LD_PRELOAD` inside a bounded guarded experiment. It logs a stack on SIGSEGV
+or SIGABRT and re-raises the original signal, preserving failure status.
+Symbolize offsets using `addr2line -f -C -e EXACT_LIBRARY OFFSET...`. Retain the
+matching binary/hash. Stack unwinding is not async-signal-safe, so the external
+timeout/watchdog remains mandatory. Do not install this into normal sessions.
