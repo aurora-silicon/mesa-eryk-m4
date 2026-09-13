@@ -1987,3 +1987,11 @@ their existing feature boundary. This is not a full Vulkan conformance claim.
 vertex and odd-size fragment storage/atomics with exact 64-byte guards, indexed
 geometry amplification and variable geometry emission; peak55.75 C. Only the
 vertex test sets `hk_enable_vertex_pipeline_stores_atomics=true`.
+
+`vulkan-replay-software.py --validation-layer PATH` enables the explicit Khronos
+validation layer for retained host lavapipe replays and records its manifest
+and library hashes. `--remove-unsupported` is a separately requested cross-device
+diagnostic adaptation; it is retained in the command manifest and is not proof
+of unmodified support. Blender's splash-free reference and native captures
+replay with validation without reported VUIDs. Firefox's retained native capture
+needs the explicit adaptation and external-memory rebinding on lavapipe.

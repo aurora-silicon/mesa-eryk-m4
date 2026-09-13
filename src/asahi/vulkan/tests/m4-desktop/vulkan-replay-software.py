@@ -16,6 +16,8 @@ p.add_argument("--output", required=True, type=Path)
 p.add_argument("--frames", required=True, help="GFXReconstruct frame selection")
 p.add_argument("--seconds", type=int, default=60)
 p.add_argument("--dump-config", type=Path)
+p.add_argument("--remove-unsupported", action="store_true", help="Explicit diagnostic cross-device adaptation; not native qualification")
+p.add_argument("--validation-layer", type=Path, help="Khronos validation JSON; retain layer hash and enable checks")
 a = p.parse_args()
 if platform.machine() != "x86_64" or not 1 <= a.seconds <= 120:
     p.error("this helper requires the x86 host and a 1..120 second bound")
@@ -35,6 +37,24 @@ env.update(VK_DRIVER_FILES=str(icd), LP_NUM_THREADS="4")
 command = [str(replay), "--swapchain", "offscreen", "--memory-translation",
            "rebind", "--omit-pipeline-cache-data", "--screenshots", a.frames,
            "--screenshot-format", "png", "--screenshot-dir", str(out), str(trace)]
+if a.remove_unsupported:
+    command[-1:-1] = ["--remove-unsupported"]
+validation_files = []
+if a.validation_layer:
+    layer = a.validation_layer.resolve(strict=True)
+    description = json.loads(layer.read_text())
+    assert description['layer']['name'] == 'VK_LAYER_KHRONOS_validation'
+    layer_library = Path(description['layer']['library_path'])
+    if not layer_library.is_absolute():
+        layer_library = layer.parent / layer_library
+    layer_library = layer_library.resolve(strict=True)
+    description['layer']['library_path'] = str(layer_library)
+    layer_dir = out / 'layers'
+    layer_dir.mkdir()
+    (layer_dir / layer.name).write_text(json.dumps(description, indent=2) + '\n')
+    env['VK_LAYER_PATH'] = str(layer_dir)
+    command[-1:-1] = ['--validate']
+    validation_files = [layer, layer_library]
 if a.dump_config:
     config = out / "dump-config.json"
     config.write_bytes(a.dump_config.resolve(strict=True).read_bytes())
@@ -44,8 +64,8 @@ def sha(path):
     with path.open("rb") as stream:
         return hashlib.file_digest(stream, "sha256").hexdigest()
 manifest = dict(command=command, renderer="host lavapipe", seconds=a.seconds,
-                environment={k: env[k] for k in ("VK_DRIVER_FILES", "LP_NUM_THREADS")},
-                hashes={str(f): sha(f) for f in (trace, replay, icd, library)})
+                environment={k: env[k] for k in ("VK_DRIVER_FILES", "LP_NUM_THREADS", "VK_LAYER_PATH") if k in env},
+                hashes={str(f): sha(f) for f in (trace, replay, icd, library, *validation_files)})
 if a.dump_config:
     manifest["hashes"][str(config)] = sha(config)
 (out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
