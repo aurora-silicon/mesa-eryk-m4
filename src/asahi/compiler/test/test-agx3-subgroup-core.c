@@ -573,6 +573,16 @@ test_g16_broadcast_lanes(void)
 int
 main(void)
 {
+   /* Native prefix-live.metal, source r0 is reused for inclusive + x. */
+   struct agx3_subgroup_reduce_desc d = {
+      .prefix = true, .op = AGX3_SUBGROUP_REDUCE_IADD,
+      .dest = 8, .src = 0, .wait_mask = 1u << 5,
+      .dest_hint = true, .src_live = true,
+   };
+   static const uint8_t expected[] = {0xbf,0x01,0x56,0x08,0x03,0x00,0x16,0x09};
+   uint8_t bytes[AGX3_SUBGROUP_MAX_LENGTH], length = 0;
+   CHECK(agx3_subgroup_encode_reduce(AGX_ISA_ENCODING_AGX3B, &d, bytes, &length));
+   CHECK(bytes_equal(bytes, length, expected, sizeof(expected)));
    CHECK(test_g16_broadcast_lanes() == 0);
    CHECK(test_shuffle_vectors() == 0);
    CHECK(test_ballot_vectors() == 0);

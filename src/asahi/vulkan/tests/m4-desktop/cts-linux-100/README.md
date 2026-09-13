@@ -83,3 +83,11 @@ from 20260913T165307565822Z-cts-tess-native-varyings now replays offline success
 (1586 bytes). Native source/archive/text/commands are retained under
 build/cts-next/broadcast-lanes-native; this is compiler evidence, not a passing
 tessellation hardware claim. Tessellation remains an opt-in experiment.
+
+Native integer prefix source liveness: G16G prefix-live.metal witnesses f25 for
+a still-live integer scan operand. The encoder previously pinned f27 (final
+read), discarding the value needed for inclusive-scan correction. A byte-exact
+encoder vector passes. Guarded tessellation state evidence changes counts from
+0/3/6/9 (20260913T170237920004Z-cts-tess-state-dump) to 3/6/9/12, with all four
+corner triangles passing in 20260913T170513891519Z-cts-tess-prefix-source-live.
+Tessellation remains opt-in while the remaining target cases are checked.
