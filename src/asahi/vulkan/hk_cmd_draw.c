@@ -3021,8 +3021,11 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
        * for this single-viewport layout. VIT supplies interpolation.
        * FragmentProgramVariant 0x373eb4..0x373ee0 sets output-select bit16
        * for nonempty iteration metadata, merged by 0x4824fc..0x482518.
-       * Preserve point size and the packed layer/viewport export selectors. */
-      .words = {(vs->info.uvs.osel.opaque[0] & UINT32_C(0x1c0000)) |
+       * Preserve point size, layer/viewport and user clip-plane selectors.
+       * The clip values follow the other outputs in the same f32 UVS stream. */
+      .words = {(vs->info.uvs.osel.opaque[0] &
+                   (dev->dev.chip == AGX_CHIP_G16G ? UINT32_C(0x1c00ff) :
+                                                          UINT32_C(0x1c0000))) |
                    (linked_fs->b.cf.nr_bindings ? UINT32_C(0x10000) : 0) |
                    (linked_fs->b.cf.reads_z ? UINT32_C(0x200000) : 0),
                 0, 0, output_size,

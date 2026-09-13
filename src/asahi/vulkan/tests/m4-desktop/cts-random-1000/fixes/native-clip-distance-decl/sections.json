@@ -1,0 +1,38 @@
+[
+  {
+    "file": "text-9b0.bin",
+    "macho_offset": 2480,
+    "offset": 3168,
+    "bytes": 292,
+    "section_index": 1,
+    "address": 0,
+    "symbols": [
+      {
+        "name": "_agc.main",
+        "offset": 64
+      },
+      {
+        "name": "_agc.main.constant_program",
+        "offset": 0
+      }
+    ]
+  },
+  {
+    "file": "text-1120.bin",
+    "macho_offset": 4384,
+    "offset": 5152,
+    "bytes": 118,
+    "section_index": 1,
+    "address": 0,
+    "symbols": [
+      {
+        "name": "_agc.main",
+        "offset": 64
+      },
+      {
+        "name": "_agc.main.constant_program",
+        "offset": 0
+      }
+    ]
+  }
+]

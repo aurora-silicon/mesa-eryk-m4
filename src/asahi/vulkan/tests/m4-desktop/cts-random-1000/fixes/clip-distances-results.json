@@ -1,0 +1,34 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.clipping.user_defined.clip_distance_dynamic_index.vert.8",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.clipping.user_defined.clip_distance_dynamic_index.vert.8",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T201550665090Z-cts-clip-distances/cts/000/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.4105565059999208
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.clipping.user_defined.clip_distance.vert_tess_geom.2",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.clipping.user_defined.clip_distance.vert_tess_geom.2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T201550665090Z-cts-clip-distances/cts/001/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Fail",
+    "message": "Rendered image(s) are incorrect",
+    "returncode": 0,
+    "seconds": 1.0115502020000804
+  }
+]

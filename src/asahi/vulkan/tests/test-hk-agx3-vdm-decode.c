@@ -213,6 +213,17 @@ test_g17p_vertex_program_info(void)
    point_info.layer_viewport_off = point_info.clip_off = point_info.uvs_size = 6;
    CHECK(!hk_agx3_g17p_vertex_program_info(AGX_CHIP_G17P, &point_info, &program));
 
+   /* Native G16G position + eight clip distances: metadata field1.field3
+    * is 12 and the compiler emits twelve sequential f32 UVSW writes. */
+   struct hk_agx3_g17p_vertex_compile_info clip = compiler_info;
+   clip.position_only = false;
+   clip.uvs_size = 12;
+   CHECK(hk_agx3_g17p_vertex_program_info(AGX_CHIP_G16G, &clip, &program));
+   CHECK(program.template_info.raw_vs_output_count_0 == 12);
+   CHECK(program.template_info.raw_vs_output_count_2 == 0);
+   clip.uvs_size = 13;
+   CHECK(!hk_agx3_g17p_vertex_program_info(AGX_CHIP_G16G, &clip, &program));
+
    /* AIR-NT G16G position + float varying + render_target_array_index:
     * __GPU_LD_MD root.field1.field3=6, field4 absent. The packed layer word
     * follows the user output in the same 32-bit UVS stream. */

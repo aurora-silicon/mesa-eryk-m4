@@ -143,3 +143,13 @@ separate layer and LOD staging would overwrite the same bank. The native source,
 identity and text are retained in `native-lodcube-dynamic/`. Texture-core tests
 match the exact three-source packet and sample (6,288 checks pass).
 The guarded batch peaked at 60.25 C without GPU faults.
+
+## Vertex clip-distance exports
+
+Original index 77 Pass in `20260913T201550665090Z-cts-clip-distances` after
+admitting up to eight clip-distance UVS words on G16G and preserving their
+output-select enable bits. Native position plus eight clip distances emits
+12 sequential f32 UVSW writes; metadata field1.field3 is 12. Source, text and
+metadata are retained in `native-clip-distance-decl/`. VDM unit checks: 2,773.
+The same batch's tessellation/geometry case 368 still fails image comparison;
+this commit does not claim it fixed. Peak 58.5 C, no GPU fault.
