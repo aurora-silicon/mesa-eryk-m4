@@ -1,0 +1,50 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.image.qualifiers.coherent.1d_array.r32f",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.image.qualifiers.coherent.1d_array.r32f",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202453687622Z-cts-volatile-controls/cts/000/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "Passed",
+    "returncode": 0,
+    "seconds": 0.21036245999994208
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.image.qualifiers.volatile.2d.r32f",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.image.qualifiers.volatile.2d.r32f",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202453687622Z-cts-volatile-controls/cts/001/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "Passed",
+    "returncode": 0,
+    "seconds": 0.20897179999997206
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.image.qualifiers.coherent.2d_array.r32f",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.image.qualifiers.coherent.2d_array.r32f",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202453687622Z-cts-volatile-controls/cts/002/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "Passed",
+    "returncode": 0,
+    "seconds": 0.21002392599984887
+  }
+]

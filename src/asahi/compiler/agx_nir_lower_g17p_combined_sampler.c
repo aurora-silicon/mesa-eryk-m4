@@ -372,6 +372,8 @@ agx_nir_lower_g17p_indexed_samplers(nir_shader *shader)
                    shader->info.stage != MESA_SHADER_VERTEX))
       return false;
 
+   unsigned native_image_reads = 0;
+
    /* Image loads use the storage view's read descriptor in the same heap.
     * Convert them before classifying samples so a shader containing only
     * image accesses also selects the indexed resource ABI. */
@@ -398,11 +400,29 @@ agx_nir_lower_g17p_indexed_samplers(nir_shader *shader)
                 (dim == GLSL_SAMPLER_DIM_3D && array) ||
                 intr->def.num_components > 4 ||
                 intr->def.bit_size != 32 ||
-                (nir_intrinsic_access(intr) & (ACCESS_COHERENT | ACCESS_VOLATILE)) ||
                 !nir_src_is_const(intr->src[2]) || nir_src_as_uint(intr->src[2]) != 0 ||
                 !nir_src_is_const(intr->src[3]) || nir_src_as_uint(intr->src[3]) != 0)
                return false;
             b.cursor = nir_before_instr(instr);
+            if (nir_intrinsic_access(intr) & (ACCESS_COHERENT | ACCESS_VOLATILE)) {
+               /* Keep memory operations as intrinsics. Turning a volatile
+                * image read into a pure texture instruction permits CSE and
+                * motion across the program's image-memory barriers. */
+               nir_def *set = nir_load_descriptor_set_agx(&b,
+                  nir_intrinsic_desc_set(handle));
+               nir_def *offset = nir_iadd_imm(&b, handle->src[0].ssa,
+                  AGX_G17P_SAMPLED_HEAP_INDEX_OFFSET);
+               nir_def *address = nir_iadd(&b, set, nir_u2u64(&b, offset));
+               nir_def *index = nir_load_global_constant(&b, 1, 32, address,
+                  .align_mul = 4);
+               nir_src_rewrite(&intr->src[0], nir_u2u64(&b, index));
+               intr->intrinsic = nir_intrinsic_image_load;
+               nir_intrinsic_set_image_dim(intr, dim);
+               nir_intrinsic_set_image_array(intr, array);
+               native_image_reads++;
+               progress = true;
+               continue;
+            }
             nir_tex_instr *tex = nir_tex_instr_create(shader, 3);
             tex->op = nir_texop_txf;
             tex->sampler_dim = dim;
@@ -468,7 +488,7 @@ agx_nir_lower_g17p_indexed_samplers(nir_shader *shader)
    }
    /* Storage-only shaders need the same heap/root ABI. Their stores
     * are validated and lowered by the subsequent bindless-storage pass. */
-   if (!samples && !storage_writes)
+   if (!samples && !storage_writes && !native_image_reads)
       return false;
 
    nir_foreach_function_impl(impl, shader) {
@@ -886,8 +906,7 @@ agx_nir_lower_g17p_bindless_storage(nir_shader *shader)
                  format != PIPE_FORMAT_R16G16_FLOAT &&
                  format != PIPE_FORMAT_R16G16B16A16_FLOAT &&
                  !(format == PIPE_FORMAT_NONE &&
-                   nir_intrinsic_src_type(intr) == nir_type_float32)) ||
-                (nir_intrinsic_access(intr) & (ACCESS_COHERENT | ACCESS_VOLATILE)))
+                   nir_intrinsic_src_type(intr) == nir_type_float32)))
                continue;
             /* Storage cube coordinates address faces as ordinary array
              * layers, including a non-array cube's six faces. */

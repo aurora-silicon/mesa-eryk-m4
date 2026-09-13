@@ -950,7 +950,7 @@ agx3_emit_storage_image_write(struct util_dynarray *emission,
       !I->src[4].memory && !I->src[4].abs && !I->src[4].neg;
    if (enc != AGX_ISA_ENCODING_AGX3B || I->nr_dests != 0 ||
        I->nr_srcs != 5 ||
-       (I->dim != AGX_DIM_2D && !three_d && !array) || I->coherent || (wait_mask & ~1u) != 0 ||
+       (I->dim != AGX_DIM_2D && !three_d && !array) || (wait_mask & ~1u) != 0 ||
        !agx3_tex_plain_reg(I->src[0]) || I->src[0].size != AGX_SIZE_32 ||
        agx_channels(I->src[0]) != 4 || (I->src[0].value & 1) ||
        I->src[0].value > 248 || !agx3_tex_plain_reg(I->src[1]) ||

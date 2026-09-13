@@ -1,0 +1,18 @@
+[
+  {
+    "index": 3,
+    "case": "dEQP-VK.image.qualifiers.volatile.1d_array.r32f",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.image.qualifiers.volatile.1d_array.r32f",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202358092286Z-cts-volatile-image/cts/003/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "Passed",
+    "returncode": 0,
+    "seconds": 0.20805239800006348
+  }
+]

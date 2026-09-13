@@ -1639,15 +1639,12 @@ agx_emit_image_load(agx_builder *b, agx_index dst, nir_intrinsic_instr *intr)
       lod = agx_zero();
    } else if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
               intr->intrinsic == nir_intrinsic_image_load &&
-              dim == GLSL_SAMPLER_DIM_2D && !is_array &&
-              nir_intrinsic_format(intr) == PIPE_FORMAT_R8G8B8A8_UINT &&
+              dim == GLSL_SAMPLER_DIM_2D &&
               nir_src_is_const(intr->src[3]) &&
               nir_src_as_uint(intr->src[3]) == 0) {
-      /* The bounded G17P storage-image path is descriptor-specialized to a
-       * non-mipmapped 2D image. Keep its semantic LOD zero immediate through
-       * RA: the generic AGX2 image path otherwise materializes it as a
-       * runtime uniform, while native G17P encodes this read with the exact
-       * immediate-LOD0 SMP form. */
+      /* Native heap-indexed storage reads use the immediate LOD0 form.
+       * Keep qualified memory reads as IMAGE_LOAD, including their ordering
+       * metadata, instead of converting them to pure texture operations. */
       lod_mode = AGX_LOD_MODE_AUTO_LOD;
       lod = agx_zero();
    }

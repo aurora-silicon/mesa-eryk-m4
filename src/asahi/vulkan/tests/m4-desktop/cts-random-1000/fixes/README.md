@@ -162,3 +162,17 @@ tilebuffer. Admit the layout and use the established two-word I16 end-of-tile
 program and integer MRT selector; the PBE packs the 10/10/10/2 destination.
 No normalized conversion is used. Full CTS subpass/input-attachment validation
 passes. The guarded test peaked at 58.5 C without GPU faults.
+
+## Volatile and coherent storage image access
+
+Original index 440 Pass in `20260913T202358092286Z-cts-volatile-image`.
+Keep qualified image reads as memory intrinsics while loading native heap
+indices; converting them to pure texture reads would lose their ordering and
+volatile semantics. Stores preserve their access flags and use the native PBE
+write path. The program's existing device, texture and workgroup barriers remain
+in place and retire pending writes. The generic image lowering already represents
+1D arrays as height-one 2D arrays; no special CPU path is involved.
+Three additional coherent/volatile 1D-array/2D controls Pass in
+`20260913T202453687622Z-cts-volatile-controls`. Peaks 58.5/58.25 C, no GPU faults.
+These cases exercise explicit barriers, not every possible cross-invocation
+communication pattern.
