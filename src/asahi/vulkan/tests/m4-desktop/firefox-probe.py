@@ -70,6 +70,7 @@ def main():
     p.add_argument('--capture-profile', type=Path)
     p.add_argument('--readback-trace', type=Path)
     p.add_argument('--freeze-animation', action='store_true')
+    p.add_argument('--page-script', type=Path, help='Retained read-only page diagnostics after observation')
     a = p.parse_args()
     spec = importlib.util.spec_from_file_location('fw', Path(__file__).with_name('firmware-snapshot.py'))
     fw = importlib.util.module_from_spec(spec); spec.loader.exec_module(fw)
@@ -188,6 +189,10 @@ def main():
             # Do not call getContext here: that can create a new context after
             # failed website startup and incorrectly suggest a working page.
             page = remote.script('return {url:location.href,title:document.title,ready:document.readyState,probe:JSON.parse(document.documentElement.dataset.m4Probe||"null"),canvases:Array.from(document.querySelectorAll("canvas")).map(c=>({width:c.width,height:c.height,clientWidth:c.clientWidth,clientHeight:c.clientHeight}))};')
+            if a.page_script:
+                script = a.page_script.read_text()
+                (out / 'page-diagnostics.js').write_text(script)
+                page['diagnostics'] = remote.script(script)
             result['page'] = page
             print('Firefox page:', json.dumps(page), flush=True)
             for proc in Path('/proc').glob('[0-9]*'):

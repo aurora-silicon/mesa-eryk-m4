@@ -5000,9 +5000,9 @@ TEST_F(AGX3PackBinary, WideVertexOutputsPreserveValuesAndRecycleSlotsAfterWrites
    }
 }
 
-TEST_F(AGX3PackBinary, WideVertexOutputsRefuseNonterminalAndOutOfRange)
+TEST_F(AGX3PackBinary, WideVertexOutputsAcceptRematerializedConstants)
 {
-   for (unsigned count : {7u, 8u, 9u, 33u}) {
+   for (unsigned count : {7u, 8u, 9u, 33u, 49u}) {
       agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
       b->shader->stage = MESA_SHADER_VERTEX;
       for (unsigned c = 0; c < count; ++c) {
@@ -5010,7 +5010,8 @@ TEST_F(AGX3PackBinary, WideVertexOutputsRefuseNonterminalAndOutOfRange)
          agx_st_vary(b, agx_immediate(c), agx_register(0, AGX_SIZE_32));
       }
       agx_stop(b);
-      EXPECT_TRUE(pack(b, false).empty());
+      EXPECT_FALSE(pack(b).empty());
+      EXPECT_EQ(b->shader->agx3_staging_halfs, 2 * count);
    }
 }
 

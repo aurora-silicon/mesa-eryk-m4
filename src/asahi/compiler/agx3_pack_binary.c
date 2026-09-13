@@ -3326,7 +3326,7 @@ agx3_g17p_vertex_output_count(agx_context *ctx, enum agx_isa_encoding enc,
  * and scoreboard slots. Original producers retire on first COPY;
  * only the final UVSWs need wait for the new staging producers. */
 static bool
-agx3_outputs_are_terminal(agx_context *ctx, unsigned count)
+agx3_outputs_are_terminal(agx_context *ctx, unsigned count, bool allow_constants)
 {
    unsigned next = 0;
    bool stopped = false;
@@ -3340,7 +3340,7 @@ agx3_outputs_are_terminal(agx_context *ctx, unsigned count)
          if (next != count)
             return false;
          stopped = true;
-      } else if (next) {
+      } else if (next && !(allow_constants && I->op == AGX_OPCODE_MOV_IMM)) {
          return false;
       }
    }
@@ -4276,12 +4276,15 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
       agx3_g17p_vertex_output_count(ctx, enc, &g17p_sparse_outputs);
    uint16_t g17p_output_indices[AGX3_MAX_VERTEX_OUTPUTS];
    const bool g17p_terminal_outputs = g17p_output_count &&
-      agx3_outputs_are_terminal(ctx, g17p_output_count);
-   /* Only the old six-output fallback supports intervening physical GPR
-    * reuse. Wider outputs require the pre-RA terminal bundle. */
+      agx3_outputs_are_terminal(ctx, g17p_output_count, false);
+   /* RA may rematerialize constants between the pre-RA bundled outputs.
+    * Constants have no staging or control-flow side effects, but can reuse
+    * a GPR read by an earlier COPY. Use the existing immediately retired
+    * COPY path for these streams; retain batched waits for contiguous tails. */
    const bool g17p_user_output_protocol = g17p_sparse_outputs ||
       g17p_output_count == 6 ||
-      (g17p_output_count >= 5 && g17p_terminal_outputs);
+      (g17p_output_count >= 5 &&
+       agx3_outputs_are_terminal(ctx, g17p_output_count, true));
    unsigned g17p_outputs_staged = 0;
    /* User-output graphs outside the qualified scalar shapes must not
     * silently fall back to immediate, potentially out-of-order writeout. */

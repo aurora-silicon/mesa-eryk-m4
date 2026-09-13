@@ -86,3 +86,22 @@ backs up and atomically installs a compatible private Mesa library. Existing
 processes retain the previous inode; only fresh processes test the new build.
 Without `--allow-live`, GPU clients must be stopped. This is not a kernel/UAPI
 upgrade mechanism and does not replace the experiment guard.
+
+### Shadertoy page diagnostics and rematerialized vertex outputs
+
+`firefox-probe.py --page-script /absolute/read-only-diagnostics.js` retains
+the diagnostic JavaScript and its JSON result after navigation. Use it to
+distinguish site verification/error pages from a working WebGL canvas; never
+create a context just to claim one exists. Existing guards/cleanup apply.
+
+XdsGDB investigation20260913: initial Firefox aborts on saved WebRender
+vertex bundle398b8af55d77. RA rematerialized1.0 between outputs47/48 after
+the pre-RA output bundling pass. Allow ordered wide exports separated only
+by MOV_IMM and retire their staging COPYs before GPR reuse. Contiguous tails
+keep batched waits. Offline replay now compiles6446bytes; guarded092843
+Firefox survives15s with WebRender/WebGL reportingZink/M4. Page remains
+Cloudflare verification, not Shadertoy content or shader qualification.
+Thirteen focused output tests pass; three older SixVertexOutputs tests fail
+identically on unmodified99b3302b66d and are recorded as baseline failures.
+An ordinary-profile40s run092942 faults the GPU later; snapshotjob8887
+retained and watchdog recovery completed. This fix is not a stability claim.
