@@ -12,16 +12,17 @@
 static bool
 g17p_sample_shape(const nir_tex_instr *tex)
 {
+   const bool three_d = tex->sampler_dim == GLSL_SAMPLER_DIM_3D;
    const bool cube = tex->sampler_dim == GLSL_SAMPLER_DIM_CUBE;
    const bool gather = tex->op == nir_texop_tg4;
    if ((tex->op != nir_texop_tex && tex->op != nir_texop_txb &&
        tex->op != nir_texop_txl && !gather) ||
        (gather && (cube || tex->is_array || tex->is_shadow)) ||
-       (tex->sampler_dim != GLSL_SAMPLER_DIM_2D &&
+       (tex->sampler_dim != GLSL_SAMPLER_DIM_2D && !three_d &&
         !(cube && !tex->is_array &&
           (tex->op == nir_texop_tex || tex->op == nir_texop_txl))) ||
        (tex->is_shadow && cube) || tex->is_sparse ||
-       tex->coord_components != ((tex->is_array || cube) ? 3 : 2) ||
+       tex->coord_components != ((tex->is_array || cube || three_d) ? 3 : 2) ||
        (tex->backend_flags & ~(AGX_TEXTURE_FLAG_CLAMP_TO_0 |
                                AGX_TEXTURE_FLAG_NO_CLAMP)) != 0 ||
        tex->backend_flags == (AGX_TEXTURE_FLAG_CLAMP_TO_0 |
@@ -32,6 +33,16 @@ g17p_sample_shape(const nir_tex_instr *tex)
        tex->def.num_components != (tex->is_shadow ? 1 : 4) ||
        tex->def.bit_size != 32)
       return false;
+
+   if (three_d) {
+      const int lod = nir_tex_instr_src_index(tex, nir_tex_src_lod);
+      if (tex->is_array || tex->is_shadow ||
+          (tex->op != nir_texop_tex &&
+           (tex->op != nir_texop_txl || lod < 0 ||
+            !nir_src_is_const(tex->src[lod].src) ||
+            nir_src_as_uint(tex->src[lod].src) != 0)))
+         return false;
+   }
 
    const bool has_bias =
       nir_tex_instr_src_index(tex, nir_tex_src_bias) >= 0;

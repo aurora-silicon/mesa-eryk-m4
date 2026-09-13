@@ -155,7 +155,8 @@ struct agx3_tex_sample_desc {
    uint8_t gather_component;
    uint8_t sample_offset; /* Signed x/y nibbles, as in NIR's packed offset. */
    bool array;          /* 2D array: register layer already in operand bank 6 */
-   bool cube;           /* M4 projected UV plus packed face in operand bank 6 */
+   bool cube;
+   bool three_d;           /* M4 projected UV plus packed face in operand bank 6 */
    enum agx3_tex_operand_kind texture_kind;
    enum agx3_tex_operand_kind sampler_kind;
    uint16_t texture_value;

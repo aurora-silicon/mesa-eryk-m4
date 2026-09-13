@@ -725,6 +725,7 @@ test_indexed_sample_witnesses(void)
 static int
 test_sample_mask_domain(void)
 {
+   CHECK(test_m4_3d_sample_witness() == 0);
    /* Native mask_1..mask_15, every nonempty packed result subset. */
    static const uint8_t native[15][14] = {
       {0x05,0x80,0x0c,0xa0,0x90,0x00,0x00,0x00,0x01,0x00,0x10,0x00,0x01,0x00},
@@ -1365,10 +1366,30 @@ test_m4_3d_fetch_witness(void)
    CHECK(!agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3C, &d, out, &len));
    return 0;
 }
+static int
+test_m4_3d_sample_witness(void)
+{
+   const uint8_t expected[] = {0x05,0x80,0x0c,0xb8,0xb0,0x00,0x39,
+                              0x00,0x00,0x00,0x10,0x00,0x01,0x00};
+   struct agx3_tex_sample_desc d = {
+      .width=AGX3_TEX_W32, .mask=15, .slot=1, .wait_mask=1,
+      .coord_kill=true, .final=true, .three_d=true, .lod=AGX3_TEX_LOD_LEVEL,
+   };
+   uint8_t out[AGX3_TEX_MAX_LENGTH],len;
+   CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+   CHECK(len==sizeof(expected) && !memcmp(out,expected,len));
+   /* AIR-NT32023.883 fragment sample: text-1250 offset0x90. */
+   const uint8_t implicit[] = {0x05,0x80,0x0c,0xb8,0xb0,0,0x80,1,1,0,0x10,0,1,0};
+   d.lod = AGX3_TEX_LOD_AUTO;
+   CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+   CHECK(len==sizeof(implicit) && !memcmp(out,implicit,len));
+   return 0;
+}
 
 int
 main(void)
 {
+   CHECK(test_m4_3d_sample_witness() == 0);
    CHECK(test_m4_typed_image_write_witnesses() == 0);
    CHECK(test_m4_3d_fetch_witness() == 0);
    CHECK(test_m4_sample_offset_witness() == 0);

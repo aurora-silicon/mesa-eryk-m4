@@ -2126,3 +2126,10 @@ pixels compare exactly on llvmpipe and guarded J713 run 20260913T044705
 (57.5 C). Compile with EGL/GL; run through gpu-experiment.py and run-m4-gl.py.
 Native PACK_SMPIR must combine both values into bank6; separate packs overwrite
 one another. This test checks reads, not the outstanding array-write path.
+
+`array-lod-probe 3d` tests implicit 3D sampling with distinct XYZ texels and
+the sampler clamped to mip0. J713045830 passes128pixels at58.25C; this is
+not a cross-mip derivative qualification. The native AIR-NT32023.883 fragment
+SMP is retained at build/eevee-native-sample3d-fragment/text-1250.bin+0x90.
+Eevee045848 completed a192x144,16sample Vulkan render in9.6s, but the image
+is black against the lit software reference. Completion is not correctness.

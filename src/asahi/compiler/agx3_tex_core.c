@@ -169,6 +169,12 @@ sample_ok(enum agx_isa_encoding enc, const struct agx3_tex_sample_desc *d)
        d->texture > 15 || d->sampler > 15)
       return false;
 
+   if (d->three_d && (enc != AGX_ISA_ENCODING_AGX3B || d->array ||
+                       d->cube || d->shadow || d->gather || d->sample_offset ||
+                       (d->lod != AGX3_TEX_LOD_LEVEL && d->lod != AGX3_TEX_LOD_AUTO) ||
+                       d->lod_x64 != 0))
+      return false;
+
    if (d->lod == AGX3_TEX_LOD_BIAS_REGISTER &&
        (enc != AGX_ISA_ENCODING_AGX3B || d->array || d->cube || d->shadow || d->gather))
       return false;
@@ -283,7 +289,7 @@ agx3_tex_encode_sample(enum agx_isa_encoding enc,
    ov[n++] = (struct agx3_field_kv)KV(26, d->slot);
    ov[n++] = (struct agx3_field_kv)KV(27, d->coord_kill ? 1 : 0);
    ov[n++] = (struct agx3_field_kv)KV(75, d->mask);
-   ov[n++] = (struct agx3_field_kv)KV(76, d->cube ? 4 : 1);  /* M4 cube / 2D */
+   ov[n++] = (struct agx3_field_kv)KV(76, d->cube ? 4 : d->three_d ? 3 : 1);
    ov[n++] = (struct agx3_field_kv)KV(78, 2);  /* filtered sample */
    if (d->gather) {
       ov[n++] = (struct agx3_field_kv)KV(144, 1);

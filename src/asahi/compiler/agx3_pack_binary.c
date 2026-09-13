@@ -1028,6 +1028,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
    const bool valid_immediate_lod = immediate_lod && immediate_level >= 0.0f &&
       immediate_level_x64 <= 0xfff &&
       immediate_level_x64 == (float)(uint16_t)immediate_level_x64;
+   const bool three_d = I->dim == AGX_DIM_3D;
    const bool array = I->dim == AGX_DIM_2D_ARRAY;
    const bool cube = I->dim == AGX_DIM_CUBE;
    const bool shadow = I->shadow;
@@ -1051,8 +1052,8 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
    /* Fixed-bank samples copy their coordinates before SMP. COPY and
     * PACK_SMPIR accept the full 256-half source bank; the last component must
     * fit. Only unstaged 2D samples retain SMP's narrower coordinate bound. */
-   const bool fixed_coord = explicit_lod || bias || array || cube || shadow;
-   const unsigned coord_components = (array || cube) ? 3 : 2;
+   const bool fixed_coord = explicit_lod || bias || array || cube || three_d || shadow;
+   const unsigned coord_components = (array || cube || three_d) ? 3 : 2;
    const unsigned max_coord = fixed_coord ? 256 - 2 * coord_components : 60;
    if (I->nr_dests != 1 || I->nr_srcs != 6 ||
        !agx3_tex_plain_reg(I->dest[0]) ||
@@ -1062,7 +1063,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
        (I->dest[0].size == AGX_SIZE_32 && (I->dest[0].value & 1)) ||
        !agx3_tex_plain_reg(I->src[0]) ||
        I->src[0].size != AGX_SIZE_32 ||
-       agx_channels(I->src[0]) != ((array || cube) ? 3 : 2) ||
+       agx_channels(I->src[0]) != ((array || cube || three_d) ? 3 : 2) ||
        (I->src[0].value & 3) || I->src[0].value > max_coord ||
        !valid_lod || !agx3_tex_imm(I->src[2], 0) ||
        (immediate && (I->src[3].value > 15 || I->src[4].value > 15)) ||
@@ -1075,7 +1076,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
          agx_channels(I->src[3]) != 1 || agx_channels(I->src[4]) != 1 ||
          (I->src[3].value & 1) || (I->src[4].value & 1))) ||
        !valid_compare || (bias && (array || cube || shadow || gather)) ||
-       (I->dim != AGX_DIM_2D && I->dim != AGX_DIM_2D_ARRAY && !cube) ||
+       (I->dim != AGX_DIM_2D && I->dim != AGX_DIM_2D_ARRAY && !cube && !three_d) ||
        (array && enc != AGX_ISA_ENCODING_AGX3B) ||
        (I->mask == 0 || (I->mask & ~15u)) ||
        (I->offset && !sample_offset) || I->query_lod ||
@@ -1140,6 +1141,13 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
         !agx3_append(emission, bytes, len)))
       return false;
 
+   if (three_d &&
+       (!agx3_tex_stage_copy_hints(enc, coord + 4, I->src[0].value + 4,
+                                   stage_slot, 0, I->src[0].cache,
+                                   I->src[0].discard, bytes, &len) ||
+        !agx3_append(emission, bytes, len)))
+      return false;
+
    /* Apple's M4 sample_compare publishes the F32 reference with an ordinary
     * signalling COPY to half4, after x/y in halves0/2. Array-layer packing
     * uses the separate auxiliary bank6 and leaves the reference intact. */
@@ -1171,6 +1179,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
       .lod_x64 = immediate_lod ? (uint16_t)immediate_level_x64 : 0,
       .array = array,
       .cube = cube,
+      .three_d = three_d,
       .slot = slot,
       .wait_mask = (uint16_t)(1u << (stage_slot - 1)),
       .coord_kill = I->src[0].kill,
@@ -2052,7 +2061,8 @@ agx3_append_texture_staging_tokens(const agx_instr *I, mesa_shader_stage stage,
    unsigned base, halves;
    if (I->op == AGX_OPCODE_TEXTURE_SAMPLE) {
       const bool fixed = I->shadow || I->lod_mode == AGX_LOD_MODE_LOD_MIN ||
-         I->dim == AGX_DIM_2D_ARRAY || I->dim == AGX_DIM_CUBE;
+         I->dim == AGX_DIM_2D_ARRAY || I->dim == AGX_DIM_CUBE ||
+         I->dim == AGX_DIM_3D;
       base = fixed ? 0 : I->src[0].value;
       halves = fixed ? 8 : 4;
    } else if (I->op == AGX_OPCODE_TEXTURE_LOAD || I->op == AGX_OPCODE_IMAGE_LOAD) {
@@ -4568,7 +4578,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                MAX2(ctx->agx3_staging_halfs,
                     (I->shadow || I->lod_mode == AGX_LOD_MODE_LOD_MIN ||
                      I->lod_mode == AGX_LOD_MODE_AUTO_LOD_BIAS ||
-                     I->dim == AGX_DIM_2D_ARRAY || I->dim == AGX_DIM_CUBE)
+                     I->dim == AGX_DIM_2D_ARRAY || I->dim == AGX_DIM_CUBE ||
+                     I->dim == AGX_DIM_3D)
                        ? 8 : I->src[0].value + 4);
             continue;
          }
