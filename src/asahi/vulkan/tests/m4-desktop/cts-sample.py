@@ -79,63 +79,105 @@ def batch(args):
     save(out / 'environment.json', {k: v for k, v in env.items() if k.startswith(
          ('VK_', 'ASAHI_', 'AGX_', 'HK_', 'MESA_', 'LD_LIBRARY', 'WAYLAND_', 'XDG_RUNTIME'))})
     save(out / 'binary.json', dict(path=str(args.binary), sha256=hashlib.sha256(args.binary.read_bytes()).hexdigest()))
-    results = []
+    run_cases(args, check, boot, out, env)
+
+
+def run_cases(args, check, boot, out, env):
+    """One guard owns all children; a single loop checks progress and bounds."""
+    cases = args.cases.read_text().splitlines()
+    results, active = [], {}
     begin = time.monotonic()
-    for index in range(args.start, min(len(cases), args.start + args.count)):
-        # Leave time for a 20s case, guard evidence collection, and lease release.
-        if time.monotonic() - begin > 10:
-            break
-        check()
-        case = cases[index]
-        directory = out / f'{index:03d}'
-        directory.mkdir()
-        qpa = directory / 'result.qpa'
-        argv = [str(args.binary), '--deqp-case=' + case,
-                '--deqp-log-images=' + ('enable' if args.log_images else 'disable'),
-                '--deqp-log-shader-sources=' + ('enable' if args.log_sources else 'disable'),
-                '--deqp-log-filename=' + str(qpa)]
-        record = dict(index=index, case=case, argv=argv, boot_id=boot, status='Started')
-        save(directory / 'case.json', record)
-        started = time.monotonic()
-        timed_out = False
-        with (directory / 'stdout.log').open('w') as log:
-            proc = subprocess.Popen(argv, cwd=args.binary.parent, env=env, stdout=log, stderr=subprocess.STDOUT)
-            try:
-                while proc.poll() is None:
-                    check()
-                    if time.monotonic() - started > 20:
-                        timed_out = True
-                        proc.kill()
-                        proc.wait(timeout=2)
-                        break
-                    time.sleep(0.2)
-            finally:
-                if proc.poll() is None:
+    started_unix = time.time()
+    next_index = args.start
+    end = min(len(cases), args.start + args.count)
+    stop_launching = False
+    peak_workers = 0
+    save(out / 'results.json', results)
+    try:
+        while active or (next_index < end and not stop_launching and
+                         time.monotonic() - begin < 10):
+            check()
+            # Reserve the existing 20s case bound plus evidence time within
+            # the outer 40s guard. No independent watchdog owners/workers.
+            while (len(active) < args.jobs and next_index < end and
+                   not stop_launching and time.monotonic() - begin < 10):
+                index = next_index
+                directory = out / f'{index:03d}'
+                directory.mkdir()
+                qpa = directory / 'result.qpa'
+                argv = [str(args.binary), '--deqp-case=' + cases[index],
+                        '--deqp-log-images=' + ('enable' if args.log_images else 'disable'),
+                        '--deqp-log-shader-sources=' + ('enable' if args.log_sources else 'disable'),
+                        '--deqp-log-filename=' + str(qpa)]
+                record = dict(index=index, case=cases[index], argv=argv,
+                              boot_id=boot, status='Started', started_unix=time.time())
+                save(directory / 'case.json', record)
+                log = (directory / 'stdout.log').open('w')
+                try:
+                    proc = subprocess.Popen(argv, cwd=args.binary.parent, env=env,
+                                            stdout=log, stderr=subprocess.STDOUT)
+                except BaseException:
+                    log.close()
+                    raise
+                active[index] = (proc, log, time.monotonic(), directory, qpa, record)
+                next_index += 1
+                peak_workers = max(peak_workers, len(active))
+
+            for index, item in list(active.items()):
+                proc, log, started, directory, qpa, record = item
+                timed_out = proc.poll() is None and time.monotonic() - started > 20
+                if timed_out:
                     proc.kill()
-                proc.wait(timeout=2)
+                    proc.wait(timeout=2)
+                if proc.poll() is None:
+                    continue
                 log.flush()
                 os.fsync(log.fileno())
-        check()
-        content = qpa.read_text(errors='replace') if qpa.exists() else ''
-        codes = re.findall(r'<Result StatusCode="([^"]+)"[^>]*>(.*?)</Result>', content, re.S)
-        status, message = codes[-1] if codes else ('HarnessError', 'No completed CTS result (check case selection and process output)')
-        if timed_out:
-            status, message = 'Timeout', 'Exceeded the recorded 20s per-case bound'
-        elif proc.returncode < 0:
-            status, message = 'Crash', f'Process signal {-proc.returncode}'
-        elif status == 'Pass' and proc.returncode != 0:
-            status, message = 'HarnessError', 'CTS reported Pass but exited nonzero'
-        record.update(status=status, message=message, returncode=proc.returncode,
-                      seconds=time.monotonic() - started)
-        save(directory / 'case.json', record)
-        results.append(record)
-        save(out / 'results.json', results)
-        print(json.dumps(record), flush=True)
-        output = (directory / 'stdout.log').read_text(errors='replace')
-        if status in ('Crash', 'Timeout', 'HarnessError') or 'VK_ERROR_DEVICE_LOST' in output + content:
-            break
+                log.close()
+                content = qpa.read_text(errors='replace') if qpa.exists() else ''
+                codes = re.findall(r'<Result StatusCode="([^"]+)"[^>]*>(.*?)</Result>', content, re.S)
+                status, message = codes[-1] if codes else ('HarnessError', 'No completed CTS result (check case selection and process output)')
+                if timed_out:
+                    status, message = 'Timeout', 'Exceeded the recorded 20s per-case bound'
+                elif proc.returncode < 0:
+                    status, message = 'Crash', f'Process signal {-proc.returncode}'
+                elif status == 'Pass' and proc.returncode != 0:
+                    status, message = 'HarnessError', 'CTS reported Pass but exited nonzero'
+                record.update(status=status, message=message, returncode=proc.returncode,
+                              seconds=time.monotonic() - started, finished_unix=time.time(),
+                              pid=proc.pid)
+                save(directory / 'case.json', record)
+                results.append(record)
+                results.sort(key=lambda x: x['index'])
+                save(out / 'results.json', results)
+                del active[index]
+                print(json.dumps(record), flush=True)
+                output = (directory / 'stdout.log').read_text(errors='replace')
+                if status in ('Crash', 'Timeout', 'HarnessError') or 'VK_ERROR_DEVICE_LOST' in output + content:
+                    # Drain already-running bounded cases but never schedule
+                    # more work after a fatal result. Preserve every outcome.
+                    stop_launching = True
+            if active:
+                time.sleep(0.05)
+    finally:
+        # All children share the outer guard's process group. Also clean up
+        # promptly on a local guard-check or evidence-writing exception.
+        for proc, log, *_ in active.values():
+            if proc.poll() is None:
+                proc.kill()
+        for proc, log, *_ in active.values():
+            proc.wait(timeout=2)
+            if not log.closed:
+                log.flush()
+                os.fsync(log.fileno())
+                log.close()
+        save(out / 'timing.json', dict(jobs=args.jobs, peak_workers=peak_workers,
+             started_unix=started_unix, finished_unix=time.time(),
+             elapsed_seconds=time.monotonic() - begin, completed=len(results),
+             launched=next_index-args.start, case_timeout_seconds=20,
+             launch_window_seconds=10))
     check()
-    print(f'CTS_BATCH_COMPLETE: {len(results)} recorded outcomes; next index {args.start + len(results)}', flush=True)
+    print(f'CTS_BATCH_COMPLETE: {len(results)} recorded outcomes; next index {next_index}', flush=True)
 
 
 def main():
@@ -154,6 +196,7 @@ def main():
     b.add_argument('--cases', type=Path, required=True)
     b.add_argument('--start', type=int, default=0)
     b.add_argument('--count', type=int, default=100)
+    b.add_argument('--jobs', type=int, default=1, help='Concurrent CTS processes inside one guard')
     b.add_argument('--renderer', choices=('m4', 'lavapipe'), default='m4')
     b.add_argument('--log-sources', action='store_true')
     b.add_argument('--log-images', action='store_true')
@@ -162,6 +205,8 @@ def main():
     if args.mode == 'select':
         select(args)
     else:
+        if args.jobs < 1 or args.start < 0 or args.count < 1:
+            p.error('jobs/count must be positive and start nonnegative')
         batch(args)
 
 

@@ -165,3 +165,30 @@ Boot IDs may differ after explicitly inspected recovery. It never runs tests.
 The campaign tool preserves completed case results before stopping on a GPU
 fault; the fault remains in the summary and still requires recovery before
 starting another segment.
+
+## Parallel campaigns and timing
+
+`cts-campaign.py --jobs 4` schedules up to four independent CTS processes inside
+one watchdog/thermal lease. `cts-sample.py batch --jobs 4` exposes the same mode
+for a single batch. The default remains one process. Logs, QPA and process IDs
+are separate per case; results remain sorted in frozen case-list order even
+when completion order differs. A fatal case stops new launches and drains
+already-running bounded cases before campaign recovery checks. An outer guard
+trip terminates the shared process group. No worker owns or renews the watchdog.
+
+The 10-second launch window and 20-second per-case bound remain unchanged.
+Each batch saves `cts/timing.json` with requested/peak concurrency, timestamps
+and execution wall time. Campaign `summary.json` records total elapsed wall time
+(including SSH, guard setup and evidence fetch) and summed batch execution wall
+time. Per-case timestamps provide overlap evidence. These are warm/cold-cache
+mixed campaign timings unless the shader-cache policy is separately controlled;
+do not compare them as a compiler-only benchmark.
+
+Example, using an already deployed frozen sample and identified CTS binary:
+
+```
+python3 tools/cts-campaign.py --name cts-parallel-1000 --jobs 4 --count 1000 \
+  --cases /root/cts-1.0.2.6/random-1000-frozen.txt \
+  --binary /root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma \
+  --output build/cts-parallel-1000
+```
