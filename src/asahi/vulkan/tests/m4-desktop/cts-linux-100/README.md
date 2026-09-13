@@ -139,3 +139,31 @@ An earlier probe incorrectly waited before submitting a binary-semaphore signal.
 That invalid probe blocked in Mesa WAIT_PENDING and caused watchdog recovery;
 it is excluded. The corrected probe enables timeline semaphores and checks
 all copied words across four queue pairs, then reverses their roles.
+
+Scaled storage-image support passes target 19 and five additional signed/unsigned
+image-load, image-store and texel-fetch controls in
+`20260913T175506698350Z-cts-scaled-storage-i16` and
+`20260913T175610283214Z-cts-scaled-storage-controls`. The driver retains integer physical storage and converts
+scaled values to/from the shader's floating-point interface. Native RGBA16_UINT
+stores use the same integer staging path as RGBA16_SINT.
+
+The old CTS incorrectly maps scaled views to integer GLSL image types and uses
+the uncompressed view's shader format for RGBA8 decompression outputs. The
+separate `scaled-storage-combined.patch` retains the four previous corrections
+and fixes those shader interfaces: unformatted float images for scaled views,
+float compressed samplers, and rgba8 image2D outputs matching the actual images.
+The formats, input bytes, operations and comparisons are unchanged. Original
+CTS source/executable and the previous Linux-100 binary are retained. Exact new
+binary hash is in `scaled-storage-cts-build.json`.
+
+There are now 98 known passes from the frozen Linux-100 list and five additional
+unique scaled-storage control passes. A combined 105-case confirmation retains
+all original 100 entries, including remaining unsupported cases; it is not
+a replacement 100-case sample.
+
+The 8x MSAA render/storage case exceeds the M4's documented hardware capability:
+Apple's May 21, 2026 Metal feature table identifies M4 as Apple9 (page 2) and
+limits that family to 4x MSAA (page 9). Native 8x MSAA begins with Apple10.
+Source: https://developer.apple.com/metal/Metal-Feature-Set-Tables.pdf
+The scaled linear-filter case remains an unimplemented optional operation.
+Neither case is counted as a pass or removed from the frozen list.

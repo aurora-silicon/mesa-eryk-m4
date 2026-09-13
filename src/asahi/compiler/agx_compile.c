@@ -1749,6 +1749,7 @@ agx_emit_image_store(agx_builder *b, nir_intrinsic_instr *instr)
          break;
       case PIPE_FORMAT_R16_UINT:
       case PIPE_FORMAT_R16G16B16A16_SINT:
+      case PIPE_FORMAT_R16G16B16A16_UINT:
          write->format = AGX_FORMAT_I16;
          break;
       case PIPE_FORMAT_R8G8B8A8_UINT:

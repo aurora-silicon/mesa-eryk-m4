@@ -1,0 +1,6 @@
+dEQP-VK.image.texel_view_compatible.compute.extended.image_load.eac_r11_unorm_block.r16g16b16a16_uscaled
+dEQP-VK.image.texel_view_compatible.compute.extended.image_load.eac_r11_unorm_block.r16g16b16a16_sscaled
+dEQP-VK.image.texel_view_compatible.compute.extended.image_store.eac_r11_unorm_block.r16g16b16a16_uscaled
+dEQP-VK.image.texel_view_compatible.compute.extended.image_store.eac_r11_unorm_block.r16g16b16a16_sscaled
+dEQP-VK.image.texel_view_compatible.compute.extended.texel_fetch.eac_r11_unorm_block.r16g16b16a16_uscaled
+dEQP-VK.image.texel_view_compatible.compute.extended.texel_fetch.eac_r11_unorm_block.r16g16b16a16_sscaled

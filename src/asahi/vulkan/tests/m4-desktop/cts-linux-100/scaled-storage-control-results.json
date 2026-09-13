@@ -1,0 +1,98 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.image.texel_view_compatible.compute.extended.image_load.eac_r11_unorm_block.r16g16b16a16_uscaled",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-scaled-storage-v2",
+      "--deqp-case=dEQP-VK.image.texel_view_compatible.compute.extended.image_load.eac_r11_unorm_block.r16g16b16a16_uscaled",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T175610283214Z-cts-scaled-storage-controls/cts/000/result.qpa"
+    ],
+    "boot_id": "477be8cf-4c23-4bd1-8e4c-aee9d134fd21",
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.4086046800000531
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.image.texel_view_compatible.compute.extended.image_load.eac_r11_unorm_block.r16g16b16a16_sscaled",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-scaled-storage-v2",
+      "--deqp-case=dEQP-VK.image.texel_view_compatible.compute.extended.image_load.eac_r11_unorm_block.r16g16b16a16_sscaled",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T175610283214Z-cts-scaled-storage-controls/cts/001/result.qpa"
+    ],
+    "boot_id": "477be8cf-4c23-4bd1-8e4c-aee9d134fd21",
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.4083427369999981
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.image.texel_view_compatible.compute.extended.image_store.eac_r11_unorm_block.r16g16b16a16_uscaled",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-scaled-storage-v2",
+      "--deqp-case=dEQP-VK.image.texel_view_compatible.compute.extended.image_store.eac_r11_unorm_block.r16g16b16a16_uscaled",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T175610283214Z-cts-scaled-storage-controls/cts/002/result.qpa"
+    ],
+    "boot_id": "477be8cf-4c23-4bd1-8e4c-aee9d134fd21",
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.4093233720000171
+  },
+  {
+    "index": 3,
+    "case": "dEQP-VK.image.texel_view_compatible.compute.extended.image_store.eac_r11_unorm_block.r16g16b16a16_sscaled",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-scaled-storage-v2",
+      "--deqp-case=dEQP-VK.image.texel_view_compatible.compute.extended.image_store.eac_r11_unorm_block.r16g16b16a16_sscaled",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T175610283214Z-cts-scaled-storage-controls/cts/003/result.qpa"
+    ],
+    "boot_id": "477be8cf-4c23-4bd1-8e4c-aee9d134fd21",
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.4083726530000149
+  },
+  {
+    "index": 4,
+    "case": "dEQP-VK.image.texel_view_compatible.compute.extended.texel_fetch.eac_r11_unorm_block.r16g16b16a16_uscaled",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-scaled-storage-v2",
+      "--deqp-case=dEQP-VK.image.texel_view_compatible.compute.extended.texel_fetch.eac_r11_unorm_block.r16g16b16a16_uscaled",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T175610283214Z-cts-scaled-storage-controls/cts/004/result.qpa"
+    ],
+    "boot_id": "477be8cf-4c23-4bd1-8e4c-aee9d134fd21",
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.4086716220000426
+  },
+  {
+    "index": 5,
+    "case": "dEQP-VK.image.texel_view_compatible.compute.extended.texel_fetch.eac_r11_unorm_block.r16g16b16a16_sscaled",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-scaled-storage-v2",
+      "--deqp-case=dEQP-VK.image.texel_view_compatible.compute.extended.texel_fetch.eac_r11_unorm_block.r16g16b16a16_sscaled",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T175610283214Z-cts-scaled-storage-controls/cts/005/result.qpa"
+    ],
+    "boot_id": "477be8cf-4c23-4bd1-8e4c-aee9d134fd21",
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.40715334900005473
+  }
+]

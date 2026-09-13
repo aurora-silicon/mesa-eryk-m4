@@ -96,7 +96,10 @@ hk_get_image_plane_format_features(struct hk_physical_device *pdev,
       features |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT |
                   VK_FORMAT_FEATURE_2_BLIT_SRC_BIT;
       if (ail_pixel_format[hk_scaled_texture_format(p_format)].renderable)
-         features |= VK_FORMAT_FEATURE_2_BLIT_DST_BIT;
+         features |= VK_FORMAT_FEATURE_2_BLIT_DST_BIT |
+                     VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT |
+                     VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT |
+                     VK_FORMAT_FEATURE_2_STORAGE_WRITE_WITHOUT_FORMAT_BIT;
    }
 
    if (ail_pixel_format[p_format].texturable) {
