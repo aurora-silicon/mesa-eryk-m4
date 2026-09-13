@@ -40,8 +40,7 @@ g17p_sample_shape(const nir_tex_instr *tex)
       if (tex->is_array || tex->is_shadow ||
           (tex->op != nir_texop_tex &&
            (tex->op != nir_texop_txl || lod < 0 ||
-            !nir_src_is_const(tex->src[lod].src) ||
-            nir_src_as_uint(tex->src[lod].src) != 0)))
+            !nir_src_is_const(tex->src[lod].src))))
          return false;
    }
 

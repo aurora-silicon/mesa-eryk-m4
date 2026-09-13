@@ -1423,6 +1423,13 @@ test_m4_3d_sample_witness(void)
    uint8_t out[AGX3_TEX_MAX_LENGTH],len;
    CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
    CHECK(len==sizeof(expected) && !memcmp(out,expected,len));
+   /* G16G 3D level(4): g16g-3d-level.metal, text-750 offset 94. */
+   const uint8_t level4[] = {0x05,0x80,0x0c,0xb8,0xb0,0,0x39,
+                             0,0,0,0x10,0x10,1,0};
+   d.lod_x64 = 4 * 64;
+   CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+   CHECK(len==sizeof(level4) && !memcmp(out,level4,len));
+   d.lod_x64 = 0;
    /* AIR-NT32023.883 fragment sample: text-1250 offset0x90. */
    const uint8_t implicit[] = {0x05,0x80,0x0c,0xb8,0xb0,0,0x80,1,1,0,0x10,0,1,0};
    d.lod = AGX3_TEX_LOD_AUTO;

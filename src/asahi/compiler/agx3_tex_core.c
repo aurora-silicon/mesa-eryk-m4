@@ -171,8 +171,7 @@ sample_ok(enum agx_isa_encoding enc, const struct agx3_tex_sample_desc *d)
 
    if (d->three_d && (enc != AGX_ISA_ENCODING_AGX3B || d->array ||
                        d->cube || d->shadow || d->gather || d->sample_offset ||
-                       (d->lod != AGX3_TEX_LOD_LEVEL && d->lod != AGX3_TEX_LOD_AUTO) ||
-                       d->lod_x64 != 0))
+                       (d->lod != AGX3_TEX_LOD_LEVEL && d->lod != AGX3_TEX_LOD_AUTO)))
       return false;
 
    if (d->lod == AGX3_TEX_LOD_BIAS_REGISTER &&

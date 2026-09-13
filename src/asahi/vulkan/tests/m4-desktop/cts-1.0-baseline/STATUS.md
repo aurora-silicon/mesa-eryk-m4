@@ -330,3 +330,11 @@ reinterpretation. CopyImage need not render either source/destination format.
 case Pass. 20260913T123837254329Z-cts-format-reinterpret-reverse: reverse Pass.
 Final library 6358680915359a449e756e3d1058fa7cd6f7b3468aa4ceb00acbb97005a69d45.
 Full guards, kernel unchanged. Depth/stencil and multisample selection retained.
+
+Fourth sample selection 8: nonzero explicit 3D mip levels use the existing
+native scaled immediate field. Apple G16G witness and exact-byte test are in
+compiler/test/probes/README-g16g-3d-level.md. Texture core: 6270 checks pass.
+20260913T124006017131Z-cts-3d-level-signed: original CTS Pass.
+Full fourth sample rerun: {'Pass': 16, 'NotSupported': 4}. Evidence: 20260913T124031783614Z-cts-fourth20-fixed-000.
+Library 32e11d82830ae213a9365b393a467d47647cc885127d36a74f741bcaa18c0547.
+Full guards; kernel unchanged. Runtime 3D LOD remains a separate boundary.
