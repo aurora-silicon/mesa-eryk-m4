@@ -166,6 +166,13 @@ agx_optimizer_inline_imm(agx_context *ctx, agx_instr **defs, agx_instr *I)
       if (src.neg)
          continue;
 
+      /* PACK_SMPIR takes the sample/layer from a half register, even for a
+       * constant index. Only its optional packed-layer input has an
+       * immediate-zero form. */
+      if (s == 0 && (I->op == AGX_OPCODE_PACK_SAMPLE_AGX3 ||
+                     I->op == AGX_OPCODE_PACK_LAYER_AGX3))
+         continue;
+
       agx_instr *def = defs[src.value];
       if (!def || def->op != AGX_OPCODE_MOV_IMM)
          continue;

@@ -188,6 +188,12 @@ libagx_image_texel_address(constant const struct agx_pbe_packed *ptr,
                                     d.tile_height_sw, aligned_width_px);
    }
 
+   /* Formatless multisample stores have no static texel size. Their PBE is
+    * a linear alias with a fixed row width; recover the physical sample size
+    * from its row pitch before converting the array layer stride to texels. */
+   if (return_index && is_msaa && bytes_per_sample_B == 0)
+      bytes_per_sample_B = max((d.stride + 4) / d.width, 1u);
+
    uint samples_log2 = is_msaa ? d.sample_count_log2_sw : 0;
 
    if (is_layered) {

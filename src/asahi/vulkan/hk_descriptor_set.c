@@ -197,7 +197,6 @@ write_storage_image_view_desc(struct hk_descriptor_set *set,
       const bool native_basic =
          hk_native_pbe_hardware_supported(generation) &&
          view->plane_count == 1 &&
-         view->vk.image->samples == VK_SAMPLE_COUNT_1_BIT &&
          /* 1D images use the same native 2D descriptor with height one;
           * shader lowering supplies the zero Y coordinate. */
          (view->vk.view_type == VK_IMAGE_VIEW_TYPE_1D ||

@@ -1572,6 +1572,19 @@ agx_expand_tex_to(agx_builder *b, nir_def *def, agx_index src, bool masked)
    return mask;
 }
 
+static agx_index
+agx_pack_ms_aux(agx_builder *b, agx_index sample, agx_index layer)
+{
+   agx_index packed_layer = agx_zero();
+   if (!agx_is_null(layer)) {
+      packed_layer = agx_temp(b->shader, AGX_SIZE_32);
+      agx_pack_layer_agx3_to(b, packed_layer, layer);
+   }
+   agx_index aux = agx_temp(b->shader, AGX_SIZE_32);
+   agx_pack_sample_agx3_to(b, aux, sample, packed_layer);
+   return aux;
+}
+
 static agx_instr *
 agx_emit_image_load(agx_builder *b, agx_index dst, nir_intrinsic_instr *intr)
 {
@@ -1617,7 +1630,16 @@ agx_emit_image_load(agx_builder *b, agx_index dst, nir_intrinsic_instr *intr)
 
    bool is_ms = dim == GLSL_SAMPLER_DIM_MS;
    unsigned coord_comps = glsl_get_sampler_dim_coordinate_components(dim);
-   if (is_array && is_ms) {
+   if (is_ms && b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B) {
+      /* Coherent/volatile loads retain their memory opcode, but need the
+       * same native sample/layer packing as ordinary multisample fetches. */
+      agx_index layer = agx_null();
+      if (is_array) {
+         layer = agx_temp(b->shader, AGX_SIZE_16);
+         agx_subdivide_to(b, layer, coord[coord_comps], 0);
+      }
+      coord[coord_comps++] = agx_pack_ms_aux(b, ms_index, layer);
+   } else if (is_array && is_ms) {
       agx_index layer = agx_temp(b->shader, AGX_SIZE_16);
       agx_subdivide_to(b, layer, coord[coord_comps], 0);
 
@@ -1767,10 +1789,11 @@ agx_emit_image_store(agx_builder *b, nir_intrinsic_instr *instr)
    if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B) {
       switch (nir_intrinsic_format(instr)) {
       case PIPE_FORMAT_NONE:
-         /* Formatless floating writes still supply F32 lanes. The PBE,
-          * rather than a shader format qualifier, converts the destination. */
+         /* Formatless writes supply four 32-bit lanes. The PBE supplies
+          * the destination width; native imgwci distinguishes floating
+          * conversion from raw integer input, not I8/I16/I32 payloads. */
          write->format = nir_intrinsic_src_type(instr) == nir_type_float32
-                            ? AGX_FORMAT_F16 : AGX_NUM_FORMATS;
+                            ? AGX_FORMAT_F16 : AGX_FORMAT_I32;
          break;
       case PIPE_FORMAT_R16_UINT:
       case PIPE_FORMAT_R16_SINT:
@@ -4140,16 +4163,12 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
       agx_emit_split(b, xy_aux, coords, 3);
       agx_index sample = agx_temp(b->shader, AGX_SIZE_16);
       agx_subdivide_to(b, sample, xy_aux[2], 0);
-      agx_index packed_layer = agx_zero();
+      agx_index layer = agx_null();
       if (instr->is_array) {
-         agx_index layer = agx_temp(b->shader, AGX_SIZE_16);
+         layer = agx_temp(b->shader, AGX_SIZE_16);
          agx_subdivide_to(b, layer, xy_aux[2], 1);
-         packed_layer = agx_temp(b->shader, AGX_SIZE_32);
-         agx_pack_layer_agx3_to(b, packed_layer, layer);
       }
-      agx_index aux = agx_temp(b->shader, AGX_SIZE_32);
-      agx_pack_sample_agx3_to(b, aux, sample, packed_layer);
-      xy_aux[2] = aux;
+      xy_aux[2] = agx_pack_ms_aux(b, sample, layer);
       coords = agx_emit_collect(b, 3, xy_aux);
    }
 
