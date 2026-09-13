@@ -1,0 +1,19 @@
+Writing test log into /root/asahi-evidence/20260913T212546463472Z-cts-seed20-fixed-625/cts/759/result.qpa
+dEQP Core git-6b3bca439862e986409ffd76e857ada0cc7c9080 (0x6b3bca43) starting..
+  target implementation = 'Default'
+
+Test case 'dEQP-VK.wsi.wayland.swapchain.render.basic'..
+Fragment shader compile time = 14.782000 ms
+Link time = 0.007000 ms
+Vertex shader compile time = 0.406000 ms
+Link time = 0.004000 ms
+asahi: G17P VDM command BO full=0x87fddc4000 alias=0x1000800000 low=0x800000 size=0x20000
+asahi: G17P VDM submit full=0x87fddc4400 alias=0x1000800400 low=0x800400
+asahi: G17P VDM command BO full=0x87fdda0000 alias=0x1000820000 low=0x820000 size=0x20000
+asahi: G17P VDM submit full=0x87fdda0400 alias=0x1000820400 low=0x820400
+asahi: G17P VDM command BO full=0x87fdd7c000 alias=0x1000840000 low=0x840000 size=0x20000
+asahi: G17P VDM submit full=0x87fdd7c400 alias=0x1000840400 low=0x840400
+asahi: G17P VDM command BO full=0x87fdd58000 alias=0x1000860000 low=0x860000 size=0x20000
+asahi: G17P VDM submit full=0x87fdd58400 alias=0x1000860400 low=0x860400
+asahi: G17P VDM command BO full=0x87fdd34000 alias=0x1000880000 low=0x880000 size=0x20000
+asahi: G17P VDM submit full=0x87fdd34400 alias=0x1000880400 low=0x880400

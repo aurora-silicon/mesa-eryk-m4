@@ -53,7 +53,9 @@ for name in batches:
     directory = Path(name)
     report = json.loads((directory/'report.json').read_text())
     guard = json.loads((directory/'remote/result.json').read_text())
+    batch_timing = json.loads((directory/'remote/cts/timing.json').read_text())
     observations.append(dict(evidence=name, verdict=report['verdict'],
+        case_timeout_seconds=batch_timing['case_timeout_seconds'],
         peak_temperature_c=report.get('observations', {}).get('peak_temperature_c'),
         boot_id=guard['boot_id'], watchdog=guard['watchdog'],
         thermal=guard['thermal']))
@@ -66,6 +68,7 @@ summary = dict(selected=len(cases), completed=completed,
     categories=categories, cases_sha256=hashlib.sha256(raw).hexdigest(),
     segments=[str(s.resolve()) for s in a.segments],
     identities=identities, batches=observations, campaign_timings=timings,
+    case_timeout_seconds=sorted(set(b['case_timeout_seconds'] for b in observations)),
     peak_temperature_c=max((b['peak_temperature_c'] for b in observations
                             if b['peak_temperature_c'] is not None), default=None))
 if timings:
@@ -95,7 +98,8 @@ if timings:
               f"Campaign elapsed time (including guards/transport): {timing['elapsed_seconds']:.3f} seconds.",
               f"Batch execution wall time: {timing['batch_execution_seconds']:.3f} seconds.",
               f"Overall wall span (including segment gaps): {timing['wall_span_seconds']:.3f} seconds."]
-lines += ['', f"Peak recorded temperature: {summary['peak_temperature_c']} C.", '',
+lines += ['', f"Recorded per-case bounds: {', '.join(map(str, summary['case_timeout_seconds']))} seconds.",
+          '', f"Peak recorded temperature: {summary['peak_temperature_c']} C.", '',
           'Unsupported cases are not passes. Timeouts use the recorded per-case bound.',
           'Process crashes are not necessarily GPU resets. Inspect retained logs for attribution.',
           'This sample is not a full Vulkan conformance result.', '']

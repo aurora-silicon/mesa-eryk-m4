@@ -14,7 +14,7 @@ Copy the script and `cases.txt` to the target. `batch` requires the existing
 60-second watchdog and fresh six-channel thermal guard. It runs each named
 case in a separate process, retaining QPA, stdout, command, status, driver
 environment, executable hash and failed compiler bundles. It starts new cases
-for at most 10 seconds and bounds each case at 20 seconds, leaving time inside
+for at most 10 seconds and by default bounds each case at 20 seconds, leaving time inside
 a 40-second guard for evidence collection. A timeout is an inconclusive timed
 out test, never a correctness failure or pass. Crashes/device loss stop the
 batch; inspect/recover before continuing at its recorded next index.
@@ -170,7 +170,8 @@ when completion order differs. A fatal case stops new launches and drains
 already-running bounded cases before campaign recovery checks. An outer guard
 trip terminates the shared process group. No worker owns or renews the watchdog.
 
-The 10-second launch window and 20-second per-case bound remain unchanged.
+The 10-second launch window remains fixed; the default per-case bound is 20 seconds.
+See `--case-timeout` below for a recorded alternative for long presentation tests.
 Each batch saves `cts/timing.json` with requested/peak concurrency, timestamps
 and execution wall time. Campaign `summary.json` records total elapsed wall time
 (including SSH, guard setup and evidence fetch) and summed batch execution wall
@@ -186,3 +187,12 @@ python3 tools/cts-campaign.py --name cts-parallel-1000 --jobs 4 --count 1000 \
   --binary /root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma \
   --output build/cts-parallel-1000
 ```
+
+`cts-campaign.py --case-timeout 30` allows up to 30 seconds per case and uses
+50-second outer experiments (10-second launch window plus 10-second evidence
+margin). The default remains 20/40 seconds. `cts-sample.py batch` accepts the
+same option; direct users must provide a sufficiently long outer guard. Bounds
+are recorded in batch timing and campaign summary. The 600-frame FIFO Wayland
+presentation test can exceed 20 seconds under concurrent GPU load; retain such
+timeouts separately when comparing runs with different bounds. This does not
+change CTS commands, frame counts, output checks, watchdog or thermal limits.

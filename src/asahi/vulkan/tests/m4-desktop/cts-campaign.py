@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Run consecutive CTS batches through gpu-experiment.py; preserve every outcome.
 
-Each batch has its own 40-second watchdog/thermal lease. Never retry tests or
-recover hardware automatically. Stop on guard/transport errors and timeouts.
+Each batch has a bounded watchdog/thermal lease (case timeout plus 20 seconds).
+Never retry tests or recover hardware automatically. Stop on guard/transport errors and timeouts.
 Use --continue-userspace-crashes only for a campaign containing known process
 crashes; they remain Crash results and may continue only after full guard success.
 """
@@ -24,6 +24,7 @@ p.add_argument('--binary', default='/root/cts-1.0.2.6/deqp-vk')
 p.add_argument('--start', type=int, default=0)
 p.add_argument('--count', type=int, required=True)
 p.add_argument('--jobs', type=int, default=1)
+p.add_argument('--case-timeout', type=int, default=20, choices=range(1, 31), metavar='SECONDS')
 p.add_argument('--continue-userspace-crashes', action='store_true')
 a = p.parse_args()
 if not re.fullmatch('[a-z0-9][a-z0-9-]*', a.name) or a.start < 0 or a.count < 1 or a.jobs < 1:
@@ -40,10 +41,11 @@ while a.start + len(results) < end:
     command = [sys.executable, str(ROOT/'tools/gpu-experiment.py'),
                '--name', f'{a.name}-{start:03d}', '--hypothesis',
                'Fixed CTS campaign; retain every result without exclusions or retries',
-               '--expect', '^CTS_BATCH_COMPLETE:', '--seconds', '40', '--',
+               '--expect', '^CTS_BATCH_COMPLETE:', '--seconds', str(a.case_timeout + 20), '--',
                'python3', '/root/cts-sample.py', 'batch', '--guard-output', '{output}',
                '--binary', a.binary, '--cases', a.cases,
-               '--start', str(start), '--count', str(end-start), '--jobs', str(a.jobs)]
+               '--start', str(start), '--count', str(end-start), '--jobs', str(a.jobs),
+               '--case-timeout', str(a.case_timeout)]
     log = a.output/f'batch-{start:03d}.log'
     with log.open('w') as stream:
         run = subprocess.run(command, cwd=ROOT, stdout=stream, stderr=subprocess.STDOUT)
@@ -78,6 +80,7 @@ while a.start + len(results) < end:
     (a.output/'results.json').write_text(json.dumps(results, indent=2)+'\n')
     (a.output/'summary.json').write_text(json.dumps(dict(
         requested=a.count, completed=len(results), jobs=a.jobs,
+        case_timeout_seconds=a.case_timeout, guard_seconds=a.case_timeout+20,
         started_unix=started_unix, finished_unix=time.time(),
         elapsed_seconds=time.monotonic()-started_monotonic,
         batch_execution_seconds=batch_execution_seconds, counts=Counter(x['status'] for x in results),

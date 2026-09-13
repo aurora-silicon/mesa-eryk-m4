@@ -1,0 +1,19 @@
+{
+  "index": 759,
+  "case": "dEQP-VK.wsi.wayland.swapchain.render.basic",
+  "argv": [
+    "/root/cts-1.0.2.6/deqp-vk-seed20-final",
+    "--deqp-case=dEQP-VK.wsi.wayland.swapchain.render.basic",
+    "--deqp-log-images=disable",
+    "--deqp-log-shader-sources=disable",
+    "--deqp-log-filename=/root/asahi-evidence/20260913T212546463472Z-cts-seed20-fixed-625/cts/759/result.qpa"
+  ],
+  "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+  "status": "Timeout",
+  "started_unix": 1789334752.7281396,
+  "message": "Exceeded the recorded 20s per-case bound",
+  "returncode": -9,
+  "seconds": 20.089944178000223,
+  "finished_unix": 1789334772.8239388,
+  "pid": 114674
+}

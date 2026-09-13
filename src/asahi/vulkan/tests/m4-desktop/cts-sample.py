@@ -97,8 +97,8 @@ def run_cases(args, check, boot, out, env):
         while active or (next_index < end and not stop_launching and
                          time.monotonic() - begin < 10):
             check()
-            # Reserve the existing 20s case bound plus evidence time within
-            # the outer 40s guard. No independent watchdog owners/workers.
+            # The campaign reserves the case bound plus 10s launch time and
+            # 10s evidence margin. No independent watchdog owners/workers.
             while (len(active) < args.jobs and next_index < end and
                    not stop_launching and time.monotonic() - begin < 10):
                 index = next_index
@@ -125,7 +125,7 @@ def run_cases(args, check, boot, out, env):
 
             for index, item in list(active.items()):
                 proc, log, started, directory, qpa, record = item
-                timed_out = proc.poll() is None and time.monotonic() - started > 20
+                timed_out = proc.poll() is None and time.monotonic() - started > args.case_timeout
                 if timed_out:
                     proc.kill()
                     proc.wait(timeout=2)
@@ -138,7 +138,7 @@ def run_cases(args, check, boot, out, env):
                 codes = re.findall(r'<Result StatusCode="([^"]+)"[^>]*>(.*?)</Result>', content, re.S)
                 status, message = codes[-1] if codes else ('HarnessError', 'No completed CTS result (check case selection and process output)')
                 if timed_out:
-                    status, message = 'Timeout', 'Exceeded the recorded 20s per-case bound'
+                    status, message = 'Timeout', f'Exceeded the recorded {args.case_timeout}s per-case bound'
                 elif proc.returncode < 0:
                     status, message = 'Crash', f'Process signal {-proc.returncode}'
                 elif status == 'Pass' and proc.returncode != 0:
@@ -174,7 +174,7 @@ def run_cases(args, check, boot, out, env):
         save(out / 'timing.json', dict(jobs=args.jobs, peak_workers=peak_workers,
              started_unix=started_unix, finished_unix=time.time(),
              elapsed_seconds=time.monotonic() - begin, completed=len(results),
-             launched=next_index-args.start, case_timeout_seconds=20,
+             launched=next_index-args.start, case_timeout_seconds=args.case_timeout,
              launch_window_seconds=10))
     check()
     print(f'CTS_BATCH_COMPLETE: {len(results)} recorded outcomes; next index {next_index}', flush=True)
@@ -197,6 +197,8 @@ def main():
     b.add_argument('--start', type=int, default=0)
     b.add_argument('--count', type=int, default=100)
     b.add_argument('--jobs', type=int, default=1, help='Concurrent CTS processes inside one guard')
+    b.add_argument('--case-timeout', type=int, default=20, choices=range(1, 31),
+                   metavar='SECONDS', help='Per-case bound, 1..30s; outer guard must allow 20s more')
     b.add_argument('--renderer', choices=('m4', 'lavapipe'), default='m4')
     b.add_argument('--log-sources', action='store_true')
     b.add_argument('--log-images', action='store_true')
