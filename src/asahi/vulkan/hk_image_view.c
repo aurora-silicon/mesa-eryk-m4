@@ -413,6 +413,8 @@ pack_pbe(struct hk_device *dev, struct hk_image_view *view, unsigned view_plane,
    unsigned layer = view->vk.base_array_layer;
 
    enum pipe_format p_format = format_for_plane(view, view_plane);
+   if (agx_native_graphics(&dev->dev))
+      p_format = hk_padded_image_format(p_format);
    const struct util_format_description *desc =
       util_format_description(p_format);
 

@@ -116,3 +116,11 @@ Fresh default-enabled campaign `linux-100-tess` confirms **94 Pass,
 6 NotSupported, 0 Fail/Crash**, with no tessellation override or synchronous
 dump. Exact cases, library/guard/binary identities and four batch paths are in
 `linux-100-tess-{results,summary}.json`.
+
+BGR8 integer attachment support: target 91 and both integer blit controls
+pass in `20260913T172539298620Z-cts-bgr-attachment`. The dedicated attachment
+oracle then found a missing padded epilog format; after fixing it,
+`20260913T172822470876Z-bgr-attachment-epilog` passed all 144 exact pixels,
+including clear/reload, overlapping clear draws, mip 1 and layer 1. Physical
+BGRA8 storage now agrees across image layout, tile layout, PBE and epilog.
+This establishes 95 known target passes (94 in the last full run plus 91).

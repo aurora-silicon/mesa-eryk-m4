@@ -138,3 +138,9 @@ command buffer. It is not a complete draw trace. Missing/unmapped addresses
 are reported without dereference. Normal execution does not wait or read back.
 `cts-images.py` also extracts direct QPA Image children, used by tessellation
 corner tests, in addition to ImageSet groups.
+
+`vulkan-attachment-probe.c` checks packed BGR8_UINT attachment clear, reload,
+and overlapping clear-draw rectangles with an exact 144-pixel CPU oracle,
+using mip 1 and array layer 1. Build with `cc -O2 -Wall -Wextra SOURCE -lvulkan`
+and execute only under `gpu-experiment.py` with the intended Vulkan ICD.
+It requires the advertised color-attachment feature; it does not skip it.
