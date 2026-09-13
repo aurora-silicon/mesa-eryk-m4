@@ -1,5 +1,11 @@
 # Vulkan CTS random sample, seed 20260920
 
+Latest follow-up: **871 Pass, 129 NotSupported, zero failures/crashes/setup
+errors/timeouts**, all 1,000 rerun with 20 workers in 80.947 seconds. See
+[final results](fixes/final-rerun/README.md). The first-attempt report below
+is retained unchanged; historical CTS corrections and the separate DCP
+recovery are documented with the follow-up results.
+
 Frozen selection: 1,000 unique cases drawn uniformly without replacement from
 226,262 Linux-applicable cases in the pinned Vulkan CTS 1.0.2.6 must-pass list.
 Only Windows-handle/WSI and Android WSI cases are excluded before sampling;

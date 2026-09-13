@@ -1,0 +1,10 @@
+3e6a333b-ddc3-4749-999d-606b6d42262f
+{"armed": true, "timeout_seconds": 60, "timeleft_seconds": 58, "fed": false, "mode": "idle"}
+active
+completed 1350
+failed 0
+active_fb 42
+imported 1
+swap_total_us 18904939
+swap_max_us 18864
+1113 /opt/m4-hyprland/bin/Hyprland --watchdog-fd 4 --config /usr/local/share/m4-desktop/session.lua

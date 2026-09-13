@@ -1,0 +1,19 @@
+index	original_status	layer	commits	resolution	case
+36	Crash	CTS correction	1bf997b1aa5	Remove invalid nested Block decorations without changing data or output checks	dEQP-VK.spirv_assembly.instruction.compute.variable_pointers.complex_types_compute.opcopyobject_float_single_buffer_second_input
+100	Fail	Mesa	83e9e4b2b54	Cube comparisons / dynamic and shadow gathers	dEQP-VK.texture.shadow.cube.linear.less_or_equal_d32_sfloat
+200	Fail	Mesa	89d132f4d0d	Single remaining attachment at nonzero tile offset	dEQP-VK.renderpass.suballocation.attachment.3.374
+230	Fail	Mesa	fa852a4f3bb	RGB9E5 tile packing and matching raw EOT	dEQP-VK.pipeline.blend.format.e5b9g9r9_ufloat_pack32.states.color_ca_cc_sub_alpha_1msa_ca_max-color_sa_dc_rsub_alpha_cc_1mca_rsub-color_dc_cc_add_alpha_1mda_1mca_rsub-color_sa_1mcc_add_alpha_1mca_da_max
+287	Fail	Mesa	83e9e4b2b54	Cube comparisons / dynamic and shadow gathers	dEQP-VK.glsl.texture_gather.offset_dynamic.implementation_offset.2d.rgba8i.texture_swizzle.one_red_green_blue
+358	Fail	Mesa	83e9e4b2b54	Cube comparisons / dynamic and shadow gathers	dEQP-VK.texture.shadow.cube.linear_mipmap_nearest.less_or_equal_d32_sfloat
+359	Fail	Mesa	89d132f4d0d	Cull-distance varying linkage	dEQP-VK.clipping.user_defined.clip_cull_distance.vert.4_4
+532	Fail	Mesa	89d132f4d0d	Packed B10G10R10A2 EOT conversion	dEQP-VK.renderpass.dedicated_allocation.attachment.3.383
+690	Fail	Mesa	9a4d49da903	RGBA16 normalized storage writes	dEQP-VK.image.texel_view_compatible.compute.extended.texel_fetch.bc1_rgba_unorm_block.r16g16b16a16_unorm
+719	Fail	CTS correction	87535d4fbc6	Avoid invalid 3D framebuffer preclear; preserve full tested clear/readback	dEQP-VK.api.image_clearing.dedicated_allocation.clear_color_image.3d_r8_srgb
+759	ResourceError	CTS platform	a1d93adc5e8,57b5ae8d0c9	xdg-shell setup and event dispatch; healthy DCP required	dEQP-VK.wsi.wayland.swapchain.render.basic
+766	Fail	Mesa	cd7a8fec90c	Fold constant float moves before native allocation	dEQP-VK.pipeline.blend.format.r16g16b16a16_sfloat.states.color_cc_sa_add_alpha_1msa_ca_rsub-color_cc_1mca_sub_alpha_o_1mcc_max-color_z_z_sub_alpha_sa_sa_rsub-color_cc_sc_rsub_alpha_1mdc_dc_rsub
+818	Fail	Mesa	83e9e4b2b54	Cube comparisons / dynamic and shadow gathers	dEQP-VK.glsl.texture_gather.offset_dynamic.implementation_offset.2d_array.rgba8ui.texture_swizzle.red_green_blue_alpha
+860	Fail	Mesa	9a4d49da903	RGBA16 normalized storage writes	dEQP-VK.image.texel_view_compatible.compute.extended.image_load.eac_r11_snorm_block.r16g16b16a16_snorm
+861	Fail	Mesa	83e9e4b2b54	Cube comparisons / dynamic and shadow gathers	dEQP-VK.glsl.texture_gather.offset_dynamic.min_required_offset.2d.depth32f.size_npot.compare_greater.mirrored_repeat_clamp_to_edge
+933	Fail	Mesa	cd7a8fec90c	Preserve native ballot operand width	dEQP-VK.pipeline.input_assembly.primitive_restart.index_type_uint16.line_strip_with_adjacency
+976	ResourceError	CTS platform	a1d93adc5e8,57b5ae8d0c9	xdg-shell setup reaches optional VK_GOOGLE_display_timing capability check	dEQP-VK.wsi.wayland.display_timing.fifo_relaxed.display_timing
+987	Fail	Mesa	89d132f4d0d	Compacted attachment EOT	dEQP-VK.renderpass.dedicated_allocation.attachment.8.667
