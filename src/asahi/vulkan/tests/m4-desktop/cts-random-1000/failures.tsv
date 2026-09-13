@@ -1,0 +1,50 @@
+index	status	case	message
+0	Crash	dEQP-VK.renderpass.dedicated_allocation.formats.d32_sfloat_s8_uint.input.dont_care.dont_care.self_dep_draw_use_input_aspect_stencil_read_only	Process signal 6
+6	Fail	dEQP-VK.draw.basic_draw.draw_indexed_indirect.line_list.17_multi_command	m_vk.queueWaitIdle(queue): VK_ERROR_DEVICE_LOST at vktBasicDrawTests.cpp:1154
+9	Fail	dEQP-VK.tessellation.invariance.one_minus_tess_coord_component.quads_fractional_even_spacing_ccw_point_mode	vk.queueSubmit(queue, 1u, &amp;submitInfo, *fence): VK_ERROR_DEVICE_LOST at vktTessellationUtil.cpp:283
+23	Fail	dEQP-VK.image.texel_view_compatible.compute.basic.texture.astc_10x10_unorm_block.r32g32b32a32_sint	vk.createComputePipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:49
+29	Fail	dEQP-VK.image.mutable.2d.r32g32_sfloat_r32g32_uint_draw_texture	vk.createComputePipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:49
+74	Fail	dEQP-VK.renderpass.suballocation.attachment_allocation.input_output.49	vk.endCommandBuffer(cmdBuffer): VK_ERROR_FEATURE_NOT_PRESENT at vktRenderPassTests.cpp:397
+77	Fail	dEQP-VK.clipping.user_defined.clip_distance_dynamic_index.vert.8	vk.endCommandBuffer(commandBuffer): VK_ERROR_FEATURE_NOT_PRESENT at vktDrawUtil.cpp:269
+116	Fail	dEQP-VK.pipeline.sampler.view_type.3d.format.b8g8r8a8_unorm.mipmap.linear.lod.select_bias_3_7	vk.createGraphicsPipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:38
+148	Fail	dEQP-VK.image.mutable.2d_array.r32_uint_r8g8b8a8_snorm_draw_texture_format_list	vk.createComputePipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:49
+153	Fail	dEQP-VK.image.texel_view_compatible.graphic.basic.attachment_read.etc2_r8g8b8_srgb_block.r32g32_uint	Images difference detected
+160	Fail	dEQP-VK.pipeline.sampler.view_type.cube_array.format.r8g8b8a8_srgb.mipmap.nearest.lod.select_bias_3_7	vk.createGraphicsPipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:38
+161	Fail	dEQP-VK.synchronization.op.single_queue.fence.write_blit_image_read_image_vertex.image_64x64x8_r32_sfloat	vk.endCommandBuffer(commandBuffer): VK_ERROR_FEATURE_NOT_PRESENT at vktSynchronizationUtil.cpp:282
+181	Fail	dEQP-VK.pipeline.sampler.view_type.cube_array.format.r8g8b8a8_sscaled.mipmap.nearest.lod.select_bias_2_5	vk.createGraphicsPipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:38
+191	Fail	dEQP-VK.image.mutable.2d_array.r32_sfloat_r16g16_sint_store_load_format_list	vk.createComputePipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:49
+201	Fail	dEQP-VK.glsl.indexing.varying_array.vec2_dynamic_loop_write_dynamic_read	vk.createGraphicsPipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:38
+235	Fail	dEQP-VK.synchronization.op.single_queue.event.write_copy_image_to_buffer_read_ubo_geometry.buffer_16384	Memory contents don&apos;t match
+260	Fail	dEQP-VK.synchronization.op.multi_queue.semaphore.write_clear_color_image_read_blit_image.image_64x64x8_r32_sfloat_exclusive	vk.endCommandBuffer(commandBuffer): VK_ERROR_FEATURE_NOT_PRESENT at vktSynchronizationUtil.cpp:282
+351	Fail	dEQP-VK.image.mutable.2d_array.r16g16_uint_r32_sint_copy_texture	vk.createComputePipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:49
+357	Fail	dEQP-VK.renderpass.suballocation.attachment_allocation.shrink.19	vk.endCommandBuffer(cmdBuffer): VK_ERROR_FEATURE_NOT_PRESENT at vktRenderPassTests.cpp:397
+368	Fail	dEQP-VK.clipping.user_defined.clip_distance.vert_tess_geom.2	vk.endCommandBuffer(commandBuffer): VK_ERROR_FEATURE_NOT_PRESENT at vktDrawUtil.cpp:269
+396	Fail	dEQP-VK.ycbcr.conversion.g16_b16_r16_3plane_420_unorm_khr.chroma_reconstruction.nearest.explicit_linear_cosited_midpoint_tiling_linear_swapped_chroma	Result comparison failed
+403	Fail	dEQP-VK.pipeline.blend.format.r8_snorm.states.color_1mca_1mca_sub_alpha_o_1mda_add-color_z_1mcc_max_alpha_sc_1mdc_add-color_1mca_1mdc_add_alpha_sc_sa_min-color_sas_o_max_alpha_1mcc_1mdc_add	Image mismatch
+413	Fail	dEQP-VK.renderpass.dedicated_allocation.formats.a2b10g10r10_uint_pack32.input.load.dont_care.self_dep_clear_draw_use_input_aspect	vk.endCommandBuffer(cmdBuffer): VK_ERROR_FEATURE_NOT_PRESENT at vktRenderPassTests.cpp:397
+428	Fail	dEQP-VK.renderpass.suballocation.formats.r32g32_uint.input.dont_care.store.clear	Result verification failed
+432	Fail	dEQP-VK.image.mutable.2d_array.r16g16_sint_r16g16_uint_store_copy	vk.createComputePipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:49
+438	Fail	dEQP-VK.image.texel_view_compatible.graphic.basic.texture_read.eac_r11_unorm_block.r32g32_uint	vk.createGraphicsPipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:38
+440	Fail	dEQP-VK.image.qualifiers.volatile.1d_array.r32f	vk.createComputePipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:49
+462	Fail	dEQP-VK.pipeline.blend.format.r32g32_sfloat.states.color_1mcc_1mcc_rsub_alpha_z_sa_rsub-color_ca_o_max_alpha_z_1mca_sub-color_1mcc_ca_add_alpha_cc_1mdc_rsub-color_dc_dc_rsub_alpha_o_1mcc_sub	vk.endCommandBuffer(*m_cmdBuffer): VK_ERROR_FEATURE_NOT_PRESENT at vktPipelineBlendTests.cpp:755
+490	Fail	dEQP-VK.image.mutable.2d.r16g16b16a16_sfloat_r32g32_sint_copy_texture	vk.createComputePipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:49
+542	Fail	dEQP-VK.image.texel_view_compatible.graphic.extended.texture_read.bc3_srgb_block.r32g32b32a32_sint	vk.createGraphicsPipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:38
+543	Fail	dEQP-VK.synchronization.op.multi_queue.fence.write_ssbo_tess_control_read_ssbo_geometry.buffer_262144_concurrent	Memory contents don&apos;t match
+545	Fail	dEQP-VK.image.texel_view_compatible.compute.extended.texture.astc_8x6_unorm_block.r32g32b32a32_sint	vk.createComputePipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:49
+553	Fail	dEQP-VK.image.texel_view_compatible.graphic.basic.texture_write.astc_12x12_unorm_block.r32g32b32a32_sint	vk.createGraphicsPipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:38
+601	Fail	dEQP-VK.synchronization.cross_instance.suballocated.write_ssbo_vertex_read_ubo_geometry.buffer_16384_fd	Memory contents don&apos;t match
+636	Fail	dEQP-VK.tessellation.geometry_interaction.scatter.geometry_scatter_layers	Image comparison failed
+649	Fail	dEQP-VK.pipeline.blend.format.r8g8b8a8_snorm.states.color_da_1mda_add_alpha_cc_1msa_rsub-color_sas_1mca_sub_alpha_1mdc_1mca_rsub-color_da_da_min_alpha_sas_ca_rsub-color_1mca_dc_max_alpha_1mdc_sas_sub	Image mismatch
+661	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r32_sfloat.b8g8r8a8_snorm.general_optimal_linear	vk.endCommandBuffer(*m_cmdBuffer): VK_ERROR_FEATURE_NOT_PRESENT at vktApiCopiesAndBlittingTests.cpp:1924
+662	Fail	dEQP-VK.image.mutable.2d_array.r32_uint_r32_sint_copy_load	vk.createComputePipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:49
+682	Fail	dEQP-VK.pipeline.blend.format.r8g8_snorm.states.color_1mcc_sc_sub_alpha_1mcc_ca_rsub-color_dc_1mda_max_alpha_ca_dc_add-color_1mca_o_rsub_alpha_1mcc_da_add-color_cc_cc_sub_alpha_o_z_max	Image mismatch
+707	Fail	dEQP-VK.pipeline.blend.format.r32g32_sfloat.states.color_sas_sa_min_alpha_sa_sas_sub-color_1mda_dc_max_alpha_1mdc_sa_add-color_1mdc_cc_min_alpha_1mcc_dc_max-color_da_z_rsub_alpha_1mda_cc_sub	vk.endCommandBuffer(*m_cmdBuffer): VK_ERROR_FEATURE_NOT_PRESENT at vktPipelineBlendTests.cpp:755
+763	Fail	dEQP-VK.ycbcr.query.lod.fragment.g10x6_b10x6_r10x6_3plane_420_unorm_3pack16_khr_disjoint	vk.createGraphicsPipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:38
+787	Fail	dEQP-VK.renderpass.dedicated_allocation.attachment_allocation.roll.39	vk.endCommandBuffer(cmdBuffer): VK_ERROR_FEATURE_NOT_PRESENT at vktRenderPassTests.cpp:397
+848	Crash	dEQP-VK.renderpass.dedicated_allocation.formats.d24_unorm_s8_uint.input.load.dont_care.self_dep_clear_draw_use_input_aspect_stencil_read_only	Process signal 6
+881	Fail	dEQP-VK.synchronization.cross_instance.suballocated.write_ssbo_tess_eval_read_ubo_geometry.buffer_16384_fence_fd	Memory contents don&apos;t match
+907	Fail	dEQP-VK.image.mutable.2d_array.r32_uint_r8g8b8a8_snorm_store_texture_format_list	vk.createComputePipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:49
+911	Fail	dEQP-VK.renderpass.dedicated_allocation.formats.r32g32_uint.input.clear.store.self_dep_clear_draw	Result verification failed
+965	Fail	dEQP-VK.synchronization.op.single_queue.event.write_ssbo_fragment_read_ssbo_vertex.buffer_16384	Memory contents don&apos;t match
+975	Fail	dEQP-VK.renderpass.dedicated_allocation.attachment_allocation.grow_shrink.82	vk.endCommandBuffer(cmdBuffer): VK_ERROR_FEATURE_NOT_PRESENT at vktRenderPassTests.cpp:397
+994	Fail	dEQP-VK.glsl.texture_functions.textureoffset.usampler2darray_bias_fragment	vk.createGraphicsPipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:38

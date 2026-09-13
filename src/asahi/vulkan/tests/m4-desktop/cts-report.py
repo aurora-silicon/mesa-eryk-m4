@@ -8,6 +8,7 @@ before continuing the campaign; this tool never executes or retries tests.
 import argparse
 from collections import Counter
 import hashlib
+import csv
 import json
 from pathlib import Path
 
@@ -67,6 +68,12 @@ summary = dict(selected=len(cases), completed=completed,
 a.output.mkdir(parents=True, exist_ok=True)
 (a.output/'results.json').write_text(json.dumps(results, indent=2)+'\n')
 (a.output/'summary.json').write_text(json.dumps(summary, indent=2)+'\n')
+with (a.output/'failures.tsv').open('w', newline='') as stream:
+    writer = csv.writer(stream, delimiter='\t')
+    writer.writerow(['index', 'status', 'case', 'message'])
+    for r in results:
+        if r['status'] not in ('Pass', 'NotSupported', 'Unrun'):
+            writer.writerow([r['index'], r['status'], r['case'], r.get('message', '')])
 lines = [f'# CTS sample: {completed}/{len(cases)} completed', '',
          '| Outcome | Count | % of selected sample |', '| --- | ---: | ---: |']
 lines += [f'| {status} | {count} | {count*100/len(cases):.1f}% |'

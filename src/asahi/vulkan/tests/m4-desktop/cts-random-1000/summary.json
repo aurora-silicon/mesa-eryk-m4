@@ -1,0 +1,1828 @@
+{
+  "selected": 1000,
+  "completed": 1000,
+  "counts": {
+    "Crash": 2,
+    "NotSupported": 151,
+    "Pass": 800,
+    "Fail": 47
+  },
+  "rates_percent": {
+    "Crash": 0.2,
+    "NotSupported": 15.1,
+    "Pass": 80.0,
+    "Fail": 4.7
+  },
+  "pass_rate_excluding_unsupported_percent": 94.229,
+  "categories": {
+    "renderpass": {
+      "Crash": 2,
+      "Pass": 37,
+      "Fail": 7
+    },
+    "api": {
+      "NotSupported": 77,
+      "Pass": 111,
+      "Fail": 1
+    },
+    "ycbcr": {
+      "Pass": 62,
+      "NotSupported": 33,
+      "Fail": 2
+    },
+    "pipeline": {
+      "Pass": 280,
+      "NotSupported": 34,
+      "Fail": 8
+    },
+    "draw": {
+      "Fail": 1,
+      "Pass": 2
+    },
+    "synchronization": {
+      "Pass": 66,
+      "Fail": 7
+    },
+    "tessellation": {
+      "Fail": 2
+    },
+    "glsl": {
+      "Pass": 74,
+      "Fail": 2,
+      "NotSupported": 4
+    },
+    "image": {
+      "Fail": 15,
+      "Pass": 32,
+      "NotSupported": 1
+    },
+    "binding_model": {
+      "Pass": 94
+    },
+    "sparse_resources": {
+      "NotSupported": 2
+    },
+    "clipping": {
+      "Fail": 2
+    },
+    "texture": {
+      "Pass": 11
+    },
+    "spirv_assembly": {
+      "Pass": 10
+    },
+    "ubo": {
+      "Pass": 6
+    },
+    "memory": {
+      "Pass": 5
+    },
+    "ssbo": {
+      "Pass": 9
+    },
+    "fragment_operations": {
+      "Pass": 1
+    }
+  },
+  "cases_sha256": "618a12fca57caf3c0be31c0b6edf9cd1e4004efb74b1026296b5c336533b30e8",
+  "segments": [
+    "/home/council/dev/dirtyroom_m4/build/cts-random-1000/segment-000",
+    "/home/council/dev/dirtyroom_m4/build/cts-random-1000/segment-001",
+    "/home/council/dev/dirtyroom_m4/build/cts-random-1000/segment-007",
+    "/home/council/dev/dirtyroom_m4/build/cts-random-1000/segment-010"
+  ],
+  "identities": [
+    [
+      "477be8cf-4c23-4bd1-8e4c-aee9d134fd21",
+      {
+        "/opt/asahi-m4-port/lib/libvulkan_asahi.so": "249e310c0d691774470592804db788220135b2aa4ece7e5aa0185b3b4e7b8ad3",
+        "/root/guarded-command.py": "e746929162cc01b809455e9dae4a6d3f8a32b313b8e39373e3d1b00f893b797d",
+        "/opt/asahi-m4-port/lib/libgallium-26.1.4.so": "14c9d843ca2131198ea3a61587e37fc8b7b79a3e39e98bb0c59da209ccae5ba5",
+        "/root/run-m4-gl.py": "6842d9bb244b52e7b358b63af9548c1a08d6c6a3244da61efe1b157006df8471",
+        "/root/firmware-snapshot.py": "be417c075b15da22832f05254b3fab247582c72c9dadccff5f7c56b56a9cedb8",
+        "/root/g16-fault-dump.py": "c3988ddf0ad9e10e2b9736582c9ab7c59c90a62090d0e34a32db1ba46c917bf3",
+        "/lib/modules/7.1.9-dirtyroom-asahi1+/kernel/drivers/gpu/drm/asahi/asahi.ko": "e40b70f2d192a9cb1649dab9aa395862a64481e22e5acb1d3f92b7b32860e85e",
+        "/root/g16-submit-test/experiment_watchdog.py": "28600768bceb930a3528471fd7982db9247ec86c00f4a522456b70e38001e18d",
+        "/root/g16-submit-test/experiment_thermals.py": "c394432327266b50f9c4c16d8f5900ddfb99ce014846f5288af75ff139361a33",
+        "/root/cts-sample.py": "99340b98ba6a82110e0f592dd52f9daa9256e08512f7b1a728d98a69cc99e812",
+        "/root/cts-1.0.2.6/deqp-vk-scaled-storage-v2": "6575f233466bfa88704e7355c288700db948dd5a0c181ecabd1443b67d27b304",
+        "/root/cts-1.0.2.6/random-1000-cases.txt": "618a12fca57caf3c0be31c0b6edf9cd1e4004efb74b1026296b5c336533b30e8"
+      },
+      {
+        "path": "/root/cts-1.0.2.6/deqp-vk-scaled-storage-v2",
+        "sha256": "6575f233466bfa88704e7355c288700db948dd5a0c181ecabd1443b67d27b304"
+      }
+    ],
+    [
+      "477be8cf-4c23-4bd1-8e4c-aee9d134fd21",
+      {
+        "/opt/asahi-m4-port/lib/libvulkan_asahi.so": "249e310c0d691774470592804db788220135b2aa4ece7e5aa0185b3b4e7b8ad3",
+        "/root/guarded-command.py": "e746929162cc01b809455e9dae4a6d3f8a32b313b8e39373e3d1b00f893b797d",
+        "/opt/asahi-m4-port/lib/libgallium-26.1.4.so": "14c9d843ca2131198ea3a61587e37fc8b7b79a3e39e98bb0c59da209ccae5ba5",
+        "/root/run-m4-gl.py": "6842d9bb244b52e7b358b63af9548c1a08d6c6a3244da61efe1b157006df8471",
+        "/root/firmware-snapshot.py": "be417c075b15da22832f05254b3fab247582c72c9dadccff5f7c56b56a9cedb8",
+        "/root/g16-fault-dump.py": "c3988ddf0ad9e10e2b9736582c9ab7c59c90a62090d0e34a32db1ba46c917bf3",
+        "/lib/modules/7.1.9-dirtyroom-asahi1+/kernel/drivers/gpu/drm/asahi/asahi.ko": "e40b70f2d192a9cb1649dab9aa395862a64481e22e5acb1d3f92b7b32860e85e",
+        "/root/g16-submit-test/experiment_watchdog.py": "28600768bceb930a3528471fd7982db9247ec86c00f4a522456b70e38001e18d",
+        "/root/g16-submit-test/experiment_thermals.py": "c394432327266b50f9c4c16d8f5900ddfb99ce014846f5288af75ff139361a33",
+        "/root/cts-sample.py": "99340b98ba6a82110e0f592dd52f9daa9256e08512f7b1a728d98a69cc99e812",
+        "/root/cts-1.0.2.6/deqp-vk-scaled-storage-v2": "6575f233466bfa88704e7355c288700db948dd5a0c181ecabd1443b67d27b304",
+        "/root/cts-1.0.2.6/random-1000-cases.txt": "618a12fca57caf3c0be31c0b6edf9cd1e4004efb74b1026296b5c336533b30e8"
+      },
+      {
+        "path": "/root/cts-1.0.2.6/deqp-vk-scaled-storage-v2",
+        "sha256": "6575f233466bfa88704e7355c288700db948dd5a0c181ecabd1443b67d27b304"
+      }
+    ],
+    [
+      "8a91403f-78b2-4bd1-a395-b4602f6f6d2b",
+      {
+        "/opt/asahi-m4-port/lib/libvulkan_asahi.so": "249e310c0d691774470592804db788220135b2aa4ece7e5aa0185b3b4e7b8ad3",
+        "/root/guarded-command.py": "e746929162cc01b809455e9dae4a6d3f8a32b313b8e39373e3d1b00f893b797d",
+        "/opt/asahi-m4-port/lib/libgallium-26.1.4.so": "14c9d843ca2131198ea3a61587e37fc8b7b79a3e39e98bb0c59da209ccae5ba5",
+        "/root/run-m4-gl.py": "6842d9bb244b52e7b358b63af9548c1a08d6c6a3244da61efe1b157006df8471",
+        "/root/firmware-snapshot.py": "be417c075b15da22832f05254b3fab247582c72c9dadccff5f7c56b56a9cedb8",
+        "/root/g16-fault-dump.py": "c3988ddf0ad9e10e2b9736582c9ab7c59c90a62090d0e34a32db1ba46c917bf3",
+        "/lib/modules/7.1.9-dirtyroom-asahi1+/kernel/drivers/gpu/drm/asahi/asahi.ko": "e40b70f2d192a9cb1649dab9aa395862a64481e22e5acb1d3f92b7b32860e85e",
+        "/root/g16-submit-test/experiment_watchdog.py": "28600768bceb930a3528471fd7982db9247ec86c00f4a522456b70e38001e18d",
+        "/root/g16-submit-test/experiment_thermals.py": "c394432327266b50f9c4c16d8f5900ddfb99ce014846f5288af75ff139361a33",
+        "/root/cts-sample.py": "99340b98ba6a82110e0f592dd52f9daa9256e08512f7b1a728d98a69cc99e812",
+        "/root/cts-1.0.2.6/deqp-vk-scaled-storage-v2": "6575f233466bfa88704e7355c288700db948dd5a0c181ecabd1443b67d27b304",
+        "/root/cts-1.0.2.6/random-1000-cases.txt": "618a12fca57caf3c0be31c0b6edf9cd1e4004efb74b1026296b5c336533b30e8"
+      },
+      {
+        "path": "/root/cts-1.0.2.6/deqp-vk-scaled-storage-v2",
+        "sha256": "6575f233466bfa88704e7355c288700db948dd5a0c181ecabd1443b67d27b304"
+      }
+    ],
+    [
+      "8a91403f-78b2-4bd1-a395-b4602f6f6d2b",
+      {
+        "/opt/asahi-m4-port/lib/libvulkan_asahi.so": "249e310c0d691774470592804db788220135b2aa4ece7e5aa0185b3b4e7b8ad3",
+        "/root/guarded-command.py": "e746929162cc01b809455e9dae4a6d3f8a32b313b8e39373e3d1b00f893b797d",
+        "/opt/asahi-m4-port/lib/libgallium-26.1.4.so": "14c9d843ca2131198ea3a61587e37fc8b7b79a3e39e98bb0c59da209ccae5ba5",
+        "/root/run-m4-gl.py": "6842d9bb244b52e7b358b63af9548c1a08d6c6a3244da61efe1b157006df8471",
+        "/root/firmware-snapshot.py": "be417c075b15da22832f05254b3fab247582c72c9dadccff5f7c56b56a9cedb8",
+        "/root/g16-fault-dump.py": "c3988ddf0ad9e10e2b9736582c9ab7c59c90a62090d0e34a32db1ba46c917bf3",
+        "/lib/modules/7.1.9-dirtyroom-asahi1+/kernel/drivers/gpu/drm/asahi/asahi.ko": "e40b70f2d192a9cb1649dab9aa395862a64481e22e5acb1d3f92b7b32860e85e",
+        "/root/g16-submit-test/experiment_watchdog.py": "28600768bceb930a3528471fd7982db9247ec86c00f4a522456b70e38001e18d",
+        "/root/g16-submit-test/experiment_thermals.py": "c394432327266b50f9c4c16d8f5900ddfb99ce014846f5288af75ff139361a33",
+        "/root/cts-sample.py": "99340b98ba6a82110e0f592dd52f9daa9256e08512f7b1a728d98a69cc99e812",
+        "/root/cts-1.0.2.6/deqp-vk-scaled-storage-v2": "6575f233466bfa88704e7355c288700db948dd5a0c181ecabd1443b67d27b304",
+        "/root/cts-1.0.2.6/random-1000-cases.txt": "618a12fca57caf3c0be31c0b6edf9cd1e4004efb74b1026296b5c336533b30e8"
+      },
+      {
+        "path": "/root/cts-1.0.2.6/deqp-vk-scaled-storage-v2",
+        "sha256": "6575f233466bfa88704e7355c288700db948dd5a0c181ecabd1443b67d27b304"
+      }
+    ]
+  ],
+  "batches": [
+    {
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T182040502586Z-random-1000-000",
+      "verdict": "pass",
+      "peak_temperature_c": 57.0,
+      "boot_id": "477be8cf-4c23-4bd1-8e4c-aee9d134fd21",
+      "watchdog": {
+        "device": "/dev/watchdog0",
+        "identity": "Apple SoC Watchdog",
+        "timeout_seconds": 60,
+        "initial_timeleft_seconds": 59,
+        "periodic_keepalive": false,
+        "armed": true,
+        "ssh_broker_lease": true
+      },
+      "thermal": {
+        "startup_limit_mc": 65000,
+        "stop_limit_mc": 75000,
+        "interval_seconds": 0.5,
+        "samples": 2,
+        "sync_interval_seconds": 5,
+        "peak_temperatures_mc": {
+          "PMP aggregate die hotspot": 57000,
+          "Ta000m": 55500,
+          "Te000m": 54250,
+          "Te001m": 53000,
+          "Tp000m": 57000,
+          "Tp001m": 52750
+        },
+        "failure": null,
+        "dedicated_gpu_sensor_verified": false,
+        "log": "temperatures.jsonl",
+        "cpu_frequency_caps": [
+          {
+            "policy": "policy0",
+            "old_min_khz": 912000,
+            "old_max_khz": 1800000,
+            "max_khz": 1800000
+          },
+          {
+            "policy": "policy1",
+            "old_min_khz": 900000,
+            "old_max_khz": 1860000,
+            "max_khz": 1860000
+          }
+        ]
+      }
+    },
+    {
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T182113307610Z-random-1000-001",
+      "verdict": "gpu_fault",
+      "peak_temperature_c": 57.0,
+      "boot_id": "477be8cf-4c23-4bd1-8e4c-aee9d134fd21",
+      "watchdog": {
+        "device": "/dev/watchdog0",
+        "identity": "Apple SoC Watchdog",
+        "timeout_seconds": 60,
+        "initial_timeleft_seconds": 59,
+        "periodic_keepalive": false,
+        "armed": true,
+        "ssh_broker_lease": true
+      },
+      "thermal": {
+        "startup_limit_mc": 65000,
+        "stop_limit_mc": 75000,
+        "interval_seconds": 0.5,
+        "samples": 4,
+        "sync_interval_seconds": 5,
+        "peak_temperatures_mc": {
+          "PMP aggregate die hotspot": 57000,
+          "Ta000m": 55000,
+          "Te000m": 54250,
+          "Te001m": 53000,
+          "Tp000m": 57000,
+          "Tp001m": 53000
+        },
+        "failure": null,
+        "dedicated_gpu_sensor_verified": false,
+        "log": "temperatures.jsonl",
+        "cpu_frequency_caps": [
+          {
+            "policy": "policy0",
+            "old_min_khz": 912000,
+            "old_max_khz": 1800000,
+            "max_khz": 1800000
+          },
+          {
+            "policy": "policy1",
+            "old_min_khz": 900000,
+            "old_max_khz": 1860000,
+            "max_khz": 1860000
+          }
+        ]
+      }
+    },
+    {
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T182255298243Z-random-1000-007",
+      "verdict": "api_error",
+      "peak_temperature_c": 57.5,
+      "boot_id": "8a91403f-78b2-4bd1-a395-b4602f6f6d2b",
+      "watchdog": {
+        "device": "/dev/watchdog0",
+        "identity": "Apple SoC Watchdog",
+        "timeout_seconds": 60,
+        "initial_timeleft_seconds": 59,
+        "periodic_keepalive": false,
+        "armed": true,
+        "ssh_broker_lease": true
+      },
+      "thermal": {
+        "startup_limit_mc": 65000,
+        "stop_limit_mc": 75000,
+        "interval_seconds": 0.5,
+        "samples": 3,
+        "sync_interval_seconds": 5,
+        "peak_temperatures_mc": {
+          "PMP aggregate die hotspot": 57500,
+          "Ta000m": 57250,
+          "Te000m": 55750,
+          "Te001m": 53500,
+          "Tp000m": 57500,
+          "Tp001m": 53250
+        },
+        "failure": null,
+        "dedicated_gpu_sensor_verified": false,
+        "log": "temperatures.jsonl",
+        "cpu_frequency_caps": [
+          {
+            "policy": "policy0",
+            "old_min_khz": 912000,
+            "old_max_khz": 4104000,
+            "max_khz": 1800000
+          },
+          {
+            "policy": "policy1",
+            "old_min_khz": 900000,
+            "old_max_khz": 2892000,
+            "max_khz": 1860000
+          }
+        ]
+      }
+    },
+    {
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T182347890927Z-random-1000-010",
+      "verdict": "api_error",
+      "peak_temperature_c": 57.25,
+      "boot_id": "8a91403f-78b2-4bd1-a395-b4602f6f6d2b",
+      "watchdog": {
+        "device": "/dev/watchdog0",
+        "identity": "Apple SoC Watchdog",
+        "timeout_seconds": 60,
+        "initial_timeleft_seconds": 59,
+        "periodic_keepalive": false,
+        "armed": true,
+        "ssh_broker_lease": true
+      },
+      "thermal": {
+        "startup_limit_mc": 65000,
+        "stop_limit_mc": 75000,
+        "interval_seconds": 0.5,
+        "samples": 21,
+        "sync_interval_seconds": 5,
+        "peak_temperatures_mc": {
+          "PMP aggregate die hotspot": 57250,
+          "Ta000m": 56000,
+          "Te000m": 54750,
+          "Te001m": 53250,
+          "Tp000m": 57250,
+          "Tp001m": 53250
+        },
+        "failure": null,
+        "dedicated_gpu_sensor_verified": false,
+        "log": "temperatures.jsonl",
+        "cpu_frequency_caps": [
+          {
+            "policy": "policy0",
+            "old_min_khz": 912000,
+            "old_max_khz": 1800000,
+            "max_khz": 1800000
+          },
+          {
+            "policy": "policy1",
+            "old_min_khz": 900000,
+            "old_max_khz": 1860000,
+            "max_khz": 1860000
+          }
+        ]
+      }
+    },
+    {
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T182359616857Z-random-1000-042",
+      "verdict": "api_error",
+      "peak_temperature_c": 58.0,
+      "boot_id": "8a91403f-78b2-4bd1-a395-b4602f6f6d2b",
+      "watchdog": {
+        "device": "/dev/watchdog0",
+        "identity": "Apple SoC Watchdog",
+        "timeout_seconds": 60,
+        "initial_timeleft_seconds": 59,
+        "periodic_keepalive": false,
+        "armed": true,
+        "ssh_broker_lease": true
+      },
+      "thermal": {
+        "startup_limit_mc": 65000,
+        "stop_limit_mc": 75000,
+        "interval_seconds": 0.5,
+        "samples": 21,
+        "sync_interval_seconds": 5,
+        "peak_temperatures_mc": {
+          "PMP aggregate die hotspot": 58000,
+          "Ta000m": 56250,
+          "Te000m": 54750,
+          "Te001m": 54500,
+          "Tp000m": 58000,
+          "Tp001m": 54250
+        },
+        "failure": null,
+        "dedicated_gpu_sensor_verified": false,
+        "log": "temperatures.jsonl",
+        "cpu_frequency_caps": [
+          {
+            "policy": "policy0",
+            "old_min_khz": 912000,
+            "old_max_khz": 1800000,
+            "max_khz": 1800000
+          },
+          {
+            "policy": "policy1",
+            "old_min_khz": 900000,
+            "old_max_khz": 1860000,
+            "max_khz": 1860000
+          }
+        ]
+      }
+    },
+    {
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T182411966264Z-random-1000-078",
+      "verdict": "pass",
+      "peak_temperature_c": 58.25,
+      "boot_id": "8a91403f-78b2-4bd1-a395-b4602f6f6d2b",
+      "watchdog": {
+        "device": "/dev/watchdog0",
+        "identity": "Apple SoC Watchdog",
+        "timeout_seconds": 60,
+        "initial_timeleft_seconds": 59,
+        "periodic_keepalive": false,
+        "armed": true,
+        "ssh_broker_lease": true
+      },
+      "thermal": {
+        "startup_limit_mc": 65000,
+        "stop_limit_mc": 75000,
+        "interval_seconds": 0.5,
+        "samples": 21,
+        "sync_interval_seconds": 5,
+        "peak_temperatures_mc": {
+          "PMP aggregate die hotspot": 58250,
+          "Ta000m": 56000,
+          "Te000m": 55250,
+          "Te001m": 54500,
+          "Tp000m": 58250,
+          "Tp001m": 54500
+        },
+        "failure": null,
+        "dedicated_gpu_sensor_verified": false,
+        "log": "temperatures.jsonl",
+        "cpu_frequency_caps": [
+          {
+            "policy": "policy0",
+            "old_min_khz": 912000,
+            "old_max_khz": 1800000,
+            "max_khz": 1800000
+          },
+          {
+            "policy": "policy1",
+            "old_min_khz": 900000,
+            "old_max_khz": 1860000,
+            "max_khz": 1860000
+          }
+        ]
+      }
+    },
+    {
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T182423928887Z-random-1000-108",
+      "verdict": "api_error",
+      "peak_temperature_c": 58.0,
+      "boot_id": "8a91403f-78b2-4bd1-a395-b4602f6f6d2b",
+      "watchdog": {
+        "device": "/dev/watchdog0",
+        "identity": "Apple SoC Watchdog",
+        "timeout_seconds": 60,
+        "initial_timeleft_seconds": 59,
+        "periodic_keepalive": false,
+        "armed": true,
+        "ssh_broker_lease": true
+      },
+      "thermal": {
+        "startup_limit_mc": 65000,
+        "stop_limit_mc": 75000,
+        "interval_seconds": 0.5,
+        "samples": 21,
+        "sync_interval_seconds": 5,
+        "peak_temperatures_mc": {
+          "PMP aggregate die hotspot": 58000,
+          "Ta000m": 56500,
+          "Te000m": 55250,
+          "Te001m": 53750,
+          "Tp000m": 58000,
+          "Tp001m": 53750
+        },
+        "failure": null,
+        "dedicated_gpu_sensor_verified": false,
+        "log": "temperatures.jsonl",
+        "cpu_frequency_caps": [
+          {
+            "policy": "policy0",
+            "old_min_khz": 912000,
+            "old_max_khz": 1800000,
+            "max_khz": 1800000
+          },
+          {
+            "policy": "policy1",
+            "old_min_khz": 900000,
+            "old_max_khz": 1860000,
+            "max_khz": 1860000
+          }
+        ]
+      }
+    },
+    {
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T182435813317Z-random-1000-140",
+      "verdict": "api_error",
+      "peak_temperature_c": 58.25,
+      "boot_id": "8a91403f-78b2-4bd1-a395-b4602f6f6d2b",
+      "watchdog": {
+        "device": "/dev/watchdog0",
+        "identity": "Apple SoC Watchdog",
+        "timeout_seconds": 60,
+        "initial_timeleft_seconds": 59,
+        "periodic_keepalive": false,
+        "armed": true,
+        "ssh_broker_lease": true
+      },
+      "thermal": {
+        "startup_limit_mc": 65000,
+        "stop_limit_mc": 75000,
+        "interval_seconds": 0.5,
+        "samples": 21,
+        "sync_interval_seconds": 5,
+        "peak_temperatures_mc": {
+          "PMP aggregate die hotspot": 58250,
+          "Ta000m": 56250,
+          "Te000m": 55250,
+          "Te001m": 54250,
+          "Tp000m": 58250,
+          "Tp001m": 53750
+        },
+        "failure": null,
+        "dedicated_gpu_sensor_verified": false,
+        "log": "temperatures.jsonl",
+        "cpu_frequency_caps": [
+          {
+            "policy": "policy0",
+            "old_min_khz": 912000,
+            "old_max_khz": 1800000,
+            "max_khz": 1800000
+          },
+          {
+            "policy": "policy1",
+            "old_min_khz": 900000,
+            "old_max_khz": 1860000,
+            "max_khz": 1860000
+          }
+        ]
+      }
+    },
+    {
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T182447817323Z-random-1000-172",
+      "verdict": "api_error",
+      "peak_temperature_c": 58.25,
+      "boot_id": "8a91403f-78b2-4bd1-a395-b4602f6f6d2b",
+      "watchdog": {
+        "device": "/dev/watchdog0",
+        "identity": "Apple SoC Watchdog",
+        "timeout_seconds": 60,
+        "initial_timeleft_seconds": 59,
+        "periodic_keepalive": false,
+        "armed": true,
+        "ssh_broker_lease": true
+      },
+      "thermal": {
+        "startup_limit_mc": 65000,
+        "stop_limit_mc": 75000,
+        "interval_seconds": 0.5,
+        "samples": 22,
+        "sync_interval_seconds": 5,
+        "peak_temperatures_mc": {
+          "PMP aggregate die hotspot": 58250,
+          "Ta000m": 56000,
+          "Te000m": 55250,
+          "Te001m": 54000,
+          "Tp000m": 58250,
+          "Tp001m": 53750
+        },
+        "failure": null,
+        "dedicated_gpu_sensor_verified": false,
+        "log": "temperatures.jsonl",
+        "cpu_frequency_caps": [
+          {
+            "policy": "policy0",
+            "old_min_khz": 912000,
+            "old_max_khz": 1800000,
+            "max_khz": 1800000
+          },
+          {
+            "policy": "policy1",
+            "old_min_khz": 900000,
+            "old_max_khz": 1860000,
+            "max_khz": 1860000
+          }
+        ]
+      }
+    },
+    {
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T182500059362Z-random-1000-203",
+      "verdict": "pass",
+      "peak_temperature_c": 58.25,
+      "boot_id": "8a91403f-78b2-4bd1-a395-b4602f6f6d2b",
+      "watchdog": {
+        "device": "/dev/watchdog0",
+        "identity": "Apple SoC Watchdog",
+        "timeout_seconds": 60,
+        "initial_timeleft_seconds": 59,
+        "periodic_keepalive": false,
+        "armed": true,
+        "ssh_broker_lease": true
+      },
+      "thermal": {
+        "startup_limit_mc": 65000,
+        "stop_limit_mc": 75000,
+        "interval_seconds": 0.5,
+        "samples": 21,
+        "sync_interval_seconds": 5,
+        "peak_temperatures_mc": {
+          "PMP aggregate die hotspot": 58250,
+          "Ta000m": 56250,
+          "Te000m": 55500,
+          "Te001m": 55000,
+          "Tp000m": 58250,
+          "Tp001m": 54500
+        },
+        "failure": null,
+        "dedicated_gpu_sensor_verified": false,
+        "log": "temperatures.jsonl",
+        "cpu_frequency_caps": [
+          {
+            "policy": "policy0",
+            "old_min_khz": 912000,
+            "old_max_khz": 1800000,
+            "max_khz": 1800000
+          },
+          {
+            "policy": "policy1",
+            "old_min_khz": 900000,
+            "old_max_khz": 1860000,
+            "max_khz": 1860000
+          }
+        ]
+      }
+    },
+    {
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T182512068932Z-random-1000-234",
+      "verdict": "api_error",
+      "peak_temperature_c": 58.25,
+      "boot_id": "8a91403f-78b2-4bd1-a395-b4602f6f6d2b",
+      "watchdog": {
+        "device": "/dev/watchdog0",
+        "identity": "Apple SoC Watchdog",
+        "timeout_seconds": 60,
+        "initial_timeleft_seconds": 59,
+        "periodic_keepalive": false,
+        "armed": true,
+        "ssh_broker_lease": true
+      },
+      "thermal": {
+        "startup_limit_mc": 65000,
+        "stop_limit_mc": 75000,
+        "interval_seconds": 0.5,
+        "samples": 21,
+        "sync_interval_seconds": 5,
+        "peak_temperatures_mc": {
+          "PMP aggregate die hotspot": 58250,
+          "Ta000m": 56250,
+          "Te000m": 55500,
+          "Te001m": 54250,
+          "Tp000m": 58250,
+          "Tp001m": 53750
+        },
+        "failure": null,
+        "dedicated_gpu_sensor_verified": false,
+        "log": "temperatures.jsonl",
+        "cpu_frequency_caps": [
+          {
+            "policy": "policy0",
+            "old_min_khz": 912000,
+            "old_max_khz": 1800000,
+            "max_khz": 1800000
+          },
+          {
+            "policy": "policy1",
+            "old_min_khz": 900000,
+            "old_max_khz": 1860000,
+            "max_khz": 1860000
+          }
+        ]
+      }
+    },
+    {
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T182523945602Z-random-1000-267",
+      "verdict": "pass",
+      "peak_temperature_c": 58.25,
+      "boot_id": "8a91403f-78b2-4bd1-a395-b4602f6f6d2b",
+      "watchdog": {
+        "device": "/dev/watchdog0",
+        "identity": "Apple SoC Watchdog",
+        "timeout_seconds": 60,
+        "initial_timeleft_seconds": 59,
+        "periodic_keepalive": false,
+        "armed": true,
+        "ssh_broker_lease": true
+      },
+      "thermal": {
+        "startup_limit_mc": 65000,
+        "stop_limit_mc": 75000,
+        "interval_seconds": 0.5,
+        "samples": 21,
+        "sync_interval_seconds": 5,
+        "peak_temperatures_mc": {
+          "PMP aggregate die hotspot": 58250,
+          "Ta000m": 56500,
+          "Te000m": 55500,
+          "Te001m": 54250,
+          "Tp000m": 58250,
+          "Tp001m": 54000
+        },
+        "failure": null,
+        "dedicated_gpu_sensor_verified": false,
+        "log": "temperatures.jsonl",
+        "cpu_frequency_caps": [
+          {
+            "policy": "policy0",
+            "old_min_khz": 912000,
+            "old_max_khz": 1800000,
+            "max_khz": 1800000
+          },
+          {
+            "policy": "policy1",
+            "old_min_khz": 900000,
+            "old_max_khz": 1860000,
+            "max_khz": 1860000
+          }
+        ]
+      }
+    },
+    {
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T182535813032Z-random-1000-299",
+      "verdict": "pass",
+      "peak_temperature_c": 58.25,
+      "boot_id": "8a91403f-78b2-4bd1-a395-b4602f6f6d2b",
+      "watchdog": {
+        "device": "/dev/watchdog0",
+        "identity": "Apple SoC Watchdog",
+        "timeout_seconds": 60,
+        "initial_timeleft_seconds": 59,
+        "periodic_keepalive": false,
+        "armed": true,
+        "ssh_broker_lease": true
+      },
+      "thermal": {
+        "startup_limit_mc": 65000,
+        "stop_limit_mc": 75000,
+        "interval_seconds": 0.5,
+        "samples": 21,
+        "sync_interval_seconds": 5,
+        "peak_temperatures_mc": {
+          "PMP aggregate die hotspot": 58250,
+          "Ta000m": 56250,
+          "Te000m": 55500,
+          "Te001m": 55000,
+          "Tp000m": 58250,
+          "Tp001m": 55250
+        },
+        "failure": null,
+        "dedicated_gpu_sensor_verified": false,
+        "log": "temperatures.jsonl",
+        "cpu_frequency_caps": [
+          {
+            "policy": "policy0",
+            "old_min_khz": 912000,
+            "old_max_khz": 1800000,
+            "max_khz": 1800000
+          },
+          {
+            "policy": "policy1",
+            "old_min_khz": 900000,
+            "old_max_khz": 1860000,
+            "max_khz": 1860000
+          }
+        ]
+      }
+    },
+    {
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T182547948983Z-random-1000-327",
+      "verdict": "api_error",
+      "peak_temperature_c": 58.25,
+      "boot_id": "8a91403f-78b2-4bd1-a395-b4602f6f6d2b",
+      "watchdog": {
+        "device": "/dev/watchdog0",
+        "identity": "Apple SoC Watchdog",
+        "timeout_seconds": 60,
+        "initial_timeleft_seconds": 59,
+        "periodic_keepalive": false,
+        "armed": true,
+        "ssh_broker_lease": true
+      },
+      "thermal": {
+        "startup_limit_mc": 65000,
+        "stop_limit_mc": 75000,
+        "interval_seconds": 0.5,
+        "samples": 21,
+        "sync_interval_seconds": 5,
+        "peak_temperatures_mc": {
+          "PMP aggregate die hotspot": 58250,
+          "Ta000m": 56500,
+          "Te000m": 55750,
+          "Te001m": 54250,
+          "Tp000m": 58250,
+          "Tp001m": 54250
+        },
+        "failure": null,
+        "dedicated_gpu_sensor_verified": false,
+        "log": "temperatures.jsonl",
+        "cpu_frequency_caps": [
+          {
+            "policy": "policy0",
+            "old_min_khz": 912000,
+            "old_max_khz": 1800000,
+            "max_khz": 1800000
+          },
+          {
+            "policy": "policy1",
+            "old_min_khz": 900000,
+            "old_max_khz": 1860000,
+            "max_khz": 1860000
+          }
+        ]
+      }
+    },
+    {
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T182559918037Z-random-1000-362",
+      "verdict": "api_error",
+      "peak_temperature_c": 58.5,
+      "boot_id": "8a91403f-78b2-4bd1-a395-b4602f6f6d2b",
+      "watchdog": {
+        "device": "/dev/watchdog0",
+        "identity": "Apple SoC Watchdog",
+        "timeout_seconds": 60,
+        "initial_timeleft_seconds": 59,
+        "periodic_keepalive": false,
+        "armed": true,
+        "ssh_broker_lease": true
+      },
+      "thermal": {
+        "startup_limit_mc": 65000,
+        "stop_limit_mc": 75000,
+        "interval_seconds": 0.5,
+        "samples": 21,
+        "sync_interval_seconds": 5,
+        "peak_temperatures_mc": {
+          "PMP aggregate die hotspot": 58500,
+          "Ta000m": 56750,
+          "Te000m": 55750,
+          "Te001m": 55000,
+          "Tp000m": 58500,
+          "Tp001m": 55000
+        },
+        "failure": null,
+        "dedicated_gpu_sensor_verified": false,
+        "log": "temperatures.jsonl",
+        "cpu_frequency_caps": [
+          {
+            "policy": "policy0",
+            "old_min_khz": 912000,
+            "old_max_khz": 1800000,
+            "max_khz": 1800000
+          },
+          {
+            "policy": "policy1",
+            "old_min_khz": 900000,
+            "old_max_khz": 1860000,
+            "max_khz": 1860000
+          }
+        ]
+      }
+    },
+    {
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T182612095167Z-random-1000-393",
+      "verdict": "api_error",
+      "peak_temperature_c": 58.25,
+      "boot_id": "8a91403f-78b2-4bd1-a395-b4602f6f6d2b",
+      "watchdog": {
+        "device": "/dev/watchdog0",
+        "identity": "Apple SoC Watchdog",
+        "timeout_seconds": 60,
+        "initial_timeleft_seconds": 59,
+        "periodic_keepalive": false,
+        "armed": true,
+        "ssh_broker_lease": true
+      },
+      "thermal": {
+        "startup_limit_mc": 65000,
+        "stop_limit_mc": 75000,
+        "interval_seconds": 0.5,
+        "samples": 21,
+        "sync_interval_seconds": 5,
+        "peak_temperatures_mc": {
+          "PMP aggregate die hotspot": 58250,
+          "Ta000m": 56250,
+          "Te000m": 55750,
+          "Te001m": 54250,
+          "Tp000m": 58250,
+          "Tp001m": 54000
+        },
+        "failure": null,
+        "dedicated_gpu_sensor_verified": false,
+        "log": "temperatures.jsonl",
+        "cpu_frequency_caps": [
+          {
+            "policy": "policy0",
+            "old_min_khz": 912000,
+            "old_max_khz": 1800000,
+            "max_khz": 1800000
+          },
+          {
+            "policy": "policy1",
+            "old_min_khz": 900000,
+            "old_max_khz": 1860000,
+            "max_khz": 1860000
+          }
+        ]
+      }
+    },
+    {
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T182624278154Z-random-1000-425",
+      "verdict": "api_error",
+      "peak_temperature_c": 58.5,
+      "boot_id": "8a91403f-78b2-4bd1-a395-b4602f6f6d2b",
+      "watchdog": {
+        "device": "/dev/watchdog0",
+        "identity": "Apple SoC Watchdog",
+        "timeout_seconds": 60,
+        "initial_timeleft_seconds": 59,
+        "periodic_keepalive": false,
+        "armed": true,
+        "ssh_broker_lease": true
+      },
+      "thermal": {
+        "startup_limit_mc": 65000,
+        "stop_limit_mc": 75000,
+        "interval_seconds": 0.5,
+        "samples": 21,
+        "sync_interval_seconds": 5,
+        "peak_temperatures_mc": {
+          "PMP aggregate die hotspot": 58500,
+          "Ta000m": 56500,
+          "Te000m": 55750,
+          "Te001m": 54500,
+          "Tp000m": 58500,
+          "Tp001m": 54250
+        },
+        "failure": null,
+        "dedicated_gpu_sensor_verified": false,
+        "log": "temperatures.jsonl",
+        "cpu_frequency_caps": [
+          {
+            "policy": "policy0",
+            "old_min_khz": 912000,
+            "old_max_khz": 1800000,
+            "max_khz": 1800000
+          },
+          {
+            "policy": "policy1",
+            "old_min_khz": 900000,
+            "old_max_khz": 1860000,
+            "max_khz": 1860000
+          }
+        ]
+      }
+    },
+    {
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T182636547519Z-random-1000-459",
+      "verdict": "api_error",
+      "peak_temperature_c": 58.5,
+      "boot_id": "8a91403f-78b2-4bd1-a395-b4602f6f6d2b",
+      "watchdog": {
+        "device": "/dev/watchdog0",
+        "identity": "Apple SoC Watchdog",
+        "timeout_seconds": 60,
+        "initial_timeleft_seconds": 59,
+        "periodic_keepalive": false,
+        "armed": true,
+        "ssh_broker_lease": true
+      },
+      "thermal": {
+        "startup_limit_mc": 65000,
+        "stop_limit_mc": 75000,
+        "interval_seconds": 0.5,
+        "samples": 21,
+        "sync_interval_seconds": 5,
+        "peak_temperatures_mc": {
+          "PMP aggregate die hotspot": 58500,
+          "Ta000m": 56500,
+          "Te000m": 55750,
+          "Te001m": 54250,
+          "Tp000m": 58500,
+          "Tp001m": 54250
+        },
+        "failure": null,
+        "dedicated_gpu_sensor_verified": false,
+        "log": "temperatures.jsonl",
+        "cpu_frequency_caps": [
+          {
+            "policy": "policy0",
+            "old_min_khz": 912000,
+            "old_max_khz": 1800000,
+            "max_khz": 1800000
+          },
+          {
+            "policy": "policy1",
+            "old_min_khz": 900000,
+            "old_max_khz": 1860000,
+            "max_khz": 1860000
+          }
+        ]
+      }
+    },
+    {
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T182648819188Z-random-1000-491",
+      "verdict": "pass",
+      "peak_temperature_c": 58.5,
+      "boot_id": "8a91403f-78b2-4bd1-a395-b4602f6f6d2b",
+      "watchdog": {
+        "device": "/dev/watchdog0",
+        "identity": "Apple SoC Watchdog",
+        "timeout_seconds": 60,
+        "initial_timeleft_seconds": 59,
+        "periodic_keepalive": false,
+        "armed": true,
+        "ssh_broker_lease": true
+      },
+      "thermal": {
+        "startup_limit_mc": 65000,
+        "stop_limit_mc": 75000,
+        "interval_seconds": 0.5,
+        "samples": 22,
+        "sync_interval_seconds": 5,
+        "peak_temperatures_mc": {
+          "PMP aggregate die hotspot": 58500,
+          "Ta000m": 56250,
+          "Te000m": 55750,
+          "Te001m": 54500,
+          "Tp000m": 58250,
+          "Tp001m": 54250
+        },
+        "failure": null,
+        "dedicated_gpu_sensor_verified": false,
+        "log": "temperatures.jsonl",
+        "cpu_frequency_caps": [
+          {
+            "policy": "policy0",
+            "old_min_khz": 912000,
+            "old_max_khz": 1800000,
+            "max_khz": 1800000
+          },
+          {
+            "policy": "policy1",
+            "old_min_khz": 900000,
+            "old_max_khz": 1860000,
+            "max_khz": 1860000
+          }
+        ]
+      }
+    },
+    {
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T182701190805Z-random-1000-523",
+      "verdict": "api_error",
+      "peak_temperature_c": 58.5,
+      "boot_id": "8a91403f-78b2-4bd1-a395-b4602f6f6d2b",
+      "watchdog": {
+        "device": "/dev/watchdog0",
+        "identity": "Apple SoC Watchdog",
+        "timeout_seconds": 60,
+        "initial_timeleft_seconds": 59,
+        "periodic_keepalive": false,
+        "armed": true,
+        "ssh_broker_lease": true
+      },
+      "thermal": {
+        "startup_limit_mc": 65000,
+        "stop_limit_mc": 75000,
+        "interval_seconds": 0.5,
+        "samples": 21,
+        "sync_interval_seconds": 5,
+        "peak_temperatures_mc": {
+          "PMP aggregate die hotspot": 58500,
+          "Ta000m": 56500,
+          "Te000m": 55750,
+          "Te001m": 54500,
+          "Tp000m": 58500,
+          "Tp001m": 54250
+        },
+        "failure": null,
+        "dedicated_gpu_sensor_verified": false,
+        "log": "temperatures.jsonl",
+        "cpu_frequency_caps": [
+          {
+            "policy": "policy0",
+            "old_min_khz": 912000,
+            "old_max_khz": 1800000,
+            "max_khz": 1800000
+          },
+          {
+            "policy": "policy1",
+            "old_min_khz": 900000,
+            "old_max_khz": 1860000,
+            "max_khz": 1860000
+          }
+        ]
+      }
+    },
+    {
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T182713412979Z-random-1000-553",
+      "verdict": "api_error",
+      "peak_temperature_c": 58.75,
+      "boot_id": "8a91403f-78b2-4bd1-a395-b4602f6f6d2b",
+      "watchdog": {
+        "device": "/dev/watchdog0",
+        "identity": "Apple SoC Watchdog",
+        "timeout_seconds": 60,
+        "initial_timeleft_seconds": 59,
+        "periodic_keepalive": false,
+        "armed": true,
+        "ssh_broker_lease": true
+      },
+      "thermal": {
+        "startup_limit_mc": 65000,
+        "stop_limit_mc": 75000,
+        "interval_seconds": 0.5,
+        "samples": 21,
+        "sync_interval_seconds": 5,
+        "peak_temperatures_mc": {
+          "PMP aggregate die hotspot": 58750,
+          "Ta000m": 56750,
+          "Te000m": 56000,
+          "Te001m": 54500,
+          "Tp000m": 58500,
+          "Tp001m": 54500
+        },
+        "failure": null,
+        "dedicated_gpu_sensor_verified": false,
+        "log": "temperatures.jsonl",
+        "cpu_frequency_caps": [
+          {
+            "policy": "policy0",
+            "old_min_khz": 912000,
+            "old_max_khz": 1800000,
+            "max_khz": 1800000
+          },
+          {
+            "policy": "policy1",
+            "old_min_khz": 900000,
+            "old_max_khz": 1860000,
+            "max_khz": 1860000
+          }
+        ]
+      }
+    },
+    {
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T182725752028Z-random-1000-583",
+      "verdict": "pass",
+      "peak_temperature_c": 58.5,
+      "boot_id": "8a91403f-78b2-4bd1-a395-b4602f6f6d2b",
+      "watchdog": {
+        "device": "/dev/watchdog0",
+        "identity": "Apple SoC Watchdog",
+        "timeout_seconds": 60,
+        "initial_timeleft_seconds": 59,
+        "periodic_keepalive": false,
+        "armed": true,
+        "ssh_broker_lease": true
+      },
+      "thermal": {
+        "startup_limit_mc": 65000,
+        "stop_limit_mc": 75000,
+        "interval_seconds": 0.5,
+        "samples": 22,
+        "sync_interval_seconds": 5,
+        "peak_temperatures_mc": {
+          "PMP aggregate die hotspot": 58500,
+          "Ta000m": 56250,
+          "Te000m": 55750,
+          "Te001m": 54250,
+          "Tp000m": 58500,
+          "Tp001m": 54250
+        },
+        "failure": null,
+        "dedicated_gpu_sensor_verified": false,
+        "log": "temperatures.jsonl",
+        "cpu_frequency_caps": [
+          {
+            "policy": "policy0",
+            "old_min_khz": 912000,
+            "old_max_khz": 1800000,
+            "max_khz": 1800000
+          },
+          {
+            "policy": "policy1",
+            "old_min_khz": 900000,
+            "old_max_khz": 1860000,
+            "max_khz": 1860000
+          }
+        ]
+      }
+    },
+    {
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T182738281908Z-random-1000-618",
+      "verdict": "pass",
+      "peak_temperature_c": 58.5,
+      "boot_id": "8a91403f-78b2-4bd1-a395-b4602f6f6d2b",
+      "watchdog": {
+        "device": "/dev/watchdog0",
+        "identity": "Apple SoC Watchdog",
+        "timeout_seconds": 60,
+        "initial_timeleft_seconds": 59,
+        "periodic_keepalive": false,
+        "armed": true,
+        "ssh_broker_lease": true
+      },
+      "thermal": {
+        "startup_limit_mc": 65000,
+        "stop_limit_mc": 75000,
+        "interval_seconds": 0.5,
+        "samples": 21,
+        "sync_interval_seconds": 5,
+        "peak_temperatures_mc": {
+          "PMP aggregate die hotspot": 58500,
+          "Ta000m": 56250,
+          "Te000m": 55750,
+          "Te001m": 54500,
+          "Tp000m": 58500,
+          "Tp001m": 54250
+        },
+        "failure": null,
+        "dedicated_gpu_sensor_verified": false,
+        "log": "temperatures.jsonl",
+        "cpu_frequency_caps": [
+          {
+            "policy": "policy0",
+            "old_min_khz": 912000,
+            "old_max_khz": 1800000,
+            "max_khz": 1800000
+          },
+          {
+            "policy": "policy1",
+            "old_min_khz": 900000,
+            "old_max_khz": 1860000,
+            "max_khz": 1860000
+          }
+        ]
+      }
+    },
+    {
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T182750683016Z-random-1000-652",
+      "verdict": "api_error",
+      "peak_temperature_c": 59.0,
+      "boot_id": "8a91403f-78b2-4bd1-a395-b4602f6f6d2b",
+      "watchdog": {
+        "device": "/dev/watchdog0",
+        "identity": "Apple SoC Watchdog",
+        "timeout_seconds": 60,
+        "initial_timeleft_seconds": 59,
+        "periodic_keepalive": false,
+        "armed": true,
+        "ssh_broker_lease": true
+      },
+      "thermal": {
+        "startup_limit_mc": 65000,
+        "stop_limit_mc": 75000,
+        "interval_seconds": 0.5,
+        "samples": 22,
+        "sync_interval_seconds": 5,
+        "peak_temperatures_mc": {
+          "PMP aggregate die hotspot": 59000,
+          "Ta000m": 56750,
+          "Te000m": 55750,
+          "Te001m": 55000,
+          "Tp000m": 59000,
+          "Tp001m": 55250
+        },
+        "failure": null,
+        "dedicated_gpu_sensor_verified": false,
+        "log": "temperatures.jsonl",
+        "cpu_frequency_caps": [
+          {
+            "policy": "policy0",
+            "old_min_khz": 912000,
+            "old_max_khz": 1800000,
+            "max_khz": 1800000
+          },
+          {
+            "policy": "policy1",
+            "old_min_khz": 900000,
+            "old_max_khz": 1860000,
+            "max_khz": 1860000
+          }
+        ]
+      }
+    },
+    {
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T182803276635Z-random-1000-684",
+      "verdict": "api_error",
+      "peak_temperature_c": 58.5,
+      "boot_id": "8a91403f-78b2-4bd1-a395-b4602f6f6d2b",
+      "watchdog": {
+        "device": "/dev/watchdog0",
+        "identity": "Apple SoC Watchdog",
+        "timeout_seconds": 60,
+        "initial_timeleft_seconds": 59,
+        "periodic_keepalive": false,
+        "armed": true,
+        "ssh_broker_lease": true
+      },
+      "thermal": {
+        "startup_limit_mc": 65000,
+        "stop_limit_mc": 75000,
+        "interval_seconds": 0.5,
+        "samples": 22,
+        "sync_interval_seconds": 5,
+        "peak_temperatures_mc": {
+          "PMP aggregate die hotspot": 58500,
+          "Ta000m": 56500,
+          "Te000m": 56000,
+          "Te001m": 54500,
+          "Tp000m": 58500,
+          "Tp001m": 54250
+        },
+        "failure": null,
+        "dedicated_gpu_sensor_verified": false,
+        "log": "temperatures.jsonl",
+        "cpu_frequency_caps": [
+          {
+            "policy": "policy0",
+            "old_min_khz": 912000,
+            "old_max_khz": 1800000,
+            "max_khz": 1800000
+          },
+          {
+            "policy": "policy1",
+            "old_min_khz": 900000,
+            "old_max_khz": 1860000,
+            "max_khz": 1860000
+          }
+        ]
+      }
+    },
+    {
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T182815882994Z-random-1000-711",
+      "verdict": "pass",
+      "peak_temperature_c": 58.75,
+      "boot_id": "8a91403f-78b2-4bd1-a395-b4602f6f6d2b",
+      "watchdog": {
+        "device": "/dev/watchdog0",
+        "identity": "Apple SoC Watchdog",
+        "timeout_seconds": 60,
+        "initial_timeleft_seconds": 59,
+        "periodic_keepalive": false,
+        "armed": true,
+        "ssh_broker_lease": true
+      },
+      "thermal": {
+        "startup_limit_mc": 65000,
+        "stop_limit_mc": 75000,
+        "interval_seconds": 0.5,
+        "samples": 21,
+        "sync_interval_seconds": 5,
+        "peak_temperatures_mc": {
+          "PMP aggregate die hotspot": 58500,
+          "Ta000m": 56750,
+          "Te000m": 56000,
+          "Te001m": 54500,
+          "Tp000m": 58500,
+          "Tp001m": 54500
+        },
+        "failure": null,
+        "dedicated_gpu_sensor_verified": false,
+        "log": "temperatures.jsonl",
+        "cpu_frequency_caps": [
+          {
+            "policy": "policy0",
+            "old_min_khz": 912000,
+            "old_max_khz": 1800000,
+            "max_khz": 1800000
+          },
+          {
+            "policy": "policy1",
+            "old_min_khz": 900000,
+            "old_max_khz": 1860000,
+            "max_khz": 1860000
+          }
+        ]
+      }
+    },
+    {
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T182828384851Z-random-1000-742",
+      "verdict": "api_error",
+      "peak_temperature_c": 58.5,
+      "boot_id": "8a91403f-78b2-4bd1-a395-b4602f6f6d2b",
+      "watchdog": {
+        "device": "/dev/watchdog0",
+        "identity": "Apple SoC Watchdog",
+        "timeout_seconds": 60,
+        "initial_timeleft_seconds": 59,
+        "periodic_keepalive": false,
+        "armed": true,
+        "ssh_broker_lease": true
+      },
+      "thermal": {
+        "startup_limit_mc": 65000,
+        "stop_limit_mc": 75000,
+        "interval_seconds": 0.5,
+        "samples": 22,
+        "sync_interval_seconds": 5,
+        "peak_temperatures_mc": {
+          "PMP aggregate die hotspot": 58500,
+          "Ta000m": 56750,
+          "Te000m": 56000,
+          "Te001m": 54500,
+          "Tp000m": 58500,
+          "Tp001m": 54250
+        },
+        "failure": null,
+        "dedicated_gpu_sensor_verified": false,
+        "log": "temperatures.jsonl",
+        "cpu_frequency_caps": [
+          {
+            "policy": "policy0",
+            "old_min_khz": 912000,
+            "old_max_khz": 1800000,
+            "max_khz": 1800000
+          },
+          {
+            "policy": "policy1",
+            "old_min_khz": 900000,
+            "old_max_khz": 1860000,
+            "max_khz": 1860000
+          }
+        ]
+      }
+    },
+    {
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T182841079154Z-random-1000-773",
+      "verdict": "api_error",
+      "peak_temperature_c": 58.5,
+      "boot_id": "8a91403f-78b2-4bd1-a395-b4602f6f6d2b",
+      "watchdog": {
+        "device": "/dev/watchdog0",
+        "identity": "Apple SoC Watchdog",
+        "timeout_seconds": 60,
+        "initial_timeleft_seconds": 59,
+        "periodic_keepalive": false,
+        "armed": true,
+        "ssh_broker_lease": true
+      },
+      "thermal": {
+        "startup_limit_mc": 65000,
+        "stop_limit_mc": 75000,
+        "interval_seconds": 0.5,
+        "samples": 21,
+        "sync_interval_seconds": 5,
+        "peak_temperatures_mc": {
+          "PMP aggregate die hotspot": 58500,
+          "Ta000m": 56500,
+          "Te000m": 55750,
+          "Te001m": 54500,
+          "Tp000m": 58500,
+          "Tp001m": 54250
+        },
+        "failure": null,
+        "dedicated_gpu_sensor_verified": false,
+        "log": "temperatures.jsonl",
+        "cpu_frequency_caps": [
+          {
+            "policy": "policy0",
+            "old_min_khz": 912000,
+            "old_max_khz": 1800000,
+            "max_khz": 1800000
+          },
+          {
+            "policy": "policy1",
+            "old_min_khz": 900000,
+            "old_max_khz": 1860000,
+            "max_khz": 1860000
+          }
+        ]
+      }
+    },
+    {
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T182853518948Z-random-1000-804",
+      "verdict": "pass",
+      "peak_temperature_c": 58.5,
+      "boot_id": "8a91403f-78b2-4bd1-a395-b4602f6f6d2b",
+      "watchdog": {
+        "device": "/dev/watchdog0",
+        "identity": "Apple SoC Watchdog",
+        "timeout_seconds": 60,
+        "initial_timeleft_seconds": 59,
+        "periodic_keepalive": false,
+        "armed": true,
+        "ssh_broker_lease": true
+      },
+      "thermal": {
+        "startup_limit_mc": 65000,
+        "stop_limit_mc": 75000,
+        "interval_seconds": 0.5,
+        "samples": 21,
+        "sync_interval_seconds": 5,
+        "peak_temperatures_mc": {
+          "PMP aggregate die hotspot": 58500,
+          "Ta000m": 57000,
+          "Te000m": 55750,
+          "Te001m": 54500,
+          "Tp000m": 58500,
+          "Tp001m": 54500
+        },
+        "failure": null,
+        "dedicated_gpu_sensor_verified": false,
+        "log": "temperatures.jsonl",
+        "cpu_frequency_caps": [
+          {
+            "policy": "policy0",
+            "old_min_khz": 912000,
+            "old_max_khz": 1800000,
+            "max_khz": 1800000
+          },
+          {
+            "policy": "policy1",
+            "old_min_khz": 900000,
+            "old_max_khz": 1860000,
+            "max_khz": 1860000
+          }
+        ]
+      }
+    },
+    {
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T182906317179Z-random-1000-834",
+      "verdict": "pass",
+      "peak_temperature_c": 58.5,
+      "boot_id": "8a91403f-78b2-4bd1-a395-b4602f6f6d2b",
+      "watchdog": {
+        "device": "/dev/watchdog0",
+        "identity": "Apple SoC Watchdog",
+        "timeout_seconds": 60,
+        "initial_timeleft_seconds": 59,
+        "periodic_keepalive": false,
+        "armed": true,
+        "ssh_broker_lease": true
+      },
+      "thermal": {
+        "startup_limit_mc": 65000,
+        "stop_limit_mc": 75000,
+        "interval_seconds": 0.5,
+        "samples": 10,
+        "sync_interval_seconds": 5,
+        "peak_temperatures_mc": {
+          "PMP aggregate die hotspot": 58500,
+          "Ta000m": 56250,
+          "Te000m": 56000,
+          "Te001m": 54500,
+          "Tp000m": 58500,
+          "Tp001m": 54250
+        },
+        "failure": null,
+        "dedicated_gpu_sensor_verified": false,
+        "log": "temperatures.jsonl",
+        "cpu_frequency_caps": [
+          {
+            "policy": "policy0",
+            "old_min_khz": 912000,
+            "old_max_khz": 1800000,
+            "max_khz": 1800000
+          },
+          {
+            "policy": "policy1",
+            "old_min_khz": 900000,
+            "old_max_khz": 1860000,
+            "max_khz": 1860000
+          }
+        ]
+      }
+    },
+    {
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T182913825437Z-random-1000-849",
+      "verdict": "pass",
+      "peak_temperature_c": 58.75,
+      "boot_id": "8a91403f-78b2-4bd1-a395-b4602f6f6d2b",
+      "watchdog": {
+        "device": "/dev/watchdog0",
+        "identity": "Apple SoC Watchdog",
+        "timeout_seconds": 60,
+        "initial_timeleft_seconds": 59,
+        "periodic_keepalive": false,
+        "armed": true,
+        "ssh_broker_lease": true
+      },
+      "thermal": {
+        "startup_limit_mc": 65000,
+        "stop_limit_mc": 75000,
+        "interval_seconds": 0.5,
+        "samples": 22,
+        "sync_interval_seconds": 5,
+        "peak_temperatures_mc": {
+          "PMP aggregate die hotspot": 58750,
+          "Ta000m": 56500,
+          "Te000m": 56000,
+          "Te001m": 54500,
+          "Tp000m": 58750,
+          "Tp001m": 54250
+        },
+        "failure": null,
+        "dedicated_gpu_sensor_verified": false,
+        "log": "temperatures.jsonl",
+        "cpu_frequency_caps": [
+          {
+            "policy": "policy0",
+            "old_min_khz": 912000,
+            "old_max_khz": 1800000,
+            "max_khz": 1800000
+          },
+          {
+            "policy": "policy1",
+            "old_min_khz": 900000,
+            "old_max_khz": 1860000,
+            "max_khz": 1860000
+          }
+        ]
+      }
+    },
+    {
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T182926698955Z-random-1000-876",
+      "verdict": "api_error",
+      "peak_temperature_c": 58.75,
+      "boot_id": "8a91403f-78b2-4bd1-a395-b4602f6f6d2b",
+      "watchdog": {
+        "device": "/dev/watchdog0",
+        "identity": "Apple SoC Watchdog",
+        "timeout_seconds": 60,
+        "initial_timeleft_seconds": 59,
+        "periodic_keepalive": false,
+        "armed": true,
+        "ssh_broker_lease": true
+      },
+      "thermal": {
+        "startup_limit_mc": 65000,
+        "stop_limit_mc": 75000,
+        "interval_seconds": 0.5,
+        "samples": 21,
+        "sync_interval_seconds": 5,
+        "peak_temperatures_mc": {
+          "PMP aggregate die hotspot": 58750,
+          "Ta000m": 56750,
+          "Te000m": 56250,
+          "Te001m": 54500,
+          "Tp000m": 58750,
+          "Tp001m": 54500
+        },
+        "failure": null,
+        "dedicated_gpu_sensor_verified": false,
+        "log": "temperatures.jsonl",
+        "cpu_frequency_caps": [
+          {
+            "policy": "policy0",
+            "old_min_khz": 912000,
+            "old_max_khz": 1800000,
+            "max_khz": 1800000
+          },
+          {
+            "policy": "policy1",
+            "old_min_khz": 900000,
+            "old_max_khz": 1860000,
+            "max_khz": 1860000
+          }
+        ]
+      }
+    },
+    {
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T182939041715Z-random-1000-910",
+      "verdict": "pass",
+      "peak_temperature_c": 58.75,
+      "boot_id": "8a91403f-78b2-4bd1-a395-b4602f6f6d2b",
+      "watchdog": {
+        "device": "/dev/watchdog0",
+        "identity": "Apple SoC Watchdog",
+        "timeout_seconds": 60,
+        "initial_timeleft_seconds": 59,
+        "periodic_keepalive": false,
+        "armed": true,
+        "ssh_broker_lease": true
+      },
+      "thermal": {
+        "startup_limit_mc": 65000,
+        "stop_limit_mc": 75000,
+        "interval_seconds": 0.5,
+        "samples": 21,
+        "sync_interval_seconds": 5,
+        "peak_temperatures_mc": {
+          "PMP aggregate die hotspot": 58750,
+          "Ta000m": 56750,
+          "Te000m": 56000,
+          "Te001m": 54500,
+          "Tp000m": 58750,
+          "Tp001m": 54500
+        },
+        "failure": null,
+        "dedicated_gpu_sensor_verified": false,
+        "log": "temperatures.jsonl",
+        "cpu_frequency_caps": [
+          {
+            "policy": "policy0",
+            "old_min_khz": 912000,
+            "old_max_khz": 1800000,
+            "max_khz": 1800000
+          },
+          {
+            "policy": "policy1",
+            "old_min_khz": 900000,
+            "old_max_khz": 1860000,
+            "max_khz": 1860000
+          }
+        ]
+      }
+    },
+    {
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T182951564713Z-random-1000-941",
+      "verdict": "pass",
+      "peak_temperature_c": 59.0,
+      "boot_id": "8a91403f-78b2-4bd1-a395-b4602f6f6d2b",
+      "watchdog": {
+        "device": "/dev/watchdog0",
+        "identity": "Apple SoC Watchdog",
+        "timeout_seconds": 60,
+        "initial_timeleft_seconds": 59,
+        "periodic_keepalive": false,
+        "armed": true,
+        "ssh_broker_lease": true
+      },
+      "thermal": {
+        "startup_limit_mc": 65000,
+        "stop_limit_mc": 75000,
+        "interval_seconds": 0.5,
+        "samples": 21,
+        "sync_interval_seconds": 5,
+        "peak_temperatures_mc": {
+          "PMP aggregate die hotspot": 59000,
+          "Ta000m": 56750,
+          "Te000m": 56000,
+          "Te001m": 55000,
+          "Tp000m": 59000,
+          "Tp001m": 55000
+        },
+        "failure": null,
+        "dedicated_gpu_sensor_verified": false,
+        "log": "temperatures.jsonl",
+        "cpu_frequency_caps": [
+          {
+            "policy": "policy0",
+            "old_min_khz": 912000,
+            "old_max_khz": 1800000,
+            "max_khz": 1800000
+          },
+          {
+            "policy": "policy1",
+            "old_min_khz": 900000,
+            "old_max_khz": 1860000,
+            "max_khz": 1860000
+          }
+        ]
+      }
+    },
+    {
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T183003875978Z-random-1000-967",
+      "verdict": "api_error",
+      "peak_temperature_c": 58.75,
+      "boot_id": "8a91403f-78b2-4bd1-a395-b4602f6f6d2b",
+      "watchdog": {
+        "device": "/dev/watchdog0",
+        "identity": "Apple SoC Watchdog",
+        "timeout_seconds": 60,
+        "initial_timeleft_seconds": 59,
+        "periodic_keepalive": false,
+        "armed": true,
+        "ssh_broker_lease": true
+      },
+      "thermal": {
+        "startup_limit_mc": 65000,
+        "stop_limit_mc": 75000,
+        "interval_seconds": 0.5,
+        "samples": 20,
+        "sync_interval_seconds": 5,
+        "peak_temperatures_mc": {
+          "PMP aggregate die hotspot": 58750,
+          "Ta000m": 56750,
+          "Te000m": 55750,
+          "Te001m": 54500,
+          "Tp000m": 58750,
+          "Tp001m": 54250
+        },
+        "failure": null,
+        "dedicated_gpu_sensor_verified": false,
+        "log": "temperatures.jsonl",
+        "cpu_frequency_caps": [
+          {
+            "policy": "policy0",
+            "old_min_khz": 912000,
+            "old_max_khz": 1800000,
+            "max_khz": 1800000
+          },
+          {
+            "policy": "policy1",
+            "old_min_khz": 900000,
+            "old_max_khz": 1860000,
+            "max_khz": 1860000
+          }
+        ]
+      }
+    }
+  ],
+  "peak_temperature_c": 59.0
+}

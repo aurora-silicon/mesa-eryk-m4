@@ -23,3 +23,36 @@ Keep process crashes and device-loss/recovery events visible; retain every
 first-attempt outcome and continue only after inspecting/recovering the target.
 
 The result is a random-sample measurement, not full Vulkan conformance.
+
+## Completed first-attempt results
+
+| Outcome | Count | Rate |
+| --- | ---: | ---: |
+| Pass | 800 | 80.0% |
+| NotSupported | 151 | 15.1% |
+| Fail | 47 | 4.7% |
+| Process crash | 2 | 0.2% |
+| Timeout / unrun | 0 | 0.0% |
+
+All 1,000 distinct cases completed, exactly once, with no resampling or driver
+changes. Excluding the 151 unsupported cases gives **800/849 = 94.23%** passes.
+Failures plus process crashes total 49/1,000 (4.9%).
+
+One of the 47 failures (index 6, indexed indirect line drawing) caused a GPU
+firmware fault and guarded reboot. The fault snapshot and first-attempt result
+were retained, and the next case ran after verified recovery. Index 9 returned
+DEVICE_LOST for submit EINVAL without a GPU fault; later jobs retired normally.
+Both process crashes (indices 0 and 848) are render-pass input-attachment-index
+assertions. These are observed failure signatures, not a claim that all failures
+are driver bugs: the historical CTS can also generate invalid API use.
+
+The 35 guarded batches used two boot IDs, with identical installed software
+and guard hashes throughout. Peak recorded temperature: **59 C**. The host
+heartbeat remains running, the target watchdog is idle/armed at 60 seconds,
+and sddm is active and enabled following the final batch.
+
+`results.json` retains every outcome; `summary.json` includes rates, category
+counts, exact identities and all evidence paths. `failures.tsv` lists the
+49 failure/crash cases for direct reproduction. `recovery-notes.json` records
+the inspection decisions between interrupted segments. Every QPA/stdout and
+compiler failure bundle remains in the referenced workspace evidence tree.

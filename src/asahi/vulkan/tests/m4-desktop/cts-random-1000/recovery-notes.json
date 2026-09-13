@@ -1,0 +1,26 @@
+[
+  {
+    "after_index": 0,
+    "type": "userspace_abort",
+    "evidence": "20260913T182040502586Z-random-1000-000",
+    "action": "Input attachment index assertion; guard complete, watchdog idle, no kernel GPU fault. Continue at 1."
+  },
+  {
+    "after_index": 6,
+    "type": "gpu_fault_reboot",
+    "evidence": "20260913T182113307610Z-random-1000-001",
+    "action": "Guard saved firmware fault snapshot and requested reboot. Boot changed from 477be8cf-4c23-4bd1-8e4c-aee9d134fd21 to 8a91403f-78b2-4bd1-a395-b4602f6f6d2b; 60-second watchdog idle, sddm active. Continue at 7."
+  },
+  {
+    "after_index": 9,
+    "type": "submission_validation_error",
+    "evidence": "20260913T182255298243Z-random-1000-007",
+    "action": "Submit EINVAL mapped to VK_ERROR_DEVICE_LOST. Guard api_error, no firmware fault; later job51 retired. No reboot needed; continue at 10."
+  },
+  {
+    "after_index": 848,
+    "type": "userspace_abort",
+    "evidence": "20260913T182906317179Z-random-1000-834",
+    "action": "Same inputAttachmentIndex assertion as index0; guard completed, no GPU reset. Continued next batch under existing inspected process-crash policy."
+  }
+]
