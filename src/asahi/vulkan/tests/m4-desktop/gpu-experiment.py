@@ -161,9 +161,11 @@ for name in files:
     p = pathlib.Path(name)
     if p.is_absolute() and p.is_file():
         hashes[name] = hashlib.sha256(p.read_bytes()).hexdigest()
+display_status = {str(p): p.read_text() for p in
+                  {p.resolve() for p in pathlib.Path('/sys/kernel/debug/dri').glob('*/m4_status')}}
 print(json.dumps(dict(boot_id=pathlib.Path('/proc/sys/kernel/random/boot_id').read_text().strip(),
     uptime_seconds=float(pathlib.Path('/proc/uptime').read_text().split()[0]),
-    kernel=os.uname().release, files=hashes)))
+    kernel=os.uname().release, files=hashes, display_status=display_status)))
 """
     facts = json.loads(subprocess.check_output(
         SSH + [shlex.join(["python3", "-c", script, *argv])], timeout=30))

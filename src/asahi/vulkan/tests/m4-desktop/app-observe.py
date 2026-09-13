@@ -21,6 +21,13 @@ spec=importlib.util.spec_from_file_location('fw',Path(__file__).with_name('firmw
 boot=Path('/proc/sys/kernel/random/boot_id').read_text().strip()
 def check():fw.check_guard(a.guard_output,boot)
 check();out=a.guard_output/'application';out.mkdir()
+display_status={str(p):p.read_text() for p in
+                {p.resolve() for p in Path('/sys/kernel/debug/dri').glob('*/m4_status')}}
+(out/'display-before.json').write_text(json.dumps(display_status,indent=2)+'\n')
+for status in display_status.values():
+    fields=dict(line.split(maxsplit=1) for line in status.splitlines() if ' ' in line)
+    if int(fields.get('failed','0')):
+        raise RuntimeError('DCP has a prior failed flip; recover display output before a live application test')
 user=pwd.getpwnam('e');runtime=Path('/run/user')/str(user.pw_uid)
 sockets=[f for f in runtime.glob('wayland-*') if stat.S_ISSOCK(f.stat().st_mode)];assert len(sockets)==1
 scratch=Path(user.pw_dir)/'.cache/m4-app-probes'/a.guard_output.name;scratch.mkdir(parents=True)

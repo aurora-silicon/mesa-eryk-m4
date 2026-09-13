@@ -396,3 +396,11 @@ one byte; later comparison traces incorrect panel inputs back into the overlay
 passes. Five earlier apps and GNOME retain their prior qualification boundaries;
 Blender is not yet visually correct. The unchanged nine-frame capture completes
 on M4 in5.29s after the replay presentation-fence fix (234038, peak56.25 C).
+
+Live application probes now check the retained native DCP failed-flip counter
+before launching, and every experiment records pre-existing display status.
+The hourly unhandled D114 callback (4164/4100 bytes) failed the display during
+offscreen compiler tests while GPU retirement continued; this is a separate
+known display issue, not a GPU test success or an inferred idle/DPMS state.
+Evidence is retained in `_provenance/dcp-20260913`; recovery reboot requested
+at00:12 UTC. The display-manager boot policy is unchanged.
