@@ -2266,10 +2266,10 @@ static bool
 hk_native_copy_raw_image(struct hk_cmd_buffer *cmd, struct hk_image *src,
                          struct hk_image *dst, const VkCopyImageInfo2 *info)
 {
-   if (src->vk.image_type != VK_IMAGE_TYPE_2D ||
-       dst->vk.image_type != VK_IMAGE_TYPE_2D || src->vk.samples != 1 ||
+   if (src->vk.image_type != dst->vk.image_type || src->vk.samples != 1 ||
        dst->vk.samples != 1)
       return false;
+   const bool is_3d = src->vk.image_type == VK_IMAGE_TYPE_3D;
 
    for (unsigned r = 0; r < info->regionCount; r++) {
       const VkImageCopy2 *region = &info->pRegions[r];
@@ -2303,8 +2303,7 @@ hk_native_copy_raw_image(struct hk_cmd_buffer *cmd, struct hk_image *src,
           layers > src->vk.array_layers - ss->baseArrayLayer ||
           ds->baseArrayLayer >= dst->vk.array_layers ||
           layers > dst->vk.array_layers - ds->baseArrayLayer ||
-          region->srcOffset.z ||
-          region->dstOffset.z || region->extent.depth != 1 ||
+          region->srcOffset.z < 0 || region->dstOffset.z < 0 ||
           region->srcOffset.x < 0 || region->srcOffset.y < 0 ||
           region->dstOffset.x < 0 || region->dstOffset.y < 0 ||
           (region->srcOffset.x % block_w) || (region->srcOffset.y % block_h) ||
@@ -2317,7 +2316,16 @@ hk_native_copy_raw_image(struct hk_cmd_buffer *cmd, struct hk_image *src,
       const unsigned sx = region->srcOffset.x, sy = region->srcOffset.y;
       const unsigned dx = region->dstOffset.x, dy = region->dstOffset.y;
       const unsigned w = region->extent.width, h = region->extent.height;
+      const unsigned sz = region->srcOffset.z, dz = region->dstOffset.z;
+      const unsigned depth = region->extent.depth;
+      const unsigned sd = u_minify(src->vk.extent.depth, sm);
+      const unsigned dd = u_minify(dst->vk.extent.depth, dm);
       if (!w || !h || sx >= sw || sy >= sh || dx >= dw || dy >= dh ||
+          !depth ||
+          (is_3d ? (layers != 1 || sz >= sd || dz >= dd ||
+                    depth > sd - sz || depth > dd - dz)
+                 : (sz != 0 || dz != 0 || depth != 1)) ||
+          (src->vk.image_type == VK_IMAGE_TYPE_1D && (sy || dy || h != 1)) ||
           w > sw - sx || h > sh - sy || w > dw - dx || h > dh - dy ||
           ((w % block_w) && (sx + w != sw || dx + w != dw)) ||
           ((h % block_h) && (sy + h != sh || dy + h != dh)))
@@ -2330,12 +2338,15 @@ hk_native_copy_raw_image(struct hk_cmd_buffer *cmd, struct hk_image *src,
          .dst_tile_log2_w = hk_native_copy_tile_log2(dl, dm, false),
          .dst_tile_log2_h = hk_native_copy_tile_log2(dl, dm, true),
       };
-      for (unsigned layer = 0; layer < layers; layer++) {
+      const unsigned slices = is_3d ? depth : layers;
+      const unsigned src_slice = is_3d ? sz : ss->baseArrayLayer;
+      const unsigned dst_slice = is_3d ? dz : ds->baseArrayLayer;
+      for (unsigned layer = 0; layer < slices; layer++) {
          const struct hk_block_copy_push push = {
             .src = hk_image_base_address(src, sp) +
-                   ail_get_layer_level_B(sl, ss->baseArrayLayer + layer, sm),
+                   ail_get_layer_level_B(sl, src_slice + layer, sm),
             .dst = hk_image_base_address(dst, dp) +
-                   ail_get_layer_level_B(dl, ds->baseArrayLayer + layer, dm),
+                   ail_get_layer_level_B(dl, dst_slice + layer, dm),
             .src_stride = hk_native_copy_stride(sl, sm),
             .dst_stride = hk_native_copy_stride(dl, dm),
             .src_x = region->srcOffset.x / block_w,
@@ -2550,7 +2561,9 @@ hk_CmdCopyImage2(VkCommandBuffer commandBuffer,
    VK_FROM_HANDLE(hk_image, dst_image, pCopyImageInfo->dstImage);
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
    if (agx_native_graphics(&dev->dev) &&
-       (vk_format_get_plane_count(src_image->vk.format) > 1 ||
+       (src_image->vk.image_type != VK_IMAGE_TYPE_2D ||
+        dst_image->vk.image_type != VK_IMAGE_TYPE_2D ||
+        vk_format_get_plane_count(src_image->vk.format) > 1 ||
         vk_format_get_plane_count(dst_image->vk.format) > 1 ||
         vk_format_is_compressed(src_image->vk.format) ||
         vk_format_is_compressed(dst_image->vk.format) ||

@@ -262,3 +262,16 @@ integer-vector control reaches a separate block_image_store refusal, bundle
 1a8fccb9... retained. Full guards; installed library
 046aa4dbd7aad5b2371ce9e5daebc42917d53ed6de57571c943c6aaffdf4c7e0.
 This follow-up is outside the fixed100-case total. Kernel unchanged.
+
+Next random sample:20 cases, seed20260914, same original233795-case population
+and sampling method. Selection retained in build/cts-fixes/sample-20260914.
+20260913T122235277224Z-cts-next-20-000:11Pass,6NotSupported,3Fail,0Crash.
+Repeated random failure order12,19,3 retained in next-20-fix-order.json.
+First selection12 was a cross-instance3D copy rejected by the2D graphics-copy
+path. Use raw GPU copies for1D and3D images, preserving per-mip/per-slice layout
+and validating source/destination extents. 20260913T122416700043Z-
+cts-cross-instance-3d-copy:Pass, peak59.25 C. Earlier1D image-copy control also
+Pass:20260913T122512368139Z-cts-raw-1d-image-copy. Full guards, library
+3c8e213536fa89bf3c49df4730caee81c3721389a8b6c0c835f1180092e146d6.
+Copying between different image types remains a separate unsupported path.
+Kernel unchanged; copy data stays on the GPU.
