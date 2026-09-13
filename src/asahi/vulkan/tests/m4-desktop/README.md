@@ -2085,3 +2085,7 @@ accepts llvmpipe only with `M4_TEST_LLVMPIPE=1`.
 `macos-native/pbe-state.py --kind 3 --depth N --layer-stride B` extends the
 pinned offline constructor witness to volume descriptors. Requires Unicorn;
 executes no GPU commands and does not establish hardware correctness itself.
+
+`compiler-corpus.py CAPTURE/compiler --output NEW_DIRECTORY` batches the
+existing offline compiler replay with per-input hashes, source patches and a
+short failure index. No GPU execution; compilation is not rendering proof.
