@@ -211,3 +211,12 @@ Build with the same Foundation/Metal clang command above. Stage the executable,
 Metal source and native-common.h alongside the existing collector. This probe
 was compile-checked on macOS and its AIR-NT pipeline compiled for G16G; native
 M4 execution is still pending as of 2026-09-13 05:32 UTC.
+
+20260913T055736Z native depth128x128x4 passes two exact65536-value readbacks.
+Add `--color` to run RGBA32Float layered color (same executable/source);
+055829 passes two exact262144-component readbacks. Both retain full encoded
+resources and firmware ktrace. Finite active captures055901(depth1024x1024,
+256passes) and055957(color128x128,256passes) retain validated command/SKU
+state. Native four-layer RunFragment+0x50 is1, not4; do not infer its meaning
+from single-layer records. Compiler type3 EOT emits the same layered header
+and PACK_IMGWIR sequence observed in the working native color capture.

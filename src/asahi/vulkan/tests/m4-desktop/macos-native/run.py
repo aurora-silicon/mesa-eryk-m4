@@ -5,6 +5,7 @@ import argparse, datetime, json, pathlib, shlex, subprocess, tarfile
 p = argparse.ArgumentParser(description=__doc__)
 p.add_argument('kind', choices=['fill', 'fragment', 'multisample', 'image-array', 'layer-depth'])
 p.add_argument('--capture', action='store_true')
+p.add_argument('--color', action='store_true', help='Layer-depth probe: render RGBA32Float instead of depth')
 p.add_argument('--firmware-trace', action='store_true', help='Enable bounded native ktrace firmware subclasses 0x8590..0x8599')
 p.add_argument('--active', action='store_true')
 p.add_argument('--render-active', action='store_true', help='Capture finite repeated render passes without a compute dwell')
@@ -18,6 +19,7 @@ p.add_argument('--resolve-compute', action='store_true')
 p.add_argument('--workspace-root', type=pathlib.Path)
 p.add_argument('--host', default='root@mac-m4')
 a = p.parse_args()
+if a.color and a.kind != 'layer-depth': p.error('--color requires layer-depth')
 if a.width is None: a.width = 8 if a.kind == "image-array" else 1024
 if (a.kind == "image-array") != (a.width in (8, 32)):
     p.error("image-array widths are 8/32; other probes use 128/1024")
@@ -33,7 +35,7 @@ root = (a.workspace_root or pathlib.Path(__file__).resolve().parents[2]).resolve
 remote = '/private/var/tmp/m4-native-traces-20260910'
 name = datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ-') + a.kind
 if a.kind == 'image-array': name += f'-{a.width}'
-if a.kind == 'layer-depth': name += f'-{a.width}-layers{a.layers}'
+if a.kind == 'layer-depth': name += f'-{a.width}-layers{a.layers}' + ('-color' if a.color else '')
 if a.kind == 'fragment': name += f'-{a.width}-loop{a.iterations}'
 if a.kind == 'multisample': name += f'-{a.width}-samples{a.samples}-mask{a.mask:x}'
 name += f'-repeat{a.repeat}' if a.repeat != 1 else ''
@@ -46,6 +48,7 @@ probe = [remote + '/' + a.kind + '-probe', '--source', remote + '/' +
          ({'fill':'fill.metal','fragment':'fragment-loop.metal','multisample':'multisample.metal','image-array':'image-array.metal','layer-depth':'layer-depth.metal'}[a.kind]),
          '--output', remote + '/' + name + '-pixels']
 if a.kind == 'layer-depth': probe += ['--width',str(a.width),'--layers',str(a.layers),'--repeat',str(a.repeat)]
+if a.color: probe += ['--color']
 if a.kind == 'image-array': probe += ['--width', str(a.width)]
 if a.kind == 'fragment': probe += ['--width', str(a.width), '--iterations', str(a.iterations), '--repeat', str(a.repeat)]
 if a.kind == 'multisample': probe += ['--width',str(a.width),'--samples',str(a.samples),'--mask',str(a.mask),'--repeat',str(a.repeat)]
@@ -54,7 +57,7 @@ command = probe
 if a.capture:
     command = ['python3', remote + '/g16state.py', '--probe', probe[0],
                '--output', remote + '/' + name, '--expected-output-bytes',
-               str(4194304 if a.kind in ('fill','image-array') else a.width * a.width * 4 * (a.layers if a.kind == 'layer-depth' else 1)),
+               str(4194304 if a.kind in ('fill','image-array') else a.width * a.width * 4 * (a.layers * (4 if a.color else 1) if a.kind == 'layer-depth' else 1)),
                '--capture-physical-gpu-state', '--probe-args'] + probe[1:] + [
                '--workload', 'compute-direct' if a.kind in ('fill','image-array') else 'render-draw', '--gate-submit']
     if a.active: command += ['--gate-shader']

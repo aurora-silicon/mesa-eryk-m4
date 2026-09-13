@@ -16,8 +16,9 @@ int main(int argc, const char **argv)
     @autoreleasepool {
         NSString *sourcePath=nil, *outputPath=nil, *pausePath=nil;
         unsigned layers=4, width=128, repeats=1;
-        bool gate=false, capture=false;
+        bool gate=false, capture=false, color=false;
         for (int i=1; i<argc; ++i) {
+            if (!strcmp(argv[i],"--color")) { color=true; continue; }
             if (!strcmp(argv[i],"--gate-submit")) { gate=true; continue; }
             if (!strcmp(argv[i],"--capture-render")) { capture=true; continue; }
             CHECK(i+1<argc);
@@ -52,9 +53,11 @@ int main(int argc, const char **argv)
         if (!library) fprintf(stderr,"%s\n",error.description.UTF8String);
         CHECK(library);
         MTLRenderPipelineDescriptor *pd=[MTLRenderPipelineDescriptor new];
-        pd.vertexFunction=[library newFunctionWithName:@"vs"];
-        pd.fragmentFunction=[library newFunctionWithName:@"fs"];
-        pd.depthAttachmentPixelFormat=MTLPixelFormatDepth32Float;
+        pd.inputPrimitiveTopology=MTLPrimitiveTopologyClassTriangle;
+        pd.vertexFunction=[library newFunctionWithName:color?@"vs_color":@"vs"];
+        pd.fragmentFunction=[library newFunctionWithName:color?@"fs_color":@"fs"];
+        if (color) pd.colorAttachments[0].pixelFormat=MTLPixelFormatRGBA32Float;
+        else pd.depthAttachmentPixelFormat=MTLPixelFormatDepth32Float;
         id<MTLRenderPipelineState> pipeline=[device newRenderPipelineStateWithDescriptor:pd error:&error];
         if (!pipeline) fprintf(stderr,"%s\n",error.description.UTF8String);
         CHECK(pipeline);
@@ -62,13 +65,14 @@ int main(int argc, const char **argv)
         MTLDepthStencilDescriptor *ds=[MTLDepthStencilDescriptor new];
         ds.depthCompareFunction=MTLCompareFunctionAlways; ds.depthWriteEnabled=YES;
         id<MTLDepthStencilState> depthState=[device newDepthStencilStateWithDescriptor:ds];CHECK(depthState);
-        MTLTextureDescriptor *td=[MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatDepth32Float width:width height:width mipmapped:NO];
+        MTLTextureDescriptor *td=[MTLTextureDescriptor texture2DDescriptorWithPixelFormat:(color?MTLPixelFormatRGBA32Float:MTLPixelFormatDepth32Float) width:width height:width mipmapped:NO];
         td.textureType=MTLTextureType2DArray;td.arrayLength=layers;
         td.storageMode=MTLStorageModePrivate;td.usage=MTLTextureUsageRenderTarget|MTLTextureUsageShaderRead;
         id<MTLTexture> target=[device newTextureWithDescriptor:td]; CHECK(target);
         id<MTLSharedEvent> event=gate ? [device newSharedEvent] : nil;
         CHECK(!gate || event);
-        size_t sliceBytes=(size_t)width*width*4, bytes=sliceBytes*layers;
+        unsigned components=color?4:1;
+        size_t sliceBytes=(size_t)width*width*4*components, bytes=sliceBytes*layers;
         // Collector contract: the exact-size shared output is the last GPU allocation.
         id<MTLBuffer> output=[device newBufferWithLength:bytes options:MTLResourceStorageModeShared]; CHECK(output);
         memset(output.contents,0xa5,bytes);
@@ -78,20 +82,27 @@ int main(int argc, const char **argv)
         if (gate) [command encodeWaitForEvent:event value:1];
         MTLRenderPassDescriptor *pass=[MTLRenderPassDescriptor renderPassDescriptor];
         pass.renderTargetArrayLength=layers;
+        if (color) {
+            pass.colorAttachments[0].texture=target;
+            pass.colorAttachments[0].loadAction=MTLLoadActionClear;
+            pass.colorAttachments[0].clearColor=MTLClearColorMake(1,0,0,1);
+            pass.colorAttachments[0].storeAction=MTLStoreActionStore;
+        } else {
         pass.depthAttachment.texture=target;
         pass.depthAttachment.loadAction=MTLLoadActionClear;
         pass.depthAttachment.clearDepth=1.;
         pass.depthAttachment.storeAction=MTLStoreActionStore;
+        }
         for(unsigned frame=0;frame<repeats;frame++) {
             id<MTLRenderCommandEncoder> enc=[command renderCommandEncoderWithDescriptor:pass];CHECK(enc);
             enc.label=[NSString stringWithFormat:@"M4 depth layers%u frame%u",layers,frame];
-            [enc setRenderPipelineState:pipeline];[enc setDepthStencilState:depthState];
+            [enc setRenderPipelineState:pipeline];if (!color) [enc setDepthStencilState:depthState];
             [enc drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3 instanceCount:layers];
             [enc endEncoding];
         }
         id<MTLBlitCommandEncoder> blit=[command blitCommandEncoder];CHECK(blit);
         for(unsigned layer=0;layer<layers;layer++)
-            [blit copyFromTexture:target sourceSlice:layer sourceLevel:0 sourceOrigin:MTLOriginMake(0,0,0) sourceSize:MTLSizeMake(width,width,1) toBuffer:output destinationOffset:layer*sliceBytes destinationBytesPerRow:width*4 destinationBytesPerImage:sliceBytes];
+            [blit copyFromTexture:target sourceSlice:layer sourceLevel:0 sourceOrigin:MTLOriginMake(0,0,0) sourceSize:MTLSizeMake(width,width,1) toBuffer:output destinationOffset:layer*sliceBytes destinationBytesPerRow:width*4*components destinationBytesPerImage:sliceBytes];
         [blit endEncoding];
         stage(pausePath,@"encoded",@"submit");
         double submit=now(); [command commit]; stage(pausePath,@"submitted",@"execute");
@@ -106,20 +117,21 @@ int main(int argc, const char **argv)
         unsigned total=0;
         for(unsigned read=0;read<2;read++) {
             const volatile float *pixels=output.contents;unsigned bad=0;
-            for(unsigned layer=0;layer<layers;layer++) for(unsigned i=0;i<width*width;i++) {
-                float value=pixels[layer*width*width+i];
-                if(value!=layer*.25f) {
-                    if(bad<4) fprintf(stderr,"layer%u pixel%u=%g expected%g\n",layer,i,value,layer*.25f);
+            for(unsigned layer=0;layer<layers;layer++) for(unsigned i=0;i<width*width*components;i++) {
+                float expected=i%components==0?layer*.25f:(i%components==1?.5f:(i%components==2?.75f:1.f));
+                float value=pixels[layer*width*width*components+i];
+                if(value!=expected) {
+                    if(bad<4) fprintf(stderr,"layer%u component%u=%g expected%g\n",layer,i,value,expected);
                     bad++;
                 }
             }
-            printf("read=%u bad=%u/%u\n",read,bad,layers*width*width);total+=bad;
-            NSString *path=[outputPath stringByAppendingPathComponent:read?@"second.depth32f":@"first.depth32f"];
+            printf("read=%u bad=%u/%u\n",read,bad,layers*width*width*components);total+=bad;
+            NSString *path=[outputPath stringByAppendingPathComponent:color?(read?@"second.rgba32f":@"first.rgba32f"):(read?@"second.depth32f":@"first.depth32f")];
             FILE *f=fopen(path.fileSystemRepresentation,"wbx");CHECK(f&&fwrite(output.contents,1,bytes,f)==bytes&&fclose(f)==0);
             if(!read)usleep(100000);
         }
         printf("submit=%.9f completion=%.9f api_gpu_start_s=%.9f api_gpu_end_s=%.9f\n",submit,complete,command.GPUStartTime,command.GPUEndTime);
-        printf("%s: native layered depth layers=%u incorrect=%u\n",total?"FAIL":"PASS",layers,total); fflush(stdout);
+        printf("%s: native layered %s layers=%u incorrect=%u\n",total?"FAIL":"PASS",color?"color":"depth",layers,total); fflush(stdout);
         stage(pausePath,@"complete",@"exit");
         return total ? 1 : 0;
     }
