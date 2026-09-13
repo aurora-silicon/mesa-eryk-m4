@@ -57,3 +57,13 @@ grid and axis rendering complete in
 The narrow tiled UI still needs a full-width check; this is not Eevee or Cycles
 qualification. The fresh software capture has malformed grid lines that the
 native run does not, so it is not a clean pixel correctness reference.
+
+`blender-wayland-initial-resize.patch` fixes an application-side null dereference
+when the first fullscreen configure arrives before the Vulkan window-info
+allocation. Like EGL, Vulkan now defers its backend resize until allocation;
+the constructor initializes the latest negotiated frame size. The retained
+00:29 crash is in gwl_window_resize_for_backend, not a GPU reset.
+The rebuilt executable SHA256 is
+`447cd64788bde92bdf034aa32d9afc0a8c2c72746f6aee9626bbc1f61a78b4e6`.
+Native fullscreen startup and a timed cube rotation complete in
+`20260913T003232545143Z-blender-native-fullscreen-resize-fixed`, peak57 C.

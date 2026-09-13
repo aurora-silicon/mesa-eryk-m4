@@ -24,7 +24,7 @@ for asset in (source/'assets').rglob('*.blend'):
  assert not prefix.startswith(b'version https://git-lfs.github.com/spec/'),f'Hydrate assets/** with Git LFS: {asset}'
 gcc=list((sysroot/'usr/lib/gcc/aarch64-unknown-linux-gnu').glob('*'))
 assert len(gcc)==1,'Select a sysroot containing one target GCC installation'
-for name in ['blender-linux-cross.patch','blender-wayland-color.patch']:
+for name in ['blender-linux-cross.patch','blender-wayland-color.patch','blender-wayland-initial-resize.patch']:
  patch=Path(__file__).with_name(name).resolve()
  if subprocess.run(['git','-C',str(source),'apply','--reverse','--check',str(patch)],capture_output=True).returncode:
   subprocess.run(['git','-C',str(source),'apply','--check',str(patch)],check=True)

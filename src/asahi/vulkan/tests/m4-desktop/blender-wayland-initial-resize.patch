@@ -1,0 +1,19 @@
+diff --git a/intern/ghost/intern/GHOST_WindowWayland.cc b/intern/ghost/intern/GHOST_WindowWayland.cc
+index 2bcb31ee..9f418e0f 100644
+--- a/intern/ghost/intern/GHOST_WindowWayland.cc
++++ b/intern/ghost/intern/GHOST_WindowWayland.cc
+@@ -434,8 +434,12 @@ static void gwl_window_resize_for_backend(GWL_Window *win, const int32_t size[2]
+      * which is needed in situations where the buffer scale changes
+      * (moving the window to an output with a different scale for e.g.).
+      * Failing to do so can exit with a protocol error, see: #148243. */
+-    win->backend.vulkan_window_info->size[0] = size[0];
+-    win->backend.vulkan_window_info->size[1] = size[1];
++    /* Initial configure events precede backend allocation. The constructor
++     * initializes the backend from the updated frame size afterwards. */
++    if (win->backend.vulkan_window_info) {
++      win->backend.vulkan_window_info->size[0] = size[0];
++      win->backend.vulkan_window_info->size[1] = size[1];
++    }
+   }
+ #endif
+ }
