@@ -34,3 +34,16 @@ stale expectations. ExplicitLodStagingAndLifetime fails both with this change
 and at baseline HEAD3b3a3df7ce7; its baseline log is retained in
 build/cts-fixes/baseline-explicit-lod-test.log. Do not claim the full unit suite
 passes.
+
+Second fix:continuing the same RNG without replacement selects index29,
+`dEQP-VK.binding_model.shader_access.secondary_cmd_buf.uniform_texel_buffer.vertex.single_descriptor.offset_nonzero`.
+Its vertex shader contains register multiply minus immediate1. Generalize the
+existing immediate-multiplier lowering to register multipliers, emitting the
+native pure multiply and subtract-immediate with modulo-2^32 semantics.
+Original compiler bundle6a7a8a01caba15aa0ddfeb33673d8a69ecc0ae7c8bb4d892fd927970a2d20c70
+replays successfully after the fix. End-to-end NIR regression:
+`agx3_graphics_compile_test --imad-negative-only` passes. Native CTS run
+20260913T105408152345Z-cts-negative-imad-fix passes, peak58 C, full guards,
+libraryb1d2fbf56b331f4e9f3518648d5fdb3d533a5ca19621dc3b3cb379746dc04752.
+Normal login and Foot restored after the earlier idle-display recovery:
+/root/asahi-evidence/cts-restore-login-20260913T1054. Kernel unchanged.

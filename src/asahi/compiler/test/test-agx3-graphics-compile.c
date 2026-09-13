@@ -281,6 +281,27 @@ build_vs_flat(void)
 }
 
 static nir_shader *
+build_vs_g16_imad_negative_byte(void)
+{
+   nir_builder b = nir_builder_init_simple_shader(
+      MESA_SHADER_VERTEX, &agx_nir_options, "G16 register multiply minus byte");
+   nir_def *a = nir_load_vertex_id(&b);
+   nir_def *c = nir_load_instance_id(&b);
+   nir_def *product = nir_imul(&b, a, c);
+   nir_def *pos[4] = {
+      nir_i2f32(&b, nir_iadd_imm(&b, product, -1)),
+      nir_i2f32(&b, nir_iadd_imm(&b,
+         nir_imul(&b, a, nir_iadd_imm(&b, c, 1)), -255)),
+      nir_imm_float(&b, 0.0f), nir_imm_float(&b, 1.0f),
+   };
+   for (unsigned i = 0; i < 4; ++i)
+      nir_store_uvs_agx(&b, pos[i], nir_imm_intN_t(&b, i, 16));
+   b.shader->info.outputs_written = VARYING_BIT_POS;
+   agx_preprocess_nir(b.shader);
+   return b.shader;
+}
+
+static nir_shader *
 build_vs_g17p_div3_mul_high(void)
 {
    nir_builder b = nir_builder_init_simple_shader(
@@ -2462,6 +2483,7 @@ struct agx3_graphics_case {
 };
 
 static const struct agx3_graphics_case cases[] = {
+   {"vs-register-multiply-minus-byte", build_vs_g16_imad_negative_byte, true},
    {"vs-flat-triangle", build_vs_flat, true, .expected_leading_sr = 0xdd},
    {"vs-g17p-div3-mul-high", build_vs_g17p_div3_mul_high, true,
     .expected_leading_sr = 0xdd, .g17p_only = true},
@@ -2691,6 +2713,14 @@ test_g17p_half2_varying(void)
 int
 main(int argc, char **argv)
 {
+   if (argc == 2 && !strcmp(argv[1], "--imad-negative-only")) {
+      const struct agx3_graphics_case c = {
+         "vs-register-multiply-minus-byte", build_vs_g16_imad_negative_byte, true,
+      };
+      const bool ok = run_case(&c, AGX_ISA_ENCODING_AGX3B);
+      printf("G16 multiply minus byte: %s\n", ok ? "PASS" : "FAIL");
+      return ok ? 0 : 1;
+   }
    if (argc == 2 && !strcmp(argv[1], "--packed-hdr-only")) {
       const struct agx3_graphics_case c = {
          "fs-packed-hdr-blend", build_fs_packed_hdr_blend, true,
