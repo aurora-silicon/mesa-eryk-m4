@@ -23,3 +23,13 @@ improve this target's result.
 
 Target files: /root/cts-1.0.2.6/linux-cases.txt and
 /root/cts-1.0.2.6/deqp-vk-linux-corrected.
+
+BGR8 UINT follow-up: padded BGRA storage supports sampling and raw transfers;
+BLIT_DST remains unadvertised pending native BGRA integer attachment export.
+Case 91 Pass in 20260913T161629985260Z-cts-padded-bgr-granularity (82 known passes).
+The BGR format was added to the existing CTS sampler oracle without altering
+reference checks: repeat sampling Pass in 20260913T161821590699Z-cts-bgr-sampling-control,
+and opaque-white border sampling Pass in the subsequent cts-bgr-border-control
+experiment. The initial extra border-control name was invalid and selected zero
+tests, not a process or GPU crash; evidence is retained. These added controls
+are separate from the frozen 100-case target.

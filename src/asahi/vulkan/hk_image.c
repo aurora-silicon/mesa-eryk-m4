@@ -70,7 +70,10 @@ hk_get_image_plane_format_features(struct hk_physical_device *pdev,
          if (!util_format_is_pure_integer(padded))
             rgb |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
       }
-      if (ail_pixel_format[padded].renderable)
+      /* Integer BGRA sampling works, but its native attachment export is
+       * not yet qualified. Keep that independent of padded image storage. */
+      if (ail_pixel_format[padded].renderable &&
+          padded != PIPE_FORMAT_B8G8R8A8_UINT)
          rgb |= VK_FORMAT_FEATURE_2_BLIT_DST_BIT;
       return rgb;
    }

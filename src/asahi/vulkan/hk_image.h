@@ -139,6 +139,7 @@ hk_padded_image_format(enum pipe_format format)
    RGB(16, UNORM) RGB(16, SNORM) RGB(16, UINT) RGB(16, SINT) RGB(16, FLOAT)
    RGB(32, UINT) RGB(32, SINT) RGB(32, FLOAT)
 #undef RGB
+   case PIPE_FORMAT_B8G8R8_UINT: return PIPE_FORMAT_B8G8R8A8_UINT;
    default: return format;
    }
 }
