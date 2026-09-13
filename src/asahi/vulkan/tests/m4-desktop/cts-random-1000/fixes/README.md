@@ -17,3 +17,14 @@ with the input-aspect correction expanded. Exact binary hash and restored
 original source/executable checks are in `input-aspects-build.json`.
 Remote binary: `/root/cts-1.0.2.6/deqp-vk-input-aspects`.
 This fixes invalid CTS setup; no Mesa assertion was removed or bypassed.
+
+## Indirect draw GPU reset (baseline index 6)
+
+Fixed a stray PPP selector before consecutive indirect draw commands when no
+new native bind tail was emitted. The direct draw paths already observed this
+framing rule. Both indirect forms now use the same checked emitter.
+
+`20260913T185354613522Z-cts-indirect-framing`: all eight single/multi-command,
+indexed/non-indexed line/triangle cases Pass, including the original reset.
+Launch traces retain the emitted bytes. Host framing/range regression passes;
+maximum monitored temperature 59 C, no GPU fault or recovery.

@@ -1,0 +1,130 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.draw.basic_draw.draw_indirect.line_list.17_single_command",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects",
+      "--deqp-case=dEQP-VK.draw.basic_draw.draw_indirect.line_list.17_single_command",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T185354613522Z-cts-indirect-framing/cts/000/result.qpa"
+    ],
+    "boot_id": "e47102a9-42cd-480a-8918-bfe1840cca56",
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.20826853900001652
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.draw.basic_draw.draw_indirect.line_list.17_multi_command",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects",
+      "--deqp-case=dEQP-VK.draw.basic_draw.draw_indirect.line_list.17_multi_command",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T185354613522Z-cts-indirect-framing/cts/001/result.qpa"
+    ],
+    "boot_id": "e47102a9-42cd-480a-8918-bfe1840cca56",
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.20760434300001407
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.draw.basic_draw.draw_indirect.triangle_list.17_single_command",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects",
+      "--deqp-case=dEQP-VK.draw.basic_draw.draw_indirect.triangle_list.17_single_command",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T185354613522Z-cts-indirect-framing/cts/002/result.qpa"
+    ],
+    "boot_id": "e47102a9-42cd-480a-8918-bfe1840cca56",
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.2079359510000245
+  },
+  {
+    "index": 3,
+    "case": "dEQP-VK.draw.basic_draw.draw_indirect.triangle_list.17_multi_command",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects",
+      "--deqp-case=dEQP-VK.draw.basic_draw.draw_indirect.triangle_list.17_multi_command",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T185354613522Z-cts-indirect-framing/cts/003/result.qpa"
+    ],
+    "boot_id": "e47102a9-42cd-480a-8918-bfe1840cca56",
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.20788589500000398
+  },
+  {
+    "index": 4,
+    "case": "dEQP-VK.draw.basic_draw.draw_indexed_indirect.line_list.17_single_command",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects",
+      "--deqp-case=dEQP-VK.draw.basic_draw.draw_indexed_indirect.line_list.17_single_command",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T185354613522Z-cts-indirect-framing/cts/004/result.qpa"
+    ],
+    "boot_id": "e47102a9-42cd-480a-8918-bfe1840cca56",
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.20793344999998453
+  },
+  {
+    "index": 5,
+    "case": "dEQP-VK.draw.basic_draw.draw_indexed_indirect.line_list.17_multi_command",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects",
+      "--deqp-case=dEQP-VK.draw.basic_draw.draw_indexed_indirect.line_list.17_multi_command",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T185354613522Z-cts-indirect-framing/cts/005/result.qpa"
+    ],
+    "boot_id": "e47102a9-42cd-480a-8918-bfe1840cca56",
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.2080957269999999
+  },
+  {
+    "index": 6,
+    "case": "dEQP-VK.draw.basic_draw.draw_indexed_indirect.triangle_list.17_single_command",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects",
+      "--deqp-case=dEQP-VK.draw.basic_draw.draw_indexed_indirect.triangle_list.17_single_command",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T185354613522Z-cts-indirect-framing/cts/006/result.qpa"
+    ],
+    "boot_id": "e47102a9-42cd-480a-8918-bfe1840cca56",
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.20777608999998165
+  },
+  {
+    "index": 7,
+    "case": "dEQP-VK.draw.basic_draw.draw_indexed_indirect.triangle_list.17_multi_command",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects",
+      "--deqp-case=dEQP-VK.draw.basic_draw.draw_indexed_indirect.triangle_list.17_multi_command",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T185354613522Z-cts-indirect-framing/cts/007/result.qpa"
+    ],
+    "boot_id": "e47102a9-42cd-480a-8918-bfe1840cca56",
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.2076433430000293
+  }
+]

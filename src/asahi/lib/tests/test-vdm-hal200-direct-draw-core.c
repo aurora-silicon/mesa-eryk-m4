@@ -191,6 +191,34 @@ check_native_indirect(void)
    assert(!memcmp(packed.bytes, nonindexed_expected,
                   sizeof(nonindexed_expected)));
 
+   /* A multi-command indirect draw emits state only before the first draw.
+    * A standalone selector before the second command faults the VDM parser.
+    * Check both packet forms, including unchanged argument-pointer bytes. */
+   const struct agx_vdm_hal200_indirect_draw_fields forms[] = {
+      indexed, nonindexed,
+   };
+   const uint32_t *expected[] = {indexed_expected, nonindexed_expected};
+   for (unsigned i = 0; i < 2; ++i) {
+      uint8_t stream[72];
+      size_t first, second;
+      assert(agx_vdm_hal200_indirect_draw_pack(AGX_CHIP_G16G, &forms[i],
+                                              &packed));
+      assert(agx_vdm_hal200_draw_emit(AGX_CHIP_G16G, packed.bytes,
+                                     packed.length, true, stream,
+                                     sizeof(stream), &first));
+      assert(first == packed.length);
+      assert(!memcmp(stream, expected[i], first));
+      assert(agx_vdm_hal200_draw_emit(AGX_CHIP_G16G, packed.bytes,
+                                     packed.length, false, stream + first,
+                                     sizeof(stream) - first, &second));
+      assert(second == packed.length - 4);
+      assert(!memcmp(stream + first, expected[i] + 1, second));
+      assert(!agx_vdm_hal200_draw_emit(AGX_CHIP_G16G, packed.bytes,
+                                      packed.length, false, stream,
+                                      second - 1, &second));
+      assert(second == 0);
+   }
+
    struct agx_vdm_hal200_indirect_draw_fields bad = indexed;
    bad.draw_state_context_offset |= 1;
    assert(!agx_vdm_hal200_indirect_draw_pack(AGX_CHIP_G17P, &bad, &packed));

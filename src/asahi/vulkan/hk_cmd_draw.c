@@ -5200,14 +5200,23 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
                                               VK_ERROR_FEATURE_NOT_PRESENT);
                   return;
                }
-               memcpy(out, encoded.bytes, encoded.length);
-               cs->current = out + encoded.length;
+               /* The PPP selector belongs to a newly emitted bind tail,
+                * including for consecutive draws from an indirect buffer. */
+               size_t emitted;
+               if (!agx_vdm_hal200_draw_emit(
+                      dev->dev.chip, encoded.bytes, encoded.length,
+                      g17p_native_bind_tail_emitted, out,
+                      (uint8_t *)cs->end - out, &emitted)) {
+                  vk_command_buffer_set_error(&cmd->vk,
+                                              VK_ERROR_FEATURE_NOT_PRESENT);
+                  return;
+               }
+               cs->current = out + emitted;
                if (hk_g17p_launch_trace_enabled())
                   hk_g17p_trace_line(draw.indexed
                                         ? "hal200-indexed-indirect-draw"
                                         : "hal200-indirect-draw",
-                                     draw.b.ptr, encoded.bytes,
-                                     encoded.length);
+                                     draw.b.ptr, out, emitted);
             } else if (draw.indexed) {
                const struct agx_vdm_hal200_indexed_draw_fields fields = {
                   .primitive = (uint8_t)topology,
