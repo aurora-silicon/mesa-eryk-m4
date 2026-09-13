@@ -323,3 +323,10 @@ that dimensionality while retaining format/access and layer bounds checks.
 20260913T123726566876Z-cts-storage-cube-control: non-array cube control Pass.
 Final library edc41bae6143f237caadb9c8f033327b69cc6300883031e320c30e23bab3a381.
 Full watchdog and thermal guards; kernel unchanged.
+
+Fourth sample selection 1: use raw GPU copies for single-sample color format
+reinterpretation. CopyImage need not render either source/destination format.
+20260913T123808979318Z-cts-format-reinterpret-copy: original packed-format
+case Pass. 20260913T123837254329Z-cts-format-reinterpret-reverse: reverse Pass.
+Final library 6358680915359a449e756e3d1058fa7cd6f7b3468aa4ceb00acbb97005a69d45.
+Full guards, kernel unchanged. Depth/stencil and multisample selection retained.

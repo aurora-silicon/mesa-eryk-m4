@@ -2563,6 +2563,13 @@ hk_CmdCopyImage2(VkCommandBuffer commandBuffer,
    if (agx_native_graphics(&dev->dev) &&
        (src_image->vk.image_type != VK_IMAGE_TYPE_2D ||
         dst_image->vk.image_type != VK_IMAGE_TYPE_2D ||
+        /* Format reinterpretation copies raw texel bits, including formats
+         * without a native render-target export. */
+        (src_image->vk.format != dst_image->vk.format &&
+         src_image->vk.aspects == VK_IMAGE_ASPECT_COLOR_BIT &&
+         dst_image->vk.aspects == VK_IMAGE_ASPECT_COLOR_BIT &&
+         src_image->vk.samples == VK_SAMPLE_COUNT_1_BIT &&
+         dst_image->vk.samples == VK_SAMPLE_COUNT_1_BIT) ||
         vk_format_get_plane_count(src_image->vk.format) > 1 ||
         vk_format_get_plane_count(dst_image->vk.format) > 1 ||
         vk_format_is_compressed(src_image->vk.format) ||
