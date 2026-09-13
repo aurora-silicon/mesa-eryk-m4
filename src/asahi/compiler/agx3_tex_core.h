@@ -223,7 +223,7 @@ bool agx3_tex_encode_image_write_rgba8_2d(
    uint8_t out[AGX3_IMAGE_WRITE_LENGTH], uint8_t *len);
 
 bool agx3_tex_encode_image_write_indexed_typed(
-   enum agx_isa_encoding enc, uint16_t pointer, bool uniform, bool kill, bool floating, bool three_d, uint16_t staging_base, uint8_t staging_slot,
+   enum agx_isa_encoding enc, uint16_t pointer, bool uniform, bool kill, bool floating, bool three_d, bool array, uint16_t staging_base, uint8_t staging_slot,
    uint8_t out[AGX3_IMAGE_WRITE_LENGTH], uint8_t *len);
 
 bool agx3_tex_encode_image_write_indexed_2d(

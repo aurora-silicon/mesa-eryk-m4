@@ -24,6 +24,7 @@ int main(int argc,char **argv) {
  int fetch=!strcmp(argv[1],"fetch3d"), array=oob||!strcmp(argv[1],"array")||!strcmp(argv[1],"atomic-array");
  int hdr=!strcmp(argv[1],"hdr")||!strcmp(argv[1],"hdr3d");
  int volume=fetch||!strcmp(argv[1],"3d")||!strcmp(argv[1],"hdr3d");
+ int array_half=getenv("M4_TEST_ARRAY_RGBA16F")!=NULL; CHECK(!array_half||(array&&!atomic&&!oob));
  int coord_colors=getenv("M4_TEST_COORD_COLORS")!=NULL; CHECK(!coord_colors||(!strcmp(argv[1],"array")));
  int layer_views=array && getenv("M4_TEST_2D_LAYER_VIEWS"); CHECK(!layer_views||!oob);
  int integer=atomic||!strcmp(argv[1],"uint"), half=!strcmp(argv[1],"half");
@@ -37,7 +38,7 @@ int main(int argc,char **argv) {
  CHECK((strstr(renderer,"zink")&&strstr(renderer,"M4"))||(getenv("M4_TEST_LLVMPIPE")&&strstr(renderer,"llvmpipe")));
  const unsigned width=getenv("M4_TEST_WIDTH")?atoi(getenv("M4_TEST_WIDTH")):8; CHECK(width==8||width==32);
  CHECK(width==8 || (array && !getenv("M4_TEST_SAMPLE_READBACK")));
- const unsigned layers=getenv("M4_TEST_LAYERS")?atoi(getenv("M4_TEST_LAYERS")):4; CHECK(layers==1||layers==4); CHECK(layers==4||array); CHECK(layers==4||(!oob&&!layer_views&&!getenv("M4_TEST_SAMPLE_READBACK")));
+ const unsigned layers=getenv("M4_TEST_LAYERS")?atoi(getenv("M4_TEST_LAYERS")):4; CHECK(layers==1||layers==4||layers==16); CHECK(layers==4||array); CHECK(layers==4||(!oob&&!layer_views&&!getenv("M4_TEST_SAMPLE_READBACK")));
  CHECK(!layer_views||(!getenv("M4_TEST_UPLOAD_ONLY")&&!coord_colors));
  const unsigned count=width*width*layers,bytes=count*4*sizeof(float);
  float reference[count*4],actual[count*4];unsigned expected_uint[count*4];
@@ -50,14 +51,14 @@ int main(int argc,char **argv) {
  GLuint tex,buf;glGenTextures(1,&tex);glGenBuffers(1,&buf);
  GLenum target=volume?GL_TEXTURE_3D:array?GL_TEXTURE_2D_ARRAY:GL_TEXTURE_2D;
  memset(actual,0,bytes);
- GLenum format=atomic?GL_R32UI:hdr?GL_R11F_G11F_B10F:integer?GL_RGBA32UI:half?GL_R16F:GL_RGBA32F;
+ GLenum format=atomic?GL_R32UI:hdr?GL_R11F_G11F_B10F:integer?GL_RGBA32UI:half?GL_R16F:array_half?GL_RGBA16F:GL_RGBA32F;
  glBindTexture(target,tex);
  if(volume||array)glTexImage3D(target,0,format,width,width,layers,0,integer?GL_RGBA_INTEGER:GL_RGBA,integer?GL_UNSIGNED_INT:GL_FLOAT,atomic?actual:(fetch||getenv("M4_TEST_UPLOAD_ONLY"))?reference:NULL);
  else glTexImage2D(target,0,format,8,32,0,integer?GL_RGBA_INTEGER:GL_RGBA,integer?GL_UNSIGNED_INT:GL_FLOAT,atomic?actual:NULL);
  glTexParameteri(target,GL_TEXTURE_MIN_FILTER,GL_NEAREST);glTexParameteri(target,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
  glBindBuffer(GL_SHADER_STORAGE_BUFFER,buf);glBufferData(GL_SHADER_STORAGE_BUFFER,bytes,integer?(void*)expected_uint:fetch?NULL:(void*)reference,GL_DYNAMIC_COPY);
  glBindBufferBase(GL_SHADER_STORAGE_BUFFER,0,buf);
- char src[2048];snprintf(src,sizeof(src),"#version 330 core\n#extension GL_ARB_compute_shader: require\n#extension GL_ARB_shader_storage_buffer_object: require\n#extension GL_ARB_shader_image_load_store: require\n#extension GL_ARB_shading_language_420pack: require\nlayout(local_size_x=4,local_size_y=4,local_size_z=1) in;\nlayout(std430,binding=0) buffer Data{%svec4 values[];};\n%s\nvoid main(){uvec3 p=gl_GlobalInvocationID;uint i=(p.z*%uu+p.y )*%uu+p.x;%s;}\n",integer?"u":"",atomic?(array?"layout(r32ui,binding=0) uniform uimage2DArray dst;":"layout(r32ui,binding=0) uniform uimage2D dst;"):fetch?"uniform sampler3D src;":volume?(hdr?"layout(r11f_g11f_b10f,binding=0) uniform writeonly image3D dst;":"layout(rgba32f,binding=0) uniform writeonly image3D dst;"):(array&&!layer_views)?(oob?"layout(rgba32f,binding=0) uniform writeonly image2DArray dst; uniform uint layer_offset;":"layout(rgba32f,binding=0) uniform writeonly image2DArray dst;"):hdr?"layout(r11f_g11f_b10f,binding=0) uniform writeonly image2D dst;":half?"layout(r16f,binding=0) uniform writeonly image2D dst;":integer?"layout(rgba32ui,binding=0) uniform writeonly uimage2D dst;":"layout(rgba32f,binding=0) uniform writeonly image2D dst;",volume||array?width:32,width,atomic?(array?"imageAtomicAdd(dst,ivec3(p),values[i].x);imageAtomicAdd(dst,ivec3(p),1u)":"imageAtomicAdd(dst,ivec2(p.xy),values[i].x);imageAtomicAdd(dst,ivec2(p.xy),1u)"):fetch?"values[i]=texelFetch(src,ivec3(p),0)":(array&&!layer_views)?(oob?"imageStore(dst,ivec3(p.xy,p.z+layer_offset),values[i]+vec4(layer_offset==0u?0.:4096.))":coord_colors?"imageStore(dst,ivec3(p),vec4(p,1))":"imageStore(dst,ivec3(p),values[i])"):volume?"imageStore(dst,ivec3(p),values[i])":"imageStore(dst,ivec2(p.xy),values[i])");
+ char src[2048];snprintf(src,sizeof(src),"#version 330 core\n#extension GL_ARB_compute_shader: require\n#extension GL_ARB_shader_storage_buffer_object: require\n#extension GL_ARB_shader_image_load_store: require\n#extension GL_ARB_shading_language_420pack: require\nlayout(local_size_x=4,local_size_y=4,local_size_z=1) in;\nlayout(std430,binding=0) buffer Data{%svec4 values[];};\n%s\nvoid main(){uvec3 p=gl_GlobalInvocationID;uint i=(p.z*%uu+p.y )*%uu+p.x;%s;}\n",integer?"u":"",atomic?(array?"layout(r32ui,binding=0) uniform uimage2DArray dst;":"layout(r32ui,binding=0) uniform uimage2D dst;"):fetch?"uniform sampler3D src;":volume?(hdr?"layout(r11f_g11f_b10f,binding=0) uniform writeonly image3D dst;":"layout(rgba32f,binding=0) uniform writeonly image3D dst;"):(array&&!layer_views)?(oob?"layout(rgba32f,binding=0) uniform writeonly image2DArray dst; uniform uint layer_offset;":(array_half?"layout(rgba16f,binding=0) uniform writeonly image2DArray dst;":"layout(rgba32f,binding=0) uniform writeonly image2DArray dst;")):hdr?"layout(r11f_g11f_b10f,binding=0) uniform writeonly image2D dst;":half?"layout(r16f,binding=0) uniform writeonly image2D dst;":integer?"layout(rgba32ui,binding=0) uniform writeonly uimage2D dst;":"layout(rgba32f,binding=0) uniform writeonly image2D dst;",volume||array?width:32,width,atomic?(array?"imageAtomicAdd(dst,ivec3(p),values[i].x);imageAtomicAdd(dst,ivec3(p),1u)":"imageAtomicAdd(dst,ivec2(p.xy),values[i].x);imageAtomicAdd(dst,ivec2(p.xy),1u)"):fetch?"values[i]=texelFetch(src,ivec3(p),0)":(array&&!layer_views)?(oob?"imageStore(dst,ivec3(p.xy,p.z+layer_offset),values[i]+vec4(layer_offset==0u?0.:4096.))":coord_colors?"imageStore(dst,ivec3(p),vec4(p,1))":"imageStore(dst,ivec3(p),values[i])"):volume?"imageStore(dst,ivec3(p),values[i])":"imageStore(dst,ivec2(p.xy),values[i])");
  GLuint program=glCreateProgram();glAttachShader(program,compile(GL_COMPUTE_SHADER,src));glLinkProgram(program);GLint ok;glGetProgramiv(program,GL_LINK_STATUS,&ok);CHECK(ok);glUseProgram(program);
  if(fetch)glUniform1i(glGetUniformLocation(program,"src"),0);
  else glBindImageTexture(0,tex,0,volume||array,0,atomic?GL_READ_WRITE:GL_WRITE_ONLY,format);
@@ -108,6 +109,15 @@ int main(int argc,char **argv) {
   expected_uint[i]=packed;
  }
  if(half)for(unsigned i=0;i<count;i++){reference[4*i+1]=0;reference[4*i+2]=0;reference[4*i+3]=1;}
+ if(getenv("M4_PROBE_OUTPUT") && !getenv("M4_TEST_PACK_READBACK")) {
+  const void *expected=(integer||hdr)?(void*)expected_uint:(void*)reference;
+  const unsigned dump_bytes=hdr?count*4:bytes;
+  const char *names[]={"actual.bin","expected.bin"}; const void *data[]={actual,expected};
+  for(unsigned k=0;k<2;k++) {
+   char path[1024];CHECK(snprintf(path,sizeof(path),"%s/%s",getenv("M4_PROBE_OUTPUT"),names[k])<(int)sizeof(path));
+   FILE *f=fopen(path,"wb");CHECK(f);CHECK(fwrite(data[k],dump_bytes,1,f)==1);CHECK(fclose(f)==0);
+  }
+ }
  unsigned bad=0;
  if(getenv("M4_TEST_PACK_READBACK")) {
   CHECK(array && !integer && layers==1 && getenv("M4_PROBE_OUTPUT"));

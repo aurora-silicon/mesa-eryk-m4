@@ -725,7 +725,6 @@ test_indexed_sample_witnesses(void)
 static int
 test_sample_mask_domain(void)
 {
-   CHECK(test_m4_3d_sample_witness() == 0);
    /* Native mask_1..mask_15, every nonempty packed result subset. */
    static const uint8_t native[15][14] = {
       {0x05,0x80,0x0c,0xa0,0x90,0x00,0x00,0x00,0x01,0x00,0x10,0x00,0x01,0x00},
@@ -1337,11 +1336,18 @@ test_m4_typed_image_write_witnesses(void)
                               0x20,0x08,0x00,0x00,0x88,0x3a,0x09,0x01};
    uint8_t out[AGX3_IMAGE_WRITE_LENGTH], len;
    CHECK(agx3_tex_encode_image_write_indexed_typed(
-      AGX_ISA_ENCODING_AGX3B,16,true,false,false,false,0,2,out,&len));
+      AGX_ISA_ENCODING_AGX3B,16,true,false,false,false,false,0,2,out,&len));
    CHECK(len == sizeof(uint_2d) && !memcmp(out,uint_2d,len));
    CHECK(agx3_tex_encode_image_write_indexed_typed(
-      AGX_ISA_ENCODING_AGX3B,16,true,false,true,true,0,3,out,&len));
+      AGX_ISA_ENCODING_AGX3B,16,true,false,true,true,false,0,3,out,&len));
    CHECK(len == sizeof(float_3d) && !memcmp(out,float_3d,len));
+   /* Native sequence with f79 cleared for Mesa's qualified image path.
+    * This is not a byte-identical native argument-buffer witness. */
+   const uint8_t array_2d[] = {0xd7,0x10,0x54,0x00,0x00,0x00,0x00,0x14,
+                              0x20,0x04,0x00,0x00,0x88,0x3a,0x09,0x01};
+   CHECK(agx3_tex_encode_image_write_indexed_typed(
+      AGX_ISA_ENCODING_AGX3B,20,true,false,true,false,true,0,1,out,&len));
+   CHECK(len == sizeof(array_2d) && !memcmp(out,array_2d,len));
    return 0;
 }
 

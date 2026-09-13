@@ -69,6 +69,11 @@ bool agx_pbe_agx3_3d_pack(
    uint32_t depth, uint32_t level, uint32_t levels,
    struct agx_pbe_agx3_descriptor *out);
 
+bool agx_pbe_agx3_array_pack(
+   uint32_t generation, const struct agx_pbe_agx3_2d_fields *fields,
+   uint32_t layers, uint32_t level, uint32_t levels,
+   struct agx_pbe_agx3_descriptor *out);
+
 bool agx_pbe_agx3_2d_unpack(
    uint32_t generation, const void *bytes, size_t size,
    struct agx_pbe_agx3_2d_fields *fields);

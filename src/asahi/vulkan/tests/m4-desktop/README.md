@@ -2191,3 +2191,10 @@ compares dumped descriptor buffers and image subresources as well as attachments
 It records binding identities, hashes and nonzero/differing byte counts, rejecting
 metadata mismatches. These diagnostics do not assign floating-point tolerances or
 qualify undefined regions. Only explicitly dumped subresources are compared.
+
+`eevee-image-probe.c`: array tests accept `M4_TEST_LAYERS=16` and
+`M4_TEST_ARRAY_RGBA16F=1` (use four layers for exact quarter-integer half floats).
+`M4_PROBE_OUTPUT=DIR` retains actual.bin and expected.bin even on mismatch;
+float RGBA or integer RGBA words, except packed HDR words. Guarded example:
+`gpu-experiment.py ... -- env M4_PROBE_OUTPUT={output} ... eevee-image-probe array`.
+All Linux GPU execution still requires the watchdog and thermal guard.

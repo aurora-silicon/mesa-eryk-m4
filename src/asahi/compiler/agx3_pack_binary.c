@@ -896,14 +896,14 @@ agx3_emit_texture_fetch(struct util_dynarray *emission,
  * the same instruction with a pipeline-specific uniform index. */
 static bool
 agx3_emit_image_coord(struct util_dynarray *emission,
-                      enum agx_isa_encoding enc, uint16_t dest, uint16_t src, bool discard, bool three_d)
+                      enum agx_isa_encoding enc, uint16_t dest, uint16_t src, bool discard, unsigned slot)
 {
    if (enc != AGX_ISA_ENCODING_AGX3B || (dest & 1) || dest > 242 ||
        (src & 1) || src > 254)
       return false;
 
    const struct agx3_field_kv base[] = {
-      {10, 5}, {11, 2}, {13, three_d ? 3 : 2}, {42, 2}, {43, 2}, {46, discard},
+      {10, 5}, {11, 2}, {13, slot}, {42, 2}, {43, 2}, {46, discard},
       {51, 12}, {57, 3}, {58, 2}, {72, 2}, {73, 2}, {76, discard},
       {83, 12}, {89, 3}, {90, 2}, {106, 1},
    };
@@ -911,9 +911,12 @@ agx3_emit_image_coord(struct util_dynarray *emission,
       {6, dest}, {35, src}, {65, src},
    };
    uint8_t bytes[14], len = 0;
-   return agx3_bind_compose(enc, "isel", 35, base, ARRAY_SIZE(base), values,
-                            ARRAY_SIZE(values), bytes, &len) &&
-          len == sizeof(bytes) && agx3_append(emission, bytes, len);
+   const bool encoded =
+      (slot == 1 && agx3_bind_compose(enc, "isel", 7, base, ARRAY_SIZE(base),
+                                     values, ARRAY_SIZE(values), bytes, &len)) ||
+      agx3_bind_compose(enc, "isel", 35, base, ARRAY_SIZE(base), values,
+                        ARRAY_SIZE(values), bytes, &len);
+   return encoded && agx3_append(emission, bytes, len);
 }
 
 /* Two bounded public storage-image forms: noncoherent 2D RGBA8UI state0 fed
@@ -930,8 +933,9 @@ agx3_emit_storage_image_write(struct util_dynarray *emission,
                               enum agx_isa_encoding enc, const agx_instr *I,
                               uint16_t wait_mask, unsigned staging_base)
 {
+   const bool array = I->dim == AGX_DIM_2D_ARRAY;
    const bool three_d = I->dim == AGX_DIM_3D;
-   const unsigned staging_slot = three_d ? 3 : 2;
+   const unsigned staging_slot = three_d ? 3 : array ? 1 : 2;
    const bool normalized = I->format == AGX_FORMAT_U8NORM ||
                            I->format == AGX_FORMAT_RGB10A2 ||
                            I->format == AGX_FORMAT_F16 ||
@@ -942,14 +946,14 @@ agx3_emit_storage_image_write(struct util_dynarray *emission,
       !I->src[4].memory && !I->src[4].abs && !I->src[4].neg;
    if (enc != AGX_ISA_ENCODING_AGX3B || I->nr_dests != 0 ||
        I->nr_srcs != 5 ||
-       (I->dim != AGX_DIM_2D && !three_d) || I->coherent || (wait_mask & ~1u) != 0 ||
+       (I->dim != AGX_DIM_2D && !three_d && !array) || I->coherent || (wait_mask & ~1u) != 0 ||
        !agx3_tex_plain_reg(I->src[0]) || I->src[0].size != AGX_SIZE_32 ||
        agx_channels(I->src[0]) != 4 || (I->src[0].value & 1) ||
        I->src[0].value > 248 || !agx3_tex_plain_reg(I->src[1]) ||
-       I->src[1].size != AGX_SIZE_32 || agx_channels(I->src[1]) != (three_d ? 3 : 2) ||
-       (I->src[1].value & 1) || I->src[1].value > (three_d ? 250 : 252) ||
+       I->src[1].size != AGX_SIZE_32 || agx_channels(I->src[1]) != (three_d || array ? 3 : 2) ||
+       (I->src[1].value & 1) || I->src[1].value > (three_d || array ? 250 : 252) ||
        !agx3_tex_imm(I->src[2], 0) || !agx3_tex_imm(I->src[3], 0) ||
-       (!direct && (three_d || I->src[4].type != AGX_INDEX_IMMEDIATE ||
+       (!direct && (three_d || array || I->src[4].type != AGX_INDEX_IMMEDIATE ||
         !((I->src[4].value == 0 && I->format == AGX_FORMAT_I8) ||
           (I->src[4].value == 1 && normalized))))) {
       if (agx_compiler_debug & AGX_DBG_SHADERS)
@@ -962,11 +966,26 @@ agx3_emit_storage_image_write(struct util_dynarray *emission,
 
    struct util_dynarray staged;
    util_dynarray_init(&staged, NULL);
-   const uint16_t data_dest[4] = {three_d ? 8 : 4, three_d ? 10 : 6, 12, 14};
+   const uint16_t data_dest[4] = {three_d ? 8 : 4, three_d || array ? 10 : 6, 12, 14};
    for (unsigned c = 0; c < (three_d ? 3 : 2); ++c) {
       if (!agx3_emit_image_coord(&staged, enc, staging_base + 2 * c,
                                 I->src[1].value + 2 * c,
-                                I->src[1].discard, three_d))
+                                I->src[1].discard, staging_slot))
+         goto fail;
+   }
+
+   if (array) {
+      /* Native PACK_IMGWIR stages the register-valued array layer after XY
+       * and the first data component; the next data component begins at 10. */
+      const struct agx3_field_kv fields[] = {
+         {9,5}, {10,2}, {5,staging_base + 6}, {12,staging_slot},
+         {16,I->src[1].value + 4}, {23,2}, {24,1},
+         {27,I->src[1].discard}, {38,1}, {51,1}, {52,2}, {74,4},
+      };
+      uint8_t bytes[AGX3_TEX_MAX_LENGTH], len;
+      if (!agx3_bind_compose(enc, "pack_imgwir", 0, fields, ARRAY_SIZE(fields),
+                             NULL, 0, bytes, &len) ||
+          !agx3_append(&staged, bytes, len))
          goto fail;
    }
 
@@ -987,7 +1006,7 @@ agx3_emit_storage_image_write(struct util_dynarray *emission,
    uint8_t imgwci[AGX3_IMAGE_WRITE_LENGTH], imgwci_len = 0;
    const bool encoded = direct ?
       agx3_tex_encode_image_write_indexed_typed(enc, I->src[4].value,
-         I->src[4].type == AGX_INDEX_UNIFORM, I->src[4].kill, normalized, three_d, staging_base, staging_slot,
+         I->src[4].type == AGX_INDEX_UNIFORM, I->src[4].kill, normalized, three_d, array, staging_base, staging_slot,
          imgwci, &imgwci_len) :
       agx3_tex_encode_image_write_rgba8_2d(
          enc, 1, I->src[4].value, normalized, imgwci, &imgwci_len);

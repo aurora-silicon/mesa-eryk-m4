@@ -820,9 +820,11 @@ agx_nir_lower_g17p_bindless_storage(nir_shader *shader)
             if (!handle || handle->intrinsic != nir_intrinsic_bindless_image_agx ||
                 (nir_intrinsic_image_dim(intr) != GLSL_SAMPLER_DIM_2D &&
                  nir_intrinsic_image_dim(intr) != GLSL_SAMPLER_DIM_3D) ||
-                nir_intrinsic_image_array(intr) ||
+                (nir_intrinsic_image_array(intr) &&
+                 nir_intrinsic_image_dim(intr) != GLSL_SAMPLER_DIM_2D) ||
                 (format != PIPE_FORMAT_R32_UINT &&
                  format != PIPE_FORMAT_R32G32B32A32_UINT &&
+                 format != PIPE_FORMAT_R11G11B10_FLOAT &&
                  format != PIPE_FORMAT_R32_FLOAT &&
                  format != PIPE_FORMAT_R32G32B32A32_FLOAT &&
                  format != PIPE_FORMAT_R16G16_UNORM &&
@@ -830,7 +832,6 @@ agx_nir_lower_g17p_bindless_storage(nir_shader *shader)
                  format != PIPE_FORMAT_R8G8B8A8_UNORM &&
                  format != PIPE_FORMAT_R10G10B10A2_UNORM &&
                  format != PIPE_FORMAT_R16_FLOAT &&
-                   format != PIPE_FORMAT_R11G11B10_FLOAT &&
                  format != PIPE_FORMAT_R16G16_FLOAT &&
                  format != PIPE_FORMAT_R16G16B16A16_FLOAT &&
                  !(format == PIPE_FORMAT_NONE &&
@@ -839,6 +840,24 @@ agx_nir_lower_g17p_bindless_storage(nir_shader *shader)
                continue;
             b.cursor = nir_before_instr(instr);
             nir_def *set = nir_load_descriptor_set_agx(&b, nir_intrinsic_desc_set(handle));
+            if (nir_intrinsic_image_array(intr)) {
+               /* Native array stores pack the layer into a 16-bit auxiliary
+                * word. Reject negative and out-of-range layers before that
+                * truncation by routing x outside the maximum image width,
+                * as Apple's array-write kernel does. The inline software
+                * PBE has layers-1 in bits[25:12] of the word at byte 12. */
+               nir_def *pbe_address = nir_iadd(&b, set,
+                  nir_u2u64(&b, nir_iadd_imm(&b, handle->src[0].ssa, 12)));
+               nir_def *extent = nir_load_global_constant(&b, 1, 32,
+                  pbe_address, .align_mul = 4);
+               nir_def *last_layer = nir_iand_imm(&b,
+                  nir_ushr_imm(&b, extent, 12), 0x3fff);
+               nir_def *coords = intr->src[1].ssa;
+               nir_def *valid = nir_uge(&b, last_layer, nir_channel(&b, coords, 2));
+               nir_def *x = nir_bcsel(&b, valid, nir_channel(&b, coords, 0),
+                                      nir_imm_int(&b, 0xffff));
+               nir_src_rewrite(&intr->src[1], nir_vector_insert_imm(&b, coords, x, 0));
+            }
             /* The image handle points at the inline PBE descriptor. The
              * native heap index follows the complete descriptor pair. */
             nir_def *offset = nir_iadd_imm(&b, handle->src[0].ssa,

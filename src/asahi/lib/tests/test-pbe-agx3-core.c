@@ -446,6 +446,11 @@ check_gen9_3d_native(void)
    CHECK(p.bytes[15] == 0x10);
    p.bytes[15]=0;
    CHECK(!memcmp(p.bytes,native,sizeof(native)));
+   f.page_aligned_layers=false;
+   CHECK(agx_pbe_agx3_array_pack(9,&f,4,0,1,&p));
+   CHECK(p.bytes[0] == 0x13);
+   p.bytes[0] = 0x15;
+   CHECK(!memcmp(p.bytes,native,sizeof(native)));
    CHECK(!agx_pbe_agx3_3d_pack(10,&f,4,0,1,&p));
    CHECK(!agx_pbe_agx3_3d_pack(9,&f,0,0,1,&p));
    CHECK(!agx_pbe_agx3_3d_pack(9,&f,65537,0,1,&p));

@@ -184,10 +184,10 @@ agx_pbe_agx3_2d_mip_pack(
    return true;
 }
 
-bool
-agx_pbe_agx3_3d_pack(
+static bool
+pack_layered(
    uint32_t generation, const struct agx_pbe_agx3_2d_fields *fields,
-   uint32_t depth, uint32_t level, uint32_t levels,
+   uint32_t depth, uint32_t level, uint32_t levels, bool array,
    struct agx_pbe_agx3_descriptor *out)
 {
    if (out)
@@ -198,14 +198,32 @@ agx_pbe_agx3_3d_pack(
        !agx_pbe_agx3_2d_mip_pack(generation, fields, level, levels, out))
       return false;
 
-   /* Native G16G StateFields: kind 3 selects dimension 5. The complete
+   /* Native G16G: dimension 5 is a volume and 3 is a 2D array. The complete
     * volume depth minus one occupies word1[59:44], with the layer-padding
     * flag at bit60. Keep the normal mip extension and buffer address. */
-   store_le64(out->bytes, (load_le64(out->bytes) & ~UINT64_C(15)) | 5);
+   store_le64(out->bytes, (load_le64(out->bytes) & ~UINT64_C(15)) | (array ? 3 : 5));
    store_le64(out->bytes + 8, load_le64(out->bytes + 8) |
               ((uint64_t)(depth - 1) << 44) |
               ((uint64_t)fields->page_aligned_layers << 60));
    return true;
+}
+
+bool
+agx_pbe_agx3_3d_pack(
+   uint32_t generation, const struct agx_pbe_agx3_2d_fields *fields,
+   uint32_t depth, uint32_t level, uint32_t levels,
+   struct agx_pbe_agx3_descriptor *out)
+{
+   return pack_layered(generation, fields, depth, level, levels, false, out);
+}
+
+bool
+agx_pbe_agx3_array_pack(
+   uint32_t generation, const struct agx_pbe_agx3_2d_fields *fields,
+   uint32_t layers, uint32_t level, uint32_t levels,
+   struct agx_pbe_agx3_descriptor *out)
+{
+   return pack_layered(generation, fields, layers, level, levels, true, out);
 }
 
 bool

@@ -467,20 +467,25 @@ agx3_tex_encode_image_write_rgba8_2d(
  * Pixel comparison qualifies this ABI on M4 for R8 and RG16F writes. */
 bool
 agx3_tex_encode_image_write_indexed_typed(
-   enum agx_isa_encoding enc, uint16_t pointer, bool uniform, bool kill, bool floating, bool three_d, uint16_t staging_base, uint8_t staging_slot,
+   enum agx_isa_encoding enc, uint16_t pointer, bool uniform, bool kill, bool floating, bool three_d, bool array, uint16_t staging_base, uint8_t staging_slot,
    uint8_t out[AGX3_IMAGE_WRITE_LENGTH], uint8_t *len)
 {
    if (!out || !len)
       return false;
    memset(out, 0, AGX3_IMAGE_WRITE_LENGTH);
    *len = 0;
-   if (staging_base > 240 || (staging_base & 15) ||
+   if ((three_d && array) || staging_base > 240 || (staging_base & 15) ||
        enc != AGX_ISA_ENCODING_AGX3B || (pointer & 1) || pointer > 252 ||
        (uniform && kill) || (staging_slot < 1 || staging_slot > 3))
       return false;
    const struct agx3_field_kv fields[] = {
       KV(5,staging_base), KV(9,5), KV(12,1), KV(13,1), KV(24,1), KV(38,1),
       KV(51,1), KV(52,1), KV(58 + staging_slot,1), KV(70,floating), KV(71,2), KV(72,three_d ? 3 : 1),
+      /* f79 selects the table-base uniform, in half-register units.
+       * Native array witnesses use u4; Mesa's resolved PBE heap is in u0.
+       * Mirroring the heap into u4 makes native f79=4 pass the same probe,
+       * independently of staging slots or the descriptor's table index. */
+      KV(73,array ? 2 : 0), KV(79,0),
       KV(74,1), KV(85,3), KV(86,3), KV(99,uniform ? 3 : 2),
       KV(100,2), KV(113,1), KV(uniform ? 93 : 92,pointer), KV(103,kill),
    };
@@ -496,7 +501,7 @@ agx3_tex_encode_image_write_indexed_2d(
    uint8_t out[AGX3_IMAGE_WRITE_LENGTH], uint8_t *len)
 {
    return agx3_tex_encode_image_write_indexed_typed(
-      enc, pointer, uniform, kill, true, false, staging_base, staging_slot, out, len);
+      enc, pointer, uniform, kill, true, false, false, staging_base, staging_slot, out, len);
 }
 
 static uint16_t

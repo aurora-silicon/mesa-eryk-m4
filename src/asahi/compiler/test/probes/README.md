@@ -23,3 +23,12 @@ the fragment entry in its .hex (text-1020.bin+64), including LLDCOL W16 mask3.
 These are offline compiler witnesses, not native hardware success. M4 tests
 20260913T075653546595Z-eevee-norm16-eot and080248481675Z-eevee-norm16-fetch-blend
 qualify clear/draw/reload and signed/unsigned RG16/RGBA16 blending in Mesa.
+
+G16G indexed array write: `g16g-image-array-indexed.metal/.hex` retains the
+native compiler output from build/eevee-native-array-indexed (text-7e0, PACK234,
+IMGWCI262). Native IMGWCI f79=4 selects table-base uniform u4. Mesa's native
+PBE heap is in u0, so its corresponding instruction clears f79. Hardware
+20260913T082842,082934,082953,083412 passes exact four/sixteen-layer, bounds,
+RGBA16F and 32x32 controls. A separate diagnostic 083510 mirrored the heap
+from u0 into u4 and restored f79=4: exact PASS. That mirroring is not retained.
+These probes qualify array image writes, not complete Eevee rendering.
