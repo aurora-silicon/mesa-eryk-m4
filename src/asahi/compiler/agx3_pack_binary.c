@@ -2377,13 +2377,12 @@ agx3_emit_simd_broadcast(struct util_dynarray *emission,
        I->src[1].type != AGX_INDEX_IMMEDIATE || I->src[1].memory ||
        I->src[1].abs || I->src[1].neg ||
        agx_channels(I->src[1]) != 1 || I->saturate ||
-       (I->src[1].value != 0 && I->src[1].value != 3 &&
-        I->src[1].value != 5))
+       (enc == AGX_ISA_ENCODING_AGX3B ? I->src[1].value >= 32 :
+        (I->src[1].value != 0 && I->src[1].value != 3)))
       return false;
 
-   /* G17P's immediate-lane form has direct lane 0/3/5 witnesses, including a
-    * device-load producer on slot 6.  Route AGX3b through that exact bounded
-    * encoder so a public subgroupShuffle may carry its real dependency. */
+   /* G16G adds lanes 7/15/23/31 and live/final source witnesses to the
+    * original 0/3/5 forms. The immediate addresses any lane in the subgroup. */
    if (enc == AGX_ISA_ENCODING_AGX3B) {
       const struct agx3_subgroup_shuffle_desc d = {
          .op = AGX3_SUBGROUP_SHUFFLE_BROADCAST,
@@ -2393,6 +2392,7 @@ agx3_emit_simd_broadcast(struct util_dynarray *emission,
          .lane = I->src[1].value,
          .wait_mask = wait_mask,
          .dest_hint = I->dest[0].cache,
+         .src_live = !I->src[0].discard,
       };
       uint8_t bytes[AGX3_SUBGROUP_MAX_LENGTH], length = 0;
       return agx3_subgroup_encode_shuffle(enc, &d, bytes, &length) &&

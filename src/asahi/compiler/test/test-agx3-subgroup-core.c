@@ -544,9 +544,36 @@ test_rejection(void)
    return 0;
 }
 
+static int
+test_g16_broadcast_lanes(void)
+{
+   /* Native applegpu_g16g source: broadcast-lanes.metal, main offsets
+    * 82/102/112/122, source r3 with the final use at lane31. */
+   static const uint8_t expected[4][10] = {
+      {0x47,0x04,0x56,0x00,0x02,0x0c,0x0e,0x2c,0x02,0x00},
+      {0x47,0x04,0x54,0x02,0x02,0x0c,0x1e,0x2c,0x02,0x00},
+      {0x47,0x04,0x54,0x04,0x02,0x0c,0x2e,0x2c,0x02,0x00},
+      {0x47,0x04,0x54,0x06,0x02,0x0c,0x3e,0x2c,0x04,0x00},
+   };
+   for (unsigned i = 0; i < 4; ++i) {
+      struct agx3_subgroup_shuffle_desc d = {
+         .op = AGX3_SUBGROUP_SHUFFLE_BROADCAST,
+         .lane_kind = AGX3_SUBGROUP_LANE_IMMEDIATE,
+         .dest = 2*i, .src = 6, .lane = 7+8*i,
+         .wait_mask = i == 0 ? 1u << 5 : 0,
+         .src_live = i != 3,
+      };
+      uint8_t out[AGX3_SUBGROUP_MAX_LENGTH], length = 0;
+      CHECK(agx3_subgroup_encode_shuffle(AGX_ISA_ENCODING_AGX3B, &d, out, &length));
+      CHECK(bytes_equal(out, length, expected[i], sizeof(expected[i])));
+   }
+   return 0;
+}
+
 int
 main(void)
 {
+   CHECK(test_g16_broadcast_lanes() == 0);
    CHECK(test_shuffle_vectors() == 0);
    CHECK(test_ballot_vectors() == 0);
    CHECK(test_reduce_vectors() == 0);

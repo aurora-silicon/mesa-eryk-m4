@@ -49,8 +49,8 @@ struct agx3_subgroup_shuffle_desc {
     * immediate-lane path; the register and uniform paths keep their own
     * corpus constants pinned. */
    bool dest_hint;
-   /* The G17P immediate quad form uses f25 while the source remains live and
-    * f27 on its final read.  This is ignored by the older SIMD witnesses. */
+   /* Immediate SIMD/quad forms use f25 for a live source and f27 for its
+    * final read, witnessed independently by G16G/G17P native compilers. */
    bool src_live;
 };
 

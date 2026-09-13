@@ -74,3 +74,12 @@ linux-100-depth-chroma-{results,summary}.json. This corrects an earlier notes-on
 misclassification of BGR granularity: the retained original result was always
 NotSupported, although its experiment guard succeeded. Separate BGR sampling
 controls did pass. No outcomes were changed or excluded.
+
+Tessellation compiler groundwork: native G16G offline Metal compilation
+(broadcast-lanes.metal) witnesses immediate subgroup lanes 7/15/23/31, live/final
+source hints and a device-load wait. Four byte-exact encoder unit vectors pass.
+The retained failing prefix-sum bundle c8ddc2d57e999f8f41dadaf80e6c5ec2aaa58cff5bd594800f3e1a8f5b64e4dd
+from 20260913T165307565822Z-cts-tess-native-varyings now replays offline successfully
+(1586 bytes). Native source/archive/text/commands are retained under
+build/cts-next/broadcast-lanes-native; this is compiler evidence, not a passing
+tessellation hardware claim. Tessellation remains an opt-in experiment.

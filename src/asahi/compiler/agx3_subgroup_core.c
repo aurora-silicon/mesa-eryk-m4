@@ -75,7 +75,7 @@ agx3_subgroup_encode_shuffle(enum agx_isa_encoding enc,
        * shape fail-closed. */
       const bool simd_witness =
          !d->quad && d->op == AGX3_SUBGROUP_SHUFFLE_BROADCAST &&
-         (d->lane == 0 || d->lane == 3 || d->lane == 5);
+         d->lane < 32;
       const bool quad_witness =
          d->quad && ((d->op == AGX3_SUBGROUP_SHUFFLE_BROADCAST && d->lane == 2) ||
                      (d->op == AGX3_SUBGROUP_SHUFFLE_XOR &&
@@ -95,11 +95,8 @@ agx3_subgroup_encode_shuffle(enum agx_isa_encoding enc,
       ibase[inb++] = (struct agx3_field_kv){10, 2};
       ibase[inb++] = (struct agx3_field_kv){23, 2};
       ibase[inb++] = (struct agx3_field_kv){24, 2};
-      if (d->quad) {
-         ibase[inb++] = (struct agx3_field_kv){d->src_live ? 25 : 27, 1};
-      } else {
-         ibase[inb++] = (struct agx3_field_kv){27, 1};
-      }
+      /* Native G16G witnesses both live and final SIMD source reads. */
+      ibase[inb++] = (struct agx3_field_kv){d->src_live ? 25 : 27, 1};
       ibase[inb++] = (struct agx3_field_kv){37, 1};
       ibase[inb++] = (struct agx3_field_kv){38, 1};
 
