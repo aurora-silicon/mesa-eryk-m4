@@ -95,12 +95,13 @@ bool agx_ioto_g17s_minimal_compute_tail_build(
 bool agx_ioto_g17p_compute_ldshdr_build(
    uint64_t shader_va, struct agx_ioto_state *state);
 
-/* Raw LDSHDR f1 values from three explicitly MIT-licensed, output-positive
- * G17P compute witnesses. The names identify those witnesses; they do not
- * assign inferred hardware semantics to the anonymous field. */
+/* Raw LDSHDR f1 values from output-positive native compute witnesses:
+ * three G17P probes and the M4 array write captured on 2026-09-13. These names
+ * identify witnesses, not inferred hardware semantics of the field. */
 enum agx_ioto_g17p_compute_ldshdr_f1 {
    AGX_IOTO_G17P_COMPUTE_LDSHDR_F1_DIRECT_ADD3 = 0,
    AGX_IOTO_G17P_COMPUTE_LDSHDR_F1_GRID_HELPER = 1,
+   AGX_IOTO_G16G_COMPUTE_LDSHDR_F1_ARRAY_WRITE = 2,
    AGX_IOTO_G17P_COMPUTE_LDSHDR_F1_INDIRECT_ADD3 = 3,
 };
 

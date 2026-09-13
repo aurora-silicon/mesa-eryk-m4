@@ -2105,3 +2105,10 @@ into an SSBO. Retain all selected modes in experiment evidence.
 
 `compiler-corpus.py` indexes both unsupported instructions and early compiler
 preflight refusals, including unresolved runtime printf addresses.
+
+`native-ioto-shaders.py CAPTURE/encoded --shader-va 0x10000000440` locates
+GPU0 LDSHDR candidates for a known native shader and reports the adjacent
+SPECTPR staging allocation, source offsets and SHA256. It runs offline and
+scans records, not control flow; f1 is reported without semantic interpretation.
+The retained M4 array write has f1=2 and 64 staging bytes. Neither changing
+f1 alone nor matching that allocation alone fixed the packed-write failure.

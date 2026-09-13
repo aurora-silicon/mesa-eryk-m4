@@ -491,6 +491,7 @@ agx_ioto_g17p_runtime_compute_tail_build(
    switch (ldshdr_f1) {
    case AGX_IOTO_G17P_COMPUTE_LDSHDR_F1_DIRECT_ADD3:
    case AGX_IOTO_G17P_COMPUTE_LDSHDR_F1_GRID_HELPER:
+   case AGX_IOTO_G16G_COMPUTE_LDSHDR_F1_ARRAY_WRITE:
    case AGX_IOTO_G17P_COMPUTE_LDSHDR_F1_INDIRECT_ADD3:
       break;
    default:
