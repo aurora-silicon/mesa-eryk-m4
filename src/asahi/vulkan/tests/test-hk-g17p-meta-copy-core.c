@@ -189,6 +189,17 @@ main(void)
       CHECK(one.srcOffsets[0].x == 7 && one.srcOffsets[1].x == 26);
       CHECK(one.dstOffsets[0].y == 13 && one.dstOffsets[1].y == 42);
    }
+   VkImageBlit2 line = blit;
+   line.srcOffsets[0].y = line.dstOffsets[0].y = 0;
+   line.srcOffsets[1].y = line.dstOffsets[1].y = 1;
+   VkImageBlit2 line_out;
+   CHECK(hk_g17p_image_blit_slice(AGX_CHIP_G16G,
+      VK_IMAGE_TYPE_1D, VK_IMAGE_TYPE_1D, 3, 3, &line, 2, &line_out));
+   CHECK(line_out.srcSubresource.baseArrayLayer == 4 &&
+         line_out.dstSubresource.baseArrayLayer == 7);
+   line.srcOffsets[1].y = 2;
+   CHECK(!hk_g17p_image_blit_slice(AGX_CHIP_G16G,
+      VK_IMAGE_TYPE_1D, VK_IMAGE_TYPE_1D, 3, 3, &line, 0, &line_out));
    VkImageBlit2 bad_blit = blit;
    bad_blit.dstOffsets[1].z = 2;
    VkImageBlit2 no_blit = {.sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2};

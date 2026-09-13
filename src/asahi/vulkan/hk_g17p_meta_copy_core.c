@@ -84,7 +84,14 @@ hk_g17p_image_blit_slice(enum agx_chip chip, VkImageType src_type,
       *out = (VkImageBlit2){0};
 
    if (!agx_chip_uses_hal200_ioto(chip) || !region || !out ||
-       src_type != VK_IMAGE_TYPE_2D || dst_type != VK_IMAGE_TYPE_2D ||
+       (src_type != VK_IMAGE_TYPE_2D &&
+        !(chip == AGX_CHIP_G16G && src_type == VK_IMAGE_TYPE_1D)) ||
+       (dst_type != VK_IMAGE_TYPE_2D &&
+        !(chip == AGX_CHIP_G16G && dst_type == VK_IMAGE_TYPE_1D)) ||
+       (src_type == VK_IMAGE_TYPE_1D &&
+        (region->srcOffsets[0].y != 0 || region->srcOffsets[1].y != 1)) ||
+       (dst_type == VK_IMAGE_TYPE_1D &&
+        (region->dstOffsets[0].y != 0 || region->dstOffsets[1].y != 1)) ||
        src_layers == 0 || src_layers != dst_layers || slice >= src_layers ||
        region->srcOffsets[0].z != 0 || region->srcOffsets[1].z != 1 ||
        region->dstOffsets[0].z != 0 || region->dstOffsets[1].z != 1 ||
