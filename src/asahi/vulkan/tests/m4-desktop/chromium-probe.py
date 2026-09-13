@@ -12,10 +12,14 @@ p.add_argument('--guard-output',type=Path,required=True)
 p.add_argument('--renderer',choices=['asahi','lavapipe'],default='asahi')
 p.add_argument('--capture',action='store_true')
 p.add_argument('--browser-flag',action='append',default=[])
+p.add_argument('--normal-launch',action='store_true',help='Use /usr/bin/chromium and user launcher flags instead of explicit test GPU flags')
 p.add_argument('--angle',choices=['gl','gles','vulkan'],default='gl')
 p.add_argument('--ozone',choices=['wayland','x11'],default='wayland')
 p.add_argument('--capture-profile',type=Path)
 p.add_argument('--url',default='https://mdn.github.io/dom-examples/webgl-examples/tutorial/sample6/')
+p.add_argument('--observe-seconds', type=int, default=5, choices=range(1,21))
+p.add_argument('--start-script', type=Path, help='Retained page action before bounded observation')
+p.add_argument('--page-script', type=Path, help='Retained page diagnostics; pixelsBase64 is saved as pixels.rgba')
 a=p.parse_args()
 spec=importlib.util.spec_from_file_location('fw',Path(__file__).with_name('firmware-snapshot.py'));fw=importlib.util.module_from_spec(spec);spec.loader.exec_module(fw)
 boot=Path('/proc/sys/kernel/random/boot_id').read_text().strip()
@@ -37,9 +41,14 @@ if a.capture_profile:
     report=json.loads(a.capture_profile.with_suffix('.report.json').read_text())
     shutil.copyfile(a.capture_profile,out/'capture-profile.json')
     shutil.copyfile(a.capture_profile.with_suffix('.report.json'),out/'capture-profile.report.json')
+    # The browser runs as e and cannot traverse /root to read the profile.
+    # Retain the exact reference separately and use an accessible private copy.
+    profile_copy=profile/'capture-profile.json'
+    shutil.copyfile(a.capture_profile,profile_copy)
+    os.chown(profile_copy,u.pw_uid,u.pw_gid)
     env.update(VK_LAYER_PATH=env['VK_LAYER_PATH']+':/usr/share/vulkan/explicit_layer.d',
         VK_INSTANCE_LAYERS=env['VK_INSTANCE_LAYERS']+':VK_LAYER_KHRONOS_profiles',
-        VK_KHRONOS_PROFILES_PROFILE_FILE=str(a.capture_profile),
+        VK_KHRONOS_PROFILES_PROFILE_FILE=str(profile_copy),
         VK_KHRONOS_PROFILES_SIMULATE_CAPABILITIES='SIMULATE_API_VERSION_BIT,SIMULATE_FEATURES_BIT,SIMULATE_EXTENSIONS_BIT,SIMULATE_PROPERTIES_BIT,SIMULATE_FORMATS_BIT',
         VK_KHRONOS_PROFILES_DEFAULT_FEATURE_VALUES='DEFAULT_FEATURE_VALUES_FALSE',
         VK_KHRONOS_PROFILES_EXCLUDE_DEVICE_EXTENSIONS=','.join(report['removed_reference_extensions']))
@@ -47,7 +56,13 @@ cmd=['/usr/lib/chromium/chromium','--user-data-dir='+str(profile),'--no-first-ru
 cmd += ['--enable-logging=stderr','--vmodule=gpu_init=2,gl_factory=2,gl_surface_egl=2'] + a.browser_flag
 if a.ozone=='x11':env['DISPLAY']=':0'
 if a.angle=='vulkan':cmd.append('--enable-features=Vulkan,VulkanFromANGLE,DefaultANGLEVulkan')
-manifest=dict(renderer=a.renderer,angle=a.angle,command=cmd,environment={k:v for k,v in env.items() if k.startswith(('VK_','GFXRECON_','MESA_','GALLIUM_','LIBGL_','LD_LIBRARY_'))},boot_id=boot)
+if a.normal_launch:
+    assert a.angle=='gl' and a.ozone=='wayland', 'Normal launch uses configured GPU/platform flags'
+    cmd=['/usr/bin/chromium','--user-data-dir='+str(profile),'--no-first-run',
+         '--no-default-browser-check','--remote-debugging-port=0',a.url,*a.browser_flag]
+    flags=Path(u.pw_dir)/'.config/chromium-flags.conf'
+    if flags.exists():shutil.copyfile(flags,out/'chromium-flags.conf')
+manifest=dict(renderer=a.renderer,angle=a.angle,normal_launch=a.normal_launch,observe_seconds=a.observe_seconds,command=cmd,environment={k:v for k,v in env.items() if k.startswith(('VK_','GFXRECON_','MESA_','GALLIUM_','LIBGL_','LD_LIBRARY_','ASAHI_','AGX_','GBM_','__EGL_'))},boot_id=boot)
 manifest['hashes']={f:hashlib.sha256(Path(f).read_bytes()).hexdigest() for f in ['/usr/lib/chromium/chromium','/usr/lib/chromium/libEGL.so','/usr/lib/chromium/libGLESv2.so','/opt/asahi-m4-port/lib/libvulkan_asahi.so','/opt/asahi-m4-port/lib/libgallium-26.1.4.so']}
 (out/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
 child=None;sessions=[];seq=0
@@ -77,9 +92,17 @@ try:
         tab=next(t for t in tabs if t['type']=='page')
         page=websocket.create_connection(tab['webSocketDebuggerUrl'],timeout=8,suppress_origin=True);sessions.append(page)
         call(page,'Page.bringToFront')
-        until=time.monotonic()+5
+        def page_script(path):
+            source=path.read_text()
+            response=call(page,'Runtime.evaluate',{'expression':'(function(){'+source+'\n})()', 'returnByValue':True, 'awaitPromise':True})
+            (out/path.name).write_text(source)
+            if 'exceptionDetails' in response:raise RuntimeError(response['exceptionDetails'])
+            return response['result'].get('value')
+        if a.start_script:
+            (out/'page-start.json').write_text(json.dumps(page_script(a.start_script),indent=2)+'\n')
+        until=time.monotonic()+a.observe_seconds
         while time.monotonic()<until:check();time.sleep(.2)
-        state=call(page,'Runtime.evaluate',{'expression':'JSON.stringify({url:location.href,title:document.title,ready:document.readyState,visibility:document.visibilityState,canvases:Array.from(document.querySelectorAll("canvas")).map(c=>({width:c.width,height:c.height}))})','returnByValue':True})
+        state=call(page,'Runtime.evaluate',{'expression':'JSON.stringify({url:location.href,title:document.title,ready:document.readyState,visibility:document.visibilityState,probe:JSON.parse(document.documentElement.dataset.m4Probe||"null"),canvases:Array.from(document.querySelectorAll("canvas")).map(c=>({width:c.width,height:c.height}))})','returnByValue':True})
         (out/'page.json').write_text(json.dumps(state,indent=2)+'\n')
         webgl=call(page,'Runtime.evaluate',{'expression':"""new Promise(resolve => {
           const timeout=setTimeout(() => resolve({animationFrameTimeout:true,visibility:document.visibilityState}),3000);
@@ -99,6 +122,14 @@ try:
           }));
         }); })""",'returnByValue':True,'awaitPromise':True})
         (out/'webgl.json').write_text(json.dumps(webgl,indent=2)+'\n')
+        if a.page_script:
+            diagnostics=page_script(a.page_script)
+            if isinstance(diagnostics,dict) and 'pixelsBase64' in diagnostics:
+                pixels=base64.b64decode(diagnostics.pop('pixelsBase64'),validate=True)
+                (out/'pixels.rgba').write_bytes(pixels)
+                diagnostics.update(pixels_file='pixels.rgba',pixels_bytes=len(pixels))
+            (out/'diagnostics.json').write_text(json.dumps(diagnostics,indent=2)+'\n')
+            print('Page diagnostics:',json.dumps(diagnostics),flush=True)
         shot=call(page,'Page.captureScreenshot',{'format':'png'});(out/'page.png').write_bytes(base64.b64decode(shot['data']))
         nodes={f.resolve() for f in Path('/sys/kernel/debug/dri').glob('*/m4_scanout')};assert len(nodes)==1
         (out/'desktop.m4fb').write_bytes(nodes.pop().read_bytes())
@@ -119,4 +150,9 @@ finally:
     print((out/'browser.log').read_text(errors='replace')[-4000:]);os.sync()
 webgl_value=webgl.get('result',{}).get('value')
 assert not (isinstance(webgl_value,dict) and webgl_value.get('animationFrameTimeout')), 'animation frame timeout; retained screenshot and diagnostics'
+assert isinstance(webgl_value,list) and webgl_value, 'No WebGL canvas was tested'
+assert all(v.get('context') and not v.get('lost') and not v.get('error') for v in webgl_value), 'WebGL context failed or was lost; retained diagnostics'
+if a.page_script and isinstance(diagnostics,dict) and 'report' in diagnostics:
+    report=diagnostics['report']
+    assert report.get('ready') and not report.get('error') and not report.get('glError') and not diagnostics.get('readbackError'), 'Local shader/readback failed; retained diagnostics'
 print('PASS: Chromium probe completed; inspect GPU diagnostics and screenshots')
