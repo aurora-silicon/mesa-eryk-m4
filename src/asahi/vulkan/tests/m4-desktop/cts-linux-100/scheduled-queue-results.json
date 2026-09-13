@@ -1,0 +1,34 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.synchronization.op.multi_queue.semaphore.write_blit_image_read_copy_image_to_buffer.image_128x128_r8_unorm_concurrent",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-linux-corrected",
+      "--deqp-case=dEQP-VK.synchronization.op.multi_queue.semaphore.write_blit_image_read_copy_image_to_buffer.image_128x128_r8_unorm_concurrent",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T174903263267Z-cts-scheduled-queues-default/cts/000/result.qpa"
+    ],
+    "boot_id": "477be8cf-4c23-4bd1-8e4c-aee9d134fd21",
+    "status": "Pass",
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.40863804700001083
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.synchronization.op.multi_queue.fence.write_image_fragment_read_blit_image.image_128_r32_uint_concurrent",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-linux-corrected",
+      "--deqp-case=dEQP-VK.synchronization.op.multi_queue.fence.write_image_fragment_read_blit_image.image_128_r32_uint_concurrent",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T174903263267Z-cts-scheduled-queues-default/cts/001/result.qpa"
+    ],
+    "boot_id": "477be8cf-4c23-4bd1-8e4c-aee9d134fd21",
+    "status": "Pass",
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.4084822990000134
+  }
+]

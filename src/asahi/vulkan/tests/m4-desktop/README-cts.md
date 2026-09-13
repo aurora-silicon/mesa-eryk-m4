@@ -144,3 +144,9 @@ and overlapping clear-draw rectangles with an exact 144-pixel CPU oracle,
 using mip 1 and array layer 1. Build with `cc -O2 -Wall -Wextra SOURCE -lvulkan`
 and execute only under `gpu-experiment.py` with the intended Vulkan ICD.
 It requires the advertised color-attachment feature; it does not skip it.
+
+`vulkan-queue-probe.c` requires eight Vulkan queues and enabled timeline
+semaphores. It submits four waiting consumers before any producer, then swaps
+queue roles for a second round and checks all copied words. Binary semaphores
+cannot be used for this ordering. Build with `cc -O2 -Wall -Wextra SOURCE -lvulkan`
+and run only under `gpu-experiment.py`; success is `QUEUE_DEPENDENCY_RESULT: PASS`.

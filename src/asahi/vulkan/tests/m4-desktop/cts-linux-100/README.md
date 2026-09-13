@@ -124,3 +124,18 @@ oracle then found a missing padded epilog format; after fixing it,
 including clear/reload, overlapping clear draws, mip 1 and layer 1. Physical
 BGRA8 storage now agrees across image layout, tile layout, PBE and epilog.
 This establishes 95 known target passes (94 in the last full run plus 91).
+
+Scheduled queues: kernel fba91e5d9577 advertises separate scheduler entities
+and dependency timelines without promising concurrent physical engines. Mesa
+exposes eight Vulkan queues on that capability; existing hardware-reservation
+limits remain a separate interface. The default eight-queue timeline probe
+passed both consumer-first rounds in
+`20260913T174324530357Z-scheduled-queues-default`. Both frozen queue cases
+(62/63) passed without overrides in
+`20260913T174903263267Z-cts-scheduled-queues-default` (58 C peak). This
+establishes **97 known target passes**; the last full campaign remains 94.
+
+An earlier probe incorrectly waited before submitting a binary-semaphore signal.
+That invalid probe blocked in Mesa WAIT_PENDING and caused watchdog recovery;
+it is excluded. The corrected probe enables timeline semaphores and checks
+all copied words across four queue pairs, then reverses their roles.

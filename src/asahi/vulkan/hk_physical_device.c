@@ -1446,6 +1446,13 @@ hk_create_drm_physical_device(struct vk_instance *_instance,
 
 
    uint32_t queue_count = 1;
+   if (pdev->dev.params.features & DRM_ASAHI_FEATURE_SCHEDULED_QUEUES) {
+      /* Vulkan exposure policy for software-scheduled queues. This is not
+       * a firmware context limit: the kernel virtualizes queue execution
+       * and allocates queue state on demand. Each Vulkan queue maps to a
+       * distinct DRM entity, including its wait-before-signal timeline. */
+      queue_count = 8;
+   }
    if (pdev->dev.params.features & DRM_ASAHI_FEATURE_INDEPENDENT_QUEUES) {
       struct drm_asahi_queue_limits limits = {0};
       struct drm_asahi_get_params query = {
