@@ -1,0 +1,34 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.clipping.user_defined.clip_distance.vert_tess_geom.2",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.clipping.user_defined.clip_distance.vert_tess_geom.2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202809245567Z-cts-tes-invocation/cts/000/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 1.0125648490000003
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.tessellation.geometry_interaction.scatter.geometry_scatter_layers",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.tessellation.geometry_interaction.scatter.geometry_scatter_layers",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202809245567Z-cts-tes-invocation/cts/001/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 1.0137492080000357
+  }
+]

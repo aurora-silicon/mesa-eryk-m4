@@ -1,0 +1,66 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.clipping.user_defined.clip_distance.vert.2",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.clipping.user_defined.clip_distance.vert.2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202201770090Z-cts-clip-stage-controls/cts/000/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.2080665589999171
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.clipping.user_defined.clip_distance.vert_geom.2",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.clipping.user_defined.clip_distance.vert_geom.2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202201770090Z-cts-clip-stage-controls/cts/001/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.2076972959999921
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.clipping.user_defined.clip_distance.vert_tess.2",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.clipping.user_defined.clip_distance.vert_tess.2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202201770090Z-cts-clip-stage-controls/cts/002/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.4084946730000638
+  },
+  {
+    "index": 3,
+    "case": "dEQP-VK.clipping.user_defined.clip_distance.vert_tess_geom.2",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.clipping.user_defined.clip_distance.vert_tess_geom.2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T202201770090Z-cts-clip-stage-controls/cts/003/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Fail",
+    "message": "Rendered image(s) are incorrect",
+    "returncode": 0,
+    "seconds": 0.4098551490000091
+  }
+]

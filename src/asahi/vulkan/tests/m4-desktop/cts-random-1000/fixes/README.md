@@ -176,3 +176,17 @@ Three additional coherent/volatile 1D-array/2D controls Pass in
 `20260913T202453687622Z-cts-volatile-controls`. Peaks 58.5/58.25 C, no GPU faults.
 These cases exercise explicit barriers, not every possible cross-invocation
 communication pattern.
+
+## Tessellation output into geometry
+
+Original indices 368 and 636 Pass in `20260913T202809245567Z-cts-tes-invocation`.
+Vertex-only, vertex+geometry and vertex+tessellation clipping controls passed;
+only the combined tessellation+geometry path failed. Extra strong CDM barriers
+did not fix it and that diagnostic override was removed.
+When classifying native TES for resource lowering, preserve Poly's TES marker
+and initialize the vertex-info union. Without the marker, software TES output
+stores used the ordinary software VS preload registers, instead of compute
+invocation IDs. This collapsed/corrupted the GS input buffer. Both original
+image comparisons now pass without a diagnostic override, peak 58.75 C.
+All original 47 Fail and two Crash cases have now passed individually; the
+frozen original 1,000-case results remain unchanged. A combined retest follows.

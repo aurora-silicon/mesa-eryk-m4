@@ -1512,8 +1512,15 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
          NIR_PASS(_, nir, poly_nir_lower_tes, hw);
          /* The software variant uses the same resource operations as the
           * hardware TES. Output lowering changes it to compute below. */
-         if (agx_chip_uses_hal200_ioto(dev->dev.chip))
+         if (agx_chip_uses_hal200_ioto(dev->dev.chip)) {
             nir->info.stage = MESA_SHADER_VERTEX;
+            memset(&nir->info.vs, 0, sizeof(nir->info.vs));
+            /* The software TES still uses tessellation's linear invocation
+             * IDs for its GS input-buffer stores. Without this tag Poly treats
+             * it as an ordinary VS and reads the hardware vertex/instance ABI
+             * registers, which are not supplied to a compute dispatch. */
+            nir->info.vs.tes_poly = true;
+         }
       }
    }
 
