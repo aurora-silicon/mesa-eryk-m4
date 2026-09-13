@@ -21,6 +21,8 @@
 #include "agx_pack.h"
 #include "decode.h"
 #include "hk_cmd_buffer.h"
+#include "hk_cmd_pool.h"
+#include "poly/tessellator.h"
 #include "hk_device.h"
 #include "hk_drm_render_core.h"
 #include "hk_image.h"
@@ -41,6 +43,73 @@
 #include "layout.h"
 #include "vk_drm_syncobj.h"
 #include "vk_sync.h"
+
+/* Opt-in, post-completion diagnostics. Resolve only owned, bounded mappings. */
+static const void *
+hk_tess_debug_map(struct hk_device *dev, struct hk_cmd_buffer *cmd,
+                  uint64_t address, size_t size)
+{
+   struct hk_uploader *uploaders[] = { &cmd->uploader.main, &cmd->uploader.usc };
+   for (unsigned i = 0; i < 2; ++i) {
+      list_for_each_entry(struct hk_cmd_bo, node, &uploaders[i]->bos, link) {
+         struct agx_bo *bo = node->bo;
+         if (node->map && address >= bo->va->addr && address - bo->va->addr <= bo->size &&
+             size <= bo->size - (address - bo->va->addr))
+            return (char *)node->map + (address - bo->va->addr);
+      }
+   }
+   util_dynarray_foreach(&cmd->large_bos, struct agx_bo *, entry) {
+      struct agx_bo *bo = *entry;
+      if (address >= bo->va->addr && address - bo->va->addr <= bo->size &&
+          size <= bo->size - (address - bo->va->addr)) {
+         const char *map = agx_bo_map(bo);
+         return map ? map + (address - bo->va->addr) : NULL;
+      }
+   }
+   struct agx_bo *bo = dev->heap;
+   if (bo && address >= bo->va->addr && address - bo->va->addr <= bo->size &&
+       size <= bo->size - (address - bo->va->addr)) {
+      const char *map = agx_bo_map(bo);
+      return map ? map + (address - bo->va->addr) : NULL;
+   }
+   return NULL;
+}
+
+static void
+hk_tess_debug_words(struct hk_device *dev, struct hk_cmd_buffer *cmd,
+                    const char *name, uint64_t address, unsigned count)
+{
+   count = MIN2(count, 512);
+   const uint32_t *words = hk_tess_debug_map(dev, cmd, address, count * 4);
+   fprintf(stderr, "TESS_DUMP %s address=%#" PRIx64 " words=%u", name, address, count);
+   if (words) {
+      for (unsigned i = 0; i < count; ++i)
+         fprintf(stderr, " %08x", words[i]);
+   } else {
+      fprintf(stderr, " unmapped");
+   }
+   fprintf(stderr, "\n");
+}
+
+static void
+hk_tess_debug_submit(struct hk_device *dev, struct vk_queue_submit *submit)
+{
+   for (unsigned i = 0; i < submit->command_buffer_count; ++i) {
+      struct hk_cmd_buffer *cmd = (struct hk_cmd_buffer *)submit->command_buffers[i];
+      uint64_t address = cmd->state.gfx.descriptors.root.draw.tess_params;
+      const struct poly_tess_params *t = hk_tess_debug_map(dev, cmd, address, sizeof(*t));
+      if (!address || !t)
+         continue;
+      fprintf(stderr, "TESS_DUMP patches=%u input=%u output=%u stride=%u\n",
+         t->nr_patches, t->input_patch_size, t->output_patch_size, t->tcs_stride_el);
+      hk_tess_debug_words(dev, cmd, "tcs", t->tcs_buffer,
+         MIN2(t->nr_patches, 16) * MIN2(t->tcs_stride_el, 64));
+      hk_tess_debug_words(dev, cmd, "counts", t->counts, MIN2(t->nr_patches, 16));
+      hk_tess_debug_words(dev, cmd, "allocs", t->coord_allocs, MIN2(t->nr_patches, 16));
+      hk_tess_debug_words(dev, cmd, "draw", t->out_draws, 5);
+      hk_tess_debug_words(dev, cmd, "indices", t->index_buffer, 48);
+   }
+}
 
 /*
  * We need to specially handle submits with no control streams. The kernel
@@ -1260,8 +1329,8 @@ hk_queue_submit(struct vk_queue *vk_queue, struct vk_queue_submit *submit)
    if (result != VK_SUCCESS)
       result = vk_queue_set_lost(&queue->vk, "Submit failed");
 
-   if (dev->dev.debug & AGX_DBG_SYNC) {
-      /* Wait for completion */
+   if ((dev->dev.debug & AGX_DBG_SYNC) || getenv("HK_M4_TESS_DUMP")) {
+      /* Debug memory inspection requires completed GPU writes. */
       int err = drmSyncobjTimelineWait(
          dev->dev.fd, &queue->drm.syncobj, &queue->drm.timeline_value, 1,
          INT64_MAX, DRM_SYNCOBJ_WAIT_FLAGS_WAIT_FOR_SUBMIT, NULL);
@@ -1272,6 +1341,8 @@ hk_queue_submit(struct vk_queue *vk_queue, struct vk_queue_submit *submit)
          VkResult res = dev->vk.check_status(&dev->vk);
          if (result == VK_SUCCESS)
             result = res;
+         if (result == VK_SUCCESS && getenv("HK_M4_TESS_DUMP"))
+            hk_tess_debug_submit(dev, submit);
       }
    }
 

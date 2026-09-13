@@ -22,8 +22,9 @@ raw = a.qpa.read_bytes()
 xml = raw[raw.index(b'<?xml'):raw.index(b'</TestCaseResult>') + len(b'</TestCaseResult>')]
 root = ET.fromstring(xml)
 report = {'qpa': str(a.qpa.resolve()), 'sha256': hashlib.sha256(raw).hexdigest(), 'sets': []}
-for n, group in enumerate(root.iter('ImageSet')):
-    record = {'name': group.get('Name'), 'images': []}
+# CTS also places images directly under TestCaseResult or Section.
+for n, group in enumerate(node for node in root.iter() if node.findall('Image')):
+    record = {'name': group.get('Name') or group.tag, 'images': []}
     pixels = {}
     for i, node in enumerate(group.findall('Image')):
         if node.get('CompressionMode') != 'PNG':

@@ -130,3 +130,11 @@ timeout/watchdog remains mandatory. Do not install this into normal sessions.
 vertex-only pipeline, including void vertex functions. The retained G16G
 empty-vertex probe emits only `0e000000` at `_agc.main`; it needs no AGX2
 `no_varyings` instruction. The backend byte-exact test retains this witness.
+
+`HK_M4_TESS_DUMP=1` is an opt-in post-completion tessellation diagnostic. It
+forces queue completion and logs bounded TCS outputs, counts, allocations and
+indices from the most recent tessellation parameter block of each primary
+command buffer. It is not a complete draw trace. Missing/unmapped addresses
+are reported without dereference. Normal execution does not wait or read back.
+`cts-images.py` also extracts direct QPA Image children, used by tessellation
+corner tests, in addition to ImageSet groups.
