@@ -129,12 +129,16 @@ interpolate_channel(nir_builder *b, nir_intrinsic_instr *load, unsigned channel)
       .io_semantics = nir_intrinsic_io_semantics(load));
 
    if (load->intrinsic == nir_intrinsic_load_input) {
-      assert(load->def.bit_size == 32);
-
-      if (nir_intrinsic_io_semantics(load).location == VARYING_SLOT_LAYER)
-         return nir_load_layer_id(b);
-      else
-         return interpolate_flat(b, coefficients);
+      nir_def *value =
+         nir_intrinsic_io_semantics(load).location == VARYING_SLOT_LAYER
+            ? nir_load_layer_id(b) : interpolate_flat(b, coefficients);
+      /* UVS producers widen 16-bit outputs to the 32-bit varying ABI.
+       * Recover the consumer type after fetching the flat coefficient. */
+      if (load->def.bit_size == 16)
+         value = nir_convert_to_bit_size(b, value,
+                    nir_alu_type_get_base_type(nir_intrinsic_dest_type(load)),
+                    16);
+      return value;
    } else {
       nir_intrinsic_instr *bary = nir_src_as_intrinsic(load->src[0]);
 

@@ -954,13 +954,15 @@ agx3_alu_bfeil(enum agx_isa_encoding enc, uint16_t dest, uint16_t source,
 }
 
 bool
-agx3_alu_shift_add16(enum agx_isa_encoding enc, uint16_t dest,
-                     const uint16_t src[2], const enum agx3_alu_hint hints[2],
-                     unsigned shift, bool dest_cache, uint16_t wait_mask,
-                     uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len)
+agx3_alu_add_sub16(enum agx_isa_encoding enc, uint16_t dest,
+                  const uint16_t src[2], const enum agx3_alu_hint hints[2],
+                  unsigned shift, bool subtract, bool dest_cache,
+                  uint16_t wait_mask, uint8_t out[AGX3_ALU_MAX_LENGTH],
+                  uint8_t *len)
 {
    if (enc != AGX_ISA_ENCODING_AGX3B || !src || !hints || !out || !len ||
        dest >= 192 || src[0] >= 192 || src[1] >= 192 || shift > 4 ||
+       (subtract && shift != 0) ||
        (unsigned)hints[0] > AGX3_ALU_HINT_CACHE ||
        (unsigned)hints[1] > AGX3_ALU_HINT_CACHE || (wait_mask & ~0x3fu))
       return false;
@@ -978,7 +980,8 @@ agx3_alu_shift_add16(enum agx_isa_encoding enc, uint16_t dest,
    for (unsigned i = 0; i < 6; ++i)
       if (wait_mask & (1u << i))
          fields[n++] = (struct agx3_field_kv){45 + i, 1};
-   return agx3_bind_compose(enc, "iadd", 0, base, 6, fields, n, out, len);
+   return agx3_bind_compose(enc, subtract ? "isub" : "iadd", 0,
+                            base, 6, fields, n, out, len);
 }
 
 bool

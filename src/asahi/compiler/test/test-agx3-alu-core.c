@@ -931,15 +931,19 @@ static void test_native_u16_arithmetic(void)
    assert(agx3_alu_bit_reg16(AGX_ISA_ENCODING_AGX3B,AGX3_ALU_BXOR,3,xy,dead,0,out,&len));
    exact(out,len,"13021e040e0800000000");
    const uint16_t t[] = {16, 16}, n[] = {11, 10};
-   assert(agx3_alu_shift_add16(AGX_ISA_ENCODING_AGX3B,10,t,dead,4,true,2,out,&len));
+   assert(agx3_alu_add_sub16(AGX_ISA_ENCODING_AGX3B,10,t,dead,4,false,true,2,out,&len));
    exact(out,len,"9f21540a032040001605");
-   assert(agx3_alu_shift_add16(AGX_ISA_ENCODING_AGX3B,10,n,dead,4,true,0,out,&len));
+   assert(agx3_alu_add_sub16(AGX_ISA_ENCODING_AGX3B,10,n,dead,4,false,true,0,out,&len));
    exact(out,len,"9f01540a031628001605");
+   const uint16_t sub[] = {2, 3};
+   assert(agx3_alu_add_sub16(AGX_ISA_ENCODING_AGX3B,2,sub,dead,0,true,false,32,out,&len));
+   exact(out,len,"1f01560202040c001705");
+   assert(!agx3_alu_add_sub16(AGX_ISA_ENCODING_AGX3B,2,sub,dead,1,true,false,0,out,&len));
    const uint16_t mixed_src[] = {2, 4};
    const bool mixed_width[] = {false, true};
    assert(agx3_alu_fcmp_select_imm_width(AGX_ISA_ENCODING_AGX3B,2,mixed_src,mixed_width,dead,1,255,0,true,false,32,out,&len));
    exact(out,len,"12031d04a2ff03c02080");
-   puts("Native u16 ALU and mixed-width FSEL: six native byte vectors PASS");
+   puts("Native u16 ALU and mixed-width FSEL: seven native byte vectors PASS");
 }
 
 static void

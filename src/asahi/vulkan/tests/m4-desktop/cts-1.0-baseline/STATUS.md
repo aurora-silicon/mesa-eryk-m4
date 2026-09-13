@@ -249,3 +249,16 @@ case45 Pass using diagnostic binary586df4c94f4b4a29525c9bf44500325a75c14018f96ca
 The original CTS source/binary is restored; keep this adapted result separate.
 New cts-campaign.py automates bounded consecutive batches with continuity,
 identity and guard checks; it does not retry tests or recover hardware.
+
+Follow-up control:input_output_float_32_to_16.scalar0_rtz_vert. Add native
+16-bit integer subtraction (Apple G16G witness at
+compiler/test/probes/README-g16g-half-isub.md). Exact-byte core regression and
+existing ALU checks pass; saved failed shader d206ca5f... replays to360bytes.
+The next boundary was flat16-bit fragment input:recover the consumer type
+from the32-bit varying ABI, matching existing UVS producer widening.
+20260913T122111624150Z-cts-flat16-rtz:unmodified control Pass.
+20260913T122141687798Z-cts-flat16-controls:scalar7 RTZ and scalar0 RTE Pass;
+integer-vector control reaches a separate block_image_store refusal, bundle
+1a8fccb9... retained. Full guards; installed library
+046aa4dbd7aad5b2371ce9e5daebc42917d53ed6de57571c943c6aaffdf4c7e0.
+This follow-up is outside the fixed100-case total. Kernel unchanged.

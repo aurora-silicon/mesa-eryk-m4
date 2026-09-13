@@ -5944,14 +5944,16 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
              agx_channels(I->src[0]) == 1 && agx_channels(I->src[1]) == 1 &&
              agx3_src_is_register(I->dest[0]) && agx3_src_is_register(I->src[0]) &&
              agx3_src_is_register(I->src[1]) &&
-             !I->src[0].abs && !I->src[0].neg && !I->src[1].abs && !I->src[1].neg) {
+             !I->src[0].abs && !I->src[0].neg && !I->src[1].abs &&
+             (!I->src[1].neg || I->shift == 0)) {
             const uint16_t src[2] = {I->src[0].value, I->src[1].value};
             const enum agx3_alu_hint hints[2] = {
                agx3_post_ra_hint(I->src[0]), agx3_post_ra_hint(I->src[1])};
             uint8_t bytes[AGX3_ALU_MAX_LENGTH], len;
             if (I->src[0].kill || I->src[1].kill ||
-                !agx3_alu_shift_add16(enc, I->dest[0].value, src, hints, I->shift,
-                                      I->dest[0].cache, wait, bytes, &len) ||
+                !agx3_alu_add_sub16(enc, I->dest[0].value, src, hints, I->shift,
+                                    I->src[1].neg, I->dest[0].cache, wait,
+                                    bytes, &len) ||
                 !agx3_append(emission, bytes, len))
                AGX3_REFUSE(I);
             continue;
