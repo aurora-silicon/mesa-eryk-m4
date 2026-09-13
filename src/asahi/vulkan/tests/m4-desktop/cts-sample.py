@@ -31,13 +31,18 @@ def select(args):
     cases = raw.decode().splitlines()
     assert cases and len(cases) == len(set(cases))
     assert all(re.fullmatch(r'dEQP-VK\.[\w.\-]+', c) for c in cases)
-    chosen = random.Random(args.seed).sample(cases, args.count)
+    excluded = [c for c in cases if args.linux_only and
+                ('win32' in c or c.startswith('dEQP-VK.wsi.android.'))]
+    excluded_set = set(excluded)
+    eligible = [c for c in cases if c not in excluded_set]
+    chosen = random.Random(args.seed).sample(eligible, args.count)
     args.output.mkdir(parents=True, exist_ok=False)
     (args.output / 'cases.txt').write_text('\n'.join(chosen) + '\n')
     save(args.output / 'selection.json', dict(seed=args.seed, count=args.count,
-         population=len(cases), mustpass=str(args.mustpass.resolve()),
+         population=len(cases), eligible_population=len(eligible),
+         platform_exclusions=excluded, linux_only=args.linux_only, mustpass=str(args.mustpass.resolve()),
          mustpass_sha256=hashlib.sha256(raw).hexdigest(),
-         method='Python random.Random(seed).sample, original mustpass order; no exclusions',
+         method='Python random.Random(seed).sample, original mustpass order; only recorded platform exclusions',
          categories=dict(collections.Counter(c.split('.')[1] for c in chosen)), cases=chosen))
     print((args.output / 'selection.json').read_text())
 
@@ -141,6 +146,8 @@ def main():
     s.add_argument('--output', type=Path, required=True)
     s.add_argument('--seed', type=int, default=20260913)
     s.add_argument('--count', type=int, default=100)
+    s.add_argument('--linux-only', action='store_true',
+                   help='Exclude Windows handles/WSI and Android WSI before selection; retain all other cases')
     b = sub.add_parser('batch')
     b.add_argument('--guard-output', type=Path, required=True)
     b.add_argument('--binary', type=Path, required=True)

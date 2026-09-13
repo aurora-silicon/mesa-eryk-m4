@@ -150,3 +150,9 @@ semaphores. It submits four waiting consumers before any producer, then swaps
 queue roles for a second round and checks all copied words. Binary semaphores
 cannot be used for this ordering. Build with `cc -O2 -Wall -Wextra SOURCE -lvulkan`
 and run only under `gpu-experiment.py`; success is `QUEUE_DEPENDENCY_RESULT: PASS`.
+
+For a Linux-only random campaign, `select --linux-only` excludes Windows
+handle/WSI cases (`win32`) and Android WSI before drawing the sample. It records
+every platform exclusion and the eligible population. It does not exclude
+optional features, known defects, prior failures, or already tested cases.
+Use a new recorded seed and freeze the case list before executing any case.
