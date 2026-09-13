@@ -157,3 +157,17 @@ auxiliary form. Witness:compiler/test/probes/README-g16g-cube-array.md.
 pass. 20260913T114027179419Z-cts-native-cube-array:original case11 Pass,
 result image matches reference, peak58.5 C, full guards.
 Library1f85037d07176963e0a14881d7edacf2b15768a380217351245821cf5082b59f. Kernel unchanged.
+
+Thirteenth selection:index91, 1D R32_UINT compute image barrier with indirect
+read dispatch. Both direct-dispatch controls also returned zeros. Upload and
+readback alone were byte-exact; constant/unrolled diagnostic shaders still
+returned zero, excluding the initial loop-immediate hypothesis. The descriptor
+writer's native view-type gate omitted 1D and 1D arrays, replacing otherwise
+valid native descriptors with nulls. Admit their existing height-one 2D mapping.
+20260913T115520513673Z-cts-storage-1d-descriptor: original case91 Pass,
+peak58.75 C, full guards. 20260913T115544783157Z-cts-storage-1d-regression:
+three direct read/write controls and image.load_store.1d_array.r32_uint Pass.
+Libraryaf002684817557d9a155229cfdf174e3f6f4d235f0a572ed44b4a5ad74f0dba8.
+Diagnostic CTS patches/binaries are separate; original source and executable
+restored to original SHA d296ca5f77238367933e88b99babefe050e841d3c7e1fbcb6e95e4d424814b06.
+Kernel unchanged; no synchronization barrier or test assertion weakened.
