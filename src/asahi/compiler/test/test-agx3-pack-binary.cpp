@@ -170,6 +170,34 @@ TEST_F(AGX3PackBinary, MixedFiveTargetEOTUsesIndependentTypedStores)
    EXPECT_EQ(b->shader->agx3_staging_halfs, 40);
 }
 
+TEST_F(AGX3PackBinary, TileStoreMovesFixedHighEpilogInputToLowRegisters)
+{
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+   b->shader->stage = MESA_SHADER_FRAGMENT;
+   b->shader->nir = rzalloc(mem_ctx, nir_shader);
+   b->shader->nir->info.stage = MESA_SHADER_FRAGMENT;
+   agx_index value = agx_preload(b, agx_register(16, AGX_SIZE_32));
+   agx_index sample = agx_immediate(1);
+   sample.size = AGX_SIZE_16;
+   agx_st_tile(b, value, sample, agx_null(), AGX_FORMAT_I32, 1, 0, false);
+   agx_stop(b);
+   agx_ra(b->shader);
+   unsigned stores = 0, input_copies = 0;
+   agx_foreach_instr_global(b->shader, I) {
+      if (I->op == AGX_OPCODE_ST_TILE) {
+         stores++;
+         EXPECT_LT(I->src[0].value, 16u);
+      }
+      if (I->op == AGX_OPCODE_MOV && I->src[0].value == 16 &&
+          I->src[0].type == AGX_INDEX_REGISTER) {
+         input_copies++;
+         EXPECT_LT(I->dest[0].value, 16u);
+      }
+   }
+   EXPECT_EQ(stores, 1u);
+   EXPECT_EQ(input_copies, 1u);
+}
+
 TEST_F(AGX3PackBinary, StraightLineALU)
 {
    for (int e = 0; e < 2; ++e) {

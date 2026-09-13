@@ -1498,10 +1498,43 @@ agx_lower_agx3b_atomic_returns(agx_context *ctx)
    }
 }
 
+/* Tile-store operands need a separately allocatable live range. A fragment
+ * epilog may consume a fixed high PRELOAD (or its coalesced split) directly;
+ * constraining that definition cannot move the ABI input. Insert a copy at
+ * the use, after optimization, so normal allocation can satisfy the tile
+ * encoding's low-register class without changing the preload location. */
+static void
+agx_lower_agx3b_tile_sources(agx_context *ctx)
+{
+   if (ctx->key->dev.encoding != AGX_ISA_ENCODING_AGX3B)
+      return;
+
+   agx_foreach_instr_global_safe(ctx, I) {
+      if (I->op != AGX_OPCODE_ST_TILE)
+         continue;
+      agx_builder b = agx_init_builder(ctx, agx_before_instr(I));
+      agx_index value = agx_temp(ctx, I->src[0].size);
+      value.channels_m1 = I->src[0].channels_m1;
+      const unsigned channels = agx_channels(value);
+      if (channels == 1) {
+         agx_mov_to(&b, value, I->src[0]);
+      } else {
+         agx_instr *split = agx_split(&b, channels, I->src[0]);
+         agx_instr *collect = agx_collect_to(&b, value, channels);
+         for (unsigned c = 0; c < channels; ++c) {
+            split->dest[c] = agx_temp(ctx, value.size);
+            collect->src[c] = split->dest[c];
+         }
+      }
+      agx_replace_src(I, 0, value);
+   }
+}
+
 void
 agx_ra(agx_context *ctx)
 {
    agx_lower_agx3b_atomic_returns(ctx);
+   agx_lower_agx3b_tile_sources(ctx);
 
    bool force_spilling =
       (agx_compiler_debug & AGX_DBG_SPILL) && ctx->key->has_scratch;
