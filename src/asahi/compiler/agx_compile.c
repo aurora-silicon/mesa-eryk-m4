@@ -5789,6 +5789,40 @@ lower_agx3_packed_tile(nir_builder *b, nir_intrinsic_instr *intr, void *data)
    return true;
 }
 
+/* AGX2 has a Morton interleave instruction. AGX3 uses ordinary integer
+ * arithmetic: spread each unsigned 16-bit coordinate into the even bits,
+ * then place the second coordinate in the odd bits. */
+static bool
+lower_agx3_interleave(nir_builder *b, nir_alu_instr *alu, UNUSED void *data)
+{
+   if (alu->op != nir_op_interleave)
+      return false;
+
+   b->cursor = nir_before_instr(&alu->instr);
+   static const unsigned shifts[] = {8, 4, 2, 1};
+   static const uint32_t masks[] = {
+      0x00ff00ff, 0x0f0f0f0f, 0x33333333, 0x55555555,
+   };
+   nir_def *spread[2];
+   for (unsigned c = 0; c < 2; ++c) {
+      nir_def *x = nir_u2u32(b, nir_ssa_for_alu_src(b, alu, c));
+      for (unsigned i = 0; i < ARRAY_SIZE(shifts); ++i)
+         x = nir_iand_imm(b, nir_ior(b, x, nir_ishl_imm(b, x, shifts[i])),
+                          masks[i]);
+      spread[c] = x;
+   }
+   nir_def_replace(&alu->def,
+      nir_ior(b, spread[0], nir_ishl_imm(b, spread[1], 1)));
+   return true;
+}
+
+bool
+agx_nir_lower_interleave(nir_shader *nir)
+{
+   return nir_shader_alu_pass(nir, lower_agx3_interleave,
+                              nir_metadata_control_flow, NULL);
+}
+
 static bool
 agx_compile_shader_nir_inner(nir_shader *nir, struct agx_shader_key *key,
                        struct agx_shader_part *out)
@@ -5840,6 +5874,8 @@ agx_compile_shader_nir_inner(nir_shader *nir, struct agx_shader_key *key,
    if (key->dev.encoding == AGX_ISA_ENCODING_AGX3B)
       NIR_PASS(_, nir, nir_shader_intrinsics_pass, lower_agx3_packed_tile,
                nir_metadata_control_flow, NULL);
+   if (key->dev.encoding == AGX_ISA_ENCODING_AGX3B)
+      NIR_PASS(_, nir, agx_nir_lower_interleave);
 
    NIR_PASS(_, nir, nir_lower_frag_coord_to_pixel_coord);
    NIR_PASS(_, nir, nir_lower_vars_to_ssa);
