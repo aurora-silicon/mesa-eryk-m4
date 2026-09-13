@@ -42,3 +42,16 @@ R10G10B10A2, with channel order supplied by the PBE descriptor. Recognize the
 CULL_PRIMITIVE UVS slots used by Asahi cull-distance lowering while retaining
 component, interpolation and slot-bound checks. All four cases, plus the two
 optimizer regressions, pass their original CTS comparisons. Evidence: _provenance/experiments/20260913T210227253218Z-cts-seed20-eot-cull
+
+## Wayland platform compatibility (cases 759 and 976)
+
+Backport the stable xdg-shell handshake to the historical CTS platform while
+retaining wl_shell fallback. Build protocol bindings from installed
+wayland-protocols XML with wayland-scanner. Vulkan test bodies are unchanged.
+The basic swapchain rendering case passes on the actual compositor (17.758 s).
+The display-timing case now reaches its capability check and returns
+NotSupported for VK_GOOGLE_display_timing, which this driver does not expose.
+This resolves both setup errors; it is one rendering pass and one optional
+feature skip, not two passes. Both runs verified the 60-second watchdog and
+thermal guard, peak 57.75 C. Evidence: experiments ending in
+cts-seed20-wayland and cts-seed20-wayland-timing.

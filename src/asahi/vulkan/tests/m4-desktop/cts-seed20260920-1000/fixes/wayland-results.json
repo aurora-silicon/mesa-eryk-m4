@@ -1,0 +1,40 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.wsi.wayland.swapchain.render.basic",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-xdg",
+      "--deqp-case=dEQP-VK.wsi.wayland.swapchain.render.basic",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T210318549181Z-cts-seed20-wayland/cts/000/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "started_unix": 1789333399.6242871,
+    "message": "Rendering tests succeeded",
+    "returncode": 0,
+    "seconds": 17.758108281000204,
+    "finished_unix": 1789333417.3885446,
+    "pid": 110325
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.wsi.wayland.display_timing.fifo_relaxed.display_timing",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-xdg",
+      "--deqp-case=dEQP-VK.wsi.wayland.display_timing.fifo_relaxed.display_timing",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T210409179674Z-cts-seed20-wayland-timing/cts/001/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "NotSupported",
+    "started_unix": 1789333450.2143624,
+    "message": "VK_GOOGLE_display_timing is not supported at vktWsiDisplayTimingTests.cpp:173",
+    "returncode": 0,
+    "seconds": 0.10799519500005772,
+    "finished_unix": 1789333450.32837,
+    "pid": 110432
+  }
+]
