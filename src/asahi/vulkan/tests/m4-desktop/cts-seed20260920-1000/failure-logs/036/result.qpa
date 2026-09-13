@@ -1,0 +1,14 @@
+#sessionInfo releaseName git-6b3bca439862e986409ffd76e857ada0cc7c9080
+#sessionInfo releaseId 0x6b3bca43
+#sessionInfo targetName "Default"
+#beginSession
+
+#beginTestCaseResult dEQP-VK.spirv_assembly.instruction.compute.variable_pointers.complex_types_compute.opcopyobject_float_single_buffer_second_input
+<?xml version="1.0" encoding="UTF-8"?>
+<TestCaseResult Version="0.3.4" CasePath="dEQP-VK.spirv_assembly.instruction.compute.variable_pointers.complex_types_compute.opcopyobject_float_single_buffer_second_input" CaseType="SelfValidate">
+ <Section Name="compute" Description="Program: compute">
+  <ShaderProgram LinkStatus="OK">
+   <InfoLog></InfoLog>
+   <SpirVAssemblySource></SpirVAssemblySource>
+</ShaderProgram>
+  <Number Name="SpirVAssemblyTime" Description="SpirV assembly time" Tag="Time" Unit="ms">0.371000

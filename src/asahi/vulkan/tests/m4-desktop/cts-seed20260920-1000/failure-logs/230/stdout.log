@@ -1,0 +1,21 @@
+Writing test log into /root/asahi-evidence/20260913T204854720413Z-cts-seed20260920-rest-050/cts/230/result.qpa
+dEQP Core git-6b3bca439862e986409ffd76e857ada0cc7c9080 (0x6b3bca43) starting..
+  target implementation = 'Default'
+
+Test case 'dEQP-VK.pipeline.blend.format.e5b9g9r9_ufloat_pack32.states.color_ca_cc_sub_alpha_1msa_ca_max-color_sa_dc_rsub_alpha_cc_1mca_rsub-color_dc_cc_add_alpha_1mda_1mca_rsub-color_sa_1mcc_add_alpha_1mca_da_max'..
+Fragment shader compile time = 14.837000 ms
+Link time = 0.008000 ms
+Vertex shader compile time = 0.368000 ms
+Link time = 0.004000 ms
+MESA: warning: ../../mesa/m4-asahi/src/asahi/vulkan/hk_cmd_draw.c:337: VK_ERROR_FEATURE_NOT_PRESENT
+asahi: G17P VDM command BO full=0x87fdf48000 alias=0x1000800000 low=0x800000 size=0x20000
+Test case duration in microseconds = 16808 us
+  Fail (vk.endCommandBuffer(*m_cmdBuffer): VK_ERROR_FEATURE_NOT_PRESENT at vktPipelineBlendTests.cpp:755)
+
+DONE!
+
+Test run totals:
+  Passed:        0/1 (0.0%)
+  Failed:        1/1 (100.0%)
+  Not supported: 0/1 (0.0%)
+  Warnings:      0/1 (0.0%)

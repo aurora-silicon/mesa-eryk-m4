@@ -1,0 +1,24 @@
+Writing test log into /root/asahi-evidence/20260913T204854720413Z-cts-seed20260920-rest-050/cts/100/result.qpa
+dEQP Core git-6b3bca439862e986409ffd76e857ada0cc7c9080 (0x6b3bca43) starting..
+  target implementation = 'Default'
+
+Test case 'dEQP-VK.texture.shadow.cube.linear.less_or_equal_d32_sfloat'..
+Fragment shader compile time = 27.282000 ms
+Link time = 0.009000 ms
+Vertex shader compile time = 0.753000 ms
+Link time = 0.007000 ms
+agx3_pack_binary.c:4869: no grounded AGX3 encoding for texture_sample
+   $r8...r11 = texture_sample ^r8...r10, #0, u18:u19, ^r2, ^r0l, ^r1, x, #0x0, cube, slot 0
+AGX compiler failure saved: /root/asahi-evidence/20260913T204854720413Z-cts-seed20260920-rest-050/cts/compiler-captures/4fb8ce1a58d00878030ed982e4f70bd57319c51184271832bc380023a17ac134
+MESA: error: AGX backend rejected fragment shader for G16G (name=unnamed)
+MESA: warning: ../../mesa/m4-asahi/src/asahi/vulkan/hk_shader.c:1873: AGX backend cannot encode shader for G16G (VK_ERROR_FEATURE_NOT_PRESENT)
+Test case duration in microseconds = 1246867 us
+  Fail (vk.createGraphicsPipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:38)
+
+DONE!
+
+Test run totals:
+  Passed:        0/1 (0.0%)
+  Failed:        1/1 (100.0%)
+  Not supported: 0/1 (0.0%)
+  Warnings:      0/1 (0.0%)

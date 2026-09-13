@@ -1,0 +1,10 @@
+{
+  "index": 36,
+  "case": "dEQP-VK.spirv_assembly.instruction.compute.variable_pointers.complex_types_compute.opcopyobject_float_single_buffer_second_input",
+  "status": "Crash",
+  "signal": 5,
+  "evidence": "_provenance/experiments/20260913T204739324390Z-cts-seed20260920-1000-000",
+  "observation": "Mesa SPIR-V parser reports nested Block/BufferBlock decoration and terminates with SIGTRAP. Guard verdict pass; same boot and idle 60s watchdog afterward. No GPU reset observed.",
+  "resume_index": 50,
+  "policy": "Retain first attempts; permit userspace crashes after successful guard evidence. Stop on device loss, timeout or guard failure. No driver/CTS changes or retries."
+}

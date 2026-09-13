@@ -1,0 +1,55 @@
+#sessionInfo releaseName git-6b3bca439862e986409ffd76e857ada0cc7c9080
+#sessionInfo releaseId 0x6b3bca43
+#sessionInfo targetName "Default"
+#beginSession
+
+#beginTestCaseResult dEQP-VK.texture.shadow.cube.linear.less_or_equal_d32_sfloat
+<?xml version="1.0" encoding="UTF-8"?>
+<TestCaseResult Version="0.3.4" CasePath="dEQP-VK.texture.shadow.cube.linear.less_or_equal_d32_sfloat" CaseType="SelfValidate">
+ <Section Name="fragment_CUBE_SHADOW" Description="Program: fragment_CUBE_SHADOW">
+  <ShaderProgram LinkStatus="OK">
+   <InfoLog></InfoLog>
+   <FragmentShader CompileStatus="OK">
+    <ShaderSource></ShaderSource>
+    <InfoLog>Warning, version 450 is not yet complete; most version-specific features are present, but some are missing.
+WARNING: 0:2: &apos;&apos; : all default precisions are highp; use precision statements to quiet warning, e.g.:
+         &quot;precision mediump int; precision highp float;&quot; 
+</InfoLog>
+</FragmentShader>
+</ShaderProgram>
+  <Number Name="FragmentCompileTime" Description="Fragment shader compile time" Tag="Time" Unit="ms">27.282000</Number>
+  <Number Name="LinkTime" Description="Link time" Tag="Time" Unit="ms">0.009000</Number>
+</Section>
+ <ShaderProgram LinkStatus="OK">
+  <InfoLog></InfoLog>
+  <SpirVAssemblySource></SpirVAssemblySource>
+</ShaderProgram>
+ <Section Name="vertext_CUBE_SHADOW" Description="Program: vertext_CUBE_SHADOW">
+  <ShaderProgram LinkStatus="OK">
+   <InfoLog></InfoLog>
+   <VertexShader CompileStatus="OK">
+    <ShaderSource></ShaderSource>
+    <InfoLog>Warning, version 450 is not yet complete; most version-specific features are present, but some are missing.
+</InfoLog>
+</VertexShader>
+</ShaderProgram>
+  <Number Name="VertexCompileTime" Description="Vertex shader compile time" Tag="Time" Unit="ms">0.753000</Number>
+  <Number Name="LinkTime" Description="Link time" Tag="Time" Unit="ms">0.007000</Number>
+</Section>
+ <ShaderProgram LinkStatus="OK">
+  <InfoLog></InfoLog>
+  <SpirVAssemblySource></SpirVAssemblySource>
+</ShaderProgram>
+ <Section Name="Test0" Description="Test 0">
+  <Text>Compare reference value = 0.5
+Coordinates: (-1.25, -1.2) -&gt; (1.2, 1.25)</Text>
+  <Text>Face -X</Text>
+</Section>
+ <Text>vk.createGraphicsPipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:38</Text>
+ <Number Name="TestDuration" Description="Test case duration in microseconds" Tag="Time" Unit="us">1246867</Number>
+ <Result StatusCode="Fail">vk.createGraphicsPipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:38</Result>
+</TestCaseResult>
+
+#endTestCaseResult
+
+#endSession

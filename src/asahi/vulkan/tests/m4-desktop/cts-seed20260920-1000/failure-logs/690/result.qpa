@@ -1,0 +1,48 @@
+#sessionInfo releaseName git-6b3bca439862e986409ffd76e857ada0cc7c9080
+#sessionInfo releaseId 0x6b3bca43
+#sessionInfo targetName "Default"
+#beginSession
+
+#beginTestCaseResult dEQP-VK.image.texel_view_compatible.compute.extended.texel_fetch.bc1_rgba_unorm_block.r16g16b16a16_unorm
+<?xml version="1.0" encoding="UTF-8"?>
+<TestCaseResult Version="0.3.4" CasePath="dEQP-VK.image.texel_view_compatible.compute.extended.texel_fetch.bc1_rgba_unorm_block.r16g16b16a16_unorm" CaseType="SelfValidate">
+ <Section Name="comp" Description="Program: comp">
+  <ShaderProgram LinkStatus="OK">
+   <InfoLog></InfoLog>
+   <ComputeShader CompileStatus="OK">
+    <ShaderSource></ShaderSource>
+    <InfoLog>Warning, version 450 is not yet complete; most version-specific features are present, but some are missing.
+</InfoLog>
+</ComputeShader>
+</ShaderProgram>
+  <Number Name="ComputeCompileTime" Description="Compute shader compile time" Tag="Time" Unit="ms">26.840000</Number>
+  <Number Name="LinkTime" Description="Link time" Tag="Time" Unit="ms">0.005000</Number>
+</Section>
+ <ShaderProgram LinkStatus="OK">
+  <InfoLog></InfoLog>
+  <SpirVAssemblySource></SpirVAssemblySource>
+</ShaderProgram>
+ <Section Name="decompress" Description="Program: decompress">
+  <ShaderProgram LinkStatus="OK">
+   <InfoLog></InfoLog>
+   <ComputeShader CompileStatus="OK">
+    <ShaderSource></ShaderSource>
+    <InfoLog>Warning, version 450 is not yet complete; most version-specific features are present, but some are missing.
+</InfoLog>
+</ComputeShader>
+</ShaderProgram>
+  <Number Name="ComputeCompileTime" Description="Compute shader compile time" Tag="Time" Unit="ms">0.503000</Number>
+  <Number Name="LinkTime" Description="Link time" Tag="Time" Unit="ms">0.005000</Number>
+</Section>
+ <ShaderProgram LinkStatus="OK">
+  <InfoLog></InfoLog>
+  <SpirVAssemblySource></SpirVAssemblySource>
+</ShaderProgram>
+ <Text>vk.createComputePipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:49</Text>
+ <Number Name="TestDuration" Description="Test case duration in microseconds" Tag="Time" Unit="us">342603</Number>
+ <Result StatusCode="Fail">vk.createComputePipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:49</Result>
+</TestCaseResult>
+
+#endTestCaseResult
+
+#endSession

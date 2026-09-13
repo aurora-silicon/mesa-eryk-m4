@@ -1,0 +1,34 @@
+Writing test log into /root/asahi-evidence/20260913T204909921906Z-cts-seed20260920-rest-238/cts/287/result.qpa
+dEQP Core git-6b3bca439862e986409ffd76e857ada0cc7c9080 (0x6b3bca43) starting..
+  target implementation = 'Default'
+
+Test case 'dEQP-VK.glsl.texture_gather.offset_dynamic.implementation_offset.2d.rgba8i.texture_swizzle.one_red_green_blue'..
+Fragment shader compile time = 15.269000 ms
+Link time = 0.007000 ms
+Fragment shader compile time = 0.354000 ms
+Link time = 0.004000 ms
+Fragment shader compile time = 0.319000 ms
+Link time = 0.003000 ms
+Fragment shader compile time = 0.312000 ms
+Link time = 0.003000 ms
+Fragment shader compile time = 0.308000 ms
+Link time = 0.002000 ms
+Vertex shader compile time = 0.309000 ms
+Link time = 0.003000 ms
+Implementation's value for minTexelGatherOffset = -8 
+Implementation's value for maxTexelGatherOffset = 7 
+agx3_pack_binary.c:4869: no grounded AGX3 encoding for texture_sample
+   r4...r7 = texture_sample ^r4...r5, #0, u16:u17, ^r0, ^r3l, ^r1, xyzw, #0x0, 2d, slot 0
+AGX compiler failure saved: /root/asahi-evidence/20260913T204909921906Z-cts-seed20260920-rest-238/cts/compiler-captures/41577da37b205d01f6c9f9ba918bfdda0f4e9c1e6724c127a5ac303c3e002a76
+MESA: error: AGX backend rejected fragment shader for G16G (name=unnamed)
+MESA: warning: ../../mesa/m4-asahi/src/asahi/vulkan/hk_shader.c:1873: AGX backend cannot encode shader for G16G (VK_ERROR_FEATURE_NOT_PRESENT)
+Test case duration in microseconds = 494336 us
+  Fail (vk.createGraphicsPipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:38)
+
+DONE!
+
+Test run totals:
+  Passed:        0/1 (0.0%)
+  Failed:        1/1 (100.0%)
+  Not supported: 0/1 (0.0%)
+  Warnings:      0/1 (0.0%)

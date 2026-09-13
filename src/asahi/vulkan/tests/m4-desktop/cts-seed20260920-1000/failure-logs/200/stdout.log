@@ -1,0 +1,19 @@
+Writing test log into /root/asahi-evidence/20260913T204854720413Z-cts-seed20260920-rest-050/cts/200/result.qpa
+dEQP Core git-6b3bca439862e986409ffd76e857ada0cc7c9080 (0x6b3bca43) starting..
+  target implementation = 'Default'
+
+Test case 'dEQP-VK.renderpass.suballocation.attachment.3.374'..
+agx3_pack_binary.c:7113: no grounded AGX3 encoding for block_image_store
+   block_image_store #0, #0, ^r2, ^r0...r1, #0x0, 2d
+AGX compiler failure saved: /root/asahi-evidence/20260913T204854720413Z-cts-seed20260920-rest-050/cts/compiler-captures/c3ff0539b53d7db8f78b01090e9e9342c750bc5da68d186d6c37dcce3c245d9e
+MESA: warning: ../../mesa/m4-asahi/src/asahi/vulkan/hk_cmd_draw.c:416: VK_ERROR_FEATURE_NOT_PRESENT
+Test case duration in microseconds = 30319 us
+  Fail (vk.endCommandBuffer(cmdBuffer): VK_ERROR_FEATURE_NOT_PRESENT at vktRenderPassTests.cpp:397)
+
+DONE!
+
+Test run totals:
+  Passed:        0/1 (0.0%)
+  Failed:        1/1 (100.0%)
+  Not supported: 0/1 (0.0%)
+  Warnings:      0/1 (0.0%)

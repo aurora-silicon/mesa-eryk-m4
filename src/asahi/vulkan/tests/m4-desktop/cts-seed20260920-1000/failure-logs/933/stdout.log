@@ -1,0 +1,29 @@
+Writing test log into /root/asahi-evidence/20260913T204954650364Z-cts-seed20260920-rest-872/cts/933/result.qpa
+dEQP Core git-6b3bca439862e986409ffd76e857ada0cc7c9080 (0x6b3bca43) starting..
+  target implementation = 'Default'
+
+Test case 'dEQP-VK.pipeline.input_assembly.primitive_restart.index_type_uint16.line_strip_with_adjacency'..
+Fragment shader compile time = 14.460000 ms
+Link time = 0.008000 ms
+Vertex shader compile time = 0.353000 ms
+Link time = 0.004000 ms
+asahi: G17P VDM command BO full=0x87fdf40000 alias=0x1000800000 low=0x800000 size=0x20000
+asahi: G17P VDM command BO full=0x87f5f18000 alias=0x1000820000 low=0x820000 size=0x20000
+agx3_pack_binary.c:5388: no grounded AGX3 encoding for icmp_ballot
+   r19 = icmp_ballot r15l, #0, #0x0, inv
+AGX compiler failure saved: /root/asahi-evidence/20260913T204954650364Z-cts-seed20260920-rest-872/cts/compiler-captures/b9d751227e4523495259813b938eafd21d3e4dd2cef31d4e04bfb949b665a7e6
+MESA: error: AGX backend rejected compute shader for G16G (name=unnamed)
+MESA: warning: ../../mesa/m4-asahi/src/asahi/vulkan/hk_shader.c:1873: AGX backend cannot encode shader for G16G (VK_ERROR_FEATURE_NOT_PRESENT)
+MESA: error: native precompiled kernel 56 failed to compile
+MESA: warning: ../../mesa/m4-asahi/src/asahi/vulkan/hk_cmd_buffer.c:1659: VK_ERROR_FEATURE_NOT_PRESENT
+asahi: G17P VDM command BO full=0x87f5ef4000 alias=0x1000840000 low=0x840000 size=0x20000
+Test case duration in microseconds = 109207 us
+  Fail (vk.endCommandBuffer(*m_cmdBuffer): VK_ERROR_FEATURE_NOT_PRESENT at vktPipelineInputAssemblyTests.cpp:1414)
+
+DONE!
+
+Test run totals:
+  Passed:        0/1 (0.0%)
+  Failed:        1/1 (100.0%)
+  Not supported: 0/1 (0.0%)
+  Warnings:      0/1 (0.0%)

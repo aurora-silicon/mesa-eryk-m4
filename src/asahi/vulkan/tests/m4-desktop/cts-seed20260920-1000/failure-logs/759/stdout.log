@@ -1,0 +1,20 @@
+Writing test log into /root/asahi-evidence/20260913T204939240262Z-cts-seed20260920-rest-648/cts/759/result.qpa
+dEQP Core git-6b3bca439862e986409ffd76e857ada0cc7c9080 (0x6b3bca43) starting..
+  target implementation = 'Default'
+
+Test case 'dEQP-VK.wsi.wayland.swapchain.render.basic'..
+Fragment shader compile time = 15.643000 ms
+Link time = 0.007000 ms
+Vertex shader compile time = 0.460000 ms
+Link time = 0.007000 ms
+Test case duration in microseconds = 20743 us
+  ResourceError (Failed to bind shell at tcuLnxWayland.cpp:93)
+
+DONE!
+
+Test run totals:
+  Passed:        0/1 (0.0%)
+  Failed:        1/1 (100.0%)
+  Not supported: 0/1 (0.0%)
+  Warnings:      0/1 (0.0%)
+Test run was ABORTED!

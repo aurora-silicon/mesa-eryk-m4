@@ -1,0 +1,16 @@
+#sessionInfo releaseName git-6b3bca439862e986409ffd76e857ada0cc7c9080
+#sessionInfo releaseId 0x6b3bca43
+#sessionInfo targetName "Default"
+#beginSession
+
+#beginTestCaseResult dEQP-VK.api.image_clearing.dedicated_allocation.clear_color_image.3d_r8_srgb
+<?xml version="1.0" encoding="UTF-8"?>
+<TestCaseResult Version="0.3.4" CasePath="dEQP-VK.api.image_clearing.dedicated_allocation.clear_color_image.3d_r8_srgb" CaseType="SelfValidate">
+ <Text>m_vkd.endCommandBuffer(*m_commandBuffer): VK_ERROR_FORMAT_NOT_SUPPORTED at vktApiImageClearingTests.cpp:853</Text>
+ <Number Name="TestDuration" Description="Test case duration in microseconds" Tag="Time" Unit="us">3865</Number>
+ <Result StatusCode="Fail">m_vkd.endCommandBuffer(*m_commandBuffer): VK_ERROR_FORMAT_NOT_SUPPORTED at vktApiImageClearingTests.cpp:853</Result>
+</TestCaseResult>
+
+#endTestCaseResult
+
+#endSession

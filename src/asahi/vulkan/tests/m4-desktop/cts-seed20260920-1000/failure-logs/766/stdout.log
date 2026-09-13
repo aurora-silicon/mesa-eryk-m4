@@ -1,0 +1,25 @@
+Writing test log into /root/asahi-evidence/20260913T204939240262Z-cts-seed20260920-rest-648/cts/766/result.qpa
+dEQP Core git-6b3bca439862e986409ffd76e857ada0cc7c9080 (0x6b3bca43) starting..
+  target implementation = 'Default'
+
+Test case 'dEQP-VK.pipeline.blend.format.r16g16b16a16_sfloat.states.color_cc_sa_add_alpha_1msa_ca_rsub-color_cc_1mca_sub_alpha_o_1mcc_max-color_z_z_sub_alpha_sa_sa_rsub-color_cc_sc_rsub_alpha_1mdc_dc_rsub'..
+Fragment shader compile time = 13.740000 ms
+Link time = 0.011000 ms
+Vertex shader compile time = 0.365000 ms
+Link time = 0.005000 ms
+asahi: G17P VDM command BO full=0x87fdf48000 alias=0x1000800000 low=0x800000 size=0x20000
+agx3_pack_binary.c:7113: no grounded AGX3 encoding for fadd
+   r0l = fadd #-0.000000, #-0.000000
+AGX compiler failure saved: /root/asahi-evidence/20260913T204939240262Z-cts-seed20260920-rest-648/cts/compiler-captures/14263868d631cbf0ce74035c26fb6a442249d37e190e923ef971684198aea5fd
+MESA: error: failed to compile or link required fragment shader parts
+MESA: warning: ../../mesa/m4-asahi/src/asahi/vulkan/hk_cmd_draw.c:2470: VK_ERROR_FEATURE_NOT_PRESENT
+Test case duration in microseconds = 59335 us
+  Fail (vk.endCommandBuffer(*m_cmdBuffer): VK_ERROR_FEATURE_NOT_PRESENT at vktPipelineBlendTests.cpp:755)
+
+DONE!
+
+Test run totals:
+  Passed:        0/1 (0.0%)
+  Failed:        1/1 (100.0%)
+  Not supported: 0/1 (0.0%)
+  Warnings:      0/1 (0.0%)

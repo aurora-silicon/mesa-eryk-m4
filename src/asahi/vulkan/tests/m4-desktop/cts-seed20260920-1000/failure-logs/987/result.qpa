@@ -1,0 +1,212 @@
+#sessionInfo releaseName git-6b3bca439862e986409ffd76e857ada0cc7c9080
+#sessionInfo releaseId 0x6b3bca43
+#sessionInfo targetName "Default"
+#beginSession
+
+#beginTestCaseResult dEQP-VK.renderpass.dedicated_allocation.attachment.8.667
+<?xml version="1.0" encoding="UTF-8"?>
+<TestCaseResult Version="0.3.4" CasePath="dEQP-VK.renderpass.dedicated_allocation.attachment.8.667" CaseType="SelfValidate">
+ <Section Name="0-frag" Description="Program: 0-frag">
+  <ShaderProgram LinkStatus="OK">
+   <InfoLog></InfoLog>
+   <FragmentShader CompileStatus="OK">
+    <ShaderSource></ShaderSource>
+    <InfoLog>Warning, version 310 is not yet complete; most version-specific features are present, but some are missing.
+</InfoLog>
+</FragmentShader>
+</ShaderProgram>
+  <Number Name="FragmentCompileTime" Description="Fragment shader compile time" Tag="Time" Unit="ms">16.143000</Number>
+  <Number Name="LinkTime" Description="Link time" Tag="Time" Unit="ms">0.031000</Number>
+</Section>
+ <ShaderProgram LinkStatus="OK">
+  <InfoLog></InfoLog>
+  <SpirVAssemblySource></SpirVAssemblySource>
+</ShaderProgram>
+ <Section Name="0-vert" Description="Program: 0-vert">
+  <ShaderProgram LinkStatus="OK">
+   <InfoLog></InfoLog>
+   <VertexShader CompileStatus="OK">
+    <ShaderSource></ShaderSource>
+    <InfoLog>Warning, version 310 is not yet complete; most version-specific features are present, but some are missing.
+</InfoLog>
+</VertexShader>
+</ShaderProgram>
+  <Number Name="VertexCompileTime" Description="Vertex shader compile time" Tag="Time" Unit="ms">0.310000</Number>
+  <Number Name="LinkTime" Description="Link time" Tag="Time" Unit="ms">0.002000</Number>
+</Section>
+ <ShaderProgram LinkStatus="OK">
+  <InfoLog></InfoLog>
+  <SpirVAssemblySource></SpirVAssemblySource>
+</ShaderProgram>
+ <Section Name="RenderPass" Description="RenderPass">
+  <Section Name="Attachments" Description="Attachments">
+   <Section Name="Attachment0" Description="Attachment 0">
+    <Text>Format: VK_FORMAT_A8B8G8R8_UNORM_PACK32</Text>
+    <Text>Samples: 1</Text>
+    <Text>LoadOp: VK_ATTACHMENT_LOAD_OP_DONT_CARE</Text>
+    <Text>StoreOp: VK_ATTACHMENT_STORE_OP_STORE</Text>
+    <Text>StencilLoadOp: VK_ATTACHMENT_LOAD_OP_LOAD</Text>
+    <Text>StencilStoreOp: VK_ATTACHMENT_STORE_OP_STORE</Text>
+    <Text>InitialLayout: VK_IMAGE_LAYOUT_GENERAL</Text>
+    <Text>FinalLayout: VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL</Text>
+</Section>
+   <Section Name="Attachment1" Description="Attachment 1">
+    <Text>Format: VK_FORMAT_R32G32B32A32_SFLOAT</Text>
+    <Text>Samples: 1</Text>
+    <Text>LoadOp: VK_ATTACHMENT_LOAD_OP_LOAD</Text>
+    <Text>StoreOp: VK_ATTACHMENT_STORE_OP_STORE</Text>
+    <Text>StencilLoadOp: VK_ATTACHMENT_LOAD_OP_CLEAR</Text>
+    <Text>StencilStoreOp: VK_ATTACHMENT_STORE_OP_STORE</Text>
+    <Text>InitialLayout: VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL</Text>
+    <Text>FinalLayout: VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL</Text>
+</Section>
+   <Section Name="Attachment2" Description="Attachment 2">
+    <Text>Format: VK_FORMAT_B8G8R8A8_SRGB</Text>
+    <Text>Samples: 1</Text>
+    <Text>LoadOp: VK_ATTACHMENT_LOAD_OP_CLEAR</Text>
+    <Text>StoreOp: VK_ATTACHMENT_STORE_OP_DONT_CARE</Text>
+    <Text>StencilLoadOp: VK_ATTACHMENT_LOAD_OP_LOAD</Text>
+    <Text>StencilStoreOp: VK_ATTACHMENT_STORE_OP_STORE</Text>
+    <Text>InitialLayout: VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL</Text>
+    <Text>FinalLayout: VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL</Text>
+</Section>
+   <Section Name="Attachment3" Description="Attachment 3">
+    <Text>Format: VK_FORMAT_R32_SFLOAT</Text>
+    <Text>Samples: 1</Text>
+    <Text>LoadOp: VK_ATTACHMENT_LOAD_OP_DONT_CARE</Text>
+    <Text>StoreOp: VK_ATTACHMENT_STORE_OP_STORE</Text>
+    <Text>StencilLoadOp: VK_ATTACHMENT_LOAD_OP_DONT_CARE</Text>
+    <Text>StencilStoreOp: VK_ATTACHMENT_STORE_OP_STORE</Text>
+    <Text>InitialLayout: VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL</Text>
+    <Text>FinalLayout: VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL</Text>
+</Section>
+   <Section Name="Attachment4" Description="Attachment 4">
+    <Text>Format: VK_FORMAT_R8G8_SINT</Text>
+    <Text>Samples: 1</Text>
+    <Text>LoadOp: VK_ATTACHMENT_LOAD_OP_CLEAR</Text>
+    <Text>StoreOp: VK_ATTACHMENT_STORE_OP_STORE</Text>
+    <Text>StencilLoadOp: VK_ATTACHMENT_LOAD_OP_DONT_CARE</Text>
+    <Text>StencilStoreOp: VK_ATTACHMENT_STORE_OP_DONT_CARE</Text>
+    <Text>InitialLayout: VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL</Text>
+    <Text>FinalLayout: VK_IMAGE_LAYOUT_GENERAL</Text>
+</Section>
+   <Section Name="Attachment5" Description="Attachment 5">
+    <Text>Format: VK_FORMAT_R32_SFLOAT</Text>
+    <Text>Samples: 1</Text>
+    <Text>LoadOp: VK_ATTACHMENT_LOAD_OP_LOAD</Text>
+    <Text>StoreOp: VK_ATTACHMENT_STORE_OP_STORE</Text>
+    <Text>StencilLoadOp: VK_ATTACHMENT_LOAD_OP_CLEAR</Text>
+    <Text>StencilStoreOp: VK_ATTACHMENT_STORE_OP_STORE</Text>
+    <Text>InitialLayout: VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL</Text>
+    <Text>FinalLayout: VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL</Text>
+</Section>
+   <Section Name="Attachment6" Description="Attachment 6">
+    <Text>Format: VK_FORMAT_R32_SFLOAT</Text>
+    <Text>Samples: 1</Text>
+    <Text>LoadOp: VK_ATTACHMENT_LOAD_OP_DONT_CARE</Text>
+    <Text>StoreOp: VK_ATTACHMENT_STORE_OP_STORE</Text>
+    <Text>StencilLoadOp: VK_ATTACHMENT_LOAD_OP_CLEAR</Text>
+    <Text>StencilStoreOp: VK_ATTACHMENT_STORE_OP_DONT_CARE</Text>
+    <Text>InitialLayout: VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL</Text>
+    <Text>FinalLayout: VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL</Text>
+</Section>
+   <Section Name="Attachment7" Description="Attachment 7">
+    <Text>Format: VK_FORMAT_A2R10G10B10_UNORM_PACK32</Text>
+    <Text>Samples: 1</Text>
+    <Text>LoadOp: VK_ATTACHMENT_LOAD_OP_LOAD</Text>
+    <Text>StoreOp: VK_ATTACHMENT_STORE_OP_DONT_CARE</Text>
+    <Text>StencilLoadOp: VK_ATTACHMENT_LOAD_OP_CLEAR</Text>
+    <Text>StencilStoreOp: VK_ATTACHMENT_STORE_OP_STORE</Text>
+    <Text>InitialLayout: VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL</Text>
+    <Text>FinalLayout: VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL</Text>
+</Section>
+</Section>
+  <Section Name="Subpasses" Description="Subpasses">
+   <Section Name="Subpass0" Description="Subpass 0">
+    <Section Name="Colors" Description="Colors">
+     <Section Name="Color0" Description="Color 0">
+      <Text>Attachment: 0</Text>
+      <Text>Layout: VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL</Text>
+</Section>
+     <Section Name="Color1" Description="Color 1">
+      <Text>Attachment: 1</Text>
+      <Text>Layout: VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL</Text>
+</Section>
+     <Section Name="Color2" Description="Color 2">
+      <Text>Attachment: 2</Text>
+      <Text>Layout: VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL</Text>
+</Section>
+     <Section Name="Color3" Description="Color 3">
+      <Text>Attachment: 3</Text>
+      <Text>Layout: VK_IMAGE_LAYOUT_GENERAL</Text>
+</Section>
+     <Section Name="Color4" Description="Color 4">
+      <Text>Attachment: 4</Text>
+      <Text>Layout: VK_IMAGE_LAYOUT_GENERAL</Text>
+</Section>
+     <Section Name="Color5" Description="Color 5">
+      <Text>Attachment: 5</Text>
+      <Text>Layout: VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL</Text>
+</Section>
+     <Section Name="Color6" Description="Color 6">
+      <Text>Attachment: 6</Text>
+      <Text>Layout: VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL</Text>
+</Section>
+     <Section Name="Color7" Description="Color 7">
+      <Text>Attachment: 7</Text>
+      <Text>Layout: VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL</Text>
+</Section>
+</Section>
+</Section>
+</Section>
+</Section>
+ <Text>TargetSize: (64, 64)</Text>
+ <Text>Render area, Offset: (0, 0), Size: (60, 47)</Text>
+ <Section Name="Attachment0" Description="Attachment 0">
+  <Text>Image is cleared to (1, 0, 0, 1) before rendering.</Text>
+</Section>
+ <Section Name="Attachment1" Description="Attachment 1">
+  <Text>Image is cleared to (0, 1, 1, 0) before rendering.</Text>
+</Section>
+ <Section Name="Attachment2" Description="Attachment 2">
+  <Text>Image is cleared to (0, 0, 0, 0) before rendering.</Text>
+  <Text>Attachment is cleared to (0, 0, 0, 1) in the beginning of the render pass.</Text>
+</Section>
+ <Section Name="Attachment3" Description="Attachment 3">
+  <Text>Image is cleared to (1, Undef, Undef, Undef) before rendering.</Text>
+</Section>
+ <Section Name="Attachment4" Description="Attachment 4">
+  <Text>Image is cleared to (1, 0, Undef, Undef) before rendering.</Text>
+  <Text>Attachment is cleared to (0, 0, Undef, Undef) in the beginning of the render pass.</Text>
+</Section>
+ <Section Name="Attachment5" Description="Attachment 5">
+  <Text>Image is cleared to (0, Undef, Undef, Undef) before rendering.</Text>
+</Section>
+ <Section Name="Attachment6" Description="Attachment 6">
+  <Text>Image is cleared to (0, Undef, Undef, Undef) before rendering.</Text>
+</Section>
+ <Section Name="Attachment7" Description="Attachment 7">
+  <Text>Image is cleared to (1, 1, 1, 0) before rendering.</Text>
+</Section>
+ <Section Name="Subpass0" Description="Subpass 0">
+  <Text>Viewport, offset: (0, 0), size: (40, 31)</Text>
+  <Text>Subpass uses inlined commands</Text>
+  <Text>Clearing color attachment 0. Offset: (0, 0), Size: (26, 20), Color: (1, 1, 1, 1)</Text>
+  <Text>Clearing color attachment 1. Offset: (13, 0), Size: (26, 20), Color: (1, 1, 0, 0)</Text>
+  <Text>Clearing color attachment 2. Offset: (0, 10), Size: (26, 20), Color: (0, 1, 0, 1)</Text>
+  <Text>Clearing color attachment 3. Offset: (13, 10), Size: (26, 20), Color: (0, Undef, Undef, Undef)</Text>
+  <Text>Clearing color attachment 4. Offset: (0, 0), Size: (26, 20), Color: (0, 1, Undef, Undef)</Text>
+  <Text>Clearing color attachment 5. Offset: (13, 0), Size: (26, 20), Color: (1, Undef, Undef, Undef)</Text>
+  <Text>Clearing color attachment 6. Offset: (0, 10), Size: (26, 20), Color: (1, Undef, Undef, Undef)</Text>
+  <Text>Clearing color attachment 7. Offset: (13, 10), Size: (26, 20), Color: (0, 1, 1, 0)</Text>
+  <Text>Rendering grid quad to (0, -0.225806) -&gt; (1, 1)</Text>
+</Section>
+ <Text>Max color attachments: 8</Text>
+ <Text>vk.endCommandBuffer(cmdBuffer): VK_ERROR_FEATURE_NOT_PRESENT at vktRenderPassTests.cpp:397</Text>
+ <Number Name="TestDuration" Description="Test case duration in microseconds" Tag="Time" Unit="us">72400</Number>
+ <Result StatusCode="Fail">vk.endCommandBuffer(cmdBuffer): VK_ERROR_FEATURE_NOT_PRESENT at vktRenderPassTests.cpp:397</Result>
+</TestCaseResult>
+
+#endTestCaseResult
+
+#endSession

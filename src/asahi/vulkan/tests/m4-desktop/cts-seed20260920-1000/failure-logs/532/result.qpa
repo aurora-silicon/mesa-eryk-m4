@@ -1,0 +1,85 @@
+#sessionInfo releaseName git-6b3bca439862e986409ffd76e857ada0cc7c9080
+#sessionInfo releaseId 0x6b3bca43
+#sessionInfo targetName "Default"
+#beginSession
+
+#beginTestCaseResult dEQP-VK.renderpass.dedicated_allocation.attachment.3.383
+<?xml version="1.0" encoding="UTF-8"?>
+<TestCaseResult Version="0.3.4" CasePath="dEQP-VK.renderpass.dedicated_allocation.attachment.3.383" CaseType="SelfValidate">
+ <Section Name="RenderPass" Description="RenderPass">
+  <Section Name="Attachments" Description="Attachments">
+   <Section Name="Attachment0" Description="Attachment 0">
+    <Text>Format: VK_FORMAT_R16_SINT</Text>
+    <Text>Samples: 1</Text>
+    <Text>LoadOp: VK_ATTACHMENT_LOAD_OP_DONT_CARE</Text>
+    <Text>StoreOp: VK_ATTACHMENT_STORE_OP_STORE</Text>
+    <Text>StencilLoadOp: VK_ATTACHMENT_LOAD_OP_DONT_CARE</Text>
+    <Text>StencilStoreOp: VK_ATTACHMENT_STORE_OP_STORE</Text>
+    <Text>InitialLayout: VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL</Text>
+    <Text>FinalLayout: VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL</Text>
+</Section>
+   <Section Name="Attachment1" Description="Attachment 1">
+    <Text>Format: VK_FORMAT_R32_SFLOAT</Text>
+    <Text>Samples: 1</Text>
+    <Text>LoadOp: VK_ATTACHMENT_LOAD_OP_LOAD</Text>
+    <Text>StoreOp: VK_ATTACHMENT_STORE_OP_DONT_CARE</Text>
+    <Text>StencilLoadOp: VK_ATTACHMENT_LOAD_OP_CLEAR</Text>
+    <Text>StencilStoreOp: VK_ATTACHMENT_STORE_OP_STORE</Text>
+    <Text>InitialLayout: VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL</Text>
+    <Text>FinalLayout: VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL</Text>
+</Section>
+   <Section Name="Attachment2" Description="Attachment 2">
+    <Text>Format: VK_FORMAT_R8G8B8A8_SNORM</Text>
+    <Text>Samples: 1</Text>
+    <Text>LoadOp: VK_ATTACHMENT_LOAD_OP_CLEAR</Text>
+    <Text>StoreOp: VK_ATTACHMENT_STORE_OP_DONT_CARE</Text>
+    <Text>StencilLoadOp: VK_ATTACHMENT_LOAD_OP_DONT_CARE</Text>
+    <Text>StencilStoreOp: VK_ATTACHMENT_STORE_OP_STORE</Text>
+    <Text>InitialLayout: VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL</Text>
+    <Text>FinalLayout: VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL</Text>
+</Section>
+</Section>
+  <Section Name="Subpasses" Description="Subpasses">
+   <Section Name="Subpass0" Description="Subpass 0">
+    <Section Name="Colors" Description="Colors">
+     <Section Name="Color0" Description="Color 0">
+      <Text>Attachment: 0</Text>
+      <Text>Layout: VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL</Text>
+</Section>
+     <Section Name="Color1" Description="Color 1">
+      <Text>Attachment: 1</Text>
+      <Text>Layout: VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL</Text>
+</Section>
+     <Section Name="Color2" Description="Color 2">
+      <Text>Attachment: 2</Text>
+      <Text>Layout: VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL</Text>
+</Section>
+</Section>
+</Section>
+</Section>
+</Section>
+ <Text>TargetSize: (64, 64)</Text>
+ <Text>Render area, Offset: (0, 0), Size: (60, 47)</Text>
+ <Section Name="Attachment0" Description="Attachment 0">
+  <Text>Image is cleared to (1, Undef, Undef, Undef) before rendering.</Text>
+</Section>
+ <Section Name="Attachment1" Description="Attachment 1">
+  <Text>Image is cleared to (0, Undef, Undef, Undef) before rendering.</Text>
+</Section>
+ <Section Name="Attachment2" Description="Attachment 2">
+  <Text>Image is cleared to (0, 1, 0, 1) before rendering.</Text>
+  <Text>Attachment is cleared to (0, 0, 0, 0) in the beginning of the render pass.</Text>
+</Section>
+ <Section Name="Subpass0" Description="Subpass 0">
+  <Text>Viewport, offset: (0, 0), size: (40, 31)</Text>
+  <Text>Subpass uses secondary command buffers</Text>
+</Section>
+ <Text>Max color attachments: 8</Text>
+ <Text>vk.endCommandBuffer(cmdBuffer): VK_ERROR_FEATURE_NOT_PRESENT at vktRenderPassTests.cpp:397</Text>
+ <Number Name="TestDuration" Description="Test case duration in microseconds" Tag="Time" Unit="us">42028</Number>
+ <Result StatusCode="Fail">vk.endCommandBuffer(cmdBuffer): VK_ERROR_FEATURE_NOT_PRESENT at vktRenderPassTests.cpp:397</Result>
+</TestCaseResult>
+
+#endTestCaseResult
+
+#endSession

@@ -1,0 +1,28 @@
+Writing test log into /root/asahi-evidence/20260913T204909921906Z-cts-seed20260920-rest-238/cts/359/result.qpa
+dEQP Core git-6b3bca439862e986409ffd76e857ada0cc7c9080 (0x6b3bca43) starting..
+  target implementation = 'Default'
+
+Test case 'dEQP-VK.clipping.user_defined.clip_cull_distance.vert.4_4'..
+Fragment shader compile time = 26.389999 ms
+Link time = 0.007000 ms
+Vertex shader compile time = 0.516000 ms
+Link time = 0.008000 ms
+asahi: G17P VDM command BO full=0x87fdf40000 alias=0x1000800000 low=0x800000 size=0x20000
+MESA: error: HAL200 fragment rejected varyings=0 tile=1 cf=2/5 formats=84/0/0 samples=1 layered=0 size=8
+MESA: error: HAL200 varying state: topology=6 provoking=0 tess=0 vs-layout=2 uvs=21 user=13 reads-z=0
+MESA: error: HAL200 varying 0: slot=32 offset=0 count=1 base=0 smooth=0 perspective=0 vertex-components=1 linked-slot=12
+MESA: error: HAL200 varying 1: slot=28 offset=0 count=4 base=1 smooth=1 perspective=0 vertex-components=4 linked-slot=13
+MESA: error: HAL200 program rejected stage=4 layout=0 outputs=0x10 uvs=0 user=0 groups=0/0/0/0/0 indexed-sampler=0 sets=0 prefetch=0 linked=0xaaab1de85a00 size=442
+MESA: warning: ../../mesa/m4-asahi/src/asahi/vulkan/hk_cmd_buffer.c:1404: VK_ERROR_FEATURE_NOT_PRESENT
+MESA: error: failed to emit native HAL200 bind tail for G16G
+MESA: warning: ../../mesa/m4-asahi/src/asahi/vulkan/hk_cmd_draw.c:4502: VK_ERROR_FEATURE_NOT_PRESENT
+Test case duration in microseconds = 33967 us
+  Fail (vk.endCommandBuffer(commandBuffer): VK_ERROR_FEATURE_NOT_PRESENT at vktDrawUtil.cpp:269)
+
+DONE!
+
+Test run totals:
+  Passed:        0/1 (0.0%)
+  Failed:        1/1 (100.0%)
+  Not supported: 0/1 (0.0%)
+  Warnings:      0/1 (0.0%)

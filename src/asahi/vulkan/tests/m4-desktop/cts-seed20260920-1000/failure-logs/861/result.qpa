@@ -1,0 +1,61 @@
+#sessionInfo releaseName git-6b3bca439862e986409ffd76e857ada0cc7c9080
+#sessionInfo releaseId 0x6b3bca43
+#sessionInfo targetName "Default"
+#beginSession
+
+#beginTestCaseResult dEQP-VK.glsl.texture_gather.offset_dynamic.min_required_offset.2d.depth32f.size_npot.compare_greater.mirrored_repeat_clamp_to_edge
+<?xml version="1.0" encoding="UTF-8"?>
+<TestCaseResult Version="0.3.4" CasePath="dEQP-VK.glsl.texture_gather.offset_dynamic.min_required_offset.2d.depth32f.size_npot.compare_greater.mirrored_repeat_clamp_to_edge" CaseType="SelfValidate">
+ <Section Name="frag_0" Description="Program: frag_0">
+  <ShaderProgram LinkStatus="OK">
+   <InfoLog></InfoLog>
+   <FragmentShader CompileStatus="OK">
+    <ShaderSource></ShaderSource>
+    <InfoLog>Warning, version 310 is not yet complete; most version-specific features are present, but some are missing.
+</InfoLog>
+</FragmentShader>
+</ShaderProgram>
+  <Number Name="FragmentCompileTime" Description="Fragment shader compile time" Tag="Time" Unit="ms">16.204000</Number>
+  <Number Name="LinkTime" Description="Link time" Tag="Time" Unit="ms">0.013000</Number>
+</Section>
+ <ShaderProgram LinkStatus="OK">
+  <InfoLog></InfoLog>
+  <SpirVAssemblySource></SpirVAssemblySource>
+</ShaderProgram>
+ <Section Name="vert" Description="Program: vert">
+  <ShaderProgram LinkStatus="OK">
+   <InfoLog></InfoLog>
+   <VertexShader CompileStatus="OK">
+    <ShaderSource></ShaderSource>
+    <InfoLog>Warning, version 310 is not yet complete; most version-specific features are present, but some are missing.
+</InfoLog>
+</VertexShader>
+</ShaderProgram>
+  <Number Name="VertexCompileTime" Description="Vertex shader compile time" Tag="Time" Unit="ms">0.419000</Number>
+  <Number Name="LinkTime" Description="Link time" Tag="Time" Unit="ms">0.006000</Number>
+</Section>
+ <ShaderProgram LinkStatus="OK">
+  <InfoLog></InfoLog>
+  <SpirVAssemblySource></SpirVAssemblySource>
+</ShaderProgram>
+ <Text>Note: texture level&apos;s size is (17, 23)</Text>
+ <Text>Note: texture level&apos;s size is (8, 11)</Text>
+ <Text>Note: texture level&apos;s size is (4, 5)</Text>
+ <Text>Note: texture level&apos;s size is (2, 2)</Text>
+ <Text>Note: texture level&apos;s size is (1, 1)</Text>
+ <Text>Texture base level is 0</Text>
+ <Text>s and t wrap modes are VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT and VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, respectively</Text>
+ <Text>Minification and magnification filter modes are VK_FILTER_NEAREST and VK_FILTER_NEAREST, respectively (note that they should have no effect on gather result)</Text>
+ <Text>Using texture swizzle [default swizzle state]</Text>
+ <Text>Using texture compare func VK_COMPARE_OP_GREATER</Text>
+ <Section Name="Iteration0" Description="Iteration 0">
+  <Text>Texture coordinates run from (-0.3, -0.4) to (1.5, 1.6)</Text>
+</Section>
+ <Text>vk.createGraphicsPipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:38</Text>
+ <Number Name="TestDuration" Description="Test case duration in microseconds" Tag="Time" Unit="us">334774</Number>
+ <Result StatusCode="Fail">vk.createGraphicsPipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:38</Result>
+</TestCaseResult>
+
+#endTestCaseResult
+
+#endSession

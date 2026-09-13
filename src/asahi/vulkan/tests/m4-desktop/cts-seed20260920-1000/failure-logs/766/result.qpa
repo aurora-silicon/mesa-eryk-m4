@@ -1,0 +1,48 @@
+#sessionInfo releaseName git-6b3bca439862e986409ffd76e857ada0cc7c9080
+#sessionInfo releaseId 0x6b3bca43
+#sessionInfo targetName "Default"
+#beginSession
+
+#beginTestCaseResult dEQP-VK.pipeline.blend.format.r16g16b16a16_sfloat.states.color_cc_sa_add_alpha_1msa_ca_rsub-color_cc_1mca_sub_alpha_o_1mcc_max-color_z_z_sub_alpha_sa_sa_rsub-color_cc_sc_rsub_alpha_1mdc_dc_rsub
+<?xml version="1.0" encoding="UTF-8"?>
+<TestCaseResult Version="0.3.4" CasePath="dEQP-VK.pipeline.blend.format.r16g16b16a16_sfloat.states.color_cc_sa_add_alpha_1msa_ca_rsub-color_cc_1mca_sub_alpha_o_1mcc_max-color_z_z_sub_alpha_sa_sa_rsub-color_cc_sc_rsub_alpha_1mdc_dc_rsub" CaseType="SelfValidate">
+ <Section Name="color_frag" Description="Program: color_frag">
+  <ShaderProgram LinkStatus="OK">
+   <InfoLog></InfoLog>
+   <FragmentShader CompileStatus="OK">
+    <ShaderSource></ShaderSource>
+    <InfoLog>Warning, version 310 is not yet complete; most version-specific features are present, but some are missing.
+</InfoLog>
+</FragmentShader>
+</ShaderProgram>
+  <Number Name="FragmentCompileTime" Description="Fragment shader compile time" Tag="Time" Unit="ms">13.740000</Number>
+  <Number Name="LinkTime" Description="Link time" Tag="Time" Unit="ms">0.011000</Number>
+</Section>
+ <ShaderProgram LinkStatus="OK">
+  <InfoLog></InfoLog>
+  <SpirVAssemblySource></SpirVAssemblySource>
+</ShaderProgram>
+ <Section Name="color_vert" Description="Program: color_vert">
+  <ShaderProgram LinkStatus="OK">
+   <InfoLog></InfoLog>
+   <VertexShader CompileStatus="OK">
+    <ShaderSource></ShaderSource>
+    <InfoLog>Warning, version 310 is not yet complete; most version-specific features are present, but some are missing.
+</InfoLog>
+</VertexShader>
+</ShaderProgram>
+  <Number Name="VertexCompileTime" Description="Vertex shader compile time" Tag="Time" Unit="ms">0.365000</Number>
+  <Number Name="LinkTime" Description="Link time" Tag="Time" Unit="ms">0.005000</Number>
+</Section>
+ <ShaderProgram LinkStatus="OK">
+  <InfoLog></InfoLog>
+  <SpirVAssemblySource></SpirVAssemblySource>
+</ShaderProgram>
+ <Text>vk.endCommandBuffer(*m_cmdBuffer): VK_ERROR_FEATURE_NOT_PRESENT at vktPipelineBlendTests.cpp:755</Text>
+ <Number Name="TestDuration" Description="Test case duration in microseconds" Tag="Time" Unit="us">59335</Number>
+ <Result StatusCode="Fail">vk.endCommandBuffer(*m_cmdBuffer): VK_ERROR_FEATURE_NOT_PRESENT at vktPipelineBlendTests.cpp:755</Result>
+</TestCaseResult>
+
+#endTestCaseResult
+
+#endSession

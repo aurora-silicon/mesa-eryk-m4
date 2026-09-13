@@ -1,0 +1,24 @@
+Writing test log into /root/asahi-evidence/20260913T204939240262Z-cts-seed20260920-rest-648/cts/860/result.qpa
+dEQP Core git-6b3bca439862e986409ffd76e857ada0cc7c9080 (0x6b3bca43) starting..
+  target implementation = 'Default'
+
+Test case 'dEQP-VK.image.texel_view_compatible.compute.extended.image_load.eac_r11_snorm_block.r16g16b16a16_snorm'..
+Compute shader compile time = 24.753000 ms
+Link time = 0.007000 ms
+Compute shader compile time = 0.646000 ms
+Link time = 0.007000 ms
+agx3_pack_binary.c:4840: no grounded AGX3 encoding for image_write
+   image_write ^r8...r11, ^r2...r3, #0, u6:u7, ^r0, #0x0, 2d
+AGX compiler failure saved: /root/asahi-evidence/20260913T204939240262Z-cts-seed20260920-rest-648/cts/compiler-captures/0584d8f400ff07e283e52e413c4271b65c1e27d300f84a1a3ce4513374076847
+MESA: error: AGX backend rejected compute shader for G16G (name=unnamed)
+MESA: warning: ../../mesa/m4-asahi/src/asahi/vulkan/hk_shader.c:1873: AGX backend cannot encode shader for G16G (VK_ERROR_FEATURE_NOT_PRESENT)
+Test case duration in microseconds = 403875 us
+  Fail (vk.createComputePipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:49)
+
+DONE!
+
+Test run totals:
+  Passed:        0/1 (0.0%)
+  Failed:        1/1 (100.0%)
+  Not supported: 0/1 (0.0%)
+  Warnings:      0/1 (0.0%)

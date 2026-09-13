@@ -1,0 +1,14 @@
+Writing test log into /root/asahi-evidence/20260913T204739324390Z-cts-seed20260920-1000-000/cts/036/result.qpa
+dEQP Core git-6b3bca439862e986409ffd76e857ada0cc7c9080 (0x6b3bca43) starting..
+  target implementation = 'Default'
+
+Test case 'dEQP-VK.spirv_assembly.instruction.compute.variable_pointers.complex_types_compute.opcopyobject_float_single_buffer_second_input'..
+SpirV assembly time = 0.371000 ms
+MESA: error: ../../mesa/m4-asahi/src/vulkan/runtime/vk_nir.c:64: SPIR-V offset 984: SPIR-V parsing FAILED:
+    In file ../../mesa/m4-asahi/src/compiler/spirv/spirv_to_nir.c:2477
+    Block and BufferBlock decorations cannot decorate a structure type that is nested at any level inside another structure type decorated with Block or BufferBlock.
+    984 bytes into the SPIR-V binary
+SPIR-V parsing FAILED:
+    In file ../../mesa/m4-asahi/src/compiler/spirv/spirv_to_nir.c:2477
+    Block and BufferBlock decorations cannot decorate a structure type that is nested at any level inside another structure type decorated with Block or BufferBlock.
+    984 bytes into the SPIR-V binary

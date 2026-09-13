@@ -1,0 +1,16 @@
+Writing test log into /root/asahi-evidence/20260913T204939240262Z-cts-seed20260920-rest-648/cts/719/result.qpa
+dEQP Core git-6b3bca439862e986409ffd76e857ada0cc7c9080 (0x6b3bca43) starting..
+  target implementation = 'Default'
+
+Test case 'dEQP-VK.api.image_clearing.dedicated_allocation.clear_color_image.3d_r8_srgb'..
+MESA: warning: ../../mesa/m4-asahi/src/asahi/vulkan/hk_cmd_draw.c:461: VK_ERROR_FORMAT_NOT_SUPPORTED
+Test case duration in microseconds = 3865 us
+  Fail (m_vkd.endCommandBuffer(*m_commandBuffer): VK_ERROR_FORMAT_NOT_SUPPORTED at vktApiImageClearingTests.cpp:853)
+
+DONE!
+
+Test run totals:
+  Passed:        0/1 (0.0%)
+  Failed:        1/1 (100.0%)
+  Not supported: 0/1 (0.0%)
+  Warnings:      0/1 (0.0%)
