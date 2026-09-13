@@ -224,3 +224,15 @@ bundle d206ca5f... retained. 20260913T120840923012Z-cts-vs16-float-input:
 actual16-to32 floating input Pass. Library
 b964dc21b9f0ec9422f1560b8299e22cbbf30da9e8574b6faf0a3cb77c858c02.
 Full watchdog/thermal guards, unchanged original CTS and kernel.
+
+Crash67 now Pass with raw disjoint plane copies (experiment ending
+cts-former-disjoint-copy-crash). Crash62 reaches the next16-bit boundary:
+vertex-to-geometry memory stores asserted32 bits and loads used packed16-bit
+strides. Preserve one32-bit word per component on both sides, zero-extending
+raw16-bit payloads on store and truncating on load without float interpretation.
+20260913T121054004036Z-cts-geometry-word-stride:original62 Pass.
+20260913T121120925505Z-cts-gs16-payload-controls:half-float and integer-vector
+geometry input controls Pass. Full guards, library
+938a27c0badf79fae93d55e31a24be9f40ae3268258281b5dc16ad33b0d759f3.
+All four original Mesa-crash cases now Pass in targeted tests. Crash45 remains
+the independently reproduced CTS input-aspect lifetime bug. Kernel unchanged.

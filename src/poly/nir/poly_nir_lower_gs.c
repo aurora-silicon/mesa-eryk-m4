@@ -318,8 +318,12 @@ poly_load_per_vertex_input(nir_builder *b, nir_intrinsic_instr *intr,
    addr = poly_vertex_output_address(b, vp, input_mask, vertex, location);
 
    addr = nir_iadd_imm(b, addr, 4 * nir_intrinsic_component(intr));
-   return nir_load_global_constant(b, intr->def.num_components,
-                                   intr->def.bit_size, addr, .align_mul = 4);
+   /* Vertex output storage has one word per component, even for 16-bit
+    * interfaces. Load the word stride before recovering the payload bits. */
+   assert(intr->def.bit_size == 16 || intr->def.bit_size == 32);
+   nir_def *value = nir_load_global_constant(b, intr->def.num_components,
+                                             32, addr, .align_mul = 4);
+   return nir_u2uN(b, value, intr->def.bit_size);
 }
 
 static bool
@@ -1443,10 +1447,12 @@ lower_vs_before_gs(nir_builder *b, nir_intrinsic_instr *intr, void *data)
       b, vp, nir_imm_int64(b, b->shader->info.outputs_written), linear_id,
       location);
 
-   assert(nir_src_bit_size(intr->src[0]) == 32);
+   assert(nir_src_bit_size(intr->src[0]) == 16 ||
+          nir_src_bit_size(intr->src[0]) == 32);
    addr = nir_iadd_imm(b, addr, nir_intrinsic_component(intr) * 4);
 
-   nir_store_global(b, intr->src[0].ssa, addr,
+   /* Preserve half-float and integer bits without interpreting the type. */
+   nir_store_global(b, nir_u2u32(b, intr->src[0].ssa), addr,
                     .write_mask = nir_intrinsic_write_mask(intr));
    return true;
 }
