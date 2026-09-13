@@ -171,3 +171,19 @@ Libraryaf002684817557d9a155229cfdf174e3f6f4d235f0a572ed44b4a5ad74f0dba8.
 Diagnostic CTS patches/binaries are separate; original source and executable
 restored to original SHA d296ca5f77238367933e88b99babefe050e841d3c7e1fbcb6e95e4d424814b06.
 Kernel unchanged; no synchronization barrier or test assertion weakened.
+
+Fourteenth selection:index6, 10-bit YCbCr reconstruction. Plane uploads now
+succeed but R10X6 samples were normalized as R16 (256*64/65535 = 0.250004,
+expected256/1023 = 0.250244). Scale real channels of converted 10/12-bit planes
+by65535/((2^bits-1)*2^(16-bits)) before range/matrix conversion. Preserve
+implicit alpha/default channels and ordinary8/16-bit planes.
+20260913T115855778906Z-cts-ycbcr-plane-normalization:original case6 Pass,
+peak58.75 C, full guards. Library
+850bd7084452c9ee353eb37626eead4cb8826ecc2a4f24b4c82f6a826b3127b1.
+20260913T115924165455Z-cts-ycbcr-scale-controls:equivalent12-bit case Pass.
+The16-bit control selects a different vertex-stage path and hits a saved
+texture_sample compiler refusal (bundle6cfe6852...); not a normalization pass.
+Next random selection,index5, gets past its old upload failure and now reports
+NotSupported:tessellation shaders unavailable. Do not count it as passing.
+Standalone padded-format views without YCbCr conversion are outside this
+lowering; their format emulation still needs qualification. Kernel unchanged.

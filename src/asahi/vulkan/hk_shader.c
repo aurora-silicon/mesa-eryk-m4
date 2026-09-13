@@ -531,6 +531,73 @@ lookup_ycbcr_conversion(const void *_state, uint32_t set, uint32_t binding,
              : NULL;
 }
 
+/* hk_format_to_pipe_format samples X6R10/X4R12 planes through R16_UNORM.
+ * Restore their logical UNORM range before range expansion and YCbCr matrix
+ * conversion. The correction commutes with filtering; absent channels and
+ * alpha must retain their descriptor defaults. */
+static bool
+lower_ycbcr_plane_scale(nir_builder *b, nir_tex_instr *tex, void *state)
+{
+   const int plane_src = nir_tex_instr_src_index(tex, nir_tex_src_plane);
+   const int deref_src = nir_tex_instr_src_index(tex, nir_tex_src_texture_deref);
+   if (plane_src < 0 || deref_src < 0 || tex->op == nir_texop_txs ||
+       tex->op == nir_texop_query_levels || tex->op == nir_texop_lod)
+      return false;
+
+   nir_deref_instr *deref = nir_src_as_deref(tex->src[deref_src].src);
+   nir_variable *var = nir_deref_instr_get_variable(deref);
+   unsigned array_index = 0;
+   if (deref->deref_type != nir_deref_type_var) {
+      if (deref->deref_type != nir_deref_type_array ||
+          !nir_src_is_const(deref->arr.index))
+         return false;
+      array_index = nir_src_as_uint(deref->arr.index);
+   }
+   const struct vk_ycbcr_conversion_state *conversion =
+      lookup_ycbcr_conversion(state, var->data.descriptor_set,
+                              var->data.binding, array_index);
+   if (!conversion)
+      return false;
+   const struct vk_format_ycbcr_info *info =
+      vk_format_get_ycbcr_info(conversion->format);
+   unsigned plane = nir_src_as_uint(tex->src[plane_src].src);
+   assert(info && plane < info->n_planes);
+
+   unsigned bits, channels;
+   switch (info->planes[plane].format) {
+   case VK_FORMAT_R10X6_UNORM_PACK16:
+      bits = 10;
+      channels = 1;
+      break;
+   case VK_FORMAT_R10X6G10X6_UNORM_2PACK16:
+      bits = 10;
+      channels = 2;
+      break;
+   case VK_FORMAT_R12X4_UNORM_PACK16:
+      bits = 12;
+      channels = 1;
+      break;
+   case VK_FORMAT_R12X4G12X4_UNORM_2PACK16:
+      bits = 12;
+      channels = 2;
+      break;
+   default:
+      return false;
+   }
+   const float scale = 65535.0f / (((1u << bits) - 1u) << (16 - bits));
+   b->cursor = nir_after_instr(&tex->instr);
+   nir_def *components[4];
+   assert(tex->def.num_components == 4);
+   for (unsigned c = 0; c < 4; ++c) {
+      components[c] = nir_channel(b, &tex->def, c);
+      if (c < channels)
+         components[c] = nir_fmul_imm(b, components[c], scale);
+   }
+   nir_def *scaled = nir_vec(b, components, 4);
+   nir_def_rewrite_uses_after(&tex->def, scaled);
+   return true;
+}
+
 static int
 glsl_type_size(const struct glsl_type *type, bool bindless)
 {
@@ -827,6 +894,8 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
    };
    NIR_PASS(_, nir, nir_vk_lower_ycbcr_tex, lookup_ycbcr_conversion,
             &ycbcr_state);
+   NIR_PASS(_, nir, nir_shader_tex_pass, lower_ycbcr_plane_scale,
+            nir_metadata_control_flow, (void *)&ycbcr_state);
 
    /* Lower push constants before lower_descriptors */
    NIR_PASS(_, nir, nir_lower_explicit_io, nir_var_mem_push_const,
