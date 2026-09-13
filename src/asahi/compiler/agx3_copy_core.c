@@ -157,7 +157,12 @@ agx3_copy_encode_uniform_to_reg32(enum agx_isa_encoding encoding,
       KV(17, uniform_half),
    };
 
-   return agx3_bind_compose(encoding, "copy", 0, baseline, nbaseline,
-                            overrides,
-                            AGX3_COPY_ARRAY_SIZE(overrides), out, len);
+   /* As with register copies, high GPR destinations require the long
+    * AGX3b form. Preserve both operands when compact composition refuses. */
+   for (unsigned ep = 0; ep < (encoding == AGX_ISA_ENCODING_AGX3B ? 2u : 1u); ++ep) {
+      if (agx3_bind_compose(encoding, "copy", ep, baseline, nbaseline,
+                            overrides, AGX3_COPY_ARRAY_SIZE(overrides), out, len))
+         return true;
+   }
+   return false;
 }

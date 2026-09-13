@@ -2411,12 +2411,22 @@ TEST_F(AGX3PackBinary, StaticSpillCopyReloadDependency)
    }
 }
 
-TEST_F(AGX3PackBinary, StaticSpillRefusesNonScalarOrNarrowShapes)
+TEST_F(AGX3PackBinary, StaticHalfSpillReload)
+{
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+   agx_index h = agx_register(99, AGX_SIZE_16);
+   agx_stack_store(b, h, agx_immediate(2), AGX_FORMAT_I16, 1);
+   agx_stack_load_to(b, agx_register(101, AGX_SIZE_16), agx_immediate(2), AGX_FORMAT_I16, 1);
+   agx_stop(b);
+   EXPECT_FALSE(pack(b).empty());
+}
+
+TEST_F(AGX3PackBinary, StaticSpillRefusesNonScalarOrUnalignedShapes)
 {
    {
       agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
       agx_index h0 = agx_register(0, AGX_SIZE_16);
-      agx_stack_store(b, h0, agx_immediate(0), AGX_FORMAT_I16, 1);
+      agx_stack_store(b, h0, agx_immediate(1), AGX_FORMAT_I16, 1);
       agx_stop(b);
       pack(b, /*expect_ok=*/false);
    }

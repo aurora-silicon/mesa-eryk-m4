@@ -162,6 +162,20 @@ main(void)
       }
    }
 
+   /* High GPR destinations must select the long uniform-source form too.
+    * Vary both indices so truncation cannot alias a low register operand. */
+   for (unsigned dest = 128; dest < 256; dest += 2) {
+      uint8_t previous[AGX3_COPY_MAX_LENGTH] = {0};
+      for (unsigned uniform = 0; uniform < 512; uniform += 34) {
+         uint8_t out[AGX3_COPY_MAX_LENGTH], len;
+         CHECK(agx3_copy_encode_uniform_to_reg32(AGX_ISA_ENCODING_AGX3B,
+                                                 dest, uniform, out, &len));
+         CHECK(len == 10);
+         CHECK(memcmp(out, previous, len) != 0);
+         memcpy(previous, out, len);
+      }
+   }
+
    /* Fail closed outside the witnessed domain. */
    uint8_t out[AGX3_COPY_MAX_LENGTH];
    uint8_t len = 0;

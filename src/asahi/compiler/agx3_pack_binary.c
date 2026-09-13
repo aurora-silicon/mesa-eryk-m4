@@ -1979,10 +1979,10 @@ agx3_translate_local_atomic(const agx_instr *I, uint8_t slot,
    return true;
 }
 
-/* Mesa's scalar 32-bit stack operation is an exact match for Apple's static
+/* Mesa's scalar 16/32-bit stack operation is an exact match for Apple's static
  * copy/rld family: the immediate byte offset names a TPS half-register and the
- * single data operand names one aligned GPR pair. Constant vectors are split
- * after RA; dynamic reads use LDTPS. Narrow values remain unsupported here. */
+ * single data operand names a half-register or aligned GPR pair. Constant vectors are split
+ * after RA; dynamic reads use LDTPS. */
 static bool
 agx3_translate_static_spill(const agx_instr *I, bool is_store, uint8_t slot,
                             uint16_t wait_mask,
@@ -1991,23 +1991,26 @@ agx3_translate_static_spill(const agx_instr *I, bool is_store, uint8_t slot,
 {
    if (I->op != (is_store ? AGX_OPCODE_STACK_STORE : AGX_OPCODE_STACK_LOAD) ||
        I->nr_dests != (is_store ? 0 : 1) ||
-       I->nr_srcs != (is_store ? 2 : 1) || I->format != AGX_FORMAT_I32 ||
+       I->nr_srcs != (is_store ? 2 : 1) ||
+       (I->format != AGX_FORMAT_I32 && I->format != AGX_FORMAT_I16) ||
        I->mask != 1)
       return false;
 
+   const bool half = I->format == AGX_FORMAT_I16;
+   const unsigned halves = half ? 1 : 2;
    const agx_index data = is_store ? I->src[0] : I->dest[0];
    const agx_index offset = I->src[is_store ? 1 : 0];
    if (!agx3_src_is_register(data) || data.memory || data.abs || data.neg ||
-       (data.cache && data.discard) || data.size != AGX_SIZE_32 ||
-       agx_channels(data) != 1 || (data.value & 1) || data.value > 254 ||
+       (data.cache && data.discard) || data.size != (half ? AGX_SIZE_16 : AGX_SIZE_32) ||
+       agx_channels(data) != 1 || (data.value & (halves - 1)) || data.value > 256 - halves ||
        (!is_store && (data.kill || data.discard)) || offset.type != AGX_INDEX_IMMEDIATE ||
        offset.memory || offset.abs || offset.neg || offset.cache ||
        offset.discard || offset.kill || offset.size != AGX_SIZE_16 ||
-       agx_channels(offset) != 1 || (offset.value & 3))
+       agx_channels(offset) != 1 || (offset.value & (2 * halves - 1)))
       return false;
 
    const uint32_t tps_half = offset.value >> 1;
-   if (tps_half + 2 > AGX3_SLOT_TPS_HALF_TOKENS)
+   if (tps_half + halves > AGX3_SLOT_TPS_HALF_TOKENS)
       return false;
 
    if (is_store) {
@@ -2016,7 +2019,7 @@ agx3_translate_static_spill(const agx_instr *I, bool is_store, uint8_t slot,
       *store = (struct agx3_static_spill_store_desc){
          .tps_half = tps_half,
          .src = data.value,
-         .width = AGX3_MEM_W32,
+         .width = half ? AGX3_MEM_W16 : AGX3_MEM_W32,
          /* Post-RA last-use is discard; kill belongs to SSA liveness.
           * A cache preference needs no COPY bit and may be omitted. */
          .src_kill = data.discard,
@@ -2032,7 +2035,7 @@ agx3_translate_static_spill(const agx_instr *I, bool is_store, uint8_t slot,
          /* RLD f27 consumes the TPS value. Spilled locations can be read
           * repeatedly and dynamically aliased, so preserve them. */
          .retain_tps = true,
-         .width = AGX3_MEM_W32,
+         .width = half ? AGX3_MEM_W16 : AGX3_MEM_W32,
          .slot = slot,
          .slot_mirror = slot,
          .wait_mask = wait_mask,
@@ -2139,7 +2142,7 @@ agx3_append_static_spill_tokens(const agx_instr *I,
       return false;
 
    const uint32_t tps_half = is_store ? store.tps_half : load.tps_half;
-   for (unsigned i = 0; i < 2; ++i) {
+   for (unsigned i = 0; i < (I->format == AGX_FORMAT_I16 ? 1u : 2u); ++i) {
       if (slot_instr->nr_srcs >= AGX3_SLOT_MAX_REGS ||
           slot_instr->nr_dsts >= AGX3_SLOT_MAX_REGS)
          return false;
