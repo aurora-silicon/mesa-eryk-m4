@@ -1,0 +1,1693 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.pipeline.image_view.view_type.cube.format.r8g8b8_sscaled.subresource_range.lod_base_mip_level",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.pipeline.image_view.view_type.cube.format.r8g8b8_sscaled.subresource_range.lod_base_mip_level",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/000/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "Pass",
+    "started_unix": 1789336727.354702,
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.3566640299999335,
+    "finished_unix": 1789336727.7174065,
+    "pid": 9024
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16g16b16_sfloat.a2r10g10b10_uscaled_pack32.general_general_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16g16b16_sfloat.a2r10g10b10_uscaled_pack32.general_general_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/001/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336727.3607984,
+    "message": "Format feature blit destination not supported at vktApiCopiesAndBlittingTests.cpp:1780",
+    "returncode": 0,
+    "seconds": 0.06153125799994541,
+    "finished_unix": 1789336727.4279385,
+    "pid": 9025
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16g16b16_uscaled.a2r10g10b10_sscaled_pack32.optimal_optimal_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16g16b16_uscaled.a2r10g10b10_sscaled_pack32.optimal_optimal_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/002/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336727.3665583,
+    "message": "Format feature blit destination not supported at vktApiCopiesAndBlittingTests.cpp:1780",
+    "returncode": 0,
+    "seconds": 0.07403912400002355,
+    "finished_unix": 1789336727.4465206,
+    "pid": 9026
+  },
+  {
+    "index": 3,
+    "case": "dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.b8g8r8_sint.r8g8b8_srgb.optimal_general",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.b8g8r8_sint.r8g8b8_srgb.optimal_general",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/003/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "Pass",
+    "started_unix": 1789336727.3726478,
+    "message": "CopiesAndBlitting test",
+    "returncode": 0,
+    "seconds": 0.2637788429999546,
+    "finished_unix": 1789336727.6424713,
+    "pid": 9028
+  },
+  {
+    "index": 4,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r8_uscaled.r16g16b16_unorm.optimal_general_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r8_uscaled.r16g16b16_unorm.optimal_general_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/004/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336727.3789268,
+    "message": "Source format feature sampled image filter linear not supported at vktApiCopiesAndBlittingTests.cpp:1786",
+    "returncode": 0,
+    "seconds": 0.07722169800001666,
+    "finished_unix": 1789336727.4634116,
+    "pid": 9030
+  },
+  {
+    "index": 5,
+    "case": "dEQP-VK.pipeline.image.suballocation.sampling_type.combined.view_type.1d.format.r16g16b16_uscaled.count_8.size.443x1",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.pipeline.image.suballocation.sampling_type.combined.view_type.1d.format.r16g16b16_uscaled.count_8.size.443x1",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/005/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "Pass",
+    "started_unix": 1789336727.386567,
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.5830208869999751,
+    "finished_unix": 1789336727.9771013,
+    "pid": 9032
+  },
+  {
+    "index": 6,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r8g8b8_uscaled.r16_sscaled.general_optimal_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r8g8b8_uscaled.r16_sscaled.general_optimal_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/006/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336727.3944192,
+    "message": "Source format feature sampled image filter linear not supported at vktApiCopiesAndBlittingTests.cpp:1786",
+    "returncode": 0,
+    "seconds": 0.07851783700004944,
+    "finished_unix": 1789336727.4815435,
+    "pid": 9034
+  },
+  {
+    "index": 7,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r8g8b8_uscaled.a8b8g8r8_snorm_pack32.general_optimal_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r8g8b8_uscaled.a8b8g8r8_snorm_pack32.general_optimal_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/007/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336727.4030988,
+    "message": "Source format feature sampled image filter linear not supported at vktApiCopiesAndBlittingTests.cpp:1786",
+    "returncode": 0,
+    "seconds": 0.08861860000001798,
+    "finished_unix": 1789336727.4984927,
+    "pid": 9036
+  },
+  {
+    "index": 8,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r8_sscaled.r16g16b16a16_unorm.optimal_general_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r8_sscaled.r16g16b16a16_unorm.optimal_general_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/008/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336727.4099686,
+    "message": "Source format feature sampled image filter linear not supported at vktApiCopiesAndBlittingTests.cpp:1786",
+    "returncode": 0,
+    "seconds": 0.09875829999998587,
+    "finished_unix": 1789336727.5154219,
+    "pid": 9037
+  },
+  {
+    "index": 9,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r8g8b8_uscaled.r8g8b8_snorm.general_general_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r8g8b8_uscaled.r8g8b8_snorm.general_general_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/009/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336727.416719,
+    "message": "Source format feature sampled image filter linear not supported at vktApiCopiesAndBlittingTests.cpp:1786",
+    "returncode": 0,
+    "seconds": 0.10983960700002626,
+    "finished_unix": 1789336727.5324986,
+    "pid": 9040
+  },
+  {
+    "index": 10,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.a2r10g10b10_snorm_pack32.r8_unorm.optimal_general_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.a2r10g10b10_snorm_pack32.r8_unorm.optimal_general_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/010/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336727.596063,
+    "message": "Format feature blit source not supported at vktApiCopiesAndBlittingTests.cpp:1773",
+    "returncode": 0,
+    "seconds": 0.13341142500007663,
+    "finished_unix": 1789336727.735537,
+    "pid": 9045
+  },
+  {
+    "index": 11,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r8g8b8_uscaled.r8g8_sscaled.optimal_general_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r8g8b8_uscaled.r8g8_sscaled.optimal_general_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/011/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336727.6022172,
+    "message": "Source format feature sampled image filter linear not supported at vktApiCopiesAndBlittingTests.cpp:1786",
+    "returncode": 0,
+    "seconds": 0.14437224000005244,
+    "finished_unix": 1789336727.7535431,
+    "pid": 9046
+  },
+  {
+    "index": 12,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r8_sscaled.r8g8b8_uscaled.optimal_optimal_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r8_sscaled.r8g8b8_uscaled.optimal_optimal_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/012/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336727.6092477,
+    "message": "Source format feature sampled image filter linear not supported at vktApiCopiesAndBlittingTests.cpp:1786",
+    "returncode": 0,
+    "seconds": 0.15721044999997957,
+    "finished_unix": 1789336727.77177,
+    "pid": 9047
+  },
+  {
+    "index": 13,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r8g8b8_uscaled.a8b8g8r8_sscaled_pack32.general_general_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r8g8b8_uscaled.a8b8g8r8_sscaled_pack32.general_general_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/013/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336727.6146004,
+    "message": "Source format feature sampled image filter linear not supported at vktApiCopiesAndBlittingTests.cpp:1786",
+    "returncode": 0,
+    "seconds": 0.16660794500000975,
+    "finished_unix": 1789336727.7884429,
+    "pid": 9049
+  },
+  {
+    "index": 14,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.a2b10g10r10_unorm_pack32.a2r10g10b10_snorm_pack32.optimal_general_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.a2b10g10r10_unorm_pack32.a2r10g10b10_snorm_pack32.optimal_general_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/014/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336727.622364,
+    "message": "Format feature blit destination not supported at vktApiCopiesAndBlittingTests.cpp:1780",
+    "returncode": 0,
+    "seconds": 0.17805763399996977,
+    "finished_unix": 1789336727.8066752,
+    "pid": 9050
+  },
+  {
+    "index": 15,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.b8g8r8a8_uscaled.a1r5g5b5_unorm_pack16.general_optimal_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.b8g8r8a8_uscaled.a1r5g5b5_unorm_pack16.general_optimal_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/015/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336727.628669,
+    "message": "Source format feature sampled image filter linear not supported at vktApiCopiesAndBlittingTests.cpp:1786",
+    "returncode": 0,
+    "seconds": 0.19280421899998146,
+    "finished_unix": 1789336727.8263428,
+    "pid": 9052
+  },
+  {
+    "index": 16,
+    "case": "dEQP-VK.pipeline.image.suballocation.sampling_type.separate.view_type.1d_array.format.r16g16b16_uscaled.count_1.size.128x1_array_of_3",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.pipeline.image.suballocation.sampling_type.separate.view_type.1d_array.format.r16g16b16_uscaled.count_1.size.128x1_array_of_3",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/016/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "Pass",
+    "started_unix": 1789336727.6335814,
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.3599422429999777,
+    "finished_unix": 1789336727.9986205,
+    "pid": 9054
+  },
+  {
+    "index": 17,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.a2b10g10r10_uscaled_pack32.b8g8r8a8_snorm.general_general_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.a2b10g10r10_uscaled_pack32.b8g8r8a8_snorm.general_general_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/017/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336727.7054622,
+    "message": "Format feature blit source not supported at vktApiCopiesAndBlittingTests.cpp:1773",
+    "returncode": 0,
+    "seconds": 0.13369806499997594,
+    "finished_unix": 1789336727.8464606,
+    "pid": 9059
+  },
+  {
+    "index": 18,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r4g4b4a4_unorm_pack16.b8g8r8_snorm.optimal_optimal_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r4g4b4a4_unorm_pack16.b8g8r8_snorm.optimal_optimal_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/018/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "Pass",
+    "started_unix": 1789336727.9107535,
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.3228727880000406,
+    "finished_unix": 1789336728.2407732,
+    "pid": 9063
+  },
+  {
+    "index": 19,
+    "case": "dEQP-VK.pipeline.sampler.view_type.2d.format.b8g8r8_snorm.address_modes.all_mode_repeat",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.pipeline.sampler.view_type.2d.format.b8g8r8_snorm.address_modes.all_mode_repeat",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/019/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "Pass",
+    "started_unix": 1789336727.9179575,
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.3380490289999898,
+    "finished_unix": 1789336728.2613423,
+    "pid": 9064
+  },
+  {
+    "index": 20,
+    "case": "dEQP-VK.api.copy_and_blit.dedicated_allocation.blit_image.all_formats.color.r8g8b8_sscaled.r4g4_unorm_pack8.general_optimal_nearest",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.dedicated_allocation.blit_image.all_formats.color.r8g8b8_sscaled.r4g4_unorm_pack8.general_optimal_nearest",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/020/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336727.9234307,
+    "message": "Format feature blit destination not supported at vktApiCopiesAndBlittingTests.cpp:1780",
+    "returncode": 0,
+    "seconds": 0.08497802300007606,
+    "finished_unix": 1789336728.014357,
+    "pid": 9065
+  },
+  {
+    "index": 21,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.a8b8g8r8_uscaled_pack32.b8g8r8a8_sscaled.general_general_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.a8b8g8r8_uscaled_pack32.b8g8r8a8_sscaled.general_general_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/021/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336727.929539,
+    "message": "Source format feature sampled image filter linear not supported at vktApiCopiesAndBlittingTests.cpp:1786",
+    "returncode": 0,
+    "seconds": 0.09464509800000087,
+    "finished_unix": 1789336728.0307615,
+    "pid": 9067
+  },
+  {
+    "index": 22,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16g16_uscaled.a1r5g5b5_unorm_pack16.optimal_general_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16g16_uscaled.a1r5g5b5_unorm_pack16.optimal_general_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/022/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336727.9362514,
+    "message": "Source format feature sampled image filter linear not supported at vktApiCopiesAndBlittingTests.cpp:1786",
+    "returncode": 0,
+    "seconds": 0.10425553000004584,
+    "finished_unix": 1789336728.0510075,
+    "pid": 9069
+  },
+  {
+    "index": 23,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.b8g8r8a8_uscaled.r8g8b8a8_snorm.general_optimal_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.b8g8r8a8_uscaled.r8g8b8a8_snorm.general_optimal_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/023/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336727.946899,
+    "message": "Source format feature sampled image filter linear not supported at vktApiCopiesAndBlittingTests.cpp:1786",
+    "returncode": 0,
+    "seconds": 0.11726681300001474,
+    "finished_unix": 1789336728.0706568,
+    "pid": 9070
+  },
+  {
+    "index": 24,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16g16b16_sscaled.a2b10g10r10_snorm_pack32.optimal_general_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16g16b16_sscaled.a2b10g10r10_snorm_pack32.optimal_general_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/024/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336727.9535232,
+    "message": "Format feature blit destination not supported at vktApiCopiesAndBlittingTests.cpp:1780",
+    "returncode": 0,
+    "seconds": 0.12689242999999806,
+    "finished_unix": 1789336728.0884311,
+    "pid": 9073
+  },
+  {
+    "index": 25,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.a2b10g10r10_uscaled_pack32.r8g8b8_uscaled.general_general_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.a2b10g10r10_uscaled_pack32.r8g8b8_uscaled.general_general_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/025/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336727.9620864,
+    "message": "Format feature blit source not supported at vktApiCopiesAndBlittingTests.cpp:1773",
+    "returncode": 0,
+    "seconds": 0.13535929699992266,
+    "finished_unix": 1789336728.1065638,
+    "pid": 9075
+  },
+  {
+    "index": 26,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r8_unorm.a2r10g10b10_snorm_pack32.general_general_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r8_unorm.a2r10g10b10_snorm_pack32.general_general_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/026/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336728.1698413,
+    "message": "Format feature blit destination not supported at vktApiCopiesAndBlittingTests.cpp:1780",
+    "returncode": 0,
+    "seconds": 0.10211034099995686,
+    "finished_unix": 1789336728.278302,
+    "pid": 9081
+  },
+  {
+    "index": 27,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16_snorm.b8g8r8_sscaled.optimal_general_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16_snorm.b8g8r8_sscaled.optimal_general_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/027/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "Pass",
+    "started_unix": 1789336728.1762826,
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.32409724899991943,
+    "finished_unix": 1789336728.5065465,
+    "pid": 9082
+  },
+  {
+    "index": 28,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16_sscaled.r16g16b16_sscaled.optimal_optimal_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16_sscaled.r16g16b16_sscaled.optimal_optimal_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/028/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336728.1826193,
+    "message": "Source format feature sampled image filter linear not supported at vktApiCopiesAndBlittingTests.cpp:1786",
+    "returncode": 0,
+    "seconds": 0.10604689399997369,
+    "finished_unix": 1789336728.294368,
+    "pid": 9083
+  },
+  {
+    "index": 29,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16g16_sscaled.r32g32b32a32_sfloat.general_general_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16g16_sscaled.r32g32b32a32_sfloat.general_general_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/029/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336728.1884587,
+    "message": "Source format feature sampled image filter linear not supported at vktApiCopiesAndBlittingTests.cpp:1786",
+    "returncode": 0,
+    "seconds": 0.11740586299993083,
+    "finished_unix": 1789336728.312415,
+    "pid": 9085
+  },
+  {
+    "index": 30,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.b8g8r8_snorm.r16g16b16a16_snorm.optimal_optimal_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.b8g8r8_snorm.r16g16b16a16_snorm.optimal_optimal_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/030/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "Pass",
+    "started_unix": 1789336728.1952002,
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.32872255200004474,
+    "finished_unix": 1789336728.530659,
+    "pid": 9087
+  },
+  {
+    "index": 31,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.b4g4r4a4_unorm_pack16.b5g5r5a1_unorm_pack16.general_optimal_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.b4g4r4a4_unorm_pack16.b5g5r5a1_unorm_pack16.general_optimal_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/031/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336728.2021227,
+    "message": "Format feature blit destination not supported at vktApiCopiesAndBlittingTests.cpp:1780",
+    "returncode": 0,
+    "seconds": 0.12208849299997837,
+    "finished_unix": 1789336728.3314476,
+    "pid": 9089
+  },
+  {
+    "index": 32,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r8_uscaled.b5g6r5_unorm_pack16.general_general_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r8_uscaled.b5g6r5_unorm_pack16.general_general_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/032/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336728.209669,
+    "message": "Source format feature sampled image filter linear not supported at vktApiCopiesAndBlittingTests.cpp:1786",
+    "returncode": 0,
+    "seconds": 0.1252124710000544,
+    "finished_unix": 1789336728.3487444,
+    "pid": 9092
+  },
+  {
+    "index": 33,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16g16b16_sfloat.a2r10g10b10_snorm_pack32.general_general_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16g16b16_sfloat.a2r10g10b10_snorm_pack32.general_general_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/033/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336728.2237124,
+    "message": "Format feature blit destination not supported at vktApiCopiesAndBlittingTests.cpp:1780",
+    "returncode": 0,
+    "seconds": 0.1345389730000761,
+    "finished_unix": 1789336728.3666232,
+    "pid": 9093
+  },
+  {
+    "index": 34,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.b8g8r8_unorm.r16g16b16a16_snorm.optimal_optimal_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.b8g8r8_unorm.r16g16b16a16_snorm.optimal_optimal_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/034/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "Pass",
+    "started_unix": 1789336728.4320984,
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.2393355799999881,
+    "finished_unix": 1789336728.678639,
+    "pid": 9097
+  },
+  {
+    "index": 35,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.b8g8r8_sscaled.r8g8b8a8_sscaled.general_general_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.b8g8r8_sscaled.r8g8b8a8_sscaled.general_general_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/035/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336728.4393947,
+    "message": "Source format feature sampled image filter linear not supported at vktApiCopiesAndBlittingTests.cpp:1786",
+    "returncode": 0,
+    "seconds": 0.10997263700005533,
+    "finished_unix": 1789336728.556381,
+    "pid": 9098
+  },
+  {
+    "index": 36,
+    "case": "dEQP-VK.pipeline.sampler.view_type.cube_array.format.r5g5b5a1_unorm_pack16.mipmap.nearest.lod.select_bias_2_5",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.pipeline.sampler.view_type.cube_array.format.r5g5b5a1_unorm_pack16.mipmap.nearest.lod.select_bias_2_5",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/036/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336728.4465616,
+    "message": "Unsupported format for sampling: VK_FORMAT_R5G5B5A1_UNORM_PACK16",
+    "returncode": 0,
+    "seconds": 0.24494046500001332,
+    "finished_unix": 1789336728.6984494,
+    "pid": 9099
+  },
+  {
+    "index": 37,
+    "case": "dEQP-VK.pipeline.sampler.view_type.2d_array.format.b8g8r8_snorm.address_modes.all_mode_mirror_clamp_to_edge",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.pipeline.sampler.view_type.2d_array.format.b8g8r8_snorm.address_modes.all_mode_mirror_clamp_to_edge",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/037/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "Pass",
+    "started_unix": 1789336728.453687,
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.4333124659999612,
+    "finished_unix": 1789336728.8934011,
+    "pid": 9101
+  },
+  {
+    "index": 38,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16g16b16_sscaled.r8g8b8a8_uscaled.optimal_optimal_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16g16b16_sscaled.r8g8b8a8_uscaled.optimal_optimal_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/038/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336728.4601943,
+    "message": "Source format feature sampled image filter linear not supported at vktApiCopiesAndBlittingTests.cpp:1786",
+    "returncode": 0,
+    "seconds": 0.10560601399993175,
+    "finished_unix": 1789336728.577913,
+    "pid": 9104
+  },
+  {
+    "index": 39,
+    "case": "dEQP-VK.texture.shadow.2d_array.linear_mipmap_linear.greater_x8_d24_unorm_pack32",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.texture.shadow.2d_array.linear_mipmap_linear.greater_x8_d24_unorm_pack32",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/039/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336728.472687,
+    "message": "Format not supported: VK_FORMAT_X8_D24_UNORM_PACK32 at vktTextureTestUtil.cpp:326",
+    "returncode": 0,
+    "seconds": 0.23376843899995947,
+    "finished_unix": 1789336728.7163067,
+    "pid": 9105
+  },
+  {
+    "index": 40,
+    "case": "dEQP-VK.pipeline.sampler.view_type.3d.format.b8g8r8_snorm.address_modes.uvw_mode_clamp_to_border_mode_mirrored_repeat_mode_mirror_clamp_to_edge",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.pipeline.sampler.view_type.3d.format.b8g8r8_snorm.address_modes.uvw_mode_clamp_to_border_mode_mirrored_repeat_mode_mirror_clamp_to_edge",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/040/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "Pass",
+    "started_unix": 1789336728.4825993,
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.42365178900001865,
+    "finished_unix": 1789336728.9113688,
+    "pid": 9108
+  },
+  {
+    "index": 41,
+    "case": "dEQP-VK.pipeline.image.suballocation.sampling_type.separate.view_type.1d_array.format.r5g5b5a1_unorm_pack16.count_1.size.1x1_array_of_3",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.pipeline.image.suballocation.sampling_type.separate.view_type.1d_array.format.r5g5b5a1_unorm_pack16.count_1.size.1x1_array_of_3",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/041/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336728.487774,
+    "message": "Unsupported format for sampling: VK_FORMAT_R5G5B5A1_UNORM_PACK16",
+    "returncode": 0,
+    "seconds": 0.258950389000006,
+    "finished_unix": 1789336728.7578263,
+    "pid": 9109
+  },
+  {
+    "index": 42,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16g16b16_uscaled.r4g4_unorm_pack8.optimal_general_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16g16b16_uscaled.r4g4_unorm_pack8.optimal_general_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/042/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336728.6458268,
+    "message": "Format feature blit destination not supported at vktApiCopiesAndBlittingTests.cpp:1780",
+    "returncode": 0,
+    "seconds": 0.12304368200000226,
+    "finished_unix": 1789336728.7791026,
+    "pid": 9113
+  },
+  {
+    "index": 43,
+    "case": "dEQP-VK.pipeline.blend.format.r16g16b16_unorm.states.color_sas_1mcc_min_alpha_dc_1mdc_min-color_1mda_1mcc_add_alpha_1mca_1msa_max-color_1mda_sc_add_alpha_sc_1msa_sub-color_dc_sa_min_alpha_1mdc_1mcc_add",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.pipeline.blend.format.r16g16b16_unorm.states.color_sas_1mcc_min_alpha_dc_1mdc_min-color_1mda_1mcc_add_alpha_1mca_1msa_max-color_1mda_sc_add_alpha_sc_1msa_sub-color_dc_sa_min_alpha_1mdc_1mcc_add",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/043/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336728.6561384,
+    "message": "Unsupported color blending format: VK_FORMAT_R16G16B16_UNORM",
+    "returncode": 0,
+    "seconds": 0.26670016999992185,
+    "finished_unix": 1789336728.928316,
+    "pid": 9114
+  },
+  {
+    "index": 44,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16_snorm.b8g8r8_unorm.general_general_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16_snorm.b8g8r8_unorm.general_general_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/044/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "Pass",
+    "started_unix": 1789336728.6616538,
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.2772935180000786,
+    "finished_unix": 1789336728.9453192,
+    "pid": 9115
+  },
+  {
+    "index": 45,
+    "case": "dEQP-VK.pipeline.image_view.view_type.2d.format.b5g5r5a1_unorm_pack16.subresource_range.array_layer_last",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.pipeline.image_view.view_type.2d.format.b5g5r5a1_unorm_pack16.subresource_range.array_layer_last",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/045/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336728.6680708,
+    "message": "Unsupported format for sampling: VK_FORMAT_B5G5R5A1_UNORM_PACK16",
+    "returncode": 0,
+    "seconds": 0.2886898540000402,
+    "finished_unix": 1789336728.9612825,
+    "pid": 9116
+  },
+  {
+    "index": 46,
+    "case": "dEQP-VK.api.buffer_view.create.dedicated_alloc.create_buffer_view_23_storage",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.buffer_view.create.dedicated_alloc.create_buffer_view_23_storage",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/046/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336728.8481975,
+    "message": "Format not supported at vktApiBufferViewCreateTests.cpp:330",
+    "returncode": 0,
+    "seconds": 0.1201362719999679,
+    "finished_unix": 1789336728.9773228,
+    "pid": 9122
+  },
+  {
+    "index": 47,
+    "case": "dEQP-VK.api.image_clearing.dedicated_allocation.clear_color_image.1d_b8g8r8_sint",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.image_clearing.dedicated_allocation.clear_color_image.1d_b8g8r8_sint",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/047/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "Pass",
+    "started_unix": 1789336728.8572764,
+    "message": "cmdClearColorImage passed",
+    "returncode": 0,
+    "seconds": 0.1369024719999743,
+    "finished_unix": 1789336729.0003502,
+    "pid": 9123
+  },
+  {
+    "index": 48,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.a8b8g8r8_sscaled_pack32.b8g8r8_uscaled.general_optimal_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.a8b8g8r8_sscaled_pack32.b8g8r8_uscaled.general_optimal_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/048/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336728.863674,
+    "message": "Source format feature sampled image filter linear not supported at vktApiCopiesAndBlittingTests.cpp:1786",
+    "returncode": 0,
+    "seconds": 0.1458260719999771,
+    "finished_unix": 1789336729.0173244,
+    "pid": 9124
+  },
+  {
+    "index": 49,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16_uscaled.r16_sscaled.general_optimal_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16_uscaled.r16_sscaled.general_optimal_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/049/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336728.871633,
+    "message": "Source format feature sampled image filter linear not supported at vktApiCopiesAndBlittingTests.cpp:1786",
+    "returncode": 0,
+    "seconds": 0.1546273229999997,
+    "finished_unix": 1789336729.0343168,
+    "pid": 9126
+  },
+  {
+    "index": 50,
+    "case": "dEQP-VK.pipeline.blend.format.b5g5r5a1_unorm_pack16.states.color_ca_1mca_rsub_alpha_1mda_z_sub-color_sc_sc_add_alpha_1mca_sa_max-color_sa_1msa_min_alpha_1msc_sa_sub-color_dc_sc_add_alpha_1mdc_1mca_add",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.pipeline.blend.format.b5g5r5a1_unorm_pack16.states.color_ca_1mca_rsub_alpha_1mda_z_sub-color_sc_sc_add_alpha_1mca_sa_max-color_sa_1msa_min_alpha_1msc_sa_sub-color_dc_sc_add_alpha_1mdc_1mca_add",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/050/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336728.8799045,
+    "message": "Unsupported color blending format: VK_FORMAT_B5G5R5A1_UNORM_PACK16",
+    "returncode": 0,
+    "seconds": 0.2669856840000193,
+    "finished_unix": 1789336729.1555858,
+    "pid": 9128
+  },
+  {
+    "index": 51,
+    "case": "dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.b8g8r8_uscaled.r8g8b8_uscaled.general_optimal",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.b8g8r8_uscaled.r8g8b8_uscaled.general_optimal",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/051/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "Pass",
+    "started_unix": 1789336729.0969377,
+    "message": "CopiesAndBlitting test",
+    "returncode": 0,
+    "seconds": 0.14751529600005142,
+    "finished_unix": 1789336729.251417,
+    "pid": 9132
+  },
+  {
+    "index": 52,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.b5g5r5a1_unorm_pack16.r16g16_sfloat.optimal_general_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.b5g5r5a1_unorm_pack16.r16g16_sfloat.optimal_general_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/052/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336729.1039605,
+    "message": "Format feature blit source not supported at vktApiCopiesAndBlittingTests.cpp:1773",
+    "returncode": 0,
+    "seconds": 0.06563541900004566,
+    "finished_unix": 1789336729.1744137,
+    "pid": 9133
+  },
+  {
+    "index": 53,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.b5g5r5a1_unorm_pack16.r16g16b16a16_snorm.optimal_optimal_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.b5g5r5a1_unorm_pack16.r16g16b16a16_snorm.optimal_optimal_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/053/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336729.1088326,
+    "message": "Format feature blit source not supported at vktApiCopiesAndBlittingTests.cpp:1773",
+    "returncode": 0,
+    "seconds": 0.15462492999995447,
+    "finished_unix": 1789336729.268367,
+    "pid": 9134
+  },
+  {
+    "index": 54,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16g16b16a16_sscaled.r16g16b16_uscaled.optimal_optimal_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16g16b16a16_sscaled.r16g16b16_uscaled.optimal_optimal_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/054/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336729.1137726,
+    "message": "Source format feature sampled image filter linear not supported at vktApiCopiesAndBlittingTests.cpp:1786",
+    "returncode": 0,
+    "seconds": 0.1665622189999567,
+    "finished_unix": 1789336729.2853246,
+    "pid": 9136
+  },
+  {
+    "index": 55,
+    "case": "dEQP-VK.pipeline.image.suballocation.sampling_type.separate.view_type.cube_array.format.r16g16b16_sscaled.count_1.size.32x32_array_of_36",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.pipeline.image.suballocation.sampling_type.separate.view_type.cube_array.format.r16g16b16_sscaled.count_1.size.32x32_array_of_36",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/055/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "Pass",
+    "started_unix": 1789336729.1187932,
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.5980543439999337,
+    "finished_unix": 1789336729.722563,
+    "pid": 9138
+  },
+  {
+    "index": 56,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r8g8b8_uscaled.r8_sscaled.general_general_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r8g8b8_uscaled.r8_sscaled.general_general_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/056/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336729.1245365,
+    "message": "Source format feature sampled image filter linear not supported at vktApiCopiesAndBlittingTests.cpp:1786",
+    "returncode": 0,
+    "seconds": 0.17385389499997927,
+    "finished_unix": 1789336729.3034906,
+    "pid": 9139
+  },
+  {
+    "index": 57,
+    "case": "dEQP-VK.pipeline.image.suballocation.sampling_type.separate.view_type.1d.format.b5g5r5a1_unorm_pack16.count_1.size.32x1",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.pipeline.image.suballocation.sampling_type.separate.view_type.1d.format.b5g5r5a1_unorm_pack16.count_1.size.32x1",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/057/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336729.1296692,
+    "message": "Unsupported format for sampling: VK_FORMAT_B5G5R5A1_UNORM_PACK16",
+    "returncode": 0,
+    "seconds": 0.342744911000068,
+    "finished_unix": 1789336729.4785106,
+    "pid": 9141
+  },
+  {
+    "index": 58,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16g16b16a16_uscaled.r8g8b8_unorm.optimal_optimal_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16g16b16a16_uscaled.r8g8b8_unorm.optimal_optimal_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/058/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336729.1358163,
+    "message": "Source format feature sampled image filter linear not supported at vktApiCopiesAndBlittingTests.cpp:1786",
+    "returncode": 0,
+    "seconds": 0.17904542399992351,
+    "finished_unix": 1789336729.3203468,
+    "pid": 9143
+  },
+  {
+    "index": 59,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16g16_uscaled.a8b8g8r8_snorm_pack32.general_general_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16g16_uscaled.a8b8g8r8_snorm_pack32.general_general_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/059/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336729.1413896,
+    "message": "Source format feature sampled image filter linear not supported at vktApiCopiesAndBlittingTests.cpp:1786",
+    "returncode": 0,
+    "seconds": 0.1872853470000564,
+    "finished_unix": 1789336729.3383753,
+    "pid": 9145
+  },
+  {
+    "index": 60,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16_unorm.r16g16b16_sscaled.general_optimal_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16_unorm.r16g16b16_sscaled.general_optimal_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/060/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "Pass",
+    "started_unix": 1789336729.2370636,
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.25717541799997434,
+    "finished_unix": 1789336729.499947,
+    "pid": 9150
+  },
+  {
+    "index": 61,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r8g8b8a8_unorm.a2r10g10b10_snorm_pack32.general_optimal_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r8g8b8a8_unorm.a2r10g10b10_snorm_pack32.general_optimal_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/061/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336729.2428308,
+    "message": "Format feature blit destination not supported at vktApiCopiesAndBlittingTests.cpp:1780",
+    "returncode": 0,
+    "seconds": 0.10775695300003463,
+    "finished_unix": 1789336729.355427,
+    "pid": 9151
+  },
+  {
+    "index": 62,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r8g8_sscaled.b8g8r8_snorm.optimal_general_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r8g8_sscaled.b8g8r8_snorm.optimal_general_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/062/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336729.4222598,
+    "message": "Source format feature sampled image filter linear not supported at vktApiCopiesAndBlittingTests.cpp:1786",
+    "returncode": 0,
+    "seconds": 0.09536544999991747,
+    "finished_unix": 1789336729.5235338,
+    "pid": 9155
+  },
+  {
+    "index": 63,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r8g8_sscaled.r16g16b16a16_snorm.general_optimal_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r8g8_sscaled.r16g16b16a16_snorm.general_optimal_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/063/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336729.4282537,
+    "message": "Source format feature sampled image filter linear not supported at vktApiCopiesAndBlittingTests.cpp:1786",
+    "returncode": 0,
+    "seconds": 0.10614261499995337,
+    "finished_unix": 1789336729.542641,
+    "pid": 9156
+  },
+  {
+    "index": 64,
+    "case": "dEQP-VK.pipeline.image.suballocation.sampling_type.combined.view_type.2d.format.b5g5r5a1_unorm_pack16.count_1.size.23x8",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.pipeline.image.suballocation.sampling_type.combined.view_type.2d.format.b5g5r5a1_unorm_pack16.count_1.size.23x8",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/064/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336729.4366088,
+    "message": "Unsupported format for sampling: VK_FORMAT_B5G5R5A1_UNORM_PACK16",
+    "returncode": 0,
+    "seconds": 0.30092339200007245,
+    "finished_unix": 1789336729.7433982,
+    "pid": 9157
+  },
+  {
+    "index": 65,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.b8g8r8a8_uscaled.a2r10g10b10_unorm_pack32.general_general_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.b8g8r8a8_uscaled.a2r10g10b10_unorm_pack32.general_general_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/065/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336729.4426432,
+    "message": "Source format feature sampled image filter linear not supported at vktApiCopiesAndBlittingTests.cpp:1786",
+    "returncode": 0,
+    "seconds": 0.11202566300005401,
+    "finished_unix": 1789336729.561582,
+    "pid": 9159
+  },
+  {
+    "index": 66,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.a2b10g10r10_snorm_pack32.a8b8g8r8_unorm_pack32.general_optimal_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.a2b10g10r10_snorm_pack32.a8b8g8r8_unorm_pack32.general_optimal_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/066/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336729.4497645,
+    "message": "Format feature blit source not supported at vktApiCopiesAndBlittingTests.cpp:1773",
+    "returncode": 0,
+    "seconds": 0.1194683480000549,
+    "finished_unix": 1789336729.5795221,
+    "pid": 9161
+  },
+  {
+    "index": 67,
+    "case": "dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.b8g8r8_srgb.b8g8r8_srgb.general_general",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.b8g8r8_srgb.b8g8r8_srgb.general_general",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/067/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "Pass",
+    "started_unix": 1789336729.4601371,
+    "message": "CopiesAndBlitting test",
+    "returncode": 0,
+    "seconds": 0.1326054109999859,
+    "finished_unix": 1789336729.5974827,
+    "pid": 9163
+  },
+  {
+    "index": 68,
+    "case": "dEQP-VK.pipeline.image.suballocation.sampling_type.combined.view_type.1d_array.format.r8g8b8_uscaled.count_8.size.443x1_array_of_6",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.pipeline.image.suballocation.sampling_type.combined.view_type.1d_array.format.r8g8b8_uscaled.count_8.size.443x1_array_of_6",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/068/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "Pass",
+    "started_unix": 1789336729.464923,
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.732076758000062,
+    "finished_unix": 1789336730.20174,
+    "pid": 9165
+  },
+  {
+    "index": 69,
+    "case": "dEQP-VK.api.copy_and_blit.dedicated_allocation.blit_image.all_formats.color.r4g4_unorm_pack8.r32_sfloat.general_optimal_nearest",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.dedicated_allocation.blit_image.all_formats.color.r4g4_unorm_pack8.r32_sfloat.general_optimal_nearest",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/069/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336729.6621468,
+    "message": "Format feature blit source not supported at vktApiCopiesAndBlittingTests.cpp:1773",
+    "returncode": 0,
+    "seconds": 0.09044475799998963,
+    "finished_unix": 1789336729.7603855,
+    "pid": 9169
+  },
+  {
+    "index": 70,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16g16_sfloat.b8g8r8_unorm.general_optimal_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16g16_sfloat.b8g8r8_unorm.general_optimal_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/070/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "Pass",
+    "started_unix": 1789336729.6700156,
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.30324513000005027,
+    "finished_unix": 1789336729.9807262,
+    "pid": 9170
+  },
+  {
+    "index": 71,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16g16b16a16_uscaled.a8b8g8r8_unorm_pack32.optimal_optimal_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16g16b16a16_uscaled.a8b8g8r8_unorm_pack32.optimal_optimal_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/071/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336729.677706,
+    "message": "Source format feature sampled image filter linear not supported at vktApiCopiesAndBlittingTests.cpp:1786",
+    "returncode": 0,
+    "seconds": 0.0913749450000978,
+    "finished_unix": 1789336729.7763789,
+    "pid": 9171
+  },
+  {
+    "index": 72,
+    "case": "dEQP-VK.pipeline.image.suballocation.sampling_type.combined.view_type.2d_array.format.r16g16b16_sscaled.count_1.size.23x8_array_of_6",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.pipeline.image.suballocation.sampling_type.combined.view_type.2d_array.format.r16g16b16_sscaled.count_1.size.23x8_array_of_6",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/072/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "Pass",
+    "started_unix": 1789336729.685442,
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.5279855219999945,
+    "finished_unix": 1789336730.2205677,
+    "pid": 9172
+  },
+  {
+    "index": 73,
+    "case": "dEQP-VK.pipeline.sampler.view_type.3d.format.a2r10g10b10_uscaled_pack32.address_modes.uvw_mode_clamp_to_border_mode_clamp_to_edge_mode_clamp_to_edge",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.pipeline.sampler.view_type.3d.format.a2r10g10b10_uscaled_pack32.address_modes.uvw_mode_clamp_to_border_mode_clamp_to_edge_mode_clamp_to_edge",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/073/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336729.692898,
+    "message": "Unsupported format for sampling: VK_FORMAT_A2R10G10B10_USCALED_PACK32",
+    "returncode": 0,
+    "seconds": 0.30853327299996636,
+    "finished_unix": 1789336730.0105152,
+    "pid": 9175
+  },
+  {
+    "index": 74,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16g16b16_sfloat.a2r10g10b10_snorm_pack32.general_optimal_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16g16b16_sfloat.a2r10g10b10_snorm_pack32.general_optimal_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/074/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336729.7024338,
+    "message": "Format feature blit destination not supported at vktApiCopiesAndBlittingTests.cpp:1780",
+    "returncode": 0,
+    "seconds": 0.08408793599994624,
+    "finished_unix": 1789336729.7955923,
+    "pid": 9177
+  },
+  {
+    "index": 75,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16g16b16_uscaled.b5g5r5a1_unorm_pack16.general_optimal_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16g16b16_uscaled.b5g5r5a1_unorm_pack16.general_optimal_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/075/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336729.711678,
+    "message": "Format feature blit destination not supported at vktApiCopiesAndBlittingTests.cpp:1780",
+    "returncode": 0,
+    "seconds": 0.09857110699999794,
+    "finished_unix": 1789336729.815612,
+    "pid": 9179
+  },
+  {
+    "index": 76,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.b5g5r5a1_unorm_pack16.b8g8r8a8_sscaled.general_general_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.b5g5r5a1_unorm_pack16.b8g8r8a8_sscaled.general_general_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/076/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336729.8824258,
+    "message": "Format feature blit source not supported at vktApiCopiesAndBlittingTests.cpp:1773",
+    "returncode": 0,
+    "seconds": 0.14022999400003755,
+    "finished_unix": 1789336730.0315292,
+    "pid": 9184
+  },
+  {
+    "index": 77,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16_uscaled.r16g16b16_snorm.optimal_general_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16_uscaled.r16g16b16_snorm.optimal_general_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/077/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336729.8913941,
+    "message": "Source format feature sampled image filter linear not supported at vktApiCopiesAndBlittingTests.cpp:1786",
+    "returncode": 0,
+    "seconds": 0.15116430899990974,
+    "finished_unix": 1789336730.0495853,
+    "pid": 9185
+  },
+  {
+    "index": 78,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16g16b16_uscaled.a2r10g10b10_uscaled_pack32.optimal_optimal_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16g16b16_uscaled.a2r10g10b10_uscaled_pack32.optimal_optimal_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/078/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336729.8985596,
+    "message": "Format feature blit destination not supported at vktApiCopiesAndBlittingTests.cpp:1780",
+    "returncode": 0,
+    "seconds": 0.16406685300000845,
+    "finished_unix": 1789336730.0685885,
+    "pid": 9186
+  },
+  {
+    "index": 79,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r8g8b8a8_uscaled.r8g8b8a8_uscaled.optimal_general_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r8g8b8a8_uscaled.r8g8b8a8_uscaled.optimal_general_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/079/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336729.9046059,
+    "message": "Source format feature sampled image filter linear not supported at vktApiCopiesAndBlittingTests.cpp:1786",
+    "returncode": 0,
+    "seconds": 0.17674672700002247,
+    "finished_unix": 1789336730.0874455,
+    "pid": 9187
+  },
+  {
+    "index": 80,
+    "case": "dEQP-VK.pipeline.blend.format.r8g8b8_srgb.states.color_o_1msa_min_alpha_1mcc_1mdc_max-color_z_sas_add_alpha_1mda_dc_add-color_sc_1mda_add_alpha_sc_cc_rsub-color_1msc_1msc_max_alpha_z_o_max",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.pipeline.blend.format.r8g8b8_srgb.states.color_o_1msa_min_alpha_1mcc_1mdc_max-color_z_sas_add_alpha_1mda_dc_add-color_sc_1mda_add_alpha_sc_cc_rsub-color_1msc_1msc_max_alpha_z_o_max",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/080/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336729.9107559,
+    "message": "Unsupported color blending format: VK_FORMAT_R8G8B8_SRGB",
+    "returncode": 0,
+    "seconds": 0.32296582600008605,
+    "finished_unix": 1789336730.238579,
+    "pid": 9189
+  },
+  {
+    "index": 81,
+    "case": "dEQP-VK.pipeline.blend.format.r8g8b8_unorm.states.color_sas_sa_min_alpha_ca_1mda_max-color_1mdc_dc_add_alpha_1mda_sas_rsub-color_sas_1mca_max_alpha_1mca_1mcc_min-color_o_1msa_rsub_alpha_dc_da_min",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.pipeline.blend.format.r8g8b8_unorm.states.color_sas_sa_min_alpha_ca_1mda_max-color_1mdc_dc_add_alpha_1mda_sas_rsub-color_sas_1mca_max_alpha_1mca_1mcc_min-color_o_1msa_rsub_alpha_dc_da_min",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/081/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336729.9156706,
+    "message": "Unsupported color blending format: VK_FORMAT_R8G8B8_UNORM",
+    "returncode": 0,
+    "seconds": 0.3356806110000434,
+    "finished_unix": 1789336730.2575192,
+    "pid": 9190
+  },
+  {
+    "index": 82,
+    "case": "dEQP-VK.pipeline.sampler.view_type.2d.format.b5g5r5a1_unorm_pack16.mipmap.linear.lod.select_max_4",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.pipeline.sampler.view_type.2d.format.b5g5r5a1_unorm_pack16.mipmap.linear.lod.select_max_4",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/082/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336730.1517265,
+    "message": "Unsupported format for sampling: VK_FORMAT_B5G5R5A1_UNORM_PACK16",
+    "returncode": 0,
+    "seconds": 0.25463516000002073,
+    "finished_unix": 1789336730.4116197,
+    "pid": 9196
+  },
+  {
+    "index": 83,
+    "case": "dEQP-VK.api.granularity.single.b8g8r8_srgb",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.granularity.single.b8g8r8_srgb",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/083/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336730.1570537,
+    "message": "Format not supported as attachment",
+    "returncode": 0,
+    "seconds": 0.11311454899998807,
+    "finished_unix": 1789336730.2755625,
+    "pid": 9197
+  },
+  {
+    "index": 84,
+    "case": "dEQP-VK.api.granularity.random.a2b10g10r10_sscaled_pack32",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.granularity.random.a2b10g10r10_sscaled_pack32",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/084/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336730.162601,
+    "message": "Format not supported at vktApiGranularityTests.cpp:132",
+    "returncode": 0,
+    "seconds": 0.12515329200005,
+    "finished_unix": 1789336730.2935133,
+    "pid": 9198
+  },
+  {
+    "index": 85,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.a2r10g10b10_sscaled_pack32.b8g8r8_snorm.optimal_optimal_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.a2r10g10b10_sscaled_pack32.b8g8r8_snorm.optimal_optimal_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/085/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336730.168495,
+    "message": "Format feature blit source not supported at vktApiCopiesAndBlittingTests.cpp:1773",
+    "returncode": 0,
+    "seconds": 0.1373407269999234,
+    "finished_unix": 1789336730.3125806,
+    "pid": 9200
+  },
+  {
+    "index": 86,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r5g5b5a1_unorm_pack16.r8g8b8a8_uscaled.optimal_optimal_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r5g5b5a1_unorm_pack16.r8g8b8a8_uscaled.optimal_optimal_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/086/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336730.1754155,
+    "message": "Format feature blit source not supported at vktApiCopiesAndBlittingTests.cpp:1773",
+    "returncode": 0,
+    "seconds": 0.14896673500004454,
+    "finished_unix": 1789336730.3315558,
+    "pid": 9202
+  },
+  {
+    "index": 87,
+    "case": "dEQP-VK.pipeline.blend.format.r32g32b32_sfloat.states.color_1mcc_dc_max_alpha_1mca_1mca_sub-color_1mda_1mdc_max_alpha_sc_sas_rsub-color_1msc_cc_add_alpha_1msc_1msc_max-color_cc_sc_min_alpha_dc_1msc_min",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.pipeline.blend.format.r32g32b32_sfloat.states.color_1mcc_dc_max_alpha_1mca_1mca_sub-color_1mda_1mdc_max_alpha_sc_sas_rsub-color_1msc_cc_add_alpha_1msc_1msc_max-color_cc_sc_min_alpha_dc_1msc_min",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/087/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336730.1827812,
+    "message": "Unsupported color blending format: VK_FORMAT_R32G32B32_SFLOAT",
+    "returncode": 0,
+    "seconds": 0.23323148800000126,
+    "finished_unix": 1789336730.4294722,
+    "pid": 9204
+  },
+  {
+    "index": 88,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.a2r10g10b10_sscaled_pack32.r8g8b8a8_unorm.general_optimal_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.a2r10g10b10_sscaled_pack32.r8g8b8a8_unorm.general_optimal_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T215846193359Z-rgb-formats-qualified-000/cts/088/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "NotSupported",
+    "started_unix": 1789336730.3978448,
+    "message": "Format feature blit source not supported at vktApiCopiesAndBlittingTests.cpp:1773",
+    "returncode": 0,
+    "seconds": 0.041373539999995046,
+    "finished_unix": 1789336730.4484217,
+    "pid": 9208
+  }
+]

@@ -117,9 +117,13 @@ hk_scaled_texture_format(enum pipe_format format)
    case PIPE_FORMAT_##base##_USCALED: return PIPE_FORMAT_##base##_UINT;
    SCALED(R8)
    SCALED(R8G8)
+   SCALED(R8G8B8)
    SCALED(R8G8B8A8)
+   SCALED(B8G8R8)
+   SCALED(B8G8R8A8)
    SCALED(R16)
    SCALED(R16G16)
+   SCALED(R16G16B16)
    SCALED(R16G16B16A16)
 #undef SCALED
    default: return PIPE_FORMAT_NONE;
@@ -137,9 +141,15 @@ hk_padded_image_format(enum pipe_format format)
       return PIPE_FORMAT_R##bits##G##bits##B##bits##A##bits##_##type;
    RGB(8, UNORM) RGB(8, SNORM) RGB(8, UINT) RGB(8, SINT) RGB(8, SRGB)
    RGB(16, UNORM) RGB(16, SNORM) RGB(16, UINT) RGB(16, SINT) RGB(16, FLOAT)
+   RGB(8, USCALED) RGB(8, SSCALED)
+   RGB(16, USCALED) RGB(16, SSCALED)
    RGB(32, UINT) RGB(32, SINT) RGB(32, FLOAT)
 #undef RGB
-   case PIPE_FORMAT_B8G8R8_UINT: return PIPE_FORMAT_B8G8R8A8_UINT;
+#define BGR(type) \
+   case PIPE_FORMAT_B8G8R8_##type: return PIPE_FORMAT_B8G8R8A8_##type;
+   BGR(UNORM) BGR(SNORM) BGR(UINT) BGR(SINT) BGR(SRGB)
+   BGR(USCALED) BGR(SSCALED)
+#undef BGR
    default: return format;
    }
 }
