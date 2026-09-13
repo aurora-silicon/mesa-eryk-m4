@@ -2185,3 +2185,9 @@ MRT cases5..8 exercise RG16/RGBA16 UNORM/SNORM, including additive tile-load
 blending and raw 16-bit readback. SNORM disables GL read-color clamping. The
 software references and M4 all pass after normalized tile conversion, correct
 native normalized16 EOT selection and two-lane W16 tile-load support.
+
+`vulkan-dump-compare.py REFERENCE ACTUAL --descriptors --output REPORT.json`
+compares dumped descriptor buffers and image subresources as well as attachments.
+It records binding identities, hashes and nonzero/differing byte counts, rejecting
+metadata mismatches. These diagnostics do not assign floating-point tolerances or
+qualify undefined regions. Only explicitly dumped subresources are compared.

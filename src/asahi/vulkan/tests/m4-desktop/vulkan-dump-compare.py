@@ -36,11 +36,31 @@ def read(directory, sub, field):
     return np.frombuffer(data, dtype=np.uint8), hashlib.sha256(data).hexdigest()
 
 
+def descriptor_entries(directory):
+    output = {}
+    for path in directory.glob('DrawCall_*_dr.json'):
+        for draw in json.loads(path.read_text()):
+            if 'drawIndex' not in draw:
+                continue
+            for stage, descriptors in draw.get('descriptors', {}).items():
+                for desc in descriptors:
+                    key = (draw['drawIndex'], stage, desc['set'], desc['binding'], desc['arrayIndex'])
+                    metadata = {k: v for k, v in desc.items() if k not in ('file', 'subresources')}
+                    subs = desc.get('subresources', [desc] if 'file' in desc else [])
+                    for sub in subs:
+                        subkey = key + tuple(sub.get(k) for k in ('aspect', 'mipLevel', 'arrayLayer', 'depth'))
+                        if subkey in output:
+                            raise ValueError(f'Duplicate descriptor {subkey}')
+                        output[subkey] = (metadata, sub)
+    return output
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('reference', type=Path)
     p.add_argument('actual', type=Path)
     p.add_argument('--output', required=True, type=Path)
+    p.add_argument('--descriptors', action='store_true', help='Also compare dumped buffer/image descriptors by binding and subresource')
     a = p.parse_args()
     reference, actual = entries(a.reference), entries(a.actual)
     if reference.keys() != actual.keys():
@@ -69,8 +89,29 @@ def main():
                        changed_byte_max_error=int(delta[written].max()) if written.any() else 0)
         rows.append(row)
         print(json.dumps({k: row[k] for k in ('key','format','differing_bytes','max_byte_error','reference_changed_bytes','actual_changed_bytes','changed_byte_mismatches') if k in row}))
+    report = dict(reference=str(a.reference), actual=str(a.actual), attachments=rows)
+    if a.descriptors:
+        ref_desc, gpu_desc = descriptor_entries(a.reference), descriptor_entries(a.actual)
+        if ref_desc.keys() != gpu_desc.keys():
+            raise ValueError(f'Descriptor keys differ: {ref_desc.keys() ^ gpu_desc.keys()}')
+        report['descriptors'] = []
+        for key, (metadata, sub) in sorted(ref_desc.items(), key=lambda item: repr(item[0])):
+            actual_metadata, actual_sub = gpu_desc[key]
+            if metadata != actual_metadata:
+                raise ValueError(f'Descriptor metadata differs: {key}')
+            ref, ref_hash = read(a.reference, sub, 'file')
+            gpu, gpu_hash = read(a.actual, actual_sub, 'file')
+            if ref.shape != gpu.shape:
+                raise ValueError(f'Descriptor byte sizes differ: {key}')
+            row = dict(key=key, metadata=metadata, reference_sha256=ref_hash, actual_sha256=gpu_hash,
+                       bytes=len(ref), differing_bytes=int(np.count_nonzero(ref != gpu)),
+                       reference_nonzero_bytes=int(np.count_nonzero(ref)), actual_nonzero_bytes=int(np.count_nonzero(gpu)))
+            report['descriptors'].append(row)
+            if row['differing_bytes']:
+                print(json.dumps({k: row[k] for k in ('key', 'metadata', 'bytes', 'differing_bytes',
+                                                      'reference_nonzero_bytes', 'actual_nonzero_bytes')}))
     with a.output.open('x') as out:
-        json.dump(dict(reference=str(a.reference), actual=str(a.actual), attachments=rows), out, indent=2)
+        json.dump(report, out, indent=2)
         out.write('\n')
 
 
