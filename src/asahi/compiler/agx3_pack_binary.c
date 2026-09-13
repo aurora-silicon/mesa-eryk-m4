@@ -3552,6 +3552,102 @@ agx3_g17p_rt0_eot_kind(const agx_context *ctx, enum agx_isa_encoding enc)
    return AGX3_G17P_RT0_EOT_SELECTOR_75;
 }
 
+/* Native layered color EOT: independently compiled type3 builtin and the
+ * working J713 25G83 color capture055829, resource1+0x2700. Layer Z comes
+ * from the tile-grid SR and is packed before the imageblock byte offset.
+ * Recognize the semantic compiler wrapper; never discard a live operation. */
+static bool
+agx3_native_layered_eot(const agx_context *ctx, uint8_t *selector)
+{
+   if (ctx->key->dev.encoding != AGX_ISA_ENCODING_AGX3B ||
+       ctx->stage != MESA_SHADER_COMPUTE || ctx->is_preamble || ctx->key->no_stop)
+      return false;
+   unsigned xyz[3] = {UINT_MAX,UINT_MAX,UINT_MAX}, zero = UINT_MAX, stores = 0;
+   agx_foreach_instr_global(ctx, I) {
+      if (I->op == AGX_OPCODE_STOP)
+         continue;
+      if (I->op == AGX_OPCODE_GET_SR || I->op == AGX_OPCODE_MOV_IMM) {
+         if (I->nr_dests != 1 || I->nr_srcs ||
+             !agx3_tex_plain_reg(I->dest[0]) || I->dest[0].size != AGX_SIZE_32 ||
+             agx_channels(I->dest[0]) != 1)
+            return false;
+         if (I->op == AGX_OPCODE_MOV_IMM) {
+            if (I->imm || zero != UINT_MAX) return false;
+            zero = I->dest[0].value;
+         } else {
+            unsigned c = I->sr == AGX_SR_THREAD_POSITION_IN_GRID_X ? 0 :
+                         I->sr == AGX_SR_THREAD_POSITION_IN_GRID_Y ? 1 :
+                         I->sr == AGX_SR_THREADGROUP_POSITION_IN_GRID_Z ? 2 : 3;
+            if (c == 3 || xyz[c] != UINT_MAX) return false;
+            xyz[c] = I->dest[0].value;
+         }
+         continue;
+      }
+      if (I->op != AGX_OPCODE_BLOCK_IMAGE_STORE || stores++ || I->nr_dests ||
+          I->nr_srcs != 4 || I->dim != AGX_DIM_2D_ARRAY || !I->explicit_coords ||
+          !agx3_tex_imm(I->src[0],0) || !agx3_tex_imm(I->src[1],0) ||
+          !agx3_tex_plain_reg(I->src[2]) || I->src[2].size != AGX_SIZE_32 ||
+          agx_channels(I->src[2]) != 1 || zero == UINT_MAX || I->src[2].value != zero ||
+          !agx3_tex_plain_reg(I->src[3]) || I->src[3].size != AGX_SIZE_32 ||
+          agx_channels(I->src[3]) != 3 || xyz[0] == UINT_MAX ||
+          I->src[3].value != xyz[0] || xyz[1] != xyz[0]+2 || xyz[2] != xyz[0]+4)
+         return false;
+      switch (I->format) {
+      case AGX_FORMAT_F16: *selector = 1; break;
+      case AGX_FORMAT_U8NORM: case AGX_FORMAT_RG11B10F: *selector = 3; break;
+      case AGX_FORMAT_I32:
+         if (!ctx->key->g17p_rt0_eot_i32 ||
+             ctx->key->g17p_rt0_eot_i32_selector_15 ||
+             ctx->key->g17p_rt0_eot_i32_selector_75 ||
+             (ctx->key->g17p_rt0_eot_words != 1 &&
+              ctx->key->g17p_rt0_eot_words != 2 &&
+              ctx->key->g17p_rt0_eot_words != 4))
+            return false;
+         *selector = 2; break;
+      default: return false;
+      }
+   }
+   return stores == 1;
+}
+
+static bool
+agx3_emit_native_layered_eot(struct util_dynarray *emission,
+                           enum agx_isa_encoding enc, uint8_t selector)
+{
+   static const uint8_t header[] = {
+      0x1c,0x9c,0x10,0x06,0x34,0xa8,0x10,0x06,
+      0x0c,0x9d,0x10,0x26,0x24,0xa9,0x14,0x26,0x24,0xc3,0x10,0x46,
+      0x9f,0x10,0x54,0x00,0x00,0x04,0x18,0x00,0x50,0x06,0x0b,0x00,
+      0x9f,0x20,0x54,0x02,0x00,0x00,0x14,0x00,0x50,0x06,0x0b,0x00,
+   };
+   struct util_dynarray staged;
+   util_dynarray_init(&staged, NULL);
+   uint8_t bytes[AGX3_MAX_WORDS*2], len;
+   const struct agx3_field_kv layer[] = {
+      {9,5},{10,2},{12,1},{5,4},{23,2},{24,1},{16,4},{27,1},
+      {38,1},{52,2},{51,1},{74,4},{60,1},
+   };
+   const struct agx3_field_kv offset[] = {
+      {9,5},{10,2},{12,1},{5,6},{23,3},{24,1},{17,4},
+      {38,1},{37,1},{52,2},{51,1},{74,8},{75,16},{76,7},{77,24},
+   };
+   const struct agx3_field_kv store[] = {
+      {9,5},{5,0},{12,1},{13,1},{17,1},{32,1},{73,1},{31,2},
+      {29,selector},{30,1},{45,3},{46,3},{59,1},{60,1},{51,0},
+   };
+   static const uint8_t stop[] = {0x0e,0,0,0};
+   bool ok = agx3_append(&staged,header,sizeof(header)) &&
+      agx3_bind_compose(enc,"pack_imgwir",0,layer,ARRAY_SIZE(layer),NULL,0,bytes,&len) &&
+      agx3_append(&staged,bytes,len) &&
+      agx3_bind_compose(enc,"pack_imgwir",0,offset,ARRAY_SIZE(offset),NULL,0,bytes,&len) &&
+      agx3_append(&staged,bytes,len) &&
+      agx3_bind_compose(enc,"imgwblk",0,store,ARRAY_SIZE(store),NULL,0,bytes,&len) &&
+      agx3_append(&staged,bytes,len) && agx3_append(&staged,stop,sizeof(stop)) &&
+      agx3_append(emission,staged.data,staged.size);
+   util_dynarray_fini(&staged);
+   return ok;
+}
+
 /* Recognize the compiler-generated EOT intrinsic wrapper. The native ABI
  * supplies the PBE table and per-attachment tile offsets in uniforms; shader
  * coordinates come from the tile grid. Keep typed stores in attachment order. */
@@ -3843,6 +3939,13 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
    const uint32_t atomic_tps_half = ALIGN_POT(ctx->scratch_size_B, 4) / 2;
    ctx->agx3_staging_known = true;
    ctx->agx3_fltnorm_start = false;
+
+   uint8_t layered_selector;
+   if (agx3_native_layered_eot(ctx, &layered_selector)) {
+      ctx->max_reg = MAX2(ctx->max_reg, 7);
+      ctx->agx3_staging_halfs = MAX2(ctx->agx3_staging_halfs, 12);
+      return agx3_emit_native_layered_eot(emission, enc, layered_selector);
+   }
 
    uint8_t selectors[(FRAG_RESULT_MAX - FRAG_RESULT_DATA0)];
    unsigned mrt_count = agx3_native_mrt_eot(ctx, enc, selectors);

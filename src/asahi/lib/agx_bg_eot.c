@@ -326,6 +326,9 @@ agx_build_end_of_tile_shader(struct agx_bg_eot_cache *cache,
           * G17P compiler reads the hardware grid X/Y SRs explicitly. */
          coords = nir_trim_vector(
             &b, nir_load_global_invocation_id(&b, 32), 2);
+         if (key->tib.layered)
+            coords = nir_vec3(&b, nir_channel(&b, coords, 0),
+                             nir_channel(&b, coords, 1), nir_load_layer_id(&b));
          explicit = true;
       }
 
