@@ -50,8 +50,7 @@ while a.start + len(results) < end:
     guard = json.loads((evidence/'remote/result.json').read_text())
     before = json.loads((evidence/'target-before.json').read_text())
     thermal, watchdog = guard['thermal'], guard['watchdog']
-    if (report['verdict'] not in ('pass', 'shader_error', 'api_error', 'readback_mismatch')
-        or not report['evidence_fetched'] or guard['returncode'] != 0
+    if (not report['evidence_fetched'] or guard['returncode'] != 0
         or guard['boot_id'] != before['boot_id']
         or watchdog['timeout_seconds'] != 60 or not watchdog['armed']
         or thermal['failure'] is not None or thermal['samples'] < 1):
@@ -72,8 +71,12 @@ while a.start + len(results) < end:
     (a.output/'results.json').write_text(json.dumps(results, indent=2)+'\n')
     (a.output/'summary.json').write_text(json.dumps(dict(
         requested=a.count, completed=len(results), counts=Counter(x['status'] for x in results),
-        batches=batches, identity=identity), indent=2)+'\n')
+        batches=batches, identity=identity, last_guard_verdict=report['verdict']), indent=2)+'\n')
     print(f'{len(results)}/{a.count}: {dict(Counter(x["status"] for x in results))}; {evidence.name}', flush=True)
+    # Persist completed CTS outcomes even when the guard reports a GPU fault.
+    # Recovery still requires an explicit inspection and a new segment.
+    if report['verdict'] not in ('pass', 'shader_error', 'api_error', 'readback_mismatch'):
+        raise RuntimeError(f'Guard/experiment failure; outcomes retained at {evidence}')
     if device_lost or any(x['status'] in ('Timeout', 'HarnessError') or
            (x['status'] == 'Crash' and not a.continue_userspace_crashes) for x in batch):
         raise RuntimeError(f'Case stopped campaign; evidence retained at {evidence}')

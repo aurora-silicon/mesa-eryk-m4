@@ -156,3 +156,12 @@ handle/WSI cases (`win32`) and Android WSI before drawing the sample. It records
 every platform exclusion and the eligible population. It does not exclude
 optional features, known defects, prior failures, or already tested cases.
 Use a new recorded seed and freeze the case list before executing any case.
+
+`cts-report.py --cases CASES --output REPORT SEGMENT...` combines first-attempt
+results from multiple guarded campaign segments. It rejects duplicate attempts,
+case/index mismatches and changed software identities, retains Unrun entries,
+and emits counts, rates, category counts, temperatures and evidence links.
+Boot IDs may differ after explicitly inspected recovery. It never runs tests.
+The campaign tool preserves completed case results before stopping on a GPU
+fault; the fault remains in the summary and still requires recovery before
+starting another segment.
