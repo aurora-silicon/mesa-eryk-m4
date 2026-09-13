@@ -1,0 +1,17 @@
+3e6a333b-ddc3-4749-999d-606b6d42262f
+{"armed": true, "timeout_seconds": 60, "timeleft_seconds": 57, "fed": false, "mode": "idle"}
+active
+completed 15
+failed 0
+active_fb 40
+imported 1
+swap_total_us 120412
+swap_max_us 16494
+completed 15
+failed 0
+active_fb 40
+imported 1
+swap_total_us 120412
+swap_max_us 16494
+778 /opt/m4-hyprland/bin/Hyprland --watchdog-fd 4 --config /usr/local/share/m4-desktop/greeter.lua
+805 /usr/bin/sddm-greeter-qt6 --socket /tmp/sddm--nRvNbw --theme /usr/share/sddm/themes/omarchy

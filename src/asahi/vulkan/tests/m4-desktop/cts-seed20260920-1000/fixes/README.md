@@ -97,3 +97,23 @@ normalizing source line numbers. Five pre-existing fixture failures remain:
 f16 background narrowing, div3 leading SR, half2 varying binary, flat-colour
 binary and discard acceptance. These are not being represented as a passing
 host suite. The focused texture-core test and 32 optimizer unit tests pass.
+
+## Presentation follow-up and DCP recovery
+
+The first complete rerun has all 15 original Fail cases passing and the
+userspace crash resolved: 870 Pass, 129 NotSupported, one presentation Timeout.
+A 30-second-bound attempt also timed out. Both results are retained unchanged.
+The subsequent investigation found that DCP had failed at21:06, independently
+of shader tests; see `dcp-recovery/`. The event-pump CTS correction ensures
+configure acknowledgements and pongs continue during long Vulkan loops, and
+WSI preflight now refuses a latched display fault. A recovery reboot is
+required before meaningful presentation validation. This does not claim the
+separate hourly D114 firmware callback has been fixed.
+
+After recovery, `deqp-vk-seed20-pump` passes all 600 Wayland presentation frames
+in 18.301 seconds with the original 20-second bound. Native scanout confirms
+the restored normal Omarchy panel/background and Foot. The login helper also
+verified native GPU libraries. Evidence: cts-seed20-recovery-login and
+_provenance/experiments/20260913T214535825840Z-cts-wayland-recovered.
+The final complete campaign uses 20 workers and a recorded 30-second case
+bound to leave presentation headroom; its results are retained separately.

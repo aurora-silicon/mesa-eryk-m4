@@ -192,7 +192,15 @@ python3 tools/cts-campaign.py --name cts-parallel-1000 --jobs 4 --count 1000 \
 50-second outer experiments (10-second launch window plus 10-second evidence
 margin). The default remains 20/40 seconds. `cts-sample.py batch` accepts the
 same option; direct users must provide a sufficiently long outer guard. Bounds
-are recorded in batch timing and campaign summary. The 600-frame FIFO Wayland
-presentation test can exceed 20 seconds under concurrent GPU load; retain such
-timeouts separately when comparing runs with different bounds. This does not
+are recorded in batch timing and campaign summary. Retain timeouts separately when comparing runs with different bounds.
+For seed 20260920, increasing this bound did not fix the presentation stall: a
+latched DCP failure was responsible, as established by the display status and
+kernel journal. This does not
 change CTS commands, frame counts, output checks, watchdog or thermal limits.
+
+Before a batch containing WSI cases, `cts-sample.py` checks every native DCP
+`m4_status` and refuses a latched failed-flip state. GPU retirement alone does
+not establish a working display. The guard already records that state in
+`target-before.json`; retain it and recover before rerunning presentation.
+The historical CTS xdg-shell backport also needs an application event pump,
+since its long Vulkan render loop does not call the platform event dispatcher.

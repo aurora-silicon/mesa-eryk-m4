@@ -1,0 +1,47 @@
+{
+  "watchdog": {
+    "device": "/dev/watchdog0",
+    "identity": "Apple SoC Watchdog",
+    "timeout_seconds": 60,
+    "initial_timeleft_seconds": 59,
+    "periodic_keepalive": false,
+    "armed": true,
+    "ssh_broker_lease": true
+  },
+  "compositor_command": "/opt/m4-hyprland/bin/Hyprland --watchdog-fd 4 --config /usr/local/share/m4-desktop/session.lua ",
+  "scope": "normal login and Foot",
+  "passed": true,
+  "thermal": {
+    "startup_limit_mc": 65000,
+    "stop_limit_mc": 75000,
+    "interval_seconds": 0.5,
+    "samples": 22,
+    "sync_interval_seconds": 5,
+    "peak_temperatures_mc": {
+      "PMP aggregate die hotspot": 60000,
+      "Ta000m": 57500,
+      "Te000m": 56250,
+      "Te001m": 59250,
+      "Tp000m": 60000,
+      "Tp001m": 58750
+    },
+    "failure": null,
+    "dedicated_gpu_sensor_verified": false,
+    "log": "temperatures.jsonl",
+    "cpu_frequency_caps": [
+      {
+        "policy": "policy0",
+        "old_min_khz": 912000,
+        "old_max_khz": 4104000,
+        "max_khz": 1800000
+      },
+      {
+        "policy": "policy1",
+        "old_min_khz": 900000,
+        "old_max_khz": 2892000,
+        "max_khz": 1860000
+      }
+    ]
+  },
+  "test_cpu_caps_restored": true
+}

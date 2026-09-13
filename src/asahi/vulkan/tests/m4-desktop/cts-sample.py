@@ -55,6 +55,13 @@ def batch(args):
     check = lambda: module.check_guard(args.guard_output, boot)
     check()
     cases = args.cases.read_text().splitlines()
+    # A latched display failure can leave headless GPU execution healthy while
+    # every presentation test blocks. Refuse that invalid WSI environment.
+    if any('.wsi.' in c for c in cases[args.start:args.start + args.count]):
+        for status in {p.resolve() for p in Path('/sys/kernel/debug/dri').glob('*/m4_status')}:
+            fields = dict(line.split(maxsplit=1) for line in status.read_text().splitlines())
+            if int(fields.get('failed', '0')):
+                raise RuntimeError(f'WSI requires display recovery: {status}: {fields}')
     out = args.guard_output / 'cts'
     out.mkdir()
     env = os.environ.copy()

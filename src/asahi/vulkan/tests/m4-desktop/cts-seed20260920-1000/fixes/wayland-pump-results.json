@@ -1,0 +1,21 @@
+[
+  {
+    "index": 759,
+    "case": "dEQP-VK.wsi.wayland.swapchain.render.basic",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.wsi.wayland.swapchain.render.basic",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T214535825840Z-cts-wayland-recovered/cts/759/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "Pass",
+    "started_unix": 1789335936.877662,
+    "message": "Rendering tests succeeded",
+    "returncode": 0,
+    "seconds": 18.300670147000005,
+    "finished_unix": 1789335955.1844313,
+    "pid": 3286
+  }
+]
