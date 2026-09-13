@@ -299,7 +299,7 @@ gather_inputs(nir_builder *b, nir_intrinsic_instr *intr, void *data)
    unsigned idx = nir_src_as_uint(intr->src[0]) + nir_intrinsic_base(intr);
    unsigned comp = nir_intrinsic_component(intr);
 
-   assert(intr->def.bit_size == 32 && "todo: push conversions up?");
+   assert(intr->def.bit_size == 16 || intr->def.bit_size == 32);
    unsigned base = 4 * idx + comp;
 
    b->cursor = nir_before_instr(&intr->instr);
@@ -329,13 +329,21 @@ lower_input_to_prolog(nir_builder *b, nir_intrinsic_instr *intr, void *_data)
    unsigned idx = nir_src_as_uint(intr->src[0]) + nir_intrinsic_base(intr);
    unsigned comp = nir_intrinsic_component(intr);
 
-   assert(intr->def.bit_size == 32 && "todo: push conversions up?");
+   assert(intr->def.bit_size == 16 || intr->def.bit_size == 32);
    unsigned base = 4 * idx + comp;
 
    b->cursor = nir_before_instr(&intr->instr);
    nir_def *val =
-      nir_load_exported_agx(b, intr->def.num_components, intr->def.bit_size,
+      nir_load_exported_agx(b, intr->def.num_components, 32,
                             .base = AGX_ABI_VIN_ATTRIB(base));
+
+   /* The prolog exports one 32-bit lane per attribute component, independent
+    * of the shader's input width. Narrow after importing that ABI value. */
+   if (intr->def.bit_size == 16) {
+      val = nir_alu_type_get_base_type(nir_intrinsic_dest_type(intr)) ==
+                  nir_type_float
+               ? nir_f2f16(b, val) : nir_u2u16(b, val);
+   }
 
    nir_def_replace(&intr->def, val);
    return true;

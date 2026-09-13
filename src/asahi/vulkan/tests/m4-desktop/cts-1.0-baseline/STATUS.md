@@ -210,3 +210,17 @@ All19 original Fail cases have been visited in the recorded random order:
 18 now Pass, index5 now correctly reaches the tessellation NotSupported check.
 This is cumulative targeted evidence, not yet a fresh complete100-case result.
 Five original userspace crashes remain to revisit separately. Kernel unchanged.
+
+Crash revisit order (same repeated-choice method/seed):16,46,45,67,62,
+recorded in build/cts-fixes/random-crash-order.json. Index16 now Pass with raw
+plane copies:20260913T120621411847Z-cts-former-plane-copy-crash.
+Index46 asserted on16-bit vertex input gathering. Retain the prolog's32-bit
+attribute lane ABI, gather16-bit consumers and narrow after import (float
+conversion for float inputs, low16bits for integers). Direct VBO lowering
+already handles destination width. 20260913T120749746033Z-cts-16bit-vertex-input:
+original46 Pass. 20260913T120817110382Z-cts-vs16-input-controls:signed input Pass;
+the32-to16 RTZ output control reaches a separate half-register subtract refusal,
+bundle d206ca5f... retained. 20260913T120840923012Z-cts-vs16-float-input:
+actual16-to32 floating input Pass. Library
+b964dc21b9f0ec9422f1560b8299e22cbbf30da9e8574b6faf0a3cb77c858c02.
+Full watchdog/thermal guards, unchanged original CTS and kernel.
