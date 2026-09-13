@@ -1,0 +1,18 @@
+[
+  {
+    "index": 5,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r32_sfloat.b8g8r8a8_snorm.general_optimal_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r32_sfloat.b8g8r8a8_snorm.general_optimal_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T193830753718Z-cts-bgra-snorm/cts/005/result.qpa"
+    ],
+    "boot_id": "e47102a9-42cd-480a-8918-bfe1840cca56",
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.2080869259998508
+  }
+]

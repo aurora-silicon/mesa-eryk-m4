@@ -3725,6 +3725,7 @@ agx3_mrt_eot_selector(enum pipe_format logical, enum agx_format physical,
    case PIPE_FORMAT_R8_SNORM:
    case PIPE_FORMAT_R8G8_SNORM:
    case PIPE_FORMAT_R8G8B8A8_SNORM:
+   case PIPE_FORMAT_B8G8R8A8_SNORM:
       *selector = 3;
       return physical == AGX_FORMAT_S8NORM;
    case PIPE_FORMAT_R8_UINT:

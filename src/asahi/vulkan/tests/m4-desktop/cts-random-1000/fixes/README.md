@@ -98,3 +98,11 @@ sample-mask reads tolerate the optional cache hint without requiring a new
 encoding. Both saved failing integer shaders compile offline (302/308 bytes).
 RGB565 uses three F16 tile lanes; the retained B5G6R5 native fetch confirms
 W16/mask=7 and its exact encoding is covered by the 56-check tile-core test.
+
+## BGRA signed normalized blits
+
+Baseline index 661 Pass in `20260913T193830753718Z-cts-bgra-snorm`.
+The BGRA SNORM format uses the existing S8NORM tile conversion and descriptor
+channel swizzle, but was absent from the native tile allowlist. Admit it and
+use the same signed normalized export selector for mixed targets. The original
+CTS blit comparison passes; peak monitored temperature 56.75 C, no GPU fault.
