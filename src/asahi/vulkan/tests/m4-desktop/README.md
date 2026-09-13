@@ -2147,3 +2147,10 @@ with four exact-color or exact-depth array layers. Build with `cc -O2 FILE
 -lEGL -lGL` and run inside the watchdog/thermal guard on M4. The llvmpipe
 control passes both modes. Native depth currently reaches the kernel
 one-layer rejection; native layered color also needs BG/EOT support.
+
+`native-kernel-function.py IMAGE SYMBOL --output NEW_DIRECTORY` extracts one
+exact ARM64 Mach-O text symbol and disassembles its file-backed bytes. It saves
+the image and function SHA256, symbol VA, file offset, bounded size and command.
+Use this for offline native-driver investigation; addresses are translated
+through Mach-O segments. Requires llvm-nm and aarch64-linux-gnu-objdump.
+It does not execute GPU code or modify the input image.
