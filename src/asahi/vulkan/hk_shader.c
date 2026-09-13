@@ -1239,9 +1239,12 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
                dev->dev.params.chip_id == 0x8132);
       nir_shader *candidate = nir_shader_clone(NULL, nir);
       if (candidate && agx_nir_lower_g17p_indexed_samplers(candidate)) {
+         const bool direct_storage =
+            agx_nir_lower_g17p_bindless_storage(candidate);
          ralloc_free(nir);
          nir = candidate;
          shader->info.agx3_indexed_sampler_valid = true;
+         shader->info.agx3_indexed_images_valid = direct_storage;
       } else {
          ralloc_free(candidate);
       }

@@ -291,3 +291,23 @@ cts-storage-graphics-controls: matching fragment and vertex+fragment tests Pass.
 Full watchdog/thermal guards, library
 68cc4bbe6f9e478c7428accadeb1346d1c6671bf9224af91dab9da32fdd5e76d
 (before whitespace cleanup). Kernel unchanged.
+
+The complete second sample rerun (seed 20260914) is 14 Pass, 6 NotSupported,
+zero failures or crashes: 20260913T123153996441Z-cts-next20-fixed-000.
+
+Third random sample: seed 20260915, 20 cases, same population and method.
+20260913T123207376203Z-cts-third20-000: 9 Pass, 9 NotSupported, 2 Fail.
+Random failure order: 9, 7. Selection and results retained under
+build/cts-fixes/sample-20260915 and third20.
+
+Selection 9: enable native indexed storage writes in physical vertex shaders
+(including Poly's geometry raster shader) and the R16 UINT typed write format.
+20260913T123329455139Z-cts-geometry-storage-write: original CTS Pass.
+20260913T123351835629Z-cts-storage-write-stage-controls: equivalent vertex and compute tests Pass.
+Full watchdog/thermal guards, library
+4d360cdda4be1b14c1180256edd2b692bbabf1ba988822c407449ddd460bcf80.
+
+Selection 7 is the already documented historical CTS read-layout typo in
+vktYCbCrUtil.cpp:623. The original binary remains Fail. The separately repaired
+binary passes: 20260913T123413913719Z-cts-third20-corrected-ycbcr.
+Do not count this adapted result as an original CTS pass. Kernel unchanged.

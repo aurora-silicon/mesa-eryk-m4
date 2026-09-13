@@ -416,9 +416,7 @@ agx_nir_lower_g17p_indexed_samplers(nir_shader *shader)
    nir_foreach_function_impl(impl, shader) {
       nir_foreach_block(block, impl) {
          nir_foreach_instr(instr, block) {
-            if ((shader->info.stage == MESA_SHADER_COMPUTE ||
-                 shader->info.stage == MESA_SHADER_FRAGMENT) &&
-                instr->type == nir_instr_type_intrinsic &&
+            if (instr->type == nir_instr_type_intrinsic &&
                 nir_instr_as_intrinsic(instr)->intrinsic ==
                    nir_intrinsic_bindless_image_store)
                storage_writes++;
@@ -455,7 +453,7 @@ agx_nir_lower_g17p_indexed_samplers(nir_shader *shader)
          }
       }
    }
-   /* Storage-only compute shaders need the same heap/root ABI. Their stores
+   /* Storage-only shaders need the same heap/root ABI. Their stores
     * are validated and lowered by the subsequent bindless-storage pass. */
    if (!samples && !storage_writes)
       return false;
@@ -822,7 +820,8 @@ bool
 agx_nir_lower_g17p_bindless_storage(nir_shader *shader)
 {
    if (shader->info.stage != MESA_SHADER_COMPUTE &&
-       shader->info.stage != MESA_SHADER_FRAGMENT)
+       shader->info.stage != MESA_SHADER_FRAGMENT &&
+       shader->info.stage != MESA_SHADER_VERTEX)
       return false;
    bool progress = false;
    nir_foreach_function_impl(impl, shader) {
@@ -844,6 +843,7 @@ agx_nir_lower_g17p_bindless_storage(nir_shader *shader)
                 (format != PIPE_FORMAT_R32_UINT &&
                  format != PIPE_FORMAT_R8G8B8A8_UINT &&
                  format != PIPE_FORMAT_R8G8B8A8_SINT &&
+                 format != PIPE_FORMAT_R16_UINT &&
                  format != PIPE_FORMAT_R16G16B16A16_SINT &&
                  format != PIPE_FORMAT_R32G32B32A32_UINT &&
                  format != PIPE_FORMAT_R11G11B10_FLOAT &&

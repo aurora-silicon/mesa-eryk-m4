@@ -1747,6 +1747,7 @@ agx_emit_image_store(agx_builder *b, nir_intrinsic_instr *instr)
          write->format = nir_intrinsic_src_type(instr) == nir_type_float32
                             ? AGX_FORMAT_F16 : AGX_NUM_FORMATS;
          break;
+      case PIPE_FORMAT_R16_UINT:
       case PIPE_FORMAT_R16G16B16A16_SINT:
          write->format = AGX_FORMAT_I16;
          break;
