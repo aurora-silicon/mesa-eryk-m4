@@ -63,6 +63,12 @@ resolve_read(struct repair_ctx *ctx, agx_block *block, agx_index node)
 {
    struct repair_block *rb = repair_block(ctx, block);
 
+   /* Resolve the underlying value, independent of this use's modifiers.
+    * agx_replace_src preserves modifiers on the consuming instruction. A
+    * phi created by this lookup must not inherit them through temp_like:
+    * its value may also be consumed without modifiers later. */
+   node.abs = node.neg = false;
+
    /* Local value numbering */
    assert(node.type == AGX_INDEX_NORMAL);
    agx_index *local = _mesa_hash_table_u64_search(rb->defs, node.value);

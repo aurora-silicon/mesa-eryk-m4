@@ -106,3 +106,36 @@ TEST_F(RepairSSA, IfElse)
       agx_unit_test(b, agx_fadd(b, x, y3));
    });
 }
+
+TEST_F(RepairSSA, ModifiedReadDoesNotModifyPhi)
+{
+   CASE({
+      agx_block *A = agx_start_block(b->shader);
+      agx_block *B = agx_test_block(b->shader);
+      agx_block *C = agx_test_block(b->shader);
+      agx_block *D = agx_test_block(b->shader);
+
+      agx_block_add_successor(A, B);
+      agx_block_add_successor(A, C);
+
+      agx_block_add_successor(B, D);
+      agx_block_add_successor(C, D);
+
+      b->cursor = agx_after_block(B);
+      agx_index x = agx_mov_imm(b, 32, 0xcafe);
+      agx_index y = agx_mov_imm(b, 32, 0xbade);
+
+      b->cursor = agx_after_block(C);
+      agx_index x2 = repaired ? agx_temp(b->shader, AGX_SIZE_32) : x;
+      agx_mov_imm_to(b, x2, 0xefac);
+      agx_index y2 = agx_mov_imm(b, 32, 0xbade);
+
+      b->cursor = agx_after_block(D);
+      if (repaired)
+         x = agx_phi_2(b, x, x2);
+
+      agx_index y3 = agx_phi_2(b, y, y2);
+      agx_unit_test(b, agx_fadd(b, agx_neg(agx_abs(x)), y3));
+      agx_unit_test(b, agx_fadd(b, x, y3));
+   });
+}
