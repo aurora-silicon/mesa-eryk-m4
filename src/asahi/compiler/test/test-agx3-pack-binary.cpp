@@ -198,6 +198,34 @@ TEST_F(AGX3PackBinary, TileStoreMovesFixedHighEpilogInputToLowRegisters)
    EXPECT_EQ(input_copies, 1u);
 }
 
+TEST_F(AGX3PackBinary, NativeStencilAndDepthExportsKeepEightByteStaging)
+{
+   for (unsigned mode = 1; mode <= 3; ++mode) {
+      agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+      b->shader->stage = MESA_SHADER_FRAGMENT;
+      agx_index coverage = agx_register(2, AGX_SIZE_32);
+      coverage.discard = true;
+      agx_zs_emit_agx3(b, coverage,
+                       mode & 1 ? agx_register(4, AGX_SIZE_32) : agx_null(),
+                       mode);
+      agx_stop(b);
+      const auto result = pack(b);
+      /* AIR-NT917 G16G fragment witnesses: depth-only, stencil-only, both. */
+      const uint8_t native[] = {
+         0xd7, 0x14, 0x54, 0, 0, uint8_t(mode == 1 ? 3 : mode == 2 ? 1 : 7)};
+      EXPECT_NE(std::search(result.begin(), result.end(), std::begin(native),
+                            std::end(native)),
+                result.end());
+      if (mode == 2) {
+         const uint8_t native_copy[] = {0x0b, 0x02, 0x29, 0x04};
+         EXPECT_NE(std::search(result.begin(), result.end(),
+                               std::begin(native_copy), std::end(native_copy)),
+                   result.end());
+      }
+      EXPECT_EQ(b->shader->agx3_staging_halfs, 4u);
+   }
+}
+
 TEST_F(AGX3PackBinary, StraightLineALU)
 {
    for (int e = 0; e < 2; ++e) {

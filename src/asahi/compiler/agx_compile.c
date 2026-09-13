@@ -937,22 +937,15 @@ agx_emit_store_zs(agx_builder *b, nir_intrinsic_instr *instr)
    assert(!write_z || z.size == AGX_SIZE_32);
    assert(!write_s || s.size == AGX_SIZE_16);
 
-   if (write_z && write_s) {
-      agx_index u2u32 = agx_temp(b->shader, AGX_SIZE_32);
-      agx_mov_to(b, u2u32, s);
-      s = u2u32;
-   }
-
-   agx_index zs = (write_z && write_s) ? agx_vec2(b, z, s) : write_z ? z : s;
-
    /* Not necessarily a sample mask but overlapping hw mechanism... Should
     * maybe rename this flag to something more general.
     */
    b->shader->out->writes_sample_mask = true;
 
    if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
-       write_z && !write_s && !b->shader->key->fs.inside_sample_loop) {
-      /* DEPTHF consumes coverage at staging[0] and float depth at staging[2].
+       (write_z || write_s) && !b->shader->key->fs.inside_sample_loop) {
+      /* DEPTHF consumes coverage/stencil at staging[0] and optional float
+       * depth at staging[2]. Stencil occupies the coverage word's upper half.
        * Build the same current-coverage word as MOVMSK before RA. Keeping
        * depth as float also preserves the NaN used for forced NEVER tests. */
       agx_index input = agx_get_sr_coverage(b, 16, AGX_SR_COVERAGE_MASK);
@@ -964,10 +957,19 @@ agx_emit_store_zs(agx_builder *b, nir_intrinsic_instr *instr)
       agx_index mid = agx_iadd(b, coverage, target, 4);
       agx_index word = agx_iadd(b, affected, mid, 4);
       agx_index selected = agx_temp(b->shader, AGX_SIZE_32);
-      agx_emit_collect_to(b, selected, 2,
-                         (agx_index[]){word, agx_mov_imm(b, 16, 0)});
-      return agx_zs_emit_agx3(b, selected, z);
+      agx_emit_collect_to(
+         b, selected, 2,
+         (agx_index[]){word, write_s ? s : agx_mov_imm(b, 16, 0)});
+      return agx_zs_emit_agx3(b, selected, write_z ? z : agx_null(), base);
    }
+
+   if (write_z && write_s) {
+      agx_index u2u32 = agx_temp(b->shader, AGX_SIZE_32);
+      agx_mov_to(b, u2u32, s);
+      s = u2u32;
+   }
+
+   agx_index zs = (write_z && write_s) ? agx_vec2(b, z, s) : write_z ? z : s;
 
    agx_wait_pixel_mask(b, 0x1);
    return agx_zs_emit(b, agx_src_index(&instr->src[0]), zs, base);

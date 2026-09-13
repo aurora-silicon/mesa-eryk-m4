@@ -1318,9 +1318,8 @@ agx3_emit_tile(struct util_dynarray *emission, enum agx_isa_encoding enc,
 }
 
 /* Native coverage updates use SAMPLE_MASK_AGX3. Depth-only writes use
- * ZS_EMIT_AGX3 with float staging and a separate coverage word. Stencil
- * exports and writes inside the external sample-shading loop remain on the
- * refused AGX2 ZS_EMIT path until their native data protocol is implemented.
+ * ZS_EMIT_AGX3 with optional float depth and a coverage/stencil word. Writes
+ * inside the external sample-shading loop remain on the refused AGX2 path.
  */
 
 /*
@@ -4970,10 +4969,15 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
          }
 
          if (I->op == AGX_OPCODE_ZS_EMIT_AGX3) {
-            if (enc != AGX_ISA_ENCODING_AGX3B || ctx->stage != MESA_SHADER_FRAGMENT ||
-                I->nr_dests || I->nr_srcs != 2 ||
-                !agx3_vary_reg32(I->src[0]) || agx_channels(I->src[0]) != 1 ||
-                !agx3_vary_reg32(I->src[1]) || agx_channels(I->src[1]) != 1)
+            const bool depth_enabled = I->imm & 1;
+            const bool stencil_enabled = I->imm & 2;
+            if (I->imm == 0 || I->imm > 3 || enc != AGX_ISA_ENCODING_AGX3B ||
+                ctx->stage != MESA_SHADER_FRAGMENT || I->nr_dests ||
+                I->nr_srcs != 2 || !agx3_vary_reg32(I->src[0]) ||
+                agx_channels(I->src[0]) != 1 ||
+                (depth_enabled ? (!agx3_vary_reg32(I->src[1]) ||
+                                  agx_channels(I->src[1]) != 1)
+                               : !agx_is_null(I->src[1])))
                AGX3_REFUSE(I);
             uint8_t bytes[AGX3_ALU_MAX_LENGTH], len;
             if (!agx3_retire_slots_noop(emission, enc, wait | outstanding_here))
@@ -4989,32 +4993,43 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             /* Match native DEPTHF's ALU staging producer and publication
              * flags, then publish coverage. Both selected operands are the
              * original float, preserving the NaN used for forced NEVER. */
-            const uint16_t depth = I->src[1].value;
-            const struct agx3_field_kv fields[] = {
-               {10,5}, {11,2}, {6,2}, {13,1}, {14,1},
-               {42,2}, {43,2}, {35,depth},
-               {59,2}, {60,2}, {52,depth},
-               {76,2}, {77,2}, {69,depth},
-               {93,2}, {94,2}, {86,depth}, {110,2},
-            };
-            if (!agx3_bind_compose(enc, "fsel", 35, fields, ARRAY_SIZE(fields),
-                                    NULL, 0, bytes, &len) ||
-                !agx3_append(emission, bytes, len) ||
-                !agx3_stage_copy_flags(enc, 0, I->src[0].value,
-                                        I->src[0].discard, true, 1, 0, bytes, &len) ||
+            if (depth_enabled) {
+               const uint16_t depth = I->src[1].value;
+               const struct agx3_field_kv fields[] = {
+                  {10, 5}, {11, 2},     {6, 2},  {13, 1}, {14, 1},     {42, 2},
+                  {43, 2}, {35, depth}, {59, 2}, {60, 2}, {52, depth}, {76, 2},
+                  {77, 2}, {69, depth}, {93, 2}, {94, 2}, {86, depth}, {110, 2},
+               };
+               if (!agx3_bind_compose(enc, "fsel", 35, fields,
+                                      ARRAY_SIZE(fields), NULL, 0, bytes,
+                                      &len) ||
+                   !agx3_append(emission, bytes, len))
+                  AGX3_REFUSE(I);
+            }
+            /* The stencil-only native COPY does not kill its staging slot.
+             * Only the combined publication following float depth sets f13. */
+            if (!agx3_stage_copy_flags(enc, 0, I->src[0].value,
+                                       I->src[0].discard, depth_enabled, 1, 0,
+                                       bytes, &len) ||
                 !agx3_append(emission, bytes, len))
                AGX3_REFUSE(I);
             const struct agx3_zs_desc zs = {
-               .value = 0, .value_kill = true, .slot = 1, .wait_mask = 1,
+               .value = 0,
+               .value_kill = true,
+               .slot = 1,
+               .wait_mask = 1,
             };
             if (!agx3_pixel_wait(enc, 1, 0, bytes, &len) ||
                 !agx3_append(emission, bytes, len) ||
-                !agx3_zs_encode_depth_stencil(enc, &zs, true, false, bytes, &len) ||
+                !agx3_zs_encode_depth_stencil(enc, &zs, depth_enabled,
+                                              stencil_enabled, bytes, &len) ||
                 !agx3_append(emission, bytes, len) ||
                 !agx3_pixel_release(enc, 1, false, 0, bytes, &len) ||
                 !agx3_append(emission, bytes, len))
                AGX3_REFUSE(I);
             outstanding = 0;
+            /* Native LD_MD 0.38 reserves 8 bytes for both stencil-only and
+             * combined export, even when the second word is not written. */
             ctx->agx3_staging_halfs = MAX2(ctx->agx3_staging_halfs, 4);
             continue;
          }
