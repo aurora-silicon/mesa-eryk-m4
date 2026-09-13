@@ -359,3 +359,11 @@ producer variant; its empty raster shader was correctly rejected.
 adjacency controls Pass. Full guards, library
 0574966263f47c9fa3dd7350f2906e45562396c7a193434c05739e3a201f1136.
 Kernel unchanged.
+
+Regression checkpoint after bbb02bab89b: the complete original 100-case sample
+still reports 57 Pass, 42 NotSupported, 1 Crash, zero Fail. Exact results and
+evidence batches: regression-results.json. The surviving crash is the known
+historical CTS input-aspect bug; no tests or expectations were changed.
+All cases ran on boot 99ddcbd0-1a1d-4f25-9fc0-e7a213acfad8 with mandatory
+watchdog/thermal guards. Peak 60.00 C, no GPU hangs or watchdog resets.
+SDDM remains enabled and active. Kernel source unchanged at 0df60d539ba3.
