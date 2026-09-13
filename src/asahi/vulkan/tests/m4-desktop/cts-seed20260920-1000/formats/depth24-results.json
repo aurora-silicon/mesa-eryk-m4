@@ -1,0 +1,21 @@
+[
+  {
+    "index": 428,
+    "case": "dEQP-VK.texture.shadow.2d_array.linear_mipmap_linear.greater_x8_d24_unorm_pack32",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-pump",
+      "--deqp-case=dEQP-VK.texture.shadow.2d_array.linear_mipmap_linear.greater_x8_d24_unorm_pack32",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T220336410214Z-x8-depth24-v1/cts/428/result.qpa"
+    ],
+    "boot_id": "3e6a333b-ddc3-4749-999d-606b6d42262f",
+    "status": "Pass",
+    "started_unix": 1789337017.9191918,
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.2607636539999021,
+    "finished_unix": 1789337018.1859307,
+    "pid": 10119
+  }
+]

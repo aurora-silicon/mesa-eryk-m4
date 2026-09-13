@@ -3788,7 +3788,7 @@ hk_depth_bias_factor(VkFormat format, bool exact, bool force_unorm)
 {
    if (hk_depth_stencil_plane_format(format, 0) == VK_FORMAT_D16_UNORM) {
       return exact ? (1 << 16) : (1 << 15);
-   } else if (force_unorm || format == VK_FORMAT_D24_UNORM_S8_UINT) {
+   } else if (force_unorm || hk_depth24_format(format)) {
       return exact ? (1ull << 24) : (1ull << 23);
    } else {
       return 1.0;
@@ -4754,7 +4754,7 @@ hk_flush_gfx_state(struct hk_cmd_buffer *cmd, uint32_t draw_id,
        dyn->rs.depth_bias.enable) {
 
       bool dbias_is_int =
-         gfx->render.depth_att.vk_format == VK_FORMAT_D24_UNORM_S8_UINT ||
+         hk_depth24_format(gfx->render.depth_att.vk_format) ||
          (dyn->rs.depth_bias.representation ==
           VK_DEPTH_BIAS_REPRESENTATION_LEAST_REPRESENTABLE_VALUE_FORCE_UNORM_EXT) ||
          (hk_depth_stencil_plane_format(gfx->render.depth_att.vk_format, 0) ==

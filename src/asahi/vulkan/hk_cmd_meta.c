@@ -2193,7 +2193,7 @@ hk_native_copy_raw_buffer_image(
       const uint32_t block_B = util_format_get_blocksize(format);
       const enum pipe_format api_format = hk_format_to_pipe_format(image->vk.format);
       const bool rgb = hk_padded_image_format(api_format) != api_format;
-      const bool depth24 = image->vk.format == VK_FORMAT_D24_UNORM_S8_UINT &&
+      const bool depth24 = hk_depth24_format(image->vk.format) &&
                            aspect == VK_IMAGE_ASPECT_DEPTH_BIT;
       const unsigned buffer_block_B = rgb ? util_format_get_blocksize(api_format) : block_B;
       /* Copy each format element verbatim, including separate depth/stencil
@@ -2381,9 +2381,9 @@ hk_native_copy_raw_image(struct hk_cmd_buffer *cmd, struct hk_image *src,
       const struct hk_block_copy_key key = {
          .type = HK_META_OBJECT_KEY_BLOCK_COPY,
          .block_B = block_B,
-         .src_depth24 = src->vk.format == VK_FORMAT_D24_UNORM_S8_UINT &&
+         .src_depth24 = hk_depth24_format(src->vk.format) &&
                         ss->aspectMask == VK_IMAGE_ASPECT_DEPTH_BIT,
-         .dst_depth24 = dst->vk.format == VK_FORMAT_D24_UNORM_S8_UINT &&
+         .dst_depth24 = hk_depth24_format(dst->vk.format) &&
                         ds->aspectMask == VK_IMAGE_ASPECT_DEPTH_BIT,
          .src_tile_log2_w = hk_native_copy_tile_log2(sl, sm, false),
          .src_tile_log2_h = hk_native_copy_tile_log2(sl, sm, true),

@@ -50,7 +50,7 @@ hk_get_image_plane_format_features(struct hk_physical_device *pdev,
    enum pipe_format p_format = hk_format_to_pipe_format(vk_format);
    /* Packed depth/stencil formats use independent physical planes. */
    if (vk_format == VK_FORMAT_D16_UNORM_S8_UINT ||
-       vk_format == VK_FORMAT_D24_UNORM_S8_UINT) {
+       hk_depth24_format(vk_format)) {
       if (!agx_native_graphics(&pdev->dev))
          return 0;
       p_format = vk_format == VK_FORMAT_D16_UNORM_S8_UINT ?
@@ -173,7 +173,7 @@ hk_get_image_plane_format_features(struct hk_physical_device *pdev,
 
    /* D24 uses float depth storage and GPU transfer conversion. Host copies
     * must not expose the physical representation. */
-   if (vk_format == VK_FORMAT_D24_UNORM_S8_UINT)
+   if (hk_depth24_format(vk_format))
       features &= ~VK_FORMAT_FEATURE_2_HOST_IMAGE_TRANSFER_BIT_EXT;
 
    return features;
@@ -566,7 +566,7 @@ hk_GetPhysicalDeviceImageFormatProperties2(
          const bool native_depth_stencil =
             /* Emulated packed formats have only single-sample transfers. */
             pImageFormatInfo->format != VK_FORMAT_D16_UNORM_S8_UINT &&
-            pImageFormatInfo->format != VK_FORMAT_D24_UNORM_S8_UINT &&
+            !hk_depth24_format(pImageFormatInfo->format) &&
             vk_format_is_depth_or_stencil(pImageFormatInfo->format) &&
             !(pImageFormatInfo->usage & VK_IMAGE_USAGE_STORAGE_BIT);
          sampleCounts = VK_SAMPLE_COUNT_1_BIT |

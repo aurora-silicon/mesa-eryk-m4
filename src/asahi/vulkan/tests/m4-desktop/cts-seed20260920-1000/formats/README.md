@@ -28,3 +28,8 @@ Vulkan R5G5B5A1/B5G5R5A1 map to low-alpha Gallium formats, which use native
 channel layout 0x0d. Twelve more original cases pass, covering cube/array
 sampling, mip filtering, blits and blending. Native PBE packing already
 supports this channel layout; retain the generic component swizzles.
+
+X8 D24: original case 428 now passes its shadow sampling oracle. Physical
+depth uses float32, with the existing packed-D24 GPU transfer conversion.
+Views, host-transfer restrictions, sample counts and depth bias follow the
+existing D24S8 emulation. This is one-case evidence; a regression rerun follows.

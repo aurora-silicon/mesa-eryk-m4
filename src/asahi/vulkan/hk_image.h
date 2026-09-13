@@ -155,6 +155,13 @@ hk_padded_image_format(enum pipe_format format)
 }
 
 static inline bool
+hk_depth24_format(VkFormat format)
+{
+   return format == VK_FORMAT_D24_UNORM_S8_UINT ||
+          format == VK_FORMAT_X8_D24_UNORM_PACK32;
+}
+
+static inline bool
 hk_split_depth_stencil(VkFormat format)
 {
    return format == VK_FORMAT_D32_SFLOAT_S8_UINT ||
@@ -165,6 +172,8 @@ hk_split_depth_stencil(VkFormat format)
 static inline VkFormat
 hk_depth_stencil_plane_format(VkFormat format, unsigned plane)
 {
+   if (format == VK_FORMAT_X8_D24_UNORM_PACK32)
+      return VK_FORMAT_D32_SFLOAT;
    if (!hk_split_depth_stencil(format))
       return format;
    return plane ? VK_FORMAT_S8_UINT :
