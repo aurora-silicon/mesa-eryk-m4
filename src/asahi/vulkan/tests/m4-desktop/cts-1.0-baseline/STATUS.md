@@ -414,3 +414,11 @@ library 4e9aa30cee03b21fc0d939bf5bbafc775013ec01793afa195626657ea89ed7aa. Kernel
 D16S8 follow-up: depth bias now uses the D16 fixed-point representation and
 scale for the combined format too. 20260913T154140761428Z-cts-d16s8-depth-controls: two depth comparison
 controls Pass. These controls check depth rendering, not depth-bias coverage.
+
+AGX3 64-bit multiplication: lower remaining products before backend fusion,
+which otherwise turns multiplication by three into an unsupported 64-bit
+shifted add. Full address width is retained. Saved packed RGB8 upload compiler
+bundle a6782e1597371c13869bae49caeb136a7036f0024cf90ac30f09b1b8bf70db0a
+now compiles offline (build/cts-formats/rgb-compiler-replay-2), and the actual
+RGB8 blit passes in 20260913T155007213569Z-cts-padded-rgb-fixed. The RGB format
+implementation used in that experiment is recorded separately below.
