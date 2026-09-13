@@ -60,27 +60,29 @@ int main(int argc, char **argv) {
                    "p*2.-1.,0.,1.);}";
 
   unsigned test = argc > 1 ? strtoul(argv[1], 0, 10) : 0;
-  CHECK(test < 4);
+  CHECK(test < 6);
   const int sparse = argc > 2 && !strcmp(argv[2], "sparse");
   const int mixed = argc > 2 && !strcmp(argv[2], "mixed");
-  CHECK((!sparse && !mixed) || test == 3);
-  const GLenum formats[4][3] = {{GL_R16UI, 0, 0},
+  CHECK((!sparse && !mixed) || (test == 3 || test == 4));
+  const GLenum formats[6][5] = {{GL_R16UI, 0, 0},
                                 {GL_SRGB8_ALPHA8, GL_RGBA8, 0},
                                 {GL_RGBA16F, GL_R16UI, 0},
-                                {GL_RGBA16F, GL_RG16F, GL_R16UI}};
-  const unsigned count = test == 0 ? 1 : test == 3 ? 3 : 2;
+                                {GL_RGBA16F, GL_RG16F, GL_R16UI},
+                                {GL_RGBA16F, GL_R32UI, GL_RG16, GL_RGB10_A2, GL_RGB10_A2},
+                                {GL_RG16}};
+  const unsigned count = test == 4 ? 5 : (test == 0 || test == 5) ? 1 : test == 3 ? 3 : 2;
   char fs[2048] = "#version 330 core\n";
   for (unsigned rt = 0; rt < count; rt++) {
     char line[256];
     snprintf(line, sizeof(line), "layout(location=%u)out %s out%u;\n", rt,
-             formats[test][rt] == GL_R16UI ? "uint" : "vec4", rt);
+             (formats[test][rt] == GL_R16UI || formats[test][rt] == GL_R32UI) ? "uint" : "vec4", rt);
     strcat(fs, line);
   }
   strcat(fs, "void main(){");
   for (unsigned rt = 0; rt < count; rt++) {
     char line[256];
     snprintf(line, sizeof(line), "out%u=%s;", rt,
-             formats[test][rt] == GL_R16UI ? "23456u" : "vec4(.25,.5,.75,1.)");
+             (formats[test][rt] == GL_R16UI || formats[test][rt] == GL_R32UI) ? "23456u" : "vec4(.25,.5,.75,1.)");
     strcat(fs, line);
   }
   strcat(fs, "}");
@@ -92,14 +94,14 @@ int main(int argc, char **argv) {
   glGetProgramiv(p, GL_LINK_STATUS, &ok);
   CHECK(ok);
   glUseProgram(p);
-  GLuint vao, fb, tex[3];
+  GLuint vao, fb, tex[5];
   glGenVertexArrays(1, &vao);
   glBindVertexArray(vao);
   glGenFramebuffers(1, &fb);
   glBindFramebuffer(GL_FRAMEBUFFER, fb);
   glGenTextures(count, tex);
   GLenum attachments[] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1,
-                          GL_COLOR_ATTACHMENT2};
+                          GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3, GL_COLOR_ATTACHMENT4};
   for (unsigned rt = 0; rt < count; rt++) {
     glBindTexture(GL_TEXTURE_2D, tex[rt]);
     glTexStorage2D(GL_TEXTURE_2D, 1, formats[test][rt], 64, 32);
@@ -116,7 +118,7 @@ int main(int argc, char **argv) {
   for (unsigned phase = 0; phase < 3; phase++) {
     if (!phase)
       for (unsigned rt = 0; rt < count; rt++) {
-        if (formats[test][rt] == GL_R16UI)
+        if ((formats[test][rt] == GL_R16UI || formats[test][rt] == GL_R32UI))
           glClearBufferuiv(GL_COLOR, rt, iclear);
         else
           glClearBufferfv(GL_COLOR, rt, clear);
@@ -140,18 +142,26 @@ int main(int argc, char **argv) {
         continue;
       unsigned bad = 0;
       glReadBuffer(attachments[rt]);
-      uint16_t ui[64 * 32];
+      uint32_t ui[64 * 32];
       float rgba[64 * 32 * 4];
-      if (formats[test][rt] == GL_R16UI)
-        glReadPixels(0, 0, 64, 32, GL_RED_INTEGER, GL_UNSIGNED_SHORT, ui);
-      else
+      if ((formats[test][rt] == GL_R16UI || formats[test][rt] == GL_R32UI))
+        glReadPixels(0, 0, 64, 32, GL_RED_INTEGER, GL_UNSIGNED_INT, ui);
+      else if (formats[test][rt] == GL_RG16) {
+        uint16_t rg[64 * 32 * 2];
+        glReadPixels(0, 0, 64, 32, GL_RG, GL_UNSIGNED_SHORT, rg);
+        for (unsigned px = 0; px < 64 * 32; ++px) {
+          rgba[4*px] = rg[2*px] / 65535.f;
+          rgba[4*px+1] = rg[2*px+1] / 65535.f;
+          rgba[4*px+2] = 0; rgba[4*px+3] = 1;
+        }
+      } else
         glReadPixels(0, 0, 64, 32, GL_RGBA, GL_FLOAT, rgba);
       CHECK(glGetError() == GL_NO_ERROR);
       for (unsigned px = 0; px < 64 * 32; px++) {
         int drawn = phase == 2 || (phase == 1 && px % 64 < 32);
         if (mixed && rt == 1 && phase == 2)
           drawn = px % 64 >= 32;
-        if (formats[test][rt] == GL_R16UI) {
+        if ((formats[test][rt] == GL_R16UI || formats[test][rt] == GL_R32UI)) {
           unsigned expected = drawn ? 23456 : 54321;
           if (ui[px] != expected) {
             if (bad < 3)
@@ -162,7 +172,7 @@ int main(int argc, char **argv) {
           for (unsigned c = 0; c < 4; c++) {
             const float draw[] = {.25, .5, .75, 1};
             float expected = drawn ? draw[c] : clear[c];
-            if (formats[test][rt] == GL_RG16F && c >= 2)
+            if ((formats[test][rt] == GL_RG16F || formats[test][rt] == GL_RG16) && c >= 2)
               expected = c == 3 ? 1 : 0;
             if (formats[test][rt] == GL_SRGB8_ALPHA8 && c < 3)
               expected = expected <= .0031308

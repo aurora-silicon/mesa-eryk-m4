@@ -2158,3 +2158,25 @@ It does not execute GPU code or modify the input image.
 `mrt-attachment-probe 3 sparse` discards RT0/RT1 between draws and checks that RT2 survives at its original tile offset. `3 mixed` clears RT1 while reloading RT0/RT2, then checks all attachment pixels. Build with `cc -O2 mrt-attachment-probe.c -lEGL -lGL -lm`; run only through `gpu-experiment.py` and `run-m4-gl.py` with the mandatory watchdog and thermal guard.
 
 `fragment-stencil-probe [depth]` verifies all1024 stencil, depth and color pixels with a varying shader stencil reference; `depth` also exports fragment depth. Compile with `cc -O2 fragment-stencil-probe.c -lEGL -lGL`. Run only through `gpu-experiment.py` and `run-m4-gl.py`; set `M4_PROBE_OUTPUT={output}` to retain raw stencil/depth arrays.
+
+`eevee-image-probe.c`: `M4_TEST_COORD_COLORS=1` uses XYZ-derived colors instead
+of SSBO input for the ordinary `array` test. `M4_TEST_PACK_READBACK=1` with
+`M4_TEST_LAYERS=1 M4_PROBE_OUTPUT=DIR` is a diagnostic for a separately retained
+compiler staging override: saves `pack-payload.bin` and checks only B/A control
+channels. Its DIAGNOSTIC result never qualifies normal array rendering.
+
+`patches/gfxreconstruct-sparse-dynamic-attachments.patch` fixes resource dumps
+with absent or null dynamic color/depth attachments, retaining real attachment
+locations and before/after matching. Apply atop the existing local replay fixes
+and rebuild `gfxrecon-replay`. Qualified on the five final Eevee sample draws
+14998/15033/15055/15067/15097 in retained app-6918.gfxr. The separate index-buffer
+dump path crashes in FindMinMaxVertexIndices for this capture; retained gdb
+backtrace in build/eevee-fresh-dumper-backtrace-v2.log. Select image/descriptor
+dumps with DumpVertexIndexBuffer=false until that diagnostic path is repaired.
+This changes collected evidence, not replayed application commands or features.
+
+MRT probe case4 matches Eevee's five formats (RGBA16F, R32UI, RG16 UNORM,
+two RGB10A2), with raw RG16 readback to avoid a float-format conversion blit.
+Case5 isolates RG16 alone. Both pass the independent llvmpipe expectations.
+The initial M4 case4 fails RG16 in clear/draw/reload while all other targets
+pass; use these bounded reproducers instead of repeatedly launching Eevee.

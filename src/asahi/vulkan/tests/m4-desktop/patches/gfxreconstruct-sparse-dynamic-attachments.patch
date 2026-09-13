@@ -1,0 +1,78 @@
+--- a/framework/decode/vulkan_replay_dump_resources.cpp
++++ b/framework/decode/vulkan_replay_dump_resources.cpp
+@@ -1878,13 +1878,17 @@
+         if (dc_context->ShouldHandleRenderPass(call_info.index))
+         {
+             const auto   rendering_info_meta    = pRenderingInfo->GetMetaStructPointer();
+-            const size_t n_color_attachments    = rendering_info_meta->pColorAttachments->GetLength();
+-            const auto   color_attachments_meta = rendering_info_meta->pColorAttachments->GetMetaStructPointer();
++            const size_t n_color_attachments    = pRenderingInfo->GetPointer()->colorAttachmentCount;
++            const auto   color_attachments_meta = n_color_attachments ? rendering_info_meta->pColorAttachments->GetMetaStructPointer() : nullptr;
+ 
+             std::vector<VulkanImageInfo*> color_attachments(n_color_attachments);
+             std::vector<VkImageLayout>    color_attachment_layouts(n_color_attachments);
+             for (size_t i = 0; i < n_color_attachments; ++i)
+             {
++                // VK_NULL_HANDLE is a valid unused dynamic attachment. Keep
++                // its location so later attachments retain their shader index.
++                if (color_attachments_meta[i].imageView == format::kNullHandleId)
++                    continue;
+                 const VulkanImageViewInfo* img_view_info =
+                     object_info_table_->GetVkImageViewInfo(color_attachments_meta[i].imageView);
+                 assert(img_view_info != nullptr);
+@@ -1899,7 +1903,8 @@
+             VulkanImageInfo* depth_attachment;
+             VkImageLayout    depth_attachment_layout;
+             if (rendering_info_meta->pDepthAttachment != nullptr &&
+-                rendering_info_meta->pDepthAttachment->GetMetaStructPointer() != nullptr)
++                rendering_info_meta->pDepthAttachment->GetMetaStructPointer() != nullptr &&
++                rendering_info_meta->pDepthAttachment->GetMetaStructPointer()->imageView != format::kNullHandleId)
+             {
+                 const auto depth_attachment_meta = rendering_info_meta->pDepthAttachment->GetMetaStructPointer();
+                 const VulkanImageViewInfo* img_view_info =
+--- a/framework/decode/vulkan_replay_dump_resources_draw_calls.cpp
++++ b/framework/decode/vulkan_replay_dump_resources_draw_calls.cpp
+@@ -1288,7 +1288,8 @@
+         }
+ 
+         auto* attachment_img_info = subpass_attachments.color_att_imgs[rt];
+-        GFXRECON_ASSERT(attachment_img_info != nullptr);
++        if (attachment_img_info == nullptr)
++            continue;
+         att_barrier.oldLayout        = subpass_attachments.color_attachment_layouts[rt];
+         att_barrier.image            = attachment_img_info->handle;
+         att_barrier.subresourceRange = { graphics::GetFormatAspects(attachment_img_info->format),
+@@ -1374,6 +1375,8 @@
+         }
+ 
+         VulkanImageInfo* image_info = render_targets.color_att_imgs[i];
++        if (image_info == nullptr)
++            continue;
+ 
+         img_barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+         img_barrier.newLayout     = render_targets.color_attachment_layouts[i];
+@@ -1537,6 +1540,15 @@
+         }
+ 
+         const VulkanImageInfo* image_info = render_targets.color_att_imgs[i];
++        if (image_info == nullptr)
++            continue;
++        const auto previous = std::find_if(dumped_rts.begin(), dumped_rts.end(),
++                                           [i](const auto& rt) { return rt.location == i; });
++        if (!insert_new_resource_entry && previous == dumped_rts.end())
++        {
++            GFXRECON_LOG_ERROR("Missing before-draw attachment dump for location %zu", i);
++            return VK_ERROR_INITIALIZATION_FAILED;
++        }
+         const ImageDumpResult  can_dump_image =
+             CanDumpImage(instance_table_, device_info->parent, image_info, device_info->property_feature_info);
+         auto& dumped_rt = insert_new_resource_entry ? dumped_rts.emplace_back(dumped_resource_base,
+@@ -1545,7 +1557,7 @@
+                                                                               before_command,
+                                                                               image_info,
+                                                                               can_dump_image)
+-                                                    : *(dumped_rts.begin() + i);
++                                                    : *previous;
+         if (can_dump_image != ImageDumpResult::kCanDump)
+         {
+             continue;
