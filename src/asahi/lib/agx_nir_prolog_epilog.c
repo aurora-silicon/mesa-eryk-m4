@@ -446,6 +446,29 @@ copy_colour(nir_builder *b, const struct agx_fs_epilog_key *key,
                     .src_type = nir_type_float | size);
 }
 
+/* Blend in the API format, then restore the wider physical store shape.
+ * Padding is never observable through a public view or image transfer. */
+static bool
+pad_blended_output(nir_builder *b, nir_intrinsic_instr *intr, void *data)
+{
+   const struct agx_fs_epilog_key *key = data;
+   if (intr->intrinsic != nir_intrinsic_store_output)
+      return false;
+   const nir_io_semantics sem = nir_intrinsic_io_semantics(intr);
+   if (sem.location < FRAG_RESULT_DATA0 || sem.location > FRAG_RESULT_DATA7)
+      return false;
+   unsigned rt = sem.location - FRAG_RESULT_DATA0;
+   if (key->blend_formats[rt] == PIPE_FORMAT_NONE)
+      return false;
+   unsigned comps = util_format_get_nr_components(key->rt_formats[rt]);
+   if (intr->num_components >= comps)
+      return false;
+   b->cursor = nir_before_instr(&intr->instr);
+   nir_src_rewrite(&intr->src[0], nir_pad_vector(b, intr->src[0].ssa, comps));
+   intr->num_components = comps;
+   return true;
+}
+
 void
 agx_nir_fs_epilog(nir_builder *b, const void *key_)
 {
@@ -513,7 +536,8 @@ agx_nir_fs_epilog(nir_builder *b, const void *key_)
             agx_unpack_blend_advanced(key->blend.rt[i].mode);
 
          opts.rt[i] = (nir_lower_blend_rt){
-            .format = key->rt_formats[i],
+            .format = key->blend_formats[i] != PIPE_FORMAT_NONE ?
+                         key->blend_formats[i] : key->rt_formats[i],
             .advanced_blend = true,
             .colormask = key->blend.rt[i].colormask,
             .blend_mode = blend.op,
@@ -526,7 +550,8 @@ agx_nir_fs_epilog(nir_builder *b, const void *key_)
             agx_unpack_blend_standard(key->blend.rt[i].mode);
 
          opts.rt[i] = (nir_lower_blend_rt){
-            .format = key->rt_formats[i],
+            .format = key->blend_formats[i] != PIPE_FORMAT_NONE ?
+                         key->blend_formats[i] : key->rt_formats[i],
 
             .rgb.src_factor = blend.rgb_src_factor,
             .rgb.dst_factor = blend.rgb_dst_factor,
@@ -596,6 +621,8 @@ agx_nir_fs_epilog(nir_builder *b, const void *key_)
       NIR_PASS(_, b->shader, nir_lower_alpha_to_one);
 
    NIR_PASS(_, b->shader, nir_lower_blend, &opts);
+   nir_shader_intrinsics_pass(b->shader, pad_blended_output,
+                              nir_metadata_control_flow, (void *)key);
 
    unsigned rt_spill = key->link.rt_spill_base;
    NIR_PASS(_, b->shader, agx_nir_lower_tilebuffer, &tib, colormasks, &rt_spill,

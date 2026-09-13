@@ -16,3 +16,9 @@ rgb-summary.json. Experiments used the 60-second hardware watchdog and mandatory
 six-channel thermal guard. An initial newly enabled signed BGRA blit failed the
 tile-layout allowlist; adding its I8 EOT path made that case and the complete
 89-case subset pass or remain unsupported without failures.
+
+Padded RGB attachments: 25 Pass, 64 NotSupported, zero failures or crashes.
+The four RGB blend cases and BGR sRGB granularity now pass. Epilogs use the
+logical API format for blending (including absent destination alpha), then
+pad stores to the physical tile format. Physical layout and blend semantics
+remain separate. See blend-results.json and blend-summary.json.

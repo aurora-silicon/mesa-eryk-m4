@@ -76,8 +76,11 @@ hk_get_image_plane_format_features(struct hk_physical_device *pdev,
       }
       if (ail_pixel_format[storage].renderable)
          rgb |= VK_FORMAT_FEATURE_2_BLIT_DST_BIT;
-      if (p_format == PIPE_FORMAT_B8G8R8_UINT)
+      if (ail_pixel_format[padded].renderable) {
          rgb |= VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT;
+         if (!util_format_is_pure_integer(padded))
+            rgb |= VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BLEND_BIT;
+      }
       return rgb;
    }
 

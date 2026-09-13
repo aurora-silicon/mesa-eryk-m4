@@ -4133,8 +4133,12 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
       for (uint32_t i = 0; i < render->color_att_count; i++) {
          key.epilog.rt_formats[i] =
             hk_format_to_pipe_format(render->color_att[i].vk_format);
-         if (agx_native_graphics(&dev->dev))
-            key.epilog.rt_formats[i] = hk_padded_image_format(key.epilog.rt_formats[i]);
+         if (agx_native_graphics(&dev->dev)) {
+            const enum pipe_format logical = key.epilog.rt_formats[i];
+            key.epilog.rt_formats[i] = hk_padded_image_format(logical);
+            if (key.epilog.rt_formats[i] != logical)
+               key.epilog.blend_formats[i] = logical;
+         }
 
          const struct vk_color_blend_attachment_state *cb =
             &dyn->cb.attachments[i];

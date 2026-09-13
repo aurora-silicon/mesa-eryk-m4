@@ -289,6 +289,8 @@ struct agx_fs_epilog_key {
 
    /* Tilebuffer configuration */
    enum pipe_format rt_formats[8];
+   /* Optional API format when the tile storage has additional channels. */
+   enum pipe_format blend_formats[8];
    uint8_t nr_samples;
    bool force_small_tile;
    bool preserve_zero_mask;
