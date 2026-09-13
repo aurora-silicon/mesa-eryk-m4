@@ -56,7 +56,8 @@ def batch(args):
     env.update(VK_DRIVER_FILES='/opt/asahi-m4-port/asahi_icd.json',
                VK_ICD_FILENAMES='/opt/asahi-m4-port/asahi_icd.json',
                ASAHI_M4_EXPERIMENTAL='1', LD_LIBRARY_PATH='/opt/asahi-m4-port/lib',
-               ASAHI_MESA_DEBUG='nocompress', XDG_RUNTIME_DIR='/run/user/1000')
+               ASAHI_MESA_DEBUG='nocompress', HK_DEBUG_LOG='1',
+               XDG_RUNTIME_DIR='/run/user/1000')
     if args.renderer == 'lavapipe':
         env.update(VK_DRIVER_FILES='/usr/share/vulkan/icd.d/lvp_icd.json',
                    VK_ICD_FILENAMES='/usr/share/vulkan/icd.d/lvp_icd.json',

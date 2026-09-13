@@ -106,3 +106,13 @@ Cases and binaries must already be installed; `--cases` and `--binary` specify
 target paths. `results.json` preserves every original CTS outcome;
 `summary.json` records batch evidence paths and identity. This is a smoke-test
 campaign, not a conformance result.
+
+`cts-patched-build.py PATCH --output NEW_DIRECTORY` builds a separately named
+CTS diagnostic executable from a trusted patch. It saves the patch and hashes,
+then restores the original source files and original executable on success or
+build failure. Do not run a concurrent CTS build. It performs no hardware test;
+install its `deqp-vk` under a distinct target name and use the usual guarded
+runner. Keep adapted outcomes separate from the original release results.
+
+CTS batches enable `HK_DEBUG_LOG=1` so command-recording errors include the
+Mesa source file and line instead of appearing only at vkEndCommandBuffer.
