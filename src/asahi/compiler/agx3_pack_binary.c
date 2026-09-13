@@ -3229,8 +3229,10 @@ agx3_is_g17p_float2_position_vs(agx_context *ctx,
  * staging addresses. Recycle the six scoreboard slots after waiting for
  * earlier writes; keep the four-position golden independent. */
 static unsigned
-agx3_g17p_vertex_output_count(agx_context *ctx, enum agx_isa_encoding enc)
+agx3_g17p_vertex_output_count(agx_context *ctx, enum agx_isa_encoding enc,
+                             bool *sparse)
 {
+   *sparse = false;
    if (enc != AGX_ISA_ENCODING_AGX3B || ctx->stage != MESA_SHADER_VERTEX ||
        ctx->is_preamble)
       return 0;
@@ -3280,13 +3282,25 @@ agx3_g17p_vertex_output_count(agx_context *ctx, enum agx_isa_encoding enc)
          }
       }
    }
-   if (!stopped || count < 5)
+   if (!stopped || !count)
       return 0;
-   for (unsigned i = 0; i < count; ++i) {
-      if (!outputs[i])
-         return 0;
+   for (unsigned i = 0; i < count; ++i)
+      *sparse |= !outputs[i];
+   if (*sparse) {
+      /* Sparse export order stays ascending; undefined holes consume no
+       * staging slot and must not turn into invented vertex values. */
+      unsigned next = 0;
+      agx_foreach_instr_global(ctx, I) {
+         if (I->op != AGX_OPCODE_ST_VARY)
+            continue;
+         if (I->src[0].value < next) {
+            *sparse = false;
+            return 0;
+         }
+         next = I->src[0].value + 1;
+      }
    }
-   return count;
+   return count >= 5 || *sparse ? count : 0;
 }
 
 /* The sources of a contiguous terminal store bundle cannot be overwritten
@@ -4056,12 +4070,16 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
    const bool g17p_position_protocol =
       agx3_is_g17p_float2_position_vs(ctx, enc);
    unsigned g17p_positions_staged = 0;
-   const unsigned g17p_output_count = agx3_g17p_vertex_output_count(ctx, enc);
+   bool g17p_sparse_outputs;
+   const unsigned g17p_output_count =
+      agx3_g17p_vertex_output_count(ctx, enc, &g17p_sparse_outputs);
+   uint16_t g17p_output_indices[AGX3_MAX_VERTEX_OUTPUTS];
    const bool g17p_terminal_outputs = g17p_output_count &&
       agx3_outputs_are_terminal(ctx, g17p_output_count);
    /* Only the old six-output fallback supports intervening physical GPR
     * reuse. Wider outputs require the pre-RA terminal bundle. */
-   const bool g17p_user_output_protocol = g17p_output_count == 6 ||
+   const bool g17p_user_output_protocol = g17p_sparse_outputs ||
+      g17p_output_count == 6 ||
       (g17p_output_count >= 5 && g17p_terminal_outputs);
    unsigned g17p_outputs_staged = 0;
    /* User-output graphs outside the qualified scalar shapes must not
@@ -4424,6 +4442,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
              * can be reused. A still-live general producer sharing the slot
              * must retire before the staging COPY reuses it. */
             const uint8_t stage_slot =
+               g17p_sparse_outputs ? g17p_outputs_staged % nslots + 1 :
                (g17p_position_protocol || g17p_user_output_protocol)
                   ? I->src[0].value % nslots + 1 : next_uvs_slot;
             const uint16_t staging_half =
@@ -4456,7 +4475,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                if (!g17p_terminal_outputs &&
                    !agx3_retire_slots_noop(emission, enc, staging_bit))
                   AGX3_REFUSE(I);
-               ++g17p_outputs_staged;
+               g17p_output_indices[g17p_outputs_staged++] = I->src[0].value;
                if (g17p_outputs_staged % nslots == 0 ||
                    g17p_outputs_staged == g17p_output_count) {
                   const unsigned first =
@@ -4464,7 +4483,9 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                   for (unsigned component = first;
                        component < g17p_outputs_staged; ++component) {
                      uint8_t bytes[AGX3_VARY_MAX_LENGTH], len = 0;
-                     if (!agx3_vary_uvsw(enc, component * 2, component,
+                     const unsigned index = g17p_sparse_outputs
+                        ? g17p_output_indices[component] : component;
+                     if (!agx3_vary_uvsw(enc, index * 2, index,
                                           component % nslots + 1, true,
                                           1u << (component % nslots), bytes, &len) ||
                          !agx3_append(emission, bytes, len))

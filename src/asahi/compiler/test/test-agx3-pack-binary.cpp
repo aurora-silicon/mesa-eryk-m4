@@ -4727,6 +4727,35 @@ TEST_F(AGX3PackBinary, NativeHighVertexOutputIndices)
    }
 }
 
+TEST_F(AGX3PackBinary, SparseVertexOutputsPreserveUndefinedHoles)
+{
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+   b->shader->stage = MESA_SHADER_VERTEX;
+   for (unsigned component : {0u, 1u, 4u}) {
+      agx_mov_imm_to(b, agx_register(0, AGX_SIZE_32), 0x3f000000 + component);
+      agx_st_vary(b, agx_immediate(component), agx_register(0, AGX_SIZE_32));
+   }
+   agx_stop(b);
+   const auto bytes = pack(b);
+   ASSERT_FALSE(bytes.empty());
+   /* Decode the UVSW records, independently checking destination indices.
+    * Z/W are undefined in the captured pre-GS vertex variant. */
+   std::vector<unsigned> outputs;
+   for (size_t at = 0; at + 8 <= bytes.size(); at += 2) {
+      uint8_t expected[AGX3_VARY_MAX_LENGTH], length;
+      for (unsigned index = 0; index < 5; ++index) {
+         unsigned slot = outputs.size() + 1;
+         if (agx3_vary_uvsw(AGX_ISA_ENCODING_AGX3B, index * 2, index,
+               slot, true, 1u << (slot - 1), expected, &length) &&
+             length == 8 && !memcmp(bytes.data() + at, expected, length)) {
+            outputs.push_back(index);
+            break;
+         }
+      }
+   }
+   EXPECT_EQ(outputs, (std::vector<unsigned>{0, 1, 4}));
+}
+
 TEST_F(AGX3PackBinary, TerminalVertexOutputsUseStagingFileCapacity)
 {
    for (unsigned count : {33u, 64u, 65u, 128u, 129u}) {
