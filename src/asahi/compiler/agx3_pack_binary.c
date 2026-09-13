@@ -3303,11 +3303,15 @@ agx3_g17p_vertex_output_count(agx_context *ctx, enum agx_isa_encoding enc,
             ++count;
             break;
          case AGX_OPCODE_GET_SR:
-            if (I->sr != AGX_SR_VERTEX_ID && I->sr != AGX_SR_INSTANCE_ID)
+            if (count && I->sr != AGX_SR_VERTEX_ID &&
+                I->sr != AGX_SR_INSTANCE_ID)
                return 0;
             break;
          default:
-            if (!agx_opcodes_info[I->op].can_eliminate)
+            /* Operations before the first export stay in place. In
+             * particular a raster-discard TES may write an SSBO before
+             * exporting only point size. This scan does not move them. */
+            if (count && !agx_opcodes_info[I->op].can_eliminate)
                return 0;
             /* Normal packing still validates each operand/width/encoding. */
             break;

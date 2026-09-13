@@ -6723,3 +6723,20 @@ TEST_F(AGX3PackBinary, NativeEmptyVertexNeedsOnlyEnd)
    // rasterization disabled: _agc.main = 0e000000.
    EXPECT_EQ(pack(b), (std::vector<uint8_t>{0x0e, 0, 0, 0}));
 }
+
+TEST_F(AGX3PackBinary, SparseVertexExportAllowsEarlierMemorySideEffects)
+{
+   for (bool store_after : {false, true}) {
+      agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+      b->shader->stage = MESA_SHADER_VERTEX;
+      if (store_after)
+         agx_st_vary(b, agx_immediate(4), agx_register(2, AGX_SIZE_32));
+      agx_device_store(b, agx_register(0, AGX_SIZE_32),
+                       agx_uniform(0, AGX_SIZE_64), agx_immediate(0),
+                       AGX_FORMAT_I32, 1, 2, false);
+      if (!store_after)
+         agx_st_vary(b, agx_immediate(4), agx_register(2, AGX_SIZE_32));
+      agx_stop(b);
+      EXPECT_EQ(pack(b, !store_after).empty(), store_after);
+   }
+}
