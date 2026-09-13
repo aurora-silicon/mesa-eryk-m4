@@ -2,8 +2,8 @@
 
 The frozen selection contains all 89 image-format/operation NotSupported cases
 from the final 871 Pass / 129 NotSupported report. Original indices are in
-selection.json; subset indices are in the new result files. CTS and its oracles
-are unchanged.
+selection.json; subset indices are in the new result files. Later sections
+document the separately identified historical CTS corrections and their scope.
 
 RGB/BGR storage and scaled sampling: 20 Pass, 69 NotSupported, zero failures or
 crashes with ten workers. GPU transfers retain API three-component byte layout;
@@ -103,3 +103,24 @@ remain in build/cts-seed20-formats/packed-linear-{qualified,corrected}.
 The Vulkan sampling specification requires border type to match image numeric
 type: https://docs.vulkan.org/spec/latest/chapters/textures.html
 These two passes raise the image-format gain from 61 to 63 original cases.
+
+Final regression after packed YCbCr and 10-bit filtering: the full 1,000-case
+run records 937 Pass / 61 NotSupported / 2 ResourceError / zero Fail or Crash.
+The two ResourceErrors (759 and 976) could not open a Wayland display because
+the guarded recovery reboot left the machine at SDDM. A guarded real keyboard
+login restored the normal accelerated user session and Foot. Native scanout was
+saved and inspected; the panel, wallpaper and terminal looked correct.
+
+Only these two setup errors were rerun, retained as separate results: 759 Pass;
+976 NotSupported (optional display-timing extension). The explicitly qualified
+outcome is therefore 938 Pass / 62 NotSupported, preserving all 871 baseline
+passes and converting 67 original NotSupported cases to Pass (63 formats and
+four YCbCr). final-comparison.json records every transition and both retests;
+the full-run report still contains its two setup errors. The additional packed
+YCbCr LOD repair is outside the frozen original sample; its complete 1,560-case
+coverage is in ../../cts-ycbcr-20260921 (the sibling directory of this sample).
+
+SDDM remains the normal boot policy. The final health check has failed=0 for
+DCP, an idle armed 60-second watchdog, and no remaining CTS workload. The
+separate hourly DCP callback defect remains unresolved; the evidence and
+recovery are documented in the YCbCr report.
