@@ -30,6 +30,7 @@
 #include "vk_render_pass.h"
 
 #include "nir_builder.h"
+#include "util/format/u_format.h"
 
 struct vk_meta_blit_key {
    enum vk_meta_object_key_type key_type;
@@ -39,8 +40,16 @@ struct vk_meta_blit_key {
    VkResolveModeFlagBits stencil_resolve_mode;
    bool stencil_as_discard;
    VkFormat dst_format;
+   enum glsl_base_type src_type;
    VkImageAspectFlags aspects;
 };
+
+static enum glsl_base_type
+blit_color_type(VkFormat format)
+{
+   return vk_format_is_sint(format) ? GLSL_TYPE_INT :
+          vk_format_is_uint(format) ? GLSL_TYPE_UINT : GLSL_TYPE_FLOAT;
+}
 
 static enum glsl_sampler_dim
 vk_image_sampler_dim(const struct vk_image *image)
@@ -262,12 +271,7 @@ build_blit_shader(const struct vk_meta_blit_key *key)
       switch (aspect) {
       case VK_IMAGE_ASPECT_COLOR_BIT:
          tex_name = "color_tex";
-         if (vk_format_is_sint(key->dst_format))
-            base_type = GLSL_TYPE_INT;
-         else if (vk_format_is_uint(key->dst_format))
-            base_type = GLSL_TYPE_UINT;
-         else
-            base_type = GLSL_TYPE_FLOAT;
+         base_type = key->src_type;
          resolve_mode = key->resolve_mode;
          out_name = "gl_FragData[0]";
          out_location = FRAG_RESULT_DATA0;
@@ -318,8 +322,31 @@ build_blit_shader(const struct vk_meta_blit_key *key)
          nir_demote_if(b, nir_ieq(b, nir_iand(b, val, stencil_bit),
                                      nir_imm_int(b, 0)));
       } else {
+         enum glsl_base_type out_base_type = aspect == VK_IMAGE_ASPECT_COLOR_BIT
+            ? blit_color_type(key->dst_format) : base_type;
+         /* Internal blits may implement scaled destinations through an
+          * integer physical view. Sample the logical floating-point source,
+          * then round and clamp before converting to the storage type. */
+         if (base_type == GLSL_TYPE_FLOAT && out_base_type != base_type) {
+            const struct util_format_description *desc =
+               util_format_description(vk_format_to_pipe_format(key->dst_format));
+            nir_def *components[4];
+            for (unsigned c = 0; c < out_comps; ++c) {
+               unsigned bits = desc->channel[c].size;
+               assert(bits <= 16 && "scaled blit conversion supports 8/16-bit storage");
+               float lo = out_base_type == GLSL_TYPE_INT && bits ?
+                  -(float)(1u << (bits - 1)) : 0;
+               float hi = bits ? (float)((1u << (bits - (out_base_type == GLSL_TYPE_INT))) - 1) : 0;
+               components[c] = nir_fround_even(b, nir_fclamp(b,
+                  nir_channel(b, val, c), nir_imm_float(b, lo), nir_imm_float(b, hi)));
+            }
+            val = nir_vec(b, components, out_comps);
+            val = out_base_type == GLSL_TYPE_INT ? nir_f2i32(b, val) : nir_f2u32(b, val);
+         } else {
+            assert(out_base_type == base_type);
+         }
          const struct glsl_type *out_type =
-            glsl_vector_type(base_type, out_comps);
+            glsl_vector_type(out_base_type, out_comps);
          nir_variable *out = nir_variable_create(b->shader, nir_var_shader_out,
                                                  out_type, out_name);
          out->data.location = out_location;
@@ -740,6 +767,7 @@ vk_meta_blit_image(struct vk_command_buffer *cmd,
    key.src_samples = src_image->samples;
    key.dim = vk_image_sampler_dim(src_image);
    key.dst_format = dst_format;
+   key.src_type = blit_color_type(src_format);
 
    for (uint32_t r = 0; r < region_count; r++) {
       struct vk_meta_blit_push_data push = {0};
@@ -845,6 +873,7 @@ vk_meta_resolve_image(struct vk_command_buffer *cmd,
    key.resolve_mode = resolve_mode;
    key.stencil_resolve_mode = stencil_resolve_mode;
    key.dst_format = dst_format;
+   key.src_type = blit_color_type(src_format);
 
    for (uint32_t r = 0; r < region_count; r++) {
       struct vk_meta_blit_push_data push = {

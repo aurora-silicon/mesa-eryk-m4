@@ -91,6 +91,8 @@ hk_get_image_plane_format_features(struct hk_physical_device *pdev,
        * formats. Linear filtering and attachment conversion are separate. */
       features |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT |
                   VK_FORMAT_FEATURE_2_BLIT_SRC_BIT;
+      if (ail_pixel_format[hk_scaled_texture_format(p_format)].renderable)
+         features |= VK_FORMAT_FEATURE_2_BLIT_DST_BIT;
    }
 
    if (ail_pixel_format[p_format].texturable) {

@@ -464,3 +464,19 @@ word count and end-of-tile selector, matching unsigned scalar and signed RG16.
 passes after conversion to the signed physical view. Independent original CTS
 R16_SINT attachment clear passes in
 20260913T160910892368Z-cts-scaled-blit-unsigned-controls. No GPU reset.
+
+Scaled blit destinations: shared meta blits preserve the logical source numeric
+class, then round-to-even and clamp float samples before writing through 8/16-bit
+integer physical views. HK now advertises BLIT_DST for those scaled formats;
+linear sampling remains unsupported. Original cases 0/86 still skip because
+CTS incorrectly requires linear filtering of the destination. Vulkan requires
+that capability only on the source:
+https://docs.vulkan.org/refpages/latest/refpages/source/VkBlitImageInfo2.html
+The retained blit-destination-filter.patch removes only this precheck; pixel
+comparisons remain intact. Diagnostic binary SHA256:
+c838e92c4e3560e11192f551016c055044da580406c916e5b57f10436d474622.
+Corrected RG8 signed case Pass in 20260913T160450409389Z-cts-scaled-blit-corrected;
+corrected scalar R16 signed case Pass in 20260913T160814884586Z-cts-scaled-blit-r16-eot.
+Unsigned R8/R16/RGBA16 controls all Pass in
+20260913T160910892368Z-cts-scaled-blit-unsigned-controls. These corrected-binary
+results remain separate from original CTS counts. Full watchdog/thermal guards.

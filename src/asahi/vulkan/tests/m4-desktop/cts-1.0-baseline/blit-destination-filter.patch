@@ -1,0 +1,11 @@
+--- a/external/vulkancts/modules/vulkan/api/vktApiCopiesAndBlittingTests.cpp
++++ b/external/vulkancts/modules/vulkan/api/vktApiCopiesAndBlittingTests.cpp
+@@ -1784,8 +1784,6 @@
+ 	{
+ 		if (!(srcFormatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT))
+ 			TCU_THROW(NotSupportedError, "Source format feature sampled image filter linear not supported");
+-		if (!(dstFormatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT))
+-			TCU_THROW(NotSupportedError, "Destination format feature sampled image filter linear not supported");
+ 	}
+ 
+ 	// Create source image

@@ -1783,6 +1783,9 @@ hk_CmdBlitImage2(VkCommandBuffer commandBuffer,
              * still supply alpha one and buffer copies discard padding. */
             enum pipe_format logical = hk_format_to_pipe_format(dst_image->vk.format);
             enum pipe_format physical = hk_padded_image_format(logical);
+            enum pipe_format scaled = hk_scaled_texture_format(logical);
+            if (scaled != PIPE_FORMAT_NONE)
+               physical = scaled;
             VkFormat dst_format = physical == logical ? dst_image->vk.format :
                vk_format_from_pipe_format(physical);
             vk_meta_blit_image(&cmd->vk, &dev->meta,
