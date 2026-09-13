@@ -1059,7 +1059,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
    const bool sample_offset = !shadow && !cube && I->offset &&
       I->src[5].type == AGX_INDEX_IMMEDIATE && I->src[5].value <= 0xff;
    const bool valid_compare = shadow ?
-      (enc == AGX_ISA_ENCODING_AGX3B && !cube &&
+      (enc == AGX_ISA_ENCODING_AGX3B &&
        agx3_tex_plain_reg(I->src[5]) && I->src[5].size == AGX_SIZE_32 &&
        agx_channels(I->src[5]) == 1 && !(I->src[5].value & 1) &&
        I->src[5].value < 256) : (sample_offset || agx_is_null(I->src[5]));
@@ -1104,7 +1104,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
        (array && enc != AGX_ISA_ENCODING_AGX3B) ||
        (I->mask == 0 || (I->mask & ~15u)) ||
        (I->offset && !sample_offset) ||
-       (gather && (enc != AGX_ISA_ENCODING_AGX3B || shadow || cube ||
+       (gather && (enc != AGX_ISA_ENCODING_AGX3B || cube ||
                    explicit_lod || I->mask != 15)) || I->sparse)
       return false;
 

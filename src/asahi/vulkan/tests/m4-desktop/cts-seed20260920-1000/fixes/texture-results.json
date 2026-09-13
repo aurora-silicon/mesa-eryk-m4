@@ -1,0 +1,97 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.texture.shadow.cube.linear.less_or_equal_d32_sfloat",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-xdg",
+      "--deqp-case=dEQP-VK.texture.shadow.cube.linear.less_or_equal_d32_sfloat",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T210614576841Z-cts-seed20-textures/cts/000/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "started_unix": 1789333575.6602578,
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.7157322709999789,
+    "finished_unix": 1789333576.3820148,
+    "pid": 110687
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.glsl.texture_gather.offset_dynamic.implementation_offset.2d.rgba8i.texture_swizzle.one_red_green_blue",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-xdg",
+      "--deqp-case=dEQP-VK.glsl.texture_gather.offset_dynamic.implementation_offset.2d.rgba8i.texture_swizzle.one_red_green_blue",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T210614576841Z-cts-seed20-textures/cts/001/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "started_unix": 1789333576.3923547,
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.3109710910002832,
+    "finished_unix": 1789333576.7082767,
+    "pid": 110692
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.texture.shadow.cube.linear_mipmap_nearest.less_or_equal_d32_sfloat",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-xdg",
+      "--deqp-case=dEQP-VK.texture.shadow.cube.linear_mipmap_nearest.less_or_equal_d32_sfloat",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T210614576841Z-cts-seed20-textures/cts/002/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "started_unix": 1789333576.718884,
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.765999999000087,
+    "finished_unix": 1789333577.490668,
+    "pid": 110697
+  },
+  {
+    "index": 3,
+    "case": "dEQP-VK.glsl.texture_gather.offset_dynamic.implementation_offset.2d_array.rgba8ui.texture_swizzle.red_green_blue_alpha",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-xdg",
+      "--deqp-case=dEQP-VK.glsl.texture_gather.offset_dynamic.implementation_offset.2d_array.rgba8ui.texture_swizzle.red_green_blue_alpha",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T210614576841Z-cts-seed20-textures/cts/003/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "started_unix": 1789333577.5024452,
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.4124541959999988,
+    "finished_unix": 1789333577.9203076,
+    "pid": 110699
+  },
+  {
+    "index": 4,
+    "case": "dEQP-VK.glsl.texture_gather.offset_dynamic.min_required_offset.2d.depth32f.size_npot.compare_greater.mirrored_repeat_clamp_to_edge",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-xdg",
+      "--deqp-case=dEQP-VK.glsl.texture_gather.offset_dynamic.min_required_offset.2d.depth32f.size_npot.compare_greater.mirrored_repeat_clamp_to_edge",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T210614576841Z-cts-seed20-textures/cts/004/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "started_unix": 1789333577.9307756,
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.1078613370000312,
+    "finished_unix": 1789333578.043354,
+    "pid": 110704
+  }
+]

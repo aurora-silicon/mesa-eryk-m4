@@ -66,3 +66,12 @@ volume/mip readbacks and pixel checks; omit the invalid attachment preclear.
 The selected whole-volume case overwrites every tested texel. A separately
 identified CTS executable deqp-vk-seed20-final passes that test on unchanged
 Mesa; the original failure remains recorded separately. Evidence: _provenance/experiments/20260913T211057136561Z-cts-seed20-clear3d
+
+## Cube comparisons and dynamic gathers (100, 287, 358, 818, 861)
+
+Compose native cube-face, shadow-reference and gather controls while preserving
+four-component comparison-gather results. Lower dynamic gather offsets through
+NIR texture-size/coordinate arithmetic, retaining the array layer. All five
+original CTS cases pass their original output checks on M4; no test changes.
+Evidence: _provenance/experiments/20260913T210614576841Z-cts-seed20-textures
+(60-second watchdog, peak 57.5 C). The host agx3_tex_core test also passes.

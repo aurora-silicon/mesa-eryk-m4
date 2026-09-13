@@ -200,16 +200,17 @@ sample_ok(enum agx_isa_encoding enc, const struct agx3_tex_sample_desc *d)
       return false;
 
    if (d->gather &&
-       (enc != AGX_ISA_ENCODING_AGX3B || d->shadow || d->cube ||
+       (enc != AGX_ISA_ENCODING_AGX3B || d->cube ||
         d->gather_component > 3 || d->mask != 15 ||
         d->width != AGX3_TEX_W32 || d->lod != AGX3_TEX_LOD_AUTO))
       return false;
 
-   /* M4 25G83 sample_compare witnesses: 2D/array, scalar F32 result,
-    * reference in coordinate bank half4. Only level(0) was captured. */
+   /* M4 25G83 sample_compare places its F32 reference in coordinate half4.
+    * Cube face and gather controls compose independently; M4 CTS validates
+    * cube comparisons and four-component comparison gathers as well. */
    if (d->shadow &&
-       (enc != AGX_ISA_ENCODING_AGX3B || d->cube || d->coord != 0 ||
-        d->mask != 1 || d->width != AGX3_TEX_W32 ||
+       (enc != AGX_ISA_ENCODING_AGX3B || d->coord != 0 ||
+        d->mask != (d->gather ? 15 : 1) || d->width != AGX3_TEX_W32 ||
         d->lod == AGX3_TEX_LOD_REGISTER || d->lod_x64 != 0))
       return false;
 

@@ -19,11 +19,11 @@ g17p_sample_shape(const nir_tex_instr *tex)
    if ((tex->op != nir_texop_tex && tex->op != nir_texop_txb &&
        tex->op != nir_texop_txl && !gather && !query) ||
        (query && (three_d || cube || tex->is_array || tex->is_shadow)) ||
-       (gather && (cube || tex->is_shadow)) ||
+       (gather && cube) ||
        (tex->sampler_dim != GLSL_SAMPLER_DIM_2D && !three_d &&
         !(cube &&
           (tex->op == nir_texop_tex || tex->op == nir_texop_txl))) ||
-       (tex->is_shadow && cube) || tex->is_sparse ||
+       tex->is_sparse ||
        tex->coord_components != (cube && tex->is_array ? 4 :
                                 (tex->is_array || cube || three_d) ? 3 : 2) ||
        (tex->backend_flags & ~(AGX_TEXTURE_FLAG_CLAMP_TO_0 |
@@ -33,7 +33,7 @@ g17p_sample_shape(const nir_tex_instr *tex)
        (tex->dest_type != nir_type_float32 &&
         tex->dest_type != nir_type_int32 &&
         tex->dest_type != nir_type_uint32) ||
-       tex->def.num_components != (query ? 2 : tex->is_shadow ? 1 : 4) ||
+       tex->def.num_components != (query ? 2 : tex->is_shadow && !gather ? 1 : 4) ||
        tex->def.bit_size != 32)
       return false;
 
@@ -546,13 +546,13 @@ g17p_cube_sample_shape(const nir_tex_instr *tex)
    if ((tex->op != nir_texop_tex && !level) ||
        (level && lod < 0) ||
        tex->sampler_dim != GLSL_SAMPLER_DIM_CUBE ||
-       tex->is_shadow || tex->is_sparse ||
+       tex->is_sparse ||
        tex->coord_components != (tex->is_array ? 4 : 3) ||
-       tex->num_srcs != (level ? 4 : 3) ||
+       tex->num_srcs != (level ? 4 : 3) + tex->is_shadow ||
        (tex->backend_flags & ~AGX_TEXTURE_FLAG_CLAMP_TO_0) != 0 ||
        (tex->dest_type != nir_type_float32 &&
         tex->dest_type != nir_type_int32 &&
-        tex->dest_type != nir_type_uint32) || tex->def.num_components != 4 ||
+        tex->dest_type != nir_type_uint32) || tex->def.num_components != (tex->is_shadow ? 1 : 4) ||
        tex->def.bit_size != 32 ||
        nir_tex_instr_src_index(tex, nir_tex_src_texture_handle) < 0 ||
        nir_tex_instr_src_index(tex, nir_tex_src_sampler_handle) < 0)

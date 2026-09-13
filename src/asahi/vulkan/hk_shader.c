@@ -1088,6 +1088,17 @@ should_lower_robust(const nir_intrinsic_instr *intr, const void *_)
           intr->intrinsic == nir_intrinsic_image_deref_atomic_swap;
 }
 
+/* G16's native offset form encodes signed immediate nibbles. Dynamic
+ * gather offsets use the ordinary texture-size/coordinate lowering. */
+static bool
+hk_lower_native_gather_offset(const nir_instr *instr, UNUSED const void *data)
+{
+   const nir_tex_instr *tex = nir_instr_as_tex(instr);
+   const int offset = nir_tex_instr_src_index(tex, nir_tex_src_offset);
+   return tex->op == nir_texop_tg4 && offset >= 0 &&
+          (tex->is_shadow || !nir_src_is_const(tex->src[offset].src));
+}
+
 static void
 hk_lower_nir(struct hk_device *dev, nir_shader *nir,
              const struct vk_pipeline_robustness_state *rs, bool is_multiview,
@@ -1149,6 +1160,12 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
    /* We must do early lowering before hk_nir_lower_descriptors, since this will
     * create lod_bias instructions.
     */
+   if (dev->dev.chip == AGX_CHIP_G16G) {
+      const nir_lower_tex_options options = {
+         .lower_offset_filter = hk_lower_native_gather_offset,
+      };
+      NIR_PASS(_, nir, nir_lower_tex, &options);
+   }
    NIR_PASS(_, nir, agx_nir_lower_texture_early_with_2d_robustness,
             true /* support_lod_bias */, agx_chip_uses_hal200_ioto(dev->dev.chip));
 
