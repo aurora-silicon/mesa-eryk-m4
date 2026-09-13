@@ -70,6 +70,8 @@ hk_get_image_plane_format_features(struct hk_physical_device *pdev,
          if (!util_format_is_pure_integer(padded))
             rgb |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
       }
+      if (ail_pixel_format[padded].renderable)
+         rgb |= VK_FORMAT_FEATURE_2_BLIT_DST_BIT;
       return rgb;
    }
 

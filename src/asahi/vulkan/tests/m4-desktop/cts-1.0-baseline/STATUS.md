@@ -449,3 +449,11 @@ Remaining image-related sample skips: D24S8 (17/41/44), compression/storage
 transcoding (21), blit destinations (0/31/86), scaled linear filtering (81),
 and YCbCr/plane requests (52/57/61/83/89). Several of the latter request
 disjoint planes on single-plane formats and must not be enabled artificially.
+
+RGB blit destinations: render to the padded RGBA physical format through an
+internal view while preserving logical source sampling. Public RGB attachment
+support is unchanged. Original case 31 now Pass in
+20260913T155809741604Z-cts-rgb-blit-destination. Float and sRGB filtered blit
+controls both Pass in 20260913T155934103668Z-cts-rgb-blit-format-controls.
+Mandatory watchdog/thermal guards; no reset. This targeted result brings known
+passes in the original sample to 69; no fresh full-100 claim yet.

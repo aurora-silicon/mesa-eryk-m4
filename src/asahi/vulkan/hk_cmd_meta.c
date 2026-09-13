@@ -1778,7 +1778,17 @@ hk_CmdBlitImage2(VkCommandBuffer commandBuffer,
             VkBlitImageInfo2 info = *pBlitImageInfo;
             info.regionCount = 1;
             info.pRegions = &one;
-            vk_meta_blit_image2(&cmd->vk, &dev->meta, &info);
+            /* A padded RGB destination has RGBA physical texels. Render
+             * through an internal view of that storage; public RGB views
+             * still supply alpha one and buffer copies discard padding. */
+            enum pipe_format logical = hk_format_to_pipe_format(dst_image->vk.format);
+            enum pipe_format physical = hk_padded_image_format(logical);
+            VkFormat dst_format = physical == logical ? dst_image->vk.format :
+               vk_format_from_pipe_format(physical);
+            vk_meta_blit_image(&cmd->vk, &dev->meta,
+                               &src_image->vk, src_image->vk.format,
+                               info.srcImageLayout, &dst_image->vk, dst_format,
+                               info.dstImageLayout, 1, &one, info.filter);
             if (vk_command_buffer_has_error(&cmd->vk))
                break;
          }
