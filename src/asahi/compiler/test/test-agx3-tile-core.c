@@ -74,6 +74,14 @@ int main(void){
                                6, 3, 0, 1, 0, true, true, out, &len) ||
           len != sizeof(native) || memcmp(out, native, len)) fail++; else pass++;
    }
+   /* G16G RG8Unorm framebuffer fetch, native fragment text offset76. */
+   {
+      const uint8_t native[] = {0x67,0x0e,0x54,0,0,0,1,0xd2,2,0,0,0};
+      uint8_t out[AGX3_TILE_MAX_LENGTH], len;
+      if (!agx3_tile_load_mask(AGX_ISA_ENCODING_AGX3B, 0, AGX3_TILE_W8,
+                               6, 3, 0, 1, 0, true, true, out, &len) ||
+          len != sizeof(native) || memcmp(out, native, len)) fail++; else pass++;
+   }
    /* G16G native write-mask4: LSTCOL at182 selects SR39 in half2. */
    {
       const uint8_t native[] = {0xe7,0x26,0x54,0,0,0,2,0x4e,8,0,0,8};

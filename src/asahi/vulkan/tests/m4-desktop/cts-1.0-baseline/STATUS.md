@@ -115,3 +115,12 @@ are in compiler/test/probes/README-g16g-sint16-eot.md.
 library44d03aabcb5f82a67bffc58eb71f2cd514874355523c40a0d88804a7339db80e.
 No CTS assertion, application shader, kernel or software-rendering fallback
 changed. The original CTS source and binary have been restored after diagnostics.
+
+Eighth selection:index4, RG8 sRGB blending. The backend refused two-channel
+W8 tile loads despite already packing/unpacking their two bytes correctly.
+Fresh Apple G16G RG8Unorm framebuffer-fetch compilation witnesses mask3/W8;
+see compiler/test/probes/README-g16g-rg8-fetch.md. Admit that exact form.
+All54 tile-core checks pass; original failed compiler bundle101de234... replays
+successfully (412bytes). 20260913T112410307569Z-cts-rg8-tile-load:original CTS
+case4 Pass (result image matches reference), peak58.5 C, full guards.
+Libraryb898fc1ea3acae2dc693383e185319f4cfc63030573efc3cbf0c7f65b1880257.
