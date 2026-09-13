@@ -5297,6 +5297,11 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
          }
       }
 
+      struct hk_graphics_state *memory_gfx = &cmd->state.gfx;
+      cs->writes_memory |= hk_bound_hw_vs(memory_gfx)->info.writes_memory;
+      struct hk_shader *memory_fs =
+         hk_only_variant(memory_gfx->shaders[MESA_SHADER_FRAGMENT]);
+      cs->writes_memory |= memory_fs && memory_fs->info.writes_memory;
       cs->stats.cmds++;
    }
 }

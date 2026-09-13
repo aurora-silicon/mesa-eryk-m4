@@ -67,6 +67,7 @@ hk_tess_info_merge(struct hk_tess_info a, struct hk_tess_info b)
 }
 
 struct hk_shader_info {
+   bool writes_memory; /* Shader memory, separate from framebuffer exports. */
    union {
       struct {
          uint32_t attribs_read;

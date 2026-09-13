@@ -1,0 +1,82 @@
+[
+  {
+    "index": 6,
+    "case": "dEQP-VK.synchronization.op.single_queue.event.write_copy_image_to_buffer_read_ubo_geometry.buffer_16384",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.synchronization.op.single_queue.event.write_copy_image_to_buffer_read_ubo_geometry.buffer_16384",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T195017129647Z-cts-render-visibility/cts/006/result.qpa"
+    ],
+    "boot_id": "e47102a9-42cd-480a-8918-bfe1840cca56",
+    "status": "Pass",
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.4078929759998573
+  },
+  {
+    "index": 7,
+    "case": "dEQP-VK.synchronization.op.multi_queue.fence.write_ssbo_tess_control_read_ssbo_geometry.buffer_262144_concurrent",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.synchronization.op.multi_queue.fence.write_ssbo_tess_control_read_ssbo_geometry.buffer_262144_concurrent",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T195017129647Z-cts-render-visibility/cts/007/result.qpa"
+    ],
+    "boot_id": "e47102a9-42cd-480a-8918-bfe1840cca56",
+    "status": "Pass",
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.6091657669999222
+  },
+  {
+    "index": 8,
+    "case": "dEQP-VK.synchronization.cross_instance.suballocated.write_ssbo_vertex_read_ubo_geometry.buffer_16384_fd",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.synchronization.cross_instance.suballocated.write_ssbo_vertex_read_ubo_geometry.buffer_16384_fd",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T195017129647Z-cts-render-visibility/cts/008/result.qpa"
+    ],
+    "boot_id": "e47102a9-42cd-480a-8918-bfe1840cca56",
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.40845393100016736
+  },
+  {
+    "index": 9,
+    "case": "dEQP-VK.synchronization.cross_instance.suballocated.write_ssbo_tess_eval_read_ubo_geometry.buffer_16384_fence_fd",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.synchronization.cross_instance.suballocated.write_ssbo_tess_eval_read_ubo_geometry.buffer_16384_fence_fd",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T195017129647Z-cts-render-visibility/cts/009/result.qpa"
+    ],
+    "boot_id": "e47102a9-42cd-480a-8918-bfe1840cca56",
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.6094834909999918
+  },
+  {
+    "index": 10,
+    "case": "dEQP-VK.synchronization.op.single_queue.event.write_ssbo_fragment_read_ssbo_vertex.buffer_16384",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.synchronization.op.single_queue.event.write_ssbo_fragment_read_ssbo_vertex.buffer_16384",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T195017129647Z-cts-render-visibility/cts/010/result.qpa"
+    ],
+    "boot_id": "e47102a9-42cd-480a-8918-bfe1840cca56",
+    "status": "Pass",
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.40819557199984047
+  }
+]

@@ -1483,6 +1483,7 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
 {
    unsigned nr_vbos = 0;
    bool kill_psiz = false;
+   shader->info.writes_memory = nir->info.writes_memory;
 
    if (sw_stage == MESA_SHADER_TESS_EVAL ||
        sw_stage == MESA_SHADER_TESS_CTRL) {

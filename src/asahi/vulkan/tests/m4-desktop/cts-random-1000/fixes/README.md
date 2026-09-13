@@ -106,3 +106,16 @@ The BGRA SNORM format uses the existing S8NORM tile conversion and descriptor
 channel swizzle, but was absent from the native tile allowlist. Admit it and
 use the same signed normalized export selector for mixed targets. The original
 CTS blit comparison passes; peak monitored temperature 56.75 C, no GPU fault.
+
+## Graphics shader memory visibility
+
+Original indices 235, 543, 601, 881 and 965 Pass in `20260913T195017129647Z-cts-render-visibility`,
+without a diagnostic environment override. Reader-stage controls passed with
+compute/fill writers and failed with graphics writers. A native VDM end barrier
+did not help; the native strong CDM cache barrier made all five pass.
+Track shader memory writes independently of framebuffer exports and order the
+cache barrier after renders containing those writes. The existing conservative
+control-stream boundaries then publish writes before later graphics consumers
+and submission completion. Framebuffer-only renders do not add this barrier.
+No shader is replayed on the CPU and no stores or comparisons are removed.
+This establishes the required cache operation, not optimized range tracking.

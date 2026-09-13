@@ -435,6 +435,7 @@ struct hk_cs {
     * state may change before queue submission, so the synthetic fragment
     * attachment command must travel with the control stream it describes. */
    struct hk_drm_attachment_set fragment_attachments;
+   bool writes_memory;
 
    /* Active restart index if one is set. Zero if there is no restart index set
     * yet, since Vulkan does not allow zero restart indices (unlike OpenGL).
@@ -800,6 +801,8 @@ hk_cmd_buffer_end_compute(struct hk_cmd_buffer *cmd)
  * graphics finalization (for example, a native background clear). */
 bool hk_optimize_empty_vdm(struct hk_cmd_buffer *cmd);
 
+void hk_cdm_cache_flush(struct hk_device *dev, struct hk_cs *cs);
+
 static void
 hk_cmd_buffer_end_graphics(struct hk_cmd_buffer *cmd)
 {
@@ -845,6 +848,17 @@ hk_cmd_buffer_end_graphics(struct hk_cmd_buffer *cmd)
     * to queue a free for it again.
     */
    cmd->uses_heap = false;
+
+   /* Render retirement alone does not make shader stores visible to a later
+    * graphics shader on G16G. The native strong CDM barrier covers that cache
+    * domain; order it after this render and before any subsequent consumer.
+    * Framebuffer-only renders retain their normal attachment handling. */
+   if (cs && cs->writes_memory &&
+       hk_cmd_buffer_device(cmd)->dev.chip == AGX_CHIP_G16G) {
+      struct hk_cs *flush = hk_cmd_buffer_get_cs(cmd, true);
+      hk_cdm_cache_flush(hk_cmd_buffer_device(cmd), flush);
+      hk_cmd_buffer_end_compute(cmd);
+   }
 }
 
 static inline uint64_t
@@ -930,7 +944,6 @@ uint64_t hk_upload_usc_words(struct hk_cmd_buffer *cmd, struct hk_shader *s,
 void hk_usc_upload_spilled_rt_descs(struct agx_usc_builder *b,
                                     struct hk_cmd_buffer *cmd);
 
-void hk_cdm_cache_flush(struct hk_device *dev, struct hk_cs *cs);
 
 void hk_dispatch_with_usc_launch(struct hk_device *dev, struct hk_cs *cs,
                                  struct agx_cdm_launch_word_0_packed launch,
