@@ -414,7 +414,8 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
    if (store && op == AGX_EOT_STORE) {
       for (unsigned rt = 0; rt < attachment_count; ++rt) {
          struct hk_image_view *iview = cmd->state.gfx.render.color_att[rt].iview;
-         if (!iview || !iview->planes[0].eot_pbe_valid ||
+         if (!iview || !(key->tib.layered ? iview->planes[0].layered_eot_pbe_valid
+                                         : iview->planes[0].eot_pbe_valid) ||
              info->pColorAttachments[rt].imageView == VK_NULL_HANDLE) {
             vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FORMAT_NOT_SUPPORTED);
             return (struct hk_bg_eot){0};
@@ -433,8 +434,11 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
                     "native PBE table stride");
 
       struct hk_native_pbe_descriptor pbe_arguments[HK_MAX_RTS];
-      for (unsigned rt = 0; rt < attachment_count; ++rt)
-         pbe_arguments[rt] = cmd->state.gfx.render.color_att[rt].iview->planes[0].eot;
+      for (unsigned rt = 0; rt < attachment_count; ++rt) {
+         const struct hk_image_view *view = cmd->state.gfx.render.color_att[rt].iview;
+         pbe_arguments[rt] = key->tib.layered ? view->planes[0].layered_eot
+                                           : view->planes[0].eot;
+      }
       const size_t pbe_argument_size = attachment_count * sizeof(pbe_arguments[0]);
       const uint64_t pbe_argument_va =
          hk_pool_upload(cmd, pbe_arguments, pbe_argument_size, 32);
@@ -557,8 +561,11 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
                           AGX_TEXTURE_GEN9_LENGTH,
                        "native texture table stride");
          struct hk_native_texture_descriptor textures[2 * HK_MAX_RTS - 1] = {0};
-         for (unsigned rt = 0; rt < attachment_count; ++rt)
-            textures[rt * 2] = cmd->state.gfx.render.color_att[rt].iview->planes[0].background;
+         for (unsigned rt = 0; rt < attachment_count; ++rt) {
+            const struct hk_image_view *view = cmd->state.gfx.render.color_att[rt].iview;
+            textures[rt * 2] = key->tib.layered ? view->planes[0].layered_background
+                                             : view->planes[0].background;
+         }
          const size_t texture_size = (2 * attachment_count - 1) * sizeof(textures[0]);
          const uint64_t texture_va =
             hk_pool_upload(cmd, textures, texture_size,

@@ -16,3 +16,12 @@ Mesa uses this ABI for one unspilled, single-sample layered color target.
 The compiler matches all semantic wrapper operations, including layer Z;
 it refuses other operations. Layered MRT and MSAA remain separate gaps.
 GPU correctness of the new Mesa EOT awaits the bounded Linux color probe.
+
+Linux qualification061844853720Z-eevee-layer-color-descriptor passes256 exact
+RGBA32F pixels across4layers, peak56.5C, watchdog60. Kernel0df60d539ba3 and
+retained Mesa patch are in the experiment manifest. It exercises geometry-
+selected layers and array EOT through Zink. Ordinary array storage-image
+writes and complete Eevee are still separate unresolved cases.
+The actual wrapperb0502633 contains RA coordinate copies; the matcher follows
+these definitions. Layer staging is rounded to16halfs and its Ioto allocation
+uses compiler metadata. The draw path selects layered EOT/background views.

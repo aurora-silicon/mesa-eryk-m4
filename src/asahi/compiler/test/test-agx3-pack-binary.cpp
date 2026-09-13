@@ -106,7 +106,26 @@ TEST_F(AGX3PackBinary, NativeLayeredColorEOTMatchesJ713Capture)
    agx_stop(b);
    EXPECT_EQ(pack(b),std::vector<uint8_t>(std::begin(native),std::end(native)));
    EXPECT_EQ(b->shader->max_reg,7);
-   EXPECT_EQ(b->shader->agx3_staging_halfs,12);
+   EXPECT_EQ(b->shader->agx3_staging_halfs,16);
+
+   /* Actual saved Blender-path EOT b0502633 contains RA collect copies. */
+   b = builder(AGX_ISA_ENCODING_AGX3B);
+   b->shader->stage = MESA_SHADER_COMPUTE;
+   for (unsigned c = 0; c < 3; ++c) {
+      enum agx_sr sr = c == 0 ? AGX_SR_THREAD_POSITION_IN_GRID_X :
+                       c == 1 ? AGX_SR_THREAD_POSITION_IN_GRID_Y :
+                                AGX_SR_THREADGROUP_POSITION_IN_GRID_Z;
+      agx_get_sr_to(b,agx_register(2*c,AGX_SIZE_32),sr);
+      agx_bitop_to(b,agx_register(8+2*c,AGX_SIZE_32),agx_register(2*c,AGX_SIZE_32),agx_immediate(0),UTIL_LUT2(a));
+   }
+   agx_mov_imm_to(b,agx_register(6,AGX_SIZE_32),0);
+   coords = agx_register(8,AGX_SIZE_32); coords.channels_m1 = 2;
+   agx_block_image_store(b,agx_immediate(0),agx_immediate(0),
+                         agx_register(6,AGX_SIZE_32),coords,
+                         AGX_FORMAT_I32,AGX_DIM_2D_ARRAY,true);
+   agx_stop(b);
+   EXPECT_EQ(pack(b),std::vector<uint8_t>(std::begin(native),std::end(native)));
+
 }
 
 TEST_F(AGX3PackBinary, StraightLineALU)

@@ -663,7 +663,8 @@ hk_agx3_g17p_rt0_eot_program_generate(
    const unsigned count = desc ? MAX2(desc->attachment_count, 1) : 0;
    if (!program || !agx_chip_uses_hal200_ioto(chip) || !desc ||
        count > AGX_IOTO_MAX_COLOR_ATTACHMENTS || !desc->shader_binary_size ||
-       desc->nr_gprs < 8 || desc->staging_halfs != count * 8 ||
+       desc->nr_gprs < 8 || desc->staging_halfs < count * 8 ||
+       (desc->staging_halfs & 7) ||
        !desc->pbe_argument_va ||
        desc->pbe_argument_va > UINT64_C(0xffffffffffff) - (32 * count - 1) ||
        (desc->pbe_argument_va & 31))

@@ -1176,6 +1176,12 @@ test_g17p_rt0_eot_program(void)
 
    const struct hk_agx3_g17p_rt0_eot_program before = program;
    moved = desc;
+   moved.staging_halfs = 16;
+   CHECK(hk_agx3_g17p_rt0_eot_program_generate(AGX_CHIP_G17P, &moved,
+                                               &relocated));
+   moved.staging_halfs = 12;
+   CHECK(!hk_agx3_g17p_rt0_eot_program_generate(AGX_CHIP_G17P, &moved,
+                                                &relocated));
    moved.staging_halfs = 0;
    CHECK(
       !hk_agx3_g17p_rt0_eot_program_generate(AGX_CHIP_G17P, &moved, &program));
@@ -1239,7 +1245,7 @@ test_g17p_rt0_eot_program(void)
    CHECK(hk_agx3_g17p_rt0_eot_program_generate(AGX_CHIP_G16G, &triple, &relocated));
    CHECK(relocated.length <= sizeof(relocated.bytes));
    mrt.attachment_count = 1;
-   CHECK(!hk_agx3_g17p_rt0_eot_program_generate(AGX_CHIP_G17P, &mrt,
+   CHECK(hk_agx3_g17p_rt0_eot_program_generate(AGX_CHIP_G17P, &mrt,
                                                  &program));
    return 0;
 }

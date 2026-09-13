@@ -3562,24 +3562,36 @@ agx3_native_layered_eot(const agx_context *ctx, uint8_t *selector)
    if (ctx->key->dev.encoding != AGX_ISA_ENCODING_AGX3B ||
        ctx->stage != MESA_SHADER_COMPUTE || ctx->is_preamble || ctx->key->no_stop)
       return false;
-   unsigned xyz[3] = {UINT_MAX,UINT_MAX,UINT_MAX}, zero = UINT_MAX, stores = 0;
+   unsigned origin[AGX_NUM_REGS] = {0}, stores = 0;
    agx_foreach_instr_global(ctx, I) {
       if (I->op == AGX_OPCODE_STOP)
          continue;
+      if (I->op == AGX_OPCODE_BITOP) {
+         if ((I->truth_table & 0xfu) != AGX3_SEL_TT_MOV || I->saturate ||
+             I->nr_dests != 1 || I->nr_srcs != 2 ||
+             !agx3_tex_plain_reg(I->dest[0]) || I->dest[0].size != AGX_SIZE_32 ||
+             agx_channels(I->dest[0]) != 1 || I->dest[0].value >= AGX_NUM_REGS ||
+             !agx3_tex_plain_reg(I->src[0]) || I->src[0].size != AGX_SIZE_32 ||
+             agx_channels(I->src[0]) != 1 || I->src[0].value >= AGX_NUM_REGS ||
+             !agx3_tex_imm(I->src[1],0) || !origin[I->src[0].value])
+            return false;
+         origin[I->dest[0].value] = origin[I->src[0].value];
+         continue;
+      }
       if (I->op == AGX_OPCODE_GET_SR || I->op == AGX_OPCODE_MOV_IMM) {
          if (I->nr_dests != 1 || I->nr_srcs ||
              !agx3_tex_plain_reg(I->dest[0]) || I->dest[0].size != AGX_SIZE_32 ||
-             agx_channels(I->dest[0]) != 1)
+             agx_channels(I->dest[0]) != 1 || I->dest[0].value >= AGX_NUM_REGS)
             return false;
          if (I->op == AGX_OPCODE_MOV_IMM) {
-            if (I->imm || zero != UINT_MAX) return false;
-            zero = I->dest[0].value;
+            if (I->imm) return false;
+            origin[I->dest[0].value] = 4;
          } else {
             unsigned c = I->sr == AGX_SR_THREAD_POSITION_IN_GRID_X ? 0 :
                          I->sr == AGX_SR_THREAD_POSITION_IN_GRID_Y ? 1 :
                          I->sr == AGX_SR_THREADGROUP_POSITION_IN_GRID_Z ? 2 : 3;
-            if (c == 3 || xyz[c] != UINT_MAX) return false;
-            xyz[c] = I->dest[0].value;
+            if (c == 3) return false;
+            origin[I->dest[0].value] = c + 1;
          }
          continue;
       }
@@ -3587,10 +3599,12 @@ agx3_native_layered_eot(const agx_context *ctx, uint8_t *selector)
           I->nr_srcs != 4 || I->dim != AGX_DIM_2D_ARRAY || !I->explicit_coords ||
           !agx3_tex_imm(I->src[0],0) || !agx3_tex_imm(I->src[1],0) ||
           !agx3_tex_plain_reg(I->src[2]) || I->src[2].size != AGX_SIZE_32 ||
-          agx_channels(I->src[2]) != 1 || zero == UINT_MAX || I->src[2].value != zero ||
+          agx_channels(I->src[2]) != 1 || I->src[2].value >= AGX_NUM_REGS ||
+          origin[I->src[2].value] != 4 ||
           !agx3_tex_plain_reg(I->src[3]) || I->src[3].size != AGX_SIZE_32 ||
-          agx_channels(I->src[3]) != 3 || xyz[0] == UINT_MAX ||
-          I->src[3].value != xyz[0] || xyz[1] != xyz[0]+2 || xyz[2] != xyz[0]+4)
+          agx_channels(I->src[3]) != 3 || I->src[3].value + 4 >= AGX_NUM_REGS ||
+          origin[I->src[3].value] != 1 || origin[I->src[3].value+2] != 2 ||
+          origin[I->src[3].value+4] != 3)
          return false;
       switch (I->format) {
       case AGX_FORMAT_F16: *selector = 1; break;
@@ -3943,7 +3957,9 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
    uint8_t layered_selector;
    if (agx3_native_layered_eot(ctx, &layered_selector)) {
       ctx->max_reg = MAX2(ctx->max_reg, 7);
-      ctx->agx3_staging_halfs = MAX2(ctx->agx3_staging_halfs, 12);
+      /* Coordinates, layer and imageblock offset need more than the
+       * 16-byte 2D staging allocation. EOT allocation granularity is 16B. */
+      ctx->agx3_staging_halfs = MAX2(ctx->agx3_staging_halfs, 16);
       return agx3_emit_native_layered_eot(emission, enc, layered_selector);
    }
 
