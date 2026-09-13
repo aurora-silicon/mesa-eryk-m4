@@ -22,3 +22,9 @@ The four RGB blend cases and BGR sRGB granularity now pass. Epilogs use the
 logical API format for blending (including absent destination alpha), then
 pad stores to the physical tile format. Physical layout and blend semantics
 remain separate. See blend-results.json and blend-summary.json.
+
+Packed 5:5:5:1: 37 Pass, 52 NotSupported, zero failures or crashes.
+Vulkan R5G5B5A1/B5G5R5A1 map to low-alpha Gallium formats, which use native
+channel layout 0x0d. Twelve more original cases pass, covering cube/array
+sampling, mip filtering, blits and blending. Native PBE packing already
+supports this channel layout; retain the generic component swizzles.
