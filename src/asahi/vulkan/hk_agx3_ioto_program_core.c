@@ -9,6 +9,7 @@
 #include "asahi/lib/agx_ioto_core.h"
 #include "asahi/lib/agx_tilebuffer.h"
 
+#include <stdlib.h>
 #include <string.h>
 #include "util/format/u_format.h"
 
@@ -511,6 +512,7 @@ hk_agx3_g17p_rt0_bg_resource_spec(
    switch (op) {
    case HK_AGX3_G17P_RT0_BG_CLEAR:
    case HK_AGX3_G17P_RT0_BG_RELOAD:
+   case HK_AGX3_BG_MIXED:
       /* AGXMetalG17P agxsGetShaderPassInfo (0x3ababc, extension at
        * 0x3abe60..0x3abe8c) repeats the highest active pass's write bit to
        * fill its 17-bit result. agx_bg_eot.c emits a full-component RT0
@@ -547,10 +549,15 @@ hk_agx3_g17p_rt0_bg_shader_resources_match(
 {
    switch (op) {
    case HK_AGX3_G17P_RT0_BG_CLEAR:
-      return push_count >= 6 && push_count <= 4 + 8 * AGX_IOTO_MAX_COLOR_ATTACHMENTS &&
+      return push_count >= 6 &&
+             push_count <= 4 + 8 * AGX_IOTO_MAX_COLOR_ATTACHMENTS &&
              !(push_count & 1) && !uses_txf;
    case HK_AGX3_G17P_RT0_BG_RELOAD:
       return push_count == 0 && uses_txf;
+   case HK_AGX3_BG_MIXED:
+      return push_count >= 10 &&
+             push_count <= 8 + 8 * AGX_IOTO_MAX_COLOR_ATTACHMENTS &&
+             !(push_count & 1) && uses_txf;
    default:
       return false;
    }
@@ -564,12 +571,38 @@ hk_agx3_g17p_rt0_bg_program_generate(
    if (!program || !agx_chip_uses_hal200_ioto(chip) || !desc)
       return false;
 
-   struct agx3_ioto_uniform_range ranges[2];
+   struct agx3_ioto_uniform_range ranges[3];
    size_t range_count;
    switch (desc->op) {
+   case HK_AGX3_BG_MIXED:
+      if (!desc->clear_value_va || !desc->texture_pointer_va ||
+          !desc->sampler_pointer_va ||
+          !hk_agx3_g17p_rt0_bg_shader_resources_match(
+             desc->op, desc->clear_push_halfs, true))
+         return false;
+      /* Immediate TEX keeps its two table pointers in halfs0..7. Clear
+       * values begin at half8 so neither resource overwrites the other. */
+      ranges[0] = (struct agx3_ioto_uniform_range){
+         .start_halfs = 0,
+         .size_halfs = 4,
+         .address = desc->texture_pointer_va,
+      };
+      ranges[1] = (struct agx3_ioto_uniform_range){
+         .start_halfs = 4,
+         .size_halfs = 4,
+         .address = desc->sampler_pointer_va,
+      };
+      ranges[2] = (struct agx3_ioto_uniform_range){
+         .start_halfs = 8,
+         .size_halfs = desc->clear_push_halfs - 8,
+         .address = desc->clear_value_va,
+      };
+      range_count = 3;
+      break;
    case HK_AGX3_G17P_RT0_BG_CLEAR: {
       const uint16_t clear_push_halfs = desc->clear_push_halfs
-         ? desc->clear_push_halfs : HK_AGX3_G17P_RT0_CLEAR_PUSH_HALFS;
+                                           ? desc->clear_push_halfs
+                                           : HK_AGX3_G17P_RT0_CLEAR_PUSH_HALFS;
       if (!desc->clear_value_va || desc->texture_pointer_va ||
           desc->sampler_pointer_va ||
           (clear_push_halfs < 6 ||
@@ -624,7 +657,14 @@ hk_agx3_g17p_rt0_bg_program_generate(
    if (!hk_agx3_g17p_graphics_state_tail(&shader, &tail, false))
       return false;
 
-   uint8_t body[512];
+   size_t body_capacity, chunk_count;
+   if (!agx3_ioto_uniform_program_body_bound(chip, ranges, range_count,
+                                             &body_capacity, &chunk_count) ||
+       chunk_count > 64)
+      return false;
+   uint8_t *body = malloc(body_capacity);
+   if (!body)
+      return false;
    struct agx_ioto_inflight_load loads[64];
    struct agx_ioto_inflight_load sort[64];
    struct agx_ioto_load_cache_entry cache[64];
@@ -635,7 +675,7 @@ hk_agx3_g17p_rt0_bg_program_generate(
    };
    const struct agx3_ioto_uniform_program_workspace workspace = {
       .body = body,
-      .body_capacity = sizeof(body),
+      .body_capacity = body_capacity,
       .loads = loads,
       .load_capacity = sizeof(loads) / sizeof(loads[0]),
       .sort = sort,
@@ -647,8 +687,10 @@ hk_agx3_g17p_rt0_bg_program_generate(
    size_t body_size, copy_offset;
    if (!agx3_ioto_uniform_program_body_generate(chip, &load_desc, workspace,
                                                 &body_size, &copy_offset) ||
-       copy_offset > body_size)
+       copy_offset > body_size) {
+      free(body);
       return false;
+   }
 
    /*
     * The clear program's length is a bound, not a constant. It embeds
@@ -676,8 +718,11 @@ hk_agx3_g17p_rt0_bg_program_generate(
           desc->program_va, body, copy_offset, body + copy_offset,
           body_size - copy_offset, &tail, staged.bytes, sizeof(staged.bytes),
           &written) ||
-       written > UINT16_MAX)
+       written > UINT16_MAX) {
+      free(body);
       return false;
+   }
+   free(body);
 
    staged.length = (uint16_t)written;
    *program = staged;

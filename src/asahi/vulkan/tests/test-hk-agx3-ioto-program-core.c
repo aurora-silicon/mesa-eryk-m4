@@ -1554,6 +1554,33 @@ test_g17p_rt0_background_programs(void)
    CHECK(memcmp(program.bytes + program.length - sizeof(background_termination),
                 background_termination, sizeof(background_termination)) == 0);
 
+   struct hk_agx3_g17p_rt0_bg_program_desc mixed = reload;
+   mixed.op = HK_AGX3_BG_MIXED;
+   mixed.clear_value_va = clear.clear_value_va;
+   for (unsigned halfs = 10; halfs <= 8 + 8 * AGX_IOTO_MAX_COLOR_ATTACHMENTS;
+        halfs += 2) {
+      mixed.clear_push_halfs = halfs;
+      CHECK(hk_agx3_g17p_rt0_bg_shader_resources_match(mixed.op, halfs, true));
+      CHECK(
+         !hk_agx3_g17p_rt0_bg_shader_resources_match(mixed.op, halfs, false));
+      if (!hk_agx3_g17p_rt0_bg_program_generate(AGX_CHIP_G16G, &mixed,
+                                                &program))
+         fprintf(stderr, "mixed range failed halfs=%u\n", halfs);
+      CHECK(
+         hk_agx3_g17p_rt0_bg_program_generate(AGX_CHIP_G16G, &mixed, &program));
+      CHECK(program.length <= sizeof(program.bytes));
+   }
+   mixed.clear_push_halfs = 9;
+   CHECK(
+      !hk_agx3_g17p_rt0_bg_program_generate(AGX_CHIP_G16G, &mixed, &program));
+   mixed.clear_push_halfs = 10 + 8 * AGX_IOTO_MAX_COLOR_ATTACHMENTS;
+   CHECK(
+      !hk_agx3_g17p_rt0_bg_program_generate(AGX_CHIP_G16G, &mixed, &program));
+   mixed.clear_push_halfs = 24;
+   mixed.sampler_pointer_va = 0;
+   CHECK(
+      !hk_agx3_g17p_rt0_bg_program_generate(AGX_CHIP_G16G, &mixed, &program));
+
    struct hk_agx3_g17p_rt0_bg_program far_program;
    struct hk_agx3_g17p_rt0_bg_program_desc far_reload = reload;
    far_reload.sampler_pointer_va += UINT64_C(0x100000);

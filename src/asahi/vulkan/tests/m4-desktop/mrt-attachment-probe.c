@@ -61,6 +61,9 @@ int main(int argc, char **argv) {
 
   unsigned test = argc > 1 ? strtoul(argv[1], 0, 10) : 0;
   CHECK(test < 4);
+  const int sparse = argc > 2 && !strcmp(argv[2], "sparse");
+  const int mixed = argc > 2 && !strcmp(argv[2], "mixed");
+  CHECK((!sparse && !mixed) || test == 3);
   const GLenum formats[4][3] = {{GL_R16UI, 0, 0},
                                 {GL_SRGB8_ALPHA8, GL_RGBA8, 0},
                                 {GL_RGBA16F, GL_R16UI, 0},
@@ -119,6 +122,13 @@ int main(int argc, char **argv) {
           glClearBufferfv(GL_COLOR, rt, clear);
       }
     else {
+      if (mixed) {
+        glDisable(GL_SCISSOR_TEST);
+        glClearBufferfv(GL_COLOR, 1, clear);
+      }
+      /* Discard the first two targets while preserving RT2 across passes. */
+      if (sparse)
+        glInvalidateFramebuffer(GL_FRAMEBUFFER, 2, attachments);
       glEnable(GL_SCISSOR_TEST);
       glScissor(phase == 1 ? 0 : 32, 0, 32, 32);
       glDrawArrays(GL_TRIANGLES, 0, 3);
@@ -126,6 +136,8 @@ int main(int argc, char **argv) {
     glFinish();
     CHECK(glGetError() == GL_NO_ERROR);
     for (unsigned rt = 0; rt < count; rt++) {
+      if (sparse && phase && rt < 2)
+        continue;
       unsigned bad = 0;
       glReadBuffer(attachments[rt]);
       uint16_t ui[64 * 32];
@@ -137,6 +149,8 @@ int main(int argc, char **argv) {
       CHECK(glGetError() == GL_NO_ERROR);
       for (unsigned px = 0; px < 64 * 32; px++) {
         int drawn = phase == 2 || (phase == 1 && px % 64 < 32);
+        if (mixed && rt == 1 && phase == 2)
+          drawn = px % 64 >= 32;
         if (formats[test][rt] == GL_R16UI) {
           unsigned expected = drawn ? 23456 : 54321;
           if (ui[px] != expected) {

@@ -213,7 +213,8 @@ agx_compile_bg_eot_shader(struct agx_bg_eot_cache *cache, nir_shader *shader,
 
 static nir_def *
 build_background_op(nir_builder *b, enum agx_bg_eot_op op, unsigned rt,
-                    unsigned nr, bool msaa, bool layered, bool wide_coords)
+                    unsigned nr, bool msaa, bool layered, bool wide_coords,
+                    unsigned clear_base)
 {
    if (op == AGX_BG_LOAD) {
       nir_def *coord = nir_load_pixel_coord(b);
@@ -249,7 +250,7 @@ build_background_op(nir_builder *b, enum agx_bg_eot_op op, unsigned rt,
    } else {
       assert(op == AGX_BG_CLEAR);
 
-      return nir_load_preamble(b, nr, 32, 4 + (rt * 8));
+      return nir_load_preamble(b, nr, 32, clear_base + (rt * 8));
    }
 }
 
@@ -278,8 +279,11 @@ agx_build_background_shader(struct agx_bg_eot_cache *cache,
       assert(nr > 0);
 
       nir_store_output(
-         &b, build_background_op(&b, key->op[rt], rt, nr, msaa, layered,
-                                 agx_native_graphics(cache->dev)),
+         &b,
+         build_background_op(
+            &b, key->op[rt], rt, nr, msaa, layered,
+            agx_native_graphics(cache->dev),
+            key->clear_preamble_base ? key->clear_preamble_base : 4),
          nir_imm_int(&b, 0), .write_mask = BITFIELD_MASK(nr),
          .src_type = nir_type_uint32,
          .io_semantics.location = FRAG_RESULT_DATA0 + rt,

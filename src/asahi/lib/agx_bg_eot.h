@@ -51,6 +51,7 @@ struct agx_bg_eot_key {
    struct agx_tilebuffer_layout tib;
    enum agx_bg_eot_op op[8];
    unsigned reserved_preamble;
+   unsigned clear_preamble_base; /* Zero retains the legacy half4 clear ABI. */
 };
 
 struct agx_bg_eot_shader {

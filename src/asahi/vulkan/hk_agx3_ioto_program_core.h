@@ -150,9 +150,10 @@ enum hk_agx3_g17p_rt0_bg_op {
    HK_AGX3_G17P_RT0_BG_CLEAR,
    HK_AGX3_G17P_RT0_BG_RELOAD,
    HK_AGX3_G17P_RT0_BG_NONE,
+   HK_AGX3_BG_MIXED,
 };
 
-#define HK_AGX3_G17P_RT0_CLEAR_PUSH_HALFS 12u
+#define HK_AGX3_G17P_RT0_CLEAR_PUSH_HALFS       12u
 #define HK_AGX3_G17P_WBOIT_MRT_CLEAR_PUSH_HALFS 14u
 #define HK_AGX3_DUAL_MRT_CLEAR_PUSH_HALFS 20u
 
@@ -182,7 +183,7 @@ struct hk_agx3_g17p_rt0_bg_program_desc {
 };
 
 struct hk_agx3_g17p_rt0_bg_program {
-   uint8_t bytes[AGX_IOTO_G17P_RT0_RELOAD_PROGRAM_MAX_SIZE];
+   uint8_t bytes[512];
    uint16_t length;
 };
 

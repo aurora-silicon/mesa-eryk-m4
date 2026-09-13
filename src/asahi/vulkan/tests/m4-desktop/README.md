@@ -2154,3 +2154,5 @@ the image and function SHA256, symbol VA, file offset, bounded size and command.
 Use this for offline native-driver investigation; addresses are translated
 through Mach-O segments. Requires llvm-nm and aarch64-linux-gnu-objdump.
 It does not execute GPU code or modify the input image.
+
+`mrt-attachment-probe 3 sparse` discards RT0/RT1 between draws and checks that RT2 survives at its original tile offset. `3 mixed` clears RT1 while reloading RT0/RT2, then checks all attachment pixels. Build with `cc -O2 mrt-attachment-probe.c -lEGL -lGL -lm`; run only through `gpu-experiment.py` and `run-m4-gl.py` with the mandatory watchdog and thermal guard.

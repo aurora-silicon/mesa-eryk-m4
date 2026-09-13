@@ -338,41 +338,76 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
       return (struct hk_bg_eot){0};
    }
 
-   unsigned attachment_count = 1;
-   const enum agx_bg_eot_op op = key->op[0];
+   /* Auxiliary shaders bind only the attachments they load/clear/store.
+    * Compact their logical indices while retaining the actual tile offsets;
+    * main fragment shaders continue to use the original render-pass layout.
+    * In particular, DONT_CARE RT0 must not suppress a live later attachment. */
+   struct agx_bg_eot_key auxiliary_key = *key;
+   unsigned attachment_map[HK_MAX_RTS] = {0};
+   unsigned attachment_count = 0;
+   memset(auxiliary_key.op, 0, sizeof(auxiliary_key.op));
+   memset(auxiliary_key.tib.logical_format, 0,
+          sizeof(auxiliary_key.tib.logical_format));
+   memset(auxiliary_key.tib._offset_B, 0, sizeof(auxiliary_key.tib._offset_B));
+   memset(auxiliary_key.tib.spilled, 0, sizeof(auxiliary_key.tib.spilled));
    for (unsigned rt = 0; rt < HK_MAX_RTS; ++rt) {
-      const enum agx_bg_eot_op rt_op = key->op[rt];
-      if (rt_op == AGX_BG_EOT_NONE)
+      if (key->op[rt] == AGX_BG_EOT_NONE)
          continue;
-      if (rt_op != op ||
-          (store ? rt_op != AGX_EOT_STORE :
-                   (rt_op != AGX_BG_CLEAR && rt_op != AGX_BG_LOAD))) {
+      if (rt >= info->colorAttachmentCount) {
          vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
          return (struct hk_bg_eot){0};
       }
-      attachment_count = rt + 1;
+      const unsigned dst = attachment_count++;
+      attachment_map[dst] = rt;
+      auxiliary_key.op[dst] = key->op[rt];
+      auxiliary_key.tib.logical_format[dst] = key->tib.logical_format[rt];
+      auxiliary_key.tib._offset_B[dst] = key->tib._offset_B[rt];
+      auxiliary_key.tib.spilled[dst] = key->tib.spilled[rt];
    }
-   if (op != AGX_BG_EOT_NONE && info->colorAttachmentCount < attachment_count) {
-      vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
-      return (struct hk_bg_eot){0};
+   key = &auxiliary_key;
+   const enum agx_bg_eot_op op = key->op[0];
+   bool has_clear = false, has_load = false;
+   unsigned clear_end = 0;
+   for (unsigned rt = 0; rt < attachment_count; ++rt) {
+      const enum agx_bg_eot_op rt_op = key->op[rt];
+      if (store ? rt_op != AGX_EOT_STORE
+                : (rt_op != AGX_BG_CLEAR && rt_op != AGX_BG_LOAD)) {
+         if (getenv("AGX_NATIVE_RESOURCE_DIAGNOSTICS"))
+            fprintf(
+               stderr,
+               "Native mixed background operations refused: first=%u rt=%u op=%u\n",
+               op, attachment_map[rt], rt_op);
+         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+         return (struct hk_bg_eot){0};
+      }
+      has_load |= rt_op == AGX_BG_LOAD;
+      if (rt_op == AGX_BG_CLEAR) {
+         has_clear = true;
+         clear_end = 8 * rt + 2 * util_format_get_nr_components(
+                                     key->tib.logical_format[rt]);
+      }
    }
-   if (!store && op == AGX_BG_CLEAR)
-      key->reserved_preamble = 4 + 8 * (attachment_count - 1) +
-         2 * util_format_get_nr_components(key->tib.logical_format[attachment_count - 1]);
+   const enum hk_agx3_g17p_rt0_bg_op bg_op =
+      has_load
+         ? (has_clear ? HK_AGX3_BG_MIXED : HK_AGX3_G17P_RT0_BG_RELOAD)
+         : (has_clear ? HK_AGX3_G17P_RT0_BG_CLEAR : HK_AGX3_G17P_RT0_BG_NONE);
+   if (has_clear) {
+      key->clear_preamble_base = has_load ? 8 : 4;
+      key->reserved_preamble = key->clear_preamble_base + clear_end;
+   }
 
-   struct agx_bg_eot_shader *shader =
-      agx_get_bg_eot_shader(&dev->bg_eot, key);
+   struct agx_bg_eot_shader *shader = agx_get_bg_eot_shader(&dev->bg_eot, key);
    const bool shader_resources_match =
       shader &&
-      (store || (op == AGX_BG_EOT_NONE
-                    ? shader->info.push_count == 0 && !shader->info.uses_txf
-                 : hk_agx3_g17p_rt0_bg_shader_resources_match(
-                      op == AGX_BG_CLEAR ? HK_AGX3_G17P_RT0_BG_CLEAR
-                                         : HK_AGX3_G17P_RT0_BG_RELOAD,
-                      shader->info.push_count, shader->info.uses_txf)));
+      (store ||
+       (op == AGX_BG_EOT_NONE
+           ? shader->info.push_count == 0 && !shader->info.uses_txf
+           : hk_agx3_g17p_rt0_bg_shader_resources_match(
+                bg_op, shader->info.push_count, shader->info.uses_txf)));
    if (!store && debug_get_bool_option("HK_G17P_LAUNCH_TRACE", false) && shader)
-      fprintf(stderr, "G17P BG metadata: op=%u size=%u gprs=%u push=%u "
-                      "staging=%u txf=%u supported=%u resources=%u\n",
+      fprintf(stderr,
+              "G17P BG metadata: op=%u size=%u gprs=%u push=%u "
+              "staging=%u txf=%u supported=%u resources=%u\n",
               op, shader->info.binary_size, shader->info.nr_gprs,
               shader->info.push_count, shader->info.agx3_staging_halfs,
               shader->info.uses_txf, hk_g17p_bg_eot_shader_supported(shader),
@@ -391,10 +426,12 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
       program_capacity = AGX_IOTO_G17P_RT0_EOT_PROGRAM_SIZE;
       program_label = "G17P RT0 EOT Ioto program";
    } else if (op == AGX_BG_CLEAR) {
-      program_capacity = sizeof(((struct hk_agx3_g17p_rt0_bg_program *)0)->bytes);
+      program_capacity =
+         sizeof(((struct hk_agx3_g17p_rt0_bg_program *)0)->bytes);
       program_label = "G17P RT0 clear Ioto program";
    } else {
-      program_capacity = AGX_IOTO_G17P_RT0_RELOAD_PROGRAM_MAX_SIZE;
+      program_capacity =
+         sizeof(((struct hk_agx3_g17p_rt0_bg_program *)0)->bytes);
       program_label = "G17P RT0 reload Ioto program";
    }
 
@@ -413,11 +450,15 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
    uint64_t resource_spec;
    if (store && op == AGX_EOT_STORE) {
       for (unsigned rt = 0; rt < attachment_count; ++rt) {
-         struct hk_image_view *iview = cmd->state.gfx.render.color_att[rt].iview;
-         if (!iview || !(key->tib.layered ? iview->planes[0].layered_eot_pbe_valid
-                                         : iview->planes[0].eot_pbe_valid) ||
-             info->pColorAttachments[rt].imageView == VK_NULL_HANDLE) {
-            vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FORMAT_NOT_SUPPORTED);
+         struct hk_image_view *iview =
+            cmd->state.gfx.render.color_att[attachment_map[rt]].iview;
+         if (!iview ||
+             !(key->tib.layered ? iview->planes[0].layered_eot_pbe_valid
+                                : iview->planes[0].eot_pbe_valid) ||
+             info->pColorAttachments[attachment_map[rt]].imageView ==
+                VK_NULL_HANDLE) {
+            vk_command_buffer_set_error(&cmd->vk,
+                                        VK_ERROR_FORMAT_NOT_SUPPORTED);
             return (struct hk_bg_eot){0};
          }
       }
@@ -435,9 +476,10 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
 
       struct hk_native_pbe_descriptor pbe_arguments[HK_MAX_RTS];
       for (unsigned rt = 0; rt < attachment_count; ++rt) {
-         const struct hk_image_view *view = cmd->state.gfx.render.color_att[rt].iview;
+         const struct hk_image_view *view =
+            cmd->state.gfx.render.color_att[attachment_map[rt]].iview;
          pbe_arguments[rt] = key->tib.layered ? view->planes[0].layered_eot
-                                           : view->planes[0].eot;
+                                              : view->planes[0].eot;
       }
       const size_t pbe_argument_size = attachment_count * sizeof(pbe_arguments[0]);
       const uint64_t pbe_argument_va =
@@ -515,9 +557,11 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
       }
    } else {
       for (unsigned rt = 0; rt < attachment_count; ++rt) {
-         if (!cmd->state.gfx.render.color_att[rt].iview ||
-             info->pColorAttachments[rt].imageView == VK_NULL_HANDLE) {
-            vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FORMAT_NOT_SUPPORTED);
+         if (!cmd->state.gfx.render.color_att[attachment_map[rt]].iview ||
+             info->pColorAttachments[attachment_map[rt]].imageView ==
+                VK_NULL_HANDLE) {
+            vk_command_buffer_set_error(&cmd->vk,
+                                        VK_ERROR_FORMAT_NOT_SUPPORTED);
             return (struct hk_bg_eot){0};
          }
       }
@@ -542,19 +586,20 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
          .staging_halfs = shader->info.agx3_staging_halfs,
          .clear_push_halfs = shader->info.push_count,
          .staging_known = shader->info.agx3_staging_known,
-         .op = op == AGX_BG_CLEAR ? HK_AGX3_G17P_RT0_BG_CLEAR
-                                  : HK_AGX3_G17P_RT0_BG_RELOAD,
+         .op = bg_op,
       };
 
-      if (op == AGX_BG_CLEAR) {
+      if (has_clear) {
          VkClearColorValue clear_values[HK_MAX_RTS];
          for (unsigned rt = 0; rt < attachment_count; ++rt)
-            clear_values[rt] = info->pColorAttachments[rt].clearValue.color;
-         desc.clear_value_va = hk_pool_upload(
-            cmd, clear_values, (key->reserved_preamble - 4) * 2, 16);
+            clear_values[rt] =
+               info->pColorAttachments[attachment_map[rt]].clearValue.color;
+         desc.clear_value_va =
+            hk_pool_upload(cmd, clear_values, clear_end * 2, 16);
          if (!desc.clear_value_va)
             return (struct hk_bg_eot){0};
-      } else {
+      }
+      if (has_load) {
          /* Background TXF indices are 2*rt. Keep the intervening descriptor
           * slots empty and retain every active attachment. */
          static_assert(sizeof(struct hk_native_texture_descriptor) ==
@@ -562,9 +607,11 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
                        "native texture table stride");
          struct hk_native_texture_descriptor textures[2 * HK_MAX_RTS - 1] = {0};
          for (unsigned rt = 0; rt < attachment_count; ++rt) {
-            const struct hk_image_view *view = cmd->state.gfx.render.color_att[rt].iview;
-            textures[rt * 2] = key->tib.layered ? view->planes[0].layered_background
-                                             : view->planes[0].background;
+            const struct hk_image_view *view =
+               cmd->state.gfx.render.color_att[attachment_map[rt]].iview;
+            textures[rt * 2] = key->tib.layered
+                                  ? view->planes[0].layered_background
+                                  : view->planes[0].background;
          }
          const size_t texture_size = (2 * attachment_count - 1) * sizeof(textures[0]);
          const uint64_t texture_va =
