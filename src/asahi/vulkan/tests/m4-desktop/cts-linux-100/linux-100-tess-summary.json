@@ -1,0 +1,35 @@
+{
+  "requested": 100,
+  "completed": 100,
+  "counts": {
+    "Pass": 94,
+    "NotSupported": 6
+  },
+  "batches": [
+    "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T172332078030Z-linux-100-tess-000",
+    "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T172345023155Z-linux-100-tess-031",
+    "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T172357521873Z-linux-100-tess-062",
+    "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T172410107771Z-linux-100-tess-092"
+  ],
+  "identity": [
+    "99ddcbd0-1a1d-4f25-9fc0-e7a213acfad8",
+    {
+      "/opt/asahi-m4-port/lib/libvulkan_asahi.so": "13767a473c5a2438a459f6d7394db209009eca8f5372a39960cfc56e3334d583",
+      "/root/guarded-command.py": "e746929162cc01b809455e9dae4a6d3f8a32b313b8e39373e3d1b00f893b797d",
+      "/opt/asahi-m4-port/lib/libgallium-26.1.4.so": "14c9d843ca2131198ea3a61587e37fc8b7b79a3e39e98bb0c59da209ccae5ba5",
+      "/root/run-m4-gl.py": "6842d9bb244b52e7b358b63af9548c1a08d6c6a3244da61efe1b157006df8471",
+      "/root/firmware-snapshot.py": "be417c075b15da22832f05254b3fab247582c72c9dadccff5f7c56b56a9cedb8",
+      "/root/g16-fault-dump.py": "c3988ddf0ad9e10e2b9736582c9ab7c59c90a62090d0e34a32db1ba46c917bf3",
+      "/lib/modules/7.1.9-dirtyroom-asahi1+/kernel/drivers/gpu/drm/asahi/asahi.ko": "0047384fc67d7a3073439be727424da9acd7976a6b8a818fae483b4485358a68",
+      "/root/g16-submit-test/experiment_watchdog.py": "28600768bceb930a3528471fd7982db9247ec86c00f4a522456b70e38001e18d",
+      "/root/g16-submit-test/experiment_thermals.py": "c394432327266b50f9c4c16d8f5900ddfb99ce014846f5288af75ff139361a33",
+      "/root/cts-sample.py": "99340b98ba6a82110e0f592dd52f9daa9256e08512f7b1a728d98a69cc99e812",
+      "/root/cts-1.0.2.6/deqp-vk-linux-corrected": "05fe8fb047c04a7bb9097cbf1822afd543008f3dad3b12146e835ee01a550132",
+      "/root/cts-1.0.2.6/linux-cases.txt": "e9cc6eb8b6a7f1cbd455fc40b54fc47ea246a64933c31c6985d506fb93c723ce"
+    },
+    {
+      "path": "/root/cts-1.0.2.6/deqp-vk-linux-corrected",
+      "sha256": "05fe8fb047c04a7bb9097cbf1822afd543008f3dad3b12146e835ee01a550132"
+    }
+  ]
+}

@@ -111,3 +111,8 @@ unchanged. All nine then passed in
 were restored and the frozen Linux-100 executable was not replaced.
 See `tess-validation-results.json` and `tess-controls-build.json` for evidence
 and exact binary hashes. No synchronous tessellation dump was enabled.
+
+Fresh default-enabled campaign `linux-100-tess` confirms **94 Pass,
+6 NotSupported, 0 Fail/Crash**, with no tessellation override or synchronous
+dump. Exact cases, library/guard/binary identities and four batch paths are in
+`linux-100-tess-{results,summary}.json`.
