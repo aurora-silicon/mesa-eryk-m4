@@ -75,3 +75,25 @@ NIR texture-size/coordinate arithmetic, retaining the array layer. All five
 original CTS cases pass their original output checks on M4; no test changes.
 Evidence: _provenance/experiments/20260913T210614576841Z-cts-seed20-textures
 (60-second watchdog, peak 57.5 C). The host agx3_tex_core test also passes.
+
+## RGB9E5 packed attachments (case 230)
+
+Lower shared-exponent tile reads/writes to one packed 32-bit word. The format
+metadata includes four channels, so preserve implicit alpha=1 on reload while
+packing only RGB. Use the matching raw32 EOT instruction and PBE view to avoid
+converting already packed bits a second time. Existing uncompressed native
+image policy remains in force. The original blending test passes its pixel
+comparison, and the small attachment probe passes all 144 exact packed words
+through clear, reload, overlapping rectangles, mip 1 and layer 1.
+Evidence: _provenance/experiments/20260913T212301590648Z-rgb9-raw-pbe and
+20260913T212427784224Z-cts-seed20-rgb9-final (60-second watchdog, peak 57.25 C).
+The older probe evidence uses ATTACHMENT_RESULT; the reusable tool now preserves
+its original BGR marker and uses RGB9E5_ATTACHMENT_RESULT for the new mode.
+
+The canonical zero-offset single-target EOT ABI is retained; compaction uses
+the offset-table ABI only when needed (or for the newly packed RGB9E5 target).
+Host graphics-compile diagnostics match the baseline at 4b025e10e77 after
+normalizing source line numbers. Five pre-existing fixture failures remain:
+f16 background narrowing, div3 leading SR, half2 varying binary, flat-colour
+binary and discard acceptance. These are not being represented as a passing
+host suite. The focused texture-core test and 32 optimizer unit tests pass.

@@ -1,0 +1,21 @@
+[
+  {
+    "index": 230,
+    "case": "dEQP-VK.pipeline.blend.format.e5b9g9r9_ufloat_pack32.states.color_ca_cc_sub_alpha_1msa_ca_max-color_sa_dc_rsub_alpha_cc_1mca_rsub-color_dc_cc_add_alpha_1mda_1mca_rsub-color_sa_1mcc_add_alpha_1mca_da_max",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-final",
+      "--deqp-case=dEQP-VK.pipeline.blend.format.e5b9g9r9_ufloat_pack32.states.color_ca_cc_sub_alpha_1msa_ca_max-color_sa_dc_rsub_alpha_cc_1mca_rsub-color_dc_cc_add_alpha_1mda_1mca_rsub-color_sa_1mcc_add_alpha_1mca_da_max",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T212427784224Z-cts-seed20-rgb9-final/cts/230/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "started_unix": 1789334668.8793705,
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.25884510400010186,
+    "finished_unix": 1789334669.1442904,
+    "pid": 112520
+  }
+]

@@ -5867,10 +5867,14 @@ lower_agx3_packed_tile(nir_builder *b, nir_intrinsic_instr *intr, void *data)
       return true;
    }
 
-   if (format != PIPE_FORMAT_R11G11B10_FLOAT ||
-       (load && (intr->def.bit_size != 32 || intr->def.num_components > 3)) ||
+   /* RGB9E5's fourth format channel describes the shared exponent. NIR
+    * carries four color lanes, but only RGB is packed and alpha reads as 1. */
+   const bool shared_exponent = format == PIPE_FORMAT_R9G9B9E5_FLOAT;
+   if ((format != PIPE_FORMAT_R11G11B10_FLOAT && !shared_exponent) ||
+       (load && (intr->def.bit_size != 32 ||
+                 intr->def.num_components > (shared_exponent ? 4 : 3))) ||
        (store && (nir_intrinsic_explicit_coord(intr) ||
-                  nir_intrinsic_write_mask(intr) != 7)))
+                  nir_intrinsic_write_mask(intr) != (shared_exponent ? 15 : 7))))
       return false;
 
    b->cursor = nir_before_instr(&intr->instr);
@@ -5878,11 +5882,17 @@ lower_agx3_packed_tile(nir_builder *b, nir_intrinsic_instr *intr, void *data)
       nir_def *packed = nir_load_local_pixel_agx(
          b, 1, 32, intr->src[0].ssa, .base = nir_intrinsic_base(intr),
          .format = PIPE_FORMAT_R32_UINT);
-      nir_def *rgb = nir_format_unpack_11f11f10f(b, packed);
+      nir_def *rgb = shared_exponent ? nir_format_unpack_r9g9b9e5(b, packed)
+                                     : nir_format_unpack_11f11f10f(b, packed);
+      if (intr->def.num_components == 4)
+         rgb = nir_vec4(b, nir_channel(b, rgb, 0), nir_channel(b, rgb, 1),
+                        nir_channel(b, rgb, 2), nir_imm_float(b, 1.0));
       nir_def_rewrite_uses(
          &intr->def, nir_trim_vector(b, rgb, intr->def.num_components));
    } else {
-      nir_def *packed = nir_format_pack_11f11f10f(b, intr->src[0].ssa);
+      nir_def *packed = shared_exponent
+         ? nir_format_pack_r9g9b9e5(b, intr->src[0].ssa)
+         : nir_format_pack_11f11f10f(b, intr->src[0].ssa);
       nir_store_local_pixel_agx(
          b, packed, intr->src[1].ssa, intr->src[2].ssa,
          .base = nir_intrinsic_base(intr), .format = PIPE_FORMAT_R32_UINT,

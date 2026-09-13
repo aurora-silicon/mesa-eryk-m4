@@ -127,23 +127,17 @@ matching binary/hash. Stack unwinding is not async-signal-safe, so the external
 timeout/watchdog remains mandatory. Do not install this into normal sessions.
 
 `native-metal-compile.py --stage render --rasterization-disabled` compiles a
-vertex-only pipeline, including void vertex functions. The retained G16G
-empty-vertex probe emits only `0e000000` at `_agc.main`; it needs no AGX2
-`no_varyings` instruction. The backend byte-exact test retains this witness.
-
-`HK_M4_TESS_DUMP=1` is an opt-in post-completion tessellation diagnostic. It
-forces queue completion and logs bounded TCS outputs, counts, allocations and
-indices from the most recent tessellation parameter block of each primary
-command buffer. It is not a complete draw trace. Missing/unmapped addresses
-are reported without dereference. Normal execution does not wait or read back.
-`cts-images.py` also extracts direct QPA Image children, used by tessellation
-corner tests, in addition to ImageSet groups.
+vertex-only pipeline, including void vertex functions, and preserves the
+pipeline configuration and native archive in its output directory.
 
 `vulkan-attachment-probe.c` checks packed BGR8_UINT attachment clear, reload,
 and overlapping clear-draw rectangles with an exact 144-pixel CPU oracle,
 using mip 1 and array layer 1. Build with `cc -O2 -Wall -Wextra SOURCE -lvulkan`
 and execute only under `gpu-experiment.py` with the intended Vulkan ICD.
 It requires the advertised color-attachment feature; it does not skip it.
+Pass `--rgb9e5` to exercise shared-exponent RGB9E5 instead, checking exact packed
+32-bit words for the same clear/reload/overlap regions. Success markers are
+`BGR_ATTACHMENT_RESULT: PASS` and `RGB9E5_ATTACHMENT_RESULT: PASS` respectively.
 
 `vulkan-queue-probe.c` requires eight Vulkan queues and enabled timeline
 semaphores. It submits four waiting consumers before any producer, then swaps

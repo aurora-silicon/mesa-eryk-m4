@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: MIT
- * Exact packed BGR8 attachment clear/reload oracle, including mip/layer views.
+ * Exact packed BGR8 / RGB9E5 attachment clear/reload oracle, including mip/layer views.
  * cc -O2 -Wall -Wextra vulkan-attachment-probe.c -o vulkan-attachment-probe -lvulkan
  * Run only inside gpu-experiment.py on hardware. No window system required.
  */
@@ -15,7 +15,10 @@ static uint32_t memtype(uint32_t bits,VkMemoryPropertyFlags flags) {
   if((bits&(1u<<i)) && (memory.memoryTypes[i].propertyFlags&flags)==flags) return i;
  fprintf(stderr,"No memory type\n");exit(1);
 }
-int main(void) {
+int main(int argc, char **argv) {
+ const int rgb9 = argc > 1 && !strcmp(argv[1], "--rgb9e5");
+ const unsigned pixel_size = rgb9 ? 4 : 3;
+ const VkFormat format = rgb9 ? VK_FORMAT_E5B9G9R9_UFLOAT_PACK32 : VK_FORMAT_B8G8R8_UINT;
  const unsigned w=16,h=9;
  VkInstance instance;
  VkInstanceCreateInfo ic={.sType=VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
@@ -34,16 +37,16 @@ int main(void) {
  VkDeviceQueueCreateInfo qi={.sType=VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,.queueFamilyIndex=family,.queueCount=1,.pQueuePriorities=&priority};
  VkDeviceCreateInfo di={.sType=VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,.queueCreateInfoCount=1,.pQueueCreateInfos=&qi};
  VkDevice dev;CHECK(vkCreateDevice(physical,&di,NULL,&dev));VkQueue queue;vkGetDeviceQueue(dev,family,0,&queue);
- VkFormatProperties fp;vkGetPhysicalDeviceFormatProperties(physical,VK_FORMAT_B8G8R8_UINT,&fp);
- if(!(fp.optimalTilingFeatures&VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT)){fprintf(stderr,"No BGR attachment support\n");return 1;}
+ VkFormatProperties fp;vkGetPhysicalDeviceFormatProperties(physical,format,&fp);
+ if(!(fp.optimalTilingFeatures&VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT)){fprintf(stderr,"No requested attachment support\n");return 1;}
  VkImage image;VkDeviceMemory im,bm;VkBuffer buffer;VkMemoryRequirements req;
- VkImageCreateInfo ci={.sType=VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,.imageType=VK_IMAGE_TYPE_2D,.format=VK_FORMAT_B8G8R8_UINT,
+ VkImageCreateInfo ci={.sType=VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,.imageType=VK_IMAGE_TYPE_2D,.format=format,
   .extent={2*w,2*h,1},.mipLevels=2,.arrayLayers=2,.samples=VK_SAMPLE_COUNT_1_BIT,.tiling=VK_IMAGE_TILING_OPTIMAL,
   .usage=VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT|VK_IMAGE_USAGE_TRANSFER_SRC_BIT};
  CHECK(vkCreateImage(dev,&ci,NULL,&image));vkGetImageMemoryRequirements(dev,image,&req);
  VkMemoryAllocateInfo ai={.sType=VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,.allocationSize=req.size,.memoryTypeIndex=memtype(req.memoryTypeBits,0)};
  CHECK(vkAllocateMemory(dev,&ai,NULL,&im));CHECK(vkBindImageMemory(dev,image,im,0));
- VkBufferCreateInfo bi={.sType=VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,.size=w*h*3,.usage=VK_BUFFER_USAGE_TRANSFER_DST_BIT};
+ VkBufferCreateInfo bi={.sType=VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,.size=w*h*pixel_size,.usage=VK_BUFFER_USAGE_TRANSFER_DST_BIT};
  CHECK(vkCreateBuffer(dev,&bi,NULL,&buffer));vkGetBufferMemoryRequirements(dev,buffer,&req);
  ai.allocationSize=req.size;ai.memoryTypeIndex=memtype(req.memoryTypeBits,VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
  CHECK(vkAllocateMemory(dev,&ai,NULL,&bm));CHECK(vkBindBufferMemory(dev,buffer,bm,0));
@@ -64,8 +67,10 @@ int main(void) {
  VkCommandBuffer cmd;VkCommandBufferAllocateInfo ca={.sType=VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,.commandPool=pool,.level=VK_COMMAND_BUFFER_LEVEL_PRIMARY,.commandBufferCount=1};CHECK(vkAllocateCommandBuffers(dev,&ca,&cmd));
  VkCommandBufferBeginInfo begin={.sType=VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};CHECK(vkBeginCommandBuffer(cmd,&begin));
  VkClearValue clear={.color.uint32={17,93,201,1}};
+ if(rgb9) clear=(VkClearValue){.color.float32={0.25f,0.5f,0.75f,1}};
  VkRenderPassBeginInfo rb={.sType=VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,.renderPass=pass[0],.framebuffer=framebuffer,.renderArea={{0,0},{w,h}},.clearValueCount=1,.pClearValues=&clear};
  VkClearAttachment ac={.aspectMask=VK_IMAGE_ASPECT_COLOR_BIT,.colorAttachment=0,.clearValue.color.uint32={233,71,29,1}};
+ if(rgb9) ac.clearValue=(VkClearValue){.color.float32={0.75f,0.25f,0.5f,1}};
  VkClearRect rect={.rect={{3,2},{7,4}},.baseArrayLayer=0,.layerCount=1};
  vkCmdBeginRenderPass(cmd,&rb,VK_SUBPASS_CONTENTS_INLINE);vkCmdClearAttachments(cmd,1,&ac,1,&rect);vkCmdEndRenderPass(cmd);
  VkImageMemoryBarrier barrier={.sType=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,.srcAccessMask=VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
@@ -73,6 +78,7 @@ int main(void) {
   .newLayout=VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,.srcQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED,.dstQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED,.image=image,.subresourceRange=vi.subresourceRange};
  vkCmdPipelineBarrier(cmd,VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,0,0,NULL,0,NULL,1,&barrier);
  rb.renderPass=pass[1];ac.clearValue.color.uint32[0]=41;ac.clearValue.color.uint32[1]=199;ac.clearValue.color.uint32[2]=127;
+ if(rgb9) ac.clearValue=(VkClearValue){.color.float32={0.5f,0.75f,0.25f,1}};
  rect.rect.offset=(VkOffset2D){8,5};rect.rect.extent=(VkExtent2D){5,3};
  vkCmdBeginRenderPass(cmd,&rb,VK_SUBPASS_CONTENTS_INLINE);vkCmdClearAttachments(cmd,1,&ac,1,&rect);vkCmdEndRenderPass(cmd);
  barrier.dstAccessMask=VK_ACCESS_TRANSFER_READ_BIT;barrier.newLayout=VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
@@ -86,12 +92,21 @@ int main(void) {
  CHECK(vkWaitForFences(dev,1,&fence,VK_TRUE,10000000000ull));
  uint8_t *data;CHECK(vkMapMemory(dev,bm,0,VK_WHOLE_SIZE,0,(void**)&data));unsigned errors=0;
  for(unsigned y=0;y<h;y++)for(unsigned x=0;x<w;x++) {
+  if(rgb9) {
+   unsigned r=128,g=256,b=384;
+   if(x>=3&&x<10&&y>=2&&y<6){r=384;g=128;b=256;}
+   if(x>=8&&x<13&&y>=5&&y<8){r=256;g=384;b=128;}
+   const uint32_t expected=r|(g<<9)|(b<<18)|(15u<<27);
+   uint32_t actual; memcpy(&actual,data+4*(y*w+x),4);
+   if(actual!=expected){if(errors<8)printf("Mismatch %u,%u: %08x expected %08x\n",x,y,actual,expected);errors++;}
+   continue;
+  }
   uint8_t expected[3]={201,93,17};
   if(x>=3&&x<10&&y>=2&&y<6){expected[0]=29;expected[1]=71;expected[2]=233;}
   if(x>=8&&x<13&&y>=5&&y<8){expected[0]=127;expected[1]=199;expected[2]=41;}
   if(memcmp(data+3*(y*w+x),expected,3)) {if(errors<8)printf("Mismatch %u,%u: %u %u %u expected %u %u %u\n",x,y,data[3*(y*w+x)],data[3*(y*w+x)+1],data[3*(y*w+x)+2],expected[0],expected[1],expected[2]);errors++;}
  }
- printf("BGR_ATTACHMENT_RESULT: %s errors=%u pixels=%u mip=1 layer=1\n",errors?"FAIL":"PASS",errors,w*h);
+ printf("%s: %s errors=%u pixels=%u mip=1 layer=1\n",rgb9?"RGB9E5_ATTACHMENT_RESULT":"BGR_ATTACHMENT_RESULT",errors?"FAIL":"PASS",errors,w*h);
  vkUnmapMemory(dev,bm);vkDestroyFence(dev,fence,NULL);vkDestroyCommandPool(dev,pool,NULL);vkDestroyFramebuffer(dev,framebuffer,NULL);
  vkDestroyRenderPass(dev,pass[0],NULL);vkDestroyRenderPass(dev,pass[1],NULL);vkDestroyImageView(dev,view,NULL);vkDestroyImage(dev,image,NULL);
  vkDestroyBuffer(dev,buffer,NULL);vkFreeMemory(dev,im,NULL);vkFreeMemory(dev,bm,NULL);vkDestroyDevice(dev,NULL);vkDestroyInstance(instance,NULL);

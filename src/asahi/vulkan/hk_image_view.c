@@ -426,6 +426,14 @@ pack_pbe(struct hk_device *dev, struct hk_image_view *view, unsigned view_plane,
    bool eot =
       usage == HK_DESC_USAGE_BG_EOT || usage == HK_DESC_USAGE_LAYERED_BG_EOT;
 
+   /* RGB9E5 is packed by the native tile shader. Store its single raw word
+    * without asking the PBE to convert unpacked floating-point components. */
+   if (eot && agx_native_graphics(&dev->dev) &&
+       p_format == PIPE_FORMAT_R9G9B9E5_FLOAT) {
+      p_format = PIPE_FORMAT_R32_UINT;
+      desc = util_format_description(p_format);
+   }
+
    /* The tilebuffer is already in sRGB space if needed. Do not convert for
     * end-of-tile descriptors.
     */
@@ -577,7 +585,14 @@ pack_pbe(struct hk_device *dev, struct hk_image_view *view, unsigned view_plane,
       AGX_PBE_pack(out->opaque, &cfg);
       return true;
    }
-   return hk_pack_native_pbe(generation, out, &cfg);
+   const bool packed = hk_pack_native_pbe(generation, out, &cfg);
+   if (!packed && getenv("AGX_NATIVE_RESOURCE_DIAGNOSTICS"))
+      fprintf(stderr, "Native PBE refused: format=%s usage=%u view=%u dim=%u layout=%u channels=%u type=%u srgb=%u extent=%ux%ux%u level=%u/%u address=%llx stride=%u extended=%u\n",
+              util_format_short_name(p_format), usage, view->vk.view_type,
+              cfg.dimension, cfg.layout, cfg.channels, cfg.type, cfg.srgb,
+              cfg.width, cfg.height, cfg.layers, cfg.level, cfg.levels,
+              (unsigned long long)cfg.buffer, cfg.stride, cfg.extended);
+   return packed;
 }
 
 static VkResult

@@ -3749,6 +3749,9 @@ agx3_mrt_eot_selector(enum pipe_format logical, enum agx_format physical,
    case PIPE_FORMAT_R11G11B10_FLOAT:
       *selector = 3;
       return physical == AGX_FORMAT_RG11B10F;
+   case PIPE_FORMAT_R9G9B9E5_FLOAT:
+      *selector = 2;
+      return physical == AGX_FORMAT_I32;
    case PIPE_FORMAT_R10G10B10A2_UNORM:
    case PIPE_FORMAT_B10G10R10A2_UNORM:
       *selector = 3;
@@ -3856,6 +3859,16 @@ agx3_native_mrt_eot(const agx_context *ctx, enum agx_isa_encoding enc,
    }
    /* Compaction can leave one live attachment at a nonzero tile offset.
     * The native uniform ABI supplies that offset even for a single store. */
+   if (count == 1) {
+      bool nonzero_offset = false;
+      agx_foreach_instr_global(ctx, I) {
+         if (I->op == AGX_OPCODE_BLOCK_IMAGE_STORE)
+            nonzero_offset |= constants[I->src[2].value] != 0;
+      }
+      if (!nonzero_offset &&
+          ctx->key->native_eot_formats[0] != PIPE_FORMAT_R9G9B9E5_FLOAT)
+         return 0;
+   }
    return count;
 }
 

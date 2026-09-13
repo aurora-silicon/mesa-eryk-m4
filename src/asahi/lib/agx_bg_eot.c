@@ -343,6 +343,12 @@ agx_build_end_of_tile_shader(struct agx_bg_eot_cache *cache,
       if (agx_native_graphics(cache->dev) && util_format_is_srgb(format))
          format = (enum pipe_format)AIL_ISA_FORMAT_U8NORM;
 
+      /* Native RGB9E5 tile lowering already packs the shared-exponent word.
+       * Its EOT PBE descriptor is the corresponding raw R32_UINT view. */
+      if (agx_native_graphics(cache->dev) &&
+          format == PIPE_FORMAT_R9G9B9E5_FLOAT)
+         format = PIPE_FORMAT_R32_UINT;
+
       nir_image_store_block_agx(
          &b, nir_imm_intN_t(&b, rt, 16), nir_imm_int(&b, offset_B), coords,
          .format = format,

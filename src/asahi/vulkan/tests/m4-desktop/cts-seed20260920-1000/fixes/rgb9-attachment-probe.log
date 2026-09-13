@@ -1,0 +1,6 @@
+Device: Apple M4 (G16G B0)
+asahi: G17P VDM command BO full=0x87fdf44000 alias=0x1000800000 low=0x800000 size=0x20000
+asahi: G17P VDM command BO full=0x87fdf20000 alias=0x1000820000 low=0x820000 size=0x20000
+asahi: G17P VDM submit full=0x87fdf44400 alias=0x1000800400 low=0x800400
+asahi: G17P VDM submit full=0x87fdf20000 alias=0x1000820000 low=0x820000
+ATTACHMENT_RESULT: PASS errors=0 pixels=144 mip=1 layer=1
