@@ -565,6 +565,25 @@ lower_packed_ycbcr_size(nir_builder *b, nir_tex_instr *tex, void *state)
    return true;
 }
 
+/* The descriptor measures two-pixel packed words. LOD depends on the full
+ * luma extent, so double the horizontal derivative presented to the hardware.
+ * Apply to both API queries and queries generated for min/mag selection. */
+static bool
+lower_packed_ycbcr_lod(nir_builder *b, nir_tex_instr *tex, void *state)
+{
+   if (tex->op != nir_texop_lod || !lookup_packed_ycbcr_sampler(tex, state))
+      return false;
+   int index = nir_tex_instr_src_index(tex, nir_tex_src_coord);
+   if (index < 0)
+      return false;
+   b->cursor = nir_before_instr(&tex->instr);
+   nir_def *coord = tex->src[index].src.ssa;
+   coord = nir_vector_insert_imm(b, coord,
+      nir_fmul_imm(b, nir_channel(b, coord, 0), 2), 0);
+   nir_src_rewrite(&tex->src[index].src, coord);
+   return true;
+}
+
 static nir_def *
 packed_ycbcr_word(nir_builder *b, nir_tex_instr *orig, nir_def *x,
                   nir_def *y, nir_def *layer, nir_def *word_size)
@@ -1293,6 +1312,8 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
             nir_metadata_none, (void *)&ycbcr_state);
    NIR_PASS(_, nir, nir_shader_tex_pass, lower_packed_ycbcr_center,
             nir_metadata_none, (void *)&ycbcr_state);
+   NIR_PASS(_, nir, nir_shader_tex_pass, lower_packed_ycbcr_lod,
+            nir_metadata_control_flow, (void *)&ycbcr_state);
    NIR_PASS(_, nir, nir_vk_lower_ycbcr_tex, lookup_ycbcr_conversion,
             &ycbcr_state);
    NIR_PASS(_, nir, nir_shader_tex_pass, lower_ycbcr_plane_scale,

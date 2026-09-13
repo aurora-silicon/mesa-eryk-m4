@@ -1,0 +1,40 @@
+{
+  "requested": 97,
+  "completed": 97,
+  "jobs": 10,
+  "case_timeout_seconds": 20,
+  "guard_seconds": 40,
+  "started_unix": 1789339745.7874067,
+  "finished_unix": 1789339754.4922607,
+  "elapsed_seconds": 8.70485428601387,
+  "batch_execution_seconds": 5.9613439839999955,
+  "counts": {
+    "Pass": 71,
+    "NotSupported": 26
+  },
+  "batches": [
+    "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260913T224905824883Z-packed-lod-and-linear-fixed-000"
+  ],
+  "identity": [
+    "ff2548a7-3200-47a3-b3e9-ffd5c0ec52ea",
+    {
+      "/opt/asahi-m4-port/lib/libvulkan_asahi.so": "b41a355757a2c03e77e6a122ca100747603eb1c2a90dfff679e7ecfe91645912",
+      "/root/guarded-command.py": "e746929162cc01b809455e9dae4a6d3f8a32b313b8e39373e3d1b00f893b797d",
+      "/opt/asahi-m4-port/lib/libgallium-26.1.4.so": "14c9d843ca2131198ea3a61587e37fc8b7b79a3e39e98bb0c59da209ccae5ba5",
+      "/root/run-m4-gl.py": "6842d9bb244b52e7b358b63af9548c1a08d6c6a3244da61efe1b157006df8471",
+      "/root/firmware-snapshot.py": "be417c075b15da22832f05254b3fab247582c72c9dadccff5f7c56b56a9cedb8",
+      "/root/g16-fault-dump.py": "c3988ddf0ad9e10e2b9736582c9ab7c59c90a62090d0e34a32db1ba46c917bf3",
+      "/lib/modules/7.1.9-dirtyroom-asahi1+/kernel/drivers/gpu/drm/asahi/asahi.ko": "e40b70f2d192a9cb1649dab9aa395862a64481e22e5acb1d3f92b7b32860e85e",
+      "/root/g16-submit-test/experiment_watchdog.py": "28600768bceb930a3528471fd7982db9247ec86c00f4a522456b70e38001e18d",
+      "/root/g16-submit-test/experiment_thermals.py": "c394432327266b50f9c4c16d8f5900ddfb99ce014846f5288af75ff139361a33",
+      "/root/cts-sample.py": "49961904fd4adc7ff4ffc40e0cda73d91583312d9fb20d543256cc88a7805b46",
+      "/root/cts-1.0.2.6/deqp-vk-scaled-border-reference": "985ff20c950ed9d0b7ae29bfc30976392342d8e48779617d3f9bc09a7c7dd5a0",
+      "/root/cts-1.0.2.6/packed-focused.txt": "949534a4644a85e77f50cf9d72d2cccc77650fc8647c3ec16dd705760887103d"
+    },
+    {
+      "path": "/root/cts-1.0.2.6/deqp-vk-scaled-border-reference",
+      "sha256": "985ff20c950ed9d0b7ae29bfc30976392342d8e48779617d3f9bc09a7c7dd5a0"
+    }
+  ],
+  "last_guard_verdict": "pass"
+}

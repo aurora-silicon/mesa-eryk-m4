@@ -1,0 +1,8 @@
+dEQP-VK.ycbcr.query.lod.fragment.g8b8g8r8_422_unorm_khr
+dEQP-VK.ycbcr.query.lod.fragment.b8g8r8g8_422_unorm_khr
+dEQP-VK.ycbcr.query.lod.fragment.g10x6b10x6g10x6r10x6_422_unorm_4pack16_khr
+dEQP-VK.ycbcr.query.lod.fragment.b10x6g10x6r10x6g10x6_422_unorm_4pack16_khr
+dEQP-VK.ycbcr.query.lod.fragment.g12x4b12x4g12x4r12x4_422_unorm_4pack16_khr
+dEQP-VK.ycbcr.query.lod.fragment.b12x4g12x4r12x4g12x4_422_unorm_4pack16_khr
+dEQP-VK.ycbcr.query.lod.fragment.g16b16g16r16_422_unorm_khr
+dEQP-VK.ycbcr.query.lod.fragment.b16g16r16g16_422_unorm_khr
