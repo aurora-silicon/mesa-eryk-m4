@@ -180,9 +180,11 @@ sample_ok(enum agx_isa_encoding enc, const struct agx3_tex_sample_desc *d)
       return false;
 
    /* G16G sample(level(0), int2(-1,2)) uses the same packed signed
-    * nibbles as gather. Array, cube and shadow offset forms lack a witness. */
+    * nibbles as gather. Native indexed array gather(-8,-8) also uses f43.
+    * Array ordinary samples, cube and shadow offsets remain unqualified. */
    if (d->sample_offset &&
-       (enc != AGX_ISA_ENCODING_AGX3B || d->array || d->cube || d->shadow))
+       (enc != AGX_ISA_ENCODING_AGX3B || (d->array && !d->gather) ||
+        d->cube || d->shadow))
       return false;
 
    if (d->retain_helpers && enc != AGX_ISA_ENCODING_AGX3B)

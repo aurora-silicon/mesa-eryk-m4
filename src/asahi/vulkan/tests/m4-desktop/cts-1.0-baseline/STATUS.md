@@ -124,3 +124,18 @@ All54 tile-core checks pass; original failed compiler bundle101de234... replays
 successfully (412bytes). 20260913T112410307569Z-cts-rg8-tile-load:original CTS
 case4 Pass (result image matches reference), peak58.5 C, full guards.
 Libraryb898fc1ea3acae2dc693383e185319f4cfc63030573efc3cbf0c7f65b1880257.
+
+Ninth selection:index48, integer-array gather with multiple negative offsets
+and swizzles. Enable the witnessed array/offset combination in native resource
+lowering, immediate translation, IR width validation and instruction packing.
+Native evidence:compiler/test/probes/README-g16g-array-gather.md. All6264
+texture-core checks and end-to-end --array-gather-only compile test pass.
+The first attempt stopped in userspace IR validation (20260913T112854797486Z-
+cts-array-gather-offset); it was not a GPU crash. After fixing immediate width,
+20260913T113102546620Z-cts-array-gather-validated:original case48 Pass,
+peak58.75 C, full guards. Library
+73b5d0efd21c9db27d01c6de4ef7fe89bc0b3ced85a84c7eb38ae6609249197f.
+
+Tenth selection:index66 already passed with the plane-copy fix, using the
+original test (20260913T110850190124Z-cts-plane-copy-regression, local index4).
+Continue to original index19; no extra source change needed for66.

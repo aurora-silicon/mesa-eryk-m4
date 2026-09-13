@@ -1055,7 +1055,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
    const bool cube = I->dim == AGX_DIM_CUBE;
    const bool shadow = I->shadow;
    const bool gather = I->gather != AGX_GATHER_NONE;
-   const bool sample_offset = !shadow && !array && !cube && I->offset &&
+   const bool sample_offset = !shadow && (!array || gather) && !cube && I->offset &&
       I->src[5].type == AGX_INDEX_IMMEDIATE && I->src[5].value <= 0xff;
    const bool valid_compare = shadow ?
       (enc == AGX_ISA_ENCODING_AGX3B && !cube &&

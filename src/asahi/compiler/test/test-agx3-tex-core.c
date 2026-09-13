@@ -1388,6 +1388,26 @@ test_m4_array_gather_witness(void)
    uint8_t out[AGX3_TEX_MAX_LENGTH], len;
    CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
    CHECK(len==sizeof(expected) && !memcmp(out,expected,len));
+   /* G16G indexed integer array gather(-8,-8), component Z, text+162.
+    * Clear native f156 to retain helper-coordinate updates in Mesa's
+    * multi-gather shader; all operand/staging/offset fields stay native. */
+   const uint8_t indexed[] = {0x05,0x80,0x0c,0xb4,0x14,0x00,0x01,0x03,
+      0x00,0x42,0x80,0x01,0x01,0x08,0xa0,0x28,0x00,0x00,0x40,0x00};
+   d.texture_kind = d.sampler_kind = AGX3_TEX_OPERAND_REGISTER;
+   d.texture_value = 0;
+   d.sampler_value = 4;
+   d.texture_kill = d.sampler_kill = true;
+   d.wait_mask = 1u << 5;
+   d.sample_offset = 0x88;
+   d.gather_component = 2;
+   d.retain_helpers = true;
+   CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+   if (len != sizeof(indexed) || memcmp(out,indexed,len)) {
+      fprintf(stderr, "indexed array gather bytes: ");
+      for (unsigned i = 0; i < len; ++i) fprintf(stderr, "%02x", out[i]);
+      fprintf(stderr, "\n");
+   }
+   CHECK(len==sizeof(indexed) && !memcmp(out,indexed,len));
    return 0;
 }
 

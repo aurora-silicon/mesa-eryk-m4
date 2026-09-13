@@ -1762,7 +1762,7 @@ test_indexed_compute_sample(void)
 }
 
 static bool
-test_indexed_compute_storage_format(enum pipe_format format, bool gather, bool direct)
+test_indexed_compute_storage_format(enum pipe_format format, bool gather, bool direct, bool array)
 {
    nir_builder b = nir_builder_init_simple_shader(
       MESA_SHADER_COMPUTE, &agx_nir_options,
@@ -1785,15 +1785,18 @@ test_indexed_compute_storage_format(enum pipe_format format, bool gather, bool d
    tex->op = gather ? nir_texop_tg4 : nir_texop_txl;
    tex->sampler_dim = GLSL_SAMPLER_DIM_2D;
    tex->dest_type = nir_type_float32;
-   tex->coord_components = 2;
+   tex->is_array = array;
+   tex->coord_components = array ? 3 : 2;
    tex->backend_flags = AGX_TEXTURE_FLAG_NO_CLAMP;
-   tex->src[0] = nir_tex_src_for_ssa(
-      nir_tex_src_coord,
-      nir_vec2(&b, nir_u2f32(&b, element), nir_imm_float(&b, 0.5f)));
+   nir_def *uv = nir_vec2(&b, nir_u2f32(&b, element), nir_imm_float(&b, 0.5f));
+   nir_def *sample_coord = array ?
+      nir_vec3(&b, nir_channel(&b, uv, 0), nir_channel(&b, uv, 1),
+               nir_imm_float(&b, 0.0f)) : uv;
+   tex->src[0] = nir_tex_src_for_ssa(nir_tex_src_coord, sample_coord);
    tex->src[1] = nir_tex_src_for_ssa(nir_tex_src_texture_handle, image);
    tex->src[2] = nir_tex_src_for_ssa(nir_tex_src_sampler_handle, sampler);
    tex->src[3] = gather ?
-      nir_tex_src_for_ssa(nir_tex_src_backend2, nir_imm_int(&b, 0x11)) :
+      nir_tex_src_for_ssa(nir_tex_src_backend2, nir_imm_int(&b, array ? 0x88 : 0x11)) :
       nir_tex_src_for_ssa(nir_tex_src_lod, nir_imm_float(&b, 0.0f));
    nir_def_init(&tex->instr, &tex->def, 4, 32);
    nir_builder_instr_insert(&b, &tex->instr);
@@ -1857,11 +1860,11 @@ test_indexed_compute_storage_format(enum pipe_format format, bool gather, bool d
 static bool
 test_indexed_compute_storage(void)
 {
-   return test_indexed_compute_storage_format(PIPE_FORMAT_R10G10B10A2_UNORM, false, false) &&
-          test_indexed_compute_storage_format(PIPE_FORMAT_R16G16_FLOAT, false, false) &&
-          test_indexed_compute_storage_format(PIPE_FORMAT_R16G16_FLOAT, true, false) &&
-          test_indexed_compute_storage_format(PIPE_FORMAT_R8_UNORM, true, true) &&
-          test_indexed_compute_storage_format(PIPE_FORMAT_NONE, false, true);
+   return test_indexed_compute_storage_format(PIPE_FORMAT_R10G10B10A2_UNORM, false, false, false) &&
+          test_indexed_compute_storage_format(PIPE_FORMAT_R16G16_FLOAT, false, false, false) &&
+          test_indexed_compute_storage_format(PIPE_FORMAT_R16G16_FLOAT, true, false, false) &&
+          test_indexed_compute_storage_format(PIPE_FORMAT_R8_UNORM, true, true, false) &&
+          test_indexed_compute_storage_format(PIPE_FORMAT_NONE, false, true, false);
 }
 
 static bool
@@ -2771,9 +2774,16 @@ main(int argc, char **argv)
       };
       return run_case(&c, AGX_ISA_ENCODING_AGX3B) ? 0 : 1;
    }
+   if (argc == 2 && !strcmp(argv[1], "--array-gather-only")) {
+      const bool ok = test_indexed_compute_storage_format(
+         PIPE_FORMAT_R8_UNORM, true, true, true);
+      printf("indexed array gather with negative offsets: %s\n",
+             ok ? "PASS" : "FAIL");
+      return ok ? 0 : 1;
+   }
    if (argc == 2 && !strcmp(argv[1], "--integer-storage-only")) {
       const bool ok = test_indexed_compute_storage_format(
-         PIPE_FORMAT_R8G8B8A8_UINT, false, true);
+         PIPE_FORMAT_R8G8B8A8_UINT, false, true, false);
       printf("indexed compute sample plus RGBA8 integer storage: %s\n",
              ok ? "PASS" : "FAIL");
       return ok ? 0 : 1;
