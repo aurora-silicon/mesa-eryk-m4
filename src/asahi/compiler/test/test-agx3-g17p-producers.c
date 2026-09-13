@@ -430,6 +430,14 @@ test_agx3c_and_normflt(void)
 {
    uint8_t o[AGX3_FLTNORM_MAX_LENGTH];
    uint8_t l;
+   /* Native G16G RG8Snorm fetch, text+88: preserve signed bytes on read. */
+   const struct agx3_normflt_desc signed_fetch = {
+      .dest = 0, .dest_hint = true, .src = 0, .two_lanes = true,
+      .wait_mask = 1u << 5, .snorm = true,
+   };
+   const bool signed_ok = agx3_normflt_encode(AGX_ISA_ENCODING_AGX3B,
+                                              &signed_fetch, o, &l);
+   check("G16G RG8Snorm fetch", "17045600010014ba", o, l, signed_ok);
    for (unsigned i = 0; i < sizeof(fnc_vs) / sizeof(*fnc_vs); ++i) {
       const struct fnc_v *v = &fnc_vs[i];
       struct agx3_fltnorm_desc d = {

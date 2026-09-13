@@ -59,3 +59,11 @@ compiler witnesses and 6,274 texture-core checks. The saved index-116 shader
 also compiles offline. Dynamic fragment inputs are lowered through Mesa's
 existing indirect-dereference control-flow pass before coefficient selection,
 so no legacy ITERPROJ or mixed-width coefficient-address arithmetic remains.
+
+## Signed normalized framebuffer readback
+
+`20260913T191113841153Z-cts-snorm-blit`: indices 403, 649, 682 Pass after setting NORMFLT's signedness bit
+for S8NORM tile reads. The previous unpack always treated the bytes as UNORM.
+Native RG8Snorm text at offset 88 confirms f40=1; all 95 producer-core checks
+pass, including the exact signed witness. The batch also validates the volume
+blit correction documented separately below.

@@ -1,0 +1,82 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.pipeline.blend.format.r8_snorm.states.color_1mca_1mca_sub_alpha_o_1mda_add-color_z_1mcc_max_alpha_sc_1mdc_add-color_1mca_1mdc_add_alpha_sc_sa_min-color_sas_o_max_alpha_1mcc_1mdc_add",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.pipeline.blend.format.r8_snorm.states.color_1mca_1mca_sub_alpha_o_1mda_add-color_z_1mcc_max_alpha_sc_1mdc_add-color_1mca_1mdc_add_alpha_sc_sa_min-color_sas_o_max_alpha_1mcc_1mdc_add",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T191113841153Z-cts-snorm-blit/cts/000/result.qpa"
+    ],
+    "boot_id": "e47102a9-42cd-480a-8918-bfe1840cca56",
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.40874039100003756
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.pipeline.blend.format.r8g8b8a8_snorm.states.color_da_1mda_add_alpha_cc_1msa_rsub-color_sas_1mca_sub_alpha_1mdc_1mca_rsub-color_da_da_min_alpha_sas_ca_rsub-color_1mca_dc_max_alpha_1mdc_sas_sub",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.pipeline.blend.format.r8g8b8a8_snorm.states.color_da_1mda_add_alpha_cc_1msa_rsub-color_sas_1mca_sub_alpha_1mdc_1mca_rsub-color_da_da_min_alpha_sas_ca_rsub-color_1mca_dc_max_alpha_1mdc_sas_sub",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T191113841153Z-cts-snorm-blit/cts/001/result.qpa"
+    ],
+    "boot_id": "e47102a9-42cd-480a-8918-bfe1840cca56",
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.40848151399995913
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.pipeline.blend.format.r8g8_snorm.states.color_1mcc_sc_sub_alpha_1mcc_ca_rsub-color_dc_1mda_max_alpha_ca_dc_add-color_1mca_o_rsub_alpha_1mcc_da_add-color_cc_cc_sub_alpha_o_z_max",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.pipeline.blend.format.r8g8_snorm.states.color_1mcc_sc_sub_alpha_1mcc_ca_rsub-color_dc_1mda_max_alpha_ca_dc_add-color_1mca_o_rsub_alpha_1mcc_da_add-color_cc_cc_sub_alpha_o_z_max",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T191113841153Z-cts-snorm-blit/cts/002/result.qpa"
+    ],
+    "boot_id": "e47102a9-42cd-480a-8918-bfe1840cca56",
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.40829840800006423
+  },
+  {
+    "index": 3,
+    "case": "dEQP-VK.synchronization.op.single_queue.fence.write_blit_image_read_image_vertex.image_64x64x8_r32_sfloat",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.synchronization.op.single_queue.fence.write_blit_image_read_image_vertex.image_64x64x8_r32_sfloat",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T191113841153Z-cts-snorm-blit/cts/003/result.qpa"
+    ],
+    "boot_id": "e47102a9-42cd-480a-8918-bfe1840cca56",
+    "status": "Pass",
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.4083004549997895
+  },
+  {
+    "index": 4,
+    "case": "dEQP-VK.synchronization.op.multi_queue.semaphore.write_clear_color_image_read_blit_image.image_64x64x8_r32_sfloat_exclusive",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.synchronization.op.multi_queue.semaphore.write_clear_color_image_read_blit_image.image_64x64x8_r32_sfloat_exclusive",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T191113841153Z-cts-snorm-blit/cts/004/result.qpa"
+    ],
+    "boot_id": "e47102a9-42cd-480a-8918-bfe1840cca56",
+    "status": "Pass",
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.40807351299986294
+  }
+]

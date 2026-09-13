@@ -81,6 +81,7 @@
  *   f9 = 2, f2 = the 32-bit destination pair, f10 = 2
  *   f18 = the 16-bit source, f25 = 2 register, f26 = 1 (16-bit)
  *   f41 = 1 two lanes, 0 one lane -- the same role f59 plays for fltnorm
+ *   f40 = 1 signed normalization (G16G RG8Snorm framebuffer fetch)
  *   f32 + (slot - 1) = the per-slot wait mask. PROVEN: the tile load these
  *       consume publishes on slot 6 (AGX3b) or 8 (AGX3c), and exactly the
  *       corresponding bit is set on the first unpack of each pair.
@@ -239,6 +240,7 @@ struct agx3_normflt_desc {
    uint16_t src;       /* 16-bit register holding the packed lanes */
    bool two_lanes;     /* unpack both bytes; false = one lane */
    uint16_t wait_mask; /* bit i waits scoreboard slot i + 1 */
+   bool snorm;        /* f40; sign-extend each byte before normalization */
 };
 
 bool agx3_normflt_encode(enum agx_isa_encoding enc,

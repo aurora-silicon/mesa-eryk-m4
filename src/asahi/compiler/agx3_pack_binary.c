@@ -1513,6 +1513,7 @@ agx3_emit_normflt(struct util_dynarray *emission, enum agx_isa_encoding enc,
       .src = src.value,
       .two_lanes = agx_channels(dest) == 2,
       .wait_mask = wait_mask,
+      .snorm = I->format == AGX_FORMAT_S8NORM,
    };
 
    uint8_t bytes[AGX3_FLTNORM_MAX_LENGTH];
