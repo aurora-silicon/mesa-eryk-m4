@@ -1,0 +1,11 @@
+--- a/external/vulkancts/modules/vulkan/api/vktApiImageClearingTests.cpp
++++ b/external/vulkancts/modules/vulkan/api/vktApiImageClearingTests.cpp
+@@ -539,7 +539,7 @@
+ 	, m_queue					(context.getUniversalQueue())
+ 	, m_queueFamilyIndex		(context.getUniversalQueueFamilyIndex())
+ 	, m_allocator				(context.getDefaultAllocator())
+-	, m_isAttachmentFormat		(getIsAttachmentFormat(params.imageFormat))
++	, m_isAttachmentFormat		(params.imageType != VK_IMAGE_TYPE_3D && getIsAttachmentFormat(params.imageFormat))
+ 	, m_imageUsageFlags			(getImageUsageFlags(params.imageFormat))
+ 	, m_imageAspectFlags		(getImageAspectFlags(params.imageFormat))
+ 	, m_imageFormatProperties	(getImageFormatProperties())

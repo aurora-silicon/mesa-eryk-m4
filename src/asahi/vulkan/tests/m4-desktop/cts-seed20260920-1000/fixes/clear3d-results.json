@@ -1,0 +1,21 @@
+[
+  {
+    "index": 719,
+    "case": "dEQP-VK.api.image_clearing.dedicated_allocation.clear_color_image.3d_r8_srgb",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-final",
+      "--deqp-case=dEQP-VK.api.image_clearing.dedicated_allocation.clear_color_image.3d_r8_srgb",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T211057136561Z-cts-seed20-clear3d/cts/719/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "started_unix": 1789333858.2358532,
+    "message": "cmdClearColorImage passed",
+    "returncode": 0,
+    "seconds": 0.2087547569999515,
+    "finished_unix": 1789333858.4506698,
+    "pid": 111150
+  }
+]

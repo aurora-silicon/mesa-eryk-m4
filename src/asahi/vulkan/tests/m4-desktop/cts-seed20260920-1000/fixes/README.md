@@ -55,3 +55,14 @@ This resolves both setup errors; it is one rendering pass and one optional
 feature skip, not two passes. Both runs verified the 60-second watchdog and
 thermal guard, peak 57.75 C. Evidence: experiments ending in
 cts-seed20-wayland and cts-seed20-wayland-timing.
+
+## Invalid 3D framebuffer preclear (case 719)
+
+The historical clear-color test creates a VK_IMAGE_VIEW_TYPE_3D view and uses
+it directly as a framebuffer attachment for optional initialization. This is
+not a valid framebuffer view type. For 3D images use the existing transfer
+path: retain all tested vkCmdClearColorImage ranges, both clear values, full
+volume/mip readbacks and pixel checks; omit the invalid attachment preclear.
+The selected whole-volume case overwrites every tested texel. A separately
+identified CTS executable deqp-vk-seed20-final passes that test on unchanged
+Mesa; the original failure remains recorded separately. Evidence: _provenance/experiments/20260913T211057136561Z-cts-seed20-clear3d
