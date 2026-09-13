@@ -2133,3 +2133,11 @@ not a cross-mip derivative qualification. The native AIR-NT32023.883 fragment
 SMP is retained at build/eevee-native-sample3d-fragment/text-1250.bin+0x90.
 Eevee045848 completed a192x144,16sample Vulkan render in9.6s, but the image
 is black against the lit software reference. Completion is not correctness.
+
+`compute-indirect-probe.c` validates GPU-written XYZ dispatch group counts,
+non-unit local sizes, gl_NumWorkGroups and zero counts on all three axes.
+Build with `cc -O2 compute-indirect-probe.c -lEGL -lGL`. Use run-m4-gl.py
+inside gpu-experiment.py on hardware; software control accepts
+M4_TEST_LLVMPIPE=1. gpu-experiment.py now classifies both the outer command
+log and the retained application/application.log from the same experiment;
+a successful render marker cannot conceal Vulkan errors in the child log.

@@ -21,13 +21,21 @@ def write_json(path, value):
     path.write_text(json.dumps(value, indent=2) + "\n")
 
 
+def experiment_output(directory):
+    """Only logs retained by this experiment, including app-observe's child."""
+    return "\n".join(p.read_text(errors="replace") for p in (
+        directory / "remote" / "command.log",
+        directory / "remote" / "application" / "application.log",
+    ) if p.exists())
+
+
 def summarize_evidence(directory):
     """Compact observations only; never substitute for guard validation."""
     remote = directory / "remote"
-    command = remote / "command.log"
+    output = experiment_output(directory)
     observations = {}
-    if command.exists():
-        lines = command.read_text(errors="replace").splitlines()
+    if output:
+        lines = output.splitlines()
         pixels = [line for line in lines if re.search(
             r"\bbad=\d+(?:/\d+)?\b|^(?:PASS|FAIL):|\bpixels(?: checked)?, \d+ failures$|^pixels=\d+ incorrect=\d+|\bpixel \d+ differs at byte \d+", line)]
         observations["pixel_results"] = pixels[-32:]
@@ -66,8 +74,7 @@ def source_state(repo):
 
 def classify(directory, facts, expected):
     """Never turn a clean process exit or an old boot's fault into a verdict."""
-    command = directory / "remote" / "command.log"
-    stdout = command.read_text(errors="replace") if command.exists() else ""
+    stdout = experiment_output(directory)
     # A repaired driver may succeed at a call that failed in the retained
     # capture. Preserve that warning in evidence without calling it a new error.
     stdout = re.sub(r"^\[gfxrecon\] WARNING - API call at index: [0-9]+ thread: [0-9]+ vk[A-Za-z0-9_]+ returned error value VK_SUCCESS that does not match the result from the capture file: VK_ERROR_[A-Z_]+\.\s*$", "", stdout, flags=re.M)
@@ -123,7 +130,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--name", required=True)
     parser.add_argument("--hypothesis", required=True)
-    parser.add_argument("--expect", required=True, help="Required success regex in command.log")
+    parser.add_argument("--expect", required=True, help="Required success regex in command.log or retained application.log")
     parser.add_argument("--seconds", type=int, default=40, choices=range(1, 1801), metavar="1..1800",
                         help="Runs over 40s require the qualified GPU-retirement watchdog guard")
     parser.add_argument("command", nargs=argparse.REMAINDER,

@@ -299,13 +299,25 @@ hk_dispatch_g17p_native_linked(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
                  "G17P root range must cover every Honeykrisp set");
 
    if (!agx_chip_uses_hal200_ioto(dev->dev.chip) || cs->type != HK_CS_CDM ||
-       !hk_g17p_compute_shader_supported(s, linked) ||
-       agx_is_indirect(grid)) {
+       !hk_g17p_compute_shader_supported(s, linked)) {
+      mesa_loge("HAL200 compute rejected api-stage=%u compiled-stage=%u cs=%u "
+                "indirect=%u size=%zu gprs=%u preamble=%u scratch=%u/%u "
+                "staging=%u local=%u tex=%u sampler=%u heap=%u txf=%u "
+                "indexed=%u sets=%u",
+                s->info.stage, s->b.info.stage, cs->type, agx_is_indirect(grid),
+                linked ? linked->b.size : 0, linked ? linked->b.nr_gprs : 0,
+                s->b.info.has_preamble, s->b.info.preamble_scratch_size,
+                linked ? linked->b.scratch_size : 0, s->b.info.agx3_staging_known,
+                s->b.info.local_size, s->b.info.texture_state_count,
+                s->b.info.sampler_state_count, s->b.info.uses_sampler_heap,
+                linked ? linked->b.uses_txf : 0,
+                s->info.agx3_indexed_sampler_valid, s->info.set_count);
       vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
       return;
    }
 
-   if (grid.count[0] == 0 || grid.count[1] == 0 || grid.count[2] == 0)
+   if (!agx_is_indirect(grid) &&
+       (grid.count[0] == 0 || grid.count[1] == 0 || grid.count[2] == 0))
       return;
 
    if (s->data_size != 0) {
@@ -380,6 +392,7 @@ hk_dispatch_g17p_native_linked(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
              * including when the PBE pointer is supplied by the shader. */
             pointers[3] = 0xffff;
             pointer_count = 4;
+
          }
          texture_pointers = hk_pool_upload(
             cmd, pointers, pointer_count * sizeof(pointers[0]), 8);
@@ -715,8 +728,17 @@ hk_dispatch_g17p_native_linked(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
       .data = (uint8_t *)cs->current,
       .capacity = (uint8_t *)cs->end - (uint8_t *)cs->current,
    };
-   if (!hk_agx3_g17p_native_compute_dispatch_append(&program.launch, &direct,
-                                                     &sink)) {
+   bool appended;
+   if (agx_is_indirect(grid)) {
+      const uint32_t local[3] = {local_size.x, local_size.y, local_size.z};
+      appended = agx3_hal200_indirect_compute_append(
+         &program.launch, grid.ptr,
+         grid.mode == AGX_CDM_MODE_INDIRECT_LOCAL ? NULL : local, &sink);
+   } else {
+      appended = hk_agx3_g17p_native_compute_dispatch_append(
+         &program.launch, &direct, &sink);
+   }
+   if (!appended) {
       vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
       return;
    }
@@ -804,6 +826,18 @@ dispatch(struct hk_cmd_buffer *cmd, struct agx_grid grid)
       grid.count[0] *= local_size.x;
       grid.count[1] *= local_size.y;
       grid.count[2] *= local_size.z;
+   } else if (agx_chip_uses_hal200_ioto(hk_cmd_buffer_device(cmd)->dev.chip)) {
+      /* Vulkan stores group counts; native CDM consumes global thread counts.
+       * Convert on the GPU, ordered in this same compute stream. Preserve
+       * root.cs.group_count_addr for shaders reading gl_NumWorkGroups. */
+      struct agx_ptr geometry = hk_pool_alloc(cmd, 3 * sizeof(uint32_t), 4);
+      if (!geometry.gpu)
+         return;
+      libagx_d3d12_indirect_dispatch(cmd, agx_1d(1), AGX_BARRIER_ALL,
+         geometry.gpu, grid.ptr, local_size.x, local_size.y, local_size.z);
+      hk_ensure_cs_has_space(cmd, cs, AGX3_CDM_BARRIER_SIZE);
+      hk_cdm_cache_flush(hk_cmd_buffer_device(cmd), cs);
+      grid = agx_grid_indirect(geometry.gpu);
    }
 
    hk_dispatch_with_local_size(cmd, cs, s, grid, local_size);

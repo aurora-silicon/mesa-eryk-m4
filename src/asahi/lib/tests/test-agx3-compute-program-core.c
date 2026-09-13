@@ -899,10 +899,51 @@ test_g17p_usc_window_va_is_encoded_without_constants(void)
    return true;
 }
 
+static bool
+test_m4_indirect_geometry(void)
+{
+   struct agx3_compute_program p = {
+      .chip = AGX_CHIP_G16G, .program_va = UINT64_C(0x100000c0100),
+      .g17p_native_compute_live_bound = true,
+      .launch_template = {.word0 = 0x80000, .word1 = 0},
+   };
+   /* Native M4 25G83, compute-dimensions/052, resource31+0x2c. */
+   const uint32_t native[] = {0x10080000, 0x01000000, 0x3004, 0x40000001,
+                             0x100, 0x1114c0, 0x60000160};
+   uint8_t bytes[80];
+   memset(bytes, 0xa5, sizeof(bytes));
+   struct agx3_compute_dispatch_sink sink = {
+      .data = bytes, .capacity = sizeof(bytes), .length = 4,
+   };
+   CHECK(agx3_hal200_indirect_compute_append(
+      &p, UINT64_C(0x100001114c0), NULL, &sink));
+   CHECK(sink.length == 32);
+   CHECK(memcmp(bytes + 4, native, sizeof(native)) == 0);
+   CHECK(bytes[0] == 0xa5 && bytes[32] == 0xa5);
+   p.program_va = UINT64_C(0x11fffc0100);
+   const uint32_t local[3] = {4, 2, 2};
+   sink.length = 0;
+   CHECK(agx3_hal200_indirect_compute_append(&p, 0x1234567800, local, &sink));
+   CHECK(sink.length == 40);
+   CHECK(load_le32(bytes) == 0x08080000);
+   CHECK(load_le32(bytes + 12) == 0x40000000);
+   CHECK(load_le32(bytes + 16) == 0x12);
+   CHECK(load_le32(bytes + 20) == 0x34567800);
+   CHECK(memcmp(bytes + 24, local, sizeof(local)) == 0);
+   uint8_t before[80]; memcpy(before, bytes, sizeof(bytes));
+   sink.length = 0;
+   const uint32_t invalid[3] = {1, 0, 1};
+   CHECK(!agx3_hal200_indirect_compute_append(&p, 0x1000, invalid, &sink));
+   CHECK(!agx3_hal200_indirect_compute_append(&p, 0x1001, local, &sink));
+   CHECK(!agx3_hal200_indirect_compute_append(&p, UINT64_C(1) << 48, local, &sink));
+   CHECK(sink.length == 0 && memcmp(bytes, before, sizeof(bytes)) == 0);
+   return true;
+}
+
 int
 main(void)
 {
-   if (!test_prepare_and_launch() || !test_a18_pro_one_dimensional_launch() ||
+   if (!test_m4_indirect_geometry() || !test_prepare_and_launch() || !test_a18_pro_one_dimensional_launch() ||
        !test_g17p_native_compute_join() ||
        !test_g17p_usc_window_va_is_encoded_without_constants() ||
        !test_g17p_direct_add3_program_join() ||

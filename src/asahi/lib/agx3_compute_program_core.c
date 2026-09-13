@@ -533,3 +533,60 @@ agx3_compute_program_pack_direct_launch(
 
    return agx3_cdm_direct_launch_pack(&launch, packed);
 }
+
+/* The M4 25G83 compute-dimensions corpus resource31+0x2c is the compact
+ * indirect launch (0x10080000). The preceding direct record runs the geometry
+ * producer, not the application shader. The fixed-local form is grounded by
+ * G16 performEnqueueKernel 0x2147b8790 and keeps mode=1 at bits27..28. */
+bool
+agx3_hal200_indirect_compute_append(
+   const struct agx3_compute_program *program, uint64_t geometry_va,
+   const uint32_t local_size[3], struct agx3_compute_dispatch_sink *sink)
+{
+   const size_t record_size = local_size ? AGX3_CDM_INDIRECT_LAUNCH_36_SIZE
+                                         : AGX3_CDM_INDIRECT_LAUNCH_SIZE;
+   const size_t length = record_size + AGX3_CDM_BARRIER_SIZE;
+   if (!program || !sink || !sink->data || sink->length > sink->capacity ||
+       length > sink->capacity - sink->length ||
+       !agx_chip_uses_hal200_ioto(program->chip) ||
+       !program->g17p_native_compute_live_bound || !program->program_va ||
+       !geometry_va || (geometry_va & 3))
+      return false;
+
+   uint8_t staged[AGX3_CDM_INDIRECT_LAUNCH_36_SIZE + AGX3_CDM_BARRIER_SIZE];
+   uint32_t control = UINT32_C(0x40000000) |
+      (uint32_t)((program->program_va >> 40) & 0xff);
+   bool packed;
+   if (local_size) {
+      if (!local_size[0] || !local_size[1] || !local_size[2])
+         return false;
+      const struct agx3_cdm_indirect_launch_36_info info = {
+         .chip = program->chip,
+         .word0_payload = program->launch_template.word0 | UINT32_C(0x08000000),
+         .word1_payload = program->launch_template.word1,
+         .pipeline = program->program_va,
+         .opaque_word3 = control,
+         .indirect_parameters = geometry_va,
+         .trailing_words = {local_size[0], local_size[1], local_size[2]},
+      };
+      packed = agx3_cdm_indirect_launch_36_pack(&info, staged);
+   } else {
+      const struct agx3_cdm_indirect_launch_info info = {
+         .chip = program->chip,
+         .word0_payload = program->launch_template.word0 | UINT32_C(0x10000000),
+         .word1_payload = program->launch_template.word1,
+         .pipeline = program->program_va,
+         .opaque_word3 = control,
+         .indirect_parameters = geometry_va,
+      };
+      packed = agx3_cdm_indirect_launch_pack(&info, staged);
+   }
+   const struct agx3_cdm_barrier_info barrier = {
+      .chip = program->chip, .flags = 0,
+   };
+   if (!packed || !agx3_cdm_barrier_pack(&barrier, staged + record_size))
+      return false;
+   memcpy(sink->data + sink->length, staged, length);
+   sink->length += length;
+   return true;
+}

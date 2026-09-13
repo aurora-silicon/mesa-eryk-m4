@@ -266,6 +266,14 @@ bool agx3_compute_program_pack_direct_launch(
    const struct agx3_compute_direct_grid *grid,
    uint8_t packed[AGX3_CDM_DIRECT_LAUNCH_SIZE]);
 
+/* Native indirect launch consuming geometry already produced by the GPU.
+ * local_size selects the three-word global-count / inline-local-size form;
+ * NULL selects a six-word global+local geometry buffer. */
+bool agx3_hal200_indirect_compute_append(
+   const struct agx3_compute_program *program, uint64_t geometry_va,
+   const uint32_t local_size[3], struct agx3_compute_dispatch_sink *sink);
+
 #ifdef __cplusplus
 }
 #endif
+
