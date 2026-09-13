@@ -311,3 +311,15 @@ Selection 7 is the already documented historical CTS read-layout typo in
 vktYCbCrUtil.cpp:623. The original binary remains Fail. The separately repaired
 binary passes: 20260913T123413913719Z-cts-third20-corrected-ycbcr.
 Do not count this adapted result as an original CTS pass. Kernel unchanged.
+
+Fourth sample: seed 20260916, 20 cases, same population/method.
+20260913T123458321106Z-cts-fourth20-000: 13 Pass, 4 NotSupported, 3 Fail.
+Failure order 2, 1, 8. Selection and results retained in sample-20260916/fourth20.
+
+Selection 2: storage cubes and cube arrays use integer face coordinates with
+2D array read/PBE descriptors. Admit those views and lower loads/stores with
+that dimensionality while retaining format/access and layer bounds checks.
+20260913T123638923984Z-cts-cube-storage-array: original test Pass.
+20260913T123726566876Z-cts-storage-cube-control: non-array cube control Pass.
+Final library edc41bae6143f237caadb9c8f033327b69cc6300883031e320c30e23bab3a381.
+Full watchdog and thermal guards; kernel unchanged.

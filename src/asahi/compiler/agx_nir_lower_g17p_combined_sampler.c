@@ -378,8 +378,12 @@ agx_nir_lower_g17p_indexed_samplers(nir_shader *shader)
             if (intr->intrinsic != nir_intrinsic_bindless_image_load)
                continue;
             nir_intrinsic_instr *handle = nir_src_as_intrinsic(intr->src[0]);
-            const enum glsl_sampler_dim dim = nir_intrinsic_image_dim(intr);
-            const bool array = nir_intrinsic_image_array(intr);
+            /* Storage cubes address an integer face/layer, not a sampling
+             * direction. Their read descriptors are ordinary 2D arrays. */
+            const enum glsl_sampler_dim image_dim = nir_intrinsic_image_dim(intr);
+            const bool cube = image_dim == GLSL_SAMPLER_DIM_CUBE;
+            const enum glsl_sampler_dim dim = cube ? GLSL_SAMPLER_DIM_2D : image_dim;
+            const bool array = cube || nir_intrinsic_image_array(intr);
             const unsigned coords = (array || dim == GLSL_SAMPLER_DIM_3D) ? 3 : 2;
             if (!handle || handle->intrinsic != nir_intrinsic_bindless_image_agx ||
                 (dim != GLSL_SAMPLER_DIM_2D && dim != GLSL_SAMPLER_DIM_3D) ||
@@ -833,12 +837,13 @@ agx_nir_lower_g17p_bindless_storage(nir_shader *shader)
             nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
             if (intr->intrinsic != nir_intrinsic_bindless_image_store)
                continue;
+            const bool cube = nir_intrinsic_image_dim(intr) == GLSL_SAMPLER_DIM_CUBE;
             const enum pipe_format format = nir_intrinsic_format(intr);
             nir_intrinsic_instr *handle = nir_src_as_intrinsic(intr->src[0]);
             if (!handle || handle->intrinsic != nir_intrinsic_bindless_image_agx ||
                 (nir_intrinsic_image_dim(intr) != GLSL_SAMPLER_DIM_2D &&
-                 nir_intrinsic_image_dim(intr) != GLSL_SAMPLER_DIM_3D) ||
-                (nir_intrinsic_image_array(intr) &&
+                 nir_intrinsic_image_dim(intr) != GLSL_SAMPLER_DIM_3D && !cube) ||
+                (nir_intrinsic_image_array(intr) && !cube &&
                  nir_intrinsic_image_dim(intr) != GLSL_SAMPLER_DIM_2D) ||
                 (format != PIPE_FORMAT_R32_UINT &&
                  format != PIPE_FORMAT_R8G8B8A8_UINT &&
@@ -861,6 +866,12 @@ agx_nir_lower_g17p_bindless_storage(nir_shader *shader)
                    nir_intrinsic_src_type(intr) == nir_type_float32)) ||
                 (nir_intrinsic_access(intr) & (ACCESS_COHERENT | ACCESS_VOLATILE)))
                continue;
+            /* Storage cube coordinates address faces as ordinary array
+             * layers, including a non-array cube's six faces. */
+            if (cube) {
+               nir_intrinsic_set_image_dim(intr, GLSL_SAMPLER_DIM_2D);
+               nir_intrinsic_set_image_array(intr, true);
+            }
             b.cursor = nir_before_instr(instr);
             nir_def *set = nir_load_descriptor_set_agx(&b, nir_intrinsic_desc_set(handle));
             if (nir_intrinsic_image_array(intr)) {

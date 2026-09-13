@@ -181,6 +181,8 @@ write_storage_image_view_desc(struct hk_descriptor_set *set,
           view->vk.view_type == VK_IMAGE_VIEW_TYPE_1D_ARRAY ||
           view->vk.view_type == VK_IMAGE_VIEW_TYPE_2D ||
           view->vk.view_type == VK_IMAGE_VIEW_TYPE_3D ||
+          view->vk.view_type == VK_IMAGE_VIEW_TYPE_CUBE ||
+          view->vk.view_type == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY ||
           view->vk.view_type == VK_IMAGE_VIEW_TYPE_2D_ARRAY) &&
          view->planes[0].storage_pbe_valid &&
          (generation != 9 || view->planes[0].storage_software_valid);
