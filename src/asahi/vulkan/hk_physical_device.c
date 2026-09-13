@@ -689,15 +689,17 @@ hk_get_device_features(
    };
 
    if (agx_chip_uses_hal200_ioto(dev->chip)) {
-      /* The first HAL200 path is intentionally one ordinary, single-sample
-       * graphics pipeline. Keep optional feature reporting within that path
-       * until the corresponding joined Ioto programs are implemented. */
-      features->geometryShader = false;
+      /* G16G has qualified generated geometry draws, vertex scratch/stores
+       * and fragment helper coverage/atomics. Retain the other HAL200 chip's
+       * feature boundary until it is independently qualified. */
+      const bool graphics_storage = dev->chip == AGX_CHIP_G16G;
+      features->geometryShader = graphics_storage;
       features->tessellationShader = false;
       features->sampleRateShading = false;
       features->pipelineStatisticsQuery = false;
-      features->vertexPipelineStoresAndAtomics = false;
-      features->fragmentStoresAndAtomics = false;
+      features->vertexPipelineStoresAndAtomics =
+         graphics_storage && instance->vertex_stores;
+      features->fragmentStoresAndAtomics = graphics_storage;
       features->shaderTessellationAndGeometryPointSize = false;
       features->shaderResourceResidency = false;
       features->shaderResourceMinLod = false;

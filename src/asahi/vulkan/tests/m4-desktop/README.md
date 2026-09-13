@@ -1975,3 +1975,15 @@ OUTPUT_SELECT packet must preserve vertex point-size export bit18; otherwise
 these points produce no fragments. Point coordinates come from the rasterizer,
 not a vertex UVS slot. The saved Blender host shim replay now records all nine
 frames without a rejection; that shim result executes no GPU work.
+
+### G16G graphics feature reporting
+
+G16G now advertises the implemented geometry and fragment storage paths without
+an experimental feature override. Vertex storage retains Honeykrisp's upstream
+DRI opt-in policy (introduced for vertex timeout reliability on M1); the G16G
+chip restriction no longer suppresses that opt-in. Other HAL200 chips retain
+their existing feature boundary. This is not a full Vulkan conformance claim.
+`20260913T002518030119Z-graphics-features-default-geometry-fragment` passes
+vertex and odd-size fragment storage/atomics with exact 64-byte guards, indexed
+geometry amplification and variable geometry emission; peak55.75 C. Only the
+vertex test sets `hk_enable_vertex_pipeline_stores_atomics=true`.
