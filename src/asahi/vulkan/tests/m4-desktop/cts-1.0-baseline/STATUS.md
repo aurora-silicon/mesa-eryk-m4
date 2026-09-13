@@ -275,3 +275,10 @@ Pass:20260913T122512368139Z-cts-raw-1d-image-copy. Full guards, library
 3c8e213536fa89bf3c49df4730caee81c3721389a8b6c0c835f1180092e146d6.
 Copying between different image types remains a separate unsupported path.
 Kernel unchanged; copy data stays on the GPU.
+
+Random sample selection19: admit RGBA8 signed storage writes through the
+native I8 write operation, with channel layout supplied by the PBE descriptor.
+20260913T122617830487Z-cts-rgba8-signed-store: original CTS Pass,
+peak59.25 C, full watchdog and thermal guards. Library
+534d34a2ab0705a3ef3e3daca4f291fb86927fd28febea9baf67fcb1cc5dae59.
+Kernel unchanged.
