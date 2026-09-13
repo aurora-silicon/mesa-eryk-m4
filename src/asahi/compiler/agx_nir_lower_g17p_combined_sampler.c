@@ -427,7 +427,8 @@ agx_nir_lower_g17p_indexed_samplers(nir_shader *shader)
                continue;
             nir_tex_instr *tex = nir_instr_as_tex(instr);
             const bool fetch = g17p_indexed_fetch_shape(
-               tex, shader->info.stage == MESA_SHADER_FRAGMENT);
+               tex, shader->info.stage == MESA_SHADER_FRAGMENT ||
+                    shader->info.stage == MESA_SHADER_COMPUTE);
             /* Vertex fetches use explicit integer coordinates and LOD zero;
              * implicit sampling requires fragment derivatives.
              */
@@ -834,6 +835,7 @@ agx_nir_lower_g17p_bindless_storage(nir_shader *shader)
                  nir_intrinsic_image_dim(intr) != GLSL_SAMPLER_DIM_2D) ||
                 (format != PIPE_FORMAT_R32_UINT &&
                  format != PIPE_FORMAT_R8G8B8A8_UINT &&
+                 format != PIPE_FORMAT_R16G16B16A16_SINT &&
                  format != PIPE_FORMAT_R32G32B32A32_UINT &&
                  format != PIPE_FORMAT_R11G11B10_FLOAT &&
                  format != PIPE_FORMAT_R32_FLOAT &&

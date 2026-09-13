@@ -942,7 +942,8 @@ agx3_emit_storage_image_write(struct util_dynarray *emission,
                            I->format == AGX_FORMAT_U16NORM;
    /* Integer writes consume four U32 lanes; the PBE descriptor supplies the
     * destination channel width, including RGBA8_UINT. */
-   const bool integer = I->format == AGX_FORMAT_I8 || I->format == AGX_FORMAT_I32;
+   const bool integer = I->format == AGX_FORMAT_I8 ||
+                        I->format == AGX_FORMAT_I16 || I->format == AGX_FORMAT_I32;
    const bool direct = I->nr_srcs == 5 && (normalized || integer) &&
       (I->src[4].type == AGX_INDEX_REGISTER || I->src[4].type == AGX_INDEX_UNIFORM) &&
       I->src[4].size == AGX_SIZE_64 && agx_channels(I->src[4]) == 1 &&

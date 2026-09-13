@@ -1798,6 +1798,16 @@ test_indexed_compute_storage_format(enum pipe_format format, bool gather, bool d
    tex->src[3] = gather ?
       nir_tex_src_for_ssa(nir_tex_src_backend2, nir_imm_int(&b, array ? 0x88 : 0x11)) :
       nir_tex_src_for_ssa(nir_tex_src_lod, nir_imm_float(&b, 0.0f));
+   const bool signed_integer = format == PIPE_FORMAT_R16G16B16A16_SINT;
+   if (signed_integer) {
+      tex->op = nir_texop_txf;
+      tex->dest_type = nir_type_int32;
+      tex->src[0] = nir_tex_src_for_ssa(nir_tex_src_coord,
+                                       nir_trim_vector(&b, gid, 2));
+      tex->src[2] = nir_tex_src_for_ssa(nir_tex_src_lod,
+                                       nir_channel(&b, gid, 2));
+      tex->num_srcs = 3;
+   }
    nir_def_init(&tex->instr, &tex->def, 4, 32);
    nir_builder_instr_insert(&b, &tex->instr);
 
@@ -1806,8 +1816,10 @@ test_indexed_compute_storage_format(enum pipe_format format, bool gather, bool d
    nir_def *pbe = nir_bindless_image_agx(
       &b, nir_imm_int(&b, 176), .desc_set = 0);
    const bool integer = format == PIPE_FORMAT_R8G8B8A8_UINT;
-   const nir_alu_type type = integer ? nir_type_uint32 : nir_type_float32;
-   nir_def *data = integer ? nir_f2u32(&b, &tex->def) :
+   const nir_alu_type type = signed_integer ? nir_type_int32 :
+                             integer ? nir_type_uint32 : nir_type_float32;
+   nir_def *data = signed_integer ? &tex->def :
+                    integer ? nir_f2u32(&b, &tex->def) :
                             nir_fadd_imm(&b, &tex->def, 0.25f);
    nir_bindless_image_store(
       &b, pbe, coord, zero, data, zero, .image_dim = GLSL_SAMPLER_DIM_2D,
@@ -2773,6 +2785,13 @@ main(int argc, char **argv)
          "fs-depth-write", build_fs_depth, true, .g17p_only = true,
       };
       return run_case(&c, AGX_ISA_ENCODING_AGX3B) ? 0 : 1;
+   }
+   if (argc == 2 && !strcmp(argv[1], "--compute-lod-store-only")) {
+      const bool ok = test_indexed_compute_storage_format(
+         PIPE_FORMAT_R16G16B16A16_SINT, false, true, false);
+      printf("compute integer runtime-LOD fetch and signed-16 store: %s\n",
+             ok ? "PASS" : "FAIL");
+      return ok ? 0 : 1;
    }
    if (argc == 2 && !strcmp(argv[1], "--array-gather-only")) {
       const bool ok = test_indexed_compute_storage_format(

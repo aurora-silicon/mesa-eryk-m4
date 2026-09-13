@@ -139,3 +139,12 @@ peak58.75 C, full guards. Library
 Tenth selection:index66 already passed with the plane-copy fix, using the
 original test (20260913T110850190124Z-cts-plane-copy-regression, local index4).
 Continue to original index19; no extra source change needed for66.
+
+Eleventh selection:index19, extended compressed-block texel views with a
+runtime compute mip level and signed RGBA16 store. Allow the existing native
+integer-LOD fetch in compute, lower signed RGBA16 storage descriptors and emit
+integer U32 input lanes with the PBE's signed16 destination format. Native
+witness:compiler/test/probes/README-g16g-integer-copy-lod.md.
+--compute-lod-store-only passes through the full NIR/IR/native compiler path.
+20260913T113435091246Z-cts-compute-lod-sint16-store:original case19 Pass,
+peak58.25 C, full guards, libraryc99775a2887dc8720b8d3a920f5f53daadc44c8f0d9a4527547534345ddcf060. Kernel unchanged.
