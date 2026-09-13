@@ -1,0 +1,38 @@
+[
+  {
+    "file": "text-c20.bin",
+    "macho_offset": 3104,
+    "offset": 3792,
+    "bytes": 238,
+    "section_index": 1,
+    "address": 0,
+    "symbols": [
+      {
+        "name": "_agc.main",
+        "offset": 64
+      },
+      {
+        "name": "_agc.main.constant_program",
+        "offset": 0
+      }
+    ]
+  },
+  {
+    "file": "text-13c0.bin",
+    "macho_offset": 5056,
+    "offset": 5824,
+    "bytes": 246,
+    "section_index": 1,
+    "address": 0,
+    "symbols": [
+      {
+        "name": "_agc.main",
+        "offset": 64
+      },
+      {
+        "name": "_agc.main.constant_program",
+        "offset": 0
+      }
+    ]
+  }
+]

@@ -1,0 +1,18 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.ycbcr.query.lod.fragment.g10x6_b10x6_r10x6_3plane_420_unorm_3pack16_khr_disjoint",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.ycbcr.query.lod.fragment.g10x6_b10x6_r10x6_3plane_420_unorm_3pack16_khr_disjoint",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T195252967166Z-cts-query-lod-native/cts/000/result.qpa"
+    ],
+    "boot_id": "e47102a9-42cd-480a-8918-bfe1840cca56",
+    "status": "Pass",
+    "message": "Queries passed",
+    "returncode": 0,
+    "seconds": 0.2079747299999326
+  }
+]

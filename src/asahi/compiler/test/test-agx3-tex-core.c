@@ -1097,7 +1097,7 @@ test_m4_register_bias(void)
    d.lod = AGX3_TEX_LOD_BIAS_REGISTER;
    d.three_d = false;
    d.array=true;
-   CHECK(!agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B,&d,bytes,&len));
+   CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B,&d,bytes,&len));
    d.array=false; d.shadow=true;
    CHECK(!agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B,&d,bytes,&len));
    return 0;
@@ -1474,9 +1474,48 @@ test_m4_cube_register_lod(void)
    return 0;
 }
 
+static int
+test_m4_array_bias_offset(void)
+{
+   /* Native G16G array-bias-offset.metal, text-13c0 +166/+184. */
+   const uint8_t pack[] = {0x17,0x05,0x54,0x06,0,0x0c,0x1c,0,0xf0,0xc0,0x25,0};
+   const uint8_t sample[] = {0x05,0x80,0x0c,0xb8,0xb0,0,0x81,3,1,0x78,0x10,0,1,2};
+   uint8_t out[AGX3_TEX_MAX_LENGTH], len;
+   CHECK(agx3_tex_stage_layer_lod(AGX_ISA_ENCODING_AGX3B,6,7,1,0,
+                                  true,false,false,out,&len));
+   CHECK(len == sizeof(pack) && !memcmp(out,pack,len));
+   struct agx3_tex_sample_desc d = {
+      .width=AGX3_TEX_W32, .mask=15, .slot=1, .wait_mask=1,
+      .coord_kill=true, .final=true, .array=true,
+      .sample_offset=0x2f, .lod=AGX3_TEX_LOD_BIAS_REGISTER,
+   };
+   CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+   CHECK(len == sizeof(sample) && !memcmp(out,sample,len));
+   return 0;
+}
+
+static int
+test_m4_query_lod(void)
+{
+   /* AIR-NT applegpu_g16g querylod.metal: fragment text-1210 +126. */
+   const uint8_t native[] = {0x05,0x80,0x0c,0xa8,0xb0,0,0,0,1,0,0x20,0,1,0};
+   struct agx3_tex_sample_desc d = {
+      .width=AGX3_TEX_W32, .mask=3, .slot=1, .wait_mask=1,
+      .coord_kill=true, .final=true, .query_lod=true, .lod=AGX3_TEX_LOD_AUTO,
+   };
+   uint8_t out[AGX3_TEX_MAX_LENGTH], len;
+   CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
+   CHECK(len == sizeof(native) && !memcmp(out, native, len));
+   d.cube = true;
+   CHECK(!agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
+   return 0;
+}
+
 int
 main(void)
 {
+   CHECK(test_m4_query_lod() == 0);
+   CHECK(test_m4_array_bias_offset() == 0);
    CHECK(test_m4_cube_register_lod() == 0);
    {
       uint8_t out[AGX3_TEX_MAX_LENGTH], len;

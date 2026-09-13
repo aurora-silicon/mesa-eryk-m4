@@ -15,8 +15,10 @@ g17p_sample_shape(const nir_tex_instr *tex)
    const bool three_d = tex->sampler_dim == GLSL_SAMPLER_DIM_3D;
    const bool cube = tex->sampler_dim == GLSL_SAMPLER_DIM_CUBE;
    const bool gather = tex->op == nir_texop_tg4;
+   const bool query = tex->op == nir_texop_lod;
    if ((tex->op != nir_texop_tex && tex->op != nir_texop_txb &&
-       tex->op != nir_texop_txl && !gather) ||
+       tex->op != nir_texop_txl && !gather && !query) ||
+       (query && (three_d || cube || tex->is_array || tex->is_shadow)) ||
        (gather && (cube || tex->is_shadow)) ||
        (tex->sampler_dim != GLSL_SAMPLER_DIM_2D && !three_d &&
         !(cube &&
@@ -31,7 +33,7 @@ g17p_sample_shape(const nir_tex_instr *tex)
        (tex->dest_type != nir_type_float32 &&
         tex->dest_type != nir_type_int32 &&
         tex->dest_type != nir_type_uint32) ||
-       tex->def.num_components != (tex->is_shadow ? 1 : 4) ||
+       tex->def.num_components != (query ? 2 : tex->is_shadow ? 1 : 4) ||
        tex->def.bit_size != 32)
       return false;
 
@@ -49,7 +51,7 @@ g17p_sample_shape(const nir_tex_instr *tex)
    const bool has_lod = nir_tex_instr_src_index(tex, nir_tex_src_lod) >= 0;
    const int compare = nir_tex_instr_src_index(tex, nir_tex_src_comparator);
    const int offset = nir_tex_instr_src_index(tex, nir_tex_src_backend2);
-   const bool literal_offset = !cube && (!tex->is_array || gather) &&
+   const bool literal_offset = !cube &&
       !tex->is_shadow && offset >= 0 &&
       nir_src_is_const(tex->src[offset].src) &&
       nir_src_as_uint(tex->src[offset].src) <= 0xff;
@@ -58,8 +60,15 @@ g17p_sample_shape(const nir_tex_instr *tex)
                         nir_src_num_components(tex->src[compare].src) != 1)) ||
        tex->num_srcs != ((has_bias || has_lod) ? 4 : 3) + tex->is_shadow + literal_offset ||
        has_lod != (tex->op == nir_texop_txl) ||
-       has_bias != (tex->op == nir_texop_txb))
+       (has_bias != (tex->op == nir_texop_txb) && !query))
       return false;
+
+   if (query && has_bias) {
+      int bias = nir_tex_instr_src_index(tex, nir_tex_src_bias);
+      if (!nir_src_is_const(tex->src[bias].src) ||
+          nir_src_as_float(tex->src[bias].src) != 0.0f)
+         return false;
+   }
 
    int coord = nir_tex_instr_src_index(tex, nir_tex_src_coord);
    if (coord < 0)
@@ -436,8 +445,9 @@ agx_nir_lower_g17p_indexed_samplers(nir_shader *shader)
                return false;
             if (!fetch && (!g17p_sample_shape(tex) ||
                            (tex->op != nir_texop_tex && tex->op != nir_texop_txl &&
+                            tex->op != nir_texop_lod &&
                             tex->op != nir_texop_tg4 &&
-                            !(tex->op == nir_texop_txb && !tex->is_array &&
+                            !(tex->op == nir_texop_txb &&
                               !tex->is_shadow && tex->sampler_dim == GLSL_SAMPLER_DIM_2D)))) {
                if (getenv("AGX_NATIVE_RESOURCE_DIAGNOSTICS")) {
                   fprintf(stderr, "Native indexed texture shape refused: op=%u dim=%u flags=%u coords=%u sources=%u\n",
@@ -469,6 +479,11 @@ agx_nir_lower_g17p_indexed_samplers(nir_shader *shader)
                continue;
             nir_tex_instr *tex = nir_instr_as_tex(instr);
             b.cursor = nir_before_instr(instr);
+            /* The native sampler supplies its own bias. Query lowering adds
+             * a zero software bias; remove only that validated no-op source. */
+            if (tex->op == nir_texop_lod &&
+                nir_tex_instr_src_index(tex, nir_tex_src_bias) >= 0)
+               nir_steal_tex_src(tex, nir_tex_src_bias);
             nir_intrinsic_instr *image = nir_src_as_intrinsic(
                tex->src[nir_tex_instr_src_index(tex, nir_tex_src_texture_handle)].src);
             const bool fetch = tex->op == nir_texop_txf || tex->op == nir_texop_txf_ms;

@@ -119,3 +119,16 @@ control-stream boundaries then publish writes before later graphics consumers
 and submission completion. Framebuffer-only renders do not add this barrier.
 No shader is replayed on the CPU and no stores or comparisons are removed.
 This establishes the required cache operation, not optimized range tracking.
+
+## Native LOD queries and array bias/offset sampling
+
+Original index 763 Pass in `20260913T195252967166Z-cts-query-lod-native`:
+use the native two-result LOD query opcode fields, preserving the sampler's
+clamped/unclamped results. Remove only the validated zero software bias source.
+Original index 994 Pass in `20260913T195753105570Z-cts-array-offset-width`:
+pack array layer and register bias together, and preserve constant signed XY
+offsets through register allocation and validation. The original image comparison
+passes. Native compiler sources, identity and text witnesses are retained in
+`native-querylod/` and `native-array-bias-offset/`; texture-core unit tests match
+both native instruction sequences byte for byte (6,283 checks pass).
+Both guarded tests peaked at 56.75 C without GPU faults.

@@ -370,8 +370,7 @@ agx_read_registers(const agx_context *ctx, const agx_instr *I, unsigned s)
          if (ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
              I->op == AGX_OPCODE_TEXTURE_SAMPLE &&
              I->offset && !I->shadow &&
-             (I->dim == AGX_DIM_2D ||
-              (I->dim == AGX_DIM_2D_ARRAY && I->gather != AGX_GATHER_NONE)) &&
+             (I->dim == AGX_DIM_2D || I->dim == AGX_DIM_2D_ARRAY) &&
              I->src[s].type == AGX_INDEX_IMMEDIATE)
             return size;
          return 2 * ((!!I->shadow) + (!!I->offset));

@@ -1056,7 +1056,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
    const bool cube = I->dim == AGX_DIM_CUBE || I->dim == AGX_DIM_CUBE_ARRAY;
    const bool shadow = I->shadow;
    const bool gather = I->gather != AGX_GATHER_NONE;
-   const bool sample_offset = !shadow && (!array || gather) && !cube && I->offset &&
+   const bool sample_offset = !shadow && !cube && I->offset &&
       I->src[5].type == AGX_INDEX_IMMEDIATE && I->src[5].value <= 0xff;
    const bool valid_compare = shadow ?
       (enc == AGX_ISA_ENCODING_AGX3B && !cube &&
@@ -1099,12 +1099,12 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
          I->src[3].size != AGX_SIZE_64 || I->src[4].size != AGX_SIZE_64 ||
          agx_channels(I->src[3]) != 1 || agx_channels(I->src[4]) != 1 ||
          (I->src[3].value & 1) || (I->src[4].value & 1))) ||
-       !valid_compare || (bias && (array || cube || shadow || gather)) ||
+       !valid_compare || (bias && (cube || shadow || gather)) ||
        (cube && array && explicit_lod && !immediate_lod) ||
        (I->dim != AGX_DIM_2D && I->dim != AGX_DIM_2D_ARRAY && !cube && !three_d) ||
        (array && enc != AGX_ISA_ENCODING_AGX3B) ||
        (I->mask == 0 || (I->mask & ~15u)) ||
-       (I->offset && !sample_offset) || I->query_lod ||
+       (I->offset && !sample_offset) ||
        (gather && (enc != AGX_ISA_ENCODING_AGX3B || shadow || cube ||
                    explicit_lod || I->mask != 15)) || I->sparse)
       return false;
@@ -1130,7 +1130,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
    uint8_t bytes[AGX3_TEX_MAX_LENGTH];
    uint8_t len = 0;
 
-   const bool array_lod = (array || cube) && explicit_lod && !immediate_lod;
+   const bool array_lod = (array || cube) && (explicit_lod || bias) && !immediate_lod;
    if (array_lod) {
       if (!agx3_tex_stage_layer_lod(enc, I->src[0].value + 4,
                                    I->src[1].value, stage_slot, wait_mask,
@@ -1219,6 +1219,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
       .final = final,
       .retain_helpers = retain_helpers,
       .shadow = shadow,
+      .query_lod = I->query_lod,
       .gather = gather,
       .gather_component = gather ? (I->gather - AGX_GATHER_R) / 2 : 0,
       .sample_offset = sample_offset ? I->src[5].value : 0,

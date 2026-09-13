@@ -169,6 +169,12 @@ sample_ok(enum agx_isa_encoding enc, const struct agx3_tex_sample_desc *d)
        d->texture > 15 || d->sampler > 15)
       return false;
 
+   if (d->query_lod &&
+       (enc != AGX_ISA_ENCODING_AGX3B || d->array || d->cube || d->three_d ||
+        d->shadow || d->gather || d->sample_offset || d->mask != 3 ||
+        d->width != AGX3_TEX_W32 || d->lod != AGX3_TEX_LOD_AUTO))
+      return false;
+
    if (d->three_d && (enc != AGX_ISA_ENCODING_AGX3B || d->array ||
                        d->cube || d->shadow || d->gather || d->sample_offset ||
                        (d->lod != AGX3_TEX_LOD_LEVEL &&
@@ -178,14 +184,15 @@ sample_ok(enum agx_isa_encoding enc, const struct agx3_tex_sample_desc *d)
       return false;
 
    if (d->lod == AGX3_TEX_LOD_BIAS_REGISTER &&
-       (enc != AGX_ISA_ENCODING_AGX3B || d->array || d->cube || d->shadow || d->gather))
+       (enc != AGX_ISA_ENCODING_AGX3B || d->cube || d->shadow || d->gather))
       return false;
 
    /* G16G sample(level(0), int2(-1,2)) uses the same packed signed
     * nibbles as gather. Native indexed array gather(-8,-8) also uses f43.
-    * Array ordinary samples, cube and shadow offsets remain unqualified. */
+    * Native array bias samples use the same field. Cube and shadow offsets
+    * remain unqualified. */
    if (d->sample_offset &&
-       (enc != AGX_ISA_ENCODING_AGX3B || (d->array && !d->gather) ||
+       (enc != AGX_ISA_ENCODING_AGX3B ||
         d->cube || d->shadow))
       return false;
 
@@ -269,7 +276,7 @@ agx3_tex_encode_sample(enum agx_isa_encoding enc,
    base[nb++] = (struct agx3_field_kv)KV(23, 5);
    base[nb++] = (struct agx3_field_kv)KV(38, 1);
    base[nb++] = (struct agx3_field_kv)KV(52, 1);
-   base[nb++] = (struct agx3_field_kv)KV(74, !d->shadow && !d->gather);
+   base[nb++] = (struct agx3_field_kv)KV(74, !d->shadow && !d->gather && !d->query_lod);
    base[nb++] = (struct agx3_field_kv)KV(89, 3);
    base[nb++] = (struct agx3_field_kv)KV(90, 3);
    base[nb++] = (struct agx3_field_kv)KV(103, tk);
@@ -297,6 +304,8 @@ agx3_tex_encode_sample(enum agx_isa_encoding enc,
    ov[n++] = (struct agx3_field_kv)KV(75, d->mask);
    ov[n++] = (struct agx3_field_kv)KV(76, d->cube ? 4 : d->three_d ? 3 : 1);
    ov[n++] = (struct agx3_field_kv)KV(78, 2);  /* filtered sample */
+   if (d->query_lod)
+      ov[n++] = (struct agx3_field_kv)KV(146, 1);
    if (d->gather) {
       ov[n++] = (struct agx3_field_kv)KV(144, 1);
       ov[n++] = (struct agx3_field_kv)KV(145, d->gather_component);

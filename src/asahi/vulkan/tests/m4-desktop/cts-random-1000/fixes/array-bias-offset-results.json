@@ -1,0 +1,18 @@
+[
+  {
+    "index": 2,
+    "case": "dEQP-VK.glsl.texture_functions.textureoffset.usampler2darray_bias_fragment",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+      "--deqp-case=dEQP-VK.glsl.texture_functions.textureoffset.usampler2darray_bias_fragment",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T195753105570Z-cts-array-offset-width/cts/002/result.qpa"
+    ],
+    "boot_id": "e47102a9-42cd-480a-8918-bfe1840cca56",
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.20803971199984517
+  }
+]

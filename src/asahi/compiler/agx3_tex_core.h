@@ -151,6 +151,7 @@ struct agx3_tex_sample_desc {
    bool final;          /* witnessed final texture-op marker */
    bool retain_helpers; /* AGX3B: keep helper coordinates for later samples */
    bool shadow;         /* M4: scalar depth compare, reference in staging half4 */
+   bool query_lod;      /* M4 2D clamped/unclamped LOD query. */
    bool gather;         /* Four neighbouring texels from one colour channel. */
    uint8_t gather_component;
    uint8_t sample_offset; /* Signed x/y nibbles, as in NIR's packed offset. */
