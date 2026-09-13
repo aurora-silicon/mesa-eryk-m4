@@ -694,7 +694,7 @@ hk_get_device_features(
        * feature boundary until it is independently qualified. */
       const bool graphics_storage = dev->chip == AGX_CHIP_G16G;
       features->geometryShader = graphics_storage;
-      features->tessellationShader = false;
+      features->tessellationShader = graphics_storage;
       features->sampleRateShading = false;
       features->pipelineStatisticsQuery = false;
       features->vertexPipelineStoresAndAtomics = graphics_storage;

@@ -961,8 +961,14 @@ hk_reserve_scratch(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
 static bool
 hk_g17p_basic_fragment_layout(struct hk_cmd_buffer *cmd)
 {
-   struct agx_tilebuffer_layout *tib = &cmd->state.gfx.render.tilebuffer;
-   return hk_agx3_g17p_rt0_tile_layout_supported(tib);
+   struct agx_tilebuffer_layout tib = cmd->state.gfx.render.tilebuffer;
+   if (!tib.nr_samples && !tib.sample_size_B &&
+       cmd->vk.dynamic_graphics_state.rs.rasterizer_discard_enable) {
+      /* The native null fragment program needs a valid launch descriptor.
+       * Keep the render state's sample count deferred for later draws. */
+      agx_tilebuffer_set_samples(&tib, 1);
+   }
+   return hk_agx3_g17p_rt0_tile_layout_supported(&tib);
 }
 
 /* Keep native interpolation bounded to the f32 UVS layout already supported
@@ -987,7 +993,6 @@ hk_g17p_smooth_varyings_supported(struct hk_cmd_buffer *cmd,
    const struct hk_shader *vs = gfx->shaders[MESA_SHADER_VERTEX]
       ? hk_bound_hw_vs(&cmd->state.gfx) : NULL;
    if (!vs ||
-       gfx->shaders[MESA_SHADER_TESS_EVAL] ||
        cf->nr_bindings > HK_AGX3_G17P_MAX_USER_WORDS + 2 ||
        cf->nr_cf > HK_AGX3_G17P_MAX_USER_WORDS + 2 ||
        vs->agx3_vdm_state_update.source_layout !=
@@ -1192,7 +1197,9 @@ hk_g17p_graphics_uniform_ranges(
             .address = root_ptr + hk_root_descriptor_offset(draw.blend_constant),
          };
       }
-   } else if (s->info.stage != MESA_SHADER_GEOMETRY) {
+   } else if (s->info.stage != MESA_SHADER_GEOMETRY &&
+              s->info.stage != MESA_SHADER_TESS_CTRL &&
+              s->info.stage != MESA_SHADER_TESS_EVAL) {
       return false;
    }
 
@@ -1256,7 +1263,8 @@ hk_g17p_graphics_uniform_ranges(
 
    if (s->info.agx3_indexed_sampler_valid) {
       if ((s->b.info.stage != MESA_SHADER_FRAGMENT &&
-           s->b.info.stage != MESA_SHADER_VERTEX) ||
+           s->b.info.stage != MESA_SHADER_VERTEX &&
+           s->b.info.stage != MESA_SHADER_COMPUTE) ||
           !dev->sampled_images.bo || !dev->samplers.table.bo)
          return false;
       const uint64_t pointers[4] = {
@@ -1474,7 +1482,7 @@ hk_upload_usc_words(struct hk_cmd_buffer *cmd, struct hk_shader *s,
          .sample_size_B = s->info.stage == MESA_SHADER_FRAGMENT
             ? cmd->state.gfx.render.tilebuffer.sample_size_B : 0,
          .tile_size = cmd->state.gfx.render.tilebuffer.tile_size,
-         .nr_samples = cmd->state.gfx.render.tilebuffer.nr_samples,
+         .nr_samples = MAX2(cmd->state.gfx.render.tilebuffer.nr_samples, 1),
          .program_va = upload.gpu,
          /* The container's entry point, not the allocation base: the
        * shader loader reads the block-size dword at entry - 0x80. */
@@ -1640,6 +1648,8 @@ hk_dispatch_precomp(struct hk_cmd_buffer *cmd, struct agx_grid grid,
                     enum agx_barrier barrier, enum libagx_program idx,
                     void *data, size_t data_size)
 {
+   if (vk_command_buffer_has_error(&cmd->vk))
+      return;
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
    if (agx_chip_uses_hal200_ioto(dev->dev.chip)) {
       struct hk_api_shader *api =

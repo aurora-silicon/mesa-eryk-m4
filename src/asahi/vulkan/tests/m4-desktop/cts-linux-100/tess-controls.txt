@@ -1,0 +1,13 @@
+dEQP-VK.tessellation.tesscoord.triangles_equal_spacing
+dEQP-VK.tessellation.tesscoord.triangles_fractional_odd_spacing
+dEQP-VK.tessellation.tesscoord.triangles_fractional_even_spacing
+dEQP-VK.tessellation.tesscoord.quads_equal_spacing
+dEQP-VK.tessellation.tesscoord.quads_fractional_odd_spacing
+dEQP-VK.tessellation.tesscoord.quads_fractional_even_spacing
+dEQP-VK.tessellation.tesscoord.isolines_equal_spacing
+dEQP-VK.tessellation.tesscoord.isolines_fractional_odd_spacing
+dEQP-VK.tessellation.tesscoord.isolines_fractional_even_spacing
+dEQP-VK.tessellation.shader_input_output.patch_vertices_5_in_10_out
+dEQP-VK.tessellation.shader_input_output.patch_vertices_10_in_5_out
+dEQP-VK.tessellation.shader_input_output.primitive_id_tcs
+dEQP-VK.tessellation.shader_input_output.primitive_id_tes

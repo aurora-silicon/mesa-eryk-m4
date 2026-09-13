@@ -1405,8 +1405,41 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
    unsigned nr_vbos = 0;
    bool kill_psiz = false;
 
+   if (sw_stage == MESA_SHADER_TESS_EVAL ||
+       sw_stage == MESA_SHADER_TESS_CTRL) {
+      shader->info.tess.info.ccw = nir->info.tess.ccw;
+      shader->info.tess.info.points = nir->info.tess.point_mode;
+      shader->info.tess.info.spacing = nir->info.tess.spacing;
+      shader->info.tess.info.mode = nir->info.tess._primitive_mode;
+
+      if (sw_stage == MESA_SHADER_TESS_CTRL) {
+         shader->info.tess.tcs_output_patch_size =
+            nir->info.tess.tcs_vertices_out;
+         shader->info.tess.tcs_per_vertex_outputs =
+            poly_tcs_per_vertex_outputs(nir);
+         shader->info.tess.tcs_nr_patch_outputs =
+            util_last_bit(nir->info.patch_outputs_written);
+         shader->info.tess.tcs_output_stride = poly_tcs_output_stride(nir);
+         if (agx_chip_uses_hal200_ioto(dev->dev.chip)) {
+            /* Poly has already lowered patch I/O to global memory. */
+            nir->info.workgroup_size[0] = nir->info.tess.tcs_vertices_out;
+            nir->info.workgroup_size[1] = nir->info.workgroup_size[2] = 1;
+            nir->info.stage = MESA_SHADER_COMPUTE;
+            memset(&nir->info.cs, 0, sizeof(nir->info.cs));
+         }
+      } else {
+         /* This destroys info so it needs to happen after the gather */
+         NIR_PASS(_, nir, poly_nir_lower_tes, hw);
+         /* The software variant uses the same resource operations as the
+          * hardware TES. Output lowering changes it to compute below. */
+         if (agx_chip_uses_hal200_ioto(dev->dev.chip))
+            nir->info.stage = MESA_SHADER_VERTEX;
+      }
+   }
+
    if (agx_chip_uses_hal200_ioto(dev->dev.chip) &&
-       nir->info.stage == MESA_SHADER_VERTEX && hw) {
+       (nir->info.stage == MESA_SHADER_VERTEX ||
+        sw_stage == MESA_SHADER_TESS_CTRL)) {
       NIR_PASS(_, nir, agx_nir_lower_g17p_cube_samples,
                dev->dev.params.chip_id == 0x8132);
       nir_shader *candidate = nir_shader_clone(NULL, nir);
@@ -1456,7 +1489,8 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
          }
       }
    } else if (agx_chip_uses_hal200_ioto(dev->dev.chip) &&
-              nir->info.stage == MESA_SHADER_COMPUTE) {
+              nir->info.stage == MESA_SHADER_COMPUTE &&
+              sw_stage == MESA_SHADER_COMPUTE) {
       NIR_PASS(_, nir, agx_nir_lower_g17p_cube_samples,
                dev->dev.params.chip_id == 0x8132);
       nir_shader *candidate = nir_shader_clone(NULL, nir);
@@ -1572,26 +1606,6 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
          NIR_PASS(_, nir, nir_shader_intrinsics_pass,
                   hk_g17p_lower_flat_nonfan_triangles,
                   nir_metadata_control_flow, NULL);
-      }
-   } else if (sw_stage == MESA_SHADER_TESS_EVAL ||
-              sw_stage == MESA_SHADER_TESS_CTRL) {
-
-      shader->info.tess.info.ccw = nir->info.tess.ccw;
-      shader->info.tess.info.points = nir->info.tess.point_mode;
-      shader->info.tess.info.spacing = nir->info.tess.spacing;
-      shader->info.tess.info.mode = nir->info.tess._primitive_mode;
-
-      if (sw_stage == MESA_SHADER_TESS_CTRL) {
-         shader->info.tess.tcs_output_patch_size =
-            nir->info.tess.tcs_vertices_out;
-         shader->info.tess.tcs_per_vertex_outputs =
-            poly_tcs_per_vertex_outputs(nir);
-         shader->info.tess.tcs_nr_patch_outputs =
-            util_last_bit(nir->info.patch_outputs_written);
-         shader->info.tess.tcs_output_stride = poly_tcs_output_stride(nir);
-      } else {
-         /* This destroys info so it needs to happen after the gather */
-         NIR_PASS(_, nir, poly_nir_lower_tes, hw);
       }
    }
 
@@ -1728,7 +1742,8 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
       .reserved_preamble = reserved,
       .dev = agx_gather_device_key(&dev->dev),
       .no_stop = nir->info.stage == MESA_SHADER_FRAGMENT,
-      .has_scratch = !nir->info.internal,
+      /* Native Ioto declares TPS for internal kernels too. */
+      .has_scratch = !nir->info.internal || agx_native_graphics(&dev->dev),
       .promote_constants = true,
       .promote_textures = true,
       /* G17P's Ioto resource program populates CProg before the main shader;

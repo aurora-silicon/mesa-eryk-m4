@@ -342,7 +342,8 @@ hk_dispatch_g17p_native_linked(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
        s->info.agx3_sampled_storage_valid ||
        s->info.agx3_indexed_storage_valid ||
        s->info.agx3_indexed_sampler_valid) {
-      const struct hk_descriptor_state *descriptors = &cmd->state.cs.descriptors;
+      const struct hk_descriptor_state *descriptors = graphics ?
+         &cmd->state.gfx.descriptors : &cmd->state.cs.descriptors;
 
       if (s->info.agx3_indexed_sampler_valid) {
          if (!dev->sampled_images.bo || !dev->sampled_images.bo->va ||

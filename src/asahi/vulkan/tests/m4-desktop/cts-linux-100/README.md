@@ -91,3 +91,23 @@ encoder vector passes. Guarded tessellation state evidence changes counts from
 0/3/6/9 (20260913T170237920004Z-cts-tess-state-dump) to 3/6/9/12, with all four
 corner triangles passing in 20260913T170513891519Z-cts-tess-prefix-source-live.
 Tessellation remains opt-in while the remaining target cases are checked.
+
+### Native tessellation integration
+
+The nine fixed-target tessellation cases passed in
+`20260913T171421738429Z-cts-tess-nine`, with native Ioto VS/TCS launches,
+graphics descriptor roots, both TES variants, and internal TPS scratch.
+This brings known fixed-target passes to 94; a fresh default-enabled run
+will be retained separately. No target case or pixel oracle was changed.
+
+Thirteen additional controls checked patch sizes, primitive IDs, and coordinates
+for triangles/quads/isolines with equal/fractional odd/fractional even spacing.
+Four patch/ID cases passed unchanged. The nine coordinate cases in the old
+release use a zero-sized render area with a 1x1 framebuffer. The separately
+identified `tess-controls-combined.patch` sets that area to 1x1 (current valid
+usage requires positive extents); coordinate outputs and comparison remain
+unchanged. All nine then passed in
+`20260913T172158014701Z-cts-tess-valid-renderarea`. Original source/executable
+were restored and the frozen Linux-100 executable was not replaced.
+See `tess-validation-results.json` and `tess-controls-build.json` for evidence
+and exact binary hashes. No synchronous tessellation dump was enabled.

@@ -2127,14 +2127,20 @@ hk_launch_tess(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
    hk_reserve_scratch(cmd, cs, vs);
    hk_reserve_scratch(cmd, cs, tcs);
 
-   hk_dispatch_with_usc(
-      dev, cs, &vs->b.info,
-      hk_upload_usc_words(cmd, vs, gfx->linked[MESA_SHADER_VERTEX]), grid_vs,
-      agx_workgroup(64, 1, 1));
-
-   hk_dispatch_with_usc(
-      dev, cs, &tcs->b.info, hk_upload_usc_words(cmd, tcs, tcs->only_linked),
-      grid_tcs, agx_workgroup(tcs->info.tess.tcs_output_patch_size, 1, 1));
+   if (agx_chip_uses_hal200_ioto(dev->dev.chip)) {
+      hk_dispatch_g17p_native_linked(cmd, cs, vs,
+         gfx->linked[MESA_SHADER_VERTEX], grid_vs, agx_workgroup(64, 1, 1));
+      hk_dispatch_g17p_native_linked(cmd, cs, tcs, tcs->only_linked,
+         grid_tcs, agx_workgroup(tcs->info.tess.tcs_output_patch_size, 1, 1));
+   } else {
+      hk_dispatch_with_usc(
+         dev, cs, &vs->b.info,
+         hk_upload_usc_words(cmd, vs, gfx->linked[MESA_SHADER_VERTEX]), grid_vs,
+         agx_workgroup(64, 1, 1));
+      hk_dispatch_with_usc(
+         dev, cs, &tcs->b.info, hk_upload_usc_words(cmd, tcs, tcs->only_linked),
+         grid_tcs, agx_workgroup(tcs->info.tess.tcs_output_patch_size, 1, 1));
+   }
 
    /* First generate counts, then prefix sum them, and then tessellate. */
    libagx_tessellate(cmd, grid_tess, AGX_BARRIER_ALL | AGX_PREGFX, info.mode,
@@ -4833,7 +4839,6 @@ hk_flush_gfx_state(struct hk_cmd_buffer *cmd, uint32_t draw_id,
    hk_flush_shaders(cmd);
 
    const bool geom = gfx->shaders[MESA_SHADER_GEOMETRY];
-   const bool tess = gfx->shaders[MESA_SHADER_TESS_EVAL];
    bool adj = mesa_prim_has_adjacency(
       vk_topology_to_mesa(dyn->ia.primitive_topology));
    adj &= !geom;
@@ -4841,9 +4846,7 @@ hk_flush_gfx_state(struct hk_cmd_buffer *cmd, uint32_t draw_id,
    /* Software GS lowering runs in compute and feeds an ordinary Index List
     * through its generated hardware VS, for both application and XFB shaders.
     * That VS must still satisfy the native program metadata checks below. */
-   const bool geometry_draw_path = geom && !tess && !adj && !*needs_idx_robust;
-   const bool native_index_list_path =
-      (!geom && !tess && !adj && !*needs_idx_robust) || geometry_draw_path;
+   const bool native_index_list_path = !adj && !*needs_idx_robust;
 
    if (desc->push_dirty)
       hk_cmd_buffer_flush_push_descriptors(cmd, desc);

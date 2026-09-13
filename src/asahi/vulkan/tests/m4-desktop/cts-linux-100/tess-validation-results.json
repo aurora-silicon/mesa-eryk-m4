@@ -1,0 +1,525 @@
+[
+  {
+    "experiment": "20260913T171421738429Z-cts-tess-nine",
+    "binary": {
+      "path": "/root/cts-1.0.2.6/deqp-vk-linux-corrected",
+      "sha256": "05fe8fb047c04a7bb9097cbf1822afd543008f3dad3b12146e835ee01a550132"
+    },
+    "results": [
+      {
+        "index": 0,
+        "case": "dEQP-VK.ycbcr.format.g10x6_b10x6r10x6_2plane_422_unorm_3pack16_khr.tess_eval_linear",
+        "argv": [
+          "/root/cts-1.0.2.6/deqp-vk-linux-corrected",
+          "--deqp-case=dEQP-VK.ycbcr.format.g10x6_b10x6r10x6_2plane_422_unorm_3pack16_khr.tess_eval_linear",
+          "--deqp-log-images=enable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-filename=/root/asahi-evidence/20260913T171421738429Z-cts-tess-nine/cts/000/result.qpa"
+        ],
+        "boot_id": "99ddcbd0-1a1d-4f25-9fc0-e7a213acfad8",
+        "status": "Pass",
+        "message": "All samples passed",
+        "returncode": 0,
+        "seconds": 0.20853104699926917
+      },
+      {
+        "index": 1,
+        "case": "dEQP-VK.binding_model.shader_access.secondary_cmd_buf.with_template.sampler_mutable.tess_eval.descriptor_array.2d_base_mip",
+        "argv": [
+          "/root/cts-1.0.2.6/deqp-vk-linux-corrected",
+          "--deqp-case=dEQP-VK.binding_model.shader_access.secondary_cmd_buf.with_template.sampler_mutable.tess_eval.descriptor_array.2d_base_mip",
+          "--deqp-log-images=enable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-filename=/root/asahi-evidence/20260913T171421738429Z-cts-tess-nine/cts/001/result.qpa"
+        ],
+        "boot_id": "99ddcbd0-1a1d-4f25-9fc0-e7a213acfad8",
+        "status": "Pass",
+        "message": "Pass",
+        "returncode": 0,
+        "seconds": 0.60875273900092
+      },
+      {
+        "index": 2,
+        "case": "dEQP-VK.binding_model.shader_access.secondary_cmd_buf.with_template.combined_image_sampler_immutable.tess_ctrl.descriptor_array.cube_base_mip",
+        "argv": [
+          "/root/cts-1.0.2.6/deqp-vk-linux-corrected",
+          "--deqp-case=dEQP-VK.binding_model.shader_access.secondary_cmd_buf.with_template.combined_image_sampler_immutable.tess_ctrl.descriptor_array.cube_base_mip",
+          "--deqp-log-images=enable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-filename=/root/asahi-evidence/20260913T171421738429Z-cts-tess-nine/cts/002/result.qpa"
+        ],
+        "boot_id": "99ddcbd0-1a1d-4f25-9fc0-e7a213acfad8",
+        "status": "Pass",
+        "message": "Pass",
+        "returncode": 0,
+        "seconds": 0.609707053998136
+      },
+      {
+        "index": 3,
+        "case": "dEQP-VK.synchronization.op.single_queue.semaphore.write_image_tess_control_read_image_vertex.image_128_r32_uint",
+        "argv": [
+          "/root/cts-1.0.2.6/deqp-vk-linux-corrected",
+          "--deqp-case=dEQP-VK.synchronization.op.single_queue.semaphore.write_image_tess_control_read_image_vertex.image_128_r32_uint",
+          "--deqp-log-images=enable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-filename=/root/asahi-evidence/20260913T171421738429Z-cts-tess-nine/cts/003/result.qpa"
+        ],
+        "boot_id": "99ddcbd0-1a1d-4f25-9fc0-e7a213acfad8",
+        "status": "Pass",
+        "message": "OK",
+        "returncode": 0,
+        "seconds": 0.6088786629989045
+      },
+      {
+        "index": 4,
+        "case": "dEQP-VK.spirv_assembly.instruction.graphics.opspecconstantop.iequal_tessc",
+        "argv": [
+          "/root/cts-1.0.2.6/deqp-vk-linux-corrected",
+          "--deqp-case=dEQP-VK.spirv_assembly.instruction.graphics.opspecconstantop.iequal_tessc",
+          "--deqp-log-images=enable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-filename=/root/asahi-evidence/20260913T171421738429Z-cts-tess-nine/cts/004/result.qpa"
+        ],
+        "boot_id": "99ddcbd0-1a1d-4f25-9fc0-e7a213acfad8",
+        "status": "Pass",
+        "message": "Rendered output matches input",
+        "returncode": 0,
+        "seconds": 0.4074863509995339
+      },
+      {
+        "index": 5,
+        "case": "dEQP-VK.binding_model.shader_access.secondary_cmd_buf.storage_buffer_dynamic.tess_eval.single_descriptor.offset_view_zero_dynamic_zero",
+        "argv": [
+          "/root/cts-1.0.2.6/deqp-vk-linux-corrected",
+          "--deqp-case=dEQP-VK.binding_model.shader_access.secondary_cmd_buf.storage_buffer_dynamic.tess_eval.single_descriptor.offset_view_zero_dynamic_zero",
+          "--deqp-log-images=enable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-filename=/root/asahi-evidence/20260913T171421738429Z-cts-tess-nine/cts/005/result.qpa"
+        ],
+        "boot_id": "99ddcbd0-1a1d-4f25-9fc0-e7a213acfad8",
+        "status": "Pass",
+        "message": "Pass",
+        "returncode": 0,
+        "seconds": 0.408268852999754
+      },
+      {
+        "index": 6,
+        "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.sampler_immutable.tess_eval.multiple_contiguous_descriptors.3d_base_mip",
+        "argv": [
+          "/root/cts-1.0.2.6/deqp-vk-linux-corrected",
+          "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.sampler_immutable.tess_eval.multiple_contiguous_descriptors.3d_base_mip",
+          "--deqp-log-images=enable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-filename=/root/asahi-evidence/20260913T171421738429Z-cts-tess-nine/cts/006/result.qpa"
+        ],
+        "boot_id": "99ddcbd0-1a1d-4f25-9fc0-e7a213acfad8",
+        "status": "Pass",
+        "message": "Pass",
+        "returncode": 0,
+        "seconds": 0.6078904589994636
+      },
+      {
+        "index": 7,
+        "case": "dEQP-VK.binding_model.shader_access.secondary_cmd_buf.with_template.sampler_mutable.tess_eval.single_descriptor.3d",
+        "argv": [
+          "/root/cts-1.0.2.6/deqp-vk-linux-corrected",
+          "--deqp-case=dEQP-VK.binding_model.shader_access.secondary_cmd_buf.with_template.sampler_mutable.tess_eval.single_descriptor.3d",
+          "--deqp-log-images=enable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-filename=/root/asahi-evidence/20260913T171421738429Z-cts-tess-nine/cts/007/result.qpa"
+        ],
+        "boot_id": "99ddcbd0-1a1d-4f25-9fc0-e7a213acfad8",
+        "status": "Pass",
+        "message": "Pass",
+        "returncode": 0,
+        "seconds": 0.4085224529990228
+      },
+      {
+        "index": 8,
+        "case": "dEQP-VK.synchronization.op.single_queue.event.write_image_tess_control_read_image_compute_indirect.image_64x64x8_r32_sfloat",
+        "argv": [
+          "/root/cts-1.0.2.6/deqp-vk-linux-corrected",
+          "--deqp-case=dEQP-VK.synchronization.op.single_queue.event.write_image_tess_control_read_image_compute_indirect.image_64x64x8_r32_sfloat",
+          "--deqp-log-images=enable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-filename=/root/asahi-evidence/20260913T171421738429Z-cts-tess-nine/cts/008/result.qpa"
+        ],
+        "boot_id": "99ddcbd0-1a1d-4f25-9fc0-e7a213acfad8",
+        "status": "Pass",
+        "message": "OK",
+        "returncode": 0,
+        "seconds": 0.6077783680011635
+      }
+    ]
+  },
+  {
+    "experiment": "20260913T171503680073Z-cts-tess-controls",
+    "binary": {
+      "path": "/root/cts-1.0.2.6/deqp-vk-linux-corrected",
+      "sha256": "05fe8fb047c04a7bb9097cbf1822afd543008f3dad3b12146e835ee01a550132"
+    },
+    "results": [
+      {
+        "index": 0,
+        "case": "dEQP-VK.tessellation.tesscoord.triangles_equal_spacing",
+        "argv": [
+          "/root/cts-1.0.2.6/deqp-vk-linux-corrected",
+          "--deqp-case=dEQP-VK.tessellation.tesscoord.triangles_equal_spacing",
+          "--deqp-log-images=disable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-filename=/root/asahi-evidence/20260913T171503680073Z-cts-tess-controls/cts/000/result.qpa"
+        ],
+        "boot_id": "99ddcbd0-1a1d-4f25-9fc0-e7a213acfad8",
+        "status": "Fail",
+        "message": "vk.createGraphicsPipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:38",
+        "returncode": 0,
+        "seconds": 0.2077421840003808
+      },
+      {
+        "index": 1,
+        "case": "dEQP-VK.tessellation.tesscoord.triangles_fractional_odd_spacing",
+        "argv": [
+          "/root/cts-1.0.2.6/deqp-vk-linux-corrected",
+          "--deqp-case=dEQP-VK.tessellation.tesscoord.triangles_fractional_odd_spacing",
+          "--deqp-log-images=disable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-filename=/root/asahi-evidence/20260913T171503680073Z-cts-tess-controls/cts/001/result.qpa"
+        ],
+        "boot_id": "99ddcbd0-1a1d-4f25-9fc0-e7a213acfad8",
+        "status": "Fail",
+        "message": "vk.createGraphicsPipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:38",
+        "returncode": 0,
+        "seconds": 0.20759062199795153
+      },
+      {
+        "index": 2,
+        "case": "dEQP-VK.tessellation.tesscoord.triangles_fractional_even_spacing",
+        "argv": [
+          "/root/cts-1.0.2.6/deqp-vk-linux-corrected",
+          "--deqp-case=dEQP-VK.tessellation.tesscoord.triangles_fractional_even_spacing",
+          "--deqp-log-images=disable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-filename=/root/asahi-evidence/20260913T171503680073Z-cts-tess-controls/cts/002/result.qpa"
+        ],
+        "boot_id": "99ddcbd0-1a1d-4f25-9fc0-e7a213acfad8",
+        "status": "Fail",
+        "message": "vk.createGraphicsPipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:38",
+        "returncode": 0,
+        "seconds": 0.2078285129973665
+      },
+      {
+        "index": 3,
+        "case": "dEQP-VK.tessellation.tesscoord.quads_equal_spacing",
+        "argv": [
+          "/root/cts-1.0.2.6/deqp-vk-linux-corrected",
+          "--deqp-case=dEQP-VK.tessellation.tesscoord.quads_equal_spacing",
+          "--deqp-log-images=disable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-filename=/root/asahi-evidence/20260913T171503680073Z-cts-tess-controls/cts/003/result.qpa"
+        ],
+        "boot_id": "99ddcbd0-1a1d-4f25-9fc0-e7a213acfad8",
+        "status": "Fail",
+        "message": "vk.createGraphicsPipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:38",
+        "returncode": 0,
+        "seconds": 0.2067391040000075
+      },
+      {
+        "index": 4,
+        "case": "dEQP-VK.tessellation.tesscoord.quads_fractional_odd_spacing",
+        "argv": [
+          "/root/cts-1.0.2.6/deqp-vk-linux-corrected",
+          "--deqp-case=dEQP-VK.tessellation.tesscoord.quads_fractional_odd_spacing",
+          "--deqp-log-images=disable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-filename=/root/asahi-evidence/20260913T171503680073Z-cts-tess-controls/cts/004/result.qpa"
+        ],
+        "boot_id": "99ddcbd0-1a1d-4f25-9fc0-e7a213acfad8",
+        "status": "Fail",
+        "message": "vk.createGraphicsPipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:38",
+        "returncode": 0,
+        "seconds": 0.2068819829983113
+      },
+      {
+        "index": 5,
+        "case": "dEQP-VK.tessellation.tesscoord.quads_fractional_even_spacing",
+        "argv": [
+          "/root/cts-1.0.2.6/deqp-vk-linux-corrected",
+          "--deqp-case=dEQP-VK.tessellation.tesscoord.quads_fractional_even_spacing",
+          "--deqp-log-images=disable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-filename=/root/asahi-evidence/20260913T171503680073Z-cts-tess-controls/cts/005/result.qpa"
+        ],
+        "boot_id": "99ddcbd0-1a1d-4f25-9fc0-e7a213acfad8",
+        "status": "Fail",
+        "message": "vk.createGraphicsPipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:38",
+        "returncode": 0,
+        "seconds": 0.20771879500171053
+      },
+      {
+        "index": 6,
+        "case": "dEQP-VK.tessellation.tesscoord.isolines_equal_spacing",
+        "argv": [
+          "/root/cts-1.0.2.6/deqp-vk-linux-corrected",
+          "--deqp-case=dEQP-VK.tessellation.tesscoord.isolines_equal_spacing",
+          "--deqp-log-images=disable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-filename=/root/asahi-evidence/20260913T171503680073Z-cts-tess-controls/cts/006/result.qpa"
+        ],
+        "boot_id": "99ddcbd0-1a1d-4f25-9fc0-e7a213acfad8",
+        "status": "Fail",
+        "message": "vk.createGraphicsPipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:38",
+        "returncode": 0,
+        "seconds": 0.20662843199897907
+      },
+      {
+        "index": 7,
+        "case": "dEQP-VK.tessellation.tesscoord.isolines_fractional_odd_spacing",
+        "argv": [
+          "/root/cts-1.0.2.6/deqp-vk-linux-corrected",
+          "--deqp-case=dEQP-VK.tessellation.tesscoord.isolines_fractional_odd_spacing",
+          "--deqp-log-images=disable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-filename=/root/asahi-evidence/20260913T171503680073Z-cts-tess-controls/cts/007/result.qpa"
+        ],
+        "boot_id": "99ddcbd0-1a1d-4f25-9fc0-e7a213acfad8",
+        "status": "Fail",
+        "message": "vk.createGraphicsPipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:38",
+        "returncode": 0,
+        "seconds": 0.20772654399843304
+      },
+      {
+        "index": 8,
+        "case": "dEQP-VK.tessellation.tesscoord.isolines_fractional_even_spacing",
+        "argv": [
+          "/root/cts-1.0.2.6/deqp-vk-linux-corrected",
+          "--deqp-case=dEQP-VK.tessellation.tesscoord.isolines_fractional_even_spacing",
+          "--deqp-log-images=disable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-filename=/root/asahi-evidence/20260913T171503680073Z-cts-tess-controls/cts/008/result.qpa"
+        ],
+        "boot_id": "99ddcbd0-1a1d-4f25-9fc0-e7a213acfad8",
+        "status": "Fail",
+        "message": "vk.createGraphicsPipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:38",
+        "returncode": 0,
+        "seconds": 0.20770795999851543
+      },
+      {
+        "index": 9,
+        "case": "dEQP-VK.tessellation.shader_input_output.patch_vertices_5_in_10_out",
+        "argv": [
+          "/root/cts-1.0.2.6/deqp-vk-linux-corrected",
+          "--deqp-case=dEQP-VK.tessellation.shader_input_output.patch_vertices_5_in_10_out",
+          "--deqp-log-images=disable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-filename=/root/asahi-evidence/20260913T171503680073Z-cts-tess-controls/cts/009/result.qpa"
+        ],
+        "boot_id": "99ddcbd0-1a1d-4f25-9fc0-e7a213acfad8",
+        "status": "Pass",
+        "message": "OK",
+        "returncode": 0,
+        "seconds": 0.609053252999729
+      },
+      {
+        "index": 10,
+        "case": "dEQP-VK.tessellation.shader_input_output.patch_vertices_10_in_5_out",
+        "argv": [
+          "/root/cts-1.0.2.6/deqp-vk-linux-corrected",
+          "--deqp-case=dEQP-VK.tessellation.shader_input_output.patch_vertices_10_in_5_out",
+          "--deqp-log-images=disable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-filename=/root/asahi-evidence/20260913T171503680073Z-cts-tess-controls/cts/010/result.qpa"
+        ],
+        "boot_id": "99ddcbd0-1a1d-4f25-9fc0-e7a213acfad8",
+        "status": "Pass",
+        "message": "OK",
+        "returncode": 0,
+        "seconds": 0.6083282299987331
+      },
+      {
+        "index": 11,
+        "case": "dEQP-VK.tessellation.shader_input_output.primitive_id_tcs",
+        "argv": [
+          "/root/cts-1.0.2.6/deqp-vk-linux-corrected",
+          "--deqp-case=dEQP-VK.tessellation.shader_input_output.primitive_id_tcs",
+          "--deqp-log-images=disable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-filename=/root/asahi-evidence/20260913T171503680073Z-cts-tess-controls/cts/011/result.qpa"
+        ],
+        "boot_id": "99ddcbd0-1a1d-4f25-9fc0-e7a213acfad8",
+        "status": "Pass",
+        "message": "OK",
+        "returncode": 0,
+        "seconds": 0.6091124409977056
+      },
+      {
+        "index": 12,
+        "case": "dEQP-VK.tessellation.shader_input_output.primitive_id_tes",
+        "argv": [
+          "/root/cts-1.0.2.6/deqp-vk-linux-corrected",
+          "--deqp-case=dEQP-VK.tessellation.shader_input_output.primitive_id_tes",
+          "--deqp-log-images=disable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-filename=/root/asahi-evidence/20260913T171503680073Z-cts-tess-controls/cts/012/result.qpa"
+        ],
+        "boot_id": "99ddcbd0-1a1d-4f25-9fc0-e7a213acfad8",
+        "status": "Pass",
+        "message": "OK",
+        "returncode": 0,
+        "seconds": 0.6080303659982746
+      }
+    ]
+  },
+  {
+    "experiment": "20260913T172158014701Z-cts-tess-valid-renderarea",
+    "binary": {
+      "path": "/root/cts-1.0.2.6/deqp-vk-tess-renderarea",
+      "sha256": "7381b96d90e57f5e6b8e18033dd01a8fe992ca1749bf8d1b2525b2ca69e1841e"
+    },
+    "results": [
+      {
+        "index": 0,
+        "case": "dEQP-VK.tessellation.tesscoord.triangles_equal_spacing",
+        "argv": [
+          "/root/cts-1.0.2.6/deqp-vk-tess-renderarea",
+          "--deqp-case=dEQP-VK.tessellation.tesscoord.triangles_equal_spacing",
+          "--deqp-log-images=disable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-filename=/root/asahi-evidence/20260913T172158014701Z-cts-tess-valid-renderarea/cts/000/result.qpa"
+        ],
+        "boot_id": "99ddcbd0-1a1d-4f25-9fc0-e7a213acfad8",
+        "status": "Pass",
+        "message": "OK",
+        "returncode": 0,
+        "seconds": 0.610094804000255
+      },
+      {
+        "index": 1,
+        "case": "dEQP-VK.tessellation.tesscoord.triangles_fractional_odd_spacing",
+        "argv": [
+          "/root/cts-1.0.2.6/deqp-vk-tess-renderarea",
+          "--deqp-case=dEQP-VK.tessellation.tesscoord.triangles_fractional_odd_spacing",
+          "--deqp-log-images=disable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-filename=/root/asahi-evidence/20260913T172158014701Z-cts-tess-valid-renderarea/cts/001/result.qpa"
+        ],
+        "boot_id": "99ddcbd0-1a1d-4f25-9fc0-e7a213acfad8",
+        "status": "Pass",
+        "message": "OK",
+        "returncode": 0,
+        "seconds": 0.608516342999792
+      },
+      {
+        "index": 2,
+        "case": "dEQP-VK.tessellation.tesscoord.triangles_fractional_even_spacing",
+        "argv": [
+          "/root/cts-1.0.2.6/deqp-vk-tess-renderarea",
+          "--deqp-case=dEQP-VK.tessellation.tesscoord.triangles_fractional_even_spacing",
+          "--deqp-log-images=disable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-filename=/root/asahi-evidence/20260913T172158014701Z-cts-tess-valid-renderarea/cts/002/result.qpa"
+        ],
+        "boot_id": "99ddcbd0-1a1d-4f25-9fc0-e7a213acfad8",
+        "status": "Pass",
+        "message": "OK",
+        "returncode": 0,
+        "seconds": 0.6095113859992125
+      },
+      {
+        "index": 3,
+        "case": "dEQP-VK.tessellation.tesscoord.quads_equal_spacing",
+        "argv": [
+          "/root/cts-1.0.2.6/deqp-vk-tess-renderarea",
+          "--deqp-case=dEQP-VK.tessellation.tesscoord.quads_equal_spacing",
+          "--deqp-log-images=disable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-filename=/root/asahi-evidence/20260913T172158014701Z-cts-tess-valid-renderarea/cts/003/result.qpa"
+        ],
+        "boot_id": "99ddcbd0-1a1d-4f25-9fc0-e7a213acfad8",
+        "status": "Pass",
+        "message": "OK",
+        "returncode": 0,
+        "seconds": 0.8092251449998002
+      },
+      {
+        "index": 4,
+        "case": "dEQP-VK.tessellation.tesscoord.quads_fractional_odd_spacing",
+        "argv": [
+          "/root/cts-1.0.2.6/deqp-vk-tess-renderarea",
+          "--deqp-case=dEQP-VK.tessellation.tesscoord.quads_fractional_odd_spacing",
+          "--deqp-log-images=disable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-filename=/root/asahi-evidence/20260913T172158014701Z-cts-tess-valid-renderarea/cts/004/result.qpa"
+        ],
+        "boot_id": "99ddcbd0-1a1d-4f25-9fc0-e7a213acfad8",
+        "status": "Pass",
+        "message": "OK",
+        "returncode": 0,
+        "seconds": 0.8097456140021677
+      },
+      {
+        "index": 5,
+        "case": "dEQP-VK.tessellation.tesscoord.quads_fractional_even_spacing",
+        "argv": [
+          "/root/cts-1.0.2.6/deqp-vk-tess-renderarea",
+          "--deqp-case=dEQP-VK.tessellation.tesscoord.quads_fractional_even_spacing",
+          "--deqp-log-images=disable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-filename=/root/asahi-evidence/20260913T172158014701Z-cts-tess-valid-renderarea/cts/005/result.qpa"
+        ],
+        "boot_id": "99ddcbd0-1a1d-4f25-9fc0-e7a213acfad8",
+        "status": "Pass",
+        "message": "OK",
+        "returncode": 0,
+        "seconds": 0.8087701309996191
+      },
+      {
+        "index": 6,
+        "case": "dEQP-VK.tessellation.tesscoord.isolines_equal_spacing",
+        "argv": [
+          "/root/cts-1.0.2.6/deqp-vk-tess-renderarea",
+          "--deqp-case=dEQP-VK.tessellation.tesscoord.isolines_equal_spacing",
+          "--deqp-log-images=disable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-filename=/root/asahi-evidence/20260913T172158014701Z-cts-tess-valid-renderarea/cts/006/result.qpa"
+        ],
+        "boot_id": "99ddcbd0-1a1d-4f25-9fc0-e7a213acfad8",
+        "status": "Pass",
+        "message": "OK",
+        "returncode": 0,
+        "seconds": 0.4086306909994164
+      },
+      {
+        "index": 7,
+        "case": "dEQP-VK.tessellation.tesscoord.isolines_fractional_odd_spacing",
+        "argv": [
+          "/root/cts-1.0.2.6/deqp-vk-tess-renderarea",
+          "--deqp-case=dEQP-VK.tessellation.tesscoord.isolines_fractional_odd_spacing",
+          "--deqp-log-images=disable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-filename=/root/asahi-evidence/20260913T172158014701Z-cts-tess-valid-renderarea/cts/007/result.qpa"
+        ],
+        "boot_id": "99ddcbd0-1a1d-4f25-9fc0-e7a213acfad8",
+        "status": "Pass",
+        "message": "OK",
+        "returncode": 0,
+        "seconds": 0.40826552199723665
+      },
+      {
+        "index": 8,
+        "case": "dEQP-VK.tessellation.tesscoord.isolines_fractional_even_spacing",
+        "argv": [
+          "/root/cts-1.0.2.6/deqp-vk-tess-renderarea",
+          "--deqp-case=dEQP-VK.tessellation.tesscoord.isolines_fractional_even_spacing",
+          "--deqp-log-images=disable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-filename=/root/asahi-evidence/20260913T172158014701Z-cts-tess-valid-renderarea/cts/008/result.qpa"
+        ],
+        "boot_id": "99ddcbd0-1a1d-4f25-9fc0-e7a213acfad8",
+        "status": "Pass",
+        "message": "OK",
+        "returncode": 0,
+        "seconds": 0.40867587699904107
+      }
+    ]
+  }
+]
