@@ -18,7 +18,9 @@ static GLuint compile(GLenum stage, const char *s) {
 }
 
 int main(int argc, char **argv) {
+ const int writes=getenv("M4_TEST_IMAGE_WRITES")!=NULL;
  const int volume=argc==2 && !strcmp(argv[1],"3d"); CHECK(argc==1 || volume);
+ CHECK(!writes||!volume);
  const GLenum target=volume?GL_TEXTURE_3D:GL_TEXTURE_2D_ARRAY;
  EGLDisplay d=eglGetPlatformDisplay(EGL_PLATFORM_SURFACELESS_MESA,NULL,NULL);
  CHECK(eglInitialize(d,NULL,NULL)&&eglBindAPI(EGL_OPENGL_API));
@@ -28,11 +30,31 @@ int main(int argc, char **argv) {
  const char *renderer=(const char*)glGetString(GL_RENDERER);printf("Renderer: %s\n",renderer);fflush(stdout);
  CHECK((strstr(renderer,"zink")&&strstr(renderer,"M4"))||(getenv("M4_TEST_LLVMPIPE")&&strstr(renderer,"llvmpipe")));
  GLuint tex,output,fb,vao;glGenTextures(1,&tex);glBindTexture(target,tex);
+ GLuint writer=0;
+ if(writes){
+  glTexStorage3D(target,4,GL_RGBA32F,8,8,4);
+  writer=glCreateProgram();glAttachShader(writer,compile(GL_COMPUTE_SHADER,
+   "#version 430 core\nlayout(local_size_x=1,local_size_y=1,local_size_z=1) in; layout(rgba32f,binding=0) uniform writeonly image2DArray dst; uniform uint level; void main(){uvec3 p=gl_GlobalInvocationID; float v=float(level*512u+p.z*128u+p.y*8u+p.x);imageStore(dst,ivec3(p),v+vec4(0.,.125,.25,.375));}"));
+  glLinkProgram(writer);GLint ok;glGetProgramiv(writer,GL_LINK_STATUS,&ok);CHECK(ok);glUseProgram(writer);
+ }
  for(unsigned level=0;level<(volume?1:4);level++){
   unsigned size=8>>level;float data[size*size*4*4];
   for(unsigned layer=0;layer<4;layer++)for(unsigned y=0;y<size;y++)for(unsigned x=0;x<size;x++)for(unsigned c=0;c<4;c++)
    data[((layer*size+y)*size+x)*4+c]=level*512+layer*128+y*8+x+c*.125f;
-  glTexImage3D(target,level,GL_RGBA32F,size,size,4,0,GL_RGBA,GL_FLOAT,data);
+  if(!writes)glTexImage3D(target,level,GL_RGBA32F,size,size,4,0,GL_RGBA,GL_FLOAT,data);
+  if(writes){glBindImageTexture(0,tex,level,GL_TRUE,0,GL_WRITE_ONLY,GL_RGBA32F);glUniform1ui(glGetUniformLocation(writer,"level"),level);glDispatchCompute(size,size,4);}
+ }
+ if(writes){
+  glMemoryBarrier(GL_TEXTURE_UPDATE_BARRIER_BIT|GL_TEXTURE_FETCH_BARRIER_BIT);
+  unsigned bad=0;
+  for(unsigned level=0;level<4;level++){
+   unsigned size=8>>level;float data[size*size*4*4];glGetTexImage(target,level,GL_RGBA,GL_FLOAT,data);
+   for(unsigned layer=0;layer<4;layer++)for(unsigned y=0;y<size;y++)for(unsigned x=0;x<size;x++)for(unsigned c=0;c<4;c++){
+    float expected=level*512+layer*128+y*8+x+c*.125f, actual=data[((layer*size+y)*size+x)*4+c];
+    if(actual!=expected){if(bad<4)fprintf(stderr,"mip%u layer%u (%u,%u) c%u: %g expected %g\n",level,layer,x,y,c,actual,expected);bad++;}
+   }
+  }
+  printf("%s: array mip image writes, 340 texels (%u mismatches)\n",bad?"FAIL":"PASS",bad);CHECK(!bad);glDeleteProgram(writer);
  }
  glTexParameteri(target,GL_TEXTURE_MIN_FILTER,GL_NEAREST_MIPMAP_NEAREST);
  glTexParameteri(target,GL_TEXTURE_MAG_FILTER,GL_NEAREST);

@@ -12,7 +12,7 @@ from pathlib import Path
 import numpy as np
 
 
-def entries(directory):
+def entries(directory, allow_empty=False):
     output = {}
     for path in directory.glob('DrawCall_*_dr.json'):
         for draw in json.loads(path.read_text()):
@@ -25,7 +25,7 @@ def entries(directory):
                     if key in output:
                         raise ValueError(f'Duplicate draw attachment {key}')
                     output[key] = (attachment, sub)
-    if not output:
+    if not output and not allow_empty:
         raise ValueError(f'No draw attachments found in {directory}')
     return output
 
@@ -38,14 +38,15 @@ def read(directory, sub, field):
 
 def descriptor_entries(directory):
     output = {}
-    for path in directory.glob('DrawCall_*_dr.json'):
+    for path in directory.glob('*_dr.json'):
         for draw in json.loads(path.read_text()):
-            if 'drawIndex' not in draw:
+            index = draw.get('drawIndex', draw.get('dispatchIndex'))
+            if index is None:
                 continue
             for stage, descriptors in draw.get('descriptors', {}).items():
                 for desc in descriptors:
-                    key = (draw['drawIndex'], stage, desc['set'], desc['binding'], desc['arrayIndex'])
-                    metadata = {k: v for k, v in desc.items() if k not in ('file', 'subresources')}
+                    key = (index, stage, desc['set'], desc['binding'], desc['arrayIndex'])
+                    metadata = {k: v for k, v in desc.items() if k not in ('file', 'beforeFile', 'subresources')}
                     subs = desc.get('subresources', [desc] if 'file' in desc else [])
                     for sub in subs:
                         subkey = key + tuple(sub.get(k) for k in ('aspect', 'mipLevel', 'arrayLayer', 'depth'))
@@ -62,7 +63,7 @@ def main():
     p.add_argument('--output', required=True, type=Path)
     p.add_argument('--descriptors', action='store_true', help='Also compare dumped buffer/image descriptors by binding and subresource')
     a = p.parse_args()
-    reference, actual = entries(a.reference), entries(a.actual)
+    reference, actual = entries(a.reference, a.descriptors), entries(a.actual, a.descriptors)
     if reference.keys() != actual.keys():
         raise ValueError(f'Attachment keys differ: {reference.keys() ^ actual.keys()}')
     rows = []
@@ -92,6 +93,8 @@ def main():
     report = dict(reference=str(a.reference), actual=str(a.actual), attachments=rows)
     if a.descriptors:
         ref_desc, gpu_desc = descriptor_entries(a.reference), descriptor_entries(a.actual)
+        if not ref_desc and not rows:
+            raise ValueError('No attachments or descriptors found')
         if ref_desc.keys() != gpu_desc.keys():
             raise ValueError(f'Descriptor keys differ: {ref_desc.keys() ^ gpu_desc.keys()}')
         report['descriptors'] = []
@@ -106,6 +109,17 @@ def main():
             row = dict(key=key, metadata=metadata, reference_sha256=ref_hash, actual_sha256=gpu_hash,
                        bytes=len(ref), differing_bytes=int(np.count_nonzero(ref != gpu)),
                        reference_nonzero_bytes=int(np.count_nonzero(ref)), actual_nonzero_bytes=int(np.count_nonzero(gpu)))
+            if 'beforeFile' in sub and 'beforeFile' in actual_sub:
+                before, before_hash = read(a.reference, sub, 'beforeFile')
+                gpu_before, gpu_before_hash = read(a.actual, actual_sub, 'beforeFile')
+                if before.shape != ref.shape or gpu_before.shape != gpu.shape:
+                    raise ValueError(f'Before/after sizes differ: {key}')
+                written = ref != before
+                row.update(reference_before_sha256=before_hash, actual_before_sha256=gpu_before_hash,
+                           before_differing_bytes=int(np.count_nonzero(before != gpu_before)),
+                           reference_changed_bytes=int(written.sum()),
+                           actual_changed_bytes=int(np.count_nonzero(gpu != gpu_before)),
+                           changed_byte_mismatches=int(np.count_nonzero((ref != gpu)[written])))
             report['descriptors'].append(row)
             if row['differing_bytes']:
                 print(json.dumps({k: row[k] for k in ('key', 'metadata', 'bytes', 'differing_bytes',

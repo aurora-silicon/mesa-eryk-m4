@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Select a bounded range of primary draws from gfxrecon JSONL for resource comparison.
+"""Select bounded primary draws or compute dispatches from gfxrecon JSONL for resource comparison.
 
 No GPU execution. Pass the emitted JSON to vulkan-trace.py --dump-config under
 its usual guard. Indices include render-pass boundaries and the actual submit.
@@ -13,8 +13,14 @@ p.add_argument('--last',type=int)
 p.add_argument('--draw',type=int,action='append',default=[],help='Select an exact draw index; repeat for sparse checkpoints')
 p.add_argument('--output',required=True,type=Path)
 p.add_argument('--inputs',action='store_true')
+p.add_argument('--dispatch',type=int,action='append',default=[])
+p.add_argument('--all-subresources',action='store_true')
+p.add_argument('--vertex-inputs',action='store_true',help='Opt into vertex/index dumps; some captures crash the upstream dumper')
 a=p.parse_args()
-if a.draw:
+if a.dispatch:
+ if a.draw or a.first is not None or a.last is not None:p.error('Select dispatches or draws, not both')
+ selected=set(a.dispatch)
+elif a.draw:
  if a.first is not None or a.last is not None:p.error('Use --draw or --first/--last, not both')
  selected=set(a.draw)
 else:
@@ -29,7 +35,7 @@ for line in a.jsonl.open():
   c=commands[v['commandBuffer']];c['current']=[i];c['passes'].append(c['current'])
  elif n.startswith(('vkCmdEndRenderPass','vkCmdEndRendering','vkCmdNextSubpass')):
   commands[v['commandBuffer']]['current'].append(i)
- elif n.startswith('vkCmdDraw') and i in selected:
+ elif n.startswith('vkCmdDispatch' if a.dispatch else 'vkCmdDraw') and i in selected:
   if n.startswith('vkCmdDrawMulti') and v['drawCount'] != 1:
    raise ValueError(f'Draw {i}: this dump build supports multi-draw checkpoints only for drawCount=1')
   commands[v['commandBuffer']]['draws'].append(i)
@@ -41,11 +47,14 @@ for line in a.jsonl.open():
     if not c['draws']:continue
     if c['begin'] in used:raise ValueError('Repeated selected command buffer needs explicit handling')
     used.add(c['begin']);records.append(dict(c,submit=i))
-if not records:raise ValueError('No submitted draws selected')
+if not records:raise ValueError('No submitted operations selected')
 config=dict(BeginCommandBuffer=[c['begin'] for c in records],Draw=[c['draws'] for c in records],
  RenderPass=[[q for q in c['passes'] if any(q[0]<d<q[-1] for d in c['draws'])] for c in records],
  QueueSubmit=[c['submit'] for c in records],DumpResourcesOptions=dict(DumpRawImages=True,
- DumpAllDescriptors=a.inputs,DumpVertexIndexBuffer=a.inputs,DumpBeforeCommand=True,
+ DumpAllDescriptors=a.inputs,DumpVertexIndexBuffer=a.vertex_inputs,DumpBeforeCommand=True,
+ DumpAllImageSubresources=a.all_subresources,
  BinaryFileCompressionType='none',JsonOutputPerCommand=True))
+if a.dispatch:
+ config['Dispatch']=config.pop('Draw');config.pop('RenderPass')
 with a.output.open('x') as f:json.dump(config,f,indent=2);f.write('\n')
-print(f"Selected {sum(len(c['draws']) for c in records)} draws in {len(records)} command buffers")
+print(f"Selected {sum(len(c['draws']) for c in records)} operations in {len(records)} command buffers")

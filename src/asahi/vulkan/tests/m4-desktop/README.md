@@ -2198,3 +2198,15 @@ qualify undefined regions. Only explicitly dumped subresources are compared.
 float RGBA or integer RGBA words, except packed HDR words. Guarded example:
 `gpu-experiment.py ... -- env M4_PROBE_OUTPUT={output} ... eevee-image-probe array`.
 All Linux GPU execution still requires the watchdog and thermal guard.
+
+`array-lod-probe.c` with `M4_TEST_IMAGE_WRITES=1` fills an immutable array's
+four mips/four layers on the GPU, verifies all 340 texels, then checks 128
+varying-LOD samples. Default mode retains the earlier upload-based test.
+
+`vulkan-draw-dump.py TRACE.jsonl --dispatch INDEX --inputs --all-subresources
+--output CONFIG.json` selects a primary compute dispatch and its actual submit.
+Use either dispatches or draws; vertex/index buffer dumps are now opt-in with
+`--vertex-inputs` because that upstream dump path crashes on the saved Eevee trace.
+`vulkan-dump-compare.py --descriptors` also compares dispatch descriptors and
+before/after writes, including all explicitly dumped layers/mips. As usual,
+raw byte differences are diagnostics, not floating-point tolerance judgments.
