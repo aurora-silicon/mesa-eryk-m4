@@ -1,0 +1,13 @@
+diff --git a/external/vulkancts/modules/vulkan/ycbcr/vktYCbCrUtil.cpp b/external/vulkancts/modules/vulkan/ycbcr/vktYCbCrUtil.cpp
+index 1f9f618..e4ed05c 100644
+--- a/external/vulkancts/modules/vulkan/ycbcr/vktYCbCrUtil.cpp
++++ b/external/vulkancts/modules/vulkan/ycbcr/vktYCbCrUtil.cpp
+@@ -620,7 +620,7 @@ void downloadImage (const DeviceInterface&	vkd,
+ 				makeExtent3D(planeW, planeH, 1u),
+ 			};
+ 
+-			vkd.cmdCopyImageToBuffer(*cmdBuffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, **stagingBuffers[planeNdx], 1u, &copy);
++			vkd.cmdCopyImageToBuffer(*cmdBuffer, image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, **stagingBuffers[planeNdx], 1u, &copy);
+ 		}
+ 		{
+ 			const VkBufferMemoryBarrier		postCopyBarrier	=

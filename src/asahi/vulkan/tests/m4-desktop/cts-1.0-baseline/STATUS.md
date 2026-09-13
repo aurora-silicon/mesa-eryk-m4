@@ -76,3 +76,23 @@ NIR lowering; the fresh full-pipeline CTS run covers that transformation.
 20260913T110524038553Z-cts-rgba8ui-native-store:Pass, peak57.5 C, full guards,
 library1f144b9cc221f2e523edcb123b72ffd328ff16a6f3fd07ef101de44e2b031818.
 Kernel unchanged.
+
+Sixth selection:index43, three-plane 10-bit 444 to 420 optimal/linear copy.
+The native GPU raw-copy path rejected plane aspect bits and linear endpoints.
+Use the selected plane's format, address, dimensions and tiling/stride in
+buffer/image and image/image transfers. Preserve compression and packed
+depth/stencil exclusions. No CPU copy or kernel change.
+20260913T110821361548Z-cts-plane-copy:original case43 Pass, peak57.75 C.
+Library8ce7c7b0eebdf8664ccd0ccaaf681f2600c4f63e542a4ca45b30db94cd9afc98.
+
+20260913T110850190124Z-cts-plane-copy-regression:original case66 also Pass,
+plus linear/linear Pass. Three optimal-destination regressions exposed another
+historical CTS bug:downloadImage transitions to TRANSFER_SRC_OPTIMAL but passes
+TRANSFER_DST_OPTIMAL to CmdCopyImageToBuffer (vktYCbCrUtil.cpp:619). The driver
+correctly rejects that invalid layout. Preserve the baseline binary and counts.
+A separate diagnostic binary applies only ycbcr-read-layout.patch, SHA256
+6a82de1157dfe922ab967cfa5b1404cddc0749d6b935d08321940919cbd1726d.
+20260913T111025012776Z-cts-plane-copy-corrected-readback:all5 regressions Pass,
+including linear/linear, linear/optimal, optimal/optimal, disjoint planes and
+case66. This is corrected-test evidence, not five original-CTS passes.
+Semantics checked against https://docs.vulkan.org/spec/latest/chapters/copies.html.

@@ -2097,6 +2097,36 @@ hk_native_raw_copy_format(VkFormat format)
    }
 }
 
+/* A plane is an independent raw surface. Copy coordinates are already in
+ * that plane's texels, including subsampled chroma planes. */
+static bool
+hk_native_copy_aspect(const struct hk_image *image, VkImageAspectFlags aspect)
+{
+   return util_bitcount(aspect) == 1 && !(aspect & ~image->vk.aspects) &&
+      (aspect & (VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_DEPTH_BIT |
+                 VK_IMAGE_ASPECT_STENCIL_BIT | VK_IMAGE_ASPECT_PLANE_0_BIT |
+                 VK_IMAGE_ASPECT_PLANE_1_BIT | VK_IMAGE_ASPECT_PLANE_2_BIT));
+}
+
+static int
+hk_native_copy_tile_log2(const struct ail_layout *layout, unsigned level,
+                         bool height)
+{
+   if (layout->tiling == AIL_TILING_LINEAR)
+      return -1;
+   const struct ail_tile tile = layout->tilesize_el[level];
+   return util_logbase2(height ? tile.height_el : tile.width_el);
+}
+
+static uint32_t
+hk_native_copy_stride(const struct ail_layout *layout, unsigned level)
+{
+   if (layout->tiling == AIL_TILING_LINEAR)
+      return ail_get_linear_stride_B(layout, level) / ail_get_blocksize_B(layout);
+   return DIV_ROUND_UP(layout->stride_el[level],
+                       layout->tilesize_el[level].width_el);
+}
+
 static bool
 hk_native_copy_raw_buffer_image(
    struct hk_cmd_buffer *cmd, struct hk_image *image, VkBuffer buffer_handle,
@@ -2113,9 +2143,7 @@ hk_native_copy_raw_buffer_image(
    for (unsigned r = 0; r < region_count; ++r) {
       const VkBufferImageCopy2 *region = &regions[r];
       const VkImageAspectFlags aspect = region->imageSubresource.aspectMask;
-      if (util_bitcount(aspect) != 1 || (aspect & ~image->vk.aspects) ||
-          !(aspect & (VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_DEPTH_BIT |
-                      VK_IMAGE_ASPECT_STENCIL_BIT)))
+      if (!hk_native_copy_aspect(image, aspect))
          return false;
 
       const unsigned plane = hk_image_aspects_to_plane(image, aspect);
@@ -2128,7 +2156,8 @@ hk_native_copy_raw_buffer_image(
        * planes. No render-target format conversion or attachment support is
        * required. Packed depth/stencil aspects need a masked transfer instead.
        */
-      if (layout->tiling != AIL_TILING_GPU || layout->compressed ||
+      if ((layout->tiling != AIL_TILING_GPU &&
+           layout->tiling != AIL_TILING_LINEAR) || layout->compressed ||
           util_format_is_depth_and_stencil(format) ||
           !util_is_power_of_two_nonzero(block_B) || block_B > 16)
          return false;
@@ -2139,8 +2168,8 @@ hk_native_copy_raw_buffer_image(
       const bool is_3d = image->vk.image_type == VK_IMAGE_TYPE_3D;
       const uint32_t layers = vk_image_subresource_layer_count(
          &image->vk, &region->imageSubresource);
-      const uint32_t mip_w = u_minify(image->vk.extent.width, level);
-      const uint32_t mip_h = u_minify(image->vk.extent.height, level);
+      const uint32_t mip_w = u_minify(layout->width_px, level);
+      const uint32_t mip_h = u_minify(layout->height_px, level);
       const uint32_t mip_d = u_minify(image->vk.extent.depth, level);
       const uint32_t z = region->imageOffset.z;
       const uint32_t depth = region->imageExtent.depth;
@@ -2185,14 +2214,13 @@ hk_native_copy_raw_buffer_image(
       const uint64_t base_dst = hk_image_base_address(image, plane);
       const uint32_t base_x_el = x / block_w;
       const uint32_t base_y_el = y / block_h;
-      const struct ail_tile tile = layout->tilesize_el[level];
       struct hk_block_copy_key key = {
          .type = HK_META_OBJECT_KEY_BLOCK_COPY,
          .block_B = block_B,
          .src_tile_log2_w = -1,
          .src_tile_log2_h = -1,
-         .dst_tile_log2_w = util_logbase2(tile.width_el),
-         .dst_tile_log2_h = util_logbase2(tile.height_el),
+         .dst_tile_log2_w = hk_native_copy_tile_log2(layout, level, false),
+         .dst_tile_log2_h = hk_native_copy_tile_log2(layout, level, true),
       };
 
       if (!to_image) {
@@ -2208,7 +2236,7 @@ hk_native_copy_raw_buffer_image(
             .src = base_src + layer * src_layer_B,
             .dst = base_dst + ail_get_layer_level_B(layout, dst_layer, level),
             .src_stride = src_row_B / block_B,
-            .dst_stride = DIV_ROUND_UP(layout->stride_el[level], tile.width_el),
+            .dst_stride = hk_native_copy_stride(layout, level),
             .dst_x = base_x_el,
             .dst_y = base_y_el,
             .width = blocks_x,
@@ -2238,30 +2266,35 @@ static bool
 hk_native_copy_raw_image(struct hk_cmd_buffer *cmd, struct hk_image *src,
                          struct hk_image *dst, const VkCopyImageInfo2 *info)
 {
-   if (!hk_native_raw_copy_format(src->vk.format) ||
-       !hk_native_raw_copy_format(dst->vk.format) || src->plane_count != 1 ||
-       dst->plane_count != 1 || src->vk.image_type != VK_IMAGE_TYPE_2D ||
+   if (src->vk.image_type != VK_IMAGE_TYPE_2D ||
        dst->vk.image_type != VK_IMAGE_TYPE_2D || src->vk.samples != 1 ||
        dst->vk.samples != 1)
-      return false;
-   const struct ail_layout *sl = &src->planes[0].layout;
-   const struct ail_layout *dl = &dst->planes[0].layout;
-   const enum pipe_format sf = hk_format_to_pipe_format(src->vk.format);
-   const enum pipe_format df = hk_format_to_pipe_format(dst->vk.format);
-   const unsigned block_w = util_format_get_blockwidth(sf);
-   const unsigned block_h = util_format_get_blockheight(sf);
-   if (block_w != util_format_get_blockwidth(df) ||
-       block_h != util_format_get_blockheight(df))
-      return false;
-   const unsigned block_B = ail_get_blocksize_B(sl);
-   if (sl->tiling != AIL_TILING_GPU || dl->tiling != AIL_TILING_GPU ||
-       sl->compressed || dl->compressed || block_B != ail_get_blocksize_B(dl))
       return false;
 
    for (unsigned r = 0; r < info->regionCount; r++) {
       const VkImageCopy2 *region = &info->pRegions[r];
       const VkImageSubresourceLayers *ss = &region->srcSubresource;
       const VkImageSubresourceLayers *ds = &region->dstSubresource;
+      if (!hk_native_copy_aspect(src, ss->aspectMask) ||
+          !hk_native_copy_aspect(dst, ds->aspectMask))
+         return false;
+      const unsigned sp = hk_image_aspects_to_plane(src, ss->aspectMask);
+      const unsigned dp = hk_image_aspects_to_plane(dst, ds->aspectMask);
+      const struct ail_layout *sl = &src->planes[sp].layout;
+      const struct ail_layout *dl = &dst->planes[dp].layout;
+      const unsigned block_w = util_format_get_blockwidth(sl->format);
+      const unsigned block_h = util_format_get_blockheight(sl->format);
+      const unsigned block_B = ail_get_blocksize_B(sl);
+      if (block_w != util_format_get_blockwidth(dl->format) ||
+          block_h != util_format_get_blockheight(dl->format) ||
+          block_B != ail_get_blocksize_B(dl) ||
+          !util_is_power_of_two_nonzero(block_B) || block_B > 16 ||
+          util_format_is_depth_and_stencil(sl->format) ||
+          util_format_is_depth_and_stencil(dl->format) ||
+          (sl->tiling != AIL_TILING_GPU && sl->tiling != AIL_TILING_LINEAR) ||
+          (dl->tiling != AIL_TILING_GPU && dl->tiling != AIL_TILING_LINEAR) ||
+          sl->compressed || dl->compressed)
+         return false;
       const unsigned sm = ss->mipLevel, dm = ds->mipLevel;
       const unsigned layers = vk_image_subresource_layer_count(&src->vk, ss);
       if (sm >= sl->levels || dm >= dl->levels || !layers ||
@@ -2270,31 +2303,41 @@ hk_native_copy_raw_image(struct hk_cmd_buffer *cmd, struct hk_image *src,
           layers > src->vk.array_layers - ss->baseArrayLayer ||
           ds->baseArrayLayer >= dst->vk.array_layers ||
           layers > dst->vk.array_layers - ds->baseArrayLayer ||
-          ss->aspectMask != VK_IMAGE_ASPECT_COLOR_BIT ||
-          ds->aspectMask != VK_IMAGE_ASPECT_COLOR_BIT || region->srcOffset.z ||
+          region->srcOffset.z ||
           region->dstOffset.z || region->extent.depth != 1 ||
           region->srcOffset.x < 0 || region->srcOffset.y < 0 ||
           region->dstOffset.x < 0 || region->dstOffset.y < 0 ||
           (region->srcOffset.x % block_w) || (region->srcOffset.y % block_h) ||
           (region->dstOffset.x % block_w) || (region->dstOffset.y % block_h))
          return false;
-      const struct ail_tile st = sl->tilesize_el[sm], dt = dl->tilesize_el[dm];
+      const unsigned sw = u_minify(sl->width_px, sm);
+      const unsigned sh = u_minify(sl->height_px, sm);
+      const unsigned dw = u_minify(dl->width_px, dm);
+      const unsigned dh = u_minify(dl->height_px, dm);
+      const unsigned sx = region->srcOffset.x, sy = region->srcOffset.y;
+      const unsigned dx = region->dstOffset.x, dy = region->dstOffset.y;
+      const unsigned w = region->extent.width, h = region->extent.height;
+      if (!w || !h || sx >= sw || sy >= sh || dx >= dw || dy >= dh ||
+          w > sw - sx || h > sh - sy || w > dw - dx || h > dh - dy ||
+          ((w % block_w) && (sx + w != sw || dx + w != dw)) ||
+          ((h % block_h) && (sy + h != sh || dy + h != dh)))
+         return false;
       const struct hk_block_copy_key key = {
          .type = HK_META_OBJECT_KEY_BLOCK_COPY,
          .block_B = block_B,
-         .src_tile_log2_w = util_logbase2(st.width_el),
-         .src_tile_log2_h = util_logbase2(st.height_el),
-         .dst_tile_log2_w = util_logbase2(dt.width_el),
-         .dst_tile_log2_h = util_logbase2(dt.height_el),
+         .src_tile_log2_w = hk_native_copy_tile_log2(sl, sm, false),
+         .src_tile_log2_h = hk_native_copy_tile_log2(sl, sm, true),
+         .dst_tile_log2_w = hk_native_copy_tile_log2(dl, dm, false),
+         .dst_tile_log2_h = hk_native_copy_tile_log2(dl, dm, true),
       };
       for (unsigned layer = 0; layer < layers; layer++) {
          const struct hk_block_copy_push push = {
-            .src = hk_image_base_address(src, 0) +
+            .src = hk_image_base_address(src, sp) +
                    ail_get_layer_level_B(sl, ss->baseArrayLayer + layer, sm),
-            .dst = hk_image_base_address(dst, 0) +
+            .dst = hk_image_base_address(dst, dp) +
                    ail_get_layer_level_B(dl, ds->baseArrayLayer + layer, dm),
-            .src_stride = DIV_ROUND_UP(sl->stride_el[sm], st.width_el),
-            .dst_stride = DIV_ROUND_UP(dl->stride_el[dm], dt.width_el),
+            .src_stride = hk_native_copy_stride(sl, sm),
+            .dst_stride = hk_native_copy_stride(dl, dm),
             .src_x = region->srcOffset.x / block_w,
             .src_y = region->srcOffset.y / block_h,
             .dst_x = region->dstOffset.x / block_w,
@@ -2482,7 +2525,8 @@ hk_CmdCopyImageToBuffer2(VkCommandBuffer commandBuffer,
    VK_FROM_HANDLE(hk_image, image, pCopyImageToBufferInfo->srcImage);
    if (agx_native_graphics(&dev->dev) &&
        image->vk.samples == VK_SAMPLE_COUNT_1_BIT &&
-       image->planes[0].layout.tiling == AIL_TILING_GPU &&
+       (image->planes[0].layout.tiling == AIL_TILING_GPU ||
+        image->planes[0].layout.tiling == AIL_TILING_LINEAR) &&
        !image->planes[0].layout.compressed &&
        !util_format_is_depth_and_stencil(image->planes[0].layout.format)) {
       if (!hk_native_copy_raw_buffer_image(
@@ -2506,7 +2550,9 @@ hk_CmdCopyImage2(VkCommandBuffer commandBuffer,
    VK_FROM_HANDLE(hk_image, dst_image, pCopyImageInfo->dstImage);
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
    if (agx_native_graphics(&dev->dev) &&
-       (vk_format_is_compressed(src_image->vk.format) ||
+       (vk_format_get_plane_count(src_image->vk.format) > 1 ||
+        vk_format_get_plane_count(dst_image->vk.format) > 1 ||
+        vk_format_is_compressed(src_image->vk.format) ||
         vk_format_is_compressed(dst_image->vk.format) ||
         hk_native_raw_copy_format(src_image->vk.format) ||
         hk_native_raw_copy_format(dst_image->vk.format))) {
