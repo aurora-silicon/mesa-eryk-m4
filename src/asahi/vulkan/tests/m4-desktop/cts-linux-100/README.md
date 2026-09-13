@@ -167,3 +167,25 @@ limits that family to 4x MSAA (page 9). Native 8x MSAA begins with Apple10.
 Source: https://developer.apple.com/metal/Metal-Feature-Set-Tables.pdf
 The scaled linear-filter case remains an unimplemented optional operation.
 Neither case is counted as a pass or removed from the frozen list.
+
+Final combined confirmation: **103 Pass, 2 NotSupported, 0 Fail/Crash**,
+105 distinct cases, across four guarded batches under a single boot and
+unchanged installed library/binary identities. The first 100 entries are the
+frozen Linux-100 list (**98 Pass, 2 NotSupported**); the five appended entries
+are distinct scaled-storage controls. No unsupported entry was deleted,
+relabelled, or counted as a pass. Peak recorded temperature was **58.75 C**.
+Exact paths and identities are in `linux-105-confirmation-summary.json`;
+all cases and per-case results are retained alongside it. The display manager
+remained active and enabled after the campaign.
+
+Remaining boundaries: the 8x case currently exits on the missing storage-image
+multisampling feature. That driver feature is still unimplemented for 2x/4x
+as well; implementing those supported sample counts remains useful even though
+8x exceeds the documented M4 render capability. The R8G8_SSCALED linear blit
+requires proper scaled texture filtering, which remains unadvertised.
+
+Kernel publication uses `dirtyroom/eryk_m4_gpu`, explicitly
+`git push dirtyroom HEAD:refs/heads/eryk_m4_gpu`. The local branch name is
+`m4-asahi-port`; an accidental same-named remote branch was removed after
+publishing the identical commit to the intended branch. Mesa remains on
+`upstream/m4-asahi-port`.
