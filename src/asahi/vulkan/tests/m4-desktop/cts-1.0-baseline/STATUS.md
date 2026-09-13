@@ -480,3 +480,15 @@ corrected scalar R16 signed case Pass in 20260913T160814884586Z-cts-scaled-blit-
 Unsigned R8/R16/RGBA16 controls all Pass in
 20260913T160910892368Z-cts-scaled-blit-unsigned-controls. These corrected-binary
 results remain separate from original CTS counts. Full watchdog/thermal guards.
+
+Packed RG4: add PIPE_FORMAT_G4R4_UNORM and Vulkan R4G4_UNORM_PACK8 mappings,
+with red in the high nibble, green in the low nibble and missing B/A = 0/1.
+Existing GPU raw transfers and packed clears now support this format; no
+sampling or render-target capability is advertised. Original case 89 Pass in
+20260913T161206004897Z-cts-packed-rg4-copy. Three image-clear dimension controls
+and R8-to-RG4 bit reinterpretation Pass in 20260913T161244863183Z-cts-packed-rg4-controls.
+Host util format suite passes including five new channel-order/pack/unpack
+vectors (build/cts-next/rg4-unit.log). Mandatory watchdog/thermal guards.
+Correction to earlier classification: case 89 requests disjoint memory on its
+three-plane SOURCE and is valid; its missing destination format was the gap.
+Known original sample passes now 70, without reclassifying adapted CTS results.
