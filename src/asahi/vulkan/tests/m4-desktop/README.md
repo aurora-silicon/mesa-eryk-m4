@@ -2015,3 +2015,12 @@ Native frozen Firefox run004409 returns swappedRGBA bytes before PNG encoding.
 `vulkan-color-blit --alternate` checks eight alternating BGR/RGB resource
 lifetimes. CPU-calculated byte expectations pass on lavapipe and M4 (004722,
 peak55.75 C); this excludes the simplest descriptor-format reuse case.
+
+`dmabuf-readback-probe [MODIFIER] [SAMPLES] [renderbuffer]` renders a known
+four-quadrant colour pattern into EGL-imported ARGB/ABGR GBM images. It checks
+RGBA/BGRA readback through CPU memory and PBOs; SAMPLES=4 resolves actual shader
+output into the imported image first. It uses /dev/dri/renderD128 and must run
+under gpu-experiment.py plus run-m4-gl.py. Compile with EGL/GL/GBM libraries.
+Linear and Apple-tiled imports, texture and renderbuffer attachment paths,
+and multisample resolve all pass the CPU-computed colour oracle (005235/005420,
+peak55.75 C). No host software DMA-BUF qualification is claimed.
