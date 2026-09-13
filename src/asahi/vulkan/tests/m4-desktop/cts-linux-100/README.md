@@ -26,7 +26,8 @@ Target files: /root/cts-1.0.2.6/linux-cases.txt and
 
 BGR8 UINT follow-up: padded BGRA storage supports sampling and raw transfers;
 BLIT_DST remains unadvertised pending native BGRA integer attachment export.
-Case 91 Pass in 20260913T161629985260Z-cts-padded-bgr-granularity (82 known passes).
+Case 91 NotSupported in 20260913T161629985260Z-cts-padded-bgr-granularity:
+it requires attachment support, which padded sampling alone does not provide.
 The BGR format was added to the existing CTS sampler oracle without altering
 reference checks: repeat sampling Pass in 20260913T161821590699Z-cts-bgr-sampling-control,
 and opaque-white border sampling Pass in the subsequent cts-bgr-border-control
@@ -44,13 +45,13 @@ three clears and three nearest/linear shadow comparison controls Pass in
 unadvertised and its control reports NotSupported, not Pass. Host transfers
 and multisampling of this emulated format remain unadvertised. Three target
 stencil cases pass in 20260913T162648763042Z-cts-d24-stencil, bringing known
-target passes to 85; this is not yet a fresh full-target run. Watchdog and
+target passes to 84; this is not yet a fresh full-target run. Watchdog and
 thermal guards active, no reset.
 
 Explicit chroma reconstruction: immutable filter state selects luma-centre
 reconstruction followed by full-resolution filtering. Nearest chroma ignores
 chroma location; linear retains cosited/midpoint coordinates. Target 98 Pass
-in 20260913T164314522092Z-cts-explicit-chroma-flrp (86 known target passes).
+in 20260913T164314522092Z-cts-explicit-chroma-flrp (85 known target passes).
 Two implementation-time userspace compiler crashes are retained, diagnosed and
 fixed: editing an unattached NIR clone, and stale flrp_lowered state. No GPU reset.
 
@@ -67,3 +68,9 @@ tolerances or pixel checks are removed. All ten controls Pass using the
 separately built diagnostic in 20260913T164603014781Z-cts-chroma-midpoint-oracle-000.
 Exact combined patch/manifest are retained. The fixed 100 target still uses its
 previous diagnostic binary: its explicit-nearest case needs no oracle change.
+
+Fresh fixed-target run: **85 Pass, 15 NotSupported, 0 Fail/Crash** in
+linux-100-depth-chroma-{results,summary}.json. This corrects an earlier notes-only
+misclassification of BGR granularity: the retained original result was always
+NotSupported, although its experiment guard succeeded. Separate BGR sampling
+controls did pass. No outcomes were changed or excluded.
