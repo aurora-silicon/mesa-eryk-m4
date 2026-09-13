@@ -135,7 +135,8 @@ agx3_tile_load_mask(enum agx_isa_encoding enc, uint16_t dest,
     * fetches carrying exactly one component. None carries an incoming wait. */
    if (!sample_mask || (!is_b(enc) && sample_mask != 1) ||
        !common_ok(dest, width, chan_mask, AGX3_TILE_COV_1X, enc, wait_mask, tile_off) ||
-       (chan_mask != 15 && !(is_b(enc) && chan_mask == 1)) ||
+       (chan_mask != 15 && !(is_b(enc) &&
+          (chan_mask == 1 || (chan_mask == 3 && width == AGX3_TILE_W16)))) ||
        wait_mask != 0 || slot < 1 ||
        slot > (is_b(enc) ? 6 : 8))
       return false;

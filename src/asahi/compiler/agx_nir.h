@@ -23,6 +23,8 @@ bool agx_nir_fuse_lea(struct nir_shader *shader);
 bool agx_nir_lower_lea(struct nir_shader *shader);
 bool agx_nir_fuse_selects(struct nir_shader *shader);
 bool agx_nir_fuse_algebraic_late(struct nir_shader *shader);
+bool agx_nir_lower_agx3_tile_formats(struct nir_shader *nir);
+
 bool agx_nir_lower_interleave(struct nir_shader *shader);
 
 bool agx_nir_fence_images(struct nir_shader *shader);

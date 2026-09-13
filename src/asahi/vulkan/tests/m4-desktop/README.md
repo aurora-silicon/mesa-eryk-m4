@@ -2180,3 +2180,8 @@ two RGB10A2), with raw RG16 readback to avoid a float-format conversion blit.
 Case5 isolates RG16 alone. Both pass the independent llvmpipe expectations.
 The initial M4 case4 fails RG16 in clear/draw/reload while all other targets
 pass; use these bounded reproducers instead of repeatedly launching Eevee.
+
+MRT cases5..8 exercise RG16/RGBA16 UNORM/SNORM, including additive tile-load
+blending and raw 16-bit readback. SNORM disables GL read-color clamping. The
+software references and M4 all pass after normalized tile conversion, correct
+native normalized16 EOT selection and two-lane W16 tile-load support.

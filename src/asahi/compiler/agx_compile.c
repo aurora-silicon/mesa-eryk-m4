@@ -5766,8 +5766,40 @@ lower_agx3_packed_tile(nir_builder *b, nir_intrinsic_instr *intr, void *data)
 {
    bool load = intr->intrinsic == nir_intrinsic_load_local_pixel_agx;
    bool store = intr->intrinsic == nir_intrinsic_store_local_pixel_agx;
-   if ((!load && !store) ||
-       nir_intrinsic_format(intr) != PIPE_FORMAT_R11G11B10_FLOAT ||
+   if (!load && !store)
+      return false;
+
+   const enum pipe_format format = nir_intrinsic_format(intr);
+   if (format == PIPE_FORMAT_R16_UNORM || format == PIPE_FORMAT_R16_SNORM) {
+      /* LSTCOL/LLDCOL carry a lane width, not AGX2's typed conversion.
+       * Normalize explicitly, then transfer the raw 16-bit integer lanes. */
+      const bool snorm = format == PIPE_FORMAT_R16_SNORM;
+      const unsigned bits[4] = {16, 16, 16, 16};
+      b->cursor = nir_before_instr(&intr->instr);
+      if (load) {
+         nir_def *raw = nir_load_local_pixel_agx(
+            b, intr->def.num_components, 16, intr->src[0].ssa,
+            .base = nir_intrinsic_base(intr), .format = PIPE_FORMAT_R16_UINT);
+         raw = snorm ? nir_i2i32(b, raw) : nir_u2u32(b, raw);
+         nir_def *value = snorm ? nir_format_snorm_to_float(b, raw, bits)
+                               : nir_format_unorm_to_float(b, raw, bits);
+         nir_def_rewrite_uses(&intr->def,
+                              nir_f2fN(b, value, intr->def.bit_size));
+      } else {
+         nir_def *value = nir_f2f32(b, intr->src[0].ssa);
+         nir_def *raw = snorm ? nir_format_float_to_snorm(b, value, bits)
+                             : nir_format_float_to_unorm(b, value, bits);
+         nir_store_local_pixel_agx(
+            b, nir_u2u16(b, raw), intr->src[1].ssa, intr->src[2].ssa,
+            .base = nir_intrinsic_base(intr), .format = PIPE_FORMAT_R16_UINT,
+            .write_mask = nir_intrinsic_write_mask(intr),
+            .explicit_coord = nir_intrinsic_explicit_coord(intr));
+      }
+      nir_instr_remove(&intr->instr);
+      return true;
+   }
+
+   if (format != PIPE_FORMAT_R11G11B10_FLOAT ||
        (load && (intr->def.bit_size != 32 || intr->def.num_components > 3)) ||
        (store && (nir_intrinsic_explicit_coord(intr) ||
                   nir_intrinsic_write_mask(intr) != 7)))
@@ -5790,6 +5822,13 @@ lower_agx3_packed_tile(nir_builder *b, nir_intrinsic_instr *intr, void *data)
    }
    nir_instr_remove(&intr->instr);
    return true;
+}
+
+bool
+agx_nir_lower_agx3_tile_formats(nir_shader *nir)
+{
+   return nir_shader_intrinsics_pass(nir, lower_agx3_packed_tile,
+                                     nir_metadata_control_flow, NULL);
 }
 
 /* AGX2 has a Morton interleave instruction. AGX3 uses ordinary integer
@@ -5875,8 +5914,7 @@ agx_compile_shader_nir_inner(nir_shader *nir, struct agx_shader_key *key,
             nir_metadata_control_flow, &key->dev);
 
    if (key->dev.encoding == AGX_ISA_ENCODING_AGX3B)
-      NIR_PASS(_, nir, nir_shader_intrinsics_pass, lower_agx3_packed_tile,
-               nir_metadata_control_flow, NULL);
+      NIR_PASS(_, nir, agx_nir_lower_agx3_tile_formats);
    if (key->dev.encoding == AGX_ISA_ENCODING_AGX3B)
       NIR_PASS(_, nir, agx_nir_lower_interleave);
 

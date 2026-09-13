@@ -374,7 +374,10 @@ agx_build_end_of_tile_shader(struct agx_bg_eot_cache *cache,
       .g17p_rt0_eot_norm16_selector_95 =
          agx_native_graphics(cache->dev) &&
          (key->tib.logical_format[0] == PIPE_FORMAT_R16_UNORM ||
+          key->tib.logical_format[0] == PIPE_FORMAT_R16G16_UNORM ||
+          key->tib.logical_format[0] == PIPE_FORMAT_R16G16B16A16_UNORM ||
           key->tib.logical_format[0] == PIPE_FORMAT_R16_SNORM ||
+          key->tib.logical_format[0] == PIPE_FORMAT_R16G16_SNORM ||
           key->tib.logical_format[0] == PIPE_FORMAT_R16G16B16A16_SNORM),
       .g17p_rt0_eot_i16_signed_two_words =
          agx_native_graphics(cache->dev) &&

@@ -3337,10 +3337,10 @@ agx3_outputs_are_terminal(agx_context *ctx, unsigned count)
  * preceding pack_imgwir and coordinate-select sequence is part of its ABI.
  * Fresh native RGB10A2 key0x10021300 emits the identical physical program:
  * its normalized conversion happens before W32 tile storage; PBE describes
- * the destination format. RG16 UNORM is likewise one 32-bit imageblock word,
- * with its two U16-normalized lanes described by PBE. Fresh Apple G17P
- * imgwblk compilations for U16NORM and S16NORM are byte-identical, grounding
- * the same one-word program for signed RG16 while PBE describes signedness.
+ * the destination format. Native G16G format7/6 (UNORM16/SNORM16), including
+ * RG16 and RGBA16, instead use selector4 (tail a895). A packed 32-bit size
+ * alone does not establish the export type; the old RG16 selector75 was
+ * incorrect. The compiler explicitly converts normalized values to raw lanes.
  * Scalar I32 key0x04021100 uses selector 0x35. R16G16_UINT key0x08020900
  * and R16G16_SINT key0x08020800 use selector 0x15. Fresh G17P
  * R16G16B16A16_UINT key0x10020900 uses the same selector with exactly two
@@ -3483,7 +3483,8 @@ agx3_g17p_rt0_eot_kind(const agx_context *ctx, enum agx_isa_encoding enc)
 
    if (store_format == AGX_FORMAT_U16NORM) {
       if (ctx->key->g17p_rt0_eot_norm16_selector_95)
-         return ctx->key->g17p_rt0_eot_words == 1
+         return (ctx->key->g17p_rt0_eot_words == 1 ||
+                 ctx->key->g17p_rt0_eot_words == 2)
                    ? AGX3_G17P_RT0_EOT_NORM16
                    : AGX3_G17P_RT0_EOT_NONE;
       if (ctx->key->g17p_rt0_eot_words == 1)
@@ -3688,12 +3689,16 @@ agx3_mrt_eot_selector(enum pipe_format logical, enum agx_format physical,
    case PIPE_FORMAT_R10G10B10A2_UNORM:
       *selector = 3;
       return physical == AGX_FORMAT_RGB10A2;
+   case PIPE_FORMAT_R16_UNORM:
    case PIPE_FORMAT_R16G16_UNORM:
-      *selector = 3;
-      return physical == AGX_FORMAT_U16NORM;
    case PIPE_FORMAT_R16G16B16A16_UNORM:
-      *selector = 1;
+      *selector = 4;
       return physical == AGX_FORMAT_U16NORM;
+   case PIPE_FORMAT_R16_SNORM:
+   case PIPE_FORMAT_R16G16_SNORM:
+   case PIPE_FORMAT_R16G16B16A16_SNORM:
+      *selector = 4;
+      return physical == AGX_FORMAT_S16NORM;
    case PIPE_FORMAT_R16_UINT:
    case PIPE_FORMAT_R16G16_UINT:
    case PIPE_FORMAT_R16G16B16A16_UINT:
@@ -3750,8 +3755,8 @@ agx3_native_mrt_eot(const agx_context *ctx, enum agx_isa_encoding enc,
          continue;
       }
       if (I->op != AGX_OPCODE_BLOCK_IMAGE_STORE ||
-          count >= (FRAG_RESULT_MAX - FRAG_RESULT_DATA0) || I->nr_dests || I->nr_srcs != 4 ||
-          I->dim != AGX_DIM_2D || !I->explicit_coords ||
+          count >= (FRAG_RESULT_MAX - FRAG_RESULT_DATA0) || I->nr_dests ||
+          I->nr_srcs != 4 || I->dim != AGX_DIM_2D || !I->explicit_coords ||
           !agx3_tex_imm(I->src[0], 0) || !agx3_tex_imm(I->src[1], count) ||
           !agx3_tex_plain_reg(I->src[2]) || I->src[2].size != AGX_SIZE_32 ||
           agx_channels(I->src[2]) != 1 || I->src[2].value >= AGX_NUM_REGS ||

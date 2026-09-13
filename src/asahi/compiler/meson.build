@@ -646,6 +646,18 @@ if with_tests
   )
 
   test(
+    'agx3_norm16',
+    executable(
+      'agx3_norm16_test',
+      files('test/test-agx3-norm16.c'),
+      c_args : [c_msvc_compat_args, no_override_init_args],
+      dependencies : [idep_nir, idep_mesautil],
+      link_with : [libasahi_compiler],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
     'agx3_int64',
     executable(
       'agx3_int64_test',
