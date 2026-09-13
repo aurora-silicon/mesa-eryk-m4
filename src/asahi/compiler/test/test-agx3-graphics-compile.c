@@ -1802,11 +1802,14 @@ test_indexed_compute_storage_format(enum pipe_format format, bool gather, bool d
    nir_def *coord = nir_vec4(&b, element, zero, zero, zero);
    nir_def *pbe = nir_bindless_image_agx(
       &b, nir_imm_int(&b, 176), .desc_set = 0);
-   nir_def *data = nir_fadd_imm(&b, &tex->def, 0.25f);
+   const bool integer = format == PIPE_FORMAT_R8G8B8A8_UINT;
+   const nir_alu_type type = integer ? nir_type_uint32 : nir_type_float32;
+   nir_def *data = integer ? nir_f2u32(&b, &tex->def) :
+                            nir_fadd_imm(&b, &tex->def, 0.25f);
    nir_bindless_image_store(
       &b, pbe, coord, zero, data, zero, .image_dim = GLSL_SAMPLER_DIM_2D,
       .image_array = false, .format = format,
-      .access = ACCESS_RESTRICT, .src_type = nir_type_float32);
+      .access = ACCESS_RESTRICT, .src_type = type);
 
    NIR_PASS(_, b.shader, agx_nir_lower_texture_for_generation,
             AGX_DESCRIPTOR_GENERATION_9);
@@ -1830,7 +1833,7 @@ test_indexed_compute_storage_format(enum pipe_format format, bool gather, bool d
          ordinary_stores += op == nir_intrinsic_image_store;
          if (op == nir_intrinsic_image_store) {
             nir_intrinsic_instr *store = nir_instr_as_intrinsic(instr);
-            ok &= nir_intrinsic_src_type(store) == nir_type_float32 &&
+            ok &= nir_intrinsic_src_type(store) == type &&
                   nir_intrinsic_range_base(store) == 0;
          }
       }
@@ -2767,6 +2770,13 @@ main(int argc, char **argv)
          "fs-depth-write", build_fs_depth, true, .g17p_only = true,
       };
       return run_case(&c, AGX_ISA_ENCODING_AGX3B) ? 0 : 1;
+   }
+   if (argc == 2 && !strcmp(argv[1], "--integer-storage-only")) {
+      const bool ok = test_indexed_compute_storage_format(
+         PIPE_FORMAT_R8G8B8A8_UINT, false, true);
+      printf("indexed compute sample plus RGBA8 integer storage: %s\n",
+             ok ? "PASS" : "FAIL");
+      return ok ? 0 : 1;
    }
    if (argc == 2 && !strcmp(argv[1], "--indexed-storage-only")) {
       const bool ok = test_indexed_compute_storage();

@@ -61,3 +61,18 @@ in the original sample), peak57.5 C, full guards, no kernel changes.
 Librarybc1d7cfc2b6e5d39e613cedfa42086c7379abf613469da23dfa37b72f33612e9
 contains the root/stage fix before the cache-version-only bump. The version10
 build was subsequently installed;2769 VDM decode/cache checks pass.
+
+Fourth selection:index55 (vertex/fragment push-template uniform buffers) now
+passes with the existing arithmetic fix; no separate source change was needed.
+Evidence:20260913T105941993579Z-cts-push-template-check.
+
+Fifth selection:index37, mutable RGBA8_UNORM/RGBA8_UINT draw/load. Add integer
+RGBA8 to native bindless storage lowering and accept its U32 input lanes in
+the indexed IMGWCI packer; the PBE supplies destination width. This reuses the
+existing G16G integer-write witness, with no new instruction encoding.
+`agx3_graphics_compile_test --integer-storage-only` passes. The historical
+compiler bundle remains rejected because it was captured after the missing
+NIR lowering; the fresh full-pipeline CTS run covers that transformation.
+20260913T110524038553Z-cts-rgba8ui-native-store:Pass, peak57.5 C, full guards,
+library1f144b9cc221f2e523edcb123b72ffd328ff16a6f3fd07ef101de44e2b031818.
+Kernel unchanged.

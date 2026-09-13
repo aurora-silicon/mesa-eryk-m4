@@ -832,6 +832,7 @@ agx_nir_lower_g17p_bindless_storage(nir_shader *shader)
                 (nir_intrinsic_image_array(intr) &&
                  nir_intrinsic_image_dim(intr) != GLSL_SAMPLER_DIM_2D) ||
                 (format != PIPE_FORMAT_R32_UINT &&
+                 format != PIPE_FORMAT_R8G8B8A8_UINT &&
                  format != PIPE_FORMAT_R32G32B32A32_UINT &&
                  format != PIPE_FORMAT_R11G11B10_FLOAT &&
                  format != PIPE_FORMAT_R32_FLOAT &&
