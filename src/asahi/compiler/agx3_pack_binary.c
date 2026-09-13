@@ -4574,6 +4574,20 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
          if (I->op == AGX_OPCODE_EXPORT)
             continue;
 
+         if (I->op == AGX_OPCODE_NO_VARYINGS) {
+            /* G16G's native void vertex function emits only END. Unlike
+             * AGX2 it needs no separate empty-UVS marker. The common footer
+             * still terminates the shader and retires its outstanding work. */
+            if (enc != AGX_ISA_ENCODING_AGX3B ||
+                ctx->stage != MESA_SHADER_VERTEX || ctx->is_preamble)
+               AGX3_REFUSE(I);
+            agx_foreach_instr_global(ctx, other) {
+               if (other->op == AGX_OPCODE_ST_VARY)
+                  AGX3_REFUSE(I);
+            }
+            continue;
+         }
+
          if (I->op == AGX_OPCODE_INTERP_AGX3 ||
              I->op == AGX_OPCODE_RHW_INTERP_AGX3) {
             if (I->op == AGX_OPCODE_RHW_INTERP_AGX3 &&

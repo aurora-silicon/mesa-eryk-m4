@@ -6712,3 +6712,14 @@ TEST_F(AGX3PackBinary, DeviceAtomicPositiveImmediateIgnoresExtensionMode)
          EXPECT_EQ(bytes, baseline);
    }
 }
+
+TEST_F(AGX3PackBinary, NativeEmptyVertexNeedsOnlyEnd)
+{
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+   b->shader->stage = MESA_SHADER_VERTEX;
+   agx_no_varyings(b);
+   agx_stop(b);
+   // Apple offline compiler, applegpu_g16g, probes/empty-vertex.metal,
+   // rasterization disabled: _agc.main = 0e000000.
+   EXPECT_EQ(pack(b), (std::vector<uint8_t>{0x0e, 0, 0, 0}));
+}

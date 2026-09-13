@@ -125,3 +125,8 @@ or SIGABRT and re-raises the original signal, preserving failure status.
 Symbolize offsets using `addr2line -f -C -e EXACT_LIBRARY OFFSET...`. Retain the
 matching binary/hash. Stack unwinding is not async-signal-safe, so the external
 timeout/watchdog remains mandatory. Do not install this into normal sessions.
+
+`native-metal-compile.py --stage render --rasterization-disabled` compiles a
+vertex-only pipeline, including void vertex functions. The retained G16G
+empty-vertex probe emits only `0e000000` at `_agc.main`; it needs no AGX2
+`no_varyings` instruction. The backend byte-exact test retains this witness.
