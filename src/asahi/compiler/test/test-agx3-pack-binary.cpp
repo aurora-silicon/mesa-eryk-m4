@@ -125,7 +125,49 @@ TEST_F(AGX3PackBinary, NativeLayeredColorEOTMatchesJ713Capture)
                          AGX_FORMAT_I32,AGX_DIM_2D_ARRAY,true);
    agx_stop(b);
    EXPECT_EQ(pack(b),std::vector<uint8_t>(std::begin(native),std::end(native)));
+}
 
+TEST_F(AGX3PackBinary, MixedFiveTargetEOTUsesIndependentTypedStores)
+{
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+   b->shader->stage = MESA_SHADER_COMPUTE;
+   const enum pipe_format formats[] = {
+      PIPE_FORMAT_R16G16B16A16_FLOAT, PIPE_FORMAT_R32_UINT,
+      PIPE_FORMAT_R16G16_UNORM, PIPE_FORMAT_R10G10B10A2_UNORM,
+      PIPE_FORMAT_R10G10B10A2_UNORM};
+   const enum agx_format physical[] = {AGX_FORMAT_F16, AGX_FORMAT_I32,
+                                       AGX_FORMAT_U16NORM, AGX_FORMAT_RGB10A2,
+                                       AGX_FORMAT_RGB10A2};
+   const unsigned offsets[] = {12, 0, 20, 4, 8};
+   agx_get_sr_to(b, agx_register(0, AGX_SIZE_32),
+                 AGX_SR_THREAD_POSITION_IN_GRID_X);
+   agx_get_sr_to(b, agx_register(2, AGX_SIZE_32),
+                 AGX_SR_THREAD_POSITION_IN_GRID_Y);
+   agx_index coords = agx_register(0, AGX_SIZE_32);
+   coords.channels_m1 = 1;
+   for (unsigned rt = 0; rt < 5; rt++) {
+      key.native_eot_formats[rt] = formats[rt];
+      agx_index offset = agx_register(4 + 2 * rt, AGX_SIZE_32);
+      agx_mov_imm_to(b, offset, offsets[rt]);
+      agx_block_image_store(b, agx_immediate(0), agx_immediate(rt), offset,
+                            coords, physical[rt], AGX_DIM_2D, true);
+   }
+   agx_stop(b);
+   const auto result = pack(b);
+   /* Independent Apple type2 builtin: F16, U32, three packed32 stores.
+    * The RG16 normalized target uses its qualified single-target packed32
+    * selector; the native comparison's third attachment is RGBA8. */
+   static const uint8_t native_tail[] = {
+      0x57, 0x10, 0x54, 0x00, 0x00, 0x00, 0x00, 0x80, 0xa8, 0x15, 0x00,
+      0x00, 0x57, 0x20, 0x54, 0x08, 0x00, 0x10, 0x00, 0x90, 0xa8, 0x35,
+      0x00, 0x00, 0x57, 0x40, 0x54, 0x10, 0x00, 0x20, 0x00, 0xa0, 0xa8,
+      0x75, 0x00, 0x00, 0x57, 0x80, 0x54, 0x18, 0x00, 0x30, 0x00, 0xb0,
+      0xa8, 0x75, 0x00, 0x00, 0x57, 0x00, 0x55, 0x20, 0x00, 0x40, 0x00,
+      0xd0, 0xa8, 0x75, 0x00, 0x00, 0x0e, 0x00, 0x00, 0x00};
+   ASSERT_GE(result.size(), sizeof(native_tail));
+   EXPECT_TRUE(std::equal(std::begin(native_tail), std::end(native_tail),
+                          result.end() - sizeof(native_tail)));
+   EXPECT_EQ(b->shader->agx3_staging_halfs, 40);
 }
 
 TEST_F(AGX3PackBinary, StraightLineALU)

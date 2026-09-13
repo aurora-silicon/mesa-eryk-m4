@@ -347,6 +347,10 @@ struct agx_shader_key {
     * logical layout from the final AGX IR alone. */
    uint8_t g17p_rt0_eot_words;
 
+   /* EOT physical IR formats lose logical component width/count. Preserve
+    * the format of every attachment, not just RT0, for typed native stores. */
+   enum pipe_format native_eot_formats[FRAG_RESULT_MAX - FRAG_RESULT_DATA0];
+
    /* Select the native normalized-16 imgwblk tail (0x95). Scalar R16 and
     * RG16 are both one imageblock word, so word count alone is insufficient. */
    bool g17p_rt0_eot_norm16_selector_95;

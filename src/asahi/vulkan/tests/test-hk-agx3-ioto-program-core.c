@@ -2127,17 +2127,51 @@ test_coverage_initial_pixel_dependencies(void)
    return 0;
 }
 
+static int
+test_mixed_target_layout_bounds(void)
+{
+   const enum pipe_format formats[AGX_MAX_RENDER_TARGETS] = {
+      PIPE_FORMAT_R16G16B16A16_FLOAT, PIPE_FORMAT_R32_UINT,
+      PIPE_FORMAT_R16G16_UNORM,       PIPE_FORMAT_R10G10B10A2_UNORM,
+      PIPE_FORMAT_R10G10B10A2_UNORM,
+   };
+   struct agx_tilebuffer_layout tib =
+      agx_build_tilebuffer_layout(formats, 5, 1, false);
+   CHECK(tib.sample_size_B == 24);
+   CHECK(hk_agx3_g17p_rt0_tile_layout_supported(&tib));
+   /* Overlap, undersized allocation and an unhandled spill are invalid. */
+   struct agx_tilebuffer_layout invalid = tib;
+   invalid._offset_B[0] = invalid._offset_B[1];
+   CHECK(!hk_agx3_g17p_rt0_tile_layout_supported(&invalid));
+   invalid = tib;
+   invalid.sample_size_B = 16;
+   CHECK(!hk_agx3_g17p_rt0_tile_layout_supported(&invalid));
+   invalid = tib;
+   invalid.spilled[4] = true;
+   CHECK(!hk_agx3_g17p_rt0_tile_layout_supported(&invalid));
+   /* Attachment order must not select a different supported-layout list. */
+   for (unsigned shift = 1; shift < 5; shift++) {
+      enum pipe_format reordered[AGX_MAX_RENDER_TARGETS] = {0};
+      for (unsigned i = 0; i < 5; i++)
+         reordered[i] = formats[(i + shift) % 5];
+      tib = agx_build_tilebuffer_layout(reordered, 5, 1, false);
+      CHECK(hk_agx3_g17p_rt0_tile_layout_supported(&tib));
+   }
+   return 0;
+}
+
 int
 main(void)
 {
-   if (test_coverage_initial_pixel_dependencies() || test_exact_target_order() || test_terminal_suffix_modes() ||
+   if (test_mixed_target_layout_bounds() ||
+       test_coverage_initial_pixel_dependencies() ||
+       test_exact_target_order() || test_terminal_suffix_modes() ||
        test_fail_closed() || test_g17s_minimal_compute_admission() ||
        test_g17p_dynamic_compute_program() ||
        test_g17p_direct_add3_compute_bridge() ||
        test_g17p_no_resource_program_bridge() ||
        test_g17p_basic_graphics_program() || test_g17p_rt0_eot_program() ||
-       test_g17p_combined_sampler_pointers() ||
-       test_g17p_root_range() ||
+       test_g17p_combined_sampler_pointers() || test_g17p_root_range() ||
        test_g17p_rt0_background_programs() ||
        test_g17p_rt0_background_staging() ||
        test_g17p_rt0_background_pass_control() ||

@@ -3662,6 +3662,58 @@ agx3_emit_native_layered_eot(struct util_dynarray *emission,
    return ok;
 }
 
+/* Logical attachment formats disambiguate normalized and integer physical
+ * stores. Selectors match the independently retained native single-target
+ * builtins; unsupported conversion sequences must not become raw stores. */
+static bool
+agx3_mrt_eot_selector(enum pipe_format logical, enum agx_format physical,
+                      uint8_t *selector)
+{
+   switch (logical) {
+   case PIPE_FORMAT_R16_FLOAT:
+   case PIPE_FORMAT_R16G16_FLOAT:
+   case PIPE_FORMAT_R16G16B16A16_FLOAT:
+      *selector = 1;
+      return physical == AGX_FORMAT_F16;
+   case PIPE_FORMAT_R8_UNORM:
+   case PIPE_FORMAT_R8G8_UNORM:
+   case PIPE_FORMAT_R8G8B8A8_UNORM:
+   case PIPE_FORMAT_R8G8B8A8_SRGB:
+   case PIPE_FORMAT_B8G8R8A8_UNORM:
+   case PIPE_FORMAT_B8G8R8A8_SRGB:
+      *selector = 3;
+      return physical == AGX_FORMAT_U8NORM;
+   case PIPE_FORMAT_R11G11B10_FLOAT:
+      *selector = 3;
+      return physical == AGX_FORMAT_RG11B10F;
+   case PIPE_FORMAT_R10G10B10A2_UNORM:
+      *selector = 3;
+      return physical == AGX_FORMAT_RGB10A2;
+   case PIPE_FORMAT_R16G16_UNORM:
+      *selector = 3;
+      return physical == AGX_FORMAT_U16NORM;
+   case PIPE_FORMAT_R16G16B16A16_UNORM:
+      *selector = 1;
+      return physical == AGX_FORMAT_U16NORM;
+   case PIPE_FORMAT_R16_UINT:
+   case PIPE_FORMAT_R16G16_UINT:
+   case PIPE_FORMAT_R16G16B16A16_UINT:
+      *selector = 1;
+      return physical == AGX_FORMAT_I16;
+   case PIPE_FORMAT_R32_FLOAT:
+   case PIPE_FORMAT_R32G32_FLOAT:
+   case PIPE_FORMAT_R32G32B32A32_FLOAT:
+   case PIPE_FORMAT_R32_UINT:
+   case PIPE_FORMAT_R32_SINT:
+   case PIPE_FORMAT_R32G32B32A32_UINT:
+   case PIPE_FORMAT_R32G32B32A32_SINT:
+      *selector = 2;
+      return physical == AGX_FORMAT_I32;
+   default:
+      return false;
+   }
+}
+
 /* Recognize the compiler-generated EOT intrinsic wrapper. The native ABI
  * supplies the PBE table and per-attachment tile offsets in uniforms; shader
  * coordinates come from the tile grid. Keep typed stores in attachment order. */
@@ -3708,6 +3760,13 @@ agx3_native_mrt_eot(const agx_context *ctx, enum agx_isa_encoding enc,
           !agx3_tex_plain_reg(I->src[3]) || I->src[3].size != AGX_SIZE_32 ||
           agx_channels(I->src[3]) != 2 || I->src[3].value != x || y != x + 2)
          return 0;
+      if (ctx->key->native_eot_formats[count] != PIPE_FORMAT_NONE) {
+         if (!agx3_mrt_eot_selector(ctx->key->native_eot_formats[count],
+                                    I->format, &selectors[count]))
+            return 0;
+         count++;
+         continue;
+      }
       switch (I->format) {
       case AGX_FORMAT_F16:
       case AGX_FORMAT_I16:

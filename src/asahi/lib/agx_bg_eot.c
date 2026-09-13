@@ -378,6 +378,8 @@ agx_build_end_of_tile_shader(struct agx_bg_eot_cache *cache,
    };
 
    if (agx_native_graphics(cache->dev)) {
+      memcpy(compiler_key.native_eot_formats, key->tib.logical_format,
+             sizeof(compiler_key.native_eot_formats));
       switch (key->tib.logical_format[0]) {
       case PIPE_FORMAT_R32_FLOAT:
       case PIPE_FORMAT_R32_UINT:

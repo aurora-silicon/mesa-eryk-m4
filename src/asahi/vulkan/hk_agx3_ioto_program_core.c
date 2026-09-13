@@ -5,16 +5,17 @@
 
 #include "hk_agx3_ioto_program_core.h"
 
+#include "asahi/compiler/agx3_binder.h"
 #include "asahi/lib/agx_ioto_core.h"
 #include "asahi/lib/agx_tilebuffer.h"
-#include "asahi/compiler/agx3_binder.h"
 
 #include <string.h>
+#include "util/format/u_format.h"
 
 bool
-hk_agx3_ioto_program_generate(
-   enum agx_chip chip, const struct hk_agx3_ioto_program_desc *desc,
-   void *output, size_t capacity, size_t *written)
+hk_agx3_ioto_program_generate(enum agx_chip chip,
+                              const struct hk_agx3_ioto_program_desc *desc,
+                              void *output, size_t capacity, size_t *written)
 {
    if (!desc || !agx_ioto_target_supported(chip))
       return false;
@@ -69,45 +70,21 @@ hk_agx3_g17p_single_layer_rendering(uint32_t view_mask, uint32_t layer_count)
    return view_mask == 0 && layer_count == 1;
 }
 
-bool
-hk_agx3_g17p_rt0_tile_layout_supported(struct agx_tilebuffer_layout *tib)
+static bool
+hk_native_single_target_layout_supported(struct agx_tilebuffer_layout *tib)
 {
-   if (!tib || (tib->nr_samples != 1 && tib->nr_samples != 2 &&
-                tib->nr_samples != 4) ||
+   if (!tib ||
+       (tib->nr_samples != 1 && tib->nr_samples != 2 && tib->nr_samples != 4) ||
        (tib->tile_size != 32 * 32 && tib->tile_size != 32 * 16 &&
-        tib->tile_size != 16 * 16) || tib->spilled[0])
+        tib->tile_size != 16 * 16) ||
+       tib->spilled[0])
       return false;
 
    if (tib->layered && tib->sample_size_B != 0 &&
        (tib->nr_samples != 1 || tib->logical_format[1] != PIPE_FORMAT_NONE))
       return false;
 
-   const bool mixed_mrt =
-      tib->logical_format[0] == PIPE_FORMAT_R16G16B16A16_FLOAT &&
-      (tib->logical_format[1] == PIPE_FORMAT_R8_UNORM ||
-       tib->logical_format[1] == PIPE_FORMAT_R16_UINT) &&
-      !tib->spilled[1] && tib->_offset_B[0] == 0 &&
-      tib->_offset_B[1] == 8 && tib->sample_size_B == 16;
-
-   const bool packed_mrt = tib->nr_samples == 1 &&
-      ((tib->logical_format[0] == PIPE_FORMAT_R11G11B10_FLOAT &&
-        tib->logical_format[1] == PIPE_FORMAT_R11G11B10_FLOAT) ||
-       ((tib->logical_format[0] == PIPE_FORMAT_R8G8B8A8_UNORM ||
-         tib->logical_format[0] == PIPE_FORMAT_R8G8B8A8_SRGB) &&
-        tib->logical_format[1] == PIPE_FORMAT_R8G8B8A8_UNORM)) &&
-      !tib->spilled[1] && tib->_offset_B[0] == 0 &&
-      tib->_offset_B[1] == 4 && tib->sample_size_B == 8;
-
-   const bool triple_mrt = tib->nr_samples == 1 &&
-      tib->logical_format[0] == PIPE_FORMAT_R16G16B16A16_FLOAT &&
-      tib->logical_format[1] == PIPE_FORMAT_R16G16_FLOAT &&
-      tib->logical_format[2] == PIPE_FORMAT_R16_UINT &&
-      !tib->spilled[1] && !tib->spilled[2] &&
-      tib->_offset_B[0] == 0 && tib->_offset_B[1] == 8 &&
-      tib->_offset_B[2] == 12 && tib->sample_size_B == 16;
-
-   for (unsigned rt = triple_mrt ? 3 : (mixed_mrt || packed_mrt) ? 2 : 1;
-        rt < AGX_MAX_RENDER_TARGETS; ++rt) {
+   for (unsigned rt = 1; rt < AGX_MAX_RENDER_TARGETS; ++rt) {
       if (tib->logical_format[rt] != PIPE_FORMAT_NONE)
          return false;
    }
@@ -137,15 +114,17 @@ hk_agx3_g17p_rt0_tile_layout_supported(struct agx_tilebuffer_layout *tib)
       tib->nr_samples == 1 &&
       tib->logical_format[0] == PIPE_FORMAT_R16G16B16A16_SINT;
 
-   const bool rgba32 = tib->nr_samples == 1 && tib->sample_size_B == 16 &&
+   const bool rgba32 =
+      tib->nr_samples == 1 && tib->sample_size_B == 16 &&
       (tib->logical_format[0] == PIPE_FORMAT_R32G32B32A32_FLOAT ||
        tib->logical_format[0] == PIPE_FORMAT_R32G32B32A32_SINT ||
        tib->logical_format[0] == PIPE_FORMAT_R32G32B32A32_UINT);
 
-   return triple_mrt || mixed_mrt || packed_mrt || rgba32 ||
+   return rgba32 ||
           (tib->sample_size_B == 8 &&
            (agx_tilebuffer_physical_format(tib, 0) == PIPE_FORMAT_R8_UNORM ||
-            agx_tilebuffer_physical_format(tib, 0) == PIPE_FORMAT_R8G8B8A8_SRGB ||
+            agx_tilebuffer_physical_format(tib, 0) ==
+               PIPE_FORMAT_R8G8B8A8_SRGB ||
             agx_tilebuffer_physical_format(tib, 0) == PIPE_FORMAT_R16_FLOAT ||
             agx_tilebuffer_physical_format(tib, 0) ==
                PIPE_FORMAT_R10G10B10A2_UNORM ||
@@ -168,8 +147,58 @@ hk_agx3_g17p_rt0_tile_layout_supported(struct agx_tilebuffer_layout *tib)
             tib->logical_format[0] == PIPE_FORMAT_R16G16B16A16_UNORM ||
             (tib->nr_samples == 1 &&
              tib->logical_format[0] == PIPE_FORMAT_R11G11B10_FLOAT) ||
-            scalar_r32f || scalar_r32i || pair_r32f || pair_r32i ||
-            pair_r32u || scalar_r8u || scalar_r8i || rgba16u || rgba16i));
+            scalar_r32f || scalar_r32i || pair_r32f || pair_r32i || pair_r32u ||
+            scalar_r8u || scalar_r8i || rgba16u || rgba16i));
+}
+
+bool
+hk_agx3_g17p_rt0_tile_layout_supported(struct agx_tilebuffer_layout *tib)
+{
+   if (!tib ||
+       (tib->nr_samples != 1 && tib->nr_samples != 2 && tib->nr_samples != 4) ||
+       (tib->tile_size != 1024 && tib->tile_size != 512 &&
+        tib->tile_size != 256) ||
+       (tib->sample_size_B & 7) || tib->sample_size_B > 248 ||
+       tib->sample_size_B * tib->nr_samples * tib->tile_size > 32768)
+      return false;
+   unsigned begin[AGX_MAX_RENDER_TARGETS], end[AGX_MAX_RENDER_TARGETS],
+      count = 0;
+   bool hole = false;
+   for (unsigned rt = 0; rt < AGX_MAX_RENDER_TARGETS; ++rt) {
+      const enum pipe_format logical = tib->logical_format[rt];
+      if (logical == PIPE_FORMAT_NONE) {
+         hole = true;
+         continue;
+      }
+      /* The current native EOT wrapper binds consecutive color attachments. */
+      if (hole || tib->spilled[rt] || (tib->layered && rt != 0))
+         return false;
+      const enum pipe_format physical = agx_tilebuffer_physical_format(tib, rt);
+      const unsigned alignment = util_format_get_blocksize(physical);
+      unsigned bytes = alignment;
+      if (util_format_get_nr_components(physical) == 1)
+         bytes *= util_format_get_nr_components(logical);
+      struct agx_tilebuffer_layout single = {
+         .logical_format = {logical},
+         .nr_samples = tib->nr_samples,
+         .sample_size_B = ALIGN_POT(bytes, 8),
+         .tile_size = tib->tile_size,
+         .layered = tib->layered,
+      };
+      if (!bytes || !alignment ||
+          !hk_native_single_target_layout_supported(&single) ||
+          tib->_offset_B[rt] % alignment)
+         return false;
+      begin[count] = tib->_offset_B[rt];
+      end[count] = begin[count] + bytes;
+      if (end[count] > tib->sample_size_B)
+         return false;
+      for (unsigned j = 0; j < count; ++j)
+         if (begin[count] < end[j] && begin[j] < end[count])
+            return false;
+      count++;
+   }
+   return count ? true : tib->sample_size_B == 0;
 }
 
 static bool
