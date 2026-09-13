@@ -67,3 +67,18 @@ The rebuilt executable SHA256 is
 `447cd64788bde92bdf034aa32d9afc0a8c2c72746f6aee9626bbc1f61a78b4e6`.
 Native fullscreen startup and a timed cube rotation complete in
 `20260913T003232545143Z-blender-native-fullscreen-resize-fixed`, peak57 C.
+
+## Eevee qualification scene
+
+`blender-eevee-scene.py` runs through Blender --python inside app-observe.py
+and gpu-experiment.py. It saves the exact .blend, script hash, build options,
+renderer metadata and final PNG under the runner's diagnostics/eevee directory.
+The initial192x144,16-sample scene contains a diffuse cube, metallic sphere,
+ground, world fill and an area light casting shadows. Settings are identical
+between renderers. PASS means rendering finished; image comparison is separate.
+
+The first lavapipe capture20260913T020724886404Z completed in34 seconds with
+peak59.25 C; its PNG shows both objects, highlights and shadows. The206-pipeline
+capture is retained for bounded M4 replay; native Eevee is not qualified yet.
+The build audit retains all actual bpy.app.build_options. Cycles, OpenVDB and
+other lite-preset modules are absent; enabling Eevee does not close those gaps.
