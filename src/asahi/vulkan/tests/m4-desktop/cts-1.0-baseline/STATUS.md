@@ -400,3 +400,13 @@ cts-scaled-sampler-controls). Library
 Fresh original 100 cases: 64 Pass, 35 NotSupported, 1 known CTS Crash, zero Fail.
 Seven former skips now Pass: 13, 27, 38, 49, 56, 60, 96. Exact results/evidence:
 format-capability-results.json. Full watchdog/thermal guards; kernel unchanged.
+
+D16_UNORM_S8_UINT: allocate independent D16 and S8 planes, use aspect-specific
+sampling descriptors and host-copy plane selection, and decompose combined
+image-copy aspects into raw GPU plane copies. Rendering uses the established
+D16 ZLS and S8 paths. Multisample D16S8 remains unadvertised because its transfer
+path is not implemented. Existing multisample D32S8 selection is unchanged.
+20260913T153846812170Z-cts-d16s8-format: former skips 3 and 93 Pass.
+20260913T153949125865Z-cts-d16s8-controls: D16S8 copy, image clear, full/partial attachment
+clear, and a D32S8 copy regression all Pass. Full watchdog/thermal guards;
+library 4e9aa30cee03b21fc0d939bf5bbafc775013ec01793afa195626657ea89ed7aa. Kernel unchanged.

@@ -2572,6 +2572,10 @@ hk_CmdCopyImage2(VkCommandBuffer commandBuffer,
          dst_image->vk.samples == VK_SAMPLE_COUNT_1_BIT) ||
         (!ail_pixel_format[hk_format_to_pipe_format(src_image->vk.format)].texturable ||
          !ail_pixel_format[hk_format_to_pipe_format(dst_image->vk.format)].texturable) ||
+        ((hk_split_depth_stencil(src_image->vk.format) ||
+          hk_split_depth_stencil(dst_image->vk.format)) &&
+         src_image->vk.samples == VK_SAMPLE_COUNT_1_BIT &&
+         dst_image->vk.samples == VK_SAMPLE_COUNT_1_BIT) ||
         vk_format_get_plane_count(src_image->vk.format) > 1 ||
         vk_format_get_plane_count(dst_image->vk.format) > 1 ||
         vk_format_is_compressed(src_image->vk.format) ||
@@ -2580,8 +2584,29 @@ hk_CmdCopyImage2(VkCommandBuffer commandBuffer,
         hk_native_raw_copy_format(dst_image->vk.format))) {
       struct hk_meta_save save;
       hk_meta_begin(cmd, &save, VK_PIPELINE_BIND_POINT_COMPUTE);
-      if (!hk_native_copy_raw_image(cmd, src_image, dst_image, pCopyImageInfo))
-         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+      for (unsigned r = 0; r < pCopyImageInfo->regionCount; ++r) {
+         VkImageCopy2 region = pCopyImageInfo->pRegions[r];
+         VkCopyImageInfo2 info = *pCopyImageInfo;
+         info.regionCount = 1;
+         info.pRegions = &region;
+         const VkImageAspectFlags both = VK_IMAGE_ASPECT_DEPTH_BIT |
+                                         VK_IMAGE_ASPECT_STENCIL_BIT;
+         if (region.srcSubresource.aspectMask == both &&
+             region.dstSubresource.aspectMask == both &&
+             hk_split_depth_stencil(src_image->vk.format) &&
+             hk_split_depth_stencil(dst_image->vk.format)) {
+            u_foreach_bit(bit, both) {
+               region.srcSubresource.aspectMask = 1u << bit;
+               region.dstSubresource.aspectMask = 1u << bit;
+               if (!hk_native_copy_raw_image(cmd, src_image, dst_image, &info))
+                  vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+            }
+         } else if (!hk_native_copy_raw_image(cmd, src_image, dst_image, &info)) {
+            vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+         }
+         if (vk_command_buffer_has_error(&cmd->vk))
+            break;
+      }
       hk_meta_end(cmd, &save, VK_PIPELINE_BIND_POINT_COMPUTE);
       return;
    }
