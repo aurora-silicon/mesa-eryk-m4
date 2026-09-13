@@ -20,10 +20,13 @@ a = p.parse_args()
 raw = a.cases.read_bytes()
 cases = raw.decode().splitlines()
 assert len(cases) == len(set(cases))
-records, batches, identities = {}, [], []
+records, batches, identities, timings = {}, [], [], []
 for segment in a.segments:
     summary = json.loads((segment/'summary.json').read_text())
     identities.append(summary['identity'])
+    if 'elapsed_seconds' in summary:
+        timings.append({k: summary[k] for k in ('jobs', 'started_unix',
+            'finished_unix', 'elapsed_seconds', 'batch_execution_seconds')})
     for name in summary['batches']:
         if name not in batches:
             batches.append(name)
@@ -62,9 +65,17 @@ summary = dict(selected=len(cases), completed=completed,
                                             if attempted_supported else None),
     categories=categories, cases_sha256=hashlib.sha256(raw).hexdigest(),
     segments=[str(s.resolve()) for s in a.segments],
-    identities=identities, batches=observations,
+    identities=identities, batches=observations, campaign_timings=timings,
     peak_temperature_c=max((b['peak_temperature_c'] for b in observations
                             if b['peak_temperature_c'] is not None), default=None))
+if timings:
+    summary['timing'] = dict(
+        elapsed_seconds=sum(t['elapsed_seconds'] for t in timings),
+        batch_execution_seconds=sum(t['batch_execution_seconds'] for t in timings),
+        wall_span_seconds=max(t['finished_unix'] for t in timings) -
+                          min(t['started_unix'] for t in timings),
+        jobs=sorted(set(t['jobs'] for t in timings)),
+        note='Elapsed sums campaign segments including guard/transport overhead; wall span also includes any gaps between segments.')
 a.output.mkdir(parents=True, exist_ok=True)
 (a.output/'results.json').write_text(json.dumps(results, indent=2)+'\n')
 (a.output/'summary.json').write_text(json.dumps(summary, indent=2)+'\n')
@@ -78,6 +89,12 @@ lines = [f'# CTS sample: {completed}/{len(cases)} completed', '',
          '| Outcome | Count | % of selected sample |', '| --- | ---: | ---: |']
 lines += [f'| {status} | {count} | {count*100/len(cases):.1f}% |'
           for status, count in sorted(counts.items())]
+if timings:
+    timing = summary['timing']
+    lines += ['', f"Concurrent CTS processes: {', '.join(map(str, timing['jobs']))}.",
+              f"Campaign elapsed time (including guards/transport): {timing['elapsed_seconds']:.3f} seconds.",
+              f"Batch execution wall time: {timing['batch_execution_seconds']:.3f} seconds.",
+              f"Overall wall span (including segment gaps): {timing['wall_span_seconds']:.3f} seconds."]
 lines += ['', f"Peak recorded temperature: {summary['peak_temperature_c']} C.", '',
           'Unsupported cases are not passes. Timeouts use the recorded per-case bound.',
           'Process crashes are not necessarily GPU resets. Inspect retained logs for attribution.',
