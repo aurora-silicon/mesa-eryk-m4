@@ -2210,3 +2210,10 @@ Use either dispatches or draws; vertex/index buffer dumps are now opt-in with
 `vulkan-dump-compare.py --descriptors` also compares dispatch descriptors and
 before/after writes, including all explicitly dumped layers/mips. As usual,
 raw byte differences are diagnostics, not floating-point tolerance judgments.
+
+`cube-compute-probe.c` samples 16 directions on each of six cube faces at two
+constant LODs in compute. Distinct face/texel patterns and SSBO readback check
+192 samples exactly, without a render-target export. Compile with `-lEGL -lGL`
+and run only through `gpu-experiment.py ... -- python3 /root/run-m4-gl.py
+/root/cube-compute-probe` on M4. The host software oracle uses
+`M4_TEST_LLVMPIPE=1 GALLIUM_DRIVER=llvmpipe LIBGL_ALWAYS_SOFTWARE=1`.
