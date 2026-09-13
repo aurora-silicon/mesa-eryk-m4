@@ -24,3 +24,12 @@ or unsigned normalized conversion. Both original CTS cases pass with expected
 output on M4. Evidence: _provenance/experiments/
 20260913T205635734916Z-cts-seed20-normalized-store (60-second watchdog,
 peak 57.5 C). Original Vulkan commands and output checks are unchanged.
+
+## Optimizer operand legality (cases 766 and 933)
+
+Fold immediate fmov conversions before allocation, preserving negative zero;
+retain explicit zero-extension of half-width ballot predicates and only fuse
+comparisons with native operand shapes. Saved compiler bundles replay
+successfully offline, and both original CTS pixel comparisons pass on M4.
+Evidence: _provenance/experiments/20260913T205911233931Z-cts-seed20-compiler2
+(60-second watchdog, peak 57.5 C).

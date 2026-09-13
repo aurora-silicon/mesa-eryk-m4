@@ -1,0 +1,40 @@
+[
+  {
+    "index": 3,
+    "case": "dEQP-VK.pipeline.blend.format.r16g16b16a16_sfloat.states.color_cc_sa_add_alpha_1msa_ca_rsub-color_cc_1mca_sub_alpha_o_1mcc_max-color_z_z_sub_alpha_sa_sa_rsub-color_cc_sc_rsub_alpha_1mdc_dc_rsub",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-block",
+      "--deqp-case=dEQP-VK.pipeline.blend.format.r16g16b16a16_sfloat.states.color_cc_sa_add_alpha_1msa_ca_rsub-color_cc_1mca_sub_alpha_o_1mcc_max-color_z_z_sub_alpha_sa_sa_rsub-color_cc_sc_rsub_alpha_1mdc_dc_rsub",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T205911233931Z-cts-seed20-compiler2/cts/003/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "started_unix": 1789333152.6852427,
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.25930250300007174,
+    "finished_unix": 1789333152.9501054,
+    "pid": 109914
+  },
+  {
+    "index": 4,
+    "case": "dEQP-VK.pipeline.input_assembly.primitive_restart.index_type_uint16.line_strip_with_adjacency",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-seed20-block",
+      "--deqp-case=dEQP-VK.pipeline.input_assembly.primitive_restart.index_type_uint16.line_strip_with_adjacency",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260913T205911233931Z-cts-seed20-compiler2/cts/004/result.qpa"
+    ],
+    "boot_id": "cfd2f3c5-ef11-412d-9aaf-95c4ff56f566",
+    "status": "Pass",
+    "started_unix": 1789333152.960703,
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.3608994330002133,
+    "finished_unix": 1789333153.3273947,
+    "pid": 109917
+  }
+]

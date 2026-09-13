@@ -395,7 +395,10 @@ agx_optimizer_copyprop(agx_context *ctx, agx_instr **defs, agx_instr *I)
           (I->op == AGX_OPCODE_IADD || I->op == AGX_OPCODE_IMAD ||
            I->op == AGX_OPCODE_ICMP || I->op == AGX_OPCODE_ICMPSEL ||
            I->op == AGX_OPCODE_BFI || I->op == AGX_OPCODE_BFEIL ||
-           I->op == AGX_OPCODE_BITOP))
+           I->op == AGX_OPCODE_BITOP || I->op == AGX_OPCODE_BALLOT ||
+           I->op == AGX_OPCODE_QUAD_BALLOT ||
+           I->op == AGX_OPCODE_ICMP_BALLOT ||
+           I->op == AGX_OPCODE_ICMP_QUAD_BALLOT))
          continue;
 
       /* Optimize split(64-bit uniform) so we can get better copyprop of the
@@ -573,11 +576,28 @@ agx_optimizer_ballot(agx_context *ctx, agx_instr **defs, agx_instr *I)
       return;
    }
 
+   /* Native ballots compare a full word. Preserve a half predicate's
+    * explicit zero extension instead of reading its unrelated neighbour. */
+   if (ctx->key && ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+       I->src[0].size == AGX_SIZE_16) {
+      agx_builder b = agx_init_builder(ctx, agx_before_instr(I));
+      agx_index predicate = agx_temp(ctx, AGX_SIZE_32);
+      agx_mov_to(&b, predicate, I->src[0]);
+      I->src[0] = predicate;
+      return;
+   }
+
    if (I->src[0].type != AGX_INDEX_NORMAL)
       return;
 
    agx_instr *def = defs[I->src[0].value];
    if (!def || (def->op != AGX_OPCODE_ICMP && def->op != AGX_OPCODE_FCMP))
+      return;
+
+   /* Only fuse the native register-versus-zero comparison form. */
+   if (ctx->key && ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+       (def->src[0].size != AGX_SIZE_32 ||
+        def->src[1].type != AGX_INDEX_IMMEDIATE || def->src[1].value != 0))
       return;
 
    bool quad = I->op == AGX_OPCODE_QUAD_BALLOT;
@@ -745,6 +765,21 @@ agx_optimizer_forward(agx_context *ctx)
           I->op != AGX_OPCODE_SAMPLER_STATE_STORE &&
           I->op != AGX_OPCODE_UNIFORM_STORE && I->op != AGX_OPCODE_EXPORT)
          agx_optimizer_inline_imm(ctx, defs, I);
+
+      /* Inlining a constant into fmov can leave two minifloat operands.
+       * Fold the conversion exactly, including negative zero, before RA. */
+      if (agx_is_fmov(I) && I->src[0].type == AGX_INDEX_IMMEDIATE &&
+          !I->saturate) {
+         float value = agx_minifloat_decode(I->src[0].value);
+         if (I->src[0].abs) value = fabsf(value);
+         if (I->src[0].neg) value = -value;
+         agx_builder b = agx_init_builder(ctx, agx_before_instr(I));
+         agx_instr *mov = agx_mov_imm_to(&b, I->dest[0],
+            I->dest[0].size == AGX_SIZE_16 ? _mesa_float_to_half(value) : fui(value));
+         defs[I->dest[0].value] = mov;
+         agx_remove_instruction(I);
+         continue;
+      }
 
       if (I->op == AGX_OPCODE_IF_ICMP) {
          agx_optimizer_if_not(defs, I);
