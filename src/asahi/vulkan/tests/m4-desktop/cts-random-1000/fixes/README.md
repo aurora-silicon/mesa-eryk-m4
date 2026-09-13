@@ -76,3 +76,10 @@ source volume sampling. HK routes volume blits to that path rather than the
 2D-only slice helper. Both original failures (161 and 260) Pass in the retained
 `cts-snorm-blit` batch. The CPU records draws; sampling and pixel writes execute
 on the GPU. This is not a qualification of every 3D/array/mip blit combination.
+
+## Historical CTS midpoint reconstruction oracle
+
+Baseline index 396 Pass in `20260913T190737203629Z-cts-pixel-mismatches` with the separately identified combined
+CTS variant. It includes the previously established correction of reversed
+0.25/0.75 midpoint weights, retaining hardware filtering and the complete image
+comparison. This is a CTS oracle correction, not a new driver change.

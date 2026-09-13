@@ -1,0 +1,16 @@
+{
+  "index": 0,
+  "case": "dEQP-VK.ycbcr.conversion.g16_b16_r16_3plane_420_unorm_khr.chroma_reconstruction.nearest.explicit_linear_cosited_midpoint_tiling_linear_swapped_chroma",
+  "argv": [
+    "/root/cts-1.0.2.6/deqp-vk-input-aspects-tess-chroma",
+    "--deqp-case=dEQP-VK.ycbcr.conversion.g16_b16_r16_3plane_420_unorm_khr.chroma_reconstruction.nearest.explicit_linear_cosited_midpoint_tiling_linear_swapped_chroma",
+    "--deqp-log-images=enable",
+    "--deqp-log-shader-sources=disable",
+    "--deqp-log-filename=/root/asahi-evidence/20260913T190737203629Z-cts-pixel-mismatches/cts/000/result.qpa"
+  ],
+  "boot_id": "e47102a9-42cd-480a-8918-bfe1840cca56",
+  "status": "Pass",
+  "message": "Pass",
+  "returncode": 0,
+  "seconds": 0.20880398200006312
+}
