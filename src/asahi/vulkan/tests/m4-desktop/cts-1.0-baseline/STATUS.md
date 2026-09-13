@@ -236,3 +236,16 @@ geometry input controls Pass. Full guards, library
 938a27c0badf79fae93d55e31a24be9f40ae3268258281b5dc16ad33b0d759f3.
 All four original Mesa-crash cases now Pass in targeted tests. Crash45 remains
 the independently reproduced CTS input-aspect lifetime bug. Kernel unchanged.
+
+Fresh original100-case rerun at Mesa5af5a339be9, unchanged CTS binary and
+kernel:57Pass,42NotSupported,0Fail,1Crash. All35 original passes retained.
+No GPU timeout/hang/watchdog reset; peak59.75 C across four fully guarded batches.
+Exact results and evidence IDs:fixed-results.json. The surviving crash45 is
+historical CTS code:besides the dangling vector, its aspect reference names
+subpass0 (no inputs) instead of subpass1. The separate tracked
+input-aspect-lifetime.patch fixes both color-case issues, without changing
+rendering or comparison. 20260913T121336206915Z-cts-input-aspect-subpass-fixed:
+case45 Pass using diagnostic binary586df4c94f4b4a29525c9bf44500325a75c14018f96cae567c8163d3db5a3a81.
+The original CTS source/binary is restored; keep this adapted result separate.
+New cts-campaign.py automates bounded consecutive batches with continuity,
+identity and guard checks; it does not retry tests or recover hardware.

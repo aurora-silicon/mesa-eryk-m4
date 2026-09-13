@@ -88,3 +88,21 @@ failure; replay the retained bundles offline with `compiler-replay.py`.
 source/image hashes, unique-color counts and unequal result/reference pixels.
 It needs Pillow and runs offline. These byte comparisons are diagnostics; the
 CTS verdict retains its format-specific tolerance and remains authoritative.
+
+`cts-campaign.py` repeats the existing bounded batches until the requested
+consecutive case range is recorded. Each batch retains its own full guard and
+thermal evidence. It verifies continuity and stable boot/library/binary hashes,
+stops on timeout/device loss/guard errors, and never retries or reboots hardware.
+Process crashes stop by default. For a fixed baseline containing a known CTS
+process abort, `--continue-userspace-crashes` permits the next case only after
+successful guard completion; the abort stays in the result count.
+
+```
+python3 tools/cts-campaign.py --name cts-fixed-100 \
+  --output build/cts-fixes/fixed-100 --count 100 --continue-userspace-crashes
+```
+
+Cases and binaries must already be installed; `--cases` and `--binary` specify
+target paths. `results.json` preserves every original CTS outcome;
+`summary.json` records batch evidence paths and identity. This is a smoke-test
+campaign, not a conformance result.

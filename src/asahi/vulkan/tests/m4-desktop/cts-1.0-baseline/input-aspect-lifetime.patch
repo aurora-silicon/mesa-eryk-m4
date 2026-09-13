@@ -1,0 +1,31 @@
+diff --git a/external/vulkancts/modules/vulkan/renderpass/vktRenderPassTests.cpp b/external/vulkancts/modules/vulkan/renderpass/vktRenderPassTests.cpp
+index 68faea6..fbed2db 100644
+--- a/external/vulkancts/modules/vulkan/renderpass/vktRenderPassTests.cpp
++++ b/external/vulkancts/modules/vulkan/renderpass/vktRenderPassTests.cpp
+@@ -677,7 +677,7 @@ public:
+ 	const vector<Attachment>&							getAttachments	(void) const { return m_attachments;	}
+ 	const vector<Subpass>&								getSubpasses	(void) const { return m_subpasses;		}
+ 	const vector<SubpassDependency>&					getDependencies	(void) const { return m_dependencies;	}
+-	const vector<VkInputAttachmentAspectReferenceKHR>	getInputAspects	(void) const { return m_inputAspects;	}
++	const vector<VkInputAttachmentAspectReferenceKHR>&	getInputAspects	(void) const { return m_inputAspects;	}
+ 
+ private:
+ 	const vector<Attachment>							m_attachments;
+@@ -5727,7 +5727,7 @@ void addFormatTests (tcu::TestCaseGroup* group, AllocationKind allocationKind)
+ 								{
+ 									const VkInputAttachmentAspectReferenceKHR inputAspect =
+ 									{
+-										0u,
++										1u,
+ 										0u,
+ 										VK_IMAGE_ASPECT_COLOR_BIT
+ 									};
+@@ -5783,7 +5783,7 @@ void addFormatTests (tcu::TestCaseGroup* group, AllocationKind allocationKind)
+ 								{
+ 									const VkInputAttachmentAspectReferenceKHR inputAspect =
+ 									{
+-										0u,
++										1u,
+ 										0u,
+ 										VK_IMAGE_ASPECT_COLOR_BIT
+ 									};
