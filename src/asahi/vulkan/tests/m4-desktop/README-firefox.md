@@ -105,3 +105,31 @@ Thirteen focused output tests pass; three older SixVertexOutputs tests fail
 identically on unmodified99b3302b66d and are recorded as baseline failures.
 An ordinary-profile40s run092942 faults the GPU later; snapshotjob8887
 retained and watchdog recovery completed. This fix is not a stability claim.
+
+### Offline Buoy (XdsGDB)
+
+`python3 shadertoy-local.py shadertoy-buoy Buoy.html` embeds the original
+TekF shader/header and its decoded 256x256 noise texture into one file. Shader
+license is CC BY-NC-SA 3.0, retained in the source and page attribution. Source
+was extracted from the successfully loaded Shadertoy page; the loaded texture
+was losslessly saved through a 2D canvas. Hashes and original input settings
+are in the manifest. No network or local fetch is required by the generated page.
+
+Open `file:///home/e/Shadertoy/Buoy.html?t=10&w=640&h=360`. It starts
+paused, supports a bounded ten-second animation, and retains the original
+shader unchanged. The diagnostic harness explicitly selects a fixed time,
+resolution, mouse, WebGL2 highp, single-sample opaque preserved drawing buffer.
+`window.m4Readback()` returns bottom-up RGBA8 with metadata; firefox-probe's
+page-script result stores pixelsBase64 as pixels.rgba instead of log spam.
+`--seed-profile` copies a closed existing Firefox profile into the isolated
+test profile to reuse site access; only diagnostics are exported as evidence.
+
+20260913 evidence: 094217 local lavapipe reference renders the buoy correctly;
+094255 native M4 Firefox compiles/runs but shows dark bands. Both captures
+retained. Reference draw455 and native draw9081 replay on M4 as buoy/ocean;
+094506 native attachment and 094552 native transfer readbacks match exactly.
+Thus the observed live corruption is not reproduced by the current replay;
+resource lifetime/concurrency still needs investigation. Reference replay has
+small remaining image differences (mean byte error2.52); do not call it exact
+or claim working live Firefox. Profilev5 reference adaptations and native
+original traces remain in their experiment manifests.

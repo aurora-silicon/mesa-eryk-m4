@@ -1,0 +1,77 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Buoy — offline GPU test</title>
+<style>
+body{background:#15171b;color:#eee;font:16px system-ui;margin:24px} a{color:#9cf}
+canvas{display:block;max-width:100%;height:auto;margin:20px 0;background:black}
+button,input{font:inherit} pre{white-space:pre-wrap} label{margin-right:16px}
+</style>
+<h1>Buoy <small>by TekF</small></h1>
+<p>Original <a href="https://www.shadertoy.com/view/XdsGDB">Shadertoy XdsGDB</a> shader,
+unchanged. <a href="https://creativecommons.org/licenses/by-nc-sa/3.0/">CC BY-NC-SA 3.0</a>.
+Shader and noise texture are embedded; rendering requires no network.</p>
+<label>Time <input id="time" type="number" value="10" step="0.1" min="0"></label>
+<button id="frame">Render frame</button> <button id="play">Play 10 seconds</button>
+<canvas id="canvas"></canvas><pre id="status">Starting WebGL 2…</pre>
+<script>
+'use strict';
+const asset=/*PAYLOAD*/null;
+const params=new URLSearchParams(location.search), canvas=document.querySelector('canvas');
+const status=document.querySelector('#status'), timeInput=document.querySelector('#time');
+canvas.width=Math.max(1,Math.min(3840,Number(params.get('w'))||640));
+canvas.height=Math.max(1,Math.min(2160,Number(params.get('h'))||360));
+timeInput.value=params.get('t')||'10';
+const report={title:asset.manifest.title,source_sha256:asset.manifest.source_sha256,
+ texture_sha256:asset.manifest.texture_sha256,width:canvas.width,height:canvas.height,
+ context:{alpha:false,antialias:false,preserveDrawingBuffer:true},ready:false,frames:0};
+function publish(){document.documentElement.dataset.m4Probe=JSON.stringify(report);status.textContent=JSON.stringify(report,null,2);}
+let gl,program,animation=0,mouse=[0,0,0,0];
+function fail(e){report.error=String(e.stack||e);publish();}
+canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();fail('WebGL context lost');});
+try {
+ gl=canvas.getContext('webgl2',report.context);if(!gl)throw Error('WebGL 2 unavailable');
+ const debug=gl.getExtension('WEBGL_debug_renderer_info');
+ report.renderer=gl.getParameter(debug?debug.UNMASKED_RENDERER_WEBGL:gl.RENDERER);
+ report.version=gl.getParameter(gl.VERSION);
+ function shader(type,source){const s=gl.createShader(type);gl.shaderSource(s,source);gl.compileShader(s);
+  if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw Error(gl.getShaderInfoLog(s));return s;}
+ program=gl.createProgram();
+ gl.attachShader(program,shader(gl.VERTEX_SHADER,`#version 300 es
+ void main(){vec2 p=vec2((gl_VertexID<<1)&2,gl_VertexID&2);gl_Position=vec4(p*2.0-1.0,0,1);}`));
+ gl.attachShader(program,shader(gl.FRAGMENT_SHADER,'#version 300 es\nprecision highp float;\nprecision highp int;\n'+asset.header+'\n'+asset.source));
+ gl.linkProgram(program);if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw Error(gl.getProgramInfoLog(program));
+ gl.useProgram(program);gl.bindVertexArray(gl.createVertexArray());
+ const texture=gl.createTexture();gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,texture);
+ gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+ gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.REPEAT);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.REPEAT);
+ gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL,gl.NONE);
+ const image=new Image();image.onload=()=>{try{
+  gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,image);
+  gl.uniform1i(gl.getUniformLocation(program,'iChannel0'),0);
+  gl.uniform3f(gl.getUniformLocation(program,'iResolution'),canvas.width,canvas.height,1);
+  gl.uniform3fv(gl.getUniformLocation(program,'iChannelResolution'),new Float32Array([256,256,1,0,0,0,0,0,0,0,0,0]));
+  report.ready=true;render(Number(timeInput.value));
+ }catch(e){fail(e);}};image.onerror=()=>fail('Embedded texture decode failed');image.src=asset.texture;
+} catch(e){fail(e);}
+function render(t){
+ gl.viewport(0,0,canvas.width,canvas.height);
+ gl.uniform1f(gl.getUniformLocation(program,'iTime'),t);
+ gl.uniform4fv(gl.getUniformLocation(program,'iMouse'),mouse);
+ gl.uniform1i(gl.getUniformLocation(program,'iFrame'),report.frames);
+ gl.drawArrays(gl.TRIANGLES,0,3);
+ report.time=t;report.mouse=mouse.slice();report.frames++;report.glError=gl.getError();publish();
+}
+document.querySelector('#frame').onclick=()=>{cancelAnimationFrame(animation);if(report.ready)render(Number(timeInput.value));};
+document.querySelector('#play').onclick=()=>{
+ cancelAnimationFrame(animation);if(!report.ready)return;
+ const start=performance.now(),initial=Number(timeInput.value);
+ function step(now){const elapsed=(now-start)/1000;timeInput.value=(initial+elapsed).toFixed(3);render(initial+elapsed);
+  if(elapsed<10&&!document.hidden&&!report.error)animation=requestAnimationFrame(step);}
+ animation=requestAnimationFrame(step);
+};
+canvas.onpointerdown=e=>{const r=canvas.getBoundingClientRect();mouse=[(e.clientX-r.left)*canvas.width/r.width,(r.bottom-e.clientY)*canvas.height/r.height,1,1];render(Number(timeInput.value));};
+// Called only by the diagnostic harness; no readback cost during animation.
+window.m4Readback=()=>{const pixels=new Uint8Array(canvas.width*canvas.height*4);gl.readPixels(0,0,canvas.width,canvas.height,gl.RGBA,gl.UNSIGNED_BYTE,pixels);
+ let binary='';for(let i=0;i<pixels.length;i+=8192)binary+=String.fromCharCode(...pixels.subarray(i,i+8192));
+ return {report,format:'RGBA8',origin:'bottom-left',pixelsBase64:btoa(binary),readbackError:gl.getError()};};
+</script>

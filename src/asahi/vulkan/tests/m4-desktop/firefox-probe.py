@@ -71,6 +71,7 @@ def main():
     p.add_argument('--readback-trace', type=Path)
     p.add_argument('--freeze-animation', action='store_true')
     p.add_argument('--page-script', type=Path, help='Retained read-only page diagnostics after observation')
+    p.add_argument('--seed-profile', type=Path, help='Copy a closed existing profile into the isolated test profile')
     a = p.parse_args()
     spec = importlib.util.spec_from_file_location('fw', Path(__file__).with_name('firmware-snapshot.py'))
     fw = importlib.util.module_from_spec(spec); spec.loader.exec_module(fw)
@@ -82,7 +83,14 @@ def main():
     out.mkdir(exist_ok=False)
     user = pwd.getpwnam('e')
     profile = Path(user.pw_dir) / '.cache/m4-firefox-probes' / a.guard_output.name
-    profile.mkdir(parents=True, exist_ok=False)
+    if a.seed_profile:
+        import shutil
+        assert a.seed_profile.is_dir() and not (a.seed_profile / "lock").is_symlink(), "Close source Firefox first"
+        shutil.copytree(a.seed_profile, profile, ignore=shutil.ignore_patterns("lock", ".parentlock", "parent.lock", "cache2", "shader-cache", "startupCache"))
+        for entry in profile.rglob("*"):
+            os.chown(entry, user.pw_uid, user.pw_gid)
+    else:
+        profile.mkdir(parents=True, exist_ok=False)
     for directory in (profile.parent, profile):
         os.chown(directory, user.pw_uid, user.pw_gid)
     prefs = {'marionette.port': 2828, 'remote.prefs.recommended': False,
@@ -193,6 +201,13 @@ def main():
                 script = a.page_script.read_text()
                 (out / 'page-diagnostics.js').write_text(script)
                 page['diagnostics'] = remote.script(script)
+                diagnostics = page['diagnostics']
+                if isinstance(diagnostics, dict) and 'pixelsBase64' in diagnostics:
+                    import base64
+                    pixels = base64.b64decode(diagnostics.pop('pixelsBase64'), validate=True)
+                    (out / 'pixels.rgba').write_bytes(pixels)
+                    diagnostics['pixels_file'] = 'pixels.rgba'
+                    diagnostics['pixels_bytes'] = len(pixels)
             result['page'] = page
             print('Firefox page:', json.dumps(page), flush=True)
             for proc in Path('/proc').glob('[0-9]*'):

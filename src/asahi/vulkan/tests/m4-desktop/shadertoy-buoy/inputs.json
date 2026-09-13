@@ -1,0 +1,27 @@
+[
+  {
+    "keys": [
+      "mInfo",
+      "globject",
+      "loaded",
+      "image"
+    ],
+    "info": {
+      "mType": "texture",
+      "mID": "Xsf3zn",
+      "mSrc": "/media/a/f735bee5b64ef98879dc618b016ecf7939a5756040c2cde21ccb15e69a6e1cfb.png",
+      "mSampler": {
+        "filter": "linear",
+        "wrap": "repeat",
+        "vflip": "false",
+        "srgb": "false",
+        "internal": "byte"
+      },
+      "mPreviewSrc": "/media/ap/f735bee5b64ef98879dc618b016ecf7939a5756040c2cde21ccb15e69a6e1cfb.png"
+    },
+    "image": "https://www.shadertoy.com/media/a/f735bee5b64ef98879dc618b016ecf7939a5756040c2cde21ccb15e69a6e1cfb.png"
+  },
+  null,
+  null,
+  null
+]
