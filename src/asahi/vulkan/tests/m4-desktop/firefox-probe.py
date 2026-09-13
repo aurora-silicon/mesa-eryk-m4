@@ -68,6 +68,8 @@ def main():
     p.add_argument('--renderer', choices=['asahi', 'lavapipe'], default='asahi')
     p.add_argument('--capture', action='store_true')
     p.add_argument('--capture-profile', type=Path)
+    p.add_argument('--readback-trace', type=Path)
+    p.add_argument('--freeze-animation', action='store_true')
     a = p.parse_args()
     spec = importlib.util.spec_from_file_location('fw', Path(__file__).with_name('firmware-snapshot.py'))
     fw = importlib.util.module_from_spec(spec); spec.loader.exec_module(fw)
@@ -134,6 +136,14 @@ def main():
                        VK_KHRONOS_PROFILES_SIMULATE_CAPABILITIES='SIMULATE_API_VERSION_BIT,SIMULATE_FEATURES_BIT,SIMULATE_EXTENSIONS_BIT,SIMULATE_PROPERTIES_BIT,SIMULATE_FORMATS_BIT',
                        VK_KHRONOS_PROFILES_EXCLUDE_DEVICE_EXTENSIONS=','.join(report['removed_reference_extensions']),
                        VK_KHRONOS_PROFILES_DEFAULT_FEATURE_VALUES='DEFAULT_FEATURE_VALUES_FALSE')
+    readback = profile / 'gl-readback'
+    readback.mkdir(); os.chown(readback, user.pw_uid, user.pw_gid)
+    if a.readback_trace:
+        import hashlib
+        tracer = a.readback_trace.resolve(strict=True)
+        env.update(LD_PRELOAD=str(tracer), M4_GL_READBACK_TRACE_DIR=str(readback))
+        (out/'readback-tracer.json').write_text(json.dumps(dict(path=str(tracer),
+            sha256=hashlib.sha256(tracer.read_bytes()).hexdigest()))+'\n')
     command = ['runuser', '-u', 'e', '--', '/usr/bin/firefox', '--no-remote', '--new-instance',
                '--marionette', '--remote-allow-system-access', '--profile', str(profile), 'about:blank']
     result = dict(command=command, url=a.url, profile=str(profile), boot_id=boot,
@@ -171,6 +181,9 @@ def main():
             remote.call('WebDriver:Navigate', {'url': a.url})
             until = time.monotonic()+a.observe_seconds
             while time.monotonic() < until:
+                check(); time.sleep(.25)
+            if a.freeze_animation:
+                remote.script('window.requestAnimationFrame = () => 0; return true;')
                 check(); time.sleep(.25)
             # Do not call getContext here: that can create a new context after
             # failed website startup and incorrectly suggest a working page.
@@ -220,6 +233,7 @@ def main():
                 os.killpg(child.pid, signal.SIGKILL); child.wait(timeout=3)
         result['ended'] = time.monotonic()
         import shutil
+        shutil.copytree(readback, out / 'gl-readback')
         shutil.copytree(capture, out / 'compiler-capture')
         shutil.copytree(traces, out / 'vulkan-capture')
         (out / 'result.json').write_text(json.dumps(result, indent=2)+'\n')

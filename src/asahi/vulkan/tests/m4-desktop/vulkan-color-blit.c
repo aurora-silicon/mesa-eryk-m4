@@ -15,7 +15,7 @@
       exit(1);                                                                 \
     }                                                                          \
   } while (0)
-static int clear_source, render_clear;
+static int clear_source, render_clear, alternate, reverse_order;
 
 static VkPhysicalDeviceMemoryProperties memprops;
 static uint32_t memory_type(uint32_t bits, VkMemoryPropertyFlags flags) {
@@ -46,6 +46,7 @@ static unsigned run(VkDevice dev, VkQueue queue, unsigned family) {
   VkImage images[2];
   VkDeviceMemory im[2];
   VkFormat formats[] = {VK_FORMAT_B8G8R8A8_UNORM, VK_FORMAT_R8G8B8A8_UNORM};
+  if (reverse_order) { formats[0] = VK_FORMAT_R8G8B8A8_UNORM; formats[1] = VK_FORMAT_B8G8R8A8_UNORM; }
   VkMemoryRequirements req;
   VkMemoryAllocateInfo ai = {.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
   for (unsigned i = 0; i < 2; i++) {
@@ -257,6 +258,8 @@ int main(int argc, char **argv) {
   for (int i = 1; i < argc; i++) {
     if (!strcmp(argv[i], "--reference"))
       reference = 1;
+    else if (!strcmp(argv[i], "--alternate"))
+      alternate = 1;
     else if (!strcmp(argv[i], "--clear"))
       clear_source = 1;
     else if (!strcmp(argv[i], "--render-clear"))
@@ -264,6 +267,7 @@ int main(int argc, char **argv) {
     else
       return 2;
   }
+  if (alternate && clear_source) return 2;
   VkApplicationInfo app = {.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
                            .pApplicationName = "M4 color blit oracle",
                            .apiVersion = VK_API_VERSION_1_1};
@@ -309,7 +313,11 @@ int main(int argc, char **argv) {
   CHECK(vkCreateDevice(physical, &di, NULL, &dev));
   VkQueue queue;
   vkGetDeviceQueue(dev, family, 0, &queue);
-  unsigned bad = run(dev, queue, family);
+  unsigned bad = 0;
+  for (unsigned i=0; i<(alternate?8u:1u); i++) {
+    reverse_order=i&1;printf("Iteration %u reverse=%u\n",i,reverse_order);
+    bad += run(dev,queue,family);if(bad)break;
+  }
   vkDestroyDevice(dev, NULL);
   vkDestroyInstance(instance, NULL);
   return bad ? 1 : 0;

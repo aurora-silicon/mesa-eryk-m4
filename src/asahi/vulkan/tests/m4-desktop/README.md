@@ -2000,3 +2000,18 @@ needs the explicit adaptation and external-memory rebinding on lavapipe.
 complementing the PBO case. Both host Zink/lavapipe and native M4 pass all4096
 pixels (20260913T003710162106Z-firefox-cpu-bgra-readback, peak57.25 C).
 This does not reproduce the remaining Firefox screenshot-only R/B swap.
+
+`firefox-probe.py --freeze-animation --readback-trace /absolute/tracer.so`
+freezes future requestAnimationFrame callbacks after the observation period
+and retains actual GL readback bytes alongside screenshots. The freeze is an
+explicit diagnostic, not a performance or unmodified application claim.
+Build `gl-readback-trace.c` with `cc -shared -fPIC -O2 -ldl`; it wraps both EGL
+lookup and explicit glibc dlsym lookups used by Firefox, passes original GL
+arguments unchanged, logs GL3/GLES3 pack state, and saves at most16MiB per
+client-memory read when M4_GL_READBACK_TRACE_DIR is set. PBO reads are logged
+without dereferencing buffer offsets. The helper sets/retains the isolated
+output directory and tracer hash; no global preload is installed.
+Native frozen Firefox run004409 returns swappedRGBA bytes before PNG encoding.
+`vulkan-color-blit --alternate` checks eight alternating BGR/RGB resource
+lifetimes. CPU-calculated byte expectations pass on lavapipe and M4 (004722,
+peak55.75 C); this excludes the simplest descriptor-format reuse case.
