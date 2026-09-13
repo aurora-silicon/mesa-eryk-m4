@@ -63,3 +63,22 @@ The initial border-query marker used NIR's gather-only component field and
 asserted in original case 287. Its dedicated backend flag fixes the assertion;
 case 287 and the complete final regression pass. Initial experiment evidence
 is retained separately under build/cts-seed20-formats and _provenance/experiments.
+
+Packed YCbCr: all four applicable original cases pass (35,314,643,798).
+Original 542,603,921 now skip specifically because they request disjoint binding
+on a single-plane format; do not advertise DISJOINT to satisfy them. Their three
+existing non-disjoint companion cases also pass, recorded separately and not
+counted as improvements to the frozen sample. This covers packed 8/10/12/16-bit
+words, both luma placements, linear/optimal storage, full-range colour conversion,
+nearest/linear filtering, midpoint/cosited chroma and swapped chroma mapping.
+
+The driver preserves the packed bytes and reconstructs full-resolution samples
+in GPU shaders. It advertises explicit reconstruction, uses raw UNORM word
+fetches, and retains independent luma/chroma filtering. API size queries report
+luma pixels; internal descriptors/queries measure packed words. Linear layouts
+accept horizontal subsampling with unchanged packed-row stride calculations;
+the host Linear.Packed422Rows test verifies automatic and explicit row pitches.
+A second hardware chroma sampler is unnecessary for shader reconstruction and
+would overflow a single-plane descriptor binding, so it is not allocated.
+
+These are focused hardware results, not an application/video-player claim.

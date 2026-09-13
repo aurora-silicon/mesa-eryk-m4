@@ -230,6 +230,11 @@ pack_texture(struct hk_device *dev, struct hk_image_view *view,
                       texture_type != view->vk.view_type;
 
    enum pipe_format p_format = format_for_plane(view, view_plane);
+   const unsigned packed_ycbcr = agx_native_graphics(&dev->dev)
+      ? hk_packed_ycbcr_bits(view->vk.format) : 0;
+   if (packed_ycbcr)
+      p_format = packed_ycbcr == 8 ? PIPE_FORMAT_R8G8B8A8_UNORM :
+                                    PIPE_FORMAT_R16G16B16A16_UNORM;
    const bool padded_rgb = agx_native_graphics(&dev->dev) &&
                           hk_padded_image_format(p_format) != p_format;
    if (padded_rgb)
@@ -320,6 +325,9 @@ pack_texture(struct hk_device *dev, struct hk_image_view *view,
          cfg.first_level = level;
          cfg.last_level = level + view->vk.level_count - 1;
       }
+
+      if (packed_ycbcr)
+         cfg.width = DIV_ROUND_UP(cfg.width, 2);
 
       /* To implement sparse resident textures, the hardware texture descriptor
        * can instead point to a secondary page table controlled in userspace.
