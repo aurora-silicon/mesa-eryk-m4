@@ -1128,7 +1128,7 @@ hk_g17p_graphics_uniform_ranges(
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
    const uint64_t root_ptr = cmd->state.gfx.root;
    size_t count = 0;
-   unsigned root_uniform = 0;
+   const unsigned root_uniform = s->info.agx3_root_uniform;
    const unsigned vertex_prefix = s->b.info.stage == MESA_SHADER_VERTEX
       ? AGX_ABI_VUNI_NATIVE_PREFIX : 0;
 
@@ -1182,9 +1182,7 @@ hk_g17p_graphics_uniform_ranges(
             .address = root_ptr + hk_root_descriptor_offset(draw.vertex_params),
          };
       }
-      root_uniform = vertex_prefix + AGX_ABI_VUNI_COUNT_VK(nr_attribs);
    } else if (s->info.stage == MESA_SHADER_FRAGMENT) {
-      root_uniform = AGX_ABI_FUNI_NATIVE_PREFIX + AGX_ABI_FUNI_ROOT;
       if (cmd->state.gfx.uses_blend_constant) {
          if (!root_ptr)
             return false;
@@ -1194,9 +1192,7 @@ hk_g17p_graphics_uniform_ranges(
             .address = root_ptr + hk_root_descriptor_offset(draw.blend_constant),
          };
       }
-   } else if (s->info.stage == MESA_SHADER_GEOMETRY) {
-      root_uniform = vertex_prefix;
-   } else {
+   } else if (s->info.stage != MESA_SHADER_GEOMETRY) {
       return false;
    }
 
@@ -1259,8 +1255,8 @@ hk_g17p_graphics_uniform_ranges(
    }
 
    if (s->info.agx3_indexed_sampler_valid) {
-      if ((s->info.stage != MESA_SHADER_FRAGMENT &&
-           s->info.stage != MESA_SHADER_VERTEX) ||
+      if ((s->b.info.stage != MESA_SHADER_FRAGMENT &&
+           s->b.info.stage != MESA_SHADER_VERTEX) ||
           !dev->sampled_images.bo || !dev->samplers.table.bo)
          return false;
       const uint64_t pointers[4] = {

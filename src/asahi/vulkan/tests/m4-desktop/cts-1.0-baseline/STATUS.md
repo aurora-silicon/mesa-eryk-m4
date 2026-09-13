@@ -47,3 +47,17 @@ replays successfully after the fix. End-to-end NIR regression:
 libraryb1d2fbf56b331f4e9f3518648d5fdb3d533a5ca19621dc3b3cb379746dc04752.
 Normal login and Foot restored after the earlier idle-display recovery:
 /root/asahi-evidence/cts-restore-login-20260913T1054. Kernel unchanged.
+
+Third selection:index42, geometry uniform texel buffers. The arithmetic fix
+cleared its compiler rejection, exposing a Mesa command-recording refusal:
+logical GEOMETRY was rejected despite the raster variant executing as hardware
+VERTEX. The runtime also reconstructed root_uniform from logical stage alone,
+losing the texture-root reservation. Retain the final compiler root address in
+shader metadata and use the physical stage for indexed-sampler acceptance.
+Bump shader binary version9->10; reject the preceding version in the cache test.
+
+20260913T105823659292Z-cts-geometry-uniform-fix:all4 cases pass(indices42,1,10,29
+in the original sample), peak57.5 C, full guards, no kernel changes.
+Librarybc1d7cfc2b6e5d39e613cedfa42086c7379abf613469da23dfa37b72f33612e9
+contains the root/stage fix before the cache-version-only bump. The version10
+build was subsequently installed;2769 VDM decode/cache checks pass.

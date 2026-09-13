@@ -1406,6 +1406,7 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
    }
 
    unsigned reserved = root + (4 * (1 + set_count));
+   shader->info.agx3_root_uniform = root;
    if (dev->dev.chip == AGX_CHIP_G16G && sw_stage == MESA_SHADER_FRAGMENT &&
        debug_get_bool_option("HK_M4_PREFETCH_UBOS", false)) {
       NIR_PASS(_, nir, hk_nir_prefetch_ubos, root + 4, set_count, &reserved,
