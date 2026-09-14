@@ -384,3 +384,16 @@ Peak 58.0 C, no fault/reboot. Library SHA256:
 `bbb2380cd3141981748931a5bd9629ba23da6b4f2c06aea2c1a6641292a387c4`.
 Running total: **81/91 failures resolved** (69 Mesa fixes, 12 CTS corrections),
 10 remaining. No broad regression campaign.
+
+## Transform-feedback query reset
+
+Reset transform-feedback availability and both contiguous 64-bit counters
+with the existing native GPU fill shader. No hardware counter encoding is
+needed: geometry lowering already updates these ordinary buffer values.
+The original adjacency stream-query case now Passes, including both counts.
+
+The shared query/layer run peaks at 57.75 C, with no fault/reboot. Library
+SHA256: `2919027e8ce871c3f9b20466a40595347926dca2cc9fe3663a0a08827ec2e637`.
+The tested binary also contains the separately committed meta-layer fix.
+Running total: **82/91 failures resolved** (70 Mesa fixes, 12 CTS corrections),
+9 remaining.

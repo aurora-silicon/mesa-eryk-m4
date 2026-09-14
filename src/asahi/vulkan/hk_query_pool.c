@@ -270,9 +270,24 @@ emit_zero_queries_g17p(struct hk_cmd_buffer *cmd, struct hk_query_pool *pool,
       return;
    }
 
+   case VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT: {
+      /* Transform feedback writes two ordinary 64-bit counters per query.
+       * They live in the pool, unlike the remapped hardware occlusion slots. */
+      assert(hk_reports_per_query(pool) == 2 && pool->query_stride == 16);
+      hk_g17p_meta_fill_addr(cmd, &cmd->current_cs.cs,
+                             hk_query_available_addr(pool, first_index),
+                             (uint64_t)num_queries * sizeof(uint32_t),
+                             set_available ? 1 : 0);
+      if (vk_command_buffer_has_error(&cmd->vk))
+         return;
+      hk_g17p_meta_fill_addr(cmd, &cmd->current_cs.cs,
+                             hk_query_report_addr(dev, pool, first_index),
+                             (uint64_t)num_queries * pool->query_stride, 0);
+      return;
+   }
+
    default:
-      /* No native reset encoding is grounded for statistics, transform
-       * feedback, or any future query layout. */
+      /* Other query layouts still need native reset support. */
       vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
       return;
    }
