@@ -1,0 +1,26 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.compute.pipeline.workgroup_memory_explicit_layout.alias.u8_array_to_i32_scalar_func_read",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.compute.pipeline.workgroup_memory_explicit_layout.alias.u8_array_to_i32_scalar_func_read",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T035658085751Z-cts14-local-byte-store/cts/000/result.qpa"
+    ],
+    "boot_id": "d6085557-9b5d-48eb-b2af-d2d9d5365e2e",
+    "status": "Pass",
+    "started_unix": 1789358219.464263,
+    "eligibility": {
+      "case": "dEQP-VK.compute.pipeline.workgroup_memory_explicit_layout.alias.u8_array_to_i32_scalar_func_read",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "compute succeeded",
+    "returncode": 0,
+    "seconds": 0.2590094859999681,
+    "finished_unix": 1789358219.728371,
+    "pid": 3356
+  }
+]

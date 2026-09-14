@@ -167,3 +167,16 @@ fault/reboot. Library SHA256:
 `7acbca26a9247e690fafa17a0eb474afdde00f334214b0ef02970fa5ceca6c66`.
 Running total: **56/91 failures resolved** (50 Mesa fixes, 6 CTS corrections),
 35 remaining. No broad regression campaign.
+
+## Threadgroup byte stores
+
+The local-memory translator incorrectly requested the load-only narrow_extend
+field for byte stores. STTG rejects that field; the byte width already defines
+the stored amount. Set narrow_extend only for loads. The saved shader compiles,
+and the original explicit-layout alias test (four byte stores, one i32 load)
+now Passes on M4. Peak 57.75 C, no fault/reboot. Library SHA256:
+`39d0a1ff68e72c74fd3172797bfadc0f738b0c94d1416d63c5d8f61cb64cbf97`.
+GDB field isolation and an offline Apple G16G byte-memory compilation are saved;
+the Apple output was not GPU-executed or fully decoded in this experiment.
+Running total: **57/91 failures resolved** (51 Mesa fixes, 6 CTS corrections),
+34 remaining. No broad regression campaign.

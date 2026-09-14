@@ -1835,7 +1835,9 @@ agx3_translate_local(const agx_instr *I, bool is_store, uint8_t slot,
        index.value != 0 || index.memory || index.abs || index.neg)
       return false;
 
-   d->narrow_extend = d->width == AGX3_MEM_W8;
+   /* Extension is a load operation. STTG has no narrow-extension field;
+    * the width already selects the byte written from each source lane. */
+   d->narrow_extend = !is_store && d->width == AGX3_MEM_W8;
    d->slot = slot;
    d->wait_mask = wait_mask;
    return true;
