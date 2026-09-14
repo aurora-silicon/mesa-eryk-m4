@@ -374,3 +374,18 @@ snapshots and watchdog recovery. Final original case Pass:
 Library SHA256 `a0b6f802d2b071c2f6597eba845f12762b7e156f06a9a1621a00997281d999b8`.
 Host upload test verifies relocated pointers, packet length and allocation
 bounds. Cumulative: 4643 Pass / 15 Fail / 5342 NotSupported, 64 resolved.
+
+## Packed signed sampler in the corrected CTS
+
+Our earlier scaled-format CTS correction used glu::getSamplerType to separate
+scaled formats from integer images. That GL helper omitted the packed signed
+10:10:10:2 format, producing a float sampler for a SINT image. Add the missing
+signed case to the helper. The original Vulkan image test now passes without
+changing the driver texture format or reference pixels:
+`20260914T154833620026Z-cts28-signed-and-centroid`, case0, peak58 C.
+This resolves a defect in our CTS correction, not a new Mesa format fix.
+The cumulative patch also logs every multiple-interpolation reference before
+an early comparison failure; that diagnostic changes no pass thresholds.
+Manifest and full patch are retained, binary SHA256:
+`fbd7690324772743d9587e816ce4325be947c479362bc36507e451c19310218a`.
+Cumulative: 4644 Pass / 14 Fail / 5342 NotSupported, 65 resolved.
