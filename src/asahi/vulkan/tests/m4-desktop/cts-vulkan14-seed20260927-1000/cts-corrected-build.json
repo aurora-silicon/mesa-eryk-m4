@@ -1,0 +1,18 @@
+{
+  "source": "/home/council/dev/dirtyroom_m4/reference/vk-gl-cts-1.4.6.2",
+  "source_commit": "f6a29701220f34dd1407513bfe80d74ca7b392ce",
+  "patch_sha256": "42d68df9d72a592d8c6b854494fd7ca41ced168a50efc34a3f37ab3a862b15ce",
+  "original_binary_sha256": "542459f13f3378f0af79ac9062d7e7fce6cd4853ab76adda69ae50889483b7e8",
+  "source_sha256": {
+    "external/vulkancts/modules/vulkan/pipeline/vktPipelineImageTests.cpp": "0662e7f6980ab98e6c7f5e5c6dd96118344da8c8c193965e67d0f14c8d5c5d17",
+    "external/vulkancts/modules/vulkan/pipeline/vktPipelineImageViewTests.cpp": "1c962d92c4ad0907fa7ab11439f8e07446d0434c5288a395c4f1b377e8bb7559",
+    "framework/common/tcuTexture.cpp": "4642c7911bae9bed8f537eda88affa0553d85be6a13fdfa380cea226c97bc821",
+    "external/vulkancts/modules/vulkan/pipeline/vktPipelineSamplerTests.cpp": "a39b3445c404055401d71fd4550f57819b977d874b4bf67884e5cce2a75a89ac",
+    "external/vulkancts/modules/vulkan/api/vktApiImageClearingTests.cpp": "b39a7d1fa8557fa6222b9fb10e19095dc728ad9eedf1d984f7edb1dad04ee070",
+    "external/vulkancts/modules/vulkan/api/vktApiBlittingTests.cpp": "8a10b7042777709235a10cd3f7d37377118be33bc834caae142d8ee651c7a80d",
+    "external/vulkancts/modules/vulkan/image/vktImageLoadStoreTests.cpp": "5a67775ccda7ff5c25dae93eb94a7a52fbb4f484967a67f6de0bfec575cf07ba",
+    "external/vulkancts/modules/vulkan/image/vktImageCompressionTranscodingSupport.cpp": "8ceec2759f1f9e70de287830b2c2fab5ce7c078ef9bca864af836c740967f412"
+  },
+  "diagnostic_binary_sha256": "0167f80bbe3eb9061952979e2b2d5ea5d391e933e7275304897dad4ea7192218",
+  "restored": true
+}

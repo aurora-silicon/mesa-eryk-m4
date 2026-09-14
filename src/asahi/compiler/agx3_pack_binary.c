@@ -5070,6 +5070,10 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             }
             if (g17p_pixel_protocol && I->op == AGX_OPCODE_WAIT_PIX &&
                 (I->writeout == 1 ||
+                 /* Dead blend reads can leave separate class-8/class-4
+                  * waits around a store-only shader. Acquire before the
+                  * first surviving colour wait, preserving both waits. */
+                 (g17p_colour_protocol && (I->writeout & 0xc)) ||
                  I->writeout == (g17p_blend_protocol ? 8 : 0xc)) &&
                 !g17p_colour_open) {
                uint8_t entry[AGX3_PIXEL_MAX_LENGTH];

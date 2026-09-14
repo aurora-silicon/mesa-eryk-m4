@@ -919,6 +919,7 @@ agx_nir_lower_g17p_bindless_storage(nir_shader *shader)
                  format != PIPE_FORMAT_R16G16_UINT &&
                  format != PIPE_FORMAT_R16G16_SINT &&
                  format != PIPE_FORMAT_R8G8B8A8_UINT &&
+                 format != PIPE_FORMAT_R8_SINT &&
                  format != PIPE_FORMAT_R8G8B8A8_SINT &&
                  format != PIPE_FORMAT_R16_UINT &&
                  format != PIPE_FORMAT_R16G16B16A16_SINT &&
