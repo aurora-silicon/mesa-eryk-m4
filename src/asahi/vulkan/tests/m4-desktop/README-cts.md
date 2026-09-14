@@ -473,3 +473,15 @@ under `before/` have `success: null`: pending inputs are not successful or faile
 compiler results. Completed failure captures retain their usual semantics.
 
 Per-case deadlines are hard bounds: a result at or beyond the recorded timeout is a Timeout failure even if CTS emitted Pass. The bulk collector retains that original CTS status/message. Longer diagnostic runs cannot resolve a failure against the original bound.
+
+### Running prepared consecutive segments
+
+`cts-bulk-series.py --batch BATCH_DIRECTORY --first-segment 1 --runner ARM64_RUNNER
+--binary REMOTE_CTS --name cts-ordered-b1` checks that `segments/*/cases.txt`
+and their catalog indices exactly reconstruct the frozen batch, then invokes
+`cts-bulk.py` sequentially. Each segment has its own watchdog/thermal lease,
+evidence and 60-second case limit. It refuses existing run directories and
+stops at the first incomplete/fatal segment for inspection. `--first-segment`
+continues at a later prepared segment after earlier outcomes were retained;
+it never reruns or reclassifies failures. Recover interrupted cases separately,
+using their original names and metadata. Default outer segment bound is 900s.

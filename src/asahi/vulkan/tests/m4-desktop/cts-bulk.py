@@ -53,7 +53,7 @@ with (a.output/'stage.log').open('w') as log:
                     host+':'+remote+'/'], check=True, stdout=log, stderr=subprocess.STDOUT)
 preparation_seconds = time.monotonic()-prep
 command = [sys.executable, str(ROOT/'tools/gpu-experiment.py'), '--name', a.name,
-    '--hypothesis', 'Measure frozen random CTS cases with grouped first-attempt execution',
+    '--hypothesis', 'Measure frozen CTS cases with grouped first-attempt execution',
     '--expect', '^CTS_BATCH_COMPLETE:', '--seconds', str(a.runner_seconds+20), '--',
     'python3', remote+'/cts-sample.py', 'batch', '--backend', 'deqp-runner',
     '--guard-output', '{output}', '--binary', a.binary, '--cases', remote+'/cases.txt',
