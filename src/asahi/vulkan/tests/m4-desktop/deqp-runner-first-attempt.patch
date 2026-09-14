@@ -1,0 +1,78 @@
+diff --git a/src/deqp_command.rs b/src/deqp_command.rs
+index 978a5d0..02ab01b 100644
+--- a/src/deqp_command.rs
++++ b/src/deqp_command.rs
+@@ -393,3 +393,5 @@ impl TestCommand for DeqpCommand {
+-        add_filename_arg(&mut args, "--deqp-shadercache-filename", &cache_path)
+-            .context("adding cache to args")?;
+-        args.push("--deqp-shadercache-truncate=disable".to_string());
++        if !self.config.no_deqp_shadercache {
++            add_filename_arg(&mut args, "--deqp-shadercache-filename", &cache_path)
++                .context("adding cache to args")?;
++            args.push("--deqp-shadercache-truncate=disable".to_string());
++        }
+@@ -418,0 +421,3 @@ impl TestCommand for DeqpCommand {
++        if self.config.first_attempt {
++            return Ok(());
++        }
+diff --git a/src/lib.rs b/src/lib.rs
+index 811c74d..8852c71 100644
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -78 +78 @@ use std::process::Command;
+-use std::sync::atomic::{AtomicUsize, Ordering};
++use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+@@ -264,0 +265,9 @@ pub struct CommandLineRunOptions {
++
++    #[structopt(
++        long,
++        help = "Preserve first-attempt results and logs; stop scheduling on crash/timeout"
++    )]
++    pub first_attempt: bool,
++
++    #[structopt(long, help = "Omit shadercache CLI arguments for old CTS releases")]
++    pub no_deqp_shadercache: bool,
+@@ -319,0 +329,2 @@ pub struct TestConfiguration {
++    pub first_attempt: bool,
++    pub no_deqp_shadercache: bool,
+@@ -401,0 +413,2 @@ impl TestConfiguration {
++            first_attempt: run.first_attempt,
++            no_deqp_shadercache: run.no_deqp_shadercache,
+@@ -439,0 +453,2 @@ pub struct FailCounter<'a> {
++    pub fatal: Arc<AtomicBool>,
++    pub stop_on_crash: bool,
+@@ -446,0 +462,3 @@ impl FailCounter<'_> {
++        if self.fatal.load(Ordering::Relaxed) {
++            return true;
++        }
+@@ -454,0 +473,3 @@ impl FailCounter<'_> {
++        if self.stop_on_crash && matches!(status, TestStatus::Crash | TestStatus::Timeout) {
++            self.fatal.store(true, Ordering::Relaxed);
++        }
+@@ -659 +680,2 @@ pub trait TestCommand: Send + Sync {
+-        let mut save_log = self.should_save_log(caselist) || results.is_empty();
++        let mut save_log =
++            self.config().first_attempt || self.should_save_log(caselist) || results.is_empty();
+@@ -752,0 +775,12 @@ pub trait TestCommand: Send + Sync {
++        if self.config().first_attempt {
++            // Include process-exit crashes detected after the stdout parser.
++            if results.iter().any(|r| {
++                matches!(
++                    r.status,
++                    RunnerStatus::Crash | RunnerStatus::Timeout | RunnerStatus::Missing
++                )
++            }) {
++                fail_counter.fatal.store(true, Ordering::Relaxed);
++            }
++            return Ok(results);
++        }
+@@ -841,0 +876,3 @@ pub trait TestCommand: Send + Sync {
++                    if self.config().first_attempt {
++                        fail_counter.fatal.store(true, Ordering::Relaxed);
++                    }
+@@ -1165,0 +1203,2 @@ pub fn parallel_test(
++        fatal: Arc::new(AtomicBool::new(false)),
++        stop_on_crash: test_command.config().first_attempt,
+@@ -1511,0 +1551,2 @@ pub mod tests {
++            first_attempt: false,
++            no_deqp_shadercache: false,

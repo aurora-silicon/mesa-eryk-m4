@@ -149,7 +149,11 @@ def batch(args):
     save(out / 'environment.json', {k: v for k, v in env.items() if k.startswith(
          ('VK_', 'ASAHI_', 'AGX_', 'HK_', 'MESA_', 'LD_LIBRARY', 'WAYLAND_', 'XDG_RUNTIME'))})
     save(out / 'binary.json', dict(path=str(args.binary), sha256=hashlib.sha256(args.binary.read_bytes()).hexdigest()))
-    run_cases(args, check, boot, out, env)
+    if args.backend == 'deqp-runner':
+        from cts_deqp_backend import run
+        run(args, check, boot, out, env, metadata, save)
+    else:
+        run_cases(args, check, boot, out, env)
 
 
 def run_cases(args, check, boot, out, env):
@@ -279,6 +283,11 @@ def main():
     b.add_argument('--jobs', type=int, default=1, help='Concurrent CTS processes inside one guard')
     b.add_argument('--case-timeout', type=int, default=20, choices=range(1, 31),
                    metavar='SECONDS', help='Per-case bound, 1..30s; outer guard must allow 20s more')
+    b.add_argument('--backend', choices=('isolated', 'deqp-runner'), default='isolated')
+    b.add_argument('--deqp-runner', type=Path, default=Path('/root/deqp-runner'))
+    b.add_argument('--tests-per-group', type=int, default=50)
+    b.add_argument('--runner-seconds', type=int, default=90,
+                   help='Bulk workload bound; outer guard must allow additional evidence time')
     b.add_argument('--renderer', choices=('m4', 'lavapipe'), default='m4')
     b.add_argument('--log-sources', action='store_true')
     b.add_argument('--log-images', action='store_true')
@@ -292,7 +301,7 @@ def main():
     elif args.mode == 'select':
         select(args)
     else:
-        if args.jobs < 1 or args.start < 0 or args.count < 1:
+        if args.jobs < 1 or args.start < 0 or args.count < 1 or args.tests_per_group < 1 or not 1 <= args.runner_seconds <= 1700:
             p.error('jobs/count must be positive and start nonnegative')
         batch(args)
 

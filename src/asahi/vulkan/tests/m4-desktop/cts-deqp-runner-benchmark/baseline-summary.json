@@ -1,0 +1,22 @@
+{
+  "selected": 1000,
+  "recorded": 1000,
+  "counts": {
+    "Pass": 913,
+    "NotSupported": 84,
+    "Fail": 3
+  },
+  "classifications": {
+    "unclassified": 1000
+  },
+  "elapsed_seconds": 43.32626422698377,
+  "preparation_seconds": 1.4456126209988724,
+  "runner_seconds": 39.610336499,
+  "jobs": 20,
+  "tests_per_group": 50,
+  "cases_sha256": "618a12fca57caf3c0be31c0b6edf9cd1e4004efb74b1026296b5c336533b30e8",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T004204253423Z-cts-deqp-runner-baseline1000",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 60.75
+}

@@ -1,0 +1,16 @@
+{
+  "selected": 1000,
+  "recorded": 0,
+  "counts": {},
+  "classifications": {},
+  "elapsed_seconds": 93.94602660799865,
+  "preparation_seconds": 1.4773157379822806,
+  "runner_seconds": null,
+  "jobs": 20,
+  "tests_per_group": 50,
+  "cases_sha256": "eeed33ef4635e73284d79cd64ab6ee657360649789c6664d0ea974f027e464b9",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T003845653966Z-cts-deqp-runner-random1000",
+  "guard_verdict": "gpu_fault",
+  "command_returncode": 1,
+  "peak_temperature_c": 60.25
+}

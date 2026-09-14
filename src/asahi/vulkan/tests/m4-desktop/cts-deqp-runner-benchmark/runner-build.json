@@ -1,0 +1,8 @@
+{
+  "upstream_commit": "495e9969446ee34e5573828b0aafaf4d8f028d2d",
+  "files": {
+    "reference/deqp-runner/Cargo.lock": "85e9c60f9ccce18005331f27754529d267c5ce929d23b4f2cd2e72c66d09614a",
+    "tools/deqp-runner-first-attempt.patch": "a79143893b97e12bf2123ce09f7ab030f71c9e2bad806e57132fa4e638fc90c5",
+    "reference/deqp-runner/target/aarch64-unknown-linux-gnu/release/deqp-runner": "f0f3f2ed10d24239dc91000a7ae3c15167ff290e2cba9a71e73c650a8ffccc56"
+  }
+}

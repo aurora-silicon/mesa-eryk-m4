@@ -248,3 +248,60 @@ not establish a working display. The guard already records that state in
 `target-before.json`; retain it and recover before rerunning presentation.
 The historical CTS xdg-shell backport also needs an application event pump,
 since its long Vulkan render loop does not call the platform event dispatcher.
+
+## Bulk execution with deqp-runner (default for throughput measurements)
+
+Use `cts-bulk.py` for a frozen large list. Keep `cts-campaign.py` / the isolated
+backend for one-case diagnosis. The bulk tool stages the list and metadata,
+then runs one bounded `gpu-experiment.py` lease with the existing exclusive
+60-second watchdog and six-channel thermal guard. For longer runs the existing
+guard renews only from fresh GPU retirement evidence plus healthy thermals.
+It does not add a timer-only watchdog feeder. Default: 20 workers, 50 tests per
+process, 20-second per-case timeout, 90-second workload / 110-second outer bound.
+The guard remains able to terminate the whole process group.
+
+The source is pinned at deqp-runner `495e9969446ee34e5573828b0aafaf4d8f028d2d`
+(version 0.23.3). `deqp-runner-first-attempt.patch` adds two explicit options:
+
+- `--first-attempt`: disable automatic failure/flake retries, preserve grouped
+  QPA/stdout/stderr/caselists, and stop scheduling on crash/timeout/parser failure.
+  No expected-failure baseline, skips or flakes list is passed. GPU faults are
+  additionally monitored by the outer guard; pending work may be interrupted.
+- `--no-deqp-shadercache`: omit newer CTS shader-cache command-line arguments
+  absent in CTS 1.0.2.6. This does not disable Mesa's shader cache or change tests.
+
+The upstream defaults are otherwise unchanged. This is a retained local tooling
+patch, not a shader or driver workaround. Build on the host (no M4 stress):
+
+```
+git clone https://gitlab.freedesktop.org/mesa/deqp-runner.git reference/deqp-runner
+git -C reference/deqp-runner checkout 495e9969446ee34e5573828b0aafaf4d8f028d2d
+git -C reference/deqp-runner apply --unidiff-zero ../../tools/deqp-runner-first-attempt.patch
+rustup target add aarch64-unknown-linux-gnu
+CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
+CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc \
+cargo build --manifest-path reference/deqp-runner/Cargo.toml --locked --release \
+  --target aarch64-unknown-linux-gnu --bin deqp-runner
+python3 tools/cts-bulk.py --name cts-filtered-bulk \
+  --cases build/cts-filtered-sample/cases.txt \
+  --runner reference/deqp-runner/target/aarch64-unknown-linux-gnu/release/deqp-runner \
+  --binary /root/cts-1.0.2.6/deqp-vk-scaled-precision \
+  --output build/cts-filtered-bulk
+```
+
+The selected set stays frozen; deqp-runner deterministically regroups/sorts
+execution within it. Batch size changes scheduling and driver lifetime, so new
+state-lifetime failures are possible. A group completion drives runner progress
+counts; a displayed zero does not mean its CTS processes have executed no tests.
+The wrapper saves exact runner/CTS hashes, ICD environment, metadata, command,
+all QPA and worker logs. Reports preserve raw QPA status/message alongside the
+runner's coarser status. `Skip` is never relabeled Pass; missing completions stay
+Unrun. After an interrupted guard, the host recovers completed QPA entries using
+`cts_deqp_backend.collect`, retaining the failed guard verdict. No automatic
+retry or reboot is performed by this tool.
+
+`summary.json` separates runner wall time, guard/transport wall time and staging
+time. Do not equate a completed guard with all tests passing. Current default
+binary is the explicitly patched CTS diagnostic build; results are not an
+unmodified Khronos conformance submission. Use `--binary` to select another
+exact build and retain its identity.
