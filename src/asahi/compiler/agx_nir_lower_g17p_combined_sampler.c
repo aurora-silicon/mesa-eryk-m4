@@ -42,7 +42,7 @@ g17p_sample_shape(const nir_tex_instr *tex)
    if (three_d) {
       const int lod = nir_tex_instr_src_index(tex, nir_tex_src_lod);
       if (tex->is_array || tex->is_shadow ||
-          (tex->op != nir_texop_tex && !gradient &&
+          (tex->op != nir_texop_tex && tex->op != nir_texop_txb && !gradient &&
            (tex->op != nir_texop_txl || lod < 0)))
          return false;
    }
@@ -501,7 +501,9 @@ agx_nir_lower_g17p_indexed_samplers(nir_shader *shader)
                             tex->op != nir_texop_lod && tex->op != nir_texop_txd &&
                             tex->op != nir_texop_tg4 &&
                             !(tex->op == nir_texop_txb &&
-                              !tex->is_shadow && tex->sampler_dim == GLSL_SAMPLER_DIM_2D)))) {
+                              !tex->is_shadow &&
+                              (tex->sampler_dim == GLSL_SAMPLER_DIM_2D ||
+                               tex->sampler_dim == GLSL_SAMPLER_DIM_3D))))) {
                if (getenv("AGX_NATIVE_RESOURCE_DIAGNOSTICS")) {
                   fprintf(stderr, "Native indexed texture shape refused: op=%u dim=%u flags=%u coords=%u sources=%u\n",
                           tex->op, tex->sampler_dim, tex->backend_flags,
@@ -949,6 +951,7 @@ agx_nir_lower_g17p_bindless_storage(nir_shader *shader)
                  format != PIPE_FORMAT_R32G32B32A32_FLOAT &&
                  format != PIPE_FORMAT_R16G16_UNORM &&
                  format != PIPE_FORMAT_R16_SNORM &&
+                 format != PIPE_FORMAT_R16G16_SNORM &&
                  format != PIPE_FORMAT_R16G16B16A16_UNORM &&
                  format != PIPE_FORMAT_R16G16B16A16_SNORM &&
                  format != PIPE_FORMAT_R8_UNORM &&

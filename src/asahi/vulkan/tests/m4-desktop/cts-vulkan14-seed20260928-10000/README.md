@@ -99,3 +99,27 @@ through its ten-second check, peak 57.5 C, installed library
 `79f4b084b7b7e9a199c4db26db5d70c88d98149c197c78c500ff104b471544f3`.
 Presentation failures still need rechecking; a missing display is a setup error,
 not evidence of optional Vulkan support.
+
+## Integer scans, quad writes, and additional storage formats
+
+`20260914T134408615911Z-cts28-compiler-next` establishes eight new numerical
+passes: three integer scan cases, a 64-bit tessellation-control broadcast,
+three RG16_SNORM storage reinterpretations, and a gradient-offset texture case.
+Min/max scans use NIR's existing active-lane lowering. Undefined out-of-range
+broadcast indices use the hardware lane field's low bits. RG16_SNORM uses the
+same formatted PBE conversion as its scalar/vector siblings. Gradient offsets
+use standard coordinate lowering.
+
+`20260914T134656718933Z-cts28-quad-bias` adds passes for boolean tessellation
+quad broadcast and integer 3D sampling with bias. The qualified quad destination
+uses ordinary GPR write hints. The floating 3D projected-bias case and the
+16-bit geometry quad broadcast still fail numerically and remain unresolved.
+Peak for these comparisons 57.75 C. Latest installed library:
+`667274915c5b080d573891ae8aa173f71a557d767e0ab3da117c6bc8e0264683`.
+
+All three original presentation failures pass in
+`20260914T134241765993Z-cts28-wsi-greeter-fixed` after the greeter compiler fix:
+Xlib present fences, Wayland multi-swapchain fences, and XCB incremental mailbox
+presentation. Peak 57.5 C. Separate missing-display skips were rechecked in
+`20260914T134439006110Z-cts28-wsi-setup-fixed`; preserve their revised capability
+reasons rather than treating absence of the greeter as unsupported Vulkan.

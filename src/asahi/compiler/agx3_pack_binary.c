@@ -2446,11 +2446,13 @@ agx3_emit_simd_broadcast(struct util_dynarray *emission,
        I->src[1].type != AGX_INDEX_IMMEDIATE || I->src[1].memory ||
        I->src[1].abs || I->src[1].neg ||
        agx_channels(I->src[1]) != 1 || I->saturate ||
-       (enc == AGX_ISA_ENCODING_AGX3B ? I->src[1].value >= 32 :
-        (I->src[1].value != 0 && I->src[1].value != 3)))
+       (enc != AGX_ISA_ENCODING_AGX3B &&
+        I->src[1].value != 0 && I->src[1].value != 3))
       return false;
 
-   /* G16G adds lanes 7/15/23/31 and live/final source witnesses to the
+   /* Out-of-range broadcast indices have undefined results. Encode their
+    * low five bits, as for a register lane, instead of refusing the shader.
+    * G16G adds lanes 7/15/23/31 and live/final source witnesses to the
     * original 0/3/5 forms. The immediate addresses any lane in the subgroup. */
    if (enc == AGX_ISA_ENCODING_AGX3B) {
       const struct agx3_subgroup_shuffle_desc d = {
@@ -2458,7 +2460,7 @@ agx3_emit_simd_broadcast(struct util_dynarray *emission,
          .lane_kind = AGX3_SUBGROUP_LANE_IMMEDIATE,
          .dest = I->dest[0].value,
          .src = I->src[0].value,
-         .lane = I->src[1].value,
+         .lane = I->src[1].value & 31,
          .wait_mask = wait_mask,
          .dest_hint = I->dest[0].cache,
          .src_live = !I->src[0].discard,
@@ -2542,7 +2544,7 @@ agx3_emit_subgroup_shuffle(struct util_dynarray *emission,
       /* The native quad broadcast carries the device-load wait directly.
        * The witnessed quad butterfly words have no wait, so settle any
        * producer before emitting those byte-exact forms. */
-      if (op != AGX3_SUBGROUP_SHUFFLE_BROADCAST && wait_mask != 0) {
+      if (wait_mask != 0) {
          if (!agx3_retire_slots_noop(emission, enc, wait_mask))
             return false;
          wait_mask = 0;
@@ -2556,7 +2558,7 @@ agx3_emit_subgroup_shuffle(struct util_dynarray *emission,
          .src = I->src[0].value,
          .lane = I->src[1].value,
          .wait_mask = wait_mask,
-         .dest_hint = I->dest[0].cache,
+         .dest_hint = false, /* Qualified quad form writes the ordinary GPR. */
          .src_live = !I->src[0].discard,
       };
       uint8_t bytes[AGX3_SUBGROUP_MAX_LENGTH], length = 0;

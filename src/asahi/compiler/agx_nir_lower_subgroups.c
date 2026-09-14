@@ -231,6 +231,16 @@ lower_subgroup_filter(const nir_intrinsic_instr *intr, const void *data)
          return false;
       return true;
 
+   case nir_op_imin:
+   case nir_op_imax:
+   case nir_op_umin:
+   case nir_op_umax:
+      /* Native integer min/max reductions have no prefix encoding. */
+      if (agx_options->g17p_clustered_float &&
+          intr->intrinsic != nir_intrinsic_reduce)
+         return true;
+      return intr->def.bit_size == 64;
+
    case nir_op_iand:
    case nir_op_ixor:
    case nir_op_ior:

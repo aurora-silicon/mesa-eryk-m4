@@ -1887,6 +1887,7 @@ agx_emit_image_store(agx_builder *b, nir_intrinsic_instr *instr)
          break;
       case PIPE_FORMAT_R16G16_UNORM:
       case PIPE_FORMAT_R16_SNORM:
+      case PIPE_FORMAT_R16G16_SNORM:
       case PIPE_FORMAT_R16G16B16A16_UNORM:
       case PIPE_FORMAT_R16G16B16A16_SNORM:
          /* Native formatted stores take F32 lanes for both normalized
