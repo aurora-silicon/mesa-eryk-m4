@@ -355,3 +355,18 @@ Peak 58.25 C, no fault/reboot. Tested library SHA256:
 `27d9ead157a430931ed2569395d29130e9cdc17d9decd848409aea4be330a833`.
 Running total: **78/91 failures resolved** (66 Mesa fixes, 12 CTS corrections),
 13 remaining. No broad regression campaign.
+
+## Normalized packing source sign modifiers
+
+Copy propagation can fold negation into the FLTNORM conversion used by
+normalized attachment writes. The native form accepts plain F32 operands.
+Materialize abs/neg as sign-bit operations before register allocation, just
+as for saturated narrowing ADD, preserving signed zero and NaN payloads
+without changing the conversion clamp or rounding.
+
+The saved fragment shader compiles offline (186 bytes). Both remaining
+dual-source blend cases now Pass with matching reference images on M4.
+Peak 57.5 C, no fault/reboot. Library SHA256:
+`e4db8e7ab41294d8bf76e7b62693da44f758b4f2df6be10eacae4fa52dc99249`.
+Running total: **80/91 failures resolved** (68 Mesa fixes, 12 CTS corrections),
+11 remaining. No broad regression campaign.
