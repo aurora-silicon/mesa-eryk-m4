@@ -1,0 +1,22 @@
+{
+  "id": "20260914T044308345399Z-cts14-reconverge-election",
+  "verdict": "pass",
+  "transport_returncode": 0,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T044308345399Z-cts14-reconverge-election",
+  "observations": {
+    "pixel_results": [],
+    "pixel_result_count": 0,
+    "thermal_samples": 2,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 57.5,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 57.5,
+      "Ta000m": 55.75,
+      "Te000m": 54.75,
+      "Te001m": 53.5,
+      "Tp000m": 57.5,
+      "Tp001m": 53.5
+    }
+  }
+}

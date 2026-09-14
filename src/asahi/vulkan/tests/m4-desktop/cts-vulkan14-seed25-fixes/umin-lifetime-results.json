@@ -1,0 +1,26 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.subgroups.subgroup_uniform_control_flow.large_full_control.subgroup_reconverge11",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.subgroups.subgroup_uniform_control_flow.large_full_control.subgroup_reconverge11",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T044308345399Z-cts14-reconverge-election/cts/000/result.qpa"
+    ],
+    "boot_id": "0ca1f3f9-acb4-4b79-8a3c-15498f475016",
+    "status": "Pass",
+    "started_unix": 1789360989.611226,
+    "eligibility": {
+      "case": "dEQP-VK.subgroups.subgroup_uniform_control_flow.large_full_control.subgroup_reconverge11",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.36161163099995974,
+    "finished_unix": 1789360989.9778523,
+    "pid": 4031
+  }
+]

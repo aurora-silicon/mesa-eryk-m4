@@ -35,6 +35,25 @@ bytes_equal(const uint8_t *actual, uint8_t length, const uint8_t *expected,
 }
 
 static int
+test_unsigned_reduction_lifetime(void)
+{
+   /* Independent G16G reduce-live-native/text-700.bin offsets 82/90. */
+   const uint8_t min[] = {0x3f,0x03,0x56,0x00,0x02,0x0c,0x16,0x01};
+   const uint8_t max[] = {0xbf,0x03,0x54,0x04,0x02,0x10,0x16,0x01};
+   struct agx3_subgroup_reduce_desc d = {
+      .op=AGX3_SUBGROUP_REDUCE_UMIN, .dest=0, .src=6,
+      .wait_mask=1u<<5, .src_live=true,
+   };
+   uint8_t out[AGX3_SUBGROUP_MAX_LENGTH], len;
+   CHECK(agx3_subgroup_encode_reduce(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+   CHECK(bytes_equal(out,len,min,sizeof(min)));
+   d.op=AGX3_SUBGROUP_REDUCE_UMAX;d.dest=4;d.src=8;d.wait_mask=0;
+   CHECK(agx3_subgroup_encode_reduce(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+   CHECK(bytes_equal(out,len,max,sizeof(max)));
+   return 0;
+}
+
+static int
 test_register_shuffle_lifetime(void)
 {
    /* Apple G16G 32023.883, shuffle-live-native/text-6f0.bin offsets
@@ -606,6 +625,7 @@ main(void)
    CHECK(agx3_subgroup_encode_reduce(AGX_ISA_ENCODING_AGX3B, &d, bytes, &length));
    CHECK(bytes_equal(bytes, length, expected, sizeof(expected)));
    CHECK(test_g16_broadcast_lanes() == 0);
+   CHECK(test_unsigned_reduction_lifetime() == 0);
    CHECK(test_register_shuffle_lifetime() == 0);
    CHECK(test_shuffle_vectors() == 0);
    CHECK(test_ballot_vectors() == 0);

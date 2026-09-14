@@ -316,3 +316,20 @@ Peak 58.0 C, no fault/reboot. Library SHA256:
 `03ca149b0ec7c2bd5c76281b6a628ca65650cd52fdacdf661160dfb3eebbe4f9`.
 Running total: **72/91 failures resolved** (60 Mesa fixes, 12 CTS corrections),
 19 remaining. No broad regression campaign.
+
+## Unsigned min/max source retention
+
+Native SIMD unsigned min/max reductions marked their input as consumed even
+when the original value remained live. This broke subgroup election: the
+minimum lane ID is compared with that same original lane ID after reduction.
+Honor source liveness for these operations. Independent Apple G16G min/max
+byte witnesses exercise a retained source, including a slot-6 wait, in the
+passing subgroup-core test.
+
+The minimal election probe improves from 31/96 mismatched words to 0/96.
+The original reconverge11 CTS case now Passes, including its setup/election
+check and the subsequent control-flow comparison. Peak 57.5 C, no fault/reboot.
+Library SHA256:
+`a95fda90594873acbc8e5ad1e3c1eff5e6226a4861326bdf2fae4d56f4ad2a72`.
+Running total: **73/91 failures resolved** (61 Mesa fixes, 12 CTS corrections),
+18 remaining. No broad regression campaign.

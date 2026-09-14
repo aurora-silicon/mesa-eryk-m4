@@ -323,10 +323,13 @@ agx3_subgroup_encode_reduce(enum agx_isa_encoding enc,
    } else {
       ADD_FIELD(23, 2);
       ADD_FIELD(24, 2);
-      /* G16G prefix sums retain their input for inclusive-scan correction.
-       * The native live-source form uses f25, as do quad integer reductions. */
+      /* Preserve live inputs for prefix correction, quad reductions and
+       * unsigned min/max (including subgroup election). Native G16G uses
+       * f25 for these live reads and f27 for their final consumption. */
       ADD_FIELD(!is_c(enc) && d->src_live &&
-                (d->quad || d->op == AGX3_SUBGROUP_REDUCE_IADD) ? 25 : 27, 1);
+                (d->quad || d->op == AGX3_SUBGROUP_REDUCE_IADD ||
+                 d->op == AGX3_SUBGROUP_REDUCE_UMIN ||
+                 d->op == AGX3_SUBGROUP_REDUCE_UMAX) ? 25 : 27, 1);
       if (f->integer_class == 1)
          ADD_FIELD(28, 1);
       if (is_c(enc)) {
