@@ -330,7 +330,7 @@ g17p_indexed_fetch_shape(const nir_tex_instr *tex, bool allow_lod)
    return handle >= 0 && lod >= 0 && coord >= 0 && tex->num_srcs == 3 &&
       ((nir_src_is_const(tex->src[lod].src) &&
         nir_src_as_uint(tex->src[lod].src) == 0) ||
-       (allow_lod && !tex->is_array && !three_d)) &&
+       (allow_lod && !tex->is_array)) &&
       nir_src_bit_size(tex->src[coord].src) == 32 &&
       nir_src_num_components(tex->src[coord].src) ==
          (lowered_buffer ? 2 : tex->coord_components);

@@ -1,0 +1,26 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.image.texel_view_compatible.compute.basic.3d_image.texel_fetch.etc2_r8g8b8_unorm_block.r32g32_uint",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.image.texel_view_compatible.compute.basic.3d_image.texel_fetch.etc2_r8g8b8_unorm_block.r32g32_uint",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T042426477244Z-cts14-texture3d-lod-v2/cts/000/result.qpa"
+    ],
+    "boot_id": "0ca1f3f9-acb4-4b79-8a3c-15498f475016",
+    "status": "Pass",
+    "started_unix": 1789359867.7116032,
+    "eligibility": {
+      "case": "dEQP-VK.image.texel_view_compatible.compute.basic.3d_image.texel_fetch.etc2_r8g8b8_unorm_block.r32g32_uint",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.5133398230000239,
+    "finished_unix": 1789359868.2301419,
+    "pid": 2587
+  }
+]

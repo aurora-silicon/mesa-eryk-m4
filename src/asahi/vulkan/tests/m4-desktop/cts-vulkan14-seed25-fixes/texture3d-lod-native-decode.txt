@@ -1,0 +1,2 @@
+offset=0xcc size=14 dest=8 coord=0 width=2 mask=15 texture=0 kind=0 value=0 kill=0 slot=1 wait=0x1 coord_kill=1 final=0 array=0 ms=0 3d=1 lod=0 bytes=25800c38b0007900000000000100
+offset=0xda size=14 dest=0 coord=8 width=2 mask=15 texture=0 kind=0 value=0 kill=0 slot=2 wait=0x2 coord_kill=1 final=1 array=0 ms=0 3d=1 lod=1 bytes=05840cb830259801000000000100

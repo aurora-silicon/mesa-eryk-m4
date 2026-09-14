@@ -2242,3 +2242,23 @@ compared. Use the mandatory experiment guard on hardware.
 all 2^24 values against correctly rounded double division and exact round trips.
 Build with `cc -O2 -ffp-contract=off tools/depth24-normalization.c -lm`. This
 CPU model complements, and does not replace, guarded GPU transfer checks.
+
+## Native texture-fetch decoder
+
+`native-fetch-decode.c` scans saved Apple G16G TEXT sections for texture-fetch
+encodings and re-encodes each candidate byte-for-byte. It reports dimensionality,
+LOD mode, resource operands and scheduling fields. This is an offline aid;
+a byte match alone does not establish instruction boundaries or GPU semantics.
+Compile against the current Mesa sources:
+
+```sh
+cc -O2 -I mesa/m4-asahi/src -I mesa/m4-asahi/include \
+  tools/native-fetch-decode.c \
+  mesa/m4-asahi/src/asahi/compiler/agx3_tex_core.c \
+  mesa/m4-asahi/src/asahi/compiler/agx3_binder.c \
+  mesa/m4-asahi/src/asahi/compiler/agx3_compose/agx3_compose.c \
+  mesa/m4-asahi/src/asahi/compiler/agx3_compose/agx3b_tables.c \
+  mesa/m4-asahi/src/asahi/compiler/agx3_compose/agx3c_tables.c \
+  -o build/native-fetch-decode
+build/native-fetch-decode SAVED_NATIVE/text-750.bin
+```

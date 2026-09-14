@@ -1249,6 +1249,19 @@ test_m4_integer_fetch_lod(void)
    CHECK(agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
    CHECK(len==sizeof(fetch) && !memcmp(out,fetch,len));
    CHECK(roundtrip(AGX_ISA_ENCODING_AGX3B,&d)==0);
+   /* Independent G16G texture3d<uint> read at a runtime mip level.
+    * texture3d-lod-native/text-750.bin offset 0xda, Apple 32023.883. */
+   static const uint8_t fetch3d[] = {
+      0x05,0x84,0x0c,0xb8,0x30,0x25,0x98,0x01,0x00,0x00,0x00,0x00,0x01,0x00
+   };
+   d.three_d = true;
+   d.coord = 8;
+   d.slot = 2;
+   d.wait_mask = 2;
+   d.sampler_value = 0;
+   CHECK(agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+   CHECK(len==sizeof(fetch3d) && !memcmp(out,fetch3d,len));
+   CHECK(roundtrip(AGX_ISA_ENCODING_AGX3B,&d)==0);
    d.texture_kind=AGX3_TEX_OPERAND_REGISTER;d.texture_value=4;
    CHECK(roundtrip(AGX_ISA_ENCODING_AGX3B,&d)==0);
    CHECK(!agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3C,&d,out,&len));

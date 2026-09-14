@@ -787,7 +787,7 @@ agx3_tex_imm(agx_index index, uint16_t value)
           !index.memory && !index.abs && !index.neg;
 }
 
-/* Marshal witnessed 2D texel fetches, including integer mip levels.
+/* Marshal witnessed 2D/3D texel fetches, including integer mip levels.
  * Array fetches retain their separately qualified LOD-zero form. */
 static bool
 agx3_emit_texture_fetch(struct util_dynarray *emission,
@@ -801,7 +801,7 @@ agx3_emit_texture_fetch(struct util_dynarray *emission,
    const bool register_lod = I->lod_mode == AGX_LOD_MODE_LOD_MIN;
    const bool valid_lod = register_lod ?
       enc == AGX_ISA_ENCODING_AGX3B && stage_coordinates && staging_coord == 0 &&
-      I->dim == AGX_DIM_2D &&
+      (I->dim == AGX_DIM_2D || three_d) &&
       (agx3_tex_plain_reg(I->src[1]) ||
        (I->src[1].type == AGX_INDEX_UNIFORM && !I->src[1].memory &&
         !I->src[1].abs && !I->src[1].neg)) &&
@@ -2116,7 +2116,7 @@ agx3_append_texture_staging_tokens(const agx_instr *I, mesa_shader_stage stage,
       if (stage == MESA_SHADER_VERTEX && I->op == AGX_OPCODE_TEXTURE_LOAD)
          return true;
       base = I->op == AGX_OPCODE_IMAGE_LOAD ? 16 : 0;
-      halves = I->dim == AGX_DIM_2D_ARRAY ||
+      halves = I->dim == AGX_DIM_2D_ARRAY || I->dim == AGX_DIM_3D ||
                I->dim == AGX_DIM_2D_MS || I->dim == AGX_DIM_2D_MS_ARRAY ||
                I->lod_mode == AGX_LOD_MODE_LOD_MIN ? 8 : 4;
    } else if (I->op == AGX_OPCODE_IMAGE_WRITE) {

@@ -241,3 +241,24 @@ now Passes on unmodified CTS. Peak 57.75 C, no GPU fault/reboot. Library SHA256:
 Running total: **64/91 failures resolved** (58 Mesa fixes, 6 CTS corrections),
 27 remaining. Both original crashes have passing targeted retests.
 No broad regression campaign.
+
+## 3D integer mip-level fetches
+
+Apple G16G compiler 32023.883 independently emits the existing 3D fetch
+encoding combined with register LOD (native TEXT offset 0xda). Enable that
+combination in indexed-handle lowering and the encoder; preserve the qualified
+coordinate bank and array restrictions. Track all XYZ staging halves until
+the texture result retires, including level-zero 3D loads. The byte witness
+is part of the texture-core checks (6295 checks passed). The new offline
+`native-fetch-decode.c` helper reports exact re-encoding candidates.
+
+The original ETC2/RG32_UINT 3D texel-view case now Passes. Peak 57.75 C, no GPU
+fault/reboot. An intermediate attempt still rejected the earlier indexed-handle
+shape check and is retained. The old saved compiler input precedes neither
+changed sampler preprocessing nor that check, so its rejection is retained
+and is not claimed as a passing offline replay. Native Apple compilation is
+an encoding witness, not an independently GPU-executed probe.
+Library SHA256:
+`4671d6811e03e20283b71326f51fdecfcf6a362cf45406bfcb386bd4ca708703`.
+Running total: **65/91 failures resolved** (59 Mesa fixes, 6 CTS corrections),
+26 remaining. No broad regression campaign.

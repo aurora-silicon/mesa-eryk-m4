@@ -69,7 +69,7 @@ struct agx3_tex_fetch_desc {
    bool coord_kill;
    bool final;          /* witnessed final texture-op marker */
    bool array;          /* 2D array: layer in the register after the pair */
-   bool three_d;        /* 3D level-zero fetch: z at staging coord + 4. */
+   bool three_d;        /* 3D fetch: z at staging coord + 4. */
    bool multisample;    /* Native MS fetch auxiliary word at coord + 4. */
    bool register_lod;   /* Integer LOD published by PACK_SMPIR in bank 6. */
    bool texture_kill;   /* Last use of an indirect texture index */

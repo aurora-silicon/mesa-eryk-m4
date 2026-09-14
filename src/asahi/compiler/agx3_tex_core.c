@@ -33,7 +33,7 @@ fetch_ok(enum agx_isa_encoding enc, const struct agx3_tex_fetch_desc *d)
        (d->register_lod && (enc != AGX_ISA_ENCODING_AGX3B || d->array || d->multisample)) ||
        (d->multisample && enc != AGX_ISA_ENCODING_AGX3B) ||
        (d->three_d && (enc != AGX_ISA_ENCODING_AGX3B || d->array ||
-                       d->multisample || d->register_lod)))
+                       d->multisample)))
       return false;
 
    const unsigned tk = d->texture_kind ?: AGX3_TEX_OPERAND_IMMEDIATE;
