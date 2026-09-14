@@ -1,0 +1,74 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.spirv_assembly.type.vec2.i16.shift_right_arithmetic_shift64_test_high_part_zero_tessc",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.spirv_assembly.type.vec2.i16.shift_right_arithmetic_shift64_test_high_part_zero_tessc",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T033204809737Z-cts14-half-shifts/cts/000/result.qpa"
+    ],
+    "boot_id": "d6085557-9b5d-48eb-b2af-d2d9d5365e2e",
+    "status": "Pass",
+    "started_unix": 1789356726.35929,
+    "eligibility": {
+      "case": "dEQP-VK.spirv_assembly.type.vec2.i16.shift_right_arithmetic_shift64_test_high_part_zero_tessc",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Rendered output matches input",
+    "returncode": 0,
+    "seconds": 0.8166198870000017,
+    "finished_unix": 1789356727.1809595,
+    "pid": 1521
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.spirv_assembly.type.vec4.i8.bit_field_u_extract_offset16_count64_tessc",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.spirv_assembly.type.vec4.i8.bit_field_u_extract_offset16_count64_tessc",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T033204809737Z-cts14-half-shifts/cts/001/result.qpa"
+    ],
+    "boot_id": "d6085557-9b5d-48eb-b2af-d2d9d5365e2e",
+    "status": "Fail",
+    "started_unix": 1789356727.1931758,
+    "eligibility": {
+      "case": "dEQP-VK.spirv_assembly.type.vec4.i8.bit_field_u_extract_offset16_count64_tessc",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Resource returned doesn&apos;t match with expected",
+    "returncode": 1,
+    "seconds": 0.8666806329999872,
+    "finished_unix": 1789356728.0676033,
+    "pid": 1529
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.spirv_assembly.instruction.maint9_vectorization.bit_field_s_extract.result_v8i-base_v8i-offset_s8u-count_s64i",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.spirv_assembly.instruction.maint9_vectorization.bit_field_s_extract.result_v8i-base_v8i-offset_s8u-count_s64i",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T033204809737Z-cts14-half-shifts/cts/002/result.qpa"
+    ],
+    "boot_id": "d6085557-9b5d-48eb-b2af-d2d9d5365e2e",
+    "status": "Fail",
+    "started_unix": 1789356728.0782313,
+    "eligibility": {
+      "case": "dEQP-VK.spirv_assembly.instruction.maint9_vectorization.bit_field_s_extract.result_v8i-base_v8i-offset_s8u-count_s64i",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Some results differ from the expected values; check log for details -- at vktSpvAsmMaint9VectorizationTests.cpp:1278",
+    "returncode": 1,
+    "seconds": 0.5622908209999196,
+    "finished_unix": 1789356728.6463351,
+    "pid": 1537
+  }
+]

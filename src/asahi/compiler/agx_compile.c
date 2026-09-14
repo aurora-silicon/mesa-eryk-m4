@@ -2658,6 +2658,27 @@ agx_lower_agx3_half_integer_sources(agx_context *ctx)
       return;
 
    agx_foreach_instr_global_safe(ctx, I) {
+      if (I->nr_dests == 1 && I->dest[0].size == AGX_SIZE_16 &&
+          !I->saturate &&
+          ((I->op == AGX_OPCODE_NOT && I->nr_srcs == 1) ||
+           (I->op == AGX_OPCODE_BITOP && I->nr_srcs == 2 &&
+            I->truth_table == UTIL_LUT2(~a))) &&
+          !I->src[0].abs && !I->src[0].neg &&
+          I->src[0].size == AGX_SIZE_16) {
+         /* Complement commutes with taking the low half. Use the native
+          * 32-bit operation without changing the neighboring half-register.
+          */
+         agx_builder b = agx_init_builder(ctx, agx_before_instr(I));
+         agx_index wide = agx_temp(ctx, AGX_SIZE_32);
+         agx_mov_to(&b, wide, I->src[0]);
+         I->src[0] = wide;
+         agx_index half = I->dest[0];
+         I->dest[0] = agx_temp(ctx, AGX_SIZE_32);
+         b.cursor = agx_after_instr(I);
+         agx_mov_to(&b, half, I->dest[0]);
+         continue;
+      }
+
       if (I->op == AGX_OPCODE_ASR && I->nr_srcs == 2 &&
           I->src[0].type == AGX_INDEX_IMMEDIATE &&
           !I->src[0].abs && !I->src[0].neg) {
@@ -2667,13 +2688,16 @@ agx_lower_agx3_half_integer_sources(agx_context *ctx)
          I->src[0] = agx_mov_imm(&b, 32, I->src[0].value);
       }
 
-      if (I->op == AGX_OPCODE_BFEIL && I->nr_dests == 1 && I->nr_srcs == 3 &&
+      if ((I->op == AGX_OPCODE_BFEIL ||
+           (I->op == AGX_OPCODE_BFI && I->bfi_mask == 0)) &&
+          I->nr_dests == 1 && I->nr_srcs == 3 &&
           I->dest[0].size == AGX_SIZE_16 && I->src[1].size == AGX_SIZE_16 &&
           I->src[0].type == AGX_INDEX_IMMEDIATE && I->src[0].value == 0 &&
           !I->src[0].abs && !I->src[0].neg && !I->src[1].abs &&
           !I->src[1].neg && !I->saturate) {
-         /* Unsigned extraction from a half register has no high source
-          * bits. Widen with zeroes and retain the original mask and shift. */
+         /* Unsigned extraction and left shifts from a half register have
+          * no high source bits. Widen with zeroes, retain the original mask
+          * and shift, then truncate the result to the original width. */
          agx_builder b = agx_init_builder(ctx, agx_before_instr(I));
          agx_index wide = agx_temp(ctx, AGX_SIZE_32);
          agx_mov_to(&b, wide, I->src[1]);
@@ -2685,21 +2709,24 @@ agx_lower_agx3_half_integer_sources(agx_context *ctx)
          continue;
       }
       if (I->op == AGX_OPCODE_ASR && I->nr_dests == 1 && I->nr_srcs == 2 &&
-          I->dest[0].size == AGX_SIZE_16 && I->src[0].size == AGX_SIZE_16 &&
+          (I->dest[0].size == AGX_SIZE_16 || I->dest[0].size == AGX_SIZE_32) &&
+          I->src[0].size == AGX_SIZE_16 &&
           I->src[0].type != AGX_INDEX_IMMEDIATE && !I->src[0].abs &&
-          !I->src[0].neg && I->src[1].type == AGX_INDEX_IMMEDIATE &&
-          I->src[1].value > 0 && I->src[1].value < 16 &&
+          !I->src[0].neg &&
           !I->src[1].abs && !I->src[1].neg && !I->saturate) {
-         /* A signed 16-bit shift equals a signed 32-bit shift of the
-          * sign-extended input, followed by truncation to 16 bits. */
+         /* Arithmetic shifts sign-extend their value operand independently
+          * of the destination width. This also handles register shift counts
+          * and the 16-to-32-bit form used by signed 8-bit conversions. */
          agx_builder b = agx_init_builder(ctx, agx_before_instr(I));
          agx_index wide = agx_temp(ctx, AGX_SIZE_32);
          agx_signext_to(&b, wide, I->src[0]);
          I->src[0] = wide;
-         agx_index half = I->dest[0];
-         I->dest[0] = agx_temp(ctx, AGX_SIZE_32);
-         b.cursor = agx_after_instr(I);
-         agx_mov_to(&b, half, I->dest[0]);
+         if (I->dest[0].size == AGX_SIZE_16) {
+            agx_index half = I->dest[0];
+            I->dest[0] = agx_temp(ctx, AGX_SIZE_32);
+            b.cursor = agx_after_instr(I);
+            agx_mov_to(&b, half, I->dest[0]);
+         }
          continue;
       }
       if (I->op != AGX_OPCODE_IMAD || I->nr_dests != 1 || I->nr_srcs != 3 ||

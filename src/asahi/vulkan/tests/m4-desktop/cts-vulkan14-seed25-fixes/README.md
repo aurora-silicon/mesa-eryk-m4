@@ -95,3 +95,23 @@ passes of the unmodified CTS release.
 
 Running total: **44/91 Fail cases resolved** (38 Mesa fixes, 6 CTS corrections),
 47 remaining. Both original crashes have separately recorded passing retests.
+
+## Half-width integer legalization
+
+Use native 32-bit complement and shifts with exact low-half truncation for
+16-bit results. Arithmetic shifts explicitly sign-extend half operands, also
+when the shift count is a register or the destination is 32 bits. This repairs
+four saved compiler bundles without inventing instruction encodings.
+
+The original i16 arithmetic-shift tessellation case now **Passes** on M4.
+The two i8 bit-field cases advance from compilation refusal to numerical
+mismatches (including zero odd byte components); they remain Fail. The fragment
+NOT bundle also compiles, but original multisample rendering cases hit later
+layout/layer restrictions, so no additional pass is claimed for that change.
+
+New boot d6085557-9b5d-48eb-b2af-d2d9d5365e2e, watchdog armed at 60 seconds,
+peak 57.25 C in the three-case shift run. No GPU fault or reboot in that run.
+Vulkan library SHA256:
+`da8c68f1663da21d113351521cfa88673956259726ff9f7041d9518b5eee3ba0`.
+Running total: **45/91 failures resolved** (39 Mesa fixes, 6 CTS corrections),
+46 remaining. No broad regression campaign.
