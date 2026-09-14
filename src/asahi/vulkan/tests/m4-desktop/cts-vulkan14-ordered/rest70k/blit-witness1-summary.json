@@ -1,0 +1,22 @@
+{
+  "selected": 8,
+  "recorded": 8,
+  "completed": 8,
+  "counts": {
+    "Pass": 8
+  },
+  "classifications": {
+    "unclassified": 8
+  },
+  "elapsed_seconds": 4.292405344982399,
+  "preparation_seconds": 1.5668144619849045,
+  "runner_seconds": 1.0115066600001228,
+  "jobs": 4,
+  "tests_per_group": 1,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "e674abced8fa1037c57c98992fc5abb5b1f8d4bfda40288968bf9416d1e969c9",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T235638787757Z-claude-cts-blit-witness1",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 59.0
+}

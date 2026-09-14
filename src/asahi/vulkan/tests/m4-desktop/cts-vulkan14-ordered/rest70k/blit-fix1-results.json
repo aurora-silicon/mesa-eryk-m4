@@ -1,0 +1,1010 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2b10g10r10_sscaled_pack32.b10g11r11_ufloat_pack32.general_general_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.67815584,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2b10g10r10_sscaled_pack32.b10g11r11_ufloat_pack32.general_general_nearest",
+      "catalog_index": 49139,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c13.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2b10g10r10_sscaled_pack32.b10g11r11_ufloat_pack32.general_optimal_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.7007316,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2b10g10r10_sscaled_pack32.b10g11r11_ufloat_pack32.general_optimal_nearest",
+      "catalog_index": 49142,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c39.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2b10g10r10_sscaled_pack32.b10g11r11_ufloat_pack32.optimal_general_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.6811197,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2b10g10r10_sscaled_pack32.b10g11r11_ufloat_pack32.optimal_general_nearest",
+      "catalog_index": 49145,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c12.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 3,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2b10g10r10_sscaled_pack32.b10g11r11_ufloat_pack32.optimal_optimal_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.7077562,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2b10g10r10_sscaled_pack32.b10g11r11_ufloat_pack32.optimal_optimal_nearest",
+      "catalog_index": 49148,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c46.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 4,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2b10g10r10_uscaled_pack32.b10g11r11_ufloat_pack32.general_general_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.73119384,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2b10g10r10_uscaled_pack32.b10g11r11_ufloat_pack32.general_general_nearest",
+      "catalog_index": 51059,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c5.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 5,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2b10g10r10_uscaled_pack32.b10g11r11_ufloat_pack32.general_optimal_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.689671,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2b10g10r10_uscaled_pack32.b10g11r11_ufloat_pack32.general_optimal_nearest",
+      "catalog_index": 51062,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c35.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 6,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2b10g10r10_uscaled_pack32.b10g11r11_ufloat_pack32.optimal_general_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.7105526,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2b10g10r10_uscaled_pack32.b10g11r11_ufloat_pack32.optimal_general_nearest",
+      "catalog_index": 51065,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c24.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 7,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2b10g10r10_uscaled_pack32.b10g11r11_ufloat_pack32.optimal_optimal_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.6993641,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2b10g10r10_uscaled_pack32.b10g11r11_ufloat_pack32.optimal_optimal_nearest",
+      "catalog_index": 51068,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c33.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 8,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2r10g10b10_sscaled_pack32.b10g11r11_ufloat_pack32.general_general_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.6857523,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2r10g10b10_sscaled_pack32.b10g11r11_ufloat_pack32.general_general_nearest",
+      "catalog_index": 52975,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c4.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 9,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2r10g10b10_sscaled_pack32.b10g11r11_ufloat_pack32.general_optimal_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.7006346,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2r10g10b10_sscaled_pack32.b10g11r11_ufloat_pack32.general_optimal_nearest",
+      "catalog_index": 52978,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 10,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2r10g10b10_sscaled_pack32.b10g11r11_ufloat_pack32.optimal_general_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.6810947,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2r10g10b10_sscaled_pack32.b10g11r11_ufloat_pack32.optimal_general_nearest",
+      "catalog_index": 52981,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c3.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 11,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2r10g10b10_sscaled_pack32.b10g11r11_ufloat_pack32.optimal_optimal_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.6827333,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2r10g10b10_sscaled_pack32.b10g11r11_ufloat_pack32.optimal_optimal_nearest",
+      "catalog_index": 52984,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c37.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 12,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2r10g10b10_uscaled_pack32.b10g11r11_ufloat_pack32.general_general_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.6990181,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2r10g10b10_uscaled_pack32.b10g11r11_ufloat_pack32.general_general_nearest",
+      "catalog_index": 54895,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c43.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 13,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2r10g10b10_uscaled_pack32.b10g11r11_ufloat_pack32.general_optimal_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.67862475,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2r10g10b10_uscaled_pack32.b10g11r11_ufloat_pack32.general_optimal_nearest",
+      "catalog_index": 54898,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c14.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 14,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2r10g10b10_uscaled_pack32.b10g11r11_ufloat_pack32.optimal_general_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.69024736,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2r10g10b10_uscaled_pack32.b10g11r11_ufloat_pack32.optimal_general_nearest",
+      "catalog_index": 54901,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c17.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 15,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2r10g10b10_uscaled_pack32.b10g11r11_ufloat_pack32.optimal_optimal_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.6567126,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2r10g10b10_uscaled_pack32.b10g11r11_ufloat_pack32.optimal_optimal_nearest",
+      "catalog_index": 54904,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c50.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 16,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_sscaled_pack32.b10g11r11_ufloat_pack32.general_general_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.70011,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_sscaled_pack32.b10g11r11_ufloat_pack32.general_general_nearest",
+      "catalog_index": 59618,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c34.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 17,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_sscaled_pack32.b10g11r11_ufloat_pack32.general_optimal_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.6909605,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_sscaled_pack32.b10g11r11_ufloat_pack32.general_optimal_nearest",
+      "catalog_index": 59620,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c26.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 18,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_sscaled_pack32.b10g11r11_ufloat_pack32.optimal_general_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.68655384,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_sscaled_pack32.b10g11r11_ufloat_pack32.optimal_general_nearest",
+      "catalog_index": 59622,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c25.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 19,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_sscaled_pack32.b10g11r11_ufloat_pack32.optimal_optimal_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.650222,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_sscaled_pack32.b10g11r11_ufloat_pack32.optimal_optimal_nearest",
+      "catalog_index": 59624,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c55.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 20,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.a2b10g10r10_uscaled_pack32.general_general_linear",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.36600846,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.a2b10g10r10_uscaled_pack32.general_general_linear",
+      "catalog_index": 61149,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c8.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 21,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.a2b10g10r10_uscaled_pack32.general_optimal_linear",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.72220516,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.a2b10g10r10_uscaled_pack32.general_optimal_linear",
+      "catalog_index": 61151,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c6.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 22,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.a2b10g10r10_uscaled_pack32.optimal_general_linear",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.67154527,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.a2b10g10r10_uscaled_pack32.optimal_general_linear",
+      "catalog_index": 61153,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c27.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 23,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.a2b10g10r10_uscaled_pack32.optimal_optimal_linear",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.66466266,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.a2b10g10r10_uscaled_pack32.optimal_optimal_linear",
+      "catalog_index": 61155,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c21.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 24,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.a2r10g10b10_uscaled_pack32.general_general_linear",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.7008685,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.a2r10g10b10_uscaled_pack32.general_general_linear",
+      "catalog_index": 61181,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c30.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 25,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.a2r10g10b10_uscaled_pack32.general_optimal_linear",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.7054937,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.a2r10g10b10_uscaled_pack32.general_optimal_linear",
+      "catalog_index": 61183,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c31.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 26,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.a2r10g10b10_uscaled_pack32.optimal_general_linear",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.6624595,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.a2r10g10b10_uscaled_pack32.optimal_general_linear",
+      "catalog_index": 61185,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c51.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 27,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.a2r10g10b10_uscaled_pack32.optimal_optimal_linear",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.66612625,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.a2r10g10b10_uscaled_pack32.optimal_optimal_linear",
+      "catalog_index": 61187,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c11.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 28,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.b10g11r11_ufloat_pack32.general_general_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.6726153,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.b10g11r11_ufloat_pack32.general_general_nearest",
+      "catalog_index": 61230,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c19.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 29,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.b10g11r11_ufloat_pack32.general_optimal_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.7052974,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.b10g11r11_ufloat_pack32.general_optimal_nearest",
+      "catalog_index": 61232,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c45.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 30,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.b10g11r11_ufloat_pack32.optimal_general_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.68412197,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.b10g11r11_ufloat_pack32.optimal_general_nearest",
+      "catalog_index": 61234,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c28.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 31,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.b10g11r11_ufloat_pack32.optimal_optimal_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.71554744,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.b10g11r11_ufloat_pack32.optimal_optimal_nearest",
+      "catalog_index": 61236,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c16.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 32,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8_sscaled.b10g11r11_ufloat_pack32.general_general_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.66819644,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8_sscaled.b10g11r11_ufloat_pack32.general_general_nearest",
+      "catalog_index": 81355,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c54.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 33,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8_sscaled.b10g11r11_ufloat_pack32.general_optimal_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.6944569,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8_sscaled.b10g11r11_ufloat_pack32.general_optimal_nearest",
+      "catalog_index": 81358,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c22.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 34,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8_sscaled.b10g11r11_ufloat_pack32.optimal_general_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.6891338,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8_sscaled.b10g11r11_ufloat_pack32.optimal_general_nearest",
+      "catalog_index": 81361,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c38.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 35,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8_sscaled.b10g11r11_ufloat_pack32.optimal_optimal_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.70907617,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8_sscaled.b10g11r11_ufloat_pack32.optimal_optimal_nearest",
+      "catalog_index": 81364,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c42.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 36,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8_uscaled.b10g11r11_ufloat_pack32.general_general_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.67901456,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8_uscaled.b10g11r11_ufloat_pack32.general_general_nearest",
+      "catalog_index": 83275,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c10.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 37,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8_uscaled.b10g11r11_ufloat_pack32.general_optimal_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.6848649,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8_uscaled.b10g11r11_ufloat_pack32.general_optimal_nearest",
+      "catalog_index": 83278,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c29.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 38,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8_uscaled.b10g11r11_ufloat_pack32.optimal_general_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.687806,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8_uscaled.b10g11r11_ufloat_pack32.optimal_general_nearest",
+      "catalog_index": 83281,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c9.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 39,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8_uscaled.b10g11r11_ufloat_pack32.optimal_optimal_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.7384361,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8_uscaled.b10g11r11_ufloat_pack32.optimal_optimal_nearest",
+      "catalog_index": 83284,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c47.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 40,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_sscaled.b10g11r11_ufloat_pack32.general_general_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.68044496,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_sscaled.b10g11r11_ufloat_pack32.general_general_nearest",
+      "catalog_index": 85287,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c23.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 41,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_sscaled.b10g11r11_ufloat_pack32.general_optimal_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.69326746,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_sscaled.b10g11r11_ufloat_pack32.general_optimal_nearest",
+      "catalog_index": 85290,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c7.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 42,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_sscaled.b10g11r11_ufloat_pack32.optimal_general_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.68029857,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_sscaled.b10g11r11_ufloat_pack32.optimal_general_nearest",
+      "catalog_index": 85293,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c36.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 43,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_sscaled.b10g11r11_ufloat_pack32.optimal_optimal_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.67970896,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_sscaled.b10g11r11_ufloat_pack32.optimal_optimal_nearest",
+      "catalog_index": 85296,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c20.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 44,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_uscaled.a2b10g10r10_uscaled_pack32.general_general_linear",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.68098766,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_uscaled.a2b10g10r10_uscaled_pack32.general_general_linear",
+      "catalog_index": 87086,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c2.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 45,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_uscaled.a2b10g10r10_uscaled_pack32.general_optimal_linear",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.65394235,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_uscaled.a2b10g10r10_uscaled_pack32.general_optimal_linear",
+      "catalog_index": 87089,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c52.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 46,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_uscaled.a2b10g10r10_uscaled_pack32.optimal_general_linear",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.47335625,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_uscaled.a2b10g10r10_uscaled_pack32.optimal_general_linear",
+      "catalog_index": 87092,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c1.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 47,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_uscaled.a2b10g10r10_uscaled_pack32.optimal_optimal_linear",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.6954564,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_uscaled.a2b10g10r10_uscaled_pack32.optimal_optimal_linear",
+      "catalog_index": 87095,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c44.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 48,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_uscaled.a2r10g10b10_uscaled_pack32.general_general_linear",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.7135194,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_uscaled.a2r10g10b10_uscaled_pack32.general_general_linear",
+      "catalog_index": 87134,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c32.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 49,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_uscaled.a2r10g10b10_uscaled_pack32.general_optimal_linear",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.67323613,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_uscaled.a2r10g10b10_uscaled_pack32.general_optimal_linear",
+      "catalog_index": 87137,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c18.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 50,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_uscaled.a2r10g10b10_uscaled_pack32.optimal_general_linear",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.72176766,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_uscaled.a2r10g10b10_uscaled_pack32.optimal_general_linear",
+      "catalog_index": 87140,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c40.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 51,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_uscaled.a2r10g10b10_uscaled_pack32.optimal_optimal_linear",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.661861,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_uscaled.a2r10g10b10_uscaled_pack32.optimal_optimal_linear",
+      "catalog_index": 87143,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c53.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 52,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_uscaled.b10g11r11_ufloat_pack32.general_general_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.7261415,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_uscaled.b10g11r11_ufloat_pack32.general_general_nearest",
+      "catalog_index": 87207,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c48.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 53,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_uscaled.b10g11r11_ufloat_pack32.general_optimal_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.6838185,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_uscaled.b10g11r11_ufloat_pack32.general_optimal_nearest",
+      "catalog_index": 87210,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c15.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 54,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_uscaled.b10g11r11_ufloat_pack32.optimal_general_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.6640929,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_uscaled.b10g11r11_ufloat_pack32.optimal_general_nearest",
+      "catalog_index": 87213,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c49.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 55,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_uscaled.b10g11r11_ufloat_pack32.optimal_optimal_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.71709573,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_uscaled.b10g11r11_ufloat_pack32.optimal_optimal_nearest",
+      "catalog_index": 87216,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c41.r1.qpa",
+    "worker_exit": "exit status: 0"
+  }
+]

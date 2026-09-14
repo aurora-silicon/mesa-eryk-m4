@@ -1,0 +1,22 @@
+{
+  "selected": 56,
+  "recorded": 56,
+  "completed": 56,
+  "counts": {
+    "Pass": 56
+  },
+  "classifications": {
+    "unclassified": 56
+  },
+  "elapsed_seconds": 9.162303963006707,
+  "preparation_seconds": 1.4413466039986815,
+  "runner_seconds": 5.629495271999986,
+  "jobs": 8,
+  "tests_per_group": 1,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "cb9b3fc6acda469b1ed19cedbce13c1f7e3d53f78a63e92d80918aedcec71c0c",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T235558154495Z-claude-cts-blit-fix1",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 59.5
+}

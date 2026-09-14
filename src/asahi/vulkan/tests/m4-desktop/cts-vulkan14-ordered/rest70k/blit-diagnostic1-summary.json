@@ -1,0 +1,22 @@
+{
+  "selected": 3,
+  "recorded": 3,
+  "completed": 3,
+  "counts": {
+    "Fail": 3
+  },
+  "classifications": {
+    "unclassified": 3
+  },
+  "elapsed_seconds": 3.9111350279999897,
+  "preparation_seconds": 1.325226825021673,
+  "runner_seconds": 0.6090801529999226,
+  "jobs": 3,
+  "tests_per_group": 1,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "eaa76e4de93715152ede3a72f24a1ea27760dfce5e1f5402fba38f11ac662756",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T234915806567Z-claude-cts-diag1",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 63.75
+}
