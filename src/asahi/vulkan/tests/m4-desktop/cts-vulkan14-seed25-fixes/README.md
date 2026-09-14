@@ -262,3 +262,23 @@ Library SHA256:
 `4671d6811e03e20283b71326f51fdecfcf6a362cf45406bfcb386bd4ca708703`.
 Running total: **65/91 failures resolved** (59 Mesa fixes, 6 CTS corrections),
 26 remaining. No broad regression campaign.
+
+## CTS scaled blit classification
+
+Five original blits were rejected by the CTS oracle before pixel comparison:
+it treated the integer storage of scaled formats as integer-only blit semantics.
+Vulkan instead converts scaled values to floating point for filtering:
+https://docs.vulkan.org/refpages/latest/refpages/source/vkCmdBlitImage.html
+
+Exclude scaled formats from the oracle's integer-class compatibility check.
+For nearest conversion involving scaled formats, build the destination-format
+reference texels first and use zero color tolerance in the lookup verifier.
+This avoids a one-integer tolerance hiding errors in normalized [0,1] inputs.
+The four linear comparisons retain their existing reference and thresholds.
+
+All five now Pass with the separately patched CTS binary
+`adeddeb606346eb230e1a1366772afa6da921a248eae9608014d0e139e3340b6`.
+Original CTS source/binary restored by the build helper. No Mesa change or
+unmodified-CTS pass is claimed. Peak 58.25 C, no fault/reboot.
+Running total: **70/91 failures resolved** (59 Mesa fixes, 11 CTS corrections),
+21 remaining. No broad regression campaign.

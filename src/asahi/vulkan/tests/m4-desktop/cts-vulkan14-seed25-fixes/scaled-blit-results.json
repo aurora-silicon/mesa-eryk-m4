@@ -1,0 +1,122 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r16g16b16a16_uscaled.r8g8b8a8_snorm.general_general_linear",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-scaled-blit-v2",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r16g16b16a16_uscaled.r8g8b8a8_snorm.general_general_linear",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T042838992160Z-cts14-scaled-blit-exact/cts/000/result.qpa"
+    ],
+    "boot_id": "0ca1f3f9-acb4-4b79-8a3c-15498f475016",
+    "status": "Pass",
+    "started_unix": 1789360120.2762995,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r16g16b16a16_uscaled.r8g8b8a8_snorm.general_general_linear",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.3860532430001058,
+    "finished_unix": 1789360120.66744,
+    "pid": 2911
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r8g8b8_uscaled.r5g6b5_unorm_pack16.general_general_linear",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-scaled-blit-v2",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r8g8b8_uscaled.r5g6b5_unorm_pack16.general_general_linear",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T042838992160Z-cts14-scaled-blit-exact/cts/001/result.qpa"
+    ],
+    "boot_id": "0ca1f3f9-acb4-4b79-8a3c-15498f475016",
+    "status": "Pass",
+    "started_unix": 1789360120.281443,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r8g8b8_uscaled.r5g6b5_unorm_pack16.general_general_linear",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.5003930170000785,
+    "finished_unix": 1789360120.7871685,
+    "pid": 2912
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2b10g10r10_uscaled_pack32.r16g16_sfloat.general_optimal_linear",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-scaled-blit-v2",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2b10g10r10_uscaled_pack32.r16g16_sfloat.general_optimal_linear",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T042838992160Z-cts14-scaled-blit-exact/cts/002/result.qpa"
+    ],
+    "boot_id": "0ca1f3f9-acb4-4b79-8a3c-15498f475016",
+    "status": "Pass",
+    "started_unix": 1789360120.286856,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2b10g10r10_uscaled_pack32.r16g16_sfloat.general_optimal_linear",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.5111929350000537,
+    "finished_unix": 1789360120.803986,
+    "pid": 2913
+  },
+  {
+    "index": 3,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r16g16b16_unorm.r16g16b16_uscaled.optimal_optimal_nearest",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-scaled-blit-v2",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r16g16b16_unorm.r16g16b16_uscaled.optimal_optimal_nearest",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T042838992160Z-cts14-scaled-blit-exact/cts/003/result.qpa"
+    ],
+    "boot_id": "0ca1f3f9-acb4-4b79-8a3c-15498f475016",
+    "status": "Pass",
+    "started_unix": 1789360120.2928848,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r16g16b16_unorm.r16g16b16_uscaled.optimal_optimal_nearest",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.5710024760001033,
+    "finished_unix": 1789360120.8698459,
+    "pid": 2915
+  },
+  {
+    "index": 4,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r8g8b8a8_uscaled.a1b5g5r5_unorm_pack16.optimal_optimal_linear",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-scaled-blit-v2",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r8g8b8a8_uscaled.a1b5g5r5_unorm_pack16.optimal_optimal_linear",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T042838992160Z-cts14-scaled-blit-exact/cts/004/result.qpa"
+    ],
+    "boot_id": "0ca1f3f9-acb4-4b79-8a3c-15498f475016",
+    "status": "Pass",
+    "started_unix": 1789360120.2990422,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r8g8b8a8_uscaled.a1b5g5r5_unorm_pack16.optimal_optimal_linear",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.5809718630000589,
+    "finished_unix": 1789360120.8858254,
+    "pid": 2917
+  }
+]
