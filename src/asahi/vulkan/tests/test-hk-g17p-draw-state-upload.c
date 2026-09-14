@@ -71,6 +71,26 @@ int main(void)
    for (unsigned i = 0; i < 3; ++i)
       assert(!memcmp(saved[i], retained[i], sizeof(saved[i])));
 
+   /* A multi-viewport payload grows in front of the varying record.
+    * Check the emitted pointer and sentinel beyond the exact allocation. */
+   uint8_t multi[256], vp2[72];
+   memset(multi, 0xa5, sizeof(multi));
+   memset(vp2, 0x77, sizeof(vp2));
+   struct hk_g17p_bind_state_upload multi_upload;
+   assert(hk_g17p_upload_bind_state(multi, sizeof(multi), 0x800000,
+      group, vp2, sizeof(vp2), 2, 0, &multi_upload));
+   struct agx_vdm_hal200_bind_pair multi_pairs[8];
+   assert(agx_vdm_hal200_bind_tail_unpack(AGX_CHIP_G17P,
+      multi_upload.tail.bytes, multi_upload.tail.length, multi_pairs));
+   assert(multi_pairs[0].context_offset == 0x800000 + 128 + 72);
+   assert(multi_pairs[4].control == (72 / 4) << 8);
+   assert(!memcmp(multi + 128, vp2, sizeof(vp2)));
+   assert(multi[128 + 72] == 0 && multi[128 + 72 + 2] == 4);
+   for (unsigned i = 128 + 72 + 20; i < sizeof(multi); ++i)
+      assert(multi[i] == 0xa5);
+   assert(!hk_g17p_upload_bind_state(multi, 128 + 72 + 19, 0x800000,
+      group, vp2, sizeof(vp2), 2, 0, &multi_upload));
+
    uint8_t indices[3][12];
    uint32_t pointers[3];
    for (unsigned i = 0; i < 3; ++i) {

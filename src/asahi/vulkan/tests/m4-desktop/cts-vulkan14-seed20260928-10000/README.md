@@ -351,3 +351,26 @@ failing/crashing/timing-out cases resolved. These are latest per-case results
 across builds, including the separately documented CTS reference corrections;
 this is not an uninterrupted same-build run. The concurrency fault discussed
 above is still not proven fixed.
+
+## Multiple viewport state
+
+Native draw upload now retains every viewport transform, region clip and
+matching scissor, with the draw selecting the first scissor of its owned range.
+The varying record follows the actual variable-sized viewport record.
+
+Two prior assumptions caused the initial guarded stalls:
+- OUTPUT word2 low bits are vertex amplification count minus one, not viewport
+  count. M4 B0 setVertexAmplificationCount at 45b408..45b418 independently
+  establishes this; ordinary draws leave it zero.
+- Bind-tail controls are lengths for the following PPP address. The initial
+  0x500 describes the first 20-byte varying record, then 0x700 the 28-byte FS
+  record, and so on. pairs[4].control must be viewport_record.length/4 << 8,
+  replacing the fixed one-viewport value 0xa00 with 0x1200 for two viewports.
+
+Failed experiments `20260914T153421984883Z-cts28-two-viewports` and
+`20260914T153955838318Z-cts28-viewports-no-amplification` retain firmware
+snapshots and watchdog recovery. Final original case Pass:
+`20260914T154215266863Z-cts28-viewport-packet-length`, peak59.25 C.
+Library SHA256 `a0b6f802d2b071c2f6597eba845f12762b7e156f06a9a1621a00997281d999b8`.
+Host upload test verifies relocated pointers, packet length and allocation
+bounds. Cumulative: 4643 Pass / 15 Fail / 5342 NotSupported, 64 resolved.

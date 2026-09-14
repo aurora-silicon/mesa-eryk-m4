@@ -4,6 +4,7 @@
 #include "asahi/lib/agx_va_runtime_hole.h"
 #include "asahi/lib/agx_vdm_hal200_bind_tail_core.h"
 #include "hk_g17p_ppp_indices.h"
+#include "asahi/lib/agx_ppp_viewport_payload_core.h"
 
 #define HK_G17P_BIND_GROUP_BYTES 0x80u
 #define HK_G17P_VIEWPORT_RECORD_BYTES 40u
@@ -38,21 +39,25 @@ hk_g17p_upload_bind_state(void *cpu, size_t capacity, uint64_t compact,
                           size_t viewport_size, uint32_t counts_32, uint32_t counts_16,
                           struct hk_g17p_bind_state_upload *out)
 {
+   const size_t varying_offset = HK_G17P_BIND_GROUP_BYTES + viewport_size;
+   const size_t state_size = varying_offset + HK_G17P_VARYING_RECORD_BYTES;
    if (!cpu || !bind_group || !viewport || !out ||
-       capacity < HK_G17P_BIND_STATE_BYTES ||
+       viewport_size < AGX_PPP_VIEWPORT_PAYLOAD_MIN_LENGTH ||
+       viewport_size > AGX_PPP_VIEWPORT_PAYLOAD_MAX_LENGTH ||
+       (viewport_size - AGX_PPP_VIEWPORT_PAYLOAD_MIN_LENGTH) % 32 ||
+       capacity < state_size ||
        ((counts_32 | counts_16) & UINT32_C(0xff000000)) != 0 ||
-       viewport_size != HK_G17P_VIEWPORT_RECORD_BYTES ||
-       !hk_g17p_draw_state_range_valid(compact, HK_G17P_BIND_STATE_BYTES))
+       !hk_g17p_draw_state_range_valid(compact, state_size))
       return false;
 
    const uint32_t group = (uint32_t)compact;
    struct hk_g17p_bind_state_upload encoded = {
       .pairs = {
-         {group + HK_G17P_VARYING_RECORD_OFFSET, 0x700},
+         {group + (uint32_t)varying_offset, 0x700},
          {group + 0x00, 0x500},
          {group + 0x1c, 0x700},
          {group + 0x30, 0x500},
-         {group + 0x4c, 0xa00},
+         {group + 0x4c, (uint32_t)(viewport_size / 4) << 8},
          {group + HK_G17P_BIND_GROUP_BYTES, 0x300},
          {group + 0x60, 0x200},
          {group + 0x6c, 0x200},
@@ -68,7 +73,7 @@ hk_g17p_upload_bind_state(void *cpu, size_t capacity, uint64_t compact,
     * The admitted user-only layout has no auxiliary outputs. This record
     * belongs to the draw, just like FS/OUTPUT, never the shared Bind0 page. */
    const uint32_t words[5] = {UINT32_C(0x10040000), counts_32, counts_16, 0, 0};
-   uint8_t *varyings = (uint8_t *)cpu + HK_G17P_VARYING_RECORD_OFFSET;
+   uint8_t *varyings = (uint8_t *)cpu + varying_offset;
    for (unsigned i = 0; i < 5; ++i) {
       for (unsigned byte = 0; byte < 4; ++byte)
          varyings[4 * i + byte] = words[i] >> (8 * byte);

@@ -12,6 +12,18 @@ static const uint32_t controls[AGX_VDM_HAL200_BIND_COUNT] = {
    UINT32_C(0xa00), UINT32_C(0x300), UINT32_C(0x200), UINT32_C(0x200),
 };
 
+/* A control follows the preceding address in this split view of the
+ * stream and describes the NEXT PPP payload's word count. Slot4 precedes
+ * the variable-sized viewport payload: 10 words for one, +8 per viewport. */
+static bool
+control_valid(unsigned slot, uint32_t control)
+{
+   if (slot != 4)
+      return control == controls[slot];
+   return control >= 0xa00 && control <= 0x8200 &&
+          (control - 0xa00) % 0x800 == 0;
+}
+
 static void
 store_le32(uint8_t *dst, uint32_t value)
 {
@@ -44,7 +56,7 @@ agx_vdm_hal200_bind_tail_pack(
    for (unsigned i = 0; i < AGX_VDM_HAL200_BIND_COUNT; ++i) {
       if (pairs[i].context_offset == 0 ||
           (pairs[i].context_offset & UINT32_C(3)) != 0 ||
-          pairs[i].control != controls[i]) {
+          !control_valid(i, pairs[i].control)) {
          memset(out, 0, sizeof(*out));
          return false;
       }
@@ -82,7 +94,7 @@ agx_vdm_hal200_bind_tail_unpack(
       pairs[i].control = load_le32(&raw[offset + 4]);
       if (pairs[i].context_offset == 0 ||
           (pairs[i].context_offset & UINT32_C(3)) != 0 ||
-          pairs[i].control != controls[i]) {
+          !control_valid(i, pairs[i].control)) {
          memset(pairs, 0,
                 sizeof(struct agx_vdm_hal200_bind_pair) *
                    AGX_VDM_HAL200_BIND_COUNT);

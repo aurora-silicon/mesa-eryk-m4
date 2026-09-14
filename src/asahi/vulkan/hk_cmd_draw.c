@@ -3020,11 +3020,16 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
                  vs->info.uvs.size, 0, &output_size))
       return false;
 
+   const unsigned viewport_count = MAX2(dyn->vp.viewport_count, 1);
+   if (viewport_count > AGX_PPP_VIEWPORT_PAYLOAD_MAX_VIEWPORTS)
+      return false;
+
    struct agx_ppp_hal200_graphics_core output_record;
    struct agx_ppp_hal200_graphics_fields output_fields = {
-      /* Native vertex update 0x481be8..0x481c2c writes zero at
-       * context+0x1f90 and viewport_count-1 at +0x1f94; both are zero
-       * for this single-viewport layout. VIT supplies interpolation.
+      /* OUTPUT word2 low bits encode vertex amplification count minus one,
+       * not viewport count. G16G B0 setVertexAmplificationCount writes them
+       * at 45b408..45b418. Ordinary draws retain zero here; the viewport
+       * packet independently carries the number of transforms.
        * FragmentProgramVariant 0x373eb4..0x373ee0 sets output-select bit16
        * for nonempty iteration metadata, merged by 0x4824fc..0x482518.
        * Preserve point size, layer/viewport and user clip-plane selectors.
@@ -3118,7 +3123,7 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
    };
 
    struct agx_ppp_viewport_payload_fields viewport_fields = {
-      .viewport_count = 1,
+      .viewport_count = viewport_count,
    };
    const VkViewport *vp = &dyn->vp.viewports[0];
    unsigned minx = MIN2(vp->x, vp->x + vp->width);
@@ -3279,11 +3284,8 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
                                          &w_cull2_record))
       return false;
 
-   void *scissor = util_dynarray_grow_bytes(
-      &cs->scissor, 1, sizeof(raster_state.scissor));
    void *depth_bias_record = util_dynarray_grow_bytes(
       &cs->depth_bias, 1, sizeof(raster_state.depth_bias));
-   memcpy(scissor, raster_state.scissor, sizeof(raster_state.scissor));
    memcpy(depth_bias_record, raster_state.depth_bias,
           sizeof(raster_state.depth_bias));
 
@@ -3303,25 +3305,54 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
    memcpy(&bind_group[0x60], w_cull2_record.bytes, w_cull2_record.length);
    memcpy(&bind_group[0x6c], cull_record.bytes, cull_record.length);
 
-   uint8_t region_clip[AGX_REGION_CLIP_LENGTH];
-   agx_pack(region_clip, REGION_CLIP, cfg) {
-      cfg.enable = true;
-      cfg.min_x = minx / 32;
-      cfg.min_y = miny / 32;
-      cfg.max_x = DIV_ROUND_UP(MAX2(maxx, 1), 32);
-      cfg.max_y = DIV_ROUND_UP(MAX2(maxy, 1), 32);
-   }
-   memcpy(&viewport_fields.region_clip_raw[0], region_clip,
-          sizeof(region_clip));
-   viewport_fields.viewports[0] =
-      (struct agx_ppp_viewport_transform_raw){
-         .translate_x = fui(vp->x + 0.5f * vp->width),
-         .scale_x = fui(vp->width * 0.5f),
-         .translate_y = fui(vp->y + 0.5f * vp->height),
-         .scale_y = fui(vp->height * 0.5f),
-         .translate_z = fui(vp->minDepth),
-         .scale_z = fui(vp->maxDepth - vp->minDepth),
+   /* The viewport index selects matching transform, region and scissor
+    * entries. Retain all of them in draw-owned storage, including when
+    * dynamic state replaces a pipeline's static viewport count. */
+   uint8_t *scissors = util_dynarray_grow_bytes(
+      &cs->scissor, viewport_count, sizeof(raster_state.scissor));
+   for (unsigned i = 0; i < viewport_count; ++i) {
+      const VkViewport *v = &dyn->vp.viewports[i];
+      unsigned x0 = CLAMP(MIN2(v->x, v->x + v->width), 0, render->cr.width);
+      unsigned y0 = CLAMP(MIN2(v->y, v->y + v->height), 0, render->cr.height);
+      unsigned x1 = CLAMP(MAX2(v->x, v->x + v->width), 0, render->cr.width);
+      unsigned y1 = CLAMP(MAX2(v->y, v->y + v->height), 0, render->cr.height);
+      if (i < dyn->vp.scissor_count) {
+         const VkRect2D *r = &dyn->vp.scissors[i];
+         x0 = MAX2(x0, r->offset.x);
+         y0 = MAX2(y0, r->offset.y);
+         x1 = MIN2(x1, r->offset.x + r->extent.width);
+         y1 = MIN2(y1, r->offset.y + r->extent.height);
+      }
+      struct agx_ppp_hal200_raster_fields rf = raster_fields;
+      rf.min_x = MIN2(x0, UINT16_MAX);
+      rf.min_y = MIN2(y0, UINT16_MAX);
+      rf.max_x = MIN2(x1, UINT16_MAX);
+      rf.max_y = MIN2(y1, UINT16_MAX);
+      rf.min_z_raw = fui(dyn->rs.depth_clamp_enable ? MIN2(v->minDepth, v->maxDepth) : 0.0f);
+      rf.max_z_raw = fui(dyn->rs.depth_clamp_enable ? MAX2(v->minDepth, v->maxDepth) : 1.0f);
+      struct agx_ppp_hal200_raster_state rs;
+      if (!agx_ppp_hal200_raster_state_build(dev->dev.chip, &rf, &rs))
+         return false;
+      memcpy(scissors + i * sizeof(rs.scissor), rs.scissor, sizeof(rs.scissor));
+
+      uint8_t region_clip[AGX_REGION_CLIP_LENGTH];
+      agx_pack(region_clip, REGION_CLIP, cfg) {
+         cfg.enable = true;
+         cfg.min_x = x0 / 32;
+         cfg.min_y = y0 / 32;
+         cfg.max_x = DIV_ROUND_UP(MAX2(x1, 1), 32);
+         cfg.max_y = DIV_ROUND_UP(MAX2(y1, 1), 32);
+      }
+      memcpy(&viewport_fields.region_clip_raw[i], region_clip, sizeof(region_clip));
+      viewport_fields.viewports[i] = (struct agx_ppp_viewport_transform_raw){
+         .translate_x = fui(v->x + 0.5f * v->width),
+         .scale_x = fui(v->width * 0.5f),
+         .translate_y = fui(v->y + 0.5f * v->height),
+         .scale_y = fui(v->height * 0.5f),
+         .translate_z = fui(v->minDepth),
+         .scale_z = fui(v->maxDepth - v->minDepth),
       };
+   }
 
    struct agx_ppp_viewport_payload_core viewport_record;
    if (!agx_ppp_viewport_payload_core_pack(dev->dev.chip, &viewport_fields,
@@ -3331,11 +3362,12 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
    /* A VDM fetch happens after recording. Never point earlier draws at a
     * device-global record that another draw/CB can overwrite. This upload
     * and its architectural low alias live until command-buffer reset. */
-   struct agx_ptr state =
-      hk_pool_vdm_alloc(cmd, HK_G17P_BIND_STATE_BYTES, 64);
+   const size_t state_size = HK_G17P_BIND_GROUP_BYTES + viewport_record.length +
+                             HK_G17P_VARYING_RECORD_BYTES;
+   struct agx_ptr state = hk_pool_vdm_alloc(cmd, state_size, 64);
    struct hk_g17p_bind_state_upload uploaded;
    if (!state.cpu ||
-       !hk_g17p_upload_bind_state(state.cpu, HK_G17P_BIND_STATE_BYTES, state.gpu,
+       !hk_g17p_upload_bind_state(state.cpu, state_size, state.gpu,
                                   bind_group, viewport_record.bytes,
                                   viewport_record.length,
                                   gfx->linked_varyings.counts_32.opaque[0],
@@ -5198,7 +5230,8 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
                struct agx_ptr state = hk_pool_vdm_alloc(cmd, 8, 4);
                uint32_t offset;
                if (!state.cpu || !hk_g17p_upload_draw_indices(
-                      state.cpu, 8, state.gpu, cs->scissor.size,
+                      state.cpu, 8, state.gpu,
+                      cs->scissor.size - 16 * (MAX2(dyn->vp.viewport_count, 1) - 1),
                       cs->depth_bias.size, &offset)) {
                   vk_command_buffer_set_error(&cmd->vk,
                                               VK_ERROR_OUT_OF_DEVICE_MEMORY);
@@ -5239,7 +5272,8 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
             uint32_t draw_state_offset;
             if (!draw_state.cpu ||
                 !hk_g17p_upload_draw_indices(draw_state.cpu, 8, draw_state.gpu,
-                    cs->scissor.size, cs->depth_bias.size, &draw_state_offset)) {
+                    cs->scissor.size - 16 * (MAX2(dyn->vp.viewport_count, 1) - 1),
+                    cs->depth_bias.size, &draw_state_offset)) {
                vk_command_buffer_set_error(&cmd->vk,
                                            VK_ERROR_FEATURE_NOT_PRESENT);
                return;

@@ -39,7 +39,10 @@ struct agx_vdm_hal200_bind_tail {
  *   u32 header control = 0x500
  *   8 x { u32 render-context-relative address, u32 opaque slot control }
  *
- * The controls are exact slot identities, not payload lengths.
+ * Controls encode the word count of the following PPP payload. The leading
+ * control describes the first address; each pair's control describes the
+ * next address, and the last describes the draw-index payload after this
+ * tail. In particular pairs[4].control must reflect viewport payload size.
  */
 bool agx_vdm_hal200_bind_tail_pack(
    enum agx_chip chip,
