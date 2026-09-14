@@ -778,9 +778,10 @@ hk_CmdCopyQueryPoolResults(VkCommandBuffer commandBuffer, VkQueryPool queryPool,
    perf_debug(cmd, "Query pool copy");
 
    if (agx_native_graphics(&dev->dev)) {
-      if (hk_reports_per_query(pool) != 1 ||
-          (pool->vk.query_type != VK_QUERY_TYPE_TIMESTAMP &&
-           pool->vk.query_type != VK_QUERY_TYPE_OCCLUSION) ||
+      if ((pool->vk.query_type != VK_QUERY_TYPE_TIMESTAMP &&
+           pool->vk.query_type != VK_QUERY_TYPE_OCCLUSION &&
+           pool->vk.query_type != VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT &&
+           pool->vk.query_type != VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT) ||
           firstQuery > pool->vk.query_count ||
           queryCount > pool->vk.query_count - firstQuery) {
          vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
@@ -788,11 +789,23 @@ hk_CmdCopyQueryPoolResults(VkCommandBuffer commandBuffer, VkQueryPool queryPool,
       }
       for (uint32_t i = 0; i < queryCount; i++) {
          uint32_t query = firstQuery + i;
-         hk_native_meta_copy_query(cmd,
-            hk_buffer_address_rw(dst_buffer, dstOffset + (uint64_t)i * stride),
-            hk_query_report_addr(dev, pool, query),
-            hk_has_available(pool) ? hk_query_available_addr(pool, query) : 0,
-            flags);
+         const unsigned reports = hk_reports_per_query(pool);
+         const unsigned word_size = (flags & VK_QUERY_RESULT_64_BIT) ? 8 : 4;
+         /* Each query contains one or more consecutive 64-bit counters.
+          * Availability belongs after the complete result tuple. */
+         for (unsigned report = 0; report < reports; report++) {
+            VkQueryResultFlags report_flags = flags;
+            if (report + 1 < reports)
+               report_flags &= ~VK_QUERY_RESULT_WITH_AVAILABILITY_BIT;
+            hk_native_meta_copy_query(cmd,
+               hk_buffer_address_rw(dst_buffer,
+                  dstOffset + (uint64_t)i * stride + report * word_size),
+               hk_query_report_addr(dev, pool, query) + report * sizeof(uint64_t),
+               hk_has_available(pool) ? hk_query_available_addr(pool, query) : 0,
+               report_flags);
+            if (vk_command_buffer_has_error(&cmd->vk))
+               return;
+         }
          if (vk_command_buffer_has_error(&cmd->vk))
             return;
       }

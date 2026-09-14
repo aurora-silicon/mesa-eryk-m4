@@ -41,3 +41,31 @@ All three original cases pass with installed Mesa SHA256
 0.609 seconds runner time, peak 58.25 C, watchdog guard pass.
 Evidence: `20260914T180951615594Z-cts29-depth-sparse-fixed`.
 The full frozen sample remains incomplete; no broad regression was run.
+
+## Native sampling, storage descriptors, and query tuples
+
+Run3 completed the remaining 5,208 cases in 145.088 runner seconds, peak 63 C.
+The cumulative ledger after the crash fixes had 4,503 Pass, 5,473 NotSupported,
+24 Fail, zero Crash/Timeout/unrun. Skips still require capability review.
+
+Three original non-array shadow tests now pass after extending register LOD,
+bias and packed offsets through native descriptor lowering and the encoder.
+Byte-exact texture unit fixtures match the retained Apple applegpu_g16g compiler
+witnesses under `native-shadow/`. Host texture core: 6,327 checks pass.
+The array-shadow vertex case now compiles but still has an image mismatch;
+compilation alone is not counted as a pass.
+
+Five transform-feedback query-copy cases pass: copy every counter in the tuple
+and append availability only after the final result. Copies remain GPU commands.
+
+Four image-store cases and one packed-integer multisample resolve pass after
+propagating supported R8/RG8/R16 and RGB10A2 types through both descriptor and
+backend format selection. A half-float subgroup inclusive-add case passes using
+NIR active-lane shuffle reduction, preserving half arithmetic instead of issuing
+a native word reduction with half operands.
+
+Final targeted group: six Pass, 1.613 seconds, peak 60.25 C, guard pass; installed
+Mesa SHA256 `db34a5b532ce7c5653e3fd86574943070e3acfcc9cc176879c7eed7c0ea5f683`.
+Evidence `20260914T182220807316Z-cts29-storage-half`. An earlier storage attempt
+was denied a watchdog lease by concurrent display-controller work and ran zero
+cases; it is not a driver failure. No broad regression was run.

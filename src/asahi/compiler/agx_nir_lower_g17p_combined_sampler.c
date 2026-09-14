@@ -57,7 +57,7 @@ g17p_sample_shape(const nir_tex_instr *tex)
       nir_src_is_const(tex->src[offset].src) &&
       nir_src_as_uint(tex->src[offset].src) <= 0xff;
    const bool dynamic_offset = offset >= 0 && !literal_offset &&
-      !cube && !tex->is_array && !tex->is_shadow &&
+      !cube && !tex->is_array &&
       (tex->op == nir_texop_txl || tex->op == nir_texop_txb) &&
       nir_src_num_components(tex->src[offset].src) == 1 &&
       nir_src_bit_size(tex->src[offset].src) == 32;
@@ -471,7 +471,6 @@ agx_nir_lower_g17p_indexed_samplers(nir_shader *shader)
                             tex->op != nir_texop_lod && tex->op != nir_texop_txd &&
                             tex->op != nir_texop_tg4 &&
                             !(tex->op == nir_texop_txb &&
-                              !tex->is_shadow &&
                               (tex->sampler_dim == GLSL_SAMPLER_DIM_2D ||
                                tex->sampler_dim == GLSL_SAMPLER_DIM_3D))))) {
                if (getenv("AGX_NATIVE_RESOURCE_DIAGNOSTICS")) {
@@ -506,7 +505,7 @@ agx_nir_lower_g17p_indexed_samplers(nir_shader *shader)
             b.cursor = nir_before_instr(instr);
             const int offset_index = nir_tex_instr_src_index(tex, nir_tex_src_backend2);
             if (offset_index >= 0 && !tex->is_array &&
-                (tex->sampler_dim == GLSL_SAMPLER_DIM_3D ||
+                (tex->sampler_dim == GLSL_SAMPLER_DIM_3D || tex->is_shadow ||
                  !nir_src_is_const(tex->src[offset_index].src))) {
                /* Native offset bank6 has X at bit12, Y at bit28, Z at bit0.
                 * Leave bits16..27 clear for the packed level/bias. */
@@ -899,7 +898,13 @@ agx_nir_lower_g17p_bindless_storage(nir_shader *shader)
                  nir_intrinsic_image_dim(intr) != GLSL_SAMPLER_DIM_3D && !cube) ||
                 (nir_intrinsic_image_array(intr) && !cube &&
                  nir_intrinsic_image_dim(intr) != GLSL_SAMPLER_DIM_2D) ||
-                (format != PIPE_FORMAT_R32_UINT &&
+                (format != PIPE_FORMAT_R10G10B10A2_UINT &&
+                 format != PIPE_FORMAT_B10G10R10A2_UINT &&
+                 format != PIPE_FORMAT_R8_UINT &&
+                 format != PIPE_FORMAT_R8G8_UINT &&
+                 format != PIPE_FORMAT_R8G8_UNORM &&
+                 format != PIPE_FORMAT_R16_UNORM &&
+                 format != PIPE_FORMAT_R32_UINT &&
                  format != PIPE_FORMAT_R32_SINT &&
                  format != PIPE_FORMAT_R32G32_UINT &&
                  format != PIPE_FORMAT_R32G32_SINT &&

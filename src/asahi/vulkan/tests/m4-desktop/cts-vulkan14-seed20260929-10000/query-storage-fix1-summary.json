@@ -1,0 +1,23 @@
+{
+  "selected": 10,
+  "recorded": 10,
+  "completed": 10,
+  "counts": {
+    "Fail": 5,
+    "Pass": 5
+  },
+  "classifications": {
+    "unclassified": 10
+  },
+  "elapsed_seconds": 3.171080623025773,
+  "preparation_seconds": 1.593777494999813,
+  "runner_seconds": 1.0101130679999955,
+  "jobs": 1,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 40,
+  "cases_sha256": "badf6e8620a80a9bc169404728b62db3d517c7ee9f2d3ab15bc3af50987d03d3",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T181842300771Z-cts29-query-image-descriptors",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 58.25
+}

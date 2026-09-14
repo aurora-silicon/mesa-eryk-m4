@@ -189,17 +189,17 @@ sample_ok(enum agx_isa_encoding enc, const struct agx3_tex_sample_desc *d)
       return false;
 
    if (d->lod == AGX3_TEX_LOD_BIAS_REGISTER &&
-       (enc != AGX_ISA_ENCODING_AGX3B || d->cube || d->shadow || d->gather))
+       (enc != AGX_ISA_ENCODING_AGX3B || d->cube || d->gather))
       return false;
 
    /* G16G sample(level(0), int2(-1,2)) uses the same packed signed
     * nibbles as gather. Native indexed array gather(-8,-8) also uses f43.
     * Native 3D bias (-8,7,3) adds Z in bits 11:8 of that same f43 field.
-    * Native array bias samples use the same field. Cube and shadow offsets
-    * remain unqualified. */
+    * Native array bias and shadow samples use the same field. Shadow
+    * register offsets share the packed LOD word. Cube offsets remain unqualified. */
    if ((d->sample_offset || d->dynamic_offset) &&
        (enc != AGX_ISA_ENCODING_AGX3B ||
-        d->cube || d->shadow))
+        d->cube))
       return false;
 
    if (d->sample_offset > (d->three_d ? 0xfff : 0xff))
@@ -226,9 +226,9 @@ sample_ok(enum agx_isa_encoding enc, const struct agx3_tex_sample_desc *d)
     * Cube face and gather controls compose independently; M4 CTS validates
     * cube comparisons and four-component comparison gathers as well. */
    if (d->shadow &&
-       (enc != AGX_ISA_ENCODING_AGX3B || d->coord != 0 ||
+       (enc != AGX_ISA_ENCODING_AGX3B ||
         d->mask != (d->gather ? 15 : 1) || d->width != AGX3_TEX_W32 ||
-        d->lod == AGX3_TEX_LOD_REGISTER || d->lod_x64 != 0))
+        (d->lod == AGX3_TEX_LOD_LEVEL && d->lod_x64 != 0)))
       return false;
 
    if (d->lod == AGX3_TEX_LOD_LEVEL) {

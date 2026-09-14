@@ -1,0 +1,22 @@
+{
+  "selected": 6,
+  "recorded": 6,
+  "completed": 6,
+  "counts": {
+    "Pass": 6
+  },
+  "classifications": {
+    "unclassified": 6
+  },
+  "elapsed_seconds": 4.892015268997056,
+  "preparation_seconds": 1.389011669991305,
+  "runner_seconds": 1.6128540459999954,
+  "jobs": 1,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 40,
+  "cases_sha256": "9d995291cc13a3e548f1754fb957ee8651f12ae00c85b8b7173ec6f2fbb5403c",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T182220807316Z-cts29-storage-half",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 60.25
+}

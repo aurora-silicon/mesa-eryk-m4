@@ -1,0 +1,23 @@
+{
+  "selected": 4,
+  "recorded": 4,
+  "completed": 4,
+  "counts": {
+    "Fail": 3,
+    "Pass": 1
+  },
+  "classifications": {
+    "unclassified": 4
+  },
+  "elapsed_seconds": 3.9181839039956685,
+  "preparation_seconds": 1.474652957986109,
+  "runner_seconds": 0.6079521300000579,
+  "jobs": 1,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 40,
+  "cases_sha256": "efd8a495458b58cceced19c302bfc9a09db4639ad656423792118b47e064154a",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T181537597351Z-cts29-shadow-lod-offset",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 58.75
+}

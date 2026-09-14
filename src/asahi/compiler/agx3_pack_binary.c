@@ -1085,14 +1085,16 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
    const bool sample_offset = !shadow && !cube && I->offset &&
       I->src[5].type == AGX_INDEX_IMMEDIATE &&
       I->src[5].value <= (three_d ? 0xfff : 0xff);
-   const bool dynamic_offset = !shadow && !cube && !array && I->offset &&
+   const bool dynamic_offset = !cube && !array && I->offset &&
       (explicit_lod || bias) && agx3_tex_plain_reg(I->src[5]) &&
-      I->src[5].size == AGX_SIZE_32 && agx_channels(I->src[5]) == 1;
+      I->src[5].size == AGX_SIZE_32 &&
+      agx_channels(I->src[5]) == (shadow ? 2 : 1);
    const bool valid_compare = shadow ?
       (enc == AGX_ISA_ENCODING_AGX3B &&
        agx3_tex_plain_reg(I->src[5]) && I->src[5].size == AGX_SIZE_32 &&
-       agx_channels(I->src[5]) == 1 && !(I->src[5].value & 1) &&
-       I->src[5].value < 256) : (sample_offset || dynamic_offset || agx_is_null(I->src[5]));
+       agx_channels(I->src[5]) == (I->offset ? 2 : 1) &&
+       !(I->src[5].value & 1) &&
+       I->src[5].value <= (I->offset ? 252 : 254)) : (sample_offset || dynamic_offset || agx_is_null(I->src[5]));
    const bool valid_lod = gradient ?
       (enc == AGX_ISA_ENCODING_AGX3B && !cube && !shadow && !gather &&
        agx3_tex_plain_reg(I->src[1]) && I->src[1].size == AGX_SIZE_32 &&
@@ -1135,7 +1137,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
          I->src[3].size != AGX_SIZE_64 || I->src[4].size != AGX_SIZE_64 ||
          agx_channels(I->src[3]) != 1 || agx_channels(I->src[4]) != 1 ||
          (I->src[3].value & 1) || (I->src[4].value & 1))) ||
-       !valid_compare || (bias && (cube || shadow || gather)) ||
+       !valid_compare || (bias && (cube || gather)) ||
        (I->dim != AGX_DIM_2D && I->dim != AGX_DIM_2D_ARRAY && !cube && !three_d) ||
        (array && enc != AGX_ISA_ENCODING_AGX3B) ||
        (I->mask == 0 || (I->mask & ~15u)) ||
@@ -1168,7 +1170,8 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
    const bool array_lod = (array || cube) && (explicit_lod || bias) && !immediate_lod;
    const bool cube_array_lod = cube && array && array_lod;
    if (dynamic_offset) {
-      if (!agx3_tex_stage_copy_hints(enc, 6, I->src[5].value, stage_slot, wait_mask,
+      if (!agx3_tex_stage_copy_hints(enc, 6, I->src[5].value + (shadow ? 2 : 0),
+                                    stage_slot, wait_mask,
                                     I->src[5].cache, I->src[5].discard, bytes, &len) ||
           !agx3_append(emission, bytes, len))
          return false;

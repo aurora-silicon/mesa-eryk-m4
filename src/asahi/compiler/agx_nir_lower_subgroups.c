@@ -219,6 +219,13 @@ lower_subgroup_filter(const nir_intrinsic_instr *intr, const void *data)
    }
 
    switch (nir_intrinsic_reduction_op(intr)) {
+   case nir_op_fadd:
+   case nir_op_fmul:
+      /* Native AGX3 reductions consume 32-bit operands. Keep half-precision
+       * rounding at every step with the common active-lane shuffle lowering. */
+      return intr->def.bit_size == 64 ||
+             (agx_options->g17p_clustered_float && intr->def.bit_size == 16);
+
    case nir_op_imul:
       return true;
 

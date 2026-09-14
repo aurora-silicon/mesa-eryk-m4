@@ -1207,6 +1207,11 @@ test_m4_shadow_witnesses(void)
     * instructions cover fixed, uniform and varying heap indices, 2D/array,
     * and implicit/level-zero comparison. No AGX3C hardware claim. */
    const struct {struct agx3_tex_sample_desc desc; uint8_t bytes[22]; uint8_t size;} cases[] = {
+      /* Offline Apple compiler, applegpu_g16g, shadow.metal and
+       * dynamic.metal: register LOD, immediate and register bias offsets. */
+      { {.dest=2, .coord=0, .width=AGX3_TEX_W32, .mask=1, .slot=2, .wait_mask=1, .shadow=true, .lod=AGX3_TEX_LOD_REGISTER, .retain_helpers=true}, {0x0d,0x80,0x0c,0x00,0x90,0x24,0x20,0x01,0x00,0x00,0x00,0x00,0x01,0x00}, 14 },
+      { {.dest=4, .coord=0, .width=AGX3_TEX_W32, .mask=1, .slot=2, .coord_kill=true, .final=true, .shadow=true, .lod=AGX3_TEX_LOD_BIAS_REGISTER, .sample_offset=0x2f}, {0x15,0x80,0x0c,0xa0,0x10,0x24,0xa1,0x02,0x01,0x78,0x00,0x00,0x01,0x02}, 14 },
+      { {.dest=4, .coord=8, .width=AGX3_TEX_W32, .mask=1, .slot=1, .wait_mask=2, .coord_kill=true, .final=true, .shadow=true, .lod=AGX3_TEX_LOD_BIAS_REGISTER, .dynamic_offset=true}, {0x15,0x84,0x0c,0xa0,0x10,0x01,0x64,0x00,0x01,0x00,0x00,0x00,0x01,0x00}, 14 },
       { {.dest=0, .coord=0, .width=AGX3_TEX_W32, .mask=1, .slot=1, .wait_mask=1, .coord_kill=1, .final=true, .shadow=true, .array=0, .lod=AGX3_TEX_LOD_AUTO, .texture_kind=1, .sampler_kind=1, .texture_value=0, .sampler_value=0, .texture_kill=0, .sampler_kill=0}, {0x05,0x80,0x0c,0xa0,0x90,0x00,0x20,0x00,0x01,0x00,0x00,0x00,0x01,0x00}, 14 }, /* shadow-2d-v_uv_x-auto */
       { {.dest=0, .coord=0, .width=AGX3_TEX_W32, .mask=1, .slot=1, .wait_mask=1, .coord_kill=1, .final=true, .shadow=true, .array=0, .lod=AGX3_TEX_LOD_LEVEL, .texture_kind=1, .sampler_kind=1, .texture_value=0, .sampler_value=0, .texture_kill=0, .sampler_kill=0}, {0x05,0x80,0x0c,0xa0,0x90,0x00,0x29,0x00,0x01,0x00,0x00,0x00,0x01,0x00}, 14 }, /* shadow-2d-v_uv_x-level0 */
       { {.dest=0, .coord=0, .width=AGX3_TEX_W32, .mask=1, .slot=1, .wait_mask=1, .coord_kill=1, .final=true, .shadow=true, .array=0, .lod=AGX3_TEX_LOD_AUTO, .texture_kind=3, .sampler_kind=3, .texture_value=12, .sampler_value=16, .texture_kill=0, .sampler_kill=0}, {0x05,0xe0,0x0c,0xa0,0x90,0x00,0x20,0x00,0x83,0x03,0x80,0x01,0x01,0x00,0x80,0x20,0x00,0x00,0x00,0x00}, 20 }, /* shadow-2d-arg-False */

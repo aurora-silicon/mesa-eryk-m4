@@ -1,0 +1,23 @@
+{
+  "selected": 4,
+  "recorded": 4,
+  "completed": 4,
+  "counts": {
+    "Pass": 3,
+    "Fail": 1
+  },
+  "classifications": {
+    "unclassified": 4
+  },
+  "elapsed_seconds": 3.523186573991552,
+  "preparation_seconds": 13.047851114009973,
+  "runner_seconds": 0.6087327959999982,
+  "jobs": 1,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 40,
+  "cases_sha256": "efd8a495458b58cceced19c302bfc9a09db4639ad656423792118b47e064154a",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T181754031052Z-cts29-shadow-native-descriptors",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 59.75
+}

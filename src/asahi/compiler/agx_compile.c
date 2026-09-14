@@ -1852,6 +1852,8 @@ agx_emit_image_store(agx_builder *b, nir_intrinsic_instr *instr)
          write->format = nir_intrinsic_src_type(instr) == nir_type_float32
                             ? AGX_FORMAT_F16 : AGX_FORMAT_I32;
          break;
+      case PIPE_FORMAT_R10G10B10A2_UINT:
+      case PIPE_FORMAT_B10G10R10A2_UINT:
       case PIPE_FORMAT_R16_UINT:
       case PIPE_FORMAT_R16_SINT:
       case PIPE_FORMAT_R16G16_UINT:
@@ -1860,12 +1862,15 @@ agx_emit_image_store(agx_builder *b, nir_intrinsic_instr *instr)
       case PIPE_FORMAT_R16G16B16A16_UINT:
          write->format = AGX_FORMAT_I16;
          break;
+      case PIPE_FORMAT_R8_UINT:
+      case PIPE_FORMAT_R8G8_UINT:
       case PIPE_FORMAT_R8G8B8A8_UINT:
       case PIPE_FORMAT_R8_SINT:
       case PIPE_FORMAT_R8G8_SINT:
       case PIPE_FORMAT_R8G8B8A8_SINT:
          write->format = AGX_FORMAT_I8;
          break;
+      case PIPE_FORMAT_R8G8_UNORM:
       case PIPE_FORMAT_R8_UNORM:
       case PIPE_FORMAT_R8G8B8A8_UNORM:
          write->format = AGX_FORMAT_U8NORM;
@@ -1894,6 +1899,7 @@ agx_emit_image_store(agx_builder *b, nir_intrinsic_instr *instr)
           * descriptor controls whether storage is F16 or F32. */
          write->format = AGX_FORMAT_F16;
          break;
+      case PIPE_FORMAT_R16_UNORM:
       case PIPE_FORMAT_R16G16_UNORM:
       case PIPE_FORMAT_R16_SNORM:
       case PIPE_FORMAT_R16G16_SNORM:
@@ -3452,6 +3458,9 @@ agx_materialize_agx3_alu_constants(agx_context *ctx)
           * pack reads a half register, so restore its bit pattern before RA. */
          I->src[0] = agx_mov_imm(&b, 16, I->src[0].value);
       }
+      if (I->op == AGX_OPCODE_PACK_LOD_OFFSET_AGX3 &&
+          I->src[1].type == AGX_INDEX_IMMEDIATE)
+         I->src[1] = agx_mov_imm(&b, 32, I->src[1].value);
       /* ISEL accepts a register comparator and an immediate comparator,
        * including ICMP pseudos lowered to ISEL after register allocation.
        */
@@ -4389,7 +4398,7 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
 
    if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
        !agx_is_null(packed_offset) && packed_offset.type != AGX_INDEX_IMMEDIATE &&
-       !instr->is_array && !instr->is_shadow &&
+       !instr->is_array &&
        (instr->op == nir_texop_txl || instr->op == nir_texop_txb)) {
       /* Native G16G PACK_SMPIR inserts the F16 LOD as signed fixed-point
        * bits 16..27, preserving the three offset nibbles in the base word. */
