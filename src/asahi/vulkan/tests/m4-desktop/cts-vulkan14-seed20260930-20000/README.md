@@ -8,8 +8,8 @@ corrections. The four completed broad segments took 558.673 seconds of runner
 time. Original outcome: 28 Fail, 2 Crash, 1 Timeout, 9,124 Pass, 10,845 NotSupported.
 Skip requirements are still being reviewed; no conformance claim.
 
-Cumulative targeted fixes resolve 26 original failures/crashes. Both original
-compiler crashes now pass. There are still 4 failing cases and one timeout.
+Cumulative targeted fixes resolve 28 original failures/crashes. Both original
+compiler crashes now pass. There are still 2 failing cases and one timeout.
 The timeout remains unresolved despite an isolated pass: hitting its 60-second
 bound under contention counts as failure.
 
@@ -69,3 +69,13 @@ fix or an unmodified conformance result. The cumulative source patch and build
 manifest are included; the original binary and failed validation run are retained.
 Corrected binary SHA256: f445539c9b216b86820ebe0135e67f3938787197d9c77044849c4674ea9a8296.
 Evidence: 20260914T204741923371Z-cts30-scaled-compute-fixed1.
+
+The narrow geometry shuffle case also passes with the existing widened-lane
+fixes and the shader cache disabled (1.134 seconds). No speculative shuffle
+encoding change was installed or counted. The high-volume f16 TCS output test
+now passes after using a word per component for both stores and loads, matching
+the four-byte component addresses and the existing geometry interface layout.
+The two-case tessellation/primitive-ID run took 1.211 seconds, peak 56.75 C;
+primitive-ID verification still fails and remains open.
+Evidence: 20260914T204918017170Z-cts30-remaining-four-capture and
+20260914T205230239205Z-cts30-tess-primitive2.
