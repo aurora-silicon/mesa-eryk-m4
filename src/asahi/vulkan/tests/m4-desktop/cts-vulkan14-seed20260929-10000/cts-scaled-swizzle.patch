@@ -1,0 +1,648 @@
+--- a/external/vulkancts/modules/vulkan/api/vktApiBlittingTests.cpp
++++ b/external/vulkancts/modules/vulkan/api/vktApiBlittingTests.cpp
+@@ -35,6 +35,15 @@
+ // CompressedTextureForBlit is a helper class that stores compressed texture data.
+ // Implementation is based on pipeline::TestTexture2D but it allocates only one level
+ // and has special cases needed for blits to some formats.
++
++// Quantize scaled references before the nearest-texel lookup. Packed scaled
++// setPixel paths truncate floats, unlike ordinary scaled channels; explicitly
++// clamp and round here without changing the test's source image generation.
++static tcu::Vec4 scaledBlitReference(const tcu::Vec4 &value, const tcu::TextureFormat &format)
++{
++    const auto info = tcu::getTextureFormatInfo(format);
++    return tcu::roundToEven(tcu::clamp(value, info.valueMin, info.valueMax));
++}
+ 
+ FormatSet dedicatedAllocationImageToImageFormatsToTestSet;
+ FormatSet dedicatedAllocationBlittingFormatsToTestSet;
+@@ -494,6 +503,88 @@
+     return checkTestResult(resultAccess);
+ }
+ 
++// Scaled source values are not normalized. The ordinary threshold helper
++// expresses integer-format conversion error in units of the normalized range;
++// convert that error back to the source value domain before comparing floats.
++static tcu::Vec4 scaledSourceThreshold(const tcu::TextureFormat &format)
++{
++    const auto info = tcu::getTextureFormatInfo(format);
++    return getFormatThreshold(format) * tcu::max(info.valueMax - info.valueMin, tcu::Vec4(1.0f));
++}
++
++// RGB9E5's quantization step depends on the shared exponent, not on a fixed
++// absolute tolerance. A conversion may round to either adjacent value. Retain
++// the ordinary comparison for other formats, and log normalized error only
++// when this per-pixel comparison fails.
++static bool compareScaledLinearResult(tcu::TestLog &log,
++                                      const tcu::ConstPixelBufferAccess &reference,
++                                      const tcu::ConstPixelBufferAccess &result,
++                                      const tcu::Vec4 &threshold)
++{
++    const bool packedFloat = result.getFormat().type == tcu::TextureFormat::UNSIGNED_INT_11F_11F_10F_REV;
++    if (result.getFormat().type != tcu::TextureFormat::UNSIGNED_INT_999_E5_REV && !packedFloat)
++        return tcu::floatThresholdCompare(log, "Compare", "Result comparison", reference,
++                                          result, threshold, tcu::COMPARE_LOG_ON_ERROR);
++    tcu::TextureLevel errors(tcu::TextureFormat(tcu::TextureFormat::RGBA, tcu::TextureFormat::FLOAT),
++                             result.getWidth(), result.getHeight(), result.getDepth());
++    tcu::TextureLevel zero(errors.getFormat(), result.getWidth(), result.getHeight(), result.getDepth());
++    tcu::clear(zero.getAccess(), tcu::Vec4(0.0f));
++    for (int z = 0; z < result.getDepth(); ++z)
++        for (int y = 0; y < result.getHeight(); ++y)
++            for (int x = 0; x < result.getWidth(); ++x)
++            {
++                const auto ref = reference.getPixel(x, y, z);
++                const auto got = result.getPixel(x, y, z);
++                // Decode the shared exponent from the retained reference,
++                // whose format is also RGB9E5. The exponent bias is 15 and
++                // the three stored mantissas have nine bits.
++                const auto ptr = static_cast<const uint8_t *>(reference.getDataPtr()) +
++                    z * reference.getSlicePitch() + y * reference.getRowPitch() + x * 4;
++                uint32_t packed;
++                deMemcpy(&packed, ptr, sizeof(packed));
++                const float quantum = deFloatLdExp(1.0f, int(packed >> 27) - 24);
++                tcu::Vec4 quantum4(quantum,quantum,quantum,0.0f);
++                if (packedFloat) {
++                    for (int c=0;c<3;++c) {
++                        const unsigned shift=c==0?6:c==1?17:27;
++                        const int exponent=int((packed>>shift)&31);
++                        quantum4[c]=deFloatLdExp(1.0f,de::max(exponent,1)-15-(c==2?5:6));
++                    }
++                }
++                const auto tolerance = threshold + quantum4;
++                errors.getAccess().setPixel(tcu::abs(got - ref) / tolerance, x, y, z);
++            }
++    return tcu::floatThresholdCompare(log, "Compare", "Error relative to format precision",
++                                      zero.getAccess(), errors.getAccess(), tcu::Vec4(1.0f),
++                                      tcu::COMPARE_LOG_ON_ERROR);
++}
++
++// Keep interpolation/decompression uncertainty before the scaled conversion.
++// Rounding a reference first loses which side of an integer boundary is valid.
++static bool compareScaledDestination(tcu::TestLog &log,
++    const tcu::ConstPixelBufferAccess &reference,
++    const tcu::ConstPixelBufferAccess &result, const tcu::Vec4 &threshold)
++{
++    tcu::TextureLevel errors(tcu::TextureFormat(tcu::TextureFormat::RGBA, tcu::TextureFormat::FLOAT),
++                            result.getWidth(), result.getHeight(), result.getDepth());
++    tcu::TextureLevel zero(errors.getFormat(), result.getWidth(), result.getHeight(), result.getDepth());
++    tcu::clear(zero.getAccess(), tcu::Vec4(0));
++    const auto bits = tcu::getTextureFormatBitDepth(result.getFormat());
++    for (int z=0; z<result.getDepth(); ++z)
++        for (int y=0; y<result.getHeight(); ++y)
++            for (int x=0; x<result.getWidth(); ++x) {
++                const auto ref=reference.getPixel(x,y,z), got=result.getPixel(x,y,z);
++                const auto lo=scaledBlitReference(ref-threshold,result.getFormat());
++                const auto hi=scaledBlitReference(ref+threshold,result.getFormat());
++                tcu::Vec4 error(0);
++                for (int c=0;c<4;++c)
++                    if (bits[c] && !(got[c]>=lo[c] && got[c]<=hi[c])) error[c]=1;
++                errors.getAccess().setPixel(error,x,y,z);
++            }
++    return tcu::floatThresholdCompare(log,"Compare","Scaled conversion interval violations",
++        zero.getAccess(),errors.getAccess(),tcu::Vec4(0),tcu::COMPARE_LOG_ON_ERROR);
++}
++
+ bool BlittingImages::checkNonNearestFilteredResult(const tcu::ConstPixelBufferAccess &result,
+                                                    const tcu::ConstPixelBufferAccess &clampedExpected,
+                                                    const tcu::ConstPixelBufferAccess &unclampedExpected,
+@@ -507,14 +598,16 @@
+ 
+     log << tcu::TestLog::Section("ClampedSourceImage", "Region with clamped edges on source image.");
+ 
+-    // if either of srcImage or dstImage stores values as a signed/unsigned integer,
+-    // the other must also store values a signed/unsigned integer
+-    // e.g. blit unorm to uscaled is not allowed as uscaled formats store data as integers
+-    // despite the fact that both formats are sampled as floats
+-    bool dstImageIsIntClass = dstChannelClass == tcu::TEXTURECHANNELCLASS_SIGNED_INTEGER ||
+-                              dstChannelClass == tcu::TEXTURECHANNELCLASS_UNSIGNED_INTEGER;
+-    bool srcImageIsIntClass = srcChannelClass == tcu::TEXTURECHANNELCLASS_SIGNED_INTEGER ||
+-                              srcChannelClass == tcu::TEXTURECHANNELCLASS_UNSIGNED_INTEGER;
++    // Scaled formats use floating-point filtering and conversion, despite
++    // their integer backing storage in the tcu channel classification.
++    const bool dstScaled = vk::isScaledFormat(m_params.dst.image.format);
++    const bool srcScaled = vk::isScaledFormat(m_params.src.image.format);
++    bool dstImageIsIntClass = !dstScaled &&
++        (dstChannelClass == tcu::TEXTURECHANNELCLASS_SIGNED_INTEGER ||
++         dstChannelClass == tcu::TEXTURECHANNELCLASS_UNSIGNED_INTEGER);
++    bool srcImageIsIntClass = !srcScaled &&
++        (srcChannelClass == tcu::TEXTURECHANNELCLASS_SIGNED_INTEGER ||
++         srcChannelClass == tcu::TEXTURECHANNELCLASS_UNSIGNED_INTEGER);
+     if (dstImageIsIntClass != srcImageIsIntClass)
+     {
+         log << tcu::TestLog::EndSection;
+@@ -524,19 +617,24 @@
+     if (isFloatFormat(dstFormat))
+     {
+         const bool srcIsSRGB       = tcu::isSRGB(srcFormat);
+-        const tcu::Vec4 srcMaxDiff = getFormatThreshold(srcFormat) * tcu::Vec4(srcIsSRGB ? 2.0f : 1.0f);
++        const tcu::Vec4 srcMaxDiff = (srcScaled ? scaledSourceThreshold(srcFormat) : getFormatThreshold(srcFormat)) *
++                                     tcu::Vec4(srcIsSRGB ? 2.0f : 1.0f);
+         const tcu::Vec4 dstMaxDiff = getFormatThreshold(dstFormat);
+         const tcu::Vec4 threshold =
+             (srcMaxDiff + dstMaxDiff) * ((m_params.filter == VK_FILTER_CUBIC_EXT) ? 1.5f : 1.0f);
+ 
+-        isOk = tcu::floatThresholdCompare(log, "Compare", "Result comparsion", clampedExpected, result, threshold,
++        isOk = dstScaled ? compareScaledDestination(log, clampedExpected, result, threshold) :
++               srcScaled ? compareScaledLinearResult(log, clampedExpected, result, threshold) :
++               tcu::floatThresholdCompare(log, "Compare", "Result comparsion", clampedExpected, result, threshold,
+                                           tcu::COMPARE_LOG_ON_ERROR);
+         log << tcu::TestLog::EndSection;
+ 
+         if (!isOk)
+         {
+             log << tcu::TestLog::Section("NonClampedSourceImage", "Region with non-clamped edges on source image.");
+-            isOk = tcu::floatThresholdCompare(log, "Compare", "Result comparsion", unclampedExpected, result, threshold,
++            isOk = dstScaled ? compareScaledDestination(log, unclampedExpected, result, threshold) :
++                   srcScaled ? compareScaledLinearResult(log, unclampedExpected, result, threshold) :
++                   tcu::floatThresholdCompare(log, "Compare", "Result comparsion", unclampedExpected, result, threshold,
+                                               tcu::COMPARE_LOG_ON_ERROR);
+             log << tcu::TestLog::EndSection;
+         }
+@@ -663,7 +761,9 @@
+     const tcu::ConstPixelBufferAccess res = filteredResultVerification ? filteredResult.getAccess() : result;
+ 
+     log << tcu::TestLog::Section("ClampedSourceImage", "Region with clamped edges on source image.");
+-    bool isOk = tcu::floatThresholdCompare(log, "Compare", "Result comparsion", clampedRef, res, threshold,
++    bool isOk = vk::isScaledFormat(m_params.dst.image.format)
++        ? compareScaledDestination(log, clampedRef, res, threshold)
++        : tcu::floatThresholdCompare(log, "Compare", "Result comparsion", clampedRef, res, threshold,
+                                            tcu::COMPARE_LOG_ON_ERROR);
+     log << tcu::TestLog::EndSection;
+ 
+@@ -673,7 +773,9 @@
+             filteredResultVerification ? filteredUnclampedReference.getAccess() : unclampedReference;
+ 
+         log << tcu::TestLog::Section("NonClampedSourceImage", "Region with non-clamped edges on source image.");
+-        isOk = tcu::floatThresholdCompare(log, "Compare", "Result comparsion", unclampedRef, res, threshold,
++        isOk = vk::isScaledFormat(m_params.dst.image.format)
++            ? compareScaledDestination(log, unclampedRef, res, threshold)
++            : tcu::floatThresholdCompare(log, "Compare", "Result comparsion", unclampedRef, res, threshold,
+                                           tcu::COMPARE_LOG_ON_ERROR);
+         log << tcu::TestLog::EndSection;
+     }
+@@ -699,14 +801,16 @@
+ 
+     tcu::clear(errorMask, tcu::Vec4(0.0f, 1.0f, 0.0f, 1.0));
+ 
+-    // if either of srcImage or dstImage stores values as a signed/unsigned integer,
+-    // the other must also store values a signed/unsigned integer
+-    // e.g. blit unorm to uscaled is not allowed as uscaled formats store data as integers
+-    // despite the fact that both formats are sampled as floats
+-    bool dstImageIsIntClass = dstChannelClass == tcu::TEXTURECHANNELCLASS_SIGNED_INTEGER ||
+-                              dstChannelClass == tcu::TEXTURECHANNELCLASS_UNSIGNED_INTEGER;
+-    bool srcImageIsIntClass = srcChannelClass == tcu::TEXTURECHANNELCLASS_SIGNED_INTEGER ||
+-                              srcChannelClass == tcu::TEXTURECHANNELCLASS_UNSIGNED_INTEGER;
++    // Scaled formats use floating-point filtering and conversion, despite
++    // their integer backing storage in the tcu channel classification.
++    const bool dstScaled = vk::isScaledFormat(m_params.dst.image.format);
++    const bool srcScaled = vk::isScaledFormat(m_params.src.image.format);
++    bool dstImageIsIntClass = !dstScaled &&
++        (dstChannelClass == tcu::TEXTURECHANNELCLASS_SIGNED_INTEGER ||
++         dstChannelClass == tcu::TEXTURECHANNELCLASS_UNSIGNED_INTEGER);
++    bool srcImageIsIntClass = !srcScaled &&
++        (srcChannelClass == tcu::TEXTURECHANNELCLASS_SIGNED_INTEGER ||
++         srcChannelClass == tcu::TEXTURECHANNELCLASS_UNSIGNED_INTEGER);
+     if (dstImageIsIntClass != srcImageIsIntClass)
+         return false;
+ 
+@@ -716,9 +820,26 @@
+     }
+     else
+     {
+-        const tcu::Vec4 srcMaxDiff = getFloatOrFixedPointFormatThreshold(source.getFormat());
+-        const tcu::Vec4 dstMaxDiff = getFloatOrFixedPointFormatThreshold(result.getFormat());
+-        ok = floatNearestBlitCompare(source, result, srcMaxDiff, dstMaxDiff, errorMask, m_params);
++        if (srcScaled || dstScaled)
++        {
++            // Nearest filtering commutes with the destination conversion.
++            // Compare against converted texels, rather than giving a whole
++            // integer of tolerance to values in the normalized [0, 1] range.
++            tcu::TextureLevel converted(dstFormat, source.getWidth(), source.getHeight(), source.getDepth());
++            const tcu::PixelBufferAccess access = converted.getAccess();
++            for (int z = 0; z < source.getDepth(); ++z)
++                for (int y = 0; y < source.getHeight(); ++y)
++                    for (int x = 0; x < source.getWidth(); ++x)
++                        access.setPixel(dstScaled ? scaledBlitReference(source.getPixel(x, y, z), dstFormat)
++                                                  : linearToSRGBIfNeeded(dstFormat, source.getPixel(x, y, z)), x, y, z);
++            ok = floatNearestBlitCompare(access, result, tcu::Vec4(0.0f), tcu::Vec4(0.0f), errorMask, m_params);
++        }
++        else
++        {
++            const tcu::Vec4 srcMaxDiff = getFloatOrFixedPointFormatThreshold(source.getFormat());
++            const tcu::Vec4 dstMaxDiff = getFloatOrFixedPointFormatThreshold(result.getFormat());
++            ok = floatNearestBlitCompare(source, result, srcMaxDiff, dstMaxDiff, errorMask, m_params);
++        }
+     }
+ 
+     if (result.getFormat() != tcu::TextureFormat(tcu::TextureFormat::RGBA, tcu::TextureFormat::UNORM_INT8))
+@@ -776,6 +897,23 @@
+ 
+     log << tcu::TestLog::ImageSet("Compare", "Result comparsion")
+         << tcu::TestLog::Image("Result", "Result", result, pixelScale, pixelBias);
++
++    if (vk::isScaledFormat(m_params.dst.image.format))
++    {
++        const auto range=tcu::getTextureFormatInfo(resultFormat);
++        tcu::TextureLevel converted(tcu::TextureFormat(tcu::TextureFormat::RGBA,tcu::TextureFormat::FLOAT),
++            source.getWidth(),source.getHeight(),source.getDepth());
++        const auto access=converted.getAccess();
++        for(int z=0;z<source.getDepth();++z)
++            for(int y=0;y<source.getHeight();++y)
++                for(int x=0;x<source.getWidth();++x)
++                    access.setPixel(tcu::clamp(source.getPixel(x,y,z),range.valueMin,range.valueMax),x,y,z);
++        const auto tolerance=getCompressedFormatThreshold(format)+tcu::Vec4(0.5f);
++        const bool ok=floatNearestBlitCompare(access,result,tolerance,tolerance,errorMask,m_params);
++        if(!ok) log << tcu::TestLog::Image("ErrorMask","Error mask",errorMask);
++        log << tcu::TestLog::EndImageSet;
++        return ok;
++    }
+ 
+     // for compressed formats source buffer access is not actual compressed format
+     // but equivalent uncompressed format that is some cases needs additional
+@@ -1110,14 +1248,18 @@
+                                                 m_destinationCompressedTexture->getDecompressedAccess() :
+                                                 m_destinationTextureLevel->getAccess();
+ 
++    const tcu::TextureFormat referenceFormat = vk::isScaledFormat(m_params.dst.image.format)
++        ? tcu::TextureFormat(tcu::TextureFormat::RGBA, tcu::TextureFormat::FLOAT)
++        : dst.getFormat();
++
+     m_expectedTextureLevel[0] = de::MovePtr<tcu::TextureLevel>(
+-        new tcu::TextureLevel(dst.getFormat(), dst.getWidth(), dst.getHeight(), dst.getDepth()));
++        new tcu::TextureLevel(referenceFormat, dst.getWidth(), dst.getHeight(), dst.getDepth()));
+     tcu::copy(m_expectedTextureLevel[0]->getAccess(), dst);
+ 
+     if (m_params.filter != VK_FILTER_NEAREST)
+     {
+         m_unclampedExpectedTextureLevel = de::MovePtr<tcu::TextureLevel>(
+-            new tcu::TextureLevel(dst.getFormat(), dst.getWidth(), dst.getHeight(), dst.getDepth()));
++            new tcu::TextureLevel(referenceFormat, dst.getWidth(), dst.getHeight(), dst.getDepth()));
+         tcu::copy(m_unclampedExpectedTextureLevel->getAccess(), dst);
+     }
+ 
+--- a/external/vulkancts/modules/vulkan/api/vktApiImageClearingTests.cpp
++++ b/external/vulkancts/modules/vulkan/api/vktApiImageClearingTests.cpp
+@@ -240,6 +240,20 @@
+     }
+ 
+     return true;
++}
++
++// The test stores scaled reference values as integers. Vulkan's clear union
++// uses float32 for USCALED and SSCALED; keep reference generation unchanged.
++static VkClearColorValue apiClearColor(VkFormat format, VkClearColorValue value)
++{
++    if (isScaledFormat(format))
++    {
++        const auto channelClass = getTextureChannelClass(mapVkFormat(format).type);
++        for (unsigned c = 0; c < 4; ++c)
++            value.float32[c] = channelClass == TEXTURECHANNELCLASS_SIGNED_INTEGER ?
++                                  float(value.int32[c]) : float(value.uint32[c]);
++    }
++    return value;
+ }
+ 
+ // This method is copied from the vktRenderPassTests.cpp. It should be moved to a common place.
+@@ -1660,8 +1674,10 @@
+                          usedLayout,                     // VkImageLayout oldLayout;
+                          usedLayout);                    // VkImageLayout newLayout;
+ 
++    const auto clearColor = apiClearColor(m_params.imageFormat, m_params.clearValue[0].color);
++
+     // Test clear color in all ranges
+-    m_vkd.cmdClearColorImage(*m_commandBuffer, *m_image, usedLayout, &m_params.clearValue[0].color,
++    m_vkd.cmdClearColorImage(*m_commandBuffer, *m_image, usedLayout, &clearColor,
+                              static_cast<uint32_t>(subresourceRanges.size()), subresourceRanges.data());
+ 
+     pipelineImageBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT, // VkPipelineStageFlags        srcStageMask
+@@ -1772,7 +1788,8 @@
+ 
+     for (std::size_t i = 0u; i < subresourceRanges.size(); ++i)
+     {
+-        m_vkd.cmdClearColorImage(*m_commandBuffer, clearedImage, usedLayout, &m_params.clearValue[i].color, 1,
++        const auto clearColor = apiClearColor(m_params.imageFormat, m_params.clearValue[i].color);
++        m_vkd.cmdClearColorImage(*m_commandBuffer, clearedImage, usedLayout, &clearColor, 1,
+                                  &subresourceRanges[i]);
+ 
+         if (m_twoStep)
+@@ -1784,7 +1801,7 @@
+                                  usedLayout,                     // VkImageLayout oldLayout;
+                                  usedLayout);                    // VkImageLayout newLayout;
+ 
+-            m_vkd.cmdClearColorImage(*m_commandBuffer, clearedImage, usedLayout, &m_params.clearValue[i].color, 1,
++            m_vkd.cmdClearColorImage(*m_commandBuffer, clearedImage, usedLayout, &clearColor, 1,
+                                      &steptwoRanges[i]);
+         }
+     }
+--- a/external/vulkancts/modules/vulkan/image/vktImageCompressionTranscodingSupport.cpp
++++ b/external/vulkancts/modules/vulkan/image/vktImageCompressionTranscodingSupport.cpp
+@@ -2392,7 +2392,11 @@
+         (createFlags != nullptr) ? *createFlags : (imageCreateFlagsBase | imageCreateFlagsAddOn);
+ 
+     VkFormatProperties properties;
+-    m_context.getInstanceInterface().getPhysicalDeviceFormatProperties(m_context.getPhysicalDevice(), format,
++    // EXTENDED_USAGE permits usage provided by the compatible view format.
++    // checkSupport already queries the complete image flags and usages.
++    const VkFormat usageFormat = (imageCreateFlags & VK_IMAGE_CREATE_EXTENDED_USAGE_BIT) &&
++                                     isCompressedFormat(format) ? m_parameters.formatUncompressed : format;
++    m_context.getInstanceInterface().getPhysicalDeviceFormatProperties(m_context.getPhysicalDevice(), usageFormat,
+                                                                        &properties);
+     if ((usageFlags & VK_IMAGE_USAGE_STORAGE_BIT) &&
+         !(properties.optimalTilingFeatures & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT))
+@@ -2580,7 +2584,7 @@
+     // VUID-vkCmdCopyBufferToImage-bufferImageHeight-09107
+     const VkBufferImageCopy copyBufferToImageRegion =
+         (m_parameters.imageType == IMAGE_TYPE_1D) ?
+-            makeBufferImageCopy(mipmapDims.x(), mipmapDims.y(), 0u, 0u, 0u, 0u) :
++            makeBufferImageCopy(mipmapDimsBlocked.x(), mipmapDims.y(), 0u, 0u, 0u, 0u) :
+             makeBufferImageCopy(mipmapDimsBlocked.x(), mipmapDimsBlocked.y(), 0u, 0u, mipmapDimsBlocked.x(),
+                                 mipmapDimsBlocked.y());
+     const VkBufferImageCopy copyRegion = makeBufferImageCopy(mipmapDims.x(), mipmapDims.y(), 0u, 0u);
+--- a/external/vulkancts/modules/vulkan/image/vktImageLoadStoreTests.cpp
++++ b/external/vulkancts/modules/vulkan/image/vktImageLoadStoreTests.cpp
+@@ -628,6 +628,11 @@
+         !(formatProperties.bufferFeatures & VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT))
+         TCU_THROW(NotSupportedError, "Format not supported for storage texel buffers");
+ #endif // CTS_USES_VULKANSC
++
++    // A texel buffer has no image tiling, mip levels or array layers. Its
++    // advertised buffer-format capabilities were checked above.
++    if (m_texture.type() == IMAGE_TYPE_BUFFER)
++        return;
+ 
+     const auto &vki           = context.getInstanceInterface();
+     const auto physicalDevice = context.getPhysicalDevice();
+--- a/external/vulkancts/modules/vulkan/image/vktImageMutableTests.cpp
++++ b/external/vulkancts/modules/vulkan/image/vktImageMutableTests.cpp
+@@ -2013,8 +2013,8 @@
+         // VUID-vkCreateInstance-ppEnabledExtensionNames-01388
+         extensions.push_back("VK_EXT_direct_mode_display");
+ 
+-        // used by VulkanDisplayDirectDrm::initializeDisplay
+-        extensions.push_back("VK_EXT_physical_device_drm");
++        // VK_EXT_physical_device_drm is a device extension. The display
++        // initialization queries its properties; do not enable it on the instance.
+ 
+         // required by VK_EXT_physical_device_drm
+         uint32_t apiVersion = context.getUsedApiVersion();
+--- a/external/vulkancts/modules/vulkan/pipeline/vktPipelineImageTests.cpp
++++ b/external/vulkancts/modules/vulkan/pipeline/vktPipelineImageTests.cpp
+@@ -33,6 +33,7 @@
+ #include "vkPrograms.hpp"
+ #include "vkFormatLists.hpp"
+ #include "tcuTextureUtil.hpp"
++#include "gluTextureTestUtil.hpp"
+ #include "deStringUtil.hpp"
+ 
+ #include <sstream>
+@@ -394,9 +395,9 @@
+ {
+     std::ostringstream samplerType;
+ 
+-    if (tcu::getTextureChannelClass(format.type) == tcu::TEXTURECHANNELCLASS_UNSIGNED_INTEGER)
++    if (glu::TextureTestUtil::getSamplerType(format) == glu::TextureTestUtil::SAMPLERTYPE_UINT)
+         samplerType << "u";
+-    else if (tcu::getTextureChannelClass(format.type) == tcu::TEXTURECHANNELCLASS_SIGNED_INTEGER)
++    else if (glu::TextureTestUtil::getSamplerType(format) == glu::TextureTestUtil::SAMPLERTYPE_INT)
+         samplerType << "i";
+ 
+     switch (type)
+@@ -441,9 +442,9 @@
+ {
+     std::ostringstream textureType;
+ 
+-    if (tcu::getTextureChannelClass(format.type) == tcu::TEXTURECHANNELCLASS_UNSIGNED_INTEGER)
++    if (glu::TextureTestUtil::getSamplerType(format) == glu::TextureTestUtil::SAMPLERTYPE_UINT)
+         textureType << "u";
+-    else if (tcu::getTextureChannelClass(format.type) == tcu::TEXTURECHANNELCLASS_SIGNED_INTEGER)
++    else if (glu::TextureTestUtil::getSamplerType(format) == glu::TextureTestUtil::SAMPLERTYPE_INT)
+         textureType << "i";
+ 
+     switch (type)
+--- a/external/vulkancts/modules/vulkan/pipeline/vktPipelineImageViewTests.cpp
++++ b/external/vulkancts/modules/vulkan/pipeline/vktPipelineImageViewTests.cpp
+@@ -33,6 +33,7 @@
+ #include "vkPrograms.hpp"
+ #include "tcuPlatform.hpp"
+ #include "tcuTextureUtil.hpp"
++#include "gluTextureTestUtil.hpp"
+ #include "deStringUtil.hpp"
+ #include "deMemory.h"
+ 
+@@ -319,9 +320,9 @@
+ {
+     std::ostringstream samplerType;
+ 
+-    if (tcu::getTextureChannelClass(format.type) == tcu::TEXTURECHANNELCLASS_UNSIGNED_INTEGER)
++    if (glu::TextureTestUtil::getSamplerType(format) == glu::TextureTestUtil::SAMPLERTYPE_UINT)
+         samplerType << "u";
+-    else if (tcu::getTextureChannelClass(format.type) == tcu::TEXTURECHANNELCLASS_SIGNED_INTEGER)
++    else if (glu::TextureTestUtil::getSamplerType(format) == glu::TextureTestUtil::SAMPLERTYPE_INT)
+         samplerType << "i";
+ 
+     switch (type)
+--- a/external/vulkancts/modules/vulkan/pipeline/vktPipelineSamplerTests.cpp
++++ b/external/vulkancts/modules/vulkan/pipeline/vktPipelineSamplerTests.cpp
+@@ -48,6 +48,7 @@
+ 
+ #include "tcuPlatform.hpp"
+ #include "tcuTextureUtil.hpp"
++#include "gluTextureTestUtil.hpp"
+ #include "tcuTestLog.hpp"
+ #include "tcuMaybe.hpp"
+ #include "tcuImageCompare.hpp"
+@@ -584,9 +585,9 @@
+ {
+     std::ostringstream samplerType;
+ 
+-    if (tcu::getTextureChannelClass(format.type) == tcu::TEXTURECHANNELCLASS_UNSIGNED_INTEGER || sampleStencil)
++    if (glu::TextureTestUtil::getSamplerType(format) == glu::TextureTestUtil::SAMPLERTYPE_UINT || sampleStencil)
+         samplerType << "u";
+-    else if (tcu::getTextureChannelClass(format.type) == tcu::TEXTURECHANNELCLASS_SIGNED_INTEGER)
++    else if (glu::TextureTestUtil::getSamplerType(format) == glu::TextureTestUtil::SAMPLERTYPE_INT)
+         samplerType << "i";
+ 
+     switch (type)
+--- a/framework/common/tcuTexture.cpp
++++ b/framework/common/tcuTexture.cpp
+@@ -1552,7 +1552,7 @@
+                          TextureFormat::RGBA)
+             .cast<float>();
+     case TextureFormat::SSCALED_INT_1010102_REV:
+-        return swizzleGe(UVec4(SI32(0, 10), SI32(10, 10), SI32(20, 10), SI32(30, 2)), m_format.order,
++        return swizzleGe(IVec4(SI32(0, 10), SI32(10, 10), SI32(20, 10), SI32(30, 2)), m_format.order,
+                          TextureFormat::RGBA)
+             .cast<float>();
+     case TextureFormat::SIGNED_INT_1010102_REV:
+--- a/external/vulkancts/modules/vulkan/ycbcr/vktYCbCrUtil.cpp
++++ b/external/vulkancts/modules/vulkan/ycbcr/vktYCbCrUtil.cpp
+@@ -1529,7 +1529,7 @@
+     const int subI = offset == vk::VK_CHROMA_LOCATION_COSITED_EVEN ? divFloor(i, 2) :
+                                                                      (i % 2 == 0 ? divFloor(i, 2) - 1 : divFloor(i, 2));
+     const double a =
+-        offset == vk::VK_CHROMA_LOCATION_COSITED_EVEN ? (i % 2 == 0 ? 0.0 : 0.5) : (i % 2 == 0 ? 0.25 : 0.75);
++        offset == vk::VK_CHROMA_LOCATION_COSITED_EVEN ? (i % 2 == 0 ? 1.0 : 0.5) : (i % 2 == 0 ? 0.25 : 0.75);
+ 
+     const tcu::Interval A(filteringFormat.roundOut(
+         a * lookupWrapped(access, conversionFormat, addressModeU, addressModeV, tcu::IVec2(subI, j)), false));
+--- a/framework/opengl/gluTextureTestUtil.cpp
++++ b/framework/opengl/gluTextureTestUtil.cpp
+@@ -57,6 +57,7 @@
+     case TextureFormat::SIGNED_INT8:
+     case TextureFormat::SIGNED_INT16:
+     case TextureFormat::SIGNED_INT32:
++    case TextureFormat::SIGNED_INT_1010102_REV:
+         return SAMPLERTYPE_INT;
+ 
+     case TextureFormat::UNSIGNED_INT8:
+--- a/external/vulkancts/modules/vulkan/draw/vktDrawMultipleInterpolationTests.cpp
++++ b/external/vulkancts/modules/vulkan/draw/vktDrawMultipleInterpolationTests.cpp
+@@ -774,6 +774,16 @@
+             render(sampleImage[i], &framesArray[SAMPLE], "vert_sample", "frag_sample", SAMPLE, useSampleRateShading);
+     }
+ 
++    // Retain each rendered reference before any cross-mode comparison fails.
++    log << tcu::TestLog::ImageSet("AllReferences", "All interpolation references");
++    for (uint32_t i = 0; i < frameCount; ++i) {
++        if (!m_params.includeSampleDecoration && i == SAMPLE)
++            continue;
++        const std::string name = interpolationToString((Interpolation)i);
++        log << tcu::TestLog::Image(name, name, refFrames[i]);
++    }
++    log << tcu::TestLog::EndImageSet;
++
+     for (uint32_t resNdx = 0; resNdx < frameCount; resNdx++)
+     {
+         if (!m_params.includeSampleDecoration && resNdx == SAMPLE)
+--- a/external/vulkancts/modules/vulkan/renderpass/vktRenderPassDepthStencilWriteConditionsTests.cpp
++++ b/external/vulkancts/modules/vulkan/renderpass/vktRenderPassDepthStencilWriteConditionsTests.cpp
+@@ -344,6 +344,14 @@
+         attachment = pipeline::readStencilAttachment(vk, device, queue, queueFamilyIndex, allocator,
+                                                      depthStencilImage->object(), m_bufferFormat,
+                                                      tcu::UVec2(WIDTH, HEIGHT), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
++
++    for (uint32_t x = 0; x < 8u; ++x)
++        m_context.getTestContext().getLog() << tcu::TestLog::Message
++            << "DS first row x=" << x << " value="
++            << (m_bufferType == BufferType::DEPTH
++                ? attachment->getAccess().getPixDepth(x, 0)
++                : attachment->getAccess().getPixStencil(x, 0, 0))
++            << tcu::TestLog::EndMessage;
+ 
+     bool result = true;
+     for (uint32_t y = 0; y < HEIGHT; y++)
+--- a/external/vulkancts/modules/vulkan/image/vktImageCompressionTranscodingSupport.cpp
++++ b/external/vulkancts/modules/vulkan/image/vktImageCompressionTranscodingSupport.cpp
+@@ -3421,9 +3421,16 @@
+                     "    const vec3 in_pos = vec3(gl_FragCoord.xy, 0) / vec3(pixels_resolution.xy, 1.0);\n",
+                 };
+ 
++                // Scaled views have floating sampled types. They have no
++                // matching SPIR-V storage-image format: use formatless writes.
++                const bool scaled = isScaledFormat(m_parameters.formatUncompressed);
++                const std::string sampledType = scaled ? srcSamplerTypeStr.substr(1) : srcSamplerTypeStr;
++                const std::string storageType = scaled ? dstImageTypeStr.substr(1) : dstImageTypeStr;
++                const std::string storageBinding = scaled ? "layout (binding = 1)" :
++                    "layout (binding = 1, " + dstFormatQualifierStr + ")";
+                 src << glu::getGLSLVersionDeclaration(glu::GLSL_VERSION_450) << "\n\n"
+-                    << "layout (binding = 0) uniform " << srcSamplerTypeStr << " u_imageIn;\n"
+-                    << "layout (binding = 1, " << dstFormatQualifierStr << ") writeonly uniform " << dstImageTypeStr
++                    << "layout (binding = 0) uniform " << sampledType << " u_imageIn;\n"
++                    << storageBinding << " writeonly uniform " << storageType
+                     << " u_imageOut;\n"
+                     << "\n"
+                     << "void main (void)\n"
+@@ -3558,6 +3565,12 @@
+         if (m_parameters.formatIsASTC() && !physicalDeviceFeatures.textureCompressionASTC_LDR)
+             TCU_THROW(NotSupportedError, "textureCompressionASTC_LDR not supported");
+ 
++        if ((m_parameters.operation == OPERATION_TEXTURE_READ ||
++             m_parameters.operation == OPERATION_TEXTURE_WRITE) &&
++            isScaledFormat(m_parameters.formatUncompressed) &&
++            !physicalDeviceFeatures.shaderStorageImageWriteWithoutFormat)
++            TCU_THROW(NotSupportedError, "Scaled storage writes require shaderStorageImageWriteWithoutFormat");
++
+         if (m_parameters.uncompressedImageUsage & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT)
+         {
+             const VkFormatProperties p =
+
+--- a/external/vulkancts/modules/vulkan/texture/vktTextureSwizzleTests.cpp
++++ b/external/vulkancts/modules/vulkan/texture/vktTextureSwizzleTests.cpp
+@@ -322,60 +322,60 @@
+                           {VK_FORMAT_R5G5B5A1_UNORM_PACK16, PROGRAM_2D_FLOAT},
+                           {VK_FORMAT_R8_UNORM, PROGRAM_2D_FLOAT},
+                           {VK_FORMAT_R8_SNORM, PROGRAM_2D_FLOAT_BIAS},
+-                          {VK_FORMAT_R8_USCALED, PROGRAM_2D_UINT},
+-                          {VK_FORMAT_R8_SSCALED, PROGRAM_2D_INT_BIAS},
++                          {VK_FORMAT_R8_USCALED, PROGRAM_2D_FLOAT},
++                          {VK_FORMAT_R8_SSCALED, PROGRAM_2D_FLOAT_BIAS},
+                           {VK_FORMAT_R8_UINT, PROGRAM_2D_UINT},
+                           {VK_FORMAT_R8_SINT, PROGRAM_2D_INT_BIAS},
+                           {VK_FORMAT_R8_SRGB, PROGRAM_2D_FLOAT},
+                           {VK_FORMAT_R8G8_UNORM, PROGRAM_2D_FLOAT},
+                           {VK_FORMAT_R8G8_SNORM, PROGRAM_2D_FLOAT_BIAS},
+-                          {VK_FORMAT_R8G8_USCALED, PROGRAM_2D_UINT},
+-                          {VK_FORMAT_R8G8_SSCALED, PROGRAM_2D_INT_BIAS},
++                          {VK_FORMAT_R8G8_USCALED, PROGRAM_2D_FLOAT},
++                          {VK_FORMAT_R8G8_SSCALED, PROGRAM_2D_FLOAT_BIAS},
+                           {VK_FORMAT_R8G8_UINT, PROGRAM_2D_UINT},
+                           {VK_FORMAT_R8G8_SINT, PROGRAM_2D_INT_BIAS},
+                           {VK_FORMAT_R8G8_SRGB, PROGRAM_2D_FLOAT},
+                           {VK_FORMAT_R8G8B8_UNORM, PROGRAM_2D_FLOAT},
+                           {VK_FORMAT_R8G8B8_SNORM, PROGRAM_2D_FLOAT_BIAS},
+-                          {VK_FORMAT_R8G8B8_USCALED, PROGRAM_2D_UINT},
+-                          {VK_FORMAT_R8G8B8_SSCALED, PROGRAM_2D_INT_BIAS},
++                          {VK_FORMAT_R8G8B8_USCALED, PROGRAM_2D_FLOAT},
++                          {VK_FORMAT_R8G8B8_SSCALED, PROGRAM_2D_FLOAT_BIAS},
+                           {VK_FORMAT_R8G8B8_UINT, PROGRAM_2D_UINT},
+                           {VK_FORMAT_R8G8B8_SINT, PROGRAM_2D_INT_BIAS},
+                           {VK_FORMAT_R8G8B8_SRGB, PROGRAM_2D_FLOAT},
+                           {VK_FORMAT_R8G8B8A8_UNORM, PROGRAM_2D_FLOAT},
+                           {VK_FORMAT_R8G8B8A8_SNORM, PROGRAM_2D_FLOAT_BIAS},
+-                          {VK_FORMAT_R8G8B8A8_USCALED, PROGRAM_2D_UINT},
+-                          {VK_FORMAT_R8G8B8A8_SSCALED, PROGRAM_2D_INT_BIAS},
++                          {VK_FORMAT_R8G8B8A8_USCALED, PROGRAM_2D_FLOAT},
++                          {VK_FORMAT_R8G8B8A8_SSCALED, PROGRAM_2D_FLOAT_BIAS},
+                           {VK_FORMAT_R8G8B8A8_UINT, PROGRAM_2D_UINT},
+                           {VK_FORMAT_R8G8B8A8_SINT, PROGRAM_2D_INT_BIAS},
+                           {VK_FORMAT_R8G8B8A8_SRGB, PROGRAM_2D_FLOAT},
+                           {VK_FORMAT_A2R10G10B10_UNORM_PACK32, PROGRAM_2D_FLOAT},
+                           {VK_FORMAT_A2R10G10B10_UINT_PACK32, PROGRAM_2D_UINT},
+-                          {VK_FORMAT_A2B10G10R10_USCALED_PACK32, PROGRAM_2D_UINT},
++                          {VK_FORMAT_A2B10G10R10_USCALED_PACK32, PROGRAM_2D_FLOAT},
+                           {VK_FORMAT_R16_UNORM, PROGRAM_2D_FLOAT},
+                           {VK_FORMAT_R16_SNORM, PROGRAM_2D_FLOAT_BIAS},
+-                          {VK_FORMAT_R16_USCALED, PROGRAM_2D_UINT},
+-                          {VK_FORMAT_R16_SSCALED, PROGRAM_2D_INT_BIAS},
++                          {VK_FORMAT_R16_USCALED, PROGRAM_2D_FLOAT},
++                          {VK_FORMAT_R16_SSCALED, PROGRAM_2D_FLOAT_BIAS},
+                           {VK_FORMAT_R16_UINT, PROGRAM_2D_UINT},
+                           {VK_FORMAT_R16_SINT, PROGRAM_2D_INT_BIAS},
+                           {VK_FORMAT_R16_SFLOAT, PROGRAM_2D_FLOAT_BIAS},
+                           {VK_FORMAT_R16G16_UNORM, PROGRAM_2D_FLOAT},
+                           {VK_FORMAT_R16G16_SNORM, PROGRAM_2D_FLOAT_BIAS},
+-                          {VK_FORMAT_R16G16_USCALED, PROGRAM_2D_UINT},
+-                          {VK_FORMAT_R16G16_SSCALED, PROGRAM_2D_INT_BIAS},
++                          {VK_FORMAT_R16G16_USCALED, PROGRAM_2D_FLOAT},
++                          {VK_FORMAT_R16G16_SSCALED, PROGRAM_2D_FLOAT_BIAS},
+                           {VK_FORMAT_R16G16_UINT, PROGRAM_2D_UINT},
+                           {VK_FORMAT_R16G16_SINT, PROGRAM_2D_INT_BIAS},
+                           {VK_FORMAT_R16G16_SFLOAT, PROGRAM_2D_FLOAT_BIAS},
+                           {VK_FORMAT_R16G16B16_UNORM, PROGRAM_2D_FLOAT},
+                           {VK_FORMAT_R16G16B16_SNORM, PROGRAM_2D_FLOAT_BIAS},
+-                          {VK_FORMAT_R16G16B16_USCALED, PROGRAM_2D_UINT},
+-                          {VK_FORMAT_R16G16B16_SSCALED, PROGRAM_2D_INT_BIAS},
++                          {VK_FORMAT_R16G16B16_USCALED, PROGRAM_2D_FLOAT},
++                          {VK_FORMAT_R16G16B16_SSCALED, PROGRAM_2D_FLOAT_BIAS},
+                           {VK_FORMAT_R16G16B16_UINT, PROGRAM_2D_UINT},
+                           {VK_FORMAT_R16G16B16_SINT, PROGRAM_2D_INT_BIAS},
+                           {VK_FORMAT_R16G16B16_SFLOAT, PROGRAM_2D_FLOAT_BIAS},
+                           {VK_FORMAT_R16G16B16A16_UNORM, PROGRAM_2D_FLOAT},
+                           {VK_FORMAT_R16G16B16A16_SNORM, PROGRAM_2D_FLOAT_BIAS},
+-                          {VK_FORMAT_R16G16B16A16_USCALED, PROGRAM_2D_UINT},
+-                          {VK_FORMAT_R16G16B16A16_SSCALED, PROGRAM_2D_INT_BIAS},
++                          {VK_FORMAT_R16G16B16A16_USCALED, PROGRAM_2D_FLOAT},
++                          {VK_FORMAT_R16G16B16A16_SSCALED, PROGRAM_2D_FLOAT_BIAS},
+                           {VK_FORMAT_R16G16B16A16_UINT, PROGRAM_2D_UINT},
+                           {VK_FORMAT_R16G16B16A16_SINT, PROGRAM_2D_INT_BIAS},
+                           {VK_FORMAT_R16G16B16A16_SFLOAT, PROGRAM_2D_FLOAT_BIAS},

@@ -1,0 +1,22 @@
+{
+  "selected": 1,
+  "recorded": 1,
+  "completed": 1,
+  "counts": {
+    "Pass": 1
+  },
+  "classifications": {
+    "unclassified": 1
+  },
+  "elapsed_seconds": 2.484150033997139,
+  "preparation_seconds": 1.4207902119960636,
+  "runner_seconds": 0.4078959470000001,
+  "jobs": 1,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 40,
+  "cases_sha256": "ba0455d0069f670bd63db6f09ca3e0379a8f3c083efbe106faeff108e2bb98fc",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T180058205437Z-cts29-scaled-swizzle-fixed",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 58.5
+}
