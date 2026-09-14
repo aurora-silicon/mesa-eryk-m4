@@ -482,7 +482,7 @@ agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
 
    assert(offset == size);
 
-   if (native_samples && getenv("AGX_NATIVE_LINK_DIAGNOSTICS")) {
+   if (fragment && getenv("AGX_NATIVE_LINK_DIAGNOSTICS")) {
       fprintf(stderr, "Native sample link: samples=%u size=%zu main=%u epilog=%u gprs=%u staging=%u hex=",
               nr_samples_shaded, offset, main ? main->info.main_size : 0,
               epilog ? epilog->info.main_size : 0, nr_gprs, staging_halfs);

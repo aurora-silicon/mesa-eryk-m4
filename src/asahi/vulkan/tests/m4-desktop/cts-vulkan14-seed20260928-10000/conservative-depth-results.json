@@ -1,0 +1,74 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.renderpasses.renderpass2.depth_stencil_resolve.image_2d_5_1.samples_4.d16_unorm_s8_uint_separate_layouts.depth_zero_stencil_max_testing_stencil_samplemask",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed28-depth-diagnostics",
+      "--deqp-case=dEQP-VK.renderpasses.renderpass2.depth_stencil_resolve.image_2d_5_1.samples_4.d16_unorm_s8_uint_separate_layouts.depth_zero_stencil_max_testing_stencil_samplemask",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T164339714422Z-cts28-conservative-depth/cts/000/result.qpa"
+    ],
+    "boot_id": "15d81d37-45d1-42b3-ada6-fe3160541e0d",
+    "status": "Fail",
+    "started_unix": 1789404220.9987736,
+    "eligibility": {
+      "case": "dEQP-VK.renderpasses.renderpass2.depth_stencil_resolve.image_2d_5_1.samples_4.d16_unorm_s8_uint_separate_layouts.depth_zero_stencil_max_testing_stencil_samplemask",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Fail",
+    "returncode": 1,
+    "seconds": 0.2602847230000407,
+    "finished_unix": 1789404221.2640498,
+    "pid": 3502
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.pipeline.fast_linked_library.multisample.z_export.sample_mask_pipeline_static_atc",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed28-depth-diagnostics",
+      "--deqp-case=dEQP-VK.pipeline.fast_linked_library.multisample.z_export.sample_mask_pipeline_static_atc",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T164339714422Z-cts28-conservative-depth/cts/001/result.qpa"
+    ],
+    "boot_id": "15d81d37-45d1-42b3-ada6-fe3160541e0d",
+    "status": "Fail",
+    "started_unix": 1789404221.2743595,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.fast_linked_library.multisample.z_export.sample_mask_pipeline_static_atc",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Unexpected color, depth or stencil result; check log for details",
+    "returncode": 1,
+    "seconds": 0.4114029020001908,
+    "finished_unix": 1789404221.6905882,
+    "pid": 3508
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.renderpasses.renderpass1.depth_stencil_write_conditions.depth_demote_initialize_d32sf_s8ui",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed28-depth-diagnostics",
+      "--deqp-case=dEQP-VK.renderpasses.renderpass1.depth_stencil_write_conditions.depth_demote_initialize_d32sf_s8ui",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T164339714422Z-cts28-conservative-depth/cts/002/result.qpa"
+    ],
+    "boot_id": "15d81d37-45d1-42b3-ada6-fe3160541e0d",
+    "status": "Pass",
+    "started_unix": 1789404221.7012863,
+    "eligibility": {
+      "case": "dEQP-VK.renderpasses.renderpass1.depth_stencil_write_conditions.depth_demote_initialize_d32sf_s8ui",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.2597086890000355,
+    "finished_unix": 1789404221.9667344,
+    "pid": 3515
+  }
+]

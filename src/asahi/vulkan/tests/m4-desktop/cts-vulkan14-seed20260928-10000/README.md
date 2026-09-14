@@ -463,3 +463,26 @@ Library SHA256 `ef609a76e1ef74cea7068cfe6b7bfa516638c1fd12a92a91c9976da0f6bcd36e
 CTS peak 59.25 C. Ledger15: **4,648 Pass / 10 Fail / 5,342 optional
 NotSupported**, **69 originally failing/crashing/timing-out cases resolved**.
 Cumulative evidence across builds; no broad regression rerun.
+
+## Honor the fragment shader conservative-depth declaration
+
+`20260914T164339714422Z-cts28-conservative-depth` passes the original
+`depth_stencil_write_conditions.depth_demote_initialize_d32sf_s8ui` case.
+The M4 secondary-face template always declared depth unchanged, allowing
+an early rejection against interpolated Z even when the shader replaces depth.
+Use the common compiler-generated fragment face, including its conservative
+depth declaration, in both native faces; retain the API depth comparison.
+
+The added CTS diagnostic only prints the first eight depth values. Before the
+fix, surviving columns retained clear depth 0.1 instead of shader depth 0.2.
+A diagnostic ALWAYS comparison demonstrated successful publication, but is
+excluded from the ledger and reverted. A separate bit22 experiment did not
+help and was also reverted. The successful run retains original expectations
+and GREATER comparison. The two other sampled depth/stencil cases still fail.
+
+Library SHA256 `00bd09e41f02d9a8c1a21276d64facd996d1f92be5a6b8f4d06c50c1d784fe88`.
+All experiments used the watchdog and thermal guard. Ledger16: **4,649 Pass /
+9 Fail / 5,342 optional NotSupported**, **70 original failures resolved**.
+Cumulative results across builds, not a broad regression or conformance claim.
+The native-link diagnostic can now retain a single-sample fragment too; the
+launch trace includes depth-test and shader state for reproducible diagnosis.

@@ -3093,11 +3093,14 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
                 UINT32_C(0x07e00000), UINT32_C(0x0001ffff)},
    };
 
-   /* HAL200 encodeISPPrimitiveType (arm64 0x41d458..0x41d464)
-    * sets the object class in bits 31:28 of both secondary face words.
-    * Leaving the triangle template here makes line primitives degenerate. */
-   secondary_fields.words[1] |= (uint32_t)gfx->object_type << 28;
-   secondary_fields.words[2] |= (uint32_t)gfx->object_type << 28;
+   /* Preserve the compiler's conservative depth declaration in both faces.
+    * The old 0x07e00000 template claimed depth was unchanged even when the
+    * fragment shader replaced it, allowing rejection against interpolated Z.
+    * HAL200 encodeISPPrimitiveType (arm64 0x41d458..0x41d464) sets the object
+    * class in bits 31:28 independently of those shader depth controls. */
+   secondary_fields.words[1] = fs->frag_face.opaque[0] |
+                               ((uint32_t)gfx->object_type << 28);
+   secondary_fields.words[2] = secondary_fields.words[1];
 
    struct agx_ppp_hal200_graphics_core cull_record;
    struct agx_ppp_hal200_graphics_fields cull_fields = {
@@ -3239,6 +3242,14 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
       return false;
    }
    secondary_fields.words[0] |= pass_type << 29;
+   if (debug_get_bool_option("HK_G17P_LAUNCH_TRACE", false))
+      mesa_logi("HAL200 depth state: samples=%u test=%u write=%u compare=%u "
+                "pass=%u shader-depth=%u primary=%08x/%08x secondary=%08x",
+                render->tilebuffer.nr_samples, depth_test,
+                dyn->ds.depth.write_enable, dyn->ds.depth.compare_op, pass_type,
+                fs->info.fs.epilog_key.write_z,
+                primary_fields.words[1], primary_fields.words[2],
+                secondary_fields.words[0]);
    /* M4 B0 updateFragmentShaderISPState (44747c..4474cc) retains pass
     * type 3 and disables triangle merging for type 2, or type 3 with the
     * draw-buffer predicate set. Conservatively disable merging for all
