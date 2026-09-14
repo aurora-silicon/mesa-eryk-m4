@@ -1,0 +1,21 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.tessellation.invariance.outer_edge_symmetry.triangles_equal_spacing_ccw",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-invocations",
+      "--deqp-case=dEQP-VK.tessellation.invariance.outer_edge_symmetry.triangles_equal_spacing_ccw",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T011733792028Z-cts-seed24-crash-invocations/cts/000/result.qpa"
+    ],
+    "boot_id": "c2f22724-ed20-4eba-9f9e-4d98de78a9d2",
+    "status": "Pass",
+    "started_unix": 1789348655.1627314,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 1.3758641790000183,
+    "finished_unix": 1789348656.5446916,
+    "pid": 4745
+  }
+]

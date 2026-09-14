@@ -1,0 +1,33 @@
+{
+  "argv": [
+    "/root/cts-bulk/cts-seed24-tess-indexed-parallel-73c7afe0f642/deqp-runner",
+    "run",
+    "--deqp",
+    "/root/cts-1.0.2.6/deqp-vk-indexed",
+    "--caselist",
+    "/root/asahi-evidence/20260914T013140780922Z-cts-seed24-tess-indexed-parallel/cts/runner-cases.txt",
+    "--output",
+    "/root/asahi-evidence/20260914T013140780922Z-cts-seed24-tess-indexed-parallel/cts/deqp-runner",
+    "--jobs",
+    "20",
+    "--tests-per-group",
+    "1",
+    "--timeout",
+    "60",
+    "--first-attempt",
+    "--no-deqp-shadercache",
+    "--renderer-check",
+    "Apple M4",
+    "--",
+    "--deqp-log-images=disable",
+    "--deqp-log-shader-sources=disable"
+  ],
+  "path": "/root/cts-bulk/cts-seed24-tess-indexed-parallel-73c7afe0f642/deqp-runner",
+  "sha256": "f0f3f2ed10d24239dc91000a7ae3c15167ff290e2cba9a71e73c650a8ffccc56",
+  "tests_per_group": 1,
+  "deadline_seconds": 90,
+  "no_retries": true,
+  "no_baseline": true,
+  "no_skips": true,
+  "compatibility": "Omit unsupported CTS 1.0 shadercache CLI flags; Mesa cache remains unchanged"
+}

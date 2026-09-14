@@ -1,0 +1,49 @@
+--- a/external/vulkancts/modules/vulkan/tessellation/vktTessellationInvarianceTests.cpp
++++ b/external/vulkancts/modules/vulkan/tessellation/vktTessellationInvarianceTests.cpp
+@@ -1211,26 +1211,26 @@
+ //! vertex order and coordinates are expected to match exactly.
+ bool comparePrimitivesExact (const PerPrimitive* const primitivesA, const PerPrimitive* const primitivesB, const int numPrimitivesPerPatch)
+ {
+-	int ndxB = 0;
+-	for (int ndxA = 0; ndxA < numPrimitivesPerPatch; ++ndxA)
+-	{
+-		const tcu::Vec4 (&coordsA)[3] = primitivesA[ndxA].tessCoord;
+-		bool match = false;
+-
+-		// Actually both sets are usually somewhat sorted, so don't reset ndxB after each match. Instead, continue from the next index.
+-		for (int i = 0; i < numPrimitivesPerPatch; ++i)
+-		{
+-			const tcu::Vec4 (&coordsB)[3] = primitivesB[ndxB].tessCoord;
+-			ndxB = (ndxB + 1) % numPrimitivesPerPatch;
+-
+-			if (coordsA[0] == coordsB[0] && coordsA[1] == coordsB[1] && coordsA[2] == coordsB[2])
+-			{
+-				match = true;
+-				break;
+-			}
+-		}
+-
+-		if (!match)
++	typedef tcu::Vector<tcu::Vec4, 3> OrderedPrimitive;
++	typedef LexCompare<OrderedPrimitive, 3, VecLexLessThan<4> > PrimitiveLess;
++	typedef std::set<OrderedPrimitive, PrimitiveLess> PrimitiveSet;
++	PrimitiveSet known;
++
++	// Preserve the original membership comparison, including duplicate
++	// invocations and vertex order. Index B once instead of scanning it for
++	// every primitive of A. NaN coordinates cannot match by float equality;
++	// omit them from B so the ordered index retains a strict weak ordering.
++	for (int i = 0; i < numPrimitivesPerPatch; ++i)
++	{
++		const tcu::Vec4 (&c)[3] = primitivesB[i].tessCoord;
++		if (c[0] == c[0] && c[1] == c[1] && c[2] == c[2])
++			known.insert(OrderedPrimitive(c[0], c[1], c[2]));
++	}
++	for (int i = 0; i < numPrimitivesPerPatch; ++i)
++	{
++		const tcu::Vec4 (&c)[3] = primitivesA[i].tessCoord;
++		if (c[0] != c[0] || c[1] != c[1] || c[2] != c[2] ||
++			known.find(OrderedPrimitive(c[0], c[1], c[2])) == known.end())
+ 			return false;
+ 	}
+ 	return true;

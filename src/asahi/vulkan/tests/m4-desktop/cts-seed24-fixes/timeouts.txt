@@ -1,0 +1,2 @@
+dEQP-VK.tessellation.invariance.outer_edge_symmetry.quads_fractional_even_spacing_cw_point_mode
+dEQP-VK.tessellation.invariance.outer_edge_index_independence.quads_fractional_odd_spacing_ccw_point_mode

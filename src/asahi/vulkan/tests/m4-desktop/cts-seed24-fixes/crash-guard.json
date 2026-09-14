@@ -1,0 +1,22 @@
+{
+  "id": "20260914T011733792028Z-cts-seed24-crash-invocations",
+  "verdict": "pass",
+  "transport_returncode": 0,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T011733792028Z-cts-seed24-crash-invocations",
+  "observations": {
+    "pixel_results": [],
+    "pixel_result_count": 0,
+    "thermal_samples": 7,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 59.5,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 59.5,
+      "Ta000m": 57.25,
+      "Te000m": 56.5,
+      "Te001m": 55.0,
+      "Tp000m": 59.25,
+      "Tp001m": 55.25
+    }
+  }
+}

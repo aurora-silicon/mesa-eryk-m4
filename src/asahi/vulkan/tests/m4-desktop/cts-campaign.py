@@ -24,7 +24,7 @@ p.add_argument('--binary', default='/root/cts-1.0.2.6/deqp-vk')
 p.add_argument('--start', type=int, default=0)
 p.add_argument('--count', type=int, required=True)
 p.add_argument('--jobs', type=int, default=1)
-p.add_argument('--case-timeout', type=int, default=20, choices=range(1, 31), metavar='SECONDS')
+p.add_argument('--case-timeout', type=int, default=20, choices=range(1, 121), metavar='SECONDS')
 p.add_argument('--continue-userspace-crashes', action='store_true')
 a = p.parse_args()
 if not re.fullmatch('[a-z0-9][a-z0-9-]*', a.name) or a.start < 0 or a.count < 1 or a.jobs < 1:

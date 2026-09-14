@@ -1,0 +1,26 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.tessellation.invariance.outer_triangle_set.triangles_fractional_odd_spacing",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-invocations",
+      "--deqp-case=dEQP-VK.tessellation.invariance.outer_triangle_set.triangles_fractional_odd_spacing",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T012621962901Z-cts-seed24-tess-cpu-profile/cts/000/result.qpa"
+    ],
+    "boot_id": "c2f22724-ed20-4eba-9f9e-4d98de78a9d2",
+    "status": "Pass",
+    "started_unix": 1789349183.3916023,
+    "eligibility": {
+      "case": "dEQP-VK.tessellation.invariance.outer_triangle_set.triangles_fractional_odd_spacing",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 30.173387022999577,
+    "finished_unix": 1789349213.5700479,
+    "pid": 5745
+  }
+]

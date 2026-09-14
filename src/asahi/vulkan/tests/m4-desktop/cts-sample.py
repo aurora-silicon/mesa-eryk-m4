@@ -281,8 +281,8 @@ def main():
     b.add_argument('--start', type=int, default=0)
     b.add_argument('--count', type=int, default=100)
     b.add_argument('--jobs', type=int, default=1, help='Concurrent CTS processes inside one guard')
-    b.add_argument('--case-timeout', type=int, default=20, choices=range(1, 31),
-                   metavar='SECONDS', help='Per-case bound, 1..30s; outer guard must allow 20s more')
+    b.add_argument('--case-timeout', type=int, default=20, choices=range(1, 121),
+                   metavar='SECONDS', help='Per-case bound, 1..120s; outer guard must allow 20s more')
     b.add_argument('--backend', choices=('isolated', 'deqp-runner'), default='isolated')
     b.add_argument('--deqp-runner', type=Path, default=Path('/root/deqp-runner'))
     b.add_argument('--tests-per-group', type=int, default=50)

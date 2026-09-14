@@ -1,0 +1,22 @@
+{
+  "id": "20260914T012621962901Z-cts-seed24-tess-cpu-profile",
+  "verdict": "pass",
+  "transport_returncode": 0,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T012621962901Z-cts-seed24-tess-cpu-profile",
+  "observations": {
+    "pixel_results": [],
+    "pixel_result_count": 0,
+    "thermal_samples": 64,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 61.25,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 61.0,
+      "Ta000m": 59.0,
+      "Te000m": 58.0,
+      "Te001m": 57.75,
+      "Tp000m": 61.25,
+      "Tp001m": 58.0
+    }
+  }
+}

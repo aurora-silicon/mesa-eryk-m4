@@ -1,0 +1,22 @@
+{
+  "selected": 19,
+  "recorded": 19,
+  "completed": 19,
+  "counts": {
+    "Pass": 19
+  },
+  "classifications": {
+    "unclassified": 19
+  },
+  "elapsed_seconds": 51.28530087901163,
+  "preparation_seconds": 1.5648682930041105,
+  "runner_seconds": 47.23246062499993,
+  "jobs": 20,
+  "tests_per_group": 1,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "73c7afe0f642b2a90164935a8b0f88bbbea3fabd1fefa231f62f4eec6fbcc62a",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T013140780922Z-cts-seed24-tess-indexed-parallel",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 61.5
+}

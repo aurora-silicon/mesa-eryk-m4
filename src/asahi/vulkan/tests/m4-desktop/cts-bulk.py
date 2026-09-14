@@ -21,6 +21,8 @@ p.add_argument('--name', required=True)
 p.add_argument('--jobs', type=int, default=20)
 p.add_argument('--tests-per-group', type=int, default=50)
 p.add_argument('--runner-seconds', type=int, default=90)
+p.add_argument('--case-timeout', type=int, default=60, choices=range(1, 121),
+               metavar='SECONDS', help='Explicit per-case wall-time bound; default 60s for contended and long CTS cases')
 a = p.parse_args()
 if not re.fullmatch('[a-z0-9][a-z0-9-]*', a.name) or a.jobs < 1 or a.tests_per_group < 1 or not 1 <= a.runner_seconds <= 1700:
     p.error('invalid name or bounds')
@@ -51,7 +53,8 @@ command = [sys.executable, str(ROOT/'tools/gpu-experiment.py'), '--name', a.name
     'python3', remote+'/cts-sample.py', 'batch', '--backend', 'deqp-runner',
     '--guard-output', '{output}', '--binary', a.binary, '--cases', remote+'/cases.txt',
     '--deqp-runner', remote+'/deqp-runner', '--count', str(len(cases)), '--jobs', str(a.jobs),
-    '--tests-per-group', str(a.tests_per_group), '--runner-seconds', str(a.runner_seconds)]
+    '--tests-per-group', str(a.tests_per_group), '--runner-seconds', str(a.runner_seconds),
+    '--case-timeout', str(a.case_timeout)]
 begin = time.monotonic()
 with (a.output/'experiment.log').open('w') as log:
     rc = subprocess.run(command, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT).returncode
@@ -78,6 +81,7 @@ summary = dict(selected=len(cases), recorded=len(results),
     classifications=Counter(r['eligibility']['classification'] for r in results),
     elapsed_seconds=elapsed, preparation_seconds=preparation_seconds,
     runner_seconds=timing.get('elapsed_seconds'), jobs=a.jobs, tests_per_group=a.tests_per_group,
+    case_timeout_seconds=a.case_timeout,
     cases_sha256=hashlib.sha256(raw).hexdigest(), evidence=str(evidence),
     guard_verdict=report['verdict'], command_returncode=rc,
     peak_temperature_c=report.get('observations', {}).get('peak_temperature_c'))

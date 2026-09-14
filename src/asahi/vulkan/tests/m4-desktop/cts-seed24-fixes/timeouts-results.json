@@ -1,0 +1,40 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.tessellation.invariance.outer_edge_symmetry.quads_fractional_even_spacing_cw_point_mode",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-invocations",
+      "--deqp-case=dEQP-VK.tessellation.invariance.outer_edge_symmetry.quads_fractional_even_spacing_cw_point_mode",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T011819582264Z-cts-seed24-timeouts-isolated/cts/000/result.qpa"
+    ],
+    "boot_id": "c2f22724-ed20-4eba-9f9e-4d98de78a9d2",
+    "status": "Pass",
+    "started_unix": 1789348701.3125024,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 1.682419693999691,
+    "finished_unix": 1789348703.0009727,
+    "pid": 4816
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.tessellation.invariance.outer_edge_index_independence.quads_fractional_odd_spacing_ccw_point_mode",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-invocations",
+      "--deqp-case=dEQP-VK.tessellation.invariance.outer_edge_index_independence.quads_fractional_odd_spacing_ccw_point_mode",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T011819582264Z-cts-seed24-timeouts-isolated/cts/001/result.qpa"
+    ],
+    "boot_id": "c2f22724-ed20-4eba-9f9e-4d98de78a9d2",
+    "status": "Pass",
+    "started_unix": 1789348703.0120695,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 1.631002203999742,
+    "finished_unix": 1789348704.648166,
+    "pid": 4826
+  }
+]
