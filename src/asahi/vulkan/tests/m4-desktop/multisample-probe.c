@@ -62,12 +62,16 @@ int main(int argc, char **argv) {
   CHECK(depth_format || !strcmp(depth_name, "none"));
   CHECK(!integer_color || !depth_format);
   bool depth_bias = getenv("M4_MSAA_DEPTH_BIAS") != NULL;
+  bool image_store = getenv("M4_MSAA_IMAGE_STORE") != NULL;
+  bool rotate = getenv("M4_MSAA_ROTATE") != NULL;
+  CHECK(!rotate || (image_store && samples == 2));
+  CHECK(!image_store || (samples > 1 && color_format == GL_RGBA8 && !depth_format));
   CHECK(!depth_bias || depth_format == GL_DEPTH_COMPONENT16);
   EGLDisplay d = eglGetPlatformDisplay(EGL_PLATFORM_SURFACELESS_MESA, 0, 0);
   CHECK(eglInitialize(d, 0, 0));
   CHECK(eglBindAPI(EGL_OPENGL_API));
   EGLint attrs[] = {EGL_CONTEXT_MAJOR_VERSION,
-                    3,
+                    image_store ? 4 : 3,
                     EGL_CONTEXT_MINOR_VERSION,
                     3,
                     EGL_CONTEXT_OPENGL_PROFILE_MASK,
@@ -115,6 +119,33 @@ int main(int argc, char **argv) {
   glEnableVertexAttribArray(0);
   glViewport(0, 0, 64, 64);
   GLuint fb[2], rb[2];
+  GLuint ms_texture = 0, compute_program = 0;
+  if (image_store) {
+    compute_program = glCreateProgram();
+    const char *compute_source =
+       "#version 430 core\nlayout(local_size_x=1)in;"
+       "layout(binding=0,rgba8)uniform image2DMS img;uniform int sample_count;"
+       "void main(){ivec2 p=ivec2(gl_GlobalInvocationID.xy);"
+       "for(int s=0;s<sample_count;++s){vec4 c=imageLoad(img,p,s);"
+       "imageStore(img,p,s,vec4(1.-c.r,c.gba));}}";
+    if (rotate) compute_source =
+       "#version 430 core\nlayout(local_size_x=1)in;"
+       "layout(binding=0,rgba8)uniform image2DMS img;"
+       "void main(){ivec2 p=ivec2(gl_GlobalInvocationID.xy);"
+       "vec4 a=imageLoad(img,p,0);vec4 b=imageLoad(img,p,1);"
+       "imageStore(img,p,1,a);imageStore(img,p,0,b);}";
+    glAttachShader(compute_program, shader(GL_COMPUTE_SHADER, compute_source));
+    glLinkProgram(compute_program);
+    glGetProgramiv(compute_program, GL_LINK_STATUS, &ok);
+    CHECK(ok);
+    glUseProgram(compute_program);
+    glUniform1i(glGetUniformLocation(compute_program, "sample_count"), samples);
+    glUseProgram(program);
+    glGenTextures(1, &ms_texture);
+    glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, ms_texture);
+    glTexStorage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, samples, color_format, 64, 64, GL_TRUE);
+    glBindImageTexture(0, ms_texture, 0, GL_FALSE, 0, GL_READ_WRITE, color_format);
+  }
   glGenFramebuffers(2, fb);
   glGenRenderbuffers(2, rb);
   for (unsigned i = 0; i < 2; ++i) {
@@ -132,6 +163,9 @@ int main(int argc, char **argv) {
     CHECK(glGetError() == GL_NO_ERROR);
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
                               GL_RENDERBUFFER, rb[i]);
+    if (image_store && !i)
+      glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                             GL_TEXTURE_2D_MULTISAMPLE, ms_texture, 0);
     CHECK(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
   }
   glBindFramebuffer(GL_FRAMEBUFFER, fb[0]);
@@ -203,6 +237,13 @@ int main(int argc, char **argv) {
       glSampleMaski(0, (1u << samples) - 1);
       glDrawArrays(GL_TRIANGLES, 0, 3);
     }
+    if (image_store) {
+      glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+      glUseProgram(compute_program);
+      glDispatchCompute(64, 64, 1);
+      glMemoryBarrier(GL_FRAMEBUFFER_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+      glUseProgram(program);
+    }
     glBindFramebuffer(GL_READ_FRAMEBUFFER, fb[0]);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fb[1]);
     glBlitFramebuffer(0, 0, 64, 64, 0, 0, 64, 64, GL_COLOR_BUFFER_BIT,
@@ -226,6 +267,7 @@ int main(int argc, char **argv) {
     // A floating-point bias formula would leave red nearer and fail this.
     if (depth_bias) red = 0;
     int green = depth_format ? 255 - red : 0;
+    if (image_store && !rotate) red = 255 - red;
     if (color_format == GL_SRGB8_ALPHA8) {
       float r = depth_bias ? 0 : getenv("M4_MSAA_ALL_SAMPLES") ? !!step : (float)step / samples;
       float g = depth_format ? 1 - r : 0;
@@ -257,6 +299,15 @@ int main(int argc, char **argv) {
     printf("samples=%u filled=%u bad=%u/4096\n", samples, step, bad);
     fflush(stdout);
     total_bad += bad;
+    if (image_store) {
+      /* Undo the inversion so the next sample-mask draw has the original
+       * sample distribution. Each dispatch tests reads and writes in place. */
+      glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+      glUseProgram(compute_program);
+      glDispatchCompute(64, 64, 1);
+      glMemoryBarrier(GL_FRAMEBUFFER_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+      glUseProgram(program);
+    }
   }
   glFinish();
   glDeleteFramebuffers(2, fb);
@@ -265,6 +316,8 @@ int main(int argc, char **argv) {
   glDeleteBuffers(1, &vbo);
   glDeleteVertexArrays(1, &vao);
   glDeleteProgram(program);
+  if (compute_program) glDeleteProgram(compute_program);
+  if (ms_texture) glDeleteTextures(1, &ms_texture);
   eglMakeCurrent(d, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
   eglDestroyContext(d, c);
   eglTerminate(d);

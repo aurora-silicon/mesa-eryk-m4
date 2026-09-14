@@ -415,7 +415,6 @@ agx_nir_lower_g17p_indexed_samplers(nir_shader *shader)
             const enum glsl_sampler_dim dim = cube ? GLSL_SAMPLER_DIM_2D : image_dim;
             const bool array = cube || nir_intrinsic_image_array(intr);
             const bool ms = dim == GLSL_SAMPLER_DIM_MS;
-            const unsigned coords = (array || dim == GLSL_SAMPLER_DIM_3D) ? 3 : 2;
             if (!handle || handle->intrinsic != nir_intrinsic_bindless_image_agx ||
                 (dim != GLSL_SAMPLER_DIM_2D && dim != GLSL_SAMPLER_DIM_3D && !ms) ||
                 (dim == GLSL_SAMPLER_DIM_3D && array) ||
@@ -425,52 +424,23 @@ agx_nir_lower_g17p_indexed_samplers(nir_shader *shader)
                 !nir_src_is_const(intr->src[3]) || nir_src_as_uint(intr->src[3]) != 0)
                return false;
             b.cursor = nir_before_instr(instr);
-            if (nir_intrinsic_access(intr) & (ACCESS_COHERENT | ACCESS_VOLATILE)) {
-               /* Keep memory operations as intrinsics. Turning a volatile
-                * image read into a pure texture instruction permits CSE and
-                * motion across the program's image-memory barriers. */
-               nir_def *set = nir_load_descriptor_set_agx(&b,
-                  nir_intrinsic_desc_set(handle));
-               nir_def *offset = nir_iadd_imm(&b, handle->src[0].ssa,
-                  AGX_G17P_SAMPLED_HEAP_INDEX_OFFSET);
-               nir_def *address = nir_iadd(&b, set, nir_u2u64(&b, offset));
-               nir_def *index = nir_load_global_constant(&b, 1, 32, address,
-                  .align_mul = 4);
-               nir_rewrite_image_intrinsic(intr, nir_u2u64(&b, index),
-                                            nir_image_intrinsic_type_default);
-               nir_intrinsic_set_range_base(intr, 0);
-               nir_intrinsic_set_image_dim(intr, dim);
-               nir_intrinsic_set_image_array(intr, array);
-               native_image_reads++;
-               progress = true;
-               continue;
-            }
-            nir_def *coord = nir_trim_vector(&b, intr->src[1].ssa, coords);
-            if (ms) {
-               /* The native MS fetch tuple packs sample in the low half and
-                * array layer in the high half of its third coordinate. */
-               nir_def *sample = nir_u2u16(&b, intr->src[2].ssa);
-               nir_def *sample_layer = array ? nir_pack_32_2x16_split(&b,
-                  sample, nir_u2u16(&b, nir_channel(&b, coord, 2))) :
-                  nir_u2u32(&b, sample);
-               coord = nir_vec3(&b, nir_channel(&b, coord, 0),
-                               nir_channel(&b, coord, 1), sample_layer);
-            }
-            nir_tex_instr *tex = nir_tex_instr_create(shader, ms ? 2 : 3);
-            tex->op = ms ? nir_texop_txf_ms : nir_texop_txf;
-            tex->sampler_dim = dim;
-            tex->is_array = array;
-            tex->dest_type = nir_intrinsic_dest_type(intr);
-            tex->coord_components = coords;
-            tex->src[0] = nir_tex_src_for_ssa(nir_tex_src_texture_handle, intr->src[0].ssa);
-            tex->src[1] = nir_tex_src_for_ssa(nir_tex_src_backend1, coord);
-            if (!ms)
-               tex->src[2] = nir_tex_src_for_ssa(nir_tex_src_lod, nir_imm_int(&b, 0));
-            nir_def_init(&tex->instr, &tex->def, 4, intr->def.bit_size);
-            nir_builder_instr_insert(&b, &tex->instr);
-            nir_def_rewrite_uses(&intr->def,
-               nir_trim_vector(&b, &tex->def, intr->def.num_components));
-            nir_instr_remove(instr);
+            /* Storage reads retain memory semantics even without coherent
+             * or volatile. A pure texture fetch can move past an in-place
+             * image write and read the new sample instead of the old one.
+             * Keep the memory opcode while selecting the native read heap. */
+            nir_def *set = nir_load_descriptor_set_agx(&b,
+               nir_intrinsic_desc_set(handle));
+            nir_def *offset = nir_iadd_imm(&b, handle->src[0].ssa,
+               AGX_G17P_SAMPLED_HEAP_INDEX_OFFSET);
+            nir_def *address = nir_iadd(&b, set, nir_u2u64(&b, offset));
+            nir_def *index = nir_load_global_constant(&b, 1, 32, address,
+               .align_mul = 4);
+            nir_rewrite_image_intrinsic(intr, nir_u2u64(&b, index),
+                                         nir_image_intrinsic_type_default);
+            nir_intrinsic_set_range_base(intr, 0);
+            nir_intrinsic_set_image_dim(intr, dim);
+            nir_intrinsic_set_image_array(intr, array);
+            native_image_reads++;
             progress = true;
          }
       }

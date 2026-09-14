@@ -1,0 +1,26 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.pipeline.shader_object_linked_binary.multisample.storage_image.64x64_1.r8g8b8a8_unorm.samples_2",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed28-signed-corrected",
+      "--deqp-case=dEQP-VK.pipeline.shader_object_linked_binary.multisample.storage_image.64x64_1.r8g8b8a8_unorm.samples_2",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T161605706585Z-cts28-image-read-order/cts/000/result.qpa"
+    ],
+    "boot_id": "15d81d37-45d1-42b3-ada6-fe3160541e0d",
+    "status": "Pass",
+    "started_unix": 1789402567.0723324,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.shader_object_linked_binary.multisample.storage_image.64x64_1.r8g8b8a8_unorm.samples_2",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.7154800949999753,
+    "finished_unix": 1789402567.7928994,
+    "pid": 1620
+  }
+]

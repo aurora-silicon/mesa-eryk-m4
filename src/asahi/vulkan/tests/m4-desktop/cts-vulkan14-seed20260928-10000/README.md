@@ -442,3 +442,24 @@ Installed library SHA256:
 Guarded run peak: 59 C. Cumulative ledger14: **4,647 Pass / 11 Fail /
 5,342 optional NotSupported**; **68 original failures resolved** across
 builds and attempts. No full regression or conformance claim.
+
+## Preserve storage-image read ordering
+
+`20260914T161605706585Z-cts28-image-read-order` passes the original two-sample
+RGBA8 storage-image case. Its compute shader reads sample 0 and sample 1,
+then swaps them. The native lowering converted ordinary image reads to pure
+texture fetches, allowing sample 1's read to move after its overwrite.
+Retain the image-load intrinsic and memory scheduling class while choosing
+the native heap index. No extra submission waits or CPU copies are added.
+
+The reusable `../multisample-probe.c` now supports `M4_MSAA_IMAGE_STORE=1`
+(invert red with compute image loads/stores) and additionally
+`M4_MSAA_ROTATE=1` (swap two samples). Both small Zink probes passed even
+before the fix; the saved CTS compiler input and its instruction order
+identified the actual bug. The 4-sample llvmpipe inversion reference passed.
+Hardware probes and CTS used the mandatory watchdog and thermal guard.
+
+Library SHA256 `ef609a76e1ef74cea7068cfe6b7bfa516638c1fd12a92a91c9976da0f6bcd36e`.
+CTS peak 59.25 C. Ledger15: **4,648 Pass / 10 Fail / 5,342 optional
+NotSupported**, **69 originally failing/crashing/timing-out cases resolved**.
+Cumulative evidence across builds; no broad regression rerun.
