@@ -4002,7 +4002,10 @@ agx3_emit_native_mrt_eot(struct util_dynarray *emission,
          const unsigned slot = rt - first + 1;
          uint8_t bytes[AGX3_MAX_WORDS * 2], len;
          const struct agx3_field_kv pack[] = {
-            {9,5},{10,2},{12,slot},{5,8*rt+(layered ? 6 : 4)},{23,3},{24,1},
+            /* Multisample IMGWBLK takes the packed tile offset in its
+             * fourth staging word, as in the native single-target MS EOT.
+             * Putting it in the ordinary 2D word selects offset zero. */
+            {9,5},{10,2},{12,slot},{5,8*rt+((layered || ms) ? 6 : 4)},{23,3},{24,1},
             {17,4*rt+4},{38,1},{37,1},{52,2},{51,1},
             {74,8},{75,16},{76,7},{77,24},
          };

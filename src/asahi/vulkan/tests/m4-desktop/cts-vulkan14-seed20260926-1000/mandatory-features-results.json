@@ -1,0 +1,26 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.info.device_mandatory_features",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.info.device_mandatory_features",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T080816963991Z-cts26-mandatory-features/cts/000/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Pass",
+    "started_unix": 1789373298.1925018,
+    "eligibility": {
+      "case": "dEQP-VK.info.device_mandatory_features",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Passed",
+    "returncode": 0,
+    "seconds": 0.05693284599965409,
+    "finished_unix": 1789373298.2544742,
+    "pid": 4230
+  }
+]

@@ -1,0 +1,26 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.pipeline.shader_object_unlinked_spirv.multisample.misc.dynamic_rendering.basic.r8g8b8a8_unorm_r16g16b16a16_sfloat_r32g32b32a32_uint_d32_sfloat_s8_uint.2x.ds_resolve_max.whole_framebuffer.default",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.pipeline.shader_object_unlinked_spirv.multisample.misc.dynamic_rendering.basic.r8g8b8a8_unorm_r16g16b16a16_sfloat_r32g32b32a32_uint_d32_sfloat_s8_uint.2x.ds_resolve_max.whole_framebuffer.default",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T080712096128Z-cts26-ms-offset/cts/000/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Pass",
+    "started_unix": 1789373233.3676693,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.shader_object_unlinked_spirv.multisample.misc.dynamic_rendering.basic.r8g8b8a8_unorm_r16g16b16a16_sfloat_r32g32b32a32_uint_d32_sfloat_s8_uint.2x.ds_resolve_max.whole_framebuffer.default",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.6135417000000416,
+    "finished_unix": 1789373233.9862711,
+    "pid": 4144
+  }
+]

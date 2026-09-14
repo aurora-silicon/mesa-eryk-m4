@@ -169,6 +169,32 @@ TEST_F(AGX3PackBinary, MixedFiveTargetEOTUsesIndependentTypedStores)
    EXPECT_EQ(b->shader->agx3_staging_halfs, 40);
 }
 
+TEST_F(AGX3PackBinary, MultisampleMRTUsesNativePackedOffsetSlot)
+{
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+   b->shader->stage = MESA_SHADER_COMPUTE;
+   agx_get_sr_to(b, agx_register(0, AGX_SIZE_32), AGX_SR_THREAD_POSITION_IN_GRID_X);
+   agx_get_sr_to(b, agx_register(2, AGX_SIZE_32), AGX_SR_THREAD_POSITION_IN_GRID_Y);
+   agx_index coords = agx_register(0, AGX_SIZE_32);
+   coords.channels_m1 = 1;
+   for (unsigned rt = 0; rt < 2; ++rt) {
+      key.native_eot_formats[rt] = PIPE_FORMAT_R16G16B16A16_FLOAT;
+      agx_mov_imm_to(b, agx_register(4, AGX_SIZE_32), rt ? 0 : 8);
+      agx_block_image_store(b, agx_immediate(0), agx_immediate(rt),
+                            agx_register(4, AGX_SIZE_32), coords,
+                            AGX_FORMAT_F16, AGX_DIM_2D_MS, true);
+   }
+   agx_stop(b);
+   const auto result = pack(b);
+   /* First target must retain the independent native MS PACK_IMGWIR word
+    * from G16MultisampleEOT_rg16f, including staging half 6, not half 4. */
+   const uint8_t native[] = {
+      0x97,0x05,0x54,0x06,0x00,0x08,0x00,0x00,0xd0,0x40,0x10,0x00,
+   };
+   EXPECT_NE(std::search(result.begin(), result.end(), std::begin(native),
+                         std::end(native)), result.end());
+}
+
 TEST_F(AGX3PackBinary, TileStoreMovesFixedHighEpilogInputToLowRegisters)
 {
    agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);

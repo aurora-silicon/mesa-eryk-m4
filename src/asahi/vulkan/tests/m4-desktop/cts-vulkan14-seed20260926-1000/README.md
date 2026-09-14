@@ -72,3 +72,19 @@ Hardware evidence: `_provenance/experiments/20260914T080404534872Z-cts26-scaled-
 Peak 56.75 C; original CTS source and binary restored after building.
 Resolved: **46/47** (33 Mesa fixes, 13 CTS corrections). The mixed MRT MSAA
 case remains a real driver mismatch. These are not 46 unmodified-CTS passes.
+
+## Multisample MRT export offset ABI
+
+The MRT EOT used the single-sample 2D staging word for packed imageblock
+offsets. G16G multisample IMGWBLK consumes that offset in the fourth staging
+word, as independently witnessed by the native single-target MS builtin.
+Use that slot for every multisample target, preserving selectors and sample
+addressing. This repairs nonzero tile offsets; the zero-offset integer target
+was already correct. The host check retains the native PACK_IMGWIR bytes.
+
+The original mixed RGBA8/RGBA16F/RGBA32U, 2x, depth/stencil resolve case now
+Passes all attachment comparisons. Evidence:
+`_provenance/experiments/20260914T080712096128Z-cts26-ms-offset`, peak 56.5 C.
+**All 47 original failures resolved: 34 Mesa fixes and 13 CTS corrections.**
+The separate unmodified `dEQP-VK.info.device_mandatory_features` check also
+Passes (56.25 C); format/limit skip review remains separate.
