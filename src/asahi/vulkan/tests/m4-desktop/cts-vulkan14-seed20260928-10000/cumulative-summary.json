@@ -1,0 +1,157 @@
+{
+  "selected": 10000,
+  "counts": {
+    "Pass": 4619,
+    "NotSupported": 5342,
+    "Fail": 39
+  },
+  "inputs": [
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-seed20260928-10000/run1/results.json",
+      "sha256": "1d56ffa3d1007b76d5e09ec607b28fbebe33f0f0c795aeea01e41f8b5eddef1d"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T124908799010Z-cts28-crash-isolate/remote/cts/results.json",
+      "sha256": "1b4779b85286431c2a65ece34bf47584f792eabcfd335a9abc21ac753949179a"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-seed20260928-10000/crash-prefix-run/results.json",
+      "sha256": "72c3112accaf19be569386847bcfd2abf817b2adfffc4a1e6372f476543f1214"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-seed20260928-10000/interrupted-isolate-run/results.json",
+      "sha256": "def4ab1e9f1facf4f8926662005513e48bc16722556fd07ad340fa6399235c6e"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T125910939877Z-cts28-render-timestamp/remote/cts/results.json",
+      "sha256": "e436c885ff4f4266d3b7dac873715beddbe06d9b7b5449131efc4fd592a88f12"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T125934545830Z-cts28-extr/remote/cts/results.json",
+      "sha256": "26f131cc937ffcb9558f87bcf3d30a5b261296b6667d49106fd82093285545a2"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T125945901211Z-cts28-render-timestamp-normal/remote/cts/results.json",
+      "sha256": "4f0782306ddf121f02d13162b48a2c8dc21729310c9b74dd322290b0f31972e6"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-seed20260928-10000/continuation1-run/reclassified-results.json",
+      "sha256": "6a64f345b35e41ad352f2efd375c9df2e0824ec8048baf527a5f716c504607f2"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T130412322900Z-cts28-gs-half/remote/cts/results.json",
+      "sha256": "bbe00a9721d0ef253945ac1742cafb125c6b01b97a86600c0b2a909fc3a2ef8d"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-seed20260928-10000/continuation2-run/results.json",
+      "sha256": "9865dae80d5c1ff9761208cfc0d8767ebe5aa8eead1766a2a1f6b280022dc30d"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-seed20260928-10000/continuation3-run/results.json",
+      "sha256": "7ea1f2e349b737f607718a83db7444a4fa932c3553f87f2f4dac6c54e82ffd8b"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T131020684884Z-cts28-small/remote/cts/results.json",
+      "sha256": "961ad116a72029d34aaf64afe4b40ab753f9281f17ebe8f54f1fd51a023d7a5d"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-seed20260928-10000/continuation3b-run/results.json",
+      "sha256": "0c45ea5ec9f2a463c05645dd36a60331c0e38fffd960aeaae100fa4c54b645ce"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-seed20260928-10000/continuation3c-run/results.json",
+      "sha256": "dda26b62cef0a2e51114db35a762895153411bb196c44bc7a46655b5d507b55c"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-seed20260928-10000/continuation4-run/results.json",
+      "sha256": "67012a8810a214e27a7d962b17f7510ae036a5205b8d798e00546ed131f5772b"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T132049350904Z-cts28-offset-sample/remote/cts/results.json",
+      "sha256": "d0f1a268983072f9d0509b4b006b59c08992fa14cf0c70e8d3facfa909b95c59"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T132740745232Z-cts28-sample-offset-fix2/remote/cts/results.json",
+      "sha256": "083c32b65acb75790dcb2981665b9346c3fb827522d91627b2da12337236c86b"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-seed20260928-10000/continuation4b-run/results.json",
+      "sha256": "effa9a33ca57472c0890886d1bb5909a3b82cc10a9d164d7b29cb1f9e704f8a0"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T133026416664Z-cts28-fault979-isolate/remote/cts/results.json",
+      "sha256": "0591dd3e6de2b483d5833cd380ac28a9526f17f503935abc0b8aceb4de59659a"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-seed20260928-10000/continuation5-run/results.json",
+      "sha256": "9f298e87822b33607e28ad24183a2202fe9e6ce90cff69ff6e51beccd277536d"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T133501967450Z-cts28-array-coverage/remote/cts/results.json",
+      "sha256": "b0608c7d68b064a053d1ccd59ad08220c3df14a4c6e77967c2be2b636dd52eb8"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-seed20260928-10000/continuation6-run/results.json",
+      "sha256": "fd9e5c516355cb8308d13ac3951eb3b9d15fdca0bdb309689ec872771d9cf4a1"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T133907327545Z-cts28-wsi-isolate/remote/cts/results.json",
+      "sha256": "083042aaf2e2cc228a2827f2ef84542f358e1e42644caddcc65de7af8c3a40ac"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T134241765993Z-cts28-wsi-greeter-fixed/remote/cts/results.json",
+      "sha256": "487688e9dfd794df0318e2823bf9dc0d6cd40d31d815dccf483d4ed29c539c6c"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T134408615911Z-cts28-compiler-next/remote/cts/results.json",
+      "sha256": "038f7c38292d9228753077713fa54e795c3e9578cdb5bf2dcd668a542174d748"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T134439006110Z-cts28-wsi-setup-fixed/remote/cts/results.json",
+      "sha256": "8be886df2ea93df7ca0da3f155dd23e94d7115b1d045f62ca55ce41ea85260ef"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T134656718933Z-cts28-quad-bias/remote/cts/results.json",
+      "sha256": "0c4088ac001efecc01fe8b97ad5b4fe757c809e9ac3a656442fc6936ffd5374f"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T134844278081Z-cts28-tile-diagnostics/remote/cts/results.json",
+      "sha256": "acdd7a7a1434b7639a0acc02903395560df4fd20ec818567886778c89b4d3d01"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T135242005531Z-cts28-copy-index/remote/cts/results.json",
+      "sha256": "648c97e34c8370923b2721185a4481e33230d3b895a62d1cd121681c00f05bd4"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T135918331855Z-cts28-sample-tile-and-copy/remote/cts/results.json",
+      "sha256": "1588e75465d93ef45376fa0b0adc67e754000db6cc64d44fe49e04b98e1e9983"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T140113205148Z-cts28-sample-epilog/remote/cts/results.json",
+      "sha256": "86455c15f19ece99fee96d5bbc6fb344c0e4a22b699cac25bcf430ab4c8f158f"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T140847534246Z-cts28-tile-wait/remote/cts/results.json",
+      "sha256": "ccf3d524c13df14db6f54f4b869007b87534c2d776240281ce3abb941970d75e"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T141014257283Z-cts28-numeric-shaders/remote/cts/results.json",
+      "sha256": "5c9efef26871535de64726b5b556ca031883dd637778f70738a5621777edebb3"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T141855171884Z-cts28-quad-live/remote/cts/results.json",
+      "sha256": "a29a468777cdd30dd6a64a8e7b8caaa8ee23b63e0f66803f7558a5c9249c2dcb"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T142215157428Z-cts28-indirect-groups/remote/cts/results.json",
+      "sha256": "567fa884c098fba79614dbdb40c3789b00a049d90191fe7815e308d7ecb45fe4"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T142634588886Z-cts28-query-and-drm/remote/cts/results.json",
+      "sha256": "60232245b165060782d50e71c6be6d7aa9d3ba28f13ede8fdbe74993f75b1459"
+    }
+  ],
+  "cases_sha256": "22dbfe086b845a35ac2e396cf0c4088589443cb566ffd50ad3a4512e3cc57339",
+  "resolved_failures": 40,
+  "limitation": "Cumulative evidence across builds and attempts; not an uninterrupted same-build run."
+}

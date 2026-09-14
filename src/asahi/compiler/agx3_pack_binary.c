@@ -1105,7 +1105,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
     * fit. Only unstaged 2D samples retain SMP's narrower coordinate bound. */
    const bool fixed_coord = gradient || explicit_lod || bias || array || cube ||
       three_d || shadow || (enc == AGX_ISA_ENCODING_AGX3B && I->src[0].value > 60);
-   const unsigned coord_components = cube && array ? 4 :
+   const unsigned coord_components = I->query_lod ? 2 : cube && array ? 4 :
                                      (array || cube || three_d) ? 3 : 2;
    const unsigned max_coord = fixed_coord ? 256 - 2 * coord_components : 60;
    if (I->nr_dests != 1 || I->nr_srcs != 6 ||
@@ -1211,7 +1211,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
         !agx3_append(emission, bytes, len)))
       return false;
 
-   if ((array || cube) && !(array && cube) && !array_lod &&
+   if ((array || cube) && !I->query_lod && !(array && cube) && !array_lod &&
        (!agx3_tex_stage_array_layer(enc, I->src[0].value + 4, stage_slot, 0,
                                    I->src[0].cache, I->src[0].discard,
                                    bytes, &len) ||
@@ -2697,6 +2697,7 @@ agx3_emit_subgroup_ballot(struct util_dynarray *emission,
 
    const struct agx3_subgroup_ballot_desc d = {
       .quad = quad,
+      .src_live = !I->src[0].discard,
       .type = is_float ? AGX3_SUBGROUP_BALLOT_FLOAT
                        : AGX3_SUBGROUP_BALLOT_INTEGER,
       .dest = I->dest[0].value,

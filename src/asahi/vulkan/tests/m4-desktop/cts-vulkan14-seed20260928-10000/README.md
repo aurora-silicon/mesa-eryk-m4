@@ -191,3 +191,42 @@ uses global thread counts. The original GPU-produced five-dispatch test passes
 with its exact atomic counts: `20260914T142215157428Z-cts28-indirect-groups`,
 peak 58.25 C. Library SHA256
 `894fe461fca27a0d463a3675d07679c422aa10dc63d7caf5221123b3275cac7f`.
+
+## Cumulative checkpoint and capability audit
+
+All 10,000 cases have terminal observations: 4,619 Pass, 39 Fail and 5,342
+NotSupported. Forty original Fail/Crash/Timeout outcomes now pass. This ledger
+combines different builds and targeted retests, not one uninterrupted timing
+or conformance run. All 5,342 current skips were reviewed against the pinned
+registry, CTS gates and saved device profile; none is currently classified as
+NotSupportedButShouldBeSupported. The compressed per-case audit retains each
+exact reason and rationale. Optional means outside this advertised capability
+set, not that support cannot be implemented later.
+
+The corrected CTS direct-DRM test no longer enables the device extension
+VK_EXT_physical_device_drm on its instance. It reaches the real platform check:
+No DRM primary device (`20260914T142634588886Z-cts28-query-and-drm`). The
+corrected binary and patch hashes are in `cts-drm-build.json`; the preceding
+binaries and raw failures remain retained.
+
+GPU job979's concurrent fault remains unresolved even though all interrupted
+cases passed serially. A zero Crash count in the cumulative case ledger does
+not qualify that concurrency/recovery path. No full regression run is claimed.
+
+## Integer reduction lifetimes and array LOD queries
+
+Two further original comparisons pass in
+`20260914T143340068946Z-cts28-subgroup-and-array`, peak 58.25 C:
+signed 64-bit vertex subgroup OR and 1D-array textureQueryLod with a nonzero
+base level. OR/XOR native witnesses preserve reused inputs with field25;
+ballot preserves a live input by leaving field27 clear. Native references:
+`build/cts28-native/subgroup-live4` and `subgroup-live5`. Boolean XOR and the
+geometry ballot comparison still fail and are not counted as fixed.
+
+LOD queries have no layer coordinate, but array descriptors still require
+array query mode (field77=1, field37=1). Normalizing to a non-array instruction
+returned NaNs. Use the independently compiled G16G array-query form and retain
+the descriptor and mip range. The new native golden vector passes with the
+texture-core unit checks (6,310 checks). Native reference:
+`build/cts28-native/array-query`, fragment text-1220 byte126.
+Library SHA256: `1091bfb8a1f78d738f23e3b6fc28284029230f49ac0030df4e2140050da881af`.

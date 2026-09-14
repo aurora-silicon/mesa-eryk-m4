@@ -206,7 +206,8 @@ agx3_subgroup_encode_ballot(enum agx_isa_encoding enc,
       ADD_FIELD(11, 1);
    ADD_FIELD(23, 2);
    ADD_FIELD(24, 2);
-   ADD_FIELD(27, 1);
+   if (!d->src_live)
+      ADD_FIELD(27, 1);
 
    const char *mnemonic;
    uint16_t cond_field, invert_field;
@@ -323,13 +324,10 @@ agx3_subgroup_encode_reduce(enum agx_isa_encoding enc,
    } else {
       ADD_FIELD(23, 2);
       ADD_FIELD(24, 2);
-      /* Preserve live inputs for prefix correction, quad reductions and
-       * unsigned min/max (including subgroup election). Native G16G uses
-       * f25 for these live reads and f27 for their final consumption. */
-      ADD_FIELD(!is_c(enc) && d->src_live &&
-                (d->quad || d->op == AGX3_SUBGROUP_REDUCE_IADD ||
-                 d->op == AGX3_SUBGROUP_REDUCE_UMIN ||
-                 d->op == AGX3_SUBGROUP_REDUCE_UMAX) ? 25 : 27, 1);
+      /* Preserve live inputs for every integer reduction, including bitwise
+       * operations. Native G16G uses f25 for live reads and f27 for final
+       * consumption; an OR input can also feed a later shuffle or check. */
+      ADD_FIELD(!is_c(enc) && d->src_live ? 25 : 27, 1);
       if (f->integer_class == 1)
          ADD_FIELD(28, 1);
       if (is_c(enc)) {

@@ -21,12 +21,12 @@ g17p_sample_shape(const nir_tex_instr *tex)
       return false;
    if ((tex->op != nir_texop_tex && tex->op != nir_texop_txb &&
        tex->op != nir_texop_txl && !gather && !query && !gradient) ||
-       (query && (three_d || cube || tex->is_array || tex->is_shadow)) ||
+       (query && (three_d || cube || tex->is_shadow)) ||
        (tex->sampler_dim != GLSL_SAMPLER_DIM_2D && !three_d &&
         !(cube &&
           (tex->op == nir_texop_tex || tex->op == nir_texop_txl || gather))) ||
        tex->is_sparse ||
-       tex->coord_components != (cube && tex->is_array ? 4 :
+       tex->coord_components != (query ? 2 : cube && tex->is_array ? 4 :
                                 (tex->is_array || cube || three_d) ? 3 : 2) ||
        (tex->backend_flags & ~(AGX_TEXTURE_FLAG_CLAMP_TO_0 |
                                AGX_TEXTURE_FLAG_NO_CLAMP)) != 0 ||

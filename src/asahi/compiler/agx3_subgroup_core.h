@@ -61,6 +61,7 @@ enum agx3_subgroup_ballot_type {
 
 struct agx3_subgroup_ballot_desc {
    bool quad;
+   bool src_live;
    enum agx3_subgroup_ballot_type type;
    uint16_t dest;
    uint16_t src;

@@ -170,7 +170,7 @@ sample_ok(enum agx_isa_encoding enc, const struct agx3_tex_sample_desc *d)
       return false;
 
    if (d->query_lod &&
-       (enc != AGX_ISA_ENCODING_AGX3B || d->array || d->cube || d->three_d ||
+       (enc != AGX_ISA_ENCODING_AGX3B || d->cube || d->three_d ||
         d->shadow || d->gather || d->sample_offset || d->mask != 3 ||
         d->width != AGX3_TEX_W32 || d->lod != AGX3_TEX_LOD_AUTO))
       return false;
@@ -319,6 +319,8 @@ agx3_tex_encode_sample(enum agx_isa_encoding enc,
    ov[n++] = (struct agx3_field_kv)KV(78, 2);  /* filtered sample */
    if (d->query_lod)
       ov[n++] = (struct agx3_field_kv)KV(146, 1);
+   if (d->query_lod && d->array)
+      ov[n++] = (struct agx3_field_kv)KV(37, 1); /* implicit layer zero */
    if (d->gather) {
       ov[n++] = (struct agx3_field_kv)KV(144, 1);
       ov[n++] = (struct agx3_field_kv)KV(145, d->gather_component);
@@ -333,7 +335,7 @@ agx3_tex_encode_sample(enum agx_isa_encoding enc,
    if (d->shadow)
       ov[n++] = (struct agx3_field_kv)KV(143, 1);
    if (d->array)
-      ov[n++] = (struct agx3_field_kv)KV(77, 2); /* register array layer */
+      ov[n++] = (struct agx3_field_kv)KV(77, d->query_lod ? 1 : 2); /* no layer for LOD queries */
    ov[n++] = (struct agx3_field_kv)KV(94 + tk, tk == 1 ? d->texture : d->texture_value);
    ov[n++] = (struct agx3_field_kv)KV(123 + sk, sk == 1 ? d->sampler : d->sampler_value);
    if (d->texture_kill)
