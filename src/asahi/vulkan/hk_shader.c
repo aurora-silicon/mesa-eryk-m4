@@ -1337,8 +1337,6 @@ hk_lower_native_texture_offset(const nir_instr *instr, UNUSED const void *data)
       return false;
    return tex->op == nir_texop_txf ||
           (tex->is_array && tex->op == nir_texop_txd) ||
-          (tex->sampler_dim == GLSL_SAMPLER_DIM_3D &&
-           !nir_src_is_const(tex->src[offset].src)) ||
           (tex->op == nir_texop_tg4 &&
            (tex->is_shadow || !nir_src_is_const(tex->src[offset].src)));
 }
@@ -1456,6 +1454,15 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
    }
    NIR_PASS(_, nir, agx_nir_lower_texture_early_with_2d_robustness,
             true /* support_lod_bias */, agx_chip_uses_hal200_ioto(dev->dev.chip));
+   if (dev->dev.chip == AGX_CHIP_G16G) {
+      /* Early lowering expands textureGatherOffsets into individual gathers.
+       * Lower offsets on those new shadow gathers after projection, before
+       * descriptor lowering consumes the texture-size queries we create. */
+      const nir_lower_tex_options offsets = {
+         .lower_offset_filter = hk_lower_native_texture_offset,
+      };
+      NIR_PASS(_, nir, nir_lower_tex, &offsets);
+   }
 
    struct hk_instance *instance = hk_physical_device_instance(
       (struct hk_physical_device *)dev->vk.physical);

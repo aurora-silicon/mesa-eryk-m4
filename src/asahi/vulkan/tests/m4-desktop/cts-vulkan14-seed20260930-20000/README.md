@@ -8,8 +8,8 @@ corrections. The four completed broad segments took 558.673 seconds of runner
 time. Original outcome: 28 Fail, 2 Crash, 1 Timeout, 9,124 Pass, 10,845 NotSupported.
 Skip requirements are still being reviewed; no conformance claim.
 
-Cumulative targeted fixes resolve 21 original failures/crashes. Both original
-compiler crashes now pass. There are still 9 failing cases and one timeout.
+Cumulative targeted fixes resolve 24 original failures/crashes. Both original
+compiler crashes now pass. There are still 6 failing cases and one timeout.
 The timeout remains unresolved despite an isolated pass: hitting its 60-second
 bound under contention counts as failure.
 
@@ -53,3 +53,8 @@ shadow and integer sampling (0.609 seconds, peak 56.75 C, cache disabled).
 Register offsets use indexed native descriptors and a zero hardware bias.
 Select that bias after NIR folding, which removes a semantic txb bias of zero.
 The compiler replay and each original CTS case pass.
+
+Both projected 3D vertex offset cases and the shadow-array gather offset
+case now pass (1.010 seconds, peak 56.75 C, cache disabled). Preserve runtime
+3D offsets for the native operand bank rather than adding them before
+projection. Lower expanded shadow gather offsets after the early gather pass.
