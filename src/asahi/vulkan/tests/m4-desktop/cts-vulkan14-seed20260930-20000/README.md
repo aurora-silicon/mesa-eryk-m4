@@ -8,10 +8,10 @@ corrections. The four completed broad segments took 558.673 seconds of runner
 time. Original outcome: 28 Fail, 2 Crash, 1 Timeout, 9,124 Pass, 10,845 NotSupported.
 Skip requirements are still being reviewed; no conformance claim.
 
-Cumulative targeted fixes resolve 29 original failures/crashes. Both original
-compiler crashes now pass. There are still 1 failing case and one timeout.
-The timeout remains unresolved despite an isolated pass: hitting its 60-second
-bound under contention counts as failure.
+Cumulative targeted fixes resolve 30 original failures/crashes. Both original
+compiler crashes now pass. One rendering case still fails; both crashes and the timeout are resolved.
+The original 60-second timeout is retained in the initial report. Its fix is
+validated under contention below; an isolated pass alone was not accepted.
 
 The first fixes covered narrow absolute value, vertex array texel fetch, and
 spilled vertex exports. The next fixes cover quad ballots, rematerialization
@@ -87,3 +87,18 @@ and clears byte indices using the actual indirect count and the existing heap;
 there is no fixed draw-count cap or CPU readback of indirect arguments. This
 also replaces the separate CPU allocation for direct null-index draws.
 Evidence: 20260914T205745556036Z-cts30-null-index2.
+
+Kernel commit 6254d3bf99da removes redundant clearing of fresh zero-filled GEM
+shmem backing and leaves CPU mappings lazy. Every allocation and firmware owner
+is still fresh. Twenty concurrent cold-cache repetitions all pass in
+35.06–36.67 seconds each, compared with the prior 43.68–45.59 second baseline.
+Peak 59 C. The optimized module SHA256 is
+96097493b0ccfd52939e5c9f2f8c4ebcc32ff779ee832f7ef9a77232d73d7a5b.
+A targeted contention check then used the original timed-out worker's 50 cases
+plus the 19 slowest other passing cases from the initial run: 47 Pass and 22
+NotSupported, no errors/timeouts, 12.468 seconds with 20 workers and cache off.
+The original timed-out case passed in 11.604 seconds. This is a focused workload
+check across fresh processes, not a replay of the original scheduling order or
+a full 20k regression. Both runs retain the 60-second limit; no bound was raised.
+Evidence: 20260914T210137647967Z-cts30-timeout-cold20-no-doublezero and
+20260914T210412754200Z-cts30-timeout-context69.
