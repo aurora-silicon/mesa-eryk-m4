@@ -22,3 +22,11 @@ attempts are under the workspace build/cts-vulkan14-ordered directory.
 All 24 correctness failures cover the stencil aspect of D16S8/D24S8 MSAA
 copies at 2x/4x across whole/partial/array variants. See stencil-failures.json.
 No driver crash/reboot; peak exposed temperature 60.25 C. Execution continues.
+
+Stencil fix: common meta copy views can now preserve depth/stencil aspect
+selection when those aspects have separate backing allocations. Honeykrisp
+enables this for split depth/stencil images. Previously the internal R8 view
+was created with COLOR, selecting the depth plane. All 24 original failures
+pass in cts-b1-stencil-aspect (1.212s runner time, peak60.25 C). No regression
+suite was run, as requested. The user stopped the broad run at 30k; partial
+segment4 evidence is retained separately and excluded from that checkpoint.

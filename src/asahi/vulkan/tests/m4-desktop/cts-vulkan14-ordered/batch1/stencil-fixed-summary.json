@@ -1,0 +1,22 @@
+{
+  "selected": 24,
+  "recorded": 24,
+  "completed": 24,
+  "counts": {
+    "Pass": 24
+  },
+  "classifications": {
+    "unclassified": 24
+  },
+  "elapsed_seconds": 4.181943439994939,
+  "preparation_seconds": 1.35406662299647,
+  "runner_seconds": 1.2116889060000062,
+  "jobs": 4,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "cf0b221224341a1e8d3e1a61c589691a5031cdf103d721a55e6a3c4db8cec747",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T222448922961Z-cts-b1-stencil-aspect",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 60.25
+}

@@ -1,0 +1,386 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.array_to_array.d16_unorm_s8_uint_S_2_bit",
+    "boot_id": "d4c8e266-fa04-4024-86af-294d3125b78b",
+    "runner_status": "Pass",
+    "seconds": 0.12475416,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.array_to_array.d16_unorm_s8_uint_S_2_bit",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "pass",
+    "qpa": "deqp-runner/c2.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.array_to_array.d16_unorm_s8_uint_S_4_bit",
+    "boot_id": "d4c8e266-fa04-4024-86af-294d3125b78b",
+    "runner_status": "Pass",
+    "seconds": 0.13846819,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.array_to_array.d16_unorm_s8_uint_S_4_bit",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "pass",
+    "qpa": "deqp-runner/c3.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.array_to_array.d24_unorm_s8_uint_S_2_bit",
+    "boot_id": "d4c8e266-fa04-4024-86af-294d3125b78b",
+    "runner_status": "Pass",
+    "seconds": 0.115764104,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.array_to_array.d24_unorm_s8_uint_S_2_bit",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "pass",
+    "qpa": "deqp-runner/c1.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 3,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.array_to_array.d24_unorm_s8_uint_S_4_bit",
+    "boot_id": "d4c8e266-fa04-4024-86af-294d3125b78b",
+    "runner_status": "Pass",
+    "seconds": 0.11439069,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.array_to_array.d24_unorm_s8_uint_S_4_bit",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "pass",
+    "qpa": "deqp-runner/c1.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 4,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.partial.d16_unorm_s8_uint_S_2_bit",
+    "boot_id": "d4c8e266-fa04-4024-86af-294d3125b78b",
+    "runner_status": "Pass",
+    "seconds": 0.09841509,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.partial.d16_unorm_s8_uint_S_2_bit",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "pass",
+    "qpa": "deqp-runner/c1.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 5,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.partial.d16_unorm_s8_uint_S_4_bit",
+    "boot_id": "d4c8e266-fa04-4024-86af-294d3125b78b",
+    "runner_status": "Pass",
+    "seconds": 0.10636523,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.partial.d16_unorm_s8_uint_S_4_bit",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "pass",
+    "qpa": "deqp-runner/c2.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 6,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.partial.d24_unorm_s8_uint_S_2_bit",
+    "boot_id": "d4c8e266-fa04-4024-86af-294d3125b78b",
+    "runner_status": "Pass",
+    "seconds": 0.10581147,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.partial.d24_unorm_s8_uint_S_2_bit",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "pass",
+    "qpa": "deqp-runner/c3.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 7,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.partial.d24_unorm_s8_uint_S_4_bit",
+    "boot_id": "d4c8e266-fa04-4024-86af-294d3125b78b",
+    "runner_status": "Pass",
+    "seconds": 0.10522387,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.partial.d24_unorm_s8_uint_S_4_bit",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 8,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.whole.d16_unorm_s8_uint_general_general_S_2_bit",
+    "boot_id": "d4c8e266-fa04-4024-86af-294d3125b78b",
+    "runner_status": "Pass",
+    "seconds": 0.10104822,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.whole.d16_unorm_s8_uint_general_general_S_2_bit",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "pass",
+    "qpa": "deqp-runner/c3.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 9,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.whole.d16_unorm_s8_uint_general_general_S_4_bit",
+    "boot_id": "d4c8e266-fa04-4024-86af-294d3125b78b",
+    "runner_status": "Pass",
+    "seconds": 0.09212416,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.whole.d16_unorm_s8_uint_general_general_S_4_bit",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "pass",
+    "qpa": "deqp-runner/c1.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 10,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.whole.d16_unorm_s8_uint_general_optimal_S_2_bit",
+    "boot_id": "d4c8e266-fa04-4024-86af-294d3125b78b",
+    "runner_status": "Pass",
+    "seconds": 0.38261065,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.whole.d16_unorm_s8_uint_general_optimal_S_2_bit",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "pass",
+    "qpa": "deqp-runner/c1.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 11,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.whole.d16_unorm_s8_uint_general_optimal_S_4_bit",
+    "boot_id": "d4c8e266-fa04-4024-86af-294d3125b78b",
+    "runner_status": "Pass",
+    "seconds": 0.09592721,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.whole.d16_unorm_s8_uint_general_optimal_S_4_bit",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "pass",
+    "qpa": "deqp-runner/c3.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 12,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.whole.d16_unorm_s8_uint_optimal_general_S_2_bit",
+    "boot_id": "d4c8e266-fa04-4024-86af-294d3125b78b",
+    "runner_status": "Pass",
+    "seconds": 0.09657834,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.whole.d16_unorm_s8_uint_optimal_general_S_2_bit",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 13,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.whole.d16_unorm_s8_uint_optimal_general_S_4_bit",
+    "boot_id": "d4c8e266-fa04-4024-86af-294d3125b78b",
+    "runner_status": "Pass",
+    "seconds": 0.40987837,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.whole.d16_unorm_s8_uint_optimal_general_S_4_bit",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "pass",
+    "qpa": "deqp-runner/c3.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 14,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.whole.d16_unorm_s8_uint_optimal_optimal_S_2_bit",
+    "boot_id": "d4c8e266-fa04-4024-86af-294d3125b78b",
+    "runner_status": "Pass",
+    "seconds": 0.4019991,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.whole.d16_unorm_s8_uint_optimal_optimal_S_2_bit",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "pass",
+    "qpa": "deqp-runner/c2.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 15,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.whole.d16_unorm_s8_uint_optimal_optimal_S_4_bit",
+    "boot_id": "d4c8e266-fa04-4024-86af-294d3125b78b",
+    "runner_status": "Pass",
+    "seconds": 0.39410567,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.whole.d16_unorm_s8_uint_optimal_optimal_S_4_bit",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 16,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.whole.d24_unorm_s8_uint_general_general_S_2_bit",
+    "boot_id": "d4c8e266-fa04-4024-86af-294d3125b78b",
+    "runner_status": "Pass",
+    "seconds": 0.09306992,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.whole.d24_unorm_s8_uint_general_general_S_2_bit",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 17,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.whole.d24_unorm_s8_uint_general_general_S_4_bit",
+    "boot_id": "d4c8e266-fa04-4024-86af-294d3125b78b",
+    "runner_status": "Pass",
+    "seconds": 0.09912446,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.whole.d24_unorm_s8_uint_general_general_S_4_bit",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 18,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.whole.d24_unorm_s8_uint_general_optimal_S_2_bit",
+    "boot_id": "d4c8e266-fa04-4024-86af-294d3125b78b",
+    "runner_status": "Pass",
+    "seconds": 0.09643313,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.whole.d24_unorm_s8_uint_general_optimal_S_2_bit",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "pass",
+    "qpa": "deqp-runner/c3.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 19,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.whole.d24_unorm_s8_uint_general_optimal_S_4_bit",
+    "boot_id": "d4c8e266-fa04-4024-86af-294d3125b78b",
+    "runner_status": "Pass",
+    "seconds": 0.0942376,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.whole.d24_unorm_s8_uint_general_optimal_S_4_bit",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "pass",
+    "qpa": "deqp-runner/c1.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 20,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.whole.d24_unorm_s8_uint_optimal_general_S_2_bit",
+    "boot_id": "d4c8e266-fa04-4024-86af-294d3125b78b",
+    "runner_status": "Pass",
+    "seconds": 0.09654166,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.whole.d24_unorm_s8_uint_optimal_general_S_2_bit",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "pass",
+    "qpa": "deqp-runner/c2.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 21,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.whole.d24_unorm_s8_uint_optimal_general_S_4_bit",
+    "boot_id": "d4c8e266-fa04-4024-86af-294d3125b78b",
+    "runner_status": "Pass",
+    "seconds": 0.09842501,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.whole.d24_unorm_s8_uint_optimal_general_S_4_bit",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "pass",
+    "qpa": "deqp-runner/c2.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 22,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.whole.d24_unorm_s8_uint_optimal_optimal_S_2_bit",
+    "boot_id": "d4c8e266-fa04-4024-86af-294d3125b78b",
+    "runner_status": "Pass",
+    "seconds": 0.09593079,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.whole.d24_unorm_s8_uint_optimal_optimal_S_2_bit",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "pass",
+    "qpa": "deqp-runner/c2.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 23,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.whole.d24_unorm_s8_uint_optimal_optimal_S_4_bit",
+    "boot_id": "d4c8e266-fa04-4024-86af-294d3125b78b",
+    "runner_status": "Pass",
+    "seconds": 0.09600085,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.whole.d24_unorm_s8_uint_optimal_optimal_S_4_bit",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  }
+]

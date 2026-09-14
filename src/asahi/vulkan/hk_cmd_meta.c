@@ -1712,7 +1712,10 @@ hk_meta_copy_image2(struct vk_command_buffer *cmd, struct vk_meta_device *meta,
 static inline struct vk_meta_copy_image_properties
 hk_meta_copy_get_image_properties(struct hk_image *img)
 {
-   struct vk_meta_copy_image_properties props = {.tile_size = {16, 16, 1}};
+   struct vk_meta_copy_image_properties props = {
+      .tile_size = {16, 16, 1},
+      .depth_stencil_aspect_views = hk_split_depth_stencil(img->vk.format),
+   };
 
    if (!vk_format_is_depth_or_stencil(img->vk.format)) {
       props.color.view_format = img->vk.format;
