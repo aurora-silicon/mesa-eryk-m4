@@ -4717,6 +4717,9 @@ hk_needs_index_robustness(struct hk_cmd_buffer *cmd, struct agx_draw *draw)
     * page instead.
     */
    if (draw->index_buffer_range_B == 0) {
+      if (agx_native_graphics(&dev->dev))
+         return true;
+
       draw->index_buffer = AGX_ZERO_PAGE_ADDRESS;
       draw->index_buffer_range_B = 4;
       draw->start = 0;
@@ -5111,28 +5114,6 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
                    hk_stat_enabled(stat_c_inv) || hk_stat_enabled(stat_c_prims);
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
 
-   /* A maintenance6 null index binding reads zero indices. Native index
-    * lists cannot fetch beyond their bound span, so provide real zero-backed
-    * storage for the direct draw instead of rejecting it before robustness. */
-   if (agx_native_graphics(&dev->dev) && draw_.indexed &&
-       !agx_is_indirect(draw_.b) && !draw_.index_buffer_range_B) {
-      uint64_t size = (uint64_t)draw_.b.count[0] *
-                      agx_index_size_to_B(draw_.index_size);
-      if (size > UINT32_MAX) {
-         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_OUT_OF_DEVICE_MEMORY);
-         return;
-      }
-      struct agx_ptr zero = hk_pool_alloc(cmd, size, 4);
-      if (!zero.cpu) {
-         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_OUT_OF_DEVICE_MEMORY);
-         return;
-      }
-      memset(zero.cpu, 0, size);
-      draw_.index_buffer = zero.gpu;
-      draw_.index_buffer_range_B = size;
-      draw_.start = 0;
-   }
-
    /* Validate the index domain before robustness or geometry lowering can
     * introduce a pre-render dispatch. Robust indexed draws publish the native
     * PPP selector before their GPU-generated Index List. */
@@ -5144,9 +5125,9 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
            draw_.index_size != AGX_INDEX_SIZE_U32) ||
           ia_stats ||
           (agx_is_indirect(draw_.b)
-              ? (!draw_.b.ptr || !draw_.index_buffer ||
-                 draw_.index_buffer_range_B == 0)
-              : !agx_vdm_hal200_index_range(
+              ? (!draw_.b.ptr ||
+                 (draw_.index_buffer_range_B && !draw_.index_buffer))
+              : draw_.index_buffer_range_B && !agx_vdm_hal200_index_range(
                    draw_.index_buffer, draw_.index_buffer_range_B, draw_.start,
                    draw_.b.count[0], agx_index_size_to_B(draw_.index_size),
                    &address, &size_word))) {
@@ -5251,7 +5232,8 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
          continue;
 
       enum agx_primitive topology = cmd->state.gfx.topology;
-      if (!agx_vdm_draw_supported(dev->dev.chip, draw, topology)) {
+      if (!needs_idx_robust &&
+          !agx_vdm_draw_supported(dev->dev.chip, draw, topology)) {
          mesa_loge("Native draw rejected: topology=%u indirect=%u indexed=%u "
                    "restart=%u index-size=%u count=%u instances=%u args=%llx "
                    "index-buffer=%llx adjacency=%u",
@@ -5292,11 +5274,8 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
          cs->current = out;
 
          draw = hk_draw_as_indexed_indirect(cmd, draw);
-         if (!agx_vdm_draw_supported(dev->dev.chip, draw, topology)) {
-            vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
-            return;
-         }
-
+         /* The robustness kernel builds and validates the final index span;
+          * its input may legally have no bound indices at all. */
          size_t size_B =
             libagx_draw_robust_index_vdm_size(dev->dev.chip);
          uint64_t target = hk_cs_alloc_for_indirect(cs, size_B);

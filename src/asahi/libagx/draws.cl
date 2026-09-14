@@ -367,6 +367,22 @@ libagx_draw_robust_index(global uint32_t *vdm, global struct poly_heap *heap,
       draw.index_buffer = AGX_ZERO_PAGE_ADDRESS;
       draw.index_buffer_range_B = 4;
       draw.start = 0;
+
+      if (agx_vdm_index_list_direct_target_supported_inline(chip) &&
+          draw.b.count[0]) {
+         /* Native index lists require a backed span for every index. For an
+          * all-zero stream, byte indices preserve every invocation while
+          * minimizing the allocation. The GPU supplies indirect counts. */
+         global uchar *zeroes = NULL;
+         if (first)
+            zeroes = poly_heap_alloc(heap, draw.b.count[0]);
+         zeroes = (global uchar *)sub_group_broadcast((uintptr_t)zeroes, 0);
+         for (ulong i = tid; i < draw.b.count[0]; i += 32)
+            zeroes[i] = 0;
+         draw.index_buffer = (uintptr_t)zeroes;
+         draw.index_buffer_range_B = draw.b.count[0];
+         draw.index_size = AGX_INDEX_SIZE_U8;
+      }
    } else if (agx_direct_draw_overreads_indices(draw)) {
       constant void *in_buf = (constant void *)agx_draw_index_buffer(draw);
       uint in_size_el = agx_draw_index_range_el(draw);

@@ -8,8 +8,8 @@ corrections. The four completed broad segments took 558.673 seconds of runner
 time. Original outcome: 28 Fail, 2 Crash, 1 Timeout, 9,124 Pass, 10,845 NotSupported.
 Skip requirements are still being reviewed; no conformance claim.
 
-Cumulative targeted fixes resolve 28 original failures/crashes. Both original
-compiler crashes now pass. There are still 2 failing cases and one timeout.
+Cumulative targeted fixes resolve 29 original failures/crashes. Both original
+compiler crashes now pass. There are still 1 failing case and one timeout.
 The timeout remains unresolved despite an isolated pass: hitting its 60-second
 bound under contention counts as failure.
 
@@ -79,3 +79,11 @@ The two-case tessellation/primitive-ID run took 1.211 seconds, peak 56.75 C;
 primitive-ID verification still fails and remains open.
 Evidence: 20260914T204918017170Z-cts30-remaining-four-capture and
 20260914T205230239205Z-cts30-tess-primitive2.
+
+The maintenance6 null indexed indirect draw now passes (0.607 seconds, peak
+56.75 C). Native validation must follow index robustness lowering, whose input
+may have an empty span. For fully out-of-bounds index streams, the GPU allocates
+and clears byte indices using the actual indirect count and the existing heap;
+there is no fixed draw-count cap or CPU readback of indirect arguments. This
+also replaces the separate CPU allocation for direct null-index draws.
+Evidence: 20260914T205745556036Z-cts30-null-index2.
