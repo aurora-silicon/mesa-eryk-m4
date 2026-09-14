@@ -1143,8 +1143,12 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
        (I->mask == 0 || (I->mask & ~15u)) ||
        (I->offset && !sample_offset && !dynamic_offset) ||
        (gather && (enc != AGX_ISA_ENCODING_AGX3B ||
-                   explicit_lod || I->mask != 15)) || I->sparse)
+                   explicit_lod || I->mask != 15)) || I->sparse) {
+      fprintf(stderr, "AGX3 sample shape: lod=%u valid_lod=%u bias=%u imm=%u offset=%u literal=%u dynamic=%u compare=%u bindless_zero=%u\n",
+              I->lod_mode, valid_lod, bias, immediate, I->offset, sample_offset,
+              dynamic_offset, valid_compare, agx3_tex_imm(I->src[2], 0));
       return false;
+   }
 
    /* The witnessed copy form carries at most one producer dependency. */
    if (wait_mask & (wait_mask - 1))

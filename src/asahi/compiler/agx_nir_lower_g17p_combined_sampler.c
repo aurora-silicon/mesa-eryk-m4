@@ -10,6 +10,15 @@
 #include "nir_builder.h"
 
 static bool
+g17p_register_sample_offset(const nir_tex_instr *tex)
+{
+   const int offset = nir_tex_instr_src_index(tex, nir_tex_src_backend2);
+   return offset >= 0 && (tex->is_shadow ||
+      tex->sampler_dim == GLSL_SAMPLER_DIM_3D ||
+      !nir_src_is_const(tex->src[offset].src));
+}
+
+static bool
 g17p_sample_shape(const nir_tex_instr *tex)
 {
    const bool three_d = tex->sampler_dim == GLSL_SAMPLER_DIM_3D;
@@ -58,7 +67,8 @@ g17p_sample_shape(const nir_tex_instr *tex)
       nir_src_as_uint(tex->src[offset].src) <= 0xff;
    const bool dynamic_offset = offset >= 0 && !literal_offset &&
       !cube &&
-      (tex->op == nir_texop_txl || tex->op == nir_texop_txb || tex->op == nir_texop_txd) &&
+      (tex->op == nir_texop_tex || tex->op == nir_texop_txl ||
+       tex->op == nir_texop_txb || tex->op == nir_texop_txd) &&
       nir_src_num_components(tex->src[offset].src) == 1 &&
       nir_src_bit_size(tex->src[offset].src) == 32;
    if (tex->is_shadow != (compare >= 0) ||
@@ -246,7 +256,8 @@ agx_nir_lower_g17p_combined_sampler(
             if (instr->type != nir_instr_type_tex)
                continue;
 
-            if (sample || !g17p_sample_shape(nir_instr_as_tex(instr)))
+            if (sample || !g17p_sample_shape(nir_instr_as_tex(instr)) ||
+                g17p_register_sample_offset(nir_instr_as_tex(instr)))
                return false;
             sample = nir_instr_as_tex(instr);
          }
@@ -1248,7 +1259,8 @@ agx_nir_lower_g17p_sampled_storage(
          block_count++;
          nir_foreach_instr(instr, block) {
             if (instr->type == nir_instr_type_tex) {
-               if (sample || !g17p_sample_shape(nir_instr_as_tex(instr)))
+               if (sample || !g17p_sample_shape(nir_instr_as_tex(instr)) ||
+                g17p_register_sample_offset(nir_instr_as_tex(instr)))
                   return false;
                sample = nir_instr_as_tex(instr);
                continue;

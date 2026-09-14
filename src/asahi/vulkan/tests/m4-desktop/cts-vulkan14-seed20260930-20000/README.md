@@ -8,8 +8,8 @@ corrections. The four completed broad segments took 558.673 seconds of runner
 time. Original outcome: 28 Fail, 2 Crash, 1 Timeout, 9,124 Pass, 10,845 NotSupported.
 Skip requirements are still being reviewed; no conformance claim.
 
-Cumulative targeted fixes resolve 18 original failures/crashes. Both original
-compiler crashes now pass. There are still 12 failing cases and one timeout.
+Cumulative targeted fixes resolve 21 original failures/crashes. Both original
+compiler crashes now pass. There are still 9 failing cases and one timeout.
 The timeout remains unresolved despite an isolated pass: hitting its 60-second
 bound under contention counts as failure.
 
@@ -47,3 +47,9 @@ Half-precision geometry cosine now passes after f32 angle reduction and
 polynomial evaluation, with rounding to f16 only at the result. The six-case
 texture/trigonometry check took 0.810 seconds (one Pass, five still Fail,
 peak 59.5 C). The five texture failures remain open.
+
+All three implicit projected-offset fragment cases now pass, including
+shadow and integer sampling (0.609 seconds, peak 56.75 C, cache disabled).
+Register offsets use indexed native descriptors and a zero hardware bias.
+Select that bias after NIR folding, which removes a semantic txb bias of zero.
+The compiler replay and each original CTS case pass.

@@ -4457,6 +4457,16 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
        instr->op == nir_texop_txl && lod_is_zero)
       lod_mode = AGX_LOD_MODE_LOD_MIN;
 
+   /* Register offsets use the native bias/LOD auxiliary word. Preserve
+    * implicit derivatives with bias zero at instruction selection, after
+    * NIR constant folding (which correctly turns txb(..., 0) into tex). */
+   if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+       instr->op == nir_texop_tex && !agx_is_null(packed_offset) &&
+       packed_offset.type != AGX_INDEX_IMMEDIATE) {
+      lod_mode = AGX_LOD_MODE_AUTO_LOD_BIAS;
+      lod = agx_mov_imm(b, 16, 0);
+   }
+
    if (lod_mode == AGX_LOD_MODE_AUTO_LOD) {
       /* Ignored logically but asserted 0 */
       lod = agx_immediate(0);
@@ -4464,7 +4474,8 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
 
    if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
        !agx_is_null(packed_offset) && packed_offset.type != AGX_INDEX_IMMEDIATE &&
-       (instr->op == nir_texop_txl || instr->op == nir_texop_txb)) {
+       (lod_mode == AGX_LOD_MODE_LOD_MIN ||
+        lod_mode == AGX_LOD_MODE_AUTO_LOD_BIAS)) {
       /* Native G16G PACK_SMPIR inserts the F16 LOD as signed fixed-point
        * bits 16..27, preserving the three offset nibbles in the base word. */
       agx_index level = lod;
