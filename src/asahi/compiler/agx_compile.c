@@ -4919,10 +4919,34 @@ agx_lower_sincos_filter(const nir_instr *instr, UNUSED const void *_)
  */
 
 static nir_def *
-agx_lower_sincos_impl(struct nir_builder *b, nir_instr *instr, UNUSED void *_)
+agx_lower_sincos_impl(struct nir_builder *b, nir_instr *instr, void *data)
 {
    nir_alu_instr *alu = nir_instr_as_alu(instr);
    nir_def *x = nir_mov_alu(b, alu->src[0], 1);
+   if (*(const bool *)data) {
+      /* AGX3B has no qualified sin_pt_1 fixup. Reduce and evaluate in f32,
+       * including half inputs: rounding the phase in f16 loses significant
+       * angle bits before the sine is even evaluated. Fold to [-pi/2, pi/2]
+       * and use the odd degree-13 Taylor polynomial on that interval. */
+      const unsigned bits = x->bit_size;
+      x = nir_f2f32(b, x);
+      nir_def *phase = nir_ffma(b, x, nir_imm_float(b, M_1_PI * 0.5),
+                               nir_imm_float(b, alu->op == nir_op_fcos ? 0.75 : 0.5));
+      nir_def *t = nir_ffma(b, nir_ffract(b, phase), nir_imm_float(b, 2.0),
+                           nir_imm_float(b, -1.0));
+      nir_def *a = nir_fabs(b, t);
+      nir_def *r = nir_fmul_imm(b, nir_fmin(b, a, nir_fsub(b, nir_imm_float(b, 1.0), a)), M_PI);
+      nir_def *r2 = nir_fmul(b, r, r);
+      nir_def *p = nir_imm_float(b, 1.0 / 6227020800.0);
+      const double coefficients[] = {-1.0 / 39916800.0, 1.0 / 362880.0,
+                                      -1.0 / 5040.0, 1.0 / 120.0,
+                                      -1.0 / 6.0, 1.0};
+      for (unsigned i = 0; i < ARRAY_SIZE(coefficients); ++i)
+         p = nir_ffma(b, p, r2, nir_imm_float(b, coefficients[i]));
+      nir_def *result = nir_fmul(b, r, p);
+      result = nir_bcsel(b, nir_flt_imm(b, t, 0.0), nir_fneg(b, result), result);
+      return nir_f2fN(b, result, bits);
+   }
    nir_def *turns = nir_fmul_imm(b, x, M_1_PI * 0.5f);
 
    if (alu->op == nir_op_fcos)
@@ -4933,10 +4957,10 @@ agx_lower_sincos_impl(struct nir_builder *b, nir_instr *instr, UNUSED void *_)
 }
 
 static bool
-agx_lower_sincos(nir_shader *shader)
+agx_lower_sincos(nir_shader *shader, bool g17p)
 {
    return nir_shader_lower_instructions(shader, agx_lower_sincos_filter,
-                                        agx_lower_sincos_impl, NULL);
+                                        agx_lower_sincos_impl, &g17p);
 }
 
 static bool
@@ -6094,7 +6118,7 @@ agx_preprocess_nir_internal(nir_shader *nir, bool g17p)
    NIR_PASS(_, nir, nir_lower_alu);
    NIR_PASS(_, nir, nir_lower_load_const_to_scalar);
    NIR_PASS(_, nir, nir_lower_flrp, 16 | 32 | 64, false);
-   NIR_PASS(_, nir, agx_lower_sincos);
+   NIR_PASS(_, nir, agx_lower_sincos, g17p);
    NIR_PASS(_, nir, nir_shader_intrinsics_pass, agx_lower_front_face,
             nir_metadata_control_flow, NULL);
    if (g17p)

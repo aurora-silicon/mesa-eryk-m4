@@ -8,8 +8,8 @@ corrections. The four completed broad segments took 558.673 seconds of runner
 time. Original outcome: 28 Fail, 2 Crash, 1 Timeout, 9,124 Pass, 10,845 NotSupported.
 Skip requirements are still being reviewed; no conformance claim.
 
-Cumulative targeted fixes resolve 17 original failures/crashes. Both original
-compiler crashes now pass. There are still 13 failing cases and one timeout.
+Cumulative targeted fixes resolve 18 original failures/crashes. Both original
+compiler crashes now pass. There are still 12 failing cases and one timeout.
 The timeout remains unresolved despite an isolated pass: hitting its 60-second
 bound under contention counts as failure.
 
@@ -42,3 +42,8 @@ The two eight-attachment sRGB resolve cases now pass (0.609 seconds, peak
 56.75 C). Spilled tilebuffer outputs need the same explicit sRGB conversion
 as tile-resident outputs, and their native typed stores use linear UNORM
 descriptors. Both RGBA and BGRA attachment orders were exercised.
+
+Half-precision geometry cosine now passes after f32 angle reduction and
+polynomial evaluation, with rounding to f16 only at the result. The six-case
+texture/trigonometry check took 0.810 seconds (one Pass, five still Fail,
+peak 59.5 C). The five texture failures remain open.

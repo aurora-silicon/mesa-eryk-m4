@@ -1,0 +1,23 @@
+{
+  "selected": 6,
+  "recorded": 6,
+  "completed": 6,
+  "counts": {
+    "Pass": 1,
+    "Fail": 5
+  },
+  "classifications": {
+    "unclassified": 6
+  },
+  "elapsed_seconds": 3.7439055110153276,
+  "preparation_seconds": 1.3557232290040702,
+  "runner_seconds": 0.8099708379999981,
+  "jobs": 4,
+  "tests_per_group": 1,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "f60ff0d07408a6361b5d887fbdd2bca4300edc6157383376b9816653316bb7a2",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T202752955349Z-cts30-texture-trig1",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 59.5
+}
