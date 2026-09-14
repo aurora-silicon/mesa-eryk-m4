@@ -115,7 +115,21 @@ agx_lower_uniform_sources(agx_context *ctx)
 
             agx_index idx = I->src[s];
             idx.abs = idx.neg = false;
-            agx_replace_src(I, s, agx_mov(&b, idx));
+            if (ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+                idx.size == AGX_SIZE_16) {
+               /* Native uniform copies fetch an aligned word. Extract the
+                * requested half through an SSA split, so RA can coalesce
+                * it without reading the neighbouring half as the value.
+                */
+               agx_index word = agx_mov(&b, agx_uniform(idx.value & ~1u,
+                                                      AGX_SIZE_32));
+               agx_instr *split = agx_split(&b, 2, word);
+               split->dest[0] = agx_temp(ctx, AGX_SIZE_16);
+               split->dest[1] = agx_temp(ctx, AGX_SIZE_16);
+               agx_replace_src(I, s, split->dest[idx.value & 1]);
+            } else {
+               agx_replace_src(I, s, agx_mov(&b, idx));
+            }
          }
       }
    }

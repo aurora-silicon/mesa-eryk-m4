@@ -3147,6 +3147,17 @@ agx_lower_agx3_cf_constants(agx_context *ctx)
       }
       if (I->nr_srcs != 2)
          continue;
+      /* Constant propagation may leave a constant predicate inside
+       * structured control flow. The native integer branch still requires
+       * one register comparator; keep the branch's mask-stack semantics.
+       */
+      if (!floating && I->src[0].type == AGX_INDEX_IMMEDIATE &&
+          I->src[1].type == AGX_INDEX_IMMEDIATE &&
+          !I->src[0].abs && !I->src[0].neg) {
+         agx_builder b = agx_init_builder(ctx, agx_before_instr(I));
+         I->src[0] = agx_mov_imm(&b, 32, I->src[0].value);
+         progress = true;
+      }
       /* Native FCMP branches compare full floats. Widen actual half
        * operands after copy propagation, which could otherwise fold this
        * conversion back into the branch. Binary16 values are exact in F32.
@@ -3355,6 +3366,15 @@ agx_materialize_agx3_alu_constants(agx_context *ctx)
 {
    agx_foreach_instr_global_safe(ctx, I) {
       agx_builder b = agx_init_builder(ctx, agx_before_instr(I));
+      /* ISEL accepts a register comparator and an immediate comparator,
+       * including ICMP pseudos lowered to ISEL after register allocation.
+       */
+      if (ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+          (I->op == AGX_OPCODE_ICMP || I->op == AGX_OPCODE_ICMPSEL) &&
+          I->src[0].type == AGX_INDEX_IMMEDIATE &&
+          I->src[1].type == AGX_INDEX_IMMEDIATE &&
+          !I->src[0].abs && !I->src[0].neg)
+         I->src[0] = agx_mov_imm(&b, 32, I->src[0].value);
       /* A negated full-width IADD source means subtraction, not signed
        * extension. Materialize the minuend so the native register ISUB can
        * implement constant - value, including the negation in udiv refinement.

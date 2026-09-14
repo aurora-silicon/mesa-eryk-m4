@@ -5458,6 +5458,12 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             uint8_t len = 0;
             if (!agx3_translate_local(I, is_store, slot, wait, &d))
                AGX3_REFUSE(I);
+            /* G16G byte loads use the ordinary narrow destination form.
+             * Apple's byte-alias probe emits f11=0; the G17S extension
+             * selector is not an operand of G16G LDTG.
+             */
+            if (enc == AGX_ISA_ENCODING_AGX3B)
+               d.narrow_extend = false;
             const bool ok =
                is_store ? agx3_local_encode_store(enc, &d, bytes, &len)
                         : agx3_local_encode_load(enc, &d, bytes, &len);

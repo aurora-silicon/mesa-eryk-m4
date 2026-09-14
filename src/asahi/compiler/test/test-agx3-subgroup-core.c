@@ -143,6 +143,24 @@ test_shuffle_vectors(void)
    CHECK(bytes_equal(out, length, quad_broadcast_lane2_wait6,
                      sizeof(quad_broadcast_lane2_wait6)));
 
+   /* Native G16G quad_broadcast(x, 0..3), one shared device-load result. */
+   static const uint8_t quad_lanes[4][10] = {
+      {0x47,0x00,0x56,0x00,0x02,0x0c,0x00,0x2c,0x02,0x00},
+      {0x47,0x00,0x54,0x02,0x02,0x0c,0x02,0x2c,0x02,0x00},
+      {0x47,0x00,0x54,0x04,0x02,0x0c,0x04,0x2c,0x02,0x00},
+      {0x47,0x00,0x54,0x06,0x02,0x0c,0x06,0x2c,0x04,0x00},
+   };
+   for (unsigned lane = 0; lane < 4; ++lane) {
+      d.dest = 2 * lane;
+      d.lane = lane;
+      d.wait_mask = lane == 0 ? 1u << 5 : 0;
+      d.src_live = lane != 3;
+      CHECK(agx3_subgroup_encode_shuffle(AGX_ISA_ENCODING_AGX3B, &d,
+                                         out, &length));
+      CHECK(bytes_equal(out, length, quad_lanes[lane], 10));
+   }
+   d.src_live = true;
+
    d.op = AGX3_SUBGROUP_SHUFFLE_XOR;
    d.dest = 2;
    d.lane = 1;
@@ -525,7 +543,7 @@ test_rejection(void)
       !agx3_subgroup_encode_shuffle(AGX_ISA_ENCODING_AGX3B, &s, out, &length));
    s.quad = true;
    s.op = AGX3_SUBGROUP_SHUFFLE_BROADCAST;
-   s.lane = 1;
+   s.lane = 4;
    CHECK(
       !agx3_subgroup_encode_shuffle(AGX_ISA_ENCODING_AGX3B, &s, out, &length));
    s.op = AGX3_SUBGROUP_SHUFFLE_XOR;

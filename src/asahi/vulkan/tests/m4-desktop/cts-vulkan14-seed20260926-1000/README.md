@@ -24,3 +24,19 @@ Hardware evidence: `_provenance/experiments/20260914T075044414121Z-cts26-sparse-
 Of 23 selected original failures, 17 now pass and six remain compiler failures.
 Peak temperature: 58.25 C. Original CTS binary, no test adaptations.
 This is a partial fix ledger, not a claim that the full sample passes.
+
+## Operand legalization and G16 native forms
+
+Preserve at least one register operand in constant integer comparisons and
+branches; retain structured execution-mask semantics. Fetch aligned uniform
+words and split the selected half before RA for narrow uniform inputs.
+G16G LDTG has no G17S narrow-extension selector; use the native byte-load
+form. Enable the four quad-broadcast lanes verified against Apple G16G
+compiler output. Native sources, binary text and hashes are retained here.
+
+All 17 original refused compiler inputs now compile offline. Native byte-load
+and quad-broadcast encoding checks pass. Hardware evidence:
+`_provenance/experiments/20260914T075645878847Z-cts26-operands`.
+Of the 30 remaining original failures, 12 now pass, 18 remain. Two multi-draw
+cases progress to command-buffer rejection. Peak 58.25 C; no crash or timeout.
+Total resolved so far: **29/47 original failures**, all on unmodified CTS.

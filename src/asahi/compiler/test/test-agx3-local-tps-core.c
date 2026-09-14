@@ -20,6 +20,16 @@ struct local_vec {
 };
 
 static const struct local_vec local_vecs[] = {
+   /* Native G16G ushort/uchar shared-memory alias, byte loads at 0 and 1.
+    * Unlike G17S, these loads require the extension selector to be zero. */
+   {AGX_ISA_ENCODING_AGX3B, true, 0,
+    {.data = 0, .width = AGX3_MEM_W8, .mask = 1,
+     .base_kind = AGX3_LOCAL_BASE_IMMEDIATE, .slot = 6},
+    {0x67,0x02,0x54,0x00,0x00,0x00,0x00,0x00,0x84,0x05,0x00,0x40,0x00,0x00}, 14},
+   {AGX_ISA_ENCODING_AGX3B, true, 0,
+    {.data = 2, .width = AGX3_MEM_W8, .mask = 1, .byte_offset = 1,
+     .base_kind = AGX3_LOCAL_BASE_IMMEDIATE, .slot = 6},
+    {0x67,0x02,0x54,0x02,0x00,0x00,0x00,0x00,0x84,0x25,0x00,0x40,0x00,0x00}, 14},
    {AGX_ISA_ENCODING_AGX3B, false, 0,
     {.data = 0, .width = AGX3_MEM_W32, .mask = 1, .shift = 2,
      .base_kind = AGX3_LOCAL_BASE_UNIFORM, .base = 8,

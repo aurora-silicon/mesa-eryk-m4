@@ -77,7 +77,7 @@ agx3_subgroup_encode_shuffle(enum agx_isa_encoding enc,
          !d->quad && d->op == AGX3_SUBGROUP_SHUFFLE_BROADCAST &&
          d->lane < 32;
       const bool quad_witness =
-         d->quad && ((d->op == AGX3_SUBGROUP_SHUFFLE_BROADCAST && d->lane == 2) ||
+         d->quad && ((d->op == AGX3_SUBGROUP_SHUFFLE_BROADCAST && d->lane < 4) ||
                      (d->op == AGX3_SUBGROUP_SHUFFLE_XOR &&
                       d->lane >= 1 && d->lane <= 3));
       if (enc != AGX_ISA_ENCODING_AGX3B || (!simd_witness && !quad_witness))
