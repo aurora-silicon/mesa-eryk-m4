@@ -12,6 +12,7 @@
 #include <dirent.h>
 #include <fcntl.h>
 #include <sys/file.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <limits.h>
 
@@ -1888,6 +1889,8 @@ agx_emit_image_store(agx_builder *b, nir_intrinsic_instr *instr)
       case PIPE_FORMAT_R32G32B32A32_UINT:
          write->format = AGX_FORMAT_I32;
          break;
+      case PIPE_FORMAT_R5G6B5_UNORM:
+      case PIPE_FORMAT_B5G6R5_UNORM:
       case PIPE_FORMAT_R11G11B10_FLOAT:
       case PIPE_FORMAT_R8_SNORM:
       case PIPE_FORMAT_R8G8_SNORM:
@@ -2489,6 +2492,15 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
    }
 
    case nir_intrinsic_quad_ballot_agx: {
+      if (b->shader->key &&
+          b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+          dst.size == AGX_SIZE_16) {
+         /* The native ballot writes a word even when only the four quad
+          * bits are needed. Allocate that word before extracting its half. */
+         agx_index ballot = agx_temp(b->shader, AGX_SIZE_32);
+         agx_quad_ballot_to(b, ballot, agx_src_index(&instr->src[0]));
+         return agx_subdivide_to(b, dst, ballot, 0);
+      }
       return agx_quad_ballot_to(b, dst, agx_src_index(&instr->src[0]));
    }
 
@@ -2675,6 +2687,16 @@ agx_lower_agx3_half_converts(agx_context *ctx)
           I->src[0].type != AGX_INDEX_IMMEDIATE || I->saturate)
          continue;
 
+      if (I->src[0].value == AGX_CONVERT_U8_TO_F &&
+          I->round == AGX_ROUND_RTE) {
+         /* Byte integers occupy a half register; discard the other byte
+          * before using the native unsigned-half conversion. */
+         agx_builder before = agx_init_builder(ctx, agx_before_instr(I));
+         agx_index byte = agx_temp(ctx, AGX_SIZE_16);
+         agx_and_to(&before, byte, I->src[1], agx_immediate(0xff));
+         I->src[1] = byte;
+         I->src[0].value = AGX_CONVERT_U16_TO_F;
+      }
       if (I->dest[0].size == AGX_SIZE_32 &&
           (I->src[0].value == AGX_CONVERT_F_TO_S32 ||
            I->src[0].value == AGX_CONVERT_F_TO_U32) &&
@@ -3452,6 +3474,25 @@ agx_materialize_agx3_alu_constants(agx_context *ctx)
 {
    agx_foreach_instr_global_safe(ctx, I) {
       agx_builder b = agx_init_builder(ctx, agx_before_instr(I));
+      if (ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+          I->op == AGX_OPCODE_PACK_RGB10A2_AGX3) {
+         /* The pack consumes plain F32 lanes; blend arithmetic can leave
+          * negation or absolute-value modifiers on any component. */
+         for (unsigned s = 0; s < I->nr_srcs; ++s) {
+            if (I->src[s].abs || I->src[s].neg) {
+               agx_index value = agx_temp(ctx, AGX_SIZE_32);
+               agx_fmov_to(&b, value, I->src[s]);
+               I->src[s] = value;
+            }
+         }
+      }
+      if (ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+          I->op == AGX_OPCODE_BITREV && I->src[0].size == AGX_SIZE_16) {
+         /* Copy propagation may narrow an otherwise word-wide reversal. */
+         agx_index wide = agx_temp(ctx, AGX_SIZE_32);
+         agx_mov_to(&b, wide, I->src[0]);
+         I->src[0] = wide;
+      }
       if (I->op == AGX_OPCODE_PACK_LOD_OFFSET_AGX3 &&
           I->src[0].type == AGX_INDEX_IMMEDIATE) {
          /* Copyprop folds the half LOD back to a raw immediate. The native
@@ -3860,7 +3901,16 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
 
       UNOP(mov, mov);
       UNOP(u2u32, mov);
-      UNOP(bitfield_reverse, bitrev);
+   case nir_op_bitfield_reverse:
+      if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B && sz == 16) {
+         /* Native reversal is word-wide. Move the reversed low half back
+          * down before truncating the result to the NIR width. */
+         agx_index wide = agx_temp(b->shader, AGX_SIZE_32);
+         agx_mov_to(b, wide, s0);
+         agx_index reversed = agx_bitrev(b, wide);
+         return agx_subdivide_to(b, dst, reversed, 1);
+      }
+      return agx_bitrev_to(b, dst, s0);
    case nir_op_bit_count:
       if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
           s0.size <= AGX_SIZE_32) {
@@ -6587,7 +6637,7 @@ agx_compile_shader_nir_inner(nir_shader *nir, struct agx_shader_key *key,
  * copied. Publication is atomic, deduplicated, and capped at 32 bundles (8 MiB input and 8 MiB IR each).
  * Capture errors must never alter the compiler result. */
 static void
-agx_publish_capture(const char *directory, struct blob *input, FILE *ir, bool success)
+agx_publish_capture(const char *directory, struct blob *input, FILE *ir, int success)
 {
    if (input->size > 8 * 1024 * 1024)
       return;
@@ -6657,11 +6707,13 @@ agx_publish_capture(const char *directory, struct blob *input, FILE *ir, bool su
          fprintf(f, "{\"version\":1,\"serialization_abi\":\"%s\","
                     "\"input_blake3\":\"%s\",\"input_bytes\":%zu,"
                     "\"entrypoint\":\"agx_compile_shader_nir\",\"success\":%s}\n",
-                 AGX_REPLAY_ABI, hex, input->size, success ? "true" : "false");
+                 AGX_REPLAY_ABI, hex, input->size,
+                 success < 0 ? "null" : success ? "true" : "false");
          fflush(f); fsync(fileno(f)); fclose(f);
       }
       if (f && rename(temporary, final) == 0)
-         fprintf(stderr, "AGX compiler %s saved: %s\n", success ? "input" : "failure", final);
+         fprintf(stderr, "AGX compiler %s saved: %s\n",
+                 success < 0 ? "pending input" : success ? "input" : "failure", final);
    }
    /* On publication failure do not leave partial evidence consuming quota. */
    const char *names[] = {"input.bin", "backend-ir.txt", "manifest.json"};
@@ -6700,6 +6752,16 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
       nir_serialize(&input, nir, false);
       ir = tmpfile();
       agx_failure_ir = ir;
+   }
+   /* Opt-in crash diagnosis: publish the input before an assertion or abort
+    * can prevent normal failure capture. Keep it separate from completed
+    * results and explicitly record an unknown outcome. */
+   if (getenv("AGX_COMPILER_CAPTURE_BEFORE") && input.size &&
+       !input.out_of_memory) {
+      char pending[PATH_MAX];
+      if (snprintf(pending, sizeof(pending), "%s/before", directory) < sizeof(pending) &&
+          (mkdir(pending, 0700) == 0 || errno == EEXIST))
+         agx_publish_capture(pending, &input, NULL, -1);
    }
    bool result = agx_compile_shader_nir_inner(nir, key, out);
    agx_failure_ir = previous;

@@ -3,27 +3,37 @@
 Frozen broad Linux sample: 20,000 cases, 20 workers, 50 cases per group,
 60-second per-case bound. SHA256:
 `8402669bf8a2cbef4a5635106f622b0f18a5bfddc1e571665de81e20f8e3881c`.
-The separately identified CTS binary includes the documented seed29 reference
-corrections. Original cases and outcomes remain preserved.
+The separately identified CTS binary retains the documented seed29 reference
+corrections. The four completed broad segments took 558.673 seconds of runner
+time. Original outcome: 28 Fail, 2 Crash, 1 Timeout, 9,124 Pass, 10,845 NotSupported.
+Skip requirements are still being reviewed; no conformance claim.
 
-This campaign is in progress. Run1 completed 8,123 cases before a timeout;
-run2 completed 722 more before a userspace compiler assertion. The descriptor
-case's 2.417-second isolated pass does **not** resolve its 60-second contended
-timeout. It remains an issue to fix and validate under contention.
+Cumulative targeted fixes resolve 15 original failures/crashes. Both original
+compiler crashes now pass. There are still 15 failing cases and one timeout.
+The timeout remains unresolved despite an isolated pass: hitting its 60-second
+bound under contention counts as failure.
 
-The i16 absolute-value crash now passes: sign-extend narrow inputs, perform
-word arithmetic and truncate the result, retaining two's-complement INT_MIN.
-The vertex array texel-fetch case passes with the native register-LOD path
-allowed in vertex stages. The large transform-feedback output case passes
-with spill reloads between ordered exports; the existing nonterminal staging
-retirement preserves sources before subsequent loads reuse their registers.
+The first fixes covered narrow absolute value, vertex array texel fetch, and
+spilled vertex exports. The next fixes cover quad ballots, rematerialization
+register reservations, sRGB storage writes, empty draws after geometry lowering,
+RGB565 image writes, multisample depth copies, modified RGB10A2 packing,
+half clustered minimum, image-load destination register limits, byte-to-float
+conversion, narrow bit reversal and register-addressed returned shared atomics.
 
-A reverse optimizer fusion also produced NOR although the M4 encoder accepts
-separate OR and NOT. Apply the same supported-truth-table gate used for forward
-fusion. The host optimizer check passes; the original boolean-subgroup case
-now reaches a separate quad-ballot encoding boundary and is still failing.
+The latter atomic has an independent G16G offline compiler witness from the
+included Metal source. Its instruction at main+0x1c is
+`670354000200000012000024`, with address register half 4, result/value half 0,
+address last-use, and scoreboard slot 1. The exact-encoding host check and the
+original Vulkan memory-model case pass. Native source/artifacts and compiler
+versions remain under build/cts-vulkan14-seed20260930-20000/native-local-returned-atomic-byte.
 
-Targeted evidence: compiler-fix1, three Pass and one Fail, 0.810 seconds,
-peak 60.25 C, mandatory thermal guard and 60-second watchdog. Installed Mesa:
-`38218b65ac9e5adbb624510f8e790c33f80fd4c6a545453f23d650dd88e5e85f`.
-No broad regression or conformance claim.
+Most recent targeted run: 12 original cases, nine Pass and three Fail,
+4.228 seconds of runner time, peak 59.75 C. The two sRGB eight-attachment
+resolve cases advance to shader compilation failures; the sample-location
+case advances to an image mismatch. Those are still open.
+
+A separate compute-allocation optimization is not accepted: cold 20-worker
+baseline passed in 43.68–45.59 seconds per case. Reuse exposed crashes or
+wrong image values. The working kernel was restored; diagnostic patches and
+all failed runs remain in the local investigation directory. No timing-only
+result is counted as a correctness fix. No broad regression was rerun.

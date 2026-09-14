@@ -20,6 +20,7 @@
 #include "libagx.h"
 #include "nir.h"
 #include "nir_builder.h"
+#include "nir_format_convert.h"
 
 #include "agx_bo.h"
 #include "hk_cmd_buffer.h"
@@ -1032,6 +1033,22 @@ lower_scaled_storage(nir_builder *b, nir_intrinsic_instr *intr, void *unused)
       nir_def_rewrite_uses_after(value, nir_bcsel(b, is_integer, converted, value));
       return true;
    }
+
+   /* Native storage PBEs use linear UNORM; retain the view's gamma flag in
+    * the software descriptor (PBE bit 125) and encode RGB in the shader.
+    * sRGB images have no formatted SPIR-V storage-image type, so this path
+    * covers their stores without changing integer or formatted operations. */
+   nir_def *word3 = nir_load_global_constant(b, 1, 32,
+      nir_iadd_imm(b, address, 12), .align_mul = 4);
+   nir_def *srgb = nir_ine_imm(b, nir_iand_imm(b, word3, 1u << 29), 0);
+   nir_def *original = intr->src[3].ssa;
+   nir_push_if(b, srgb);
+   nir_def *encoded = nir_format_linear_to_srgb(b, nir_fsat(b, original));
+   if (original->num_components == 4)
+      encoded = nir_vector_insert_imm(b, encoded, nir_channel(b, original, 3), 3);
+   nir_push_else(b, NULL);
+   nir_pop_if(b, NULL);
+   nir_src_rewrite(&intr->src[3], nir_if_phi(b, encoded, original));
 
    nir_def *channels = nir_iand_imm(b, nir_ushr_imm(b, header, 6), 127);
    nir_def *is_8 = nir_ior(b,

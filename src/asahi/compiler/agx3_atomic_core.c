@@ -199,10 +199,16 @@ agx3_atomic_encode_local(enum agx_isa_encoding enc,
       return false;
 
    if (d->returns_value) {
-      if (d->result > 191 || d->slot < 1 || d->slot > slot_count(enc) ||
-          d->address_kind != AGX3_ATOMIC_INDEX_IMMEDIATE ||
-          d->address != 0 || d->address_kill)
+      if (d->result > 191 || d->slot < 1 || d->slot > slot_count(enc))
          return false;
+      if (enc == AGX_ISA_ENCODING_AGX3B &&
+          d->address_kind == AGX3_ATOMIC_INDEX_REGISTER) {
+         if (d->address > 191)
+            return false;
+      } else if (d->address_kind != AGX3_ATOMIC_INDEX_IMMEDIATE ||
+                 d->address != 0 || d->address_kill) {
+         return false;
+      }
    } else {
       /* The no-result and addressed forms are isolated on AGX3b. */
       if (enc != AGX_ISA_ENCODING_AGX3B || d->slot != 0)

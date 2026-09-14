@@ -123,8 +123,8 @@ struct ra_ctx {
  * optimized. Using a single power-of-two reserved region at the start ensures
  * these registers are never shuffled.
  */
-static unsigned
-reserved_size(agx_context *ctx)
+unsigned
+agx_reserved_register_count(agx_context *ctx)
 {
    if (ctx->has_spill_pcopy_reserved)
       return 8;
@@ -139,7 +139,7 @@ reserved_size(agx_context *ctx)
 UNUSED static void
 print_reg_file(struct ra_ctx *rctx, FILE *fp)
 {
-   unsigned reserved = reserved_size(rctx->shader);
+   unsigned reserved = agx_reserved_register_count(rctx->shader);
 
    /* Dump the contents */
    for (unsigned i = reserved; i < rctx->bound[RA_GPR]; ++i) {
@@ -206,7 +206,7 @@ static unsigned
 agx_calc_register_demand(agx_context *ctx, bool remat)
 {
    /* Print detailed demand calculation, helpful to debug spilling */
-   bool debug = false;
+   bool debug = getenv("AGX_RA_DIAGNOSTICS") != NULL;
 
    if (debug) {
       agx_print_shader(ctx, stdout);
@@ -234,7 +234,7 @@ agx_calc_register_demand(agx_context *ctx, bool remat)
    unsigned max_demand = 0;
 
    agx_foreach_block(ctx, block) {
-      unsigned demand = reserved_size(ctx);
+      unsigned demand = agx_reserved_register_count(ctx);
 
       /* Everything live-in */
       U_SPARSE_BITSET_FOREACH_SET(&block->live_in, i) {
@@ -351,7 +351,8 @@ dest_limit(const struct ra_ctx *rctx, const agx_instr *I, unsigned d)
    /* G17P TEX encodes a seven-bit half-register destination. ALU values and
     * texture coordinates retain access to the entire register file. */
    if (rctx->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
-       (I->op == AGX_OPCODE_TEXTURE_SAMPLE || I->op == AGX_OPCODE_TEXTURE_LOAD))
+       (I->op == AGX_OPCODE_TEXTURE_SAMPLE || I->op == AGX_OPCODE_TEXTURE_LOAD ||
+        I->op == AGX_OPCODE_IMAGE_LOAD))
       limit = MIN2(limit, 128);
    if (rctx->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
        BITSET_TEST(rctx->low_gpr, I->dest[d].value))
@@ -401,7 +402,7 @@ find_best_region_to_evict(struct ra_ctx *rctx, unsigned size,
        * descending. So, we do not need extra registers to handle "single
        * region" unevictability.
        */
-      if (base < reserved_size(rctx->shader))
+      if (base < agx_reserved_register_count(rctx->shader))
          continue;
 
       /* Do not evict the same register multiple times. It's not necessary since
@@ -485,11 +486,11 @@ find_constrained_region(struct ra_ctx *rctx, unsigned count, unsigned limit,
     * rather than interpreting one of its interior halves as another SSA. */
    for (unsigned span = count; span <= 16; span *= 2) {
       for (unsigned base = 0; base + span <= limit; base += span) {
-         if (base < reserved_size(rctx->shader))
+         if (base < agx_reserved_register_count(rctx->shader))
             continue;
          unsigned moves = 0;
          bool valid = true;
-         for (unsigned reg = reserved_size(rctx->shader); reg < limit;) {
+         for (unsigned reg = agx_reserved_register_count(rctx->shader); reg < limit;) {
             if (!BITSET_TEST(rctx->used_regs[RA_GPR], reg)) {
                ++reg;
                continue;
@@ -1647,6 +1648,9 @@ agx_ra(agx_context *ctx)
       effective_demand = agx_calc_register_demand(ctx, false);
 
       /* The resulting program can now be assigned registers */
+      if (effective_demand > max_possible_regs)
+         fprintf(stderr, "AGX spill demand %u exceeds budget %u (remat=%u)\n",
+                 effective_demand, max_possible_regs, remat);
       assert(effective_demand <= max_possible_regs && "spiller post-condition");
    }
 

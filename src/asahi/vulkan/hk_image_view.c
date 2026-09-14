@@ -449,7 +449,8 @@ pack_pbe(struct hk_device *dev, struct hk_image_view *view, unsigned view_plane,
    /* The tilebuffer is already in sRGB space if needed. Do not convert for
     * end-of-tile descriptors.
     */
-   if (eot)
+   if (eot || usage == HK_DESC_USAGE_EMRT || (usage == HK_DESC_USAGE_STORAGE &&
+               agx_chip_descriptor_generation(dev->dev.chip) == 9))
       p_format = util_format_linear(p_format);
 
    bool msaa = view->vk.image->samples > 1;

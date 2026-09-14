@@ -1167,8 +1167,10 @@ agx_spill(agx_context *ctx, unsigned k, bool remat_only)
 {
    void *memctx = ralloc_context(NULL);
 
-   /* We need extra registers for memory-memory swaps */
-   k -= remat_only ? 2 : 8;
+   /* Memory-memory swaps need eight halves. Rematerialization must also
+    * leave RA's reserved low bank free: AGX3 quad shuffles reserve four
+    * halves, so the old fixed two-half allowance exceeded the budget. */
+   k -= remat_only ? MAX2(2, agx_reserved_register_count(ctx)) : 8;
 
    uint8_t *channels = rzalloc_array(memctx, uint8_t, ctx->alloc);
    dist_t *next_uses = rzalloc_array(memctx, dist_t, ctx->alloc);

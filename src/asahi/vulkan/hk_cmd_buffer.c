@@ -1026,7 +1026,7 @@ hk_g17p_smooth_varyings_supported(struct hk_cmd_buffer *cmd,
       return false;
 
    unsigned next_cf = 0;
-   bool has_rhw = false, has_z = false;
+   bool has_rhw = false, has_z = false, has_primitive_id = false;
    unsigned user_bindings = 0;
    for (unsigned i = 0; i < cf->nr_bindings; ++i) {
       const struct agx_cf_binding *b = &cf->bindings[i];
@@ -1057,6 +1057,14 @@ hk_g17p_smooth_varyings_supported(struct hk_cmd_buffer *cmd,
          } else {
             return false;
          }
+      } else if (b->slot == VARYING_SLOT_PRIMITIVE_ID &&
+                 !gfx->linked_varyings.slots[VARYING_SLOT_PRIMITIVE_ID]) {
+         /* The coefficient linker selects the rasterizer's primitive-ID
+          * source and enables generation in CULL_2; no VS export is needed. */
+         if (b->offset != 0 || b->count != 1 || b->smooth || b->perspective ||
+             !gfx->generate_primitive_id)
+            return false;
+         has_primitive_id = true;
       } else if (b->slot == VARYING_SLOT_PNTC) {
          /* The rasterizer supplies point coordinates; they have no vertex
           * UVS slot. The common linker selects POINT_COORD coefficients. */
@@ -1083,7 +1091,7 @@ hk_g17p_smooth_varyings_supported(struct hk_cmd_buffer *cmd,
       }
       next_cf += b->count;
    }
-   return (user_bindings || has_rhw || has_z) &&
+   return (user_bindings || has_rhw || has_z || has_primitive_id) &&
           has_z == cf->reads_z && next_cf == cf->nr_cf;
 }
 

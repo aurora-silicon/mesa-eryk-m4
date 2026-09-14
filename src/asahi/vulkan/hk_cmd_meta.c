@@ -2644,6 +2644,8 @@ hk_CmdCopyImage2(VkCommandBuffer commandBuffer,
    VK_FROM_HANDLE(hk_image, dst_image, pCopyImageInfo->dstImage);
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
    if (agx_native_graphics(&dev->dev) &&
+       src_image->vk.samples == VK_SAMPLE_COUNT_1_BIT &&
+       dst_image->vk.samples == VK_SAMPLE_COUNT_1_BIT &&
        (src_image->vk.image_type != VK_IMAGE_TYPE_2D ||
         dst_image->vk.image_type != VK_IMAGE_TYPE_2D ||
         /* Format reinterpretation copies raw texel bits, including formats

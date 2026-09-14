@@ -5244,8 +5244,21 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
          }
       }
 
+      /* Geometry/restart lowering may eliminate all primitives even when
+       * the API draw was nonempty. Such a draw needs no index-list span. */
+      if (!agx_is_indirect(draw.b) &&
+          (!draw.b.count[0] || !draw.b.count[1]))
+         continue;
+
       enum agx_primitive topology = cmd->state.gfx.topology;
       if (!agx_vdm_draw_supported(dev->dev.chip, draw, topology)) {
+         mesa_loge("Native draw rejected: topology=%u indirect=%u indexed=%u "
+                   "restart=%u index-size=%u count=%u instances=%u args=%llx "
+                   "index-buffer=%llx adjacency=%u",
+                   topology, agx_is_indirect(draw.b), draw.indexed, draw.restart,
+                   draw.index_size, draw.b.count[0], draw.b.count[1],
+                   (unsigned long long)draw.b.ptr,
+                   (unsigned long long)draw.index_buffer, adj);
          vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
          return;
       }

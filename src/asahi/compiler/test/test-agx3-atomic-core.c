@@ -251,6 +251,18 @@ main(void)
    CHECK(check_local(AGX_ISA_ENCODING_AGX3C, local, c_tg_add,
                      sizeof(c_tg_add)) == 0);
 
+   /* G16G offline compiler: returned atomic_fetch_add through a byte
+    * address formed with inttoptr(lane * 4), main+0x1c. */
+   struct agx3_local_atomic_desc local_addressed = {
+      .op = AGX3_ATOMIC_ADD, .returns_value = true, .slot = 1,
+      .address_kind = AGX3_ATOMIC_INDEX_REGISTER,
+      .address = 4, .address_kill = true,
+   };
+   static const uint8_t b_tg_addressed_add[] =
+      {0x67,0x03,0x54,0x00,0x02,0x00,0x00,0x00,0x12,0x00,0x00,0x24};
+   CHECK(check_local(AGX_ISA_ENCODING_AGX3B, local_addressed,
+                     b_tg_addressed_add, sizeof(b_tg_addressed_add)) == 0);
+
    local.op = AGX3_ATOMIC_UMIN;
    static const uint8_t b_tg_min[] =
       {0x67,0x03,0x54,0x03,0x00,0x02,0x00,0x00,0x22,0x00,0x40,0x07};
