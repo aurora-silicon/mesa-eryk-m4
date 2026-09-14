@@ -74,6 +74,8 @@ struct hk_buffer_address {
    uint32_t size;
    uint32_t zero; /* Must be zero! */
 };
+static_assert(sizeof(struct hk_buffer_address) == HK_MAX_DESCRIPTOR_ALIGNMENT,
+              "mutable descriptors preserve buffer descriptor alignment");
 
 struct hk_descriptor_pool {
    struct vk_object_base base;

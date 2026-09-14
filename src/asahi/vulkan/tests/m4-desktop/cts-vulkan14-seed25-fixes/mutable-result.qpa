@@ -1,0 +1,45 @@
+#sessionInfo releaseName vulkan-cts-1.4.6.2-0-gf6a29701220f34dd1407513bfe80d74ca7b392ce
+#sessionInfo releaseId 0xf6a29701
+#sessionInfo targetName "Default"
+#sessionInfo logFormatVersion "0.3.4"
+#sessionInfo vendorID 0x10005
+#sessionInfo deviceID 0x8132
+#sessionInfo deviceName Apple M4 (G16G B0)
+#sessionInfo commandLineParameters "--deqp-case=dEQP-VK.binding_model.mutable_descriptor.single.switches.combined_image_sampler_storage_buffer.update_write.no_source.no_source.pool_no_types.pre_update.no_array.vert --deqp-log-images=disable --deqp-log-shader-sources=disable --deqp-log-filename=/root/asahi-evidence/20260914T024002036492Z-cts14-mutable-alignment/cts/000/result.qpa"
+
+#beginSession
+
+#beginTestCaseResult dEQP-VK.binding_model.mutable_descriptor.single.switches.combined_image_sampler_storage_buffer.update_write.no_source.no_source.pool_no_types.pre_update.no_array.vert
+<?xml version="1.0" encoding="UTF-8"?>
+<TestCaseResult CasePath="dEQP-VK.binding_model.mutable_descriptor.single.switches.combined_image_sampler_storage_buffer.update_write.no_source.no_source.pool_no_types.pre_update.no_array.vert" Version="0.3.4" CaseType="SelfValidate">
+ <Section Name="iteration-0" Description="Program: iteration-0">
+  <ShaderProgram LinkStatus="OK">
+   <InfoLog></InfoLog>
+   <VertexShader CompileStatus="OK">
+    <ShaderSource></ShaderSource>
+    <InfoLog></InfoLog>
+</VertexShader>
+</ShaderProgram>
+  <Number Name="VertexCompileTime" Description="Vertex shader compile time" Tag="Time" Unit="ms">145.904007</Number>
+  <Number Name="LinkTime" Description="Link time" Tag="Time" Unit="ms">0.032000</Number>
+</Section>
+ <Section Name="iteration-1" Description="Program: iteration-1">
+  <ShaderProgram LinkStatus="OK">
+   <InfoLog></InfoLog>
+   <VertexShader CompileStatus="OK">
+    <ShaderSource></ShaderSource>
+    <InfoLog></InfoLog>
+</VertexShader>
+</ShaderProgram>
+  <Number Name="VertexCompileTime" Description="Vertex shader compile time" Tag="Time" Unit="ms">0.898000</Number>
+  <Number Name="LinkTime" Description="Link time" Tag="Time" Unit="ms">0.007000</Number>
+</Section>
+ <Number Name="TestDuration" Description="Test case duration in microseconds" Tag="Time" Unit="us">214505</Number>
+ <Result StatusCode="Pass">Pass</Result>
+</TestCaseResult>
+
+#endTestCaseResult
+
+Run took 0.32 seconds
+
+#endSession
