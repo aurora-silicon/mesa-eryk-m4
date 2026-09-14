@@ -45,13 +45,13 @@ struct agx3_subgroup_shuffle_desc {
    uint16_t src;
    uint16_t lane;
    uint16_t wait_mask;
-   /* f11, the one-bit general-destination hint. Only consulted on the
-    * immediate-lane path; the register and uniform paths keep their own
-    * corpus constants pinned. */
+   /* f11, the general-destination hint. Used by immediate forms and
+    * G16G register-indexed SIMD broadcasts. */
    bool dest_hint;
-   /* Immediate SIMD/quad forms use f25 for a live source and f27 for its
+   /* SIMD/quad forms use f25 for a live source and f27 for its
     * final read, witnessed independently by G16G/G17P native compilers. */
    bool src_live;
+   bool lane_live; /* Register SIMD broadcast lane operand remains live. */
 };
 
 enum agx3_subgroup_ballot_type {

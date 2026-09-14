@@ -1,0 +1,14 @@
+#version 450
+#extension GL_EXT_shader_subgroup_extended_types_int64 : require
+#extension GL_KHR_shader_subgroup_shuffle_relative : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
+layout(local_size_x=32) in;
+layout(set=0,binding=0,std430) buffer B { uint64_t input_data[32]; uint64_t output_data[32]; uint low[32]; uint high[32]; } b;
+void main() {
+ uint i=gl_LocalInvocationIndex;
+ uint64_t v=b.input_data[i];
+ uint64_t s=subgroupShuffleDown(v,5u);
+ uint l=subgroupShuffleDown(uint(v),5u);
+ uint h=subgroupShuffleDown(uint(v>>32),5u);
+ if(i<27) {b.output_data[i]=s;b.low[i]=l;b.high[i]=h;}
+}

@@ -35,6 +35,26 @@ bytes_equal(const uint8_t *actual, uint8_t length, const uint8_t *expected,
 }
 
 static int
+test_register_shuffle_lifetime(void)
+{
+   /* Apple G16G 32023.883, shuffle-live-native/text-6f0.bin offsets
+    * 0xd4 and 0x124: repeated lane-index use versus its final use. */
+   const uint8_t live[] = {0x47,0x04,0x54,0x0a,0x03,0x08,0x2c,0x2e,0x12,0x00};
+   const uint8_t final[] = {0x47,0x04,0x54,0x0a,0x03,0x0c,0x2c,0x2c,0x1a,0x00};
+   struct agx3_subgroup_shuffle_desc d = {
+      .lane_kind=AGX3_SUBGROUP_LANE_REGISTER, .dest=10, .src=4, .lane=22,
+      .dest_hint=true, .src_live=true, .lane_live=true,
+   };
+   uint8_t out[AGX3_SUBGROUP_MAX_LENGTH], len;
+   CHECK(agx3_subgroup_encode_shuffle(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+   CHECK(bytes_equal(out,len,live,sizeof(live)));
+   d.src=6; d.lane_live=false;
+   CHECK(agx3_subgroup_encode_shuffle(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+   CHECK(bytes_equal(out,len,final,sizeof(final)));
+   return 0;
+}
+
+static int
 test_shuffle_vectors(void)
 {
    static const uint8_t reg_b[] = {
@@ -66,6 +86,8 @@ test_shuffle_vectors(void)
       .dest = 4,
       .src = 0,
       .lane = 4,
+      .dest_hint = true,
+      .src_live = true,
    };
    CHECK(
       agx3_subgroup_encode_shuffle(AGX_ISA_ENCODING_AGX3B, &d, out, &length));
@@ -584,6 +606,7 @@ main(void)
    CHECK(agx3_subgroup_encode_reduce(AGX_ISA_ENCODING_AGX3B, &d, bytes, &length));
    CHECK(bytes_equal(bytes, length, expected, sizeof(expected)));
    CHECK(test_g16_broadcast_lanes() == 0);
+   CHECK(test_register_shuffle_lifetime() == 0);
    CHECK(test_shuffle_vectors() == 0);
    CHECK(test_ballot_vectors() == 0);
    CHECK(test_reduce_vectors() == 0);

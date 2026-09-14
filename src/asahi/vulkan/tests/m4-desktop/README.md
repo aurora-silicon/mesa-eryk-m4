@@ -2262,3 +2262,17 @@ cc -O2 -I mesa/m4-asahi/src -I mesa/m4-asahi/include \
   -o build/native-fetch-decode
 build/native-fetch-decode SAVED_NATIVE/text-750.bin
 ```
+
+## Native register-shuffle decoder
+
+`native-shuffle-decode.c` scans Apple G16G TEXT sections for register-indexed
+SIMD broadcasts, deriving register masks from the encoder and requiring exact
+re-encoding for every candidate. It reports register numbers and operand
+lifetime flags; scanning alone does not prove instruction boundaries or execution.
+Build as for `native-fetch-decode.c` above, substituting `native-shuffle-decode.c`
+and `agx3_subgroup_core.c` for the fetch tool and `agx3_tex_core.c`.
+Run `build/native-shuffle-decode SAVED_NATIVE/text-6f0.bin`.
+
+`vk-buffer-oracle.c` also accepts `M4_ORACLE_SUBGROUP_TYPES=1` to query and
+enable shaderSubgroupExtendedTypes for 64-bit subgroup probes. It refuses
+unsupported features; use the ordinary watchdog/thermal hardware wrapper.

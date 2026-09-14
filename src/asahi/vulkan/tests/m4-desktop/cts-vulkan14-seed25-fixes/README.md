@@ -297,3 +297,22 @@ reference fix, not a Mesa fix. Separate binary SHA256:
 Original source and binary restored. Peak 58.25 C, no fault/reboot.
 Running total: **71/91 failures resolved** (59 Mesa fixes, 12 CTS corrections),
 20 remaining. No broad regression campaign.
+
+## Register-indexed SIMD broadcast lifetimes
+
+The G16G register-indexed broadcast emitter hard-coded the destination hint,
+source retention, and final-use lane-index flag. NIR implements divergent
+shuffles with repeated reads of each source quad; discarding a still-live
+lane index corrupts later reads. Honor the allocated operand hints instead.
+Independent Apple G16G compilation supplies exact repeated/final lane-index
+byte witnesses, now checked in the subgroup-core test (Pass). The new offline
+shuffle decoder derives register masks and requires exact candidate re-encoding.
+
+A one-workgroup raw-buffer probe compares 64-bit values and both individual
+32-bit halves. It improved from 96/192 mismatched words to 0/192. Its runner
+explicitly enables shaderSubgroupExtendedTypes. The original i64vec3 graphics
+shuffledown case now Passes. The reconverge11 case still fails and remains open.
+Peak 58.0 C, no fault/reboot. Library SHA256:
+`03ca149b0ec7c2bd5c76281b6a628ca65650cd52fdacdf661160dfb3eebbe4f9`.
+Running total: **72/91 failures resolved** (60 Mesa fixes, 12 CTS corrections),
+19 remaining. No broad regression campaign.

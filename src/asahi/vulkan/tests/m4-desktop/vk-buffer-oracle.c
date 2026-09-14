@@ -303,13 +303,33 @@ int main(int argc, char **argv) {
     byte_storage.uniformAndStorageBuffer8BitAccess = VK_FALSE;
     byte_storage.storagePushConstant8 = VK_FALSE;
   }
-  const char *extensions[] = {VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME,
-                              VK_KHR_8BIT_STORAGE_EXTENSION_NAME};
+  const bool want_subgroup_types = getenv("M4_ORACLE_SUBGROUP_TYPES") &&
+      !strcmp(getenv("M4_ORACLE_SUBGROUP_TYPES"), "1");
+  void *feature_chain = (want_half || want_byte) ? &half : NULL;
+  VkPhysicalDeviceShaderSubgroupExtendedTypesFeatures subgroup = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_EXTENDED_TYPES_FEATURES};
+  if (want_subgroup_types) {
+    VkPhysicalDeviceFeatures2 query = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, .pNext = &subgroup};
+    vkGetPhysicalDeviceFeatures2(physical, &query);
+    if (!subgroup.shaderSubgroupExtendedTypes)
+      die("shaderSubgroupExtendedTypes unavailable");
+    subgroup.pNext = feature_chain;
+    feature_chain = &subgroup;
+  }
+  const char *extensions[3];
+  unsigned extension_count = 0;
+  if (want_half || want_byte)
+    extensions[extension_count++] = VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME;
+  if (want_byte)
+    extensions[extension_count++] = VK_KHR_8BIT_STORAGE_EXTENSION_NAME;
+  if (want_subgroup_types)
+    extensions[extension_count++] = VK_KHR_SHADER_SUBGROUP_EXTENDED_TYPES_EXTENSION_NAME;
   const VkPhysicalDeviceFeatures features = {.shaderInt64 = VK_TRUE};
   const VkDeviceCreateInfo device_info = {
       .pEnabledFeatures = &features,
-      .pNext = (want_half || want_byte) ? &half : NULL,
-      .enabledExtensionCount = want_byte ? 2 : want_half ? 1 : 0,
+      .pNext = feature_chain,
+      .enabledExtensionCount = extension_count,
       .ppEnabledExtensionNames = extensions,
       .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
       .queueCreateInfoCount = 1,
