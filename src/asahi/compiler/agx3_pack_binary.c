@@ -1103,7 +1103,8 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
    /* Fixed-bank samples copy their coordinates before SMP. COPY and
     * PACK_SMPIR accept the full 256-half source bank; the last component must
     * fit. Only unstaged 2D samples retain SMP's narrower coordinate bound. */
-   const bool fixed_coord = gradient || explicit_lod || bias || array || cube || three_d || shadow;
+   const bool fixed_coord = gradient || explicit_lod || bias || array || cube ||
+      three_d || shadow || (enc == AGX_ISA_ENCODING_AGX3B && I->src[0].value > 60);
    const unsigned coord_components = cube && array ? 4 :
                                      (array || cube || three_d) ? 3 : 2;
    const unsigned max_coord = fixed_coord ? 256 - 2 * coord_components : 60;

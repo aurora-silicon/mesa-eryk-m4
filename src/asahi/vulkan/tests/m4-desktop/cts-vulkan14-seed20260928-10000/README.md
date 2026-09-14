@@ -87,3 +87,15 @@ archives remain under `build/cts28-native/array-fetch-{reg,ulod}`; independent
 instruction bytes are checked by `agx3_tex_core_test`. The descriptor lowering
 also accepts this newly implemented array LOD form. The separate four-target
 RGBA32F MSAA case remains rejected at tile-layout validation, not passed.
+
+## Greeter compiler failure
+
+Saved greeter capture `9daa06b88ed5a72af8cd1e5eb072f8e221a33ca90809328b7d83290970e59fbf`
+uses a plain 2D sample whose coordinates are allocated above the direct SMP
+coordinate range. Use the existing staged-coordinate path for those registers.
+The unchanged captured shader compiles offline to 6798 bytes. Guarded greeter
+restart `20260914T134150736013Z-cts28-greeter-coordinate-fix` keeps Hyprland alive
+through its ten-second check, peak 57.5 C, installed library
+`79f4b084b7b7e9a199c4db26db5d70c88d98149c197c78c500ff104b471544f3`.
+Presentation failures still need rechecking; a missing display is a setup error,
+not evidence of optional Vulkan support.
