@@ -180,3 +180,25 @@ GDB field isolation and an offline Apple G16G byte-memory compilation are saved;
 the Apple output was not GPU-executed or fully decoded in this experiment.
 Running total: **57/91 failures resolved** (51 Mesa fixes, 6 CTS corrections),
 34 remaining. No broad regression campaign.
+
+## Native narrow shuffles and bitwise scans
+
+Native shuffles move full words: widen half operands and truncate after lane
+selection, preserving raw bit patterns. AGX3 bitwise scans now use NIR's
+active-lane-aware lowering. Iterate common subgroup lowering to process scans
+introduced by vector scalarization before converting native inclusive scans.
+
+The original nonconstant bvec4 broadcast and both bitwise scan cases now Pass.
+The i64 shuffledown graphics case still numerically fails and remains open.
+Its failure is not included among resolved cases. One saved narrow-shuffle
+bundle compiles offline; old bitwise-scan bundles were captured after the
+changed preprocessing pass and still reject unchanged, as expected.
+
+Peak 59.5 C, watchdog armed at 60 seconds, boot
+0ca1f3f9-acb4-4b79-8a3c-15498f475016. The preceding attempt ran no CTS: a
+concurrent m4_dcpext_rtkit_probe timed out and latched watchdog recovery. Its
+separate journal evidence is retained; the four-case retry had no GPU reset.
+Library SHA256:
+`30309d0ad663f90ac7d7b7b37d36e6d93a41435cc8685913555cfb22c2c8b582`.
+Running total: **60/91 failures resolved** (54 Mesa fixes, 6 CTS corrections),
+31 remaining. No broad regression campaign.

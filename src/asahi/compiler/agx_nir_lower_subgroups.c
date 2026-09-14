@@ -231,10 +231,16 @@ lower_subgroup_filter(const nir_intrinsic_instr *intr, const void *data)
          return false;
       return true;
 
-   case nir_op_iadd:
    case nir_op_iand:
    case nir_op_ixor:
    case nir_op_ior:
+      /* AGX3 has native bitwise reductions, but no supported bitwise
+       * prefix form. Let NIR implement scans with active-lane shuffles. */
+      if (agx_options->g17p_clustered_float &&
+          intr->intrinsic != nir_intrinsic_reduce)
+         return true;
+      FALLTHROUGH;
+   case nir_op_iadd:
       /* these have dedicated 64-bit lowering paths that use the 32-bit hardware
        * instructions so are likely better than the full lowering.
        */
@@ -270,6 +276,12 @@ agx_nir_lower_subgroups_internal(nir_shader *s, bool g17p_clustered_float)
    };
 
    bool progress = nir_lower_subgroups(s, &opts);
+   /* Scalarization introduces fresh scan intrinsics. Process those before
+    * converting the remaining native inclusive scans to exclusive scans. */
+   if (g17p_clustered_float) {
+      while (nir_lower_subgroups(s, &opts))
+         progress = true;
+   }
 
    /* Then do AGX-only lowerings on top */
    progress |=

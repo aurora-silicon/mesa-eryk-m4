@@ -1,0 +1,98 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.subgroups.ballot_broadcast.framebuffer.subgroupbroadcast_nonconst_bvec4tess_eval",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.subgroups.ballot_broadcast.framebuffer.subgroupbroadcast_nonconst_bvec4tess_eval",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T040237303375Z-cts14-subgroup-widths-v2/cts/000/result.qpa"
+    ],
+    "boot_id": "0ca1f3f9-acb4-4b79-8a3c-15498f475016",
+    "status": "Pass",
+    "started_unix": 1789358558.47968,
+    "eligibility": {
+      "case": "dEQP-VK.subgroups.ballot_broadcast.framebuffer.subgroupbroadcast_nonconst_bvec4tess_eval",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 2.1260625199999765,
+    "finished_unix": 1789358560.6109293,
+    "pid": 1075
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.subgroups.arithmetic.compute.subgroupinclusiveor_i16vec3",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.subgroups.arithmetic.compute.subgroupinclusiveor_i16vec3",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T040237303375Z-cts14-subgroup-widths-v2/cts/001/result.qpa"
+    ],
+    "boot_id": "0ca1f3f9-acb4-4b79-8a3c-15498f475016",
+    "status": "Pass",
+    "started_unix": 1789358558.4849153,
+    "eligibility": {
+      "case": "dEQP-VK.subgroups.arithmetic.compute.subgroupinclusiveor_i16vec3",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 1.0350191550000147,
+    "finished_unix": 1789358559.5264347,
+    "pid": 1076
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.subgroups.shuffle.graphics.subgroupshuffledown_i64vec3_constant",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.subgroups.shuffle.graphics.subgroupshuffledown_i64vec3_constant",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T040237303375Z-cts14-subgroup-widths-v2/cts/002/result.qpa"
+    ],
+    "boot_id": "0ca1f3f9-acb4-4b79-8a3c-15498f475016",
+    "status": "Fail",
+    "started_unix": 1789358558.4915557,
+    "eligibility": {
+      "case": "dEQP-VK.subgroups.shuffle.graphics.subgroupshuffledown_i64vec3_constant",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Failed!",
+    "returncode": 1,
+    "seconds": 2.1287637599999982,
+    "finished_unix": 1789358560.6259146,
+    "pid": 1077
+  },
+  {
+    "index": 3,
+    "case": "dEQP-VK.subgroups.arithmetic.framebuffer.subgroupexclusiveand_i8vec4_tess_eval",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.subgroups.arithmetic.framebuffer.subgroupexclusiveand_i8vec4_tess_eval",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T040237303375Z-cts14-subgroup-widths-v2/cts/003/result.qpa"
+    ],
+    "boot_id": "0ca1f3f9-acb4-4b79-8a3c-15498f475016",
+    "status": "Pass",
+    "started_unix": 1789358558.4972634,
+    "eligibility": {
+      "case": "dEQP-VK.subgroups.arithmetic.framebuffer.subgroupexclusiveand_i8vec4_tess_eval",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 2.137854782000005,
+    "finished_unix": 1789358560.6409547,
+    "pid": 1078
+  }
+]

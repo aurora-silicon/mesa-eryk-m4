@@ -2699,6 +2699,37 @@ agx_lower_agx3_half_integer_sources(agx_context *ctx)
       return;
 
    agx_foreach_instr_global_safe(ctx, I) {
+      if ((I->op == AGX_OPCODE_SHUFFLE ||
+           I->op == AGX_OPCODE_SHUFFLE_XOR ||
+           I->op == AGX_OPCODE_SHUFFLE_UP ||
+           I->op == AGX_OPCODE_SHUFFLE_DOWN ||
+           I->op == AGX_OPCODE_QUAD_SHUFFLE ||
+           I->op == AGX_OPCODE_QUAD_SHUFFLE_XOR ||
+           I->op == AGX_OPCODE_QUAD_SHUFFLE_UP ||
+           I->op == AGX_OPCODE_QUAD_SHUFFLE_DOWN) &&
+          I->nr_dests == 1 && I->nr_srcs == 2) {
+         /* Native shuffles move full words. Preserve narrow bit patterns
+          * with a zero-extended source and truncate after lane selection. */
+         agx_builder b = agx_init_builder(ctx, agx_before_instr(I));
+         agx_foreach_src(I, s) {
+            if (I->src[s].size == AGX_SIZE_16 &&
+                I->src[s].type != AGX_INDEX_IMMEDIATE &&
+                I->src[s].type != AGX_INDEX_NULL &&
+                !I->src[s].abs && !I->src[s].neg) {
+               agx_index wide = agx_temp(ctx, AGX_SIZE_32);
+               agx_mov_to(&b, wide, I->src[s]);
+               I->src[s] = wide;
+            }
+         }
+         if (I->dest[0].size == AGX_SIZE_16) {
+            agx_index half = I->dest[0];
+            I->dest[0] = agx_temp(ctx, AGX_SIZE_32);
+            b.cursor = agx_after_instr(I);
+            agx_mov_to(&b, half, I->dest[0]);
+         }
+         continue;
+      }
+
       if (I->nr_dests == 1 && I->dest[0].size == AGX_SIZE_16 &&
           !I->saturate &&
           ((I->op == AGX_OPCODE_NOT && I->nr_srcs == 1) ||
