@@ -286,21 +286,31 @@ int main(int argc, char **argv) {
       .pQueuePriorities = &priority,
   };
   const bool want_half = getenv("M4_ORACLE_FLOAT16") && !strcmp(getenv("M4_ORACLE_FLOAT16"),"1");
+  const bool want_byte = getenv("M4_ORACLE_INT8") && !strcmp(getenv("M4_ORACLE_INT8"),"1");
+  VkPhysicalDevice8BitStorageFeatures byte_storage = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES};
   VkPhysicalDeviceShaderFloat16Int8Features half = {
-      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES};
-  if (want_half) {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES,
+      .pNext = want_byte ? &byte_storage : NULL};
+  if (want_half || want_byte) {
     VkPhysicalDeviceFeatures2 query = {.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,.pNext=&half};
     vkGetPhysicalDeviceFeatures2(physical,&query);
-    if(!half.shaderFloat16) die("shaderFloat16 unavailable");
-    half.shaderInt8=VK_FALSE;
+    if(want_half && !half.shaderFloat16) die("shaderFloat16 unavailable");
+    if(want_byte && (!half.shaderInt8 || !byte_storage.storageBuffer8BitAccess))
+      die("shaderInt8 or storageBuffer8BitAccess unavailable");
+    half.shaderFloat16 = want_half;
+    half.shaderInt8 = want_byte;
+    byte_storage.uniformAndStorageBuffer8BitAccess = VK_FALSE;
+    byte_storage.storagePushConstant8 = VK_FALSE;
   }
-  const char *half_ext=VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME;
+  const char *extensions[] = {VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME,
+                              VK_KHR_8BIT_STORAGE_EXTENSION_NAME};
   const VkPhysicalDeviceFeatures features = {.shaderInt64 = VK_TRUE};
   const VkDeviceCreateInfo device_info = {
       .pEnabledFeatures = &features,
-      .pNext = want_half ? &half : NULL,
-      .enabledExtensionCount = want_half ? 1 : 0,
-      .ppEnabledExtensionNames = want_half ? &half_ext : NULL,
+      .pNext = (want_half || want_byte) ? &half : NULL,
+      .enabledExtensionCount = want_byte ? 2 : want_half ? 1 : 0,
+      .ppEnabledExtensionNames = extensions,
       .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
       .queueCreateInfoCount = 1,
       .pQueueCreateInfos = &queue_info,

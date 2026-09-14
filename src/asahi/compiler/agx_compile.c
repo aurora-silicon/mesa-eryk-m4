@@ -1124,6 +1124,28 @@ agx_emit_load(agx_builder *b, agx_index dest, nir_intrinsic_instr *instr)
       return;
    }
 
+   if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+       fmt == AGX_FORMAT_I8 && !packed_count && instr->def.num_components > 1) {
+      /* Native byte vectors are densely packed, unlike the compiler's
+       * 16-bit scalar representation of 8-bit NIR values. */
+      const unsigned nr = instr->def.num_components;
+      assert(nr <= 4 && dest.size == AGX_SIZE_16);
+      agx_index packed = agx_temp(b->shader, AGX_SIZE_32);
+      agx_instr *load = agx_device_load_to(b, packed, addr, offset, fmt,
+         BITFIELD_MASK(nr), shift, nir_is_coherent(instr));
+      load->memory_index_is_bytes = index_bytes;
+      load->memory_is_packed = true;
+      agx_index channels[4];
+      for (unsigned c = 0; c < nr; ++c) {
+         agx_index byte = agx_temp(b->shader, AGX_SIZE_32);
+         agx_bfeil_to(b, byte, agx_zero(), packed, agx_immediate(8 * c), 8);
+         channels[c] = agx_temp(b->shader, AGX_SIZE_16);
+         agx_subdivide_to(b, channels[c], byte, 0);
+      }
+      agx_emit_collect_to(b, dest, nr, channels);
+      return;
+   }
+
    agx_instr *load = agx_device_load_to(b, dest, addr, offset, fmt,
                       BITFIELD_MASK(packed_count ? packed_count : instr->def.num_components), shift,
                       nir_is_coherent(instr));
@@ -1166,9 +1188,28 @@ agx_emit_store(agx_builder *b, nir_intrinsic_instr *instr)
       value = agx_recollect_vector(b, instr->src[0]);
       mask = BITFIELD_MASK(nir_src_num_components(instr->src[0]));
    }
+   const bool packed_bytes =
+      b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+      fmt == AGX_FORMAT_I8 && nir_src_num_components(instr->src[0]) > 1;
+   if (packed_bytes) {
+      const unsigned nr = nir_src_num_components(instr->src[0]);
+      assert(nr <= 4);
+      for (unsigned c = 0; c < nr; ++c) {
+         agx_index byte = agx_pad_to_32(b, agx_extract_nir_src(b, instr->src[0], c));
+         byte = agx_and(b, byte, agx_immediate(0xff));
+         if (c) {
+            agx_index shifted = agx_temp(b->shader, AGX_SIZE_32);
+            agx_bfi_to(b, shifted, agx_zero(), byte, agx_immediate(8 * c), 0);
+            value = agx_or(b, value, shifted);
+         } else {
+            value = byte;
+         }
+      }
+   }
    agx_instr *store = agx_device_store(b, value, addr, offset, fmt, mask,
                                       shift, nir_is_coherent(instr));
    store->memory_index_is_bytes = index_bytes;
+   store->memory_is_packed = packed_bytes;
 }
 
 /*

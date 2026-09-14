@@ -1,0 +1,50 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.spirv_assembly.type.vec4.i8.bit_field_u_extract_offset16_count64_tessc",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.spirv_assembly.type.vec4.i8.bit_field_u_extract_offset16_count64_tessc",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T034621143899Z-cts14-byte-vectors/cts/000/result.qpa"
+    ],
+    "boot_id": "d6085557-9b5d-48eb-b2af-d2d9d5365e2e",
+    "status": "Pass",
+    "started_unix": 1789357582.4815464,
+    "eligibility": {
+      "case": "dEQP-VK.spirv_assembly.type.vec4.i8.bit_field_u_extract_offset16_count64_tessc",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Rendered output matches input",
+    "returncode": 0,
+    "seconds": 0.8918669679999311,
+    "finished_unix": 1789357583.378393,
+    "pid": 2583
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.spirv_assembly.instruction.maint9_vectorization.bit_field_s_extract.result_v8i-base_v8i-offset_s8u-count_s64i",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.spirv_assembly.instruction.maint9_vectorization.bit_field_s_extract.result_v8i-base_v8i-offset_s8u-count_s64i",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T034621143899Z-cts14-byte-vectors/cts/001/result.qpa"
+    ],
+    "boot_id": "d6085557-9b5d-48eb-b2af-d2d9d5365e2e",
+    "status": "Pass",
+    "started_unix": 1789357582.4865854,
+    "eligibility": {
+      "case": "dEQP-VK.spirv_assembly.instruction.maint9_vectorization.bit_field_s_extract.result_v8i-base_v8i-offset_s8u-count_s64i",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.5646823749998475,
+    "finished_unix": 1789357583.0567195,
+    "pid": 2584
+  }
+]

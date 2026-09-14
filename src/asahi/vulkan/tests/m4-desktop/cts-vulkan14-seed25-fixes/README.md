@@ -115,3 +115,23 @@ Vulkan library SHA256:
 `da8c68f1663da21d113351521cfa88673956259726ff9f7041d9518b5eee3ba0`.
 Running total: **45/91 failures resolved** (39 Mesa fixes, 6 CTS corrections),
 46 remaining. No broad regression campaign.
+
+## Byte-vector memory packing
+
+Native I8 vector loads/stores transfer densely packed bytes. NIR byte values
+occupy individual 16-bit compiler lanes. Unpack vector loads and repack stores
+at instruction selection, retaining addresses, masks and coherence. Register
+accounting now tracks the packed store operand instead of four scalar halves.
+The independent storage-buffer probe changed from five bad words to 0/7,
+including preserved surrounding words and separate constant-output validation.
+Both original i8 bit-field cases now Pass on unmodified CTS.
+
+The fixture in byte-memory/ uses M4_ORACLE_INT8=1 with vk-buffer-oracle; compile
+shader.comp with glslangValidator -V --target-env vulkan1.1. Run one workgroup
+through the mandatory watchdog/thermal guard. Initial implementation's explicit
+compiler rejection and corrected operand-width retest are retained in evidence.
+Final library SHA256:
+`7d1e5e85134809ae1d3db00895a42f3eeca0129ffe25618e329857466f70505d`.
+Peak 58.0 C; no GPU fault/reboot. No broad regression campaign.
+Running total: **47/91 failures resolved** (41 Mesa fixes, 6 CTS corrections),
+44 remaining; both original crash cases have passing targeted retests.
