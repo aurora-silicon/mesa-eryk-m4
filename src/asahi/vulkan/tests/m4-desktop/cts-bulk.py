@@ -72,7 +72,9 @@ else:
 timing_path = evidence/'remote/cts/timing.json'
 timing = json.loads(timing_path.read_text()) if timing_path.exists() else {}
 counts = Counter(r['status'] for r in results)
-summary = dict(selected=len(cases), recorded=len(results), counts=counts,
+summary = dict(selected=len(cases), recorded=len(results),
+    completed=sum(r['status'] not in ('Unrun', 'Interrupted') for r in results),
+    counts=counts,
     classifications=Counter(r['eligibility']['classification'] for r in results),
     elapsed_seconds=elapsed, preparation_seconds=preparation_seconds,
     runner_seconds=timing.get('elapsed_seconds'), jobs=a.jobs, tests_per_group=a.tests_per_group,

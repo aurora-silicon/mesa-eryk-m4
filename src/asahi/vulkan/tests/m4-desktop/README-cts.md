@@ -295,8 +295,10 @@ state-lifetime failures are possible. A group completion drives runner progress
 counts; a displayed zero does not mean its CTS processes have executed no tests.
 The wrapper saves exact runner/CTS hashes, ICD environment, metadata, command,
 all QPA and worker logs. Reports preserve raw QPA status/message alongside the
-runner's coarser status. `Skip` is never relabeled Pass; missing completions stay
-Unrun. After an interrupted guard, the host recovers completed QPA entries using
+runner's coarser status. `Skip` is never relabeled Pass. Cases with a stdout/QPA start but no
+completed result are Interrupted; only never-started cases are Unrun. Workers
+killed with SIGKILL during a coordinated runner stop are Interrupted rather
+than independent crashes. Raw runner status and worker exit remain recorded. After an interrupted guard, the host recovers completed QPA entries using
 `cts_deqp_backend.collect`, retaining the failed guard verdict. No automatic
 retry or reboot is performed by this tool.
 

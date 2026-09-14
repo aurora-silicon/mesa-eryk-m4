@@ -70,12 +70,12 @@ def run(args, check, boot, out, env, metadata, save):
     save(out / 'timing.json', dict(backend='deqp-runner', jobs=args.jobs,
         tests_per_group=args.tests_per_group, elapsed_seconds=elapsed,
         started_unix=started, finished_unix=time.time(), returncode=proc.returncode,
-        error=error, completed=sum(r['status'] != 'Unrun' for r in results),
+        error=error, completed=sum(r['status'] not in ('Unrun', 'Interrupted') for r in results),
         case_timeout_seconds=args.case_timeout))
     counts = dict(collections.Counter(r['status'] for r in results))
     print(json.dumps(dict(counts=counts, runner_seconds=elapsed, error=error)), flush=True)
     check()
-    if error or proc.returncode not in (0, 1) or any(r['status'] in ('Unrun', 'HarnessError', 'Crash', 'Timeout') for r in results):
+    if error or proc.returncode not in (0, 1) or any(r['status'] in ('Unrun', 'Interrupted', 'HarnessError', 'Crash', 'Timeout') for r in results):
         raise RuntimeError('Incomplete or fatal CTS run; evidence retained; do not automatically retry')
     print(f'CTS_BATCH_COMPLETE: {len(results)} first-attempt outcomes', flush=True)
 
@@ -86,11 +86,24 @@ def collect(out, cases, metadata, start, boot):
     # Preserve the original QPA status/message. deqp-runner folds several CTS
     # outcomes into Fail/Warn/Skip; keep both, and never equate Skip with Pass.
     qpa_records = {}
+    started_cases = set()
+    group_cases = {}
+    coordinated_stop = (out / 'runner.log').exists() and 'deqp-runner max-fails exceeded' in (out / 'runner.log').read_text(errors='replace')
+    for log in result_dir.glob('*.log'):
+        if not re.search(r'\.c\d+\.r\d+\.log$|^c\d+\.r\d+\.log$', log.name):
+            continue
+        content = log.read_text(errors='replace')
+        death = re.search(r'^exit status: (.+)$', content, re.M)
+        for name in re.findall(r"Test case '([^']+)'\.\.", content):
+            started_cases.add(name)
+            group_cases[name] = death[1] if death else 'unknown'
     for path in sorted(result_dir.glob('*.qpa')):
         if not re.search(r'\.c\d+\.r\d+\.qpa$|^c\d+\.r\d+\.qpa$', path.name):
             continue  # extracted failure copies are not additional attempts
+        qpa_text = path.read_text(errors='replace')
+        started_cases.update(re.findall(r'^#beginTestCaseResult (.+)$', qpa_text, re.M))
         for name, content in re.findall(r'#beginTestCaseResult ([^\n]+)\n(.*?)#endTestCaseResult',
-                                        path.read_text(errors='replace'), re.S):
+                                        qpa_text, re.S):
             found = re.search(r'<Result StatusCode="([^"]+)"[^>]*>(.*?)</Result>', content, re.S)
             if found:
                 if name in qpa_records:
@@ -117,11 +130,18 @@ def collect(out, cases, metadata, start, boot):
             record.update(qpa_records[case])
         else:
             record.update(status='Unrun', message='No completed QPA result')
-        if runner_status in ('Crash', 'Timeout'):
+        termination = group_cases.get(case)
+        if termination:
+            record['worker_exit'] = termination
+        if runner_status == 'Crash' and coordinated_stop and termination == 'signal: 9 (SIGKILL)':
+            record.update(status='Interrupted', message='Worker killed during coordinated runner stop; not an independent crash')
+        elif runner_status in ('Crash', 'Timeout'):
             record.update(status=runner_status, message='Runner detected abnormal execution; inspect QPA/log')
         elif runner_status == 'Fail' and record['status'] == 'Pass':
             record.update(status='HarnessError', message='QPA Pass disagrees with runner failure')
         elif runner_status == 'Missing' and case in csv_records and record['status'] == 'Unrun':
             record.update(status='HarnessError', message='Runner could not obtain a result')
+        if record['status'] == 'Unrun' and case in started_cases:
+            record.update(status='Interrupted', message='CTS started the case but did not produce a complete result')
         results.append(record)
     return results
