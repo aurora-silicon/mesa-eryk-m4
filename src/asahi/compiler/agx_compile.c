@@ -1875,6 +1875,7 @@ agx_emit_image_store(agx_builder *b, nir_intrinsic_instr *instr)
          break;
       case PIPE_FORMAT_R11G11B10_FLOAT:
       case PIPE_FORMAT_R8_SNORM:
+      case PIPE_FORMAT_R8G8_SNORM:
       case PIPE_FORMAT_R8G8B8A8_SNORM:
       case PIPE_FORMAT_R32_FLOAT:
       case PIPE_FORMAT_R32G32_FLOAT:
@@ -2710,6 +2711,35 @@ agx_lower_agx3_half_integer_sources(agx_context *ctx)
       return;
 
    agx_foreach_instr_global_safe(ctx, I) {
+      if ((I->op == AGX_OPCODE_SIMD_REDUCE ||
+           I->op == AGX_OPCODE_QUAD_REDUCE ||
+           I->op == AGX_OPCODE_SIMD_PREFIX ||
+           I->op == AGX_OPCODE_QUAD_PREFIX) &&
+          I->nr_dests == 1 && I->nr_srcs == 1 &&
+          I->dest[0].size == AGX_SIZE_16 &&
+          I->src[0].size == AGX_SIZE_16 &&
+          (I->simd_op == AGX_SIMD_OP_IADD ||
+           I->simd_op == AGX_SIMD_OP_AND || I->simd_op == AGX_SIMD_OP_OR ||
+           I->simd_op == AGX_SIMD_OP_XOR ||
+           I->simd_op == AGX_SIMD_OP_SMIN || I->simd_op == AGX_SIMD_OP_SMAX ||
+           I->simd_op == AGX_SIMD_OP_UMIN || I->simd_op == AGX_SIMD_OP_UMAX)) {
+         /* Native subgroup reductions operate on words. Addition and bitwise
+          * operations commute with truncation; min/max need the appropriate
+          * signedness when extending their inputs. */
+         agx_builder b = agx_init_builder(ctx, agx_before_instr(I));
+         agx_index wide = agx_temp(ctx, AGX_SIZE_32);
+         if (I->simd_op == AGX_SIMD_OP_SMIN || I->simd_op == AGX_SIMD_OP_SMAX)
+            agx_signext_to(&b, wide, I->src[0]);
+         else
+            agx_mov_to(&b, wide, I->src[0]);
+         I->src[0] = wide;
+         agx_index half = I->dest[0];
+         I->dest[0] = agx_temp(ctx, AGX_SIZE_32);
+         b.cursor = agx_after_instr(I);
+         agx_mov_to(&b, half, I->dest[0]);
+         continue;
+      }
+
       if (I->op == AGX_OPCODE_EXTR && I->nr_srcs == 3) {
          /* Copy propagation folds zero extensions into EXTR, but the native
           * data operands read whole words. Materialize their high zeroes
@@ -3429,6 +3459,19 @@ agx_materialize_agx3_alu_constants(agx_context *ctx)
        */
       if (I->op == AGX_OPCODE_FCMPSEL || I->op == AGX_OPCODE_FCMP) {
          if (ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+             I->op == AGX_OPCODE_FCMP) {
+            /* Boolean FCMP becomes an immediate-alternative FSEL after this
+             * pass; that form also needs full-width comparators. */
+            for (unsigned s = 0; s < 2; ++s) {
+               if (I->src[s].type != AGX_INDEX_IMMEDIATE &&
+                   I->src[s].size == AGX_SIZE_16) {
+                  agx_index wide = agx_temp(ctx, AGX_SIZE_32);
+                  agx_fmov_to(&b, wide, I->src[s]);
+                  I->src[s] = wide;
+               }
+            }
+         }
+         if (ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
              I->op == AGX_OPCODE_FCMPSEL && I->dest[0].size == AGX_SIZE_16) {
             /* Select alternatives are bit patterns, not minifloats. */
             for (unsigned s = 2; s < 4; ++s) {
@@ -3466,9 +3509,13 @@ agx_materialize_agx3_alu_constants(agx_context *ctx)
          if (ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
              I->op == AGX_OPCODE_FCMPSEL &&
              I->dest[0].size == AGX_SIZE_16 &&
-             (I->src[0].size != I->src[1].size ||
-              I->src[0].type == AGX_INDEX_IMMEDIATE ||
-              I->src[1].type == AGX_INDEX_IMMEDIATE)) {
+             !(agx_is_equiv(I->src[0], I->src[2]) &&
+               agx_is_equiv(I->src[1], I->src[3]) &&
+               !I->invert_cond &&
+               (I->fcond == AGX_FCOND_LTN || I->fcond == AGX_FCOND_GTN))) {
+            /* Only the tied native half min/max form accepts two half
+             * comparators. Widen general comparisons exactly, independently
+             * of the bit-pattern width of their selected alternatives. */
             for (unsigned c = 0; c < 2; ++c) {
                if (I->src[c].type == AGX_INDEX_IMMEDIATE ||
                    I->src[c].size != AGX_SIZE_16)

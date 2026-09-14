@@ -3795,7 +3795,9 @@ agx3_mrt_eot_selector(enum pipe_format logical, enum agx_format physical,
       *selector = 1;
       return physical == AGX_FORMAT_F16;
    case PIPE_FORMAT_R8_UNORM:
+   case PIPE_FORMAT_R8_SRGB:
    case PIPE_FORMAT_R8G8_UNORM:
+   case PIPE_FORMAT_R8G8_SRGB:
    case PIPE_FORMAT_R8G8B8A8_UNORM:
    case PIPE_FORMAT_R8G8B8A8_SRGB:
    case PIPE_FORMAT_B8G8R8A8_UNORM:
@@ -5831,14 +5833,20 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                src[i] = x.value;
                hints[i] = agx3_post_ra_hint(x);
             }
-            if (invalid || (wait != 0 && wait != 32))
+            if (invalid)
                AGX3_REFUSE(I);
+            uint16_t half_wait = wait;
+            if (half_wait != 0 && half_wait != 32) {
+               if (!agx3_retire_slots_noop(emission, enc, half_wait))
+                  AGX3_REFUSE(I);
+               half_wait = 0;
+            }
             uint8_t bytes[AGX3_ALU_MAX_LENGTH], len;
             const bool composed = I->fcond == AGX_FCOND_GTN
                ? agx3_alu_fmax_half(enc, I->dest[0].value, src, hints,
-                                    I->dest[0].cache, wait, bytes, &len)
+                                    I->dest[0].cache, half_wait, bytes, &len)
                : agx3_alu_fmin_half(enc, I->dest[0].value, src, hints,
-                                    I->dest[0].cache, wait, bytes, &len);
+                                    I->dest[0].cache, half_wait, bytes, &len);
             if (!composed ||
                 !agx3_append(emission, bytes, len))
                AGX3_REFUSE(I);

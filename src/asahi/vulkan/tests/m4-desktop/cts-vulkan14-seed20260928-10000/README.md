@@ -41,3 +41,19 @@ The core points to inserting a 16-bit GS output into a 32-bit temporary vector.
 Preserve the raw bits in word temporaries and restore the original width per
 component on rasterizer export. The original interface-matching comparison
 passes on J713: `20260914T130412322900Z-cts28-gs-half`, peak 57 C.
+
+## Half operations and storage formats
+
+Four further original comparisons pass in `20260914T131020684884Z-cts28-small`:
+half shuffle (its boolean comparison), FP16 clamp with NaN input, clustered
+16-bit integer addition, and RG8_SNORM image reinterpretation/storage writes.
+General half comparisons widen exactly; native tied half min/max retains its
+encoding and retires otherwise unencodable producer waits first. Integer
+reductions use words with appropriate extension/truncation. RG8_SNORM uses the
+same formatted floating PBE path as its scalar and four-channel forms.
+Peak temperature 60.5 C; library SHA256
+`0e23502ee62ee2579c11fc4a80f1dac5bef5537a19bc0bf4110280925b73fd01`.
+
+Narrow SRGB end-of-tile programs also compile after selecting the normalized
+export encoding. The grow/shrink attachment case still fails numerically and
+is explicitly unresolved; compilation success is not counted as a CTS pass.

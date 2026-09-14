@@ -1,0 +1,122 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.subgroups.shuffle.compute.subgroupshuffleup_f16vec3_constant",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed27-precision",
+      "--deqp-case=dEQP-VK.subgroups.shuffle.compute.subgroupshuffleup_f16vec3_constant",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T131020684884Z-cts28-small/cts/000/result.qpa"
+    ],
+    "boot_id": "692171c4-f91a-4024-87a1-40a7bb2629da",
+    "status": "Pass",
+    "started_unix": 1789391421.927161,
+    "eligibility": {
+      "case": "dEQP-VK.subgroups.shuffle.compute.subgroupshuffleup_f16vec3_constant",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.363514128999995,
+    "finished_unix": 1789391422.295707,
+    "pid": 4659
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.dedicated_allocation.attachment_allocation.grow_shrink.33",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed27-precision",
+      "--deqp-case=dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.dedicated_allocation.attachment_allocation.grow_shrink.33",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T131020684884Z-cts28-small/cts/001/result.qpa"
+    ],
+    "boot_id": "692171c4-f91a-4024-87a1-40a7bb2629da",
+    "status": "Fail",
+    "started_unix": 1789391422.3129442,
+    "eligibility": {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.dedicated_allocation.attachment_allocation.grow_shrink.33",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Result verification failed",
+    "returncode": 1,
+    "seconds": 0.41166051599999776,
+    "finished_unix": 1789391422.7328093,
+    "pid": 4673
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.spirv_assembly.instruction.compute.float_controls2.fp16.input_args.clamp_testedWithout_NotNaN_arg1_nan_arg2_one_res_oneORnan_exec",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed27-precision",
+      "--deqp-case=dEQP-VK.spirv_assembly.instruction.compute.float_controls2.fp16.input_args.clamp_testedWithout_NotNaN_arg1_nan_arg2_one_res_oneORnan_exec",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T131020684884Z-cts28-small/cts/002/result.qpa"
+    ],
+    "boot_id": "692171c4-f91a-4024-87a1-40a7bb2629da",
+    "status": "Pass",
+    "started_unix": 1789391422.74343,
+    "eligibility": {
+      "case": "dEQP-VK.spirv_assembly.instruction.compute.float_controls2.fp16.input_args.clamp_testedWithout_NotNaN_arg1_nan_arg2_one_res_oneORnan_exec",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Output match with expected",
+    "returncode": 0,
+    "seconds": 0.5617565670000033,
+    "finished_unix": 1789391423.3109233,
+    "pid": 4683
+  },
+  {
+    "index": 3,
+    "case": "dEQP-VK.image.format_reinterpret.2d.r5g6b5_unorm_pack16_r8g8_snorm",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed27-precision",
+      "--deqp-case=dEQP-VK.image.format_reinterpret.2d.r5g6b5_unorm_pack16_r8g8_snorm",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T131020684884Z-cts28-small/cts/003/result.qpa"
+    ],
+    "boot_id": "692171c4-f91a-4024-87a1-40a7bb2629da",
+    "status": "Pass",
+    "started_unix": 1789391423.3218086,
+    "eligibility": {
+      "case": "dEQP-VK.image.format_reinterpret.2d.r5g6b5_unorm_pack16_r8g8_snorm",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Passed",
+    "returncode": 0,
+    "seconds": 0.3106147119999889,
+    "finished_unix": 1789391423.6381288,
+    "pid": 4691
+  },
+  {
+    "index": 4,
+    "case": "dEQP-VK.subgroups.clustered.graphics.subgroupclusteredadd_i16vec3",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed27-precision",
+      "--deqp-case=dEQP-VK.subgroups.clustered.graphics.subgroupclusteredadd_i16vec3",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T131020684884Z-cts28-small/cts/004/result.qpa"
+    ],
+    "boot_id": "692171c4-f91a-4024-87a1-40a7bb2629da",
+    "status": "Pass",
+    "started_unix": 1789391423.6488426,
+    "eligibility": {
+      "case": "dEQP-VK.subgroups.clustered.graphics.subgroupclusteredadd_i16vec3",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 1.3240010430000098,
+    "finished_unix": 1789391424.9785492,
+    "pid": 4696
+  }
+]
