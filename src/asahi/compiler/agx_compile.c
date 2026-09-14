@@ -3958,11 +3958,26 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
       return agx_fminmax_to(b, dst, s0, s1, instr);
 
    case nir_op_iabs: {
-      assert(sz == 32 && "other integer absolute values lowered");
+      assert(sz == 8 || sz == 16 || sz == 32);
+      agx_index value = s0;
+      if (sz < 32) {
+         value = agx_temp(b->shader, AGX_SIZE_32);
+         if (sz == 8) {
+            agx_index shifted = agx_bfi(b, i0, s0, agx_immediate(8), 0);
+            agx_asr_to(b, value, shifted, agx_immediate(8));
+         } else {
+            agx_signext_to(b, value, s0);
+         }
+      }
       /* Keep G17P's 32-bit absolute value independent of signed isel.  The
-       * usual two's-complement identity is exact even for INT_MIN. */
-      agx_index sign = agx_asr(b, s0, agx_immediate(31));
-      agx_index magnitude = agx_xor(b, s0, sign);
+       * usual two's-complement identity is exact even for INT_MIN. Narrow
+       * inputs are sign-extended first and truncated after the arithmetic. */
+      agx_index sign = agx_asr(b, value, agx_immediate(31));
+      agx_index magnitude = agx_xor(b, value, sign);
+      if (sz < 32) {
+         magnitude = agx_iadd(b, magnitude, agx_neg(sign), 0);
+         return agx_subdivide_to(b, dst, magnitude, 0);
+      }
       return agx_iadd_to(b, dst, magnitude, agx_neg(sign), 0);
    }
 

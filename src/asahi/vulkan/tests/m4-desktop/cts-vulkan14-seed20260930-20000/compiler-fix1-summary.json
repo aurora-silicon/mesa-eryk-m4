@@ -1,0 +1,23 @@
+{
+  "selected": 4,
+  "recorded": 4,
+  "completed": 4,
+  "counts": {
+    "Pass": 3,
+    "Fail": 1
+  },
+  "classifications": {
+    "unclassified": 4
+  },
+  "elapsed_seconds": 3.8064336479874328,
+  "preparation_seconds": 1.3869369459862355,
+  "runner_seconds": 0.8096408730000064,
+  "jobs": 4,
+  "tests_per_group": 1,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "921397c827d37fa787d8c1d463f1767cc08d4b216be2ea00e7815fc24b904771",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T190428755032Z-cts30-compiler-fixes",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 60.25
+}

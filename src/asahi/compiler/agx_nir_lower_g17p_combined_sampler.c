@@ -460,7 +460,8 @@ agx_nir_lower_g17p_indexed_samplers(nir_shader *shader)
             nir_tex_instr *tex = nir_instr_as_tex(instr);
             const bool fetch = g17p_indexed_fetch_shape(
                tex, shader->info.stage == MESA_SHADER_FRAGMENT ||
-                    shader->info.stage == MESA_SHADER_COMPUTE);
+                    shader->info.stage == MESA_SHADER_COMPUTE ||
+                    shader->info.stage == MESA_SHADER_VERTEX);
             /* Vertex stages have no derivatives, but explicit-LOD sampling
              * uses the same native operation as fragment/compute stages. */
             if (shader->info.stage == MESA_SHADER_VERTEX && !fetch &&

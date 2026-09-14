@@ -3410,8 +3410,8 @@ agx3_g17p_vertex_output_count(agx_context *ctx, enum agx_isa_encoding enc,
       return 0;
    for (unsigned i = 0; i < count; ++i)
       *sparse |= !outputs[i];
-   if (*sparse) {
-      /* Sparse export order stays ascending; undefined holes consume no
+   {
+      /* Export order stays ascending; undefined holes consume no
        * staging slot and must not turn into invented vertex values. */
       unsigned next = 0;
       agx_foreach_instr_global(ctx, I) {
@@ -4535,10 +4535,11 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
     * Constants have no staging or control-flow side effects, but can reuse
     * a GPR read by an earlier COPY. Use the existing immediately retired
     * COPY path for these streams; retain batched waits for contiguous tails. */
+   /* The nonterminal path retires each staging read before intervening
+    * producers can overwrite its GPR. This also covers spill reloads
+    * between exports in a large vertex output bundle. */
    const bool g17p_user_output_protocol = g17p_sparse_outputs ||
-      g17p_output_count == 6 ||
-      (g17p_output_count >= 5 &&
-       agx3_outputs_are_terminal(ctx, g17p_output_count, true));
+      g17p_output_count >= 5;
    unsigned g17p_outputs_staged = 0;
    bool g17p_indexed_outputs = false;
    if (enc == AGX_ISA_ENCODING_AGX3B && ctx->stage == MESA_SHADER_VERTEX) {

@@ -1,0 +1,22 @@
+{
+  "selected": 1,
+  "recorded": 1,
+  "completed": 1,
+  "counts": {
+    "Pass": 1
+  },
+  "classifications": {
+    "unclassified": 1
+  },
+  "elapsed_seconds": 5.469155196013162,
+  "preparation_seconds": 1.3970994820119813,
+  "runner_seconds": 2.416530049000002,
+  "jobs": 1,
+  "tests_per_group": 1,
+  "case_timeout_seconds": 120,
+  "cases_sha256": "1cee5e8c6d30c6453a90a71afee1ff43ae4b1beaa7be981eed10dc32b2b2ad78",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T185910995983Z-cts30-timeout-isolated",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 59.75
+}
