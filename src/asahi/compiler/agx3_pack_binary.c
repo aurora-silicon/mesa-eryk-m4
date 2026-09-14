@@ -5210,7 +5210,15 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                if (!agx3_emit_pixel(emission, enc, g17p_deferred_write, 0))
                   AGX3_REFUSE(I);
             }
-            if (!agx3_emit_tile(emission, enc, I, slot, wait, first, last))
+            /* LLDCOL has no qualified incoming-wait form. Retire reused
+             * scoreboard slots before issuing the next tile read. */
+            uint16_t tile_wait = wait;
+            if (I->op == AGX_OPCODE_LD_TILE && tile_wait) {
+               if (!agx3_retire_slots_noop(emission, enc, tile_wait))
+                  AGX3_REFUSE(I);
+               tile_wait = 0;
+            }
+            if (!agx3_emit_tile(emission, enc, I, slot, tile_wait, first, last))
                AGX3_REFUSE(I);
 
             if (g17p_pixel_protocol && I->op == AGX_OPCODE_ST_TILE && last) {

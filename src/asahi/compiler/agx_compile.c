@@ -2109,6 +2109,10 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
       return agx_get_sr_to(b, dst, AGX_SR_INPUT_SAMPLE_MASK);
 
    case nir_intrinsic_load_sample_mask:
+      if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B) {
+         agx_index input = agx_get_sr_coverage(b, 16, AGX_SR_COVERAGE_MASK);
+         return agx_mov_to(b, dst, agx_and(b, input, agx_immediate(15)));
+      }
       return agx_get_sr_coverage_to(b, dst, AGX_SR_COVERAGE_MASK);
 
    case nir_intrinsic_load_helper_invocation:
@@ -6079,6 +6083,35 @@ has_unlowered_printf_address(const nir_shader *nir)
    return false;
 }
 
+/* Native G16 framebuffer reads name a constant sample mask. Within the
+ * per-sample loop, the dynamic mask has at most one bit set. Select the
+ * corresponding constant-mask read, keeping inactive samples unaccessed. */
+static bool
+lower_agx3_sample_tile_read(nir_builder *b, nir_intrinsic_instr *intr,
+                           UNUSED void *data)
+{
+   if (intr->intrinsic != nir_intrinsic_load_local_pixel_agx ||
+       nir_src_is_const(intr->src[0]))
+      return false;
+
+   b->cursor = nir_before_instr(&intr->instr);
+   nir_def *mask = intr->src[0].ssa;
+   nir_def *value = nir_undef(b, intr->def.num_components, intr->def.bit_size);
+   /* G16's qualified raster sample counts are 1, 2 and 4. */
+   for (unsigned sample = 0; sample < 4; ++sample) {
+      nir_push_if(b, nir_ine_imm(b, nir_iand_imm(b, mask, 1u << sample), 0));
+      nir_def *loaded = nir_load_local_pixel_agx(
+         b, intr->def.num_components, intr->def.bit_size,
+         nir_imm_intN_t(b, 1u << sample, mask->bit_size),
+         .base = nir_intrinsic_base(intr), .format = nir_intrinsic_format(intr));
+      nir_push_else(b, NULL);
+      nir_pop_if(b, NULL);
+      value = nir_if_phi(b, loaded, value);
+   }
+   nir_def_replace(&intr->def, value);
+   return true;
+}
+
 /* AGX3 tile instructions transfer raw words. Packed HDR pixels occupy one
  * W32 word; their RGB arithmetic is performed on unpacked floating values. */
 static bool
@@ -6243,8 +6276,11 @@ agx_compile_shader_nir_inner(nir_shader *nir, struct agx_shader_key *key,
    NIR_PASS(_, nir, nir_shader_intrinsics_pass, lower_printf_buffer,
             nir_metadata_control_flow, &key->dev);
 
-   if (key->dev.encoding == AGX_ISA_ENCODING_AGX3B)
+   if (key->dev.encoding == AGX_ISA_ENCODING_AGX3B) {
+      NIR_PASS(_, nir, nir_shader_intrinsics_pass, lower_agx3_sample_tile_read,
+               nir_metadata_none, NULL);
       NIR_PASS(_, nir, agx_nir_lower_agx3_tile_formats);
+   }
    if (key->dev.encoding == AGX_ISA_ENCODING_AGX3B)
       NIR_PASS(_, nir, agx_nir_lower_interleave);
 

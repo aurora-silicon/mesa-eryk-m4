@@ -4,7 +4,8 @@ Broad frozen sample from CTS 1.4.6.2, four cases overlap seed 20260927.
 Uses the separately identified seed27 precision-corrected CTS binary,
 SHA256 `25e691e613ff9f3a386fd282dd48f0658b86126f56e2ff16c2e95378825d12fc`.
 Original CTS changes and provenance are retained in the preceding sample.
-This campaign is still in progress; no complete 10k result is claimed.
+All 10,000 cases have initial terminal results across interrupted segments.
+Fixes and skip review remain in progress; this is not a same-build full pass.
 
 First segment: 220 Pass, 170 NotSupported, 5 Fail, 33 Interrupted,
 9572 Unrun. A GPU fault ended the run; 63.461 seconds includes recovery,
@@ -138,3 +139,32 @@ width to complete blocks but uses the original partial width for its 1D upload
 (vktImageCompressionTranscodingSupport.cpp:2486,2583). The upload does not end
 at the image edge. A separate CTS correction is being built; no successful
 result is claimed yet and invalid-region validation remains enabled.
+
+## Active sample tile reads and scoreboard reuse
+
+Lower a variable one-hot sample selection into guarded constant sample reads,
+using the native G16 LLDCOL form. Retire producer waits separately when the
+scoreboard allocator reuses a slot; LLDCOL has no qualified incoming-wait form.
+Read the native coverage register at its 16-bit width and widen explicitly.
+Native four-sample Metal reference: `build/cts28-native/tile-sample`, target
+`applegpu_g16g`; constant masks 1, 2, 4, 8 are independently compiled witnesses.
+The captured random85 shader now compiles offline. The original random85 and
+extended dynamic sample-count tests pass in
+`20260914T140847534246Z-cts28-tile-wait`, maximum 58.5 C. The static
+alpha-to-coverage/sample-mask comparison still fails numerically. Random73
+also passes in `20260914T135918331855Z-cts28-sample-tile-and-copy`.
+Library SHA256: `21973a7938376d3f87f63e9b15e614430b0ae4cfcdd30badb3610f664f93cf37`.
+
+## CTS compressed 1D reference uploads
+
+The attached full CTS correction includes the preceding seed27 precision fixes
+and a 1D block-edge correction. The reference compressed image is allocated at
+a block-rounded width, so its upload must cover that width: copying a partial
+block at the original logical width does not reach the allocated image edge.
+The original ASTC12x12 read and BC1 write cases pass with the corrected binary
+in `20260914T135918331855Z-cts28-sample-tile-and-copy`. The unmodified CTS
+failures are retained; this is a test correction, not a driver relaxation.
+Patch SHA256: `ac11a26760c4a46b1b6eee5daa9ceb89a79bdf3e136d5be4fda71a717a1f7250`.
+Corrected binary SHA256:
+`abf9a339413e68f93d731fd8a683971c3b949c8fc13f57a22ad3bb33cdbf8c41`.
+Target path: `/root/cts-1.4.6.2/deqp-vk-seed28-corrected`.
