@@ -1108,14 +1108,12 @@ hk_CmdBeginRendering(VkCommandBuffer commandBuffer,
       unsigned level = view->vk.base_mip_level;
       unsigned first_layer = view->vk.base_array_layer;
 
-      const struct util_format_description *desc =
-         util_format_description(hk_format_to_pipe_format(view->vk.format));
-
-      assert(desc->format == PIPE_FORMAT_Z32_FLOAT ||
-             desc->format == PIPE_FORMAT_Z16_UNORM ||
-             desc->format == PIPE_FORMAT_Z16_UNORM_S8_UINT ||
-             desc->format == PIPE_FORMAT_Z24_UNORM_S8_UINT ||
-             desc->format == PIPE_FORMAT_Z32_FLOAT_S8X24_UINT);
+      /* Attachment state addresses the physical depth plane. In particular,
+       * X8_D24 and D24_S8 use Z32_FLOAT storage, and stencil is a separate
+       * plane. Keep this check consistent with the clear encoding below.
+       */
+      assert(z_layout->format == PIPE_FORMAT_Z32_FLOAT ||
+             z_layout->format == PIPE_FORMAT_Z16_UNORM);
 
       render->cr.depth.buffer =
          hk_image_base_address(image, 0) +

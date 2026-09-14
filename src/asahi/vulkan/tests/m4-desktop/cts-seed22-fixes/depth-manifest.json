@@ -1,0 +1,31 @@
+{
+  "id": "20260913T235918400096Z-cts-seed22-depth-fix",
+  "hypothesis": "Validate physical depth plane state for X8_D24 compare operations",
+  "command": [
+    "python3",
+    "/root/cts-sample.py",
+    "batch",
+    "--guard-output",
+    "/root/asahi-evidence/20260913T235918400096Z-cts-seed22-depth-fix",
+    "--binary",
+    "/root/cts-1.0.2.6/deqp-vk-scaled-border-reference",
+    "--cases",
+    "/root/cts-1.0.2.6/depth.txt",
+    "--count",
+    "1"
+  ],
+  "expected_success": "^CTS_BATCH_COMPLETE:",
+  "seconds": 40,
+  "sources": {
+    "mesa": {
+      "head": "bc764b1017bdfe8f5d83821f231ebdb3d3a3f217",
+      "status": " M src/asahi/vulkan/hk_cmd_draw.c\n M src/asahi/vulkan/tests/m4-desktop/asahi-session.py\n M src/asahi/vulkan/tests/m4-desktop/desktop-launch.py\n M src/asahi/vulkan/tests/m4-desktop/vulkan-trim-host.py\n",
+      "patch_sha256": "37928fbf102034ee90780e2b4d5f2ddbd090f2c2fb039a8c129545e13e64bf48"
+    },
+    "kernel": {
+      "head": "fba91e5d957746bfb3560b3bfce1fa793cad6336",
+      "status": "",
+      "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}
