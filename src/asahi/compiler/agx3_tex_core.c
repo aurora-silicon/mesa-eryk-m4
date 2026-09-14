@@ -777,6 +777,9 @@ agx3_tex_stage_array_layer(enum agx_isa_encoding enc, uint16_t src,
  * Cube samples use the same fused operand with face selector f74=10:
  * native face10/lod11 is 1705540600142c00f0c01100. Carry the two source
  * lifetime hints independently. */
+/* PACK_SMPIR follows the ordinary operand layout: f25/f27 are operand1
+ * cache/discard, and f39/f41 are operand2 cache/discard. A reused face or
+ * half LOD must not be discarded merely because it occupies operand2. */
 bool
 agx3_tex_stage_layer_lod(enum agx_isa_encoding enc, uint16_t layer,
                         uint16_t lod, uint8_t slot, uint16_t wait_mask,
@@ -793,8 +796,8 @@ agx3_tex_stage_layer_lod(enum agx_isa_encoding enc, uint16_t layer,
    const struct agx3_field_kv base[] = {
       KV(5,6), KV(9,5), KV(10,2), KV(12,slot), KV(16,layer),
       KV(23,2), KV(24,1), KV(27,layer_discard), KV(30,lod),
-      KV(37,2), KV(38,1), KV(39,lod_discard),
-      KV(41,1), KV(51,1), KV(52,2), KV(74,cube ? 10 : 4), KV(76,2), KV(77,16),
+      KV(37,2), KV(38,1), KV(39,0),
+      KV(41,lod_discard), KV(51,1), KV(52,2), KV(74,cube ? 10 : 4), KV(76,2), KV(77,16),
    };
    struct agx3_field_kv waits[6];
    unsigned n = 0;
@@ -826,7 +829,7 @@ agx3_tex_stage_cube_array_lod(enum agx_isa_encoding enc, uint16_t face,
    const struct agx3_field_kv base[] = {
       KV(5,6), KV(9,5), KV(10,2), KV(12,slot), KV(16,face),
       KV(23,2), KV(24,1), KV(27,face_discard), KV(30,lod),
-      KV(37,2), KV(38,1), KV(39,lod_discard), KV(41,1),
+      KV(37,2), KV(38,1), KV(39,0), KV(41,lod_discard),
       KV(44,layer), KV(51,2), KV(52,2), KV(55,1),
       KV(74,10), KV(75,12), KV(76,2), KV(77,16),
    };
@@ -857,7 +860,7 @@ agx3_tex_stage_cube_array(enum agx_isa_encoding enc, uint16_t layer,
    const struct agx3_field_kv fields[] = {
       KV(5,6), KV(9,5), KV(10,2), KV(12,slot), KV(16,layer),
       KV(23,2), KV(24,1), KV(27,layer_discard), KV(30,face),
-      KV(37,2), KV(38,1), KV(39,face_discard), KV(41,1),
+      KV(37,2), KV(38,1), KV(39,0), KV(41,face_discard),
       KV(51,1), KV(52,2), KV(74,4), KV(76,10), KV(77,12),
    };
    return agx3_bind_compose(enc, "pack_smpir", 0, fields,

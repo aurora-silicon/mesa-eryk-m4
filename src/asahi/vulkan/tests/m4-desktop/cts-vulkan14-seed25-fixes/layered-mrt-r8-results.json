@@ -1,0 +1,26 @@
+[
+  {
+    "index": 1,
+    "case": "dEQP-VK.renderpasses.renderpass2.suballocation.multisample_resolve.layers_6.r8_unorm.samples_4_resolve_level_3",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.renderpasses.renderpass2.suballocation.multisample_resolve.layers_6.r8_unorm.samples_4_resolve_level_3",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T052133608175Z-cts14-prefix-mrt/cts/001/result.qpa"
+    ],
+    "boot_id": "0ca1f3f9-acb4-4b79-8a3c-15498f475016",
+    "status": "Pass",
+    "started_unix": 1789363294.8815503,
+    "eligibility": {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.multisample_resolve.layers_6.r8_unorm.samples_4_resolve_level_3",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.988745946000563,
+    "finished_unix": 1789363295.8768768,
+    "pid": 6640
+  }
+]

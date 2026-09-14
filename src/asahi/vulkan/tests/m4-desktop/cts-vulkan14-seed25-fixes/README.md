@@ -507,3 +507,31 @@ it does not establish a CTS pass. The original paired CTS shader still fails,
 while reading descriptor1 alone in a clearly marked diagnostic binary Passes.
 The existing vertex cache-hint control does not fix the analogous vertex case.
 Peak56.75 C across these probes, no fault/reboot. Total remains90/91.
+
+## PACK_SMPIR second-operand lifetime
+
+The cube-face value is shared by the two descriptor samples when the array
+layer is constant zero. PACK_SMPIR incorrectly wrote the requested discard
+hint into operand2 cache field39 and unconditionally set discard field41.
+The first sample therefore destroyed the face register before the second.
+Correct field41 in cube-array packing and both register-LOD packing helpers;
+keep cache field39 clear. Source-GPR and staging-bank lifetimes stay separate.
+
+A temporary post-sample blue-channel readback found the face registers zeroed.
+That diagnostic patch is retained as evidence and removed from production.
+The independent staging-bank lifetime control did not fix the failure and
+was also removed. The original unmodified CTS cube-array/TCS case now Passes
+with ordinary settings. Peak56.5 C, no fault/reboot. Tested library SHA256:
+`3d6854f4a74287c4330c1fe12828213860cb6ecd956198f4ed4321a37d7e7fb1`.
+All6297 texture-codec checks pass, including native killed-source witnesses
+with their corrected semantic arguments and retained-face byte8/bit5 check.
+The saved native two-sampler G16G program also records operand cache/discard
+fields independently; offline compilation is not hardware validation.
+
+**All91 original failures now have passing targeted retests:78 Mesa fixes
+and13 CTS corrections. Both original crashes also have passing retests
+(one Mesa, one CTS correction).** targeted-completion.json maps all93 original
+Fail/Crash entries to their retained passing result files. This is accumulated
+targeted coverage, not a new full-sample regression pass. The original1000-case
+report and capability skips remain unchanged. SDDM remains active and the
+watchdog broker has returned to its idle60-second lease state.

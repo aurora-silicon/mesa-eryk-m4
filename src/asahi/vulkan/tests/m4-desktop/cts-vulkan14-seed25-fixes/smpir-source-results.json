@@ -1,0 +1,26 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.binding_model.shader_access.secondary_cmd_buf.bind2.with_template.combined_image_sampler_immutable.tess_ctrl.multiple_descriptor_sets.single_descriptor.cube_array",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.secondary_cmd_buf.bind2.with_template.combined_image_sampler_immutable.tess_ctrl.multiple_descriptor_sets.single_descriptor.cube_array",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T060049449796Z-cts14-smpir-source/cts/000/result.qpa"
+    ],
+    "boot_id": "0ca1f3f9-acb4-4b79-8a3c-15498f475016",
+    "status": "Pass",
+    "started_unix": 1789365650.7133846,
+    "eligibility": {
+      "case": "dEQP-VK.binding_model.shader_access.secondary_cmd_buf.bind2.with_template.combined_image_sampler_immutable.tess_ctrl.multiple_descriptor_sets.single_descriptor.cube_array",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.7158630909998465,
+    "finished_unix": 1789365651.4342816,
+    "pid": 9416
+  }
+]

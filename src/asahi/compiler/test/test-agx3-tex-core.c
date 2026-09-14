@@ -1108,7 +1108,7 @@ test_register_array_layer(void)
 {
    const uint8_t fused[] = {0x17,0x05,0x54,0x06,0,0x08,0x14,0,0xf0,0xc0,0x25,0};
    uint8_t packed[AGX3_TEX_MAX_LENGTH], packed_len;
-   CHECK(agx3_tex_stage_layer_lod(AGX_ISA_ENCODING_AGX3B,4,5,1,0,true,false,false,packed,&packed_len));
+   CHECK(agx3_tex_stage_layer_lod(AGX_ISA_ENCODING_AGX3B,4,5,1,0,true,true,false,packed,&packed_len));
    CHECK(packed_len == sizeof(fused) && !memcmp(packed,fused,packed_len));
    const uint8_t sampled[] = {0x05,0x80,0x0c,0xb8,0xb0,0,0x08,0x01,0,0,0x10,0,1,0};
    struct agx3_tex_sample_desc d = {.dest=0,.coord=0,.width=AGX3_TEX_W32,
@@ -1475,7 +1475,7 @@ test_m4_cube_register_lod(void)
    const uint8_t native_sample[] = {0x05,0x80,0x0c,0xb8,0xb0,0,0,3,0,0,0x10,0,1,0};
    uint8_t out[AGX3_TEX_MAX_LENGTH], len;
    CHECK(agx3_tex_stage_layer_lod(AGX_ISA_ENCODING_AGX3B,10,11,1,0,
-                                  true,false,true,out,&len));
+                                  true,true,true,out,&len));
    CHECK(len == sizeof(native_pack) && !memcmp(out,native_pack,len));
    struct agx3_tex_sample_desc d = {
       .width=AGX3_TEX_W32, .mask=15, .slot=1, .wait_mask=1,
@@ -1495,7 +1495,7 @@ test_m4_cube_array_register_lod(void)
    const uint8_t sample[] = {0x05,0x80,0x0c,0xb8,0xb0,0,0x08,3,1,0,0x10,0,1,0};
    uint8_t out[AGX3_TEX_MAX_LENGTH], len;
    CHECK(agx3_tex_stage_cube_array_lod(AGX_ISA_ENCODING_AGX3B,2,3,0,1,0,
-                                       true,false,out,&len));
+                                       true,true,out,&len));
    CHECK(len == sizeof(pack) && !memcmp(out,pack,len));
    struct agx3_tex_sample_desc d = {
       .width=AGX3_TEX_W32, .mask=15, .slot=1, .wait_mask=1,
@@ -1515,7 +1515,7 @@ test_m4_array_bias_offset(void)
    const uint8_t sample[] = {0x05,0x80,0x0c,0xb8,0xb0,0,0x81,3,1,0x78,0x10,0,1,2};
    uint8_t out[AGX3_TEX_MAX_LENGTH], len;
    CHECK(agx3_tex_stage_layer_lod(AGX_ISA_ENCODING_AGX3B,6,7,1,0,
-                                  true,false,false,out,&len));
+                                  true,true,false,out,&len));
    CHECK(len == sizeof(pack) && !memcmp(out,pack,len));
    struct agx3_tex_sample_desc d = {
       .width=AGX3_TEX_W32, .mask=15, .slot=1, .wait_mask=1,
@@ -1555,8 +1555,16 @@ main(void)
       uint8_t out[AGX3_TEX_MAX_LENGTH], len;
       const uint8_t pack[] = {0x17,0x05,0x54,0x06,0,0x16,0x28,0,0xf0,0xc0,0x29,0};
       CHECK(agx3_tex_stage_cube_array(AGX_ISA_ENCODING_AGX3B, 11, 10,
-                                       1, true, false, out, &len));
+                                       1, true, true, out, &len));
       CHECK(len == sizeof(pack) && !memcmp(out, pack, len));
+      /* Operand2 discard is f41 (byte8 bit5); f39 is its cache hint.
+       * Retaining a shared face must clear discard without setting cache. */
+      CHECK(agx3_tex_stage_cube_array(AGX_ISA_ENCODING_AGX3B, 11, 10,
+                                       1, true, false, out, &len));
+      uint8_t retained[sizeof(pack)];
+      memcpy(retained, pack, sizeof(pack));
+      retained[8] &= ~0x20;
+      CHECK(len == sizeof(retained) && !memcmp(out, retained, len));
       const struct agx3_tex_sample_desc d = {
          .width=AGX3_TEX_W32, .mask=15, .slot=1, .wait_mask=1,
          .coord_kill=true, .array=true, .cube=true, .final=true,
