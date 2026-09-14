@@ -282,3 +282,18 @@ Original CTS source/binary restored by the build helper. No Mesa change or
 unmodified-CTS pass is claimed. Peak 58.25 C, no fault/reboot.
 Running total: **70/91 failures resolved** (59 Mesa fixes, 11 CTS corrections),
 21 remaining. No broad regression campaign.
+
+## CTS signed packed scaled reference values
+
+`tcu::ConstPixelBufferAccess::getPixel` built an unsigned UVec4 from the
+sign-extended SSCALED 10:10:10:2 components, then converted it to float.
+Negative values became approximately 2^32 instead of negative floats. Use
+IVec4, matching the adjacent signed-integer format implementation.
+
+Combined with the previously recorded GLSL sampler-type correction, the
+remaining A2B10G10R10_SSCALED array-sampling case now Passes. This is a CTS
+reference fix, not a Mesa fix. Separate binary SHA256:
+`9f58b84ad67ca2759d5ef66ec506dfbff1d38233b08de81206e922fbd604223f`.
+Original source and binary restored. Peak 58.25 C, no fault/reboot.
+Running total: **71/91 failures resolved** (59 Mesa fixes, 12 CTS corrections),
+20 remaining. No broad regression campaign.

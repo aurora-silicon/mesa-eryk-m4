@@ -1,0 +1,26 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.combined.view_type.2d_array.format.a2b10g10r10_sscaled_pack32.count_1.size.13x13_array_of_6",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-packed-sscaled",
+      "--deqp-case=dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.combined.view_type.2d_array.format.a2b10g10r10_sscaled_pack32.count_1.size.13x13_array_of_6",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T043116429259Z-cts14-packed-sscaled-reference/cts/000/result.qpa"
+    ],
+    "boot_id": "0ca1f3f9-acb4-4b79-8a3c-15498f475016",
+    "status": "Pass",
+    "started_unix": 1789360277.7323208,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.combined.view_type.2d_array.format.a2b10g10r10_sscaled_pack32.count_1.size.13x13_array_of_6",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.5125085189999936,
+    "finished_unix": 1789360278.2498455,
+    "pid": 3111
+  }
+]
