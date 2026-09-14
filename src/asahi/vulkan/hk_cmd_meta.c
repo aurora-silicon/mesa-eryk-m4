@@ -65,7 +65,7 @@ hk_device_init_meta(struct hk_device *dev)
       return result;
 
    dev->meta.use_gs_for_layer = false;
-   dev->meta.use_layer_output = !agx_native_graphics(&dev->dev);
+   dev->meta.use_layer_output = true;
    dev->meta.use_stencil_export = true;
    dev->meta.use_masked_rgba8_buffer_unpack =
       agx_native_graphics(&dev->dev);

@@ -397,3 +397,13 @@ SHA256: `2919027e8ce871c3f9b20466a40595347926dca2cc9fe3663a0a08827ec2e637`.
 The tested binary also contains the separately committed meta-layer fix.
 Running total: **82/91 failures resolved** (70 Mesa fixes, 12 CTS corrections),
 9 remaining.
+
+## Layer output from meta rectangle shaders
+
+Enable gl_Layer in internal rectangle shaders now that native UVS layer
+exports and layered color storage are implemented. This removes the
+bring-up refusal of clears to nonzero layers. No per-layer CPU rendering
+or modified CTS reference is used. The original cube A4R4G4B4 attachment
+clear now Passes; evidence and library identity are in query-layer-evidence.
+Running total: **83/91 failures resolved** (71 Mesa fixes, 12 CTS corrections),
+8 remaining. No broad regression campaign.
