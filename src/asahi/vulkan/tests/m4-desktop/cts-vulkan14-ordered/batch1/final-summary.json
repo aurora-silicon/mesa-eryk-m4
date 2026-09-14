@@ -1,0 +1,40 @@
+{
+  "selected": 30000,
+  "counts": {
+    "Pass": 14605,
+    "NotSupported": 15395
+  },
+  "inputs": [
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-ordered/0000000-0100000/segments/0000000-0010000/run/results.json",
+      "sha256": "74b3f46f619ba42c7108fa8649663f72e71b3bafc1950798ed18433204103e94"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-ordered/0000000-0100000/segments/0000000-0010000/remaining1/run/results.json",
+      "sha256": "47f822dab15373535bafe5e9c036e3b44b4a0b4cf294d2ed49f9afb15f7ae2ad"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-ordered/0000000-0100000/segments/0010000-0020000/run/results.json",
+      "sha256": "7588c3593c1fd0a43850841fe10080dab7b07867d8fd2c0b39c94f44402d86b7"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-ordered/0000000-0100000/segments/0020000-0030000/run/results.json",
+      "sha256": "8d6ddd18c001995bafde2121dbde6bfd2129860b17a5c6f4bf5c5a9b95a57e3d"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-ordered-b1-fixes/stencil-aspect1/results.json",
+      "sha256": "f56f6f5f88809ba177264652108a3d0d2446e71bd5acd42a3333728459b273e2"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-ordered-b1-fixes/timeout-private-map/results.json",
+      "sha256": "61176bfabf79387db14b093a69079305353ff9f120b06d3924aedbc40779473e"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-ordered-b1-fixes/timeout-context20/results.json",
+      "sha256": "fa1b2f9e42ec28aaf75c414b4a25666f8693d1cf0d25621839c86042c91ef01d"
+    }
+  ],
+  "cases_sha256": "7ffd2587574a362884a7fc6af78cd3fdedce11869356ac0efb7136033d81faf2",
+  "resolved_failures": 25,
+  "limitation": "Cumulative evidence across builds and attempts; not an uninterrupted same-build run."
+}

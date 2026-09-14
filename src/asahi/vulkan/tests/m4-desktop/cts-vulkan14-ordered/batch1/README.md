@@ -1,32 +1,56 @@
-# Ordered CTS batch 1: [0, 100000)
+# Ordered CTS batch 1: completed prefix [0, 30000)
 
-Execution in progress; this is not a final 100k result or conformance claim.
-Catalog SHA256: 72c1bb9d2f9f0425ab8a4f570d78abdc1d3a34b82173ec76b772dedc477526bf.
-The ten prepared adjacent 10k lists exactly reconstruct the frozen batch.
-Twenty workers, groups of 50, 60-second case timeout, 900-second segment bound.
-Each segment uses the mandatory watchdog/thermal guard. No outcome filtering.
-The CTS binary contains previously recorded reference corrections.
+The user stopped the planned [0, 100000) run after 30k. Resume deterministic
+coverage at index 30000. The frozen catalog and original 100k selection are
+unchanged. Interrupted segment4 evidence is retained locally and is excluded
+from this report.
 
-First 10k outcomes: 3927 Pass, 6072 NotSupported, 1 Timeout.
-`dEQP-VK.api.command_buffers.trim_command_pool` reached 60.056313 seconds.
-The runner canceled its peers after that timeout; these are preserved as
-Interrupted rather than fabricated independent crashes. After health inspection,
-only the 4521 incomplete cases were resumed. The timeout was not retried.
+Original 30k outcomes: **14580 Pass, 15395 NotSupported, 24 Fail, 1 Timeout**.
+After targeted fixes: **14605 Pass, 15395 NotSupported; no unresolved original
+failures, crashes or timeouts**. These are cumulative results, not a same-build
+30k regression run. Unsupported cases are not passes or blanket optionality
+claims. CTS contains the previously documented reference corrections.
 
-Evidence: 20260914T215100954901Z-cts-ordered-b1-s01 and
-20260914T215354846204Z-cts-ordered-b1-s01-remaining1. GPU remained healthy;
-maximum exposed temperature 59.75 C. Original results and all interrupted
-attempts are under the workspace build/cts-vulkan14-ordered directory.
+## Multisampled stencil copies
 
-30k checkpoint: 14580 Pass, 15395 NotSupported, 24 Fail, 1 Timeout.
-All 24 correctness failures cover the stencil aspect of D16S8/D24S8 MSAA
-copies at 2x/4x across whole/partial/array variants. See stencil-failures.json.
-No driver crash/reboot; peak exposed temperature 60.25 C. Execution continues.
+All 24 failures covered stencil copies on split D16S8/D24S8 images at 2x/4x,
+across whole/partial/array variants. The common meta copy helper replaced the
+requested stencil aspect with COLOR for its internal R8 view, selecting the
+depth plane. The new depth_stencil_aspect_views property preserves aspect
+selection for drivers with separate backing planes; Honeykrisp enables it for
+split depth/stencil images. All 24 original cases pass in 1.212s runner time.
+Mesa fix: 263d691c651. Evidence and exact cases: stencil-fixed-results.json.
 
-Stencil fix: common meta copy views can now preserve depth/stencil aspect
-selection when those aspects have separate backing allocations. Honeykrisp
-enables this for split depth/stencil images. Previously the internal R8 view
-was created with COLOR, selecting the depth plane. All 24 original failures
-pass in cts-b1-stencil-aspect (1.212s runner time, peak60.25 C). No regression
-suite was run, as requested. The user stopped the broad run at 30k; partial
-segment4 evidence is retained separately and excluded from that checkpoint.
+## Command-pool timeout
+
+`dEQP-VK.api.command_buffers.trim_command_pool` originally timed out at
+60.056313s during the 20-worker broad run. Isolated before optimization it
+passed in 48.7837s, performing 6000 GPU event-write jobs and fresh 32MiB private
+allocations. Measured preparation totaled33.4601s, active execution4.7523s and
+cleanup9.9686s.
+
+The kernel no longer creates an unused firmware alias of compute private
+storage. Only client GPU addresses to that storage enter the command's page
+lists. Fresh allocations, size, zero initialization, GPU work and retirement
+ownership are retained; this is not buffer reuse or CPU event emulation.
+Kernel fix: 3dfe2229c473. Installed module SHA256:
+597b9033e8277880abdac4f6c0737887e0a77f074ebfc0a2488bf4d0be08d4fd.
+
+Isolated after optimization: **43.7790s**, about10.3% faster. Preparation fell
+to28.4505s; active execution4.7774s and cleanup9.9077s were essentially unchanged.
+The failing worker's original50-case group also completed with20 workers and
+one case per group:16Pass/34NotSupported, no failures. The timeout case passed
+in **46.335518s**. The60s limit was unchanged. This focused context check is
+not the original10k concurrent workload or a broad regression run.
+
+All GPU tests used the60s watchdog and six-channel thermal guard. Peak during
+the targeted fixes was60.25 C. The optimization retains the larger allocation
+cost; it removes5s of unnecessary preparation rather than claiming that the
+entire overhead is gone.
+
+`final-results.json.gz` retains every completed and interrupted attempt;
+`final-summary.json` hashes the inputs. The original timeout remains visible.
+The19 apparent peer crashes from the runner's cancellation were recorded as
+Interrupted, then only unfinished cases were resumed. No driver crash occurred
+in the accepted30k run. The later deliberate runner interruption abandoned its
+watchdog lease and triggered recovery; it is not a CTS crash in these30k cases.

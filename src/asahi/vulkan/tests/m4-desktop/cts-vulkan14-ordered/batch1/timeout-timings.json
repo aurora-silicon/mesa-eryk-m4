@@ -1,0 +1,24 @@
+{
+  "before": {
+    "experiment": "20260914T222530175224Z-cts-b1-trim-baseline",
+    "jobs": 6000,
+    "compute_allocations": 6000,
+    "runner_seconds": 48.78366887300001,
+    "times_seconds": {
+      "preparation": 33.460056556,
+      "active": 4.752315318,
+      "cleanup": 9.968569298
+    }
+  },
+  "after": {
+    "experiment": "20260914T223314059787Z-cts-b1-trim-private-map",
+    "jobs": 6000,
+    "compute_allocations": 6000,
+    "runner_seconds": 43.779002650999985,
+    "times_seconds": {
+      "preparation": 28.45051038,
+      "active": 4.7773828,
+      "cleanup": 9.907725632
+    }
+  }
+}

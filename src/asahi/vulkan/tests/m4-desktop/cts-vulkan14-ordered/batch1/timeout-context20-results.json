@@ -1,0 +1,802 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.api.buffer.dedicated_alloc.storage_texel.storage.indirect.create.zero",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.020443076,
+    "eligibility": {
+      "case": "dEQP-VK.api.buffer.dedicated_alloc.storage_texel.storage.indirect.create.zero",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/dEQP-VK.api.buffer.dedicated_alloc.storage_texel.storage.indirect.create.zero.c3.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.api.buffer.dedicated_alloc.transfer_dst.uniform_texel.storage_texel.uniform.storage.create.zero",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.019831788,
+    "eligibility": {
+      "case": "dEQP-VK.api.buffer.dedicated_alloc.transfer_dst.uniform_texel.storage_texel.uniform.storage.create.zero",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c35.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.api.buffer.dedicated_alloc.transfer_dst.uniform_texel.uniform.vertex.create.zero",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.020349288,
+    "eligibility": {
+      "case": "dEQP-VK.api.buffer.dedicated_alloc.transfer_dst.uniform_texel.uniform.vertex.create.zero",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/dEQP-VK.api.buffer.dedicated_alloc.transfer_dst.uniform_texel.uniform.vertex.create.zero.c1.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 3,
+    "case": "dEQP-VK.api.buffer.dedicated_alloc.transfer_src.transfer_dst.uniform_texel.storage_texel.uniform.storage.vertex.create.zero",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.029465476,
+    "eligibility": {
+      "case": "dEQP-VK.api.buffer.dedicated_alloc.transfer_src.transfer_dst.uniform_texel.storage_texel.uniform.storage.vertex.create.zero",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c40.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 4,
+    "case": "dEQP-VK.api.buffer.suballocation.transfer_dst.uniform.vertex.create.binding_residency_aliased",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Skip",
+    "seconds": 0.000127016,
+    "eligibility": {
+      "case": "dEQP-VK.api.buffer.suballocation.transfer_dst.uniform.vertex.create.binding_residency_aliased",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "NotSupported",
+    "message": "Sparse bindings feature is not supported at vktApiBufferTests.cpp:141",
+    "qpa": "deqp-runner/dEQP-VK.api.buffer.suballocation.transfer_dst.uniform.vertex.create.binding_residency_aliased.c29.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 5,
+    "case": "dEQP-VK.api.buffer.suballocation.transfer_dst.uniform_texel.storage.vertex.indirect.create.zero",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.046003893,
+    "eligibility": {
+      "case": "dEQP-VK.api.buffer.suballocation.transfer_dst.uniform_texel.storage.vertex.indirect.create.zero",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/dEQP-VK.api.buffer.suballocation.transfer_dst.uniform_texel.storage.vertex.indirect.create.zero.c19.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 6,
+    "case": "dEQP-VK.api.buffer.suballocation.transfer_src.storage_texel.uniform.storage.index.vertex.create.binding_aliased",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Skip",
+    "seconds": 0.000160664,
+    "eligibility": {
+      "case": "dEQP-VK.api.buffer.suballocation.transfer_src.storage_texel.uniform.storage.index.vertex.create.binding_aliased",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "NotSupported",
+    "message": "Sparse bindings feature is not supported at vktApiBufferTests.cpp:141",
+    "qpa": "deqp-runner/c18.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 7,
+    "case": "dEQP-VK.api.buffer.suballocation.transfer_src.transfer_dst.storage_texel.storage.index.create.binding",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Skip",
+    "seconds": 0.000333727,
+    "eligibility": {
+      "case": "dEQP-VK.api.buffer.suballocation.transfer_src.transfer_dst.storage_texel.storage.index.create.binding",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "NotSupported",
+    "message": "Sparse bindings feature is not supported at vktApiBufferTests.cpp:141",
+    "qpa": "deqp-runner/c2.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 8,
+    "case": "dEQP-VK.api.buffer.suballocation.transfer_src.transfer_dst.uniform_texel.storage_texel.indirect.create.binding_residency",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Skip",
+    "seconds": 0.000239207,
+    "eligibility": {
+      "case": "dEQP-VK.api.buffer.suballocation.transfer_src.transfer_dst.uniform_texel.storage_texel.indirect.create.binding_residency",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "NotSupported",
+    "message": "Sparse bindings feature is not supported at vktApiBufferTests.cpp:141",
+    "qpa": "deqp-runner/c33.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 9,
+    "case": "dEQP-VK.api.buffer.suballocation.transfer_src.transfer_dst.uniform_texel.storage_texel.storage.index.indirect.create.binding_residency_aliased",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Skip",
+    "seconds": 0.000192267,
+    "eligibility": {
+      "case": "dEQP-VK.api.buffer.suballocation.transfer_src.transfer_dst.uniform_texel.storage_texel.storage.index.indirect.create.binding_residency_aliased",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "NotSupported",
+    "message": "Sparse bindings feature is not supported at vktApiBufferTests.cpp:141",
+    "qpa": "deqp-runner/c15.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 10,
+    "case": "dEQP-VK.api.buffer.suballocation.transfer_src.uniform_texel.uniform.index.create.binding_residency_aliased",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Skip",
+    "seconds": 0.009275982,
+    "eligibility": {
+      "case": "dEQP-VK.api.buffer.suballocation.transfer_src.uniform_texel.uniform.index.create.binding_residency_aliased",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "NotSupported",
+    "message": "Sparse bindings feature is not supported at vktApiBufferTests.cpp:141",
+    "qpa": "deqp-runner/c8.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 11,
+    "case": "dEQP-VK.api.buffer.suballocation.uniform_texel.storage_texel.storage.index.vertex.create.binding_residency_aliased",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Skip",
+    "seconds": 0.000232913,
+    "eligibility": {
+      "case": "dEQP-VK.api.buffer.suballocation.uniform_texel.storage_texel.storage.index.vertex.create.binding_residency_aliased",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "NotSupported",
+    "message": "Sparse bindings feature is not supported at vktApiBufferTests.cpp:141",
+    "qpa": "deqp-runner/c30.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 12,
+    "case": "dEQP-VK.api.buffer.suballocation.uniform_texel.storage_texel.vertex.create.binding",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Skip",
+    "seconds": 0.000174248,
+    "eligibility": {
+      "case": "dEQP-VK.api.buffer.suballocation.uniform_texel.storage_texel.vertex.create.binding",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "NotSupported",
+    "message": "Sparse bindings feature is not supported at vktApiBufferTests.cpp:141",
+    "qpa": "deqp-runner/dEQP-VK.api.buffer.suballocation.uniform_texel.storage_texel.vertex.create.binding.c16.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 13,
+    "case": "dEQP-VK.api.buffer_view.access.uniform_storage_texel_buffer.bind_as_uniform.r8_uscaled",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Skip",
+    "seconds": 0.000181081,
+    "eligibility": {
+      "case": "dEQP-VK.api.buffer_view.access.uniform_storage_texel_buffer.bind_as_uniform.r8_uscaled",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "NotSupported",
+    "message": "VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT not supported for format at vktApiBufferViewAccessTests.cpp:1306",
+    "qpa": "deqp-runner/dEQP-VK.api.buffer_view.access.uniform_storage_texel_buffer.bind_as_uniform.r8_uscaled.c44.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 14,
+    "case": "dEQP-VK.api.buffer_view.create.dedicated_alloc.storage.astc_6x6_srgb_block",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.000112022,
+    "eligibility": {
+      "case": "dEQP-VK.api.buffer_view.create.dedicated_alloc.storage.astc_6x6_srgb_block",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "BufferView test",
+    "qpa": "deqp-runner/dEQP-VK.api.buffer_view.create.dedicated_alloc.storage.astc_6x6_srgb_block.c32.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 15,
+    "case": "dEQP-VK.api.buffer_view.create.dedicated_alloc.storage.d24_unorm_s8_uint",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Skip",
+    "seconds": 0.000158479,
+    "eligibility": {
+      "case": "dEQP-VK.api.buffer_view.create.dedicated_alloc.storage.d24_unorm_s8_uint",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "NotSupported",
+    "message": "Format not supported at vktApiBufferViewCreateTests.cpp:127",
+    "qpa": "deqp-runner/dEQP-VK.api.buffer_view.create.dedicated_alloc.storage.d24_unorm_s8_uint.c31.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 16,
+    "case": "dEQP-VK.api.buffer_view.create.dedicated_alloc.uniform.r8_unorm",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.000134434,
+    "eligibility": {
+      "case": "dEQP-VK.api.buffer_view.create.dedicated_alloc.uniform.r8_unorm",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "BufferView test",
+    "qpa": "deqp-runner/dEQP-VK.api.buffer_view.create.dedicated_alloc.uniform.r8_unorm.c25.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 17,
+    "case": "dEQP-VK.api.buffer_view.create.suballocation.uniform.r32g32_sfloat",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 0.000126542,
+    "eligibility": {
+      "case": "dEQP-VK.api.buffer_view.create.suballocation.uniform.r32g32_sfloat",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "BufferView test",
+    "qpa": "deqp-runner/dEQP-VK.api.buffer_view.create.suballocation.uniform.r32g32_sfloat.c49.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 18,
+    "case": "dEQP-VK.api.command_buffers.indirect_compute_dispatch_offsets_12_20",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Skip",
+    "seconds": 8.8478e-05,
+    "eligibility": {
+      "case": "dEQP-VK.api.command_buffers.indirect_compute_dispatch_offsets_12_20",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "NotSupported",
+    "message": "Exclusive compute queue not supported. at vktTestCase.cpp:980",
+    "qpa": "deqp-runner/dEQP-VK.api.command_buffers.indirect_compute_dispatch_offsets_12_20.c22.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 19,
+    "case": "dEQP-VK.api.command_buffers.trim_command_pool",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 46.335518,
+    "eligibility": {
+      "case": "dEQP-VK.api.command_buffers.trim_command_pool",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/dEQP-VK.api.command_buffers.trim_command_pool.c17.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 20,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.1d.a2b10g10r10_snorm_pack32.a2b10g10r10_snorm_pack32.general_general_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Skip",
+    "seconds": 0.000165539,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.1d.a2b10g10r10_snorm_pack32.a2b10g10r10_snorm_pack32.general_general_nearest",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "NotSupported",
+    "message": "Format feature blit source not supported at vktApiBlittingTests.cpp:1449",
+    "qpa": "deqp-runner/c5.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 21,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.1d.astc_12x10_unorm_block.astc_12x10_unorm_block.optimal_optimal_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Skip",
+    "seconds": 0.002127594,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.1d.astc_12x10_unorm_block.astc_12x10_unorm_block.optimal_optimal_nearest",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "NotSupported",
+    "message": "Format feature blit destination not supported at vktApiBlittingTests.cpp:1460",
+    "qpa": "deqp-runner/c26.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 22,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.1d.astc_8x5_srgb_block.astc_8x5_srgb_block.general_optimal_linear",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Skip",
+    "seconds": 1.5377e-05,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.1d.astc_8x5_srgb_block.astc_8x5_srgb_block.general_optimal_linear",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "NotSupported",
+    "message": "Format feature blit destination not supported at vktApiBlittingTests.cpp:1460",
+    "qpa": "deqp-runner/c9.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 23,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.1d.b10g11r11_ufloat_pack32.b10g11r11_ufloat_pack32.optimal_general_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 1.2611326,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.1d.b10g11r11_ufloat_pack32.b10g11r11_ufloat_pack32.optimal_general_nearest",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c45.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 24,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.1d.r32g32b32_sfloat.r32g32b32_sfloat.general_optimal_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 1.5817381,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.1d.r32g32b32_sfloat.r32g32b32_sfloat.general_optimal_nearest",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c11.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 25,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.1d.r32g32b32a32_uint.r32g32b32a32_uint.optimal_linear_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Skip",
+    "seconds": 0.000184458,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.1d.r32g32b32a32_uint.r32g32b32a32_uint.optimal_linear_nearest",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "NotSupported",
+    "message": "Destination format not supported at vktApiBlittingTests.cpp:1436",
+    "qpa": "deqp-runner/c7.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 26,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.1d.r8_srgb.r8_srgb.linear_linear_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Skip",
+    "seconds": 0.000175998,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.1d.r8_srgb.r8_srgb.linear_linear_nearest",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "NotSupported",
+    "message": "Source format not supported at vktApiBlittingTests.cpp:1429",
+    "qpa": "deqp-runner/c23.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 27,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.a2b10g10r10_unorm_pack32.r4g4_unorm_pack8.optimal_optimal_cubic",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Skip",
+    "seconds": 0.000213602,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.a2b10g10r10_unorm_pack32.r4g4_unorm_pack8.optimal_optimal_cubic",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "NotSupported",
+    "message": "Format feature blit destination not supported at vktApiBlittingTests.cpp:1460",
+    "qpa": "deqp-runner/c4.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 28,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.a4r4g4b4_unorm_pack16.r4g4_unorm_pack8.linear_general_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Skip",
+    "seconds": 7.5501e-05,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.a4r4g4b4_unorm_pack16.r4g4_unorm_pack8.linear_general_nearest",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "NotSupported",
+    "message": "Format feature blit destination not supported at vktApiBlittingTests.cpp:1460",
+    "qpa": "deqp-runner/c48.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 29,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.r4g4_unorm_pack8.optimal_optimal_linear",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Skip",
+    "seconds": 0.000236748,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.r4g4_unorm_pack8.optimal_optimal_linear",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "NotSupported",
+    "message": "Format feature blit destination not supported at vktApiBlittingTests.cpp:1460",
+    "qpa": "deqp-runner/c14.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 30,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.astc_10x5_unorm_block.r4g4_unorm_pack8.general_optimal_linear",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Skip",
+    "seconds": 0.000209394,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.astc_10x5_unorm_block.r4g4_unorm_pack8.general_optimal_linear",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "NotSupported",
+    "message": "Format feature blit destination not supported at vktApiBlittingTests.cpp:1460",
+    "qpa": "deqp-runner/c38.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 31,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.astc_10x8_srgb_block.astc_10x8_srgb_block.general_optimal_linear",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Skip",
+    "seconds": 0.000141434,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.astc_10x8_srgb_block.astc_10x8_srgb_block.general_optimal_linear",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "NotSupported",
+    "message": "Format feature blit destination not supported at vktApiBlittingTests.cpp:1460",
+    "qpa": "deqp-runner/c34.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 32,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.astc_12x10_srgb_block.r8_srgb.linear_optimal_cubic",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Skip",
+    "seconds": 0.000174497,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.astc_12x10_srgb_block.r8_srgb.linear_optimal_cubic",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "NotSupported",
+    "message": "Source format not supported at vktApiBlittingTests.cpp:1429",
+    "qpa": "deqp-runner/c27.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 33,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.astc_5x4_unorm_block.r4g4_unorm_pack8.optimal_optimal_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Skip",
+    "seconds": 0.000176415,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.astc_5x4_unorm_block.r4g4_unorm_pack8.optimal_optimal_nearest",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "NotSupported",
+    "message": "Format feature blit destination not supported at vktApiBlittingTests.cpp:1460",
+    "qpa": "deqp-runner/c21.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 34,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.astc_6x6_srgb_block.a8b8g8r8_srgb_pack32.optimal_optimal_cubic",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Skip",
+    "seconds": 0.000126582,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.astc_6x6_srgb_block.a8b8g8r8_srgb_pack32.optimal_optimal_cubic",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "NotSupported",
+    "message": "VK_EXT_filter_cubic is not supported at vktTestCase.cpp:1394",
+    "qpa": "deqp-runner/c41.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 35,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.astc_6x6_srgb_block.astc_6x6_srgb_block.optimal_optimal_cubic",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Skip",
+    "seconds": 0.000238206,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.astc_6x6_srgb_block.astc_6x6_srgb_block.optimal_optimal_cubic",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "NotSupported",
+    "message": "Format feature blit destination not supported at vktApiBlittingTests.cpp:1460",
+    "qpa": "deqp-runner/c39.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 36,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.astc_6x6_unorm_block.r4g4_unorm_pack8.general_optimal_linear",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Skip",
+    "seconds": 2.6687e-05,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.astc_6x6_unorm_block.r4g4_unorm_pack8.general_optimal_linear",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "NotSupported",
+    "message": "Format feature blit destination not supported at vktApiBlittingTests.cpp:1460",
+    "qpa": "deqp-runner/c28.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 37,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.b8g8r8_uint.r8_uint.optimal_optimal_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 1.4095913,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.b8g8r8_uint.r8_uint.optimal_optimal_nearest",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c24.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 38,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.bc1_rgba_unorm_block.e5b9g9r9_ufloat_pack32.optimal_optimal_cubic",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Skip",
+    "seconds": 0.000218645,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.bc1_rgba_unorm_block.e5b9g9r9_ufloat_pack32.optimal_optimal_cubic",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "NotSupported",
+    "message": "VK_EXT_filter_cubic is not supported at vktTestCase.cpp:1394",
+    "qpa": "deqp-runner/c10.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 39,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.bc2_srgb_block.r8_srgb.general_general_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 1.2645323,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.bc2_srgb_block.r8_srgb.general_general_nearest",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c42.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 40,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.bc5_snorm_block.r4g4_unorm_pack8.general_optimal_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Skip",
+    "seconds": 0.000169146,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.bc5_snorm_block.r4g4_unorm_pack8.general_optimal_nearest",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "NotSupported",
+    "message": "Format feature blit destination not supported at vktApiBlittingTests.cpp:1460",
+    "qpa": "deqp-runner/c46.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 41,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.bc6h_sfloat_block.r4g4_unorm_pack8.optimal_general_linear",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Skip",
+    "seconds": 1.431e-05,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.bc6h_sfloat_block.r4g4_unorm_pack8.optimal_general_linear",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "NotSupported",
+    "message": "Format feature blit destination not supported at vktApiBlittingTests.cpp:1460",
+    "qpa": "deqp-runner/c37.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 42,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.bc7_unorm_block.r4g4_unorm_pack8.general_general_cubic",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Skip",
+    "seconds": 7.0935e-05,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.bc7_unorm_block.r4g4_unorm_pack8.general_general_cubic",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "NotSupported",
+    "message": "Format feature blit destination not supported at vktApiBlittingTests.cpp:1460",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 43,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.e5b9g9r9_ufloat_pack32.a1b5g5r5_unorm_pack16.general_optimal_cubic",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Skip",
+    "seconds": 0.000441207,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.e5b9g9r9_ufloat_pack32.a1b5g5r5_unorm_pack16.general_optimal_cubic",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "NotSupported",
+    "message": "VK_EXT_filter_cubic is not supported at vktTestCase.cpp:1394",
+    "qpa": "deqp-runner/c20.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 44,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.e5b9g9r9_ufloat_pack32.r16_unorm.general_general_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 1.3413343,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.e5b9g9r9_ufloat_pack32.r16_unorm.general_general_nearest",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c36.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 45,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.e5b9g9r9_ufloat_pack32.r4g4b4a4_unorm_pack16.general_optimal_cubic",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Skip",
+    "seconds": 0.000207935,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.e5b9g9r9_ufloat_pack32.r4g4b4a4_unorm_pack16.general_optimal_cubic",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "NotSupported",
+    "message": "VK_EXT_filter_cubic is not supported at vktTestCase.cpp:1394",
+    "qpa": "deqp-runner/c47.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 46,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.e5b9g9r9_ufloat_pack32.r8_snorm.optimal_general_linear",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 1.5582696,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.e5b9g9r9_ufloat_pack32.r8_snorm.optimal_general_linear",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c12.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 47,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.e5b9g9r9_ufloat_pack32.r8g8b8a8_snorm.general_optimal_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 1.5540506,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.e5b9g9r9_ufloat_pack32.r8g8b8a8_snorm.general_optimal_nearest",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c13.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 48,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.eac_r11g11_snorm_block.eac_r11g11_snorm_block.optimal_general_linear",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Skip",
+    "seconds": 0.000389268,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.eac_r11g11_snorm_block.eac_r11g11_snorm_block.optimal_general_linear",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "NotSupported",
+    "message": "Format feature blit destination not supported at vktApiBlittingTests.cpp:1460",
+    "qpa": "deqp-runner/c43.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 49,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.etc2_r8g8b8a8_srgb_block.a8b8g8r8_srgb_pack32.optimal_general_cubic",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Skip",
+    "seconds": 0.00027581,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.etc2_r8g8b8a8_srgb_block.a8b8g8r8_srgb_pack32.optimal_general_cubic",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "NotSupported",
+    "message": "VK_EXT_filter_cubic is not supported at vktTestCase.cpp:1394",
+    "qpa": "deqp-runner/c6.r1.qpa",
+    "worker_exit": "exit status: 0"
+  }
+]

@@ -1,0 +1,18 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.api.command_buffers.trim_command_pool",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Pass",
+    "seconds": 43.568928,
+    "eligibility": {
+      "case": "dEQP-VK.api.command_buffers.trim_command_pool",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/dEQP-VK.api.command_buffers.trim_command_pool.c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  }
+]
