@@ -497,3 +497,13 @@ Peak56.5 C, no fault/reboot. Mesa library is the tile32k build above.
 Running total: **90/91 failures resolved** (77 Mesa fixes, 13 CTS corrections),
 1 remaining: the immutable cube-array sampler in tessellation control.
 No broad regression campaign.
+
+## Cube sampler isolation tools
+
+Extend cube-compute-probe with two array layers, the failing CTS directions,
+64x64 UNORM patterns, paired linear/nearest samplers and seamless mode. The
+last focused compute run checks1152 interior components with no mismatch;
+it does not establish a CTS pass. The original paired CTS shader still fails,
+while reading descriptor1 alone in a clearly marked diagnostic binary Passes.
+The existing vertex cache-hint control does not fix the analogous vertex case.
+Peak56.75 C across these probes, no fault/reboot. Total remains90/91.

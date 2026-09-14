@@ -2218,6 +2218,17 @@ and run only through `gpu-experiment.py ... -- python3 /root/run-m4-gl.py
 /root/cube-compute-probe` on M4. The host software oracle uses
 `M4_TEST_LLVMPIPE=1 GALLIUM_DRIVER=llvmpipe LIBGL_ALWAYS_SOFTWARE=1`.
 
+Cube probe options: `M4_TEST_CUBE_ARRAY=1` adds a second cube and checks all
+faces in both layers. `M4_TEST_CUBE_CONSTANTS=1` (requires ARRAY) selects the
+four CTS seed25 cube directions under divergent branches; `M4_TEST_CUBE_64=1`
+uses its 64x64 dimensions. `M4_TEST_CUBE_UNORM=1` supplies a high-frequency
+RGBA8 pattern. `M4_TEST_CUBE_LINEAR=1` checks bilinear samples in the constant
+probe, excluding seam-crossing footprints. `M4_TEST_CUBE_PAIRED=1` (requires
+ARRAY, CONSTANTS and LINEAR) averages separate linear/nearest samplers;
+`M4_TEST_CUBE_SEAMLESS=1` matches Vulkan's seamless default. The report counts
+checked components, including the reduced interior-only linear subset.
+Link with `-lm` as well. All modes require the same hardware guards.
+
 ### Depth gather and consecutive image writes
 
 `depth-gather-probe.c` checks 64 compute gathers from R32F, D32 and D32S8,
