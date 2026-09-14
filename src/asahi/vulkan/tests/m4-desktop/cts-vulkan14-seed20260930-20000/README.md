@@ -8,8 +8,8 @@ corrections. The four completed broad segments took 558.673 seconds of runner
 time. Original outcome: 28 Fail, 2 Crash, 1 Timeout, 9,124 Pass, 10,845 NotSupported.
 Skip requirements are still being reviewed; no conformance claim.
 
-Cumulative targeted fixes resolve 24 original failures/crashes. Both original
-compiler crashes now pass. There are still 6 failing cases and one timeout.
+Cumulative targeted fixes resolve 26 original failures/crashes. Both original
+compiler crashes now pass. There are still 4 failing cases and one timeout.
 The timeout remains unresolved despite an isolated pass: hitting its 60-second
 bound under contention counts as failure.
 
@@ -58,3 +58,14 @@ Both projected 3D vertex offset cases and the shadow-array gather offset
 case now pass (1.010 seconds, peak 56.75 C, cache disabled). Preserve runtime
 3D offsets for the native operand bank rather than adding them before
 projection. Lower expanded shadow gather offsets after the early gather pass.
+
+Two scaled-image compute failures were invalid CTS shaders, independently
+reported by validation as VUID-vkCmdDispatch-format-07753: unsigned integer
+image types were paired with USCALED views, which require floating-point types.
+The separately identified CTS correction extends the prior graphics correction
+to compute sampling/texel-fetch and requires formatless storage writes. Both
+cases now pass (0.609 seconds, peak 57 C). This is a CTS correction, not a driver
+fix or an unmodified conformance result. The cumulative source patch and build
+manifest are included; the original binary and failed validation run are retained.
+Corrected binary SHA256: f445539c9b216b86820ebe0135e67f3938787197d9c77044849c4674ea9a8296.
+Evidence: 20260914T204741923371Z-cts30-scaled-compute-fixed1.
