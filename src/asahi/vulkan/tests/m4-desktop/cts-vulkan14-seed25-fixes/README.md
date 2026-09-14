@@ -135,3 +135,20 @@ Final library SHA256:
 Peak 58.0 C; no GPU fault/reboot. No broad regression campaign.
 Running total: **47/91 failures resolved** (41 Mesa fixes, 6 CTS corrections),
 44 remaining; both original crash cases have passing targeted retests.
+
+## Inactive color-attachment slots
+
+BG/EOT already compact active logical attachments into consecutive resource
+bindings while retaining original tile offsets. Remove the obsolete rejection
+of gaps in logical indices; format, allocation, overlap and spill bounds stay
+intact. Six of nine original shader-object rendering cases now Pass. The other
+three reach block_image_store compilation refusals and remain Fail.
+
+The host mixed-layout test checks sparse slots and overlapping storage; it
+completes before the larger existing test stops at its stale line-1866 assertion
+that R8_UINT multisampling is unsupported. No full host-suite pass is claimed.
+Nine-case M4 test peak 58.0 C, no GPU fault/reboot, expected API refusals retained.
+Library SHA256:
+`e15f165751eff41eb4731710f21e221435011f4c28fb83966bada9d05557acc5`.
+Running total: **53/91 failures resolved** (47 Mesa fixes, 6 CTS corrections),
+38 remaining. Original crash retests still recorded separately.

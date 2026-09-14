@@ -162,15 +162,12 @@ hk_agx3_g17p_rt0_tile_layout_supported(struct agx_tilebuffer_layout *tib)
       return false;
    unsigned begin[AGX_MAX_RENDER_TARGETS], end[AGX_MAX_RENDER_TARGETS],
       count = 0;
-   bool hole = false;
    for (unsigned rt = 0; rt < AGX_MAX_RENDER_TARGETS; ++rt) {
       const enum pipe_format logical = tib->logical_format[rt];
-      if (logical == PIPE_FORMAT_NONE) {
-         hole = true;
+      if (logical == PIPE_FORMAT_NONE)
          continue;
-      }
-      /* The current native EOT wrapper binds consecutive color attachments. */
-      if (hole || tib->spilled[rt] || (tib->layered && rt != 0))
+      /* BG/EOT compact active bindings while preserving these tile offsets. */
+      if (tib->spilled[rt] || (tib->layered && rt != 0))
          return false;
       const enum pipe_format physical = agx_tilebuffer_physical_format(tib, rt);
       const unsigned alignment = util_format_get_blocksize(physical);

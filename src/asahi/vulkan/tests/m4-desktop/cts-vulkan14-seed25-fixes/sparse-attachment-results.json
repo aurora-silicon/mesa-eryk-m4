@@ -1,0 +1,218 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.shader_object.rendering.color_attachment_count_4.none.extra_output_between_1.static.random_color_formats.before.gl_frag_write.r8g8_sint",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.shader_object.rendering.color_attachment_count_4.none.extra_output_between_1.static.random_color_formats.before.gl_frag_write.r8g8_sint",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T034826791565Z-cts14-sparse-attachments/cts/000/result.qpa"
+    ],
+    "boot_id": "d6085557-9b5d-48eb-b2af-d2d9d5365e2e",
+    "status": "Pass",
+    "started_unix": 1789357708.105419,
+    "eligibility": {
+      "case": "dEQP-VK.shader_object.rendering.color_attachment_count_4.none.extra_output_between_1.static.random_color_formats.before.gl_frag_write.r8g8_sint",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.39961994300006154,
+    "finished_unix": 1789357708.5100958,
+    "pid": 2741
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.shader_object.rendering.color_attachment_count_4.extra_attachment_before_2.none.none.random_color_formats.before.none.r5g5b5a1_unorm_pack16_d16_unorm",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.shader_object.rendering.color_attachment_count_4.extra_attachment_before_2.none.none.random_color_formats.before.none.r5g5b5a1_unorm_pack16_d16_unorm",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T034826791565Z-cts14-sparse-attachments/cts/001/result.qpa"
+    ],
+    "boot_id": "d6085557-9b5d-48eb-b2af-d2d9d5365e2e",
+    "status": "Fail",
+    "started_unix": 1789357708.110541,
+    "eligibility": {
+      "case": "dEQP-VK.shader_object.rendering.color_attachment_count_4.extra_attachment_before_2.none.none.random_color_formats.before.none.r5g5b5a1_unorm_pack16_d16_unorm",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "vk.endCommandBuffer(commandBuffer): VK_ERROR_FEATURE_NOT_PRESENT at vkCmdUtil.cpp:74",
+    "returncode": 1,
+    "seconds": 0.32333649199995307,
+    "finished_unix": 1789357708.4391148,
+    "pid": 2742
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.shader_object.rendering.color_attachment_count_1.none.extra_output_before_2.none.same_color_formats.before.none.r8_uint_x8_d24_unorm_pack32",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.shader_object.rendering.color_attachment_count_1.none.extra_output_before_2.none.same_color_formats.before.none.r8_uint_x8_d24_unorm_pack32",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T034826791565Z-cts14-sparse-attachments/cts/002/result.qpa"
+    ],
+    "boot_id": "d6085557-9b5d-48eb-b2af-d2d9d5365e2e",
+    "status": "Pass",
+    "started_unix": 1789357708.1158633,
+    "eligibility": {
+      "case": "dEQP-VK.shader_object.rendering.color_attachment_count_1.none.extra_output_before_2.none.same_color_formats.before.none.r8_uint_x8_d24_unorm_pack32",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.40296757900000557,
+    "finished_unix": 1789357708.5248733,
+    "pid": 2743
+  },
+  {
+    "index": 3,
+    "case": "dEQP-VK.shader_object.rendering.color_attachment_count_1.none.extra_output_before_1.none.same_color_formats.before.none.r8g8_srgb_d16_unorm_s8_uint",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.shader_object.rendering.color_attachment_count_1.none.extra_output_before_1.none.same_color_formats.before.none.r8g8_srgb_d16_unorm_s8_uint",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T034826791565Z-cts14-sparse-attachments/cts/003/result.qpa"
+    ],
+    "boot_id": "d6085557-9b5d-48eb-b2af-d2d9d5365e2e",
+    "status": "Pass",
+    "started_unix": 1789357708.1221323,
+    "eligibility": {
+      "case": "dEQP-VK.shader_object.rendering.color_attachment_count_1.none.extra_output_before_1.none.same_color_formats.before.none.r8g8_srgb_d16_unorm_s8_uint",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.41187636700010444,
+    "finished_unix": 1789357708.539798,
+    "pid": 2745
+  },
+  {
+    "index": 4,
+    "case": "dEQP-VK.shader_object.rendering.color_attachment_count_4.none.extra_output_between_2.dynamic.random_color_formats.before.none.r32g32b32_sfloat",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.shader_object.rendering.color_attachment_count_4.none.extra_output_between_2.dynamic.random_color_formats.before.none.r32g32b32_sfloat",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T034826791565Z-cts14-sparse-attachments/cts/004/result.qpa"
+    ],
+    "boot_id": "d6085557-9b5d-48eb-b2af-d2d9d5365e2e",
+    "status": "Pass",
+    "started_unix": 1789357708.4999874,
+    "eligibility": {
+      "case": "dEQP-VK.shader_object.rendering.color_attachment_count_4.none.extra_output_between_2.dynamic.random_color_formats.before.none.r32g32b32_sfloat",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.2720401060000768,
+    "finished_unix": 1789357708.7775183,
+    "pid": 2755
+  },
+  {
+    "index": 5,
+    "case": "dEQP-VK.shader_object.rendering.color_attachment_count_4.none.extra_output_before_1.dynamic.random_color_formats.before.none.r16_sint_d32_sfloat",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.shader_object.rendering.color_attachment_count_4.none.extra_output_before_1.dynamic.random_color_formats.before.none.r16_sint_d32_sfloat",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T034826791565Z-cts14-sparse-attachments/cts/005/result.qpa"
+    ],
+    "boot_id": "d6085557-9b5d-48eb-b2af-d2d9d5365e2e",
+    "status": "Pass",
+    "started_unix": 1789357708.602947,
+    "eligibility": {
+      "case": "dEQP-VK.shader_object.rendering.color_attachment_count_4.none.extra_output_before_1.dynamic.random_color_formats.before.none.r16_sint_d32_sfloat",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.3439701529998729,
+    "finished_unix": 1789357708.9522557,
+    "pid": 2758
+  },
+  {
+    "index": 6,
+    "case": "dEQP-VK.shader_object.rendering.color_attachment_count_4.extra_attachment_between_1.none.none.random_color_formats.before.none.b5g6r5_unorm_pack16_d24_unorm_s8_uint",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.shader_object.rendering.color_attachment_count_4.extra_attachment_between_1.none.none.random_color_formats.before.none.b5g6r5_unorm_pack16_d24_unorm_s8_uint",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T034826791565Z-cts14-sparse-attachments/cts/006/result.qpa"
+    ],
+    "boot_id": "d6085557-9b5d-48eb-b2af-d2d9d5365e2e",
+    "status": "Fail",
+    "started_unix": 1789357708.6083577,
+    "eligibility": {
+      "case": "dEQP-VK.shader_object.rendering.color_attachment_count_4.extra_attachment_between_1.none.none.random_color_formats.before.none.b5g6r5_unorm_pack16_d24_unorm_s8_uint",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "vk.endCommandBuffer(commandBuffer): VK_ERROR_FEATURE_NOT_PRESENT at vkCmdUtil.cpp:74",
+    "returncode": 1,
+    "seconds": 0.35389156500013996,
+    "finished_unix": 1789357708.9674084,
+    "pid": 2759
+  },
+  {
+    "index": 7,
+    "case": "dEQP-VK.shader_object.rendering.color_attachment_count_4.none.extra_output_between_1.none.random_color_formats.after.none.r8g8_unorm",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.shader_object.rendering.color_attachment_count_4.none.extra_output_between_1.none.random_color_formats.after.none.r8g8_unorm",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T034826791565Z-cts14-sparse-attachments/cts/007/result.qpa"
+    ],
+    "boot_id": "d6085557-9b5d-48eb-b2af-d2d9d5365e2e",
+    "status": "Pass",
+    "started_unix": 1789357708.613625,
+    "eligibility": {
+      "case": "dEQP-VK.shader_object.rendering.color_attachment_count_4.none.extra_output_between_1.none.random_color_formats.after.none.r8g8_unorm",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.36381749400015906,
+    "finished_unix": 1789357708.983419,
+    "pid": 2760
+  },
+  {
+    "index": 8,
+    "case": "dEQP-VK.shader_object.rendering.color_attachment_count_4.extra_attachment_after_2.none.dynamic.same_color_formats.before.none.b8g8r8a8_uint_x8_d24_unorm_pack32",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.shader_object.rendering.color_attachment_count_4.extra_attachment_after_2.none.dynamic.same_color_formats.before.none.b8g8r8a8_uint_x8_d24_unorm_pack32",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T034826791565Z-cts14-sparse-attachments/cts/008/result.qpa"
+    ],
+    "boot_id": "d6085557-9b5d-48eb-b2af-d2d9d5365e2e",
+    "status": "Fail",
+    "started_unix": 1789357708.8398495,
+    "eligibility": {
+      "case": "dEQP-VK.shader_object.rendering.color_attachment_count_4.extra_attachment_after_2.none.dynamic.same_color_formats.before.none.b8g8r8a8_uint_x8_d24_unorm_pack32",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "vk.endCommandBuffer(commandBuffer): VK_ERROR_FEATURE_NOT_PRESENT at vkCmdUtil.cpp:74",
+    "returncode": 1,
+    "seconds": 0.3081980089998524,
+    "finished_unix": 1789357709.1543076,
+    "pid": 2767
+  }
+]

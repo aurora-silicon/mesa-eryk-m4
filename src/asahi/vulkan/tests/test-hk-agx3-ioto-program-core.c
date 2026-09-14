@@ -2176,6 +2176,16 @@ test_mixed_target_layout_bounds(void)
    invalid = tib;
    invalid.spilled[4] = true;
    CHECK(!hk_agx3_g17p_rt0_tile_layout_supported(&invalid));
+   /* Inactive logical slots do not consume an auxiliary shader binding. */
+   const enum pipe_format sparse[AGX_MAX_RENDER_TARGETS] = {
+      PIPE_FORMAT_NONE, PIPE_FORMAT_R16G16B16A16_FLOAT,
+      PIPE_FORMAT_NONE, PIPE_FORMAT_R32_UINT,
+   };
+   struct agx_tilebuffer_layout sparse_tib =
+      agx_build_tilebuffer_layout(sparse, 4, 1, false);
+   CHECK(hk_agx3_g17p_rt0_tile_layout_supported(&sparse_tib));
+   sparse_tib._offset_B[3] = sparse_tib._offset_B[1];
+   CHECK(!hk_agx3_g17p_rt0_tile_layout_supported(&sparse_tib));
    /* Attachment order must not select a different supported-layout list. */
    for (unsigned shift = 1; shift < 5; shift++) {
       enum pipe_format reordered[AGX_MAX_RENDER_TARGETS] = {0};
