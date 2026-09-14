@@ -17,3 +17,8 @@ Evidence: 20260914T215100954901Z-cts-ordered-b1-s01 and
 20260914T215354846204Z-cts-ordered-b1-s01-remaining1. GPU remained healthy;
 maximum exposed temperature 59.75 C. Original results and all interrupted
 attempts are under the workspace build/cts-vulkan14-ordered directory.
+
+30k checkpoint: 14580 Pass, 15395 NotSupported, 24 Fail, 1 Timeout.
+All 24 correctness failures cover the stencil aspect of D16S8/D24S8 MSAA
+copies at 2x/4x across whole/partial/array variants. See stencil-failures.json.
+No driver crash/reboot; peak exposed temperature 60.25 C. Execution continues.
