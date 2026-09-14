@@ -168,3 +168,16 @@ Patch SHA256: `ac11a26760c4a46b1b6eee5daa9ceb89a79bdf3e136d5be4fda71a717a1f7250`
 Corrected binary SHA256:
 `abf9a339413e68f93d731fd8a683971c3b949c8fc13f57a22ad3bb33cdbf8c41`.
 Target path: `/root/cts-1.4.6.2/deqp-vk-seed28-corrected`.
+
+## Register-lane quad broadcast lifetimes
+
+The register-lane quad broadcast encoder marked both operands as final reads,
+even when another broadcast or comparison reused them. Use the actual source
+lifetimes, as for SIMD broadcast. Independent native G16G Metal capture
+`build/cts28-native/quad-live2` shows a live quad source in field25 at byte136.
+The original u16vec2 geometry quad-broadcast case now passes:
+`20260914T141855171884Z-cts28-quad-live`, maximum 58.25 C. Library SHA256
+`57831b9a66cfe0b3fee6e8a80de2949adb2a014673fe0369e7d41027e9337e8b`.
+The twelve scaled-format blit cases were also tried with lavapipe; all twelve
+were NotSupported (`20260914T141708938415Z-cts28-blit-lavapipe`). Those
+software outcomes are excluded from the hardware result ledger.
