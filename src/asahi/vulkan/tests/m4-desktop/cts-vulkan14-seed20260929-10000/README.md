@@ -69,3 +69,18 @@ Mesa SHA256 `db34a5b532ce7c5653e3fd86574943070e3acfcc9cc176879c7eed7c0ea5f683`.
 Evidence `20260914T182220807316Z-cts29-storage-half`. An earlier storage attempt
 was denied a watchdog lease by concurrent display-controller work and ran zero
 cases; it is not a driver failure. No broad regression was run.
+
+## Scaled comparison routing and RGB9E5 copies
+
+Five scaled-destination linear blits failed in CTS's integer comparison branch.
+The existing scaled reference helpers were only selected inside isFloatFormat,
+which is false for scaled storage. Route scaled source/destination comparisons
+to those helpers. Keep the original images, interval checks, and thresholds.
+The separate cumulative CTS patch and binary manifest identify this harness fix.
+
+One same-format RGB9E5 image copy changed values through float sample/repack.
+Route this format through the existing native raw GPU copy, preserving texel
+representation. The original copy and all five corrected blit comparisons pass
+in 0.810 runner seconds, peak 58.25 C, guard pass. Installed Mesa SHA256
+`b5727b7ff71ce8a07454a8ceb4ff7d0a6430c0e8cafce47d23b4dbfea5b18501`.
+Evidence `20260914T182757124994Z-cts29-scaled-compare-rgb9`.

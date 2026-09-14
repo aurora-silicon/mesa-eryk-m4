@@ -2134,6 +2134,9 @@ static bool
 hk_native_raw_copy_format(VkFormat format)
 {
    switch (format) {
+   /* A float sample/repack can change the shared exponent or mantissa bits.
+    * Image copies must preserve the original RGB9E5 representation. */
+   case VK_FORMAT_E5B9G9R9_UFLOAT_PACK32:
    case VK_FORMAT_A1R5G5B5_UNORM_PACK16:
    case VK_FORMAT_ASTC_4x4_UNORM_BLOCK:
    case VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK:
