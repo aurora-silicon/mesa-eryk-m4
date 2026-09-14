@@ -1,0 +1,41 @@
+Probe environment: {'AGX_MESA_DEBUG': '', 'ASAHI_M4_EXPERIMENTAL': '1', 'ASAHI_MESA_DEBUG': 'nocompress', 'HK_G17P_LAUNCH_TRACE': '0', 'M4_TEST_CPU_MAX_KHZ': '1860000', 'ZINK_DEBUG': 'sync'}
+M4 probe start monotonic=3848.484870896
+Renderer: zink Vulkan 1.4(Apple M4 (G16G B0) (MESA_HONEYKRISP)) samples=4 format=r32i depth=none
+Integer depth-bias test: disabled
+asahi: G17P VDM command BO full=0x87fdd54000 alias=0x1000800000 low=0x800000 size=0x20000
+asahi: G17P VDM command BO full=0x87fdd30000 alias=0x1000820000 low=0x820000 size=0x20000
+asahi: G17P VDM command BO full=0x87fdd0c000 alias=0x1000840000 low=0x840000 size=0x20000
+asahi: G17P VDM submit full=0x87fdd54400 alias=0x1000800400 low=0x800400
+asahi: G17P VDM submit full=0x87fdd30400 alias=0x1000820400 low=0x820400
+asahi: G17P VDM submit full=0x87fdd0c000 alias=0x1000840000 low=0x840000
+samples=4 filled=0 bad=0/4096
+asahi: G17P VDM command BO full=0x87fdac0000 alias=0x1000860000 low=0x860000 size=0x20000
+asahi: G17P VDM command BO full=0x87fda9c000 alias=0x1000880000 low=0x880000 size=0x20000
+asahi: G17P VDM command BO full=0x87fda78000 alias=0x10008a0000 low=0x8a0000 size=0x20000
+asahi: G17P VDM submit full=0x87fdac0400 alias=0x1000860400 low=0x860400
+asahi: G17P VDM submit full=0x87fda9c000 alias=0x1000880000 low=0x880000
+asahi: G17P VDM submit full=0x87fda78000 alias=0x10008a0000 low=0x8a0000
+samples=4 filled=1 bad=0/4096
+asahi: G17P VDM command BO full=0x87fda30000 alias=0x10008c0000 low=0x8c0000 size=0x20000
+asahi: G17P VDM command BO full=0x87fda0c000 alias=0x10008e0000 low=0x8e0000 size=0x20000
+asahi: G17P VDM command BO full=0x87fd9e8000 alias=0x1000900000 low=0x900000 size=0x20000
+asahi: G17P VDM submit full=0x87fda30400 alias=0x10008c0400 low=0x8c0400
+asahi: G17P VDM submit full=0x87fda0c000 alias=0x10008e0000 low=0x8e0000
+asahi: G17P VDM submit full=0x87fd9e8000 alias=0x1000900000 low=0x900000
+samples=4 filled=2 bad=0/4096
+asahi: G17P VDM command BO full=0x87fdce8000 alias=0x1000920000 low=0x920000 size=0x20000
+asahi: G17P VDM command BO full=0x87fd9c4000 alias=0x1000940000 low=0x940000 size=0x20000
+asahi: G17P VDM command BO full=0x87fd9a0000 alias=0x1000960000 low=0x960000 size=0x20000
+asahi: G17P VDM submit full=0x87fdce8400 alias=0x1000920400 low=0x920400
+asahi: G17P VDM submit full=0x87fd9c4000 alias=0x1000940000 low=0x940000
+asahi: G17P VDM submit full=0x87fd9a0000 alias=0x1000960000 low=0x960000
+samples=4 filled=3 bad=0/4096
+asahi: G17P VDM command BO full=0x87fda54000 alias=0x1000980000 low=0x980000 size=0x20000
+asahi: G17P VDM command BO full=0x87fd97c000 alias=0x10009a0000 low=0x9a0000 size=0x20000
+asahi: G17P VDM command BO full=0x87fd958000 alias=0x10009c0000 low=0x9c0000 size=0x20000
+asahi: G17P VDM submit full=0x87fda54400 alias=0x1000980400 low=0x980400
+asahi: G17P VDM submit full=0x87fd97c000 alias=0x10009a0000 low=0x9a0000
+asahi: G17P VDM submit full=0x87fd958000 alias=0x10009c0000 low=0x9c0000
+samples=4 filled=4 bad=0/4096
+PASS: multisample coverage resolve and reload
+M4 probe end monotonic=3848.699027752

@@ -1,0 +1,398 @@
+[
+  {
+    "case": "dEQP-VK.api.info.device.properties",
+    "classification": "required",
+    "original": "Fail",
+    "final": "Pass",
+    "seconds": 0.000212706,
+    "evidence": "api-final",
+    "cts_adaptation": "newer device version accepted by legacy properties check"
+  },
+  {
+    "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.a2b10g10r10_uint_pack32",
+    "classification": "required",
+    "original": "Fail",
+    "final": "Pass",
+    "seconds": 0.001030182,
+    "evidence": "api-final",
+    "cts_adaptation": null
+  },
+  {
+    "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.r16g16b16a16_sfloat",
+    "classification": "required",
+    "original": "Fail",
+    "final": "Pass",
+    "seconds": 0.000988938,
+    "evidence": "api-final",
+    "cts_adaptation": null
+  },
+  {
+    "case": "dEQP-VK.tessellation.invariance.outer_edge_index_independence.quads_fractional_odd_spacing_cw",
+    "classification": "advertised",
+    "original": "Fail",
+    "final": "Pass",
+    "seconds": 16.450335,
+    "evidence": "indexed-parallel",
+    "cts_adaptation": "extra geometry invocations and indexed membership"
+  },
+  {
+    "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.r32g32b32_sint",
+    "classification": "required",
+    "original": "Fail",
+    "final": "Pass",
+    "seconds": 0.000486948,
+    "evidence": "api-final",
+    "cts_adaptation": null
+  },
+  {
+    "case": "dEQP-VK.tessellation.invariance.outer_triangle_set.triangles_fractional_odd_spacing",
+    "classification": "advertised",
+    "original": "Fail",
+    "final": "Pass",
+    "seconds": 46.498302,
+    "evidence": "indexed-parallel",
+    "cts_adaptation": "extra geometry invocations and indexed membership"
+  },
+  {
+    "case": "dEQP-VK.tessellation.invariance.primitive_set.triangles_equal_spacing_ccw",
+    "classification": "advertised",
+    "original": "Fail",
+    "final": "Pass",
+    "seconds": 8.543635,
+    "evidence": "indexed-parallel",
+    "cts_adaptation": "extra geometry invocations and indexed membership"
+  },
+  {
+    "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.r8_unorm",
+    "classification": "required",
+    "original": "Fail",
+    "final": "Pass",
+    "seconds": 0.001000332,
+    "evidence": "api-final",
+    "cts_adaptation": null
+  },
+  {
+    "case": "dEQP-VK.tessellation.invariance.outer_edge_symmetry.quads_fractional_even_spacing_cw_point_mode",
+    "classification": "advertised",
+    "original": "Timeout",
+    "final": "Pass",
+    "seconds": 16.635738,
+    "evidence": "indexed-parallel",
+    "cts_adaptation": "extra geometry invocations and indexed membership"
+  },
+  {
+    "case": "dEQP-VK.tessellation.invariance.triangle_set.quads_equal_spacing",
+    "classification": "advertised",
+    "original": "Fail",
+    "final": "Pass",
+    "seconds": 14.480758,
+    "evidence": "indexed-parallel",
+    "cts_adaptation": "extra geometry invocations and indexed membership"
+  },
+  {
+    "case": "dEQP-VK.tessellation.invariance.primitive_set.isolines_equal_spacing_cw",
+    "classification": "advertised",
+    "original": "Fail",
+    "final": "Pass",
+    "seconds": 7.694126,
+    "evidence": "indexed-parallel",
+    "cts_adaptation": "extra geometry invocations and indexed membership"
+  },
+  {
+    "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.b8g8r8_srgb",
+    "classification": "required",
+    "original": "Fail",
+    "final": "Pass",
+    "seconds": 0.00048099,
+    "evidence": "api-final",
+    "cts_adaptation": null
+  },
+  {
+    "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.r5g5b5a1_unorm_pack16",
+    "classification": "required",
+    "original": "Fail",
+    "final": "Pass",
+    "seconds": 0.001003872,
+    "evidence": "api-final",
+    "cts_adaptation": null
+  },
+  {
+    "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.a8b8g8r8_uint_pack32",
+    "classification": "required",
+    "original": "Fail",
+    "final": "Pass",
+    "seconds": 0.000995289,
+    "evidence": "api-final",
+    "cts_adaptation": null
+  },
+  {
+    "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.a8b8g8r8_sint_pack32",
+    "classification": "required",
+    "original": "Fail",
+    "final": "Pass",
+    "seconds": 0.000996456,
+    "evidence": "api-final",
+    "cts_adaptation": null
+  },
+  {
+    "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.r8g8_unorm",
+    "classification": "required",
+    "original": "Fail",
+    "final": "Pass",
+    "seconds": 0.00098183,
+    "evidence": "api-final",
+    "cts_adaptation": null
+  },
+  {
+    "case": "dEQP-VK.tessellation.invariance.primitive_set.isolines_fractional_odd_spacing_ccw",
+    "classification": "advertised",
+    "original": "Fail",
+    "final": "Pass",
+    "seconds": 6.9237146,
+    "evidence": "indexed-parallel",
+    "cts_adaptation": "extra geometry invocations and indexed membership"
+  },
+  {
+    "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.r32_sint",
+    "classification": "required",
+    "original": "Fail",
+    "final": "Pass",
+    "seconds": 0.001077218,
+    "evidence": "api-final",
+    "cts_adaptation": null
+  },
+  {
+    "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.a2b10g10r10_unorm_pack32",
+    "classification": "required",
+    "original": "Fail",
+    "final": "Pass",
+    "seconds": 0.001869073,
+    "evidence": "api-final",
+    "cts_adaptation": null
+  },
+  {
+    "case": "dEQP-VK.tessellation.invariance.outer_edge_index_independence.triangles_fractional_odd_spacing_cw",
+    "classification": "advertised",
+    "original": "Fail",
+    "final": "Pass",
+    "seconds": 14.157209,
+    "evidence": "indexed-parallel",
+    "cts_adaptation": "extra geometry invocations and indexed membership"
+  },
+  {
+    "case": "dEQP-VK.tessellation.invariance.outer_triangle_set.triangles_fractional_even_spacing",
+    "classification": "advertised",
+    "original": "Fail",
+    "final": "Pass",
+    "seconds": 46.78914,
+    "evidence": "indexed-parallel",
+    "cts_adaptation": "extra geometry invocations and indexed membership"
+  },
+  {
+    "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.r16g16_sscaled",
+    "classification": "required",
+    "original": "Fail",
+    "final": "Pass",
+    "seconds": 0.000224373,
+    "evidence": "api-final",
+    "cts_adaptation": null
+  },
+  {
+    "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.r16g16_sfloat",
+    "classification": "required",
+    "original": "Fail",
+    "final": "Pass",
+    "seconds": 0.00098677,
+    "evidence": "api-final",
+    "cts_adaptation": null
+  },
+  {
+    "case": "dEQP-VK.tessellation.invariance.triangle_set.quads_fractional_even_spacing",
+    "classification": "advertised",
+    "original": "Fail",
+    "final": "Pass",
+    "seconds": 14.345977,
+    "evidence": "indexed-parallel",
+    "cts_adaptation": "extra geometry invocations and indexed membership"
+  },
+  {
+    "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.b8g8r8a8_sint",
+    "classification": "required",
+    "original": "Fail",
+    "final": "Pass",
+    "seconds": 0.000944587,
+    "evidence": "api-final",
+    "cts_adaptation": null
+  },
+  {
+    "case": "dEQP-VK.tessellation.invariance.primitive_set.quads_fractional_odd_spacing_cw",
+    "classification": "advertised",
+    "original": "Fail",
+    "final": "Pass",
+    "seconds": 9.233933,
+    "evidence": "indexed-parallel",
+    "cts_adaptation": "extra geometry invocations and indexed membership"
+  },
+  {
+    "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.r16g16_snorm",
+    "classification": "required",
+    "original": "Fail",
+    "final": "Pass",
+    "seconds": 0.000993915,
+    "evidence": "api-final",
+    "cts_adaptation": null
+  },
+  {
+    "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.b8g8r8a8_uint",
+    "classification": "required",
+    "original": "Fail",
+    "final": "Pass",
+    "seconds": 0.001026389,
+    "evidence": "api-final",
+    "cts_adaptation": null
+  },
+  {
+    "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.r5g6b5_unorm_pack16",
+    "classification": "required",
+    "original": "Fail",
+    "final": "Pass",
+    "seconds": 0.001082467,
+    "evidence": "api-final",
+    "cts_adaptation": null
+  },
+  {
+    "case": "dEQP-VK.tessellation.invariance.triangle_set.triangles_fractional_even_spacing",
+    "classification": "advertised",
+    "original": "Fail",
+    "final": "Pass",
+    "seconds": 14.285961,
+    "evidence": "indexed-parallel",
+    "cts_adaptation": "extra geometry invocations and indexed membership"
+  },
+  {
+    "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.r4g4b4a4_unorm_pack16",
+    "classification": "required",
+    "original": "Fail",
+    "final": "Pass",
+    "seconds": 0.001006081,
+    "evidence": "api-final",
+    "cts_adaptation": null
+  },
+  {
+    "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.b8g8r8a8_unorm",
+    "classification": "required",
+    "original": "Fail",
+    "final": "Pass",
+    "seconds": 0.001041532,
+    "evidence": "api-final",
+    "cts_adaptation": null
+  },
+  {
+    "case": "dEQP-VK.tessellation.invariance.primitive_set.quads_fractional_even_spacing_ccw",
+    "classification": "advertised",
+    "original": "Fail",
+    "final": "Pass",
+    "seconds": 7.189755,
+    "evidence": "indexed-parallel",
+    "cts_adaptation": "extra geometry invocations and indexed membership"
+  },
+  {
+    "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.b5g5r5a1_unorm_pack16",
+    "classification": "required",
+    "original": "Fail",
+    "final": "Pass",
+    "seconds": 0.001611892,
+    "evidence": "api-final",
+    "cts_adaptation": null
+  },
+  {
+    "case": "dEQP-VK.tessellation.invariance.outer_edge_symmetry.triangles_equal_spacing_ccw",
+    "classification": "advertised",
+    "original": "Crash",
+    "final": "Pass",
+    "seconds": 13.334683,
+    "evidence": "indexed-parallel",
+    "cts_adaptation": "extra geometry invocations and indexed membership"
+  },
+  {
+    "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.r8g8b8a8_sint",
+    "classification": "required",
+    "original": "Fail",
+    "final": "Pass",
+    "seconds": 0.000991231,
+    "evidence": "api-final",
+    "cts_adaptation": null
+  },
+  {
+    "case": "dEQP-VK.tessellation.invariance.triangle_set.quads_fractional_odd_spacing",
+    "classification": "advertised",
+    "original": "Fail",
+    "final": "Pass",
+    "seconds": 14.030273,
+    "evidence": "indexed-parallel",
+    "cts_adaptation": "extra geometry invocations and indexed membership"
+  },
+  {
+    "case": "dEQP-VK.tessellation.invariance.primitive_set.quads_fractional_even_spacing_cw",
+    "classification": "advertised",
+    "original": "Fail",
+    "final": "Pass",
+    "seconds": 8.962894,
+    "evidence": "indexed-parallel",
+    "cts_adaptation": "extra geometry invocations and indexed membership"
+  },
+  {
+    "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.b8g8r8_unorm",
+    "classification": "required",
+    "original": "Fail",
+    "final": "Pass",
+    "seconds": 0.000481114,
+    "evidence": "api-final",
+    "cts_adaptation": null
+  },
+  {
+    "case": "dEQP-VK.tessellation.invariance.inner_triangle_set.quads_fractional_odd_spacing",
+    "classification": "advertised",
+    "original": "Fail",
+    "final": "Pass",
+    "seconds": 26.774153,
+    "evidence": "indexed-parallel",
+    "cts_adaptation": "extra geometry invocations and indexed membership"
+  },
+  {
+    "case": "dEQP-VK.tessellation.invariance.outer_edge_index_independence.quads_fractional_odd_spacing_ccw_point_mode",
+    "classification": "advertised",
+    "original": "Timeout",
+    "final": "Pass",
+    "seconds": 16.303108,
+    "evidence": "indexed-parallel",
+    "cts_adaptation": "extra geometry invocations and indexed membership"
+  },
+  {
+    "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.r8g8b8a8_uint",
+    "classification": "required",
+    "original": "Fail",
+    "final": "Pass",
+    "seconds": 0.000372544,
+    "evidence": "api-final",
+    "cts_adaptation": null
+  },
+  {
+    "case": "dEQP-VK.tessellation.invariance.outer_triangle_set.triangles_equal_spacing",
+    "classification": "advertised",
+    "original": "Fail",
+    "final": "Pass",
+    "seconds": 46.50174,
+    "evidence": "indexed-parallel",
+    "cts_adaptation": "extra geometry invocations and indexed membership"
+  },
+  {
+    "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.r32g32b32a32_uint",
+    "classification": "required",
+    "original": "Fail",
+    "final": "Pass",
+    "seconds": 0.000994771,
+    "evidence": "api-final",
+    "cts_adaptation": null
+  }
+]

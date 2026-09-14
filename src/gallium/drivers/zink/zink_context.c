@@ -3272,7 +3272,9 @@ begin_rendering(struct zink_context *ctx, bool check_attachment_shadow)
             iv = zink_create_fb_surface(&ctx->base, &templ)->image_view;
          }
          if (ctx->fb_state.cbufs[i].nr_samples && !has_msrtss) {
-            ctx->dynamic_fb.attachments[i].resolveMode = VK_RESOLVE_MODE_AVERAGE_BIT;
+            ctx->dynamic_fb.attachments[i].resolveMode =
+               util_format_is_pure_integer(ctx->fb_state.cbufs[i].format) ?
+               VK_RESOLVE_MODE_SAMPLE_ZERO_BIT : VK_RESOLVE_MODE_AVERAGE_BIT;
             ctx->dynamic_fb.attachments[i].resolveImageView = iv;
             ctx->dynamic_fb.attachments[i].resolveImageLayout = res->layout;
 
@@ -3395,7 +3397,9 @@ begin_rendering(struct zink_context *ctx, bool check_attachment_shadow)
          unsigned idx = is_depth ? PIPE_MAX_COLOR_BUFS : 0;
          screen->image_barrier(ctx, res, layout, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
          res->obj->unordered_read = res->obj->unordered_write = false;
-         ctx->dynamic_fb.attachments[idx].resolveMode = is_depth ? VK_RESOLVE_MODE_SAMPLE_ZERO_BIT : VK_RESOLVE_MODE_AVERAGE_BIT;
+         ctx->dynamic_fb.attachments[idx].resolveMode =
+            is_depth || util_format_is_pure_integer(format) ?
+            VK_RESOLVE_MODE_SAMPLE_ZERO_BIT : VK_RESOLVE_MODE_AVERAGE_BIT;
          ctx->dynamic_fb.attachments[idx].resolveImageLayout = res->layout;
          ctx->dynamic_fb.attachments[idx].resolveImageView = surf->image_view;
          if (idx == PIPE_MAX_COLOR_BUFS) {

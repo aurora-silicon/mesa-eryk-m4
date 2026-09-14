@@ -38,8 +38,20 @@ int main(int argc, char **argv) {
   const char *format = argc > 2 ? argv[2] : "rgba8";
   GLenum color_format = !strcmp(format, "rgba8") ? GL_RGBA8 :
                         !strcmp(format, "rgb10a2") ? GL_RGB10_A2 :
-                        !strcmp(format, "srgb8") ? GL_SRGB8_ALPHA8 : 0;
+                        !strcmp(format, "srgb8") ? GL_SRGB8_ALPHA8 :
+                        !strcmp(format, "r8") ? GL_R8 :
+                        !strcmp(format, "rg8") ? GL_RG8 :
+                        !strcmp(format, "rg16f") ? GL_RG16F :
+                        !strcmp(format, "rgba16f") ? GL_RGBA16F :
+                        !strcmp(format, "rgba32f") ? GL_RGBA32F :
+                        !strcmp(format, "rgba8i") ? GL_RGBA8I :
+                        !strcmp(format, "rgba8ui") ? GL_RGBA8UI :
+                        !strcmp(format, "r32i") ? GL_R32I : 0;
   CHECK(color_format);
+  bool uint_color = color_format == GL_RGBA8UI;
+  bool integer_color = uint_color || color_format == GL_RGBA8I || color_format == GL_R32I;
+  bool red_only = color_format == GL_R8 || color_format == GL_R32I;
+  bool alpha_channel = !(red_only || color_format == GL_RG8 || color_format == GL_RG16F);
   const char *depth_name = argc > 3 ? argv[3] : "none";
   GLenum depth_format = !strcmp(depth_name, "depth16") ? GL_DEPTH_COMPONENT16 :
                         !strcmp(depth_name, "depth24") ? GL_DEPTH_COMPONENT24 :
@@ -48,6 +60,7 @@ int main(int argc, char **argv) {
                         !strcmp(depth_name, "depth24s8") ? GL_DEPTH24_STENCIL8 : 0;
   bool stencil = depth_format == GL_DEPTH32F_STENCIL8 || depth_format == GL_DEPTH24_STENCIL8;
   CHECK(depth_format || !strcmp(depth_name, "none"));
+  CHECK(!integer_color || !depth_format);
   bool depth_bias = getenv("M4_MSAA_DEPTH_BIAS") != NULL;
   CHECK(!depth_bias || depth_format == GL_DEPTH_COMPONENT16);
   EGLDisplay d = eglGetPlatformDisplay(EGL_PLATFORM_SURFACELESS_MESA, 0, 0);
@@ -73,6 +86,10 @@ int main(int argc, char **argv) {
                    "uniform float z; void main(){gl_Position=vec4(p,z,1.);}";
   const char *fs = "#version 330 core\nlayout(location=0)out vec4 c;uniform vec4 color;void "
                    "main(){c=color;}";
+  if (integer_color)
+    fs = uint_color ?
+      "#version 330 core\nlayout(location=0)out uvec4 c;uniform vec4 color;void main(){c=uvec4(color*127.);}" :
+      "#version 330 core\nlayout(location=0)out ivec4 c;uniform vec4 color;void main(){c=ivec4(color*127.);}";
   GLuint program = glCreateProgram();
   glAttachShader(program, shader(GL_VERTEX_SHADER, vs));
   glAttachShader(program, shader(GL_FRAGMENT_SHADER, fs));
@@ -140,7 +157,15 @@ int main(int argc, char **argv) {
   }
   if (color_format == GL_SRGB8_ALPHA8) glEnable(GL_FRAMEBUFFER_SRGB);
   glClearColor(0, 0, 0, 1);
-  glClear(GL_COLOR_BUFFER_BIT);
+  if (uint_color) {
+    const GLuint black[4] = {0, 0, 0, 127};
+    glClearBufferuiv(GL_COLOR, 0, black);
+  } else if (integer_color) {
+    const GLint black[4] = {0, 0, 0, 127};
+    glClearBufferiv(GL_COLOR, 0, black);
+  } else {
+    glClear(GL_COLOR_BUFFER_BIT);
+  }
   glEnable(GL_MULTISAMPLE);
   if (!getenv("M4_MSAA_ALL_SAMPLES"))
     glEnable(GL_SAMPLE_MASK);
@@ -186,8 +211,14 @@ int main(int argc, char **argv) {
     glBindFramebuffer(GL_READ_FRAMEBUFFER, fb[1]);
     unsigned char px[64 * 64 * 4];
     memset(px, 0xa5, sizeof(px));
-    glReadPixels(0, 0, 64, 64, GL_RGBA, GL_UNSIGNED_BYTE, px);
+    if (!integer_color)
+      glReadPixels(0, 0, 64, 64, GL_RGBA, GL_UNSIGNED_BYTE, px);
     CHECK(glGetError() == GL_NO_ERROR);
+    int ipx[64 * 64 * 4];
+    if (integer_color) {
+      glReadPixels(0, 0, 64, 64, GL_RGBA_INTEGER, GL_INT, ipx);
+      CHECK(glGetError() == GL_NO_ERROR);
+    }
     unsigned bad = 0;
     int red = getenv("M4_MSAA_ALL_SAMPLES") ? (step ? 255 : 0)
                                             : lroundf(255.f * step / samples);
@@ -201,7 +232,20 @@ int main(int argc, char **argv) {
       red = lroundf(255 * (r <= .0031308f ? 12.92f * r : 1.055f * powf(r, 1.f / 2.4f) - .055f));
       green = lroundf(255 * (g <= .0031308f ? 12.92f * g : 1.055f * powf(g, 1.f / 2.4f) - .055f));
     }
+    if (red_only) green = 0;
     for (unsigned i = 0; i < 64 * 64; ++i) {
+      if (integer_color) {
+        // Integer resolves select sample zero, which the first step writes.
+        const int expected_red = step ? 127 : 0;
+        const int expected_alpha = alpha_channel ? 127 : 1;
+        if (ipx[4*i] != expected_red || ipx[4*i+1] || ipx[4*i+2] || ipx[4*i+3] != expected_alpha) {
+          if (bad < 2)
+            fprintf(stderr, "pixel%u=%d,%d,%d,%d expected=%d,0,0,%d\n", i,
+                    ipx[4*i], ipx[4*i+1], ipx[4*i+2], ipx[4*i+3], expected_red, expected_alpha);
+          bad++;
+        }
+        continue;
+      }
       if (abs(px[4 * i] - red) > 1 || abs(px[4 * i + 1] - green) > 1 || px[4 * i + 2] ||
           px[4 * i + 3] != 255) {
         if (bad < 2)

@@ -1,0 +1,6 @@
+dEQP-VK.pipeline.multisample.raster_samples.samples_2.depth
+dEQP-VK.pipeline.multisample.raster_samples.samples_2.stencil
+dEQP-VK.pipeline.multisample.raster_samples.samples_2.depth_stencil
+dEQP-VK.pipeline.multisample.raster_samples.samples_4.depth
+dEQP-VK.pipeline.multisample.raster_samples.samples_4.stencil
+dEQP-VK.pipeline.multisample.raster_samples.samples_4.depth_stencil

@@ -1,0 +1,22 @@
+{
+  "id": "20260914T014507648240Z-cts-seed24-api-final",
+  "verdict": "pass",
+  "transport_returncode": 0,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T014507648240Z-cts-seed24-api-final",
+  "observations": {
+    "pixel_results": [],
+    "pixel_result_count": 0,
+    "thermal_samples": 5,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 59.75,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 59.75,
+      "Ta000m": 57.75,
+      "Te000m": 57.0,
+      "Te001m": 55.75,
+      "Tp000m": 59.75,
+      "Tp001m": 55.75
+    }
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "id": "20260914T014406073901Z-cts-seed24-zink-integer-resolve",
+  "verdict": "pass",
+  "transport_returncode": 0,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T014406073901Z-cts-seed24-zink-integer-resolve",
+  "observations": {
+    "pixel_results": [
+      "PASS: all multisample format oracles"
+    ],
+    "pixel_result_count": 1,
+    "thermal_samples": 7,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 60.0,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 60.0,
+      "Ta000m": 58.0,
+      "Te000m": 57.0,
+      "Te001m": 56.0,
+      "Tp000m": 59.75,
+      "Tp001m": 55.75
+    }
+  }
+}

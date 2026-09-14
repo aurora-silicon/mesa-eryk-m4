@@ -63,4 +63,83 @@ All 19 affected tessellation cases (16 original failures, 1 original crash,
 47.232 seconds runner execution, peak 61.5 C. The boot ID remained unchanged.
 Retained reports include binary/target identities, runner arguments and guard
 results. This is the affected set only; no broad regression suite was run.
-The separate API-format fixes are still being qualified.
+The completed API-format fixes and their additional qualification are below.
+
+## Image-format and limit fixes
+
+All 25 original API failures now pass (`api-final-results.json`). The 24
+image-format queries pass without changing their original expectations. The
+properties case additionally needs the version compatibility adaptation below.
+
+M4's query path still imposed the initial RGBA8/RGB10-only multisample boundary,
+while its global limits promised 2x/4x operations. Non-attachment-capable scaled
+formats had the opposite problem: a storage-only override returned multisample
+counts where the Vulkan image-format query requires a single sample. Remove
+that override and enable the typed renderable-format path on M4. The minimum
+attachmentless/depth/stencil sample limits now include 4x.
+
+Actual rendering exposed and fixed two more boundaries:
+
+- Native EOT stores need the physical format's conversion selector with the
+  multisample addressing mode. Emit IMGWBLK field30=2 through the composer,
+  preserving normalized8, integer8, normalized16, half/integer16 and raw32
+  selectors. Five compiler tests match independently compiled Apple programs
+  byte-for-byte. Native input bytes, compiler commands and exact G16G binaries
+  are retained under `native-ms-eot`; raw format IDs, not experiment names,
+  identify those inputs. No native GPU execution or Mac reboot was needed.
+- The render-layout validator incorrectly restricted wide and integer formats
+  to one sample despite sample-scaled tile storage. Retain its byte capacity,
+  alignment, layer and layout checks while admitting the supported sample counts.
+- Zink's dynamic rendering paths requested AVERAGE for integer color resolves.
+  This triggered an assertion in the common Vulkan resolve shader. Both Zink
+  paths now use SAMPLE_ZERO for integer view formats; float resolves still
+  average. No driver-side acceptance of invalid average/integer operations.
+
+The incremental 64x64 pixel oracle passed R8/RG8 normalized, RG16F/RGBA16F,
+RGBA32F, RGBA8 signed/unsigned and R32 signed at both 2x and 4x: 16 combinations.
+Each checks clear, sample masks, resolve and reload. Failed development attempts
+are retained alongside the later passing results; the whole matrix was not
+repeated unnecessarily. Six CTS depth/stencil 2x/4x controls also pass.
+This qualifies those paths, not every possible multisample combination. Existing
+layered/MRT export boundaries and untested packed-format paths still need their
+own cases; the full Vulkan feature surface has not been certified.
+
+## Legacy version check and final outcomes
+
+After the real sample-limit failures were fixed, the original properties case
+rejected any device API minor version newer than its 2017 headers. A separately
+recorded `MESA_VK_VERSION_OVERRIDE=1.0` control passed. The final diagnostic build
+instead leaves the native device version intact and logs the newer version while
+checking all original Vulkan 1.0 properties, guard bytes and initialization.
+[VkPhysicalDeviceProperties](https://docs.vulkan.org/refpages/latest/refpages/source/VkPhysicalDeviceProperties.html)
+permits the physical-device API version to differ from the instance version.
+This adaptation is retained as `device-version.patch`; it does not test or
+qualify the newer API's added properties or features.
+
+`final-combined.patch` and `cts-final-build.json` identify the new default
+`/root/cts-1.0.2.6/deqp-vk-seed24-corrected` executable, SHA256
+2276dc0acf772673e1f173be98b30379467c17d46f5f36bffb5f571a7a4c5f06.
+The bulk/campaign tools explicitly select that diagnostic executable. Original
+binaries and the frozen 10k attempt ledger remain untouched.
+
+`fixed-results.json` maps all original outcomes to retained targeted evidence:
+**41 Fail, 1 Crash, 2 Timeout -> 44 Pass**. Of these, the 19 tessellation cases
+need the invocation correction, and the device-properties case needs the newer
+API compatibility adaptation. This is not a claim that 44 driver bugs were fixed
+or that an unmodified official CTS now has those results. No broad regression
+run was performed. The boot ID stayed c2f22724-ed20-4eba-9f9e-4d98de78a9d2 and
+all hardware checks retained watchdog60, 0.5s thermal/progress supervision and
+the 75 C cutoff; the largest recorded peak was 61.5 C.
+
+Final installed Vulkan library SHA256:
+2f5a2c3fdf57ec176dde32008f7cd3d7749e21152b2ca157b50225aab6b19271.
+Final installed Gallium/Zink library SHA256:
+d1abd8b367ef62d25f10f9bf126fa482b65819a97c94c6d76bd0cb8717381716.
+The source commit may be newer than the build's embedded Git ID; these hashes
+identify the exact tested libraries. Follow-up installation did not rebuild
+already-tested code merely to change its embedded ID.
+
+Normal SDDM/Hyprland login was restored under the watchdog/thermal check;
+`display-restored.json` and `display-status.txt` retain the result. The default
+boot remains graphical.target. After returning the lease, the persistent broker
+still owns the armed 60-second watchdog. No workload was left running.

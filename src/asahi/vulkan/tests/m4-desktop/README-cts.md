@@ -315,3 +315,11 @@ outcomes, and preserves every interrupted attempt. It emits a compressed case
 list and JSONL attempt ledger, failure TSV, counts/rates, active execution and
 campaign time, and wall span including inspection pauses. First-attempt counts
 remain separate from final outcomes after explicitly resumed interruptions.
+
+## Seed20260924 corrections
+
+See [the 10k failure fixes](cts-seed24-fixes/README.md) for all 44 original
+nonpasses, CTS corrections, the 30.17s -> 10.87s CPU comparison optimization,
+M4 multisample exports and Zink integer resolves. Bulk/campaign defaults use
+the explicitly adapted `deqp-vk-seed24-corrected` binary. Original reports and
+binaries remain unchanged; the bulk per-case timeout is now 60s.

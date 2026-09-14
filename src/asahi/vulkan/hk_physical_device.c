@@ -734,7 +734,8 @@ hk_get_device_properties(const struct agx_device *dev,
       VK_SAMPLE_COUNT_1_BIT | VK_SAMPLE_COUNT_2_BIT | VK_SAMPLE_COUNT_4_BIT;
    const VkSampleCountFlagBits color_sample_counts = sample_counts;
    const VkSampleCountFlagBits other_sample_counts =
-      agx_native_graphics(dev) ? VK_SAMPLE_COUNT_1_BIT : sample_counts;
+      agx_native_graphics(dev) && dev->chip != AGX_CHIP_G16G
+         ? VK_SAMPLE_COUNT_1_BIT : sample_counts;
 
    uint64_t os_page_size = 16384;
    os_get_page_size(&os_page_size);

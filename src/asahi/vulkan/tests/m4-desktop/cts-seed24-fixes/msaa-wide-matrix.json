@@ -1,0 +1,23 @@
+[
+  {
+    "format": "rgba32f",
+    "samples": 2,
+    "returncode": 0,
+    "passed": true,
+    "seconds": 0.21489624199966784
+  },
+  {
+    "format": "rgba32f",
+    "samples": 4,
+    "returncode": 0,
+    "passed": true,
+    "seconds": 0.31480468400013706
+  },
+  {
+    "format": "rgba8i",
+    "samples": 2,
+    "returncode": 250,
+    "passed": false,
+    "seconds": 0.4651692779998484
+  }
+]

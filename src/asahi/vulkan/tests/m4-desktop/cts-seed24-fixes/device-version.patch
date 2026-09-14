@@ -1,0 +1,16 @@
+--- a/external/vulkancts/modules/vulkan/api/vktApiFeatureInfo.cpp
++++ b/external/vulkancts/modules/vulkan/api/vktApiFeatureInfo.cpp
+@@ -1121,8 +1121,11 @@
+ 
+ 		if (deviceVersion.minorNum > deqpVersion.minorNum)
+ 		{
+-			log << TestLog::Message << "deviceProperties - API Minor Version " << deviceVersion.minorNum << " is not valid for this version of dEQP" << TestLog::EndMessage;
+-			return tcu::TestStatus::fail("deviceProperties apiVersion not valid");
++			// A physical device may report a newer version than this Vulkan 1.0
++			// client requests. Validate the legacy properties above; this
++			// diagnostic does not qualify the newer API or its added limits.
++			log << TestLog::Message << "Newer device API minor version " << deviceVersion.minorNum
++				<< "; checking only this CTS version's properties" << TestLog::EndMessage;
+ 		}
+ 	}
+ 

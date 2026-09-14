@@ -1,0 +1,4 @@
+{"armed": true, "timeout_seconds": 60, "timeleft_seconds": 54, "fed": false, "mode": "idle"}
+active
+graphical.target
+c2f22724-ed20-4eba-9f9e-4d98de78a9d2

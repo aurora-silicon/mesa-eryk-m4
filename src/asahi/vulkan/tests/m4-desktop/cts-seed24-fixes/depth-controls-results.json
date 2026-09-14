@@ -1,0 +1,98 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.pipeline.multisample.raster_samples.samples_2.depth",
+    "boot_id": "c2f22724-ed20-4eba-9f9e-4d98de78a9d2",
+    "runner_status": "Pass",
+    "seconds": 0.07343375,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.multisample.raster_samples.samples_2.depth",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Primitive rendered, unique colors within expected bounds",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.multisample.raster_samples.samples_2.depth.c1.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.pipeline.multisample.raster_samples.samples_2.stencil",
+    "boot_id": "c2f22724-ed20-4eba-9f9e-4d98de78a9d2",
+    "runner_status": "Pass",
+    "seconds": 0.064706504,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.multisample.raster_samples.samples_2.stencil",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Primitive rendered, unique colors within expected bounds",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.multisample.raster_samples.samples_2.stencil.c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.pipeline.multisample.raster_samples.samples_2.depth_stencil",
+    "boot_id": "c2f22724-ed20-4eba-9f9e-4d98de78a9d2",
+    "runner_status": "Pass",
+    "seconds": 0.10652132,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.multisample.raster_samples.samples_2.depth_stencil",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Primitive rendered, unique colors within expected bounds",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.multisample.raster_samples.samples_2.depth_stencil.c5.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 3,
+    "case": "dEQP-VK.pipeline.multisample.raster_samples.samples_4.depth",
+    "boot_id": "c2f22724-ed20-4eba-9f9e-4d98de78a9d2",
+    "runner_status": "Pass",
+    "seconds": 0.07331777,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.multisample.raster_samples.samples_4.depth",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Primitive rendered, unique colors within expected bounds",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.multisample.raster_samples.samples_4.depth.c2.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 4,
+    "case": "dEQP-VK.pipeline.multisample.raster_samples.samples_4.stencil",
+    "boot_id": "c2f22724-ed20-4eba-9f9e-4d98de78a9d2",
+    "runner_status": "Pass",
+    "seconds": 0.09718318,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.multisample.raster_samples.samples_4.stencil",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Primitive rendered, unique colors within expected bounds",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.multisample.raster_samples.samples_4.stencil.c4.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 5,
+    "case": "dEQP-VK.pipeline.multisample.raster_samples.samples_4.depth_stencil",
+    "boot_id": "c2f22724-ed20-4eba-9f9e-4d98de78a9d2",
+    "runner_status": "Pass",
+    "seconds": 0.07925611,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.multisample.raster_samples.samples_4.depth_stencil",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Primitive rendered, unique colors within expected bounds",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.multisample.raster_samples.samples_4.depth_stencil.c3.r1.qpa",
+    "worker_exit": "exit status: 0"
+  }
+]

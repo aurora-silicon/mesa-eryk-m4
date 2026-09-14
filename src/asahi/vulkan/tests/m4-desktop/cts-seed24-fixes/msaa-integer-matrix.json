@@ -1,0 +1,44 @@
+[
+  {
+    "format": "rgba8i",
+    "samples": 2,
+    "returncode": 0,
+    "passed": true,
+    "seconds": 0.2648731230001431
+  },
+  {
+    "format": "rgba8i",
+    "samples": 4,
+    "returncode": 0,
+    "passed": true,
+    "seconds": 0.31505552600037845
+  },
+  {
+    "format": "rgba8ui",
+    "samples": 2,
+    "returncode": 0,
+    "passed": true,
+    "seconds": 0.26502012799983277
+  },
+  {
+    "format": "rgba8ui",
+    "samples": 4,
+    "returncode": 0,
+    "passed": true,
+    "seconds": 0.26486158199986676
+  },
+  {
+    "format": "r32i",
+    "samples": 2,
+    "returncode": 0,
+    "passed": true,
+    "seconds": 0.21474748199989335
+  },
+  {
+    "format": "r32i",
+    "samples": 4,
+    "returncode": 0,
+    "passed": true,
+    "seconds": 0.31497101500008284
+  }
+]

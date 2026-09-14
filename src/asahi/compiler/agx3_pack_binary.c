@@ -3416,11 +3416,11 @@ enum agx3_g17p_rt0_eot_kind {
    AGX3_G17P_RT0_EOT_SELECTOR_55,
    AGX3_G17P_RT0_EOT_NORM16,
    AGX3_G17P_RT0_EOT_I16_SIGNED_TWO_WORDS,
-   AGX3_G17P_RT0_EOT_MS_PACKED32,
 };
 
 static enum agx3_g17p_rt0_eot_kind
-agx3_g17p_rt0_eot_kind(const agx_context *ctx, enum agx_isa_encoding enc)
+agx3_g17p_rt0_eot_kind(const agx_context *ctx, enum agx_isa_encoding enc,
+                        bool *multisample)
 {
    if (enc != AGX_ISA_ENCODING_AGX3B || ctx->stage != MESA_SHADER_COMPUTE ||
        ctx->is_preamble || ctx->key->no_stop)
@@ -3430,7 +3430,7 @@ agx3_g17p_rt0_eot_kind(const agx_context *ctx, enum agx_isa_encoding enc)
    unsigned x_reg = UINT_MAX, y_reg = UINT_MAX, zero_reg = UINT_MAX;
    unsigned coord_reg = UINT_MAX, offset_reg = UINT_MAX;
    enum agx_format store_format = AGX_FORMAT_I8;
-   bool multisample = false;
+   *multisample = false;
 
    agx_foreach_block(ctx, block) {
       agx_foreach_instr_in_block(block, I) {
@@ -3474,10 +3474,7 @@ agx3_g17p_rt0_eot_kind(const agx_context *ctx, enum agx_isa_encoding enc)
                  I->format != AGX_FORMAT_RG11B10F &&
                  I->format != AGX_FORMAT_RGB10A2 &&
                  I->format != AGX_FORMAT_I32) ||
-                (I->dim != AGX_DIM_2D &&
-                 !(I->dim == AGX_DIM_2D_MS &&
-                   (I->format == AGX_FORMAT_U8NORM ||
-                    I->format == AGX_FORMAT_RGB10A2))) ||
+                (I->dim != AGX_DIM_2D && I->dim != AGX_DIM_2D_MS) ||
                 !I->explicit_coords ||
                 I->src[0].type != AGX_INDEX_IMMEDIATE ||
                 I->src[0].value != 0 || I->src[0].size != AGX_SIZE_16 ||
@@ -3496,7 +3493,7 @@ agx3_g17p_rt0_eot_kind(const agx_context *ctx, enum agx_isa_encoding enc)
                return false;
             stores++;
             store_format = I->format;
-            multisample = I->dim == AGX_DIM_2D_MS;
+            *multisample = I->dim == AGX_DIM_2D_MS;
             offset_reg = I->src[2].value;
             coord_reg = I->src[3].value;
          } else {
@@ -3509,9 +3506,6 @@ agx3_g17p_rt0_eot_kind(const agx_context *ctx, enum agx_isa_encoding enc)
        stores != 1 || x_reg != coord_reg || y_reg != coord_reg + 2 ||
        zero_reg != offset_reg)
       return AGX3_G17P_RT0_EOT_NONE;
-
-   if (multisample)
-      return AGX3_G17P_RT0_EOT_MS_PACKED32;
 
    if (ctx->key->g17p_rt0_eot_i16_signed_two_words &&
        (store_format != AGX_FORMAT_I16 ||
@@ -3937,6 +3931,35 @@ agx3_emit_native_mrt_eot(struct util_dynarray *emission,
    return agx3_append(emission, stop, sizeof(stop));
 }
 
+/* AIR-NT 32023.917 G16G dimension4 builtins for native formats3/4/6/12/17.
+ * PACK_IMGWIR uses the multisample tile offset; IMGWBLK field30=2 selects
+ * multisample addressing. Field29 keeps the independently compiled typed
+ * conversion (normalized8, integer8, normalized16, half/integer16, raw32).
+ */
+static bool
+agx3_emit_native_ms_eot(struct util_dynarray *emission,
+                       enum agx_isa_encoding enc, uint8_t selector)
+{
+   static const uint8_t header[] = {
+      0x1c,0x9c,0x10,0x06,0x24,0xa8,0x14,0x06,
+      0x0c,0x9d,0x10,0x26,0x24,0xa9,0x10,0x26,
+      0x9f,0x10,0x54,0x00,0x00,0x04,0x14,0x00,0x50,0x06,0x0b,0x00,
+      0x9f,0x20,0x54,0x02,0x00,0x00,0x10,0x00,0x50,0x06,0x0b,0x00,
+      0x97,0x05,0x54,0x06,0x00,0x08,0x00,0x00,0xd0,0x40,0x10,0x00,
+   };
+   const struct agx3_field_kv store[] = {
+      {9,5},{5,0},{12,1},{13,1},{17,1},{32,1},{73,1},
+      {29,selector},{30,2},{45,3},{46,3},{59,1},{60,1},{51,0},
+   };
+   uint8_t bytes[AGX3_MAX_WORDS * 2], len;
+   static const uint8_t stop[] = {0x0e,0,0,0};
+   return agx3_bind_compose(enc, "imgwblk", 0, store, ARRAY_SIZE(store),
+                           NULL, 0, bytes, &len) &&
+          agx3_append(emission, header, sizeof(header)) &&
+          agx3_append(emission, bytes, len) &&
+          agx3_append(emission, stop, sizeof(stop));
+}
+
 static bool
 agx3_g17p_8norm_format(enum agx_format format)
 {
@@ -4119,27 +4142,26 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
       return agx3_emit_native_mrt_eot(emission, enc, mrt_count, selectors);
    }
 
+   bool rt0_multisample;
    const enum agx3_g17p_rt0_eot_kind rt0_eot =
-      agx3_g17p_rt0_eot_kind(ctx, enc);
+      agx3_g17p_rt0_eot_kind(ctx, enc, &rt0_multisample);
    if (rt0_eot != AGX3_G17P_RT0_EOT_NONE) {
-      if (rt0_eot == AGX3_G17P_RT0_EOT_MS_PACKED32) {
-         /* G16G builtin format3 and format19, native dimension4, four
-          * components compile to the same 68-byte program (AIR-NT 32023.917).
-          * The PBE selects packed RGBA8 versus RGB10A2 and sample geometry. */
-         static const uint8_t native[] = {
-            0x1c, 0x9c, 0x10, 0x06, 0x24, 0xa8, 0x14, 0x06,
-            0x0c, 0x9d, 0x10, 0x26, 0x24, 0xa9, 0x10, 0x26,
-            0x9f, 0x10, 0x54, 0x00, 0x00, 0x04, 0x14, 0x00,
-            0x50, 0x06, 0x0b, 0x00, 0x9f, 0x20, 0x54, 0x02,
-            0x00, 0x00, 0x10, 0x00, 0x50, 0x06, 0x0b, 0x00,
-            0x97, 0x05, 0x54, 0x06, 0x00, 0x08, 0x00, 0x00,
-            0xd0, 0x40, 0x10, 0x00, 0x57, 0x10, 0x54, 0x00,
-            0x00, 0x00, 0x00, 0x80, 0x28, 0x72, 0x00, 0x00,
-            0x0e, 0x00, 0x00, 0x00,
-         };
+      if (rt0_multisample) {
+         /* Native G16G dimension4 builtins retain the physical format's
+          * conversion selector. Only the imageblock addressing mode changes;
+          * the PBE supplies the sample geometry and component count. */
+         uint8_t selector;
+         switch (rt0_eot) {
+         case AGX3_G17P_RT0_EOT_SELECTOR_75: selector = 3; break;
+         case AGX3_G17P_RT0_EOT_SELECTOR_15: selector = 1; break;
+         case AGX3_G17P_RT0_EOT_I32: selector = 2; break;
+         case AGX3_G17P_RT0_EOT_SELECTOR_55: selector = 0; break;
+         case AGX3_G17P_RT0_EOT_NORM16: selector = 4; break;
+         default: return false;
+         }
          ctx->max_reg = MAX2(ctx->max_reg, 7);
          ctx->agx3_staging_halfs = MAX2(ctx->agx3_staging_halfs, 8);
-         return agx3_append(emission, native, sizeof(native));
+         return agx3_emit_native_ms_eot(emission, enc, selector);
       }
 
       static const uint8_t g17p_rgba16_sint_eot[] = {

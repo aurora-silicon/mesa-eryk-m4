@@ -1,0 +1,402 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.api.info.device.properties",
+    "boot_id": "c2f22724-ed20-4eba-9f9e-4d98de78a9d2",
+    "runner_status": "Pass",
+    "seconds": 0.000212706,
+    "eligibility": {
+      "case": "dEQP-VK.api.info.device.properties",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "DeviceProperites query succeeded",
+    "qpa": "deqp-runner/c1.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.a2b10g10r10_uint_pack32",
+    "boot_id": "c2f22724-ed20-4eba-9f9e-4d98de78a9d2",
+    "runner_status": "Pass",
+    "seconds": 0.001030182,
+    "eligibility": {
+      "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.a2b10g10r10_uint_pack32",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c2.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.r16g16b16a16_sfloat",
+    "boot_id": "c2f22724-ed20-4eba-9f9e-4d98de78a9d2",
+    "runner_status": "Pass",
+    "seconds": 0.000988938,
+    "eligibility": {
+      "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.r16g16b16a16_sfloat",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c1.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 3,
+    "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.r32g32b32_sint",
+    "boot_id": "c2f22724-ed20-4eba-9f9e-4d98de78a9d2",
+    "runner_status": "Pass",
+    "seconds": 0.000486948,
+    "eligibility": {
+      "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.r32g32b32_sint",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c1.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 4,
+    "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.r8_unorm",
+    "boot_id": "c2f22724-ed20-4eba-9f9e-4d98de78a9d2",
+    "runner_status": "Pass",
+    "seconds": 0.001000332,
+    "eligibility": {
+      "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.r8_unorm",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c1.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 5,
+    "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.b8g8r8_srgb",
+    "boot_id": "c2f22724-ed20-4eba-9f9e-4d98de78a9d2",
+    "runner_status": "Pass",
+    "seconds": 0.00048099,
+    "eligibility": {
+      "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.b8g8r8_srgb",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c1.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 6,
+    "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.r5g5b5a1_unorm_pack16",
+    "boot_id": "c2f22724-ed20-4eba-9f9e-4d98de78a9d2",
+    "runner_status": "Pass",
+    "seconds": 0.001003872,
+    "eligibility": {
+      "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.r5g5b5a1_unorm_pack16",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c2.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 7,
+    "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.a8b8g8r8_uint_pack32",
+    "boot_id": "c2f22724-ed20-4eba-9f9e-4d98de78a9d2",
+    "runner_status": "Pass",
+    "seconds": 0.000995289,
+    "eligibility": {
+      "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.a8b8g8r8_uint_pack32",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 8,
+    "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.a8b8g8r8_sint_pack32",
+    "boot_id": "c2f22724-ed20-4eba-9f9e-4d98de78a9d2",
+    "runner_status": "Pass",
+    "seconds": 0.000996456,
+    "eligibility": {
+      "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.a8b8g8r8_sint_pack32",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c3.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 9,
+    "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.r8g8_unorm",
+    "boot_id": "c2f22724-ed20-4eba-9f9e-4d98de78a9d2",
+    "runner_status": "Pass",
+    "seconds": 0.00098183,
+    "eligibility": {
+      "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.r8g8_unorm",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c1.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 10,
+    "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.r32_sint",
+    "boot_id": "c2f22724-ed20-4eba-9f9e-4d98de78a9d2",
+    "runner_status": "Pass",
+    "seconds": 0.001077218,
+    "eligibility": {
+      "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.r32_sint",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c1.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 11,
+    "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.a2b10g10r10_unorm_pack32",
+    "boot_id": "c2f22724-ed20-4eba-9f9e-4d98de78a9d2",
+    "runner_status": "Pass",
+    "seconds": 0.001869073,
+    "eligibility": {
+      "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.a2b10g10r10_unorm_pack32",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c3.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 12,
+    "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.r16g16_sscaled",
+    "boot_id": "c2f22724-ed20-4eba-9f9e-4d98de78a9d2",
+    "runner_status": "Pass",
+    "seconds": 0.000224373,
+    "eligibility": {
+      "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.r16g16_sscaled",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 13,
+    "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.r16g16_sfloat",
+    "boot_id": "c2f22724-ed20-4eba-9f9e-4d98de78a9d2",
+    "runner_status": "Pass",
+    "seconds": 0.00098677,
+    "eligibility": {
+      "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.r16g16_sfloat",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c2.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 14,
+    "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.b8g8r8a8_sint",
+    "boot_id": "c2f22724-ed20-4eba-9f9e-4d98de78a9d2",
+    "runner_status": "Pass",
+    "seconds": 0.000944587,
+    "eligibility": {
+      "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.b8g8r8a8_sint",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c3.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 15,
+    "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.r16g16_snorm",
+    "boot_id": "c2f22724-ed20-4eba-9f9e-4d98de78a9d2",
+    "runner_status": "Pass",
+    "seconds": 0.000993915,
+    "eligibility": {
+      "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.r16g16_snorm",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 16,
+    "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.b8g8r8a8_uint",
+    "boot_id": "c2f22724-ed20-4eba-9f9e-4d98de78a9d2",
+    "runner_status": "Pass",
+    "seconds": 0.001026389,
+    "eligibility": {
+      "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.b8g8r8a8_uint",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 17,
+    "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.r5g6b5_unorm_pack16",
+    "boot_id": "c2f22724-ed20-4eba-9f9e-4d98de78a9d2",
+    "runner_status": "Pass",
+    "seconds": 0.001082467,
+    "eligibility": {
+      "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.r5g6b5_unorm_pack16",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 18,
+    "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.r4g4b4a4_unorm_pack16",
+    "boot_id": "c2f22724-ed20-4eba-9f9e-4d98de78a9d2",
+    "runner_status": "Pass",
+    "seconds": 0.001006081,
+    "eligibility": {
+      "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.r4g4b4a4_unorm_pack16",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c2.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 19,
+    "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.b8g8r8a8_unorm",
+    "boot_id": "c2f22724-ed20-4eba-9f9e-4d98de78a9d2",
+    "runner_status": "Pass",
+    "seconds": 0.001041532,
+    "eligibility": {
+      "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.b8g8r8a8_unorm",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c3.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 20,
+    "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.b5g5r5a1_unorm_pack16",
+    "boot_id": "c2f22724-ed20-4eba-9f9e-4d98de78a9d2",
+    "runner_status": "Pass",
+    "seconds": 0.001611892,
+    "eligibility": {
+      "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.b5g5r5a1_unorm_pack16",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c2.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 21,
+    "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.r8g8b8a8_sint",
+    "boot_id": "c2f22724-ed20-4eba-9f9e-4d98de78a9d2",
+    "runner_status": "Pass",
+    "seconds": 0.000991231,
+    "eligibility": {
+      "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.r8g8b8a8_sint",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c2.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 22,
+    "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.b8g8r8_unorm",
+    "boot_id": "c2f22724-ed20-4eba-9f9e-4d98de78a9d2",
+    "runner_status": "Pass",
+    "seconds": 0.000481114,
+    "eligibility": {
+      "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.b8g8r8_unorm",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 23,
+    "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.r8g8b8a8_uint",
+    "boot_id": "c2f22724-ed20-4eba-9f9e-4d98de78a9d2",
+    "runner_status": "Pass",
+    "seconds": 0.000372544,
+    "eligibility": {
+      "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.r8g8b8a8_uint",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c2.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 24,
+    "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.r32g32b32a32_uint",
+    "boot_id": "c2f22724-ed20-4eba-9f9e-4d98de78a9d2",
+    "runner_status": "Pass",
+    "seconds": 0.000994771,
+    "eligibility": {
+      "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.r32g32b32a32_uint",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  }
+]

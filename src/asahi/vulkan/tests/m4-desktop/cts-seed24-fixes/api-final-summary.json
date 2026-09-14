@@ -1,0 +1,22 @@
+{
+  "selected": 25,
+  "recorded": 25,
+  "completed": 25,
+  "counts": {
+    "Pass": 25
+  },
+  "classifications": {
+    "unclassified": 25
+  },
+  "elapsed_seconds": 4.327148837008281,
+  "preparation_seconds": 1.5698502029990777,
+  "runner_seconds": 0.20608971100000417,
+  "jobs": 4,
+  "tests_per_group": 25,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "03b0eb5ddb18fce8af6f83265ba47793783a0fcca25f6578f73c8bc8dd8a4189",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T014507648240Z-cts-seed24-api-final",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 59.75
+}

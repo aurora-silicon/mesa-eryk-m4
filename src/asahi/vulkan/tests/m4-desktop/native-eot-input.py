@@ -11,7 +11,9 @@ from pathlib import Path
 
 p = argparse.ArgumentParser(description=__doc__)
 p.add_argument('rt', nargs='+')
-p.add_argument('--array', action='store_true', help='Native type3 layered 2D attachment')
+dim=p.add_mutually_exclusive_group()
+dim.add_argument('--array', action='store_true', help='Native type3 layered 2D attachment')
+dim.add_argument('--multisample', action='store_true', help='Native type4 multisampled 2D attachment')
 p.add_argument('--split-partitions', action='store_true',
                help='Put each attachment in a separate tile partition (diagnostic)')
 p.add_argument('--output', type=Path, required=True)
@@ -39,7 +41,7 @@ for i in range(n):
     data += struct.pack('<I', first + 12 * i - len(data))
 data += struct.pack('<9H', 18, 11, 4, 5, 6, 7, 8, 9, 10) + b'\0\0'
 for i, (fmt, components) in enumerate(formats):
-    data += struct.pack('<I7B', len(data) - vtable, i if a.split_partitions else 0, fmt, 3 if a.array else 2, 0, 0, components, 0)
+    data += struct.pack('<I7B', len(data) - vtable, i if a.split_partitions else 0, fmt, 4 if a.multisample else 3 if a.array else 2, 0, 0, components, 0)
     if i + 1 < n:
         data += b'\0'
 a.output.parent.mkdir(parents=True, exist_ok=True)

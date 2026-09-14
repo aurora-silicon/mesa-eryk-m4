@@ -94,29 +94,20 @@ hk_native_single_target_layout_supported(struct agx_tilebuffer_layout *tib)
    if (tib->logical_format[0] == PIPE_FORMAT_NONE)
       return tib->sample_size_B == 0;
 
-   const bool scalar_r32f = tib->nr_samples == 1 &&
-                            tib->logical_format[0] == PIPE_FORMAT_R32_FLOAT;
-   const bool scalar_r32i = tib->nr_samples == 1 &&
-                            tib->logical_format[0] == PIPE_FORMAT_R32_SINT;
-   const bool pair_r32f = tib->nr_samples == 1 &&
-                          tib->logical_format[0] == PIPE_FORMAT_R32G32_FLOAT;
-   const bool pair_r32i = tib->nr_samples == 1 &&
-                          tib->logical_format[0] == PIPE_FORMAT_R32G32_SINT;
-   const bool pair_r32u = tib->nr_samples == 1 &&
-                          tib->logical_format[0] == PIPE_FORMAT_R32G32_UINT;
-   const bool scalar_r8u = tib->nr_samples == 1 &&
-                           tib->logical_format[0] == PIPE_FORMAT_R8_UINT;
-   const bool scalar_r8i = tib->nr_samples == 1 &&
-                           tib->logical_format[0] == PIPE_FORMAT_R8_SINT;
+   const bool scalar_r32f = tib->logical_format[0] == PIPE_FORMAT_R32_FLOAT;
+   const bool scalar_r32i = tib->logical_format[0] == PIPE_FORMAT_R32_SINT;
+   const bool pair_r32f = tib->logical_format[0] == PIPE_FORMAT_R32G32_FLOAT;
+   const bool pair_r32i = tib->logical_format[0] == PIPE_FORMAT_R32G32_SINT;
+   const bool pair_r32u = tib->logical_format[0] == PIPE_FORMAT_R32G32_UINT;
+   const bool scalar_r8u = tib->logical_format[0] == PIPE_FORMAT_R8_UINT;
+   const bool scalar_r8i = tib->logical_format[0] == PIPE_FORMAT_R8_SINT;
    const bool rgba16u =
-      tib->nr_samples == 1 &&
       tib->logical_format[0] == PIPE_FORMAT_R16G16B16A16_UINT;
    const bool rgba16i =
-      tib->nr_samples == 1 &&
       tib->logical_format[0] == PIPE_FORMAT_R16G16B16A16_SINT;
 
    const bool rgba32 =
-      tib->nr_samples == 1 && tib->sample_size_B == 16 &&
+      tib->sample_size_B == 16 &&
       (tib->logical_format[0] == PIPE_FORMAT_R32G32B32A32_FLOAT ||
        tib->logical_format[0] == PIPE_FORMAT_R32G32B32A32_SINT ||
        tib->logical_format[0] == PIPE_FORMAT_R32G32B32A32_UINT);

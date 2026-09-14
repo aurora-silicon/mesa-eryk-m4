@@ -1,0 +1,37 @@
+[
+  {
+    "format": "rg16f",
+    "samples": 2,
+    "returncode": 0,
+    "passed": true,
+    "seconds": 0.26506988400024056
+  },
+  {
+    "format": "rg16f",
+    "samples": 4,
+    "returncode": 0,
+    "passed": true,
+    "seconds": 0.31495242700020754
+  },
+  {
+    "format": "rgba16f",
+    "samples": 2,
+    "returncode": 0,
+    "passed": true,
+    "seconds": 0.2647256899999775
+  },
+  {
+    "format": "rgba16f",
+    "samples": 4,
+    "returncode": 0,
+    "passed": true,
+    "seconds": 0.3150431900003241
+  },
+  {
+    "format": "rgba32f",
+    "samples": 2,
+    "returncode": 250,
+    "passed": false,
+    "seconds": 0.3651554150001175
+  }
+]

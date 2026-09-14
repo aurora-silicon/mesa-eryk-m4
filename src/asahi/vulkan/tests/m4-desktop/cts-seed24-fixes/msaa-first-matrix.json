@@ -1,0 +1,37 @@
+[
+  {
+    "format": "r8",
+    "samples": 2,
+    "returncode": 0,
+    "passed": true,
+    "seconds": 0.2651774309997563
+  },
+  {
+    "format": "r8",
+    "samples": 4,
+    "returncode": 0,
+    "passed": true,
+    "seconds": 0.31506069400029446
+  },
+  {
+    "format": "rg8",
+    "samples": 2,
+    "returncode": 0,
+    "passed": true,
+    "seconds": 0.26486757099974056
+  },
+  {
+    "format": "rg8",
+    "samples": 4,
+    "returncode": 0,
+    "passed": true,
+    "seconds": 0.3150523190001877
+  },
+  {
+    "format": "rg16f",
+    "samples": 2,
+    "returncode": 250,
+    "passed": false,
+    "seconds": 0.36496741099972496
+  }
+]

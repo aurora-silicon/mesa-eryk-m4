@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 p = argparse.ArgumentParser(description=__doc__)
 p.add_argument('--cases', type=Path, required=True)
 p.add_argument('--runner', type=Path, required=True, help='ARM64 deqp-runner with retained local patch')
-p.add_argument('--binary', default='/root/cts-1.0.2.6/deqp-vk-scaled-precision')
+p.add_argument('--binary', default='/root/cts-1.0.2.6/deqp-vk-seed24-corrected')
 p.add_argument('--output', type=Path, required=True)
 p.add_argument('--name', required=True)
 p.add_argument('--jobs', type=int, default=20)

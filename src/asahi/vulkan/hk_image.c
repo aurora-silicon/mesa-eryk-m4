@@ -574,7 +574,7 @@ hk_GetPhysicalDeviceImageFormatProperties2(
       sampleCounts =
          VK_SAMPLE_COUNT_1_BIT | VK_SAMPLE_COUNT_2_BIT | VK_SAMPLE_COUNT_4_BIT;
 
-      if (agx_native_graphics(&pdev->dev)) {
+      if (agx_native_graphics(&pdev->dev) && pdev->dev.chip != AGX_CHIP_G16G) {
          const enum pipe_format pipe =
             hk_format_to_pipe_format(pImageFormatInfo->format);
          const enum pipe_format physical = ail_pixel_format[pipe].renderable;
@@ -599,20 +599,9 @@ hk_GetPhysicalDeviceImageFormatProperties2(
       }
    }
 
-   /* Native image stores address individual samples through the physical
-    * tiled layout and a linear PBE alias; they do not require a renderable
-    * tilebuffer format. Keep attachment-capable requests within the existing
-    * render-pass restrictions above. */
-   if (pdev->dev.chip == AGX_CHIP_G16G &&
-       pImageFormatInfo->tiling == VK_IMAGE_TILING_OPTIMAL &&
-       pImageFormatInfo->type == VK_IMAGE_TYPE_2D && ycbcr_info == NULL &&
-       !(pImageFormatInfo->flags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) &&
-       !(pImageFormatInfo->usage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
-                                   VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) &&
-       (features & VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT) &&
-       (features & VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT))
-      sampleCounts = VK_SAMPLE_COUNT_1_BIT | VK_SAMPLE_COUNT_2_BIT |
-                     VK_SAMPLE_COUNT_4_BIT;
+   /* Multisample image format properties require an attachment-capable
+    * format, even for a storage-only request. Do not extend the sample mask
+    * solely because a non-renderable format has storage-image support. */
 
    /* From the Vulkan 1.2.199 spec:
     *

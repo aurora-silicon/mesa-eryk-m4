@@ -1,0 +1,26 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.api.info.device.properties",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-scaled-precision",
+      "--deqp-case=dEQP-VK.api.info.device.properties",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T012457456587Z-cts-seed24-properties-vulkan10/cts/000/result.qpa"
+    ],
+    "boot_id": "c2f22724-ed20-4eba-9f9e-4d98de78a9d2",
+    "status": "Pass",
+    "started_unix": 1789349098.5809362,
+    "eligibility": {
+      "case": "dEQP-VK.api.info.device.properties",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "DeviceProperites query succeeded",
+    "returncode": 0,
+    "seconds": 0.057015405999663926,
+    "finished_unix": 1789349098.6429918,
+    "pid": 5611
+  }
+]
