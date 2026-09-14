@@ -335,10 +335,15 @@ g17p_indexed_fetch_shape(const nir_tex_instr *tex, bool allow_lod)
       return false;
    const int handle = nir_tex_instr_src_index(tex, nir_tex_src_texture_handle);
    const int lod = nir_tex_instr_src_index(tex, nir_tex_src_lod);
-   if (ms)
-      return handle >= 0 && lod < 0 && coord >= 0 && tex->num_srcs == 2 &&
+   if (ms) {
+      /* Input-attachment lowering can leave a redundant zero LOD on txf_ms. */
+      const bool zero_lod = lod >= 0 && nir_src_is_const(tex->src[lod].src) &&
+                            nir_src_as_uint(tex->src[lod].src) == 0;
+      return handle >= 0 && (lod < 0 || zero_lod) && coord >= 0 &&
+             tex->num_srcs == (zero_lod ? 3 : 2) &&
              nir_src_bit_size(tex->src[coord].src) == 32 &&
              nir_src_num_components(tex->src[coord].src) == 3;
+   }
    return handle >= 0 && lod >= 0 && coord >= 0 && tex->num_srcs == 3 &&
       ((nir_src_is_const(tex->src[lod].src) &&
         nir_src_as_uint(tex->src[lod].src) == 0) ||

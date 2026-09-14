@@ -21,6 +21,7 @@ def main():
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--format', choices=['rgba8', 'srgb8'], default='rgba8')
     parser.add_argument('--samples', type=int, choices=[1, 2, 4], default=1)
+    parser.add_argument('--sample-shading', action='store_true', help='Enable sampleRateShading and shade every raster sample')
     parser.add_argument('--occlusion-query', action='store_true',
         help='Report a non-precise samples-passed query around the diagnostic draw')
     parser.add_argument('--allow-unadvertised-samples', action='store_true',
@@ -93,8 +94,10 @@ def main():
         parser.error('extent must be between 1 and 512')
     replace_once('#define IMAGE_WIDTH 32', '#define IMAGE_WIDTH ' + str(args.extent[0]))
     replace_once('#define IMAGE_HEIGHT 32', '#define IMAGE_HEIGHT ' + str(args.extent[1]))
-    if args.geometry or args.storage_stage:
+    if args.geometry or args.storage_stage or args.sample_shading:
         features = []
+        if args.sample_shading:
+            features.append(".sampleRateShading = VK_TRUE")
         if args.geometry:
             features.append('.geometryShader = VK_TRUE')
         if args.storage_stage:
@@ -362,6 +365,10 @@ def main():
    printf("SAMPLES-PASSED non-precise: %llu\\n",
           (unsigned long long)visibility_samples);
    printf(PROBE_NAME ": retired %u submissions\\n", repeats);''')
+    if args.sample_shading:
+        replace_once('      .rasterizationSamples = (VkSampleCountFlagBits)G17P_MSAA_SAMPLES,',
+                     '      .rasterizationSamples = (VkSampleCountFlagBits)G17P_MSAA_SAMPLES,\n'
+                     '      .sampleShadingEnable = VK_TRUE, .minSampleShading = 1.0f,')
     if args.allow_unadvertised_samples:
         check = '      die("requested color sample count is not advertised");'
         if source.count(check) != 1:
@@ -422,6 +429,7 @@ def main():
     files = {f.name: hashlib.sha256(f.read_bytes()).hexdigest()
              for f in output.iterdir() if f.is_file()}
     manifest = {
+        'sample_shading': args.sample_shading,
         'format': args.format, 'samples': args.samples, 'rgba': args.rgba, 'right_rgba': args.right_rgba,
         'occlusion_query': args.occlusion_query,
         'transform_feedback': args.transform_feedback,

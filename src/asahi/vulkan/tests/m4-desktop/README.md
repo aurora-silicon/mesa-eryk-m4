@@ -1573,6 +1573,12 @@ The fixture clears to black with alpha 255 before drawing. Use its actual
 `g17p-msaa2-triangle: PASS` success marker for 2x tests. Diagnostic fixtures are
 not application captures and cannot by themselves qualify application support.
 
+`vulkan-fragment-probe.py --sample-shading --samples 2|4` enables the device
+sampleRateShading feature and requests minSampleShading=1.0. Use gl_SampleID
+or sample-qualified inputs and specify the expected resolved RGBA value.
+The manifest records the setting. Run the generated executable through the
+watchdog/thermal guard; match `g17p-msaa[24]-triangle: PASS`, not `^PASS:`.
+
 For offline pipeline compilation, add `--run-host-shim`. This builds an x86
 probe that exits immediately after pipeline creation, then runs it under
 `ASAHI_SHIM_CHIP=g16g` with a 20-second deadline. It retains compiler inputs,

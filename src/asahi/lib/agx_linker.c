@@ -14,6 +14,7 @@
 #include "agx_compile.h"
 #include "agx3_fltnorm_core.h"
 #include "agx3_pixel_core.h"
+#include "agx3_alu_core.h"
 #include "agx_device.h"
 #include "agx_pack.h"
 #include "agx_scratch.h"
@@ -207,13 +208,30 @@ agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
               struct agx_shader_part *prolog, struct agx_shader_part *epilog,
               unsigned nr_samples_shaded)
 {
-   /* These literal loop fragments are AGX2 machine code. G17P exposes only
-    * one sample and its Vulkan path folds sample shading before split-FS
-    * lowering; fail closed if a caller ever bypasses that canonicalization. */
-   if (agx_native_graphics(dev) && nr_samples_shaded) {
-      fprintf(stderr,
-              "agx_fast_link: external sample loop is not AGX3 machine code\n");
-      return false;
+   /* Link one native invocation for each rasterization sample. The sample
+    * count is draw-time state; retain separate main/epilog compilation and
+    * unroll the small hardware-supported count when linking their binaries. */
+   const bool native_samples = agx_native_graphics(dev) && nr_samples_shaded;
+   uint8_t sample_setup[4][AGX3_ALU_MAX_LENGTH];
+   uint8_t sample_setup_size[4] = {0};
+   uint8_t sample_release[AGX3_PIXEL_MAX_LENGTH], sample_release_size = 0;
+   uint8_t sample_entry[AGX3_PIXEL_MAX_LENGTH], sample_entry_size = 0;
+   uint8_t sample_wait[AGX3_PIXEL_MAX_LENGTH], sample_wait_size = 0;
+   uint8_t sample_zs_wait[AGX3_PIXEL_MAX_LENGTH], sample_zs_wait_size = 0;
+   if (native_samples) {
+      if (!fragment || dev->chip != AGX_CHIP_G16G ||
+          (nr_samples_shaded != 1 && nr_samples_shaded != 2 &&
+           nr_samples_shaded != 4))
+         return false;
+      if (!agx3_pixel_release(AGX_ISA_ENCODING_AGX3B, 0, true, 0,
+                             sample_release, &sample_release_size))
+         return false;
+      for (unsigned sample = 0; sample < nr_samples_shaded; ++sample) {
+         if (!agx3_alu_mov16(AGX_ISA_ENCODING_AGX3B, AGX_ABI_FIN_SAMPLE_MASK,
+                            1u << sample, 0, sample_setup[sample],
+                            &sample_setup_size[sample]))
+            return false;
+      }
    }
 
    uint8_t fused_colour[AGX3_COLOUR_LINK_SIZE];
@@ -244,7 +262,7 @@ agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
    bool reads_tib = false, writes_sample_mask = false,
         disable_tri_merging = false, tag_write_disable = true;
 
-   if (nr_samples_shaded) {
+   if (nr_samples_shaded && !native_samples) {
       size += sizeof(sample_loop_header);
 
       if (nr_samples_shaded > 1)
@@ -260,7 +278,8 @@ agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
       if (!part)
          continue;
 
-      size += part->info.main_size;
+      size += (size_t)part->info.main_size *
+              (native_samples && i > 0 ? nr_samples_shaded : 1);
 
       nr_gprs = MAX2(nr_gprs, part->info.nr_gprs);
       staging_halfs = MAX2(staging_halfs, part->info.agx3_staging_halfs);
@@ -272,6 +291,32 @@ agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
       linked->uses_base_param |= part->info.uses_base_param;
       linked->uses_txf |= part->info.uses_txf;
       tag_write_disable &= part->info.tag_write_disable;
+   }
+
+   if (native_samples) {
+      if (reads_tib || !tag_write_disable) {
+         /* Apple's native MSAA fragment holds one class-12 bracket around
+          * all sample stores, then releases it once with the final bit. */
+         if (!(prolog && prolog->info.agx3_colour_link.entry_emitted) &&
+             !agx3_pixel_colour_entry(AGX_ISA_ENCODING_AGX3B,
+                                     sample_entry, &sample_entry_size))
+            return false;
+         if (!agx3_pixel_wait(AGX_ISA_ENCODING_AGX3B, 12, 0,
+                             sample_wait, &sample_wait_size) ||
+             !agx3_pixel_release(AGX_ISA_ENCODING_AGX3B, 12, true, 0,
+                                sample_release, &sample_release_size))
+            return false;
+      }
+      /* Native sample-discard/DEPTHF loops acquire class1 before iterating.
+       * Releasing it after the first sample loses later stencil updates. */
+      if (writes_sample_mask &&
+          !agx3_pixel_wait(AGX_ISA_ENCODING_AGX3B, 1, 0,
+                           sample_zs_wait, &sample_zs_wait_size))
+         return false;
+      size += sample_entry_size + sample_wait_size + sample_zs_wait_size;
+      for (unsigned sample = 0; sample < nr_samples_shaded; ++sample)
+         size += sample_setup_size[sample];
+      size += sample_release_size + 4; /* Final release and native END. */
    }
 
    if (colour_fused)
@@ -337,7 +382,7 @@ agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
       offset += sz;
    }
 
-   if (nr_samples_shaded) {
+   if (nr_samples_shaded && !native_samples) {
       memcpy(linked_map + offset, sample_loop_header,
              sizeof(sample_loop_header));
       offset += sizeof(sample_loop_header);
@@ -345,31 +390,70 @@ agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
 
    size_t sample_loop_begin = offset;
 
-   /* Main shader and epilog happen in the sample loop, so start from i=1 */
-   for (unsigned i = 1; !colour_fused && i < ARRAY_SIZE(parts); ++i) {
-      struct agx_shader_part *part = parts[i];
-      if (!part)
-         continue;
-
-      size_t sz = part->info.main_size;
-      const uint8_t *part_code = (const uint8_t *)part->binary + part->info.main_offset;
-      if (dedup_entry && i == 2) {
-         const unsigned gate = part->info.agx3_colour_link.entry_offset;
-         memcpy(linked_map + offset, part_code, gate);
-         memcpy(linked_map + offset + gate, part_code + gate + AGX3_PIXEL_MAX_LENGTH,
-                sz - gate - AGX3_PIXEL_MAX_LENGTH);
-         sz -= AGX3_PIXEL_MAX_LENGTH;
-      } else {
-         memcpy(linked_map + offset, part_code, sz);
+   if (native_samples) {
+      memcpy(linked_map + offset, sample_entry, sample_entry_size);
+      offset += sample_entry_size;
+      memcpy(linked_map + offset, sample_zs_wait, sample_zs_wait_size);
+      offset += sample_zs_wait_size;
+      memcpy(linked_map + offset, sample_wait, sample_wait_size);
+      offset += sample_wait_size;
+   }
+   bool native_entry_seen = sample_entry_size ||
+      (prolog && prolog->info.agx3_colour_link.entry_emitted);
+   for (unsigned sample = 0;
+        sample < (native_samples ? nr_samples_shaded : 1); ++sample) {
+      if (native_samples) {
+         memcpy(linked_map + offset, sample_setup[sample],
+                sample_setup_size[sample]);
+         offset += sample_setup_size[sample];
       }
-      if (agx_native_graphics(dev) && fragment &&
-          !agx3_fltnorm_relocate_start(linked_map + offset, sz,
-                                       part->info.agx3_fltnorm_start, offset))
-         goto invalid_start_marker;
-      offset += sz;
+
+      /* Main shader and epilog happen in the sample loop, so start from i=1 */
+      for (unsigned i = 1; !colour_fused && i < ARRAY_SIZE(parts); ++i) {
+         struct agx_shader_part *part = parts[i];
+         if (!part)
+            continue;
+
+         size_t sz = part->info.main_size;
+         const uint8_t *part_code = (const uint8_t *)part->binary + part->info.main_offset;
+         if (dedup_entry && i == 2) {
+            const unsigned gate = part->info.agx3_colour_link.entry_offset;
+            memcpy(linked_map + offset, part_code, gate);
+            memcpy(linked_map + offset + gate, part_code + gate + AGX3_PIXEL_MAX_LENGTH,
+                   sz - gate - AGX3_PIXEL_MAX_LENGTH);
+            sz -= AGX3_PIXEL_MAX_LENGTH;
+         } else {
+            memcpy(linked_map + offset, part_code, sz);
+         }
+         if (native_samples && part->info.agx3_colour_link.entry_emitted) {
+            unsigned gate = part->info.agx3_colour_link.entry_offset;
+            if (gate > sz || sz - gate < AGX3_PIXEL_MAX_LENGTH)
+               goto invalid_start_marker;
+            if (native_entry_seen) {
+               /* Preserve all intra-part branch offsets while acquiring the
+                * shader-entry gate only once across the linked invocations. */
+               for (unsigned j = 0; j < AGX3_PIXEL_MAX_LENGTH; j += 2) {
+                  linked_map[offset + gate + j] = 0x06;
+                  linked_map[offset + gate + j + 1] = 0;
+               }
+            }
+            native_entry_seen = true;
+         }
+         if (agx_native_graphics(dev) && fragment &&
+             !agx3_fltnorm_relocate_start(linked_map + offset, sz,
+                                          part->info.agx3_fltnorm_start, offset))
+            goto invalid_start_marker;
+         offset += sz;
+      }
+
    }
 
-   if (nr_samples_shaded > 1) {
+   if (native_samples) {
+      memcpy(linked_map + offset, sample_release, sample_release_size);
+      offset += sample_release_size;
+      agx3_put_le32(linked_map + offset, 0x0e);
+      offset += 4;
+   } else if (nr_samples_shaded > 1) {
       assert(sample_loop_footer[SAMPLE_LOOP_FOOTER_COUNT_PATCH_OFFS] == 0);
 
       /* Make a stack copy of the footer so we can efficiently patch it */
@@ -397,6 +481,15 @@ agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
    }
 
    assert(offset == size);
+
+   if (native_samples && getenv("AGX_NATIVE_LINK_DIAGNOSTICS")) {
+      fprintf(stderr, "Native sample link: samples=%u size=%zu main=%u epilog=%u gprs=%u staging=%u hex=",
+              nr_samples_shaded, offset, main ? main->info.main_size : 0,
+              epilog ? epilog->info.main_size : 0, nr_gprs, staging_halfs);
+      for (size_t i = 0; i < offset; ++i)
+         fprintf(stderr, "%02x", linked_map[i]);
+      fprintf(stderr, "\n");
+   }
 
    linked->scratch_size = scratch_size;
    linked->nr_gprs = nr_gprs;

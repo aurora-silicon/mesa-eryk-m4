@@ -23,13 +23,21 @@
 
 /* Select the largest tile size that fits */
 static uint16_t
-agx_select_tile_size(unsigned px_size_B, unsigned max_bytes_per_tile)
+agx_select_tile_size(unsigned sample_size_B, unsigned nr_samples,
+                     unsigned max_bytes_per_tile, unsigned max_samples_per_tile)
 {
+   const unsigned px_size_B = sample_size_B * nr_samples;
    assert(px_size_B <= (max_bytes_per_tile / MIN_TILE_SIZE_PX));
 
-   return ((px_size_B * 32 * 32) <= max_bytes_per_tile)   ? (32 * 32)
-          : ((px_size_B * 32 * 16) <= max_bytes_per_tile) ? (32 * 16)
-                                                          : MIN_TILE_SIZE_PX;
+   const unsigned sizes[] = {32 * 32, 32 * 16, 16 * 16};
+   for (unsigned i = 0; i < ARRAY_SIZE(sizes); ++i) {
+      if (px_size_B * sizes[i] <= max_bytes_per_tile &&
+          (!max_samples_per_tile ||
+           nr_samples * sizes[i] <= max_samples_per_tile))
+         return sizes[i];
+   }
+
+   UNREACHABLE("No tile fits the device allocation limits");
 }
 
 static inline unsigned
@@ -41,9 +49,10 @@ format_align_B(enum pipe_format format)
 }
 
 struct agx_tilebuffer_layout
-agx_build_tilebuffer_layout_with_limit(const enum pipe_format *formats,
-                                     uint8_t nr_cbufs, uint8_t nr_samples,
-                                     bool layered, unsigned max_bytes_per_tile)
+agx_build_tilebuffer_layout_with_limits(const enum pipe_format *formats,
+                                      uint8_t nr_cbufs, uint8_t nr_samples,
+                                      bool layered, unsigned max_bytes_per_tile,
+                                      unsigned max_samples_per_tile)
 {
    if (!max_bytes_per_tile)
       max_bytes_per_tile = MAX_BYTES_PER_TILE;
@@ -51,6 +60,7 @@ agx_build_tilebuffer_layout_with_limit(const enum pipe_format *formats,
       .nr_samples = nr_samples,
       .layered = layered,
       .max_bytes_per_tile = max_bytes_per_tile,
+      .max_samples_per_tile = max_samples_per_tile,
    };
 
    uint32_t offset_B = 0;
@@ -106,8 +116,9 @@ agx_build_tilebuffer_layout_with_limit(const enum pipe_format *formats,
       offset_B = MAX2(offset_B, 1);
 
    tib.sample_size_B = align(offset_B, 8);
-   tib.tile_size = agx_select_tile_size(tib.sample_size_B * nr_samples,
-                                         max_bytes_per_tile);
+   tib.tile_size = agx_select_tile_size(tib.sample_size_B, nr_samples,
+                                         max_bytes_per_tile,
+                                         max_samples_per_tile);
 
    agx_tilebuffer_pack_usc(&tib);
    return tib;
@@ -117,8 +128,8 @@ struct agx_tilebuffer_layout
 agx_build_tilebuffer_layout(const enum pipe_format *formats, uint8_t nr_cbufs,
                            uint8_t nr_samples, bool layered)
 {
-   return agx_build_tilebuffer_layout_with_limit(formats, nr_cbufs, nr_samples,
-                                               layered, 0);
+   return agx_build_tilebuffer_layout_with_limits(formats, nr_cbufs, nr_samples,
+                                                layered, 0, 0);
 }
 
 /*
@@ -135,10 +146,11 @@ agx_tilebuffer_set_samples(struct agx_tilebuffer_layout *tib,
 {
    assert(tib->nr_samples == 0 && "must not be initialized");
 
-   *tib = agx_build_tilebuffer_layout_with_limit(tib->logical_format,
+   *tib = agx_build_tilebuffer_layout_with_limits(tib->logical_format,
                                       ARRAY_SIZE(tib->logical_format),
                                       nr_samples, tib->layered,
-                                      tib->max_bytes_per_tile);
+                                      tib->max_bytes_per_tile,
+                                      tib->max_samples_per_tile);
 }
 
 enum pipe_format

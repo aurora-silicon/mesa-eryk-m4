@@ -1,0 +1,242 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.renderpasses.renderpass2.depth_stencil_resolve.image_2d_17_1.samples_2.d16_unorm_s8_uint.depth_zero_stencil_max_unused_resolve_testing_stencil",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.renderpasses.renderpass2.depth_stencil_resolve.image_2d_17_1.samples_2.d16_unorm_s8_uint.depth_zero_stencil_max_unused_resolve_testing_stencil",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T073807816731Z-cts14-core-original-final/cts/000/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Pass",
+    "started_unix": 1789371489.1639755,
+    "eligibility": {
+      "case": "dEQP-VK.renderpasses.renderpass2.depth_stencil_resolve.image_2d_17_1.samples_2.d16_unorm_s8_uint.depth_zero_stencil_max_unused_resolve_testing_stencil",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.4622147549999909,
+    "finished_unix": 1789371489.631251,
+    "pid": 1701
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.draw.renderpass.multi_draw.mosaic.indexed_packed.one_draw.stride_extra_4.1_instance.tess_geom.multiview.offset_6_no_draw_id",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.draw.renderpass.multi_draw.mosaic.indexed_packed.one_draw.stride_extra_4.1_instance.tess_geom.multiview.offset_6_no_draw_id",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T073807816731Z-cts14-core-original-final/cts/001/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "NotSupported",
+    "started_unix": 1789371489.6405802,
+    "eligibility": {
+      "case": "dEQP-VK.draw.renderpass.multi_draw.mosaic.indexed_packed.one_draw.stride_extra_4.1_instance.tess_geom.multiview.offset_6_no_draw_id",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Multiview not supported with tesellation shaders at vktDrawMultiExtTests.cpp:444",
+    "returncode": 0,
+    "seconds": 0.10757340700001805,
+    "finished_unix": 1789371489.7539504,
+    "pid": 1702
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.renderpasses.renderpass2.depth_stencil_resolve.image_2d_32_32.samples_2.d16_unorm_s8_uint_separate_layouts.depth_max_stencil_max_testing_stencil",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.renderpasses.renderpass2.depth_stencil_resolve.image_2d_32_32.samples_2.d16_unorm_s8_uint_separate_layouts.depth_max_stencil_max_testing_stencil",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T073807816731Z-cts14-core-original-final/cts/002/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Pass",
+    "started_unix": 1789371489.764494,
+    "eligibility": {
+      "case": "dEQP-VK.renderpasses.renderpass2.depth_stencil_resolve.image_2d_32_32.samples_2.d16_unorm_s8_uint_separate_layouts.depth_max_stencil_max_testing_stencil",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.3589652029999115,
+    "finished_unix": 1789371490.1282113,
+    "pid": 1703
+  },
+  {
+    "index": 3,
+    "case": "dEQP-VK.pipeline.shader_object_unlinked_binary.multisample.sample_locations_ext.verify_location.samples_8_packed_invariable",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.pipeline.shader_object_unlinked_binary.multisample.sample_locations_ext.verify_location.samples_8_packed_invariable",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T073807816731Z-cts14-core-original-final/cts/003/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "NotSupported",
+    "started_unix": 1789371490.1378944,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.shader_object_unlinked_binary.multisample.sample_locations_ext.verify_location.samples_8_packed_invariable",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "framebufferColorSampleCounts: sample count not supported at vktPipelineMultisampleSampleLocationsExtTests.cpp:1373",
+    "returncode": 0,
+    "seconds": 0.10768677800001569,
+    "finished_unix": 1789371490.2513819,
+    "pid": 1704
+  },
+  {
+    "index": 4,
+    "case": "dEQP-VK.renderpasses.renderpass2.depth_stencil_resolve.image_2d_49_13.samples_16.d16_unorm_s8_uint_separate_layouts.depth_zero_stencil_max_testing_depth",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.renderpasses.renderpass2.depth_stencil_resolve.image_2d_49_13.samples_16.d16_unorm_s8_uint_separate_layouts.depth_zero_stencil_max_testing_depth",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T073807816731Z-cts14-core-original-final/cts/004/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "NotSupported",
+    "started_unix": 1789371490.2627115,
+    "eligibility": {
+      "case": "dEQP-VK.renderpasses.renderpass2.depth_stencil_resolve.image_2d_49_13.samples_16.d16_unorm_s8_uint_separate_layouts.depth_zero_stencil_max_testing_depth",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Sample count not supported at vktRenderPassDepthStencilResolveTests.cpp:1285",
+    "returncode": 0,
+    "seconds": 0.10762701700002708,
+    "finished_unix": 1789371490.3752964,
+    "pid": 1705
+  },
+  {
+    "index": 5,
+    "case": "dEQP-VK.draw.renderpass.multi_draw.mosaic.indexed_random.no_draws.standard_stride.1_instance.vert_only.multiview.offset_6_no_draw_id",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.draw.renderpass.multi_draw.mosaic.indexed_random.no_draws.standard_stride.1_instance.vert_only.multiview.offset_6_no_draw_id",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T073807816731Z-cts14-core-original-final/cts/005/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Pass",
+    "started_unix": 1789371490.3878193,
+    "eligibility": {
+      "case": "dEQP-VK.draw.renderpass.multi_draw.mosaic.indexed_random.no_draws.standard_stride.1_instance.vert_only.multiview.offset_6_no_draw_id",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.5104994560000478,
+    "finished_unix": 1789371490.9030175,
+    "pid": 1706
+  },
+  {
+    "index": 6,
+    "case": "dEQP-VK.transform_feedback.simple_optimized_gpl.draw_indirect_multiview_endqueryindexed_streamid_0_244",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.transform_feedback.simple_optimized_gpl.draw_indirect_multiview_endqueryindexed_streamid_0_244",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T073807816731Z-cts14-core-original-final/cts/006/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "NotSupported",
+    "started_unix": 1789371490.914625,
+    "eligibility": {
+      "case": "dEQP-VK.transform_feedback.simple_optimized_gpl.draw_indirect_multiview_endqueryindexed_streamid_0_244",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "transformFeedbackDraw feature is not supported at vktTransformFeedbackSimpleTests.cpp:4646",
+    "returncode": 0,
+    "seconds": 0.10770994599999995,
+    "finished_unix": 1789371491.028147,
+    "pid": 1708
+  },
+  {
+    "index": 7,
+    "case": "dEQP-VK.renderpasses.renderpass2.depth_stencil_resolve.image_2d_32_32.samples_8.d32_sfloat_s8_uint.depth_min_stencil_min_unused_resolve_testing_stencil",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.renderpasses.renderpass2.depth_stencil_resolve.image_2d_32_32.samples_8.d32_sfloat_s8_uint.depth_min_stencil_min_unused_resolve_testing_stencil",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T073807816731Z-cts14-core-original-final/cts/007/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "NotSupported",
+    "started_unix": 1789371491.0404496,
+    "eligibility": {
+      "case": "dEQP-VK.renderpasses.renderpass2.depth_stencil_resolve.image_2d_32_32.samples_8.d32_sfloat_s8_uint.depth_min_stencil_min_unused_resolve_testing_stencil",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Sample count not supported at vktRenderPassDepthStencilResolveTests.cpp:1285",
+    "returncode": 0,
+    "seconds": 0.10756396900001164,
+    "finished_unix": 1789371491.1531641,
+    "pid": 1709
+  },
+  {
+    "index": 8,
+    "case": "dEQP-VK.pipeline.monolithic.multisample.min_sample_shading.min_1_0.samples_2.primitive_triangle",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.pipeline.monolithic.multisample.min_sample_shading.min_1_0.samples_2.primitive_triangle",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T073807816731Z-cts14-core-original-final/cts/008/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Pass",
+    "started_unix": 1789371491.165814,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.monolithic.multisample.min_sample_shading.min_1_0.samples_2.primitive_triangle",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Got proper count of unique colors",
+    "returncode": 0,
+    "seconds": 0.7148106459999326,
+    "finished_unix": 1789371491.8864315,
+    "pid": 1710
+  },
+  {
+    "index": 9,
+    "case": "dEQP-VK.pipeline.monolithic.multisample.min_sample_shading.min_1_0.samples_4.primitive_triangle",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.pipeline.monolithic.multisample.min_sample_shading.min_1_0.samples_4.primitive_triangle",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T073807816731Z-cts14-core-original-final/cts/009/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Pass",
+    "started_unix": 1789371491.8991718,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.monolithic.multisample.min_sample_shading.min_1_0.samples_4.primitive_triangle",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Got proper count of unique colors",
+    "returncode": 0,
+    "seconds": 0.563657780000085,
+    "finished_unix": 1789371492.468545,
+    "pid": 1711
+  }
+]

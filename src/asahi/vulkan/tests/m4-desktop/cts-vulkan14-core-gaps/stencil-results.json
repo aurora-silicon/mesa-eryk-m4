@@ -1,0 +1,74 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.renderpasses.renderpass2.depth_stencil_resolve.image_2d_32_32.samples_2.d16_unorm_s8_uint_separate_layouts.depth_max_stencil_max_testing_stencil",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.renderpasses.renderpass2.depth_stencil_resolve.image_2d_32_32.samples_2.d16_unorm_s8_uint_separate_layouts.depth_max_stencil_max_testing_stencil",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T073609169628Z-cts14-core-stencil-bracket/cts/000/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Pass",
+    "started_unix": 1789371370.5726645,
+    "eligibility": {
+      "case": "dEQP-VK.renderpasses.renderpass2.depth_stencil_resolve.image_2d_32_32.samples_2.d16_unorm_s8_uint_separate_layouts.depth_max_stencil_max_testing_stencil",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.46208353999998053,
+    "finished_unix": 1789371371.0398672,
+    "pid": 1545
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.renderpasses.renderpass2.depth_stencil_resolve.image_2d_32_32.samples_2.d16_unorm_s8_uint_separate_layouts.depth_zero_stencil_max_testing_stencil_samplemask",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.renderpasses.renderpass2.depth_stencil_resolve.image_2d_32_32.samples_2.d16_unorm_s8_uint_separate_layouts.depth_zero_stencil_max_testing_stencil_samplemask",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T073609169628Z-cts14-core-stencil-bracket/cts/001/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Pass",
+    "started_unix": 1789371371.0502303,
+    "eligibility": {
+      "case": "dEQP-VK.renderpasses.renderpass2.depth_stencil_resolve.image_2d_32_32.samples_2.d16_unorm_s8_uint_separate_layouts.depth_zero_stencil_max_testing_stencil_samplemask",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.36098652600003334,
+    "finished_unix": 1789371371.4170449,
+    "pid": 1547
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.renderpasses.renderpass2.depth_stencil_resolve.image_2d_32_32.samples_2.d16_unorm_s8_uint_separate_layouts.depth_max_stencil_max_testing_depth",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.renderpasses.renderpass2.depth_stencil_resolve.image_2d_32_32.samples_2.d16_unorm_s8_uint_separate_layouts.depth_max_stencil_max_testing_depth",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T073609169628Z-cts14-core-stencil-bracket/cts/002/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Pass",
+    "started_unix": 1789371371.427794,
+    "eligibility": {
+      "case": "dEQP-VK.renderpasses.renderpass2.depth_stencil_resolve.image_2d_32_32.samples_2.d16_unorm_s8_uint_separate_layouts.depth_max_stencil_max_testing_depth",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.31084963199998583,
+    "finished_unix": 1789371371.7444134,
+    "pid": 1549
+  }
+]

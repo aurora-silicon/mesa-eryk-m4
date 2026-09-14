@@ -190,7 +190,8 @@ hk_agx3_g17p_rt0_tile_layout_supported(struct agx_tilebuffer_layout *tib)
             return false;
       count++;
    }
-   return count ? true : tib->sample_size_B == 0;
+   /* MSAA reserves an eight-byte sample stride even without color targets. */
+   return count || tib->sample_size_B == (tib->nr_samples > 1 ? 8 : 0);
 }
 
 static bool

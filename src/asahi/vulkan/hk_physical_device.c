@@ -695,7 +695,7 @@ hk_get_device_features(
       const bool graphics_storage = dev->chip == AGX_CHIP_G16G;
       features->geometryShader = graphics_storage;
       features->tessellationShader = graphics_storage;
-      features->sampleRateShading = false;
+      features->sampleRateShading = dev->chip == AGX_CHIP_G16G;
       features->pipelineStatisticsQuery = false;
       features->vertexPipelineStoresAndAtomics = graphics_storage;
       features->fragmentStoresAndAtomics = graphics_storage;

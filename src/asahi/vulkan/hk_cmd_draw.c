@@ -1040,11 +1040,15 @@ hk_CmdBeginRendering(VkCommandBuffer commandBuffer,
    const bool layered =
       !agx_native_graphics(&dev->dev) ||
       !hk_agx3_g17p_single_layer_rendering(render->view_mask, layer_count);
-   /* Native SPECLM represents a full 32 KiB allocation. G13 retains its
-    * historical one-byte-short limit. Keep epilog allocation in sync. */
-   render->tilebuffer = agx_build_tilebuffer_layout_with_limit(
+   /* Keep native color storage capacity separate from raster sample geometry.
+    * J713 native 4x captures use 32x16 microtiles (2048 samples). Selecting
+    * 32x32 solely because 32 KiB fits stalls even a constant-color draw.
+    * A 2048-sample budget retains full 32 KiB MRT storage in smaller tiles.
+    * Carry both budgets into deferred sample counts and fragment epilogs. */
+   render->tilebuffer = agx_build_tilebuffer_layout_with_limits(
       formats, render->color_att_count, render->tilebuffer.nr_samples, layered,
-      agx_native_graphics(&dev->dev) ? 32768 : 0);
+      agx_native_graphics(&dev->dev) ? 32768 : 0,
+      dev->dev.chip == AGX_CHIP_G16G ? 2048 : 0);
 
    const VkRenderingAttachmentLocationInfoKHR ral_info = {
       .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_LOCATION_INFO_KHR,
@@ -4113,6 +4117,7 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
          .link = fs->info.fs.epilog_key,
          .nr_samples = MAX2(dyn->ms.rasterization_samples, 1),
          .max_bytes_per_tile = cmd->state.gfx.render.tilebuffer.max_bytes_per_tile,
+         .max_samples_per_tile = cmd->state.gfx.render.tilebuffer.max_samples_per_tile,
          .lower_srgb = agx_native_graphics(&dev->dev),
          .blend.alpha_to_coverage = dyn->ms.alpha_to_coverage_enable,
          .blend.alpha_to_one = dyn->ms.alpha_to_one_enable,

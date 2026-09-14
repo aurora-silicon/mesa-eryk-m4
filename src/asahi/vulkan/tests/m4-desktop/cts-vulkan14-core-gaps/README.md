@@ -54,5 +54,60 @@ peak temperatures 56.5 C and 55.75 C, no fault in these final runs.
 Host texture encoding (6302 checks) and scoreboard (64 checks) tests pass.
 
 These are focused feature tests, not a conformance claim or broad regression.
-Sample-rate shading remains pending; its uncommitted candidate was present in
-the tested library and is not qualified by these compute tests.
+The image tests preceded sample-rate shading qualification below. Its candidate
+was present in that library; these compute tests did not qualify sample shading.
+
+
+## Sample-rate shading and final capability audit
+
+G16G now advertises sampleRateShading and retains actual sample IDs and sample
+interpolation. The native linker emits one main/epilog invocation for every
+raster sample, preserves per-sample coverage, and acquires pixel dependencies
+once across the loop. In particular, releasing class1 after the first sample
+lost subsequent stencil updates (the original test read 1 instead of 255).
+The independently compiled sample-discard native pipeline holds class1 across
+its loop. Keep the existing G17P one-sample boundary unchanged.
+
+Supply the Vulkan default Layer=0 varying when the final hardware vertex stage
+does not write Layer. Native multisample input-attachment fetches also accept
+NIR's redundant constant LOD0 source. Colorless MSAA uses its reserved 8-byte
+sample stride instead of being rejected as an invalid tile layout.
+
+Tile storage and raster sample geometry have independent budgets. Preserve
+32 KiB of native color storage, including the previously fixed four RG32F
+attachments, while selecting at most 2048 samples per microtile. This matches
+the retained J713 native 4x 32x16 geometry. The 32x32/4x configuration stalled
+even with sample shading disabled; choosing 32x16 fixed the sample-ID probe
+without changing shader arithmetic. This is the qualified scheduling policy,
+not evidence of a universal silicon limit or an additional Vulkan API limit.
+Deferred sample counts and fragment epilogs retain both budgets. Two focused
+host tests pass for full-capacity MRT and the independent sample budget.
+
+Final original-eight plus two color cases:
+`20260914T073807816731Z-cts14-core-original-final` — **5 Pass, 5 NotSupported,
+0 Fail/Crash**. Of the original eight, three pass and five reach separate
+optional requirements: three request 8x/16x raster samples, one requires
+multiview tessellation, and one requires transformFeedbackDraw. Both 2x and
+4x minSampleShading=1.0 triangle cases pass. The stencil-discard, sample-mask,
+and depth-resolve controls all pass at
+`20260914T073609169628Z-cts14-core-stencil-bracket`.
+
+The final library SHA256 is
+`2141cf24949fd3afd4c93eab9fe35d3ec6a76cb6c9282f051a665a6ca681c996`.
+Fresh guarded profile: `20260914T073845272532Z-cts14-core-feature-profile`.
+All three repaired features are true; the same registry inventory now reports
+**zero unadvertised unconditional core features**. See final-audit.json and
+its explicit optional-skip review. The original 1000-case report is unchanged;
+this inventory does not establish conditional-feature, format, limit, or full
+Vulkan conformance. Final CTS/profile runs had no observed GPU fault, with
+peak temperatures 56.5 C/55.75 C. Earlier diagnostic stalls and watchdog
+recoveries remain retained in the experiment evidence.
+
+The native sample witnesses and sources are retained under
+`build/cts14-core-gaps/{sample-native,sample4-native,sample-discard-native}`.
+The sample-ID diagnostic was generated with `vulkan-fragment-probe.py
+--samples 4 --sample-shading --rgba 128 0 0 255`. The earlier small-tile
+experiment has a `missing_success_evidence` wrapper verdict because its regex
+expected `^PASS:`; its actual exact-pixel marker is
+`g17p-msaa4-triangle: PASS`, and its exit status was zero. The final CTS results
+above provide independently classified validation of the final implementation.

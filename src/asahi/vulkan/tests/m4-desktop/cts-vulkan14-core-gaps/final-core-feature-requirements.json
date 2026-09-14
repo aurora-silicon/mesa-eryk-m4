@@ -1,0 +1,611 @@
+[
+  {
+    "feature": "robustBufferAccess",
+    "struct": "VkPhysicalDeviceFeatures",
+    "profile_struct": "VkPhysicalDeviceFeatures",
+    "core": "VK_VERSION_1_0",
+    "advertised": true
+  },
+  {
+    "feature": "multiview",
+    "struct": "VkPhysicalDeviceMultiviewFeatures",
+    "profile_struct": "VkPhysicalDeviceVulkan11Features",
+    "core": "VK_VERSION_1_1",
+    "advertised": true
+  },
+  {
+    "feature": "subgroupBroadcastDynamicId",
+    "struct": "VkPhysicalDeviceVulkan12Features",
+    "profile_struct": "VkPhysicalDeviceVulkan12Features",
+    "core": "VK_VERSION_1_2",
+    "advertised": true
+  },
+  {
+    "feature": "imagelessFramebuffer",
+    "struct": "VkPhysicalDeviceImagelessFramebufferFeatures",
+    "profile_struct": "VkPhysicalDeviceVulkan12Features",
+    "core": "VK_VERSION_1_2",
+    "advertised": true
+  },
+  {
+    "feature": "imagelessFramebuffer",
+    "struct": "VkPhysicalDeviceVulkan12Features",
+    "profile_struct": "VkPhysicalDeviceVulkan12Features",
+    "core": "VK_VERSION_1_2",
+    "advertised": true
+  },
+  {
+    "feature": "uniformBufferStandardLayout",
+    "struct": "VkPhysicalDeviceUniformBufferStandardLayoutFeatures",
+    "profile_struct": "VkPhysicalDeviceVulkan12Features",
+    "core": "VK_VERSION_1_2",
+    "advertised": true
+  },
+  {
+    "feature": "uniformBufferStandardLayout",
+    "struct": "VkPhysicalDeviceVulkan12Features",
+    "profile_struct": "VkPhysicalDeviceVulkan12Features",
+    "core": "VK_VERSION_1_2",
+    "advertised": true
+  },
+  {
+    "feature": "shaderSubgroupExtendedTypes",
+    "struct": "VkPhysicalDeviceShaderSubgroupExtendedTypesFeatures",
+    "profile_struct": "VkPhysicalDeviceVulkan12Features",
+    "core": "VK_VERSION_1_2",
+    "advertised": true
+  },
+  {
+    "feature": "shaderSubgroupExtendedTypes",
+    "struct": "VkPhysicalDeviceVulkan12Features",
+    "profile_struct": "VkPhysicalDeviceVulkan12Features",
+    "core": "VK_VERSION_1_2",
+    "advertised": true
+  },
+  {
+    "feature": "separateDepthStencilLayouts",
+    "struct": "VkPhysicalDeviceSeparateDepthStencilLayoutsFeatures",
+    "profile_struct": "VkPhysicalDeviceVulkan12Features",
+    "core": "VK_VERSION_1_2",
+    "advertised": true
+  },
+  {
+    "feature": "separateDepthStencilLayouts",
+    "struct": "VkPhysicalDeviceVulkan12Features",
+    "profile_struct": "VkPhysicalDeviceVulkan12Features",
+    "core": "VK_VERSION_1_2",
+    "advertised": true
+  },
+  {
+    "feature": "hostQueryReset",
+    "struct": "VkPhysicalDeviceHostQueryResetFeatures",
+    "profile_struct": "VkPhysicalDeviceVulkan12Features",
+    "core": "VK_VERSION_1_2",
+    "advertised": true
+  },
+  {
+    "feature": "hostQueryReset",
+    "struct": "VkPhysicalDeviceVulkan12Features",
+    "profile_struct": "VkPhysicalDeviceVulkan12Features",
+    "core": "VK_VERSION_1_2",
+    "advertised": true
+  },
+  {
+    "feature": "timelineSemaphore",
+    "struct": "VkPhysicalDeviceTimelineSemaphoreFeatures",
+    "profile_struct": "VkPhysicalDeviceVulkan12Features",
+    "core": "VK_VERSION_1_2",
+    "advertised": true
+  },
+  {
+    "feature": "timelineSemaphore",
+    "struct": "VkPhysicalDeviceVulkan12Features",
+    "profile_struct": "VkPhysicalDeviceVulkan12Features",
+    "core": "VK_VERSION_1_2",
+    "advertised": true
+  },
+  {
+    "feature": "shaderTerminateInvocation",
+    "struct": "VkPhysicalDeviceShaderTerminateInvocationFeatures",
+    "profile_struct": "VkPhysicalDeviceVulkan13Features",
+    "core": "VK_VERSION_1_3",
+    "advertised": true
+  },
+  {
+    "feature": "shaderTerminateInvocation",
+    "struct": "VkPhysicalDeviceVulkan13Features",
+    "profile_struct": "VkPhysicalDeviceVulkan13Features",
+    "core": "VK_VERSION_1_3",
+    "advertised": true
+  },
+  {
+    "feature": "shaderDemoteToHelperInvocation",
+    "struct": "VkPhysicalDeviceShaderDemoteToHelperInvocationFeatures",
+    "profile_struct": "VkPhysicalDeviceVulkan13Features",
+    "core": "VK_VERSION_1_3",
+    "advertised": true
+  },
+  {
+    "feature": "shaderDemoteToHelperInvocation",
+    "struct": "VkPhysicalDeviceVulkan13Features",
+    "profile_struct": "VkPhysicalDeviceVulkan13Features",
+    "core": "VK_VERSION_1_3",
+    "advertised": true
+  },
+  {
+    "feature": "privateData",
+    "struct": "VkPhysicalDevicePrivateDataFeatures",
+    "profile_struct": "VkPhysicalDeviceVulkan13Features",
+    "core": "VK_VERSION_1_3",
+    "advertised": true
+  },
+  {
+    "feature": "privateData",
+    "struct": "VkPhysicalDeviceVulkan13Features",
+    "profile_struct": "VkPhysicalDeviceVulkan13Features",
+    "core": "VK_VERSION_1_3",
+    "advertised": true
+  },
+  {
+    "feature": "pipelineCreationCacheControl",
+    "struct": "VkPhysicalDevicePipelineCreationCacheControlFeatures",
+    "profile_struct": "VkPhysicalDeviceVulkan13Features",
+    "core": "VK_VERSION_1_3",
+    "advertised": true
+  },
+  {
+    "feature": "pipelineCreationCacheControl",
+    "struct": "VkPhysicalDeviceVulkan13Features",
+    "profile_struct": "VkPhysicalDeviceVulkan13Features",
+    "core": "VK_VERSION_1_3",
+    "advertised": true
+  },
+  {
+    "feature": "synchronization2",
+    "struct": "VkPhysicalDeviceSynchronization2Features",
+    "profile_struct": "VkPhysicalDeviceVulkan13Features",
+    "core": "VK_VERSION_1_3",
+    "advertised": true
+  },
+  {
+    "feature": "synchronization2",
+    "struct": "VkPhysicalDeviceVulkan13Features",
+    "profile_struct": "VkPhysicalDeviceVulkan13Features",
+    "core": "VK_VERSION_1_3",
+    "advertised": true
+  },
+  {
+    "feature": "shaderZeroInitializeWorkgroupMemory",
+    "struct": "VkPhysicalDeviceZeroInitializeWorkgroupMemoryFeatures",
+    "profile_struct": "VkPhysicalDeviceVulkan13Features",
+    "core": "VK_VERSION_1_3",
+    "advertised": true
+  },
+  {
+    "feature": "shaderZeroInitializeWorkgroupMemory",
+    "struct": "VkPhysicalDeviceVulkan13Features",
+    "profile_struct": "VkPhysicalDeviceVulkan13Features",
+    "core": "VK_VERSION_1_3",
+    "advertised": true
+  },
+  {
+    "feature": "robustImageAccess",
+    "struct": "VkPhysicalDeviceImageRobustnessFeatures",
+    "profile_struct": "VkPhysicalDeviceVulkan13Features",
+    "core": "VK_VERSION_1_3",
+    "advertised": true
+  },
+  {
+    "feature": "robustImageAccess",
+    "struct": "VkPhysicalDeviceVulkan13Features",
+    "profile_struct": "VkPhysicalDeviceVulkan13Features",
+    "core": "VK_VERSION_1_3",
+    "advertised": true
+  },
+  {
+    "feature": "subgroupSizeControl",
+    "struct": "VkPhysicalDeviceSubgroupSizeControlFeatures",
+    "profile_struct": "VkPhysicalDeviceVulkan13Features",
+    "core": "VK_VERSION_1_3",
+    "advertised": true
+  },
+  {
+    "feature": "computeFullSubgroups",
+    "struct": "VkPhysicalDeviceSubgroupSizeControlFeatures",
+    "profile_struct": "VkPhysicalDeviceVulkan13Features",
+    "core": "VK_VERSION_1_3",
+    "advertised": true
+  },
+  {
+    "feature": "subgroupSizeControl",
+    "struct": "VkPhysicalDeviceVulkan13Features",
+    "profile_struct": "VkPhysicalDeviceVulkan13Features",
+    "core": "VK_VERSION_1_3",
+    "advertised": true
+  },
+  {
+    "feature": "computeFullSubgroups",
+    "struct": "VkPhysicalDeviceVulkan13Features",
+    "profile_struct": "VkPhysicalDeviceVulkan13Features",
+    "core": "VK_VERSION_1_3",
+    "advertised": true
+  },
+  {
+    "feature": "dynamicRendering",
+    "struct": "VkPhysicalDeviceDynamicRenderingFeatures",
+    "profile_struct": "VkPhysicalDeviceVulkan13Features",
+    "core": "VK_VERSION_1_3",
+    "advertised": true
+  },
+  {
+    "feature": "dynamicRendering",
+    "struct": "VkPhysicalDeviceVulkan13Features",
+    "profile_struct": "VkPhysicalDeviceVulkan13Features",
+    "core": "VK_VERSION_1_3",
+    "advertised": true
+  },
+  {
+    "feature": "shaderIntegerDotProduct",
+    "struct": "VkPhysicalDeviceShaderIntegerDotProductFeatures",
+    "profile_struct": "VkPhysicalDeviceVulkan13Features",
+    "core": "VK_VERSION_1_3",
+    "advertised": true
+  },
+  {
+    "feature": "shaderIntegerDotProduct",
+    "struct": "VkPhysicalDeviceVulkan13Features",
+    "profile_struct": "VkPhysicalDeviceVulkan13Features",
+    "core": "VK_VERSION_1_3",
+    "advertised": true
+  },
+  {
+    "feature": "maintenance4",
+    "struct": "VkPhysicalDeviceMaintenance4Features",
+    "profile_struct": "VkPhysicalDeviceVulkan13Features",
+    "core": "VK_VERSION_1_3",
+    "advertised": true
+  },
+  {
+    "feature": "maintenance4",
+    "struct": "VkPhysicalDeviceVulkan13Features",
+    "profile_struct": "VkPhysicalDeviceVulkan13Features",
+    "core": "VK_VERSION_1_3",
+    "advertised": true
+  },
+  {
+    "feature": "vulkanMemoryModel",
+    "struct": "VkPhysicalDeviceVulkanMemoryModelFeatures",
+    "profile_struct": "VkPhysicalDeviceVulkan12Features",
+    "core": "VK_VERSION_1_3",
+    "advertised": true
+  },
+  {
+    "feature": "vulkanMemoryModelDeviceScope",
+    "struct": "VkPhysicalDeviceVulkanMemoryModelFeatures",
+    "profile_struct": "VkPhysicalDeviceVulkan12Features",
+    "core": "VK_VERSION_1_3",
+    "advertised": true
+  },
+  {
+    "feature": "inlineUniformBlock",
+    "struct": "VkPhysicalDeviceInlineUniformBlockFeatures",
+    "profile_struct": "VkPhysicalDeviceVulkan13Features",
+    "core": "VK_VERSION_1_3",
+    "advertised": true
+  },
+  {
+    "feature": "bufferDeviceAddress",
+    "struct": "VkPhysicalDeviceBufferDeviceAddressFeatures",
+    "profile_struct": "VkPhysicalDeviceVulkan12Features",
+    "core": "VK_VERSION_1_3",
+    "advertised": true
+  },
+  {
+    "feature": "vulkanMemoryModel",
+    "struct": "VkPhysicalDeviceVulkan12Features",
+    "profile_struct": "VkPhysicalDeviceVulkan12Features",
+    "core": "VK_VERSION_1_3",
+    "advertised": true
+  },
+  {
+    "feature": "vulkanMemoryModelDeviceScope",
+    "struct": "VkPhysicalDeviceVulkan12Features",
+    "profile_struct": "VkPhysicalDeviceVulkan12Features",
+    "core": "VK_VERSION_1_3",
+    "advertised": true
+  },
+  {
+    "feature": "inlineUniformBlock",
+    "struct": "VkPhysicalDeviceVulkan13Features",
+    "profile_struct": "VkPhysicalDeviceVulkan13Features",
+    "core": "VK_VERSION_1_3",
+    "advertised": true
+  },
+  {
+    "feature": "bufferDeviceAddress",
+    "struct": "VkPhysicalDeviceVulkan12Features",
+    "profile_struct": "VkPhysicalDeviceVulkan12Features",
+    "core": "VK_VERSION_1_3",
+    "advertised": true
+  },
+  {
+    "feature": "fullDrawIndexUint32",
+    "struct": "VkPhysicalDeviceFeatures",
+    "profile_struct": "VkPhysicalDeviceFeatures",
+    "core": "VK_VERSION_1_4",
+    "advertised": true
+  },
+  {
+    "feature": "imageCubeArray",
+    "struct": "VkPhysicalDeviceFeatures",
+    "profile_struct": "VkPhysicalDeviceFeatures",
+    "core": "VK_VERSION_1_4",
+    "advertised": true
+  },
+  {
+    "feature": "independentBlend",
+    "struct": "VkPhysicalDeviceFeatures",
+    "profile_struct": "VkPhysicalDeviceFeatures",
+    "core": "VK_VERSION_1_4",
+    "advertised": true
+  },
+  {
+    "feature": "sampleRateShading",
+    "struct": "VkPhysicalDeviceFeatures",
+    "profile_struct": "VkPhysicalDeviceFeatures",
+    "core": "VK_VERSION_1_4",
+    "advertised": true
+  },
+  {
+    "feature": "drawIndirectFirstInstance",
+    "struct": "VkPhysicalDeviceFeatures",
+    "profile_struct": "VkPhysicalDeviceFeatures",
+    "core": "VK_VERSION_1_4",
+    "advertised": true
+  },
+  {
+    "feature": "depthClamp",
+    "struct": "VkPhysicalDeviceFeatures",
+    "profile_struct": "VkPhysicalDeviceFeatures",
+    "core": "VK_VERSION_1_4",
+    "advertised": true
+  },
+  {
+    "feature": "depthBiasClamp",
+    "struct": "VkPhysicalDeviceFeatures",
+    "profile_struct": "VkPhysicalDeviceFeatures",
+    "core": "VK_VERSION_1_4",
+    "advertised": true
+  },
+  {
+    "feature": "samplerAnisotropy",
+    "struct": "VkPhysicalDeviceFeatures",
+    "profile_struct": "VkPhysicalDeviceFeatures",
+    "core": "VK_VERSION_1_4",
+    "advertised": true
+  },
+  {
+    "feature": "fragmentStoresAndAtomics",
+    "struct": "VkPhysicalDeviceFeatures",
+    "profile_struct": "VkPhysicalDeviceFeatures",
+    "core": "VK_VERSION_1_4",
+    "advertised": true
+  },
+  {
+    "feature": "shaderStorageImageExtendedFormats",
+    "struct": "VkPhysicalDeviceFeatures",
+    "profile_struct": "VkPhysicalDeviceFeatures",
+    "core": "VK_VERSION_1_4",
+    "advertised": true
+  },
+  {
+    "feature": "shaderUniformBufferArrayDynamicIndexing",
+    "struct": "VkPhysicalDeviceFeatures",
+    "profile_struct": "VkPhysicalDeviceFeatures",
+    "core": "VK_VERSION_1_4",
+    "advertised": true
+  },
+  {
+    "feature": "shaderSampledImageArrayDynamicIndexing",
+    "struct": "VkPhysicalDeviceFeatures",
+    "profile_struct": "VkPhysicalDeviceFeatures",
+    "core": "VK_VERSION_1_4",
+    "advertised": true
+  },
+  {
+    "feature": "shaderStorageBufferArrayDynamicIndexing",
+    "struct": "VkPhysicalDeviceFeatures",
+    "profile_struct": "VkPhysicalDeviceFeatures",
+    "core": "VK_VERSION_1_4",
+    "advertised": true
+  },
+  {
+    "feature": "shaderStorageImageArrayDynamicIndexing",
+    "struct": "VkPhysicalDeviceFeatures",
+    "profile_struct": "VkPhysicalDeviceFeatures",
+    "core": "VK_VERSION_1_4",
+    "advertised": true
+  },
+  {
+    "feature": "shaderImageGatherExtended",
+    "struct": "VkPhysicalDeviceFeatures",
+    "profile_struct": "VkPhysicalDeviceFeatures",
+    "core": "VK_VERSION_1_4",
+    "advertised": true
+  },
+  {
+    "feature": "shaderInt16",
+    "struct": "VkPhysicalDeviceFeatures",
+    "profile_struct": "VkPhysicalDeviceFeatures",
+    "core": "VK_VERSION_1_4",
+    "advertised": true
+  },
+  {
+    "feature": "largePoints",
+    "struct": "VkPhysicalDeviceFeatures",
+    "profile_struct": "VkPhysicalDeviceFeatures",
+    "core": "VK_VERSION_1_4",
+    "advertised": true
+  },
+  {
+    "feature": "samplerYcbcrConversion",
+    "struct": "VkPhysicalDeviceVulkan11Features",
+    "profile_struct": "VkPhysicalDeviceVulkan11Features",
+    "core": "VK_VERSION_1_4",
+    "advertised": true
+  },
+  {
+    "feature": "storageBuffer16BitAccess",
+    "struct": "VkPhysicalDeviceVulkan11Features",
+    "profile_struct": "VkPhysicalDeviceVulkan11Features",
+    "core": "VK_VERSION_1_4",
+    "advertised": true
+  },
+  {
+    "feature": "variablePointers",
+    "struct": "VkPhysicalDeviceVulkan11Features",
+    "profile_struct": "VkPhysicalDeviceVulkan11Features",
+    "core": "VK_VERSION_1_4",
+    "advertised": true
+  },
+  {
+    "feature": "variablePointersStorageBuffer",
+    "struct": "VkPhysicalDeviceVulkan11Features",
+    "profile_struct": "VkPhysicalDeviceVulkan11Features",
+    "core": "VK_VERSION_1_4",
+    "advertised": true
+  },
+  {
+    "feature": "samplerMirrorClampToEdge",
+    "struct": "VkPhysicalDeviceVulkan12Features",
+    "profile_struct": "VkPhysicalDeviceVulkan12Features",
+    "core": "VK_VERSION_1_4",
+    "advertised": true
+  },
+  {
+    "feature": "scalarBlockLayout",
+    "struct": "VkPhysicalDeviceVulkan12Features",
+    "profile_struct": "VkPhysicalDeviceVulkan12Features",
+    "core": "VK_VERSION_1_4",
+    "advertised": true
+  },
+  {
+    "feature": "shaderUniformTexelBufferArrayDynamicIndexing",
+    "struct": "VkPhysicalDeviceVulkan12Features",
+    "profile_struct": "VkPhysicalDeviceVulkan12Features",
+    "core": "VK_VERSION_1_4",
+    "advertised": true
+  },
+  {
+    "feature": "shaderStorageTexelBufferArrayDynamicIndexing",
+    "struct": "VkPhysicalDeviceVulkan12Features",
+    "profile_struct": "VkPhysicalDeviceVulkan12Features",
+    "core": "VK_VERSION_1_4",
+    "advertised": true
+  },
+  {
+    "feature": "shaderInt8",
+    "struct": "VkPhysicalDeviceVulkan12Features",
+    "profile_struct": "VkPhysicalDeviceVulkan12Features",
+    "core": "VK_VERSION_1_4",
+    "advertised": true
+  },
+  {
+    "feature": "storageBuffer8BitAccess",
+    "struct": "VkPhysicalDeviceVulkan12Features",
+    "profile_struct": "VkPhysicalDeviceVulkan12Features",
+    "core": "VK_VERSION_1_4",
+    "advertised": true
+  },
+  {
+    "feature": "globalPriorityQuery",
+    "struct": "VkPhysicalDeviceGlobalPriorityQueryFeatures",
+    "profile_struct": "VkPhysicalDeviceVulkan14Features",
+    "core": "VK_VERSION_1_4",
+    "advertised": true
+  },
+  {
+    "feature": "shaderSubgroupRotate",
+    "struct": "VkPhysicalDeviceShaderSubgroupRotateFeatures",
+    "profile_struct": "VkPhysicalDeviceVulkan14Features",
+    "core": "VK_VERSION_1_4",
+    "advertised": true
+  },
+  {
+    "feature": "shaderSubgroupRotateClustered",
+    "struct": "VkPhysicalDeviceShaderSubgroupRotateFeatures",
+    "profile_struct": "VkPhysicalDeviceVulkan14Features",
+    "core": "VK_VERSION_1_4",
+    "advertised": true
+  },
+  {
+    "feature": "shaderFloatControls2",
+    "struct": "VkPhysicalDeviceShaderFloatControls2Features",
+    "profile_struct": "VkPhysicalDeviceVulkan14Features",
+    "core": "VK_VERSION_1_4",
+    "advertised": true
+  },
+  {
+    "feature": "shaderExpectAssume",
+    "struct": "VkPhysicalDeviceShaderExpectAssumeFeatures",
+    "profile_struct": "VkPhysicalDeviceVulkan14Features",
+    "core": "VK_VERSION_1_4",
+    "advertised": true
+  },
+  {
+    "feature": "bresenhamLines",
+    "struct": "VkPhysicalDeviceLineRasterizationFeatures",
+    "profile_struct": "VkPhysicalDeviceVulkan14Features",
+    "core": "VK_VERSION_1_4",
+    "advertised": true
+  },
+  {
+    "feature": "vertexAttributeInstanceRateDivisor",
+    "struct": "VkPhysicalDeviceVertexAttributeDivisorFeatures",
+    "profile_struct": "VkPhysicalDeviceVulkan14Features",
+    "core": "VK_VERSION_1_4",
+    "advertised": true
+  },
+  {
+    "feature": "indexTypeUint8",
+    "struct": "VkPhysicalDeviceIndexTypeUint8Features",
+    "profile_struct": "VkPhysicalDeviceVulkan14Features",
+    "core": "VK_VERSION_1_4",
+    "advertised": true
+  },
+  {
+    "feature": "maintenance5",
+    "struct": "VkPhysicalDeviceMaintenance5Features",
+    "profile_struct": "VkPhysicalDeviceVulkan14Features",
+    "core": "VK_VERSION_1_4",
+    "advertised": true
+  },
+  {
+    "feature": "pushDescriptor",
+    "struct": "VkPhysicalDeviceVulkan14Features",
+    "profile_struct": "VkPhysicalDeviceVulkan14Features",
+    "core": "VK_VERSION_1_4",
+    "advertised": true
+  },
+  {
+    "feature": "dynamicRenderingLocalRead",
+    "struct": "VkPhysicalDeviceDynamicRenderingLocalReadFeatures",
+    "profile_struct": "VkPhysicalDeviceVulkan14Features",
+    "core": "VK_VERSION_1_4",
+    "advertised": true
+  },
+  {
+    "feature": "maintenance6",
+    "struct": "VkPhysicalDeviceMaintenance6Features",
+    "profile_struct": "VkPhysicalDeviceVulkan14Features",
+    "core": "VK_VERSION_1_4",
+    "advertised": true
+  },
+  {
+    "feature": "pipelineRobustness",
+    "struct": "VkPhysicalDevicePipelineRobustnessFeatures",
+    "profile_struct": "VkPhysicalDeviceVulkan14Features",
+    "core": "VK_VERSION_1_4",
+    "advertised": true
+  }
+]

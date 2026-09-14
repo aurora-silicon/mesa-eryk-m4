@@ -1,0 +1,23 @@
+{
+  "counts": {
+    "Pass": 5,
+    "NotSupported": 5
+  },
+  "original_counts": {
+    "Pass": 5,
+    "NotSupported": 5
+  },
+  "rates_percent": {
+    "Pass": 50.0,
+    "NotSupported": 50.0
+  },
+  "api_version": "1.4",
+  "unconditional_core_feature_gaps": [],
+  "inputs": {
+    "_provenance/experiments/20260914T073807816731Z-cts14-core-original-final/remote/cts/results.json": "fef8db6b774ac03b238c2cb428da07ad77b4520e77300af0a4e0120d60f84ed1",
+    "build/cts14-core-gaps/final-device-profile.json": "af27858513c6bd07b496122a2f03c35018d175565655cfafde3e5dec926cba67",
+    "mesa/m4-asahi/src/vulkan/registry/vk.xml": "80e7394d0e787d6ec78b67aa324add6f96129fdd042ba640cc336a5481a208ee",
+    "build/cts14-core-gaps/final-skip-review.json": "3df66a61808b79227b57d98e2b2afdb04630e2b3c4c4291d0ffebed6bd485baa"
+  },
+  "coverage": "Registry inventory excludes conditional requirements, formats and limits. Case classification uses explicit reviews, not substring guesses."
+}

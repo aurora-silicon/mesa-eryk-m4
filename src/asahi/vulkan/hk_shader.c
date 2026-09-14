@@ -1682,7 +1682,8 @@ hk_nir_uses_root(const nir_shader *nir)
 }
 
 static void
-hk_lower_hw_vs(nir_shader *nir, struct hk_shader *shader, bool kill_psiz)
+hk_lower_hw_vs(nir_shader *nir, struct hk_shader *shader, bool kill_psiz,
+               bool native)
 {
    /* Point size must be clamped, excessively large points don't render
     * properly on G13.
@@ -1699,6 +1700,17 @@ hk_lower_hw_vs(nir_shader *nir, struct hk_shader *shader, bool kill_psiz)
    NIR_PASS(_, nir, nir_lower_io_to_scalar, nir_var_shader_out, NULL, NULL);
    NIR_PASS(_, nir, agx_nir_lower_cull_distance_vs);
 
+   /* Native fragment layer reads use a flat coefficient. Supply Vulkan's
+    * default layer zero even when the last vertex stage does not write it. */
+   if (native && !(nir->info.outputs_written & VARYING_BIT_LAYER)) {
+      nir_builder b = nir_builder_at(nir_after_impl(nir_shader_get_entrypoint(nir)));
+      nir_store_output(&b, nir_imm_int(&b, 0), nir_imm_int(&b, 0),
+                       .src_type = nir_type_uint32,
+                       .io_semantics = {.location = VARYING_SLOT_LAYER,
+                                        .num_slots = 1},
+                       .write_mask = 1);
+      nir->info.outputs_written |= VARYING_BIT_LAYER;
+   }
    NIR_PASS(_, nir, agx_nir_lower_uvs, &shader->info.uvs);
 }
 
@@ -1963,7 +1975,8 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
    uint64_t outputs = nir->info.outputs_written;
    if (sw_stage == MESA_SHADER_VERTEX || sw_stage == MESA_SHADER_TESS_EVAL) {
       if (hw) {
-         hk_lower_hw_vs(nir, shader, kill_psiz);
+         hk_lower_hw_vs(nir, shader, kill_psiz, dev->dev.chip == AGX_CHIP_G16G);
+         outputs = nir->info.outputs_written;
       } else {
          NIR_PASS(_, nir, poly_nir_lower_vs_before_gs);
          nir->info.stage = MESA_SHADER_COMPUTE;
@@ -2285,7 +2298,7 @@ hk_compile_shader(struct hk_device *dev, struct vk_shader_compile_info *info,
       /* G17P advertises only VK_SAMPLE_COUNT_1_BIT. Canonicalize sample
        * builtins and qualifiers now, before split FS lowering observes
        * uses_sample_shading and selects the legacy external sample loop. */
-      if (agx_chip_uses_hal200_ioto(dev->dev.chip) &&
+      if (dev->dev.chip == AGX_CHIP_G17P &&
           nir->info.fs.uses_sample_shading)
          NIR_PASS(_, nir, agx_nir_lower_g17p_1x_sample_shading);
 
@@ -2322,7 +2335,7 @@ hk_compile_shader(struct hk_device *dev, struct vk_shader_compile_info *info,
       agx_preprocess_nir(pre_gs);
 
       struct hk_shader *shader = &obj->variants[HK_GS_VARIANT_RAST];
-      hk_lower_hw_vs(rast, shader, false);
+      hk_lower_hw_vs(rast, shader, false, dev->dev.chip == AGX_CHIP_G16G);
       shader->info.gs = count_variant->info.gs;
       main_variant->info.gs = count_variant->info.gs;
 

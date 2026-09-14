@@ -188,14 +188,14 @@ TEST(Tilebuffer, NativeFullAllocation)
       PIPE_FORMAT_R32G32_FLOAT, PIPE_FORMAT_R32G32_FLOAT,
       PIPE_FORMAT_R32G32_FLOAT, PIPE_FORMAT_R32G32_FLOAT,
    };
-   auto native = agx_build_tilebuffer_layout_with_limit(formats, 4, 4, true,
-                                                       32768);
+   auto native = agx_build_tilebuffer_layout_with_limits(formats, 4, 4, true,
+                                                       32768, 2048);
    ASSERT_FALSE(agx_tilebuffer_spills(&native));
    ASSERT_EQ(32768u, agx_tilebuffer_total_size(&native));
    ASSERT_EQ(256u, native.tile_size);
 
-   auto deferred = agx_build_tilebuffer_layout_with_limit(formats, 4, 0, true,
-                                                         32768);
+   auto deferred = agx_build_tilebuffer_layout_with_limits(formats, 4, 0, true,
+                                                         32768, 2048);
    agx_tilebuffer_set_samples(&deferred, 4);
    ASSERT_FALSE(agx_tilebuffer_spills(&deferred));
    ASSERT_EQ(32768u, agx_tilebuffer_total_size(&deferred));
@@ -203,4 +203,20 @@ TEST(Tilebuffer, NativeFullAllocation)
    auto legacy = agx_build_tilebuffer_layout(formats, 4, 4, true);
    ASSERT_TRUE(legacy.spilled[3]);
    ASSERT_EQ(24576u, agx_tilebuffer_total_size(&legacy));
+}
+
+TEST(Tilebuffer, NativeRasterSampleBudget)
+{
+   const enum pipe_format format = PIPE_FORMAT_R8G8B8A8_UNORM;
+   auto four = agx_build_tilebuffer_layout_with_limits(&format, 1, 4, false,
+                                                       32768, 2048);
+   ASSERT_EQ(512u, four.tile_size);
+   ASSERT_EQ(16384u, agx_tilebuffer_total_size(&four));
+   auto two = agx_build_tilebuffer_layout_with_limits(&format, 1, 2, false,
+                                                      32768, 2048);
+   ASSERT_EQ(1024u, two.tile_size);
+   auto deferred = agx_build_tilebuffer_layout_with_limits(nullptr, 0, 0,
+                                                           false, 32768, 2048);
+   agx_tilebuffer_set_samples(&deferred, 4);
+   ASSERT_EQ(512u, deferred.tile_size);
 }

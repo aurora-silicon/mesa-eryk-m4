@@ -1391,8 +1391,8 @@ agx3_emit_tile(struct util_dynarray *emission, enum agx_isa_encoding enc,
 }
 
 /* Native coverage updates use SAMPLE_MASK_AGX3. Depth-only writes use
- * ZS_EMIT_AGX3 with optional float depth and a coverage/stencil word. Writes
- * inside the external sample-shading loop remain on the refused AGX2 path.
+ * ZS_EMIT_AGX3 with optional float depth and a coverage/stencil word. The
+ * native linker owns pixel dependencies for external sample loops.
  */
 
 /*
@@ -4421,7 +4421,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
     * their existing independently witnessed protocols. */
    const bool g17p_colour_protocol =
       enc == AGX_ISA_ENCODING_AGX3B && ctx->stage == MESA_SHADER_FRAGMENT &&
-      !ctx->key->fs.ignore_tib_dependencies && tile_stores_left == 1 &&
+      !ctx->key->fs.ignore_tib_dependencies && !ctx->key->fs.inside_sample_loop &&
+      tile_stores_left == 1 &&
       tile_loads_left == 0;
    /* Exact native RGBA8 alpha pipeline: one class-8 read wait/load followed
     * by one class-4 write wait/store, under the same class-12 entry/release.
@@ -4429,7 +4430,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
     */
    bool g17p_blend_protocol =
       enc == AGX_ISA_ENCODING_AGX3B && ctx->stage == MESA_SHADER_FRAGMENT &&
-      !ctx->key->fs.ignore_tib_dependencies && tile_loads_left == 1 &&
+      !ctx->key->fs.ignore_tib_dependencies && !ctx->key->fs.inside_sample_loop &&
+      tile_loads_left == 1 &&
       tile_stores_left == 1;
    if (g17p_blend_protocol) {
       unsigned blocks = 0, phase = 0;
@@ -5290,13 +5292,16 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                .slot = 1,
                .wait_mask = 1,
             };
-            if (!agx3_pixel_wait(enc, 1, 0, bytes, &len) ||
-                !agx3_append(emission, bytes, len) ||
+            /* A linked sample loop acquires class1 once for the whole pixel. */
+            if ((!ctx->key->fs.inside_sample_loop &&
+                 (!agx3_pixel_wait(enc, 1, 0, bytes, &len) ||
+                  !agx3_append(emission, bytes, len))) ||
                 !agx3_zs_encode_depth_stencil(enc, &zs, depth_enabled,
                                               stencil_enabled, bytes, &len) ||
                 !agx3_append(emission, bytes, len) ||
-                !agx3_pixel_release(enc, 1, false, 0, bytes, &len) ||
-                !agx3_append(emission, bytes, len))
+                (!ctx->key->fs.inside_sample_loop &&
+                 (!agx3_pixel_release(enc, 1, false, 0, bytes, &len) ||
+                  !agx3_append(emission, bytes, len))))
                AGX3_REFUSE(I);
             outstanding = 0;
             /* Native LD_MD 0.38 reserves 8 bytes for both stencil-only and
@@ -5331,7 +5336,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
              * the complete coverage word before acquiring class1. Keep
              * this ordering within the atomic pseudo rather than inheriting
              * the AGX2 wait-before-mask-calculation schedule. */
-            if ((I->imm & 2) &&
+            if ((I->imm & 2) && !ctx->key->fs.inside_sample_loop &&
                 (!agx3_pixel_wait(enc, 1, 0, bytes, &len) ||
                  !agx3_append(emission, bytes, len)))
                AGX3_REFUSE(I);
@@ -5344,7 +5349,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             /* Only the operation running tests acquired class 1 above.
              * An earlier discard-only update must not release that class
              * before the final coverage operation has acquired it. */
-            if ((I->imm & 2) &&
+            if ((I->imm & 2) && !ctx->key->fs.inside_sample_loop &&
                 (!agx3_pixel_release(enc, 1, false, 0, bytes, &len) ||
                  !agx3_append(emission, bytes, len)))
                AGX3_REFUSE(I);

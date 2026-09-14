@@ -744,6 +744,12 @@ agx_wait_pixel_mask(agx_builder *b, uint32_t mask)
       return;
    }
 
+   /* The native linker holds color and depth/coverage ownership across
+    * every sample invocation, then releases once when the pixel is done. */
+   if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+       b->shader->key->fs.inside_sample_loop)
+      mask &= ~0xd;
+
    /* No need to wait twice on a fence */
    mask &= ~b->shader->already_pixel_waited;
    if (mask == 0) {
@@ -943,7 +949,7 @@ agx_emit_store_zs(agx_builder *b, nir_intrinsic_instr *instr)
    b->shader->out->writes_sample_mask = true;
 
    if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
-       (write_z || write_s) && !b->shader->key->fs.inside_sample_loop) {
+       (write_z || write_s)) {
       /* DEPTHF consumes coverage/stencil at staging[0] and optional float
        * depth at staging[2]. Stencil occupies the coverage word's upper half.
        * Build the same current-coverage word as MOVMSK before RA. Keeping
@@ -2047,8 +2053,7 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
       bool no_tests =
          nir_src_is_const(instr->src[1]) && nir_src_as_uint(instr->src[1]) == 0;
 
-      if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
-          !b->shader->key->fs.inside_sample_loop) {
+      if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B) {
          /* Read current coverage for every update. The immutable input mask
           * can resurrect samples killed by an earlier discard. Preserve the
           * target and covered nibbles independently, restricting each by the

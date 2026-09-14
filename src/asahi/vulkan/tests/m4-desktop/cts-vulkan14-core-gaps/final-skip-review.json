@@ -1,0 +1,32 @@
+[
+  {
+    "message": "Multiview not supported with tesellation shaders at vktDrawMultiExtTests.cpp:444",
+    "case_regex": "dEQP\\-VK\\.draw\\.renderpass\\.multi_draw\\.mosaic\\.indexed_packed\\.one_draw\\.stride_extra_4\\.1_instance\\.tess_geom\\.multiview\\.offset_6_no_draw_id",
+    "classification": "NotSupported",
+    "basis": "Vulkan 1.4 requires multiview, but multiviewTessellationShader is optional; CTS vktDrawMultiExtTests.cpp:444 checks that separate feature."
+  },
+  {
+    "message": "framebufferColorSampleCounts: sample count not supported at vktPipelineMultisampleSampleLocationsExtTests.cpp:1373",
+    "case_regex": "dEQP\\-VK\\.pipeline\\.shader_object_unlinked_binary\\.multisample\\.sample_locations_ext\\.verify_location\\.samples_8_packed_invariable",
+    "classification": "NotSupported",
+    "basis": "The requested 8x/16x raster sample count is absent from the advertised sample-count masks; these counts are optional. CTS rejects at the recorded support check after sampleRateShading now succeeds."
+  },
+  {
+    "message": "Sample count not supported at vktRenderPassDepthStencilResolveTests.cpp:1285",
+    "case_regex": "dEQP\\-VK\\.renderpasses\\.renderpass2\\.depth_stencil_resolve\\.image_2d_49_13\\.samples_16\\.d16_unorm_s8_uint_separate_layouts\\.depth_zero_stencil_max_testing_depth",
+    "classification": "NotSupported",
+    "basis": "The requested 8x/16x raster sample count is absent from the advertised sample-count masks; these counts are optional. CTS rejects at the recorded support check after sampleRateShading now succeeds."
+  },
+  {
+    "message": "transformFeedbackDraw feature is not supported at vktTransformFeedbackSimpleTests.cpp:4646",
+    "case_regex": "dEQP\\-VK\\.transform_feedback\\.simple_optimized_gpl\\.draw_indirect_multiview_endqueryindexed_streamid_0_244",
+    "classification": "NotSupported",
+    "basis": "VK_EXT_transform_feedback is optional and transformFeedbackDraw is a separate optional property; CTS vktTransformFeedbackSimpleTests.cpp:4646 rejects indirect byte-count drawing."
+  },
+  {
+    "message": "Sample count not supported at vktRenderPassDepthStencilResolveTests.cpp:1285",
+    "case_regex": "dEQP\\-VK\\.renderpasses\\.renderpass2\\.depth_stencil_resolve\\.image_2d_32_32\\.samples_8\\.d32_sfloat_s8_uint\\.depth_min_stencil_min_unused_resolve_testing_stencil",
+    "classification": "NotSupported",
+    "basis": "The requested 8x/16x raster sample count is absent from the advertised sample-count masks; these counts are optional. CTS rejects at the recorded support check after sampleRateShading now succeeds."
+  }
+]
