@@ -166,3 +166,23 @@ absolute difference3.39/255, median1,90th percentile8;93844/783520 pixels
 have a channel difference>8. Native image is visually consistent overall,
 with fine ocean/refraction differences still visible; numerical identity is
 not claimed. Full raw readbacks and comparison are retained.
+
+## Opt-in VDM address logging
+
+Routine command-buffer alias and submission address messages now require
+`HK_G17P_LAUNCH_TRACE=1`. Ordinary Firefox, Zink, and compositor rendering
+leave this unset. The existing launch trace retains both address messages
+alongside packet dumps; error reporting and GPU submission are unchanged.
+Kernel retirement telemetry remains available to the guarded watchdog workflow.
+
+A guarded Firefox about:blank startup before this change emitted 296 submit
+messages (20260914T214650447434Z-firefox-submit-log-before). The first gated
+build emitted zero submit messages while retaining Zink/M4 WebRender
+(20260914T214745669799Z-firefox-submit-log-after); its remaining command-BO
+address messages were then gated by the same switch.
+
+Final build `616ce7a579357a6ae2818acfb80c0ff3fe4b9f8ee256015e5b9b54b9b179a2d4`
+was atomically installed and the normal desktop restarted. Final Firefox check
+`20260914T215016924928Z-firefox-vdm-quiet-final` emitted zero VDM address
+messages, retained Zink/M4 WebRender, and peaked at 59.5 C. Compact evidence
+is in `quiet-vdm-logging/`. Existing shader capability warnings remain visible.

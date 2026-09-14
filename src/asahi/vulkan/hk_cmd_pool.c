@@ -4,6 +4,7 @@
  * Copyright 2022-2023 Collabora Ltd. and Red Hat Inc.
  * SPDX-License-Identifier: MIT
  */
+#include "hk_cmd_buffer.h"
 #include "hk_cmd_pool.h"
 #include "asahi/lib/agx_bo.h"
 #include "asahi/lib/agx_device.h"
@@ -83,12 +84,14 @@ hk_cmd_bo_ensure_vdm_alias(struct hk_cmd_pool *pool, struct hk_cmd_bo *bo)
    }
 
    bo->g17p_vdm_alias = alias;
-   fprintf(stderr,
-           "asahi: G17P VDM command BO full=%#llx alias=%#llx low=%#llx size=%#llx\n",
-           (unsigned long long)bo->bo->va->addr,
-           (unsigned long long)alias,
-           (unsigned long long)(alias - AGX_G17P_VDM_USER_BASE),
-           (unsigned long long)bo->bo->size);
+   if (hk_g17p_launch_trace_enabled()) {
+      fprintf(stderr,
+              "asahi: G17P VDM command BO full=%#llx alias=%#llx low=%#llx size=%#llx\n",
+              (unsigned long long)bo->bo->va->addr,
+              (unsigned long long)alias,
+              (unsigned long long)(alias - AGX_G17P_VDM_USER_BASE),
+              (unsigned long long)bo->bo->size);
+   }
    return VK_SUCCESS;
 }
 

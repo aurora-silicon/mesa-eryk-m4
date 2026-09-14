@@ -1,0 +1,14 @@
+SPIR-V WARNING:
+    In file ../../mesa/m4-asahi/src/compiler/spirv/spirv_to_nir.c:5465
+    Unsupported SPIR-V capability: SpvCapabilityShaderLayer (69)
+    60 bytes into the SPIR-V binary
+GetShaderInfoLog() ->
+0:2(12): error: extension `GL_EXT_shader_texture_lod' unsupported in fragment shader
+
+GetShaderSource() ->
+
+#extension GL_EXT_shader_texture_lod: require
+void main() {}
+
+
+Session terminated, killing shell... ...killed.
