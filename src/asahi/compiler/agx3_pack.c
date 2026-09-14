@@ -2829,6 +2829,9 @@ agx3_pack_scoped_barrier(enum agx_isa_encoding encoding,
          {0x07, 0x04, 0x54, 0x61, 0x09, 0x00},
       [AGX3_BARRIER_SCOPE_DEVICE] =
          {0x07, 0x04, 0x54, 0x85, 0x08, 0x00},
+      /* Native G16G atomic_thread_fence(mem_device, seq_cst, device). */
+      [AGX3_BARRIER_SCOPE_DEVICE_FENCE] =
+         {0x07, 0x04, 0x54, 0x84, 0x0a, 0x00},
       [AGX3_BARRIER_SCOPE_TEXTURE] = {
          0x07, 0x04, 0x54, 0x51, 0x0e, 0x00,
          0x07, 0x04, 0x54, 0xd1, 0x0e, 0x00,
@@ -2853,7 +2856,9 @@ agx3_pack_scoped_barrier(enum agx_isa_encoding encoding,
 
    if (canonical == NULL || out == NULL ||
        scope < AGX3_BARRIER_SCOPE_EXECUTION ||
-       scope > AGX3_BARRIER_SCOPE_TEXTURE)
+       scope > AGX3_BARRIER_SCOPE_DEVICE_FENCE ||
+       (scope == AGX3_BARRIER_SCOPE_DEVICE_FENCE &&
+        encoding != AGX_ISA_ENCODING_AGX3B))
       return false;
 
    memset(out, 0, sizeof(*out));
@@ -2872,7 +2877,7 @@ agx3_unpack_scoped_barrier(enum agx_isa_encoding encoding,
       return false;
 
    for (enum agx3_barrier_scope candidate = AGX3_BARRIER_SCOPE_EXECUTION;
-        candidate <= AGX3_BARRIER_SCOPE_TEXTURE; ++candidate) {
+        candidate <= AGX3_BARRIER_SCOPE_DEVICE_FENCE; ++candidate) {
       struct agx3_encoded_scoped_barrier canonical;
       if (agx3_pack_scoped_barrier(encoding, candidate, &canonical) &&
           available >= canonical.length &&

@@ -545,3 +545,23 @@ The same run captures the still-failing vertex memory-model case (144 errors).
 Mandatory watchdog and thermals remained active. Ledger19: **4,653 Pass /
 5 Fail / 5,342 optional NotSupported**, **74 original failures resolved**,
 including documented CTS corrections. Cumulative evidence, no full rerun.
+
+## Device memory fences without a threadgroup rendezvous
+
+The original vertex release/acquire message-passing case passes in
+`20260914T170557381426Z-cts28-memory-fence` (2.94 seconds), after 144 errors
+on the preceding build. M4 native `atomic_thread_fence(mem_device, seq_cst,
+thread_scope_device)` emits `07 04 54 84 0a 00`, distinct from the existing
+threadgroup barrier with device-memory scope. Emit the fence for memory-only
+barriers; retain the rendezvous form for workgroup execution barriers.
+The native source, compiler manifest, fields and exact code are retained in
+`native-device-fence/`. The AGX3C encoding is not inferred from M4.
+
+ARM library SHA256
+`760b316577bb64c3f2ec6b69d19257b2f66173677d8db3d656d45bd56d658ce8`.
+Host codec: 10,232,301 checks, zero failures. Watchdog timeout 60 seconds;
+thermal guard active, peak 61 C. Ledger20: **4,654 Pass / 4 Fail / 5,342
+optional NotSupported**, **75 original failures resolved**, including the
+separately documented CTS corrections. Cumulative evidence across builds;
+no broad regression rerun or claim that the intermittent concurrent fault's
+root cause has been established.

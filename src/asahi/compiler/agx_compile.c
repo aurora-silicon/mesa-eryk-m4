@@ -2244,7 +2244,11 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
              * exact barrier per semantic memory scope. Keep Apple's observed
              * device -> texture -> threadgroup ordering. */
             if (modes & (nir_var_mem_global | nir_var_image)) {
-               agx_scoped_barrier_agx3(b, AGX3_BARRIER_SCOPE_DEVICE);
+               const bool fence =
+                  b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+                  nir_intrinsic_execution_scope(instr) < SCOPE_WORKGROUP;
+               agx_scoped_barrier_agx3(b, fence ? AGX3_BARRIER_SCOPE_DEVICE_FENCE
+                                                : AGX3_BARRIER_SCOPE_DEVICE);
                emitted = true;
             }
 

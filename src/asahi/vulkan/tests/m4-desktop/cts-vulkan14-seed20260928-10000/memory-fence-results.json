@@ -1,0 +1,26 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.memory_model.message_passing.ext.u32.noncoherent.atomic_atomic.atomicwrite.device.payload_local.physbuffer.guard_local.buffer.vert",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed28-scaled-texelview-supported",
+      "--deqp-case=dEQP-VK.memory_model.message_passing.ext.u32.noncoherent.atomic_atomic.atomicwrite.device.payload_local.physbuffer.guard_local.buffer.vert",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T170557381426Z-cts28-memory-fence/cts/000/result.qpa"
+    ],
+    "boot_id": "54a95d4b-2711-4abd-8f91-ebb61542fdb7",
+    "status": "Pass",
+    "started_unix": 1789405558.661188,
+    "eligibility": {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u32.noncoherent.atomic_atomic.atomicwrite.device.payload_local.physbuffer.guard_local.buffer.vert",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 2.9435871270000007,
+    "finished_unix": 1789405561.609816,
+    "pid": 1086
+  }
+]

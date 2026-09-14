@@ -2726,7 +2726,7 @@ agx3_emit_scoped_barrier(struct util_dynarray *emission,
 {
    if (wait_mask != 0 || I->op != AGX_OPCODE_SCOPED_BARRIER_AGX3 ||
        I->nr_dests != 0 || I->nr_srcs != 0 ||
-       I->imm > AGX3_BARRIER_SCOPE_TEXTURE)
+       I->imm > AGX3_BARRIER_SCOPE_DEVICE_FENCE)
       return false;
 
    struct agx3_encoded_scoped_barrier encoded;
