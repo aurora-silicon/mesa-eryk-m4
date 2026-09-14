@@ -1,0 +1,26 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.image.texel_view_compatible.compute.extended.2d_image.texel_fetch.bc1_rgb_unorm_block.r16g16b16a16_uscaled",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-scaled-transcode",
+      "--deqp-case=dEQP-VK.image.texel_view_compatible.compute.extended.2d_image.texel_fetch.bc1_rgb_unorm_block.r16g16b16a16_uscaled",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T053428148152Z-cts14-scaled-transcode/cts/000/result.qpa"
+    ],
+    "boot_id": "0ca1f3f9-acb4-4b79-8a3c-15498f475016",
+    "status": "Pass",
+    "started_unix": 1789364069.4828367,
+    "eligibility": {
+      "case": "dEQP-VK.image.texel_view_compatible.compute.extended.2d_image.texel_fetch.bc1_rgb_unorm_block.r16g16b16a16_uscaled",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 1.0197612259999005,
+    "finished_unix": 1789364070.5076616,
+    "pid": 7451
+  }
+]

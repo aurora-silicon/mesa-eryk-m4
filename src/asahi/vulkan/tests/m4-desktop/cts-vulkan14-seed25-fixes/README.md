@@ -478,3 +478,22 @@ Peak56.75 C, no fault/reboot. Tested library:
 The accompanying cube/TCS case remains Fail and supplies a fresh shader capture.
 Running total: **89/91 failures resolved** (77 Mesa fixes, 12 CTS corrections),
 2 remaining. No broad regression campaign.
+
+## CTS scaled compressed-view shader types
+
+The texel-view-compatible compute generator declared USCALED as usampler and
+rgba16ui. Scaled views use floating-point shader values, and no typed SPIR-V
+storage-image format names these scaled Vulkan formats. Generate floating
+samplers and formatless floating storage images; check the format-specific
+read/write-without-format capabilities rather than assuming availability.
+See https://docs.vulkan.org/spec/latest/appendices/spirvenv.html#spirvenv-image-formats.
+
+The BC1_RGB_UNORM / RGBA16_USCALED texel-fetch case Passes with corrected CTS
+binary SHA256 `527910a9ab89181d529b19cb04700a6a345843385ce74f7f7acf65fe6ae71122`.
+No Mesa change was needed. The original binary and frozen report are unchanged.
+The final patch removes redundant identical scaled predicates from the tested
+patch (retained with its exact manifest); this does not change generated GLSL.
+Peak56.5 C, no fault/reboot. Mesa library is the tile32k build above.
+Running total: **90/91 failures resolved** (77 Mesa fixes, 13 CTS corrections),
+1 remaining: the immutable cube-array sampler in tessellation control.
+No broad regression campaign.
