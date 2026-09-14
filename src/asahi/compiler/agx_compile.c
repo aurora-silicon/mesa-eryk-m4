@@ -1874,6 +1874,7 @@ agx_emit_image_store(agx_builder *b, nir_intrinsic_instr *instr)
       case PIPE_FORMAT_R8G8_UNORM:
       case PIPE_FORMAT_R8_UNORM:
       case PIPE_FORMAT_R8G8B8A8_UNORM:
+      case PIPE_FORMAT_B8G8R8A8_UNORM:
          write->format = AGX_FORMAT_U8NORM;
          break;
       case PIPE_FORMAT_R10G10B10A2_UNORM:

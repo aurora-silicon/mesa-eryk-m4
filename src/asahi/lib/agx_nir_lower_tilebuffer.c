@@ -365,7 +365,12 @@ pass(nir_builder *b, nir_intrinsic_instr *intr, void *data)
       value = nir_trim_vector(b, intr->src[0].ssa, comps);
 
       if (tib->spilled[rt]) {
-         store_memory(b, ctx->bindless_base, tib->nr_samples, logical_format,
+         enum pipe_format memory_format = logical_format;
+         if (ctx->lower_srgb && util_format_is_srgb(logical_format)) {
+            value = convert_srgb(b, value, comps, true);
+            memory_format = util_format_linear(logical_format);
+         }
+         store_memory(b, ctx->bindless_base, tib->nr_samples, memory_format,
                       rt, value, ctx->write_samples);
          ctx->any_memory_stores = true;
       } else {
