@@ -181,3 +181,13 @@ The original u16vec2 geometry quad-broadcast case now passes:
 The twelve scaled-format blit cases were also tried with lavapipe; all twelve
 were NotSupported (`20260914T141708938415Z-cts28-blit-lavapipe`). Those
 software outcomes are excluded from the hardware result ledger.
+
+## Indirect dispatch workgroup units
+
+Native fixed-local indirect CDM accepts workgroup counts. Converting Vulkan's
+indirect arguments to global thread counts dispatched the shader six times
+too often for a 3x1x2 workgroup. Remove that conversion; direct CDM still
+uses global thread counts. The original GPU-produced five-dispatch test passes
+with its exact atomic counts: `20260914T142215157428Z-cts28-indirect-groups`,
+peak 58.25 C. Library SHA256
+`894fe461fca27a0d463a3675d07679c422aa10dc63d7caf5221123b3275cac7f`.

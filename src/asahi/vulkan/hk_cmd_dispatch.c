@@ -830,19 +830,10 @@ dispatch(struct hk_cmd_buffer *cmd, struct agx_grid grid)
       grid.count[0] *= local_size.x;
       grid.count[1] *= local_size.y;
       grid.count[2] *= local_size.z;
-   } else if (agx_chip_uses_hal200_ioto(hk_cmd_buffer_device(cmd)->dev.chip)) {
-      /* Vulkan stores group counts; native CDM consumes global thread counts.
-       * Convert on the GPU, ordered in this same compute stream. Preserve
-       * root.cs.group_count_addr for shaders reading gl_NumWorkGroups. */
-      struct agx_ptr geometry = hk_pool_alloc(cmd, 3 * sizeof(uint32_t), 4);
-      if (!geometry.gpu)
-         return;
-      libagx_d3d12_indirect_dispatch(cmd, agx_1d(1), AGX_BARRIER_ALL,
-         geometry.gpu, grid.ptr, local_size.x, local_size.y, local_size.z);
-      hk_ensure_cs_has_space(cmd, cs, AGX3_CDM_BARRIER_SIZE);
-      hk_cdm_cache_flush(hk_cmd_buffer_device(cmd), cs);
-      grid = agx_grid_indirect(geometry.gpu);
    }
+
+   /* The fixed-local indirect CDM record consumes workgroup counts, unlike
+    * the direct record above. Keep Vulkan's indirect arguments unchanged. */
 
    hk_dispatch_with_local_size(cmd, cs, s, grid, local_size);
    cs->stats.calls++;
