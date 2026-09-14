@@ -75,3 +75,15 @@ The continuation `20260914T132821665770Z-cts28-cont4b` completed another 85 Pass
 and 74 NotSupported, then encountered GPU job 979 retirement failure. Its
 firmware snapshot and all 17 interrupted cases are retained for isolation;
 3654 other cases remain unrun in that segment. Peak temperature 59.75 C.
+
+## Array texel fetches
+
+The original `texelfetchoffset.repeat.isampler1darray_fragment` now passes
+numerically in `20260914T133501967450Z-cts28-array-coverage` (57 C peak), library
+`02b6e9a3bd042df3c33d69cce24628405bcf239c3daafff74d2e10aa54f05c1d`.
+Apple offline compiler 32023.883 targeting applegpu_g16g establishes the fused
+integer layer/mip PACK_SMPIR and corresponding SMP form. Native sources and
+archives remain under `build/cts28-native/array-fetch-{reg,ulod}`; independent
+instruction bytes are checked by `agx3_tex_core_test`. The descriptor lowering
+also accepts this newly implemented array LOD form. The separate four-target
+RGBA32F MSAA case remains rejected at tile-layout validation, not passed.

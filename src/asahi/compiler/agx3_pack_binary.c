@@ -799,8 +799,7 @@ agx3_tex_imm(agx_index index, uint16_t value)
           !index.memory && !index.abs && !index.neg;
 }
 
-/* Marshal witnessed 2D/3D texel fetches, including integer mip levels.
- * Array fetches retain their separately qualified LOD-zero form. */
+/* Marshal witnessed 2D/3D and array texel fetches with integer mip levels. */
 static bool
 agx3_emit_texture_fetch(struct util_dynarray *emission,
                         enum agx_isa_encoding enc, const agx_instr *I,
@@ -813,7 +812,7 @@ agx3_emit_texture_fetch(struct util_dynarray *emission,
    const bool register_lod = I->lod_mode == AGX_LOD_MODE_LOD_MIN;
    const bool valid_lod = register_lod ?
       enc == AGX_ISA_ENCODING_AGX3B && stage_coordinates && staging_coord == 0 &&
-      (I->dim == AGX_DIM_2D || three_d) &&
+      (I->dim == AGX_DIM_2D || three_d || (array && !ms)) &&
       (agx3_tex_plain_reg(I->src[1]) ||
        (I->src[1].type == AGX_INDEX_UNIFORM && !I->src[1].memory &&
         !I->src[1].abs && !I->src[1].neg)) &&
@@ -851,17 +850,25 @@ agx3_emit_texture_fetch(struct util_dynarray *emission,
 
    if (register_lod) {
       uint8_t bytes[AGX3_TEX_MAX_LENGTH], len;
-      if (!agx3_tex_stage_fetch_lod(enc, I->src[1].value,
-                                   I->src[1].type == AGX_INDEX_UNIFORM, slot, wait_mask,
-                                   I->src[1].cache, I->src[1].discard,
-                                   bytes, &len) ||
-          !agx3_append(emission, bytes, len))
+      bool encoded;
+      if (array)
+         encoded = agx3_tex_stage_fetch_layer_lod(
+            enc, I->src[0].value + 4, I->src[1].value,
+            I->src[1].type == AGX_INDEX_UNIFORM, slot, wait_mask,
+            I->src[0].discard, I->src[1].discard, bytes, &len);
+      else
+         encoded = agx3_tex_stage_fetch_lod(
+            enc, I->src[1].value, I->src[1].type == AGX_INDEX_UNIFORM,
+            slot, wait_mask, I->src[1].cache, I->src[1].discard, bytes, &len);
+      if (!encoded || !agx3_append(emission, bytes, len))
          return false;
       wait_mask = 0;
    }
 
    if (stage_coordinates) {
       for (unsigned i = 0; i < agx_channels(I->src[0]); i++) {
+         if (i == 2 && array && register_lod)
+            continue; /* Layer was packed with LOD above. */
          uint8_t copy[AGX3_TEX_MAX_LENGTH], copy_len = 0;
          /* The auxiliary array layer follows the reserved LOD pair. */
          const unsigned offset = i == 2 ? (ms || three_d ? 4 : 6) : 2 * i;

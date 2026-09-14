@@ -1267,6 +1267,28 @@ test_m4_integer_fetch_lod(void)
    CHECK(!agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3C,&d,out,&len));
    d.array=true;
    CHECK(!agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+   /* Native M4 array fetch, including fused integer layer and mip. */
+   static const uint8_t array_pack[] = {
+      0x17,0x05,0x54,0x06,0x00,0x08,0x18,0x00,0xf0,0xc0,0x65,0x00
+   };
+   static const uint8_t array_ulod[] = {
+      0x17,0x05,0x54,0x06,0x00,0x00,0x60,0x00,0xd0,0xc1,0x64,0x00
+   };
+   static const uint8_t array_fetch[] = {
+      0x05,0x80,0x0c,0xb8,0xb0,0x00,0xa0,0x24,0x00,0x00,0x00,0x00,0x01,0x00
+   };
+   CHECK(agx3_tex_stage_fetch_layer_lod(AGX_ISA_ENCODING_AGX3B,
+      4,6,false,1,0,true,true,out,&len));
+   CHECK(len==sizeof(array_pack) && !memcmp(out,array_pack,len));
+   CHECK(agx3_tex_stage_fetch_layer_lod(AGX_ISA_ENCODING_AGX3B,
+      0,24,true,1,0,true,false,out,&len));
+   CHECK(len==sizeof(array_ulod) && !memcmp(out,array_ulod,len));
+   d = (struct agx3_tex_fetch_desc) {
+      .dest=0,.coord=0,.width=AGX3_TEX_W32,.mask=15,.slot=1,
+      .wait_mask=1,.coord_kill=true,.final=true,.register_lod=true,.array=true,
+   };
+   CHECK(agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+   CHECK(len==sizeof(array_fetch) && !memcmp(out,array_fetch,len));
    return 0;
 }
 

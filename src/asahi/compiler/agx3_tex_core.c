@@ -30,7 +30,7 @@ fetch_ok(enum agx_isa_encoding enc, const struct agx3_tex_fetch_desc *d)
        (enc == AGX_ISA_ENCODING_AGX3B ? (!d->mask || d->mask > 15)
                                     : (d->mask != 1 && d->mask != 15)) ||
        d->texture > 15 ||
-       (d->register_lod && (enc != AGX_ISA_ENCODING_AGX3B || d->array || d->multisample)) ||
+       (d->register_lod && (enc != AGX_ISA_ENCODING_AGX3B || d->multisample)) ||
        (d->multisample && enc != AGX_ISA_ENCODING_AGX3B) ||
        (d->three_d && (enc != AGX_ISA_ENCODING_AGX3B || d->array ||
                        d->multisample)))
@@ -824,6 +824,45 @@ agx3_tex_stage_layer_lod(enum agx_isa_encoding enc, uint16_t layer,
          waits[n++] = (struct agx3_field_kv)KV(58+i,1);
    return agx3_bind_compose(enc, "pack_smpir", 0, base, sizeof(base) / sizeof(base[0]),
                             waits, n, out, len);
+}
+
+/* Native G16G tex.read(xy, layer, mip) publishes layer and integer LOD
+ * together. Separate writes to operand bank 6 overwrite each other.
+ * AIR-NT 32023.883: layer r2, mip r3l -> 1705540600081800f0c06500;
+ * layer r0, uniform mip u24 -> 1705540600006000d0c16400. */
+bool
+agx3_tex_stage_fetch_layer_lod(enum agx_isa_encoding enc, uint16_t layer,
+                              uint16_t lod, bool uniform, uint8_t slot,
+                              uint16_t wait_mask, bool layer_discard,
+                              bool lod_discard,
+                              uint8_t out[AGX3_TEX_MAX_LENGTH], uint8_t *len)
+{
+   if (!out || !len)
+      return false;
+   memset(out, 0, AGX3_TEX_MAX_LENGTH);
+   *len = 0;
+   if (enc != AGX_ISA_ENCODING_AGX3B || layer >= 256 || lod >= 256 ||
+       slot < 1 || slot > 6 || (wait_mask & ~0x3f))
+      return false;
+   const struct agx3_field_kv base[] = {
+      KV(5,6), KV(9,5), KV(10,2), KV(12,slot), KV(16,layer & 127),
+      KV(23,2), KV(24,1), KV(27,layer_discard),
+      KV(uniform ? 31 : 30, uniform ? lod : lod & 127),
+      KV(37,uniform ? 3 : 2), KV(38,1), KV(41,!uniform && lod_discard),
+      KV(51,1), KV(52,2), KV(74,4), KV(76,3), KV(77,16),
+   };
+   struct agx3_field_kv waits[6];
+   unsigned n = 0;
+   for (unsigned i = 0; i < 6; ++i)
+      if (wait_mask & (1u << i))
+         waits[n++] = (struct agx3_field_kv)KV(58+i,1);
+   if (!agx3_bind_compose(enc, "pack_smpir", 0, base, sizeof(base) / sizeof(base[0]),
+                          waits, n, out, len))
+      return false;
+   out[6] |= (layer >> 7) & 1;
+   if (!uniform)
+      out[7] |= ((lod >> 7) & 1) << 1;
+   return true;
 }
 
 /* Native G16G dynamic cube-array level: prepacked layer + face + half LOD.
