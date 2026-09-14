@@ -3050,6 +3050,13 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
                 UINT32_C(0x0e000000), 0},
    };
 
+   /* G16G B0 setTriangleFillMode (45b02c..45b040) writes bits 19:18
+    * of both primary face words. Keep the original triangle primitive:
+    * face culling happens before polygon edges are rasterized. */
+   const uint32_t polygon_mode = translate_polygon_mode(dyn->rs.polygon_mode);
+   primary_fields.words[1] |= polygon_mode << 18;
+   primary_fields.words[3] |= polygon_mode << 18;
+
    /* Each draw already owns its complete PRIMARY_FACE record. Native depth
     * control only changes these two words; retain the allocation and staging
     * layout and do not add launches, cache flushes or device-global state. */

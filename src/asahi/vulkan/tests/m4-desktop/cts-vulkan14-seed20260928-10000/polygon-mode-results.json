@@ -1,0 +1,26 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.rasterization.culling.front_triangles_reverse_line",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed28-signed-corrected",
+      "--deqp-case=dEQP-VK.rasterization.culling.front_triangles_reverse_line",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T161114938988Z-cts28-polygon-mode/cts/000/result.qpa"
+    ],
+    "boot_id": "15d81d37-45d1-42b3-ada6-fe3160541e0d",
+    "status": "Pass",
+    "started_unix": 1789402276.414384,
+    "eligibility": {
+      "case": "dEQP-VK.rasterization.culling.front_triangles_reverse_line",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.4113477360000104,
+    "finished_unix": 1789402276.8308408,
+    "pid": 1195
+  }
+]

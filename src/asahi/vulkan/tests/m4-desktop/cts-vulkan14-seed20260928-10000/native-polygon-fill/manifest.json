@@ -1,0 +1,19 @@
+{
+  "image": "/home/council/dev/dirtyroom_m4/build/AGXMetalG16G_B0.arm64e",
+  "image_sha256": "edd46e01416e595b51734428ece82aa0104868b35d585f492b2efa3ceebbce3a",
+  "symbol": "-[AGXG16GFamilyRenderContext_mtlnext setTriangleFillMode:]",
+  "virtual_address": "0x45b004",
+  "file_offset": "0x45b004",
+  "size": 116,
+  "function_sha256": "cfa268def7bc5a26c53cc6df2e539e7052dd3a3b526da1b6ce991cb82b2ed83e",
+  "command": [
+    "aarch64-linux-gnu-objdump",
+    "-D",
+    "-b",
+    "binary",
+    "-m",
+    "aarch64",
+    "--adjust-vma=4567044",
+    "build/cts28-native-polygon-fill/function.bin"
+  ]
+}

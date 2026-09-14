@@ -426,3 +426,19 @@ the test (external watchdog lease, then a case-list file lost during reboot).
 Cumulative ledger13: **4,646 Pass / 12 Fail / 5,342 optional NotSupported**;
 **67 originally failing/crashing/timing-out cases resolved**. These are
 observations across builds, not an uninterrupted full regression run.
+
+## Native polygon fill mode
+
+`20260914T161114938988Z-cts28-polygon-mode` passes the original
+`rasterization.culling.front_triangles_reverse_line` case. The native path
+previously omitted polygon mode entirely, producing filled triangles for
+wireframe draws. Set both primary-face mode fields (bits 19:18) while keeping
+the triangle primitive for face culling. The retained bounded M4 B0
+`setTriangleFillMode` function witnesses these fields. Point mode uses the
+existing API-to-hardware enum mapping; this run qualifies wireframe only.
+
+Installed library SHA256:
+`7ebfe51b04f48928094cc89aaf96940bb05e2dab0caa42b55fb933cf9b0f5de3`.
+Guarded run peak: 59 C. Cumulative ledger14: **4,647 Pass / 11 Fail /
+5,342 optional NotSupported**; **68 original failures resolved** across
+builds and attempts. No full regression or conformance claim.

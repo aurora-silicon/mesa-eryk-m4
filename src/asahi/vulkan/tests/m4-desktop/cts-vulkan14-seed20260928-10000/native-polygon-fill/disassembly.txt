@@ -1,0 +1,36 @@
+
+build/cts28-native-polygon-fill/function.bin:     file format binary
+
+
+Disassembly of section .data:
+
+000000000045b004 <.data>:
+  45b004:	b0001fa8 	adrp	x8, 0x850000
+  45b008:	b981e908 	ldrsw	x8, [x8, #488]
+  45b00c:	f8686808 	ldr	x8, [x0, x8]
+  45b010:	f94e6509 	ldr	x9, [x8, #7368]
+  45b014:	eb02013f 	cmp	x9, x2
+  45b018:	54000080 	b.eq	0x45b028  // b.none
+  45b01c:	f9548909 	ldr	x9, [x8, #10512]
+  45b020:	b2540129 	orr	x9, x9, #0x100000000000
+  45b024:	f9148909 	str	x9, [x8, #10512]
+  45b028:	f90e6502 	str	x2, [x8, #7368]
+  45b02c:	b9575109 	ldr	w9, [x8, #5968]
+  45b030:	330e0449 	bfi	w9, w2, #18, #2
+  45b034:	b9175109 	str	w9, [x8, #5968]
+  45b038:	b9575909 	ldr	w9, [x8, #5976]
+  45b03c:	330e0449 	bfi	w9, w2, #18, #2
+  45b040:	b9175909 	str	w9, [x8, #5976]
+  45b044:	52800a49 	mov	w9, #0x52                  	// #82
+  45b048:	f100045f 	cmp	x2, #0x1
+  45b04c:	9a9f0129 	csel	x9, x9, xzr, eq	// eq = none
+  45b050:	d343fd2a 	lsr	x10, x9, #3
+  45b054:	927d014a 	and	x10, x10, #0x8
+  45b058:	8b0a0108 	add	x8, x8, x10
+  45b05c:	927f1129 	and	x9, x9, #0x3e
+  45b060:	5280002a 	mov	w10, #0x1                   	// #1
+  45b064:	9ac92149 	lsl	x9, x10, x9
+  45b068:	f956890a 	ldr	x10, [x8, #11536]
+  45b06c:	aa090149 	orr	x9, x10, x9
+  45b070:	f9168909 	str	x9, [x8, #11536]
+  45b074:	d65f03c0 	ret
