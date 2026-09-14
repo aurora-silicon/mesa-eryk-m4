@@ -6890,3 +6890,39 @@ TEST_F(AGX3PackBinary, SparseVertexExportAllowsEarlierMemorySideEffects)
       EXPECT_EQ(pack(b, !store_after).empty(), store_after);
    }
 }
+
+TEST_F(AGX3PackBinary, SparseLayerExportsSinkBeforeRegisterAllocation)
+{
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+   b->shader->stage = MESA_SHADER_VERTEX;
+   b->shader->nir = rzalloc(mem_ctx, nir_shader);
+   b->shader->nir->info.stage = MESA_SHADER_VERTEX;
+   /* The layer exports may be scheduled before the last position producer.
+    * Keep that producer's SSA value live, retaining constant-position holes.
+    */
+   for (unsigned c : {0u, 5u, 4u, 1u}) {
+      agx_index value = agx_mov_imm(b, 32, 0x3f000000 + c);
+      agx_st_vary(b, agx_immediate(c), value);
+   }
+   agx_stop(b);
+   ASSERT_TRUE(agx3_sink_vertex_outputs(b->shader));
+   agx_ra(b->shader);
+   const unsigned expected[] = {0, 1, 4, 5};
+   unsigned n = 0;
+   agx_foreach_instr_global(b->shader, I) {
+      if (I->op == AGX_OPCODE_ST_VARY) {
+         ASSERT_LT(n, ARRAY_SIZE(expected));
+         EXPECT_EQ(I->src[0].value, expected[n++]);
+      }
+   }
+   EXPECT_EQ(n, ARRAY_SIZE(expected));
+   const auto got = pack(b);
+   for (unsigned i = 0; i < ARRAY_SIZE(expected); ++i) {
+      uint8_t bytes[AGX3_VARY_MAX_LENGTH], len = 0;
+      ASSERT_TRUE(agx3_vary_uvsw(AGX_ISA_ENCODING_AGX3B, expected[i] * 2,
+                     expected[i], i + 1, true, 1u << i, bytes, &len));
+      EXPECT_NE(std::search(got.begin(), got.end(), bytes, bytes + len),
+                got.end());
+   }
+   EXPECT_EQ(b->shader->agx3_staging_halfs, 12u);
+}

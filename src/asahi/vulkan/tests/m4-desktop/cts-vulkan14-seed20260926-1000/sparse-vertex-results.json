@@ -1,0 +1,554 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.draw.renderpass.multi_draw.mosaic.indexed_packed.one_draw.stride_extra_12.2_instances_base_3.with_tess.single_view.offset_6",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.draw.renderpass.multi_draw.mosaic.indexed_packed.one_draw.stride_extra_12.2_instances_base_3.with_tess.single_view.offset_6",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T075044414121Z-cts26-sparse-vertex/cts/000/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Fail",
+    "started_unix": 1789372245.6740959,
+    "eligibility": {
+      "case": "dEQP-VK.draw.renderpass.multi_draw.mosaic.indexed_packed.one_draw.stride_extra_12.2_instances_base_3.with_tess.single_view.offset_6",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "vk.createGraphicsPipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:37",
+    "returncode": 1,
+    "seconds": 0.38012389900018206,
+    "finished_unix": 1789372246.0593276,
+    "pid": 2741
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.draw.renderpass.multi_draw.overlapping.indexed_packed.one_draw.standard_stride.no_instances.vert_only.multiview.no_offset",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.draw.renderpass.multi_draw.overlapping.indexed_packed.one_draw.standard_stride.no_instances.vert_only.multiview.no_offset",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T075044414121Z-cts26-sparse-vertex/cts/001/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Fail",
+    "started_unix": 1789372245.679268,
+    "eligibility": {
+      "case": "dEQP-VK.draw.renderpass.multi_draw.overlapping.indexed_packed.one_draw.standard_stride.no_instances.vert_only.multiview.no_offset",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "vk.createGraphicsPipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:37",
+    "returncode": 1,
+    "seconds": 0.3008015240000077,
+    "finished_unix": 1789372245.9854856,
+    "pid": 2742
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.synchronization2.timeline_semaphore.wait_before_signal.write_ssbo_tess_control_read_ssbo_fragment.buffer_262144",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.synchronization2.timeline_semaphore.wait_before_signal.write_ssbo_tess_control_read_ssbo_fragment.buffer_262144",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T075044414121Z-cts26-sparse-vertex/cts/002/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Pass",
+    "started_unix": 1789372245.684793,
+    "eligibility": {
+      "case": "dEQP-VK.synchronization2.timeline_semaphore.wait_before_signal.write_ssbo_tess_control_read_ssbo_fragment.buffer_262144",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 1.2426910789999965,
+    "finished_unix": 1789372246.9332395,
+    "pid": 2743
+  },
+  {
+    "index": 3,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.with_push.combined_image_sampler_immutable.tess_ctrl.single_descriptor.2d_array_base_mip",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.with_push.combined_image_sampler_immutable.tess_ctrl.single_descriptor.2d_array_base_mip",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T075044414121Z-cts26-sparse-vertex/cts/003/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Pass",
+    "started_unix": 1789372245.690672,
+    "eligibility": {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.with_push.combined_image_sampler_immutable.tess_ctrl.single_descriptor.2d_array_base_mip",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.8392934299999979,
+    "finished_unix": 1789372246.5358121,
+    "pid": 2745
+  },
+  {
+    "index": 4,
+    "case": "dEQP-VK.draw.dynamic_rendering.primary_cmd_buff.multi_draw.mosaic.indexed_random.no_draws.stride_extra_4.no_instances.tess_geom.single_view.offset_6",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.draw.dynamic_rendering.primary_cmd_buff.multi_draw.mosaic.indexed_random.no_draws.stride_extra_4.no_instances.tess_geom.single_view.offset_6",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T075044414121Z-cts26-sparse-vertex/cts/004/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Fail",
+    "started_unix": 1789372245.6966114,
+    "eligibility": {
+      "case": "dEQP-VK.draw.dynamic_rendering.primary_cmd_buff.multi_draw.mosaic.indexed_random.no_draws.stride_extra_4.no_instances.tess_geom.single_view.offset_6",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "vk.createGraphicsPipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:37",
+    "returncode": 1,
+    "seconds": 0.3707278909998877,
+    "finished_unix": 1789372246.0732844,
+    "pid": 2748
+  },
+  {
+    "index": 5,
+    "case": "dEQP-VK.synchronization2.op.single_queue.timeline_semaphore.write_image_tess_control_read_image_compute.image_128x128_r16g16b16a16_uint_specialized_access_flag",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.synchronization2.op.single_queue.timeline_semaphore.write_image_tess_control_read_image_compute.image_128x128_r16g16b16a16_uint_specialized_access_flag",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T075044414121Z-cts26-sparse-vertex/cts/005/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Pass",
+    "started_unix": 1789372245.7027123,
+    "eligibility": {
+      "case": "dEQP-VK.synchronization2.op.single_queue.timeline_semaphore.write_image_tess_control_read_image_compute.image_128x128_r16g16b16a16_uint_specialized_access_flag",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 1.4496865280000293,
+    "finished_unix": 1789372247.1584725,
+    "pid": 2750
+  },
+  {
+    "index": 6,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind2.sampler_immutable.tess_eval.multiple_discontiguous_descriptor_sets.descriptor_array.2d_base_mip",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind2.sampler_immutable.tess_eval.multiple_discontiguous_descriptor_sets.descriptor_array.2d_base_mip",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T075044414121Z-cts26-sparse-vertex/cts/006/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Pass",
+    "started_unix": 1789372245.7089148,
+    "eligibility": {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind2.sampler_immutable.tess_eval.multiple_discontiguous_descriptor_sets.descriptor_array.2d_base_mip",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 1.5124066660000608,
+    "finished_unix": 1789372247.2302852,
+    "pid": 2754
+  },
+  {
+    "index": 7,
+    "case": "dEQP-VK.synchronization2.op.single_queue.barrier.write_draw_indexed_read_image_tess_eval.image_128x128_r8g8b8a8_unorm_specialized_access_flag",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.synchronization2.op.single_queue.barrier.write_draw_indexed_read_image_tess_eval.image_128x128_r8g8b8a8_unorm_specialized_access_flag",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T075044414121Z-cts26-sparse-vertex/cts/007/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Pass",
+    "started_unix": 1789372245.718149,
+    "eligibility": {
+      "case": "dEQP-VK.synchronization2.op.single_queue.barrier.write_draw_indexed_read_image_tess_eval.image_128x128_r8g8b8a8_unorm_specialized_access_flag",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.9304720860000089,
+    "finished_unix": 1789372246.65676,
+    "pid": 2757
+  },
+  {
+    "index": 8,
+    "case": "dEQP-VK.binding_model.shader_access.secondary_cmd_buf.bind.storage_buffer_dynamic.tess_ctrl.descriptor_array.offset_view_nonzero_dynamic_zero",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.secondary_cmd_buf.bind.storage_buffer_dynamic.tess_ctrl.descriptor_array.offset_view_nonzero_dynamic_zero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T075044414121Z-cts26-sparse-vertex/cts/008/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Pass",
+    "started_unix": 1789372246.0458393,
+    "eligibility": {
+      "case": "dEQP-VK.binding_model.shader_access.secondary_cmd_buf.bind.storage_buffer_dynamic.tess_ctrl.descriptor_array.offset_view_nonzero_dynamic_zero",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 1.3019317180001053,
+    "finished_unix": 1789372247.352489,
+    "pid": 2790
+  },
+  {
+    "index": 9,
+    "case": "dEQP-VK.binding_model.shader_access.secondary_cmd_buf.bind2.combined_image_sampler_mutable.tess_ctrl.multiple_discontiguous_descriptor_sets.multiple_arbitrary_descriptors.2d",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.secondary_cmd_buf.bind2.combined_image_sampler_mutable.tess_ctrl.multiple_discontiguous_descriptor_sets.multiple_arbitrary_descriptors.2d",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T075044414121Z-cts26-sparse-vertex/cts/009/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Pass",
+    "started_unix": 1789372246.135293,
+    "eligibility": {
+      "case": "dEQP-VK.binding_model.shader_access.secondary_cmd_buf.bind2.combined_image_sampler_mutable.tess_ctrl.multiple_discontiguous_descriptor_sets.multiple_arbitrary_descriptors.2d",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 1.3597376430000168,
+    "finished_unix": 1789372247.5002773,
+    "pid": 2794
+  },
+  {
+    "index": 10,
+    "case": "dEQP-VK.binding_model.buffer_device_address.set0.depth1.baseubo.convertcheckuv2.nostore.single.std140.vert",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.buffer_device_address.set0.depth1.baseubo.convertcheckuv2.nostore.single.std140.vert",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T075044414121Z-cts26-sparse-vertex/cts/010/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Pass",
+    "started_unix": 1789372246.1405823,
+    "eligibility": {
+      "case": "dEQP-VK.binding_model.buffer_device_address.set0.depth1.baseubo.convertcheckuv2.nostore.single.std140.vert",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.3131922930001565,
+    "finished_unix": 1789372246.4608178,
+    "pid": 2795
+  },
+  {
+    "index": 11,
+    "case": "dEQP-VK.renderpasses.renderpass2.suballocation.multisample_resolve.layers_6.r16g16_snorm.samples_4_resolve_level_2",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.renderpasses.renderpass2.suballocation.multisample_resolve.layers_6.r16g16_snorm.samples_4_resolve_level_2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T075044414121Z-cts26-sparse-vertex/cts/011/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Pass",
+    "started_unix": 1789372246.5231109,
+    "eligibility": {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.multisample_resolve.layers_6.r16g16_snorm.samples_4_resolve_level_2",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 1.7379758160000165,
+    "finished_unix": 1789372248.264869,
+    "pid": 2810
+  },
+  {
+    "index": 12,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind2.with_template.combined_image_sampler_mutable.geometry.descriptor_array.2d_array",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind2.with_template.combined_image_sampler_mutable.geometry.descriptor_array.2d_array",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T075044414121Z-cts26-sparse-vertex/cts/012/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Pass",
+    "started_unix": 1789372246.597008,
+    "eligibility": {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind2.with_template.combined_image_sampler_mutable.geometry.descriptor_array.2d_array",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 1.2762238990001151,
+    "finished_unix": 1789372247.8780427,
+    "pid": 2813
+  },
+  {
+    "index": 13,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.with_push_template.sampler_immutable.tess_ctrl.single_descriptor.2d_base_mip",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.with_push_template.sampler_immutable.tess_ctrl.single_descriptor.2d_base_mip",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T075044414121Z-cts26-sparse-vertex/cts/013/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Pass",
+    "started_unix": 1789372246.7186153,
+    "eligibility": {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.with_push_template.sampler_immutable.tess_ctrl.single_descriptor.2d_base_mip",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 1.4647631699999693,
+    "finished_unix": 1789372248.1908026,
+    "pid": 2817
+  },
+  {
+    "index": 14,
+    "case": "dEQP-VK.compute.shader_object_spirv.workgroup_memory_explicit_layout.alias.u16_to_u8_array_default_func_write_barrier",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.compute.shader_object_spirv.workgroup_memory_explicit_layout.alias.u16_to_u8_array_default_func_write_barrier",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T075044414121Z-cts26-sparse-vertex/cts/014/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Fail",
+    "started_unix": 1789372246.996739,
+    "eligibility": {
+      "case": "dEQP-VK.compute.shader_object_spirv.workgroup_memory_explicit_layout.alias.u16_to_u8_array_default_func_write_barrier",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "vk.createShadersEXT(device, 1u, &amp;shaderCreateInfo, nullptr, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkShaderObjectUtil.cpp:36",
+    "returncode": 1,
+    "seconds": 0.4256240100000923,
+    "finished_unix": 1789372247.4274075,
+    "pid": 2821
+  },
+  {
+    "index": 15,
+    "case": "dEQP-VK.binding_model.shader_access.secondary_cmd_buf.bind.with_push_template.combined_image_sampler_immutable.tess_ctrl.multiple_contiguous_descriptors.1d_array_base_mip",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.secondary_cmd_buf.bind.with_push_template.combined_image_sampler_immutable.tess_ctrl.multiple_contiguous_descriptors.1d_array_base_mip",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T075044414121Z-cts26-sparse-vertex/cts/015/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Pass",
+    "started_unix": 1789372247.2199006,
+    "eligibility": {
+      "case": "dEQP-VK.binding_model.shader_access.secondary_cmd_buf.bind.with_push_template.combined_image_sampler_immutable.tess_ctrl.multiple_contiguous_descriptors.1d_array_base_mip",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 1.2073087840001335,
+    "finished_unix": 1789372248.4327214,
+    "pid": 2824
+  },
+  {
+    "index": 16,
+    "case": "dEQP-VK.binding_model.shader_access.secondary_cmd_buf.bind.with_template.uniform_texel_buffer.tess_eval.multiple_contiguous_descriptors.offset_zero",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.secondary_cmd_buf.bind.with_template.uniform_texel_buffer.tess_eval.multiple_contiguous_descriptors.offset_zero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T075044414121Z-cts26-sparse-vertex/cts/016/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Pass",
+    "started_unix": 1789372247.2927895,
+    "eligibility": {
+      "case": "dEQP-VK.binding_model.shader_access.secondary_cmd_buf.bind.with_template.uniform_texel_buffer.tess_eval.multiple_contiguous_descriptors.offset_zero",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 1.1566331389999505,
+    "finished_unix": 1789372248.4542108,
+    "pid": 2827
+  },
+  {
+    "index": 17,
+    "case": "dEQP-VK.draw.renderpass.multi_draw.mosaic.indexed_mixed.one_draw.stride_zero.1_instance.vert_only.multiview.offset_6",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.draw.renderpass.multi_draw.mosaic.indexed_mixed.one_draw.stride_zero.1_instance.vert_only.multiview.offset_6",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T075044414121Z-cts26-sparse-vertex/cts/017/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Fail",
+    "started_unix": 1789372247.4154367,
+    "eligibility": {
+      "case": "dEQP-VK.draw.renderpass.multi_draw.mosaic.indexed_mixed.one_draw.stride_zero.1_instance.vert_only.multiview.offset_6",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "vk.createGraphicsPipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:37",
+    "returncode": 1,
+    "seconds": 0.47852628400005415,
+    "finished_unix": 1789372247.900737,
+    "pid": 2832
+  },
+  {
+    "index": 18,
+    "case": "dEQP-VK.binding_model.shader_access.secondary_cmd_buf.bind2.storage_buffer_dynamic.tess_ctrl.multiple_contiguous_descriptors.offset_view_nonzero_dynamic_zero",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.secondary_cmd_buf.bind2.storage_buffer_dynamic.tess_ctrl.multiple_contiguous_descriptors.offset_view_nonzero_dynamic_zero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T075044414121Z-cts26-sparse-vertex/cts/018/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Pass",
+    "started_unix": 1789372247.4897566,
+    "eligibility": {
+      "case": "dEQP-VK.binding_model.shader_access.secondary_cmd_buf.bind2.storage_buffer_dynamic.tess_ctrl.multiple_contiguous_descriptors.offset_view_nonzero_dynamic_zero",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 1.0323388290000821,
+    "finished_unix": 1789372248.5278375,
+    "pid": 2835
+  },
+  {
+    "index": 19,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind2.with_push_template.sampler_mutable.tess_eval.descriptor_array.cube_array",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind2.with_push_template.sampler_mutable.tess_eval.descriptor_array.cube_array",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T075044414121Z-cts26-sparse-vertex/cts/019/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Pass",
+    "started_unix": 1789372247.5624392,
+    "eligibility": {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind2.with_push_template.sampler_mutable.tess_eval.descriptor_array.cube_array",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 1.1319816080001601,
+    "finished_unix": 1789372248.6995842,
+    "pid": 2838
+  },
+  {
+    "index": 20,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind2.uniform_buffer.tess_eval.multiple_descriptor_sets.multiple_discontiguous_descriptors.offset_view_zero",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind2.uniform_buffer.tess_eval.multiple_descriptor_sets.multiple_discontiguous_descriptors.offset_view_zero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T075044414121Z-cts26-sparse-vertex/cts/020/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Pass",
+    "started_unix": 1789372247.9689124,
+    "eligibility": {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind2.uniform_buffer.tess_eval.multiple_descriptor_sets.multiple_discontiguous_descriptors.offset_view_zero",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.914233417999867,
+    "finished_unix": 1789372248.8894145,
+    "pid": 2852
+  },
+  {
+    "index": 21,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind2.with_push_template.sampler_immutable.tess_eval.multiple_contiguous_descriptors.1d_array_base_mip",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind2.with_push_template.sampler_immutable.tess_eval.multiple_contiguous_descriptors.1d_array_base_mip",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T075044414121Z-cts26-sparse-vertex/cts/021/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Pass",
+    "started_unix": 1789372247.9753237,
+    "eligibility": {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind2.with_push_template.sampler_immutable.tess_eval.multiple_contiguous_descriptors.1d_array_base_mip",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.925950316999888,
+    "finished_unix": 1789372248.9072978,
+    "pid": 2853
+  },
+  {
+    "index": 22,
+    "case": "dEQP-VK.subgroups.quad.graphics.subgroupquadbroadcast_i8vec3",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.subgroups.quad.graphics.subgroupquadbroadcast_i8vec3",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T075044414121Z-cts26-sparse-vertex/cts/022/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Fail",
+    "started_unix": 1789372248.2533147,
+    "eligibility": {
+      "case": "dEQP-VK.subgroups.quad.graphics.subgroupquadbroadcast_i8vec3",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "vk.createGraphicsPipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:37",
+    "returncode": 1,
+    "seconds": 0.45862821400010034,
+    "finished_unix": 1789372248.717164,
+    "pid": 2862
+  }
+]
