@@ -3357,18 +3357,21 @@ agx_lower_agx3_widening_iadd(agx_context *ctx)
          agx_builder b = agx_init_builder(ctx, agx_before_instr(I));
          agx_foreach_src(I, s) {
             agx_index src = I->src[s];
-            if (src.size != AGX_SIZE_16 || src.neg ||
+            if (src.size != AGX_SIZE_16 ||
                 src.type == AGX_INDEX_IMMEDIATE || src.type == AGX_INDEX_NULL ||
                 agx_channels(src) != 1)
                continue;
             bool is_unsigned = src.abs;
+            bool subtract = src.neg;
             src.abs = false;
+            src.neg = false;
             agx_index wide = agx_temp(ctx, AGX_SIZE_32);
             if (is_unsigned)
                agx_mov_to(&b, wide, src);
             else
                agx_signext_to(&b, wide, src);
-            I->src[s] = wide;
+            /* Negation is subtraction, independent of extension. */
+            I->src[s] = subtract ? agx_neg(wide) : wide;
             progress = true;
          }
          continue;

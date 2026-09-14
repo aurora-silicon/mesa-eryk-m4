@@ -264,3 +264,26 @@ Both original CTS comparisons, compute subgroupxor_bvec4 and geometry ballot,
 pass in `20260914T144743930559Z-cts28-ballot-cts`, peak 58.25 C.
 The subgroup-core unit checks include the byte-exact native witness and pass.
 Library SHA256: `ead0084c88fa7a0b89c8aa0717274645a4f48bebcecc11b3f34dcd43eee35462`.
+
+## Narrow subtraction semantics
+
+The halfword bitfield test now passes in `20260914T145337326657Z-cts28-half-subtract`,
+peak 58.5 C. IADD uses abs for zero/sign extension selection and neg independently
+for subtraction. The mixed-width legalizer skipped negated half sources; the
+immediate encoder then treated neg as extension and performed addition.
+Extend the half operand first, preserving its subtraction modifier. This also
+removes the unsupported register-minus-half shape from the wide diagnostic.
+
+`half-subtract-oracle/` retains the original assembly and repeated failing input.
+Assemble with SPIR-V 1.0 as in CTS; a 1.5 assembly without updated interface
+operands is invalid and its rejected diagnostic is retained separately.
+`vk-buffer-oracle.c` can expose four aligned descriptor ranges and enable
+explicit 16-bit storage. The data/offset/count load-only diagnostics passed;
+original arithmetic failed before the fix. The complete original CTS case
+passes after it. No other five cases in the focused group passed yet.
+Library SHA256: `26c0684a0a4d34a9d47e51b4fcaf664e6ba678d7fb0c6f7068e0ea80d827632d`.
+
+The concurrent job979 prefix was rerun with 20 workers:
+`20260914T144845630690Z-cts28-fault979-prefix`, 100 Pass / 76 NotSupported,
+runner 5.642 seconds, guard/staging-excluded wall 9.878 seconds, peak 60.75 C.
+It did not reproduce the fault; this is not proof of its underlying cause.
