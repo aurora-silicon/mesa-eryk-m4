@@ -1,0 +1,50 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.image.texel_view_compatible.graphic.basic.3d_image.texture_read.bc4_unorm_block.r16g16b16a16_uscaled",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed28-scaled-texelview-supported",
+      "--deqp-case=dEQP-VK.image.texel_view_compatible.graphic.basic.3d_image.texture_read.bc4_unorm_block.r16g16b16a16_uscaled",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T170029428597Z-cts28-scaled-and-memory/cts/000/result.qpa"
+    ],
+    "boot_id": "a556b3f7-6b31-4a8b-8b87-ef576c3f2896",
+    "status": "Pass",
+    "started_unix": 1789405230.7152889,
+    "eligibility": {
+      "case": "dEQP-VK.image.texel_view_compatible.graphic.basic.3d_image.texture_read.bc4_unorm_block.r16g16b16a16_uscaled",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.6136274720000046,
+    "finished_unix": 1789405231.3339157,
+    "pid": 1014
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.memory_model.message_passing.ext.u32.noncoherent.atomic_atomic.atomicwrite.device.payload_local.physbuffer.guard_local.buffer.vert",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed28-scaled-texelview-supported",
+      "--deqp-case=dEQP-VK.memory_model.message_passing.ext.u32.noncoherent.atomic_atomic.atomicwrite.device.payload_local.physbuffer.guard_local.buffer.vert",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T170029428597Z-cts28-scaled-and-memory/cts/001/result.qpa"
+    ],
+    "boot_id": "a556b3f7-6b31-4a8b-8b87-ef576c3f2896",
+    "status": "Fail",
+    "started_unix": 1789405231.3428485,
+    "eligibility": {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u32.noncoherent.atomic_atomic.atomicwrite.device.payload_local.physbuffer.guard_local.buffer.vert",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Fail",
+    "returncode": 1,
+    "seconds": 2.84496202199999,
+    "finished_unix": 1789405234.1928394,
+    "pid": 1017
+  }
+]

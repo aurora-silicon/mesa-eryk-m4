@@ -524,3 +524,24 @@ Original CTS run uses library SHA256
 Watchdog and thermal monitoring remained active. Ledger18: **4,652 Pass /
 6 Fail / 5,342 optional NotSupported**, **73 original failures resolved**.
 Cumulative evidence; no broad regression rerun.
+
+## Correct the CTS scaled-format shader numeric types
+
+The original 3D BC4-to-RGBA16_USCALED texture-read test generates `usampler3D`
+and `rgba16ui uimage3D` for USCALED image views. Validation reports
+VUID-vkCmdDraw-format-07753 for both numeric types, plus a storage format
+mismatch (UINT versus USCALED). Scaled views require floating sampled types;
+there is no matching SPIR-V storage-image format. The retained CTS patch
+uses floating sampler/image types and formatless writes, with a feature gate
+for `shaderStorageImageWriteWithoutFormat`. This device advertises it.
+Image formats, data, operations and comparisons remain intact. No Mesa
+behavior is changed to accommodate undefined accesses.
+
+`20260914T170029428597Z-cts28-scaled-and-memory` case0 passes without those
+validation errors. CTS binary SHA256
+`6bf7c2c56a88a0b2b1090dd755177f88b2bd7e469b0895e02419cebdf656446b`,
+Mesa library `aa0d0ef0e5932e7b07daf11cd069fc91150eb32b1fad931979d2e42d8d2cef24`.
+The same run captures the still-failing vertex memory-model case (144 errors).
+Mandatory watchdog and thermals remained active. Ledger19: **4,653 Pass /
+5 Fail / 5,342 optional NotSupported**, **74 original failures resolved**,
+including documented CTS corrections. Cumulative evidence, no full rerun.

@@ -1,0 +1,23 @@
+{
+  "source": "/home/council/dev/dirtyroom_m4/reference/vk-gl-cts-1.4.6.2",
+  "source_commit": "f6a29701220f34dd1407513bfe80d74ca7b392ce",
+  "patch_sha256": "2ea5fc9f66d56abe891d990d79403028387307fe5c93fd9a0257a7a0655d9b6a",
+  "original_binary_sha256": "542459f13f3378f0af79ac9062d7e7fce6cd4853ab76adda69ae50889483b7e8",
+  "source_sha256": {
+    "external/vulkancts/modules/vulkan/api/vktApiBlittingTests.cpp": "8a10b7042777709235a10cd3f7d37377118be33bc834caae142d8ee651c7a80d",
+    "external/vulkancts/modules/vulkan/api/vktApiImageClearingTests.cpp": "b39a7d1fa8557fa6222b9fb10e19095dc728ad9eedf1d984f7edb1dad04ee070",
+    "external/vulkancts/modules/vulkan/image/vktImageCompressionTranscodingSupport.cpp": "8ceec2759f1f9e70de287830b2c2fab5ce7c078ef9bca864af836c740967f412",
+    "external/vulkancts/modules/vulkan/image/vktImageLoadStoreTests.cpp": "5a67775ccda7ff5c25dae93eb94a7a52fbb4f484967a67f6de0bfec575cf07ba",
+    "external/vulkancts/modules/vulkan/image/vktImageMutableTests.cpp": "c3491194a0f31e8adb6517bc82646ec68a7134154bb0b0d04a0f15cc595790bc",
+    "external/vulkancts/modules/vulkan/pipeline/vktPipelineImageTests.cpp": "0662e7f6980ab98e6c7f5e5c6dd96118344da8c8c193965e67d0f14c8d5c5d17",
+    "external/vulkancts/modules/vulkan/pipeline/vktPipelineImageViewTests.cpp": "1c962d92c4ad0907fa7ab11439f8e07446d0434c5288a395c4f1b377e8bb7559",
+    "external/vulkancts/modules/vulkan/pipeline/vktPipelineSamplerTests.cpp": "a39b3445c404055401d71fd4550f57819b977d874b4bf67884e5cce2a75a89ac",
+    "framework/common/tcuTexture.cpp": "4642c7911bae9bed8f537eda88affa0553d85be6a13fdfa380cea226c97bc821",
+    "external/vulkancts/modules/vulkan/ycbcr/vktYCbCrUtil.cpp": "6b4c72fd6190a041017a62dfec80a38785526594abace18810fe7472ca29bd5d",
+    "framework/opengl/gluTextureTestUtil.cpp": "7399cea9f75298c92efea3568c11ec30f7bb85a2ef1f65c2d1807657b467eab3",
+    "external/vulkancts/modules/vulkan/draw/vktDrawMultipleInterpolationTests.cpp": "29b8678e956fc7ff5360ac5cfbf35ffdfbd476bb455aea4c98d695947331c4e3",
+    "external/vulkancts/modules/vulkan/renderpass/vktRenderPassDepthStencilWriteConditionsTests.cpp": "29e4aa372a23fa99042ab32ccc1764734ebff3e1b87fe3c446e8476206addafe"
+  },
+  "diagnostic_binary_sha256": "6bf7c2c56a88a0b2b1090dd755177f88b2bd7e469b0895e02419cebdf656446b",
+  "restored": true
+}
