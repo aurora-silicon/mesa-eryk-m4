@@ -250,3 +250,17 @@ No format support or shader path was disabled to obtain these outcomes.
 Latest cumulative checkpoint: 4,633 Pass, 25 Fail, 5,342 NotSupported;
 54 original Fail/Crash/Timeout cases now pass across fixes and explicit CTS
 corrections. The concurrent job979 fault remains unresolved.
+
+## Native ballot equality operand mode
+
+G16G integer ballots compare against zero with fields38/39=1, including
+equality. The inherited G17P equality form used fields38/39=2 and field42=1;
+on M4 the minimal shader stopped writing outputs after that instruction.
+Native G16G witness `subgroup-live4` byte98 establishes the correct encoding.
+The independent raw-buffer fixture in `ballot-oracle/` verifies 288 words:
+true/false/data ballots, reduction XOR, popcounts and per-lane identity.
+It failed before the change and passes in `20260914T144703535482Z-cts28-ballot-zero`.
+Both original CTS comparisons, compute subgroupxor_bvec4 and geometry ballot,
+pass in `20260914T144743930559Z-cts28-ballot-cts`, peak 58.25 C.
+The subgroup-core unit checks include the byte-exact native witness and pass.
+Library SHA256: `ead0084c88fa7a0b89c8aa0717274645a4f48bebcecc11b3f34dcd43eee35462`.

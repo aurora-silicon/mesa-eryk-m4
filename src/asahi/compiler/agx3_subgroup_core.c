@@ -213,7 +213,9 @@ agx3_subgroup_encode_ballot(enum agx_isa_encoding enc,
    uint16_t cond_field, invert_field;
    if (d->type == AGX3_SUBGROUP_BALLOT_INTEGER) {
       mnemonic = d->quad ? "quadiballot" : "simdiballot";
-      if (d->condition == 4) {
+      /* G16G compares with zero using the ordinary scalar operand mode,
+       * including equality. The G17P equality mode does not transfer. */
+      if (is_c(enc) && d->condition == 4) {
          ADD_FIELD(38, 2);
          ADD_FIELD(39, 2);
          ADD_FIELD(42, 1);
