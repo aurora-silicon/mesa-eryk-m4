@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "cts_revision": "vulkan-cts-1.4.6.2:f6a29701220f34dd1407513bfe80d74ca7b392ce",
+  "source": "/home/council/dev/dirtyroom_m4/build/cts-1.4-baseline/mustpass/mustpass.txt",
+  "source_sha256": "fe29a62a97e128542b3c6cf46c892ba168d7856f3e57f130b40b82f25cfb40a6",
+  "catalog_sha256": "72c1bb9d2f9f0425ab8a4f570d78abdc1d3a34b82173ec76b772dedc477526bf",
+  "count": 3206030,
+  "source_count": 3247552,
+  "excluded_count": 41522,
+  "order": "ASCII lexicographic (LC_ALL=C)",
+  "linux_only": true,
+  "exclusion_rule": "win32 or .android. in case name",
+  "capability_filter": false,
+  "result_filter": false,
+  "index_convention": "zero-based; start inclusive, end exclusive"
+}

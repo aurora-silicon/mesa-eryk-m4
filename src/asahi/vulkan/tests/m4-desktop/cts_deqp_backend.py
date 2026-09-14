@@ -83,6 +83,7 @@ def run(args, check, boot, out, env, metadata, save):
 
 def collect(out, cases, metadata, start, boot):
     """Offline recovery also works when a guard interrupted the wrapper."""
+    allowed_cases = set(cases)
     result_dir = out / 'deqp-runner'
     runner = json.loads((out / 'runner.json').read_text())
     case_timeout = runner.get('case_timeout_seconds')
@@ -122,7 +123,7 @@ def collect(out, cases, metadata, start, boot):
                 if not row or row[0].startswith('#'):
                     continue
                 name, status, *duration = row
-                if name not in cases or name in csv_records:
+                if name not in allowed_cases or name in csv_records:
                     raise RuntimeError(f'Unexpected/duplicate runner result: {name}')
                 csv_records[name] = (status, float(duration[0]) if duration else None)
     results = []

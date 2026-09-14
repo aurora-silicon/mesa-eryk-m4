@@ -1,3 +1,61 @@
+# Ordered Vulkan CTS campaigns
+
+The current workflow uses a frozen catalog and consecutive index ranges, not
+random samples. `cts-ranges.py` is offline list tooling; execution continues
+through `cts-bulk.py` and the existing watchdog/thermal guards.
+
+Freeze once for a pinned CTS revision:
+
+```sh
+python3 tools/cts-ranges.py freeze \
+  --source build/cts-1.4-baseline/mustpass/mustpass.txt \
+  --cts-revision vulkan-cts-1.4.6.2:f6a29701220f34dd1407513bfe80d74ca7b392ce \
+  --linux-only --output build/cts-vulkan14-ordered/catalog
+```
+
+The catalog is sorted in ASCII lexicographic order. Windows/Android exclusions
+are recorded once; no capability or outcome filtering occurs. Updating Mesa,
+advertising a feature, or fixing a failure cannot move another case's index.
+A new CTS list/revision needs a new catalog and its own progress ledger.
+
+Select zero-based ranges with an exclusive end:
+
+```sh
+python3 tools/cts-ranges.py range \
+  --catalog build/cts-vulkan14-ordered/catalog \
+  --start 0 --end 100000 --output build/cts-vulkan14-ordered/0000000-0100000
+python3 tools/cts-ranges.py range \
+  --catalog build/cts-vulkan14-ordered/catalog \
+  --start 100000 --end 200000 --output build/cts-vulkan14-ordered/0100000-0200000
+```
+
+`catalog.json` records the source/revision, exclusions, ordering, population and
+SHA256. Every range verifies the full catalog hash/count before producing
+`cases.txt`, `cases.meta.json` and `selection.json`. Metadata records each
+`catalog_index` and the catalog hash; the existing runner retains it in
+`eligibility.catalog_index` and its selection evidence. Runner-local `index`
+continues to address the submitted list. Missing/duplicate names, out-of-range
+bounds, catalog edits and output overwrites are rejected. The final range must
+explicitly end at the catalog count; no silent truncation occurs.
+
+The frozen Linux 1.4.6.2 catalog contains 3,206,030 cases: 32 full 100,000-case
+ranges followed by `[3200000, 3206030)`. Its SHA256 is
+`72c1bb9d2f9f0425ab8a4f570d78abdc1d3a34b82173ec76b772dedc477526bf`.
+The first two range lists are prepared locally, not hardware test results.
+
+A 100k range is an accounting batch, not an unbounded watchdog lease. Execute
+smaller consecutive subranges through the guarded bulk runner with 20 workers,
+explicit CTS binary and 60-second case bound. For example, select `[0,1000)`
+with another `range` invocation and supply its `cases.txt` to `cts-bulk.py`.
+Keep every outcome at its catalog index; retain and diagnose interrupted work
+before resuming only uncompleted cases. Failed/unsupported cases are not replaced
+by later indices, and fixed-case retries remain separate attempts. Keep original
+and cumulative results separate. Parallel execution may change completion order,
+so this is deterministic selection/coverage, not a promise of identical scheduling.
+
+The collector uses a set for expected-case membership to avoid quadratic lookup
+cost when reconciling large batches. All existing evidence and timeout rules apply.
+
 # Historical Vulkan CTS sample
 
 `cts-sample.py select` now defaults to Linux cases with reviewed Vulkan 1.0
