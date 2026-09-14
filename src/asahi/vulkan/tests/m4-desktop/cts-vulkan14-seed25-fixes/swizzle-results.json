@@ -1,0 +1,26 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.texture.swizzle.component_mapping.color.a2b10g10r10_uscaled_pack32_2d_pot_gggg",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-scaled-swizzle",
+      "--deqp-case=dEQP-VK.texture.swizzle.component_mapping.color.a2b10g10r10_uscaled_pack32_2d_pot_gggg",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T024354539272Z-cts14-scaled-swizzle/cts/000/result.qpa"
+    ],
+    "boot_id": "4677c960-6288-422d-b849-67cddc408032",
+    "status": "Pass",
+    "started_unix": 1789353835.9331906,
+    "eligibility": {
+      "case": "dEQP-VK.texture.swizzle.component_mapping.color.a2b10g10r10_uscaled_pack32_2d_pot_gggg",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.31117536700003257,
+    "finished_unix": 1789353836.2495189,
+    "pid": 2854
+  }
+]
