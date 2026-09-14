@@ -2710,6 +2710,23 @@ agx_lower_agx3_half_integer_sources(agx_context *ctx)
       return;
 
    agx_foreach_instr_global_safe(ctx, I) {
+      if (I->op == AGX_OPCODE_EXTR && I->nr_srcs == 3) {
+         /* Copy propagation folds zero extensions into EXTR, but the native
+          * data operands read whole words. Materialize their high zeroes
+          * before RA instead of reading an unrelated neighboring half. */
+         agx_builder b = agx_init_builder(ctx, agx_before_instr(I));
+         for (unsigned s = 0; s < 2; ++s) {
+            if (I->src[s].size == AGX_SIZE_16 &&
+                I->src[s].type != AGX_INDEX_IMMEDIATE &&
+                I->src[s].type != AGX_INDEX_NULL &&
+                !I->src[s].abs && !I->src[s].neg) {
+               agx_index wide = agx_temp(ctx, AGX_SIZE_32);
+               agx_mov_to(&b, wide, I->src[s]);
+               I->src[s] = wide;
+            }
+         }
+      }
+
       if ((I->op == AGX_OPCODE_SHUFFLE ||
            I->op == AGX_OPCODE_SHUFFLE_XOR ||
            I->op == AGX_OPCODE_SHUFFLE_UP ||

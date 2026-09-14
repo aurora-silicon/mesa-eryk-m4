@@ -1,0 +1,26 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.pipeline.shader_object_unlinked_binary.timestamp.advanced_graphics_tests.geometry_shader_stage_in_render_pass_with_availability_bit",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed27-precision",
+      "--deqp-case=dEQP-VK.pipeline.shader_object_unlinked_binary.timestamp.advanced_graphics_tests.geometry_shader_stage_in_render_pass_with_availability_bit",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T125945901211Z-cts28-render-timestamp-normal/cts/000/result.qpa"
+    ],
+    "boot_id": "35d9decb-1892-4af1-b471-0d9533637141",
+    "status": "Pass",
+    "started_unix": 1789390787.1578689,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.shader_object_unlinked_binary.timestamp.advanced_graphics_tests.geometry_shader_stage_in_render_pass_with_availability_bit",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Timestamp increases steadily.",
+    "returncode": 0,
+    "seconds": 0.5634729849999971,
+    "finished_unix": 1789390787.7264118,
+    "pid": 1070
+  }
+]
