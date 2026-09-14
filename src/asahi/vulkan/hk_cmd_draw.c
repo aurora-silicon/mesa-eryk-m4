@@ -3923,6 +3923,12 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
       desc->root_dirty = true;
    }
 
+   if (IS_DIRTY(MS_RASTERIZATION_SAMPLES)) {
+      desc->root.draw.samples_log2 =
+         util_logbase2(MAX2(dyn->ms.rasterization_samples, 1));
+      desc->root_dirty = true;
+   }
+
    if (IS_DIRTY(RS_RASTERIZATION_STREAM)) {
       desc->root.draw.rasterization_stream = dyn->rs.rasterization_stream;
       desc->root_dirty = true;

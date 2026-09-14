@@ -436,6 +436,14 @@ lower_uvs_index(nir_builder *b, nir_intrinsic_instr *intrin, void *data)
    case nir_intrinsic_load_sample_positions_agx:
       return lower_sysval_to_root_table(b, intrin, draw.ppp_multisamplectl);
 
+   case nir_intrinsic_load_samples_log2_agx: {
+      b->cursor = nir_before_instr(&intrin->instr);
+      nir_def *value = load_root(b, 1, 16,
+         nir_imm_int(b, hk_root_descriptor_offset(draw.samples_log2)), 2);
+      nir_def_replace(&intrin->def, value);
+      return true;
+   }
+
    case nir_intrinsic_load_depth_never_agx:
       return lower_sysval_to_root_table(b, intrin, draw.force_never_in_shader);
 

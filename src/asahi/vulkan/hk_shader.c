@@ -1308,15 +1308,46 @@ should_lower_robust(const nir_intrinsic_instr *intr, const void *data)
           intr->intrinsic == nir_intrinsic_image_deref_atomic_swap;
 }
 
-/* G16's native offset form encodes signed immediate nibbles. Dynamic
- * gather offsets use the ordinary texture-size/coordinate lowering. */
+/* G16's qualified native offset forms cover immediate XY offsets and
+ * non-array explicit/bias LOD. Lower other shapes with NIR's coordinate
+ * arithmetic, preserving their LOD and array-layer semantics. */
 static bool
-hk_lower_native_gather_offset(const nir_instr *instr, UNUSED const void *data)
+hk_lower_native_texture_offset(const nir_instr *instr, UNUSED const void *data)
 {
    const nir_tex_instr *tex = nir_instr_as_tex(instr);
    const int offset = nir_tex_instr_src_index(tex, nir_tex_src_offset);
-   return tex->op == nir_texop_tg4 && offset >= 0 &&
-          (tex->is_shadow || !nir_src_is_const(tex->src[offset].src));
+   if (offset < 0)
+      return false;
+   return tex->op == nir_texop_txf || tex->sampler_dim == GLSL_SAMPLER_DIM_3D ||
+          (tex->is_array && (tex->op == nir_texop_txb ||
+                            !nir_src_is_const(tex->src[offset].src))) ||
+          (tex->op == nir_texop_tg4 &&
+           (tex->is_shadow || !nir_src_is_const(tex->src[offset].src)));
+}
+
+/* Use the existing coefficient interpolation at the selected sample's
+ * programmable location. Locations come from this draw's root descriptor. */
+static bool
+hk_lower_native_sample_barycentric(nir_builder *b, nir_intrinsic_instr *intr,
+                                  UNUSED void *data)
+{
+   if (intr->intrinsic != nir_intrinsic_load_barycentric_at_sample)
+      return false;
+
+   b->cursor = nir_before_instr(&intr->instr);
+   nir_def *packed = nir_load_sample_positions_agx(b);
+   nir_def *sample = nir_u2u32(b, intr->src[0].ssa);
+   nir_def *position = nir_ushr(b, packed, nir_imul_imm(b, sample, 8));
+   nir_def *offset[2];
+   for (unsigned c = 0; c < 2; ++c) {
+      nir_def *nibble = nir_iand_imm(b, nir_ushr_imm(b, position, c * 4), 15);
+      offset[c] = nir_fadd_imm(b, nir_fmul_imm(b, nir_u2f32(b, nibble),
+                                             1.0 / 16.0), -0.5);
+   }
+   nir_def_replace(&intr->def, nir_load_barycentric_at_offset(
+      b, intr->def.bit_size, nir_vec2(b, offset[0], offset[1]),
+      .interp_mode = nir_intrinsic_interp_mode(intr)));
+   return true;
 }
 
 static void
@@ -1397,7 +1428,8 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
     */
    if (dev->dev.chip == AGX_CHIP_G16G) {
       const nir_lower_tex_options options = {
-         .lower_offset_filter = hk_lower_native_gather_offset,
+         .lower_txf_offset = true,
+         .lower_offset_filter = hk_lower_native_texture_offset,
       };
       NIR_PASS(_, nir, nir_lower_tex, &options);
    }
@@ -1415,6 +1447,10 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
        !HK_PERF(dev, NOBORDER)) {
       NIR_PASS(_, nir, agx_nir_lower_custom_border);
    }
+
+   if (dev->dev.chip == AGX_CHIP_G16G)
+      NIR_PASS(_, nir, nir_shader_intrinsics_pass,
+               hk_lower_native_sample_barycentric, nir_metadata_control_flow, NULL);
 
    NIR_PASS(_, nir, hk_nir_lower_descriptors, rs, set_layout_count,
             set_layouts);
@@ -1953,6 +1989,10 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
       }
 
       NIR_PASS(_, nir, agx_nir_lower_fs_active_samples_to_register);
+      if (dev->dev.chip == AGX_CHIP_G16G)
+         NIR_PASS(_, nir, nir_shader_intrinsics_pass,
+                  hk_lower_native_sample_barycentric,
+                  nir_metadata_control_flow, NULL);
       if (agx_chip_uses_hal200_ioto(dev->dev.chip))
          NIR_PASS(_, nir, agx_nir_lower_interpolation_g17p);
       else

@@ -86,7 +86,7 @@ struct hk_root_descriptor_table {
          uint16_t no_epilog_discard;
          uint16_t _pad1;
          uint16_t api_sample_mask;
-         uint16_t _pad2;
+         uint16_t samples_log2;
          uint16_t force_never_in_shader;
          uint16_t _pad3;
          uint16_t provoking;

@@ -57,3 +57,21 @@ Peak temperature 60.5 C; library SHA256
 Narrow SRGB end-of-tile programs also compile after selecting the normalized
 export encoding. The grow/shrink attachment case still fails numerically and
 is explicitly unresolved; compilation success is not counted as a CTS pass.
+
+## Sample interpolation and texture offset lowering
+
+Seven original comparisons pass in `20260914T132740745232Z-cts28-sample-offset-fix2`:
+four 2x sample-interpolation shader-object variants and three 3D texture-offset
+cases. Sample positions and sample count come from dynamic draw descriptors;
+late-created sample barycentrics use the existing coefficient interpolation.
+Unsupported offset shapes use standard NIR coordinate lowering. The array
+texel-fetch compiler abort is removed but its register-LOD encoding remains
+unresolved, so that case is still Fail. Peak temperature 57 C. Library SHA256
+`60c1610342d4e5346a87932d2c34b57b5f75a418195f51496fc5c4aff16143a7`.
+Earlier `20260914T132049350904Z-cts28-offset-sample` also establishes passes for
+RG8_SINT and R16_SNORM storage reinterpretation and 2D-array bias offsets.
+
+The continuation `20260914T132821665770Z-cts28-cont4b` completed another 85 Pass
+and 74 NotSupported, then encountered GPU job 979 retirement failure. Its
+firmware snapshot and all 17 interrupted cases are retained for isolation;
+3654 other cases remain unrun in that segment. Peak temperature 59.75 C.

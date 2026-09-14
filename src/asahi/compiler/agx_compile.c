@@ -1853,6 +1853,7 @@ agx_emit_image_store(agx_builder *b, nir_intrinsic_instr *instr)
          break;
       case PIPE_FORMAT_R8G8B8A8_UINT:
       case PIPE_FORMAT_R8_SINT:
+      case PIPE_FORMAT_R8G8_SINT:
       case PIPE_FORMAT_R8G8B8A8_SINT:
          write->format = AGX_FORMAT_I8;
          break;
@@ -1885,6 +1886,7 @@ agx_emit_image_store(agx_builder *b, nir_intrinsic_instr *instr)
          write->format = AGX_FORMAT_F16;
          break;
       case PIPE_FORMAT_R16G16_UNORM:
+      case PIPE_FORMAT_R16_SNORM:
       case PIPE_FORMAT_R16G16B16A16_UNORM:
       case PIPE_FORMAT_R16G16B16A16_SNORM:
          /* Native formatted stores take F32 lanes for both normalized
@@ -3415,6 +3417,12 @@ agx_materialize_agx3_alu_constants(agx_context *ctx)
 {
    agx_foreach_instr_global_safe(ctx, I) {
       agx_builder b = agx_init_builder(ctx, agx_before_instr(I));
+      if (I->op == AGX_OPCODE_PACK_LOD_OFFSET_AGX3 &&
+          I->src[0].type == AGX_INDEX_IMMEDIATE) {
+         /* Copyprop folds the half LOD back to a raw immediate. The native
+          * pack reads a half register, so restore its bit pattern before RA. */
+         I->src[0] = agx_mov_imm(&b, 16, I->src[0].value);
+      }
       /* ISEL accepts a register comparator and an immediate comparator,
        * including ICMP pseudos lowered to ISEL after register allocation.
        */
