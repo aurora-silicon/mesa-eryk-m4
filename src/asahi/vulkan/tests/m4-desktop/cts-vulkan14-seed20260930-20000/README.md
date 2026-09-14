@@ -8,8 +8,9 @@ corrections. The four completed broad segments took 558.673 seconds of runner
 time. Original outcome: 28 Fail, 2 Crash, 1 Timeout, 9,124 Pass, 10,845 NotSupported.
 Skip requirements are still being reviewed; no conformance claim.
 
-Cumulative targeted fixes resolve 30 original failures/crashes. Both original
-compiler crashes now pass. One rendering case still fails; both crashes and the timeout are resolved.
+Cumulative targeted fixes resolve all 31 original failures/crashes. Both original
+compiler crashes now pass. No original Fail, Crash or Timeout remains open. There are 9,155 cumulative
+Pass and 10,845 NotSupported; the skip audit is still incomplete.
 The original 60-second timeout is retained in the initial report. Its fix is
 validated under contention below; an isolated pass alone was not accepted.
 
@@ -102,3 +103,14 @@ check across fresh processes, not a replay of the original scheduling order or
 a full 20k regression. Both runs retain the 60-second limit; no bound was raised.
 Evidence: 20260914T210137647967Z-cts30-timeout-cold20-no-doublezero and
 20260914T210412754200Z-cts30-timeout-context69.
+
+The sample-location verification case now passes with a complete primitive-ID
+path: VDM producer flag 6 and its extra output slot, plus rasterizer Cull-2 bit
+12. Producer state alone left all IDs zero. Removing both producer fields while
+retaining the consumer caused a GPU timeout; watchdog recovery succeeded and
+that failed diagnostic is retained, not counted as success. Restoring the full
+configuration passes again (0.809 seconds, peak 59.25 C) after recovery.
+M4 evidence: 20260914T210607187586Z-cts30-primitive4 (Pass),
+20260914T210709586586Z-cts30-primitive5 (diagnostic GPU timeout),
+20260914T210912579294Z-cts30-primitive-restored (Pass).
+This evidence is for J713/G16G, not a qualification claim for other GPUs.
