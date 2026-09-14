@@ -1,9 +1,9 @@
 {
   "selected": 10000,
   "counts": {
-    "Pass": 4633,
+    "Pass": 4639,
     "NotSupported": 5342,
-    "Fail": 25
+    "Fail": 19
   },
   "inputs": [
     {
@@ -161,9 +161,25 @@
     {
       "path": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T143937662614Z-cts28-scaled-precision/remote/cts/results.json",
       "sha256": "c6e9844f09df37020e6ca382d71ca9b2395e1a6e582767e473425aa0c577abe8"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T144743930559Z-cts28-ballot-cts/remote/cts/results.json",
+      "sha256": "c39e75fcf29a3fd7f414f2b31aa547a514dd60171b0cb19d60529f5216491de6"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T145337326657Z-cts28-half-subtract/remote/cts/results.json",
+      "sha256": "c47a37727aad7fdbf688b76346e882ca231ef582bae793935653ee4afc99602d"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T145647026333Z-cts28-tile-half-load/remote/cts/results.json",
+      "sha256": "02c975ea957e1bfa0f29e0e4bd3b13fed13f6a801f29be29be1217a66e4abb61"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T150311030546Z-cts28-shared-byte-cts/remote/cts/results.json",
+      "sha256": "1d9d29af92c5524ccf761347797ff8390f9fe70d7086869f4a3b6d60ad4a1049"
     }
   ],
   "cases_sha256": "22dbfe086b845a35ac2e396cf0c4088589443cb566ffd50ad3a4512e3cc57339",
-  "resolved_failures": 54,
+  "resolved_failures": 60,
   "limitation": "Cumulative evidence across builds and attempts; not an uninterrupted same-build run."
 }

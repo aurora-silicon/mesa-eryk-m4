@@ -1839,7 +1839,7 @@ agx3_local_vector_shift(enum agx3_mem_width width, uint8_t mask)
  * is refused because Mesa's byte-addressed IR has not yet been legalized to
  * AGX3's scaled-index convention. */
 static bool
-agx3_translate_local(const agx_instr *I, bool is_store, uint8_t slot,
+agx3_translate_local(enum agx_isa_encoding enc, const agx_instr *I, bool is_store, uint8_t slot,
                      uint16_t wait_mask, struct agx3_local_desc *d)
 {
    memset(d, 0, sizeof(*d));
@@ -1886,7 +1886,8 @@ agx3_translate_local(const agx_instr *I, bool is_store, uint8_t slot,
 
    /* Extension is a load operation. STTG has no narrow-extension field;
     * the width already selects the byte written from each source lane. */
-   d->narrow_extend = !is_store && d->width == AGX3_MEM_W8;
+   d->narrow_extend = enc == AGX_ISA_ENCODING_AGX3C &&
+                      !is_store && d->width == AGX3_MEM_W8;
    d->slot = slot;
    d->wait_mask = wait_mask;
    return true;
@@ -5520,7 +5521,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             struct agx3_local_desc d;
             uint8_t bytes[AGX3_LOCAL_TPS_MAX_LENGTH];
             uint8_t len = 0;
-            if (!agx3_translate_local(I, is_store, slot, wait, &d))
+            if (!agx3_translate_local(enc, I, is_store, slot, wait, &d))
                AGX3_REFUSE(I);
             /* G16G byte loads use the ordinary narrow destination form.
              * Apple's byte-alias probe emits f11=0; the G17S extension

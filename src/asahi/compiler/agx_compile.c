@@ -6086,6 +6086,39 @@ has_unlowered_printf_address(const nir_shader *nir)
    return false;
 }
 
+/* AGX3 byte vectors occupy packed physical storage, whereas AGX IR gives
+ * each byte its own half register. Scalar byte operations preserve layout
+ * and byte alignment without reading or overwriting neighbouring fields. */
+static bool
+lower_agx3_shared_byte_vectors(nir_builder *b, nir_intrinsic_instr *intr,
+                               UNUSED void *data)
+{
+   bool load = intr->intrinsic == nir_intrinsic_load_shared;
+   bool store = intr->intrinsic == nir_intrinsic_store_shared;
+   if ((!load && !store) || intr->num_components <= 1 ||
+       (load ? intr->def.bit_size : nir_src_bit_size(intr->src[0])) != 8)
+      return false;
+   b->cursor = nir_before_instr(&intr->instr);
+   nir_def *offset = intr->src[store ? 1 : 0].ssa;
+   nir_def *channels[NIR_MAX_VEC_COMPONENTS];
+   for (unsigned c = 0; c < intr->num_components; ++c) {
+      nir_def *address = nir_iadd_imm(b, offset, c);
+      if (load) {
+         channels[c] = nir_load_shared(b, 1, 8, address,
+            .base = nir_intrinsic_base(intr), .align_mul = 1,
+            .access = nir_intrinsic_access(intr));
+      } else if (nir_intrinsic_write_mask(intr) & BITFIELD_BIT(c)) {
+         nir_store_shared(b, nir_channel(b, intr->src[0].ssa, c), address,
+            .base = nir_intrinsic_base(intr), .align_mul = 1,
+            .write_mask = 1, .access = nir_intrinsic_access(intr));
+      }
+   }
+   if (load)
+      nir_def_rewrite_uses(&intr->def, nir_vec(b, channels, intr->num_components));
+   nir_instr_remove(&intr->instr);
+   return true;
+}
+
 /* Native G16 framebuffer reads name a constant sample mask. Within the
  * per-sample loop, the dynamic mask has at most one bit set. Select the
  * corresponding constant-mask read, keeping inactive samples unaccessed. */
@@ -6382,6 +6415,10 @@ agx_compile_shader_nir_inner(nir_shader *nir, struct agx_shader_key *key,
                                               : NULL,
       (form_preamble && key->promote_textures) ? &info->sampler_state_count
                                               : NULL);
+
+   if (is_g17p)
+      NIR_PASS(_, nir, nir_shader_intrinsics_pass,
+               lower_agx3_shared_byte_vectors, nir_metadata_control_flow, NULL);
 
    if (is_g17p)
       NIR_PASS(_, nir, agx_nir_lower_imul64, source_imul64);

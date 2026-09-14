@@ -297,3 +297,19 @@ This fixes exact integer NAND and OR_INVERTED image comparisons:
 Saved failing epilog: `f06454af2696228e093f7e151be97c25b3b0855bac4e78cef947d581f872e3af`
 in the preceding narrow-case capture. Library SHA256:
 `eaafcf06e828f0086598cddaece208d04e7d324f4efd6c751cd26834d4d62f35`.
+
+## Packed shared bytes
+
+Byte-vector stores copied half-register padding into packed shared memory:
+`5,9,3,9` became `5,0,9,0` in the reduced runtime-input struct. Scalarize 8-bit
+shared vectors, preserving byte alignment, access flags and store masks.
+Use G16G's byte-load extension selector zero, already established by the
+native local/stack corpus; the G17S selector remains separate.
+
+The reduced 24-word probe passes in `20260914T150247878319Z-cts28-shared-byte-small`;
+the original nested_structs.4 passes in `20260914T150311030546Z-cts28-shared-byte-cts`.
+Both peaked at 58.25 C. The fixture and independent native Metal source are
+in `shared-byte-oracle/`; native archive is `build/cts28-native/shared-byte`.
+The larger raw-field diagnostic also exposed separate large-shader behavior
+and is not counted as passing. Library SHA256:
+`ceba8a0e493a3ebecc40b938ee06973d8037df041a47188842ed3e06b600ce1d`.
