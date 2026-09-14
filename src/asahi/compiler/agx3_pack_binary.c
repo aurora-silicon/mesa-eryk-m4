@@ -2304,7 +2304,10 @@ agx3_emit_alu(struct util_dynarray *emission, enum agx_isa_encoding enc,
    const uint16_t s1 = S->nr_srcs > 1 ? S->src[1].reg : 0;
    const uint16_t s2 = S->nr_srcs > 2 ? S->src[2].reg : 0;
 
-   if (op != AGX3_ALU_NUM && all_sources_registers &&
+   /* The wait-carrying composer has no saturation or shifted-add fields.
+    * Apply the same semantic boundary as the ordinary select core. */
+   if (op != AGX3_ALU_NUM && all_sources_registers && !S->saturate &&
+       S->shift == 0 &&
        S->has_dest && S->dest_size == AGX3_SEL_SIZE_32 &&
        agx3_alu_compose(enc, op, S->dest, s0, s1, s2, S->imm, wait_mask,
                         bytes, &len)) {
@@ -6136,7 +6139,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
           * This carries its own scoreboard wait, so it does not need the
           * wait-retiring prelude and does not disturb the operands.
           */
-         if (I->op == AGX_OPCODE_IADD && I->nr_dests == 1 && I->nr_srcs == 2 &&
+         if (I->op == AGX_OPCODE_IADD && !I->saturate &&
+             I->nr_dests == 1 && I->nr_srcs == 2 &&
              agx3_src_is_register(I->dest[0]) && !I->dest[0].memory &&
              I->dest[0].size == AGX_SIZE_32 &&
              agx_channels(I->dest[0]) == 1) {

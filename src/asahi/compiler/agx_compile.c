@@ -6181,6 +6181,8 @@ agx_compile_shader_nir_inner(nir_shader *nir, struct agx_shader_key *key,
    if (is_g17p) {
       agx3_options = *original_options;
       agx3_options.lower_iabs = false;
+      agx3_options.lower_iadd_sat = true;
+      agx3_options.lower_uadd_sat = true;
       agx3_options.lower_usub_sat = true;
       if (source_iadd64)
          agx3_options.lower_int64_options |= nir_lower_iadd64;

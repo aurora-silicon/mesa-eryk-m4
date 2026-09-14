@@ -202,3 +202,19 @@ Library SHA256:
 `30309d0ad663f90ac7d7b7b37d36e6d93a41435cc8685913555cfb22c2c8b582`.
 Running total: **60/91 failures resolved** (54 Mesa fixes, 6 CTS corrections),
 31 remaining. No broad regression campaign.
+
+## Integer saturation and ALU wait semantics
+
+The wait-carrying generic ALU path could silently discard saturation, unlike
+the ordinary select core which refuses unsupported saturation. Preserve that
+boundary for saturation and shifts, and refuse saturated address-add fast paths.
+AGX3 now uses standard NIR lowering for signed and unsigned saturating addition
+(and signed subtraction via the same option), retaining arithmetic clamp semantics.
+
+The captured signed/unsigned dot-product test previously emitted plain addition
+for a signed saturating accumulator when a memory wait was present. Its exact
+original CTS case now Passes; the saved compiler bundle also compiles with
+explicit bounds comparisons. Peak 57.75 C, no GPU fault/reboot. Library SHA256:
+`a8887cb8469682d6ba6c7ab4155c5bc7f26050d71729693ee477659b8fa7fc27`.
+Running total: **61/91 failures resolved** (55 Mesa fixes, 6 CTS corrections),
+30 remaining. No broad regression campaign.

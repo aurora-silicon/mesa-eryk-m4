@@ -1,0 +1,26 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.spirv_assembly.instruction.compute.opsudotaccsatkhr.limits-neg_su_v3i32_out32",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.spirv_assembly.instruction.compute.opsudotaccsatkhr.limits-neg_su_v3i32_out32",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T040817056996Z-cts14-dot-saturation-fixed/cts/000/result.qpa"
+    ],
+    "boot_id": "0ca1f3f9-acb4-4b79-8a3c-15498f475016",
+    "status": "Pass",
+    "started_unix": 1789358898.3369615,
+    "eligibility": {
+      "case": "dEQP-VK.spirv_assembly.instruction.compute.opsudotaccsatkhr.limits-neg_su_v3i32_out32",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Output match with expected",
+    "returncode": 0,
+    "seconds": 0.5632957970000234,
+    "finished_unix": 1789358898.9052825,
+    "pid": 1477
+  }
+]
