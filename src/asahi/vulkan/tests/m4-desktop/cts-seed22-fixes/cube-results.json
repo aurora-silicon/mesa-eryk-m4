@@ -1,0 +1,21 @@
+[
+  {
+    "index": 3,
+    "case": "dEQP-VK.glsl.texture_gather.basic.cube.rgba8ui.no_corners.size_pot.mirrored_repeat_clamp_to_edge",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-scaled-border-reference",
+      "--deqp-case=dEQP-VK.glsl.texture_gather.basic.cube.rgba8ui.no_corners.size_pot.mirrored_repeat_clamp_to_edge",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T000432444437Z-cts-seed22-cube-v1/cts/003/result.qpa"
+    ],
+    "boot_id": "db7464b3-1a5b-4c4e-8d48-b2e8accb1152",
+    "status": "Pass",
+    "started_unix": 1789344273.6479297,
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.8680942610000102,
+    "finished_unix": 1789344274.5220366,
+    "pid": 1512
+  }
+]

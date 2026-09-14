@@ -19,10 +19,9 @@ g17p_sample_shape(const nir_tex_instr *tex)
    if ((tex->op != nir_texop_tex && tex->op != nir_texop_txb &&
        tex->op != nir_texop_txl && !gather && !query) ||
        (query && (three_d || cube || tex->is_array || tex->is_shadow)) ||
-       (gather && cube) ||
        (tex->sampler_dim != GLSL_SAMPLER_DIM_2D && !three_d &&
         !(cube &&
-          (tex->op == nir_texop_tex || tex->op == nir_texop_txl))) ||
+          (tex->op == nir_texop_tex || tex->op == nir_texop_txl || gather))) ||
        tex->is_sparse ||
        tex->coord_components != (cube && tex->is_array ? 4 :
                                 (tex->is_array || cube || three_d) ? 3 : 2) ||
@@ -555,8 +554,9 @@ static bool
 g17p_cube_sample_shape(const nir_tex_instr *tex)
 {
    const bool level = tex->op == nir_texop_txl;
+   const bool gather = tex->op == nir_texop_tg4;
    const int lod = nir_tex_instr_src_index(tex, nir_tex_src_lod);
-   if ((tex->op != nir_texop_tex && !level) ||
+   if ((tex->op != nir_texop_tex && !level && !gather) ||
        (level && lod < 0) ||
        tex->sampler_dim != GLSL_SAMPLER_DIM_CUBE ||
        tex->is_sparse ||
@@ -565,7 +565,7 @@ g17p_cube_sample_shape(const nir_tex_instr *tex)
        (tex->backend_flags & ~AGX_TEXTURE_FLAG_CLAMP_TO_0) != 0 ||
        (tex->dest_type != nir_type_float32 &&
         tex->dest_type != nir_type_int32 &&
-        tex->dest_type != nir_type_uint32) || tex->def.num_components != (tex->is_shadow ? 1 : 4) ||
+        tex->dest_type != nir_type_uint32) || tex->def.num_components != (tex->is_shadow && !gather ? 1 : 4) ||
        tex->def.bit_size != 32 ||
        nir_tex_instr_src_index(tex, nir_tex_src_texture_handle) < 0 ||
        nir_tex_instr_src_index(tex, nir_tex_src_sampler_handle) < 0)
@@ -602,7 +602,8 @@ agx_nir_lower_g17p_cube_samples(nir_shader *shader, bool native_cube)
             nir_tex_instr *tex = nir_instr_as_tex(instr);
             if (tex->sampler_dim != GLSL_SAMPLER_DIM_CUBE)
                continue;
-            if ((tex->is_array && !native_cube) || !g17p_cube_sample_shape(tex))
+            if (((tex->is_array || tex->op == nir_texop_tg4) && !native_cube) ||
+                !g17p_cube_sample_shape(tex))
                return false;
             cubes++;
          }

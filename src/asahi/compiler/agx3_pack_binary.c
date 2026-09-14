@@ -1104,7 +1104,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
        (array && enc != AGX_ISA_ENCODING_AGX3B) ||
        (I->mask == 0 || (I->mask & ~15u)) ||
        (I->offset && !sample_offset) ||
-       (gather && (enc != AGX_ISA_ENCODING_AGX3B || cube ||
+       (gather && (enc != AGX_ISA_ENCODING_AGX3B ||
                    explicit_lod || I->mask != 15)) || I->sparse)
       return false;
 

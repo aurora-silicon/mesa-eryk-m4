@@ -1,0 +1,33 @@
+{
+  "id": "20260914T000843327303Z-cts-seed22-cube-small",
+  "hypothesis": "Validate cube gather across float signed and unsigned formats without long full-corner cases",
+  "command": [
+    "python3",
+    "/root/cts-sample.py",
+    "batch",
+    "--guard-output",
+    "/root/asahi-evidence/20260914T000843327303Z-cts-seed22-cube-small",
+    "--binary",
+    "/root/cts-1.0.2.6/deqp-vk-scaled-border-reference",
+    "--cases",
+    "/root/cts-1.0.2.6/cube-small.txt",
+    "--count",
+    "3",
+    "--jobs",
+    "3"
+  ],
+  "expected_success": "^CTS_BATCH_COMPLETE:",
+  "seconds": 40,
+  "sources": {
+    "mesa": {
+      "head": "9f20e89a5f31af2d0c7389f0d0b9c3d7f062a84e",
+      "status": " M src/asahi/compiler/agx3_pack_binary.c\n M src/asahi/compiler/agx3_tex_core.c\n M src/asahi/compiler/agx_nir_lower_g17p_combined_sampler.c\n M src/asahi/vulkan/tests/m4-desktop/asahi-session.py\n M src/asahi/vulkan/tests/m4-desktop/desktop-launch.py\n M src/asahi/vulkan/tests/m4-desktop/vulkan-trim-host.py\n",
+      "patch_sha256": "2c184ffd7ca070e82fe536f45f572b73421ae4f03d8e50901169ba3d586c6715"
+    },
+    "kernel": {
+      "head": "fba91e5d957746bfb3560b3bfce1fa793cad6336",
+      "status": "",
+      "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

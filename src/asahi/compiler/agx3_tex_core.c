@@ -200,7 +200,7 @@ sample_ok(enum agx_isa_encoding enc, const struct agx3_tex_sample_desc *d)
       return false;
 
    if (d->gather &&
-       (enc != AGX_ISA_ENCODING_AGX3B || d->cube ||
+       (enc != AGX_ISA_ENCODING_AGX3B ||
         d->gather_component > 3 || d->mask != 15 ||
         d->width != AGX3_TEX_W32 || d->lod != AGX3_TEX_LOD_AUTO))
       return false;

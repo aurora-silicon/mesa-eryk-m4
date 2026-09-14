@@ -1,0 +1,21 @@
+[
+  {
+    "index": 4,
+    "case": "dEQP-VK.image.texel_view_compatible.graphic.basic.texture_write.etc2_r8g8b8a1_srgb_block.r16g16b16a16_uscaled",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-fragment-scaled",
+      "--deqp-case=dEQP-VK.image.texel_view_compatible.graphic.basic.texture_write.etc2_r8g8b8a1_srgb_block.r16g16b16a16_uscaled",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T000743709250Z-cts-seed22-fragment-scaled-reference/cts/004/result.qpa"
+    ],
+    "boot_id": "db7464b3-1a5b-4c4e-8d48-b2e8accb1152",
+    "status": "Pass",
+    "started_unix": 1789344464.8392212,
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.41220454799997697,
+    "finished_unix": 1789344465.2575328,
+    "pid": 6337
+  }
+]

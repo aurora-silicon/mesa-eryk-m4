@@ -1,0 +1,25 @@
+--- a/external/vulkancts/modules/vulkan/image/vktImageCompressionTranscodingSupport.cpp
++++ b/external/vulkancts/modules/vulkan/image/vktImageCompressionTranscodingSupport.cpp
+@@ -2492,13 +2492,18 @@
+ 					{
+ 						std::ostringstream	src;
+ 
+-						const std::string	srcSamplerTypeStr		= getGlslSamplerType(mapVkFormat(m_parameters.formatUncompressed), mapImageViewType(imageTypeForFS));
+-						const std::string	dstImageTypeStr			= getShaderImageType(mapVkFormat(m_parameters.formatUncompressed), imageTypeForFS);
+-						const std::string	dstFormatQualifierStr	= getShaderImageFormatQualifier(mapVkFormat(m_parameters.formatUncompressed));
++						const bool scaled = std::string(getFormatName(m_parameters.formatUncompressed)).find("SCALED") != std::string::npos;
++						tcu::TextureFormat shaderFormat = mapVkFormat(m_parameters.formatUncompressed);
++						if (scaled)
++							shaderFormat.type = tcu::TextureFormat::FLOAT;
++						const std::string	srcSamplerTypeStr		= getGlslSamplerType(shaderFormat, mapImageViewType(imageTypeForFS));
++						const std::string	dstImageTypeStr			= getShaderImageType(shaderFormat, imageTypeForFS);
++						const std::string	dstFormatQualifierStr	= scaled ? "" : ", " + getShaderImageFormatQualifier(shaderFormat);
+ 
+ 						src << glu::getGLSLVersionDeclaration(glu::GLSL_VERSION_450) << "\n\n"
++							<< (scaled ? "#extension GL_EXT_shader_image_load_formatted : require\n" : "")
+ 							<< "layout (binding = 0) uniform " << srcSamplerTypeStr << " u_imageIn;\n"
+-							<< "layout (binding = 1, " << dstFormatQualifierStr << ") writeonly uniform " << dstImageTypeStr << " u_imageOut;\n"
++							<< "layout (binding = 1" << dstFormatQualifierStr << ") writeonly uniform " << dstImageTypeStr << " u_imageOut;\n"
+ 							<< "\n"
+ 							<< "void main (void)\n"
+ 							<< "{\n"

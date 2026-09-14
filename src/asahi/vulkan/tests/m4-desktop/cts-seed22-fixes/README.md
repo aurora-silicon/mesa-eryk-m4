@@ -24,3 +24,25 @@ without moving exports across side effects or control flow. The original
 point-mode compiler capture now compiles offline and the CTS execution passes.
 No-output rasterizer-discard TES uses its reserved position-only UVS layout;
 its SSBO writes remain executed and checked by CTS.
+
+## Cube gather (412)
+
+The original unsigned cube-gather case passes, as do matching no-corner signed
+and UNORM controls. Projection now admits gather and preserves native cube
+face operands; the SMP cube and gather fields are composed independently.
+A broader 20-worker run of long full-corner cases timed out all 20 active cases
+at 20 seconds, with GPU work retiring and no fault; remaining 47 were not run.
+Those timeouts are retained and are not counted as passes or a stability claim.
+The short controls pass in `20260914T000843327303Z-cts-seed22-cube-small`.
+
+## Invalid CTS fragment shader for USCALED (970)
+
+The original CTS binary generates usampler2D/uimage2D with rgba16ui for
+RGBA16_USCALED. Vulkan requires floating-point shader values for scaled
+formats. Extend the previously documented compute shader correction to the
+fragment texture-read/write path, using sampler2D/image2D and a formatless
+store (the feature is advertised). The case passes with the separately
+identified corrected binary in `20260914T000743709250Z-cts-seed22-fragment-scaled-reference`.
+No Mesa rendering change was made for this case. The original invalid-shader
+Fail remains in the frozen report. Lavapipe skips this and the four scaled
+blits because the requisite optional image formats are unsupported.

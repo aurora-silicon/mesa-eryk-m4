@@ -1,0 +1,59 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.glsl.texture_gather.basic.cube.rgba8.no_corners.size_pot.mirrored_repeat_clamp_to_edge",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-scaled-border-reference",
+      "--deqp-case=dEQP-VK.glsl.texture_gather.basic.cube.rgba8.no_corners.size_pot.mirrored_repeat_clamp_to_edge",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T000843327303Z-cts-seed22-cube-small/cts/000/result.qpa"
+    ],
+    "boot_id": "db7464b3-1a5b-4c4e-8d48-b2e8accb1152",
+    "status": "Pass",
+    "started_unix": 1789344524.3911252,
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 1.9925370270000258,
+    "finished_unix": 1789344526.389799,
+    "pid": 6449
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.glsl.texture_gather.basic.cube.rgba8ui.no_corners.size_pot.mirrored_repeat_clamp_to_edge",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-scaled-border-reference",
+      "--deqp-case=dEQP-VK.glsl.texture_gather.basic.cube.rgba8ui.no_corners.size_pot.mirrored_repeat_clamp_to_edge",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T000843327303Z-cts-seed22-cube-small/cts/001/result.qpa"
+    ],
+    "boot_id": "db7464b3-1a5b-4c4e-8d48-b2e8accb1152",
+    "status": "Pass",
+    "started_unix": 1789344524.3973234,
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 2.0015696770000204,
+    "finished_unix": 1789344526.4044628,
+    "pid": 6450
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.glsl.texture_gather.basic.cube.rgba8i.no_corners.size_pot.mirrored_repeat_clamp_to_edge",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-scaled-border-reference",
+      "--deqp-case=dEQP-VK.glsl.texture_gather.basic.cube.rgba8i.no_corners.size_pot.mirrored_repeat_clamp_to_edge",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T000843327303Z-cts-seed22-cube-small/cts/002/result.qpa"
+    ],
+    "boot_id": "db7464b3-1a5b-4c4e-8d48-b2e8accb1152",
+    "status": "Pass",
+    "started_unix": 1789344524.4030612,
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 2.01065148400005,
+    "finished_unix": 1789344526.4195013,
+    "pid": 6451
+  }
+]
