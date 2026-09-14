@@ -1,0 +1,11 @@
+{
+  "jobs": 4,
+  "peak_workers": 4,
+  "started_unix": 1789354348.5794437,
+  "finished_unix": 1789354350.1869214,
+  "elapsed_seconds": 1.607481848999896,
+  "completed": 21,
+  "launched": 21,
+  "case_timeout_seconds": 30,
+  "launch_window_seconds": 10
+}

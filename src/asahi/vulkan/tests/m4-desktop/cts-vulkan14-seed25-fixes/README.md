@@ -37,3 +37,21 @@ the faulting code/registers are in the exact unchanged CTS executable.
 Both original crash cases now have passing targeted results: one driver fix
 and one separately identified CTS correction. The 91 original Fail outcomes
 and eight mandatory-feature skip reasons remain outstanding at this point.
+
+## Image copies across dimensions and block extents
+
+The native GPU block-copy path required equal image types and block dimensions,
+rejecting valid size-compatible copies and 1D/2D/3D transfers. Normalize source
+and destination offsets using their respective block extents; interpret the
+copy extent in source texels, and compare destination bounds in blocks. Map
+array layers and 3D depth slices independently while retaining layout, aspect,
+block-size and bounds checks. The existing GPU compute copy performs the work.
+
+All **21 original image-to-image failures pass** with unmodified CTS 1.4.6.2,
+four workers and the mandatory watchdog/thermal guard. Peak temperature was
+59.75 C. No broad regression was run. Vulkan library SHA256:
+`6a939606881aa091a2d7c48f920fe451b147c6437e64564ab38778eb0c1e8c1e`.
+Raw QPA, per-case outcomes, exact CTS identity and guard evidence are archived.
+
+Running total: both crash cases resolved (one CTS correction), **21/91 Fail
+cases repaired**, 70 Fail cases remaining. Original sample outcomes are retained.

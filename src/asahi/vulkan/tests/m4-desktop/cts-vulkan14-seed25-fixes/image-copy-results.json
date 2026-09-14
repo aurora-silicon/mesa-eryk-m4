@@ -1,0 +1,506 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_2d.r32g32_sint.eac_r11_snorm_block.general_general",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_2d.r32g32_sint.eac_r11_snorm_block.general_general",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T025227235165Z-cts14-copy-dimensions/cts/000/result.qpa"
+    ],
+    "boot_id": "4677c960-6288-422d-b849-67cddc408032",
+    "status": "Pass",
+    "started_unix": 1789354348.584719,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_2d.r32g32_sint.eac_r11_snorm_block.general_general",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "CopiesAndBlitting test",
+    "returncode": 0,
+    "seconds": 0.22952424100003554,
+    "finished_unix": 1789354348.8192618,
+    "pid": 3395
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_3d.etc2_r8g8b8a8_unorm_block.bc3_unorm_block.optimal_optimal",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_3d.etc2_r8g8b8a8_unorm_block.bc3_unorm_block.optimal_optimal",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T025227235165Z-cts14-copy-dimensions/cts/001/result.qpa"
+    ],
+    "boot_id": "4677c960-6288-422d-b849-67cddc408032",
+    "status": "Pass",
+    "started_unix": 1789354348.5897908,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_3d.etc2_r8g8b8a8_unorm_block.bc3_unorm_block.optimal_optimal",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "CopiesAndBlitting test",
+    "returncode": 0,
+    "seconds": 0.23856059199988522,
+    "finished_unix": 1789354348.8349829,
+    "pid": 3396
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_3d.etc2_r8g8b8_unorm_block.bc1_rgba_unorm_block.general_optimal",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_3d.etc2_r8g8b8_unorm_block.bc1_rgba_unorm_block.general_optimal",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T025227235165Z-cts14-copy-dimensions/cts/002/result.qpa"
+    ],
+    "boot_id": "4677c960-6288-422d-b849-67cddc408032",
+    "status": "Pass",
+    "started_unix": 1789354348.5965972,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_3d.etc2_r8g8b8_unorm_block.bc1_rgba_unorm_block.general_optimal",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "CopiesAndBlitting test",
+    "returncode": 0,
+    "seconds": 0.24768820600002073,
+    "finished_unix": 1789354348.8499174,
+    "pid": 3397
+  },
+  {
+    "index": 3,
+    "case": "dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_1d.r16g16b16a16_snorm.eac_r11_unorm_block.optimal_optimal",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_1d.r16g16b16a16_snorm.eac_r11_unorm_block.optimal_optimal",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T025227235165Z-cts14-copy-dimensions/cts/003/result.qpa"
+    ],
+    "boot_id": "4677c960-6288-422d-b849-67cddc408032",
+    "status": "Pass",
+    "started_unix": 1789354348.6023386,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_1d.r16g16b16a16_snorm.eac_r11_unorm_block.optimal_optimal",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "CopiesAndBlitting test",
+    "returncode": 0,
+    "seconds": 0.2567408059999252,
+    "finished_unix": 1789354348.8649297,
+    "pid": 3399
+  },
+  {
+    "index": 4,
+    "case": "dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_1d.a8b8g8r8_uint_pack32.a2r10g10b10_snorm_pack32.general_optimal",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_1d.a8b8g8r8_uint_pack32.a2r10g10b10_snorm_pack32.general_optimal",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T025227235165Z-cts14-copy-dimensions/cts/004/result.qpa"
+    ],
+    "boot_id": "4677c960-6288-422d-b849-67cddc408032",
+    "status": "Pass",
+    "started_unix": 1789354348.8765879,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_1d.a8b8g8r8_uint_pack32.a2r10g10b10_snorm_pack32.general_optimal",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "CopiesAndBlitting test",
+    "returncode": 0,
+    "seconds": 0.22700844900009542,
+    "finished_unix": 1789354349.1084633,
+    "pid": 3412
+  },
+  {
+    "index": 5,
+    "case": "dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_1d.a2b10g10r10_uint_pack32.a8b8g8r8_unorm_pack32.optimal_general",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_1d.a2b10g10r10_uint_pack32.a8b8g8r8_unorm_pack32.optimal_general",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T025227235165Z-cts14-copy-dimensions/cts/005/result.qpa"
+    ],
+    "boot_id": "4677c960-6288-422d-b849-67cddc408032",
+    "status": "Pass",
+    "started_unix": 1789354348.8815496,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_1d.a2b10g10r10_uint_pack32.a8b8g8r8_unorm_pack32.optimal_general",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "CopiesAndBlitting test",
+    "returncode": 0,
+    "seconds": 0.2385970290001751,
+    "finished_unix": 1789354349.1254373,
+    "pid": 3413
+  },
+  {
+    "index": 6,
+    "case": "dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_1d.a2b10g10r10_sint_pack32.a8b8g8r8_srgb_pack32.optimal_optimal",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_1d.a2b10g10r10_sint_pack32.a8b8g8r8_srgb_pack32.optimal_optimal",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T025227235165Z-cts14-copy-dimensions/cts/006/result.qpa"
+    ],
+    "boot_id": "4677c960-6288-422d-b849-67cddc408032",
+    "status": "Pass",
+    "started_unix": 1789354348.8869588,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_1d.a2b10g10r10_sint_pack32.a8b8g8r8_srgb_pack32.optimal_optimal",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "CopiesAndBlitting test",
+    "returncode": 0,
+    "seconds": 0.24839980299998388,
+    "finished_unix": 1789354349.1411874,
+    "pid": 3414
+  },
+  {
+    "index": 7,
+    "case": "dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_3d.r8g8b8a8_unorm.r8g8b8a8_srgb.optimal_optimal",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_3d.r8g8b8a8_unorm.r8g8b8a8_srgb.optimal_optimal",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T025227235165Z-cts14-copy-dimensions/cts/007/result.qpa"
+    ],
+    "boot_id": "4677c960-6288-422d-b849-67cddc408032",
+    "status": "Pass",
+    "started_unix": 1789354348.8929362,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_3d.r8g8b8a8_unorm.r8g8b8a8_srgb.optimal_optimal",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "CopiesAndBlitting test",
+    "returncode": 0,
+    "seconds": 0.25844505999998546,
+    "finished_unix": 1789354349.1572134,
+    "pid": 3416
+  },
+  {
+    "index": 8,
+    "case": "dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.depth_stencil.2d_to_1d.d16_unorm_s8_uint_d16_unorm_s8_uint_separate_layouts.optimal_optimal",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.depth_stencil.2d_to_1d.d16_unorm_s8_uint_d16_unorm_s8_uint_separate_layouts.optimal_optimal",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T025227235165Z-cts14-copy-dimensions/cts/008/result.qpa"
+    ],
+    "boot_id": "4677c960-6288-422d-b849-67cddc408032",
+    "status": "Pass",
+    "started_unix": 1789354349.169155,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.depth_stencil.2d_to_1d.d16_unorm_s8_uint_d16_unorm_s8_uint_separate_layouts.optimal_optimal",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "CopiesAndBlitting test",
+    "returncode": 0,
+    "seconds": 0.34477778199993736,
+    "finished_unix": 1789354349.5195527,
+    "pid": 3427
+  },
+  {
+    "index": 9,
+    "case": "dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_1d.a8b8g8r8_uint_pack32.a8b8g8r8_sscaled_pack32.general_general",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_1d.a8b8g8r8_uint_pack32.a8b8g8r8_sscaled_pack32.general_general",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T025227235165Z-cts14-copy-dimensions/cts/009/result.qpa"
+    ],
+    "boot_id": "4677c960-6288-422d-b849-67cddc408032",
+    "status": "Pass",
+    "started_unix": 1789354349.174831,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_1d.a8b8g8r8_uint_pack32.a8b8g8r8_sscaled_pack32.general_general",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "CopiesAndBlitting test",
+    "returncode": 0,
+    "seconds": 0.22252041799993094,
+    "finished_unix": 1789354349.4025073,
+    "pid": 3428
+  },
+  {
+    "index": 10,
+    "case": "dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_1d.b8g8r8a8_snorm.a8b8g8r8_unorm_pack32.general_general",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_1d.b8g8r8a8_snorm.a8b8g8r8_unorm_pack32.general_general",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T025227235165Z-cts14-copy-dimensions/cts/010/result.qpa"
+    ],
+    "boot_id": "4677c960-6288-422d-b849-67cddc408032",
+    "status": "Pass",
+    "started_unix": 1789354349.1800919,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_1d.b8g8r8a8_snorm.a8b8g8r8_unorm_pack32.general_general",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "CopiesAndBlitting test",
+    "returncode": 0,
+    "seconds": 0.23256952599990655,
+    "finished_unix": 1789354349.4185557,
+    "pid": 3429
+  },
+  {
+    "index": 11,
+    "case": "dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_3d.b10g11r11_ufloat_pack32.r8g8b8a8_sint.optimal_general",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_3d.b10g11r11_ufloat_pack32.r8g8b8a8_sint.optimal_general",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T025227235165Z-cts14-copy-dimensions/cts/011/result.qpa"
+    ],
+    "boot_id": "4677c960-6288-422d-b849-67cddc408032",
+    "status": "Pass",
+    "started_unix": 1789354349.186117,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_3d.b10g11r11_ufloat_pack32.r8g8b8a8_sint.optimal_general",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "CopiesAndBlitting test",
+    "returncode": 0,
+    "seconds": 0.24312699799997972,
+    "finished_unix": 1789354349.4353654,
+    "pid": 3431
+  },
+  {
+    "index": 12,
+    "case": "dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_1d.etc2_r8g8b8a8_srgb_block.r32g32b32a32_uint.optimal_general",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_1d.etc2_r8g8b8a8_srgb_block.r32g32b32a32_uint.optimal_general",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T025227235165Z-cts14-copy-dimensions/cts/012/result.qpa"
+    ],
+    "boot_id": "4677c960-6288-422d-b849-67cddc408032",
+    "status": "Pass",
+    "started_unix": 1789354349.4971397,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_1d.etc2_r8g8b8a8_srgb_block.r32g32b32a32_uint.optimal_general",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "CopiesAndBlitting test",
+    "returncode": 0,
+    "seconds": 0.19505628900014926,
+    "finished_unix": 1789354349.697949,
+    "pid": 3439
+  },
+  {
+    "index": 13,
+    "case": "dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_1d.r16g16b16_snorm.r16g16b16_uscaled.general_general",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_1d.r16g16b16_snorm.r16g16b16_uscaled.general_general",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T025227235165Z-cts14-copy-dimensions/cts/013/result.qpa"
+    ],
+    "boot_id": "4677c960-6288-422d-b849-67cddc408032",
+    "status": "Pass",
+    "started_unix": 1789354349.5029461,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_1d.r16g16b16_snorm.r16g16b16_uscaled.general_general",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "CopiesAndBlitting test",
+    "returncode": 0,
+    "seconds": 0.2066590780000297,
+    "finished_unix": 1789354349.714801,
+    "pid": 3440
+  },
+  {
+    "index": 14,
+    "case": "dEQP-VK.api.copy_and_blit.dedicated_allocation.image_to_image.all_formats.color.2d_to_3d.astc_6x6_unorm_block.r32g32b32a32_uint.optimal_general",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.dedicated_allocation.image_to_image.all_formats.color.2d_to_3d.astc_6x6_unorm_block.r32g32b32a32_uint.optimal_general",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T025227235165Z-cts14-copy-dimensions/cts/014/result.qpa"
+    ],
+    "boot_id": "4677c960-6288-422d-b849-67cddc408032",
+    "status": "Pass",
+    "started_unix": 1789354349.5082586,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.dedicated_allocation.image_to_image.all_formats.color.2d_to_3d.astc_6x6_unorm_block.r32g32b32a32_uint.optimal_general",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "CopiesAndBlitting test",
+    "returncode": 0,
+    "seconds": 0.2188154539999232,
+    "finished_unix": 1789354349.732931,
+    "pid": 3441
+  },
+  {
+    "index": 15,
+    "case": "dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_1d.a2r10g10b10_uscaled_pack32.a2b10g10r10_sint_pack32.general_optimal",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_1d.a2r10g10b10_uscaled_pack32.a2b10g10r10_sint_pack32.general_optimal",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T025227235165Z-cts14-copy-dimensions/cts/015/result.qpa"
+    ],
+    "boot_id": "4677c960-6288-422d-b849-67cddc408032",
+    "status": "Pass",
+    "started_unix": 1789354349.5838232,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_1d.a2r10g10b10_uscaled_pack32.a2b10g10r10_sint_pack32.general_optimal",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "CopiesAndBlitting test",
+    "returncode": 0,
+    "seconds": 0.15981013699979485,
+    "finished_unix": 1789354349.749776,
+    "pid": 3448
+  },
+  {
+    "index": 16,
+    "case": "dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_3d.eac_r11_snorm_block.r16g16b16a16_sfloat.general_optimal",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_3d.eac_r11_snorm_block.r16g16b16a16_sfloat.general_optimal",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T025227235165Z-cts14-copy-dimensions/cts/016/result.qpa"
+    ],
+    "boot_id": "4677c960-6288-422d-b849-67cddc408032",
+    "status": "Pass",
+    "started_unix": 1789354349.762493,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_3d.eac_r11_snorm_block.r16g16b16a16_sfloat.general_optimal",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "CopiesAndBlitting test",
+    "returncode": 0,
+    "seconds": 0.17854849899981673,
+    "finished_unix": 1789354349.9469576,
+    "pid": 3451
+  },
+  {
+    "index": 17,
+    "case": "dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_1d.astc_6x6_srgb_block.r32g32b32a32_uint.optimal_general",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_1d.astc_6x6_srgb_block.r32g32b32a32_uint.optimal_general",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T025227235165Z-cts14-copy-dimensions/cts/017/result.qpa"
+    ],
+    "boot_id": "4677c960-6288-422d-b849-67cddc408032",
+    "status": "Pass",
+    "started_unix": 1789354349.7685297,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_1d.astc_6x6_srgb_block.r32g32b32a32_uint.optimal_general",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "CopiesAndBlitting test",
+    "returncode": 0,
+    "seconds": 0.24510554100015725,
+    "finished_unix": 1789354350.0199704,
+    "pid": 3452
+  },
+  {
+    "index": 18,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.image_to_image.all_formats.color.2d_to_1d.a8b8g8r8_snorm_pack32.r32_sfloat.optimal_optimal",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.copy_commands2.image_to_image.all_formats.color.2d_to_1d.a8b8g8r8_snorm_pack32.r32_sfloat.optimal_optimal",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T025227235165Z-cts14-copy-dimensions/cts/018/result.qpa"
+    ],
+    "boot_id": "4677c960-6288-422d-b849-67cddc408032",
+    "status": "Pass",
+    "started_unix": 1789354349.7751033,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.image_to_image.all_formats.color.2d_to_1d.a8b8g8r8_snorm_pack32.r32_sfloat.optimal_optimal",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "CopiesAndBlitting test",
+    "returncode": 0,
+    "seconds": 0.2562057839998033,
+    "finished_unix": 1789354350.0379157,
+    "pid": 3453
+  },
+  {
+    "index": 19,
+    "case": "dEQP-VK.api.copy_and_blit.dedicated_allocation.image_to_image.all_formats.color.2d_to_2d.r32g32b32a32_uint.astc_8x6_unorm_block.optimal_optimal",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.dedicated_allocation.image_to_image.all_formats.color.2d_to_2d.r32g32b32a32_uint.astc_8x6_unorm_block.optimal_optimal",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T025227235165Z-cts14-copy-dimensions/cts/019/result.qpa"
+    ],
+    "boot_id": "4677c960-6288-422d-b849-67cddc408032",
+    "status": "Pass",
+    "started_unix": 1789354349.781887,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.dedicated_allocation.image_to_image.all_formats.color.2d_to_2d.r32g32b32a32_uint.astc_8x6_unorm_block.optimal_optimal",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "CopiesAndBlitting test",
+    "returncode": 0,
+    "seconds": 0.2671916599999804,
+    "finished_unix": 1789354350.0549395,
+    "pid": 3455
+  },
+  {
+    "index": 20,
+    "case": "dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_3d.a2b10g10r10_unorm_pack32.a2b10g10r10_uint_pack32.general_optimal",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_3d.a2b10g10r10_unorm_pack32.a2b10g10r10_uint_pack32.general_optimal",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T025227235165Z-cts14-copy-dimensions/cts/020/result.qpa"
+    ],
+    "boot_id": "4677c960-6288-422d-b849-67cddc408032",
+    "status": "Pass",
+    "started_unix": 1789354350.0101314,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.2d_to_3d.a2b10g10r10_unorm_pack32.a2b10g10r10_uint_pack32.general_optimal",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "CopiesAndBlitting test",
+    "returncode": 0,
+    "seconds": 0.15956505600001947,
+    "finished_unix": 1789354350.1747892,
+    "pid": 3463
+  }
+]

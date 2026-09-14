@@ -2314,10 +2314,10 @@ static bool
 hk_native_copy_raw_image(struct hk_cmd_buffer *cmd, struct hk_image *src,
                          struct hk_image *dst, const VkCopyImageInfo2 *info)
 {
-   if (src->vk.image_type != dst->vk.image_type || src->vk.samples != 1 ||
-       dst->vk.samples != 1)
+   if (src->vk.samples != 1 || dst->vk.samples != 1)
       return false;
-   const bool is_3d = src->vk.image_type == VK_IMAGE_TYPE_3D;
+   const bool src_3d = src->vk.image_type == VK_IMAGE_TYPE_3D;
+   const bool dst_3d = dst->vk.image_type == VK_IMAGE_TYPE_3D;
 
    for (unsigned r = 0; r < info->regionCount; r++) {
       const VkImageCopy2 *region = &info->pRegions[r];
@@ -2332,10 +2332,10 @@ hk_native_copy_raw_image(struct hk_cmd_buffer *cmd, struct hk_image *src,
       const struct ail_layout *dl = &dst->planes[dp].layout;
       const unsigned block_w = util_format_get_blockwidth(sl->format);
       const unsigned block_h = util_format_get_blockheight(sl->format);
+      const unsigned dst_block_w = util_format_get_blockwidth(dl->format);
+      const unsigned dst_block_h = util_format_get_blockheight(dl->format);
       const unsigned block_B = ail_get_blocksize_B(sl);
-      if (block_w != util_format_get_blockwidth(dl->format) ||
-          block_h != util_format_get_blockheight(dl->format) ||
-          block_B != ail_get_blocksize_B(dl) ||
+      if (block_B != ail_get_blocksize_B(dl) ||
           !util_is_power_of_two_nonzero(block_B) || block_B > 16 ||
           util_format_is_depth_and_stencil(sl->format) ||
           util_format_is_depth_and_stencil(dl->format) ||
@@ -2344,18 +2344,19 @@ hk_native_copy_raw_image(struct hk_cmd_buffer *cmd, struct hk_image *src,
           sl->compressed || dl->compressed)
          return false;
       const unsigned sm = ss->mipLevel, dm = ds->mipLevel;
-      const unsigned layers = vk_image_subresource_layer_count(&src->vk, ss);
-      if (sm >= sl->levels || dm >= dl->levels || !layers ||
-          layers != vk_image_subresource_layer_count(&dst->vk, ds) ||
+      const unsigned src_layers = vk_image_subresource_layer_count(&src->vk, ss);
+      const unsigned dst_layers = vk_image_subresource_layer_count(&dst->vk, ds);
+      if (sm >= sl->levels || dm >= dl->levels || !src_layers || !dst_layers ||
           ss->baseArrayLayer >= src->vk.array_layers ||
-          layers > src->vk.array_layers - ss->baseArrayLayer ||
+          src_layers > src->vk.array_layers - ss->baseArrayLayer ||
           ds->baseArrayLayer >= dst->vk.array_layers ||
-          layers > dst->vk.array_layers - ds->baseArrayLayer ||
+          dst_layers > dst->vk.array_layers - ds->baseArrayLayer ||
           region->srcOffset.z < 0 || region->dstOffset.z < 0 ||
           region->srcOffset.x < 0 || region->srcOffset.y < 0 ||
           region->dstOffset.x < 0 || region->dstOffset.y < 0 ||
           (region->srcOffset.x % block_w) || (region->srcOffset.y % block_h) ||
-          (region->dstOffset.x % block_w) || (region->dstOffset.y % block_h))
+          (region->dstOffset.x % dst_block_w) ||
+          (region->dstOffset.y % dst_block_h))
          return false;
       const unsigned sw = u_minify(sl->width_px, sm);
       const unsigned sh = u_minify(sl->height_px, sm);
@@ -2368,15 +2369,26 @@ hk_native_copy_raw_image(struct hk_cmd_buffer *cmd, struct hk_image *src,
       const unsigned depth = region->extent.depth;
       const unsigned sd = u_minify(src->vk.extent.depth, sm);
       const unsigned dd = u_minify(dst->vk.extent.depth, dm);
-      if (!w || !h || sx >= sw || sy >= sh || dx >= dw || dy >= dh ||
-          !depth ||
-          (is_3d ? (layers != 1 || sz >= sd || dz >= dd ||
-                    depth > sd - sz || depth > dd - dz)
-                 : (sz != 0 || dz != 0 || depth != 1)) ||
-          (src->vk.image_type == VK_IMAGE_TYPE_1D && (sy || dy || h != 1)) ||
-          w > sw - sx || h > sh - sy || w > dw - dx || h > dh - dy ||
-          ((w % block_w) && (sx + w != sw || dx + w != dw)) ||
-          ((h % block_h) && (sy + h != sh || dy + h != dh)))
+      /* VkImageCopy extents are in source texels. Size-compatible formats
+       * copy the same number of blocks, even when their block extents differ.
+       * The last block may extend past the logical edge of either image.
+       */
+      const unsigned width_el = DIV_ROUND_UP(w, block_w);
+      const unsigned height_el = DIV_ROUND_UP(h, block_h);
+      const unsigned src_slices = src_3d ? depth : src_layers;
+      const unsigned dst_slices = dst_3d ? depth : dst_layers;
+      if (!w || !h || !depth || sx >= sw || sy >= sh || dx >= dw || dy >= dh ||
+          src_slices != dst_slices ||
+          (src_3d ? (src_layers != 1 || sz >= sd || depth > sd - sz)
+                  : sz != 0) ||
+          (dst_3d ? (dst_layers != 1 || dz >= dd || depth > dd - dz)
+                  : dz != 0) ||
+          (!src_3d && !dst_3d && depth != 1) ||
+          w > sw - sx || h > sh - sy ||
+          ((w % block_w) && sx + w != sw) ||
+          ((h % block_h) && sy + h != sh) ||
+          width_el > DIV_ROUND_UP(dw - dx, dst_block_w) ||
+          height_el > DIV_ROUND_UP(dh - dy, dst_block_h))
          return false;
       const struct hk_block_copy_key key = {
          .type = HK_META_OBJECT_KEY_BLOCK_COPY,
@@ -2390,9 +2402,10 @@ hk_native_copy_raw_image(struct hk_cmd_buffer *cmd, struct hk_image *src,
          .dst_tile_log2_w = hk_native_copy_tile_log2(dl, dm, false),
          .dst_tile_log2_h = hk_native_copy_tile_log2(dl, dm, true),
       };
-      const unsigned slices = is_3d ? depth : layers;
-      const unsigned src_slice = is_3d ? sz : ss->baseArrayLayer;
-      const unsigned dst_slice = is_3d ? dz : ds->baseArrayLayer;
+      /* Array layers and 3D depth slices use the same physical layer stride. */
+      const unsigned slices = src_slices;
+      const unsigned src_slice = src_3d ? sz : ss->baseArrayLayer;
+      const unsigned dst_slice = dst_3d ? dz : ds->baseArrayLayer;
       for (unsigned layer = 0; layer < slices; layer++) {
          const struct hk_block_copy_push push = {
             .src = hk_image_base_address(src, sp) +
@@ -2403,10 +2416,10 @@ hk_native_copy_raw_image(struct hk_cmd_buffer *cmd, struct hk_image *src,
             .dst_stride = hk_native_copy_stride(dl, dm),
             .src_x = region->srcOffset.x / block_w,
             .src_y = region->srcOffset.y / block_h,
-            .dst_x = region->dstOffset.x / block_w,
-            .dst_y = region->dstOffset.y / block_h,
-            .width = DIV_ROUND_UP(region->extent.width, block_w),
-            .height = DIV_ROUND_UP(region->extent.height, block_h),
+            .dst_x = region->dstOffset.x / dst_block_w,
+            .dst_y = region->dstOffset.y / dst_block_h,
+            .width = width_el,
+            .height = height_el,
          };
          hk_dispatch_block_copy(cmd, &key, &push);
          if (vk_command_buffer_has_error(&cmd->vk))
