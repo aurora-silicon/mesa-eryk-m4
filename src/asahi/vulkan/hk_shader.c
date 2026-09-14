@@ -2494,19 +2494,16 @@ hk_compile_shaders(struct vk_device *vk_dev, uint32_t shader_count,
       shaders[i] = nir;
    }
 
-   /* A complete raster pipeline without a fragment shader cannot consume
-    * user varyings.  Remove them before AGX assigns the unlinked UVS layout,
-    * while preserving fixed-function outputs such as position and any XFB
-    * writes.  Besides avoiding pointless vertex work, this keeps the G17P
-    * backend on its native immediate-index UVSW form; the dynamic UVS index
-    * is only needed when a later fragment shader may still choose the
-    * interpolation-class ordering.
-    *
-    * Do not apply this to pipeline libraries: their pre-raster shader can be
-    * linked with a fragment library later. */
-   if (agx_chip_uses_hal200_ioto(dev->dev.chip) && state && shader_count > 0 &&
-       !(state->pipeline_flags & VK_PIPELINE_CREATE_2_LIBRARY_BIT_KHR) &&
-       !(state->shader_stages & VK_SHADER_STAGE_FRAGMENT_BIT)) {
+   /* Static rasterizer discard makes user varyings unobservable (XFB writes
+    * are preserved by nir_remove_outputs). Missing fragment stages alone do
+    * not: this may be a pre-raster pipeline library, linked to a fragment
+    * library later. state->pipeline_flags contains mergeable rendering flags,
+    * not VK_PIPELINE_CREATE_2_LIBRARY_BIT_KHR, so it cannot distinguish them.
+    */
+   if (agx_chip_uses_hal200_ioto(dev->dev.chip) && shader_count > 0 &&
+       state && state->rs && state->rs->rasterizer_discard_enable &&
+       !BITSET_TEST(state->dynamic,
+                    MESA_VK_DYNAMIC_RS_RASTERIZER_DISCARD_ENABLE)) {
       nir_shader *last = shaders[shader_count - 1];
       if (last->info.stage <= MESA_SHADER_GEOMETRY)
          NIR_PASS(_, last, nir_remove_outputs, MESA_SHADER_FRAGMENT,

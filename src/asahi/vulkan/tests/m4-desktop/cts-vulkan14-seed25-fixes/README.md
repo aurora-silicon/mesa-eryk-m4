@@ -55,3 +55,22 @@ Raw QPA, per-case outcomes, exact CTS identity and guard evidence are archived.
 
 Running total: both crash cases resolved (one CTS correction), **21/91 Fail
 cases repaired**, 70 Fail cases remaining. Original sample outcomes are retained.
+
+## Preserve pipeline-library vertex outputs
+
+The no-fragment output-removal optimization tested LIBRARY_BIT in
+vk_graphics_pipeline_state::pipeline_flags, but the runtime stores only
+mergeable rendering flags there. Pre-raster libraries consequently lost their
+user outputs before a later fragment-library link. Restrict that optimization
+to statically enabled rasterizer discard, preserving XFB and fixed-function
+outputs. Missing fragment stages no longer imply unused vertex outputs.
+
+Of the 21 original fast-linked-library failures, **17 now pass** on unmodified
+CTS. Four dual-source cases advance to a separate compiler rejection for mixed
+dynamic user outputs and immediate point-size export; they remain Fail.
+The guard recorded the expected API errors, no crash/reboot, peak 59.75 C.
+Library SHA256:
+`8f7abdcbb5de0e4bef15c745b9ce1553a147274ae17b6d222ba91575c3d6dbd2`.
+Per-case results and raw diagnostics are archived. No broad regression run.
+
+Running total: both crashes resolved, **38/91 Fail cases repaired**, 53 remain.
