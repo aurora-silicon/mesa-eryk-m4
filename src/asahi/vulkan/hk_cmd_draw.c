@@ -695,7 +695,8 @@ hk_build_bg_eot(struct hk_cmd_buffer *cmd, const VkRenderingInfo *info,
        * main memory. When render targets are already spilled to main memory,
        * there's nothing to do.
        */
-      if (key.tib.spilled[i] && (partial_render || store))
+      if (key.tib.spilled[i] &&
+          (partial_render || store || agx_native_graphics(&dev->dev)))
          continue;
 
       if (store) {
@@ -1361,7 +1362,19 @@ hk_CmdBeginRendering(VkCommandBuffer commandBuffer,
    if (clear_att[clear_count].aspectMask != 0)
       clear_count++;
 
-   if (clear_count > 0 && incomplete_render_area) {
+   const bool clear_spills = agx_native_graphics(&dev->dev) &&
+      agx_tilebuffer_spills(&render->tilebuffer);
+   if (clear_spills && !incomplete_render_area) {
+      unsigned selected = 0;
+      for (unsigned i = 0; i < clear_count; ++i) {
+         if (clear_att[i].aspectMask == VK_IMAGE_ASPECT_COLOR_BIT &&
+             render->tilebuffer.spilled[clear_att[i].colorAttachment])
+            clear_att[selected++] = clear_att[i];
+      }
+      clear_count = selected;
+   }
+   cs->cr.process_empty_tiles = resolved_clear;
+   if (clear_count > 0 && (incomplete_render_area || clear_spills)) {
       const VkClearRect clear_rect = {
          .rect = render->area,
          .baseArrayLayer = 0,
@@ -4177,6 +4190,7 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
          .max_bytes_per_sample = cmd->state.gfx.render.tilebuffer.max_bytes_per_sample,
          .max_samples_per_tile = cmd->state.gfx.render.tilebuffer.max_samples_per_tile,
          .lower_srgb = agx_native_graphics(&dev->dev),
+         .native_spills = dev->dev.chip == AGX_CHIP_G16G,
          .blend.alpha_to_coverage = dyn->ms.alpha_to_coverage_enable,
          .blend.alpha_to_one = dyn->ms.alpha_to_one_enable,
          .blend.logicop_enable = dyn->cb.logic_op_enable,

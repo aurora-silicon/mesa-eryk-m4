@@ -298,6 +298,7 @@ struct agx_fs_epilog_key {
    uint32_t max_samples_per_tile;
    bool preserve_zero_mask;
    bool lower_srgb;
+   bool native_spills;
 };
 
 void agx_nir_vs_prolog(struct nir_builder *b, const void *key_);

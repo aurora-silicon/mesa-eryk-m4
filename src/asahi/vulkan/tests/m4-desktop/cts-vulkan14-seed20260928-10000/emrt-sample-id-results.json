@@ -1,0 +1,74 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.pipeline.monolithic.multisample.misc.multi_subpass.r8g8b8a8_unorm_r16g16b16a16_sfloat_r32g32b32a32_uint_d24_unorm_s8_uint.random_158",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed28-scaled-texelview-supported",
+      "--deqp-case=dEQP-VK.pipeline.monolithic.multisample.misc.multi_subpass.r8g8b8a8_unorm_r16g16b16a16_sfloat_r32g32b32a32_uint_d24_unorm_s8_uint.random_158",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T171715769259Z-cts28-emrt-sample-id/cts/000/result.qpa"
+    ],
+    "boot_id": "6468ab3c-e93f-41b0-81d6-888941ac1e09",
+    "status": "Fail",
+    "started_unix": 1789406236.9030993,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.monolithic.multisample.misc.multi_subpass.r8g8b8a8_unorm_r16g16b16a16_sfloat_r32g32b32a32_uint_d24_unorm_s8_uint.random_158",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "vk.endCommandBuffer(*cmdBuffer): VK_ERROR_FEATURE_NOT_PRESENT at vktPipelineMultisampledRenderToSingleSampledTests.cpp:1003",
+    "returncode": 1,
+    "seconds": 0.8112662529999852,
+    "finished_unix": 1789406237.719432,
+    "pid": 1524
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.renderpasses.renderpass2.suballocation.multisample_resolve.r16g16b16a16_unorm.samples_4_resolve_level_3",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed28-scaled-texelview-supported",
+      "--deqp-case=dEQP-VK.renderpasses.renderpass2.suballocation.multisample_resolve.r16g16b16a16_unorm.samples_4_resolve_level_3",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T171715769259Z-cts28-emrt-sample-id/cts/001/result.qpa"
+    ],
+    "boot_id": "6468ab3c-e93f-41b0-81d6-888941ac1e09",
+    "status": "Pass",
+    "started_unix": 1789406237.7296586,
+    "eligibility": {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.multisample_resolve.r16g16b16a16_unorm.samples_4_resolve_level_3",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.8618660729999874,
+    "finished_unix": 1789406238.5963995,
+    "pid": 1525
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.renderpasses.renderpass1.suballocation.multisample_resolve.r32g32b32a32_sfloat.max_attachments_4_samples_4",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed28-scaled-texelview-supported",
+      "--deqp-case=dEQP-VK.renderpasses.renderpass1.suballocation.multisample_resolve.r32g32b32a32_sfloat.max_attachments_4_samples_4",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T171715769259Z-cts28-emrt-sample-id/cts/002/result.qpa"
+    ],
+    "boot_id": "6468ab3c-e93f-41b0-81d6-888941ac1e09",
+    "status": "Pass",
+    "started_unix": 1789406238.6069038,
+    "eligibility": {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.multisample_resolve.r32g32b32a32_sfloat.max_attachments_4_samples_4",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.3081825060000938,
+    "finished_unix": 1789406238.9187975,
+    "pid": 1527
+  }
+]

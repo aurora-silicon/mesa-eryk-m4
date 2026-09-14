@@ -1,9 +1,9 @@
 {
   "selected": 10000,
   "counts": {
-    "Pass": 4654,
+    "Pass": 4657,
     "NotSupported": 5342,
-    "Fail": 4
+    "Fail": 1
   },
   "inputs": [
     {
@@ -233,9 +233,17 @@
     {
       "path": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T170557381426Z-cts28-memory-fence/remote/cts/results.json",
       "sha256": "53b5b3b8450f32bce83a13c8a0ae2bef0c7376136b1b677b78b30f8406ac047b"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T171528975303Z-cts28-native-emrt/remote/cts/results.json",
+      "sha256": "8a53ac98f4bf63343180e12247c65e10007c684a15aa4e0dbe5011b3707040e0"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T171715769259Z-cts28-emrt-sample-id/remote/cts/results.json",
+      "sha256": "80fda2798a9235afc22ac65ea1d8d141ec68b0c9d87b030cfff636f2b02da981"
     }
   ],
   "cases_sha256": "22dbfe086b845a35ac2e396cf0c4088589443cb566ffd50ad3a4512e3cc57339",
-  "resolved_failures": 75,
+  "resolved_failures": 78,
   "limitation": "Cumulative evidence across builds and attempts; not an uninterrupted same-build run."
 }

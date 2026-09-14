@@ -164,7 +164,7 @@ hk_agx3_g17p_rt0_tile_layout_supported(struct agx_tilebuffer_layout *tib)
          continue;
       /* BG/EOT compact active bindings while preserving these tile offsets. */
       if (tib->spilled[rt])
-         return false;
+         continue;
       const enum pipe_format physical = agx_tilebuffer_physical_format(tib, rt);
       const unsigned alignment = util_format_get_blocksize(physical);
       unsigned bytes = alignment;

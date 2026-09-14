@@ -102,6 +102,34 @@ map_fs_part_uniform(nir_intrinsic_instr *intr)
    }
 }
 
+/* Native eMRT entries use the same descriptor pair and heap-index sideband
+ * as Vulkan storage descriptors. The epilog owns this separate table. */
+static bool
+lower_native_emrt_handle(nir_builder *b, nir_intrinsic_instr *intr, void *data)
+{
+   if (intr->intrinsic != nir_intrinsic_load_texture_handle_agx)
+      return false;
+   b->cursor = nir_before_instr(&intr->instr);
+   nir_def *index = intr->src[0].ssa;
+   nir_def *rt = nir_ushr_imm(b, index, 1);
+   nir_def *offset = nir_iadd(b, nir_imul_imm(b, rt, AGX_G17P_EMRT_DESCRIPTOR_SIZE),
+                              nir_ishl_imm(b, nir_iand_imm(b, index, 1), 5));
+   nir_def_replace(&intr->def, nir_bindless_image_agx(b, offset, .desc_set = 0));
+   return true;
+}
+
+static bool
+lower_native_emrt_root(nir_builder *b, nir_intrinsic_instr *intr, void *data)
+{
+   if (intr->intrinsic != nir_intrinsic_load_descriptor_set_agx)
+      return false;
+   b->cursor = nir_before_instr(&intr->instr);
+   assert(nir_intrinsic_desc_set(intr) == 0);
+   nir_def_replace(&intr->def,
+                   nir_load_preamble(b, 1, 64, .base = AGX_ABI_FUNI_EMRT_HEAP));
+   return true;
+}
+
 static bool
 lower_non_monolithic_uniforms(nir_builder *b, nir_intrinsic_instr *intr,
                               void *data)
@@ -630,7 +658,13 @@ agx_nir_fs_epilog(nir_builder *b, const void *key_)
    NIR_PASS(_, b->shader, agx_nir_lower_tilebuffer, &tib, colormasks, &rt_spill,
             write_samples, &force_translucent, key->preserve_zero_mask,
             key->lower_srgb);
-   NIR_PASS(_, b->shader, agx_nir_lower_texture);
+   const bool native_spills = key->native_spills && agx_tilebuffer_spills(&tib);
+   if (native_spills) {
+      NIR_PASS(_, b->shader, nir_shader_intrinsics_pass, lower_native_emrt_handle,
+               nir_metadata_control_flow, NULL);
+   }
+   NIR_PASS(_, b->shader, agx_nir_lower_texture_for_generation,
+            native_spills ? 9 : 0);
    NIR_PASS(_, b->shader, agx_nir_lower_multisampled_image_store);
 
    /* If the API shader runs once per sample, then the epilog runs once per
@@ -661,6 +695,14 @@ agx_nir_fs_epilog(nir_builder *b, const void *key_)
       nir_export_agx(b, sample_id, .base = AGX_ABI_FIN_SAMPLE_MASK);
    } else {
       NIR_PASS(_, b->shader, agx_nir_lower_monolithic_msaa, key->nr_samples);
+   }
+
+   if (native_spills) {
+      NIR_PASS(_, b->shader, nir_opt_constant_folding);
+      NIR_PASS(_, b->shader, agx_nir_lower_g17p_indexed_samplers);
+      NIR_PASS(_, b->shader, agx_nir_lower_g17p_bindless_storage);
+      NIR_PASS(_, b->shader, nir_shader_intrinsics_pass, lower_native_emrt_root,
+               nir_metadata_control_flow, NULL);
    }
 
    /* Finally, lower uniforms according to our ABI */

@@ -717,6 +717,23 @@ hk_image_view_init(struct hk_device *dev, struct hk_image_view *view,
          pack_pbe(dev, view, p, HK_DESC_USAGE_BG_EOT, &view->planes[p].eot);
       view->planes[p].emrt_pbe_valid = pack_pbe(
          dev, view, p, HK_DESC_USAGE_EMRT, &view->planes[p].emrt_pbe);
+      if (agx_native_graphics(&dev->dev) &&
+          (view->vk.usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) &&
+          view->planes[p].emrt_pbe_valid) {
+         view->planes[p].emrt_software_valid = pack_pbe(
+            dev, view, p, HK_DESC_USAGE_STORAGE_SOFTWARE,
+            &view->planes[p].emrt_software);
+         VkResult result = hk_descriptor_table_add(
+            dev, &dev->sampled_images, &view->planes[p].emrt_texture, 32,
+            &view->planes[p].emrt_read_heap_index);
+         if (result != VK_SUCCESS)
+            return result;
+         result = hk_descriptor_table_add(
+            dev, &dev->sampled_images, &view->planes[p].emrt_pbe, 32,
+            &view->planes[p].emrt_write_heap_index);
+         if (result != VK_SUCCESS)
+            return result;
+      }
       view->planes[p].layered_eot_pbe_valid =
          pack_pbe(dev, view, p, HK_DESC_USAGE_LAYERED_BG_EOT,
                   &view->planes[p].layered_eot);
@@ -737,6 +754,12 @@ hk_DestroyImageView(VkDevice _device, VkImageView imageView,
 
    if (agx_native_graphics(&dev->dev)) {
       for (unsigned p = 0; p < view->plane_count; ++p) {
+         if (view->planes[p].emrt_read_heap_index)
+            hk_descriptor_table_remove(dev, &dev->sampled_images,
+                                        view->planes[p].emrt_read_heap_index);
+         if (view->planes[p].emrt_write_heap_index)
+            hk_descriptor_table_remove(dev, &dev->sampled_images,
+                                        view->planes[p].emrt_write_heap_index);
          if (view->planes[p].storage_read_heap_index)
             hk_descriptor_table_remove(dev, &dev->sampled_images,
                                         view->planes[p].storage_read_heap_index);

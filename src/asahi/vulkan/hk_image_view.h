@@ -27,6 +27,9 @@ struct hk_image_view {
       uint32_t input_heap_index;
       uint32_t storage_heap_index;
       uint32_t storage_read_heap_index;
+      uint32_t emrt_read_heap_index, emrt_write_heap_index;
+      struct hk_native_pbe_descriptor emrt_software;
+      bool emrt_software_valid;
 
       struct hk_native_texture_descriptor ia, sampled, ro_storage, background,
          layered_background, emrt_texture;

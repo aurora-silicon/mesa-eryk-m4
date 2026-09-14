@@ -865,6 +865,31 @@ hk_cmd_buffer_upload_root(struct hk_cmd_buffer *cmd,
    return root_ptr.gpu;
 }
 
+static uint64_t
+hk_upload_native_spilled_rt_descs(struct hk_cmd_buffer *cmd)
+{
+   const struct hk_rendering_state *render = &cmd->state.gfx.render;
+   uint8_t entries[HK_MAX_RTS][AGX_G17P_EMRT_DESCRIPTOR_SIZE] = {0};
+   for (unsigned rt = 0; rt < render->color_att_count; ++rt) {
+      if (!render->tilebuffer.spilled[rt])
+         continue;
+      const struct hk_image_view *view = render->color_att[rt].iview;
+      if (!view || !view->planes[0].emrt_software_valid ||
+          !view->planes[0].emrt_read_heap_index ||
+          !view->planes[0].emrt_write_heap_index) {
+         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FORMAT_NOT_SUPPORTED);
+         return 0;
+      }
+      memcpy(entries[rt], &view->planes[0].emrt_texture, 32);
+      memcpy(entries[rt] + 32, &view->planes[0].emrt_software, 32);
+      memcpy(entries[rt] + AGX_G17P_STORAGE_HEAP_INDEX_OFFSET,
+             &view->planes[0].emrt_write_heap_index, 4);
+      memcpy(entries[rt] + AGX_G17P_SAMPLED_HEAP_INDEX_OFFSET,
+             &view->planes[0].emrt_read_heap_index, 4);
+   }
+   return hk_pool_upload(cmd, entries, render->color_att_count * sizeof(entries[0]), 32);
+}
+
 void
 hk_usc_upload_spilled_rt_descs(struct agx_usc_builder *b,
                                struct hk_cmd_buffer *cmd)
@@ -1067,6 +1092,8 @@ hk_g17p_basic_graphics_program_supported(struct hk_cmd_buffer *cmd,
                                          struct hk_shader *s,
                                          struct hk_linked_shader *linked)
 {
+   const bool native_spills = s->info.stage == MESA_SHADER_FRAGMENT &&
+      agx_tilebuffer_spills(&cmd->state.gfx.render.tilebuffer);
    /* Main-shader TPS storage is declared by the native SPECTPR builder.
     * Atomics with returned values use it even without register spilling.
     * The legacy preamble/scratch-helper ABI remains unsupported here. */
@@ -1078,7 +1105,7 @@ hk_g17p_basic_graphics_program_supported(struct hk_cmd_buffer *cmd,
         !(s->info.agx3_indexed_sampler_valid &&
           s->b.info.sampler_state_count == 1)) ||
        s->b.info.uses_sampler_heap ||
-       (linked->b.uses_txf && !s->info.agx3_indexed_sampler_valid) ||
+       (linked->b.uses_txf && !s->info.agx3_indexed_sampler_valid && !native_spills) ||
        s->data_size != 0 || s->info.set_count > HK_AGX3_G17P_MAX_ROOT_SETS) {
       mesa_loge("HAL200 resources: preamble=%u preamble-scratch=%u tex-state=%u "
                 "sampler-state=%u heap=%u txf=%u indexed=%u data=%zu sets=%u",
@@ -1198,6 +1225,16 @@ hk_g17p_graphics_uniform_ranges(
          };
       }
    } else if (s->info.stage == MESA_SHADER_FRAGMENT) {
+      if (agx_tilebuffer_spills(&cmd->state.gfx.render.tilebuffer)) {
+         const uint64_t table = hk_upload_native_spilled_rt_descs(cmd);
+         const uint64_t pointer = table ? hk_pool_upload(cmd, &table, 8, 8) : 0;
+         if (!pointer)
+            return false;
+         ranges[count++] = (struct agx3_ioto_uniform_range){
+            .start_halfs = AGX_ABI_FUNI_NATIVE_PREFIX + AGX_ABI_FUNI_EMRT_HEAP,
+            .size_halfs = 4, .address = pointer,
+         };
+      }
       if (cmd->state.gfx.uses_blend_constant) {
          if (!root_ptr)
             return false;
@@ -1271,7 +1308,13 @@ hk_g17p_graphics_uniform_ranges(
       };
    }
 
-   if (s->info.agx3_indexed_sampler_valid) {
+   const bool native_spills = s->info.stage == MESA_SHADER_FRAGMENT &&
+      agx_tilebuffer_spills(&cmd->state.gfx.render.tilebuffer);
+   if (native_spills && s->info.agx3_combined_sampler_valid) {
+      vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+      return false;
+   }
+   if (s->info.agx3_indexed_sampler_valid || native_spills) {
       if ((s->b.info.stage != MESA_SHADER_FRAGMENT &&
            s->b.info.stage != MESA_SHADER_VERTEX &&
            s->b.info.stage != MESA_SHADER_COMPUTE) ||
@@ -1283,7 +1326,8 @@ hk_g17p_graphics_uniform_ranges(
          0,
          0xffff, /* Native image coordinate routing reads the clamp at u12. */
       };
-      const unsigned pointer_halfs = s->info.agx3_indexed_images_valid ? 16 : 8;
+      const unsigned pointer_halfs =
+         (s->info.agx3_indexed_images_valid || native_spills) ? 16 : 8;
       const uint64_t pointers_va = hk_pool_upload(cmd, pointers, pointer_halfs * 2, 8);
       if (!pointers_va)
          return false;

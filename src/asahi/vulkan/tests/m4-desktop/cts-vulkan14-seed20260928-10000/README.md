@@ -565,3 +565,34 @@ optional NotSupported**, **75 original failures resolved**, including the
 separately documented CTS corrections. Cumulative evidence across builds;
 no broad regression rerun or claim that the intermittent concurrent fault's
 root cause has been established.
+
+## Native render-target spills
+
+Wire Asahi's eMRT image-access epilogs to native descriptor heaps. Each
+attachment retains a Gen9 texture descriptor, the software PBE metadata used
+for multisample texel addressing, and native read/write heap indices. The
+fragment ABI binds this table separately from application descriptors.
+Spilled attachments have no resident tile byte range; keep the strict 32 KiB
+capacity, 2048-sample limit and resident-range overlap checks. Native BG/EOT
+skip spilled targets; their clears use the existing attachment-clear draw
+path, with render-area/layer bounds retained. Resident targets keep fast clears.
+
+`20260914T171528975303Z-cts28-native-emrt` passes the original layered
+R32G32_SINT resolve. The new mixed-format spill epilog initially exposed a
+sample-ID lifetime bug: native descriptor lowering runs DCE before the final
+sample-ID export exists. Move this lowering after the export.
+`20260914T171715769259Z-cts28-emrt-sample-id` then passes the original
+RGBA16_UNORM mip-level resolve and four RGBA32_FLOAT attachment resolve.
+Library SHA256 `480fcae46bbee0058932a00f51cfb9996ca653013cbb4bf7ee3daad77514b447`.
+The mixed-format case still failed launch validation (epilog texture reads
+were checked only against the main shader's resource flags); that check now
+also accounts for the bound spill table, pending hardware validation.
+
+Watchdog and thermal guards remained active; the API-error run latched
+recovery after saving evidence. The host Ioto checks pass (7005 checks), with
+stale single-sample-only expectations updated for previously qualified 2x
+formats. Combined-sampler main programs plus spills remain rejected because
+they require a different prefix table; no incompatible bindings are merged.
+Ledger21: **4,657 Pass / 1 Fail / 5,342 optional NotSupported**, **78 original
+failures resolved**, including documented CTS corrections. Cumulative evidence
+across builds, not a full regression or conformance claim.

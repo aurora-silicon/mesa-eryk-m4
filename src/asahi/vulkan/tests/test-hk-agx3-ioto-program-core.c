@@ -1863,7 +1863,7 @@ test_g17p_single_layer_rt0_layout(void)
    CHECK(agx_tilebuffer_physical_format(&tib, 0) == PIPE_FORMAT_R8_UINT);
    CHECK(agx_tilebuffer_offset_B(&tib, 0) == 0);
    tib = agx_build_tilebuffer_layout(r8_uint, 1, 2, false);
-   CHECK(!hk_agx3_g17p_rt0_tile_layout_supported(&tib));
+   CHECK(hk_agx3_g17p_rt0_tile_layout_supported(&tib));
 
    enum pipe_format r8_sint[AGX_MAX_RENDER_TARGETS] = {
       PIPE_FORMAT_R8_SINT,
@@ -1874,7 +1874,7 @@ test_g17p_single_layer_rt0_layout(void)
    CHECK(agx_tilebuffer_physical_format(&tib, 0) == PIPE_FORMAT_R8_UINT);
    CHECK(agx_tilebuffer_offset_B(&tib, 0) == 0);
    tib = agx_build_tilebuffer_layout(r8_sint, 1, 2, false);
-   CHECK(!hk_agx3_g17p_rt0_tile_layout_supported(&tib));
+   CHECK(hk_agx3_g17p_rt0_tile_layout_supported(&tib));
 
    enum pipe_format rg16_sint[AGX_MAX_RENDER_TARGETS] = {
       PIPE_FORMAT_R16G16_SINT,
@@ -1893,7 +1893,7 @@ test_g17p_single_layer_rt0_layout(void)
    CHECK(agx_tilebuffer_physical_format(&tib, 0) == PIPE_FORMAT_R16_UINT);
    CHECK(agx_tilebuffer_offset_B(&tib, 0) == 0);
    tib = agx_build_tilebuffer_layout(rgba16_uint, 1, 2, false);
-   CHECK(!hk_agx3_g17p_rt0_tile_layout_supported(&tib));
+   CHECK(hk_agx3_g17p_rt0_tile_layout_supported(&tib));
 
    enum pipe_format rgba16_sint[AGX_MAX_RENDER_TARGETS] = {
       PIPE_FORMAT_R16G16B16A16_SINT,
@@ -1904,7 +1904,7 @@ test_g17p_single_layer_rt0_layout(void)
    CHECK(agx_tilebuffer_physical_format(&tib, 0) == PIPE_FORMAT_R16_UINT);
    CHECK(agx_tilebuffer_offset_B(&tib, 0) == 0);
    tib = agx_build_tilebuffer_layout(rgba16_sint, 1, 2, false);
-   CHECK(!hk_agx3_g17p_rt0_tile_layout_supported(&tib));
+   CHECK(hk_agx3_g17p_rt0_tile_layout_supported(&tib));
 
    enum pipe_format rgba8_pair[AGX_MAX_RENDER_TARGETS] = {
       PIPE_FORMAT_R8G8B8A8_UNORM, PIPE_FORMAT_R8G8B8A8_UNORM,
@@ -1929,9 +1929,9 @@ test_g17p_single_layer_rt0_layout(void)
    CHECK(tib.nr_samples == 1 && tib.sample_size_B == 8);
    CHECK(agx_tilebuffer_offset_B(&tib, 0) == 0);
 
-   /* The exact scalar float evidence is single-sample. */
+   /* Scalar float attachments also use the qualified 2x sample layout. */
    tib = agx_build_tilebuffer_layout(r32_float, 1, 2, false);
-   CHECK(!hk_agx3_g17p_rt0_tile_layout_supported(&tib));
+   CHECK(hk_agx3_g17p_rt0_tile_layout_supported(&tib));
 
    enum pipe_format rg32_float[AGX_MAX_RENDER_TARGETS] = {
       PIPE_FORMAT_R32G32_FLOAT,
@@ -1942,9 +1942,9 @@ test_g17p_single_layer_rt0_layout(void)
    CHECK(agx_tilebuffer_physical_format(&tib, 0) == PIPE_FORMAT_R32_UINT);
    CHECK(agx_tilebuffer_offset_B(&tib, 0) == 0);
 
-   /* The exact two-word float evidence is single-sample and format-exact. */
+   /* Two-word float attachments also use the qualified 2x sample layout. */
    tib = agx_build_tilebuffer_layout(rg32_float, 1, 2, false);
-   CHECK(!hk_agx3_g17p_rt0_tile_layout_supported(&tib));
+   CHECK(hk_agx3_g17p_rt0_tile_layout_supported(&tib));
    enum pipe_format r32_sint[AGX_MAX_RENDER_TARGETS] = {
       PIPE_FORMAT_R32_SINT,
    };
@@ -1953,7 +1953,7 @@ test_g17p_single_layer_rt0_layout(void)
    CHECK(tib.nr_samples == 1 && tib.sample_size_B == 8);
    CHECK(agx_tilebuffer_physical_format(&tib, 0) == PIPE_FORMAT_R32_UINT);
    tib = agx_build_tilebuffer_layout(r32_sint, 1, 2, false);
-   CHECK(!hk_agx3_g17p_rt0_tile_layout_supported(&tib));
+   CHECK(hk_agx3_g17p_rt0_tile_layout_supported(&tib));
    enum pipe_format rg32_sint[AGX_MAX_RENDER_TARGETS] = {
       PIPE_FORMAT_R32G32_SINT,
    };
@@ -1963,7 +1963,7 @@ test_g17p_single_layer_rt0_layout(void)
    CHECK(agx_tilebuffer_physical_format(&tib, 0) == PIPE_FORMAT_R32_UINT);
    CHECK(agx_tilebuffer_offset_B(&tib, 0) == 0);
    tib = agx_build_tilebuffer_layout(rg32_sint, 1, 2, false);
-   CHECK(!hk_agx3_g17p_rt0_tile_layout_supported(&tib));
+   CHECK(hk_agx3_g17p_rt0_tile_layout_supported(&tib));
 
    enum pipe_format rg32_uint[AGX_MAX_RENDER_TARGETS] = {
       PIPE_FORMAT_R32G32_UINT,
@@ -1974,7 +1974,7 @@ test_g17p_single_layer_rt0_layout(void)
    CHECK(agx_tilebuffer_physical_format(&tib, 0) == PIPE_FORMAT_R32_UINT);
    CHECK(agx_tilebuffer_offset_B(&tib, 0) == 0);
    tib = agx_build_tilebuffer_layout(rg32_uint, 1, 2, false);
-   CHECK(!hk_agx3_g17p_rt0_tile_layout_supported(&tib));
+   CHECK(hk_agx3_g17p_rt0_tile_layout_supported(&tib));
    enum pipe_format rg16_snorm[AGX_MAX_RENDER_TARGETS] = {
       PIPE_FORMAT_R16G16_SNORM,
    };
@@ -1996,7 +1996,7 @@ test_g17p_single_layer_rt0_layout(void)
    tib.layered = true;
    CHECK(hk_agx3_g17p_rt0_tile_layout_supported(&tib));
    tib.nr_samples = 2;
-   CHECK(!hk_agx3_g17p_rt0_tile_layout_supported(&tib));
+   CHECK(hk_agx3_g17p_rt0_tile_layout_supported(&tib));
    tib.nr_samples = 1;
    tib.logical_format[1] = PIPE_FORMAT_R8_UNORM;
    CHECK(!hk_agx3_g17p_rt0_tile_layout_supported(&tib));
@@ -2166,7 +2166,7 @@ test_mixed_target_layout_bounds(void)
       agx_build_tilebuffer_layout(formats, 5, 1, false);
    CHECK(tib.sample_size_B == 24);
    CHECK(hk_agx3_g17p_rt0_tile_layout_supported(&tib));
-   /* Overlap, undersized allocation and an unhandled spill are invalid. */
+   /* Tile-resident ranges must not overlap or exceed their allocation. */
    struct agx_tilebuffer_layout invalid = tib;
    invalid._offset_B[0] = invalid._offset_B[1];
    CHECK(!hk_agx3_g17p_rt0_tile_layout_supported(&invalid));
@@ -2175,7 +2175,9 @@ test_mixed_target_layout_bounds(void)
    CHECK(!hk_agx3_g17p_rt0_tile_layout_supported(&invalid));
    invalid = tib;
    invalid.spilled[4] = true;
-   CHECK(!hk_agx3_g17p_rt0_tile_layout_supported(&invalid));
+   invalid._offset_B[4] = invalid._offset_B[0];
+   /* A spilled attachment has no resident byte range to overlap. */
+   CHECK(hk_agx3_g17p_rt0_tile_layout_supported(&invalid));
    /* Inactive logical slots do not consume an auxiliary shader binding. */
    const enum pipe_format sparse[AGX_MAX_RENDER_TARGETS] = {
       PIPE_FORMAT_NONE, PIPE_FORMAT_R16G16B16A16_FLOAT,
