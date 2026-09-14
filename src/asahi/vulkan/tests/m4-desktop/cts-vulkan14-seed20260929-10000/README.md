@@ -84,3 +84,32 @@ representation. The original copy and all five corrected blit comparisons pass
 in 0.810 runner seconds, peak 58.25 C, guard pass. Installed Mesa SHA256
 `b5727b7ff71ce8a07454a8ceb4ff7d0a6430c0e8cafce47d23b4dbfea5b18501`.
 Evidence `20260914T182757124994Z-cts29-scaled-compare-rgb9`.
+
+## Native offsets and release-fence retirement
+
+The remaining array-shadow LOD and projected-gradient offset cases pass with
+native offset operands. Coordinate arithmetic at a single mip could not preserve
+these sampling semantics. Pack array layer, signed offsets and LOD into their
+shared auxiliary word; gradient offsets use bank6 beside the derivative banks.
+Two additional byte-exact fixtures match `offset-grad-array.metal`, target
+Apple applegpu_g16g. Host texture tests: 6,335 checks pass.
+
+The fragment write-after-read memory-model case reproduced a failure in a
+compiler-capture run despite an earlier isolated pass. Register dependency waits
+did not finish a payload read before its release fence when that read's value
+was used later. Device fences now drain issued async slots in the dependency
+planner. Subsequent consumers do not wait twice and new slot generations remain
+tracked. The host slot tests cover this release shape (71 checks pass).
+The saved failing shader recompiles offline; four simultaneous original CTS
+instances pass under the watchdog/thermal guard. See memory-fence-repeat4 summary.
+Installed Mesa SHA256 `07895e395b7ea00fbe99237e51e7caf410ec2c502841c1818a815d6228e6bea1`.
+
+## Explicit chroma midpoint reference
+
+The CTS 4:2:0 explicit midpoint reconstruction passed left-hand weights into a
+helper that expects right-hand weights. Correct even/odd weights to 0.75/0.25
+for XY reconstruction, retaining all intervals and images. This follows the
+Vulkan sampling equations, not a driver-specific reference adjustment:
+https://github.khronos.org/Vulkan-Site/spec/latest/chapters/textures.html#textures-chroma-reconstruction
+The original YCbCr case passes, 0.408 seconds, peak 58.5 C. Lavapipe lacked
+forceable explicit reconstruction for this case, so its skip is not validation.

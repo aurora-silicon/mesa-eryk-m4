@@ -1,0 +1,22 @@
+{
+  "selected": 2,
+  "recorded": 2,
+  "completed": 2,
+  "counts": {
+    "Pass": 2
+  },
+  "classifications": {
+    "unclassified": 2
+  },
+  "elapsed_seconds": 2.9292745019774884,
+  "preparation_seconds": 1.4672797399980482,
+  "runner_seconds": 0.8092299679999542,
+  "jobs": 1,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 40,
+  "cases_sha256": "29011333435b1f76b80caa70c19d7f40b94c0fb8dec41895d79f76440aa3bc04",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T183229148266Z-cts29-native-array-gradient-offsets",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 58.25
+}

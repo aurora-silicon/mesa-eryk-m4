@@ -205,12 +205,14 @@ sample_ok(enum agx_isa_encoding enc, const struct agx3_tex_sample_desc *d)
    if (d->sample_offset > (d->three_d ? 0xfff : 0xff))
       return false;
 
-   /* The register offset bank shares its word with a packed LOD/bias.
-    * Other auxiliary-bank combinations need their own native layouts. */
+   /* The offset bank shares its word with a packed LOD/bias and array
+    * layer. Non-array gradients occupy their separate coordinate banks. */
    if (d->dynamic_offset &&
-       (d->sample_offset || d->array || d->gather || d->query_lod ||
+       (d->sample_offset || d->gather || d->query_lod ||
+        (d->array && d->lod == AGX3_TEX_LOD_GRAD) ||
         (d->lod != AGX3_TEX_LOD_REGISTER &&
-         d->lod != AGX3_TEX_LOD_BIAS_REGISTER)))
+         d->lod != AGX3_TEX_LOD_BIAS_REGISTER &&
+         d->lod != AGX3_TEX_LOD_GRAD)))
       return false;
 
    if (d->retain_helpers && enc != AGX_ISA_ENCODING_AGX3B)

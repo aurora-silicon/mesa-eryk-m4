@@ -57,8 +57,8 @@ g17p_sample_shape(const nir_tex_instr *tex)
       nir_src_is_const(tex->src[offset].src) &&
       nir_src_as_uint(tex->src[offset].src) <= 0xff;
    const bool dynamic_offset = offset >= 0 && !literal_offset &&
-      !cube && !tex->is_array &&
-      (tex->op == nir_texop_txl || tex->op == nir_texop_txb) &&
+      !cube &&
+      (tex->op == nir_texop_txl || tex->op == nir_texop_txb || tex->op == nir_texop_txd) &&
       nir_src_num_components(tex->src[offset].src) == 1 &&
       nir_src_bit_size(tex->src[offset].src) == 32;
    if (tex->is_shadow != (compare >= 0) ||
@@ -504,7 +504,7 @@ agx_nir_lower_g17p_indexed_samplers(nir_shader *shader)
             nir_tex_instr *tex = nir_instr_as_tex(instr);
             b.cursor = nir_before_instr(instr);
             const int offset_index = nir_tex_instr_src_index(tex, nir_tex_src_backend2);
-            if (offset_index >= 0 && !tex->is_array &&
+            if (offset_index >= 0 &&
                 (tex->sampler_dim == GLSL_SAMPLER_DIM_3D || tex->is_shadow ||
                  !nir_src_is_const(tex->src[offset_index].src))) {
                /* Native offset bank6 has X at bit12, Y at bit28, Z at bit0.

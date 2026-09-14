@@ -50,6 +50,7 @@ extern "C" {
 
 struct agx3_slot_instr {
    bool is_async;   /* produces a scoreboard-tracked result */
+   bool drain;      /* retire preceding async operations before a fence */
    uint8_t preferred_slot; /* 0=round-robin, otherwise required slot */
    uint8_t nr_dsts; /* dependency tokens this instruction writes */
    uint8_t nr_srcs; /* dependency tokens this instruction reads */

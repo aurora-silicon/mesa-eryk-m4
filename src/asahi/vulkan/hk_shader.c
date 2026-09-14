@@ -1318,11 +1318,10 @@ hk_lower_native_texture_offset(const nir_instr *instr, UNUSED const void *data)
    const int offset = nir_tex_instr_src_index(tex, nir_tex_src_offset);
    if (offset < 0)
       return false;
-   return tex->op == nir_texop_txf || tex->op == nir_texop_txd ||
+   return tex->op == nir_texop_txf ||
+          (tex->is_array && tex->op == nir_texop_txd) ||
           (tex->sampler_dim == GLSL_SAMPLER_DIM_3D &&
            !nir_src_is_const(tex->src[offset].src)) ||
-          (tex->is_array && (tex->op == nir_texop_txb ||
-                            !nir_src_is_const(tex->src[offset].src))) ||
           (tex->op == nir_texop_tg4 &&
            (tex->is_shadow || !nir_src_is_const(tex->src[offset].src)));
 }

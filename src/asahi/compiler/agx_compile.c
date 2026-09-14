@@ -4398,13 +4398,22 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
 
    if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
        !agx_is_null(packed_offset) && packed_offset.type != AGX_INDEX_IMMEDIATE &&
-       !instr->is_array &&
        (instr->op == nir_texop_txl || instr->op == nir_texop_txb)) {
       /* Native G16G PACK_SMPIR inserts the F16 LOD as signed fixed-point
        * bits 16..27, preserving the three offset nibbles in the base word. */
       agx_index level = lod;
       if (level.type == AGX_INDEX_IMMEDIATE)
          level = agx_mov_imm(b, 16, _mesa_float_to_half(agx_minifloat_decode(level.value)));
+      if (instr->is_array) {
+         /* The auxiliary word holds the layer in bits 0..11, offsets in
+          * 12..15/28..31 and LOD in 16..27. Keep all temporaries in SSA. */
+         agx_index layer_word = agx_emit_extract(b, coords, 2);
+         agx_index layer_half = agx_temp(b->shader, AGX_SIZE_16);
+         agx_subdivide_to(b, layer_half, layer_word, 0);
+         agx_index layer = agx_temp(b->shader, AGX_SIZE_32);
+         agx_pack_layer_agx3_to(b, layer, layer_half);
+         packed_offset = agx_or(b, packed_offset, layer);
+      }
       agx_index auxiliary = agx_temp(b->shader, AGX_SIZE_32);
       agx_pack_lod_offset_agx3_to(b, auxiliary, level, packed_offset);
       packed_offset = auxiliary;

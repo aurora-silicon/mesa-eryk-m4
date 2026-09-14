@@ -1,0 +1,22 @@
+{
+  "selected": 1,
+  "recorded": 1,
+  "completed": 1,
+  "counts": {
+    "Fail": 1
+  },
+  "classifications": {
+    "unclassified": 1
+  },
+  "elapsed_seconds": 5.246260044979863,
+  "preparation_seconds": 1.4690462370053865,
+  "runner_seconds": 3.0172157760000573,
+  "jobs": 1,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 35,
+  "cases_sha256": "71e0c24256289af226090eed005d2bb549a3781db0af9556877893a9c2131cfe",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T183602396354Z-cts29-memory-compiler-capture",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 58.25
+}

@@ -1085,8 +1085,8 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
    const bool sample_offset = !shadow && !cube && I->offset &&
       I->src[5].type == AGX_INDEX_IMMEDIATE &&
       I->src[5].value <= (three_d ? 0xfff : 0xff);
-   const bool dynamic_offset = !cube && !array && I->offset &&
-      (explicit_lod || bias) && agx3_tex_plain_reg(I->src[5]) &&
+   const bool dynamic_offset = !cube && I->offset &&
+      (explicit_lod || bias || gradient) && agx3_tex_plain_reg(I->src[5]) &&
       I->src[5].size == AGX_SIZE_32 &&
       agx_channels(I->src[5]) == (shadow ? 2 : 1);
    const bool valid_compare = shadow ?
@@ -1167,7 +1167,8 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
    uint8_t bytes[AGX3_TEX_MAX_LENGTH];
    uint8_t len = 0;
 
-   const bool array_lod = (array || cube) && (explicit_lod || bias) && !immediate_lod;
+   const bool array_lod = (array || cube) && (explicit_lod || bias) &&
+                          (!immediate_lod || dynamic_offset);
    const bool cube_array_lod = cube && array && array_lod;
    if (dynamic_offset) {
       if (!agx3_tex_stage_copy_hints(enc, 6, I->src[5].value + (shadow ? 2 : 0),
@@ -1272,7 +1273,8 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
       .sampler_value = immediate ? 0 : I->src[4].value,
       .texture_kill = !immediate && I->src[3].kill,
       .sampler_kill = !immediate && I->src[4].kill,
-      .lod = dynamic_offset ? (bias ? AGX3_TEX_LOD_BIAS_REGISTER : AGX3_TEX_LOD_REGISTER) :
+      .lod = gradient ? AGX3_TEX_LOD_GRAD :
+             dynamic_offset ? (bias ? AGX3_TEX_LOD_BIAS_REGISTER : AGX3_TEX_LOD_REGISTER) :
              gradient ? AGX3_TEX_LOD_GRAD : bias ? AGX3_TEX_LOD_BIAS_REGISTER :
              immediate_lod ? AGX3_TEX_LOD_LEVEL :
              explicit_lod ? AGX3_TEX_LOD_REGISTER : AGX3_TEX_LOD_AUTO,
@@ -4603,6 +4605,12 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
          if (I->op == AGX_OPCODE_EXPORT)
             continue;
          e->is_async = agx3_is_async(I);
+         /* A release fence must also finish reads whose values are consumed
+          * later. Register dependencies alone would let the release atomic
+          * overtake such a read and violate write-after-read ordering. */
+         e->drain = I->op == AGX_OPCODE_SCOPED_BARRIER_AGX3 &&
+            (I->imm == AGX3_BARRIER_SCOPE_DEVICE ||
+             I->imm == AGX3_BARRIER_SCOPE_DEVICE_FENCE);
          /* IMGWCI completes on the slot used by its staging COPYs. Retain
           * that dependency until a texture fence or overlapping publisher
           * consumes it. A barrier without the completion wait reads stale

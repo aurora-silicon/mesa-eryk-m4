@@ -1207,6 +1207,10 @@ test_m4_shadow_witnesses(void)
     * instructions cover fixed, uniform and varying heap indices, 2D/array,
     * and implicit/level-zero comparison. No AGX3C hardware claim. */
    const struct {struct agx3_tex_sample_desc desc; uint8_t bytes[22]; uint8_t size;} cases[] = {
+      /* Native offset-grad-array.metal: array shadow LOD and 2D gradients
+       * consume register offsets from their own coordinate bank + 6. */
+      { {.dest=8, .coord=16, .width=AGX3_TEX_W32, .mask=1, .slot=1, .wait_mask=1, .coord_kill=true, .shadow=true, .array=true, .lod=AGX3_TEX_LOD_REGISTER, .dynamic_offset=true}, {0x25,0x80,0x0c,0x21,0x90,0x00,0x68,0x01,0x01,0x00,0x00,0x00,0x01,0x00}, 14 },
+      { {.dest=0, .coord=0, .width=AGX3_TEX_W32, .mask=15, .slot=1, .wait_mask=2, .coord_kill=true, .final=true, .texture=1, .lod=AGX3_TEX_LOD_GRAD, .dynamic_offset=true}, {0x05,0x80,0x0c,0xb8,0x30,0x01,0x44,0x01,0x80,0x00,0x10,0x00,0x01,0x00}, 14 },
       /* Offline Apple compiler, applegpu_g16g, shadow.metal and
        * dynamic.metal: register LOD, immediate and register bias offsets. */
       { {.dest=2, .coord=0, .width=AGX3_TEX_W32, .mask=1, .slot=2, .wait_mask=1, .shadow=true, .lod=AGX3_TEX_LOD_REGISTER, .retain_helpers=true}, {0x0d,0x80,0x0c,0x00,0x90,0x24,0x20,0x01,0x00,0x00,0x00,0x00,0x01,0x00}, 14 },

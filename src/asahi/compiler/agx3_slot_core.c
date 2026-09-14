@@ -25,6 +25,7 @@ agx3_slot_assign(const struct agx3_slot_instr *instrs, unsigned n,
    bool slot_waited[9] = {false};
 
    unsigned next = 0; /* round-robin cursor into 0..nslots-1 */
+   uint16_t pending = 0;
 
    for (unsigned i = 0; i < n; ++i) {
       const struct agx3_slot_instr *I = &instrs[i];
@@ -34,6 +35,12 @@ agx3_slot_assign(const struct agx3_slot_instr *instrs, unsigned n,
          return false;
 
       uint16_t wait_mask = 0;
+      if (I->drain) {
+         wait_mask = pending;
+         for (unsigned slot = 1; slot <= nslots; ++slot)
+            if (pending & (1u << (slot - 1)))
+               slot_waited[slot] = true;
+      }
       for (unsigned s = 0; s < I->nr_srcs; ++s) {
          const uint16_t r = I->src[s];
          if (r >= AGX3_SLOT_NUM_TOKENS)
@@ -69,6 +76,7 @@ agx3_slot_assign(const struct agx3_slot_instr *instrs, unsigned n,
       }
 
       out[i].wait_mask = wait_mask;
+      pending &= ~wait_mask;
 
       if (I->is_async) {
          const uint8_t slot =
@@ -88,6 +96,7 @@ agx3_slot_assign(const struct agx3_slot_instr *instrs, unsigned n,
             }
          }
          slot_waited[slot] = false; /* freshly outstanding */
+         pending |= 1u << (slot - 1);
          for (unsigned d = 0; d < I->nr_dsts; ++d) {
             if (I->dst[d] >= AGX3_SLOT_NUM_TOKENS)
                return false;
