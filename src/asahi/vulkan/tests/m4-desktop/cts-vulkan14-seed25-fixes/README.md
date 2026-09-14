@@ -407,3 +407,26 @@ or modified CTS reference is used. The original cube A4R4G4B4 attachment
 clear now Passes; evidence and library identity are in query-layer-evidence.
 Running total: **83/91 failures resolved** (71 Mesa fixes, 12 CTS corrections),
 8 remaining. No broad regression campaign.
+
+## Layered multisample color storage and fragment layer IDs
+
+Add native type8 multisample-array EOT stores and PBE descriptors. The
+independently compiled 84-byte G16G EOT uses the existing array coordinate
+packing with IMGWBLK multisample mode. The pinned native descriptor
+constructor confirms dimension8, normal layer fields and sample bits56:57;
+a byte-exact codec check passes. Fix the offline constructor helper's old
+rotation/sample argument confusion (x4 is rotation; entry sp+64 bits2:3
+select samples). Keep unsupported MRT layer combinations bounded.
+
+Fragment layer IDs must use flat varying coefficients, as in the native
+Metal fragment witness (LDCFR), not the auxiliary tile-grid Z register.
+Export an ordinary layer varying alongside the packed rasterizer system
+value, and lower native fragment load_layer_id through that coefficient.
+The earlier descriptor-only experiment produced wrong pixels; it is not a
+pass. With the fragment-layer fix the original two-sample R16_UNORM layered
+attachment clear now Passes. Peak 56.75 C, no fault/reboot. Tested library:
+`aefa79fd6cad10a65bc93390d24a3ca2bf55924b846267013e7cae5315d02ed1`.
+Final build also passed after adding the norm16 semantic-key check and
+comment/format cleanup. The tested binary includes opt-in VBO diagnostics.
+Running total: **84/91 failures resolved** (72 Mesa fixes, 12 CTS corrections),
+7 remaining. No broad regression campaign.

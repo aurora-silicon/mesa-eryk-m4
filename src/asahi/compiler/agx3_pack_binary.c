@@ -3616,9 +3616,10 @@ agx3_g17p_rt0_eot_kind(const agx_context *ctx, enum agx_isa_encoding enc,
 /* Native layered color EOT: independently compiled type3 builtin and the
  * working J713 25G83 color capture055829, resource1+0x2700. Layer Z comes
  * from the tile-grid SR and is packed before the imageblock byte offset.
- * Recognize the semantic compiler wrapper; never discard a live operation. */
+ * Type8 multisample-array builtins retain this header and layer packing,
+ * with IMGWBLK field30=2. Recognize only the semantic compiler wrapper. */
 static bool
-agx3_native_layered_eot(const agx_context *ctx, uint8_t *selector)
+agx3_native_layered_eot(const agx_context *ctx, uint8_t *selector, bool *ms)
 {
    if (ctx->key->dev.encoding != AGX_ISA_ENCODING_AGX3B ||
        ctx->stage != MESA_SHADER_COMPUTE || ctx->is_preamble || ctx->key->no_stop)
@@ -3657,7 +3658,9 @@ agx3_native_layered_eot(const agx_context *ctx, uint8_t *selector)
          continue;
       }
       if (I->op != AGX_OPCODE_BLOCK_IMAGE_STORE || stores++ || I->nr_dests ||
-          I->nr_srcs != 4 || I->dim != AGX_DIM_2D_ARRAY || !I->explicit_coords ||
+          I->nr_srcs != 4 ||
+          (I->dim != AGX_DIM_2D_ARRAY && I->dim != AGX_DIM_2D_MS_ARRAY) ||
+          !I->explicit_coords ||
           !agx3_tex_imm(I->src[0],0) || !agx3_tex_imm(I->src[1],0) ||
           !agx3_tex_plain_reg(I->src[2]) || I->src[2].size != AGX_SIZE_32 ||
           agx_channels(I->src[2]) != 1 || I->src[2].value >= AGX_NUM_REGS ||
@@ -3667,7 +3670,14 @@ agx3_native_layered_eot(const agx_context *ctx, uint8_t *selector)
           origin[I->src[3].value] != 1 || origin[I->src[3].value+2] != 2 ||
           origin[I->src[3].value+4] != 3)
          return false;
+      *ms = I->dim == AGX_DIM_2D_MS_ARRAY;
       switch (I->format) {
+      case AGX_FORMAT_U16NORM:
+      case AGX_FORMAT_S16NORM:
+         if (!ctx->key->g17p_rt0_eot_norm16_selector_95)
+            return false;
+         *selector = 4;
+         break;
       case AGX_FORMAT_F16: *selector = 1; break;
       case AGX_FORMAT_U8NORM: case AGX_FORMAT_RG11B10F: *selector = 3; break;
       case AGX_FORMAT_I32:
@@ -3687,7 +3697,7 @@ agx3_native_layered_eot(const agx_context *ctx, uint8_t *selector)
 
 static bool
 agx3_emit_native_layered_eot(struct util_dynarray *emission,
-                           enum agx_isa_encoding enc, uint8_t selector)
+                           enum agx_isa_encoding enc, uint8_t selector, bool ms)
 {
    static const uint8_t header[] = {
       0x1c,0x9c,0x10,0x06,0x34,0xa8,0x10,0x06,
@@ -3708,7 +3718,7 @@ agx3_emit_native_layered_eot(struct util_dynarray *emission,
    };
    const struct agx3_field_kv store[] = {
       {9,5},{5,0},{12,1},{13,1},{17,1},{32,1},{73,1},{31,2},
-      {29,selector},{30,1},{45,3},{46,3},{59,1},{60,1},{51,0},
+      {29,selector},{30,ms ? 2 : 1},{45,3},{46,3},{59,1},{60,1},{51,0},
    };
    static const uint8_t stop[] = {0x0e,0,0,0};
    bool ok = agx3_append(&staged,header,sizeof(header)) &&
@@ -4164,12 +4174,14 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
    ctx->agx3_fltnorm_start = false;
 
    uint8_t layered_selector;
-   if (agx3_native_layered_eot(ctx, &layered_selector)) {
+   bool layered_ms;
+   if (agx3_native_layered_eot(ctx, &layered_selector, &layered_ms)) {
       ctx->max_reg = MAX2(ctx->max_reg, 7);
       /* Coordinates, layer and imageblock offset need more than the
        * 16-byte 2D staging allocation. EOT allocation granularity is 16B. */
       ctx->agx3_staging_halfs = MAX2(ctx->agx3_staging_halfs, 16);
-      return agx3_emit_native_layered_eot(emission, enc, layered_selector);
+      return agx3_emit_native_layered_eot(emission, enc, layered_selector,
+                                          layered_ms);
    }
 
    uint8_t selectors[(FRAG_RESULT_MAX - FRAG_RESULT_DATA0)];

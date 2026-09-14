@@ -2276,3 +2276,13 @@ Run `build/native-shuffle-decode SAVED_NATIVE/text-6f0.bin`.
 `vk-buffer-oracle.c` also accepts `M4_ORACLE_SUBGROUP_TYPES=1` to query and
 enable shaderSubgroupExtendedTypes for 64-bit subgroup probes. It refuses
 unsupported features; use the ordinary watchdog/thermal hardware wrapper.
+
+### Native multisample-array diagnostics
+
+`native-eot-input.py --multisample-array 12:4 --output NEW.btnf` builds
+a type8 array/MSAA EOT input. Compile with the existing 917 builtin workflow.
+`macos-native/pbe-state.py --array --depth 6 --samples 4` now supplies
+the corrected sample-count argument at entry sp+64 bits2:3. `--rotation`
+controls x4 separately; older tool outputs mislabeled that argument. The
+constructor and native compiler run offline, not on a GPU. Preserve their
+outputs and use the guarded CTS wrapper for hardware qualification.

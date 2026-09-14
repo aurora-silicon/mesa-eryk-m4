@@ -1877,7 +1877,10 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
       }
 
       NIR_PASS(_, nir, agx_nir_lower_fs_active_samples_to_register);
-      NIR_PASS(_, nir, agx_nir_lower_interpolation);
+      if (agx_chip_uses_hal200_ioto(dev->dev.chip))
+         NIR_PASS(_, nir, agx_nir_lower_interpolation_g17p);
+      else
+         NIR_PASS(_, nir, agx_nir_lower_interpolation);
       if (agx_chip_uses_hal200_ioto(dev->dev.chip)) {
          NIR_PASS(_, nir, nir_shader_intrinsics_pass,
                   hk_g17p_lower_flat_nonfan_triangles,

@@ -104,8 +104,7 @@ lower(nir_builder *b, nir_intrinsic_instr *intr, void *data)
    nir_def *index = nir_iadd(b, nir_iadd_imm(b, base, component),
                              nir_imul_imm(b, nir_u2u16(b, offset), 4));
 
-   if (sem.location != VARYING_SLOT_LAYER)
-      nir_store_uvs_agx(b, value, index);
+   nir_store_uvs_agx(b, value, index);
 
    /* Insert clip distance sysval writes, and gather layer/viewport writes so we
     * can accumulate their system value. These are still lowered like normal to
@@ -199,7 +198,7 @@ agx_nir_lower_uvs(nir_shader *s, struct agx_unlinked_uvs_layout *layout)
 
    for (unsigned i = 0; i < ARRAY_SIZE(layout->components); ++i) {
       if (i != VARYING_SLOT_POS && i != VARYING_SLOT_PSIZ &&
-          i != VARYING_SLOT_LAYER && layout->components[i]) {
+          layout->components[i]) {
 
          layout->written |= BITFIELD64_BIT(i);
          sizes[UVS_VARYINGS] += layout->components[i];

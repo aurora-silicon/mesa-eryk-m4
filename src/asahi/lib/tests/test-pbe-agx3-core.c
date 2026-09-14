@@ -457,9 +457,32 @@ check_gen9_3d_native(void)
    return 0;
 }
 
+static int
+check_gen9_ms_array_native(void)
+{
+   /* Pinned native G16G PBE constructor, corrected sample-count ABI:
+    * 4x MSAA, six layers, 64x64 RGBA8, synthetic aligned address. */
+   const uint8_t native[32] = {
+      0x28,0x0a,0xe4,0x3f,0xc0,0x0f,0x00,0x01,
+      0x00,0x40,0x23,0x01,0x00,0x50,0x00,0x00,
+   };
+   struct agx_pbe_agx3_2d_fields f = {
+      .samples_log2=2, .layout=2, .channels=0x28, .type=0,
+      .swizzle_r=0, .swizzle_g=1, .swizzle_b=2, .swizzle_a=3,
+      .width=64, .height=64, .buffer=0x12340000,
+   };
+   struct agx_pbe_agx3_descriptor p;
+   CHECK(agx_pbe_agx3_array_pack(9, &f, 6, 0, 1, &p));
+   CHECK(!memcmp(p.bytes, native, sizeof(native)));
+   CHECK(!agx_pbe_agx3_3d_pack(9, &f, 6, 0, 1, &p));
+   CHECK(!agx_pbe_agx3_array_pack(9, &f, 6, 1, 2, &p));
+   return 0;
+}
+
 int
 main(void)
 {
+   if (check_gen9_ms_array_native()) return 1;
    if (check_gen9_3d_native()) return 1;
    if (check_exact_gen9_multisample()) return 1;
    if (check_exact_generation_vectors() || check_exact_gen9_linear_vector() ||

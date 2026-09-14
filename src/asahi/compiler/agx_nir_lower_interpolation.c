@@ -102,12 +102,15 @@ interp_mode_for_load(nir_intrinsic_instr *load)
 }
 
 static bool
-needs_lower(const nir_instr *instr, UNUSED const void *_)
+needs_lower(const nir_instr *instr, const void *data)
 {
    if (instr->type != nir_instr_type_intrinsic)
       return false;
 
    const nir_intrinsic_instr *load = nir_instr_as_intrinsic(instr);
+
+   if (data && load->intrinsic == nir_intrinsic_load_layer_id)
+      return true;
 
    /* at_offset barycentrics need to be lowered */
    if (load->intrinsic == nir_intrinsic_load_interpolated_input) {
@@ -120,7 +123,8 @@ needs_lower(const nir_instr *instr, UNUSED const void *_)
 }
 
 static nir_def *
-interpolate_channel(nir_builder *b, nir_intrinsic_instr *load, unsigned channel)
+interpolate_channel(nir_builder *b, nir_intrinsic_instr *load, unsigned channel,
+                    bool native_layer)
 {
    nir_def *coefficients = nir_load_coefficients_agx(
       b, nir_get_io_offset_src(load)->ssa,
@@ -130,7 +134,7 @@ interpolate_channel(nir_builder *b, nir_intrinsic_instr *load, unsigned channel)
 
    if (load->intrinsic == nir_intrinsic_load_input) {
       nir_def *value =
-         nir_intrinsic_io_semantics(load).location == VARYING_SLOT_LAYER
+         !native_layer && nir_intrinsic_io_semantics(load).location == VARYING_SLOT_LAYER
             ? nir_load_layer_id(b) : interpolate_flat(b, coefficients);
       /* UVS producers widen 16-bit outputs to the 32-bit varying ABI.
        * Recover the consumer type after fetching the flat coefficient. */
@@ -155,10 +159,19 @@ lower(nir_builder *b, nir_instr *instr, void *data)
 {
    nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
 
+   if (data && intr->intrinsic == nir_intrinsic_load_layer_id) {
+      b->shader->info.inputs_read |= VARYING_BIT_LAYER;
+      nir_def *coefficients = nir_load_coefficients_agx(
+         b, nir_imm_int(b, 0), .component = 0,
+         .interp_mode = INTERP_MODE_FLAT,
+         .io_semantics = {.location = VARYING_SLOT_LAYER, .num_slots = 1});
+      return interpolate_flat(b, coefficients);
+   }
+
    /* Each component is loaded separated */
    nir_def *values[NIR_MAX_VEC_COMPONENTS] = {NULL};
    for (unsigned i = 0; i < intr->def.num_components; ++i) {
-      values[i] = interpolate_channel(b, intr, i);
+      values[i] = interpolate_channel(b, intr, i, data != NULL);
    }
 
    return nir_vec(b, values, intr->def.num_components);
@@ -170,4 +183,15 @@ agx_nir_lower_interpolation(nir_shader *s)
    assert(s->info.stage == MESA_SHADER_FRAGMENT);
 
    return nir_shader_lower_instructions(s, needs_lower, lower, NULL);
+}
+
+/* Native fragment layer IDs travel through flat varying coefficients.
+ * The tile-grid Z register is only the layer source for auxiliary shaders. */
+bool
+agx_nir_lower_interpolation_g17p(nir_shader *s)
+{
+   assert(s->info.stage == MESA_SHADER_FRAGMENT);
+   bool native_layer = true;
+   return nir_shader_lower_instructions(s, needs_lower, lower,
+                                        &native_layer);
 }

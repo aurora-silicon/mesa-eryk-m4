@@ -1,0 +1,26 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.api.image_clearing.dedicated_allocation.clear_color_attachment.multiple_layers.r16_unorm_64x11_clamp_input_sample_count_2",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.api.image_clearing.dedicated_allocation.clear_color_attachment.multiple_layers.r16_unorm_64x11_clamp_input_sample_count_2",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T051600395460Z-cts14-fs-layer/cts/000/result.qpa"
+    ],
+    "boot_id": "0ca1f3f9-acb4-4b79-8a3c-15498f475016",
+    "status": "Pass",
+    "started_unix": 1789362961.643439,
+    "eligibility": {
+      "case": "dEQP-VK.api.image_clearing.dedicated_allocation.clear_color_attachment.multiple_layers.r16_unorm_64x11_clamp_input_sample_count_2",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "cmdClearAttachments passed",
+    "returncode": 0,
+    "seconds": 0.5640088919999471,
+    "finished_unix": 1789362962.212592,
+    "pid": 6307
+  }
+]

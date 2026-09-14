@@ -216,11 +216,13 @@ hk_pack_native_pbe(unsigned generation,
     * gamma and the software-addressing sideband.
     */
    const bool array = generation == 9 &&
-      legacy->dimension == AGX_TEXTURE_DIMENSION_2D_ARRAY;
+      (legacy->dimension == AGX_TEXTURE_DIMENSION_2D_ARRAY ||
+       legacy->dimension == AGX_TEXTURE_DIMENSION_2D_ARRAY_MULTISAMPLED);
    const bool three_d = generation == 9 &&
       legacy->dimension == AGX_TEXTURE_DIMENSION_3D;
    const bool ms = generation == 9 &&
-                   legacy->dimension == AGX_TEXTURE_DIMENSION_2D_MULTISAMPLED;
+                   (legacy->dimension == AGX_TEXTURE_DIMENSION_2D_MULTISAMPLED ||
+                    legacy->dimension == AGX_TEXTURE_DIMENSION_2D_ARRAY_MULTISAMPLED);
    if ((!ms && !three_d && !array && legacy->dimension != AGX_TEXTURE_DIMENSION_2D) ||
        (legacy->layout == AGX_LAYOUT_LINEAR &&
         (generation != 9 || legacy->level != 0 || legacy->levels != 1 ||

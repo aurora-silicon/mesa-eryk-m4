@@ -194,14 +194,15 @@ pack_layered(
       memset(out, 0, sizeof(*out));
    if (!fields || generation != AGX_PBE_AGX3_GENERATION_9 ||
        !depth || depth > 65536 || fields->layout == AGX_PBE_LAYOUT_LINEAR ||
-       fields->samples_log2 ||
+       (fields->samples_log2 && !array) ||
        !agx_pbe_agx3_2d_mip_pack(generation, fields, level, levels, out))
       return false;
 
-   /* Native G16G: dimension 5 is a volume and 3 is a 2D array. The complete
+   /* Native G16G: dimension 5 is a volume, 3 is a 2D array, and 8 is
+    * a multisample array. Sample-count bits are unchanged. The complete
     * volume depth minus one occupies word1[59:44], with the layer-padding
     * flag at bit60. Keep the normal mip extension and buffer address. */
-   store_le64(out->bytes, (load_le64(out->bytes) & ~UINT64_C(15)) | (array ? 3 : 5));
+   store_le64(out->bytes, (load_le64(out->bytes) & ~UINT64_C(15)) | (array ? (fields->samples_log2 ? 8 : 3) : 5));
    store_le64(out->bytes + 8, load_le64(out->bytes + 8) |
               ((uint64_t)(depth - 1) << 44) |
               ((uint64_t)fields->page_aligned_layers << 60));
