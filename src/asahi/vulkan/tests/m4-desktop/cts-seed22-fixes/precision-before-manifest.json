@@ -1,0 +1,36 @@
+{
+  "id": "20260914T001406188816Z-cts-seed22-scaled-precision",
+  "hypothesis": "Check scaled blits against CTS interval verifier using advertised subtexel precision and destination quantization",
+  "command": [
+    "python3",
+    "/root/cts-sample.py",
+    "batch",
+    "--guard-output",
+    "/root/asahi-evidence/20260914T001406188816Z-cts-seed22-scaled-precision",
+    "--binary",
+    "/root/cts-1.0.2.6/deqp-vk-scaled-precision",
+    "--cases",
+    "/root/cts-1.0.2.6/pixels.txt",
+    "--start",
+    "0",
+    "--count",
+    "4",
+    "--jobs",
+    "4",
+    "--log-images"
+  ],
+  "expected_success": "^CTS_BATCH_COMPLETE:",
+  "seconds": 40,
+  "sources": {
+    "mesa": {
+      "head": "678620a7173f5ba81f7964731c9078358b419bfd",
+      "status": " M src/asahi/vulkan/tests/m4-desktop/asahi-session.py\n M src/asahi/vulkan/tests/m4-desktop/desktop-launch.py\n M src/asahi/vulkan/tests/m4-desktop/vulkan-trim-host.py\n",
+      "patch_sha256": "5e2d497d60e1d628dff40755eaa4e4e0c35a30dad301dcb9bd51d052b6ad40f5"
+    },
+    "kernel": {
+      "head": "fba91e5d957746bfb3560b3bfce1fa793cad6336",
+      "status": "",
+      "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

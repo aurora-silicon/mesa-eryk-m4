@@ -1,0 +1,65 @@
+--- a/external/vulkancts/modules/vulkan/api/vktApiCopiesAndBlittingTests.cpp
++++ b/external/vulkancts/modules/vulkan/api/vktApiCopiesAndBlittingTests.cpp
+@@ -2264,6 +2264,62 @@
+ 	DE_ASSERT(m_params.filter == VK_FILTER_NEAREST || m_params.filter == VK_FILTER_LINEAR);
+ 	const std::string failMessage("Result image is incorrect");
+ 
++
++	// Scaled source values are numeric floats, not normalized [0,1] values.
++	// Verify linear sampling with the advertised subtexel precision instead
++	// of an absolute UNORM-sized epsilon on a high-dynamic-range result.
++	const std::string sourceName = getFormatName(m_params.src.image.format);
++	if (m_params.filter == VK_FILTER_LINEAR &&
++		(sourceName.find("_USCALED") != std::string::npos || sourceName.find("_SSCALED") != std::string::npos) &&
++		isFloatFormat(result.getFormat()) && result.getDepth() == 1)
++	{
++		const tcu::ConstPixelBufferAccess source = m_sourceTextureLevel->getAccess();
++		tcu::TextureLevel numeric(tcu::TextureFormat(tcu::TextureFormat::RGBA, tcu::TextureFormat::FLOAT), source.getWidth(), source.getHeight());
++		for (int y = 0; y < source.getHeight(); ++y)
++		for (int x = 0; x < source.getWidth(); ++x)
++			numeric.getAccess().setPixel(source.getPixel(x, y), x, y);
++		const tcu::Sampler sampler(tcu::Sampler::CLAMP_TO_EDGE, tcu::Sampler::CLAMP_TO_EDGE, tcu::Sampler::CLAMP_TO_EDGE, tcu::Sampler::LINEAR, tcu::Sampler::LINEAR);
++		tcu::LookupPrecision precision;
++		precision.coordBits = tcu::IVec3(23);
++		precision.uvwBits = tcu::IVec3(m_context.getDeviceProperties().limits.subTexelPrecisionBits);
++		precision.colorMask = tcu::notEqual(tcu::getTextureFormatBitDepth(result.getFormat()), tcu::IVec4(0));
++		const int mantissa = result.getFormat().type == tcu::TextureFormat::HALF_FLOAT ? 10 : 23;
++		bool ok = true;
++		unsigned rejectedCorrupt = 0, checked = 0;
++		for (int y = 0; y < result.getHeight(); ++y)
++		for (int x = 0; x < result.getWidth(); ++x)
++		{
++			const tcu::Vec4 color = result.getPixel(x, y);
++			precision.colorThreshold = tcu::Vec4(0.0f);
++			for (int c = 0; c < 4; ++c)
++				precision.colorThreshold[c] = de::max(0.001f, deFloatAbs(color[c]) / float(1u << mantissa));
++			bool covered = false, valid = false;
++			for (size_t r = 0; r < m_params.regions.size(); ++r)
++			{
++				const VkImageBlit& blit = m_params.regions[r].imageBlit;
++				if (x < de::min(blit.dstOffsets[0].x, blit.dstOffsets[1].x) || x >= de::max(blit.dstOffsets[0].x, blit.dstOffsets[1].x) ||
++					y < de::min(blit.dstOffsets[0].y, blit.dstOffsets[1].y) || y >= de::max(blit.dstOffsets[0].y, blit.dstOffsets[1].y)) continue;
++				covered = true;
++				const tcu::Vec2 coord(
++					(float(blit.srcOffsets[0].x) + (float(x-blit.dstOffsets[0].x)+0.5f) * float(blit.srcOffsets[1].x-blit.srcOffsets[0].x) / float(blit.dstOffsets[1].x-blit.dstOffsets[0].x)) / float(source.getWidth()),
++					(float(blit.srcOffsets[0].y) + (float(y-blit.dstOffsets[0].y)+0.5f) * float(blit.srcOffsets[1].y-blit.srcOffsets[0].y) / float(blit.dstOffsets[1].y-blit.dstOffsets[0].y)) / float(source.getHeight()));
++				valid = tcu::isLevel2DLookupResultValid(numeric.getAccess(), sampler, tcu::TEX_LOOKUP_SCALE_MINIFY, precision, coord, 0, color);
++				// Diagnostic negative control: a full-range red error must fail.
++				++checked;
++				rejectedCorrupt += !tcu::isLevel2DLookupResultValid(numeric.getAccess(), sampler, tcu::TEX_LOOKUP_SCALE_MINIFY, precision, coord, 0, color + tcu::Vec4(65536.0f,0,0,0));
++			}
++			if (!covered)
++			{
++				valid = true;
++				const tcu::Vec4 reference = m_expectedTextureLevel->getAccess().getPixel(x, y);
++				for (int c = 0; c < 4; ++c)
++					if (precision.colorMask[c] && deFloatAbs(reference[c]-color[c]) > precision.colorThreshold[c]) valid = false;
++			}
++			ok &= valid;
++		}
++		m_context.getTestContext().getLog() << tcu::TestLog::Message << "Scaled linear lookup verification: checked=" << checked << " corrupt_rejected=" << rejectedCorrupt << tcu::TestLog::EndMessage;
++		return ok && checked && rejectedCorrupt == checked ? tcu::TestStatus::pass("Scaled linear lookup valid") : tcu::TestStatus::fail("Scaled linear lookup invalid");
++	}
+ 	if (m_params.filter == VK_FILTER_LINEAR)
+ 	{
+ 		if (tcu::isCombinedDepthStencilType(result.getFormat().type))

@@ -1,0 +1,8 @@
+dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r8_snorm.r8g8b8a8_uscaled.general_optimal_linear
+dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16g16_uscaled.b8g8r8_unorm.general_general_linear
+dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r5g6b5_unorm_pack16.r16_uscaled.general_general_linear
+dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.b8g8r8a8_uscaled.r16g16b16a16_uscaled.general_general_linear
+dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.b8g8r8_unorm.r8g8_uscaled.optimal_optimal_linear
+dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16g16_uscaled.r16g16b16a16_uscaled.optimal_optimal_linear
+dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16g16b16_unorm.r16_uscaled.general_general_linear
+dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16g16b16a16_uscaled.r8g8_snorm.optimal_optimal_linear

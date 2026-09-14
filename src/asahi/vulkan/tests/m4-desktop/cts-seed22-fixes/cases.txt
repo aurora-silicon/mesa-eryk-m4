@@ -1,0 +1,10 @@
+dEQP-VK.pipeline.depth.format.x8_d24_unorm_pack32.compare_ops.never_less_greater_or_equal_less_or_equal
+dEQP-VK.renderpass.dedicated_allocation.attachment_allocation.roll.27
+dEQP-VK.tessellation.invariance.tess_coord_component_range.quads_fractional_odd_spacing_cw
+dEQP-VK.glsl.texture_gather.basic.cube.rgba8ui.no_corners.size_pot.mirrored_repeat_clamp_to_edge
+dEQP-VK.tessellation.invariance.outer_edge_index_independence.triangles_equal_spacing_cw_point_mode
+dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r8g8b8a8_uscaled.r16_sfloat.optimal_general_linear
+dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r8g8b8a8_uscaled.r32_sfloat.general_optimal_linear
+dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16g16b16a16_uscaled.r32_sfloat.optimal_general_linear
+dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.a2b10g10r10_uscaled_pack32.r16_sfloat.general_optimal_linear
+dEQP-VK.image.texel_view_compatible.graphic.basic.texture_write.etc2_r8g8b8a1_srgb_block.r16g16b16a16_uscaled

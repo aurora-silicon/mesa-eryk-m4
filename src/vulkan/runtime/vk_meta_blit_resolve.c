@@ -41,6 +41,7 @@ struct vk_meta_blit_key {
    bool stencil_as_discard;
    VkFormat dst_format;
    enum glsl_base_type src_type;
+   bool scaled_linear_2d;
    VkImageAspectFlags aspects;
 };
 
@@ -131,6 +132,36 @@ load_struct_var(nir_builder *b, nir_variable *var, uint32_t field)
    nir_deref_instr *deref =
       nir_build_deref_struct(b, nir_build_deref_var(b, var), field);
    return nir_load_deref(b, deref);
+}
+
+static nir_def *
+build_scaled_linear_2d(nir_builder *b, nir_deref_instr *texture, nir_def *coord)
+{
+   /* Scaled texels must be converted to their numeric float values before
+    * interpolation. Filtering a UNORM alias and rescaling its result loses
+    * fractional precision on hardware with fixed-point normalized filters.
+    * Fetch the four neighbours and perform the interpolation in float32.
+    */
+   nir_def *zero = nir_imm_int(b, 0);
+   nir_def *size = nir_trim_vector(
+      b, nir_txs(b, .lod = zero, .texture_deref = texture), 2);
+   nir_def *pos = nir_fadd_imm(b, nir_fmul(b, nir_trim_vector(b, coord, 2),
+                                           nir_i2f32(b, size)), -0.5);
+   nir_def *base = nir_f2i32(b, nir_ffloor(b, pos));
+   nir_def *frac = nir_ffract(b, pos);
+   nir_def *layer = nir_f2i32(b, nir_channel(b, coord, 2));
+   nir_def *values[4];
+   for (unsigned i = 0; i < 4; ++i) {
+      nir_def *xy = nir_iadd(b, base, nir_imm_ivec2(b, i & 1, i >> 1));
+      xy = nir_imin(b, nir_imax(b, xy, zero), nir_iadd_imm(b, size, -1));
+      nir_def *location = nir_vec3(b, nir_channel(b, xy, 0),
+                                      nir_channel(b, xy, 1), layer);
+      values[i] = nir_txf(b, location, .lod = zero, .texture_deref = texture);
+   }
+   return nir_flrp(b,
+      nir_flrp(b, values[0], values[1], nir_channel(b, frac, 0)),
+      nir_flrp(b, values[2], values[3], nir_channel(b, frac, 0)),
+      nir_channel(b, frac, 1));
 }
 
 static nir_def *
@@ -307,7 +338,9 @@ build_blit_shader(const struct vk_meta_blit_key *key)
       nir_deref_instr *t = nir_build_deref_var(b, texture);
 
       nir_def *val;
-      if (resolve_mode == VK_RESOLVE_MODE_NONE) {
+      if (key->scaled_linear_2d && aspect == VK_IMAGE_ASPECT_COLOR_BIT) {
+         val = build_scaled_linear_2d(b, t, src_coord);
+      } else if (resolve_mode == VK_RESOLVE_MODE_NONE) {
          val = nir_tex(b, src_coord, .lod = nir_imm_float(b, 0),
                        .texture_deref = t, .sampler_deref = s);
       } else {
@@ -771,6 +804,9 @@ vk_meta_blit_image(struct vk_command_buffer *cmd,
    key.dim = vk_image_sampler_dim(src_image);
    key.dst_format = dst_format;
    key.src_type = blit_color_type(src_format);
+   key.scaled_linear_2d = filter == VK_FILTER_LINEAR &&
+      key.dim == GLSL_SAMPLER_DIM_2D &&
+      util_format_is_scaled(vk_format_to_pipe_format(src_format));
 
    for (uint32_t r = 0; r < region_count; r++) {
       struct vk_meta_blit_push_data push = {0};

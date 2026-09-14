@@ -1,0 +1,35 @@
+{
+  "id": "20260914T001559103899Z-cts-seed22-scaled-linear-v1",
+  "hypothesis": "Float32 interpolation of numeric scaled texel fetches removes normalized-filter precision loss",
+  "command": [
+    "python3",
+    "/root/cts-sample.py",
+    "batch",
+    "--guard-output",
+    "/root/asahi-evidence/20260914T001559103899Z-cts-seed22-scaled-linear-v1",
+    "--binary",
+    "/root/cts-1.0.2.6/deqp-vk-scaled-border-reference",
+    "--cases",
+    "/root/cts-1.0.2.6/pixels.txt",
+    "--count",
+    "4",
+    "--jobs",
+    "4",
+    "--capture-success",
+    "--log-images"
+  ],
+  "expected_success": "^CTS_BATCH_COMPLETE:",
+  "seconds": 40,
+  "sources": {
+    "mesa": {
+      "head": "678620a7173f5ba81f7964731c9078358b419bfd",
+      "status": " M src/asahi/vulkan/tests/m4-desktop/asahi-session.py\n M src/asahi/vulkan/tests/m4-desktop/desktop-launch.py\n M src/asahi/vulkan/tests/m4-desktop/vulkan-trim-host.py\n M src/vulkan/runtime/vk_meta_blit_resolve.c\n",
+      "patch_sha256": "042165c57d2c9bf68b4c59bab7f7147e0181bb0c408346fdd3666fc1a48fc893"
+    },
+    "kernel": {
+      "head": "fba91e5d957746bfb3560b3bfce1fa793cad6336",
+      "status": "",
+      "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

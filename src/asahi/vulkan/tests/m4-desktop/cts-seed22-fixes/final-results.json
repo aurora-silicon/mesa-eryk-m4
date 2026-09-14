@@ -1,0 +1,192 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.pipeline.depth.format.x8_d24_unorm_pack32.compare_ops.never_less_greater_or_equal_less_or_equal",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-scaled-precision",
+      "--deqp-case=dEQP-VK.pipeline.depth.format.x8_d24_unorm_pack32.compare_ops.never_less_greater_or_equal_less_or_equal",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T001820238959Z-cts-seed22-all-fixed/cts/000/result.qpa"
+    ],
+    "boot_id": "db7464b3-1a5b-4c4e-8d48-b2e8accb1152",
+    "status": "Pass",
+    "started_unix": 1789345101.3287392,
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.5846130689999427,
+    "finished_unix": 1789345101.919442,
+    "pid": 7418
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.renderpass.dedicated_allocation.attachment_allocation.roll.27",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-scaled-precision",
+      "--deqp-case=dEQP-VK.renderpass.dedicated_allocation.attachment_allocation.roll.27",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T001820238959Z-cts-seed22-all-fixed/cts/001/result.qpa"
+    ],
+    "boot_id": "db7464b3-1a5b-4c4e-8d48-b2e8accb1152",
+    "status": "Pass",
+    "started_unix": 1789345101.334883,
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.31530413700011195,
+    "finished_unix": 1789345101.6558137,
+    "pid": 7419
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.tessellation.invariance.tess_coord_component_range.quads_fractional_odd_spacing_cw",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-scaled-precision",
+      "--deqp-case=dEQP-VK.tessellation.invariance.tess_coord_component_range.quads_fractional_odd_spacing_cw",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T001820238959Z-cts-seed22-all-fixed/cts/002/result.qpa"
+    ],
+    "boot_id": "db7464b3-1a5b-4c4e-8d48-b2e8accb1152",
+    "status": "Pass",
+    "started_unix": 1789345101.3406792,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 2.404923325000027,
+    "finished_unix": 1789345103.7512407,
+    "pid": 7420
+  },
+  {
+    "index": 3,
+    "case": "dEQP-VK.glsl.texture_gather.basic.cube.rgba8ui.no_corners.size_pot.mirrored_repeat_clamp_to_edge",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-scaled-precision",
+      "--deqp-case=dEQP-VK.glsl.texture_gather.basic.cube.rgba8ui.no_corners.size_pot.mirrored_repeat_clamp_to_edge",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T001820238959Z-cts-seed22-all-fixed/cts/003/result.qpa"
+    ],
+    "boot_id": "db7464b3-1a5b-4c4e-8d48-b2e8accb1152",
+    "status": "Pass",
+    "started_unix": 1789345101.3464649,
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 2.072871935999956,
+    "finished_unix": 1789345103.4260187,
+    "pid": 7422
+  },
+  {
+    "index": 4,
+    "case": "dEQP-VK.tessellation.invariance.outer_edge_index_independence.triangles_equal_spacing_cw_point_mode",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-scaled-precision",
+      "--deqp-case=dEQP-VK.tessellation.invariance.outer_edge_index_independence.triangles_equal_spacing_cw_point_mode",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T001820238959Z-cts-seed22-all-fixed/cts/004/result.qpa"
+    ],
+    "boot_id": "db7464b3-1a5b-4c4e-8d48-b2e8accb1152",
+    "status": "Pass",
+    "started_unix": 1789345101.353448,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 2.459411390000014,
+    "finished_unix": 1789345103.81996,
+    "pid": 7424
+  },
+  {
+    "index": 5,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r8g8b8a8_uscaled.r16_sfloat.optimal_general_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-scaled-precision",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r8g8b8a8_uscaled.r16_sfloat.optimal_general_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T001820238959Z-cts-seed22-all-fixed/cts/005/result.qpa"
+    ],
+    "boot_id": "db7464b3-1a5b-4c4e-8d48-b2e8accb1152",
+    "status": "Pass",
+    "started_unix": 1789345101.3608546,
+    "message": "Scaled linear lookup valid",
+    "returncode": 0,
+    "seconds": 0.3578459309999289,
+    "finished_unix": 1789345101.7263286,
+    "pid": 7426
+  },
+  {
+    "index": 6,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r8g8b8a8_uscaled.r32_sfloat.general_optimal_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-scaled-precision",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r8g8b8a8_uscaled.r32_sfloat.general_optimal_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T001820238959Z-cts-seed22-all-fixed/cts/006/result.qpa"
+    ],
+    "boot_id": "db7464b3-1a5b-4c4e-8d48-b2e8accb1152",
+    "status": "Pass",
+    "started_unix": 1789345101.3687646,
+    "message": "Scaled linear lookup valid",
+    "returncode": 0,
+    "seconds": 0.6628715379999903,
+    "finished_unix": 1789345102.0405006,
+    "pid": 7428
+  },
+  {
+    "index": 7,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16g16b16a16_uscaled.r32_sfloat.optimal_general_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-scaled-precision",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16g16b16a16_uscaled.r32_sfloat.optimal_general_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T001820238959Z-cts-seed22-all-fixed/cts/007/result.qpa"
+    ],
+    "boot_id": "db7464b3-1a5b-4c4e-8d48-b2e8accb1152",
+    "status": "Pass",
+    "started_unix": 1789345101.3778074,
+    "message": "Scaled linear lookup valid",
+    "returncode": 0,
+    "seconds": 0.7338060299998688,
+    "finished_unix": 1789345102.1169925,
+    "pid": 7430
+  },
+  {
+    "index": 8,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.a2b10g10r10_uscaled_pack32.r16_sfloat.general_optimal_linear",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-scaled-precision",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.a2b10g10r10_uscaled_pack32.r16_sfloat.general_optimal_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T001820238959Z-cts-seed22-all-fixed/cts/008/result.qpa"
+    ],
+    "boot_id": "db7464b3-1a5b-4c4e-8d48-b2e8accb1152",
+    "status": "Pass",
+    "started_unix": 1789345101.3832543,
+    "message": "Scaled linear lookup valid",
+    "returncode": 0,
+    "seconds": 0.7477397019999898,
+    "finished_unix": 1789345102.1365647,
+    "pid": 7432
+  },
+  {
+    "index": 9,
+    "case": "dEQP-VK.image.texel_view_compatible.graphic.basic.texture_write.etc2_r8g8b8a1_srgb_block.r16g16b16a16_uscaled",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-scaled-precision",
+      "--deqp-case=dEQP-VK.image.texel_view_compatible.graphic.basic.texture_write.etc2_r8g8b8a1_srgb_block.r16g16b16a16_uscaled",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T001820238959Z-cts-seed22-all-fixed/cts/009/result.qpa"
+    ],
+    "boot_id": "db7464b3-1a5b-4c4e-8d48-b2e8accb1152",
+    "status": "Pass",
+    "started_unix": 1789345101.3889341,
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.45370024199996806,
+    "finished_unix": 1789345101.8500278,
+    "pid": 7436
+  }
+]
