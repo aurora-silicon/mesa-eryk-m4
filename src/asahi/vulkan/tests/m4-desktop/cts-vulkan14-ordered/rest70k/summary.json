@@ -1,0 +1,109 @@
+{
+  "requested": 70000,
+  "completed": 40000,
+  "counts": {
+    "Pass": 17093,
+    "NotSupported": 22875,
+    "Fail": 32
+  },
+  "runner_seconds": 1182.4511188,
+  "peak_temperature_c": 61.0,
+  "segments": [
+    {
+      "selected": 10000,
+      "recorded": 10000,
+      "completed": 10000,
+      "counts": {
+        "Pass": 4277,
+        "NotSupported": 5723
+      },
+      "classifications": {
+        "unclassified": 10000
+      },
+      "elapsed_seconds": 146.10670820399537,
+      "preparation_seconds": 1.710521252010949,
+      "runner_seconds": 141.44720101400003,
+      "jobs": 20,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "dfbd9813fb55450111dbf0f5e1bfc93cafd03838917657c6e250b2fce83088b1",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T225157486746Z-cts-ordered-rest70k-s01",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 60.75
+    },
+    {
+      "selected": 10000,
+      "recorded": 10000,
+      "completed": 10000,
+      "counts": {
+        "NotSupported": 7732,
+        "Pass": 2264,
+        "Fail": 4
+      },
+      "classifications": {
+        "unclassified": 10000
+      },
+      "elapsed_seconds": 162.22339433198795,
+      "preparation_seconds": 1.6733748159895185,
+      "runner_seconds": 157.40206695899997,
+      "jobs": 20,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "964f85d7aa95a5edfd0b56c745abb20cd4756a1ba41d8e0997ce35d5edb77a36",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T225425381403Z-cts-ordered-rest70k-s02",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 60.5
+    },
+    {
+      "selected": 10000,
+      "recorded": 10000,
+      "completed": 10000,
+      "counts": {
+        "NotSupported": 5305,
+        "Pass": 4679,
+        "Fail": 16
+      },
+      "classifications": {
+        "unclassified": 10000
+      },
+      "elapsed_seconds": 401.0672126910067,
+      "preparation_seconds": 1.7419461979879998,
+      "runner_seconds": 395.83382697,
+      "jobs": 20,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "bbeea6085da89717127bc3383e503e030544bfebd3627a7d4b2432de187fa448",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T225709480551Z-cts-ordered-rest70k-s03",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 60.5
+    },
+    {
+      "selected": 10000,
+      "recorded": 10000,
+      "completed": 10000,
+      "counts": {
+        "Pass": 5873,
+        "NotSupported": 4115,
+        "Fail": 12
+      },
+      "classifications": {
+        "unclassified": 10000
+      },
+      "elapsed_seconds": 493.2429427720199,
+      "preparation_seconds": 1.6574475860106759,
+      "runner_seconds": 487.7680238569999,
+      "jobs": 20,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "9d814301622eaf18a6efb4a8176737fd08685050d948bd5f06b97223f93ef584",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T230352316381Z-cts-ordered-rest70k-s04",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 61.0
+    }
+  ],
+  "complete": false
+}

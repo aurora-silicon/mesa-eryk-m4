@@ -1,0 +1,16 @@
+{
+  "jobs": 4000,
+  "span_seconds": 15.469523691,
+  "sums_seconds": {
+    "prepare": 9.455341131,
+    "active": 4.86661736,
+    "cleanup": 1.079284688
+  },
+  "median_ms": {
+    "prepare": 1.8174165,
+    "active": 1.232973,
+    "cleanup": 8.4e-05
+  },
+  "log_bytes": 2329051,
+  "log_lines": 16000
+}

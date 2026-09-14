@@ -1,0 +1,17 @@
+{
+  "batch": [
+    30000,
+    100000
+  ],
+  "segment_size": 10000,
+  "jobs": 20,
+  "case_timeout_seconds": 60,
+  "segment_timeout_seconds": 1700,
+  "cts_binary": "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-compute",
+  "cts_sha256": "f445539c9b216b86820ebe0135e67f3938787197d9c77044849c4674ea9a8296",
+  "mesa_sha256": "53b31f227547728c5655e21cf879982e4fdda2adce1950da9e6e22b3bcf74322",
+  "mesa_commit": "263d691c651",
+  "kernel_commit": "3dfe2229c473",
+  "note": "CTS includes retained reference corrections; this is not an unmodified conformance run. Preserve first outcomes; recover incomplete segments separately.",
+  "parent_cases_sha256": "4c29a8068efa1552aa87d8377f539c20b278dd1870461922c25f34e336cf1cdb"
+}
