@@ -28,3 +28,16 @@ Library SHA256 `545e45870fbf4e117b77693e24f63a363f163b6bb7c568b485098f25a96cfa58
 kernel module SHA256 `b415d4f8660f5d74130fd74a9d06a7345e49c807f4161830f79bfdf7aaa49f12`.
 Both guarded targeted comparisons used a 60-second watchdog and thermal monitor;
 maximum temperature 57.75 C including the diagnostic run.
+
+## Geometry output crash
+
+The next segment completed 928 Pass, 1084 NotSupported and 13 Fail before a
+SIGABRT in `poly_nir_lower_gs`. Its 100 Missing CSV entries are canceled groups
+without a CTS start marker, now reported as Unrun by the collector; raw results
+remain retained. 41 other cases were interrupted. Peak temperature 61 C.
+Evidence: `20260914T130056156246Z-cts28-cont1`.
+
+The core points to inserting a 16-bit GS output into a 32-bit temporary vector.
+Preserve the raw bits in word temporaries and restore the original width per
+component on rasterizer export. The original interface-matching comparison
+passes on J713: `20260914T130412322900Z-cts28-gs-half`, peak 57 C.
