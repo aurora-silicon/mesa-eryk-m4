@@ -1,0 +1,2 @@
+Sep 14 01:40:10 omarchy kernel: m4-dcp-rtkit 30ae00000.dcp: M4 idle callback failed -95; recovery requires reboot
+Sep 14 01:48:44 omarchy kernel: platform soc:display-subsystem: [drm] *ERROR* native DCP flip failed -5; buffers pinned until reboot

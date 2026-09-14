@@ -1,0 +1,16 @@
+PASS: revoke SI:localuser:root on :0
+{"armed": true, "timeout_seconds": 60, "timeleft_seconds": 58, "fed": false, "mode": "idle"}
+active
+completed 15
+failed 0
+active_fb 40
+imported 1
+swap_total_us 113429
+swap_max_us 18469
+completed 15
+failed 0
+active_fb 40
+imported 1
+swap_total_us 113429
+swap_max_us 18469
+4677c960-6288-422d-b849-67cddc408032

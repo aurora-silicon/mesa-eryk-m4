@@ -1,0 +1,60 @@
+{
+  "counts": {
+    "NotSupported": 526,
+    "Pass": 373,
+    "Fail": 91,
+    "NotSupportedButShouldBeSupported": 8,
+    "Crash": 2
+  },
+  "original_counts": {
+    "NotSupported": 534,
+    "Pass": 373,
+    "Fail": 91,
+    "Crash": 2
+  },
+  "rates_percent": {
+    "NotSupported": 52.6,
+    "Pass": 37.3,
+    "Fail": 9.1,
+    "NotSupportedButShouldBeSupported": 0.8,
+    "Crash": 0.2
+  },
+  "api_version": "1.4",
+  "unconditional_core_feature_gaps": [
+    {
+      "feature": "multiview",
+      "struct": "VkPhysicalDeviceMultiviewFeatures",
+      "profile_struct": "VkPhysicalDeviceVulkan11Features",
+      "core": "VK_VERSION_1_1",
+      "advertised": false
+    },
+    {
+      "feature": "robustImageAccess",
+      "struct": "VkPhysicalDeviceImageRobustnessFeatures",
+      "profile_struct": "VkPhysicalDeviceVulkan13Features",
+      "core": "VK_VERSION_1_3",
+      "advertised": false
+    },
+    {
+      "feature": "robustImageAccess",
+      "struct": "VkPhysicalDeviceVulkan13Features",
+      "profile_struct": "VkPhysicalDeviceVulkan13Features",
+      "core": "VK_VERSION_1_3",
+      "advertised": false
+    },
+    {
+      "feature": "sampleRateShading",
+      "struct": "VkPhysicalDeviceFeatures",
+      "profile_struct": "VkPhysicalDeviceFeatures",
+      "core": "VK_VERSION_1_4",
+      "advertised": false
+    }
+  ],
+  "inputs": {
+    "build/cts14-seed25-final-report/results.jsonl.gz": "a84d19430bcef0e00426c1e441cc96cf3390e60e74b641010f346fef95da962a",
+    "build/cts-1.4-baseline/device-profile.json": "7a4faf23480533ab50cf4f0ec9a39f7a807c4fa0b4210113ee0ea14183dadbb3",
+    "reference/vk-gl-cts-1.4.6.2/external/vulkan-docs/src/xml/vk.xml": "5ae48259c0196c3832a5a86390b016f09051888b132b9439a381f5e25a168b81",
+    "build/cts-1.4-baseline/skip-review.json": "fd1ece06516b9d2e191b87c2dacd522fbca57fb2b6138b2cd99b3f813cd50ecc"
+  },
+  "coverage": "Registry inventory excludes conditional requirements, formats and limits. Case classification uses explicit reviews, not substring guesses."
+}

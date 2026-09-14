@@ -1,0 +1,14 @@
+{
+  "tag": "vulkan-cts-1.4.6.2",
+  "head": "f6a29701220f34dd1407513bfe80d74ca7b392ce",
+  "dependencies": {
+    "external/amber/src": "53a4c8934bf7335d27c694e9fdac9ae1b180c0d2",
+    "external/glslang/src": "715c8500e7cd67f2eba9e60e98852a1ed49d2f15",
+    "external/jsoncpp/src": "9059f5cad030ba11d37818847443a53918c327b1",
+    "external/spirv-tools/src": "2d14d2e76aa7de72404b17078eda15c20a6a0389",
+    "external/video_generator/src": "426300e12a5cc5d4676807039a1be237a2b68187",
+    "external/vulkan-video-samples/src": "aaf915a0e08d679d1e8b835c30e6a346ab0c7ad2",
+    "external/spirv-headers/src": "6dd7ba990830f7c15ac1345ff3b43ef6ffdad216",
+    "external/vulkan-docs/src": "4abe0260bbd8e59930786eed645481808a3fe6f1"
+  }
+}

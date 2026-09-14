@@ -361,3 +361,27 @@ watchdog/thermal guard. Retain exact executable hashes and original QPA results.
 and falls back to SDDM's compositor before login. It records the actual runtime
 directory and Xwayland display/authentication path when available. This avoids
 window-system setup failures caused by assuming a logged-in user session.
+
+## Reviewing skips in modern CTS
+
+`cts-skip-audit.py --results RESULTS --profile PROFILE --registry vk.xml
+--output NEW_DIR [--review REVIEW.json]` operates offline. It retains raw CTS
+statuses, inventories unconditional core feature requirements (including the
+promoted aggregate feature structs), and groups unreviewed skip reasons. Supply
+explicit reviews keyed by exact message and a case regex, with a source-based
+`basis` and `classification` of `NotSupported` or
+`NotSupportedButShouldBeSupported`. Unmatched skips remain
+`NotSupportedNeedsReview`; overlapping reviews are rejected. A recorded gate
+can violate core requirements even if later optional prerequisites also exist.
+Keep that distinction in reports. The registry inventory does not cover every
+conditional feature, limit or format rule; it is an audit aid.
+
+`x11-local-access.py allow|revoke --display :0 --user root` is the narrow
+`xhost +/-SI:localuser:root` operation using libX11. Run it as the existing
+compositor owner when tests need access to that Xwayland server. It neither
+disables access control nor grants remote access. Record the change and revoke
+it when finished. Graphics execution still requires the usual watchdog/thermal
+guard; granting access alone is not a render test.
+
+See [the Vulkan 1.4 sample](cts-vulkan14-seed20260925-1000/README.md) for exact
+build, selection, raw and audited outcomes, timings and reproduction artifacts.

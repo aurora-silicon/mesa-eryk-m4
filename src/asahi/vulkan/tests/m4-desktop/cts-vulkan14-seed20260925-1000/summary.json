@@ -1,0 +1,126 @@
+{
+  "selected": 1000,
+  "completed": 1000,
+  "counts": {
+    "NotSupported": 534,
+    "Pass": 373,
+    "Fail": 91,
+    "Crash": 2
+  },
+  "rates_percent": {
+    "NotSupported": 53.4,
+    "Pass": 37.3,
+    "Fail": 9.1,
+    "Crash": 0.2
+  },
+  "classifications": {
+    "unclassified": 1000
+  },
+  "observed_attempts": 1061,
+  "restarted_interrupted_attempts": 61,
+  "first_attempt_counts": {
+    "NotSupported": 511,
+    "Pass": 339,
+    "Fail": 87,
+    "Interrupted": 61,
+    "Crash": 2
+  },
+  "runner_seconds": 31.063512026000026,
+  "active_campaign_seconds": 40.06429611504427,
+  "staging_seconds": 4.430757797992555,
+  "wall_span_seconds": 230.13960599899292,
+  "peak_temperature_c": 63.75,
+  "cases_sha256": "28aa977c997d25290f199e1c5e55893e33341b794dd55211b1b752817b806605",
+  "software_identity": [
+    "7.1.9-dirtyroom-asahi1+",
+    {
+      "/opt/asahi-m4-port/lib/libvulkan_asahi.so": "2f5a2c3fdf57ec176dde32008f7cd3d7749e21152b2ca157b50225aab6b19271",
+      "/root/guarded-command.py": "e746929162cc01b809455e9dae4a6d3f8a32b313b8e39373e3d1b00f893b797d",
+      "/opt/asahi-m4-port/lib/libgallium-26.1.4.so": "d1abd8b367ef62d25f10f9bf126fa482b65819a97c94c6d76bd0cb8717381716",
+      "/root/run-m4-gl.py": "6842d9bb244b52e7b358b63af9548c1a08d6c6a3244da61efe1b157006df8471",
+      "/root/firmware-snapshot.py": "be417c075b15da22832f05254b3fab247582c72c9dadccff5f7c56b56a9cedb8",
+      "/root/g16-fault-dump.py": "c3988ddf0ad9e10e2b9736582c9ab7c59c90a62090d0e34a32db1ba46c917bf3",
+      "/lib/modules/7.1.9-dirtyroom-asahi1+/kernel/drivers/gpu/drm/asahi/asahi.ko": "e40b70f2d192a9cb1649dab9aa395862a64481e22e5acb1d3f92b7b32860e85e",
+      "/root/g16-submit-test/experiment_watchdog.py": "28600768bceb930a3528471fd7982db9247ec86c00f4a522456b70e38001e18d",
+      "/root/g16-submit-test/experiment_thermals.py": "c394432327266b50f9c4c16d8f5900ddfb99ce014846f5288af75ff139361a33",
+      "/root/cts-1.4.6.2/deqp-vk": "542459f13f3378f0af79ac9062d7e7fce6cd4853ab76adda69ae50889483b7e8"
+    },
+    [
+      [
+        "cts-sample.py",
+        "96490f2c533ecaf1233f9276b904fdbaecb05573215b7e7028af5263bbb1807d"
+      ],
+      [
+        "deqp-runner",
+        "f0f3f2ed10d24239dc91000a7ae3c15167ff290e2cba9a71e73c650a8ffccc56"
+      ]
+    ],
+    {
+      "path": "/root/cts-1.4.6.2/deqp-vk",
+      "sha256": "542459f13f3378f0af79ac9062d7e7fce6cd4853ab76adda69ae50889483b7e8"
+    },
+    "f0f3f2ed10d24239dc91000a7ae3c15167ff290e2cba9a71e73c650a8ffccc56"
+  ],
+  "segments": [
+    {
+      "directory": "/home/council/dev/dirtyroom_m4/build/cts14-seed25-run02",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T022320988715Z-cts14-seed25-run02",
+      "boot_id": "4677c960-6288-422d-b849-67cddc408032",
+      "counts": {
+        "NotSupported": 179,
+        "Unrun": 546,
+        "Pass": 177,
+        "Fail": 57,
+        "Interrupted": 40,
+        "Crash": 1
+      },
+      "jobs": 20,
+      "elapsed_seconds": 15.250038672005758,
+      "preparation_seconds": 1.4279531399952248,
+      "runner_seconds": 11.902023908999993,
+      "started_unix": 1789352602.300727,
+      "finished_unix": 1789352614.2949412,
+      "guard_verdict": "process_failure",
+      "peak_temperature_c": 62.5
+    },
+    {
+      "directory": "/home/council/dev/dirtyroom_m4/build/cts14-seed25-run03",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T022605468025Z-cts14-seed25-run03",
+      "boot_id": "4677c960-6288-422d-b849-67cddc408032",
+      "counts": {
+        "NotSupported": 244,
+        "Fail": 27,
+        "Interrupted": 21,
+        "Unrun": 127,
+        "Pass": 166,
+        "Crash": 1
+      },
+      "jobs": 20,
+      "elapsed_seconds": 16.474215926020406,
+      "preparation_seconds": 1.4828147829975933,
+      "runner_seconds": 13.50953922399998,
+      "started_unix": 1789352766.9926598,
+      "finished_unix": 1789352780.5885239,
+      "guard_verdict": "process_failure",
+      "peak_temperature_c": 63.75
+    },
+    {
+      "directory": "/home/council/dev/dirtyroom_m4/build/cts14-seed25-run04",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T022705314453Z-cts14-seed25-run04",
+      "boot_id": "4677c960-6288-422d-b849-67cddc408032",
+      "counts": {
+        "Pass": 30,
+        "NotSupported": 111,
+        "Fail": 7
+      },
+      "jobs": 20,
+      "elapsed_seconds": 8.340041517018108,
+      "preparation_seconds": 1.5199898749997374,
+      "runner_seconds": 5.651948893000053,
+      "started_unix": 1789352826.7492213,
+      "finished_unix": 1789352832.440333,
+      "guard_verdict": "pass",
+      "peak_temperature_c": 62.0
+    }
+  ]
+}

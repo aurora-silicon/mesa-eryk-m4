@@ -1,0 +1,7 @@
+{
+  "path": "/home/council/dev/dirtyroom_m4/build/cts-1.4-arm64/external/vulkancts/modules/vulkan/deqp-vk",
+  "remote": "/root/cts-1.4.6.2/deqp-vk",
+  "sha256": "542459f13f3378f0af79ac9062d7e7fce6cd4853ab76adda69ae50889483b7e8",
+  "test_source_changes": false,
+  "build_correction": "Use host /usr/bin/wayland-scanner; no CTS source or expectation patches"
+}

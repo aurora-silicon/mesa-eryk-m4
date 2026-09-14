@@ -1,0 +1,22 @@
+{
+  "selected": 1000,
+  "recorded": 1000,
+  "completed": 0,
+  "counts": {
+    "Unrun": 1000
+  },
+  "classifications": {
+    "unclassified": 1000
+  },
+  "elapsed_seconds": 3.128468564013019,
+  "preparation_seconds": 1.4877834249928128,
+  "runner_seconds": null,
+  "jobs": 20,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "28aa977c997d25290f199e1c5e55893e33341b794dd55211b1b752817b806605",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T022025475168Z-cts14-seed25-run01",
+  "guard_verdict": "process_failure",
+  "command_returncode": 1,
+  "peak_temperature_c": 60.0
+}

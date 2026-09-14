@@ -105,10 +105,11 @@ lines += ['',f"Runner execution: {report['runner_seconds']:.3f} seconds.",
           f"Wall span between first start and last result, including inspection pauses: {report['wall_span_seconds']:.3f} seconds.",
           f"Peak temperature: {report['peak_temperature_c']} C.", '',
           f"{report['restarted_interrupted_attempts']} interrupted attempts restarted; no completed Pass/Fail/Crash/Timeout was retried or replaced.",
-          'The first segments used 20 workers; the final completion segment used four.',
-          'This was an interrupted and resumed campaign, not one uninterrupted throughput benchmark.',
+          'Workers per segment: ' + ', '.join(str(s['jobs']) for s in segments) + '.',
+          ('This was an interrupted and resumed campaign, not one uninterrupted throughput benchmark.'
+           if len(segments) > 1 else 'One bounded execution segment.'),
           'Raw runner crashes caused by coordinated SIGKILL are classified as Interrupted; true SIGSEGV and timeout results remain failures.',
           'Exact first-attempt and segment counts are in summary.json; every attempt is retained in results.jsonl.gz.',
-          'This uses an explicitly patched historical CTS diagnostic binary and is not a Khronos conformance submission.', '']
+          'The exact CTS executable and driver identities are retained in summary.json. This random sample is not a Khronos conformance submission.', '']
 (a.output/'README.md').write_text('\n'.join(lines))
 print(json.dumps({k:v for k,v in report.items() if k not in ('software_identity','segments')},indent=2))
