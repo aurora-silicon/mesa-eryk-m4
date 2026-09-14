@@ -753,8 +753,14 @@ agx3_emit_uvsw(struct util_dynarray *emission, enum agx_isa_encoding enc,
                const agx_instr *I, uint16_t staging_half, uint8_t slot,
                uint16_t wait_mask, bool defer_writeout)
 {
-   if (I->nr_dests != 0 || I->nr_srcs != 2 ||
-       I->src[0].type != AGX_INDEX_IMMEDIATE ||
+   if (I->nr_dests != 0 || I->nr_srcs != 2)
+      return false;
+   const agx_index index = I->src[0];
+   const bool indirect = index.type != AGX_INDEX_IMMEDIATE;
+   if ((indirect && (enc != AGX_ISA_ENCODING_AGX3B || defer_writeout ||
+        (index.type != AGX_INDEX_REGISTER && index.type != AGX_INDEX_UNIFORM) ||
+        index.size != AGX_SIZE_16 || agx_channels(index) != 1 ||
+        index.memory || index.abs || index.neg)) ||
        !agx3_vary_reg32(I->src[1]))
       return false;
 
@@ -767,6 +773,11 @@ agx3_emit_uvsw(struct util_dynarray *emission, enum agx_isa_encoding enc,
                                 I->src[1].kill, slot, wait_mask, bytes, &len) ||
        !agx3_append(emission, bytes, len))
       return false;
+   if (indirect)
+      return agx3_vary_uvsw_indexed(enc, staging_half, index.value,
+                index.type == AGX_INDEX_UNIFORM, !index.discard, slot, true,
+                (uint16_t)(1u << (slot - 1)), bytes, &len) &&
+             agx3_append(emission, bytes, len);
    return defer_writeout ||
           (agx3_vary_uvsw(enc, staging_half, I->src[0].value, slot, true,
                           (uint16_t)(1u << (slot - 1)), bytes, &len) &&
@@ -4401,6 +4412,14 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
       (g17p_output_count >= 5 &&
        agx3_outputs_are_terminal(ctx, g17p_output_count, true));
    unsigned g17p_outputs_staged = 0;
+   bool g17p_indexed_outputs = false;
+   if (enc == AGX_ISA_ENCODING_AGX3B && ctx->stage == MESA_SHADER_VERTEX) {
+      agx_foreach_instr_global(ctx, I) {
+         if (I->op == AGX_OPCODE_ST_VARY && I->nr_srcs == 2 &&
+             I->src[0].type != AGX_INDEX_IMMEDIATE)
+            g17p_indexed_outputs = true;
+      }
+   }
    /* User-output graphs outside the qualified scalar shapes must not
     * silently fall back to immediate, potentially out-of-order writeout. */
    if (enc == AGX_ISA_ENCODING_AGX3B && ctx->stage == MESA_SHADER_VERTEX) {
@@ -4408,7 +4427,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
          agx_foreach_instr_in_block(block, I) {
             if (I->op == AGX_OPCODE_ST_VARY && I->nr_srcs >= 1 &&
                 I->src[0].type == AGX_INDEX_IMMEDIATE &&
-                I->src[0].value >= 4 && !g17p_user_output_protocol)
+                I->src[0].value >= 4 && !g17p_user_output_protocol &&
+                !g17p_indexed_outputs)
                AGX3_REFUSE(I);
          }
       }
@@ -4841,6 +4861,13 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                       !agx3_append(emission, bytes, len))
                      AGX3_REFUSE(I);
                }
+            }
+            if (g17p_indexed_outputs) {
+               /* A dynamic destination may alias a previous export. Retire
+                * the write before reusing its index GPR or staging bank. */
+               if (!agx3_retire_slots_noop(emission, enc, staging_bit))
+                  AGX3_REFUSE(I);
+               outstanding &= (uint16_t)~staging_bit;
             }
             next_uvs_slot = (next_uvs_slot % nslots) + 1;
             continue;

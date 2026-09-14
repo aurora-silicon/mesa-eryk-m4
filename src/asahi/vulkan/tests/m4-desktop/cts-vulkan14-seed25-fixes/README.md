@@ -333,3 +333,25 @@ Library SHA256:
 `a95fda90594873acbc8e5ad1e3c1eff5e6226a4861326bdf2fae4d56f4ad2a72`.
 Running total: **73/91 failures resolved** (61 Mesa fixes, 12 CTS corrections),
 18 remaining. No broad regression campaign.
+
+## Runtime UVS destination indices
+
+Separate shader linkage loads varying destinations at draw time. The native
+UVSW table supports register/uniform half-width destination operands (f23
+kind 2/3, f16/f17 index), but the emitter only accepted immediate indices.
+Add these forms and retain index liveness. For dynamic exports, retire each
+write before reusing its index register or staging bank; these destinations
+may alias, unlike the existing statically distinct terminal export batches.
+Value/index producer dependencies and operand bounds remain checked.
+
+Both original saved vertex bundles compile offline. Five original CTS cases
+now Pass: four dual-source blending cases and transform-feedback fuzz case28.
+Two further blend cases reach a new fragment FLTNORM source-negation refusal
+and remain open. No native Metal byte witness is claimed for the indexed
+UVSW form: this implementation is table-derived and validated by M4 execution.
+The final source also checks operand count before reading the index. Both
+host and ARM builds passed after that arity-check cleanup.
+Peak 58.25 C, no fault/reboot. Tested library SHA256:
+`27d9ead157a430931ed2569395d29130e9cdc17d9decd848409aea4be330a833`.
+Running total: **78/91 failures resolved** (66 Mesa fixes, 12 CTS corrections),
+13 remaining. No broad regression campaign.

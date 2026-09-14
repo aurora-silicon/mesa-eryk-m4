@@ -1,0 +1,146 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.pipeline.fast_linked_library.blend.dual_source.format.r8g8b8a8_unorm.output_variable.states.color_s1a_sc_rsub_alpha_1msc_1ms1c_max-color_s1c_1mda_rsub_alpha_z_1mcc_max-color_z_sas_sub_alpha_s1c_s1a_sub-color_1mdc_s1a_min_alpha_sa_1mdc_sub",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.pipeline.fast_linked_library.blend.dual_source.format.r8g8b8a8_unorm.output_variable.states.color_s1a_sc_rsub_alpha_1msc_1ms1c_max-color_s1c_1mda_rsub_alpha_z_1mcc_max-color_z_sas_sub_alpha_s1c_s1a_sub-color_1mdc_s1a_min_alpha_sa_1mdc_sub",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T044729694668Z-cts14-indexed-uvs-family/cts/000/result.qpa"
+    ],
+    "boot_id": "0ca1f3f9-acb4-4b79-8a3c-15498f475016",
+    "status": "Fail",
+    "started_unix": 1789361250.9812107,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.fast_linked_library.blend.dual_source.format.r8g8b8a8_unorm.output_variable.states.color_s1a_sc_rsub_alpha_1msc_1ms1c_max-color_s1c_1mda_rsub_alpha_z_1mcc_max-color_z_sas_sub_alpha_s1c_s1a_sub-color_1mdc_s1a_min_alpha_sa_1mdc_sub",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "vk.endCommandBuffer(commandBuffer): VK_ERROR_FEATURE_NOT_PRESENT at vkCmdUtil.cpp:74",
+    "returncode": 1,
+    "seconds": 0.46361556200008636,
+    "finished_unix": 1789361251.449879,
+    "pid": 4322
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.pipeline.shader_object_unlinked_spirv.blend.dual_source.format.r8_unorm.output_variable.states.color_cc_1msc_sub_alpha_z_1mcc_min-color_1msc_s1c_add_alpha_1mda_1mdc_sub-color_ca_sas_rsub_alpha_cc_s1c_max-color_s1c_s1c_rsub_alpha_da_1ms1a_rsub",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.pipeline.shader_object_unlinked_spirv.blend.dual_source.format.r8_unorm.output_variable.states.color_cc_1msc_sub_alpha_z_1mcc_min-color_1msc_s1c_add_alpha_1mda_1mdc_sub-color_ca_sas_rsub_alpha_cc_s1c_max-color_s1c_s1c_rsub_alpha_da_1ms1a_rsub",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T044729694668Z-cts14-indexed-uvs-family/cts/001/result.qpa"
+    ],
+    "boot_id": "0ca1f3f9-acb4-4b79-8a3c-15498f475016",
+    "status": "Pass",
+    "started_unix": 1789361250.9863267,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.shader_object_unlinked_spirv.blend.dual_source.format.r8_unorm.output_variable.states.color_cc_1msc_sub_alpha_z_1mcc_min-color_1msc_s1c_add_alpha_1mda_1mdc_sub-color_ca_sas_rsub_alpha_cc_s1c_max-color_s1c_s1c_rsub_alpha_da_1ms1a_rsub",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.6072712059999503,
+    "finished_unix": 1789361251.5988657,
+    "pid": 4323
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.transform_feedback.fuzz.random_vertex.basic_types.28",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.transform_feedback.fuzz.random_vertex.basic_types.28",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T044729694668Z-cts14-indexed-uvs-family/cts/002/result.qpa"
+    ],
+    "boot_id": "0ca1f3f9-acb4-4b79-8a3c-15498f475016",
+    "status": "Pass",
+    "started_unix": 1789361250.9917362,
+    "eligibility": {
+      "case": "dEQP-VK.transform_feedback.fuzz.random_vertex.basic_types.28",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.3836092460001055,
+    "finished_unix": 1789361251.3812656,
+    "pid": 4324
+  },
+  {
+    "index": 3,
+    "case": "dEQP-VK.pipeline.fast_linked_library.blend.dual_source.format.r8g8b8a8_unorm.output_array.states.color_1ms1a_1ms1a_sub_alpha_sc_1msa_rsub-color_sc_1mcc_add_alpha_1ms1a_s1c_rsub-color_1mdc_ca_rsub_alpha_1mda_s1c_rsub-color_1ms1c_1msc_min_alpha_o_sas_sub",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.pipeline.fast_linked_library.blend.dual_source.format.r8g8b8a8_unorm.output_array.states.color_1ms1a_1ms1a_sub_alpha_sc_1msa_rsub-color_sc_1mcc_add_alpha_1ms1a_s1c_rsub-color_1mdc_ca_rsub_alpha_1mda_s1c_rsub-color_1ms1c_1msc_min_alpha_o_sas_sub",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T044729694668Z-cts14-indexed-uvs-family/cts/003/result.qpa"
+    ],
+    "boot_id": "0ca1f3f9-acb4-4b79-8a3c-15498f475016",
+    "status": "Pass",
+    "started_unix": 1789361250.9977946,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.fast_linked_library.blend.dual_source.format.r8g8b8a8_unorm.output_array.states.color_1ms1a_1ms1a_sub_alpha_sc_1msa_rsub-color_sc_1mcc_add_alpha_1ms1a_s1c_rsub-color_1mdc_ca_rsub_alpha_1mda_s1c_rsub-color_1ms1c_1msc_min_alpha_o_sas_sub",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.4612856480002847,
+    "finished_unix": 1789361251.4648647,
+    "pid": 4326
+  },
+  {
+    "index": 4,
+    "case": "dEQP-VK.pipeline.shader_object_unlinked_spirv.blend.dual_source.format.b10g11r11_ufloat_pack32.output_variable.states.color_z_1mcc_sub_alpha_1mdc_sa_sub-color_1ms1a_1ms1a_rsub_alpha_cc_z_add-color_s1a_1ms1a_rsub_alpha_dc_1mca_add-color_1mdc_s1c_max_alpha_1ms1a_dc_sub",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.pipeline.shader_object_unlinked_spirv.blend.dual_source.format.b10g11r11_ufloat_pack32.output_variable.states.color_z_1mcc_sub_alpha_1mdc_sa_sub-color_1ms1a_1ms1a_rsub_alpha_cc_z_add-color_s1a_1ms1a_rsub_alpha_dc_1mca_add-color_1mdc_s1c_max_alpha_1ms1a_dc_sub",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T044729694668Z-cts14-indexed-uvs-family/cts/004/result.qpa"
+    ],
+    "boot_id": "0ca1f3f9-acb4-4b79-8a3c-15498f475016",
+    "status": "Pass",
+    "started_unix": 1789361251.0036867,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.shader_object_unlinked_spirv.blend.dual_source.format.b10g11r11_ufloat_pack32.output_variable.states.color_z_1mcc_sub_alpha_1mdc_sa_sub-color_1ms1a_1ms1a_rsub_alpha_cc_z_add-color_s1a_1ms1a_rsub_alpha_dc_1mca_add-color_1mdc_s1c_max_alpha_1ms1a_dc_sub",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.6050308609997046,
+    "finished_unix": 1789361251.6148498,
+    "pid": 4328
+  },
+  {
+    "index": 5,
+    "case": "dEQP-VK.pipeline.fast_linked_library.blend.dual_source.format.r8g8b8_unorm.output_variable.states.color_s1c_1mda_add_alpha_cc_1mca_min-color_da_o_sub_alpha_da_1mda_max-color_z_1mcc_sub_alpha_sc_cc_sub-color_1mca_1ms1c_max_alpha_cc_dc_max",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.pipeline.fast_linked_library.blend.dual_source.format.r8g8b8_unorm.output_variable.states.color_s1c_1mda_add_alpha_cc_1mca_min-color_da_o_sub_alpha_da_1mda_max-color_z_1mcc_sub_alpha_sc_cc_sub-color_1mca_1ms1c_max_alpha_cc_dc_max",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T044729694668Z-cts14-indexed-uvs-family/cts/005/result.qpa"
+    ],
+    "boot_id": "0ca1f3f9-acb4-4b79-8a3c-15498f475016",
+    "status": "Fail",
+    "started_unix": 1789361251.0100555,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.fast_linked_library.blend.dual_source.format.r8g8b8_unorm.output_variable.states.color_s1c_1mda_add_alpha_cc_1mca_min-color_da_o_sub_alpha_da_1mda_max-color_z_1mcc_sub_alpha_sc_cc_sub-color_1mca_1ms1c_max_alpha_cc_dc_max",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "vk.endCommandBuffer(commandBuffer): VK_ERROR_FEATURE_NOT_PRESENT at vkCmdUtil.cpp:74",
+    "returncode": 1,
+    "seconds": 0.4648324650001996,
+    "finished_unix": 1789361251.4809017,
+    "pid": 4331
+  }
+]

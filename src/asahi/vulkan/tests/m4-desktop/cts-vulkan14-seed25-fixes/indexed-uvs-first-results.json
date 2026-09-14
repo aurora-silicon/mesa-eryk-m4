@@ -1,0 +1,26 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.pipeline.fast_linked_library.blend.dual_source.format.r8_unorm.output_array.states.color_ca_1ms1c_sub_alpha_1msa_1mca_sub-color_1msc_da_max_alpha_o_da_add-color_s1a_1ms1a_max_alpha_dc_1ms1c_sub-color_1ms1a_z_sub_alpha_1msa_1msc_max",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.pipeline.fast_linked_library.blend.dual_source.format.r8_unorm.output_array.states.color_ca_1ms1c_sub_alpha_1msa_1mca_sub-color_1msc_da_max_alpha_o_da_add-color_s1a_1ms1a_max_alpha_dc_1ms1c_sub-color_1ms1a_z_sub_alpha_1msa_1msc_max",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T044647759720Z-cts14-indexed-uvs/cts/000/result.qpa"
+    ],
+    "boot_id": "0ca1f3f9-acb4-4b79-8a3c-15498f475016",
+    "status": "Pass",
+    "started_unix": 1789361209.0440087,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.fast_linked_library.blend.dual_source.format.r8_unorm.output_array.states.color_ca_1ms1c_sub_alpha_1msa_1mca_sub-color_1msc_da_max_alpha_o_da_add-color_s1a_1ms1a_max_alpha_dc_1ms1c_sub-color_1ms1a_z_sub_alpha_1msa_1msc_max",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.3610296820002077,
+    "finished_unix": 1789361209.410195,
+    "pid": 4257
+  }
+]

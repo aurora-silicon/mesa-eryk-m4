@@ -84,6 +84,12 @@ bool agx3_vary_uvsw(enum agx_isa_encoding enc, uint16_t value,
                     uint16_t wait_mask, uint8_t out[AGX3_VARY_MAX_LENGTH],
                     uint8_t *len);
 
+/* G16G register/uniform 16-bit UVS destination indices. */
+bool agx3_vary_uvsw_indexed(enum agx_isa_encoding enc, uint16_t value,
+                            uint16_t index, bool uniform, bool index_live,
+                            uint8_t slot, bool value_kill, uint16_t wait_mask,
+                            uint8_t out[AGX3_VARY_MAX_LENGTH], uint8_t *len);
+
 #ifdef __cplusplus
 }
 #endif

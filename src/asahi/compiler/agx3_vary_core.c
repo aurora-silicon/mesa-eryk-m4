@@ -155,3 +155,30 @@ agx3_vary_uvsw(enum agx_isa_encoding enc, uint16_t value, uint16_t uvs_index,
    return agx3_bind_compose(enc, "uvsw", 0, is_b(enc) ? base_b : base_c,
                             is_b(enc) ? 3 : 6, ov, n, out, len);
 }
+
+/* Destination operand kinds 2/3 select f16/f17 in the native UVSW table;
+ * f24=1 specifies a half-width UVS index, independent of its 32-bit value. */
+bool
+agx3_vary_uvsw_indexed(enum agx_isa_encoding enc, uint16_t value,
+                       uint16_t index, bool uniform, bool index_live,
+                       uint8_t slot, bool value_kill, uint16_t wait_mask,
+                       uint8_t out[AGX3_VARY_MAX_LENGTH], uint8_t *len)
+{
+   if (enc != AGX_ISA_ENCODING_AGX3B || (value & 1) || value >= 256 ||
+       index >= (uniform ? 512 : 192) || slot < 1 || slot > 6 ||
+       (wait_mask & ~0x3f))
+      return false;
+   const struct agx3_field_kv base[] = {KV(9,5), KV(23,uniform ? 3 : 2), KV(24,1)};
+   struct agx3_field_kv ov[12];
+   unsigned n=0;
+   ov[n++] = (struct agx3_field_kv)KV(5,value);
+   ov[n++] = (struct agx3_field_kv)KV(uniform ? 17 : 16,index);
+   ov[n++] = (struct agx3_field_kv)KV(12,slot);
+   ov[n++] = (struct agx3_field_kv)KV(13,value_kill);
+   if (!uniform)
+      ov[n++] = (struct agx3_field_kv)KV(index_live ? 25 : 27,1);
+   for (unsigned i=0;i<6;i++)
+      if (wait_mask & (1u<<i))
+         ov[n++] = (struct agx3_field_kv)KV(30+i,1);
+   return agx3_bind_compose(enc,"uvsw",0,base,3,ov,n,out,len);
+}
