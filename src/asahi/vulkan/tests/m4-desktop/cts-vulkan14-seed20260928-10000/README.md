@@ -123,3 +123,18 @@ Xlib present fences, Wayland multi-swapchain fences, and XCB incremental mailbox
 presentation. Peak 57.5 C. Separate missing-display skips were rechecked in
 `20260914T134439006110Z-cts28-wsi-setup-fixed`; preserve their revised capability
 reasons rather than treating absence of the greeter as unsupported Vulkan.
+
+## Null index buffers and compressed-copy diagnosis
+
+`20260914T135242005531Z-cts28-copy-index` passes the original maintenance6
+null-index draw. Native indexed commands require a real bounded index span;
+direct null bindings now allocate zero-backed indices before native validation,
+retaining vertex offset, instance state and shader execution. Allocation failure
+is reported normally. Peak temperature 57 C; installed library
+`2d267523a8ad0543a40f2aff3563ccd811fc88d62fb4c42e16181c4a27155125`.
+
+The two 1D compressed-view cases still fail. CTS rounds the reference image
+width to complete blocks but uses the original partial width for its 1D upload
+(vktImageCompressionTranscodingSupport.cpp:2486,2583). The upload does not end
+at the image edge. A separate CTS correction is being built; no successful
+result is claimed yet and invalid-region validation remains enabled.

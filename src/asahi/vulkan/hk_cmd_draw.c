@@ -5047,6 +5047,28 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
                    hk_stat_enabled(stat_c_inv) || hk_stat_enabled(stat_c_prims);
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
 
+   /* A maintenance6 null index binding reads zero indices. Native index
+    * lists cannot fetch beyond their bound span, so provide real zero-backed
+    * storage for the direct draw instead of rejecting it before robustness. */
+   if (agx_native_graphics(&dev->dev) && draw_.indexed &&
+       !agx_is_indirect(draw_.b) && !draw_.index_buffer_range_B) {
+      uint64_t size = (uint64_t)draw_.b.count[0] *
+                      agx_index_size_to_B(draw_.index_size);
+      if (size > UINT32_MAX) {
+         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+         return;
+      }
+      struct agx_ptr zero = hk_pool_alloc(cmd, size, 4);
+      if (!zero.cpu) {
+         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+         return;
+      }
+      memset(zero.cpu, 0, size);
+      draw_.index_buffer = zero.gpu;
+      draw_.index_buffer_range_B = size;
+      draw_.start = 0;
+   }
+
    /* Validate the index domain before robustness or geometry lowering can
     * introduce a pre-render dispatch. Robust indexed draws publish the native
     * PPP selector before their GPU-generated Index List. */
