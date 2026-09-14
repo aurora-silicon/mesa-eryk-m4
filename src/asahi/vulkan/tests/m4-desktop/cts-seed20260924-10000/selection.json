@@ -1,0 +1,40 @@
+{
+  "seed": 20260924,
+  "count": 10000,
+  "population": 233795,
+  "eligible_population": 33242,
+  "population_classifications": {
+    "unclassified": 186351,
+    "required": 13613,
+    "not-advertised": 6669,
+    "advertised": 19629,
+    "platform-excluded": 7533
+  },
+  "selected_classifications": {
+    "required": 4043,
+    "advertised": 5957
+  },
+  "linux_only": true,
+  "mustpass": "/home/council/dev/dirtyroom_m4/reference/vk-gl-cts-1.0.2.6/external/vulkancts/mustpass/1.0.2/vk-default.txt",
+  "scope": "required-advertised",
+  "mustpass_sha256": "9cc609b8059d01f1f4c56a331f749a1cb942f332f617b0af3484f8f35736bc02",
+  "profile_sha256": "c1f5011d753f3de7716ff0ca76a4300f86df2796f981ff156f133561651c9a58",
+  "catalog_sha256": "7444e799503346d6cecc4c492967df98c52408e0983cc523d8ee5b48cad8359e",
+  "classifier_sha256": "984c9025f1c3a7178a4640a224e72bc27ae744d4cfc77a44221f6ab82c82659e",
+  "identity": {
+    "kernel": "7.1.9-dirtyroom-asahi1+",
+    "files": {
+      "/opt/asahi-m4-port/lib/libvulkan_asahi.so": "38dd43556075d897cd7e26c9df867f8717017de18e8c35ca5ddb7733a709a09d",
+      "/lib/modules/7.1.9-dirtyroom-asahi1+/kernel/drivers/gpu/drm/asahi/asahi.ko": "e40b70f2d192a9cb1649dab9aa395862a64481e22e5acb1d3f92b7b32860e85e"
+    }
+  },
+  "method": "Python random.Random(seed).sample, original mustpass order after recorded eligibility filter",
+  "coverage_note": "Reviewed rule coverage only; unclassified cases are excluded, not claimed optional or unsupported.",
+  "categories": {
+    "api": 4531,
+    "glsl": 2023,
+    "pipeline": 3386,
+    "tessellation": 60
+  },
+  "case_list": "cases.txt.gz (decompressed SHA256 in summary.json)"
+}

@@ -1,0 +1,45 @@
+status	classification	case	message
+Fail	required	dEQP-VK.api.info.device.properties	deviceProperties - feature limits failed
+Fail	required	dEQP-VK.api.info.image_format_properties.2d.optimal.a2b10g10r10_uint_pack32	Required sample counts not supported
+Fail	required	dEQP-VK.api.info.image_format_properties.2d.optimal.r16g16b16a16_sfloat	Required sample counts not supported
+Fail	advertised	dEQP-VK.tessellation.invariance.outer_edge_index_independence.quads_fractional_odd_spacing_cw	Invalid set of vertices
+Fail	required	dEQP-VK.api.info.image_format_properties.2d.optimal.r32g32b32_sint	Required sample counts not supported
+Fail	advertised	dEQP-VK.tessellation.invariance.outer_triangle_set.triangles_fractional_odd_spacing	Invalid set of primitives
+Fail	advertised	dEQP-VK.tessellation.invariance.primitive_set.triangles_equal_spacing_ccw	Invalid set of primitives
+Fail	required	dEQP-VK.api.info.image_format_properties.2d.optimal.r8_unorm	Required sample counts not supported
+Timeout	advertised	dEQP-VK.tessellation.invariance.outer_edge_symmetry.quads_fractional_even_spacing_cw_point_mode	Runner detected abnormal execution; inspect QPA/log
+Fail	advertised	dEQP-VK.tessellation.invariance.triangle_set.quads_equal_spacing	Invalid set of primitives
+Fail	advertised	dEQP-VK.tessellation.invariance.primitive_set.isolines_equal_spacing_cw	Invalid set of primitives
+Fail	required	dEQP-VK.api.info.image_format_properties.2d.optimal.b8g8r8_srgb	Required sample counts not supported
+Fail	required	dEQP-VK.api.info.image_format_properties.2d.optimal.r5g5b5a1_unorm_pack16	Required sample counts not supported
+Fail	required	dEQP-VK.api.info.image_format_properties.2d.optimal.a8b8g8r8_uint_pack32	Required sample counts not supported
+Fail	required	dEQP-VK.api.info.image_format_properties.2d.optimal.a8b8g8r8_sint_pack32	Required sample counts not supported
+Fail	required	dEQP-VK.api.info.image_format_properties.2d.optimal.r8g8_unorm	Required sample counts not supported
+Fail	advertised	dEQP-VK.tessellation.invariance.primitive_set.isolines_fractional_odd_spacing_ccw	Invalid set of primitives
+Fail	required	dEQP-VK.api.info.image_format_properties.2d.optimal.r32_sint	Required sample counts not supported
+Fail	required	dEQP-VK.api.info.image_format_properties.2d.optimal.a2b10g10r10_unorm_pack32	Required sample counts not supported
+Fail	advertised	dEQP-VK.tessellation.invariance.outer_edge_index_independence.triangles_fractional_odd_spacing_cw	Invalid set of vertices
+Fail	advertised	dEQP-VK.tessellation.invariance.outer_triangle_set.triangles_fractional_even_spacing	Invalid set of primitives
+Fail	required	dEQP-VK.api.info.image_format_properties.2d.optimal.r16g16_sscaled	sampleCounts != VK_SAMPLE_COUNT_1_BIT
+Fail	required	dEQP-VK.api.info.image_format_properties.2d.optimal.r16g16_sfloat	Required sample counts not supported
+Fail	advertised	dEQP-VK.tessellation.invariance.triangle_set.quads_fractional_even_spacing	Invalid set of primitives
+Fail	required	dEQP-VK.api.info.image_format_properties.2d.optimal.b8g8r8a8_sint	Required sample counts not supported
+Fail	advertised	dEQP-VK.tessellation.invariance.primitive_set.quads_fractional_odd_spacing_cw	Invalid set of primitives
+Fail	required	dEQP-VK.api.info.image_format_properties.2d.optimal.r16g16_snorm	Required sample counts not supported
+Fail	required	dEQP-VK.api.info.image_format_properties.2d.optimal.b8g8r8a8_uint	Required sample counts not supported
+Fail	required	dEQP-VK.api.info.image_format_properties.2d.optimal.r5g6b5_unorm_pack16	Required sample counts not supported
+Fail	advertised	dEQP-VK.tessellation.invariance.triangle_set.triangles_fractional_even_spacing	Invalid set of primitives
+Fail	required	dEQP-VK.api.info.image_format_properties.2d.optimal.r4g4b4a4_unorm_pack16	Required sample counts not supported
+Fail	required	dEQP-VK.api.info.image_format_properties.2d.optimal.b8g8r8a8_unorm	Required sample counts not supported
+Fail	advertised	dEQP-VK.tessellation.invariance.primitive_set.quads_fractional_even_spacing_ccw	Invalid set of primitives
+Fail	required	dEQP-VK.api.info.image_format_properties.2d.optimal.b5g5r5a1_unorm_pack16	Required sample counts not supported
+Crash	advertised	dEQP-VK.tessellation.invariance.outer_edge_symmetry.triangles_equal_spacing_ccw	Runner detected abnormal execution; inspect QPA/log
+Fail	required	dEQP-VK.api.info.image_format_properties.2d.optimal.r8g8b8a8_sint	Required sample counts not supported
+Fail	advertised	dEQP-VK.tessellation.invariance.triangle_set.quads_fractional_odd_spacing	Invalid set of primitives
+Fail	advertised	dEQP-VK.tessellation.invariance.primitive_set.quads_fractional_even_spacing_cw	Invalid set of primitives
+Fail	required	dEQP-VK.api.info.image_format_properties.2d.optimal.b8g8r8_unorm	Required sample counts not supported
+Fail	advertised	dEQP-VK.tessellation.invariance.inner_triangle_set.quads_fractional_odd_spacing	Invalid set of primitives
+Timeout	advertised	dEQP-VK.tessellation.invariance.outer_edge_index_independence.quads_fractional_odd_spacing_ccw_point_mode	Runner detected abnormal execution; inspect QPA/log
+Fail	required	dEQP-VK.api.info.image_format_properties.2d.optimal.r8g8b8a8_uint	Required sample counts not supported
+Fail	advertised	dEQP-VK.tessellation.invariance.outer_triangle_set.triangles_equal_spacing	Invalid set of primitives
+Fail	required	dEQP-VK.api.info.image_format_properties.2d.optimal.r32g32b32a32_uint	Required sample counts not supported

@@ -1,0 +1,144 @@
+{
+  "selected": 10000,
+  "completed": 10000,
+  "counts": {
+    "Pass": 9956,
+    "Fail": 41,
+    "Timeout": 2,
+    "Crash": 1
+  },
+  "rates_percent": {
+    "Pass": 99.56,
+    "Fail": 0.41,
+    "Timeout": 0.02,
+    "Crash": 0.01
+  },
+  "classifications": {
+    "required": 4043,
+    "advertised": 5957
+  },
+  "observed_attempts": 10178,
+  "restarted_interrupted_attempts": 178,
+  "first_attempt_counts": {
+    "Pass": 9782,
+    "Fail": 41,
+    "Interrupted": 174,
+    "Timeout": 2,
+    "Crash": 1
+  },
+  "runner_seconds": 559.9759869709998,
+  "active_campaign_seconds": 577.173134850018,
+  "staging_seconds": 8.376649142010137,
+  "wall_span_seconds": 813.6107091903687,
+  "peak_temperature_c": 62.0,
+  "cases_sha256": "c3d133dfd44b62795b4bf67216d460f3555cb71d216f24a984e2a4651990c587",
+  "software_identity": [
+    "7.1.9-dirtyroom-asahi1+",
+    {
+      "/opt/asahi-m4-port/lib/libvulkan_asahi.so": "38dd43556075d897cd7e26c9df867f8717017de18e8c35ca5ddb7733a709a09d",
+      "/root/guarded-command.py": "e746929162cc01b809455e9dae4a6d3f8a32b313b8e39373e3d1b00f893b797d",
+      "/opt/asahi-m4-port/lib/libgallium-26.1.4.so": "14c9d843ca2131198ea3a61587e37fc8b7b79a3e39e98bb0c59da209ccae5ba5",
+      "/root/run-m4-gl.py": "6842d9bb244b52e7b358b63af9548c1a08d6c6a3244da61efe1b157006df8471",
+      "/root/firmware-snapshot.py": "be417c075b15da22832f05254b3fab247582c72c9dadccff5f7c56b56a9cedb8",
+      "/root/g16-fault-dump.py": "c3988ddf0ad9e10e2b9736582c9ab7c59c90a62090d0e34a32db1ba46c917bf3",
+      "/lib/modules/7.1.9-dirtyroom-asahi1+/kernel/drivers/gpu/drm/asahi/asahi.ko": "e40b70f2d192a9cb1649dab9aa395862a64481e22e5acb1d3f92b7b32860e85e",
+      "/root/g16-submit-test/experiment_watchdog.py": "28600768bceb930a3528471fd7982db9247ec86c00f4a522456b70e38001e18d",
+      "/root/g16-submit-test/experiment_thermals.py": "c394432327266b50f9c4c16d8f5900ddfb99ce014846f5288af75ff139361a33",
+      "/root/cts-1.0.2.6/deqp-vk-scaled-precision": "1313040278041dd4dbfcc951f62fe4bc0f6f08c7db14a3f516d20c944b12a574"
+    },
+    [
+      [
+        "cts-sample.py",
+        "a7bdb60fbe7981d2a1e3929bee23c19356ea04ec73b161c669fb29a7606611e9"
+      ],
+      [
+        "deqp-runner",
+        "f0f3f2ed10d24239dc91000a7ae3c15167ff290e2cba9a71e73c650a8ffccc56"
+      ]
+    ],
+    {
+      "path": "/root/cts-1.0.2.6/deqp-vk-scaled-precision",
+      "sha256": "1313040278041dd4dbfcc951f62fe4bc0f6f08c7db14a3f516d20c944b12a574"
+    },
+    "f0f3f2ed10d24239dc91000a7ae3c15167ff290e2cba9a71e73c650a8ffccc56"
+  ],
+  "segments": [
+    {
+      "directory": "/home/council/dev/dirtyroom_m4/build/cts-deqp-runner-random10000",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T004931627297Z-cts-deqp-runner-random10000",
+      "boot_id": "c2f22724-ed20-4eba-9f9e-4d98de78a9d2",
+      "counts": {
+        "Pass": 6304,
+        "Unrun": 3622,
+        "Fail": 24,
+        "Interrupted": 49,
+        "Crash": 1
+      },
+      "jobs": 20,
+      "elapsed_seconds": 357.673047845019,
+      "preparation_seconds": 1.7312807340058498,
+      "runner_seconds": 351.96402640099996,
+      "started_unix": 1789346973.201528,
+      "finished_unix": 1789347326.504275,
+      "guard_verdict": "process_failure",
+      "peak_temperature_c": 62.0
+    },
+    {
+      "directory": "/home/council/dev/dirtyroom_m4/build/cts-deqp-runner-random10000-rest",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T005641032048Z-cts-deqp-runner-random10000-rest",
+      "boot_id": "c2f22724-ed20-4eba-9f9e-4d98de78a9d2",
+      "counts": {
+        "Unrun": 2442,
+        "Pass": 1127,
+        "Interrupted": 76,
+        "Fail": 6,
+        "Timeout": 1
+      },
+      "jobs": 20,
+      "elapsed_seconds": 72.98213737699552,
+      "preparation_seconds": 3.4740087800018955,
+      "runner_seconds": 69.13762328199994,
+      "started_unix": 1789347402.403116,
+      "finished_unix": 1789347471.8386717,
+      "guard_verdict": "process_failure",
+      "peak_temperature_c": 61.5
+    },
+    {
+      "directory": "/home/council/dev/dirtyroom_m4/build/cts-deqp-runner-random10000-rest2",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T005939879135Z-cts-deqp-runner-random10000-rest2",
+      "boot_id": "c2f22724-ed20-4eba-9f9e-4d98de78a9d2",
+      "counts": {
+        "Pass": 1177,
+        "Unrun": 1206,
+        "Interrupted": 53,
+        "Fail": 5,
+        "Timeout": 1
+      },
+      "jobs": 20,
+      "elapsed_seconds": 75.15553301302134,
+      "preparation_seconds": 1.6790496409812476,
+      "runner_seconds": 71.34778117699989,
+      "started_unix": 1789347581.2460892,
+      "finished_unix": 1789347652.8423214,
+      "guard_verdict": "process_failure",
+      "peak_temperature_c": 62.0
+    },
+    {
+      "directory": "/home/council/dev/dirtyroom_m4/build/cts-deqp-runner-random10000-finish",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T010157543436Z-cts-deqp-runner-random10000-finish",
+      "boot_id": "c2f22724-ed20-4eba-9f9e-4d98de78a9d2",
+      "counts": {
+        "Pass": 1348,
+        "Fail": 6
+      },
+      "jobs": 4,
+      "elapsed_seconds": 71.36241661498207,
+      "preparation_seconds": 1.4923099870211445,
+      "runner_seconds": 67.52655611099999,
+      "started_unix": 1789347719.0670636,
+      "finished_unix": 1789347786.8122373,
+      "guard_verdict": "pass",
+      "peak_temperature_c": 61.75
+    }
+  ]
+}

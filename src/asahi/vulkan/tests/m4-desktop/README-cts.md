@@ -307,3 +307,11 @@ time. Do not equate a completed guard with all tests passing. Current default
 binary is the explicitly patched CTS diagnostic build; results are not an
 unmodified Khronos conformance submission. Use `--binary` to select another
 exact build and retain its identity.
+
+`cts-bulk-report.py --cases ORIGINAL_CASES --output NEW_REPORT SEGMENT...`
+combines manually inspected continuations offline. It re-reads retained QPA and
+worker logs, rejects changed software identities and retries of completed
+outcomes, and preserves every interrupted attempt. It emits a compressed case
+list and JSONL attempt ledger, failure TSV, counts/rates, active execution and
+campaign time, and wall span including inspection pauses. First-attempt counts
+remain separate from final outcomes after explicitly resumed interruptions.

@@ -1,0 +1,33 @@
+           PID: 2582 (deqp-vk-scaled-)
+           TID: 2582 (deqp-vk-scaled-)
+           UID: 0 (root)
+           GID: 0 (root)
+        Signal: 11 (SEGV) si_code: SEGV_MAPERR
+     Timestamp: Mon 2026-09-14 00:55:23 GMT (1min 14s ago)
+  Command Line: /root/cts-1.0.2.6/deqp-vk-scaled-precision --deqp-log-images=disable --deqp-log-shader-sources=disable --deqp-caselist-file=/root/asahi-evidence/20260914T004931627297Z-cts-deqp-runner-random10000/cts/deqp-runner/c117.r1.caselist.txt --deqp-log-filename=/root/asahi-evidence/20260914T004931627297Z-cts-deqp-runner-random10000/cts/deqp-runner/c117.r1.qpa --deqp-log-flush=disable
+    Executable: /root/cts-1.0.2.6/deqp-vk-scaled-precision
+ Control Group: /user.slice/user-0.slice/session-77.scope
+          Unit: session-77.scope
+         Slice: user-0.slice
+       Session: 77
+     Owner UID: 0 (root)
+       Boot ID: c2f22724ed204eba9f9e4d98de78a9d2
+    Machine ID: 08f00288676248028d78d74e740230c1
+      Hostname: omarchy
+       Storage: /var/lib/systemd/coredump/core.deqp-vk-scaled-.0.c2f22724ed204eba9f9e4d98de78a9d2.2582.1789347323000000.zst (present)
+  Size on Disk: 3.8M
+       Message: Process 2582 (deqp-vk-scaled-) of user 0 dumped core.
+                
+                Stack trace of thread 2582:
+                #0  0x0000aaaae9113348 n/a (n/a + 0x0)
+                #1  0x0000aaaae9113334 n/a (n/a + 0x0)
+                #2  0x0000aaaae911fc20 n/a (n/a + 0x0)
+                #3  0x0000aaaae8a3de44 n/a (n/a + 0x0)
+                #4  0x0000aaaae9596e64 n/a (n/a + 0x0)
+                #5  0x0000aaaae95967b4 n/a (n/a + 0x0)
+                #6  0x0000aaaae957bf30 n/a (n/a + 0x0)
+                #7  0x0000aaaae8a38fa4 n/a (n/a + 0x0)
+                #8  0x0000ffff8f3c2d94 n/a (n/a + 0x0)
+                #9  0x0000ffff8f3c2ef8 n/a (n/a + 0x0)
+                #10 0x0000aaaae8a38df0 n/a (n/a + 0x0)
+                ELF object binary architecture: AARCH64
