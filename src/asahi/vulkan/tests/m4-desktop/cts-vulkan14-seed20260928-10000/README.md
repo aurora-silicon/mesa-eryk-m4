@@ -287,3 +287,13 @@ The concurrent job979 prefix was rerun with 20 workers:
 `20260914T144845630690Z-cts28-fault979-prefix`, 100 Pass / 76 NotSupported,
 runner 5.642 seconds, guard/staging-excluded wall 9.878 seconds, peak 60.75 C.
 It did not reproduce the fault; this is not proof of its underlying cause.
+
+## I16 framebuffer reads
+
+Native LLDCOL loads packed halfword channels, whereas AGX2's I16 form can
+widen to W32 per channel. Explicitly load W16 lanes and then widen in NIR.
+This fixes exact integer NAND and OR_INVERTED image comparisons:
+`20260914T145647026333Z-cts28-tile-half-load`, both Pass, peak 58.25 C.
+Saved failing epilog: `f06454af2696228e093f7e151be97c25b3b0855bac4e78cef947d581f872e3af`
+in the preceding narrow-case capture. Library SHA256:
+`eaafcf06e828f0086598cddaece208d04e7d324f4efd6c751cd26834d4d62f35`.

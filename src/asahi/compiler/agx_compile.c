@@ -6126,6 +6126,18 @@ lower_agx3_packed_tile(nir_builder *b, nir_intrinsic_instr *intr, void *data)
       return false;
 
    const enum pipe_format format = nir_intrinsic_format(intr);
+   if (load && format == PIPE_FORMAT_R16_UINT && intr->def.bit_size == 32) {
+      /* Native LLDCOL transfers tightly packed halfword lanes. AGX2 can
+       * widen while loading, so its NIR may request W32 results from I16
+       * storage. Load the physical lanes before zero-extending each one;
+       * signed logical formats already extend in the tilebuffer lowering. */
+      b->cursor = nir_before_instr(&intr->instr);
+      nir_def *raw = nir_load_local_pixel_agx(
+         b, intr->def.num_components, 16, intr->src[0].ssa,
+         .base = nir_intrinsic_base(intr), .format = PIPE_FORMAT_R16_UINT);
+      nir_def_replace(&intr->def, nir_u2u32(b, raw));
+      return true;
+   }
    if (format == PIPE_FORMAT_R16_UNORM || format == PIPE_FORMAT_R16_SNORM) {
       /* LSTCOL/LLDCOL carry a lane width, not AGX2's typed conversion.
        * Normalize explicitly, then transfer the raw 16-bit integer lanes. */
