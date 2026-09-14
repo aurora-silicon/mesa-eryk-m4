@@ -1,0 +1,22 @@
+{
+  "id": "20260914T041312410597Z-cts14-linear-pbe-fixed",
+  "verdict": "pass",
+  "transport_returncode": 0,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T041312410597Z-cts14-linear-pbe-fixed",
+  "observations": {
+    "pixel_results": [],
+    "pixel_result_count": 0,
+    "thermal_samples": 2,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 58.0,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 58.0,
+      "Ta000m": 55.75,
+      "Te000m": 55.25,
+      "Te001m": 53.5,
+      "Tp000m": 58.0,
+      "Tp001m": 53.5
+    }
+  }
+}

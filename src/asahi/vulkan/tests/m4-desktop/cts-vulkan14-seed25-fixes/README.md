@@ -218,3 +218,14 @@ explicit bounds comparisons. Peak 57.75 C, no GPU fault/reboot. Library SHA256:
 `a8887cb8469682d6ba6c7ab4155c5bc7f26050d71729693ee477659b8fa7fc27`.
 Running total: **61/91 failures resolved** (55 Mesa fixes, 6 CTS corrections),
 30 remaining. No broad regression campaign.
+
+## Single-layer linear BG/EOT descriptors
+
+BG/EOT uses a 2D descriptor for one layer, independently of the API array view.
+Do not attach the linear-array stride extension to that 2D descriptor. Actual
+array descriptors and multiple layers retain their existing handling.
+Both original linear-destination blits now Pass: RGB16_UNORM to RGBA8_SNORM,
+and packed RGBA4 to RG8_UNORM. Peak 58.0 C, no GPU fault/reboot. Library SHA256:
+`f41d0dc63cd8942e312d294001b22668f77c60fee7a925b5e645b3e15df5ffde`.
+Running total: **63/91 failures resolved** (57 Mesa fixes, 6 CTS corrections),
+28 remaining. No broad regression campaign.
