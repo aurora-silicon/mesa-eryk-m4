@@ -538,6 +538,7 @@ agx3_map_sr(enum agx_sr sr, uint8_t *apple, enum agx3_sr_width *width)
       SR(AGX_SR_COVERAGE_MASK, 39, AGX3_SR_W16);
       SR(AGX_SR_IS_ACTIVE_THREAD, 2, AGX3_SR_W16);
       SR(AGX_SR_BACKFACING, 41, AGX3_SR_W16);
+      SR(AGX_SR_RENDER_TARGET_LAYER, 12, AGX3_SR_W16);
       /* The invocation enums carry hardware SR bytes (0xd8/0xdd), while
        * agx3_sr_core consumes Apple's normalized f21 value. */
       SR(AGX_SR_INSTANCE_ID, 46, AGX3_SR_W32);
@@ -3938,7 +3939,7 @@ agx3_native_mrt_eot(const agx_context *ctx, enum agx_isa_encoding enc,
          if (I->op == AGX_OPCODE_BLOCK_IMAGE_STORE)
             nonzero_offset |= constants[I->src[2].value] != 0;
       }
-      if (!nonzero_offset &&
+      if (!nonzero_offset && !*layered &&
           ctx->key->native_eot_formats[0] != PIPE_FORMAT_R9G9B9E5_FLOAT)
          return 0;
    }

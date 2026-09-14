@@ -1381,6 +1381,7 @@ agx_get_sr_native_width_to(agx_builder *b, agx_index dst, enum agx_sr sr)
    case AGX_SR_THREAD_INDEX_IN_THREADGROUP:
    case AGX_SR_THREAD_INDEX_IN_SUBGROUP:
    case AGX_SR_SUBGROUP_INDEX_IN_THREADGROUP:
+   case AGX_SR_RENDER_TARGET_LAYER:
       narrow_agx3 = true;
       break;
    default:
@@ -2192,6 +2193,9 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
          b, dst, AGX_SR_THREAD_INDEX_IN_THREADGROUP);
 
    case nir_intrinsic_load_layer_id:
+      if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+          b->shader->stage == MESA_SHADER_FRAGMENT)
+         return agx_get_sr_native_width_to(b, dst, AGX_SR_RENDER_TARGET_LAYER);
       return agx_get_sr_to(b, dst, AGX_SR_THREADGROUP_POSITION_IN_GRID_Z);
 
    case nir_intrinsic_barrier: {

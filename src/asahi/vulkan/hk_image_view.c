@@ -536,7 +536,9 @@ pack_pbe(struct hk_device *dev, struct hk_image_view *view, unsigned view_plane,
             cfg.extended = true;
          } else {
             assert((layout->tiling != AIL_TILING_LINEAR) || (layers == 1));
-            cfg.layers = layers;
+            /* A non-layered auxiliary program addresses only layer zero,
+             * even when the API attachment view spans more layers. */
+            cfg.layers = usage == HK_DESC_USAGE_BG_EOT ? 1 : layers;
          }
 
          cfg.levels = image->vk.mip_levels;

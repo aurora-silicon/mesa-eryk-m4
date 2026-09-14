@@ -1,0 +1,146 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.draw.renderpass.multi_draw.mosaic.indexed_packed.one_draw.stride_extra_4.1_instance.tess_geom.multiview.offset_6_no_draw_id",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.draw.renderpass.multi_draw.mosaic.indexed_packed.one_draw.stride_extra_4.1_instance.tess_geom.multiview.offset_6_no_draw_id",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T061536900219Z-cts14-core-multiview3/cts/000/result.qpa"
+    ],
+    "boot_id": "0ca1f3f9-acb4-4b79-8a3c-15498f475016",
+    "status": "NotSupported",
+    "started_unix": 1789366538.146677,
+    "eligibility": {
+      "case": "dEQP-VK.draw.renderpass.multi_draw.mosaic.indexed_packed.one_draw.stride_extra_4.1_instance.tess_geom.multiview.offset_6_no_draw_id",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Multiview not supported with tesellation shaders at vktDrawMultiExtTests.cpp:444",
+    "returncode": 0,
+    "seconds": 0.06688216699967597,
+    "finished_unix": 1789366538.2186415,
+    "pid": 10386
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.draw.renderpass.multi_draw.mosaic.indexed_random.no_draws.standard_stride.1_instance.vert_only.multiview.offset_6_no_draw_id",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.draw.renderpass.multi_draw.mosaic.indexed_random.no_draws.standard_stride.1_instance.vert_only.multiview.offset_6_no_draw_id",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T061536900219Z-cts14-core-multiview3/cts/001/result.qpa"
+    ],
+    "boot_id": "0ca1f3f9-acb4-4b79-8a3c-15498f475016",
+    "status": "Pass",
+    "started_unix": 1789366538.1518195,
+    "eligibility": {
+      "case": "dEQP-VK.draw.renderpass.multi_draw.mosaic.indexed_random.no_draws.standard_stride.1_instance.vert_only.multiview.offset_6_no_draw_id",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.3089801140004056,
+    "finished_unix": 1789366538.4660661,
+    "pid": 10387
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.transform_feedback.simple_optimized_gpl.draw_indirect_multiview_endqueryindexed_streamid_0_244",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.transform_feedback.simple_optimized_gpl.draw_indirect_multiview_endqueryindexed_streamid_0_244",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T061536900219Z-cts14-core-multiview3/cts/002/result.qpa"
+    ],
+    "boot_id": "0ca1f3f9-acb4-4b79-8a3c-15498f475016",
+    "status": "NotSupported",
+    "started_unix": 1789366538.1571712,
+    "eligibility": {
+      "case": "dEQP-VK.transform_feedback.simple_optimized_gpl.draw_indirect_multiview_endqueryindexed_streamid_0_244",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "transformFeedbackDraw feature is not supported at vktTransformFeedbackSimpleTests.cpp:4646",
+    "returncode": 0,
+    "seconds": 0.07021766700017906,
+    "finished_unix": 1789366538.233344,
+    "pid": 10388
+  },
+  {
+    "index": 3,
+    "case": "dEQP-VK.multiview.draw_indexed.no_queries.15",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.multiview.draw_indexed.no_queries.15",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T061536900219Z-cts14-core-multiview3/cts/003/result.qpa"
+    ],
+    "boot_id": "0ca1f3f9-acb4-4b79-8a3c-15498f475016",
+    "status": "Pass",
+    "started_unix": 1789366538.2944763,
+    "eligibility": {
+      "case": "dEQP-VK.multiview.draw_indexed.no_queries.15",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.3934300480004822,
+    "finished_unix": 1789366538.6935282,
+    "pid": 10395
+  },
+  {
+    "index": 4,
+    "case": "dEQP-VK.multiview.draw_indexed.no_queries.5_10_5_10",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.multiview.draw_indexed.no_queries.5_10_5_10",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T061536900219Z-cts14-core-multiview3/cts/004/result.qpa"
+    ],
+    "boot_id": "0ca1f3f9-acb4-4b79-8a3c-15498f475016",
+    "status": "Pass",
+    "started_unix": 1789366538.3001978,
+    "eligibility": {
+      "case": "dEQP-VK.multiview.draw_indexed.no_queries.5_10_5_10",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.4043902960002015,
+    "finished_unix": 1789366538.710566,
+    "pid": 10396
+  },
+  {
+    "index": 5,
+    "case": "dEQP-VK.multiview.clear_attachments.no_queries.1_2_4_8_16_32",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.multiview.clear_attachments.no_queries.1_2_4_8_16_32",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T061536900219Z-cts14-core-multiview3/cts/005/result.qpa"
+    ],
+    "boot_id": "0ca1f3f9-acb4-4b79-8a3c-15498f475016",
+    "status": "Pass",
+    "started_unix": 1789366538.5273867,
+    "eligibility": {
+      "case": "dEQP-VK.multiview.clear_attachments.no_queries.1_2_4_8_16_32",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.34556727499966655,
+    "finished_unix": 1789366538.880245,
+    "pid": 10404
+  }
+]

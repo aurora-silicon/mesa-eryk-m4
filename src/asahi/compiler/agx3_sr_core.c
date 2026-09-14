@@ -48,6 +48,8 @@ agx3_sr_witnessed(uint8_t sr, enum agx3_sr_width width)
       case 34: case 36:
       /* fragment-only, see the comment above */
       case 2: case 39: case 41:
+      /* Native layered EOT reads 24c31046: SR12, half4, slot3. */
+      case 12:
          return true;
       default:
          return false;

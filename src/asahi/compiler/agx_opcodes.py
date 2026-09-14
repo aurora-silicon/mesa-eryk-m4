@@ -154,6 +154,8 @@ SR = enum("sr", {
    # instructions instead of the AGX2 preloaded-input ABI.
    216: 'instance_id',
    221: 'vertex_id',
+   # Native auxiliary fragment layer, distinct from compute grid Z.
+   222: 'render_target_layer',
 })
 
 ATOMIC_OPC = enum("atomic_opc", {
