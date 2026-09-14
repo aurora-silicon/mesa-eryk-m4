@@ -4284,6 +4284,20 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
       lod = agx_immediate(0);
    }
 
+   if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+       !agx_is_null(packed_offset) && packed_offset.type != AGX_INDEX_IMMEDIATE &&
+       !instr->is_array && !instr->is_shadow &&
+       (instr->op == nir_texop_txl || instr->op == nir_texop_txb)) {
+      /* Native G16G PACK_SMPIR inserts the F16 LOD as signed fixed-point
+       * bits 16..27, preserving the three offset nibbles in the base word. */
+      agx_index level = lod;
+      if (level.type == AGX_INDEX_IMMEDIATE)
+         level = agx_mov_imm(b, 16, _mesa_float_to_half(agx_minifloat_decode(level.value)));
+      agx_index auxiliary = agx_temp(b->shader, AGX_SIZE_32);
+      agx_pack_lod_offset_agx3_to(b, auxiliary, level, packed_offset);
+      packed_offset = auxiliary;
+   }
+
    agx_index dst = agx_def_index(&instr->def);
 
    /* Pack shadow reference value (compare) and packed offset together */

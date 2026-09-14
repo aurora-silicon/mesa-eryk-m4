@@ -24,3 +24,13 @@ peak 56.75 C, no fault. Mesa library SHA256:
 `31efc01dc8ab45973965a1e4849d2e6842c765da98f0228e01cb464073325b20`.
 Running total: 13/21 original failures resolved (2 Mesa, 11 corrected CTS).
 Skip audit and the eight remaining failures are still in progress.
+
+## Runtime texture offsets
+
+Both original CTS push-constant offset cases pass on J713 (1D projected/bias
+and 3D explicit LOD). Lower compact XYZ nibbles to the native auxiliary word,
+insert the converted LOD/bias with PACK_SMPIR, and select SMP register offsets.
+Native AIR-NT 32023.883 G16G compiler witnesses are retained beside this report;
+they establish encoding, while the two numeric CTS comparisons establish GPU
+execution. Evidence: `20260914T084930307418Z-cts27-offset`, peak 56.25 C.
+Running total: 15/21 original failures resolved (4 Mesa, 11 corrected CTS).

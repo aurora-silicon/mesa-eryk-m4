@@ -1071,11 +1071,14 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
    const bool gather = I->gather != AGX_GATHER_NONE;
    const bool sample_offset = !shadow && !cube && I->offset &&
       I->src[5].type == AGX_INDEX_IMMEDIATE && I->src[5].value <= 0xff;
+   const bool dynamic_offset = !shadow && !cube && !array && I->offset &&
+      (explicit_lod || bias) && agx3_tex_plain_reg(I->src[5]) &&
+      I->src[5].size == AGX_SIZE_32 && agx_channels(I->src[5]) == 1;
    const bool valid_compare = shadow ?
       (enc == AGX_ISA_ENCODING_AGX3B &&
        agx3_tex_plain_reg(I->src[5]) && I->src[5].size == AGX_SIZE_32 &&
        agx_channels(I->src[5]) == 1 && !(I->src[5].value & 1) &&
-       I->src[5].value < 256) : (sample_offset || agx_is_null(I->src[5]));
+       I->src[5].value < 256) : (sample_offset || dynamic_offset || agx_is_null(I->src[5]));
    const bool valid_lod = gradient ?
       (enc == AGX_ISA_ENCODING_AGX3B && !cube && !shadow && !gather &&
        agx3_tex_plain_reg(I->src[1]) && I->src[1].size == AGX_SIZE_32 &&
@@ -1121,7 +1124,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
        (I->dim != AGX_DIM_2D && I->dim != AGX_DIM_2D_ARRAY && !cube && !three_d) ||
        (array && enc != AGX_ISA_ENCODING_AGX3B) ||
        (I->mask == 0 || (I->mask & ~15u)) ||
-       (I->offset && !sample_offset) ||
+       (I->offset && !sample_offset && !dynamic_offset) ||
        (gather && (enc != AGX_ISA_ENCODING_AGX3B ||
                    explicit_lod || I->mask != 15)) || I->sparse)
       return false;
@@ -1149,7 +1152,13 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
 
    const bool array_lod = (array || cube) && (explicit_lod || bias) && !immediate_lod;
    const bool cube_array_lod = cube && array && array_lod;
-   if (cube_array_lod) {
+   if (dynamic_offset) {
+      if (!agx3_tex_stage_copy_hints(enc, 6, I->src[5].value, stage_slot, wait_mask,
+                                    I->src[5].cache, I->src[5].discard, bytes, &len) ||
+          !agx3_append(emission, bytes, len))
+         return false;
+      wait_mask = 0;
+   } else if (cube_array_lod) {
       if (!agx3_tex_stage_cube_array_lod(enc, I->src[0].value + 4,
                                         I->src[1].value, I->src[0].value + 6,
                                         stage_slot, wait_mask,
@@ -1245,10 +1254,11 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
       .sampler_value = immediate ? 0 : I->src[4].value,
       .texture_kill = !immediate && I->src[3].kill,
       .sampler_kill = !immediate && I->src[4].kill,
-      .lod = gradient ? AGX3_TEX_LOD_GRAD : bias ? AGX3_TEX_LOD_BIAS_REGISTER :
+      .lod = dynamic_offset ? (bias ? AGX3_TEX_LOD_BIAS_REGISTER : AGX3_TEX_LOD_REGISTER) :
+             gradient ? AGX3_TEX_LOD_GRAD : bias ? AGX3_TEX_LOD_BIAS_REGISTER :
              immediate_lod ? AGX3_TEX_LOD_LEVEL :
              explicit_lod ? AGX3_TEX_LOD_REGISTER : AGX3_TEX_LOD_AUTO,
-      .lod_x64 = immediate_lod ? (uint16_t)immediate_level_x64 : 0,
+      .lod_x64 = immediate_lod && !dynamic_offset ? (uint16_t)immediate_level_x64 : 0,
       .array = array,
       .cube = cube,
       .three_d = three_d,
@@ -1262,6 +1272,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
       .gather = gather,
       .gather_component = gather ? (I->gather - AGX_GATHER_R) / 2 : 0,
       .sample_offset = sample_offset ? I->src[5].value : 0,
+      .dynamic_offset = dynamic_offset,
    };
    return agx3_tex_encode_sample(enc, &d, bytes, &len) &&
           agx3_append(emission, bytes, len);
@@ -5087,6 +5098,31 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             }
             if (!agx3_emit_pixel(emission, enc, I, wait))
                AGX3_REFUSE(I);
+            continue;
+         }
+
+         if (I->op == AGX_OPCODE_PACK_LOD_OFFSET_AGX3) {
+            if (enc != AGX_ISA_ENCODING_AGX3B ||
+                !agx3_tex_plain_reg(I->dest[0]) || I->dest[0].size != AGX_SIZE_32 ||
+                !agx3_tex_plain_reg(I->src[0]) || I->src[0].size != AGX_SIZE_16 ||
+                !agx3_tex_plain_reg(I->src[1]) || I->src[1].size != AGX_SIZE_32)
+               AGX3_REFUSE(I);
+            const struct agx3_field_kv fields[] = {
+               {9,2},{10,2},{11,1},{2,I->dest[0].value},
+               {23,2},{24,1},{16,I->src[0].value & 127},
+               {25,I->src[0].cache},{27,I->src[0].discard},
+               {38,1},{51,2},{44,I->src[1].value},{55,I->src[1].discard},
+               {52,2},{74,2},{75,16},
+            };
+            struct agx3_field_kv waits[6]; unsigned n = 0;
+            for (unsigned i = 0; i < 6; ++i)
+               if (wait & (1u << i)) waits[n++] = (struct agx3_field_kv){58+i,1};
+            uint8_t bytes[AGX3_TEX_MAX_LENGTH], len;
+            if (!agx3_bind_compose(enc, "pack_smpir", 0, fields, ARRAY_SIZE(fields),
+                                  waits, n, bytes, &len))
+               AGX3_REFUSE(I);
+            bytes[6] |= (I->src[0].value >> 7) & 1;
+            if (!agx3_append(emission, bytes, len)) AGX3_REFUSE(I);
             continue;
          }
 

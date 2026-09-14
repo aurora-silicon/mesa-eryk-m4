@@ -196,9 +196,17 @@ sample_ok(enum agx_isa_encoding enc, const struct agx3_tex_sample_desc *d)
     * nibbles as gather. Native indexed array gather(-8,-8) also uses f43.
     * Native array bias samples use the same field. Cube and shadow offsets
     * remain unqualified. */
-   if (d->sample_offset &&
+   if ((d->sample_offset || d->dynamic_offset) &&
        (enc != AGX_ISA_ENCODING_AGX3B ||
         d->cube || d->shadow))
+      return false;
+
+   /* The register offset bank shares its word with a packed LOD/bias.
+    * Other auxiliary-bank combinations need their own native layouts. */
+   if (d->dynamic_offset &&
+       (d->sample_offset || d->array || d->gather || d->query_lod ||
+        (d->lod != AGX3_TEX_LOD_REGISTER &&
+         d->lod != AGX3_TEX_LOD_BIAS_REGISTER)))
       return false;
 
    if (d->retain_helpers && enc != AGX_ISA_ENCODING_AGX3B)
@@ -320,6 +328,8 @@ agx3_tex_encode_sample(enum agx_isa_encoding enc,
       ov[n++] = (struct agx3_field_kv)KV(51, 1);
       ov[n++] = (struct agx3_field_kv)KV(43, d->sample_offset);
    }
+   if (d->dynamic_offset)
+      ov[n++] = (struct agx3_field_kv)KV(141, 2);
    if (d->shadow)
       ov[n++] = (struct agx3_field_kv)KV(143, 1);
    if (d->array)

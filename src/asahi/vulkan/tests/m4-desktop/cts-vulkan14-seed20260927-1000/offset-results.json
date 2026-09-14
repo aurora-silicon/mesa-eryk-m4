@@ -1,0 +1,50 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.glsl.texture_functions.textureprojoffset_pcoffset.clamp_to_edge.sampler1d_vec4_bias_fixed_fragment",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.glsl.texture_functions.textureprojoffset_pcoffset.clamp_to_edge.sampler1d_vec4_bias_fixed_fragment",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T084930307418Z-cts27-offset/cts/000/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Pass",
+    "started_unix": 1789375771.595584,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.textureprojoffset_pcoffset.clamp_to_edge.sampler1d_vec4_bias_fixed_fragment",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.5129707209998742,
+    "finished_unix": 1789375772.113548,
+    "pid": 7186
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.glsl.texture_functions.texturelodoffset_pcoffset.repeat.sampler3d_fixed_fragment",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.glsl.texture_functions.texturelodoffset_pcoffset.repeat.sampler3d_fixed_fragment",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T084930307418Z-cts27-offset/cts/001/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Pass",
+    "started_unix": 1789375772.125957,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturelodoffset_pcoffset.repeat.sampler3d_fixed_fragment",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.41216240799985826,
+    "finished_unix": 1789375772.5437815,
+    "pid": 7189
+  }
+]

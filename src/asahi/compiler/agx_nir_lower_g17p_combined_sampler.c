@@ -43,8 +43,7 @@ g17p_sample_shape(const nir_tex_instr *tex)
       const int lod = nir_tex_instr_src_index(tex, nir_tex_src_lod);
       if (tex->is_array || tex->is_shadow ||
           (tex->op != nir_texop_tex && !gradient &&
-           (tex->op != nir_texop_txl || lod < 0 ||
-            !nir_src_is_const(tex->src[lod].src))))
+           (tex->op != nir_texop_txl || lod < 0)))
          return false;
    }
 
@@ -53,14 +52,19 @@ g17p_sample_shape(const nir_tex_instr *tex)
    const bool has_lod = nir_tex_instr_src_index(tex, nir_tex_src_lod) >= 0;
    const int compare = nir_tex_instr_src_index(tex, nir_tex_src_comparator);
    const int offset = nir_tex_instr_src_index(tex, nir_tex_src_backend2);
-   const bool literal_offset = !cube &&
+   const bool literal_offset = !cube && !three_d &&
       !tex->is_shadow && offset >= 0 &&
       nir_src_is_const(tex->src[offset].src) &&
       nir_src_as_uint(tex->src[offset].src) <= 0xff;
+   const bool dynamic_offset = offset >= 0 && !literal_offset &&
+      !cube && !tex->is_array && !tex->is_shadow &&
+      (tex->op == nir_texop_txl || tex->op == nir_texop_txb) &&
+      nir_src_num_components(tex->src[offset].src) == 1 &&
+      nir_src_bit_size(tex->src[offset].src) == 32;
    if (tex->is_shadow != (compare >= 0) ||
        (compare >= 0 && (nir_src_bit_size(tex->src[compare].src) != 32 ||
                         nir_src_num_components(tex->src[compare].src) != 1)) ||
-       tex->num_srcs != ((has_bias || has_lod) ? 4 : 3) + tex->is_shadow + literal_offset + 2 * gradient ||
+       tex->num_srcs != ((has_bias || has_lod) ? 4 : 3) + tex->is_shadow + (literal_offset || dynamic_offset) + 2 * gradient ||
        has_lod != (tex->op == nir_texop_txl) ||
        (has_bias != (tex->op == nir_texop_txb) && !query))
       return false;
@@ -528,6 +532,19 @@ agx_nir_lower_g17p_indexed_samplers(nir_shader *shader)
                continue;
             nir_tex_instr *tex = nir_instr_as_tex(instr);
             b.cursor = nir_before_instr(instr);
+            const int offset_index = nir_tex_instr_src_index(tex, nir_tex_src_backend2);
+            if (offset_index >= 0 && !tex->is_array &&
+                (tex->sampler_dim == GLSL_SAMPLER_DIM_3D ||
+                 !nir_src_is_const(tex->src[offset_index].src))) {
+               /* Native offset bank6 has X at bit12, Y at bit28, Z at bit0.
+                * Leave bits16..27 clear for the packed level/bias. */
+               nir_def *offset = tex->src[offset_index].src.ssa;
+               nir_def *x = nir_ishl_imm(&b, nir_iand_imm(&b, offset, 0xf), 12);
+               nir_def *y = nir_ishl_imm(&b, nir_iand_imm(&b, offset, 0xf0), 24);
+               nir_def *z = tex->sampler_dim == GLSL_SAMPLER_DIM_3D ?
+                  nir_iand_imm(&b, nir_ushr_imm(&b, offset, 8), 0xf) : nir_imm_int(&b, 0);
+               nir_src_rewrite(&tex->src[offset_index].src, nir_ior(&b, nir_ior(&b, x, y), z));
+            }
             /* The native sampler supplies its own bias. Query lowering adds
              * a zero software bias; remove only that validated no-op source. */
             if (tex->op == nir_texop_lod &&
