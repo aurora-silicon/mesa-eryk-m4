@@ -29,22 +29,75 @@ def save(path, value):
 def select(args):
     raw = args.mustpass.read_bytes()
     cases = raw.decode().splitlines()
-    assert cases and len(cases) == len(set(cases))
-    assert all(re.fullmatch(r'dEQP-VK\.[\w.\-]+', c) for c in cases)
-    excluded = [c for c in cases if args.linux_only and
-                ('win32' in c or c.startswith('dEQP-VK.wsi.android.'))]
-    excluded_set = set(excluded)
-    eligible = [c for c in cases if c not in excluded_set]
+    if not cases or len(cases) != len(set(cases)) or not all(
+            re.fullmatch(r'dEQP-VK\.[\w.\-]+', c) for c in cases):
+        raise ValueError('Expected unique CTS case names')
+    classifier = None
+    if args.scope == 'required-advertised':
+        if args.profile is None:
+            raise ValueError('Filtered selection requires --profile (see the profile subcommand)')
+        from cts_requirements import Classifier
+        classifier = Classifier(args.profile, raw)
+        labels = {c: classifier.classify(c) for c in cases}
+    else:
+        labels = {c: dict(classification=('platform-excluded' if args.linux_only and
+                       ('win32' in c or '.android.' in c) else 'unclassified'),
+                       rule='legacy unfiltered selection', requirements=[]) for c in cases}
+    accepted = {'required', 'advertised'} if classifier else {'unclassified'}
+    eligible = [c for c in cases if labels[c]['classification'] in accepted]
+    if args.count < 1 or args.count > len(eligible):
+        raise ValueError(f'count must be in 1..{len(eligible)}; no fallback to unmapped cases')
     chosen = random.Random(args.seed).sample(eligible, args.count)
     args.output.mkdir(parents=True, exist_ok=False)
-    (args.output / 'cases.txt').write_text('\n'.join(chosen) + '\n')
-    save(args.output / 'selection.json', dict(seed=args.seed, count=args.count,
-         population=len(cases), eligible_population=len(eligible),
-         platform_exclusions=excluded, linux_only=args.linux_only, mustpass=str(args.mustpass.resolve()),
-         mustpass_sha256=hashlib.sha256(raw).hexdigest(),
-         method='Python random.Random(seed).sample, original mustpass order; only recorded platform exclusions',
-         categories=dict(collections.Counter(c.split('.')[1] for c in chosen)), cases=chosen))
-    print((args.output / 'selection.json').read_text())
+    chosen_raw = ('\n'.join(chosen) + '\n').encode()
+    (args.output / 'cases.txt').write_bytes(chosen_raw)
+    provenance = dict(scope=args.scope,
+        mustpass_sha256=hashlib.sha256(raw).hexdigest(),
+        profile_sha256=hashlib.sha256(classifier.profile_raw).hexdigest() if classifier else None,
+        catalog_sha256=hashlib.sha256(classifier.catalog_raw).hexdigest() if classifier else None,
+        classifier_sha256=hashlib.sha256(Path(__file__).with_name('cts_requirements.py').read_bytes()).hexdigest() if classifier else None,
+        identity=classifier.profile['identity'] if classifier else None)
+    metadata = dict(schema=1, cases_sha256=hashlib.sha256(chosen_raw).hexdigest(),
+                    provenance=provenance,
+                    cases=[dict(case=c, **labels[c]) for c in chosen])
+    save(args.output / 'cases.meta.json', metadata)
+    with (args.output / 'case-labels.tsv').open('w') as stream:
+        stream.write('classification\tcase\trule\n')
+        for c in chosen:
+            stream.write(f"{labels[c]['classification']}\t{c}\t{labels[c]['rule']}\n")
+    # Retain every exclusion, including missing optional requirements. No CTS
+    # outcomes are read or used, and no failed case is replaced after execution.
+    with (args.output / 'exclusions.jsonl').open('w') as stream:
+        for c in cases:
+            if labels[c]['classification'] not in accepted:
+                stream.write(json.dumps(dict(case=c, **labels[c])) + '\n')
+    if classifier:
+        (args.output / 'device-profile.json').write_bytes(classifier.profile_raw)
+        (args.output / 'requirements.json').write_bytes(classifier.catalog_raw)
+        (args.output / 'cts_requirements.py').write_bytes(Path(__file__).with_name('cts_requirements.py').read_bytes())
+    summary = dict(seed=args.seed, count=args.count, population=len(cases),
+        eligible_population=len(eligible),
+        population_classifications=dict(collections.Counter(v['classification'] for v in labels.values())),
+        selected_classifications=dict(collections.Counter(labels[c]['classification'] for c in chosen)),
+        linux_only=bool(classifier) or args.linux_only, mustpass=str(args.mustpass.resolve()),
+        **provenance,
+        method='Python random.Random(seed).sample, original mustpass order after recorded eligibility filter',
+        coverage_note='Reviewed rule coverage only; unclassified cases are excluded, not claimed optional or unsupported.',
+        categories=dict(collections.Counter(c.split('.')[1] for c in chosen)), cases=chosen)
+    save(args.output / 'selection.json', summary)
+    print(json.dumps({k: v for k, v in summary.items() if k != 'cases'}, indent=2))
+
+
+def case_metadata(path):
+    sidecar = path.with_suffix('.meta.json')
+    if not sidecar.exists():
+        return None
+    raw = path.read_bytes()
+    meta = json.loads(sidecar.read_text())
+    if (meta.get('schema') != 1 or meta.get('cases_sha256') != hashlib.sha256(raw).hexdigest()
+            or [c['case'] for c in meta['cases']] != raw.decode().splitlines()):
+        raise ValueError(f'Case metadata does not match frozen case list: {sidecar}')
+    return meta
 
 
 def batch(args):
@@ -54,6 +107,14 @@ def batch(args):
     boot = Path('/proc/sys/kernel/random/boot_id').read_text().strip()
     check = lambda: module.check_guard(args.guard_output, boot)
     check()
+    metadata = case_metadata(args.cases)
+    if metadata and args.renderer == 'm4' and metadata['provenance'].get('identity'):
+        identity = metadata['provenance']['identity']
+        if os.uname().release != identity['kernel']:
+            raise RuntimeError('Capability profile kernel changed; recapture and reselect')
+        for name, expected in identity['files'].items():
+            if hashlib.sha256(Path(name).read_bytes()).hexdigest() != expected:
+                raise RuntimeError(f'Capability profile driver changed: {name}; recapture and reselect')
     cases = args.cases.read_text().splitlines()
     # A latched display failure can leave headless GPU execution healthy while
     # every presentation test blocks. Refuse that invalid WSI environment.
@@ -64,6 +125,8 @@ def batch(args):
                 raise RuntimeError(f'WSI requires display recovery: {status}: {fields}')
     out = args.guard_output / 'cts'
     out.mkdir()
+    if metadata:
+        save(out / 'selection-meta.json', metadata)
     env = os.environ.copy()
     env.update(VK_DRIVER_FILES='/opt/asahi-m4-port/asahi_icd.json',
                VK_ICD_FILENAMES='/opt/asahi-m4-port/asahi_icd.json',
@@ -92,6 +155,7 @@ def batch(args):
 def run_cases(args, check, boot, out, env):
     """One guard owns all children; a single loop checks progress and bounds."""
     cases = args.cases.read_text().splitlines()
+    metadata = case_metadata(args.cases)
     results, active = [], {}
     begin = time.monotonic()
     started_unix = time.time()
@@ -118,6 +182,8 @@ def run_cases(args, check, boot, out, env):
                         '--deqp-log-filename=' + str(qpa)]
                 record = dict(index=index, case=cases[index], argv=argv,
                               boot_id=boot, status='Started', started_unix=time.time())
+                record['eligibility'] = (metadata['cases'][index] if metadata else
+                    dict(case=cases[index], classification='unclassified', rule='bare case list'))
                 save(directory / 'case.json', record)
                 log = (directory / 'stdout.log').open('w')
                 try:
@@ -190,11 +256,18 @@ def run_cases(args, check, boot, out, env):
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     sub = p.add_subparsers(dest='mode', required=True)
+    profile = sub.add_parser('profile', help='Offline: bind guarded vulkaninfo JSON to target-before.json')
+    profile.add_argument('--vulkaninfo', type=Path, required=True)
+    profile.add_argument('--identity', type=Path, required=True)
+    profile.add_argument('--output', type=Path, required=True)
     s = sub.add_parser('select')
     s.add_argument('--mustpass', type=Path, required=True)
     s.add_argument('--output', type=Path, required=True)
     s.add_argument('--seed', type=int, default=20260913)
     s.add_argument('--count', type=int, default=100)
+    s.add_argument('--profile', type=Path, help='Saved capabilities from the profile subcommand')
+    s.add_argument('--scope', choices=('required-advertised', 'all'), default='required-advertised',
+                   help='Default: reviewed required/advertised cases; all reproduces legacy sampling')
     s.add_argument('--linux-only', action='store_true',
                    help='Exclude Windows handles/WSI and Android WSI before selection; retain all other cases')
     b = sub.add_parser('batch')
@@ -211,7 +284,12 @@ def main():
     b.add_argument('--log-images', action='store_true')
     b.add_argument('--capture-success', action='store_true')
     args = p.parse_args()
-    if args.mode == 'select':
+    if args.mode == 'profile':
+        from cts_requirements import make_profile
+        if args.output.exists():
+            p.error('profile output already exists; retain old capability evidence')
+        save(args.output, make_profile(args.vulkaninfo, args.identity))
+    elif args.mode == 'select':
         select(args)
     else:
         if args.jobs < 1 or args.start < 0 or args.count < 1:

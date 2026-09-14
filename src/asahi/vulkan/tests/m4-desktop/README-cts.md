@@ -1,16 +1,61 @@
 # Historical Vulkan CTS sample
 
-`cts-sample.py select` draws unique cases uniformly from a release's must-pass
-list. It saves the seed, population hash, exact case list and category counts.
-Do not redraw the sample after seeing results.
+`cts-sample.py select` now defaults to Linux cases with reviewed Vulkan 1.0
+requirements, labeled **required** or **advertised**. It shuffles uniformly
+within that eligible pool, with a recorded seed. It never reads previous results.
+
+- `required`: all prerequisites are unconditional Vulkan 1.0 requirements.
+  Missing advertised mandatory support does **not** remove the test.
+- `advertised`: optional prerequisites are present in a saved device profile.
+  Mandatory prerequisites still apply. This label is not proof the test passes.
+- `not-advertised`: a mapped optional prerequisite is absent.
+- `unclassified`: the case requirements have not been reviewed. Excluded and
+  reported separately; this does **not** mean optional, unsupported, or invalid.
+
+The initial catalog covers core information/format queries, vertex/fragment
+GLSL operators/matrices/loops, tessellation invariance, all-format color blits,
+and uncompressed 2D sampling/image-view cases. It is deliberately incomplete:
+the September 14 profile gives 33,242 eligible cases (13,613 required and
+19,629 advertised), 6,669 missing optional support, 186,351 unclassified and
+7,533 platform exclusions. This is **not a complete required-test inventory**.
+YCbCr, sparse execution, multisample combinations and other unmapped families
+need explicit requirement rules before entering this filtered pool. Query tests
+can be mandatory even when the feature they query is optional.
+
+Refresh the profile after a driver change. Capture `vulkaninfo --json=0 -o FILE`
+with the production ICD inside `gpu-experiment.py`; retain its `target-before.json`.
+The following preparation and selection are offline and execute no GPU tests:
 
 ```
+python3 tools/cts-sample.py profile \
+  --vulkaninfo EVIDENCE/remote/asahi-profile.json \
+  --identity EVIDENCE/target-before.json --output build/cts-device-profile.json
 python3 tools/cts-sample.py select \
   --mustpass reference/vk-gl-cts-1.0.2.6/external/vulkancts/mustpass/1.0.2/vk-default.txt \
-  --seed 20260913 --count 100 --output build/cts-1.0-baseline/sample
+  --profile build/cts-device-profile.json \
+  --seed 20260923 --count 1000 --output build/cts-filtered-sample
 ```
 
-Copy the script and `cases.txt` to the target. `batch` requires the existing
+Output includes `cases.txt`, `cases.meta.json`, `case-labels.tsv`, the profile,
+rule catalog/source, and `exclusions.jsonl` listing every excluded case and reason.
+`selection.json` records hashes, population/label counts and the exact chosen list.
+The rules are pinned to the original mustpass hash and reviewed CTS sources;
+format minima are transcribed from that release's `vktApiFeatureInfo.cpp`.
+Extend `cts_requirements.py` and `cts-requirements-vulkan10.json` as new families
+are reviewed. Never infer mandatory status just from a case name, a mustpass
+entry, or a prior Pass. General image layout does not mean linear image tiling.
+The old CTS destination-linear-filter blit check is a known test defect, not a
+Vulkan requirement; selected cases can still expose CTS defects.
+
+Use explicit `--scope all --linux-only` to reproduce historical unfiltered
+campaigns. Such cases are labeled `unclassified`, never retroactively required.
+Do not redraw after seeing results. Copy `cts-sample.py`, `cases.txt` **and
+`cases.meta.json`** to the target, keeping matching stems if renamed. The batch
+validates metadata/list hashes and, on M4, the recorded ICD/module/kernel identity.
+It retains each label and requirement in per-case/campaign results. Bare lists
+remain usable for targeted reproductions but are labeled `unclassified`.
+
+`batch` requires the existing
 60-second watchdog and fresh six-channel thermal guard. It runs each named
 case in a separate process, retaining QPA, stdout, command, status, driver
 environment, executable hash and failed compiler bundles. It starts new cases
@@ -145,10 +190,9 @@ queue roles for a second round and checks all copied words. Binary semaphores
 cannot be used for this ordering. Build with `cc -O2 -Wall -Wextra SOURCE -lvulkan`
 and run only under `gpu-experiment.py`; success is `QUEUE_DEPENDENCY_RESULT: PASS`.
 
-For a Linux-only random campaign, `select --linux-only` excludes Windows
-handle/WSI cases (`win32`) and Android WSI before drawing the sample. It records
-every platform exclusion and the eligible population. It does not exclude
-optional features, known defects, prior failures, or already tested cases.
+For a historical unfiltered Linux campaign, `select --scope all --linux-only`
+excludes Windows handles/WSI and Android cases before drawing the sample.
+The default selection instead uses the capability rules described above.
 Use a new recorded seed and freeze the case list before executing any case.
 
 `cts-report.py --cases CASES --output REPORT SEGMENT...` combines first-attempt

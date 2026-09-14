@@ -84,6 +84,7 @@ while a.start + len(results) < end:
         started_unix=started_unix, finished_unix=time.time(),
         elapsed_seconds=time.monotonic()-started_monotonic,
         batch_execution_seconds=batch_execution_seconds, counts=Counter(x['status'] for x in results),
+        classifications=Counter(x.get('eligibility', {}).get('classification', 'unclassified') for x in results),
         batches=batches, identity=identity, last_guard_verdict=report['verdict']), indent=2)+'\n')
     print(f'{len(results)}/{a.count}: {dict(Counter(x["status"] for x in results))}; {evidence.name}', flush=True)
     # Persist completed CTS outcomes even when the guard reports a GPU fault.

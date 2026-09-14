@@ -65,6 +65,7 @@ summary = dict(selected=len(cases), completed=completed,
     counts=dict(counts), rates_percent={k: round(v*100/len(cases), 3) for k, v in counts.items()},
     pass_rate_excluding_unsupported_percent=(round(counts['Pass']*100/attempted_supported, 3)
                                             if attempted_supported else None),
+    classifications=dict(Counter(r.get('eligibility', {}).get('classification', 'unclassified') for r in results)),
     categories=categories, cases_sha256=hashlib.sha256(raw).hexdigest(),
     segments=[str(s.resolve()) for s in a.segments],
     identities=identities, batches=observations, campaign_timings=timings,
@@ -84,10 +85,10 @@ a.output.mkdir(parents=True, exist_ok=True)
 (a.output/'summary.json').write_text(json.dumps(summary, indent=2)+'\n')
 with (a.output/'failures.tsv').open('w', newline='') as stream:
     writer = csv.writer(stream, delimiter='\t')
-    writer.writerow(['index', 'status', 'case', 'message'])
+    writer.writerow(['index', 'status', 'classification', 'case', 'message'])
     for r in results:
         if r['status'] not in ('Pass', 'NotSupported', 'Unrun'):
-            writer.writerow([r['index'], r['status'], r['case'], r.get('message', '')])
+            writer.writerow([r['index'], r['status'], r.get('eligibility', {}).get('classification', 'unclassified'), r['case'], r.get('message', '')])
 lines = [f'# CTS sample: {completed}/{len(cases)} completed', '',
          '| Outcome | Count | % of selected sample |', '| --- | ---: | ---: |']
 lines += [f'| {status} | {count} | {count*100/len(cases):.1f}% |'
