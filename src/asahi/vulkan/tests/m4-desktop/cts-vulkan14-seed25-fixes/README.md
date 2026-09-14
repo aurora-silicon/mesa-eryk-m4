@@ -370,3 +370,17 @@ Peak 57.5 C, no fault/reboot. Library SHA256:
 `e4db8e7ab41294d8bf76e7b62693da44f758b4f2df6be10eacae4fa52dc99249`.
 Running total: **80/91 failures resolved** (68 Mesa fixes, 12 CTS corrections),
 11 remaining. No broad regression campaign.
+
+## Indexed tessellation draw admission
+
+Remove the obsolete blanket rejection of indexed tessellation. Its vertex
+parameters already carry the API index buffer and range, and tessellation
+emits a regular indexed indirect draw. The native draw path now publishes
+the required HAL200 PPP selector after this lowering. Keep the index-span,
+query and indirect robustness checks intact.
+
+The original indexed-random multi-draw tessellation mosaic now Passes.
+Peak 58.0 C, no fault/reboot. Library SHA256:
+`bbb2380cd3141981748931a5bd9629ba23da6b4f2c06aea2c1a6641292a387c4`.
+Running total: **81/91 failures resolved** (69 Mesa fixes, 12 CTS corrections),
+10 remaining. No broad regression campaign.

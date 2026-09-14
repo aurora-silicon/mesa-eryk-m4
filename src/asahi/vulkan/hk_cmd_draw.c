@@ -5026,7 +5026,9 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
    /* Validate the native index domain before robustness or geometry lowering
     * can introduce a pre-render compute dispatch. G17P has a native indirect
     * Index List, but the software robustness rewrite does not yet publish its
-    * HAL200 draw-state selector, so keep that combination fail-closed. */
+    * HAL200 draw-state selector, so keep that combination fail-closed.
+    * Tessellation fetches indices through vertex_params and emits a regular
+    * indexed indirect draw; the native path below publishes its selector. */
    if (agx_native_graphics(&dev->dev) && draw_.indexed) {
       uint64_t address;
       uint32_t size_word;
@@ -5039,7 +5041,6 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
            draw_.index_size != AGX_INDEX_SIZE_U16 &&
            draw_.index_size != AGX_INDEX_SIZE_U32) ||
           robust_indirect || ia_stats ||
-          cmd->state.gfx.shaders[MESA_SHADER_TESS_EVAL] ||
           (agx_is_indirect(draw_.b)
               ? (!draw_.b.ptr || !draw_.index_buffer ||
                  draw_.index_buffer_range_B == 0)
@@ -5048,7 +5049,7 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
                    draw_.b.count[0], agx_index_size_to_B(draw_.index_size),
                    &address, &size_word))) {
          mesa_loge("native G17P indexed draw requires an in-bounds "
-                   "uint8/uint16/uint32 span without tessellation, query, or "
+                   "uint8/uint16/uint32 span without query or "
                    "indirect robustness lowering");
          vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
          return;

@@ -1,0 +1,26 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.draw.renderpass.multi_draw.mosaic.indexed_random.one_draw.stride_extra_4.1_instance.with_tess.single_view.no_offset_no_draw_id",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.draw.renderpass.multi_draw.mosaic.indexed_random.one_draw.stride_extra_4.1_instance.with_tess.single_view.no_offset_no_draw_id",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T045646714081Z-cts14-indexed-tess/cts/000/result.qpa"
+    ],
+    "boot_id": "0ca1f3f9-acb4-4b79-8a3c-15498f475016",
+    "status": "Pass",
+    "started_unix": 1789361807.958524,
+    "eligibility": {
+      "case": "dEQP-VK.draw.renderpass.multi_draw.mosaic.indexed_random.one_draw.stride_extra_4.1_instance.with_tess.single_view.no_offset_no_draw_id",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.5133795620004094,
+    "finished_unix": 1789361808.4768589,
+    "pid": 4960
+  }
+]
