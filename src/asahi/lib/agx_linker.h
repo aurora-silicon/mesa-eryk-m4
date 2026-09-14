@@ -294,6 +294,7 @@ struct agx_fs_epilog_key {
    uint8_t nr_samples;
    bool force_small_tile;
    uint32_t max_bytes_per_tile;
+   uint32_t max_bytes_per_sample;
    uint32_t max_samples_per_tile;
    bool preserve_zero_mask;
    bool lower_srgb;

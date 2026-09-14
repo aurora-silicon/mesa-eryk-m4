@@ -1048,7 +1048,8 @@ hk_CmdBeginRendering(VkCommandBuffer commandBuffer,
    render->tilebuffer = agx_build_tilebuffer_layout_with_limits(
       formats, render->color_att_count, render->tilebuffer.nr_samples, layered,
       agx_native_graphics(&dev->dev) ? 32768 : 0,
-      dev->dev.chip == AGX_CHIP_G16G ? 2048 : 0);
+      dev->dev.chip == AGX_CHIP_G16G ? 2048 : 0,
+      agx_native_graphics(&dev->dev) ? 248 : 0);
 
    const VkRenderingAttachmentLocationInfoKHR ral_info = {
       .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_LOCATION_INFO_KHR,
@@ -4117,6 +4118,7 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
          .link = fs->info.fs.epilog_key,
          .nr_samples = MAX2(dyn->ms.rasterization_samples, 1),
          .max_bytes_per_tile = cmd->state.gfx.render.tilebuffer.max_bytes_per_tile,
+         .max_bytes_per_sample = cmd->state.gfx.render.tilebuffer.max_bytes_per_sample,
          .max_samples_per_tile = cmd->state.gfx.render.tilebuffer.max_samples_per_tile,
          .lower_srgb = agx_native_graphics(&dev->dev),
          .blend.alpha_to_coverage = dyn->ms.alpha_to_coverage_enable,

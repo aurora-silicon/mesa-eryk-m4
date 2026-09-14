@@ -56,6 +56,7 @@ struct agx_tilebuffer_layout {
 
    /* Allocation capacity, retained when the sample count is deferred. */
    uint32_t max_bytes_per_tile;
+   uint32_t max_bytes_per_sample;
    /* Independent raster sample budget; zero leaves geometry unconstrained. */
    uint32_t max_samples_per_tile;
 
@@ -104,7 +105,8 @@ struct agx_tilebuffer_layout
 agx_build_tilebuffer_layout_with_limits(const enum pipe_format *formats,
                                       uint8_t nr_cbufs, uint8_t nr_samples,
                                       bool layered, unsigned max_bytes_per_tile,
-                                      unsigned max_samples_per_tile);
+                                      unsigned max_samples_per_tile,
+                                      unsigned max_bytes_per_sample);
 
 void agx_tilebuffer_set_samples(struct agx_tilebuffer_layout *tib,
                                 unsigned nr_samples);

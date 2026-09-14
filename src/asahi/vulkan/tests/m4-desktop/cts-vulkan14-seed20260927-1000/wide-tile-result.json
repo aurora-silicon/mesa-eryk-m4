@@ -1,0 +1,24 @@
+{
+  "index": 1,
+  "case": "dEQP-VK.shader_object.rendering.color_attachment_count_4.extra_attachment_after_2.none.dynamic.same_color_formats.before.none.r32g32b32a32_sfloat",
+  "argv": [
+    "/root/cts-1.4.6.2/deqp-vk-seed27-linear-diag",
+    "--deqp-case=dEQP-VK.shader_object.rendering.color_attachment_count_4.extra_attachment_after_2.none.dynamic.same_color_formats.before.none.r32g32b32a32_sfloat",
+    "--deqp-log-images=enable",
+    "--deqp-log-shader-sources=disable",
+    "--deqp-log-filename=/root/asahi-evidence/20260914T085507119299Z-cts27-wide-and-linear2/cts/001/result.qpa"
+  ],
+  "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+  "status": "Pass",
+  "started_unix": 1789376108.9602494,
+  "eligibility": {
+    "case": "dEQP-VK.shader_object.rendering.color_attachment_count_4.extra_attachment_after_2.none.dynamic.same_color_formats.before.none.r32g32b32a32_sfloat",
+    "classification": "unclassified",
+    "rule": "bare case list"
+  },
+  "message": "Pass",
+  "returncode": 0,
+  "seconds": 0.463187088000268,
+  "finished_unix": 1789376109.4292948,
+  "pid": 7612
+}

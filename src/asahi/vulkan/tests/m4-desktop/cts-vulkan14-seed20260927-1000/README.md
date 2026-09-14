@@ -34,3 +34,15 @@ Native AIR-NT 32023.883 G16G compiler witnesses are retained beside this report;
 they establish encoding, while the two numeric CTS comparisons establish GPU
 execution. Evidence: `20260914T084930307418Z-cts27-offset`, peak 56.25 C.
 Running total: 15/21 original failures resolved (4 Mesa, 11 corrected CTS).
+
+## Native sample capacity
+
+Six RGBA32F attachments need a 96-byte sample stride. Carry the native sample
+capacity separately from the legacy 64-byte limit through initial allocation,
+deferred MSAA and fragment epilog keys. The allocator chooses a 16x16 tile
+within the existing 32 KiB budget rather than spilling attachments 4 and 5.
+The exact shader-object rendering comparison passes (diagnostic CTS binary,
+whose changes do not affect this test), evidence
+`20260914T085507119299Z-cts27-wide-and-linear2`, peak 56.5 C. The host allocation
+test checks offsets, deferred state and preservation of the legacy limit.
+Running total: 16/21 original failures resolved (5 Mesa, 11 corrected CTS).

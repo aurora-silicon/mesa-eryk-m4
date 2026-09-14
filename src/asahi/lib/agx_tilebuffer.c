@@ -52,14 +52,19 @@ struct agx_tilebuffer_layout
 agx_build_tilebuffer_layout_with_limits(const enum pipe_format *formats,
                                       uint8_t nr_cbufs, uint8_t nr_samples,
                                       bool layered, unsigned max_bytes_per_tile,
-                                      unsigned max_samples_per_tile)
+                                      unsigned max_samples_per_tile,
+                                      unsigned max_bytes_per_sample)
 {
+   if (!max_bytes_per_sample)
+      max_bytes_per_sample = MAX_BYTES_PER_SAMPLE;
+   assert(max_bytes_per_sample <= 248);
    if (!max_bytes_per_tile)
       max_bytes_per_tile = MAX_BYTES_PER_TILE;
    struct agx_tilebuffer_layout tib = {
       .nr_samples = nr_samples,
       .layered = layered,
       .max_bytes_per_tile = max_bytes_per_tile,
+      .max_bytes_per_sample = max_bytes_per_sample,
       .max_samples_per_tile = max_samples_per_tile,
    };
 
@@ -96,7 +101,7 @@ agx_build_tilebuffer_layout_with_limits(const enum pipe_format *formats,
        * need to spill it to memory. Otherwise, allocate it to the tilebuffer.
        */
       unsigned new_offset_B = offset_B + size_B;
-      bool fits = (new_offset_B <= MAX_BYTES_PER_SAMPLE) &&
+      bool fits = (new_offset_B <= max_bytes_per_sample) &&
                   (ALIGN_POT(new_offset_B, 8) * MIN_TILE_SIZE_PX *
                    nr_samples) <= max_bytes_per_tile;
       if (fits) {
@@ -107,7 +112,7 @@ agx_build_tilebuffer_layout_with_limits(const enum pipe_format *formats,
       }
    }
 
-   assert(offset_B <= MAX_BYTES_PER_SAMPLE && "loop invariant");
+   assert(offset_B <= max_bytes_per_sample && "loop invariant");
 
    /* Multisampling needs a nonempty allocation.
     * XXX: Check this against hw
@@ -129,7 +134,7 @@ agx_build_tilebuffer_layout(const enum pipe_format *formats, uint8_t nr_cbufs,
                            uint8_t nr_samples, bool layered)
 {
    return agx_build_tilebuffer_layout_with_limits(formats, nr_cbufs, nr_samples,
-                                                layered, 0, 0);
+                                                layered, 0, 0, 0);
 }
 
 /*
@@ -150,7 +155,8 @@ agx_tilebuffer_set_samples(struct agx_tilebuffer_layout *tib,
                                       ARRAY_SIZE(tib->logical_format),
                                       nr_samples, tib->layered,
                                       tib->max_bytes_per_tile,
-                                      tib->max_samples_per_tile);
+                                      tib->max_samples_per_tile,
+                                      tib->max_bytes_per_sample);
 }
 
 enum pipe_format
