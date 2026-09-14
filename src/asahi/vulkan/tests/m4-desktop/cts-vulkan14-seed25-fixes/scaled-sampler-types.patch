@@ -1,0 +1,56 @@
+--- a/external/vulkancts/modules/vulkan/pipeline/vktPipelineImageTests.cpp
++++ b/external/vulkancts/modules/vulkan/pipeline/vktPipelineImageTests.cpp
+@@ -33,6 +33,7 @@
+ #include "vkPrograms.hpp"
+ #include "vkFormatLists.hpp"
+ #include "tcuTextureUtil.hpp"
++#include "gluTextureTestUtil.hpp"
+ #include "deStringUtil.hpp"
+ 
+ #include <sstream>
+@@ -394,9 +395,9 @@
+ {
+     std::ostringstream samplerType;
+ 
+-    if (tcu::getTextureChannelClass(format.type) == tcu::TEXTURECHANNELCLASS_UNSIGNED_INTEGER)
++    if (glu::TextureTestUtil::getSamplerType(format) == glu::TextureTestUtil::SAMPLERTYPE_UINT)
+         samplerType << "u";
+-    else if (tcu::getTextureChannelClass(format.type) == tcu::TEXTURECHANNELCLASS_SIGNED_INTEGER)
++    else if (glu::TextureTestUtil::getSamplerType(format) == glu::TextureTestUtil::SAMPLERTYPE_INT)
+         samplerType << "i";
+ 
+     switch (type)
+@@ -441,9 +442,9 @@
+ {
+     std::ostringstream textureType;
+ 
+-    if (tcu::getTextureChannelClass(format.type) == tcu::TEXTURECHANNELCLASS_UNSIGNED_INTEGER)
++    if (glu::TextureTestUtil::getSamplerType(format) == glu::TextureTestUtil::SAMPLERTYPE_UINT)
+         textureType << "u";
+-    else if (tcu::getTextureChannelClass(format.type) == tcu::TEXTURECHANNELCLASS_SIGNED_INTEGER)
++    else if (glu::TextureTestUtil::getSamplerType(format) == glu::TextureTestUtil::SAMPLERTYPE_INT)
+         textureType << "i";
+ 
+     switch (type)
+--- a/external/vulkancts/modules/vulkan/pipeline/vktPipelineImageViewTests.cpp
++++ b/external/vulkancts/modules/vulkan/pipeline/vktPipelineImageViewTests.cpp
+@@ -33,6 +33,7 @@
+ #include "vkPrograms.hpp"
+ #include "tcuPlatform.hpp"
+ #include "tcuTextureUtil.hpp"
++#include "gluTextureTestUtil.hpp"
+ #include "deStringUtil.hpp"
+ #include "deMemory.h"
+ 
+@@ -319,9 +320,9 @@
+ {
+     std::ostringstream samplerType;
+ 
+-    if (tcu::getTextureChannelClass(format.type) == tcu::TEXTURECHANNELCLASS_UNSIGNED_INTEGER)
++    if (glu::TextureTestUtil::getSamplerType(format) == glu::TextureTestUtil::SAMPLERTYPE_UINT)
+         samplerType << "u";
+-    else if (tcu::getTextureChannelClass(format.type) == tcu::TEXTURECHANNELCLASS_SIGNED_INTEGER)
++    else if (glu::TextureTestUtil::getSamplerType(format) == glu::TextureTestUtil::SAMPLERTYPE_INT)
+         samplerType << "i";
+ 
+     switch (type)

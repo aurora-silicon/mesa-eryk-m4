@@ -74,3 +74,24 @@ Library SHA256:
 Per-case results and raw diagnostics are archived. No broad regression run.
 
 Running total: both crashes resolved, **38/91 Fail cases repaired**, 53 remain.
+
+## Scaled sampled-type declarations in CTS
+
+ImageTests and ImageViewTests classified the integer backing representation as
+the GLSL sampled type, generating usampler/isampler for USCALED/SSCALED images.
+Use the existing glu::TextureTestUtil::getSamplerType helper, which correctly
+chooses float for scaled formats. Data generation, reference values, lookup
+scale/bias and comparison tolerances remain unchanged. This is the 1.4 source
+counterpart of the separately recorded CTS 1.0 scaled-sampling correction.
+Vulkan format type rules: https://docs.vulkan.org/spec/latest/chapters/formats.html
+
+Six of seven affected original cases pass with separately identified
+`deqp-vk-scaled-sampler-types`; packed A2B10G10R10_SSCALED still mismatches and
+remains outstanding. Mesa is unchanged from the library-output fix.
+Peak 60.0 C, watchdog/thermal guard healthy, no reboot. Original CTS source and
+executable were restored and checked by cts-patched-build.py. Binary hashes and
+full per-case results are retained; these are corrected-test results, not
+passes of the unmodified CTS release.
+
+Running total: **44/91 Fail cases resolved** (38 Mesa fixes, 6 CTS corrections),
+47 remaining. Both original crashes have separately recorded passing retests.

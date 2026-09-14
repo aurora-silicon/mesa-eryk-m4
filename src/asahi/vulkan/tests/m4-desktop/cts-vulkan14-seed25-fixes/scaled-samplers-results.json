@@ -1,0 +1,170 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.separate.view_type.2d.format.r8g8b8a8_uscaled.count_1.size.13x23",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-scaled-sampler-types",
+      "--deqp-case=dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.separate.view_type.2d.format.r8g8b8a8_uscaled.count_1.size.13x23",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T030405718601Z-cts14-scaled-sampler-types/cts/000/result.qpa"
+    ],
+    "boot_id": "4677c960-6288-422d-b849-67cddc408032",
+    "status": "Pass",
+    "started_unix": 1789355047.1447434,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.separate.view_type.2d.format.r8g8b8a8_uscaled.count_1.size.13x23",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.5535270870000204,
+    "finished_unix": 1789355047.7032988,
+    "pid": 4284
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.pipeline.shader_object_unlinked_spirv.image.suballocation.sampling_type.combined.view_type.3d.format.r8_uscaled.count_1.size.5x5x5",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-scaled-sampler-types",
+      "--deqp-case=dEQP-VK.pipeline.shader_object_unlinked_spirv.image.suballocation.sampling_type.combined.view_type.3d.format.r8_uscaled.count_1.size.5x5x5",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T030405718601Z-cts14-scaled-sampler-types/cts/001/result.qpa"
+    ],
+    "boot_id": "4677c960-6288-422d-b849-67cddc408032",
+    "status": "Pass",
+    "started_unix": 1789355047.1498234,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.shader_object_unlinked_spirv.image.suballocation.sampling_type.combined.view_type.3d.format.r8_uscaled.count_1.size.5x5x5",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.4767291169996497,
+    "finished_unix": 1789355047.6318862,
+    "pid": 4285
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.combined.view_type.cube.format.r8g8b8a8_uscaled.count_4.size.13x13",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-scaled-sampler-types",
+      "--deqp-case=dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.combined.view_type.cube.format.r8g8b8a8_uscaled.count_4.size.13x13",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T030405718601Z-cts14-scaled-sampler-types/cts/002/result.qpa"
+    ],
+    "boot_id": "4677c960-6288-422d-b849-67cddc408032",
+    "status": "Pass",
+    "started_unix": 1789355047.1552346,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.combined.view_type.cube.format.r8g8b8a8_uscaled.count_4.size.13x13",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.6319682630000898,
+    "finished_unix": 1789355047.7932625,
+    "pid": 4286
+  },
+  {
+    "index": 3,
+    "case": "dEQP-VK.pipeline.monolithic.image_view.view_type.1d_array.format.r16g16b16_uscaled.subresource_range.array_base_and_size",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-scaled-sampler-types",
+      "--deqp-case=dEQP-VK.pipeline.monolithic.image_view.view_type.1d_array.format.r16g16b16_uscaled.subresource_range.array_base_and_size",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T030405718601Z-cts14-scaled-sampler-types/cts/003/result.qpa"
+    ],
+    "boot_id": "4677c960-6288-422d-b849-67cddc408032",
+    "status": "Pass",
+    "started_unix": 1789355047.1613955,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.monolithic.image_view.view_type.1d_array.format.r16g16b16_uscaled.subresource_range.array_base_and_size",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.5511161919998813,
+    "finished_unix": 1789355047.718284,
+    "pid": 4288
+  },
+  {
+    "index": 4,
+    "case": "dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.combined.view_type.2d_array.format.r8_uscaled.count_1.size.3x3_array_of_3",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-scaled-sampler-types",
+      "--deqp-case=dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.combined.view_type.2d_array.format.r8_uscaled.count_1.size.3x3_array_of_3",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T030405718601Z-cts14-scaled-sampler-types/cts/004/result.qpa"
+    ],
+    "boot_id": "4677c960-6288-422d-b849-67cddc408032",
+    "status": "Pass",
+    "started_unix": 1789355047.6940439,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.combined.view_type.2d_array.format.r8_uscaled.count_1.size.3x3_array_of_3",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.5125924420003685,
+    "finished_unix": 1789355048.2112777,
+    "pid": 4302
+  },
+  {
+    "index": 5,
+    "case": "dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.combined.view_type.2d_array.format.a2b10g10r10_sscaled_pack32.count_1.size.13x13_array_of_6",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-scaled-sampler-types",
+      "--deqp-case=dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.combined.view_type.2d_array.format.a2b10g10r10_sscaled_pack32.count_1.size.13x13_array_of_6",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T030405718601Z-cts14-scaled-sampler-types/cts/005/result.qpa"
+    ],
+    "boot_id": "4677c960-6288-422d-b849-67cddc408032",
+    "status": "Fail",
+    "started_unix": 1789355047.7788298,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.combined.view_type.2d_array.format.a2b10g10r10_sscaled_pack32.count_1.size.13x13_array_of_6",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Image mismatch",
+    "returncode": 1,
+    "seconds": 0.49259654499974204,
+    "finished_unix": 1789355048.2762806,
+    "pid": 4305
+  },
+  {
+    "index": 6,
+    "case": "dEQP-VK.pipeline.shader_object_unlinked_spirv.image.suballocation.sampling_type.separate.view_type.1d.format.r16_uscaled.count_8.size.512x1",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-scaled-sampler-types",
+      "--deqp-case=dEQP-VK.pipeline.shader_object_unlinked_spirv.image.suballocation.sampling_type.separate.view_type.1d.format.r16_uscaled.count_8.size.512x1",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T030405718601Z-cts14-scaled-sampler-types/cts/006/result.qpa"
+    ],
+    "boot_id": "4677c960-6288-422d-b849-67cddc408032",
+    "status": "Pass",
+    "started_unix": 1789355047.783749,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.shader_object_unlinked_spirv.image.suballocation.sampling_type.separate.view_type.1d.format.r16_uscaled.count_8.size.512x1",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.7040453719996549,
+    "finished_unix": 1789355048.4925356,
+    "pid": 4306
+  }
+]

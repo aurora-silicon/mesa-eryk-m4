@@ -1,0 +1,12 @@
+{
+  "source": "/home/council/dev/dirtyroom_m4/reference/vk-gl-cts-1.4.6.2",
+  "source_commit": "f6a29701220f34dd1407513bfe80d74ca7b392ce",
+  "patch_sha256": "4f0f3bf3159cf3c1e385f56d8a1df5aa6508c2b0bededbce5fd81f4e77ff1516",
+  "original_binary_sha256": "542459f13f3378f0af79ac9062d7e7fce6cd4853ab76adda69ae50889483b7e8",
+  "source_sha256": {
+    "external/vulkancts/modules/vulkan/pipeline/vktPipelineImageTests.cpp": "0662e7f6980ab98e6c7f5e5c6dd96118344da8c8c193965e67d0f14c8d5c5d17",
+    "external/vulkancts/modules/vulkan/pipeline/vktPipelineImageViewTests.cpp": "1c962d92c4ad0907fa7ab11439f8e07446d0434c5288a395c4f1b377e8bb7559"
+  },
+  "diagnostic_binary_sha256": "75ee6ef7e22cc594bcdeda3b47118a518f6ec96064149f1789ee8fed33e51348",
+  "restored": true
+}
