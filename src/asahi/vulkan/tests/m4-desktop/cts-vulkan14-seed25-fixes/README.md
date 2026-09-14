@@ -430,3 +430,19 @@ Final build also passed after adding the norm16 semantic-key check and
 comment/format cleanup. The tested binary includes opt-in VBO diagnostics.
 Running total: **84/91 failures resolved** (72 Mesa fixes, 12 CTS corrections),
 7 remaining. No broad regression campaign.
+
+## Vertex/image uniform ABI overlap
+
+Reserve native vertex uniform halves0..15, not just0..7. Storage image
+access also binds its coordinate-routing constants at8..15; those uploads
+were overwriting the vertex address and clamp. Both original and raw-attribute
+diagnostics showed zeros even for in-bounds vertices; the CPU-side binding
+was correct (260 bytes, stride8, maximum vertex31). Move the entire vertex
+ABI consistently for monolithic shaders, prologs and Ioto uploads.
+
+The original RG32I robustness2 vertex-fetch case now Passes. Peak57.0 C,
+no fault/reboot. Tested library includes the separate layered-MRT fix:
+`4bc807bc6a64e855bc001684769ddcc3a5adce1a5bbf4d892b48b9a162633fb1`.
+Keep opt-in VBO address/stride/clamp diagnostics for future failures.
+Running total: **85/91 failures resolved** (73 Mesa fixes, 12 CTS corrections),
+6 remaining. No broad regression campaign.

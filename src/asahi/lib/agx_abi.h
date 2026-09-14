@@ -22,10 +22,12 @@
 #define AGX_ABI_FOUT_COLOUR(rt)    (2 * (4 + (4 * rt)))
 
 #define AGX_ABI_VUNI_VBO_BASE(vbo) (4 * (vbo))
-/* HAL200 native texture/sampler heap pointers occupy uniform halves 0..7.
+/* HAL200 image access uses halves 0..15: texture/sampler heap pointers,
+ * image-coordinate routing, and its clamp. Keep the complete range disjoint
+ * from vertex bases/clamps, including in shaders with storage-image writes.
  * Shift the ordinary vertex ABI together, including linked prologs.
  */
-#define AGX_ABI_VUNI_NATIVE_PREFIX 8
+#define AGX_ABI_VUNI_NATIVE_PREFIX 16
 #define AGX_ABI_VUNI_VBO_CLAMP(nr_vbos, vbo)                                   \
    (AGX_ABI_VUNI_VBO_BASE(nr_vbos) + 2 * (vbo))
 

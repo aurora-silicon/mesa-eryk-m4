@@ -4029,6 +4029,13 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
 
             desc->root.draw.attrib_strides[slot] =
                dyn->vi_binding_strides[attr.binding] / interchange_align;
+            if (getenv("AGX_NATIVE_RESOURCE_DIAGNOSTICS"))
+               fprintf(stderr, "Native VBO a=%u slot=%u fmt=%s base=%llx range=%llu stride=%u offset=%u clamp=%u shader-base=%llx\n",
+                       a, slot, util_format_short_name(fmt),
+                       (unsigned long long)vb.addr, (unsigned long long)vb.range,
+                       dyn->vi_binding_strides[attr.binding], attr.offset,
+                       desc->root.draw.attrib_clamps[slot],
+                       (unsigned long long)desc->root.draw.attrib_base[slot]);
          } else {
             desc->root.draw.attrib_base[slot] = AGX_ZERO_PAGE_ADDRESS;
             desc->root.draw.attrib_clamps[slot] = 0;
