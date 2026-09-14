@@ -1,13 +1,14 @@
 {
   "requested": 70000,
-  "completed": 40000,
+  "completed": 70000,
   "counts": {
-    "Pass": 17093,
-    "NotSupported": 22875,
-    "Fail": 32
+    "Pass": 33901,
+    "NotSupported": 36043,
+    "Fail": 56
   },
-  "runner_seconds": 1182.4511188,
-  "peak_temperature_c": 61.0,
+  "runner_seconds": 2614.8484655869997,
+  "series_elapsed_seconds": 2663.657,
+  "peak_temperature_c": 61.75,
   "segments": [
     {
       "selected": 10000,
@@ -103,7 +104,77 @@
       "guard_verdict": "pass",
       "command_returncode": 0,
       "peak_temperature_c": 61.0
+    },
+    {
+      "selected": 10000,
+      "recorded": 10000,
+      "completed": 10000,
+      "counts": {
+        "NotSupported": 4221,
+        "Pass": 5779
+      },
+      "classifications": {
+        "unclassified": 10000
+      },
+      "elapsed_seconds": 489.3592530459864,
+      "preparation_seconds": 1.6712694550224114,
+      "runner_seconds": 484.3695370390001,
+      "jobs": 20,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "a45a9c9f90f38cc3099ce278f888d03e83c0942ad6e55d042f54a60b7c8def5c",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T231207347812Z-cts-ordered-rest70k-s05",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 61.25
+    },
+    {
+      "selected": 10000,
+      "recorded": 10000,
+      "completed": 10000,
+      "counts": {
+        "Pass": 5370,
+        "NotSupported": 4606,
+        "Fail": 24
+      },
+      "classifications": {
+        "unclassified": 10000
+      },
+      "elapsed_seconds": 471.8922408889921,
+      "preparation_seconds": 1.6156289760256186,
+      "runner_seconds": 466.51257640799986,
+      "jobs": 20,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "f3a78860ece9aa707787d015ee1454436c8f2f79847403339e66fdc89aa13783",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T232018454072Z-cts-ordered-rest70k-s06",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 61.75
+    },
+    {
+      "selected": 10000,
+      "recorded": 10000,
+      "completed": 10000,
+      "counts": {
+        "Pass": 5659,
+        "NotSupported": 4341
+      },
+      "classifications": {
+        "unclassified": 10000
+      },
+      "elapsed_seconds": 487.0173002409865,
+      "preparation_seconds": 1.7092076760018244,
+      "runner_seconds": 481.5152333400001,
+      "jobs": 20,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "c358ee1dcabf1af5b37e4ba135e650e1f32a50790f79df760fd0de231de54013",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T232812323592Z-cts-ordered-rest70k-s07",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 61.75
     }
   ],
-  "complete": false
+  "complete": true
 }

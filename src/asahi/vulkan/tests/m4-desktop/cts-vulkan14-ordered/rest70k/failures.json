@@ -1,0 +1,1010 @@
+[
+  {
+    "index": 9139,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2b10g10r10_sscaled_pack32.b10g11r11_ufloat_pack32.general_general_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.364515,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2b10g10r10_sscaled_pack32.b10g11r11_ufloat_pack32.general_general_nearest",
+      "catalog_index": 49139,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c42.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 9142,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2b10g10r10_sscaled_pack32.b10g11r11_ufloat_pack32.general_optimal_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.4737267,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2b10g10r10_sscaled_pack32.b10g11r11_ufloat_pack32.general_optimal_nearest",
+      "catalog_index": 49142,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c104.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 9145,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2b10g10r10_sscaled_pack32.b10g11r11_ufloat_pack32.optimal_general_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.215703,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2b10g10r10_sscaled_pack32.b10g11r11_ufloat_pack32.optimal_general_nearest",
+      "catalog_index": 49145,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c30.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 9148,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2b10g10r10_sscaled_pack32.b10g11r11_ufloat_pack32.optimal_optimal_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 0.26418087,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2b10g10r10_sscaled_pack32.b10g11r11_ufloat_pack32.optimal_optimal_nearest",
+      "catalog_index": 49148,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c197.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 1059,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2b10g10r10_uscaled_pack32.b10g11r11_ufloat_pack32.general_general_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.7116697,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2b10g10r10_uscaled_pack32.b10g11r11_ufloat_pack32.general_general_nearest",
+      "catalog_index": 51059,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c122.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 1062,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2b10g10r10_uscaled_pack32.b10g11r11_ufloat_pack32.general_optimal_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.484142,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2b10g10r10_uscaled_pack32.b10g11r11_ufloat_pack32.general_optimal_nearest",
+      "catalog_index": 51062,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c185.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 1065,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2b10g10r10_uscaled_pack32.b10g11r11_ufloat_pack32.optimal_general_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.6636362,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2b10g10r10_uscaled_pack32.b10g11r11_ufloat_pack32.optimal_general_nearest",
+      "catalog_index": 51065,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c51.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 1068,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2b10g10r10_uscaled_pack32.b10g11r11_ufloat_pack32.optimal_optimal_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.6970592,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2b10g10r10_uscaled_pack32.b10g11r11_ufloat_pack32.optimal_optimal_nearest",
+      "catalog_index": 51068,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c15.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 2975,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2r10g10b10_sscaled_pack32.b10g11r11_ufloat_pack32.general_general_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.6224976,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2r10g10b10_sscaled_pack32.b10g11r11_ufloat_pack32.general_general_nearest",
+      "catalog_index": 52975,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c182.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 2978,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2r10g10b10_sscaled_pack32.b10g11r11_ufloat_pack32.general_optimal_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.6816676,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2r10g10b10_sscaled_pack32.b10g11r11_ufloat_pack32.general_optimal_nearest",
+      "catalog_index": 52978,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c92.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 2981,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2r10g10b10_sscaled_pack32.b10g11r11_ufloat_pack32.optimal_general_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.6916726,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2r10g10b10_sscaled_pack32.b10g11r11_ufloat_pack32.optimal_general_nearest",
+      "catalog_index": 52981,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c97.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 2984,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2r10g10b10_sscaled_pack32.b10g11r11_ufloat_pack32.optimal_optimal_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.7043982,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2r10g10b10_sscaled_pack32.b10g11r11_ufloat_pack32.optimal_optimal_nearest",
+      "catalog_index": 52984,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c129.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 4895,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2r10g10b10_uscaled_pack32.b10g11r11_ufloat_pack32.general_general_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.6817098,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2r10g10b10_uscaled_pack32.b10g11r11_ufloat_pack32.general_general_nearest",
+      "catalog_index": 54895,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c21.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 4898,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2r10g10b10_uscaled_pack32.b10g11r11_ufloat_pack32.general_optimal_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.6965563,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2r10g10b10_uscaled_pack32.b10g11r11_ufloat_pack32.general_optimal_nearest",
+      "catalog_index": 54898,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c56.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 4901,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2r10g10b10_uscaled_pack32.b10g11r11_ufloat_pack32.optimal_general_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.6776965,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2r10g10b10_uscaled_pack32.b10g11r11_ufloat_pack32.optimal_general_nearest",
+      "catalog_index": 54901,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c114.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 4904,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2r10g10b10_uscaled_pack32.b10g11r11_ufloat_pack32.optimal_optimal_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.7058966,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2r10g10b10_uscaled_pack32.b10g11r11_ufloat_pack32.optimal_optimal_nearest",
+      "catalog_index": 54904,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c133.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 9618,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_sscaled_pack32.b10g11r11_ufloat_pack32.general_general_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.6321342,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_sscaled_pack32.b10g11r11_ufloat_pack32.general_general_nearest",
+      "catalog_index": 59618,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c34.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 9620,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_sscaled_pack32.b10g11r11_ufloat_pack32.general_optimal_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.705721,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_sscaled_pack32.b10g11r11_ufloat_pack32.general_optimal_nearest",
+      "catalog_index": 59620,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c129.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 9622,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_sscaled_pack32.b10g11r11_ufloat_pack32.optimal_general_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.6841631,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_sscaled_pack32.b10g11r11_ufloat_pack32.optimal_general_nearest",
+      "catalog_index": 59622,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c88.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 9624,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_sscaled_pack32.b10g11r11_ufloat_pack32.optimal_optimal_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.789674,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_sscaled_pack32.b10g11r11_ufloat_pack32.optimal_optimal_nearest",
+      "catalog_index": 59624,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c192.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 1149,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.a2b10g10r10_uscaled_pack32.general_general_linear",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.6724837,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.a2b10g10r10_uscaled_pack32.general_general_linear",
+      "catalog_index": 61149,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c86.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 1151,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.a2b10g10r10_uscaled_pack32.general_optimal_linear",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.6705236,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.a2b10g10r10_uscaled_pack32.general_optimal_linear",
+      "catalog_index": 61151,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c25.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 1153,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.a2b10g10r10_uscaled_pack32.optimal_general_linear",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.7058084,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.a2b10g10r10_uscaled_pack32.optimal_general_linear",
+      "catalog_index": 61153,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c104.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 1155,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.a2b10g10r10_uscaled_pack32.optimal_optimal_linear",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.657378,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.a2b10g10r10_uscaled_pack32.optimal_optimal_linear",
+      "catalog_index": 61155,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c164.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 1181,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.a2r10g10b10_uscaled_pack32.general_general_linear",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.6975601,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.a2r10g10b10_uscaled_pack32.general_general_linear",
+      "catalog_index": 61181,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c168.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 1183,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.a2r10g10b10_uscaled_pack32.general_optimal_linear",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.620117,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.a2r10g10b10_uscaled_pack32.general_optimal_linear",
+      "catalog_index": 61183,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c18.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 1185,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.a2r10g10b10_uscaled_pack32.optimal_general_linear",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.6184561,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.a2r10g10b10_uscaled_pack32.optimal_general_linear",
+      "catalog_index": 61185,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c16.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 1187,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.a2r10g10b10_uscaled_pack32.optimal_optimal_linear",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.6681777,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.a2r10g10b10_uscaled_pack32.optimal_optimal_linear",
+      "catalog_index": 61187,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c51.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 1230,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.b10g11r11_ufloat_pack32.general_general_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.6056817,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.b10g11r11_ufloat_pack32.general_general_nearest",
+      "catalog_index": 61230,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c1.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 1232,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.b10g11r11_ufloat_pack32.general_optimal_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.6586053,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.b10g11r11_ufloat_pack32.general_optimal_nearest",
+      "catalog_index": 61232,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c2.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 1234,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.b10g11r11_ufloat_pack32.optimal_general_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.6826185,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.b10g11r11_ufloat_pack32.optimal_general_nearest",
+      "catalog_index": 61234,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c191.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 1236,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.b10g11r11_ufloat_pack32.optimal_optimal_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.6222897,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.b10g11r11_ufloat_pack32.optimal_optimal_nearest",
+      "catalog_index": 61236,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c160.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 1355,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8_sscaled.b10g11r11_ufloat_pack32.general_general_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.6543627,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8_sscaled.b10g11r11_ufloat_pack32.general_general_nearest",
+      "catalog_index": 81355,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c50.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 1358,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8_sscaled.b10g11r11_ufloat_pack32.general_optimal_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.675993,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8_sscaled.b10g11r11_ufloat_pack32.general_optimal_nearest",
+      "catalog_index": 81358,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c40.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 1361,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8_sscaled.b10g11r11_ufloat_pack32.optimal_general_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.7156104,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8_sscaled.b10g11r11_ufloat_pack32.optimal_general_nearest",
+      "catalog_index": 81361,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c40.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 1364,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8_sscaled.b10g11r11_ufloat_pack32.optimal_optimal_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.6647007,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8_sscaled.b10g11r11_ufloat_pack32.optimal_optimal_nearest",
+      "catalog_index": 81364,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c46.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 3275,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8_uscaled.b10g11r11_ufloat_pack32.general_general_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.6912999,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8_uscaled.b10g11r11_ufloat_pack32.general_general_nearest",
+      "catalog_index": 83275,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c199.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 3278,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8_uscaled.b10g11r11_ufloat_pack32.general_optimal_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.6676549,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8_uscaled.b10g11r11_ufloat_pack32.general_optimal_nearest",
+      "catalog_index": 83278,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c77.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 3281,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8_uscaled.b10g11r11_ufloat_pack32.optimal_general_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.7652477,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8_uscaled.b10g11r11_ufloat_pack32.optimal_general_nearest",
+      "catalog_index": 83281,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c105.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 3284,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8_uscaled.b10g11r11_ufloat_pack32.optimal_optimal_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.543124,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8_uscaled.b10g11r11_ufloat_pack32.optimal_optimal_nearest",
+      "catalog_index": 83284,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c196.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 5287,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_sscaled.b10g11r11_ufloat_pack32.general_general_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.4938082,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_sscaled.b10g11r11_ufloat_pack32.general_general_nearest",
+      "catalog_index": 85287,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c186.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 5290,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_sscaled.b10g11r11_ufloat_pack32.general_optimal_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.7429724,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_sscaled.b10g11r11_ufloat_pack32.general_optimal_nearest",
+      "catalog_index": 85290,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c85.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 5293,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_sscaled.b10g11r11_ufloat_pack32.optimal_general_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.7954077,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_sscaled.b10g11r11_ufloat_pack32.optimal_general_nearest",
+      "catalog_index": 85293,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c147.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 5296,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_sscaled.b10g11r11_ufloat_pack32.optimal_optimal_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.7966636,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_sscaled.b10g11r11_ufloat_pack32.optimal_optimal_nearest",
+      "catalog_index": 85296,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c106.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 7086,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_uscaled.a2b10g10r10_uscaled_pack32.general_general_linear",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.7826911,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_uscaled.a2b10g10r10_uscaled_pack32.general_general_linear",
+      "catalog_index": 87086,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c115.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 7089,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_uscaled.a2b10g10r10_uscaled_pack32.general_optimal_linear",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.7867024,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_uscaled.a2b10g10r10_uscaled_pack32.general_optimal_linear",
+      "catalog_index": 87089,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c165.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 7092,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_uscaled.a2b10g10r10_uscaled_pack32.optimal_general_linear",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.768161,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_uscaled.a2b10g10r10_uscaled_pack32.optimal_general_linear",
+      "catalog_index": 87092,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c149.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 7095,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_uscaled.a2b10g10r10_uscaled_pack32.optimal_optimal_linear",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.657084,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_uscaled.a2b10g10r10_uscaled_pack32.optimal_optimal_linear",
+      "catalog_index": 87095,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c52.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 7134,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_uscaled.a2r10g10b10_uscaled_pack32.general_general_linear",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.6509101,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_uscaled.a2r10g10b10_uscaled_pack32.general_general_linear",
+      "catalog_index": 87134,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c7.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 7137,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_uscaled.a2r10g10b10_uscaled_pack32.general_optimal_linear",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.6559486,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_uscaled.a2r10g10b10_uscaled_pack32.general_optimal_linear",
+      "catalog_index": 87137,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c26.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 7140,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_uscaled.a2r10g10b10_uscaled_pack32.optimal_general_linear",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.7809169,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_uscaled.a2r10g10b10_uscaled_pack32.optimal_general_linear",
+      "catalog_index": 87140,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c123.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 7143,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_uscaled.a2r10g10b10_uscaled_pack32.optimal_optimal_linear",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.685742,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_uscaled.a2r10g10b10_uscaled_pack32.optimal_optimal_linear",
+      "catalog_index": 87143,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c76.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 7207,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_uscaled.b10g11r11_ufloat_pack32.general_general_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.7237275,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_uscaled.b10g11r11_ufloat_pack32.general_general_nearest",
+      "catalog_index": 87207,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c74.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 7210,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_uscaled.b10g11r11_ufloat_pack32.general_optimal_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.6709166,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_uscaled.b10g11r11_ufloat_pack32.general_optimal_nearest",
+      "catalog_index": 87210,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c13.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 7213,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_uscaled.b10g11r11_ufloat_pack32.optimal_general_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.7591164,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_uscaled.b10g11r11_ufloat_pack32.optimal_general_nearest",
+      "catalog_index": 87213,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c167.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 7216,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_uscaled.b10g11r11_ufloat_pack32.optimal_optimal_nearest",
+    "boot_id": "8795cfb6-72bf-4c60-a0af-3a1a7549a374",
+    "runner_status": "Fail",
+    "seconds": 1.6710268,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_uscaled.b10g11r11_ufloat_pack32.optimal_optimal_nearest",
+      "catalog_index": 87216,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Frozen broad catalog; audit capability skips separately"
+    },
+    "status": "Fail",
+    "message": "Result image is incorrect",
+    "qpa": "deqp-runner/c9.r1.qpa",
+    "worker_exit": "exit status: 1"
+  }
+]

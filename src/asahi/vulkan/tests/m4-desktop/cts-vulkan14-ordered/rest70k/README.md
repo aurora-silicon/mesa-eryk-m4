@@ -1,8 +1,10 @@
 # Remaining deterministic batch 1 cases: [30000,100000)
 
-In-progress checkpoint: 40,000 of the requested 70,000 cases completed.
-17,093 Pass, 22,875 NotSupported, 32 Fail; no Crash or Timeout.
-The remaining 30,000 are still running. This checkpoint is not a complete run.
+All 70,000 cases completed: 33,901 Pass, 36,043 NotSupported,
+56 Fail, zero Crash/Timeout. Wall time including staging/guards: 2663.657s
+(44m23.7s); sum of runner times: 2614.848s.
+Peak recorded temperature: 61.75 C. All seven guards passed.
+This is the initial outcome; none of these 56 failures has been retried or fixed.
 
 The exact frozen catalog and global indices are preserved in selection.json,
 per-case eligibility metadata and compressed results. Twenty deqp-runner workers,
@@ -13,7 +15,10 @@ No driver change or failure retry during this run. The earlier interrupted
 
 The CTS binary includes the previously documented reference corrections;
 this is not an unmodified conformance run. Raw NotSupported does not establish
-optionality. Skip auditing and the final results will follow completion.
+optionality. The skip audit is incomplete; no blanket optionality or required-support claim.
+The user handed all 56 failures to Claude and paused our implementation work.
+M4/lavapipe comparison is deferred until Claude is done. The full failure list
+and per-case evidence are retained in failures.txt and failures.json.
 
 ## Why the CPU is mostly idle
 
