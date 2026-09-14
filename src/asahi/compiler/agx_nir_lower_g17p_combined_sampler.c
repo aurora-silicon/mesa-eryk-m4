@@ -16,8 +16,11 @@ g17p_sample_shape(const nir_tex_instr *tex)
    const bool cube = tex->sampler_dim == GLSL_SAMPLER_DIM_CUBE;
    const bool gather = tex->op == nir_texop_tg4;
    const bool query = tex->op == nir_texop_lod;
+   const bool gradient = tex->op == nir_texop_txd;
+   if (gradient && (cube || tex->is_shadow))
+      return false;
    if ((tex->op != nir_texop_tex && tex->op != nir_texop_txb &&
-       tex->op != nir_texop_txl && !gather && !query) ||
+       tex->op != nir_texop_txl && !gather && !query && !gradient) ||
        (query && (three_d || cube || tex->is_array || tex->is_shadow)) ||
        (tex->sampler_dim != GLSL_SAMPLER_DIM_2D && !three_d &&
         !(cube &&
@@ -39,7 +42,7 @@ g17p_sample_shape(const nir_tex_instr *tex)
    if (three_d) {
       const int lod = nir_tex_instr_src_index(tex, nir_tex_src_lod);
       if (tex->is_array || tex->is_shadow ||
-          (tex->op != nir_texop_tex &&
+          (tex->op != nir_texop_tex && !gradient &&
            (tex->op != nir_texop_txl || lod < 0 ||
             !nir_src_is_const(tex->src[lod].src))))
          return false;
@@ -57,10 +60,19 @@ g17p_sample_shape(const nir_tex_instr *tex)
    if (tex->is_shadow != (compare >= 0) ||
        (compare >= 0 && (nir_src_bit_size(tex->src[compare].src) != 32 ||
                         nir_src_num_components(tex->src[compare].src) != 1)) ||
-       tex->num_srcs != ((has_bias || has_lod) ? 4 : 3) + tex->is_shadow + literal_offset ||
+       tex->num_srcs != ((has_bias || has_lod) ? 4 : 3) + tex->is_shadow + literal_offset + 2 * gradient ||
        has_lod != (tex->op == nir_texop_txl) ||
        (has_bias != (tex->op == nir_texop_txb) && !query))
       return false;
+
+   if (gradient) {
+      for (unsigned i = 0; i < 2; ++i) {
+         int src = nir_tex_instr_src_index(tex, i ? nir_tex_src_ddy : nir_tex_src_ddx);
+         if (src < 0 || nir_src_bit_size(tex->src[src].src) != 32 ||
+             nir_src_num_components(tex->src[src].src) != (three_d ? 3 : 2))
+            return false;
+      }
+   }
 
    if (query && has_bias) {
       int bias = nir_tex_instr_src_index(tex, nir_tex_src_bias);
@@ -473,11 +485,11 @@ agx_nir_lower_g17p_indexed_samplers(nir_shader *shader)
             /* Vertex stages have no derivatives, but explicit-LOD sampling
              * uses the same native operation as fragment/compute stages. */
             if (shader->info.stage == MESA_SHADER_VERTEX && !fetch &&
-                tex->op != nir_texop_txl)
+                tex->op != nir_texop_txl && tex->op != nir_texop_txd)
                return false;
             if (!fetch && (!g17p_sample_shape(tex) ||
                            (tex->op != nir_texop_tex && tex->op != nir_texop_txl &&
-                            tex->op != nir_texop_lod &&
+                            tex->op != nir_texop_lod && tex->op != nir_texop_txd &&
                             tex->op != nir_texop_tg4 &&
                             !(tex->op == nir_texop_txb &&
                               !tex->is_shadow && tex->sampler_dim == GLSL_SAMPLER_DIM_2D)))) {

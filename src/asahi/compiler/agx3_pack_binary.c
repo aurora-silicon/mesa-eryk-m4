@@ -1054,6 +1054,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
                          bool retain_helpers)
 {
    const bool explicit_lod = I->lod_mode == AGX_LOD_MODE_LOD_MIN;
+   const bool gradient = I->lod_mode == AGX_LOD_MODE_LOD_GRAD;
    const bool bias = I->lod_mode == AGX_LOD_MODE_AUTO_LOD_BIAS;
    const bool immediate_lod = explicit_lod &&
                               I->src[1].type == AGX_INDEX_IMMEDIATE;
@@ -1075,7 +1076,12 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
        agx3_tex_plain_reg(I->src[5]) && I->src[5].size == AGX_SIZE_32 &&
        agx_channels(I->src[5]) == 1 && !(I->src[5].value & 1) &&
        I->src[5].value < 256) : (sample_offset || agx_is_null(I->src[5]));
-   const bool valid_lod = (explicit_lod || bias) ?
+   const bool valid_lod = gradient ?
+      (enc == AGX_ISA_ENCODING_AGX3B && !cube && !shadow && !gather &&
+       agx3_tex_plain_reg(I->src[1]) && I->src[1].size == AGX_SIZE_32 &&
+       agx_channels(I->src[1]) == (three_d ? 6 : 4) &&
+       !(I->src[1].value & 1) && I->src[1].value <= 256 - (three_d ? 12 : 8)) :
+      (explicit_lod || bias) ?
       (enc == AGX_ISA_ENCODING_AGX3B &&
        ((explicit_lod && valid_immediate_lod) ||
         (agx3_tex_plain_reg(I->src[1]) && I->src[1].size == AGX_SIZE_16 &&
@@ -1087,7 +1093,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
    /* Fixed-bank samples copy their coordinates before SMP. COPY and
     * PACK_SMPIR accept the full 256-half source bank; the last component must
     * fit. Only unstaged 2D samples retain SMP's narrower coordinate bound. */
-   const bool fixed_coord = explicit_lod || bias || array || cube || three_d || shadow;
+   const bool fixed_coord = gradient || explicit_lod || bias || array || cube || three_d || shadow;
    const unsigned coord_components = cube && array ? 4 :
                                      (array || cube || three_d) ? 3 : 2;
    const unsigned max_coord = fixed_coord ? 256 - 2 * coord_components : 60;
@@ -1212,6 +1218,18 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
         !agx3_append(emission, bytes, len)))
       return false;
 
+   /* Native gradient2d/3d witnesses publish interleaved ddx/ddy pairs
+    * in a separate F32 operand bank, without PACK_SMPIR conversion. */
+   if (gradient) {
+      for (unsigned i = 0; i < (three_d ? 6 : 4); ++i) {
+         if (!agx3_tex_stage_copy_hints(enc, 8 + 2 * i,
+                I->src[1].value + 2 * i, stage_slot, 0,
+                I->src[1].cache, I->src[1].discard, bytes, &len) ||
+             !agx3_append(emission, bytes, len))
+            return false;
+      }
+   }
+
    const struct agx3_tex_sample_desc d = {
       .dest = I->dest[0].value,
       .coord = coord,
@@ -1227,7 +1245,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
       .sampler_value = immediate ? 0 : I->src[4].value,
       .texture_kill = !immediate && I->src[3].kill,
       .sampler_kill = !immediate && I->src[4].kill,
-      .lod = bias ? AGX3_TEX_LOD_BIAS_REGISTER :
+      .lod = gradient ? AGX3_TEX_LOD_GRAD : bias ? AGX3_TEX_LOD_BIAS_REGISTER :
              immediate_lod ? AGX3_TEX_LOD_LEVEL :
              explicit_lod ? AGX3_TEX_LOD_REGISTER : AGX3_TEX_LOD_AUTO,
       .lod_x64 = immediate_lod ? (uint16_t)immediate_level_x64 : 0,
@@ -2117,11 +2135,15 @@ agx3_append_texture_staging_tokens(const agx_instr *I, mesa_shader_stage stage,
 {
    unsigned base, halves;
    if (I->op == AGX_OPCODE_TEXTURE_SAMPLE) {
-      const bool fixed = I->shadow || I->lod_mode == AGX_LOD_MODE_LOD_MIN ||
+      const bool gradient = I->lod_mode == AGX_LOD_MODE_LOD_GRAD;
+      const bool fixed = gradient || I->shadow || I->lod_mode == AGX_LOD_MODE_LOD_MIN ||
          I->dim == AGX_DIM_2D_ARRAY || I->dim == AGX_DIM_CUBE ||
          I->dim == AGX_DIM_3D;
       base = fixed ? 0 : I->src[0].value;
-      halves = fixed ? 8 : 4;
+      /* G16G 3D gradients consume a complete 32-half staging bank,
+       * although only halves 0..5 and 8..19 are explicitly published.
+       * Reserving 20 or 24 halves returns stale results on J713. */
+      halves = gradient ? (I->dim == AGX_DIM_3D ? 32 : 16) : fixed ? 8 : 4;
    } else if (I->op == AGX_OPCODE_TEXTURE_LOAD || I->op == AGX_OPCODE_IMAGE_LOAD) {
       /* Vertex fetches already use disjoint banks per result slot and wait
        * that slot before reusing its bank. Their base is assigned later. */
@@ -5001,7 +5023,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             const bool explicit_level =
                (ctx->stage == MESA_SHADER_COMPUTE ||
                 ctx->stage == MESA_SHADER_VERTEX) &&
-               I->lod_mode == AGX_LOD_MODE_LOD_MIN;
+               (I->lod_mode == AGX_LOD_MODE_LOD_MIN ||
+                I->lod_mode == AGX_LOD_MODE_LOD_GRAD);
             const bool compute_gather = ctx->stage == MESA_SHADER_COMPUTE &&
                I->gather != AGX_GATHER_NONE;
             uint16_t sample_wait = wait;
@@ -5019,6 +5042,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             /* Projected cubes share the array face/layer staging bank. */
             ctx->agx3_staging_halfs =
                MAX2(ctx->agx3_staging_halfs,
+                    I->lod_mode == AGX_LOD_MODE_LOD_GRAD ?
+                       (I->dim == AGX_DIM_3D ? 32 : 16) :
                     (I->shadow || I->lod_mode == AGX_LOD_MODE_LOD_MIN ||
                      I->lod_mode == AGX_LOD_MODE_AUTO_LOD_BIAS ||
                      I->dim == AGX_DIM_2D_ARRAY || I->dim == AGX_DIM_CUBE ||

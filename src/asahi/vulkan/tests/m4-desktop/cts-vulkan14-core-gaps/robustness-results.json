@@ -1,0 +1,194 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.robustness.image_robustness.bind.notemplate.r32f.dontunroll.nonvolatile.sampled_image.no_fmt_qual.img.samples_1.2d.comp",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.robustness.image_robustness.bind.notemplate.r32f.dontunroll.nonvolatile.sampled_image.no_fmt_qual.img.samples_1.2d.comp",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T071515168901Z-cts14-core-robust-final/cts/000/result.qpa"
+    ],
+    "boot_id": "12ae0ee3-9304-4ea3-93a8-09b245bbc412",
+    "status": "Pass",
+    "started_unix": 1789370116.4905405,
+    "eligibility": {
+      "case": "dEQP-VK.robustness.image_robustness.bind.notemplate.r32f.dontunroll.nonvolatile.sampled_image.no_fmt_qual.img.samples_1.2d.comp",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.3108311869999909,
+    "finished_unix": 1789370116.8064222,
+    "pid": 1168
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.robustness.image_robustness.bind.notemplate.r32f.dontunroll.nonvolatile.sampled_image.no_fmt_qual.img.samples_1.2d_array.comp",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.robustness.image_robustness.bind.notemplate.r32f.dontunroll.nonvolatile.sampled_image.no_fmt_qual.img.samples_1.2d_array.comp",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T071515168901Z-cts14-core-robust-final/cts/001/result.qpa"
+    ],
+    "boot_id": "12ae0ee3-9304-4ea3-93a8-09b245bbc412",
+    "status": "Pass",
+    "started_unix": 1789370116.816844,
+    "eligibility": {
+      "case": "dEQP-VK.robustness.image_robustness.bind.notemplate.r32f.dontunroll.nonvolatile.sampled_image.no_fmt_qual.img.samples_1.2d_array.comp",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.31009279199997763,
+    "finished_unix": 1789370117.1393538,
+    "pid": 1171
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.robustness.image_robustness.bind.notemplate.r32f.dontunroll.nonvolatile.sampled_image.no_fmt_qual.img.samples_1.3d.comp",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.robustness.image_robustness.bind.notemplate.r32f.dontunroll.nonvolatile.sampled_image.no_fmt_qual.img.samples_1.3d.comp",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T071515168901Z-cts14-core-robust-final/cts/002/result.qpa"
+    ],
+    "boot_id": "12ae0ee3-9304-4ea3-93a8-09b245bbc412",
+    "status": "Pass",
+    "started_unix": 1789370117.149989,
+    "eligibility": {
+      "case": "dEQP-VK.robustness.image_robustness.bind.notemplate.r32f.dontunroll.nonvolatile.sampled_image.no_fmt_qual.img.samples_1.3d.comp",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.30997437600001376,
+    "finished_unix": 1789370117.464731,
+    "pid": 1174
+  },
+  {
+    "index": 3,
+    "case": "dEQP-VK.robustness.image_robustness.bind.notemplate.r32f.dontunroll.nonvolatile.sampled_image.no_fmt_qual.img.samples_4.2d.comp",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.robustness.image_robustness.bind.notemplate.r32f.dontunroll.nonvolatile.sampled_image.no_fmt_qual.img.samples_4.2d.comp",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T071515168901Z-cts14-core-robust-final/cts/003/result.qpa"
+    ],
+    "boot_id": "12ae0ee3-9304-4ea3-93a8-09b245bbc412",
+    "status": "Pass",
+    "started_unix": 1789370117.4753199,
+    "eligibility": {
+      "case": "dEQP-VK.robustness.image_robustness.bind.notemplate.r32f.dontunroll.nonvolatile.sampled_image.no_fmt_qual.img.samples_4.2d.comp",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.25793969099999003,
+    "finished_unix": 1789370117.7381496,
+    "pid": 1177
+  },
+  {
+    "index": 4,
+    "case": "dEQP-VK.robustness.image_robustness.bind.notemplate.r32f.dontunroll.nonvolatile.storage_image.no_fmt_qual.img.samples_1.2d.comp",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.robustness.image_robustness.bind.notemplate.r32f.dontunroll.nonvolatile.storage_image.no_fmt_qual.img.samples_1.2d.comp",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T071515168901Z-cts14-core-robust-final/cts/004/result.qpa"
+    ],
+    "boot_id": "12ae0ee3-9304-4ea3-93a8-09b245bbc412",
+    "status": "Pass",
+    "started_unix": 1789370117.7496724,
+    "eligibility": {
+      "case": "dEQP-VK.robustness.image_robustness.bind.notemplate.r32f.dontunroll.nonvolatile.storage_image.no_fmt_qual.img.samples_1.2d.comp",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.25822460599999886,
+    "finished_unix": 1789370118.0126925,
+    "pid": 1180
+  },
+  {
+    "index": 5,
+    "case": "dEQP-VK.robustness.image_robustness.bind.notemplate.r32f.dontunroll.nonvolatile.storage_image.no_fmt_qual.img.samples_1.2d_array.comp",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.robustness.image_robustness.bind.notemplate.r32f.dontunroll.nonvolatile.storage_image.no_fmt_qual.img.samples_1.2d_array.comp",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T071515168901Z-cts14-core-robust-final/cts/005/result.qpa"
+    ],
+    "boot_id": "12ae0ee3-9304-4ea3-93a8-09b245bbc412",
+    "status": "Pass",
+    "started_unix": 1789370118.0233889,
+    "eligibility": {
+      "case": "dEQP-VK.robustness.image_robustness.bind.notemplate.r32f.dontunroll.nonvolatile.storage_image.no_fmt_qual.img.samples_1.2d_array.comp",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.3097310690000086,
+    "finished_unix": 1789370118.3388503,
+    "pid": 1183
+  },
+  {
+    "index": 6,
+    "case": "dEQP-VK.robustness.image_robustness.bind.notemplate.r32f.dontunroll.nonvolatile.storage_image.no_fmt_qual.img.samples_1.3d.comp",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.robustness.image_robustness.bind.notemplate.r32f.dontunroll.nonvolatile.storage_image.no_fmt_qual.img.samples_1.3d.comp",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T071515168901Z-cts14-core-robust-final/cts/006/result.qpa"
+    ],
+    "boot_id": "12ae0ee3-9304-4ea3-93a8-09b245bbc412",
+    "status": "Pass",
+    "started_unix": 1789370118.3501573,
+    "eligibility": {
+      "case": "dEQP-VK.robustness.image_robustness.bind.notemplate.r32f.dontunroll.nonvolatile.storage_image.no_fmt_qual.img.samples_1.3d.comp",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.2579166669999893,
+    "finished_unix": 1789370118.6120656,
+    "pid": 1187
+  },
+  {
+    "index": 7,
+    "case": "dEQP-VK.robustness.image_robustness.bind.notemplate.r32f.dontunroll.nonvolatile.storage_image.no_fmt_qual.img.samples_4.2d.comp",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.robustness.image_robustness.bind.notemplate.r32f.dontunroll.nonvolatile.storage_image.no_fmt_qual.img.samples_4.2d.comp",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T071515168901Z-cts14-core-robust-final/cts/007/result.qpa"
+    ],
+    "boot_id": "12ae0ee3-9304-4ea3-93a8-09b245bbc412",
+    "status": "Pass",
+    "started_unix": 1789370118.6247566,
+    "eligibility": {
+      "case": "dEQP-VK.robustness.image_robustness.bind.notemplate.r32f.dontunroll.nonvolatile.storage_image.no_fmt_qual.img.samples_4.2d.comp",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.30963781100001597,
+    "finished_unix": 1789370118.9401867,
+    "pid": 1190
+  }
+]

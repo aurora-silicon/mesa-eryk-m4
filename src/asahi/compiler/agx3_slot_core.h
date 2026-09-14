@@ -44,9 +44,9 @@ extern "C" {
 #define AGX3_SLOT_DYNAMIC_TPS_TOKEN (AGX3_SLOT_IMAGE_WRITE_TOKEN + 1u)
 #define AGX3_SLOT_NUM_TOKENS (AGX3_SLOT_DYNAMIC_TPS_TOKEN + 1u)
 
-/* Image writes reserve sixteen staging halves plus their memory completion
- * token. Keep room for the register operands independently. */
-#define AGX3_SLOT_MAX_REGS 32u
+/* Native 3D gradients reserve thirty-two staging halves in addition to
+ * their eight result halves. Keep room for register dependencies separately. */
+#define AGX3_SLOT_MAX_REGS 48u
 
 struct agx3_slot_instr {
    bool is_async;   /* produces a scoreboard-tracked result */

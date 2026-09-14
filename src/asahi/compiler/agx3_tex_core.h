@@ -134,6 +134,7 @@ enum agx3_tex_lod {
    AGX3_TEX_LOD_LEVEL,
    AGX3_TEX_LOD_REGISTER, /* PACK_SMPIR publishes the per-lane level. */
    AGX3_TEX_LOD_BIAS_REGISTER, /* Same half operand bank, implicit LOD + bias. */
+   AGX3_TEX_LOD_GRAD, /* Interleaved F32 ddx/ddy at staging halves 8 onward. */
 };
 
 struct agx3_tex_sample_desc {

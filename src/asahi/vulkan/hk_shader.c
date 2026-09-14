@@ -1242,13 +1242,68 @@ lower_subpass_dim(nir_builder *b, nir_tex_instr *tex, UNUSED void *_data)
    return true;
 }
 
+/* Native texel fetches are memory-safe but can alias another texel within
+ * the allocation. Enforce the Vulkan view bounds before narrowing coordinates
+ * or LODs for the hardware, and return zero for invalid fetches. */
 static bool
-should_lower_robust(const nir_intrinsic_instr *intr, const void *_)
+hk_lower_native_robust_txf(nir_builder *b, nir_tex_instr *tex, UNUSED void *data)
+{
+   if (tex->op != nir_texop_txf && tex->op != nir_texop_txf_ms)
+      return false;
+
+   b->cursor = nir_before_instr(&tex->instr);
+   const int coord_idx = nir_tex_instr_src_index(tex, nir_tex_src_coord);
+   const int lod_idx = nir_tex_instr_src_index(tex, nir_tex_src_lod);
+   const int sample_idx = nir_tex_instr_src_index(tex, nir_tex_src_ms_index);
+   nir_def *coord = tex->src[coord_idx].src.ssa;
+   const unsigned components = tex->coord_components;
+   nir_def *size = nir_build_texture_query(b, tex, nir_texop_txs,
+                                           components, nir_type_uint32,
+                                           false, lod_idx >= 0);
+   if (lod_idx >= 0) {
+      nir_tex_instr *query = nir_instr_as_tex(nir_def_instr(size));
+      const int query_lod = nir_tex_instr_src_index(query, nir_tex_src_lod);
+      nir_src_rewrite(&query->src[query_lod].src, tex->src[lod_idx].src.ssa);
+   }
+   nir_def *valid = nir_ball(b, nir_ult(b, coord, size));
+   if (lod_idx >= 0 && tex->sampler_dim != GLSL_SAMPLER_DIM_BUF) {
+      nir_def *levels = nir_build_texture_query(b, tex, nir_texop_query_levels,
+                                               1, nir_type_uint32, false, false);
+      nir_def *lod = tex->src[lod_idx].src.ssa;
+      valid = nir_iand(b, valid, nir_ult(b, lod, levels));
+      nir_src_rewrite(&tex->src[lod_idx].src,
+                      nir_bcsel(b, valid, lod, nir_imm_int(b, 0)));
+   }
+   if (sample_idx >= 0) {
+      nir_def *samples = nir_build_texture_query(b, tex, nir_texop_texture_samples,
+                                                1, nir_type_uint32, false, false);
+      nir_def *sample = tex->src[sample_idx].src.ssa;
+      valid = nir_iand(b, valid, nir_ult(b, sample, samples));
+      nir_src_rewrite(&tex->src[sample_idx].src,
+                      nir_bcsel(b, valid, sample, nir_imm_int(b, 0)));
+   }
+   nir_src_rewrite(&tex->src[coord_idx].src,
+                   nir_bcsel(b, valid, coord, nir_imm_zero(b, components, 32)));
+   b->cursor = nir_after_instr(&tex->instr);
+   nir_def *result = nir_bcsel(b, valid, &tex->def,
+                               nir_imm_zero(b, tex->def.num_components,
+                                            tex->def.bit_size));
+   nir_def_rewrite_uses_after(&tex->def, result);
+   return true;
+}
+
+static bool
+should_lower_robust(const nir_intrinsic_instr *intr, const void *data)
 {
    /* The hardware is robust, but our software image atomics are not. Unlike the
     * GL driver, we don't use the common buffer image lowering, using the
     * agx_nir_lower_texture lowering for robustImageAccess2 semantics.
     */
+   if (data && *(const bool *)data &&
+       (intr->intrinsic == nir_intrinsic_image_deref_load ||
+        intr->intrinsic == nir_intrinsic_image_deref_store))
+      return true;
+
    return intr->intrinsic == nir_intrinsic_image_deref_atomic ||
           intr->intrinsic == nir_intrinsic_image_deref_atomic_swap;
 }
@@ -1326,7 +1381,16 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
    /* Turn cache flushes into image coherency bits while we still have derefs */
    NIR_PASS(_, nir, nir_lower_memory_model);
 
-   NIR_PASS(_, nir, nir_lower_robust_access, should_lower_robust, NULL);
+   const bool native_robust_images = dev->dev.chip == AGX_CHIP_G16G &&
+      rs->images != VK_PIPELINE_ROBUSTNESS_IMAGE_BEHAVIOR_DISABLED_EXT;
+   NIR_PASS(_, nir, nir_lower_robust_access, should_lower_robust,
+            &native_robust_images);
+   if (native_robust_images) {
+      const nir_lower_tex_options offsets = {.lower_txf_offset = true};
+      NIR_PASS(_, nir, nir_lower_tex, &offsets);
+      NIR_PASS(_, nir, nir_shader_tex_pass, hk_lower_native_robust_txf,
+               nir_metadata_control_flow, NULL);
+   }
 
    /* We must do early lowering before hk_nir_lower_descriptors, since this will
     * create lod_bias instructions.

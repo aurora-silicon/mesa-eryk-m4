@@ -714,8 +714,10 @@ hk_get_device_features(
        * descriptor does not bounds-check against the Vulkan image view.
        * Hardware qualification returned adjacent in-image texels for both
        * X- and Y-out-of-range coordinates, violating the zero RGB guarantee
-       * shared by robustImageAccess and robustImageAccess2. */
-      features->robustImageAccess = false;
+       * shared by robustImageAccess and robustImageAccess2. G16G now inserts
+       * explicit view bounds for robust image operations in NIR; robustness2
+       * remains unqualified. */
+      features->robustImageAccess = dev->chip == AGX_CHIP_G16G;
       features->robustImageAccess2 = false;
    }
 }

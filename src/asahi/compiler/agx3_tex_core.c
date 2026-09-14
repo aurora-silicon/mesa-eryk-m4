@@ -180,7 +180,12 @@ sample_ok(enum agx_isa_encoding enc, const struct agx3_tex_sample_desc *d)
                        (d->lod != AGX3_TEX_LOD_LEVEL &&
                         d->lod != AGX3_TEX_LOD_BIAS_REGISTER &&
                         d->lod != AGX3_TEX_LOD_REGISTER &&
+                        d->lod != AGX3_TEX_LOD_GRAD &&
                         d->lod != AGX3_TEX_LOD_AUTO)))
+      return false;
+
+   if (d->lod == AGX3_TEX_LOD_GRAD &&
+       (enc != AGX_ISA_ENCODING_AGX3B || d->cube || d->shadow || d->gather))
       return false;
 
    if (d->lod == AGX3_TEX_LOD_BIAS_REGISTER &&
@@ -219,7 +224,7 @@ sample_ok(enum agx_isa_encoding enc, const struct agx3_tex_sample_desc *d)
       if (d->lod_x64 > 0xfff)
          return false;
    } else if ((d->lod != AGX3_TEX_LOD_AUTO &&
-               !((d->lod == AGX3_TEX_LOD_REGISTER || d->lod == AGX3_TEX_LOD_BIAS_REGISTER) &&
+               !((d->lod == AGX3_TEX_LOD_REGISTER || d->lod == AGX3_TEX_LOD_GRAD || d->lod == AGX3_TEX_LOD_BIAS_REGISTER) &&
                  enc == AGX_ISA_ENCODING_AGX3B)) || d->lod_x64 != 0) {
       return false;
    }
@@ -335,6 +340,9 @@ agx3_tex_encode_sample(enum agx_isa_encoding enc,
     */
    if (d->lod == AGX3_TEX_LOD_AUTO) {
       ov[n++] = (struct agx3_field_kv)KV(156, !d->retain_helpers && !d->gather);
+   } else if (d->lod == AGX3_TEX_LOD_GRAD) {
+      ov[n++] = (struct agx3_field_kv)KV(139, 5);
+      ov[n++] = (struct agx3_field_kv)KV(156, 0);
    } else if (d->lod == AGX3_TEX_LOD_REGISTER ||
               d->lod == AGX3_TEX_LOD_BIAS_REGISTER) {
       ov[n++] = (struct agx3_field_kv)KV(28, 0); /* packed level bank */

@@ -1544,9 +1544,32 @@ test_m4_query_lod(void)
    return 0;
 }
 
+static int
+test_m4_explicit_gradients(void)
+{
+   /* AIR-NT 32023.883 applegpu_g16g, gradient2d/3d compute witnesses.
+    * Interleaved F32 derivatives occupy staging halves 8 onward. */
+   const uint8_t native[2][14] = {
+      {0x05,0x80,0x0c,0xb8,0xb0,0x01,0x04,0x01,0,0,0x10,0,1,0},
+      {0x05,0x80,0x0c,0xb8,0xb0,0x01,0x9c,0x01,0,0,0x10,0,1,0},
+   };
+   struct agx3_tex_sample_desc d = {
+      .width=AGX3_TEX_W32, .mask=15, .slot=1, .wait_mask=4,
+      .coord_kill=true, .final=true, .lod=AGX3_TEX_LOD_GRAD,
+   };
+   uint8_t out[AGX3_TEX_MAX_LENGTH], len;
+   for (unsigned i = 0; i < 2; ++i) {
+      d.three_d = i;
+      CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
+      CHECK(len == sizeof(native[i]) && !memcmp(out, native[i], len));
+   }
+   return 0;
+}
+
 int
 main(void)
 {
+   CHECK(test_m4_explicit_gradients() == 0);
    CHECK(test_m4_cube_array_register_lod() == 0);
    CHECK(test_m4_query_lod() == 0);
    CHECK(test_m4_array_bias_offset() == 0);

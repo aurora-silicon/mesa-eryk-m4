@@ -2297,3 +2297,14 @@ the corrected sample-count argument at entry sp+64 bits2:3. `--rotation`
 controls x4 separately; older tool outputs mislabeled that argument. The
 constructor and native compiler run offline, not on a GPU. Preserve their
 outputs and use the guarded CTS wrapper for hardware qualification.
+
+`texture-bounds-probe.c` checks 3D R32F dimensions and per-axis border/in-range
+samples with implicit LOD, explicit LOD and explicit gradients, through Zink
+with exact SSBO readback. Compile with `cc -O2 ... -lEGL -lGL`. On M4 run only
+inside `gpu-experiment.py ... -- python3 /root/run-m4-gl.py /root/texture-bounds-probe`.
+The llvmpipe control accepts M4_TEST_LLVMPIPE=1. M4_TEST_GRADIENT_ONLY=1 removes
+other sampling operations; M4_TEST_SMALL_GRADIENT=1 uses nonzero 0.1 gradients.
+The border alpha accepts zero or one, matching robustImageAccess, while RGB
+and all in-range components are exact. Full-bank M4 probe071057 passes144
+vectors at55.75C; 20/24-half derivative allocations fail. Native long COPY,
+extra waits and destination-alias avoidance did not resolve that failure.
