@@ -1,0 +1,26 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.glsl.texture_functions.textureprojoffset.repeat.sampler3d_bias_fixed_fragment",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed28-signed-corrected",
+      "--deqp-case=dEQP-VK.glsl.texture_functions.textureprojoffset.repeat.sampler3d_bias_fixed_fragment",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T165551579506Z-cts28-offset3d-fold/cts/000/result.qpa"
+    ],
+    "boot_id": "3fcf2054-47c9-42ca-ad5f-bcfbab25cba1",
+    "status": "Pass",
+    "started_unix": 1789404952.846561,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.textureprojoffset.repeat.sampler3d_bias_fixed_fragment",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.4079031330000049,
+    "finished_unix": 1789404953.259438,
+    "pid": 990
+  }
+]

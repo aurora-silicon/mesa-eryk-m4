@@ -1308,7 +1308,7 @@ should_lower_robust(const nir_intrinsic_instr *intr, const void *data)
           intr->intrinsic == nir_intrinsic_image_deref_atomic_swap;
 }
 
-/* G16's qualified native offset forms cover immediate XY offsets and
+/* G16's qualified native offset forms cover immediate XYZ offsets and
  * non-array explicit/bias LOD. Lower other shapes with NIR's coordinate
  * arithmetic, preserving their LOD and array-layer semantics. */
 static bool
@@ -1319,7 +1319,8 @@ hk_lower_native_texture_offset(const nir_instr *instr, UNUSED const void *data)
    if (offset < 0)
       return false;
    return tex->op == nir_texop_txf || tex->op == nir_texop_txd ||
-          tex->sampler_dim == GLSL_SAMPLER_DIM_3D ||
+          (tex->sampler_dim == GLSL_SAMPLER_DIM_3D &&
+           !nir_src_is_const(tex->src[offset].src)) ||
           (tex->is_array && (tex->op == nir_texop_txb ||
                             !nir_src_is_const(tex->src[offset].src))) ||
           (tex->op == nir_texop_tg4 &&
@@ -1428,6 +1429,9 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
     * create lod_bias instructions.
     */
    if (dev->dev.chip == AGX_CHIP_G16G) {
+      /* Preprocessing scalarizes constants. Recover constant vectors before
+       * deciding whether their texel offsets need coordinate lowering. */
+      NIR_PASS(_, nir, nir_opt_constant_folding);
       const nir_lower_tex_options options = {
          .lower_txf_offset = true,
          .lower_offset_filter = hk_lower_native_texture_offset,

@@ -1083,7 +1083,8 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
    const bool shadow = I->shadow;
    const bool gather = I->gather != AGX_GATHER_NONE;
    const bool sample_offset = !shadow && !cube && I->offset &&
-      I->src[5].type == AGX_INDEX_IMMEDIATE && I->src[5].value <= 0xff;
+      I->src[5].type == AGX_INDEX_IMMEDIATE &&
+      I->src[5].value <= (three_d ? 0xfff : 0xff);
    const bool dynamic_offset = !shadow && !cube && !array && I->offset &&
       (explicit_lod || bias) && agx3_tex_plain_reg(I->src[5]) &&
       I->src[5].size == AGX_SIZE_32 && agx_channels(I->src[5]) == 1;

@@ -1558,6 +1558,25 @@ test_m4_array_bias_offset(void)
 }
 
 static int
+test_m4_3d_bias_offset(void)
+{
+   /* Native G16G texture3d-offset.metal, text-1320 +174: (-8,7,3). */
+   {
+      const uint8_t native[] = {
+         0x05,0x80,0x0c,0xb8,0xb0,0,0x99,2,1,0xc0,0x10,0,1,0x36};
+      struct agx3_tex_sample_desc d = {
+         .width=AGX3_TEX_W32, .mask=15, .slot=1, .wait_mask=1,
+         .coord_kill=true, .final=true, .three_d=true,
+         .sample_offset=0x378, .lod=AGX3_TEX_LOD_BIAS_REGISTER,
+      };
+      uint8_t out[AGX3_TEX_MAX_LENGTH], len;
+      CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
+      CHECK(len == sizeof(native) && !memcmp(out, native, len));
+   }
+   return 0;
+}
+
+static int
 test_m4_query_lod(void)
 {
    /* AIR-NT applegpu_g16g querylod.metal: fragment text-1210 +126. */
@@ -1608,6 +1627,7 @@ main(void)
    CHECK(test_m4_explicit_gradients() == 0);
    CHECK(test_m4_cube_array_register_lod() == 0);
    CHECK(test_m4_query_lod() == 0);
+   CHECK(test_m4_3d_bias_offset() == 0);
    CHECK(test_m4_array_bias_offset() == 0);
    CHECK(test_m4_cube_register_lod() == 0);
    {

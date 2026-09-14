@@ -504,3 +504,23 @@ and thermal monitoring remained active. Library SHA256:
 Host compiler replayer and ARM Vulkan library build successfully.
 Ledger17: **4,651 Pass / 7 Fail / 5,342 optional NotSupported**, **72 original
 failures resolved** across builds. Broad regression remains deferred.
+
+## Native three-dimensional texel offsets
+
+`20260914T165551579506Z-cts28-offset3d-fold` passes the original
+`textureprojoffset.repeat.sampler3d_bias_fixed_fragment` with unchanged CTS.
+Native M4 `sample(..., bias(...), int3(-8,7,3))` encodes three signed
+nibbles in f43 (0x378). Preserve that offset through projective and LOD
+sampling instead of adding it to unprojected normalized coordinates.
+Retain the Z nibble throughout NIR emission and native encoding. Fold the
+scalarized constant vector before selecting this path; without that folding,
+the earlier attempt still took the old coordinate lowering and failed.
+
+The native source, extracted instruction fields, exact fragment bytes and
+compiler manifest are retained in `native-texture3d-offset/`. The texture
+codec reproduces the native instruction byte for byte (6314 codec checks).
+Original CTS run uses library SHA256
+`aa0d0ef0e5932e7b07daf11cd069fc91150eb32b1fad931979d2e42d8d2cef24`.
+Watchdog and thermal monitoring remained active. Ledger18: **4,652 Pass /
+6 Fail / 5,342 optional NotSupported**, **73 original failures resolved**.
+Cumulative evidence; no broad regression rerun.

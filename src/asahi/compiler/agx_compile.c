@@ -4254,9 +4254,11 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
          packed_offset = index;
          if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
              !instr->is_shadow &&
-             instr->sampler_dim == GLSL_SAMPLER_DIM_2D &&
+             (instr->sampler_dim == GLSL_SAMPLER_DIM_2D ||
+              instr->sampler_dim == GLSL_SAMPLER_DIM_3D) &&
              nir_src_is_const(instr->src[i].src) &&
-             nir_src_as_uint(instr->src[i].src) <= 0xff) {
+             nir_src_as_uint(instr->src[i].src) <=
+                (instr->sampler_dim == GLSL_SAMPLER_DIM_3D ? 0xfff : 0xff)) {
             packed_offset = agx_immediate(nir_src_as_uint(instr->src[i].src));
          }
          break;

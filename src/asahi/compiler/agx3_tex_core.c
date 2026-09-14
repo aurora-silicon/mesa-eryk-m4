@@ -176,7 +176,7 @@ sample_ok(enum agx_isa_encoding enc, const struct agx3_tex_sample_desc *d)
       return false;
 
    if (d->three_d && (enc != AGX_ISA_ENCODING_AGX3B || d->array ||
-                       d->cube || d->shadow || d->gather || d->sample_offset ||
+                       d->cube || d->shadow || d->gather ||
                        (d->lod != AGX3_TEX_LOD_LEVEL &&
                         d->lod != AGX3_TEX_LOD_BIAS_REGISTER &&
                         d->lod != AGX3_TEX_LOD_REGISTER &&
@@ -194,11 +194,15 @@ sample_ok(enum agx_isa_encoding enc, const struct agx3_tex_sample_desc *d)
 
    /* G16G sample(level(0), int2(-1,2)) uses the same packed signed
     * nibbles as gather. Native indexed array gather(-8,-8) also uses f43.
+    * Native 3D bias (-8,7,3) adds Z in bits 11:8 of that same f43 field.
     * Native array bias samples use the same field. Cube and shadow offsets
     * remain unqualified. */
    if ((d->sample_offset || d->dynamic_offset) &&
        (enc != AGX_ISA_ENCODING_AGX3B ||
         d->cube || d->shadow))
+      return false;
+
+   if (d->sample_offset > (d->three_d ? 0xfff : 0xff))
       return false;
 
    /* The register offset bank shares its word with a packed LOD/bias.

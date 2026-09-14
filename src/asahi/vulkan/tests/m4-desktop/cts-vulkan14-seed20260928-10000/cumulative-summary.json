@@ -1,9 +1,9 @@
 {
   "selected": 10000,
   "counts": {
-    "Pass": 4651,
+    "Pass": 4652,
     "NotSupported": 5342,
-    "Fail": 7
+    "Fail": 6
   },
   "inputs": [
     {
@@ -221,9 +221,13 @@
     {
       "path": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T164630645335Z-cts28-mask-only/remote/cts/results.json",
       "sha256": "a21e0600d08fc0b0acbd56212272c3f179d3d90ab7e7954e40ebde758d05d0ce"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T165551579506Z-cts28-offset3d-fold/remote/cts/results.json",
+      "sha256": "05227caaeaff4770e6a0fe0fb1a6777d6e89508ae2bed23d28e7d206b2b11752"
     }
   ],
   "cases_sha256": "22dbfe086b845a35ac2e396cf0c4088589443cb566ffd50ad3a4512e3cc57339",
-  "resolved_failures": 72,
+  "resolved_failures": 73,
   "limitation": "Cumulative evidence across builds and attempts; not an uninterrupted same-build run."
 }

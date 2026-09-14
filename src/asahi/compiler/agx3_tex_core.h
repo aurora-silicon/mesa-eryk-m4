@@ -155,7 +155,7 @@ struct agx3_tex_sample_desc {
    bool query_lod;      /* M4 2D clamped/unclamped LOD query. */
    bool gather;         /* Four neighbouring texels from one colour channel. */
    uint8_t gather_component;
-   uint8_t sample_offset; /* Signed x/y nibbles, as in NIR's packed offset. */
+   uint16_t sample_offset; /* Signed x/y[/z] nibbles, as in NIR's packed offset. */
    bool dynamic_offset; /* Native packed offset shares bank6 with level/bias. */
    bool array;          /* 2D array: register layer already in operand bank 6 */
    bool three_d;        /* M4 XYZ coordinates at staging halves 0/2/4. */
