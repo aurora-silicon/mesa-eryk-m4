@@ -3715,7 +3715,20 @@ agx3_mrt_eot_selector(enum pipe_format logical, enum agx_format physical,
    case PIPE_FORMAT_R16_FLOAT:
    case PIPE_FORMAT_R16G16_FLOAT:
    case PIPE_FORMAT_R16G16B16A16_FLOAT:
+   /* Packed normalized targets keep half-float tile values. The PBE
+    * descriptor applies their component order and final packing. */
+   case PIPE_FORMAT_R5G6B5_UNORM:
    case PIPE_FORMAT_B5G6R5_UNORM:
+   case PIPE_FORMAT_A1R5G5B5_UNORM:
+   case PIPE_FORMAT_A1B5G5R5_UNORM:
+   case PIPE_FORMAT_R5G5B5A1_UNORM:
+   case PIPE_FORMAT_B5G5R5A1_UNORM:
+   case PIPE_FORMAT_R5G5B5X1_UNORM:
+   case PIPE_FORMAT_B5G5R5X1_UNORM:
+   case PIPE_FORMAT_R4G4B4A4_UNORM:
+   case PIPE_FORMAT_B4G4R4A4_UNORM:
+   case PIPE_FORMAT_A4B4G4R4_UNORM:
+   case PIPE_FORMAT_A4R4G4B4_UNORM:
       *selector = 1;
       return physical == AGX_FORMAT_F16;
    case PIPE_FORMAT_R8_UNORM:
@@ -3738,6 +3751,8 @@ agx3_mrt_eot_selector(enum pipe_format logical, enum agx_format physical,
    case PIPE_FORMAT_R8G8_SINT:
    case PIPE_FORMAT_R8G8B8A8_UINT:
    case PIPE_FORMAT_R8G8B8A8_SINT:
+   case PIPE_FORMAT_B8G8R8A8_UINT:
+   case PIPE_FORMAT_B8G8R8A8_SINT:
       *selector = 0;
       return physical == AGX_FORMAT_I8;
    case PIPE_FORMAT_R11G11B10_FLOAT:
@@ -3833,8 +3848,12 @@ agx3_native_mrt_eot(const agx_context *ctx, enum agx_isa_encoding enc,
          return 0;
       if (ctx->key->native_eot_formats[count] != PIPE_FORMAT_NONE) {
          if (!agx3_mrt_eot_selector(ctx->key->native_eot_formats[count],
-                                    I->format, &selectors[count]))
+                                    I->format, &selectors[count])) {
+            if (agx_compiler_debug & AGX_DBG_SHADERS)
+               fprintf(stderr, "Native EOT attachment %u has unsupported logical format %u, physical format %u\n",
+                       count, ctx->key->native_eot_formats[count], I->format);
             return 0;
+         }
          count++;
          continue;
       }

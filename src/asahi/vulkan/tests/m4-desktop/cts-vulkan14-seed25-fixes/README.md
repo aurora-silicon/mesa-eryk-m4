@@ -152,3 +152,18 @@ Library SHA256:
 `e15f165751eff41eb4731710f21e221435011f4c28fb83966bada9d05557acc5`.
 Running total: **53/91 failures resolved** (47 Mesa fixes, 6 CTS corrections),
 38 remaining. Original crash retests still recorded separately.
+
+## MRT EOT logical-format aliases
+
+Select the existing F16 tile conversion for packed 565/5551/4444 UNORM
+attachments and the I8 conversion for BGRA integer attachments, consistent
+with layout/formats.c. The PBE handles final packing and component order.
+Unknown logical/physical pairs remain rejected and now report both format IDs
+under shader diagnostics. No new machine encoding is introduced.
+
+All three remaining shader-object rendering cases now Pass on unmodified CTS;
+all three saved EOT compiler bundles compile offline. Peak 57.75 C, no GPU
+fault/reboot. Library SHA256:
+`7acbca26a9247e690fafa17a0eb474afdde00f334214b0ef02970fa5ceca6c66`.
+Running total: **56/91 failures resolved** (50 Mesa fixes, 6 CTS corrections),
+35 remaining. No broad regression campaign.
