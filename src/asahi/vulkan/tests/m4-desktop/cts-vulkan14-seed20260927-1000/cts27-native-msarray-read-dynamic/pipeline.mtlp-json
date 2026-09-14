@@ -1,0 +1,17 @@
+{
+  "libraries": {
+    "paths": [
+      {
+        "label": "probe",
+        "path": "./source.metallib"
+      }
+    ]
+  },
+  "pipelines": {
+    "compute_pipelines": [
+      {
+        "compute_function": "alias:probe#probe"
+      }
+    ]
+  }
+}

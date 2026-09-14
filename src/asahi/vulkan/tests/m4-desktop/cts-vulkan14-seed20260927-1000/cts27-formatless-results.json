@@ -1,0 +1,50 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.robustness.robustness2.bind.notemplate.rgba32i.dontunroll.volatile.storage_texel_buffer.no_fmt_qual.null_descriptor.samples_1.1d.vert",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.robustness.robustness2.bind.notemplate.rgba32i.dontunroll.volatile.storage_texel_buffer.no_fmt_qual.null_descriptor.samples_1.1d.vert",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T091708835574Z-cts27-formatless/cts/000/result.qpa"
+    ],
+    "boot_id": "dd1bdf54-996c-4d0d-af32-e1863ecb82d6",
+    "status": "Pass",
+    "started_unix": 1789377430.1183987,
+    "eligibility": {
+      "case": "dEQP-VK.robustness.robustness2.bind.notemplate.rgba32i.dontunroll.volatile.storage_texel_buffer.no_fmt_qual.null_descriptor.samples_1.1d.vert",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.3104125769999655,
+    "finished_unix": 1789377430.4339116,
+    "pid": 1966
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.robustness.robustness2.bind.notemplate.rgba32i.dontunroll.volatile.storage_texel_buffer.no_fmt_qual.len_16.samples_1.1d.vert",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.robustness.robustness2.bind.notemplate.rgba32i.dontunroll.volatile.storage_texel_buffer.no_fmt_qual.len_16.samples_1.1d.vert",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T091708835574Z-cts27-formatless/cts/001/result.qpa"
+    ],
+    "boot_id": "dd1bdf54-996c-4d0d-af32-e1863ecb82d6",
+    "status": "Pass",
+    "started_unix": 1789377430.4442792,
+    "eligibility": {
+      "case": "dEQP-VK.robustness.robustness2.bind.notemplate.rgba32i.dontunroll.volatile.storage_texel_buffer.no_fmt_qual.len_16.samples_1.1d.vert",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.309824064000054,
+    "finished_unix": 1789377430.7598963,
+    "pid": 1971
+  }
+]

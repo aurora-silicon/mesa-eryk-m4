@@ -1,0 +1,50 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.pipeline.shader_object_unlinked_spirv.blend.dual_source.format.r16g16b16a16_unorm.output_array.states.color_o_sas_rsub_alpha_1msc_1mcc_rsub-color_z_1ms1a_sub_alpha_da_s1a_add-color_1mda_sc_add_alpha_z_z_rsub-color_1ms1c_sc_sub_alpha_sa_1msa_sub",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.pipeline.shader_object_unlinked_spirv.blend.dual_source.format.r16g16b16a16_unorm.output_array.states.color_o_sas_rsub_alpha_1msc_1mcc_rsub-color_z_1ms1a_sub_alpha_da_s1a_add-color_1mda_sc_add_alpha_z_z_rsub-color_1ms1c_sc_sub_alpha_sa_1msa_sub",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T083644892182Z-cts27-small/cts/000/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Pass",
+    "started_unix": 1789375006.1712642,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.shader_object_unlinked_spirv.blend.dual_source.format.r16g16b16a16_unorm.output_array.states.color_o_sas_rsub_alpha_1msc_1mcc_rsub-color_z_1ms1a_sub_alpha_da_s1a_add-color_1mda_sc_add_alpha_z_z_rsub-color_1ms1c_sc_sub_alpha_sa_1msa_sub",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.5140035759995953,
+    "finished_unix": 1789375006.6903617,
+    "pid": 6435
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.image.store.with_format.1d_array.r8_sint_single_layer_linear",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.image.store.with_format.1d_array.r8_sint_single_layer_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T083644892182Z-cts27-small/cts/001/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Pass",
+    "started_unix": 1789375006.7016206,
+    "eligibility": {
+      "case": "dEQP-VK.image.store.with_format.1d_array.r8_sint_single_layer_linear",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Passed",
+    "returncode": 0,
+    "seconds": 0.20952914699955727,
+    "finished_unix": 1789375006.917009,
+    "pid": 6440
+  }
+]

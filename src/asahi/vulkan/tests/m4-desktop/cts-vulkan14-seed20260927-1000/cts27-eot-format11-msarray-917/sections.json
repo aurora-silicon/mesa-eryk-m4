@@ -1,0 +1,16 @@
+[
+  {
+    "file": "text-4b0.bin",
+    "macho_offset": 1200,
+    "offset": 1888,
+    "bytes": 84,
+    "section_index": 1,
+    "address": 0,
+    "symbols": [
+      {
+        "name": "_agc.eot",
+        "offset": 0
+      }
+    ]
+  }
+]

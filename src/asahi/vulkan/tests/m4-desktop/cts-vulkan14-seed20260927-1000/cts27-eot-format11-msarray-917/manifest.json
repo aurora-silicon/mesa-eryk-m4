@@ -1,0 +1,45 @@
+{
+  "ok": true,
+  "target": "applegpu_g16g",
+  "remote_directory": "/var/folders/j4/90b8l6516bz3hqd4jm_2mm6m0000gn/T/m4-native-jbibmlxb",
+  "commands": [
+    {
+      "argv": [
+        "sw_vers"
+      ],
+      "returncode": 0,
+      "output": "ProductName:\t\tmacOS\nProductVersion:\t\t26.6.1\nBuildVersion:\t\t25G76\n"
+    },
+    {
+      "argv": [
+        "/Users/m1/m4-metal-917/Metal.xctoolchain/usr/bin/metal-nt",
+        "--version"
+      ],
+      "returncode": 0,
+      "output": "AIR-NT 32023.917\n"
+    },
+    {
+      "argv": [
+        "/Users/m1/m4-metal-917/Metal.xctoolchain/usr/bin/metal-nt",
+        "-arch",
+        "applegpu_g16g",
+        "-platform_version",
+        "macos",
+        "26.0",
+        "26.0",
+        "-N",
+        "source.btnf",
+        "-o",
+        "output.archive"
+      ],
+      "returncode": 0,
+      "output": ""
+    }
+  ],
+  "host": "m1@51.159.120.23",
+  "stage": "builtin",
+  "sha256": {
+    "source.btnf": "13c3a42a6e042a46980f36a21c2cdb0dc024a47f8e0ba22e74fa987bbc9e3228",
+    "output.archive": "e0c17052bac883bac83735b4628b674c80b3cabc9e03fb347401dda48f29ca0f"
+  }
+}

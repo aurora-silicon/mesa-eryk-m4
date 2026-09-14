@@ -1,0 +1,98 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.api.image_clearing.dedicated_allocation.clear_color_attachment.multiple_layers.r32g32b32a32_uint_200x180_sample_count_2",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed27-linear-diag",
+      "--deqp-case=dEQP-VK.api.image_clearing.dedicated_allocation.clear_color_attachment.multiple_layers.r32g32b32a32_uint_200x180_sample_count_2",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T085507119299Z-cts27-wide-and-linear2/cts/000/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Fail",
+    "started_unix": 1789376108.4295707,
+    "eligibility": {
+      "case": "dEQP-VK.api.image_clearing.dedicated_allocation.clear_color_attachment.multiple_layers.r32g32b32a32_uint_200x180_sample_count_2",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Color value mismatch! Ref:(858993472, 429496736, 3006477056, 3435973888) Mask:(1, 1, 1, 1) Threshold:(1, 1, 1, 1) Color:(858993472, 429496736, 0, 0)",
+    "returncode": 1,
+    "seconds": 0.514177627999743,
+    "finished_unix": 1789376108.9487913,
+    "pid": 7609
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.shader_object.rendering.color_attachment_count_4.extra_attachment_after_2.none.dynamic.same_color_formats.before.none.r32g32b32a32_sfloat",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed27-linear-diag",
+      "--deqp-case=dEQP-VK.shader_object.rendering.color_attachment_count_4.extra_attachment_after_2.none.dynamic.same_color_formats.before.none.r32g32b32a32_sfloat",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T085507119299Z-cts27-wide-and-linear2/cts/001/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Pass",
+    "started_unix": 1789376108.9602494,
+    "eligibility": {
+      "case": "dEQP-VK.shader_object.rendering.color_attachment_count_4.extra_attachment_after_2.none.dynamic.same_color_formats.before.none.r32g32b32a32_sfloat",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.463187088000268,
+    "finished_unix": 1789376109.4292948,
+    "pid": 7612
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r16g16b16_uscaled.r32g32b32a32_sfloat.general_general_linear",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed27-linear-diag",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r16g16b16_uscaled.r32g32b32a32_sfloat.general_general_linear",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T085507119299Z-cts27-wide-and-linear2/cts/002/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Fail",
+    "started_unix": 1789376109.4400713,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r16g16b16_uscaled.r32g32b32a32_sfloat.general_general_linear",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Result image is incorrect",
+    "returncode": 1,
+    "seconds": 0.41289866599981906,
+    "finished_unix": 1789376109.8586192,
+    "pid": 7613
+  },
+  {
+    "index": 3,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.a2b10g10r10_uscaled_pack32.e5b9g9r9_ufloat_pack32.optimal_general_linear",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed27-linear-diag",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.a2b10g10r10_uscaled_pack32.e5b9g9r9_ufloat_pack32.optimal_general_linear",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T085507119299Z-cts27-wide-and-linear2/cts/003/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Fail",
+    "started_unix": 1789376109.869562,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.a2b10g10r10_uscaled_pack32.e5b9g9r9_ufloat_pack32.optimal_general_linear",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Result image is incorrect",
+    "returncode": 1,
+    "seconds": 0.3621521430004577,
+    "finished_unix": 1789376110.237274,
+    "pid": 7614
+  }
+]

@@ -1,0 +1,28 @@
+{
+  "counts": {
+    "NotSupported": 496,
+    "Pass": 481,
+    "Fail": 21,
+    "NotSupportedButShouldBeSupported": 2
+  },
+  "original_counts": {
+    "NotSupported": 498,
+    "Pass": 481,
+    "Fail": 21
+  },
+  "rates_percent": {
+    "NotSupported": 49.6,
+    "Pass": 48.1,
+    "Fail": 2.1,
+    "NotSupportedButShouldBeSupported": 0.2
+  },
+  "api_version": "1.4",
+  "unconditional_core_feature_gaps": [],
+  "inputs": {
+    "build/cts-vulkan14-seed20260927-1000/run1/results.json": "dff543adbaa8d6c99e5c7ec31694d491f7cf38ef462724cac47ba011fb8b922b",
+    "build/cts14-core-gaps/final-device-profile.json": "af27858513c6bd07b496122a2f03c35018d175565655cfafde3e5dec926cba67",
+    "reference/vk-gl-cts-1.4.6.2/external/vulkan-docs/src/xml/vk.xml": "5ae48259c0196c3832a5a86390b016f09051888b132b9439a381f5e25a168b81",
+    "build/cts-vulkan14-seed20260927-1000/skip-review.json": "61175e8cb0a25ca9e90e72580460a50e73ac9456b79ef01a8d66541a493e6d4c"
+  },
+  "coverage": "Registry inventory excludes conditional requirements, formats and limits. Case classification uses explicit reviews, not substring guesses."
+}

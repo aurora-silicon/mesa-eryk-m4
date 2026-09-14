@@ -1,0 +1,22 @@
+{
+  "id": "20260914T092725045112Z-cts27-strict-tile",
+  "verdict": "pass",
+  "transport_returncode": 0,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T092725045112Z-cts27-strict-tile",
+  "observations": {
+    "pixel_results": [],
+    "pixel_result_count": 0,
+    "thermal_samples": 4,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 56.75,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 56.75,
+      "Ta000m": 54.25,
+      "Te000m": 53.75,
+      "Te001m": 52.5,
+      "Tp000m": 56.75,
+      "Tp001m": 52.25
+    }
+  }
+}

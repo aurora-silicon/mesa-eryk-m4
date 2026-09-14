@@ -1,0 +1,20 @@
+[
+  {
+    "file": "text-770.bin",
+    "macho_offset": 1904,
+    "offset": 2592,
+    "bytes": 242,
+    "section_index": 1,
+    "address": 0,
+    "symbols": [
+      {
+        "name": "_agc.main",
+        "offset": 128
+      },
+      {
+        "name": "_agc.main.constant_program",
+        "offset": 0
+      }
+    ]
+  }
+]

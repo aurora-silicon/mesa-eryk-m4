@@ -1,0 +1,314 @@
+--- a/external/vulkancts/modules/vulkan/pipeline/vktPipelineImageTests.cpp
++++ b/external/vulkancts/modules/vulkan/pipeline/vktPipelineImageTests.cpp
+@@ -33,6 +33,7 @@
+ #include "vkPrograms.hpp"
+ #include "vkFormatLists.hpp"
+ #include "tcuTextureUtil.hpp"
++#include "gluTextureTestUtil.hpp"
+ #include "deStringUtil.hpp"
+ 
+ #include <sstream>
+@@ -394,9 +395,9 @@
+ {
+     std::ostringstream samplerType;
+ 
+-    if (tcu::getTextureChannelClass(format.type) == tcu::TEXTURECHANNELCLASS_UNSIGNED_INTEGER)
++    if (glu::TextureTestUtil::getSamplerType(format) == glu::TextureTestUtil::SAMPLERTYPE_UINT)
+         samplerType << "u";
+-    else if (tcu::getTextureChannelClass(format.type) == tcu::TEXTURECHANNELCLASS_SIGNED_INTEGER)
++    else if (glu::TextureTestUtil::getSamplerType(format) == glu::TextureTestUtil::SAMPLERTYPE_INT)
+         samplerType << "i";
+ 
+     switch (type)
+@@ -441,9 +442,9 @@
+ {
+     std::ostringstream textureType;
+ 
+-    if (tcu::getTextureChannelClass(format.type) == tcu::TEXTURECHANNELCLASS_UNSIGNED_INTEGER)
++    if (glu::TextureTestUtil::getSamplerType(format) == glu::TextureTestUtil::SAMPLERTYPE_UINT)
+         textureType << "u";
+-    else if (tcu::getTextureChannelClass(format.type) == tcu::TEXTURECHANNELCLASS_SIGNED_INTEGER)
++    else if (glu::TextureTestUtil::getSamplerType(format) == glu::TextureTestUtil::SAMPLERTYPE_INT)
+         textureType << "i";
+ 
+     switch (type)
+--- a/external/vulkancts/modules/vulkan/pipeline/vktPipelineImageViewTests.cpp
++++ b/external/vulkancts/modules/vulkan/pipeline/vktPipelineImageViewTests.cpp
+@@ -33,6 +33,7 @@
+ #include "vkPrograms.hpp"
+ #include "tcuPlatform.hpp"
+ #include "tcuTextureUtil.hpp"
++#include "gluTextureTestUtil.hpp"
+ #include "deStringUtil.hpp"
+ #include "deMemory.h"
+ 
+@@ -319,9 +320,9 @@
+ {
+     std::ostringstream samplerType;
+ 
+-    if (tcu::getTextureChannelClass(format.type) == tcu::TEXTURECHANNELCLASS_UNSIGNED_INTEGER)
++    if (glu::TextureTestUtil::getSamplerType(format) == glu::TextureTestUtil::SAMPLERTYPE_UINT)
+         samplerType << "u";
+-    else if (tcu::getTextureChannelClass(format.type) == tcu::TEXTURECHANNELCLASS_SIGNED_INTEGER)
++    else if (glu::TextureTestUtil::getSamplerType(format) == glu::TextureTestUtil::SAMPLERTYPE_INT)
+         samplerType << "i";
+ 
+     switch (type)
+--- a/framework/common/tcuTexture.cpp
++++ b/framework/common/tcuTexture.cpp
+@@ -1552,7 +1552,7 @@
+                          TextureFormat::RGBA)
+             .cast<float>();
+     case TextureFormat::SSCALED_INT_1010102_REV:
+-        return swizzleGe(UVec4(SI32(0, 10), SI32(10, 10), SI32(20, 10), SI32(30, 2)), m_format.order,
++        return swizzleGe(IVec4(SI32(0, 10), SI32(10, 10), SI32(20, 10), SI32(30, 2)), m_format.order,
+                          TextureFormat::RGBA)
+             .cast<float>();
+     case TextureFormat::SIGNED_INT_1010102_REV:
+--- a/external/vulkancts/modules/vulkan/pipeline/vktPipelineSamplerTests.cpp
++++ b/external/vulkancts/modules/vulkan/pipeline/vktPipelineSamplerTests.cpp
+@@ -48,6 +48,7 @@
+ 
+ #include "tcuPlatform.hpp"
+ #include "tcuTextureUtil.hpp"
++#include "gluTextureTestUtil.hpp"
+ #include "tcuTestLog.hpp"
+ #include "tcuMaybe.hpp"
+ #include "tcuImageCompare.hpp"
+@@ -584,9 +585,9 @@
+ {
+     std::ostringstream samplerType;
+ 
+-    if (tcu::getTextureChannelClass(format.type) == tcu::TEXTURECHANNELCLASS_UNSIGNED_INTEGER || sampleStencil)
++    if (glu::TextureTestUtil::getSamplerType(format) == glu::TextureTestUtil::SAMPLERTYPE_UINT || sampleStencil)
+         samplerType << "u";
+-    else if (tcu::getTextureChannelClass(format.type) == tcu::TEXTURECHANNELCLASS_SIGNED_INTEGER)
++    else if (glu::TextureTestUtil::getSamplerType(format) == glu::TextureTestUtil::SAMPLERTYPE_INT)
+         samplerType << "i";
+ 
+     switch (type)
+--- a/external/vulkancts/modules/vulkan/api/vktApiImageClearingTests.cpp
++++ b/external/vulkancts/modules/vulkan/api/vktApiImageClearingTests.cpp
+@@ -240,6 +240,20 @@
+     }
+ 
+     return true;
++}
++
++// The test stores scaled reference values as integers. Vulkan's clear union
++// uses float32 for USCALED and SSCALED; keep reference generation unchanged.
++static VkClearColorValue apiClearColor(VkFormat format, VkClearColorValue value)
++{
++    if (isScaledFormat(format))
++    {
++        const auto channelClass = getTextureChannelClass(mapVkFormat(format).type);
++        for (unsigned c = 0; c < 4; ++c)
++            value.float32[c] = channelClass == TEXTURECHANNELCLASS_SIGNED_INTEGER ?
++                                  float(value.int32[c]) : float(value.uint32[c]);
++    }
++    return value;
+ }
+ 
+ // This method is copied from the vktRenderPassTests.cpp. It should be moved to a common place.
+@@ -1660,8 +1674,10 @@
+                          usedLayout,                     // VkImageLayout oldLayout;
+                          usedLayout);                    // VkImageLayout newLayout;
+ 
++    const auto clearColor = apiClearColor(m_params.imageFormat, m_params.clearValue[0].color);
++
+     // Test clear color in all ranges
+-    m_vkd.cmdClearColorImage(*m_commandBuffer, *m_image, usedLayout, &m_params.clearValue[0].color,
++    m_vkd.cmdClearColorImage(*m_commandBuffer, *m_image, usedLayout, &clearColor,
+                              static_cast<uint32_t>(subresourceRanges.size()), subresourceRanges.data());
+ 
+     pipelineImageBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT, // VkPipelineStageFlags        srcStageMask
+@@ -1772,7 +1788,8 @@
+ 
+     for (std::size_t i = 0u; i < subresourceRanges.size(); ++i)
+     {
+-        m_vkd.cmdClearColorImage(*m_commandBuffer, clearedImage, usedLayout, &m_params.clearValue[i].color, 1,
++        const auto clearColor = apiClearColor(m_params.imageFormat, m_params.clearValue[i].color);
++        m_vkd.cmdClearColorImage(*m_commandBuffer, clearedImage, usedLayout, &clearColor, 1,
+                                  &subresourceRanges[i]);
+ 
+         if (m_twoStep)
+@@ -1784,7 +1801,7 @@
+                                  usedLayout,                     // VkImageLayout oldLayout;
+                                  usedLayout);                    // VkImageLayout newLayout;
+ 
+-            m_vkd.cmdClearColorImage(*m_commandBuffer, clearedImage, usedLayout, &m_params.clearValue[i].color, 1,
++            m_vkd.cmdClearColorImage(*m_commandBuffer, clearedImage, usedLayout, &clearColor, 1,
+                                      &steptwoRanges[i]);
+         }
+     }
+--- a/external/vulkancts/modules/vulkan/api/vktApiBlittingTests.cpp
++++ b/external/vulkancts/modules/vulkan/api/vktApiBlittingTests.cpp
+@@ -35,6 +35,15 @@
+ // CompressedTextureForBlit is a helper class that stores compressed texture data.
+ // Implementation is based on pipeline::TestTexture2D but it allocates only one level
+ // and has special cases needed for blits to some formats.
++
++// Quantize scaled references before the nearest-texel lookup. Packed scaled
++// setPixel paths truncate floats, unlike ordinary scaled channels; explicitly
++// clamp and round here without changing the test's source image generation.
++static tcu::Vec4 scaledBlitReference(const tcu::Vec4 &value, const tcu::TextureFormat &format)
++{
++    const auto info = tcu::getTextureFormatInfo(format);
++    return tcu::roundToEven(tcu::clamp(value, info.valueMin, info.valueMax));
++}
+ 
+ FormatSet dedicatedAllocationImageToImageFormatsToTestSet;
+ FormatSet dedicatedAllocationBlittingFormatsToTestSet;
+@@ -507,14 +516,16 @@
+ 
+     log << tcu::TestLog::Section("ClampedSourceImage", "Region with clamped edges on source image.");
+ 
+-    // if either of srcImage or dstImage stores values as a signed/unsigned integer,
+-    // the other must also store values a signed/unsigned integer
+-    // e.g. blit unorm to uscaled is not allowed as uscaled formats store data as integers
+-    // despite the fact that both formats are sampled as floats
+-    bool dstImageIsIntClass = dstChannelClass == tcu::TEXTURECHANNELCLASS_SIGNED_INTEGER ||
+-                              dstChannelClass == tcu::TEXTURECHANNELCLASS_UNSIGNED_INTEGER;
+-    bool srcImageIsIntClass = srcChannelClass == tcu::TEXTURECHANNELCLASS_SIGNED_INTEGER ||
+-                              srcChannelClass == tcu::TEXTURECHANNELCLASS_UNSIGNED_INTEGER;
++    // Scaled formats use floating-point filtering and conversion, despite
++    // their integer backing storage in the tcu channel classification.
++    const bool dstScaled = vk::isScaledFormat(m_params.dst.image.format);
++    const bool srcScaled = vk::isScaledFormat(m_params.src.image.format);
++    bool dstImageIsIntClass = !dstScaled &&
++        (dstChannelClass == tcu::TEXTURECHANNELCLASS_SIGNED_INTEGER ||
++         dstChannelClass == tcu::TEXTURECHANNELCLASS_UNSIGNED_INTEGER);
++    bool srcImageIsIntClass = !srcScaled &&
++        (srcChannelClass == tcu::TEXTURECHANNELCLASS_SIGNED_INTEGER ||
++         srcChannelClass == tcu::TEXTURECHANNELCLASS_UNSIGNED_INTEGER);
+     if (dstImageIsIntClass != srcImageIsIntClass)
+     {
+         log << tcu::TestLog::EndSection;
+@@ -699,14 +710,16 @@
+ 
+     tcu::clear(errorMask, tcu::Vec4(0.0f, 1.0f, 0.0f, 1.0));
+ 
+-    // if either of srcImage or dstImage stores values as a signed/unsigned integer,
+-    // the other must also store values a signed/unsigned integer
+-    // e.g. blit unorm to uscaled is not allowed as uscaled formats store data as integers
+-    // despite the fact that both formats are sampled as floats
+-    bool dstImageIsIntClass = dstChannelClass == tcu::TEXTURECHANNELCLASS_SIGNED_INTEGER ||
+-                              dstChannelClass == tcu::TEXTURECHANNELCLASS_UNSIGNED_INTEGER;
+-    bool srcImageIsIntClass = srcChannelClass == tcu::TEXTURECHANNELCLASS_SIGNED_INTEGER ||
+-                              srcChannelClass == tcu::TEXTURECHANNELCLASS_UNSIGNED_INTEGER;
++    // Scaled formats use floating-point filtering and conversion, despite
++    // their integer backing storage in the tcu channel classification.
++    const bool dstScaled = vk::isScaledFormat(m_params.dst.image.format);
++    const bool srcScaled = vk::isScaledFormat(m_params.src.image.format);
++    bool dstImageIsIntClass = !dstScaled &&
++        (dstChannelClass == tcu::TEXTURECHANNELCLASS_SIGNED_INTEGER ||
++         dstChannelClass == tcu::TEXTURECHANNELCLASS_UNSIGNED_INTEGER);
++    bool srcImageIsIntClass = !srcScaled &&
++        (srcChannelClass == tcu::TEXTURECHANNELCLASS_SIGNED_INTEGER ||
++         srcChannelClass == tcu::TEXTURECHANNELCLASS_UNSIGNED_INTEGER);
+     if (dstImageIsIntClass != srcImageIsIntClass)
+         return false;
+ 
+@@ -716,9 +729,26 @@
+     }
+     else
+     {
+-        const tcu::Vec4 srcMaxDiff = getFloatOrFixedPointFormatThreshold(source.getFormat());
+-        const tcu::Vec4 dstMaxDiff = getFloatOrFixedPointFormatThreshold(result.getFormat());
+-        ok = floatNearestBlitCompare(source, result, srcMaxDiff, dstMaxDiff, errorMask, m_params);
++        if (srcScaled || dstScaled)
++        {
++            // Nearest filtering commutes with the destination conversion.
++            // Compare against converted texels, rather than giving a whole
++            // integer of tolerance to values in the normalized [0, 1] range.
++            tcu::TextureLevel converted(dstFormat, source.getWidth(), source.getHeight(), source.getDepth());
++            const tcu::PixelBufferAccess access = converted.getAccess();
++            for (int z = 0; z < source.getDepth(); ++z)
++                for (int y = 0; y < source.getHeight(); ++y)
++                    for (int x = 0; x < source.getWidth(); ++x)
++                        access.setPixel(dstScaled ? scaledBlitReference(source.getPixel(x, y, z), dstFormat)
++                                                  : linearToSRGBIfNeeded(dstFormat, source.getPixel(x, y, z)), x, y, z);
++            ok = floatNearestBlitCompare(access, result, tcu::Vec4(0.0f), tcu::Vec4(0.0f), errorMask, m_params);
++        }
++        else
++        {
++            const tcu::Vec4 srcMaxDiff = getFloatOrFixedPointFormatThreshold(source.getFormat());
++            const tcu::Vec4 dstMaxDiff = getFloatOrFixedPointFormatThreshold(result.getFormat());
++            ok = floatNearestBlitCompare(source, result, srcMaxDiff, dstMaxDiff, errorMask, m_params);
++        }
+     }
+ 
+     if (result.getFormat() != tcu::TextureFormat(tcu::TextureFormat::RGBA, tcu::TextureFormat::UNORM_INT8))
+@@ -776,6 +806,23 @@
+ 
+     log << tcu::TestLog::ImageSet("Compare", "Result comparsion")
+         << tcu::TestLog::Image("Result", "Result", result, pixelScale, pixelBias);
++
++    if (vk::isScaledFormat(m_params.dst.image.format))
++    {
++        // The decompressed source still contains fractional floating-point
++        // values. Compare the destination conversion, not those fractions.
++        tcu::TextureLevel converted(resultFormat, source.getWidth(), source.getHeight(), source.getDepth());
++        const tcu::PixelBufferAccess access = converted.getAccess();
++        for (int z = 0; z < source.getDepth(); ++z)
++            for (int y = 0; y < source.getHeight(); ++y)
++                for (int x = 0; x < source.getWidth(); ++x)
++                    access.setPixel(scaledBlitReference(source.getPixel(x, y, z), resultFormat), x, y, z);
++        const bool ok = floatNearestBlitCompare(access, result, tcu::Vec4(0.0f), tcu::Vec4(0.0f), errorMask, m_params);
++        if (!ok)
++            log << tcu::TestLog::Image("ErrorMask", "Error mask", errorMask);
++        log << tcu::TestLog::EndImageSet;
++        return ok;
++    }
+ 
+     // for compressed formats source buffer access is not actual compressed format
+     // but equivalent uncompressed format that is some cases needs additional
+--- a/external/vulkancts/modules/vulkan/image/vktImageLoadStoreTests.cpp
++++ b/external/vulkancts/modules/vulkan/image/vktImageLoadStoreTests.cpp
+@@ -628,6 +628,11 @@
+         !(formatProperties.bufferFeatures & VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT))
+         TCU_THROW(NotSupportedError, "Format not supported for storage texel buffers");
+ #endif // CTS_USES_VULKANSC
++
++    // A texel buffer has no image tiling, mip levels or array layers. Its
++    // advertised buffer-format capabilities were checked above.
++    if (m_texture.type() == IMAGE_TYPE_BUFFER)
++        return;
+ 
+     const auto &vki           = context.getInstanceInterface();
+     const auto physicalDevice = context.getPhysicalDevice();
+--- a/external/vulkancts/modules/vulkan/image/vktImageCompressionTranscodingSupport.cpp
++++ b/external/vulkancts/modules/vulkan/image/vktImageCompressionTranscodingSupport.cpp
+@@ -2392,7 +2392,11 @@
+         (createFlags != nullptr) ? *createFlags : (imageCreateFlagsBase | imageCreateFlagsAddOn);
+ 
+     VkFormatProperties properties;
+-    m_context.getInstanceInterface().getPhysicalDeviceFormatProperties(m_context.getPhysicalDevice(), format,
++    // EXTENDED_USAGE permits usage provided by the compatible view format.
++    // checkSupport already queries the complete image flags and usages.
++    const VkFormat usageFormat = (imageCreateFlags & VK_IMAGE_CREATE_EXTENDED_USAGE_BIT) &&
++                                     isCompressedFormat(format) ? m_parameters.formatUncompressed : format;
++    m_context.getInstanceInterface().getPhysicalDeviceFormatProperties(m_context.getPhysicalDevice(), usageFormat,
+                                                                        &properties);
+     if ((usageFlags & VK_IMAGE_USAGE_STORAGE_BIT) &&
+         !(properties.optimalTilingFeatures & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT))
+--- a/external/vulkancts/modules/vulkan/api/vktApiBlittingTests.cpp
++++ b/external/vulkancts/modules/vulkan/api/vktApiBlittingTests.cpp
+@@ -529,6 +529,17 @@
+         const tcu::Vec4 threshold =
+             (srcMaxDiff + dstMaxDiff) * ((m_params.filter == VK_FILTER_CUBIC_EXT) ? 1.5f : 1.0f);
+ 
++        unsigned diagnostics = 0;
++        for (int z = 0; z < result.getDepth(); ++z)
++            for (int y = 0; y < result.getHeight(); ++y)
++                for (int x = 0; x < result.getWidth(); ++x) {
++                    const auto a = clampedExpected.getPixel(x,y,z);
++                    const auto b = result.getPixel(x,y,z);
++                    bool bad = false;
++                    for (int c = 0; c < 4; ++c) bad |= de::abs(a[c]-b[c]) > threshold[c];
++                    if (bad && diagnostics++ < 12)
++                        printf("LINEAR_DIFF %d,%d,%d ref=%.9g,%.9g,%.9g,%.9g got=%.9g,%.9g,%.9g,%.9g tol=%.9g,%.9g,%.9g,%.9g\n",x,y,z,a[0],a[1],a[2],a[3],b[0],b[1],b[2],b[3],threshold[0],threshold[1],threshold[2],threshold[3]);
++                }
+         isOk = tcu::floatThresholdCompare(log, "Compare", "Result comparsion", clampedExpected, result, threshold,
+                                           tcu::COMPARE_LOG_ON_ERROR);
+         log << tcu::TestLog::EndSection;

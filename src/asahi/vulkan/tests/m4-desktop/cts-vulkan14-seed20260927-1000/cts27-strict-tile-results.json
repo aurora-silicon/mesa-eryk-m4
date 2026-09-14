@@ -1,0 +1,98 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.api.image_clearing.dedicated_allocation.clear_color_attachment.multiple_layers.r32g32b32a32_sfloat_200x180",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.api.image_clearing.dedicated_allocation.clear_color_attachment.multiple_layers.r32g32b32a32_sfloat_200x180",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T092725045112Z-cts27-strict-tile/cts/000/result.qpa"
+    ],
+    "boot_id": "dd1bdf54-996c-4d0d-af32-e1863ecb82d6",
+    "status": "Pass",
+    "started_unix": 1789378046.317154,
+    "eligibility": {
+      "case": "dEQP-VK.api.image_clearing.dedicated_allocation.clear_color_attachment.multiple_layers.r32g32b32a32_sfloat_200x180",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "cmdClearAttachments passed",
+    "returncode": 0,
+    "seconds": 0.25961954400008835,
+    "finished_unix": 1789378046.5818858,
+    "pid": 2672
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.api.image_clearing.dedicated_allocation.clear_color_attachment.multiple_layers.r32g32b32a32_sfloat_200x180_sample_count_2",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.api.image_clearing.dedicated_allocation.clear_color_attachment.multiple_layers.r32g32b32a32_sfloat_200x180_sample_count_2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T092725045112Z-cts27-strict-tile/cts/001/result.qpa"
+    ],
+    "boot_id": "dd1bdf54-996c-4d0d-af32-e1863ecb82d6",
+    "status": "Pass",
+    "started_unix": 1789378046.5932264,
+    "eligibility": {
+      "case": "dEQP-VK.api.image_clearing.dedicated_allocation.clear_color_attachment.multiple_layers.r32g32b32a32_sfloat_200x180_sample_count_2",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "cmdClearAttachments passed",
+    "returncode": 0,
+    "seconds": 0.31106461500007754,
+    "finished_unix": 1789378046.910186,
+    "pid": 2683
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.api.image_clearing.dedicated_allocation.clear_color_attachment.multiple_layers.r32g32b32a32_uint_200x180",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.api.image_clearing.dedicated_allocation.clear_color_attachment.multiple_layers.r32g32b32a32_uint_200x180",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T092725045112Z-cts27-strict-tile/cts/002/result.qpa"
+    ],
+    "boot_id": "dd1bdf54-996c-4d0d-af32-e1863ecb82d6",
+    "status": "Pass",
+    "started_unix": 1789378046.9208148,
+    "eligibility": {
+      "case": "dEQP-VK.api.image_clearing.dedicated_allocation.clear_color_attachment.multiple_layers.r32g32b32a32_uint_200x180",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "cmdClearAttachments passed",
+    "returncode": 0,
+    "seconds": 0.3113447780001479,
+    "finished_unix": 1789378047.236986,
+    "pid": 2688
+  },
+  {
+    "index": 3,
+    "case": "dEQP-VK.api.image_clearing.dedicated_allocation.clear_color_attachment.multiple_layers.r32g32b32a32_uint_200x180_sample_count_2",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.api.image_clearing.dedicated_allocation.clear_color_attachment.multiple_layers.r32g32b32a32_uint_200x180_sample_count_2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T092725045112Z-cts27-strict-tile/cts/003/result.qpa"
+    ],
+    "boot_id": "dd1bdf54-996c-4d0d-af32-e1863ecb82d6",
+    "status": "Pass",
+    "started_unix": 1789378047.2476804,
+    "eligibility": {
+      "case": "dEQP-VK.api.image_clearing.dedicated_allocation.clear_color_attachment.multiple_layers.r32g32b32a32_uint_200x180_sample_count_2",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "cmdClearAttachments passed",
+    "returncode": 0,
+    "seconds": 0.3103601389998403,
+    "finished_unix": 1789378047.5637853,
+    "pid": 2692
+  }
+]

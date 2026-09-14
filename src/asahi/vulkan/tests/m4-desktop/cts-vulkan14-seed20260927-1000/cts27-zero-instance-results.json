@@ -1,0 +1,50 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.draw.renderpass.instanced.draw_indexed_indirect_vk_primitive_topology_triangle_fan_khr_attrib_divisor_20",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.draw.renderpass.instanced.draw_indexed_indirect_vk_primitive_topology_triangle_fan_khr_attrib_divisor_20",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T091155631221Z-cts27-zero-instance/cts/000/result.qpa"
+    ],
+    "boot_id": "dd1bdf54-996c-4d0d-af32-e1863ecb82d6",
+    "status": "Pass",
+    "started_unix": 1789377116.9553034,
+    "eligibility": {
+      "case": "dEQP-VK.draw.renderpass.instanced.draw_indexed_indirect_vk_primitive_topology_triangle_fan_khr_attrib_divisor_20",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 1.5765565039999956,
+    "finished_unix": 1789377118.5369723,
+    "pid": 1654
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.draw.renderpass.instanced.draw_indexed_indirect_vk_primitive_topology_triangle_list_multiview_maintenance_5",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.draw.renderpass.instanced.draw_indexed_indirect_vk_primitive_topology_triangle_list_multiview_maintenance_5",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T091155631221Z-cts27-zero-instance/cts/001/result.qpa"
+    ],
+    "boot_id": "dd1bdf54-996c-4d0d-af32-e1863ecb82d6",
+    "status": "Pass",
+    "started_unix": 1789377118.5482714,
+    "eligibility": {
+      "case": "dEQP-VK.draw.renderpass.instanced.draw_indexed_indirect_vk_primitive_topology_triangle_list_multiview_maintenance_5",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 1.477824542999997,
+    "finished_unix": 1789377120.0317376,
+    "pid": 1669
+  }
+]

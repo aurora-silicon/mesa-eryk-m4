@@ -1,0 +1,27 @@
+{
+  "seed": 20260927,
+  "cases": 1000,
+  "baseline": {
+    "Pass": 481,
+    "Fail": 21,
+    "NotSupported": 498,
+    "Crash": 0,
+    "Timeout": 0
+  },
+  "runner_seconds": 25.573225572,
+  "reconciled_counts": {
+    "NotSupported": 496,
+    "Pass": 504
+  },
+  "evidence_kinds": {
+    "OriginalBaseline": 977,
+    "OriginalCTSPass": 8,
+    "CorrectedCTSPass": 14,
+    "UnaffectedDiagnosticCTSPass": 1
+  },
+  "original_failures_resolved": 21,
+  "should_support_resolved": 2,
+  "remaining_failures": 0,
+  "remaining_should_support": 0,
+  "limitation": "Baseline plus targeted reruns with separately identified binaries; not a fresh 1000-case regression run or Khronos conformance claim. Fourteen case passes use CTS corrections (13 original failures and one skip). One additional driver fix was tested with a diagnostic binary whose changes do not affect that case."
+}

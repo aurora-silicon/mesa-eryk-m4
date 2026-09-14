@@ -1,0 +1,10 @@
+--- a/external/vulkancts/modules/vulkan/api/vktApiImageClearingTests.cpp
++++ b/external/vulkancts/modules/vulkan/api/vktApiImageClearingTests.cpp
+@@ -1485,6 +1485,7 @@
+                                                                threshold, channelMask, channelClass))
+                             {
+                                 errorsPresent = true;
++                                printf("CLEAR_MISMATCH layer=%u mip=%u xyz=%u,%u,%u\n", arrayLayer, mipLevel, x, y, z);
+                                 result        = TestStatus::fail("Color value mismatch! " + message);
+                             }
+                         }
