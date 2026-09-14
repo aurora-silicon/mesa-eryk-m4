@@ -1,0 +1,26 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.spirv_assembly.instruction.graphics.16bit_storage.input_output_int_32_to_16.vector_uint0_tesse",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed28-signed-corrected",
+      "--deqp-case=dEQP-VK.spirv_assembly.instruction.graphics.16bit_storage.input_output_int_32_to_16.vector_uint0_tesse",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T160943434956Z-cts28-integer-io-fresh/cts/000/result.qpa"
+    ],
+    "boot_id": "15d81d37-45d1-42b3-ada6-fe3160541e0d",
+    "status": "Pass",
+    "started_unix": 1789402184.7934484,
+    "eligibility": {
+      "case": "dEQP-VK.spirv_assembly.instruction.graphics.16bit_storage.input_output_int_32_to_16.vector_uint0_tesse",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Rendered output matches input",
+    "returncode": 0,
+    "seconds": 1.2707544759999934,
+    "finished_unix": 1789402186.0692668,
+    "pid": 1057
+  }
+]

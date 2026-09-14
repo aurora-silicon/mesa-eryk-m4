@@ -408,3 +408,21 @@ Mesa library SHA256 `2dcb398ce6d6f61f6a16476e3b931d09f8369c0f05e584037ad6fbc54ea
 Earlier RHW-only attempt still failed; retained all-reference images showed
 centroid had only12 colors versus4442 for the smooth reference. No thresholds
 were relaxed. Cumulative: 4645 Pass / 13 Fail / 5342 NotSupported, 66 resolved.
+
+## Integer interfaces before interstage optimization
+
+`20260914T160943434956Z-cts28-integer-io-fresh` passes the original
+`16bit_storage.input_output_int_32_to_16.vector_uint0_tesse` case.
+The varying optimizer can retype flat integer interfaces as floating point;
+widening/narrowing them later as half floats corrupts integer values whose
+bits encode NaNs. Native compilation now widens 16-bit integer interfaces
+before that optimization and narrows inside the consumer. XFB retains a
+separate store of the original width. No CTS expectation changes.
+
+Installed library SHA256:
+`0ef4a4f9d552626ca9fb66ecf6c0d9c8a504a6fd59b14f874bbbf14c56e39158`.
+Guarded M4 run peaked at 59.25 C. The two preceding attempts did not execute
+the test (external watchdog lease, then a case-list file lost during reboot).
+Cumulative ledger13: **4,646 Pass / 12 Fail / 5,342 optional NotSupported**;
+**67 originally failing/crashing/timing-out cases resolved**. These are
+observations across builds, not an uninterrupted full regression run.
