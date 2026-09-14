@@ -170,6 +170,10 @@ def batch(args):
     capture.mkdir()
     env['AGX_COMPILER_CAPTURE_DIR'] = str(capture)
     env.pop('AGX_COMPILER_CAPTURE_SUCCESS', None)
+    env.pop('AGX_COMPILER_CAPTURE_BEFORE', None)
+    if args.capture_before:
+        env['AGX_COMPILER_CAPTURE_BEFORE'] = '1'
+        env['MESA_SHADER_CACHE_DISABLE'] = 'true'
     if args.capture_success:
         env['AGX_COMPILER_CAPTURE_SUCCESS'] = 'all'
         env['MESA_SHADER_CACHE_DISABLE'] = 'true'
@@ -229,8 +233,9 @@ def run_cases(args, check, boot, out, env):
 
             for index, item in list(active.items()):
                 proc, log, started, directory, qpa, record = item
-                timed_out = proc.poll() is None and time.monotonic() - started > args.case_timeout
-                if timed_out:
+                elapsed = time.monotonic() - started
+                timed_out = elapsed >= args.case_timeout
+                if timed_out and proc.poll() is None:
                     proc.kill()
                     proc.wait(timeout=2)
                 if proc.poll() is None:
@@ -248,7 +253,7 @@ def run_cases(args, check, boot, out, env):
                 elif status == 'Pass' and proc.returncode != 0:
                     status, message = 'HarnessError', 'CTS reported Pass but exited nonzero'
                 record.update(status=status, message=message, returncode=proc.returncode,
-                              seconds=time.monotonic() - started, finished_unix=time.time(),
+                              seconds=elapsed, finished_unix=time.time(),
                               pid=proc.pid)
                 save(directory / 'case.json', record)
                 results.append(record)
@@ -319,6 +324,7 @@ def main():
     b.add_argument('--log-sources', action='store_true')
     b.add_argument('--log-images', action='store_true')
     b.add_argument('--capture-success', action='store_true')
+    b.add_argument('--capture-before', action='store_true')
     args = p.parse_args()
     if args.mode == 'profile':
         from cts_requirements import make_profile

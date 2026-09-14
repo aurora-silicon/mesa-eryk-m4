@@ -385,3 +385,33 @@ guard; granting access alone is not a render test.
 
 See [the Vulkan 1.4 sample](cts-vulkan14-seed20260925-1000/README.md) for exact
 build, selection, raw and audited outcomes, timings and reproduction artifacts.
+
+`cts-result-ledger.py --cases cases.txt --manifest ordered-results.json --output NEW`
+reconciles interrupted campaigns and targeted fixes across explicitly ordered
+result files. It preserves original outcomes, all attempts and input hashes;
+incomplete runs never erase completed results. Its cumulative status is not a
+same-build regression run or a benchmark timing claim.
+
+`native-form-decode.py TEXT.bin MNEMONIC OFFSET` inspects an offline G16G
+instruction through the current generated Mesa encoding tables. It prints only
+candidate field assignments that reproduce the complete instruction byte for
+byte with the existing composer. Anonymous field values are not semantic names;
+instruction boundaries and hardware behavior still require source/capture
+context. Range candidate search and expansion are bounded. Missing candidates
+do not establish that an encoding is impossible. The helper builds a small
+host-only composer library in `build/`; it never executes GPU work.
+
+`native-local-atomic-decode.c` specializes candidate scanning for returned
+register-addressed G16G shared-memory atomics. Exact matches go to stdout;
+nearest non-matching candidates are explicitly labeled on stderr. Build like
+`native-fetch-decode.c`, replacing its source and `agx3_tex_core.c` with this
+source and `agx3_atomic_core.c`. Prefer the generic form inspector when operands
+use an unimplemented address form.
+
+`cts-bulk.py --capture-before` requests opt-in compiler input capture before
+compilation, allowing replay of aborting shaders. It forwards the flag through
+`cts-sample.py` and disables shader-cache hits for that diagnostic run. Bundles
+under `before/` have `success: null`: pending inputs are not successful or failed
+compiler results. Completed failure captures retain their usual semantics.
+
+Per-case deadlines are hard bounds: a result at or beyond the recorded timeout is a Timeout failure even if CTS emitted Pass. The bulk collector retains that original CTS status/message. Longer diagnostic runs cannot resolve a failure against the original bound.

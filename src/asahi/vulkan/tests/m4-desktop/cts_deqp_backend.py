@@ -45,6 +45,7 @@ def run(args, check, boot, out, env, metadata, save):
     save(out / 'runner.json', dict(argv=argv, path=str(args.deqp_runner),
         sha256=hashlib.sha256(args.deqp_runner.read_bytes()).hexdigest(),
         tests_per_group=args.tests_per_group, deadline_seconds=args.runner_seconds,
+        case_timeout_seconds=args.case_timeout,
         no_retries=True, no_baseline=True, no_skips=True,
         compatibility='Omit unsupported CTS 1.0 shadercache CLI flags; Mesa cache remains unchanged'))
     begin = time.monotonic()
@@ -83,6 +84,10 @@ def run(args, check, boot, out, env, metadata, save):
 def collect(out, cases, metadata, start, boot):
     """Offline recovery also works when a guard interrupted the wrapper."""
     result_dir = out / 'deqp-runner'
+    runner = json.loads((out / 'runner.json').read_text())
+    case_timeout = runner.get('case_timeout_seconds')
+    if case_timeout is None and '--timeout' in runner.get('argv', []):
+        case_timeout = float(runner['argv'][runner['argv'].index('--timeout') + 1])
     # Preserve the original QPA status/message. deqp-runner folds several CTS
     # outcomes into Fail/Warn/Skip; keep both, and never equate Skip with Pass.
     qpa_records = {}
@@ -139,9 +144,22 @@ def collect(out, cases, metadata, start, boot):
             record.update(status=runner_status, message='Runner detected abnormal execution; inspect QPA/log')
         elif runner_status == 'Fail' and record['status'] == 'Pass':
             record.update(status='HarnessError', message='QPA Pass disagrees with runner failure')
+        elif runner_status == 'Missing' and coordinated_stop and record['status'] == 'Unrun':
+            # Groups canceled before launch are included as Missing in the
+            # runner CSV. Without a CTS start marker they were never run.
+            # Preserve the CSV status, but do not invent a harness failure.
+            record['message'] = 'No completed result before coordinated runner stop'
         elif runner_status == 'Missing' and case in csv_records and record['status'] == 'Unrun':
             record.update(status='HarnessError', message='Runner could not obtain a result')
         if record['status'] == 'Unrun' and case in started_cases:
             record.update(status='Interrupted', message='CTS started the case but did not produce a complete result')
+        # A completed QPA Pass must not hide a missed execution deadline.
+        # Keep the CTS result as evidence while recording the timeout failure.
+        if case_timeout is not None and duration is not None and duration >= case_timeout:
+            record['cts_status'] = qpa_records.get(case, {}).get('status')
+            record['cts_message'] = qpa_records.get(case, {}).get('message')
+            if record['status'] not in ('Crash', 'Timeout'):
+                record.update(status='Timeout',
+                              message=f'Reached the recorded {case_timeout:g}s per-case bound ({duration:.6f}s)')
         results.append(record)
     return results
