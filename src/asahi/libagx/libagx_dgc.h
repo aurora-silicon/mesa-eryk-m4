@@ -212,14 +212,14 @@ agx_draw_index_buffer(struct agx_draw d)
    return ib;
 }
 
-/* Apple's AGX3 indirect indexed record stores the available index-buffer
+/* Apple's AGX3 indexed records store the available index-buffer
  * range in dwords minus one.  Use a widened intermediate so a range near the
  * u32 ceiling cannot wrap while rounding up. */
 static inline bool
-agx_draw_indirect_index_buffer_size_word(struct agx_draw d,
-                                         uint32_t *size_word)
+agx_draw_index_buffer_size_word(struct agx_draw d,
+                                uint32_t *size_word)
 {
-   assert(d.indexed && agx_is_indirect(d.b));
+   assert(d.indexed);
 
    const uint64_t dwords = ((uint64_t)agx_draw_index_range_B(d) + 3) >> 2;
    if (dwords == 0 || dwords > (uint64_t)0xffffffffu)
@@ -264,7 +264,7 @@ agx_vdm_draw_supported(enum agx_chip chip, struct agx_draw draw,
    if (agx_is_indirect(draw.b)) {
       uint32_t size_word = 0;
       if (draw.indexed &&
-          !agx_draw_indirect_index_buffer_size_word(draw, &size_word))
+          !agx_draw_index_buffer_size_word(draw, &size_word))
          return false;
 
       struct agx_vdm_index_list_indirect_words words;
@@ -275,12 +275,15 @@ agx_vdm_draw_supported(enum agx_chip chip, struct agx_draw draw,
          size_word, &words);
    }
 
+   uint32_t size_word = 0;
+   if (draw.indexed && !agx_draw_index_buffer_size_word(draw, &size_word))
+      return false;
    struct agx_vdm_index_list_direct_words words;
    return agx_vdm_index_list_direct_pack_words(
       chip, (uint8_t)topology, draw.indexed, draw.restart,
       (uint8_t)draw.index_size, ib, draw.b.count[0], draw.b.count[1],
       draw.indexed ? draw.index_bias : draw.start,
-      draw.indexed ? (align(agx_draw_index_range_B(draw), 4) >> 2) : 0, &words);
+      size_word, &words);
 }
 
 static inline GLOBAL uint32_t *
@@ -343,7 +346,7 @@ agx_vdm_draw(GLOBAL uint32_t *out, enum agx_chip chip, struct agx_draw draw,
          uint32_t size_word = 0;
          const bool size_valid =
             !draw.indexed ||
-            agx_draw_indirect_index_buffer_size_word(draw, &size_word);
+            agx_draw_index_buffer_size_word(draw, &size_word);
          struct agx_vdm_index_list_indirect_words words;
          const bool valid =
             size_valid && agx_vdm_index_list_indirect_pack_words(
@@ -363,13 +366,15 @@ agx_vdm_draw(GLOBAL uint32_t *out, enum agx_chip chip, struct agx_draw draw,
             *out++ = words.words[i];
          return out;
       } else {
+         uint32_t size_word = 0;
+         const bool size_valid = !draw.indexed ||
+            agx_draw_index_buffer_size_word(draw, &size_word);
          struct agx_vdm_index_list_direct_words words;
-         const bool valid = agx_vdm_index_list_direct_pack_words(
+         const bool valid = size_valid && agx_vdm_index_list_direct_pack_words(
             chip, (uint8_t)topology, draw.indexed, draw.restart,
             (uint8_t)draw.index_size, ib, draw.b.count[0], draw.b.count[1],
             draw.indexed ? draw.index_bias : draw.start,
-            draw.indexed ? (align(agx_draw_index_range_B(draw), 4) >> 2) : 0,
-            &words);
+            size_word, &words);
          assert(valid);
          if (!valid)
             return out;
@@ -447,7 +452,7 @@ agx_vdm_draw_size(enum agx_chip chip, struct agx_draw draw)
       if (agx_is_indirect(draw.b)) {
          uint32_t size_word = 0;
          if (draw.indexed &&
-             !agx_draw_indirect_index_buffer_size_word(draw, &size_word))
+             !agx_draw_index_buffer_size_word(draw, &size_word))
             return 0;
 
          struct agx_vdm_index_list_indirect_words words;
@@ -462,14 +467,15 @@ agx_vdm_draw_size(enum agx_chip chip, struct agx_draw draw)
 
          return words.count * 4;
       } else {
+         uint32_t size_word = 0;
+         if (draw.indexed && !agx_draw_index_buffer_size_word(draw, &size_word))
+            return 0;
          struct agx_vdm_index_list_direct_words words;
          if (!agx_vdm_index_list_direct_pack_words(
                 chip, 0, draw.indexed, draw.restart,
                 (uint8_t)draw.index_size, ib, draw.b.count[0], draw.b.count[1],
                 draw.indexed ? draw.index_bias : draw.start,
-                draw.indexed
-                   ? (align(agx_draw_index_range_B(draw), 4) >> 2)
-                   : 0,
+                size_word,
                 &words))
             return 0;
 

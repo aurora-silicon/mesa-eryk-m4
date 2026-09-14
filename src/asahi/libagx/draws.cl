@@ -404,6 +404,14 @@ libagx_draw_robust_index(global uint32_t *vdm, global struct poly_heap *heap,
    }
 
    if (first) {
+      /* The native direct packet requires a nonzero instance count. An
+       * indirect zero-instance draw is a legal no-op; encode it as an empty
+       * index list instead, preserving the fixed generated packet size. */
+      if (agx_vdm_index_list_direct_target_supported_inline(chip) &&
+          draw.b.count[1] == 0) {
+         draw.b.count[0] = 0;
+         draw.b.count[1] = 1;
+      }
       agx_vdm_draw(vdm, chip, draw, topology);
    }
 }

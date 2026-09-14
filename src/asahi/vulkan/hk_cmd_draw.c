@@ -4873,7 +4873,7 @@ hk_flush_gfx_state(struct hk_cmd_buffer *cmd, uint32_t draw_id,
    /* Software GS lowering runs in compute and feeds an ordinary Index List
     * through its generated hardware VS, for both application and XFB shaders.
     * That VS must still satisfy the native program metadata checks below. */
-   const bool native_index_list_path = !adj && !*needs_idx_robust;
+   const bool native_index_list_path = !adj;
 
    if (desc->push_dirty)
       hk_cmd_buffer_flush_push_descriptors(cmd, desc);
@@ -5041,24 +5041,16 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
                    hk_stat_enabled(stat_c_inv) || hk_stat_enabled(stat_c_prims);
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
 
-   /* Validate the native index domain before robustness or geometry lowering
-    * can introduce a pre-render compute dispatch. G17P has a native indirect
-    * Index List, but the software robustness rewrite does not yet publish its
-    * HAL200 draw-state selector, so keep that combination fail-closed.
-    * Tessellation fetches indices through vertex_params and emits a regular
-    * indexed indirect draw; the native path below publishes its selector. */
+   /* Validate the index domain before robustness or geometry lowering can
+    * introduce a pre-render dispatch. Robust indexed draws publish the native
+    * PPP selector before their GPU-generated Index List. */
    if (agx_native_graphics(&dev->dev) && draw_.indexed) {
       uint64_t address;
       uint32_t size_word;
-      const bool robust_indirect =
-         agx_is_indirect(draw_.b) &&
-         (dev->vk.enabled_features.robustBufferAccess ||
-          dev->vk.enabled_features.robustBufferAccess2 ||
-          dev->vk.enabled_features.pipelineRobustness);
       if ((draw_.index_size != AGX_INDEX_SIZE_U8 &&
            draw_.index_size != AGX_INDEX_SIZE_U16 &&
            draw_.index_size != AGX_INDEX_SIZE_U32) ||
-          robust_indirect || ia_stats ||
+          ia_stats ||
           (agx_is_indirect(draw_.b)
               ? (!draw_.b.ptr || !draw_.index_buffer ||
                  draw_.index_buffer_range_B == 0)
@@ -5067,8 +5059,7 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
                    draw_.b.count[0], agx_index_size_to_B(draw_.index_size),
                    &address, &size_word))) {
          mesa_loge("native G17P indexed draw requires an in-bounds "
-                   "uint8/uint16/uint32 span without query or "
-                   "indirect robustness lowering");
+                   "uint8/uint16/uint32 span without queries");
          vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
          return;
       }
@@ -5171,6 +5162,27 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
          assert(!geom && !tess && !adj);
          perf_debug(cmd, "lowering robust index buffer");
 
+         if (agx_native_graphics(&dev->dev)) {
+            /* Complete a freshly published PPP selector before the reserved
+             * GPU-generated commands. Restart state precedes the
+             * native direct Index List produced by the robustness kernel. */
+            if (g17p_native_bind_tail_emitted) {
+               struct agx_ptr state = hk_pool_vdm_alloc(cmd, 8, 4);
+               uint32_t offset;
+               if (!state.cpu || !hk_g17p_upload_draw_indices(
+                      state.cpu, 8, state.gpu, cs->scissor.size,
+                      cs->depth_bias.size, &offset)) {
+                  vk_command_buffer_set_error(&cmd->vk,
+                                              VK_ERROR_OUT_OF_DEVICE_MEMORY);
+                  return;
+               }
+               memcpy(out, &offset, sizeof(offset));
+               out += sizeof(offset);
+            }
+            const uint32_t restart[] = {0x40000001, cs->restart_index};
+            memcpy(out, restart, sizeof(restart));
+            out += sizeof(restart);
+         }
          cs->current = out;
 
          draw = hk_draw_as_indexed_indirect(cmd, draw);

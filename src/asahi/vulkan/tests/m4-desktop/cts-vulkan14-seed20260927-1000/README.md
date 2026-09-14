@@ -46,3 +46,16 @@ whose changes do not affect this test), evidence
 `20260914T085507119299Z-cts27-wide-and-linear2`, peak 56.5 C. The host allocation
 test checks offsets, deferred state and preservation of the legacy limit.
 Running total: 16/21 original failures resolved (5 Mesa, 11 corrected CTS).
+
+## Robust indexed indirect commands
+
+Publish the native PPP selector and restart state before the GPU-generated
+Index List, use the native dword-minus-one index span, and represent valid
+zero-instance commands as empty index lists. Previously the packet builder
+rejected these commands and left unwritten stream bytes, causing a GPU fault.
+Both original indirect instancing cases (divisor-20 triangle fan and multiview
+triangle list) now pass, evidence `20260914T091155631221Z-cts27-zero-instance`,
+peak 56.5 C. The earlier fault and compute-only diagnostic are retained under
+`20260914T090017418489Z-cts27-robust` and
+`20260914T090919945727Z-cts27-robust-packet-diagnostic`.
+Running total: 18/21 original failures resolved (7 Mesa, 11 corrected CTS).
