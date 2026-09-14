@@ -230,3 +230,23 @@ the descriptor and mip range. The new native golden vector passes with the
 texture-core unit checks (6,310 checks). Native reference:
 `build/cts28-native/array-query`, fragment text-1220 byte126.
 Library SHA256: `1091bfb8a1f78d738f23e3b6fc28284029230f49ac0030df4e2140050da881af`.
+
+## Scaled blit reference precision
+
+The twelve remaining scaled blits pass with a separately retained corrected CTS
+binary in `20260914T143937662614Z-cts28-scaled-precision`, peak 58.75 C.
+These are CTS comparison corrections, not twelve Mesa fixes. The original
+failures, pinned baseline and diagnostic binaries remain intact. Full patch:
+`cts-scaled-precision.patch`; build/source/binary hashes: `cts-scaled-build.json`.
+
+Linear scaled destinations preserve the unquantized filtered reference, then
+compare the result against the rounded/clamped existing precision interval.
+Compressed nearest scaled conversions retain decompression uncertainty plus
+the half-unit conversion bound. Packed 11/11/10 float destination precision
+uses each channel's actual exponent/mantissa quantum rather than an absolute
+near-one tolerance at values as large as 65535. Missing channels remain masked.
+No format support or shader path was disabled to obtain these outcomes.
+
+Latest cumulative checkpoint: 4,633 Pass, 25 Fail, 5,342 NotSupported;
+54 original Fail/Crash/Timeout cases now pass across fixes and explicit CTS
+corrections. The concurrent job979 fault remains unresolved.
