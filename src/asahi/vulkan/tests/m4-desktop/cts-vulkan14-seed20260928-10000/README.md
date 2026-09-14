@@ -313,3 +313,18 @@ in `shared-byte-oracle/`; native archive is `build/cts28-native/shared-byte`.
 The larger raw-field diagnostic also exposed separate large-shader behavior
 and is not counted as passing. Library SHA256:
 `ceba8a0e493a3ebecc40b938ee06973d8037df041a47188842ed3e06b600ce1d`.
+
+## Cosited 4:2:2 CTS reference correction
+
+The original explicit-linear/cosited test selected chroma sample floor(i/2)+1
+at even luma i: its left-tap weight was zero. Vulkan's explicit reconstruction
+formula selects floor(i/2) exactly there. Set the left weight to one for even
+cosited positions; leave odd and midpoint weights intact. Pinned specification:
+`external/vulkan-docs/src/chapters/textures.adoc`, explicit reconstruction,
+also https://docs.vulkan.org/spec/latest/chapters/textures.html#textures-explicit-reconstruction.
+
+The corrected test passes in `20260914T150825416650Z-cts28-cosited-reference`,
+peak 60.5 C, with unchanged Mesa. Full cumulative patch and exact build hashes
+are in `cts-scaled-and-cosited.patch` and `cts-cosited-build.json`.
+The original fail remains retained. The grow_shrink.33 renderpass case also
+passes on the halfword tile-read fix (`20260914T150419124001Z-cts28-next-numeric`).
