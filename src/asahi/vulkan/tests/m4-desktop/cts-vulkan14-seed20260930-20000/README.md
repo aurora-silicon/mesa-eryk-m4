@@ -114,3 +114,10 @@ M4 evidence: 20260914T210607187586Z-cts30-primitive4 (Pass),
 20260914T210709586586Z-cts30-primitive5 (diagnostic GPU timeout),
 20260914T210912579294Z-cts30-primitive-restored (Pass).
 This evidence is for J713/G16G, not a qualification claim for other GPUs.
+
+Current skip audit: 9,161 reviewed optional/environmental skips and 1,684
+NotSupportedNeedsReview, with no unconditional core-feature gap identified.
+Do not report the unaudited skips as optional or claim full Vulkan conformance.
+The current rules, pending cases and cumulative ledger/audit summaries are
+retained alongside this report. Default graphical login is restored; watchdog
+broker remains armed and idle, and normal CPU frequency limits are restored.

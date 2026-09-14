@@ -1,0 +1,25 @@
+{
+  "counts": {
+    "NotSupported": 9161,
+    "Pass": 9155,
+    "NotSupportedNeedsReview": 1684
+  },
+  "original_counts": {
+    "NotSupported": 10845,
+    "Pass": 9155
+  },
+  "rates_percent": {
+    "NotSupported": 45.805,
+    "Pass": 45.775,
+    "NotSupportedNeedsReview": 8.42
+  },
+  "api_version": "1.4",
+  "unconditional_core_feature_gaps": [],
+  "inputs": {
+    "build/cts-vulkan14-seed20260930-20000/ledger13/results.json": "ca79142c3449047065af9f9ed9ef5eaf095a28b5f9096da36566bf466632867d",
+    "build/cts-vulkan14-seed20260930-20000/device-profile.json": "c76b043cb93f985c5412daec171c0eb2292d5e3ec9222d1fa61724ba46a0379f",
+    "reference/gfxreconstruct/external/Vulkan-Headers/registry/vk.xml": "3ff4984b841932e04eebeb4ce2a6613ebd37c00ffb2e96549785b2c5d7da9e1d",
+    "build/cts-vulkan14-seed20260930-20000/skip-review.json": "3f83498ee8531846f64901b291cb7f6a3936a973fc74132453020bc623f18344"
+  },
+  "coverage": "Registry inventory excludes conditional requirements, formats and limits. Case classification uses explicit reviews, not substring guesses."
+}

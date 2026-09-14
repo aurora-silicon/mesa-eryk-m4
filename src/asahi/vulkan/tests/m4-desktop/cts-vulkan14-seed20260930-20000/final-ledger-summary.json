@@ -1,0 +1,88 @@
+{
+  "selected": 20000,
+  "counts": {
+    "NotSupported": 10845,
+    "Pass": 9155
+  },
+  "inputs": [
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-seed20260930-20000/run1/results.json",
+      "sha256": "03267da91ea3eaab20005c0b3979bded4fec2fc28b1c98455a1072c50d576450"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-seed20260930-20000/run2/results.json",
+      "sha256": "99984e8a5f6a92aed475373a515006ede134e941d29d854764a57c18b4f73ffb"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-seed20260930-20000/compiler-fix1/results.json",
+      "sha256": "45350cd614d9e50de520af6b04c88d87887b979046e423471322a362a88c3f4b"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-seed20260930-20000/run4/results.json",
+      "sha256": "e555d179de44fd5040748b9b362b74a2d9f5231477e69b1b07c98aef52478e58"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-seed20260930-20000/run5/results.json",
+      "sha256": "367eaaf7012a9f8c0f19d2e05d8ef8ddf59a41bd79930a4ae9d97a56c4fcf74f"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-seed20260930-20000/native-fix1/results.json",
+      "sha256": "531d7eb477ae84b8c978e22e619ebb74a126e9fa96db550b8c1ec2de9331e376"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-seed20260930-20000/native-fix2/results.json",
+      "sha256": "65a42c3088fd3c5167d0547face7985a54a2cd819c38a280605618f8e8137a10"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-seed20260930-20000/srgb-spill1/results.json",
+      "sha256": "da5717517e0e8c14af4d1dccdffcdf03fd2d479215726ede3d7d7569d346fa4a"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-seed20260930-20000/texture-trig1/results.json",
+      "sha256": "48fc338c57fcb3a56bc5fe03aa2724da1d83e261f20fd149568cb2e6f829cebd"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-seed20260930-20000/offset-select1/results.json",
+      "sha256": "cbe3a20d8bc0ed27b7bdc8d90dcd4eb540afc37e81c9851d89454e067354d50f"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-seed20260930-20000/texture-3d-gather1/results.json",
+      "sha256": "fa2707dc0d8406096c4491848f34a7fd3a16416bfae10f7ea5c0c8067cfcc85d"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-seed20260930-20000/scaled-compute-fixed1/results.json",
+      "sha256": "105dd18d67e720517b2b2b082d92bac686efbd0bac4fc08124d7565e5d42b122"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-seed20260930-20000/remaining-four-capture/results.json",
+      "sha256": "727a9e8cea2e106279d067742e6ba75edbf83157053195a59cf557a3578cda99"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-seed20260930-20000/tess-primitive2/results.json",
+      "sha256": "ff43ab15b9bb309741f0792fb3018b056fc059e1e4eb7d3b1ca7ec47587a5f23"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-seed20260930-20000/null-index2/results.json",
+      "sha256": "b8a97f3fd40eaeadcb6a8cfe99e841b8e1d46b48351bfabbb2c1f2b84ceb56a8"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-seed20260930-20000/timeout-context69/results.json",
+      "sha256": "4ebcbdc8d39e8da3758e369dbe3b34bd9be3db3483348837d06bd1e247695955"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-seed20260930-20000/primitive4/results.json",
+      "sha256": "0168e29edb7d58628bd1785884f4803bbe93a9e95bf961835b239f24071f68b2"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-seed20260930-20000/primitive5/results.json",
+      "sha256": "914e114820593d9245bbe70b69a7c84a18d01cc6731271ba92a78beb07276825"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-seed20260930-20000/primitive-restored/results.json",
+      "sha256": "06d998e24a1250e2d53f43a58e07f8428ae4a7b1091be0fed8ce87e97fdf5618"
+    }
+  ],
+  "cases_sha256": "8402669bf8a2cbef4a5635106f622b0f18a5bfddc1e571665de81e20f8e3881c",
+  "resolved_failures": 31,
+  "limitation": "Cumulative evidence across builds and attempts; not an uninterrupted same-build run."
+}
