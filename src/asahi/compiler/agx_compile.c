@@ -5295,6 +5295,7 @@ agx3_sink_vertex_outputs(agx_context *ctx)
    }
 
    agx_instr *stores[AGX3_MAX_VERTEX_OUTPUTS] = {0}, *stop = NULL;
+   bool saw_store = false;
    agx_foreach_instr_in_block(output_block, I) {
       if (stop)
          return false;
@@ -5310,17 +5311,18 @@ agx3_sink_vertex_outputs(agx_context *ctx)
              stores[I->src[0].value])
             return false;
          stores[I->src[0].value] = I;
+         saw_store = true;
          break;
       }
       case AGX_OPCODE_GET_SR:
-         if (I->sr != AGX_SR_VERTEX_ID && I->sr != AGX_SR_INSTANCE_ID)
+         if (saw_store && I->sr != AGX_SR_VERTEX_ID && I->sr != AGX_SR_INSTANCE_ID)
             return false;
          break;
       default:
          /* Pure SSA producers may move relative to vertex writeout. Their
           * actual encodings remain validated by the normal compiler path;
           * side effects and control flow require a separate ordering proof. */
-         if (!agx_opcodes_info[I->op].can_eliminate)
+         if (saw_store && !agx_opcodes_info[I->op].can_eliminate)
             return false;
          break;
       }

@@ -1,0 +1,64 @@
+{
+  "command": [
+    "python3",
+    "/root/cts-sample.py",
+    "batch",
+    "--guard-output",
+    "/root/asahi-evidence/20260914T000310583679Z-cts-seed22-exports-v1",
+    "--binary",
+    "/root/cts-1.0.2.6/deqp-vk-scaled-border-reference",
+    "--cases",
+    "/root/cts-1.0.2.6/failures.txt",
+    "--start",
+    "1",
+    "--count",
+    "4",
+    "--jobs",
+    "4",
+    "--capture-success"
+  ],
+  "seconds": 40,
+  "boot_id": "db7464b3-1a5b-4c4e-8d48-b2e8accb1152",
+  "watchdog": {
+    "device": "/dev/watchdog0",
+    "identity": "Apple SoC Watchdog",
+    "timeout_seconds": 60,
+    "initial_timeleft_seconds": 59,
+    "periodic_keepalive": false,
+    "armed": true,
+    "ssh_broker_lease": true
+  },
+  "returncode": 0,
+  "thermal": {
+    "startup_limit_mc": 65000,
+    "stop_limit_mc": 75000,
+    "interval_seconds": 0.5,
+    "samples": 6,
+    "sync_interval_seconds": 5,
+    "peak_temperatures_mc": {
+      "PMP aggregate die hotspot": 57750,
+      "Ta000m": 55750,
+      "Te000m": 55000,
+      "Te001m": 53250,
+      "Tp000m": 57750,
+      "Tp001m": 53500
+    },
+    "failure": null,
+    "dedicated_gpu_sensor_verified": false,
+    "log": "temperatures.jsonl",
+    "cpu_frequency_caps": [
+      {
+        "policy": "policy0",
+        "old_min_khz": 912000,
+        "old_max_khz": 1800000,
+        "max_khz": 1800000
+      },
+      {
+        "policy": "policy1",
+        "old_min_khz": 900000,
+        "old_max_khz": 1860000,
+        "max_khz": 1860000
+      }
+    ]
+  }
+}

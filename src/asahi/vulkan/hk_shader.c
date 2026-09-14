@@ -2076,7 +2076,10 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
        shader->b.info.stage == MESA_SHADER_VERTEX && hw) {
       const struct hk_agx3_g17p_vertex_compile_info compiler_info = {
          .hardware_vertex = shader->b.info.stage == MESA_SHADER_VERTEX,
-         .position_only = shader->b.info.outputs == VARYING_BIT_POS,
+         /* Rasterizer-discard TES may export no values. UVS still reserves
+          * the four position words; its layout is the position-only layout
+          * even when those words are undefined and never rasterized. */
+         .position_only = (shader->b.info.outputs & ~VARYING_BIT_POS) == 0,
          .has_preamble = shader->b.info.has_preamble,
          .nr_preamble_gprs = shader->b.info.nr_preamble_gprs,
          .preamble_scratch_size = shader->b.info.preamble_scratch_size,

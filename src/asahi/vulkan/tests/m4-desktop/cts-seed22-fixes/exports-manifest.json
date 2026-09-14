@@ -1,0 +1,36 @@
+{
+  "id": "20260914T000310583679Z-cts-seed22-exports-v1",
+  "hypothesis": "Qualify signed MRT export and side-effecting/no-output TES vertex layouts",
+  "command": [
+    "python3",
+    "/root/cts-sample.py",
+    "batch",
+    "--guard-output",
+    "/root/asahi-evidence/20260914T000310583679Z-cts-seed22-exports-v1",
+    "--binary",
+    "/root/cts-1.0.2.6/deqp-vk-scaled-border-reference",
+    "--cases",
+    "/root/cts-1.0.2.6/failures.txt",
+    "--start",
+    "1",
+    "--count",
+    "4",
+    "--jobs",
+    "4",
+    "--capture-success"
+  ],
+  "expected_success": "^CTS_BATCH_COMPLETE:",
+  "seconds": 40,
+  "sources": {
+    "mesa": {
+      "head": "139831bf143e5b78decf7f0c77c7df66114e3fb0",
+      "status": " M src/asahi/compiler/agx_compile.c\n M src/asahi/lib/agx_bg_eot.c\n M src/asahi/vulkan/hk_shader.c\n M src/asahi/vulkan/tests/m4-desktop/asahi-session.py\n M src/asahi/vulkan/tests/m4-desktop/desktop-launch.py\n M src/asahi/vulkan/tests/m4-desktop/vulkan-trim-host.py\n",
+      "patch_sha256": "a9c5e8ad82610f8359bb80b1917cd402a23bbacf6a6f2c5590346b311591b078"
+    },
+    "kernel": {
+      "head": "fba91e5d957746bfb3560b3bfce1fa793cad6336",
+      "status": "",
+      "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

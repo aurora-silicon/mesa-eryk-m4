@@ -1,0 +1,78 @@
+[
+  {
+    "index": 1,
+    "case": "dEQP-VK.renderpass.dedicated_allocation.attachment_allocation.roll.27",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-scaled-border-reference",
+      "--deqp-case=dEQP-VK.renderpass.dedicated_allocation.attachment_allocation.roll.27",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T000310583679Z-cts-seed22-exports-v1/cts/001/result.qpa"
+    ],
+    "boot_id": "db7464b3-1a5b-4c4e-8d48-b2e8accb1152",
+    "status": "Pass",
+    "started_unix": 1789344191.8306684,
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.2078298460000383,
+    "finished_unix": 1789344192.0445707,
+    "pid": 1350
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.tessellation.invariance.tess_coord_component_range.quads_fractional_odd_spacing_cw",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-scaled-border-reference",
+      "--deqp-case=dEQP-VK.tessellation.invariance.tess_coord_component_range.quads_fractional_odd_spacing_cw",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T000310583679Z-cts-seed22-exports-v1/cts/002/result.qpa"
+    ],
+    "boot_id": "db7464b3-1a5b-4c4e-8d48-b2e8accb1152",
+    "status": "Pass",
+    "started_unix": 1789344191.8368027,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 1.7551878610000244,
+    "finished_unix": 1789344193.5976496,
+    "pid": 1351
+  },
+  {
+    "index": 3,
+    "case": "dEQP-VK.glsl.texture_gather.basic.cube.rgba8ui.no_corners.size_pot.mirrored_repeat_clamp_to_edge",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-scaled-border-reference",
+      "--deqp-case=dEQP-VK.glsl.texture_gather.basic.cube.rgba8ui.no_corners.size_pot.mirrored_repeat_clamp_to_edge",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T000310583679Z-cts-seed22-exports-v1/cts/003/result.qpa"
+    ],
+    "boot_id": "db7464b3-1a5b-4c4e-8d48-b2e8accb1152",
+    "status": "Fail",
+    "started_unix": 1789344191.8426275,
+    "message": "vk.createGraphicsPipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:38",
+    "returncode": 0,
+    "seconds": 0.11535670600000003,
+    "finished_unix": 1789344191.9636478,
+    "pid": 1352
+  },
+  {
+    "index": 4,
+    "case": "dEQP-VK.tessellation.invariance.outer_edge_index_independence.triangles_equal_spacing_cw_point_mode",
+    "argv": [
+      "/root/cts-1.0.2.6/deqp-vk-scaled-border-reference",
+      "--deqp-case=dEQP-VK.tessellation.invariance.outer_edge_index_independence.triangles_equal_spacing_cw_point_mode",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T000310583679Z-cts-seed22-exports-v1/cts/004/result.qpa"
+    ],
+    "boot_id": "db7464b3-1a5b-4c4e-8d48-b2e8accb1152",
+    "status": "Pass",
+    "started_unix": 1789344191.8484387,
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 2.419400210000049,
+    "finished_unix": 1789344194.2738295,
+    "pid": 1353
+  }
+]

@@ -397,6 +397,15 @@ agx_build_end_of_tile_shader(struct agx_bg_eot_cache *cache,
    if (agx_native_graphics(cache->dev)) {
       memcpy(compiler_key.native_eot_formats, key->tib.logical_format,
              sizeof(compiler_key.native_eot_formats));
+      /* G16G's signed RGBA16 export shares the unsigned I16 builtin. This
+       * equivalence applies to every MRT, not just the single-target key.
+       * Keep G17P's distinct signed conversion program separate. */
+      if (cache->dev->chip == AGX_CHIP_G16G) {
+         for (unsigned rt = 0; rt < ARRAY_SIZE(compiler_key.native_eot_formats); ++rt) {
+            if (compiler_key.native_eot_formats[rt] == PIPE_FORMAT_R16G16B16A16_SINT)
+               compiler_key.native_eot_formats[rt] = PIPE_FORMAT_R16G16B16A16_UINT;
+         }
+      }
       switch (key->tib.logical_format[0]) {
       case PIPE_FORMAT_R32_FLOAT:
       case PIPE_FORMAT_R32_UINT:
