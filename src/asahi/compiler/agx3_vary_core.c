@@ -15,19 +15,21 @@ is_b(enum agx_isa_encoding e)
    return e == AGX_ISA_ENCODING_AGX3B;
 }
 
-static bool
-agx3_vary_interp_mode(enum agx_isa_encoding enc, uint16_t dest,
+bool
+agx3_vary_interp_coords(enum agx_isa_encoding enc, uint16_t dest,
                     uint16_t coef_index, bool perspective,
                     enum agx3_vary_location location, bool first, bool projective_rhw,
+                    uint16_t centroid_coord,
                     uint8_t out[AGX3_VARY_MAX_LENGTH], uint8_t *len)
 {
    if ((enc != AGX_ISA_ENCODING_AGX3B &&
         enc != AGX_ISA_ENCODING_AGX3C) ||
        (first && enc != AGX_ISA_ENCODING_AGX3B) ||
        (projective_rhw && (enc != AGX_ISA_ENCODING_AGX3B ||
-                           location != AGX3_VARY_CENTER || !perspective ||
+                           !perspective ||
                            coef_index > 0x7f)) ||
        (dest & 1) != 0 || dest >= 256 ||
+       (centroid_coord & 1) || centroid_coord >= 256 ||
        (location != AGX3_VARY_CENTER && location != AGX3_VARY_CENTROID))
       return false;
    const struct agx3_field_kv base_b[] = {KV(9, 2), KV(10, 2), KV(25, 6),
@@ -51,7 +53,7 @@ agx3_vary_interp_mode(enum agx_isa_encoding enc, uint16_t dest,
       ov[n++] = (struct agx3_field_kv)KV(39, 2);
       ov[n++] = (struct agx3_field_kv)KV(41, 1);
       ov[n++] =
-         (struct agx3_field_kv)KV(32, perspective ? 0 : 6);
+         (struct agx3_field_kv)KV(32, enc == AGX_ISA_ENCODING_AGX3B ? centroid_coord : (perspective ? 0 : 6));
    }
    if (projective_rhw)
       ov[n++] = (struct agx3_field_kv)KV(54, 1);
@@ -67,8 +69,18 @@ agx3_vary_interp_at_start(enum agx_isa_encoding enc, uint16_t dest,
                          enum agx3_vary_location location, bool first,
                          uint8_t out[AGX3_VARY_MAX_LENGTH], uint8_t *len)
 {
-   return agx3_vary_interp_mode(enc, dest, coef_index, perspective, location,
-                               first, false, out, len);
+   return agx3_vary_interp_coords(enc, dest, coef_index, perspective, location,
+                               first, false, 6, out, len);
+}
+
+bool
+agx3_vary_projective_rhw_at(enum agx_isa_encoding enc, uint16_t dest,
+                            uint16_t coef_index, enum agx3_vary_location location,
+                            bool first, uint8_t out[AGX3_VARY_MAX_LENGTH],
+                            uint8_t *len)
+{
+   return agx3_vary_interp_coords(enc, dest, coef_index, true, location,
+                               first, true, 6, out, len);
 }
 
 bool
@@ -76,8 +88,8 @@ agx3_vary_projective_rhw(enum agx_isa_encoding enc, uint16_t dest,
                          uint16_t coef_index, bool first,
                          uint8_t out[AGX3_VARY_MAX_LENGTH], uint8_t *len)
 {
-   return agx3_vary_interp_mode(enc, dest, coef_index, true, AGX3_VARY_CENTER,
-                               first, true, out, len);
+   return agx3_vary_interp_coords(enc, dest, coef_index, true, AGX3_VARY_CENTER,
+                               first, true, 6, out, len);
 }
 
 bool
@@ -181,4 +193,26 @@ agx3_vary_uvsw_indexed(enum agx_isa_encoding enc, uint16_t value,
       if (wait_mask & (1u<<i))
          ov[n++] = (struct agx3_field_kv)KV(30+i,1);
    return agx3_bind_compose(enc,"uvsw",0,base,3,ov,n,out,len);
+}
+
+/* Native G16G centroid float4: coverage half0 -> coordinate r3,
+ * af14540603000a01, after the SR39 load on slot1. */
+bool
+agx3_vary_centroid_coords(enum agx_isa_encoding enc, uint16_t dest,
+                          uint16_t coverage, bool discard, uint16_t wait_mask,
+                          uint8_t out[AGX3_VARY_MAX_LENGTH], uint8_t *len)
+{
+   if (enc != AGX_ISA_ENCODING_AGX3B || (dest & 1) || dest >= 256 ||
+       coverage >= 256 || (wait_mask & ~0x3f))
+      return false;
+   const struct agx3_field_kv base[] = {
+      KV(9,2), KV(10,2), KV(11,1), KV(2,dest),
+      KV(23,2), KV(24,1), KV(16,coverage), KV(27,discard), KV(38,1),
+   };
+   struct agx3_field_kv waits[6];
+   unsigned n = 0;
+   for (unsigned i=0;i<6;++i)
+      if (wait_mask & (1u << i))
+         waits[n++] = (struct agx3_field_kv)KV(30+i,1);
+   return agx3_bind_compose(enc, "itrcoords", 0, base, 9, waits, n, out, len);
 }

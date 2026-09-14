@@ -32,6 +32,24 @@ int main(void){
          fail++;
       else pass++;
 
+      /* Native G16G centroid-perspective fragment, AIR-NT 32023.883.
+       * RHW at byte80 uses f54; the ordinary coefficient at byte100 does
+       * not. Both use the centroid source selector f32=6. */
+      const uint8_t coords[] = {0xaf,0x14,0x54,6,3,0,0x0a,1};
+      if (!agx3_vary_centroid_coords(AGX_ISA_ENCODING_AGX3B,6,0,true,1,out,&len) ||
+          len != sizeof(coords) || memcmp(out,coords,len)) fail++;
+      else pass++;
+      const uint8_t rhw_centroid[] = {0x2f,5,0x54,0,3,0,3,2,9,0};
+      const uint8_t value_centroid[] = {0x2f,5,0x54,0,3,2,3,2,8,0};
+      if (!agx3_vary_projective_rhw_at(AGX_ISA_ENCODING_AGX3B,0,0,
+               AGX3_VARY_CENTROID,false,out,&len) ||
+          len != sizeof(rhw_centroid) || memcmp(out,rhw_centroid,len)) fail++;
+      else pass++;
+      if (!agx3_vary_interp_at(AGX_ISA_ENCODING_AGX3B,0,1,true,
+               AGX3_VARY_CENTROID,out,&len) ||
+          len != sizeof(value_centroid) || memcmp(out,value_centroid,len)) fail++;
+      else pass++;
+
       if(agx3_vary_interp(AGX_ISA_ENCODING_AGX3B,1,0,false,out,&len)) fail++; else pass++;
       if(agx3_vary_ldcf(AGX_ISA_ENCODING_AGX3C,0,0,9,out,&len)) fail++; else pass++;
       if(agx3_vary_uvsw(AGX_ISA_ENCODING_AGX3B,0,0,0,false,0,out,&len)) fail++; else pass++;

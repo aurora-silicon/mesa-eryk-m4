@@ -412,6 +412,9 @@ op("interp_agx3", None, srcs = 2,
 # merging it with ordinary position.w, whose f32interp f54 must remain clear.
 op("rhw_interp_agx3", None, srcs = 2, imms = [INTERPOLATION])
 
+# Compute the centroid coordinate pair from the incoming coverage word.
+op("centroid_coords_agx3", None, srcs = 1)
+
 # G17P's native projective multiply carries the originating coefficient index.
 # Keep that provenance through SSA/RA; an ordinary fmul cannot encode it.
 op("persp_mul_agx3", None, srcs = 2, imms = [IMM], is_float = True)

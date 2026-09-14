@@ -704,21 +704,27 @@ agx3_emit_interp(struct util_dynarray *emission, enum agx_isa_encoding enc,
 {
    if (wait_mask != 0 || I->nr_dests != 1 || I->nr_srcs != 2 ||
        !agx3_vary_reg32(I->dest[0]) ||
-       I->src[0].type != AGX_INDEX_IMMEDIATE ||
-       I->src[1].type != AGX_INDEX_IMMEDIATE || I->src[1].value != 0)
+       I->src[0].type != AGX_INDEX_IMMEDIATE)
       return false;
 
    enum agx3_vary_location location;
    if (!agx3_map_vary_location(I->interpolation, &location))
       return false;
 
+   const bool centroid = enc == AGX_ISA_ENCODING_AGX3B &&
+                         location == AGX3_VARY_CENTROID;
+   if (centroid ? !agx3_vary_reg32(I->src[1]) :
+       (I->src[1].type != AGX_INDEX_IMMEDIATE || I->src[1].value != 0))
+      return false;
+   const uint16_t coord = centroid ? I->src[1].value : 6;
+
    uint8_t bytes[AGX3_VARY_MAX_LENGTH];
    uint8_t len = 0;
    if (I->op == AGX_OPCODE_RHW_INTERP_AGX3) {
-      if (I->saturate || location != AGX3_VARY_CENTER)
+      if (I->saturate)
          return false;
-      return agx3_vary_projective_rhw(enc, I->dest[0].value,
-                                     I->src[0].value, first, bytes, &len) &&
+      return agx3_vary_interp_coords(enc, I->dest[0].value,
+                                        I->src[0].value, true, location, first, true, coord, bytes, &len) &&
              agx3_append(emission, bytes, len);
    }
    /* The native G17P center_no_perspective scalar/vector programs use
@@ -728,8 +734,8 @@ agx3_emit_interp(struct util_dynarray *emission, enum agx_isa_encoding enc,
    const bool native_mode = I->perspective ||
       (fragment && enc == AGX_ISA_ENCODING_AGX3B &&
        location == AGX3_VARY_CENTER);
-   return agx3_vary_interp_at_start(enc, I->dest[0].value, I->src[0].value,
-                                    native_mode, location, first, bytes, &len) &&
+   return agx3_vary_interp_coords(enc, I->dest[0].value, I->src[0].value,
+                                  native_mode, location, first, false, coord, bytes, &len) &&
           agx3_append(emission, bytes, len);
 }
 
@@ -4821,6 +4827,18 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                if (other->op == AGX_OPCODE_ST_VARY)
                   AGX3_REFUSE(I);
             }
+            continue;
+         }
+
+         if (I->op == AGX_OPCODE_CENTROID_COORDS_AGX3) {
+            uint8_t bytes[AGX3_VARY_MAX_LENGTH], len;
+            if (I->nr_dests != 1 || I->nr_srcs != 1 ||
+                !agx3_vary_reg32(I->dest[0]) ||
+                !agx3_tex_plain_reg(I->src[0]) || I->src[0].size != AGX_SIZE_16 ||
+                !agx3_vary_centroid_coords(enc, I->dest[0].value,
+                   I->src[0].value, I->src[0].discard, wait, bytes, &len) ||
+                !agx3_append(emission, bytes, len))
+               AGX3_REFUSE(I);
             continue;
          }
 

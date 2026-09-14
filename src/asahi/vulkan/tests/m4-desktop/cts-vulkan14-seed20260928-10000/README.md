@@ -389,3 +389,22 @@ an early comparison failure; that diagnostic changes no pass thresholds.
 Manifest and full patch are retained, binary SHA256:
 `fbd7690324772743d9587e816ce4325be947c479362bc36507e451c19310218a`.
 Cumulative: 4644 Pass / 14 Fail / 5342 NotSupported, 65 resolved.
+
+## Centroid interpolation coordinates
+
+Centroid interpolation used an uninitialized register selector. Read the
+original SR39 coverage word and emit native itrcoords into an SSA coordinate
+value; every RHW/channel interpolant keeps that operand live through register
+allocation. Native projective RHW f54 also applies to centroid interpolation.
+The ordinary and RHW codecs independently reproduce the native bytes, while
+the AGX3C witness remains intact.
+
+Independent G16G AIR-NT32023.883 reference: build/cts28-native/centroid-1x,
+text-1200.bin main64: SR39 load at64, itrcoords at72, RHW at80, channel at100.
+The source is retained here. Host varying codec tests and the saved fragment
+compiler replay pass. Original hardware CTS Pass:
+`20260914T155317619890Z-cts28-centroid-coordinates`, peak60.25 C,
+Mesa library SHA256 `2dcb398ce6d6f61f6a16476e3b931d09f8369c0f05e584037ad6fbc54eab12a3`.
+Earlier RHW-only attempt still failed; retained all-reference images showed
+centroid had only12 colors versus4442 for the smooth reference. No thresholds
+were relaxed. Cumulative: 4645 Pass / 13 Fail / 5342 NotSupported, 66 resolved.

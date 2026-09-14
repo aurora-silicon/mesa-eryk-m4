@@ -1,0 +1,26 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.draw.dynamic_rendering.primary_cmd_buff.multiple_interpolation.separate.with_sample_decoration.1_sample",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed28-signed-corrected",
+      "--deqp-case=dEQP-VK.draw.dynamic_rendering.primary_cmd_buff.multiple_interpolation.separate.with_sample_decoration.1_sample",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T155317619890Z-cts28-centroid-coordinates/cts/000/result.qpa"
+    ],
+    "boot_id": "45e50e35-940c-46ae-beca-a836c3dd7a7b",
+    "status": "Pass",
+    "started_unix": 1789401198.8866308,
+    "eligibility": {
+      "case": "dEQP-VK.draw.dynamic_rendering.primary_cmd_buff.multiple_interpolation.separate.with_sample_decoration.1_sample",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Results differ and references match",
+    "returncode": 0,
+    "seconds": 0.8670426680000105,
+    "finished_unix": 1789401199.7587981,
+    "pid": 1091
+  }
+]

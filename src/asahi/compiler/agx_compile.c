@@ -646,6 +646,16 @@ agx_emit_load_vary_agx3(agx_builder *b, agx_index dest, agx_index cf,
         interp != AGX_INTERPOLATION_CENTROID))
       return false;
 
+   if (interp == AGX_INTERPOLATION_CENTROID &&
+       b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B) {
+      /* Native itrcoords takes the original, unshifted coverage word and
+       * produces coordinates consumed by every centroid interpolant. Keep
+       * the coordinate value in SSA so it survives RHW and channel loads. */
+      agx_index coverage = agx_get_sr(b, 16, AGX_SR_INPUT_SAMPLE_MASK);
+      sample_index = agx_temp(b->shader, AGX_SIZE_32);
+      agx_centroid_coords_agx3_to(b, sample_index, coverage);
+   }
+
    agx_index reciprocal_w = agx_null();
    if (perspective) {
       agx_index rhw_cf = agx_get_cf(b->shader, VARYING_SLOT_POS, 3);
@@ -653,8 +663,7 @@ agx_emit_load_vary_agx3(agx_builder *b, agx_index dest, agx_index cf,
          return false;
 
       agx_index rhw = agx_temp(b->shader, AGX_SIZE_32);
-      if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
-          interp == AGX_INTERPOLATION_CENTER)
+      if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B)
          agx_rhw_interp_agx3_to(b, rhw, rhw_cf, sample_index, interp);
       else
          agx_interp_agx3_to(b, rhw, rhw_cf, sample_index, interp, true);

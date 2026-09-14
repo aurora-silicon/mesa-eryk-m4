@@ -51,6 +51,20 @@ bool agx3_vary_interp_at(enum agx_isa_encoding enc, uint16_t dest,
  * Native pure smooth and smooth+position.z witnesses set f54(bit50); ordinary
  * position.w/output/arithmetic witnesses clear it. Numerical semantics beyond
  * that use domain are not established. `first` independently controls f63. */
+bool agx3_vary_interp_coords(enum agx_isa_encoding enc, uint16_t dest,
+                              uint16_t coef_index, bool perspective,
+                              enum agx3_vary_location location, bool first,
+                              bool projective_rhw, uint16_t centroid_coord,
+                              uint8_t out[AGX3_VARY_MAX_LENGTH], uint8_t *len);
+bool agx3_vary_centroid_coords(enum agx_isa_encoding enc, uint16_t dest,
+                               uint16_t coverage, bool discard, uint16_t wait_mask,
+                               uint8_t out[AGX3_VARY_MAX_LENGTH], uint8_t *len);
+
+bool agx3_vary_projective_rhw_at(enum agx_isa_encoding enc, uint16_t dest,
+                                 uint16_t coef_index,
+                                 enum agx3_vary_location location, bool first,
+                                 uint8_t out[AGX3_VARY_MAX_LENGTH], uint8_t *len);
+
 bool agx3_vary_projective_rhw(enum agx_isa_encoding enc, uint16_t dest,
                              uint16_t coef_index, bool first,
                              uint8_t out[AGX3_VARY_MAX_LENGTH], uint8_t *len);
