@@ -1,9 +1,53 @@
-# Vulkan 1.4 random sample, seed20260929
+# Vulkan 1.4 random sample, seed 20260929
+
+## Completed cumulative results
+
+| Outcome | Cases | Rate |
+| --- | ---: | ---: |
+| Pass | 4,527 | 45.27% |
+| Optional NotSupported | 5,473 | 54.73% |
+| Fail / Crash / Timeout / Unrun | 0 | 0% |
+| NotSupportedButShouldBeSupported / unreviewed skip | 0 | 0% |
+
+All 26 original failures and both userspace crashes have passing targeted
+results. The frozen list was not replaced with easier cases. The ledger uses
+latest evidence per case across builds and attempts; this is **not a full
+same-build rerun or a conformance claim**. No broad regression was run after
+the fixes. One crash and six comparison failures required separately recorded
+CTS corrections; the other crash and 20 failures were fixed in Mesa.
+
+The three broad segments used 20 workers and took **273.331 seconds (4m33s)**
+of runner time, or 286.322 seconds including their preparation/guard overhead.
+Two userspace crashes split the run. Those totals exclude diagnosis, rebuilds,
+and targeted replays. Peak temperature in the broad segments was 64 C; hardware
+runs used the 60-second watchdog lease and mandatory thermal guard.
+
+`final-ledger-summary.json` records all input paths/hashes and 28 resolved cases.
+`final-ledger-results.json.gz` retains per-case attempt history. The fresh device
+profile, explicit skip-review rules, registry core requirements, and audited
+results are retained as compressed JSON alongside `final-audit-summary.json`.
+The review checks source-level requirement gates, optional format/usage/tiling
+combinations and limits, not just extension-name substrings. No unconditional
+Vulkan 1.4 core feature gaps were found. Surface timing support is reviewed
+separately from the device present-timing features. Optional 8x+ multisampling,
+sparse residency, integer linear filtering and unsupported depth/stencil usage
+on color formats are not mandatory support gaps. This audit covers this sample;
+it is not a certification of every advertised operation.
+
+Final installed Mesa library SHA256:
+`07895e395b7ea00fbe99237e51e7caf410ec2c502841c1818a815d6228e6bea1`.
+Final diagnostic CTS executable:
+`/root/cts-1.4.6.2/deqp-vk-seed29-ycbcr-midpoint`, built using the cumulative
+`cts-ycbcr-midpoint.patch` and retained build manifest. The original CTS source
+checkout remains unchanged. Patch stages and native compiler witnesses below
+make test-harness corrections distinguishable from driver fixes.
+
+## Frozen sample and initial crash
 
 Frozen broad Linux-only sample:10000 cases out of3206030 eligible entries in
 CTS1.4.6.2, selected with Python random.Random(20260929).sample. Case-list SHA256
 5bf35cce436384ed9cad34d0f90110b814a6e57470e6cc1d3987335b28fa2aca.
-Optional skips are retained separately; requirements still need review.
+Optional skips are retained separately; the completed review is recorded below.
 
 Initial20-worker run stopped after a userspace SIGSEGV:355Pass,294NotSupported,
 2Fail,1Crash,29Interrupted,9319Unrun. Runner time20.132s; peak62.75C, watchdog60s.
@@ -21,7 +65,7 @@ CTS corrections. Source baseline:f6a29701220f34dd1407513bfe80d74ca7b392ce.
 Build using tools/cts-patched-build.py with reference/vk-gl-cts-1.4.6.2 and
 build/cts-1.4-arm64. The build manifest records executable/patch hashes and
 restoration of original source files. This is an adapted diagnostic CTS build,
-not an unmodified conformance submission. Remaining cases/fixes are in progress.
+not an unmodified conformance submission. See the final cumulative results above.
 
 ## Split depth/stencil copies and sparse queries
 
@@ -40,20 +84,20 @@ All three original cases pass with installed Mesa SHA256
 `16ae1f0c91889e3e4bf4deb8c9157ae83c793f504f12045681cf48e65e0081ef`,
 0.609 seconds runner time, peak 58.25 C, watchdog guard pass.
 Evidence: `20260914T180951615594Z-cts29-depth-sparse-fixed`.
-The full frozen sample remains incomplete; no broad regression was run.
+This was an intermediate checkpoint; the sample is now complete. No broad regression was run.
 
 ## Native sampling, storage descriptors, and query tuples
 
 Run3 completed the remaining 5,208 cases in 145.088 runner seconds, peak 63 C.
 The cumulative ledger after the crash fixes had 4,503 Pass, 5,473 NotSupported,
-24 Fail, zero Crash/Timeout/unrun. Skips still require capability review.
+24 Fail, zero Crash/Timeout/unrun. The final capability review is recorded above.
 
 Three original non-array shadow tests now pass after extending register LOD,
 bias and packed offsets through native descriptor lowering and the encoder.
 Byte-exact texture unit fixtures match the retained Apple applegpu_g16g compiler
 witnesses under `native-shadow/`. Host texture core: 6,327 checks pass.
-The array-shadow vertex case now compiles but still has an image mismatch;
-compilation alone is not counted as a pass.
+At that checkpoint the array-shadow vertex case compiled but still had an image
+mismatch. Its later native-offset fix and passing evidence are recorded below.
 
 Five transform-feedback query-copy cases pass: copy every counter in the tuple
 and append availability only after the final result. Copies remain GPU commands.

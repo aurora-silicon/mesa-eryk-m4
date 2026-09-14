@@ -1,0 +1,80 @@
+{
+  "selected": 10000,
+  "counts": {
+    "NotSupported": 5473,
+    "Pass": 4527
+  },
+  "inputs": [
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-seed20260929-10000/run1/results.json",
+      "sha256": "1477f2312fcf3667307a403340c430f4fc46b7e96334928d87a8fc814f4af033"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-seed20260929-10000/crash-fix2/results.json",
+      "sha256": "a7833d713cf348eb513a3b8cc374660f43c995d9989e5c30f4b99223ab8cf35d"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-seed20260929-10000/run2/results.json",
+      "sha256": "f5af413e11283a0e088c0dc2f1c5be3b447199c0d4a1beecca745e6630843b4a"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-seed20260929-10000/depth-sparse-fix1/results.json",
+      "sha256": "aad2ff214074f626d6c72e1b4082e138fed100163a7018d0c73845da0d24096e"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-seed20260929-10000/run3/results.json",
+      "sha256": "51c30b17dc3a992b5dc67265e6fa3d87f0b8a5c9606cc4e24ebc14ef62d8b7a3"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-seed20260929-10000/shadow-fix1/results.json",
+      "sha256": "9474d87b82c4c21d679cd8978436f38a0fb3bf1f97b7554588c4c5f76045939d"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-seed20260929-10000/shadow-fix2/results.json",
+      "sha256": "ec0e0e01f9998da9b428c8b5169b6a6f2c26c0ffc83770d50fd0280784ee6054"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-seed20260929-10000/query-storage-fix1/results.json",
+      "sha256": "633d6ed8c6dc6380e9abb95b4c458ce36779796da0cdc872188e8baebcd2c581"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-seed20260929-10000/storage-half-fix3/results.json",
+      "sha256": "79882fdc62a32c3dc0296f58fecfb9f7b0344b2fab097791e96dca9aaebd2198"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-seed20260929-10000/scaled-rgb9-fix1/results.json",
+      "sha256": "d005da76cf5e997741dcfc19d6455b204977a29e89f7281e74dee03a3c23ca56"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-seed20260929-10000/array-gradient-fix1/results.json",
+      "sha256": "580abcd34adc3232a3ed6cf6751d9e4b4628e2ca7fff50af7b92a5ae902f1194"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-seed20260929-10000/memory-capture2/results.json",
+      "sha256": "7e57a3ac7161ad912f77625545a0508222756ce2e7f021a1adcc3c3c09c014ed"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-seed20260929-10000/ycbcr-fix1/results.json",
+      "sha256": "9b9753d1f2f162d1a7fc20095fe8043c76c05aefb2e87684375ffd4a893dec97"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-seed20260929-10000/memory-repeat-0-result.json",
+      "sha256": "ef0fead03fec6abafafa15aa966d2d9a25955744e036fe021b8f82fbceb6feda"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-seed20260929-10000/memory-repeat-1-result.json",
+      "sha256": "4e7f46fcc9fc05ee96b63f0a6ccc683c457ca3a29ab02d2790022098be734dd1"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-seed20260929-10000/memory-repeat-2-result.json",
+      "sha256": "a7868d2e2d375151a0839360f508e3b77dcfe0de08eb4388b66a06e0b346f673"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-seed20260929-10000/memory-repeat-3-result.json",
+      "sha256": "c4ad5e3cd3390b84afb07e1b530389b977c79aa4b7a26a7bb430fd7b04cbf374"
+    }
+  ],
+  "cases_sha256": "5bf35cce436384ed9cad34d0f90110b814a6e57470e6cc1d3987335b28fa2aca",
+  "resolved_failures": 28,
+  "limitation": "Cumulative evidence across builds and attempts; not an uninterrupted same-build run."
+}
