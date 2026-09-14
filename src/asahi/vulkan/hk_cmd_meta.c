@@ -1756,6 +1756,19 @@ hk_CmdBlitImage2(VkCommandBuffer commandBuffer,
 
    struct hk_meta_save save;
    hk_meta_begin(cmd, &save, VK_PIPELINE_BIND_POINT_GRAPHICS);
+   /* Select the storage view independently of image dimensionality. RGB
+    * padding and scaled-to-integer attachment conversion also apply to the
+    * slices rendered by the common 3D blit implementation. */
+   VkFormat dst_format = dst_image->vk.format;
+   if (agx_native_graphics(&dev->dev)) {
+      enum pipe_format logical = hk_format_to_pipe_format(dst_format);
+      enum pipe_format physical = hk_padded_image_format(logical);
+      enum pipe_format scaled = hk_scaled_texture_format(physical);
+      if (scaled != PIPE_FORMAT_NONE)
+         physical = scaled;
+      if (physical != logical)
+         dst_format = vk_format_from_pipe_format(physical);
+   }
    if (agx_native_graphics(&dev->dev) &&
        src_image->vk.image_type != VK_IMAGE_TYPE_3D &&
        dst_image->vk.image_type != VK_IMAGE_TYPE_3D) {
@@ -1780,16 +1793,6 @@ hk_CmdBlitImage2(VkCommandBuffer commandBuffer,
             VkBlitImageInfo2 info = *pBlitImageInfo;
             info.regionCount = 1;
             info.pRegions = &one;
-            /* A padded RGB destination has RGBA physical texels. Render
-             * through an internal view of that storage; public RGB views
-             * still supply alpha one and buffer copies discard padding. */
-            enum pipe_format logical = hk_format_to_pipe_format(dst_image->vk.format);
-            enum pipe_format physical = hk_padded_image_format(logical);
-            enum pipe_format scaled = hk_scaled_texture_format(physical);
-            if (scaled != PIPE_FORMAT_NONE)
-               physical = scaled;
-            VkFormat dst_format = physical == logical ? dst_image->vk.format :
-               vk_format_from_pipe_format(physical);
             vk_meta_blit_image(&cmd->vk, &dev->meta,
                                &src_image->vk, src_image->vk.format,
                                info.srcImageLayout, &dst_image->vk, dst_format,
@@ -1802,7 +1805,12 @@ hk_CmdBlitImage2(VkCommandBuffer commandBuffer,
             break;
       }
    } else {
-      vk_meta_blit_image2(&cmd->vk, &dev->meta, pBlitImageInfo);
+      vk_meta_blit_image(&cmd->vk, &dev->meta, &src_image->vk,
+                         src_image->vk.format, pBlitImageInfo->srcImageLayout,
+                         &dst_image->vk, dst_format,
+                         pBlitImageInfo->dstImageLayout,
+                         pBlitImageInfo->regionCount, pBlitImageInfo->pRegions,
+                         pBlitImageInfo->filter);
    }
    hk_meta_end(cmd, &save, VK_PIPELINE_BIND_POINT_GRAPHICS);
 }

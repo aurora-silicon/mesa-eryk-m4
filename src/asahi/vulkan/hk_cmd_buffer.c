@@ -1183,7 +1183,9 @@ hk_g17p_graphics_uniform_ranges(
       if (cmd->state.gfx.draw_id_ptr) {
          ranges[count++] = (struct agx3_ioto_uniform_range){
             .start_halfs = vertex_prefix + AGX_ABI_VUNI_DRAW_ID(nr_attribs),
-            .size_halfs = 1,
+            /* DrawID is a 32-bit value (two uniform halves), also when
+             * the shader only consumes its low half after optimization. */
+            .size_halfs = 2,
             .address = cmd->state.gfx.draw_id_ptr,
          };
       }

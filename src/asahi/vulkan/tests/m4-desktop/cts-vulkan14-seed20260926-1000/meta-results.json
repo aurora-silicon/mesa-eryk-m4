@@ -1,0 +1,98 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.draw.renderpass.multi_draw.mosaic.indexed_packed.one_draw.stride_extra_12.2_instances_base_3.with_tess.single_view.offset_6",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.draw.renderpass.multi_draw.mosaic.indexed_packed.one_draw.stride_extra_12.2_instances_base_3.with_tess.single_view.offset_6",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T080148805379Z-cts26-meta/cts/000/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Pass",
+    "started_unix": 1789372910.0850842,
+    "eligibility": {
+      "case": "dEQP-VK.draw.renderpass.multi_draw.mosaic.indexed_packed.one_draw.stride_extra_12.2_instances_base_3.with_tess.single_view.offset_6",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.6324926679999407,
+    "finished_unix": 1789372910.7226858,
+    "pid": 3720
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.3d.b8g8r8_uscaled.b8g8r8_uscaled.general_general_nearest_stripes_x",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.3d.b8g8r8_uscaled.b8g8r8_uscaled.general_general_nearest_stripes_x",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T080148805379Z-cts26-meta/cts/001/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Pass",
+    "started_unix": 1789372910.0902545,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.3d.b8g8r8_uscaled.b8g8r8_uscaled.general_general_nearest_stripes_x",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.22337880100030816,
+    "finished_unix": 1789372910.3189101,
+    "pid": 3721
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.draw.renderpass.multi_draw.mosaic.indexed_mixed.one_draw.stride_zero.1_instance.vert_only.multiview.offset_6",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.draw.renderpass.multi_draw.mosaic.indexed_mixed.one_draw.stride_zero.1_instance.vert_only.multiview.offset_6",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T080148805379Z-cts26-meta/cts/002/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Pass",
+    "started_unix": 1789372910.0956135,
+    "eligibility": {
+      "case": "dEQP-VK.draw.renderpass.multi_draw.mosaic.indexed_mixed.one_draw.stride_zero.1_instance.vert_only.multiview.offset_6",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.3509117809999225,
+    "finished_unix": 1789372910.4526787,
+    "pid": 3722
+  },
+  {
+    "index": 3,
+    "case": "dEQP-VK.api.copy_and_blit.dedicated_allocation.blit_image.all_formats.color.3d.a8b8g8r8_uscaled_pack32.a8b8g8r8_uscaled_pack32.general_optimal_nearest",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.dedicated_allocation.blit_image.all_formats.color.3d.a8b8g8r8_uscaled_pack32.a8b8g8r8_uscaled_pack32.general_optimal_nearest",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T080148805379Z-cts26-meta/cts/003/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Pass",
+    "started_unix": 1789372910.101967,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.dedicated_allocation.blit_image.all_formats.color.3d.a8b8g8r8_uscaled_pack32.a8b8g8r8_uscaled_pack32.general_optimal_nearest",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.2270347869998659,
+    "finished_unix": 1789372910.3356473,
+    "pid": 3724
+  }
+]

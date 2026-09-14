@@ -40,3 +40,21 @@ and quad-broadcast encoding checks pass. Hardware evidence:
 Of the 30 remaining original failures, 12 now pass, 18 remain. Two multi-draw
 cases progress to command-buffer rejection. Peak 58.25 C; no crash or timeout.
 Total resolved so far: **29/47 original failures**, all on unmodified CTS.
+
+## DrawID and three-dimensional blits
+
+Upload the full 32-bit DrawID ABI slot (two uniform halves). This fixes both
+graphics uniform loading and the tessellation compute path. Select padded RGB
+and scaled integer destination views before choosing the 2D/3D blit path,
+reusing the existing common 3D raster blit and conversion shader.
+
+All four affected original cases Pass, peak 56.5 C. Evidence:
+`_provenance/experiments/20260914T080148805379Z-cts26-meta`.
+Total driver fixes: **33/47 original failures**.
+
+Nine additional scaled blits Pass with the previously retained CTS
+`scaled-blit.patch` correction (separate binary, original CTS unchanged),
+peak 56.75 C. Evidence:
+`_provenance/experiments/20260914T080012963601Z-cts26-scaled-blit-oracle`.
+Thus 42/47 are resolved: 33 Mesa fixes and nine identified CTS corrections.
+Five remain; skip audit is still pending.
