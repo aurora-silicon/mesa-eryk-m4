@@ -293,6 +293,7 @@ struct agx_fs_epilog_key {
    enum pipe_format blend_formats[8];
    uint8_t nr_samples;
    bool force_small_tile;
+   uint32_t max_bytes_per_tile;
    bool preserve_zero_mask;
    bool lower_srgb;
 };

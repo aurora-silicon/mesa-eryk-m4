@@ -54,6 +54,9 @@ struct agx_tilebuffer_layout {
    /* Selected tile size in pixels. Either 32*32, 32*16, or 16*16. */
    uint16_t tile_size;
 
+   /* Allocation capacity, retained when the sample count is deferred. */
+   uint32_t max_bytes_per_tile;
+
    /* USC word corresponding to this configuration of the tilebuffer */
    struct agx_usc_shared_packed usc;
 };
@@ -93,6 +96,12 @@ agx_tilebuffer_spills(struct agx_tilebuffer_layout *layout)
 struct agx_tilebuffer_layout
 agx_build_tilebuffer_layout(const enum pipe_format *formats, uint8_t nr_cbufs,
                             uint8_t nr_samples, bool layered);
+
+/* A zero limit retains the legacy G13 capacity. */
+struct agx_tilebuffer_layout
+agx_build_tilebuffer_layout_with_limit(const enum pipe_format *formats,
+                                     uint8_t nr_cbufs, uint8_t nr_samples,
+                                     bool layered, unsigned max_bytes_per_tile);
 
 void agx_tilebuffer_set_samples(struct agx_tilebuffer_layout *tib,
                                 unsigned nr_samples);

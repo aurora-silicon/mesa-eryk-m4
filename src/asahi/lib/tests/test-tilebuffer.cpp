@@ -181,3 +181,26 @@ TEST(Tilebuffer, Layouts)
       }
    }
 }
+
+TEST(Tilebuffer, NativeFullAllocation)
+{
+   const enum pipe_format formats[] = {
+      PIPE_FORMAT_R32G32_FLOAT, PIPE_FORMAT_R32G32_FLOAT,
+      PIPE_FORMAT_R32G32_FLOAT, PIPE_FORMAT_R32G32_FLOAT,
+   };
+   auto native = agx_build_tilebuffer_layout_with_limit(formats, 4, 4, true,
+                                                       32768);
+   ASSERT_FALSE(agx_tilebuffer_spills(&native));
+   ASSERT_EQ(32768u, agx_tilebuffer_total_size(&native));
+   ASSERT_EQ(256u, native.tile_size);
+
+   auto deferred = agx_build_tilebuffer_layout_with_limit(formats, 4, 0, true,
+                                                         32768);
+   agx_tilebuffer_set_samples(&deferred, 4);
+   ASSERT_FALSE(agx_tilebuffer_spills(&deferred));
+   ASSERT_EQ(32768u, agx_tilebuffer_total_size(&deferred));
+
+   auto legacy = agx_build_tilebuffer_layout(formats, 4, 4, true);
+   ASSERT_TRUE(legacy.spilled[3]);
+   ASSERT_EQ(24576u, agx_tilebuffer_total_size(&legacy));
+}

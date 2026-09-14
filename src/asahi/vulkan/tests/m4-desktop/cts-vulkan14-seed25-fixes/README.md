@@ -462,3 +462,19 @@ Tested library SHA256:
 `4bc807bc6a64e855bc001684769ddcc3a5adce1a5bbf4d892b48b9a162633fb1`.
 Running total: **88/91 failures resolved** (76 Mesa fixes, 12 CTS corrections),
 3 remaining. No broad regression campaign.
+
+## Native full 32 KiB tile allocation
+
+Parameterize tile capacity, retaining the legacy G13 32767-byte default.
+The native M4 path uses 32768 bytes, matching the retained SPECLM encoder
+witness. Carry capacity into deferred sample-count rebuilding and fragment
+epilogs so all allocation decisions agree. Four RG32F attachments with four
+samples now fit a 16x16 tile instead of unnecessarily spilling attachment3.
+
+The original six-layer RG32F resolve case Passes. A focused host check covers
+the exact boundary, deferred samples and unchanged legacy spill behavior.
+Peak56.75 C, no fault/reboot. Tested library:
+`1a1bc79b5c458ab1af1378c0d5d82f1f78df765b2c985916dae57248dcaf0bf3`.
+The accompanying cube/TCS case remains Fail and supplies a fresh shader capture.
+Running total: **89/91 failures resolved** (77 Mesa fixes, 12 CTS corrections),
+2 remaining. No broad regression campaign.

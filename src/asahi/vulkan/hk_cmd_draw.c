@@ -1040,8 +1040,11 @@ hk_CmdBeginRendering(VkCommandBuffer commandBuffer,
    const bool layered =
       !agx_native_graphics(&dev->dev) ||
       !hk_agx3_g17p_single_layer_rendering(render->view_mask, layer_count);
-   render->tilebuffer = agx_build_tilebuffer_layout(
-      formats, render->color_att_count, render->tilebuffer.nr_samples, layered);
+   /* Native SPECLM represents a full 32 KiB allocation. G13 retains its
+    * historical one-byte-short limit. Keep epilog allocation in sync. */
+   render->tilebuffer = agx_build_tilebuffer_layout_with_limit(
+      formats, render->color_att_count, render->tilebuffer.nr_samples, layered,
+      agx_native_graphics(&dev->dev) ? 32768 : 0);
 
    const VkRenderingAttachmentLocationInfoKHR ral_info = {
       .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_LOCATION_INFO_KHR,
@@ -4109,6 +4112,7 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
       key.epilog = (struct agx_fs_epilog_key){
          .link = fs->info.fs.epilog_key,
          .nr_samples = MAX2(dyn->ms.rasterization_samples, 1),
+         .max_bytes_per_tile = cmd->state.gfx.render.tilebuffer.max_bytes_per_tile,
          .lower_srgb = agx_native_graphics(&dev->dev),
          .blend.alpha_to_coverage = dyn->ms.alpha_to_coverage_enable,
          .blend.alpha_to_one = dyn->ms.alpha_to_one_enable,
