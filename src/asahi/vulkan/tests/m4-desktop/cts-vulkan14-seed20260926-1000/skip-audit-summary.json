@@ -1,0 +1,28 @@
+{
+  "counts": {
+    "NotSupported": 546,
+    "Pass": 405,
+    "Fail": 47,
+    "NotSupportedButShouldBeSupported": 2
+  },
+  "original_counts": {
+    "NotSupported": 548,
+    "Pass": 405,
+    "Fail": 47
+  },
+  "rates_percent": {
+    "NotSupported": 54.6,
+    "Pass": 40.5,
+    "Fail": 4.7,
+    "NotSupportedButShouldBeSupported": 0.2
+  },
+  "api_version": "1.4",
+  "unconditional_core_feature_gaps": [],
+  "inputs": {
+    "_provenance/experiments/20260914T074325312596Z-cts14-seed26-baseline/remote/cts/results.json": "238367958cc6cafacf59eab7511169bf087a3441adb6d3bbb40d67371c5be461",
+    "build/cts14-core-gaps/final-device-profile.json": "af27858513c6bd07b496122a2f03c35018d175565655cfafde3e5dec926cba67",
+    "mesa/m4-asahi/src/vulkan/registry/vk.xml": "80e7394d0e787d6ec78b67aa324add6f96129fdd042ba640cc336a5481a208ee",
+    "build/cts-vulkan14-seed20260926-1000/skip-review.json": "ed09e387bfa0b12b6f8a0c5a7d63adc58f11fa2dcbb0cc4e93de81ac7e32041b"
+  },
+  "coverage": "Registry inventory excludes conditional requirements, formats and limits. Case classification uses explicit reviews, not substring guesses."
+}

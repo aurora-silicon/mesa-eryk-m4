@@ -1,0 +1,19 @@
+{
+  "seed": 20260926,
+  "cases": 1000,
+  "counts": {
+    "NotSupported": 546,
+    "Pass": 454
+  },
+  "original_counts": {
+    "NotSupported": 548,
+    "Pass": 405,
+    "Fail": 47
+  },
+  "original_cts_passes": 439,
+  "corrected_cts_passes": 15,
+  "original_failures_resolved": 47,
+  "should_support_resolved": 2,
+  "baseline_runner_seconds": 21.72,
+  "coverage": "Baseline plus targeted retests, not a complete rerun on the final build. Corrected CTS passes are not unmodified CTS passes."
+}

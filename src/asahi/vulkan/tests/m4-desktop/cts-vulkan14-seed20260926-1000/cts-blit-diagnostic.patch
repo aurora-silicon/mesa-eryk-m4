@@ -1,0 +1,119 @@
+--- a/external/vulkancts/modules/vulkan/api/vktApiBlittingTests.cpp
++++ b/external/vulkancts/modules/vulkan/api/vktApiBlittingTests.cpp
+@@ -507,14 +507,16 @@
+ 
+     log << tcu::TestLog::Section("ClampedSourceImage", "Region with clamped edges on source image.");
+ 
+-    // if either of srcImage or dstImage stores values as a signed/unsigned integer,
+-    // the other must also store values a signed/unsigned integer
+-    // e.g. blit unorm to uscaled is not allowed as uscaled formats store data as integers
+-    // despite the fact that both formats are sampled as floats
+-    bool dstImageIsIntClass = dstChannelClass == tcu::TEXTURECHANNELCLASS_SIGNED_INTEGER ||
+-                              dstChannelClass == tcu::TEXTURECHANNELCLASS_UNSIGNED_INTEGER;
+-    bool srcImageIsIntClass = srcChannelClass == tcu::TEXTURECHANNELCLASS_SIGNED_INTEGER ||
+-                              srcChannelClass == tcu::TEXTURECHANNELCLASS_UNSIGNED_INTEGER;
++    // Scaled formats use floating-point filtering and conversion, despite
++    // their integer backing storage in the tcu channel classification.
++    const bool dstScaled = vk::isScaledFormat(m_params.dst.image.format);
++    const bool srcScaled = vk::isScaledFormat(m_params.src.image.format);
++    bool dstImageIsIntClass = !dstScaled &&
++        (dstChannelClass == tcu::TEXTURECHANNELCLASS_SIGNED_INTEGER ||
++         dstChannelClass == tcu::TEXTURECHANNELCLASS_UNSIGNED_INTEGER);
++    bool srcImageIsIntClass = !srcScaled &&
++        (srcChannelClass == tcu::TEXTURECHANNELCLASS_SIGNED_INTEGER ||
++         srcChannelClass == tcu::TEXTURECHANNELCLASS_UNSIGNED_INTEGER);
+     if (dstImageIsIntClass != srcImageIsIntClass)
+     {
+         log << tcu::TestLog::EndSection;
+@@ -699,14 +701,16 @@
+ 
+     tcu::clear(errorMask, tcu::Vec4(0.0f, 1.0f, 0.0f, 1.0));
+ 
+-    // if either of srcImage or dstImage stores values as a signed/unsigned integer,
+-    // the other must also store values a signed/unsigned integer
+-    // e.g. blit unorm to uscaled is not allowed as uscaled formats store data as integers
+-    // despite the fact that both formats are sampled as floats
+-    bool dstImageIsIntClass = dstChannelClass == tcu::TEXTURECHANNELCLASS_SIGNED_INTEGER ||
+-                              dstChannelClass == tcu::TEXTURECHANNELCLASS_UNSIGNED_INTEGER;
+-    bool srcImageIsIntClass = srcChannelClass == tcu::TEXTURECHANNELCLASS_SIGNED_INTEGER ||
+-                              srcChannelClass == tcu::TEXTURECHANNELCLASS_UNSIGNED_INTEGER;
++    // Scaled formats use floating-point filtering and conversion, despite
++    // their integer backing storage in the tcu channel classification.
++    const bool dstScaled = vk::isScaledFormat(m_params.dst.image.format);
++    const bool srcScaled = vk::isScaledFormat(m_params.src.image.format);
++    bool dstImageIsIntClass = !dstScaled &&
++        (dstChannelClass == tcu::TEXTURECHANNELCLASS_SIGNED_INTEGER ||
++         dstChannelClass == tcu::TEXTURECHANNELCLASS_UNSIGNED_INTEGER);
++    bool srcImageIsIntClass = !srcScaled &&
++        (srcChannelClass == tcu::TEXTURECHANNELCLASS_SIGNED_INTEGER ||
++         srcChannelClass == tcu::TEXTURECHANNELCLASS_UNSIGNED_INTEGER);
+     if (dstImageIsIntClass != srcImageIsIntClass)
+         return false;
+ 
+@@ -716,9 +720,25 @@
+     }
+     else
+     {
+-        const tcu::Vec4 srcMaxDiff = getFloatOrFixedPointFormatThreshold(source.getFormat());
+-        const tcu::Vec4 dstMaxDiff = getFloatOrFixedPointFormatThreshold(result.getFormat());
+-        ok = floatNearestBlitCompare(source, result, srcMaxDiff, dstMaxDiff, errorMask, m_params);
++        if (srcScaled || dstScaled)
++        {
++            // Nearest filtering commutes with the destination conversion.
++            // Compare against converted texels, rather than giving a whole
++            // integer of tolerance to values in the normalized [0, 1] range.
++            tcu::TextureLevel converted(dstFormat, source.getWidth(), source.getHeight(), source.getDepth());
++            const tcu::PixelBufferAccess access = converted.getAccess();
++            for (int z = 0; z < source.getDepth(); ++z)
++                for (int y = 0; y < source.getHeight(); ++y)
++                    for (int x = 0; x < source.getWidth(); ++x)
++                        access.setPixel(linearToSRGBIfNeeded(dstFormat, source.getPixel(x, y, z)), x, y, z);
++            ok = floatNearestBlitCompare(access, result, tcu::Vec4(0.0f), tcu::Vec4(0.0f), errorMask, m_params);
++        }
++        else
++        {
++            const tcu::Vec4 srcMaxDiff = getFloatOrFixedPointFormatThreshold(source.getFormat());
++            const tcu::Vec4 dstMaxDiff = getFloatOrFixedPointFormatThreshold(result.getFormat());
++            ok = floatNearestBlitCompare(source, result, srcMaxDiff, dstMaxDiff, errorMask, m_params);
++        }
+     }
+ 
+     if (result.getFormat() != tcu::TextureFormat(tcu::TextureFormat::RGBA, tcu::TextureFormat::UNORM_INT8))
+--- a/external/vulkancts/modules/vulkan/api/vktApiCopiesAndBlittingUtil.cpp
++++ b/external/vulkancts/modules/vulkan/api/vktApiCopiesAndBlittingUtil.cpp
+@@ -980,8 +980,15 @@
+             if (c.isSRGB)
+                 dstColor = tcu::sRGBToLinear(dstColor);
+ 
+-            return tcu::isLevel3DLookupResultValid(c.source, c.sampler, lookupScaleDontCare, c.precision, srcNormCoord,
+-                                                   dstColor);
++            const bool valid = tcu::isLevel3DLookupResultValid(c.source, c.sampler, lookupScaleDontCare, c.precision, srcNormCoord, dstColor);
++            static int diagnostics = 0;
++            if (!valid && diagnostics++ < 12) {
++                const int sx = de::clamp(int(srcNormCoord.x() * c.source.getWidth()), 0, c.source.getWidth()-1);
++                const int sy = de::clamp(int(srcNormCoord.y() * c.source.getHeight()), 0, c.source.getHeight()-1);
++                const auto ref = c.source.getPixel(sx, sy, 0);
++                printf("BLIT_DIFF dst=(%d,%d,%d) src=(%d,%d) expect=(%g,%g,%g,%g) got=(%g,%g,%g,%g)\n", x,y,z,sx,sy,ref.x(),ref.y(),ref.z(),ref.w(),dstColor.x(),dstColor.y(),dstColor.z(),dstColor.w());
++            }
++            return valid;
+         }
+     } loop;
+ 
+@@ -1039,8 +1046,15 @@
+             const tcu::TexLookupScaleMode lookupScaleDontCare = tcu::TEX_LOOKUP_SCALE_MINIFY;
+             const tcu::IVec4 dstColor                         = c.result.getPixelInt(x, y, z);
+ 
+-            return tcu::isLevel3DLookupResultValid(c.source, c.sampler, lookupScaleDontCare, c.precision, srcNormCoord,
+-                                                   dstColor);
++            const bool valid = tcu::isLevel3DLookupResultValid(c.source, c.sampler, lookupScaleDontCare, c.precision, srcNormCoord, dstColor);
++            static int diagnostics = 0;
++            if (!valid && diagnostics++ < 12) {
++                const int sx = de::clamp(int(srcNormCoord.x() * c.source.getWidth()), 0, c.source.getWidth()-1);
++                const int sy = de::clamp(int(srcNormCoord.y() * c.source.getHeight()), 0, c.source.getHeight()-1);
++                const auto ref = c.source.getPixel(sx, sy, 0);
++                printf("BLIT_DIFF dst=(%d,%d,%d) src=(%d,%d) expect=(%g,%g,%g,%g) got=(%g,%g,%g,%g)\n", x,y,z,sx,sy,ref.x(),ref.y(),ref.z(),ref.w(),dstColor.x(),dstColor.y(),dstColor.z(),dstColor.w());
++            }
++            return valid;
+         }
+     } loop;
+ 

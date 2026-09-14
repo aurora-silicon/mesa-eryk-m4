@@ -1,0 +1,50 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.bc6h_sfloat_block.r8g8b8_sscaled.optimal_general_nearest",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-scaled-blit-v2",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.bc6h_sfloat_block.r8g8b8_sscaled.optimal_general_nearest",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T082323959345Z-cts26-scaled-two-lvp/cts/000/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "NotSupported",
+    "started_unix": 1789374205.2101662,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.bc6h_sfloat_block.r8g8b8_sscaled.optimal_general_nearest",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Destination format not supported at vktApiBlittingTests.cpp:1314",
+    "returncode": 0,
+    "seconds": 0.25903108500006056,
+    "finished_unix": 1789374205.474315,
+    "pid": 5214
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r16_sfloat.a2b10g10r10_uscaled_pack32.general_linear_nearest",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-scaled-blit-v2",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r16_sfloat.a2b10g10r10_uscaled_pack32.general_linear_nearest",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T082323959345Z-cts26-scaled-two-lvp/cts/001/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "NotSupported",
+    "started_unix": 1789374205.4854095,
+    "eligibility": {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r16_sfloat.a2b10g10r10_uscaled_pack32.general_linear_nearest",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Destination format not supported at vktApiBlittingTests.cpp:1314",
+    "returncode": 0,
+    "seconds": 0.10779073000003336,
+    "finished_unix": 1789374205.598128,
+    "pid": 5237
+  }
+]

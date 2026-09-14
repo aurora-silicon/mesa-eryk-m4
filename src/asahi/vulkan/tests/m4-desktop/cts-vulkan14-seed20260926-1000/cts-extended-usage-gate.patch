@@ -1,0 +1,15 @@
+--- a/external/vulkancts/modules/vulkan/image/vktImageCompressionTranscodingSupport.cpp
++++ b/external/vulkancts/modules/vulkan/image/vktImageCompressionTranscodingSupport.cpp
+@@ -2392,7 +2392,11 @@
+         (createFlags != nullptr) ? *createFlags : (imageCreateFlagsBase | imageCreateFlagsAddOn);
+ 
+     VkFormatProperties properties;
+-    m_context.getInstanceInterface().getPhysicalDeviceFormatProperties(m_context.getPhysicalDevice(), format,
++    // EXTENDED_USAGE permits usage provided by the compatible view format.
++    // checkSupport already queries the complete image flags and usages.
++    const VkFormat usageFormat = (imageCreateFlags & VK_IMAGE_CREATE_EXTENDED_USAGE_BIT) &&
++                                     isCompressedFormat(format) ? m_parameters.formatUncompressed : format;
++    m_context.getInstanceInterface().getPhysicalDeviceFormatProperties(m_context.getPhysicalDevice(), usageFormat,
+                                                                        &properties);
+     if ((usageFlags & VK_IMAGE_USAGE_STORAGE_BIT) &&
+         !(properties.optimalTilingFeatures & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT))

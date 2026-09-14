@@ -1,0 +1,14 @@
+--- a/external/vulkancts/modules/vulkan/image/vktImageLoadStoreTests.cpp
++++ b/external/vulkancts/modules/vulkan/image/vktImageLoadStoreTests.cpp
+@@ -628,6 +628,11 @@
+         !(formatProperties.bufferFeatures & VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT))
+         TCU_THROW(NotSupportedError, "Format not supported for storage texel buffers");
+ #endif // CTS_USES_VULKANSC
++
++    // A texel buffer has no image tiling, mip levels or array layers. Its
++    // advertised buffer-format capabilities were checked above.
++    if (m_texture.type() == IMAGE_TYPE_BUFFER)
++        return;
+ 
+     const auto &vki           = context.getInstanceInterface();
+     const auto physicalDevice = context.getPhysicalDevice();

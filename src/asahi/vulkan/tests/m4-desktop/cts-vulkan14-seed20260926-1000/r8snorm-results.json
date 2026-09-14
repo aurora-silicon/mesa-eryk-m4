@@ -1,0 +1,26 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.image.store.with_format.buffer.r8_snorm_constant_linear",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed26-buffer-gate",
+      "--deqp-case=dEQP-VK.image.store.with_format.buffer.r8_snorm_constant_linear",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T081842339785Z-cts26-r8snorm/cts/000/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Pass",
+    "started_unix": 1789373923.600248,
+    "eligibility": {
+      "case": "dEQP-VK.image.store.with_format.buffer.r8_snorm_constant_linear",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Passed",
+    "returncode": 0,
+    "seconds": 0.25995839300003354,
+    "finished_unix": 1789373923.8652432,
+    "pid": 4901
+  }
+]

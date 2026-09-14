@@ -1,0 +1,982 @@
+[
+  {
+    "message": "Device does not support enough image array layers at vktApiImageClearingTests.cpp:861",
+    "case_regex": "(?:dEQP\\-VK\\.api\\.image_clearing\\.dedicated_allocation\\.clear_color_image\\.2d\\.linear\\.multiple_layers\\.r8g8_srgb_clamp_input)",
+    "classification": "NotSupported",
+    "category": "format or memory configuration",
+    "basis": "The exact case requests a linear R8G8_SRGB image array. Linear arrays are optional; it is not a mandatory optimal-format query."
+  },
+  {
+    "message": "VK_EXT_mesh_shader is not supported at vktTestCase.cpp:1394",
+    "case_regex": "(?:dEQP\\-VK\\.mesh_shader\\.ext\\.query\\.all_queries\\.triangles\\.no_reset\\.get\\.no_wait\\.indirect_with_count_draw\\.64bit\\.with_availability\\.no_blocks\\.task_mesh\\.inside_rp\\.multi_view\\.with_secondary|dEQP\\-VK\\.mesh_shader\\.ext\\.query\\.prim_query\\.triangles\\.host_reset\\.get\\.wait\\.draw\\.64bit\\.no_availability\\.no_blocks\\.task_mesh\\.include_rp\\.single_view\\.only_primary|dEQP\\-VK\\.mesh_shader\\.ext\\.query\\.task_invs_query\\.triangles\\.reset_before\\.get\\.no_wait\\.indirect_with_count_draw\\.32bit\\.with_availability\\.no_blocks\\.mesh_only\\.inside_rp\\.single_view\\.only_primary|dEQP\\-VK\\.mesh_shader\\.ext\\.query\\.prim_query\\.triangles\\.reset_before\\.copy\\.no_wait\\.indirect_draw\\.64bit\\.with_availability\\.single_block\\.task_mesh\\.include_rp\\.single_view\\.only_primary|dEQP\\-VK\\.subgroups\\.quad\\.mesh\\.subgroupquadbroadcast_u64vec4_task|dEQP\\-VK\\.mesh_shader\\.ext\\.conditional_rendering\\.draw\\.secondary_cmd_buffer_inheritance\\.bind_with_offset\\.cond_without_offset\\.normal_cond\\.mesh_and_task\\.value_0x01000000|dEQP\\-VK\\.mesh_shader\\.ext\\.query\\.all_stats_query\\.triangles\\.reset_before\\.get\\.no_wait\\.indirect_with_count_draw\\.64bit\\.with_availability\\.no_blocks\\.mesh_only\\.include_rp\\.single_view\\.with_secondary|dEQP\\-VK\\.mesh_shader\\.ext\\.query\\.prim_query\\.triangles\\.no_reset\\.get\\.wait\\.indirect_with_count_draw\\.64bit\\.no_availability\\.single_block\\.task_mesh\\.inside_rp\\.multi_view\\.only_primary|dEQP\\-VK\\.subgroups\\.vote\\.mesh\\.subgroupallequal_i64vec3_task|dEQP\\-VK\\.mesh_shader\\.ext\\.query\\.mesh_invs_query\\.triangles\\.no_reset\\.get\\.wait\\.draw\\.32bit\\.no_availability\\.multiple_blocks\\.mesh_only\\.inside_rp\\.multi_view\\.with_secondary|dEQP\\-VK\\.mesh_shader\\.ext\\.query\\.all_stats_query\\.triangles\\.host_reset\\.get\\.no_wait\\.draw\\.64bit\\.no_availability\\.no_blocks\\.task_mesh\\.inside_rp\\.multi_view\\.only_primary|dEQP\\-VK\\.mesh_shader\\.ext\\.query\\.all_queries\\.triangles\\.reset_after\\.copy\\.no_wait\\.draw\\.64bit\\.no_availability\\.single_block\\.mesh_only\\.include_rp\\.single_view\\.only_primary|dEQP\\-VK\\.mesh_shader\\.ext\\.query\\.mesh_invs_query\\.triangles\\.host_reset\\.get\\.wait\\.indirect_with_count_draw\\.64bit\\.with_availability\\.no_blocks\\.task_mesh\\.inside_rp\\.multi_view\\.with_secondary)",
+    "classification": "NotSupported",
+    "category": "optional extension",
+    "basis": "Unadvertised optional extension(s): VK_EXT_mesh_shader. Check against pinned vk.xml/CTS vkMandatoryFeatures.inl; no mandatory Vulkan 1.4 requirement for this capability."
+  },
+  {
+    "message": "Tests uses more color attachments than VkPhysicalDeviceLimits::maxColorAttachments at vktShaderObjectRenderingTests.cpp:1104",
+    "case_regex": "(?:dEQP\\-VK\\.shader_object\\.rendering\\.color_attachment_count_8\\.none\\.extra_output_after_2\\.none\\.same_color_formats\\.after\\.none\\.r32g32_sfloat_x8_d24_unorm_pack32|dEQP\\-VK\\.shader_object\\.rendering\\.color_attachment_count_8\\.extra_attachment_before_2\\.none\\.static\\.same_color_formats\\.before\\.gl_frag_write\\.r16g16_sint|dEQP\\-VK\\.shader_object\\.rendering\\.color_attachment_count_8\\.none\\.extra_output_after_1\\.dynamic\\.random_color_formats\\.before\\.none\\.r8g8b8_sscaled|dEQP\\-VK\\.shader_object\\.rendering\\.color_attachment_count_8\\.extra_attachment_between_1\\.none\\.none\\.same_color_formats\\.before\\.gl_frag_write\\.a2r10g10b10_sint_pack32|dEQP\\-VK\\.shader_object\\.rendering\\.color_attachment_count_8\\.extra_attachment_between_2\\.none\\.none\\.random_color_formats\\.after\\.none\\.b5g5r5a1_unorm_pack16_d24_unorm_s8_uint|dEQP\\-VK\\.shader_object\\.rendering\\.color_attachment_count_8\\.extra_attachment_between_1\\.none\\.static\\.random_color_formats\\.before\\.none\\.r8g8b8_sint_d32_sfloat|dEQP\\-VK\\.shader_object\\.rendering\\.color_attachment_count_8\\.none\\.extra_output_after_2\\.none\\.random_color_formats\\.after\\.gl_frag_write\\.r16g16b16_snorm|dEQP\\-VK\\.shader_object\\.rendering\\.color_attachment_count_8\\.extra_attachment_between_2\\.none\\.none\\.same_color_formats\\.before\\.none\\.b8g8r8_sint_d16_unorm_s8_uint|dEQP\\-VK\\.shader_object\\.rendering\\.color_attachment_count_8\\.extra_attachment_after_1\\.none\\.none\\.same_color_formats\\.before\\.none\\.b8g8r8a8_snorm_d32_sfloat_s8_uint|dEQP\\-VK\\.shader_object\\.rendering\\.color_attachment_count_8\\.extra_attachment_before_1\\.none\\.none\\.same_color_formats\\.before\\.none\\.a1r5g5b5_unorm_pack16_d16_unorm|dEQP\\-VK\\.shader_object\\.rendering\\.color_attachment_count_8\\.extra_attachment_before_2\\.none\\.none\\.same_color_formats\\.before\\.none\\.r16_uint_d16_unorm|dEQP\\-VK\\.shader_object\\.rendering\\.color_attachment_count_8\\.none\\.extra_output_after_2\\.static\\.same_color_formats\\.before\\.none\\.r16_unorm_d16_unorm_s8_uint|dEQP\\-VK\\.shader_object\\.rendering\\.color_attachment_count_8\\.extra_attachment_after_2\\.none\\.dynamic\\.same_color_formats\\.before\\.none\\.r16g16b16_uint_d16_unorm|dEQP\\-VK\\.shader_object\\.rendering\\.color_attachment_count_8\\.none\\.extra_output_before_1\\.dynamic\\.random_color_formats\\.before\\.none\\.r16g16b16_uint|dEQP\\-VK\\.shader_object\\.rendering\\.color_attachment_count_8\\.extra_attachment_between_1\\.none\\.dynamic\\.random_color_formats\\.before\\.none\\.r32_sint_d32_sfloat_s8_uint|dEQP\\-VK\\.shader_object\\.rendering\\.color_attachment_count_8\\.none\\.extra_output_between_2\\.dynamic\\.same_color_formats\\.before\\.none\\.r8_sint_x8_d24_unorm_pack32|dEQP\\-VK\\.shader_object\\.rendering\\.color_attachment_count_8\\.none\\.extra_output_after_1\\.static\\.random_color_formats\\.before\\.gl_frag_write\\.r16g16b16_snorm|dEQP\\-VK\\.shader_object\\.rendering\\.color_attachment_count_8\\.extra_attachment_before_2\\.none\\.static\\.same_color_formats\\.before\\.none\\.r5g5b5a1_unorm_pack16|dEQP\\-VK\\.shader_object\\.rendering\\.color_attachment_count_8\\.none\\.extra_output_between_1\\.static\\.random_color_formats\\.before\\.none\\.b8g8r8_sint_x8_d24_unorm_pack32|dEQP\\-VK\\.shader_object\\.rendering\\.color_attachment_count_8\\.none\\.extra_output_between_2\\.static\\.same_color_formats\\.before\\.none\\.b8g8r8_unorm_d24_unorm_s8_uint|dEQP\\-VK\\.shader_object\\.rendering\\.color_attachment_count_8\\.none\\.extra_output_before_1\\.none\\.random_color_formats\\.after\\.none\\.b8g8r8_sscaled_d32_sfloat|dEQP\\-VK\\.shader_object\\.rendering\\.color_attachment_count_8\\.extra_attachment_before_2\\.none\\.none\\.random_color_formats\\.before\\.none\\.r8g8b8_uint_d16_unorm|dEQP\\-VK\\.shader_object\\.rendering\\.color_attachment_count_8\\.extra_attachment_after_2\\.none\\.none\\.random_color_formats\\.before\\.gl_frag_write\\.b8g8r8_unorm|dEQP\\-VK\\.shader_object\\.rendering\\.color_attachment_count_8\\.none\\.extra_output_after_1\\.static\\.random_color_formats\\.before\\.none\\.b8g8r8a8_sint_d24_unorm_s8_uint|dEQP\\-VK\\.shader_object\\.rendering\\.color_attachment_count_8\\.none\\.extra_output_before_1\\.none\\.random_color_formats\\.after\\.none\\.r8g8b8a8_uint_d24_unorm_s8_uint|dEQP\\-VK\\.shader_object\\.rendering\\.color_attachment_count_8\\.none\\.extra_output_before_1\\.none\\.same_color_formats\\.after\\.none\\.r8_uint_d16_unorm|dEQP\\-VK\\.shader_object\\.rendering\\.color_attachment_count_8\\.extra_attachment_after_2\\.none\\.none\\.random_color_formats\\.before\\.none\\.a2b10g10r10_unorm_pack32_d24_unorm_s8_uint|dEQP\\-VK\\.shader_object\\.rendering\\.color_attachment_count_8\\.extra_attachment_after_2\\.none\\.none\\.random_color_formats\\.after\\.none\\.a2r10g10b10_sscaled_pack32_x8_d24_unorm_pack32)",
+    "classification": "NotSupported",
+    "category": "format or memory configuration",
+    "basis": "The cases add attachments/outputs to a base of eight, exceeding maxColorAttachments=8 (vktShaderObjectRenderingTests.cpp:1090-1104)."
+  },
+  {
+    "message": "VkPhysicalDeviceCooperativeMatrixFeaturesKHR::cooperativeMatrix not supported at vktComputeCooperativeMatrixTests.cpp:751",
+    "case_regex": "(?:dEQP\\-VK\\.compute\\.pipeline\\.cooperative_matrix\\.khr_r\\.subgroupscope\\.matrixmuladd_max\\.float16_float32\\.workgroup\\.colmajor\\.linear|dEQP\\-VK\\.compute\\.shader_object_spirv\\.cooperative_matrix\\.khr_r\\.subgroupscope\\.matrixmuladd\\.float16_float32\\.buffer\\.colmajor\\.linear|dEQP\\-VK\\.compute\\.shader_object_spirv\\.cooperative_matrix\\.khr_r\\.workgroupscope\\.matrixmuladd_stride0\\.uint32_uint32\\.workgroup\\.rowmajor\\.linear|dEQP\\-VK\\.compute\\.shader_object_binary\\.cooperative_matrix\\.khr_b\\.workgroupscope\\.clamptoedge\\.floate5m2_floate5m2\\.physical_buffer\\.rowmajor\\.tensorlayout|dEQP\\-VK\\.compute\\.shader_object_spirv\\.cooperative_matrix\\.khr_r\\.workgroupscope\\.composite_rvalue\\.bfloat16_bfloat16\\.workgroup\\.rowmajor\\.linear|dEQP\\-VK\\.compute\\.pipeline\\.cooperative_matrix\\.khr_r\\.workgroupscope\\.matrixmuladd\\.float16_float16\\.buffer_varptr\\.colmajor\\.tensorlayout|dEQP\\-VK\\.compute\\.pipeline\\.cooperative_matrix\\.khr_r\\.subgroupscope\\.matrixmuladd_array\\.uint8_uint8\\.workgroup\\.colmajor\\.tensorlayout|dEQP\\-VK\\.compute\\.pipeline\\.cooperative_matrix\\.khr_b\\.workgroupscope\\.matrixtimesscalar\\.uint32_uint32\\.workgroup\\.rowmajor\\.linear|dEQP\\-VK\\.compute\\.shader_object_binary\\.cooperative_matrix\\.khr_b\\.subgroupscope\\.tensorlayout1d\\.float32_float32\\.buffer\\.rowmajor\\.tensorlayout|dEQP\\-VK\\.compute\\.pipeline\\.cooperative_matrix\\.khr_a\\.subgroupscope\\.convert\\.input_int8_t_output_uint8_t\\.buffer\\.rowmajor|dEQP\\-VK\\.compute\\.shader_object_binary\\.cooperative_matrix\\.khr_a\\.subgroupscope\\.multicomponent\\.vec2\\.load\\.bfloat16_t\\.workgroup_varptr\\.rowmajor|dEQP\\-VK\\.compute\\.shader_object_spirv\\.cooperative_matrix\\.khr_b\\.workgroupscope\\.mul\\.uint32_uint32\\.workgroup_varptr\\.colmajor\\.tensorlayout|dEQP\\-VK\\.compute\\.pipeline\\.cooperative_matrix\\.khr_a\\.subgroupscope\\.add\\.float16_float16\\.buffer\\.rowmajor\\.linear|dEQP\\-VK\\.compute\\.pipeline\\.cooperative_matrix\\.khr_r\\.workgroupscope\\.reduce_sum_row\\.float32_float32\\.physical_buffer\\.rowmajor\\.tensorlayout|dEQP\\-VK\\.compute\\.pipeline\\.cooperative_matrix\\.khr_r\\.workgroupscope\\.multicomponent\\.vec4\\.save\\.bfloat16_t\\.workgroup\\.rowmajor|dEQP\\-VK\\.compute\\.pipeline\\.cooperative_matrix\\.khr_r\\.workgroupscope\\.reduce_sum_rowcol_changedim\\.bfloat16_bfloat16\\.workgroup\\.rowmajor\\.tensorlayout|dEQP\\-VK\\.compute\\.pipeline\\.cooperative_matrix\\.khr_r\\.workgroupscope\\.composite_rvalue\\.sint8_sint8\\.physical_buffer\\.rowmajor\\.linear|dEQP\\-VK\\.compute\\.pipeline\\.cooperative_matrix\\.khr_r\\.subgroupscope\\.matrixmuladd\\.sint8_sint8\\.buffer_varptr\\.colmajor\\.linear)",
+    "classification": "NotSupported",
+    "category": "optional feature",
+    "basis": "The named gate requires optional feature cooperativeMatrix, not advertised in the pinned profile. Review includes extension-conditional requirements in vkMandatoryFeatures.inl, and the direct mandatory-feature CTS check passes."
+  },
+  {
+    "message": "filterMinmaxImageComponentMapping is not supported (R mapping is not IDENTITY) at vktPipelineImageSamplingInstance.cpp:251",
+    "case_regex": "(?:dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.sampler\\.view_type\\.cube\\.format\\.r16_sfloat\\.min_reduce\\.comp_b_g_r_a\\.average|dEQP\\-VK\\.pipeline\\.shader_object_linked_binary\\.sampler\\.separate_stencil_usage\\.view_type\\.2d\\.format\\.d16_unorm_s8_uint\\.mag_reduce\\.comp_b_g_r_a\\.max|dEQP\\-VK\\.pipeline\\.monolithic\\.sampler\\.view_type\\.cube_array\\.format\\.r16_snorm\\.min_reduce\\.comp_b_g_r_a\\.average|dEQP\\-VK\\.pipeline\\.monolithic\\.sampler\\.view_type\\.2d\\.format\\.a4r4g4b4_unorm_pack16\\.mag_reduce\\.comp_b_g_r_a\\.average)",
+    "classification": "NotSupported",
+    "category": "optional feature",
+    "basis": "samplerFilterMinmax and filterMinmaxImageComponentMapping are false; these optional feature/property requirements are not advertised."
+  },
+  {
+    "message": "Variable multisample rate not supported at vktPipelineMultisampleTests.cpp:5539",
+    "case_regex": "(?:dEQP\\-VK\\.pipeline\\.fast_linked_library\\.multisample\\.variable_rate\\.64_16_8|dEQP\\-VK\\.pipeline\\.shader_object_linked_binary\\.multisample\\.variable_rate\\.8_32|dEQP\\-VK\\.pipeline\\.shader_object_unlinked_binary\\.multisample\\.variable_rate\\.1_64_fb_16|dEQP\\-VK\\.pipeline\\.shader_object_unlinked_binary\\.multisample_with_fragment_shading_rate\\.variable_rate\\.16_4_64)",
+    "classification": "NotSupported",
+    "category": "optional feature",
+    "basis": "The named gate requires optional feature variableMultisampleRate, not advertised in the pinned profile. Review includes extension-conditional requirements in vkMandatoryFeatures.inl, and the direct mandatory-feature CTS check passes."
+  },
+  {
+    "message": "64-bit integer buffer atomics not supported at vktMemoryModelMessagePassing.cpp:250",
+    "case_regex": "(?:dEQP\\-VK\\.memory_model\\.message_passing\\.ext\\.u64\\.noncoherent\\.atomic_atomic\\.atomicwrite\\.subgroup\\.payload_local\\.buffer\\.guard_nonlocal\\.physbuffer\\.frag)",
+    "classification": "NotSupported",
+    "category": "optional feature",
+    "basis": "The named gate requires optional feature shaderBufferInt64Atomics, not advertised in the pinned profile. Review includes extension-conditional requirements in vkMandatoryFeatures.inl, and the direct mandatory-feature CTS check passes."
+  },
+  {
+    "message": "cooperativeVector not supported at vktCooperativeVectorBasicTests.cpp:321",
+    "case_regex": "(?:dEQP\\-VK\\.cooperative_vector\\.basic\\.div\\.float16_float16\\.workgroup_varptr\\.components1\\.compute|dEQP\\-VK\\.cooperative_vector\\.training\\.reducesum\\.float16\\.physical_buffer\\.components9\\.resultunique\\.cfuniform\\.trainingOptimal\\.compute71x2|dEQP\\-VK\\.cooperative_vector\\.matmul\\.matrixmuladd\\.float16_float16_float16_float16\\.buffer\\.1x10\\.actload\\.nonuniformoffset\\.cfuniform\\.inferencingOptimal\\.chit71x2|dEQP\\-VK\\.cooperative_vector\\.matmul\\.matrixmuladd\\.float16_float16_float16_float16\\.buffer\\.40x5\\.actsigmoid\\.nonuniformoffset\\.cfuniform\\.inferencingOptimal\\.callable71x2|dEQP\\-VK\\.cooperative_vector\\.training\\.reducesum\\.float16\\.buffer\\.components2\\.resultclustered\\.cfdivergent\\.trainingOptimal\\.geometry32x1|dEQP\\-VK\\.cooperative_vector\\.matmul\\.matrixmul2addmul2\\.float16_floate4m3_floate4m3_float16\\.buffer\\.8x16\\.actmul\\.nonuniformoffset\\.cfuniform\\.inferencingOptimal\\.ahit71x2|dEQP\\-VK\\.cooperative_vector\\.matmul\\.matrixmuladd\\.sint8_sint8_sint8_sint32\\.buffer\\.2x2\\.actmul\\.nonuniformoffset\\.cfuniform\\.colMajor\\.fragment13x8|dEQP\\-VK\\.cooperative_vector\\.matmul\\.matrixmuladdtranspose\\.uint8_uint8_uint8_uint32\\.buffer\\.1x1\\.actmul\\.nonuniformoffset\\.cfuniform\\.inferencingOptimal\\.vertex71x1|dEQP\\-VK\\.cooperative_vector\\.training\\.outerproduct\\.float16\\.physical_buffer\\.21x35\\.resultuniform\\.cfuniform\\.trainingOptimal\\.raygen71x2)",
+    "classification": "NotSupported",
+    "category": "optional feature",
+    "basis": "The named gate requires optional feature cooperativeVector, not advertised in the pinned profile. Review includes extension-conditional requirements in vkMandatoryFeatures.inl, and the direct mandatory-feature CTS check passes."
+  },
+  {
+    "message": "Present mode not supported at vktWsiMaintenance1Tests.cpp:821",
+    "case_regex": "(?:dEQP\\-VK\\.wsi\\.xlib\\.maintenance1\\.present_modes\\.fifo_latest_ready\\.change_modes_with_deferred_alloc)",
+    "classification": "NotSupported",
+    "category": "optional WSI",
+    "basis": "The exact cases require optional swapchain scaling or FIFO_LATEST_READY presentation. Only ordinary FIFO is mandatory."
+  },
+  {
+    "message": "Requested core feature is not supported: sparseBinding at vktTestCase.cpp:1498",
+    "case_regex": "(?:dEQP\\-VK\\.texture\\.shadow\\.cube\\.nearest\\.sparse_less_or_equal_x8_d24_unorm_pack32|dEQP\\-VK\\.sparse_resources\\.image_sparse_binding\\.multiple_sparse_memory_bind\\.cube_array\\.rg8i\\.137_137_3|dEQP\\-VK\\.sparse_resources\\.image_sparse_binding\\.multiple_sparse_memory_bind\\.1d_array\\.rgba16ui\\.512_1_64|dEQP\\-VK\\.sparse_resources\\.image_sparse_binding\\.multiple_bind_sparse_info\\.cube\\.r32i\\.128_128_1|dEQP\\-VK\\.texture\\.shadow\\.2d_array\\.nearest\\.sparse_less_d16_unorm_s8_uint|dEQP\\-VK\\.sparse_resources\\.image_sparse_binding\\.multiple_sparse_memory_bind\\.1d\\.r8ui\\.1024_1_1)",
+    "classification": "NotSupported",
+    "category": "optional feature",
+    "basis": "The named gate requires optional feature sparseBinding, not advertised in the pinned profile. Review includes extension-conditional requirements in vkMandatoryFeatures.inl, and the direct mandatory-feature CTS check passes."
+  },
+  {
+    "message": "VK_EXT_primitives_generated_query is not supported at vktTestCase.cpp:1394",
+    "case_regex": "(?:dEQP\\-VK\\.transform_feedback\\.primitives_generated_query\\.get\\.host_reset\\.64bit\\.geom\\.xfb\\.rast\\.triangle_list_with_adjacency\\.pgq_1_xfb_1\\.two_draws\\.xfbq_first\\.none_2_queries|dEQP\\-VK\\.transform_feedback\\.primitives_generated_query\\.copy\\.queue_reset\\.pgq_32bit_xfb_64bit\\.geom\\.xfb\\.rast\\.line_strip_with_adjacency\\.pgq_1_xfb_0\\.single_draw\\.pqg_first\\.after|dEQP\\-VK\\.transform_feedback\\.primitives_generated_query\\.get\\.queue_reset\\.32bit\\.geom\\.xfb\\.color_write_disable_dynamic_ds\\.triangle_list_with_adjacency\\.pgq_default_xfb_default\\.single_draw\\.xfbq_first\\.before_2_queries|dEQP\\-VK\\.transform_feedback\\.primitives_generated_query\\.get\\.queue_reset\\.32bit\\.geom\\.xfb\\.color_write_disable_static_ds\\.triangle_list_with_adjacency\\.pgq_default_xfb_0\\.single_draw\\.xfbq_first\\.after_2_queries|dEQP\\-VK\\.transform_feedback\\.primitives_generated_query\\.get\\.queue_reset\\.pgq_32bit_xfb_64bit\\.vert\\.xfb\\.rast\\.triangle_fan\\.pgq_default_xfb_default\\.single_draw\\.xfbq_first\\.before_2_queries|dEQP\\-VK\\.transform_feedback\\.primitives_generated_query\\.get\\.host_reset\\.pgq_64bit_xfb_32bit\\.geom\\.xfb\\.rast\\.line_strip\\.pgq_0_xfb_default\\.two_draws\\.xfbq_first\\.before_2_queries|dEQP\\-VK\\.transform_feedback\\.primitives_generated_query\\.get\\.host_reset\\.64bit\\.geom\\.xfb\\.rast\\.point_list\\.pgq_0_xfb_1\\.single_draw\\.xfbq_first\\.after|dEQP\\-VK\\.transform_feedback\\.primitives_generated_query\\.get\\.queue_reset\\.pgq_64bit_xfb_32bit\\.geom\\.xfb\\.no_rast\\.triangle_list\\.pgq_default_xfb_1\\.single_draw\\.pqg_first\\.after|dEQP\\-VK\\.transform_feedback\\.primitives_generated_query\\.copy\\.queue_reset\\.32bit\\.geom\\.xfb\\.no_rast\\.triangle_strip\\.pgq_1_xfb_1\\.two_draws\\.xfbq_first\\.after_2_queries|dEQP\\-VK\\.transform_feedback\\.primitives_generated_query\\.get\\.queue_reset\\.32bit\\.geom\\.no_xfb\\.color_write_disable_static_ds\\.triangle_strip_with_adjacency\\.pgq_0\\.single_draw\\.pqg_first\\.after|dEQP\\-VK\\.transform_feedback\\.primitives_generated_query\\.get\\.host_reset\\.pgq_64bit_xfb_32bit\\.geom\\.xfb\\.rast\\.point_list\\.pgq_0_xfb_1\\.two_draws\\.pqg_first\\.after|dEQP\\-VK\\.transform_feedback\\.primitives_generated_query\\.copy\\.queue_reset\\.pgq_32bit_xfb_64bit\\.geom\\.xfb\\.rast\\.triangle_strip\\.pgq_1_xfb_0\\.two_draws\\.xfbq_first\\.before_2_queries|dEQP\\-VK\\.transform_feedback\\.primitives_generated_query\\.copy\\.queue_reset\\.32bit\\.geom\\.xfb\\.rast\\.line_list\\.pgq_0_xfb_default\\.single_draw\\.xfbq_first\\.after_2_queries|dEQP\\-VK\\.transform_feedback\\.primitives_generated_query\\.get\\.queue_reset\\.32bit\\.geom\\.xfb\\.empty_frag\\.triangle_fan\\.pgq_default_xfb_default\\.single_draw\\.pqg_first\\.after_2_queries|dEQP\\-VK\\.transform_feedback\\.primitives_generated_query\\.copy\\.queue_reset\\.pgq_64bit_xfb_32bit\\.geom\\.xfb\\.rast\\.line_list_with_adjacency\\.pgq_1_xfb_1\\.single_draw\\.xfbq_first\\.before_2_queries|dEQP\\-VK\\.transform_feedback\\.primitives_generated_query\\.get\\.host_reset\\.pgq_32bit_xfb_64bit\\.geom\\.xfb\\.no_rast\\.line_list\\.pgq_1_xfb_0\\.two_draws\\.xfbq_first\\.none_2_queries|dEQP\\-VK\\.transform_feedback\\.primitives_generated_query\\.get\\.queue_reset\\.32bit\\.geom\\.no_xfb\\.no_rast\\.point_list\\.pgq_1\\.two_draws\\.pqg_first\\.none_2_queries|dEQP\\-VK\\.transform_feedback\\.primitives_generated_query\\.get\\.queue_reset\\.32bit\\.vert\\.xfb\\.color_write_disable_static_ds\\.point_list\\.pgq_default_xfb_default\\.two_draws\\.xfbq_first\\.before_2_queries|dEQP\\-VK\\.transform_feedback\\.primitives_generated_query\\.get\\.queue_reset\\.32bit\\.geom\\.xfb\\.color_write_disable_dynamic\\.triangle_list\\.pgq_default_xfb_0\\.two_draws\\.pqg_first\\.none|dEQP\\-VK\\.transform_feedback\\.primitives_generated_query\\.get\\.host_reset\\.pgq_32bit_xfb_64bit\\.geom\\.xfb\\.no_rast\\.triangle_strip_with_adjacency\\.pgq_1_xfb_1\\.two_draws\\.xfbq_first\\.after|dEQP\\-VK\\.transform_feedback\\.primitives_generated_query\\.copy\\.host_reset\\.64bit\\.vert\\.xfb\\.no_rast\\.point_list\\.pgq_default_xfb_default\\.two_draws\\.xfbq_first\\.before_2_queries|dEQP\\-VK\\.transform_feedback\\.primitives_generated_query\\.get\\.queue_reset\\.32bit\\.geom\\.xfb\\.rast\\.line_strip\\.pgq_default_xfb_0\\.two_draws\\.xfbq_first\\.after_2_queries|dEQP\\-VK\\.transform_feedback\\.primitives_generated_query\\.copy\\.host_reset\\.32bit\\.geom\\.xfb\\.no_rast\\.line_list_with_adjacency\\.pgq_0_xfb_0\\.single_draw\\.xfbq_first\\.before_2_queries|dEQP\\-VK\\.transform_feedback\\.primitives_generated_query\\.copy\\.host_reset\\.pgq_64bit_xfb_32bit\\.geom\\.xfb\\.rast\\.line_strip\\.pgq_0_xfb_0\\.two_draws\\.pqg_first\\.before_2_queries|dEQP\\-VK\\.transform_feedback\\.primitives_generated_query\\.copy\\.queue_reset\\.32bit\\.vert\\.no_xfb\\.no_rast\\.line_list\\.pgq_default\\.single_draw\\.pqg_first\\.none|dEQP\\-VK\\.transform_feedback\\.primitives_generated_query\\.copy\\.queue_reset\\.32bit\\.geom\\.xfb\\.no_rast\\.triangle_list\\.pgq_default_xfb_1\\.single_draw\\.xfbq_first\\.none|dEQP\\-VK\\.transform_feedback\\.primitives_generated_query\\.get\\.queue_reset\\.64bit\\.geom\\.xfb\\.rast\\.line_list\\.pgq_0_xfb_1\\.single_draw\\.xfbq_first\\.after|dEQP\\-VK\\.transform_feedback\\.primitives_generated_query\\.copy\\.queue_reset\\.pgq_64bit_xfb_32bit\\.vert\\.xfb\\.rast\\.line_strip\\.pgq_default_xfb_default\\.single_draw\\.pqg_first\\.after_2_queries|dEQP\\-VK\\.transform_feedback\\.primitives_generated_query\\.copy\\.queue_reset\\.pgq_32bit_xfb_64bit\\.geom\\.xfb\\.rast\\.triangle_list_with_adjacency\\.pgq_0_xfb_1\\.single_draw\\.pqg_first\\.after_2_queries|dEQP\\-VK\\.transform_feedback\\.primitives_generated_query\\.copy\\.host_reset\\.pgq_32bit_xfb_64bit\\.geom\\.xfb\\.rast\\.triangle_strip\\.pgq_0_xfb_0\\.two_draws\\.pqg_first\\.none_2_queries|dEQP\\-VK\\.transform_feedback\\.primitives_generated_query\\.copy\\.queue_reset\\.64bit\\.geom\\.xfb\\.rast\\.triangle_strip_with_adjacency\\.pgq_0_xfb_1\\.single_draw\\.xfbq_first\\.none|dEQP\\-VK\\.transform_feedback\\.primitives_generated_query\\.get\\.queue_reset\\.32bit\\.geom\\.xfb\\.no_rast\\.line_list_with_adjacency\\.pgq_1_xfb_default\\.single_draw\\.xfbq_first\\.after|dEQP\\-VK\\.transform_feedback\\.primitives_generated_query\\.get\\.queue_reset\\.32bit\\.geom\\.xfb\\.color_write_disable_dynamic\\.line_strip\\.pgq_default_xfb_1\\.two_draws\\.xfbq_first\\.after_2_queries|dEQP\\-VK\\.transform_feedback\\.primitives_generated_query\\.get\\.queue_reset\\.32bit\\.geom\\.xfb\\.no_attachment\\.line_list_with_adjacency\\.pgq_0_xfb_1\\.single_draw\\.pqg_first\\.none|dEQP\\-VK\\.transform_feedback\\.primitives_generated_query\\.copy\\.queue_reset\\.64bit\\.geom\\.xfb\\.no_rast\\.line_list\\.pgq_1_xfb_default\\.two_draws\\.xfbq_first\\.before_2_queries)",
+    "classification": "NotSupported",
+    "category": "optional extension",
+    "basis": "Unadvertised optional extension(s): VK_EXT_primitives_generated_query. Check against pinned vk.xml/CTS vkMandatoryFeatures.inl; no mandatory Vulkan 1.4 requirement for this capability."
+  },
+  {
+    "message": "Exclusive compute queue not supported. at vktTestCase.cpp:980",
+    "case_regex": "(?:dEQP\\-VK\\.pipeline\\.monolithic\\.image_view\\.view_type\\.cube_array\\.format\\.r32g32_uint\\.subresource_range\\.lod_base_mip_level_base_array_layer_remaining_levels_and_layers_compute|dEQP\\-VK\\.pipeline\\.monolithic\\.sampler\\.view_type\\.2d\\.format\\.astc_10x6_unorm_block\\.mipmap\\.linear\\.lod\\.equal_min_3_max_3_compute|dEQP\\-VK\\.pipeline\\.monolithic\\.image\\.suballocation\\.sampling_type\\.separate\\.view_type\\.3d\\.format\\.astc_8x8_unorm_block\\.count_1\\.size\\.17x11x5_compute|dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.sampler\\.view_type\\.2d_array\\.format\\.astc_8x6_unorm_block\\.address_modes\\.uvw_mode_clamp_to_edge_mode_mirrored_repeat_mode_clamp_to_edge_compute|dEQP\\-VK\\.pipeline\\.monolithic\\.image_view\\.view_type\\.2d_array\\.format\\.b5g5r5a1_unorm_pack16\\.subresource_range\\.lod_base_mip_level_array_size_compute|dEQP\\-VK\\.pipeline\\.monolithic\\.image\\.suballocation\\.sampling_type\\.separate\\.view_type\\.cube_array\\.format\\.r8g8_srgb\\.count_1\\.size\\.pipeline_protected_flag_13x13_array_of_6_compute|dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.sampler\\.view_type\\.cube\\.format\\.r8g8b8_uint\\.mipmap\\.nearest\\.lod\\.select_bias_2_1_compute|dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.image_view\\.view_type\\.2d_array\\.format\\.r8g8b8_uint\\.subresource_range\\.lod_mip_levels_compute|dEQP\\-VK\\.pipeline\\.monolithic\\.image\\.suballocation\\.sampling_type\\.combined\\.view_type\\.2d_array\\.format\\.r8g8b8_sscaled\\.count_1\\.size\\.23x8_array_of_6_compute|dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.sampler\\.view_type\\.2d_array\\.format\\.r8g8_unorm\\.address_modes\\.uvw_mode_clamp_to_border_mode_repeat_mode_mirrored_repeat_compute|dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.image\\.suballocation\\.sampling_type\\.separate\\.view_type\\.1d\\.format\\.a2r10g10b10_unorm_pack32\\.count_8\\.size\\.512x1_compute|dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.sampler\\.view_type\\.3d\\.format\\.r32g32b32a32_sint\\.address_modes\\.uvw_mode_clamp_to_edge_mode_repeat_mode_mirror_clamp_to_edge_compute|dEQP\\-VK\\.pipeline\\.monolithic\\.image\\.suballocation\\.sampling_type\\.combined\\.view_type\\.2d_array\\.format\\.r16g16_uint\\.count_8\\.size\\.pipeline_protected_flag_32x16_array_of_6_compute|dEQP\\-VK\\.pipeline\\.monolithic\\.image_view\\.view_type\\.cube_array\\.format\\.r16_unorm\\.subresource_range\\.array_size_compute|dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.image_view\\.view_type\\.1d\\.format\\.a2b10g10r10_uscaled_pack32\\.subresource_range\\.lod_mip_levels_compute|dEQP\\-VK\\.ubo\\.random\\.16bit\\.scalar_types_compute\\.21|dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.image\\.suballocation\\.sampling_type\\.separate\\.view_type\\.1d_array\\.format\\.r32g32b32_sfloat\\.count_8\\.size\\.443x1_array_of_6_compute|dEQP\\-VK\\.pipeline\\.monolithic\\.image\\.suballocation\\.sampling_type\\.separate\\.view_type\\.cube\\.format\\.r16g16_uscaled\\.count_4\\.size\\.pipeline_protected_flag_13x13_compute|dEQP\\-VK\\.pipeline\\.monolithic\\.image\\.suballocation\\.sampling_type\\.combined\\.view_type\\.1d_array\\.format\\.r8g8_sscaled\\.count_1\\.size\\.pipeline_protected_flag_1x1_array_of_3_compute|dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.sampler\\.view_type\\.1d\\.format\\.r32g32_sfloat\\.address_modes\\.all_mode_repeat_compute|dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.sampler\\.view_type\\.2d_unnormalized\\.format\\.r8_unorm\\.address_modes\\.all_mode_clamp_to_border_custom_1101_formatless_compute|dEQP\\-VK\\.pipeline\\.monolithic\\.image\\.suballocation\\.sampling_type\\.combined\\.view_type\\.2d_array\\.format\\.r8g8b8_unorm\\.count_1\\.size\\.pipeline_protected_flag_2x2_array_of_3_compute|dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.image\\.suballocation\\.sampling_type\\.separate\\.view_type\\.cube_array\\.format\\.r16g16_snorm\\.count_4\\.size\\.13x13_array_of_36_compute|dEQP\\-VK\\.pipeline\\.monolithic\\.image_view\\.view_type\\.cube_array\\.format\\.b8g8r8a8_srgb\\.subresource_range\\.lod_mip_levels_base_array_layer_compute|dEQP\\-VK\\.pipeline\\.monolithic\\.image\\.suballocation\\.sampling_type\\.separate\\.view_type\\.2d_array\\.format\\.b4g4r4a4_unorm_pack16\\.count_1\\.size\\.23x8_array_of_3_compute|dEQP\\-VK\\.pipeline\\.monolithic\\.sampler\\.view_type\\.3d\\.format\\.a4b4g4r4_unorm_pack16\\.mipmap\\.linear\\.lod\\.select_min_1_compute|dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.sampler\\.view_type\\.3d\\.format\\.astc_8x8_srgb_block\\.address_modes\\.uvw_mode_mirror_clamp_to_edge_mode_mirror_clamp_to_edge_mode_clamp_to_border_compute|dEQP\\-VK\\.pipeline\\.monolithic\\.sampler\\.view_type\\.1d\\.format\\.b8g8r8_snorm\\.mag_filter\\.nearest_compute|dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.image_view\\.view_type\\.cube\\.format\\.r8g8_unorm\\.component_swizzle\\.g_b_a_r_compute|dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.image\\.suballocation\\.sampling_type\\.combined\\.view_type\\.2d_array\\.format\\.b8g8r8_uscaled\\.count_1\\.size\\.32x32_array_of_3_compute|dEQP\\-VK\\.pipeline\\.monolithic\\.image_view\\.view_type\\.3d\\.format\\.r16_uscaled\\.subresource_range\\.lod_base_mip_level_single_array_layer_remaining_levels_and_layers_compute|dEQP\\-VK\\.pipeline\\.monolithic\\.sampler\\.view_type\\.2d_array\\.format\\.r32g32_sfloat\\.address_modes\\.uvw_mode_mirror_clamp_to_edge_mode_repeat_mode_clamp_to_edge_compute|dEQP\\-VK\\.pipeline\\.monolithic\\.image_view\\.view_type\\.1d\\.format\\.r8g8_srgb\\.subresource_range\\.lod_base_mip_level_array_layer_second_compute|dEQP\\-VK\\.pipeline\\.monolithic\\.image\\.suballocation\\.sampling_type\\.separate\\.view_type\\.3d\\.format\\.b8g8r8a8_unorm\\.count_1\\.size\\.pipeline_protected_flag_3x3x3_compute|dEQP\\-VK\\.pipeline\\.monolithic\\.sampler\\.view_type\\.3d\\.format\\.r8_unorm\\.mipmap\\.linear\\.lod\\.select_bias_3_1_compute|dEQP\\-VK\\.pipeline\\.monolithic\\.image\\.suballocation\\.sampling_type\\.separate\\.view_type\\.2d\\.format\\.astc_10x5_srgb_block\\.count_1\\.size\\.pipeline_protected_flag_13x13_compute)",
+    "classification": "NotSupported",
+    "category": "optional queue topology",
+    "basis": "The CTS gate requires dedicated or disjoint queue families. Vulkan permits one graphics+compute+transfer family, as advertised by this device."
+  },
+  {
+    "message": "Format not supported at vktRenderPassTests.cpp:5689",
+    "case_regex": "(?:dEQP\\-VK\\.renderpasses\\.renderpass1\\.dedicated_allocation\\.formats\\.a8_unorm\\.input\\.load\\.store\\.clear)",
+    "classification": "NotSupported",
+    "category": "format or memory configuration",
+    "basis": "A8_UNORM input/color attachment usage is optional in the mandatory format tables."
+  },
+  {
+    "message": "Format unsupported for tiling at vktShaderObjectRenderingTests.cpp:1112",
+    "case_regex": "(?:dEQP\\-VK\\.shader_object\\.rendering\\.color_attachment_count_4\\.none\\.extra_output_between_2\\.none\\.random_color_formats\\.after\\.none\\.b8g8r8_sscaled_d24_unorm_s8_uint|dEQP\\-VK\\.shader_object\\.rendering\\.color_attachment_count_4\\.none\\.extra_output_between_2\\.none\\.same_color_formats\\.before\\.gl_frag_write\\.a2b10g10r10_uscaled_pack32|dEQP\\-VK\\.shader_object\\.rendering\\.color_attachment_count_4\\.extra_attachment_between_2\\.none\\.static\\.same_color_formats\\.before\\.none\\.r16g16b16_sscaled_d16_unorm|dEQP\\-VK\\.shader_object\\.rendering\\.color_attachment_count_4\\.extra_attachment_before_1\\.none\\.dynamic\\.same_color_formats\\.before\\.none\\.r16g16b16a16_sscaled_d32_sfloat_s8_uint|dEQP\\-VK\\.shader_object\\.rendering\\.color_attachment_count_4\\.extra_attachment_after_1\\.none\\.none\\.random_color_formats\\.before\\.none\\.r16g16_uscaled_d24_unorm_s8_uint|dEQP\\-VK\\.shader_object\\.rendering\\.color_attachment_count_4\\.none\\.none\\.static\\.random_color_formats\\.before\\.none\\.r16g16b16_uscaled_d16_unorm_s8_uint|dEQP\\-VK\\.shader_object\\.rendering\\.color_attachment_count_4\\.none\\.extra_output_before_1\\.dynamic\\.random_color_formats\\.before\\.none\\.r16g16b16a16_uscaled|dEQP\\-VK\\.shader_object\\.rendering\\.color_attachment_count_1\\.none\\.extra_output_after_1\\.none\\.same_color_formats\\.after\\.none\\.b8g8r8_sscaled_d16_unorm_s8_uint|dEQP\\-VK\\.shader_object\\.rendering\\.color_attachment_count_4\\.none\\.extra_output_between_1\\.none\\.random_color_formats\\.before\\.none\\.r8_uscaled_d32_sfloat|dEQP\\-VK\\.shader_object\\.rendering\\.color_attachment_count_4\\.extra_attachment_between_1\\.none\\.static\\.same_color_formats\\.before\\.none\\.a2b10g10r10_snorm_pack32|dEQP\\-VK\\.shader_object\\.rendering\\.color_attachment_count_4\\.none\\.extra_output_between_2\\.none\\.same_color_formats\\.after\\.none\\.a8b8g8r8_sscaled_pack32_d32_sfloat_s8_uint|dEQP\\-VK\\.shader_object\\.rendering\\.color_attachment_count_4\\.none\\.extra_output_before_1\\.none\\.same_color_formats\\.before\\.none\\.b8g8r8a8_uscaled_d32_sfloat|dEQP\\-VK\\.shader_object\\.rendering\\.color_attachment_count_1\\.none\\.extra_output_between_1\\.static\\.same_color_formats\\.before\\.none\\.r4g4_unorm_pack8_d32_sfloat_s8_uint|dEQP\\-VK\\.shader_object\\.rendering\\.color_attachment_count_8\\.none\\.none\\.static\\.random_color_formats\\.before\\.none\\.r4g4_unorm_pack8_x8_d24_unorm_pack32|dEQP\\-VK\\.shader_object\\.rendering\\.color_attachment_count_4\\.none\\.none\\.static\\.same_color_formats\\.before\\.none\\.r8g8b8_sscaled_d16_unorm|dEQP\\-VK\\.shader_object\\.rendering\\.color_attachment_count_1\\.none\\.extra_output_between_2\\.dynamic\\.same_color_formats\\.before\\.none\\.r16g16b16a16_sscaled_d32_sfloat_s8_uint)",
+    "classification": "NotSupported",
+    "category": "format or memory configuration",
+    "basis": "The exact cases require color attachment support for scaled, packed SNORM10 or R4G4 formats. Those attachment bits are optional."
+  },
+  {
+    "message": "Image format not supported. at vktImageHostImageCopyTests.cpp:1314",
+    "case_regex": "(?:dEQP\\-VK\\.image\\.host_image_copy\\.draw_r8g8b8a8_unorm_bc7_unorm_block\\.host_transition\\.memory_to_image\\.general_general\\.transfer_dst_optimal\\.linear\\.0_16_64\\.32x28)",
+    "classification": "NotSupported",
+    "category": "format or memory configuration",
+    "basis": "The exact case requests a BC7 linear image. Compressed linear-tiling image support is optional."
+  },
+  {
+    "message": "VK_KHR_fragment_shading_rate is not supported at vktTestCase.cpp:1394",
+    "case_regex": "(?:dEQP\\-VK\\.fragment_shading_rate\\.dynamic_rendering\\.primary_cmd_buff\\.monolithic\\.basic\\.static\\.noattachment\\.shaderrate\\.max\\.mul\\.4x4\\.samples4\\.vs|dEQP\\-VK\\.image\\.extended_usage_bit_compatibility\\.image_format_properties2\\.a2r10g10b10_uint_pack32_linear_fragment_shading_rate_attachment_bit_khr|dEQP\\-VK\\.fragment_shading_rate\\.renderpass2\\.monolithic\\.interlock\\.dynamic\\.noattachmentptr\\.shaderrate\\.replace\\.keep\\.1x1\\.samples2\\.vs|dEQP\\-VK\\.fragment_shading_rate\\.renderpass2\\.monolithic\\.basic\\.static\\.attachment\\.shaderrate\\.mul\\.replace\\.4x4\\.samples8\\.vs|dEQP\\-VK\\.fragment_shading_rate\\.renderpass2\\.monolithic\\.basic\\.static\\.noattachment\\.shaderrate\\.min\\.replace\\.33x35\\.samples4\\.ms|dEQP\\-VK\\.fragment_shading_rate\\.dynamic_rendering\\.primary_cmd_buff\\.pipeline_library\\.samplelocations\\.dynamic\\.noattachment\\.shaderrate\\.replace\\.replace\\.1x1\\.samples2\\.gs|dEQP\\-VK\\.fragment_shading_rate\\.renderpass2\\.fast_linked_library\\.samplemaskin\\.dynamic\\.noattachment\\.noshaderrate\\.keep\\.keep\\.1x1\\.samples2\\.vs|dEQP\\-VK\\.fragment_shading_rate\\.renderpass2\\.monolithic\\.pixel_consistency\\.rate_1x2\\.samples_1\\.extent_4x4|dEQP\\-VK\\.fragment_shading_rate\\.renderpass2\\.monolithic\\.samplelocations\\.dynamic\\.noattachmentptr\\.shaderrate\\.replace\\.keep\\.4x4\\.samples8\\.ms|dEQP\\-VK\\.fragment_shading_rate\\.renderpass2\\.monolithic\\.fragdepth_early_late\\.dynamic\\.noattachmentptr\\.noshaderrate\\.replace\\.keep\\.33x35\\.samples8\\.vs|dEQP\\-VK\\.fragment_shading_rate\\.dynamic_rendering\\.primary_cmd_buff\\.monolithic\\.basic\\.dynamic\\.noattachment\\.shaderrate\\.keep\\.min\\.151x431\\.samples2\\.gs|dEQP\\-VK\\.fragment_shading_rate\\.renderpass2\\.monolithic\\.basic\\.dynamic\\.attachment\\.shaderrate\\.max\\.mul\\.256x256\\.samples1\\.vs|dEQP\\-VK\\.pipeline\\.monolithic\\.multisample_with_fragment_shading_rate\\.std_sample_locations\\.draw\\.stencil\\.samples_2\\.separate_renderpass_load_op_clear_same_pattern_general_layout_event|dEQP\\-VK\\.fragment_shading_rate\\.renderpass2\\.monolithic\\.attachment_rate\\.setup_with_fragment\\.r32g32b32_uint\\.rate_1x1_imageless|dEQP\\-VK\\.fragment_shading_rate\\.dynamic_rendering\\.primary_cmd_buff\\.monolithic\\.fragstencil\\.dynamic\\.attachment\\.noshaderrate\\.keep\\.replace\\.151x431\\.samples4\\.vs|dEQP\\-VK\\.fragment_shading_rate\\.renderpass2\\.monolithic\\.apisamplemask\\.dynamic\\.noattachmentptr\\.shaderrate\\.replace\\.keep\\.4x4\\.samples2\\.ms|dEQP\\-VK\\.fragment_shading_rate\\.renderpass2\\.monolithic\\.multiviewsrlayered\\.dynamic\\.attachment\\.noshaderrate\\.replace\\.keep\\.256x256\\.samples4\\.vs|dEQP\\-VK\\.pipeline\\.fast_linked_library\\.multisample_with_fragment_shading_rate\\.std_sample_locations\\.draw\\.depth\\.samples_4\\.separate_renderpass_load_op_clear_same_pattern_general_layout|dEQP\\-VK\\.fragment_shading_rate\\.dynamic_rendering\\.primary_cmd_buff\\.monolithic\\.sampleshadingenable\\.dynamic\\.noattachment\\.noshaderrate\\.keep\\.replace\\.256x256\\.samples4\\.vs|dEQP\\-VK\\.fragment_shading_rate\\.dynamic_rendering\\.primary_cmd_buff\\.fast_linked_library\\.samplemaskin\\.dynamic\\.attachment\\.noshaderrate\\.keep\\.keep\\.1x1\\.samples2\\.vs|dEQP\\-VK\\.fragment_shading_rate\\.renderpass2\\.monolithic\\.fragdepth_clear\\.dynamic\\.attachment\\.shaderrate\\.replace\\.replace\\.1x1\\.samples16\\.ms|dEQP\\-VK\\.fragment_shading_rate\\.renderpass2\\.fast_linked_library\\.interlock\\.dynamic\\.noattachment\\.shaderrate\\.replace\\.keep\\.1x1\\.samples4\\.gs|dEQP\\-VK\\.fragment_shading_rate\\.dynamic_rendering\\.primary_cmd_buff\\.monolithic\\.multiview\\.dynamic\\.attachment\\.shaderrate\\.keep\\.keep\\.4x4\\.samples2\\.vs|dEQP\\-VK\\.fragment_shading_rate\\.renderpass2\\.monolithic\\.basic\\.dynamic\\.noattachmentptr\\.shaderrate\\.min\\.keep\\.151x431\\.samples2\\.vs|dEQP\\-VK\\.fragment_shading_rate\\.renderpass2\\.monolithic\\.attachment_rate\\.setup_with_copying_using_transfer_queue_exclusive\\.r16g16b16_uint\\.rate_4x1_general_layout|dEQP\\-VK\\.fragment_shading_rate\\.renderpass2\\.fast_linked_library\\.conservativeunder\\.dynamic\\.noattachmentptr\\.shaderrate\\.replace\\.keep\\.256x256\\.samples4\\.ms|dEQP\\-VK\\.fragment_shading_rate\\.renderpass2\\.monolithic\\.colorlayered\\.dynamic\\.noattachmentptr\\.shaderrate\\.keep\\.replace\\.256x256\\.samples8\\.vs|dEQP\\-VK\\.fragment_shading_rate\\.renderpass2\\.monolithic\\.samplemaskout\\.dynamic\\.noattachment\\.noshaderrate\\.replace\\.keep\\.4x4\\.samples8\\.vs|dEQP\\-VK\\.fragment_shading_rate\\.renderpass2\\.monolithic\\.multiviewport\\.dynamic\\.noattachmentptr\\.shaderrate\\.replace\\.keep\\.33x35\\.samples2\\.ms|dEQP\\-VK\\.fragment_shading_rate\\.dynamic_rendering\\.primary_cmd_buff\\.monolithic\\.interlock\\.dynamic\\.attachment\\.noshaderrate\\.keep\\.replace\\.151x431\\.samples2\\.vs|dEQP\\-VK\\.fragment_shading_rate\\.dynamic_rendering\\.primary_cmd_buff\\.fast_linked_library\\.multiview\\.dynamic\\.attachment_noimageview\\.shaderrate\\.replace\\.replace\\.1x1\\.samples1\\.gs|dEQP\\-VK\\.fragment_shading_rate\\.dynamic_rendering\\.primary_cmd_buff\\.monolithic\\.basic\\.static\\.noattachment\\.shaderrate\\.min\\.keep\\.1x1\\.samples16\\.vs|dEQP\\-VK\\.fragment_shading_rate\\.renderpass2\\.pipeline_library\\.conservativeunder\\.dynamic\\.noattachmentptr\\.shaderrate\\.keep\\.replace\\.1x1\\.samples4\\.ms|dEQP\\-VK\\.fragment_shading_rate\\.renderpass2\\.monolithic\\.fragstencil_early_late\\.dynamic\\.attachment\\.noshaderrate\\.keep\\.replace\\.256x256\\.samples8\\.vs|dEQP\\-VK\\.fragment_shading_rate\\.dynamic_rendering\\.primary_cmd_buff\\.monolithic\\.attachment_rate\\.setup_with_copying_using_transfer_queue_exclusive\\.r32g32b32a32_uint\\.rate_4x2|dEQP\\-VK\\.fragment_shading_rate\\.renderpass2\\.monolithic\\.interlock\\.dynamic\\.noattachment\\.shaderrate\\.keep\\.replace\\.151x431\\.samples4\\.ms|dEQP\\-VK\\.fragment_shading_rate\\.renderpass2\\.monolithic\\.conservativeover\\.dynamic\\.noattachment\\.noshaderrate\\.replace\\.replace\\.1x1\\.samples1\\.ms|dEQP\\-VK\\.fragment_shading_rate\\.dynamic_rendering\\.primary_cmd_buff\\.pipeline_library\\.samplelocations\\.dynamic\\.attachment_noimageview\\.noshaderrate\\.keep\\.keep\\.256x256\\.samples16\\.ms|dEQP\\-VK\\.fragment_shading_rate\\.renderpass2\\.monolithic\\.basic\\.static\\.noattachmentptr\\.noshaderrate\\.mul\\.replace\\.256x256\\.samples4\\.ms)",
+    "classification": "NotSupported",
+    "category": "optional extension",
+    "basis": "Unadvertised optional extension(s): VK_KHR_fragment_shading_rate. Check against pinned vk.xml/CTS vkMandatoryFeatures.inl; no mandatory Vulkan 1.4 requirement for this capability."
+  },
+  {
+    "message": "VK_KHR_acceleration_structure is not supported at vktTestCase.cpp:1394",
+    "case_regex": "(?:dEQP\\-VK\\.ray_query\\.acceleration_structures\\.flags\\.traditional_structures\\.chit_shader\\.cpu_built\\.triangles_aop\\.identical_instances\\.padded\\.0_update_0_lowmemory_topgeneric|dEQP\\-VK\\.binding_model\\.mutable_descriptor\\.single\\.acceleration_structure_khr\\.update_write\\.no_source\\.no_source\\.pool_same_types\\.pre_update\\.no_array\\.geom|dEQP\\-VK\\.ray_tracing_pipeline\\.acceleration_structures\\.flags\\.traditional_structures\\.gpu_built\\.triangles_aop\\.identical_instances\\.padded\\.fastbuild_update_0_lowmemory_topgeneric|dEQP\\-VK\\.binding_model\\.descriptorset_random\\.sets4\\.dynindexed\\.ubolimitlow\\.sbolimithigh\\.sampledimglow\\.lowimgsingletex\\.noiub\\.nouab\\.chit\\.noia\\.0|dEQP\\-VK\\.ray_query\\.builtin\\.getintersectioninstanceshaderbindingtablerecordoffsetCandidate\\.chit\\.triangles|dEQP\\-VK\\.ray_query\\.acceleration_structures\\.flags\\.traditional_structures\\.fragment_shader\\.cpu_built\\.triangles\\.different_instances_aop\\.nopadding\\.0_0_compaction_lowmemory_bothgeneric|dEQP\\-VK\\.binding_model\\.descriptorset_random\\.sets4\\.unifindexed\\.noubo\\.nosbo\\.nosampledimg\\.lowimgsingletex\\.noiub\\.uab\\.chit\\.noia\\.7|dEQP\\-VK\\.ray_query\\.inside_aabbs\\.ray_end_inside\\.scaling_factor_0\\.rotation_1|dEQP\\-VK\\.ray_tracing_pipeline\\.acceleration_structures\\.flags\\.sparse_binding_structures\\.gpu_built\\.aabbs_aop\\.different_instances_aop\\.nopadding\\.0_0_0_lowmemory_bottomgeneric|dEQP\\-VK\\.pipeline\\.monolithic\\.shader_module_identifier\\.pipeline_from_id\\.ray_tracing_libs\\.1_variants\\.no_spec_constants\\.use_pipeline_cache\\.zero_len_id_garbage_ptr\\.no_exec_properties\\.rgen_miss|dEQP\\-VK\\.ray_tracing_pipeline\\.trace_rays_cmds\\.direct\\.11_13_1|dEQP\\-VK\\.binding_model\\.descriptorset_random\\.sets4\\.unifindexed\\.ubolimitlow\\.nosbo\\.nosampledimg\\.outimgonly\\.noiub\\.nouab\\.rgen\\.noia\\.9|dEQP\\-VK\\.binding_model\\.descriptorset_random\\.sets8\\.constant\\.ubolimitlow\\.sbolimitlow\\.sampledimglow\\.outimgtexlow\\.iublimithigh\\.nouab\\.sect\\.noia\\.0|dEQP\\-VK\\.ray_query\\.acceleration_structures\\.flags\\.sparse_binding_structures\\.compute_shader\\.gpu_built\\.triangles\\.different_instances_aop\\.padded\\.0_update_0_0|dEQP\\-VK\\.ray_query\\.acceleration_structures\\.empty\\.traditional_structures\\.miss_shader\\.cpu_built\\.index_uint32\\.inactive_instances|dEQP\\-VK\\.ray_tracing_pipeline\\.acceleration_structures\\.flags\\.traditional_structures\\.cpu_built\\.triangles_aop\\.identical_instances_aop\\.padded\\.fastbuild_0_compaction_lowmemory_bothgeneric|dEQP\\-VK\\.ray_query\\.acceleration_structures\\.flags\\.sparse_binding_structures\\.fragment_shader\\.gpu_built\\.aabbs_aop\\.different_instances\\.padded\\.fasttrace_0_0_0|dEQP\\-VK\\.binding_model\\.mutable_descriptor\\.single_nonmutable\\.storage_texel_buffer\\.update_copy\\.nonmutable_source\\.normal_source\\.pool_same_types\\.pre_update\\.no_array\\.rgen|dEQP\\-VK\\.binding_model\\.descriptorset_random\\.sets32\\.dynindexed\\.ubolimitlow\\.sbolimitlow\\.sampledimghigh\\.outimgtexlow\\.noiub\\.nouab\\.ahit\\.noia\\.0|dEQP\\-VK\\.ray_tracing_pipeline\\.opacity_micromap\\.disable_opacity_micromap_instance_force_2_state_ray_flag_force_no_opaque_instance_cull_opaque_ray_flag\\.map_value\\.2\\.level_6|dEQP\\-VK\\.ray_tracing_pipeline\\.opacity_micromap\\.force_opaque_instance_force_opaque_ray_flag_disable_opacity_micromap_instance_force_2_state_instance_force_2_state_ray_flag\\.map_value\\.2\\.level_3|dEQP\\-VK\\.binding_model\\.mutable_descriptor\\.single\\.storage_image\\.update_copy\\.nonmutable_source\\.normal_source\\.pool_same_types\\.update_after_bind\\.no_array\\.rgen|dEQP\\-VK\\.ray_query\\.acceleration_structures\\.flags\\.sparse_binding_structures\\.compute_shader\\.gpu_built\\.triangles\\.different_instances\\.nopadding\\.fastbuild_0_0_lowmemory|dEQP\\-VK\\.ray_query\\.acceleration_structures\\.flags\\.traditional_structures\\.fragment_shader\\.cpu_built\\.aabbs_aop\\.identical_instances\\.nopadding\\.fasttrace_0_0_0_topgeneric|dEQP\\-VK\\.ray_query\\.acceleration_structures\\.flags\\.traditional_structures\\.fragment_shader\\.cpu_built\\.triangles_aop\\.different_instances_aop\\.padded\\.0_0_compaction_lowmemory_bothgeneric|dEQP\\-VK\\.binding_model\\.descriptorset_random\\.sets16\\.dynindexed\\.noubo\\.nosbo\\.sampledimglow\\.outimgonly\\.noiub\\.nouab\\.rgen\\.noia\\.0|dEQP\\-VK\\.ray_query\\.acceleration_structures\\.flags\\.traditional_structures\\.fragment_shader\\.gpu_built\\.triangles_aop\\.different_instances_aop\\.nopadding\\.fasttrace_0_compaction_lowmemory|dEQP\\-VK\\.binding_model\\.mutable_descriptor\\.single\\.storage_texel_buffer\\.update_copy\\.nonmutable_source\\.normal_source\\.pool_same_types\\.pre_update\\.no_array\\.ahit|dEQP\\-VK\\.ray_query\\.acceleration_structures\\.flags\\.traditional_structures\\.chit_shader\\.cpu_built\\.aabbs\\.identical_instances\\.nopadding\\.0_0_compaction_lowmemory_topgeneric|dEQP\\-VK\\.binding_model\\.mutable_descriptor\\.single\\.switches\\.acceleration_structure_khr_sampled_image\\.update_write\\.no_source\\.no_source\\.pool_expand_types\\.pre_update\\.no_array\\.vert)",
+    "classification": "NotSupported",
+    "category": "optional extension",
+    "basis": "Unadvertised optional extension(s): VK_KHR_acceleration_structure. Check against pinned vk.xml/CTS vkMandatoryFeatures.inl; no mandatory Vulkan 1.4 requirement for this capability."
+  },
+  {
+    "message": "VK_EXT_blend_operation_advanced is not supported at vktTestCase.cpp:1394",
+    "case_regex": "(?:dEQP\\-VK\\.pipeline\\.fast_linked_library\\.blend_operation_advanced\\.ops\\.color_attachments_1_blend_overlap_disjoint_ext_nonpremultipliedsrc_nonpremultiplieddst_31|dEQP\\-VK\\.pipeline\\.shader_object_linked_spirv\\.blend_operation_advanced\\.ops\\.color_attachments_1_blend_overlap_disjoint_ext_nonpremultiplieddst_24_r8g8b8a8_unorm|dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.blend_operation_advanced\\.ops\\.color_attachments_1_blend_overlap_uncorrelated_ext_nonpremultiplieddst_17_r8g8b8a8_unorm|dEQP\\-VK\\.pipeline\\.shader_object_linked_spirv\\.blend_operation_advanced\\.ops\\.color_attachments_8_blend_overlap_uncorrelated_ext_nonpremultipliedsrc_10_r8g8b8a8_unorm|dEQP\\-VK\\.pipeline\\.shader_object_unlinked_binary\\.blend_operation_advanced\\.ops\\.color_attachments_8_blend_overlap_conjoint_ext_nonpremultipliedsrc_12_r8g8b8a8_unorm|dEQP\\-VK\\.pipeline\\.shader_object_linked_binary\\.blend_operation_advanced\\.ops\\.color_attachments_1_blend_overlap_conjoint_ext_nonpremultipliedsrc_4|dEQP\\-VK\\.pipeline\\.shader_object_linked_binary\\.blend_operation_advanced\\.ops\\.color_attachments_2_blend_overlap_uncorrelated_ext_nonpremultiplieddst_5_r8g8b8a8_unorm|dEQP\\-VK\\.pipeline\\.shader_object_linked_binary\\.blend_operation_advanced\\.ops\\.color_attachments_16_blend_overlap_uncorrelated_ext_6|dEQP\\-VK\\.pipeline\\.monolithic\\.blend_operation_advanced\\.ops\\.color_attachments_2_blend_overlap_conjoint_ext_nonpremultipliedsrc_21)",
+    "classification": "NotSupported",
+    "category": "optional extension",
+    "basis": "Unadvertised optional extension(s): VK_EXT_blend_operation_advanced. Check against pinned vk.xml/CTS vkMandatoryFeatures.inl; no mandatory Vulkan 1.4 requirement for this capability."
+  },
+  {
+    "message": "Custom border color with non-identity swizzle not supported without specifying sampler border mapping at vktPipelineSamplerBorderSwizzleTests.cpp:285",
+    "case_regex": "(?:dEQP\\-VK\\.pipeline\\.monolithic\\.sampler\\.border_swizzle\\.r8g8_uint\\.rgb1\\.custom\\.gather_0\\.no_swizzle_hint|dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.sampler\\.border_swizzle\\.b4g4r4a4_unorm_pack16\\.r0ba\\.custom\\.gather_3\\.no_swizzle_hint)",
+    "classification": "NotSupported",
+    "category": "optional feature",
+    "basis": "Custom/opaque border-color swizzle without a mapping hint requires the optional borderColorSwizzleFromImage property, not advertised."
+  },
+  {
+    "message": "VK_EXT_filter_cubic is not supported at vktTestCase.cpp:1394",
+    "case_regex": "(?:dEQP\\-VK\\.api\\.copy_and_blit\\.core\\.blit_image\\.all_formats\\.color\\.2d\\.a4r4g4b4_unorm_pack16\\.a2b10g10r10_uscaled_pack32\\.general_optimal_cubic|dEQP\\-VK\\.api\\.copy_and_blit\\.core\\.blit_image\\.all_formats\\.color\\.2d\\.eac_r11g11_snorm_block\\.b5g5r5a1_unorm_pack16\\.general_optimal_cubic|dEQP\\-VK\\.api\\.copy_and_blit\\.core\\.blit_image\\.all_formats\\.generate_mipmaps\\.from_base_level\\.layercount_1\\.r16_snorm\\.optimal_general_cubic|dEQP\\-VK\\.api\\.copy_and_blit\\.core\\.blit_image\\.all_formats\\.color\\.2d\\.r16g16b16a16_sscaled\\.r8_uscaled\\.general_general_cubic|dEQP\\-VK\\.api\\.copy_and_blit\\.core\\.blit_image\\.all_formats\\.color\\.2d\\.bc5_unorm_block\\.r8_sscaled\\.general_general_cubic|dEQP\\-VK\\.texture\\.filtering\\.2d\\.combinations\\.cubic_mipmap_linear\\.nearest\\.clamp_to_edge\\.repeat|dEQP\\-VK\\.api\\.copy_and_blit\\.core\\.blit_image\\.all_formats\\.color\\.2d\\.astc_12x12_unorm_block\\.r8g8b8a8_unorm\\.general_optimal_cubic|dEQP\\-VK\\.api\\.copy_and_blit\\.core\\.blit_image\\.all_formats\\.color\\.2d\\.r8g8b8a8_snorm\\.r16g16_snorm\\.general_general_cubic|dEQP\\-VK\\.api\\.copy_and_blit\\.core\\.blit_image\\.all_formats\\.color\\.2d\\.r16_unorm\\.b8g8r8a8_uscaled\\.optimal_general_cubic|dEQP\\-VK\\.api\\.copy_and_blit\\.core\\.blit_image\\.all_formats\\.color\\.2d\\.b5g5r5a1_unorm_pack16\\.r16g16b16a16_unorm\\.optimal_general_cubic|dEQP\\-VK\\.api\\.copy_and_blit\\.core\\.blit_image\\.all_formats\\.color\\.2d\\.r16g16b16_uscaled\\.r8g8b8a8_unorm\\.general_general_cubic|dEQP\\-VK\\.api\\.copy_and_blit\\.copy_commands2\\.blit_image\\.all_formats\\.color\\.2d\\.r16g16b16_sscaled\\.e5b9g9r9_ufloat_pack32\\.optimal_optimal_cubic)",
+    "classification": "NotSupported",
+    "category": "optional extension",
+    "basis": "Unadvertised optional extension(s): VK_EXT_filter_cubic. Check against pinned vk.xml/CTS vkMandatoryFeatures.inl; no mandatory Vulkan 1.4 requirement for this capability."
+  },
+  {
+    "message": "Sample count not supported at vktRenderPassDepthStencilResolveTests.cpp:1285",
+    "case_regex": "(?:dEQP\\-VK\\.renderpasses\\.renderpass2\\.depth_stencil_resolve\\.image_2d_5_1\\.samples_8\\.d32_sfloat_s8_uint\\.depth_average_stencil_max_testing_depth|dEQP\\-VK\\.renderpasses\\.renderpass2\\.depth_stencil_resolve\\.image_2d_32_32\\.samples_16\\.d32_sfloat_s8_uint\\.depth_min_stencil_max_testing_depth|dEQP\\-VK\\.renderpasses\\.renderpass2\\.depth_stencil_resolve\\.image_2d_17_1\\.samples_16\\.s8_uint\\.depth_zero_stencil_zero_testing_stencil_samplemask)",
+    "classification": "NotSupported",
+    "category": "optional sample count",
+    "basis": "The frozen cases request 8/16/32 samples, above the advertised 1/2/4 masks. Vulkan does not require these sample counts for these formats."
+  },
+  {
+    "message": "shaderTessellationAndGeometryPointSize not supported at vktTransformFeedbackSimpleTests.cpp:4689",
+    "case_regex": "(?:dEQP\\-VK\\.transform_feedback\\.simple_optimized_gpl\\.query_copy_stride_zero_triangle_fan_14_509_64bits_ptsz|dEQP\\-VK\\.transform_feedback\\.simple_fast_gpl\\.host_query_reset_line_list_with_adjacency_1_248_32bits_ptsz|dEQP\\-VK\\.transform_feedback\\.simple_optimized_gpl\\.query_copy_stride_zero_line_list_6_508_32bits_query_with_availability_ptsz|dEQP\\-VK\\.transform_feedback\\.simple\\.query_copy_6_4_64bits_query_with_availability_ptsz)",
+    "classification": "NotSupported",
+    "category": "optional feature",
+    "basis": "The named gate requires optional feature shaderTessellationAndGeometryPointSize, not advertised in the pinned profile. Review includes extension-conditional requirements in vkMandatoryFeatures.inl, and the direct mandatory-feature CTS check passes."
+  },
+  {
+    "message": "VK_EXT_shader_image_atomic_int64 is not supported at vktTestCase.cpp:1394",
+    "case_regex": "(?:dEQP\\-VK\\.robustness\\.image_robustness\\.bind\\.notemplate\\.r64i\\.dontunroll\\.volatile\\.storage_image\\.no_fmt_qual\\.img\\.samples_1\\.1d\\.comp_compute|dEQP\\-VK\\.robustness\\.robustness2\\.bind\\.notemplate\\.r64ui\\.dontunroll\\.nonvolatile\\.storage_buffer\\.readwrite\\.no_fmt_qual\\.len_32\\.samples_1\\.1d\\.rgen|dEQP\\-VK\\.robustness\\.robustness2\\.push\\.notemplate\\.r64i\\.dontunroll\\.volatile\\.storage_buffer\\.readonly\\.no_fmt_qual\\.len_70\\.samples_1\\.1d\\.comp_compute|dEQP\\-VK\\.robustness\\.robustness2\\.bind\\.notemplate\\.r64ui\\.unroll\\.nonvolatile\\.storage_texel_buffer\\.fmt_qual\\.null_descriptor\\.samples_1\\.1d\\.comp_compute|dEQP\\-VK\\.robustness\\.robustness2\\.push\\.notemplate\\.r64i\\.unroll\\.nonvolatile\\.storage_buffer\\.readonly\\.no_fmt_qual\\.len_70\\.samples_1\\.1d\\.rgen|dEQP\\-VK\\.robustness\\.image_robustness\\.push\\.notemplate\\.r64ui\\.unroll\\.nonvolatile\\.storage_image\\.no_fmt_qual\\.img\\.samples_4\\.2d_array\\.rgen_compute)",
+    "classification": "NotSupported",
+    "category": "optional extension",
+    "basis": "Unadvertised optional extension(s): VK_EXT_shader_image_atomic_int64. Check against pinned vk.xml/CTS vkMandatoryFeatures.inl; no mandatory Vulkan 1.4 requirement for this capability."
+  },
+  {
+    "message": "VK_KHR_video_queue is not supported at vktTestCase.cpp:1394",
+    "case_regex": "(?:dEQP\\-VK\\.video\\.encode\\.av1\\.720x480_10le_420\\.idr_p_b3_13_15\\.qindex255_tiling_4x4_rc_disabled_lr_cdef_layered_dpb|dEQP\\-VK\\.video\\.formats\\.encode_h264_r10x6g10x6_unorm_2pack16_encode_src_444_10bit|dEQP\\-VK\\.video\\.encode\\.av1\\.720x480_10le_420\\.idr_p_b3_13_15\\.qindex128_tiling_1x2_rc_disabled_lf_cdef)",
+    "classification": "NotSupported",
+    "category": "optional extension",
+    "basis": "Unadvertised optional extension(s): VK_KHR_video_queue. Check against pinned vk.xml/CTS vkMandatoryFeatures.inl; no mandatory Vulkan 1.4 requirement for this capability."
+  },
+  {
+    "message": "VK_AMD_mixed_attachment_samples and VK_NV_framebuffer_mixed_samples with VK_NV_coverage_reduction_mode are not supported at vktPipelineMultisampleMixedAttachmentSamplesTests.cpp:1782",
+    "case_regex": "(?:dEQP\\-VK\\.pipeline\\.shader_object_linked_spirv\\.multisample\\.mixed_attachment_samples\\.shader_builtins\\.coverage_2_color_1_depth_stencil_2\\.r8g8b8a8_unorm_d16_unorm)",
+    "classification": "NotSupported",
+    "category": "optional extension",
+    "basis": "Unadvertised optional extension(s): VK_AMD_mixed_attachment_samples, VK_NV_framebuffer_mixed_samples, VK_NV_coverage_reduction_mode. Check against pinned vk.xml/CTS vkMandatoryFeatures.inl; no mandatory Vulkan 1.4 requirement for this capability."
+  },
+  {
+    "message": "VK_KHR_fragment_shader_barycentric is not supported at vktTestCase.cpp:1394",
+    "case_regex": "(?:dEQP\\-VK\\.fragment_shading_barycentric\\.fast_linked_library\\.data\\.provoking_last\\.static\\.triangle_strip_with_adjacency\\.no_clip\\.array2\\.dvec4\\.per_vertex\\.vertex_shader|dEQP\\-VK\\.fragment_shading_barycentric\\.pipeline_library\\.weights\\.provoking_first\\.pipeline_topology_dynamic\\.msaa_interpolate_at_sample\\.triangle_list_with_adjacency\\.noperspective\\.vertex_shader|dEQP\\-VK\\.fragment_shading_barycentric\\.pipeline_library\\.data\\.provoking_first\\.static\\.point_list\\.no_clip\\.type\\.double\\.per_vertex\\.vertex_shader|dEQP\\-VK\\.fragment_shading_barycentric\\.data\\.provoking_first\\.dynamic\\.triangle_list\\.no_clip\\.type\\.ivec4\\.per_vertex_flat\\.vertex_shader|dEQP\\-VK\\.fragment_shading_barycentric\\.data\\.provoking_last\\.static\\.triangle_strip\\.no_clip\\.array2\\.vec3\\.per_vertex_flat\\.vertex_shader|dEQP\\-VK\\.fragment_shading_barycentric\\.fast_linked_library\\.weights\\.provoking_first\\.pipeline_topology_dynamic\\.msaa_centroid_qualifier\\.line_list_with_adjacency\\.perspective\\.vertex_shader)",
+    "classification": "NotSupported",
+    "category": "optional extension",
+    "basis": "Unadvertised optional extension(s): VK_KHR_fragment_shader_barycentric. Check against pinned vk.xml/CTS vkMandatoryFeatures.inl; no mandatory Vulkan 1.4 requirement for this capability."
+  },
+  {
+    "message": "Requested core feature is not supported: shaderResourceResidency at vktTestCase.cpp:1498",
+    "case_regex": "(?:dEQP\\-VK\\.image\\.atomic_operations\\.inc\\.3d\\.notransfer\\.sparse_read\\.normal_img\\.r32ui_end_result)",
+    "classification": "NotSupported",
+    "category": "optional feature",
+    "basis": "The named gate requires optional feature shaderResourceResidency, not advertised in the pinned profile. Review includes extension-conditional requirements in vkMandatoryFeatures.inl, and the direct mandatory-feature CTS check passes."
+  },
+  {
+    "message": "Number of descriptor sets not supported at vktBindingDescriptorSetRandomTests.cpp:433",
+    "case_regex": "(?:dEQP\\-VK\\.binding_model\\.descriptorset_random\\.sets16\\.noarray\\.ubolimitlow\\.sbolimitlow\\.sampledimghigh\\.outimgtexlow\\.noiub\\.uab\\.vert\\.noia\\.0)",
+    "classification": "NotSupported",
+    "category": "format or memory configuration",
+    "basis": "The exact case requests 16 descriptor sets; maxBoundDescriptorSets=8 exceeds the required minimum."
+  },
+  {
+    "message": "VK_KHR_copy_memory_indirect is not supported at vktTestCase.cpp:1394",
+    "case_regex": "(?:dEQP\\-VK\\.api\\.copy_and_blit\\.dedicated_allocation\\.image_to_buffer\\.2d_images\\.mip_copies_astc_8x6_unorm_block_64x192_5_layersindirect|dEQP\\-VK\\.api\\.copy_and_blit\\.device_address\\.image_to_buffer\\.2d_images\\.mip_copies_bc4_unorm_block_64x192_5_layersindirect|dEQP\\-VK\\.api\\.copy_and_blit\\.dedicated_allocation\\.image_to_buffer_transfer_queue\\.1d_images\\.mip_copies_eac_r11_unorm_block_64x64_2_layers)",
+    "classification": "NotSupported",
+    "category": "optional extension",
+    "basis": "Unadvertised optional extension(s): VK_KHR_copy_memory_indirect. Check against pinned vk.xml/CTS vkMandatoryFeatures.inl; no mandatory Vulkan 1.4 requirement for this capability."
+  },
+  {
+    "message": "No matching queue found: findQueueFamilyIndexWithCaps(requiredCaps=0x2, excludedCaps=0x1) at vktTestCase.cpp:519",
+    "case_regex": "(?:dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.sampler\\.border_swizzle\\.r16_sint\\.rgb0\\.transparent_black\\.gather_1\\.with_swizzle_hint_compute|dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.sampler\\.border_swizzle\\.r16g16b16a16_sfloat\\.igba\\.transparent_black\\.gather_3\\.with_swizzle_hint_compute|dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.sampler\\.border_swizzle\\.r16g16_snorm\\.0gba\\.opaque_black\\.gather_0\\.no_swizzle_hint_compute|dEQP\\-VK\\.pipeline\\.monolithic\\.sampler\\.border_swizzle\\.r8g8b8a8_sint\\.riba\\.opaque_white\\.gather_0\\.with_swizzle_hint_compute|dEQP\\-VK\\.pipeline\\.monolithic\\.sampler\\.border_swizzle\\.b8g8r8_srgb\\.rgb0\\.opaque_black\\.no_gather\\.no_swizzle_hint_compute|dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.sampler\\.border_swizzle\\.r16g16b16a16_sfloat\\.rg1a\\.opaque_black\\.gather_1\\.no_swizzle_hint_compute|dEQP\\-VK\\.pipeline\\.monolithic\\.sampler\\.border_swizzle\\.r32g32_sint\\.r0ba\\.opaque_black\\.no_gather\\.with_swizzle_hint_compute|dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.sampler\\.border_swizzle\\.r16g16b16_sfloat\\.barg\\.opaque_black\\.gather_0\\.with_swizzle_hint_compute|dEQP\\-VK\\.pipeline\\.monolithic\\.sampler\\.border_swizzle\\.r16_sfloat\\.rgba\\.transparent_black\\.no_gather\\.no_swizzle_hint_compute|dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.sampler\\.border_swizzle\\.b8g8r8a8_srgb\\.gbar\\.opaque_white\\.no_gather\\.with_swizzle_hint_compute|dEQP\\-VK\\.pipeline\\.monolithic\\.sampler\\.border_swizzle\\.r8g8_uint\\.rgb1\\.opaque_white\\.gather_1\\.no_swizzle_hint_compute|dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.sampler\\.border_swizzle\\.r32g32b32_sint\\.r1ba\\.transparent_black\\.gather_1\\.with_swizzle_hint_compute|dEQP\\-VK\\.pipeline\\.monolithic\\.sampler\\.border_swizzle\\.r8g8_srgb\\.barg\\.transparent_black\\.gather_0\\.no_swizzle_hint_compute|dEQP\\-VK\\.pipeline\\.monolithic\\.sampler\\.border_swizzle\\.a2r10g10b10_snorm_pack32\\.argb\\.custom\\.gather_0\\.no_swizzle_hint_compute|dEQP\\-VK\\.pipeline\\.monolithic\\.sampler\\.border_swizzle\\.r16g16_unorm\\.riba\\.opaque_white\\.gather_1\\.with_swizzle_hint_compute|dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.sampler\\.border_swizzle\\.r16g16b16_sint\\.rgb0\\.opaque_white\\.gather_0\\.with_swizzle_hint_compute|dEQP\\-VK\\.pipeline\\.monolithic\\.sampler\\.border_swizzle\\.b8g8r8_snorm\\.r0ba\\.transparent_black\\.no_gather\\.with_swizzle_hint_compute|dEQP\\-VK\\.pipeline\\.monolithic\\.sampler\\.border_swizzle\\.a2b10g10r10_snorm_pack32\\.rg1a\\.opaque_white\\.no_gather\\.no_swizzle_hint_compute|dEQP\\-VK\\.pipeline\\.monolithic\\.sampler\\.border_swizzle\\.r8_unorm\\.rg0a\\.transparent_black\\.gather_2\\.with_swizzle_hint_compute|dEQP\\-VK\\.pipeline\\.monolithic\\.sampler\\.border_swizzle\\.r8g8b8a8_sint\\.rg0a\\.opaque_black\\.gather_2\\.with_swizzle_hint_compute|dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.sampler\\.border_swizzle\\.r16g16_sint\\.igba\\.transparent_black\\.gather_2\\.with_swizzle_hint_compute|dEQP\\-VK\\.pipeline\\.monolithic\\.sampler\\.border_swizzle\\.r8g8b8a8_snorm\\.riba\\.transparent_black\\.gather_3\\.no_swizzle_hint_compute|dEQP\\-VK\\.pipeline\\.monolithic\\.sampler\\.border_swizzle\\.r8_snorm\\.igba\\.opaque_black\\.gather_2\\.with_swizzle_hint_compute|dEQP\\-VK\\.pipeline\\.monolithic\\.sampler\\.border_swizzle\\.r8_sint\\.rgia\\.opaque_white\\.gather_3\\.with_swizzle_hint_compute|dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.sampler\\.border_swizzle\\.r32g32_sint\\.riba\\.opaque_white\\.gather_2\\.no_swizzle_hint_compute|dEQP\\-VK\\.pipeline\\.monolithic\\.sampler\\.border_swizzle\\.r32g32b32_sint\\.rg0a\\.custom\\.gather_3\\.with_swizzle_hint_compute|dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.sampler\\.border_swizzle\\.b8g8r8_uint\\.rgba\\.opaque_black\\.gather_1\\.with_swizzle_hint_compute|dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.sampler\\.border_swizzle\\.a8b8g8r8_unorm_pack32\\.argb\\.custom\\.gather_1\\.no_swizzle_hint_compute)",
+    "classification": "NotSupported",
+    "category": "optional queue topology",
+    "basis": "The CTS gate requires dedicated or disjoint queue families. Vulkan permits one graphics+compute+transfer family, as advertised by this device."
+  },
+  {
+    "message": "Requested core feature is not supported: depthBounds at vktTestCase.cpp:1498",
+    "case_regex": "(?:dEQP\\-VK\\.pipeline\\.monolithic\\.depth\\.format\\.d32_sfloat\\.compare_ops\\.line_list_greater_or_equal_greater_equal_greater_or_equal_depth_bounds_test|dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.depth\\.format\\.d32_sfloat\\.compare_ops\\.line_list_less_less_always_not_equal_depth_bounds_test|dEQP\\-VK\\.pipeline\\.fast_linked_library\\.depth\\.nocolor\\.format\\.d16_unorm_s8_uint_separate_layouts\\.compare_ops\\.point_list_always_not_equal_never_not_equal_depth_bounds_test|dEQP\\-VK\\.pipeline\\.monolithic\\.depth\\.format\\.d24_unorm_s8_uint_separate_layouts\\.compare_ops\\.line_list_equal_always_equal_less_or_equal_depth_bounds_test|dEQP\\-VK\\.pipeline\\.pipeline_library\\.depth\\.nocolor\\.format\\.d32_sfloat_s8_uint_separate_layouts\\.compare_ops\\.line_list_never_less_greater_or_equal_less_or_equal_depth_bounds_test|dEQP\\-VK\\.pipeline\\.fast_linked_library\\.depth\\.nocolor\\.format\\.d16_unorm\\.compare_ops\\.point_list_not_equal_not_equal_not_equal_not_equal_depth_bounds_test_general_layout)",
+    "classification": "NotSupported",
+    "category": "optional feature",
+    "basis": "The named gate requires optional feature depthBounds, not advertised in the pinned profile. Review includes extension-conditional requirements in vkMandatoryFeatures.inl, and the direct mandatory-feature CTS check passes."
+  },
+  {
+    "message": "meshShader is not supported at vktPipelineExtendedDynamicStateTests.cpp:3307",
+    "case_regex": "(?:dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.extended_dynamic_state\\.mesh_shader\\.before_good_static\\.stencil_state_face_front_lt_inc_clamp_clear_254_ref_253_pass|dEQP\\-VK\\.pipeline\\.pipeline_library\\.extended_dynamic_state\\.mesh_shader\\.before_draw\\.coverage_to_color_location_3_single_sample|dEQP\\-VK\\.pipeline\\.monolithic\\.extended_dynamic_state\\.mesh_shader\\.before_draw\\.cull_none)",
+    "classification": "NotSupported",
+    "category": "optional feature",
+    "basis": "The meshShader feature/extension is optional and not advertised."
+  },
+  {
+    "message": "VK_FUCHSIA_external_semaphore is not supported at vktTestCase.cpp:1394",
+    "case_regex": "(?:dEQP\\-VK\\.synchronization2\\.cross_instance\\.suballocated\\.write_image_tess_eval_read_image_vertex\\.image_128x128_r8_unorm_timeline_semaphore_zircon_handle|dEQP\\-VK\\.synchronization\\.cross_instance\\.suballocated\\.write_image_fragment_read_image_compute_indirect\\.image_128x128_r16_uint_timeline_semaphore_zircon_handle|dEQP\\-VK\\.synchronization2\\.cross_instance\\.dedicated\\.write_clear_attachments_read_copy_image\\.image_128x128_r8g8b8a8_unorm_binary_semaphore_zircon_handle|dEQP\\-VK\\.synchronization2\\.cross_instance\\.suballocated\\.write_fill_buffer_read_ubo_compute_indirect\\.buffer_16384_timeline_semaphore_zircon_handle)",
+    "classification": "NotSupported",
+    "category": "optional extension",
+    "basis": "Unadvertised optional extension(s): VK_FUCHSIA_external_semaphore. Check against pinned vk.xml/CTS vkMandatoryFeatures.inl; no mandatory Vulkan 1.4 requirement for this capability."
+  },
+  {
+    "message": "Format doesn&apos;t support YCbCr conversions at vktYCbCrConversionTests.cpp:606",
+    "case_regex": "(?:dEQP\\-VK\\.ycbcr\\.conversion\\.b8g8r8_unorm\\.ycbcr_709\\.itu_full\\.nearest_tiling_linear|dEQP\\-VK\\.ycbcr\\.conversion\\.a2b10g10r10_unorm_pack32\\.rgb_identity\\.linear_tiling_optimal_binding_31)",
+    "classification": "NotSupported",
+    "category": "format or memory configuration",
+    "basis": "The exact B8G8R8_UNORM and A2B10G10R10_UNORM cases request YCbCr conversions not required for these ordinary color formats."
+  },
+  {
+    "message": "No compatible memory type found at vkMemUtil.cpp:724",
+    "case_regex": "(?:dEQP\\-VK\\.renderpasses\\.renderpass2\\.dedicated_allocation\\.attachment\\.4\\.463)",
+    "classification": "NotSupported",
+    "category": "format or memory configuration",
+    "basis": "The original QPA says attachment 0 Is lazy. No LAZILY_ALLOCATED memory type is advertised; lazy memory is optional."
+  },
+  {
+    "message": "Format feature blit destination not supported at vktApiBlittingTests.cpp:2167",
+    "case_regex": "(?:dEQP\\-VK\\.api\\.copy_and_blit\\.dedicated_allocation\\.blit_image\\.all_formats\\.generate_mipmaps\\.from_base_level\\.layercount_6\\.a2b10g10r10_sscaled_pack32\\.optimal_general_nearest)",
+    "classification": "NotSupported",
+    "category": "format or memory configuration",
+    "basis": "The exact mipmap case requires packed SSCALED10 blit-destination support; that format has no mandatory blit feature."
+  },
+  {
+    "message": "Format storage feature not supported at vktImageCompressionTranscodingSupport.cpp:2399",
+    "case_regex": "(?:dEQP\\-VK\\.image\\.texel_view_compatible\\.graphic\\.basic\\.3d_image\\.texture_write\\.etc2_r8g8b8a8_unorm_block\\.r32g32b32a32_uint)",
+    "classification": "NotSupportedButShouldBeSupported",
+    "category": "CTS gate defect",
+    "basis": "The exact ETC2/RGBA32_UINT mutable 3D test passes the full EXTENDED_USAGE image support query (:3533-3544), then incorrectly requires STORAGE_IMAGE on the compressed base format (:2397-2399). The compatible RGBA32_UINT view advertises storage-image support."
+  },
+  {
+    "message": "Format unsupported for tiling at vktImageLoadStoreTests.cpp:643",
+    "case_regex": "(?:dEQP\\-VK\\.image\\.store\\.with_format\\.buffer\\.r8_snorm_constant_linear)",
+    "classification": "NotSupportedButShouldBeSupported",
+    "category": "CTS gate defect",
+    "basis": "The exact buffer case passes its advertised STORAGE_TEXEL_BUFFER check, then incorrectly queries image tiling and fails a 1D linear image check. Texel buffers have no image tiling; vktImageLoadStoreTests.cpp:610-657."
+  },
+  {
+    "message": "Format not supported for sampling at vktPipelineSamplerBorderSwizzleTests.cpp:216",
+    "case_regex": "(?:dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.sampler\\.border_swizzle\\.a2r10g10b10_snorm_pack32\\.0gba\\.transparent_black\\.gather_3\\.no_swizzle_hint|dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.sampler\\.border_swizzle\\.a2b10g10r10_snorm_pack32\\.rgba\\.custom\\.gather_1\\.with_swizzle_hint)",
+    "classification": "NotSupported",
+    "category": "optional feature",
+    "basis": "Custom/opaque border-color swizzle without a mapping hint requires the optional borderColorSwizzleFromImage property, not advertised."
+  },
+  {
+    "message": "Unsupported format for min/max filtering: VK_FORMAT_ASTC_4x4_UNORM_BLOCK",
+    "case_regex": "(?:dEQP\\-VK\\.pipeline\\.monolithic\\.sampler\\.view_type\\.3d\\.format\\.astc_4x4_unorm_block\\.mag_reduce\\.comp_r_zero_zero_zero\\.min)",
+    "classification": "NotSupported",
+    "category": "optional feature",
+    "basis": "samplerFilterMinmax and filterMinmaxImageComponentMapping are false; these optional feature/property requirements are not advertised."
+  },
+  {
+    "message": "VK_EXT_discard_rectangles is not supported at vktTestCase.cpp:1394",
+    "case_regex": "(?:dEQP\\-VK\\.draw\\.renderpass\\.discard_rectangles\\.exclusive_rect_3|dEQP\\-VK\\.draw\\.dynamic_rendering\\.primary_cmd_buff\\.discard_rectangles\\.dynamic_discard_exclusive_rect_8)",
+    "classification": "NotSupported",
+    "category": "optional extension",
+    "basis": "Unadvertised optional extension(s): VK_EXT_discard_rectangles. Check against pinned vk.xml/CTS vkMandatoryFeatures.inl; no mandatory Vulkan 1.4 requirement for this capability."
+  },
+  {
+    "message": "extendedDynamicState3RasterizationStream not supported at vktPipelineExtendedDynamicStateTests.cpp:3455",
+    "case_regex": "(?:dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.extended_dynamic_state\\.two_draws_dynamic\\.rasterization_stream_none_to_one)",
+    "classification": "NotSupported",
+    "category": "optional feature",
+    "basis": "The named gate requires optional feature extendedDynamicState3RasterizationStream, not advertised in the pinned profile. Review includes extension-conditional requirements in vkMandatoryFeatures.inl, and the direct mandatory-feature CTS check passes."
+  },
+  {
+    "message": "VK_EXT_multisampled_render_to_single_sampled is not supported at vktTestCase.cpp:1394",
+    "case_regex": "(?:dEQP\\-VK\\.pipeline\\.monolithic\\.multisample\\.multisampled_render_to_single_sampled\\.dynamic_rendering\\.multi_renderpass\\.r8g8b8a8_unorm_r16g16b16a16_sfloat_r16g16b16a16_sint_d32_sfloat_s8_uint\\.random_467|dEQP\\-VK\\.pipeline\\.fast_linked_library\\.multisample\\.multisampled_render_to_single_sampled\\.multi_subpass\\.r8g8b8a8_unorm_r16g16b16a16_sfloat_r16g16b16a16_sint_d32_sfloat_s8_uint\\.random_355|dEQP\\-VK\\.pipeline\\.monolithic\\.multisample\\.multisampled_render_to_single_sampled\\.clear_attachments\\.r8g8b8a8_unorm_r16g16b16a16_sfloat_r16g16b16a16_sint_d32_sfloat_s8_uint\\.8x\\.ds_resolve_max\\.whole_framebuffer|dEQP\\-VK\\.pipeline\\.monolithic\\.multisample\\.multisampled_render_to_single_sampled\\.multi_subpass\\.r8g8b8a8_unorm_r16g16b16a16_sfloat_r16g16b16a16_sint_d32_sfloat_s8_uint\\.random_467|dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.multisample\\.multisampled_render_to_single_sampled\\.dynamic_rendering\\.basic\\.r8g8b8a8_unorm_r16g16b16a16_sfloat_r16g16b16a16_sint_d24_unorm_s8_uint\\.2x\\.ds_resolve_sample_zero\\.sub_framebuffer\\.ahb_color|dEQP\\-VK\\.pipeline\\.fast_linked_library\\.multisample\\.multisampled_render_to_single_sampled\\.dynamic_rendering\\.multi_renderpass\\.r8g8b8a8_unorm_r16g16b16a16_sfloat_r32g32b32a32_uint_d24_unorm_s8_uint\\.random_942|dEQP\\-VK\\.pipeline\\.fast_linked_library\\.multisample\\.multisampled_render_to_single_sampled\\.multi_subpass\\.r8g8b8a8_unorm_r16g16b16a16_sfloat_r32g32b32a32_uint_d16_unorm\\.random_100)",
+    "classification": "NotSupported",
+    "category": "optional extension",
+    "basis": "Unadvertised optional extension(s): VK_EXT_multisampled_render_to_single_sampled. Check against pinned vk.xml/CTS vkMandatoryFeatures.inl; no mandatory Vulkan 1.4 requirement for this capability."
+  },
+  {
+    "message": "VK_KHR_ray_tracing_pipeline is not supported at vktTestCase.cpp:1394",
+    "case_regex": "(?:dEQP\\-VK\\.robustness\\.robustness2\\.bind\\.notemplate\\.rgba32f\\.dontunroll\\.nonvolatile\\.storage_buffer_dynamic\\.readwrite\\.no_fmt_qual\\.len_16\\.samples_1\\.1d\\.rgen_compute|dEQP\\-VK\\.robustness\\.robustness2\\.push\\.notemplate\\.rg32f\\.unroll\\.nonvolatile\\.storage_buffer\\.readwrite\\.no_fmt_qual\\.len_33\\.samples_1\\.1d\\.rgen|dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.bind_point\\.graphics_raytracing\\.push_write\\.setup_gp_rs_rp_gs\\.cmd_tracerays_draw|dEQP\\-VK\\.robustness\\.robustness2\\.bind\\.notemplate\\.rgba32ui\\.unroll\\.nonvolatile\\.storage_buffer_dynamic\\.readwrite\\.no_fmt_qual\\.null_descriptor\\.samples_1\\.1d\\.rgen_compute|dEQP\\-VK\\.robustness\\.robustness2\\.push\\.notemplate\\.rgba32f\\.unroll\\.nonvolatile\\.storage_texel_buffer\\.no_fmt_qual\\.len_32\\.samples_1\\.1d\\.rgen|dEQP\\-VK\\.robustness\\.robustness2\\.bind\\.template\\.rg32ui\\.dontunroll\\.volatile\\.storage_texel_buffer\\.fmt_qual\\.null_descriptor\\.samples_1\\.1d\\.rgen|dEQP\\-VK\\.robustness\\.robustness2\\.bind\\.template\\.rgba32i\\.unroll\\.volatile\\.storage_image\\.fmt_qual\\.null_descriptor\\.samples_1\\.1d\\.rgen|dEQP\\-VK\\.robustness\\.robustness2\\.push\\.notemplate\\.rg32ui\\.dontunroll\\.volatile\\.storage_buffer\\.readwrite\\.no_fmt_qual\\.len_12\\.samples_1\\.1d\\.rgen_compute)",
+    "classification": "NotSupported",
+    "category": "optional extension",
+    "basis": "Unadvertised optional extension(s): VK_KHR_ray_tracing_pipeline. Check against pinned vk.xml/CTS vkMandatoryFeatures.inl; no mandatory Vulkan 1.4 requirement for this capability."
+  },
+  {
+    "message": "Pipeline statistics queries are not supported at vktQueryPoolStatisticsTests.cpp:509",
+    "case_regex": "(?:dEQP\\-VK\\.query_pool\\.statistics_query\\.host_query_reset\\.geometry_shader_invocations\\.primary\\.64bits_dstoffset_cmdcopyquerypoolresults_triangle_list_with_adjacency_clear_depth|dEQP\\-VK\\.query_pool\\.statistics_query\\.reset_after_copy\\.vertex_shader_invocations\\.primary\\.32bits_dstoffset_cmdcopyquerypoolresults_line_list|dEQP\\-VK\\.query_pool\\.statistics_query\\.host_query_reset\\.vertex_shader_invocations\\.primary\\.64bits_dstoffset_cmdcopyquerypoolresults_line_strip_with_adjacency_clear_depth|dEQP\\-VK\\.query_pool\\.statistics_query\\.reset_before_copy\\.input_assembly_primitives\\.secondary\\.32bits_cmdcopyquerypoolresults_line_strip_with_adjacency_clear_depth|dEQP\\-VK\\.query_pool\\.statistics_query\\.vertex_only\\.vertex_shader_invocations\\.primary\\.32bits_triangle_list_clear_color|dEQP\\-VK\\.query_pool\\.statistics_query\\.clipping_primitives\\.secondary_inherited\\.32bits_cmdcopyquerypoolresults_point_list_geometry|dEQP\\-VK\\.query_pool\\.statistics_query\\.host_query_reset\\.tes_control_patches\\.32bits_tes_control_patches_with_no_color_attachments|dEQP\\-VK\\.query_pool\\.statistics_query\\.vertex_shader_invocations\\.primary\\.32bits_line_strip_with_adjacency_clear_color|dEQP\\-VK\\.query_pool\\.statistics_query\\.reset_after_copy\\.geometry_shader_primitives\\.primary\\.32bits_dstoffset_cmdcopyquerypoolresults_triangle_strip_with_no_color_attachments|dEQP\\-VK\\.query_pool\\.statistics_query\\.reset_after_copy\\.input_assembly_primitives\\.primary\\.32bits_cmdcopyquerypoolresults_triangle_strip)",
+    "classification": "NotSupported",
+    "category": "optional feature",
+    "basis": "The named gate requires optional feature pipelineStatisticsQuery, not advertised in the pinned profile. Review includes extension-conditional requirements in vkMandatoryFeatures.inl, and the direct mandatory-feature CTS check passes."
+  },
+  {
+    "message": "Format feature blit source not supported at vktApiBlittingTests.cpp:1307",
+    "case_regex": "(?:dEQP\\-VK\\.api\\.copy_and_blit\\.core\\.blit_image\\.all_formats\\.color\\.2d\\.r4g4_unorm_pack8\\.r16g16_sscaled\\.optimal_optimal_nearest|dEQP\\-VK\\.api\\.copy_and_blit\\.copy_commands2\\.blit_image\\.all_formats\\.color\\.2d\\.r4g4_unorm_pack8\\.r16g16b16a16_sscaled\\.general_linear_nearest|dEQP\\-VK\\.api\\.copy_and_blit\\.core\\.blit_image\\.all_formats\\.color\\.2d\\.a2r10g10b10_snorm_pack32\\.b8g8r8a8_uscaled\\.optimal_general_linear|dEQP\\-VK\\.api\\.copy_and_blit\\.copy_commands2\\.blit_image\\.all_formats\\.color\\.2d\\.r4g4_unorm_pack8\\.r16g16b16_sfloat\\.linear_general_nearest|dEQP\\-VK\\.api\\.copy_and_blit\\.copy_commands2\\.blit_image\\.all_formats\\.color\\.2d\\.r4g4_unorm_pack8\\.e5b9g9r9_ufloat_pack32\\.optimal_general_linear|dEQP\\-VK\\.api\\.copy_and_blit\\.core\\.blit_image\\.all_formats\\.color\\.2d\\.r10x6g10x6b10x6a10x6_unorm_4pack16\\.b8g8r8_uscaled\\.optimal_general_cubic)",
+    "classification": "NotSupported",
+    "category": "format or memory configuration",
+    "basis": "The exact sources are R4G4_UNORM_PACK8, packed SNORM10 or packed YCbCr-related RGBA10X6; these blit-source features are optional."
+  },
+  {
+    "message": "robustImageAccess2 not supported at vktRobustnessExtsTests.cpp:654",
+    "case_regex": "(?:dEQP\\-VK\\.robustness\\.robustness2\\.push\\.notemplate\\.rg32ui\\.unroll\\.nonvolatile\\.storage_image\\.no_fmt_qual\\.img\\.samples_1\\.2d_array\\.comp|dEQP\\-VK\\.robustness\\.robustness2\\.push\\.notemplate\\.r32i\\.unroll\\.nonvolatile\\.storage_image\\.no_fmt_qual\\.null_descriptor\\.samples_1\\.1d\\.frag|dEQP\\-VK\\.robustness\\.robustness2\\.bind\\.template\\.r32f\\.dontunroll\\.nonvolatile\\.storage_image\\.no_fmt_qual\\.null_descriptor\\.samples_1\\.2d_array\\.vert|dEQP\\-VK\\.robustness\\.robustness2\\.push\\.notemplate\\.rgba32i\\.unroll\\.volatile\\.storage_image\\.fmt_qual\\.null_descriptor\\.samples_1\\.cube_array\\.comp_compute|dEQP\\-VK\\.robustness\\.robustness2\\.push\\.notemplate\\.r32ui\\.unroll\\.volatile\\.storage_image\\.fmt_qual\\.null_descriptor\\.samples_1\\.3d\\.comp_compute|dEQP\\-VK\\.robustness\\.robustness2\\.bind\\.template\\.r32f\\.dontunroll\\.volatile\\.storage_image\\.fmt_qual\\.null_descriptor\\.samples_1\\.3d\\.frag)",
+    "classification": "NotSupported",
+    "category": "optional feature",
+    "basis": "The named gate requires optional feature robustImageAccess2, not advertised in the pinned profile. Review includes extension-conditional requirements in vkMandatoryFeatures.inl, and the direct mandatory-feature CTS check passes."
+  },
+  {
+    "message": "No queue family found that only supports transfer queue. at vktApiCopiesAndBlittingUtil.cpp:343",
+    "case_regex": "(?:dEQP\\-VK\\.api\\.copy_and_blit\\.copy_commands2\\.image_to_image_transfer_queue\\.all_formats\\.color\\.2d_to_1d\\.astc_10x5_srgb_block\\.r32g32b32a32_uint\\.general_general|dEQP\\-VK\\.api\\.copy_and_blit\\.copy_commands2\\.image_to_image_transfer_queue\\.all_formats\\.color\\.2d_to_1d\\.r8g8b8a8_snorm\\.r32_sfloat\\.optimal_optimal|dEQP\\-VK\\.api\\.copy_and_blit\\.copy_commands2\\.image_to_image_transfer_queue\\.all_formats\\.color\\.2d_to_2d\\.r32g32b32a32_uint\\.astc_8x5_unorm_block\\.general_optimal)",
+    "classification": "NotSupported",
+    "category": "optional queue topology",
+    "basis": "The CTS gate requires dedicated or disjoint queue families. Vulkan permits one graphics+compute+transfer family, as advertised by this device."
+  },
+  {
+    "message": "VK_EXT_texture_compression_astc_3d is not supported at vktTestCase.cpp:1394",
+    "case_regex": "(?:dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.sampler\\.view_type\\.3d\\.format\\.astc_6x6x6_unorm_block_ext\\.mipmap\\.linear\\.lod\\.equal_min_3_max_3|dEQP\\-VK\\.pipeline\\.monolithic\\.sampler\\.view_type\\.3d\\.format\\.astc_6x6x5_srgb_block_ext\\.mipmap\\.linear\\.lod\\.select_bias_2_5_compute|dEQP\\-VK\\.pipeline\\.monolithic\\.image\\.suballocation\\.sampling_type\\.combined\\.view_type\\.3d\\.format\\.astc_6x5x5_unorm_block_ext\\.count_1\\.size\\.2x2x2|dEQP\\-VK\\.api\\.copy_and_blit\\.core\\.blit_image\\.all_formats\\.color\\.3d\\.astc_6x6x5_srgb_block_ext\\.r8g8b8a8_srgb\\.general_general_nearest|dEQP\\-VK\\.api\\.copy_and_blit\\.dedicated_allocation\\.blit_image\\.all_formats\\.color\\.3d\\.astc_3x3x3_unorm_block_ext\\.r8g8b8a8_unorm\\.general_general_linear|dEQP\\-VK\\.pipeline\\.monolithic\\.image\\.suballocation\\.sampling_type\\.combined\\.view_type\\.3d\\.format\\.astc_5x4x4_srgb_block_ext\\.count_1\\.size\\.5x11x17|dEQP\\-VK\\.pipeline\\.monolithic\\.sampler\\.view_type\\.3d\\.format\\.astc_6x5x5_unorm_block_ext\\.mipmap\\.linear\\.lod\\.select_min_1_compute|dEQP\\-VK\\.pipeline\\.monolithic\\.image\\.suballocation\\.sampling_type\\.combined\\.view_type\\.3d\\.format\\.astc_4x3x3_srgb_block_ext\\.count_1\\.size\\.8x16x32|dEQP\\-VK\\.pipeline\\.monolithic\\.sampler\\.view_type\\.3d\\.format\\.astc_5x5x4_unorm_block_ext\\.address_modes\\.all_mode_clamp_to_border_custom_1001_compute|dEQP\\-VK\\.pipeline\\.monolithic\\.image\\.suballocation\\.sampling_type\\.combined\\.view_type\\.3d\\.format\\.astc_5x4x4_sfloat_block_ext\\.count_1\\.size\\.32x16x8)",
+    "classification": "NotSupported",
+    "category": "optional extension",
+    "basis": "Unadvertised optional extension(s): VK_EXT_texture_compression_astc_3d. Check against pinned vk.xml/CTS vkMandatoryFeatures.inl; no mandatory Vulkan 1.4 requirement for this capability."
+  },
+  {
+    "message": "VK_EXT_sampler_filter_minmax is not supported at vktTestCase.cpp:1394",
+    "case_regex": "(?:dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.sampler\\.view_type\\.1d_array\\.format\\.a2b10g10r10_unorm_pack32\\.mag_reduce\\.comp_identity_zero_zero_zero\\.average_compute|dEQP\\-VK\\.pipeline\\.pipeline_library\\.sampler\\.separate_stencil_usage\\.view_type\\.3d\\.format\\.d24_unorm_s8_uint\\.min_reduce\\.comp_r_zero_zero_zero\\.average|dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.sampler\\.view_type\\.cube\\.format\\.a1b5g5r5_unorm_pack16\\.mag_reduce\\.comp_r_zero_zero_zero\\.average_compute|dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.sampler\\.view_type\\.cube\\.format\\.r5g6b5_unorm_pack16\\.min_reduce\\.comp_identity_zero_zero_zero\\.average)",
+    "classification": "NotSupported",
+    "category": "optional extension",
+    "basis": "Unadvertised optional extension(s): VK_EXT_sampler_filter_minmax. Check against pinned vk.xml/CTS vkMandatoryFeatures.inl; no mandatory Vulkan 1.4 requirement for this capability."
+  },
+  {
+    "message": "Device does not support subgroup partitioned operations at vktSubgroupsPartitionedTests.cpp:341",
+    "case_regex": "(?:dEQP\\-VK\\.subgroups\\.partitioned\\.mesh\\.subgroupinclusiveadd_float16_t_requiredsubgroupsize_mesh|dEQP\\-VK\\.subgroups\\.partitioned\\.mesh\\.subgroupexclusivemax_i16vec4_requiredsubgroupsize_task|dEQP\\-VK\\.subgroups\\.partitioned\\.graphics\\.subgroupinclusiveand_bvec3|dEQP\\-VK\\.subgroups\\.partitioned\\.compute\\.subgroupexclusivemax_i64vec2_requiredsubgroupsize)",
+    "classification": "NotSupported",
+    "category": "optional feature",
+    "basis": "VK_SUBGROUP_FEATURE_PARTITIONED_BIT_NV is an optional, unadvertised operation bit."
+  },
+  {
+    "message": "Format feature blit destination not supported at vktApiBlittingTests.cpp:1318",
+    "case_regex": "(?:dEQP\\-VK\\.api\\.copy_and_blit\\.core\\.blit_image\\.all_formats\\.color\\.2d\\.bc3_srgb_block\\.bc3_srgb_block\\.general_general_nearest|dEQP\\-VK\\.api\\.copy_and_blit\\.core\\.blit_image\\.all_formats\\.color\\.1d\\.astc_5x4_srgb_block\\.astc_5x4_srgb_block\\.general_general_nearest|dEQP\\-VK\\.api\\.copy_and_blit\\.dedicated_allocation\\.blit_image\\.all_formats\\.color\\.2d\\.bc1_rgb_unorm_block\\.r4g4_unorm_pack8\\.optimal_optimal_cubic)",
+    "classification": "NotSupported",
+    "category": "format or memory configuration",
+    "basis": "The exact destinations are BC3, ASTC5x4 and R4G4. Compressed/R4G4 blit-destination support is not mandatory."
+  },
+  {
+    "message": "Sample count not supported at vktDynamicRenderingDepthStencilResolveTests.cpp:1265",
+    "case_regex": "(?:dEQP\\-VK\\.renderpasses\\.dynamic_rendering\\.partial_secondary_cmd_buff\\.depth_stencil_resolve\\.samples_16\\.d24_unorm_s8_uint_separate_layouts\\.depth_zero_stencil_zero_testing_stencil|dEQP\\-VK\\.renderpasses\\.dynamic_rendering\\.partial_secondary_cmd_buff\\.depth_stencil_resolve\\.samples_32\\.d24_unorm_s8_uint\\.depth_zero_stencil_zero_testing_depth|dEQP\\-VK\\.renderpasses\\.dynamic_rendering\\.primary_cmd_buff\\.depth_stencil_resolve\\.samples_16\\.d24_unorm_s8_uint_separate_layouts\\.depth_min_stencil_max_testing_stencil)",
+    "classification": "NotSupported",
+    "category": "optional sample count",
+    "basis": "The frozen cases request 8/16/32 samples, above the advertised 1/2/4 masks. Vulkan does not require these sample counts for these formats."
+  },
+  {
+    "message": "Unsupported format for min/max filtering: VK_FORMAT_R8G8_SNORM",
+    "case_regex": "(?:dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.sampler\\.view_type\\.cube_array\\.format\\.r8g8_snorm\\.min_reduce\\.comp_r_g_b_a\\.min_compute)",
+    "classification": "NotSupported",
+    "category": "optional feature",
+    "basis": "samplerFilterMinmax and filterMinmaxImageComponentMapping are false; these optional feature/property requirements are not advertised."
+  },
+  {
+    "message": "Required number of color attachments not supported. at vktRenderPassMultisampleResolveTests.cpp:3020",
+    "case_regex": "(?:dEQP\\-VK\\.renderpasses\\.dynamic_rendering\\.primary_cmd_buff\\.suballocation\\.multisample_resolve\\.b8g8r8a8_unorm\\.max_attachments_16_samples_2)",
+    "classification": "NotSupported",
+    "category": "format or memory configuration",
+    "basis": "The exact case requests 16 attachments; maxColorAttachments is 8, satisfying the mandatory minimum."
+  },
+  {
+    "message": "geometryStreams feature is not supported at vktTransformFeedbackSimpleTests.cpp:3170",
+    "case_regex": "(?:dEQP\\-VK\\.transform_feedback\\.simple_fast_gpl\\.query_copy_stride_zero_line_strip_with_adjacency_6_251_32bits|dEQP\\-VK\\.transform_feedback\\.simple\\.query_omit_write_triangle_strip_with_adjacency_14_60_64bits|dEQP\\-VK\\.transform_feedback\\.simple\\.query_1_4_32bits|dEQP\\-VK\\.transform_feedback\\.simple_fast_gpl\\.query_copy_stride_zero_triangle_strip_6_61_64bits)",
+    "classification": "NotSupported",
+    "category": "optional feature",
+    "basis": "The named gate requires optional feature geometryStreams, not advertised in the pinned profile. Review includes extension-conditional requirements in vkMandatoryFeatures.inl, and the direct mandatory-feature CTS check passes."
+  },
+  {
+    "message": "Opaque black with non-identity swizzle not supported without specifying sampler border mapping at vktPipelineSamplerBorderSwizzleTests.cpp:308",
+    "case_regex": "(?:dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.sampler\\.border_swizzle\\.r16g16_sfloat\\.r1ba\\.opaque_black\\.gather_2\\.no_swizzle_hint)",
+    "classification": "NotSupported",
+    "category": "optional feature",
+    "basis": "Custom/opaque border-color swizzle without a mapping hint requires the optional borderColorSwizzleFromImage property, not advertised."
+  },
+  {
+    "message": "VK_KHR_video_decode_queue is not supported at vktTestCase.cpp:1394",
+    "case_regex": "(?:dEQP\\-VK\\.image\\.extended_usage_bit_compatibility\\.image_format_properties\\.r32g32b32_uint_optimal_video_decode_dst_bit_khr|dEQP\\-VK\\.image\\.extended_usage_bit_compatibility\\.image_format_properties2\\.r8g8b8a8_unorm_optimal_video_decode_src_bit_khr)",
+    "classification": "NotSupported",
+    "category": "optional extension",
+    "basis": "Unadvertised optional extension(s): VK_KHR_video_decode_queue. Check against pinned vk.xml/CTS vkMandatoryFeatures.inl; no mandatory Vulkan 1.4 requirement for this capability."
+  },
+  {
+    "message": "shaderOutputLayer feature not supported at vktDGCGraphicsTessStateTestsExt.cpp:225",
+    "case_regex": "(?:dEQP\\-VK\\.dgc\\.ext\\.graphics\\.tess_state\\.shader_objects\\.isolines_isolines\\.fractional_odd_spacing_fractional_even_spacing\\.4_3_preprocess|dEQP\\-VK\\.dgc\\.ext\\.graphics\\.tess_state\\.shader_objects\\.quads_quads\\.fractional_even_spacing_equal_spacing\\.4_3_preprocess)",
+    "classification": "NotSupported",
+    "category": "optional feature",
+    "basis": "The named gate requires optional feature shaderOutputLayer, not advertised in the pinned profile. Review includes extension-conditional requirements in vkMandatoryFeatures.inl, and the direct mandatory-feature CTS check passes."
+  },
+  {
+    "message": "Format not renderable at vktApiImageClearingTests.cpp:1992",
+    "case_regex": "(?:dEQP\\-VK\\.api\\.image_clearing\\.dedicated_allocation\\.clear_color_attachment\\.multiple_layers\\.r16g16b16a16_sscaled_64x11)",
+    "classification": "NotSupported",
+    "category": "format or memory configuration",
+    "basis": "RGBA16_SSCALED color attachment support is optional."
+  },
+  {
+    "message": "VK_EXT_attachment_feedback_loop_dynamic_state is not supported at vktTestCase.cpp:1394",
+    "case_regex": "(?:dEQP\\-VK\\.pipeline\\.pipeline_library\\.attachment_feedback_loop_layout\\.sampler\\.general\\.combined_image_sampler\\.image_type\\.1d\\.format\\.d32_sfloat_s8_uint_depth_read_write_different_areas_dynamic_zero_static)",
+    "classification": "NotSupported",
+    "category": "optional extension",
+    "basis": "Unadvertised optional extension(s): VK_EXT_attachment_feedback_loop_dynamic_state. Check against pinned vk.xml/CTS vkMandatoryFeatures.inl; no mandatory Vulkan 1.4 requirement for this capability."
+  },
+  {
+    "message": "VK_EXT_device_generated_commands is not supported at vktTestCase.cpp:1394",
+    "case_regex": "(?:dEQP\\-VK\\.dgc\\.ext\\.graphics\\.xfb\\.discard_tess|dEQP\\-VK\\.dgc\\.ext\\.compute\\.misc\\.max_pc_range_256_partial_push_descriptor)",
+    "classification": "NotSupported",
+    "category": "optional extension",
+    "basis": "Unadvertised optional extension(s): VK_EXT_device_generated_commands. Check against pinned vk.xml/CTS vkMandatoryFeatures.inl; no mandatory Vulkan 1.4 requirement for this capability."
+  },
+  {
+    "message": "Unsupported feature: depthBounds at vktPipelineDepthRangeUnrestrictedTests.cpp:1371",
+    "case_regex": "(?:dEQP\\-VK\\.pipeline\\.shader_object_linked_binary\\.depth_range_unrestricted\\.depthbounds\\.d32_sfloat_compare_op_greater_or_equal_clear_value_2_dynamic_viewport_min_\\-6_max_6_dynamic_boundstest_min\\-4_max_4|dEQP\\-VK\\.pipeline\\.shader_object_linked_spirv\\.depth_range_unrestricted\\.depthbounds\\.d32_sfloat_compare_op_greater_clear_value_\\-3_dynamic_viewport_min_\\-12_max_12_dynamic_boundstest_min\\-2_max_2|dEQP\\-VK\\.pipeline\\.pipeline_library\\.depth_range_unrestricted\\.depthbounds\\.d16_unorm_compare_op_greater_or_equal_clear_value_2_dynamic_viewport_min_\\-2_max_2_dynamic_boundstest_min\\-4_max_4|dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.depth_range_unrestricted\\.depthbounds\\.d24_unorm_s8_uint_compare_op_less_clear_value_\\-7_viewport_min_\\-2_max_2_dynamic_boundstest_min\\-2_max_2)",
+    "classification": "NotSupported",
+    "category": "optional feature",
+    "basis": "The named gate requires optional feature depthBounds, not advertised in the pinned profile. Review includes extension-conditional requirements in vkMandatoryFeatures.inl, and the direct mandatory-feature CTS check passes."
+  },
+  {
+    "message": "VK_KHR_device_address_commands is not supported at vktTestCase.cpp:1394",
+    "case_regex": "(?:dEQP\\-VK\\.transform_feedback\\.simple\\.basic_2_256_device_address)",
+    "classification": "NotSupported",
+    "category": "optional extension",
+    "basis": "Unadvertised optional extension(s): VK_KHR_device_address_commands. Check against pinned vk.xml/CTS vkMandatoryFeatures.inl; no mandatory Vulkan 1.4 requirement for this capability."
+  },
+  {
+    "message": "floatRepresentation not supported at vktRasterizationDepthBiasControlTests.cpp:326",
+    "case_regex": "(?:dEQP\\-VK\\.rasterization\\.depth_bias_control\\.x8_d24_unorm_pack32\\.float_inexact\\.slope\\.slope_depth_1_0\\.target_bias_0_25\\.static_clamp_to_half)",
+    "classification": "NotSupported",
+    "category": "optional feature",
+    "basis": "The depthBiasControl floatRepresentation subfeature is optional and not advertised."
+  },
+  {
+    "message": "Format not supported. at vktYCbCrCopyTests.cpp:123",
+    "case_regex": "(?:dEQP\\-VK\\.ycbcr\\.copy\\.r4g4_unorm_pack8\\.g8_b8_r8_3plane_444_unorm\\.linear_buffer_linear_disjoint)",
+    "classification": "NotSupported",
+    "category": "format or memory configuration",
+    "basis": "The exact copy includes linear R4G4_UNORM_PACK8; support is optional."
+  },
+  {
+    "message": "Scaling mode is not supported at vktWsiMaintenance1Tests.cpp:1685",
+    "case_regex": "(?:dEQP\\-VK\\.wsi\\.wayland\\.maintenance1\\.scaling\\.mailbox\\.aspect_stretch\\.min_min\\.same_size_and_aspect|dEQP\\-VK\\.wsi\\.wayland\\.maintenance1\\.scaling\\.resize_window\\.mailbox\\.one_to_one\\.center_center\\.swapchain_smaller_wider_aspect)",
+    "classification": "NotSupported",
+    "category": "optional WSI",
+    "basis": "The exact cases require optional swapchain scaling or FIFO_LATEST_READY presentation. Only ordinary FIFO is mandatory."
+  },
+  {
+    "message": "Format doesn&apos;t support disjoint planes at vktYCbCrCopyTests.cpp:171",
+    "case_regex": "(?:dEQP\\-VK\\.ycbcr\\.copy\\.g16_b16r16_2plane_444_unorm\\.r10x6_unorm_pack16\\.linear_linear_disjoint|dEQP\\-VK\\.ycbcr\\.copy\\.g8_b8r8_2plane_422_unorm\\.b5g6r5_unorm_pack16\\.optimal_disjoint_optimal_disjoint|dEQP\\-VK\\.ycbcr\\.copy\\.g12x4_b12x4_r12x4_3plane_422_unorm_3pack16\\.a4r4g4b4_unorm_pack16\\.optimal_optimal_disjoint)",
+    "classification": "NotSupported",
+    "category": "format or memory configuration",
+    "basis": "DISJOINT is an optional per-format bit; the exact gates require unadvertised disjoint configurations."
+  },
+  {
+    "message": "Unsupported format for min/max filtering: VK_FORMAT_EAC_R11_UNORM_BLOCK",
+    "case_regex": "(?:dEQP\\-VK\\.pipeline\\.monolithic\\.sampler\\.view_type\\.3d\\.format\\.eac_r11_unorm_block\\.mag_reduce\\.comp_identity_zero_zero_zero\\.min_compute)",
+    "classification": "NotSupported",
+    "category": "optional feature",
+    "basis": "samplerFilterMinmax and filterMinmaxImageComponentMapping are false; these optional feature/property requirements are not advertised."
+  },
+  {
+    "message": "Unsupported format for min/max filtering: VK_FORMAT_R32G32_SFLOAT",
+    "case_regex": "(?:dEQP\\-VK\\.pipeline\\.monolithic\\.sampler\\.view_type\\.3d\\.format\\.r32g32_sfloat\\.mag_reduce\\.comp_identity_zero_zero_zero\\.max_compute)",
+    "classification": "NotSupported",
+    "category": "optional feature",
+    "basis": "samplerFilterMinmax and filterMinmaxImageComponentMapping are false; these optional feature/property requirements are not advertised."
+  },
+  {
+    "message": "Concurrent requires more than 1 queue family at vktSynchronizationOperationMultiQueueTests.cpp:1311",
+    "case_regex": "(?:dEQP\\-VK\\.synchronization\\.op\\.multi_queue\\.fence\\.write_blit_image_read_image_geometry\\.image_128x128_r8g8b8a8_unorm_concurrent_maintenance9|dEQP\\-VK\\.synchronization2\\.op\\.multi_queue\\.binary_semaphore\\.write_image_compute_read_image_tess_eval\\.image_128x128_r16g16b16a16_uint_concurrent_maintenance9|dEQP\\-VK\\.synchronization2\\.op\\.multi_queue\\.binary_semaphore\\.write_image_geometry_read_copy_image\\.image_128x128_r8g8b8a8_unorm_concurrent|dEQP\\-VK\\.synchronization2\\.op\\.multi_queue\\.fence\\.write_image_fragment_read_image_geometry\\.image_64x64x8_r32_sfloat_concurrent_maintenance9|dEQP\\-VK\\.synchronization\\.op\\.multi_queue\\.binary_semaphore\\.write_image_geometry_read_copy_image_to_buffer\\.image_128_r32_uint_concurrent_maintenance9|dEQP\\-VK\\.synchronization2\\.op\\.multi_queue\\.timeline_semaphore\\.write_image_compute_read_image_tess_control\\.image_64x64x8_r32_sfloat_concurrent)",
+    "classification": "NotSupported",
+    "category": "optional queue topology",
+    "basis": "The CTS gate requires dedicated or disjoint queue families. Vulkan permits one graphics+compute+transfer family, as advertised by this device."
+  },
+  {
+    "message": "Format not supported: VK_FORMAT_R8G8B8_UINT at vktTextureTestUtil.cpp:846",
+    "case_regex": "(?:dEQP\\-VK\\.texture\\.swizzle\\.texture_coordinate\\.r8g8b8_uint_2d_pot_sparse_yy)",
+    "classification": "NotSupported",
+    "category": "format or memory configuration",
+    "basis": "The exact case requests sparse RGB8_UINT, whose image and sparse-binding support is optional; sparseBinding is false."
+  },
+  {
+    "message": "VK_AMD_shader_image_load_store_lod is not supported at vktTestCase.cpp:1394",
+    "case_regex": "(?:dEQP\\-VK\\.image\\.load_store_lod\\.with_format\\.cube\\.r8_unorm_single_layer)",
+    "classification": "NotSupported",
+    "category": "optional extension",
+    "basis": "Unadvertised optional extension(s): VK_AMD_shader_image_load_store_lod. Check against pinned vk.xml/CTS vkMandatoryFeatures.inl; no mandatory Vulkan 1.4 requirement for this capability."
+  },
+  {
+    "message": "Format feature host image transfer not supported for drm format modifier. at vktImageHostImageCopyTests.cpp:235",
+    "case_regex": "(?:dEQP\\-VK\\.image\\.host_image_copy\\.drm_format_modifier\\.preinitialized\\.color_attachment_optimal\\.transfer_src_optimal\\.32x32x1_2\\.64\\.b8g8r8a8_sint|dEQP\\-VK\\.image\\.host_image_copy\\.drm_format_modifier\\.image_to_image_memcpy\\.general\\.transfer_dst_optimal\\.24x24x4_4\\.64\\.r32g32b32a32_sfloat|dEQP\\-VK\\.image\\.host_image_copy\\.drm_format_modifier\\.image_to_image_copy\\.stencil_attachment_optimal\\.transfer_dst_optimal\\.24x24x4_4\\.64\\.r32g32b32a32_sfloat|dEQP\\-VK\\.image\\.host_image_copy\\.drm_format_modifier\\.image_to_image_copy\\.stencil_attachment_optimal\\.transfer_src_optimal\\.32x32x1_1\\.64\\.r8g8b8a8_unorm|dEQP\\-VK\\.image\\.host_image_copy\\.drm_format_modifier\\.image_to_image_copy\\.depth_stencil_attachment_optimal\\.general\\.51x63x1_1\\.64\\.r8g8b8a8_unorm)",
+    "classification": "NotSupported",
+    "category": "format or memory configuration",
+    "basis": "HOST_IMAGE_TRANSFER for DRM modifier tiling is queried separately and is not required for every modifier/format combination."
+  },
+  {
+    "message": "VK_EXT_metal_surface is not supported at vktWsiMaintenance1Tests.cpp:79",
+    "case_regex": "(?:dEQP\\-VK\\.wsi\\.metal\\.maintenance1\\.scaling\\.resize_window\\.mailbox\\.aspect_stretch\\.max_center\\.swapchain_smaller_wider_aspect|dEQP\\-VK\\.wsi\\.metal\\.maintenance1\\.scaling\\.demand\\.aspect_stretch\\.center_center\\.same_size_and_aspect|dEQP\\-VK\\.wsi\\.metal\\.maintenance1\\.scaling\\.fifo\\.aspect_stretch\\.max_min\\.swapchain_smaller_wider_aspect)",
+    "classification": "NotSupported",
+    "category": "optional extension",
+    "basis": "Unadvertised optional extension(s): VK_EXT_metal_surface. Check against pinned vk.xml/CTS vkMandatoryFeatures.inl; no mandatory Vulkan 1.4 requirement for this capability."
+  },
+  {
+    "message": "VK_NV_mesh_shader is not supported at vktTestCase.cpp:1394",
+    "case_regex": "(?:dEQP\\-VK\\.mesh_shader\\.nv\\.api\\.draw_indirect_count\\.draw_count_2\\.offset_0_stride_large\\.count_limit_buffer\\.count_offset_alt\\.no_task_shader\\.first_task_zero|dEQP\\-VK\\.mesh_shader\\.nv\\.in_out\\.all_types\\.permutation_7\\.mesh_only)",
+    "classification": "NotSupported",
+    "category": "optional extension",
+    "basis": "Unadvertised optional extension(s): VK_NV_mesh_shader. Check against pinned vk.xml/CTS vkMandatoryFeatures.inl; no mandatory Vulkan 1.4 requirement for this capability."
+  },
+  {
+    "message": "Sparse residency for image type is not supported at vktSparseResourcesImageSparseResidency.cpp:1309",
+    "case_regex": "(?:dEQP\\-VK\\.sparse_resources\\.image_sparse_residency\\.mutable\\.2d_array\\.r8g8_uint_r8g8_sint_r16_sint)",
+    "classification": "NotSupported",
+    "category": "optional feature",
+    "basis": "The named gate requires optional feature sparseBinding, not advertised in the pinned profile. Review includes extension-conditional requirements in vkMandatoryFeatures.inl, and the direct mandatory-feature CTS check passes."
+  },
+  {
+    "message": "Exclusive compute queue not supported. at vktRobustnessExtsTests.cpp:726",
+    "case_regex": "(?:dEQP\\-VK\\.robustness\\.robustness2\\.bind\\.notemplate\\.rg32ui\\.unroll\\.nonvolatile\\.storage_buffer_dynamic\\.readonly\\.no_fmt_qual\\.len_36\\.samples_1\\.1d\\.comp_compute|dEQP\\-VK\\.robustness\\.robustness2\\.push\\.notemplate\\.r32ui\\.dontunroll\\.nonvolatile\\.storage_buffer\\.readonly\\.no_fmt_qual\\.len_4\\.samples_1\\.1d\\.comp_compute)",
+    "classification": "NotSupported",
+    "category": "optional queue topology",
+    "basis": "The CTS gate requires dedicated or disjoint queue families. Vulkan permits one graphics+compute+transfer family, as advertised by this device."
+  },
+  {
+    "message": "Source format not supported at vktApiBlittingTests.cpp:1287",
+    "case_regex": "(?:dEQP\\-VK\\.api\\.copy_and_blit\\.core\\.blit_image\\.all_formats\\.color\\.2d\\.b8g8r8_uscaled\\.r16g16b16_unorm\\.linear_general_nearest|dEQP\\-VK\\.api\\.copy_and_blit\\.core\\.blit_image\\.all_formats\\.color\\.2d\\.r8g8b8_srgb\\.r8_srgb\\.linear_optimal_nearest|dEQP\\-VK\\.api\\.copy_and_blit\\.core\\.blit_image\\.all_formats\\.color\\.2d\\.a8_unorm\\.b8g8r8_sscaled\\.general_optimal_cubic)",
+    "classification": "NotSupported",
+    "category": "format or memory configuration",
+    "basis": "The frozen cases request linear RGB8_USCALED, linear RGB8_SRGB, or A8_UNORM image support. Those format/configuration combinations are optional."
+  },
+  {
+    "message": "Multiview not supported with geometry shaders at vktDrawMultiExtTests.cpp:447",
+    "case_regex": "(?:dEQP\\-VK\\.draw\\.renderpass\\.multi_draw\\.mosaic\\.indexed_mixed\\.max_draws\\.stride_extra_4\\.no_instances\\.with_geom\\.multiview\\.no_offset|dEQP\\-VK\\.draw\\.dynamic_rendering\\.primary_cmd_buff\\.multi_draw\\.overlapping\\.normal\\.no_draws\\.standard_stride\\.no_instances\\.with_geom\\.multiview\\.no_offset)",
+    "classification": "NotSupported",
+    "category": "optional feature",
+    "basis": "The named gate requires optional feature multiviewGeometryShader, not advertised in the pinned profile. Review includes extension-conditional requirements in vkMandatoryFeatures.inl, and the direct mandatory-feature CTS check passes."
+  },
+  {
+    "message": "Layout not supported for src host copy at vktImageHostImageCopyTests.cpp:1864",
+    "case_regex": "(?:dEQP\\-VK\\.image\\.host_image_copy\\.linear\\.image_to_image_copy\\.present_src\\.transfer_dst_optimal\\.24x24x4_4\\.64\\.b8g8r8a8_sint)",
+    "classification": "NotSupported",
+    "category": "format or memory configuration",
+    "basis": "The exact case requests PRESENT_SRC as a host source layout. It is not advertised in pCopySrcLayouts and is not a required host-copy layout."
+  },
+  {
+    "message": "Unsupported format for sampling: VK_FORMAT_A2B10G10R10_SNORM_PACK32",
+    "case_regex": "(?:dEQP\\-VK\\.pipeline\\.monolithic\\.image\\.suballocation\\.sampling_type\\.combined\\.view_type\\.2d_array\\.format\\.a2b10g10r10_snorm_pack32\\.count_1\\.size\\.pipeline_protected_flag_13x23_array_of_3)",
+    "classification": "NotSupported",
+    "category": "format or memory configuration",
+    "basis": "Packed SNORM10 sampled-image support is optional; the case also requests protected pipeline behavior."
+  },
+  {
+    "message": "Required image array layers not supported. at vktImageHostImageCopyTests.cpp:1910",
+    "case_regex": "(?:dEQP\\-VK\\.image\\.host_image_copy\\.linear\\.image_to_image_copy\\.attachment_feedback_loop_optimal\\.transfer_dst_optimal\\.32x32x1_2\\.0\\.r16_sfloat|dEQP\\-VK\\.image\\.host_image_copy\\.linear\\.preinitialized\\.transfer_src_optimal\\.attachment_feedback_loop_optimal\\.32x32x1_2\\.64\\.r16_sfloat)",
+    "classification": "NotSupported",
+    "category": "format or memory configuration",
+    "basis": "The exact cases request linear R16F arrays, beyond mandatory linear-image configurations."
+  },
+  {
+    "message": "No DRM primary device. at tcuLnxVulkanPlatform.cpp:331",
+    "case_regex": "(?:dEQP\\-VK\\.wsi\\.direct_drm\\.maintenance1\\.scaling\\.immediate\\.one_to_one\\.max_max\\.swapchain_taller)",
+    "classification": "NotSupported",
+    "category": "optional WSI",
+    "basis": "The Vulkan render device has no DRM display node; presentation uses the separate DCP device. Direct-display support is optional."
+  },
+  {
+    "message": "Test requires unsupported extensions: VK_KHR_acceleration_structure VK_KHR_ray_tracing_pipeline at vktAmberTestCase.cpp:225",
+    "case_regex": "(?:dEQP\\-VK\\.ray_tracing_pipeline\\.amber\\.basic)",
+    "classification": "NotSupported",
+    "category": "optional extension",
+    "basis": "Unadvertised optional extension(s): VK_KHR_acceleration_structure, VK_KHR_ray_tracing_pipeline. Check against pinned vk.xml/CTS vkMandatoryFeatures.inl; no mandatory Vulkan 1.4 requirement for this capability."
+  },
+  {
+    "message": "Multiview not supported with tesellation shaders at vktDrawMultiExtTests.cpp:444",
+    "case_regex": "(?:dEQP\\-VK\\.draw\\.renderpass\\.multi_draw\\.mosaic\\.indexed_packed\\.no_draws\\.stride_extra_12\\.1_instance\\.with_tess\\.multiview\\.no_offset)",
+    "classification": "NotSupported",
+    "category": "optional feature",
+    "basis": "The named gate requires optional feature multiviewTessellationShader, not advertised in the pinned profile. Review includes extension-conditional requirements in vkMandatoryFeatures.inl, and the direct mandatory-feature CTS check passes."
+  },
+  {
+    "message": "Image format not supported. at vktImageHostImageCopyTests.cpp:1908",
+    "case_regex": "(?:dEQP\\-VK\\.image\\.host_image_copy\\.linear\\.image_to_image_copy\\.depth_stencil_attachment_optimal\\.general\\.32x32x1_2\\.64\\.b8g8r8a8_sint|dEQP\\-VK\\.image\\.host_image_copy\\.optimal\\.image_to_image_memcpy\\.depth_stencil_read_only_optimal\\.depth_stencil_read_only_optimal\\.51x63x1_1\\.64\\.r16_unorm|dEQP\\-VK\\.image\\.host_image_copy\\.linear\\.image_to_image_copy\\.transfer_dst_optimal\\.stencil_read_only_optimal\\.32x32x1_1\\.0\\.r16_sfloat|dEQP\\-VK\\.image\\.host_image_copy\\.linear\\.image_to_image_memcpy\\.transfer_dst_optimal\\.depth_attachment_stencil_read_only_optimal\\.24x24x4_4\\.64\\.r8g8b8a8_unorm|dEQP\\-VK\\.image\\.host_image_copy\\.linear\\.preinitialized\\.color_attachment_optimal\\.general\\.24x24x4_4\\.0\\.r16_unorm)",
+    "classification": "NotSupported",
+    "category": "format or memory configuration",
+    "basis": "GetUsage maps the requested depth/stencil layouts to DEPTH_STENCIL_ATTACHMENT for color formats, or requests linear arrays/3D color attachments. These image configurations are not mandatory (GetUsage:1445-1480)."
+  },
+  {
+    "message": "Format not supported",
+    "case_regex": "(?:dEQP\\-VK\\.image\\.extended_usage_bit_compatibility\\.image_format_properties\\.b8g8r8_uscaled_linear_transfer_src_bit)",
+    "classification": "NotSupported",
+    "category": "format or memory configuration",
+    "basis": "The exact extended-usage format query is B8G8R8_USCALED with linear tiling and TRANSFER_SRC. No mandatory image support for this scaled format."
+  },
+  {
+    "message": "Unsupported format for sampling: VK_FORMAT_R10X6G10X6B10X6A10X6_UNORM_4PACK16",
+    "case_regex": "(?:dEQP\\-VK\\.pipeline\\.monolithic\\.image_view\\.view_type\\.3d\\.format\\.r10x6g10x6b10x6a10x6_unorm_4pack16\\.subresource_range\\.lod_base_mip_level)",
+    "classification": "NotSupported",
+    "category": "format or memory configuration",
+    "basis": "The exact case requests 3D sampling of the YCbCr-related packed format; this 3D format configuration is optional."
+  },
+  {
+    "message": "Exclusive compute queue not supported. at vktTextureTestUtil.cpp:767",
+    "case_regex": "(?:dEQP\\-VK\\.texture\\.filtering\\.2d_array\\.combinations\\.nearest_mipmap_linear\\.nearest\\.repeat\\.repeat_compute|dEQP\\-VK\\.texture\\.filtering\\.3d\\.combinations\\.linear_mipmap_linear\\.nearest\\.mirrored_repeat\\.repeat\\.mirror_clamp_to_edge_compute)",
+    "classification": "NotSupported",
+    "category": "optional queue topology",
+    "basis": "The CTS gate requires dedicated or disjoint queue families. Vulkan permits one graphics+compute+transfer family, as advertised by this device."
+  },
+  {
+    "message": "Image format not supported at vktSynchronizationCrossInstanceSharingTests.cpp:1096",
+    "case_regex": "(?:dEQP\\-VK\\.synchronization\\.cross_instance\\.dedicated\\.write_draw_read_image_tess_eval\\.image_128x128_r16_uint_timeline_semaphore_dma_buf|dEQP\\-VK\\.synchronization2\\.cross_instance\\.suballocated\\.write_draw_indexed_read_copy_image_to_buffer\\.image_128x128_r8g8b8a8_unorm_timeline_semaphore_dma_buf|dEQP\\-VK\\.synchronization2\\.cross_instance\\.dedicated\\.write_blit_image_read_copy_image\\.image_128x128_r8g8b8a8_unorm_timeline_semaphore_dma_buf|dEQP\\-VK\\.synchronization2\\.cross_instance\\.dedicated\\.write_copy_buffer_to_image_read_image_tess_eval\\.image_128x128_r32g32b32a32_sfloat_binary_semaphore_dma_buf|dEQP\\-VK\\.synchronization\\.cross_instance\\.dedicated\\.write_draw_indexed_read_image_vertex\\.image_128x128_r32g32b32a32_sfloat_binary_semaphore_dma_buf)",
+    "classification": "NotSupported",
+    "category": "format or memory configuration",
+    "basis": "These cases require DMA_BUF external images. External memory support is per handle/format/configuration; ordinary image support does not mandate it."
+  },
+  {
+    "message": "Unsupported format for min/max filtering: VK_FORMAT_B8G8R8_UNORM",
+    "case_regex": "(?:dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.sampler\\.view_type\\.2d_array\\.format\\.b8g8r8_unorm\\.min_reduce\\.comp_identity_zero_zero_zero\\.max_compute)",
+    "classification": "NotSupported",
+    "category": "optional feature",
+    "basis": "samplerFilterMinmax and filterMinmaxImageComponentMapping are false; these optional feature/property requirements are not advertised."
+  },
+  {
+    "message": "longVector not supported at vktCooperativeVectorBasicTests.cpp:333",
+    "case_regex": "(?:dEQP\\-VK\\.cooperative_vector\\.longvec\\.convert\\.uint8_float16\\.buffer\\.components6\\.compute)",
+    "classification": "NotSupported",
+    "category": "optional feature",
+    "basis": "The named gate requires optional feature cooperativeVector, not advertised in the pinned profile. Review includes extension-conditional requirements in vkMandatoryFeatures.inl, and the direct mandatory-feature CTS check passes."
+  },
+  {
+    "message": "VK_EXT_legacy_vertex_attributes is not supported at vktTestCase.cpp:1394",
+    "case_regex": "(?:dEQP\\-VK\\.pipeline\\.monolithic\\.vertex_input\\.legacy_vertex_attributes\\.single_binding\\.r16g16_sint_shader_int_stride_7_attribute_offset_1)",
+    "classification": "NotSupported",
+    "category": "optional extension",
+    "basis": "Unadvertised optional extension(s): VK_EXT_legacy_vertex_attributes. Check against pinned vk.xml/CTS vkMandatoryFeatures.inl; no mandatory Vulkan 1.4 requirement for this capability."
+  },
+  {
+    "message": "Unsupported format for min/max filtering: VK_FORMAT_R32_UINT",
+    "case_regex": "(?:dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.sampler\\.view_type\\.2d_array\\.format\\.r32_uint\\.min_reduce\\.comp_r_zero_zero_zero\\.min)",
+    "classification": "NotSupported",
+    "category": "optional feature",
+    "basis": "samplerFilterMinmax and filterMinmaxImageComponentMapping are false; these optional feature/property requirements are not advertised."
+  },
+  {
+    "message": "longVector not supported at vktSubgroupsTestsUtils.cpp:1771",
+    "case_regex": "(?:dEQP\\-VK\\.subgroups\\.shuffle\\.compute\\.subgrouprotate_vec8_uint_dynamically_uniform_requiredsubgroupsize)",
+    "classification": "NotSupported",
+    "category": "optional feature",
+    "basis": "The named gate requires optional feature longVector, not advertised in the pinned profile. Review includes extension-conditional requirements in vkMandatoryFeatures.inl, and the direct mandatory-feature CTS check passes."
+  },
+  {
+    "message": "VK_EXT_shader_tile_image is not supported at vktTestCase.cpp:1394",
+    "case_regex": "(?:dEQP\\-VK\\.rasterization\\.shader_tile_image\\.non_coherent\\.depth\\.samples_1\\.single_draw\\.single_patch\\.x8_d24_unorm_pack32|dEQP\\-VK\\.rasterization\\.shader_tile_image\\.non_coherent\\.mrt\\.samples_32\\.single_draw\\.single_patch\\.r8g8_uint)",
+    "classification": "NotSupported",
+    "category": "optional extension",
+    "basis": "Unadvertised optional extension(s): VK_EXT_shader_tile_image. Check against pinned vk.xml/CTS vkMandatoryFeatures.inl; no mandatory Vulkan 1.4 requirement for this capability."
+  },
+  {
+    "message": "No suitable queue pairs found at vktSynchronizationOperationMultiQueueTests.cpp:733",
+    "case_regex": "(?:dEQP\\-VK\\.synchronization2\\.op\\.multi_queue\\.intermediate_barrier_use_all\\.write_copy_buffer_read_ssbo_fragment_buffer_16384\\.read_ubo_compute_write_fill_buffer|dEQP\\-VK\\.synchronization2\\.op\\.multi_queue\\.intermediate_barrier_use_all\\.write_ssbo_tess_control_read_ubo_geometry_buffer_16384\\.read_copy_buffer_write_fill_buffer)",
+    "classification": "NotSupported",
+    "category": "optional queue topology",
+    "basis": "The CTS gate requires dedicated or disjoint queue families. Vulkan permits one graphics+compute+transfer family, as advertised by this device."
+  },
+  {
+    "message": "VK_EXT_legacy_dithering is not supported at vktTestCase.cpp:1394",
+    "case_regex": "(?:dEQP\\-VK\\.renderpasses\\.dynamic_rendering\\.complete_secondary_cmd_buff\\.dithering\\.v1\\.depth_stencil\\.stencilGreater_depthLess_opLess_r4g4b4a4_unorm_pack16)",
+    "classification": "NotSupported",
+    "category": "optional extension",
+    "basis": "Unadvertised optional extension(s): VK_EXT_legacy_dithering. Check against pinned vk.xml/CTS vkMandatoryFeatures.inl; no mandatory Vulkan 1.4 requirement for this capability."
+  },
+  {
+    "message": "VK_NV_fragment_coverage_to_color is not supported at vktTestCase.cpp:1394",
+    "case_regex": "(?:dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.extended_dynamic_state\\.two_draws_dynamic\\.coverage_to_color_location_0_single_sample|dEQP\\-VK\\.pipeline\\.monolithic\\.extended_dynamic_state\\.after_pipelines\\.coverage_to_color_disable_single_sample)",
+    "classification": "NotSupported",
+    "category": "optional extension",
+    "basis": "Unadvertised optional extension(s): VK_NV_fragment_coverage_to_color. Check against pinned vk.xml/CTS vkMandatoryFeatures.inl; no mandatory Vulkan 1.4 requirement for this capability."
+  },
+  {
+    "message": "Requested core feature is not supported: shaderFloat64 at vktTestCase.cpp:1498",
+    "case_regex": "(?:dEQP\\-VK\\.transform_feedback\\.fuzz\\.single_basic_type\\.dvec4\\.geometry|dEQP\\-VK\\.pipeline\\.shader_object_unlinked_binary\\.spec_constant\\.graphics\\.vertex\\.composite\\.struct\\.dmat3x2)",
+    "classification": "NotSupported",
+    "category": "optional feature",
+    "basis": "The named gate requires optional feature shaderFloat64, not advertised in the pinned profile. Review includes extension-conditional requirements in vkMandatoryFeatures.inl, and the direct mandatory-feature CTS check passes."
+  },
+  {
+    "message": "VK_ARM_data_graph is not supported at vktTestCase.cpp:1394",
+    "case_regex": "(?:dEQP\\-VK\\.data_graph\\.properties\\.available\\.incomplete_tosa_oneIn_oneOut_manyConst_noSession_fp32fp32fp32_implicitIn_notPackedOut_implicitConst_unorderedBindings_linearTiling_sparseConstants|dEQP\\-VK\\.data_graph\\.properties\\.get\\.singleCall_complete_tosa_manyIn_manyOut_noConst_noSession_i32_notPackedIn_implicitOut_implicitConst_orderedBindings_linearTiling|dEQP\\-VK\\.data_graph\\.basic\\.create_pipeline\\.shaderModule_noCompCtrl_tosa_manyIn_manyOut_noConst_noSession_i32_implicitIn_notPackedOut_implicitConst_unorderedBindings_linearTiling|dEQP\\-VK\\.data_graph\\.properties\\.get\\.singleCall_incomplete_tosa_oneIn_oneOut_manyConst_noSession_fp16fp16fp16_packedIn_notPackedOut_packedConst_orderedBindings_linearTiling_sparseConstants)",
+    "classification": "NotSupported",
+    "category": "optional extension",
+    "basis": "Unadvertised optional extension(s): VK_ARM_data_graph. Check against pinned vk.xml/CTS vkMandatoryFeatures.inl; no mandatory Vulkan 1.4 requirement for this capability."
+  },
+  {
+    "message": "Format unsupported for tiling at vktImageAtomicOperationTests.cpp:1006",
+    "case_regex": "(?:dEQP\\-VK\\.image\\.atomic_operations\\.compare_exchange\\.2d\\.transfer\\.normal_read\\.normal_img\\.r64ui_end_result_linear|dEQP\\-VK\\.image\\.atomic_operations\\.or\\.1d_array\\.transfer\\.normal_read\\.normal_img\\.r64i_intermediate_values)",
+    "classification": "NotSupported",
+    "category": "format or memory configuration",
+    "basis": "The exact cases require R64_UINT/SINT storage image atomics, including a linear image. shaderImageInt64Atomics is not advertised."
+  },
+  {
+    "message": "Sparse residency for image type is not supported at vktSparseResourcesImageBlockShapes.cpp:98",
+    "case_regex": "(?:dEQP\\-VK\\.sparse_resources\\.image_block_shapes\\.2d_array\\.etc2_r8g8b8_srgb_block\\.samples_8)",
+    "classification": "NotSupported",
+    "category": "optional feature",
+    "basis": "The named gate requires optional feature sparseBinding, not advertised in the pinned profile. Review includes extension-conditional requirements in vkMandatoryFeatures.inl, and the direct mandatory-feature CTS check passes."
+  },
+  {
+    "message": "No matching queue found: findQueueFamilyIndexWithCaps(requiredCaps=0x4, excludedCaps=0x3) at vktTestCase.cpp:519",
+    "case_regex": "(?:dEQP\\-VK\\.api\\.buffer_marker\\.transfer\\.external_host_mem\\.top_of_pipe\\.overwrite\\.64)",
+    "classification": "NotSupported",
+    "category": "optional queue topology",
+    "basis": "The CTS gate requires dedicated or disjoint queue families. Vulkan permits one graphics+compute+transfer family, as advertised by this device."
+  },
+  {
+    "message": "Image format not supported. at vktImageHostImageCopyTests.cpp:4326",
+    "case_regex": "(?:dEQP\\-VK\\.image\\.host_image_copy\\.simple\\.r8g8b8_uscaled\\.linear\\.transfer_src_transfer_dst\\.4_1)",
+    "classification": "NotSupported",
+    "category": "format or memory configuration",
+    "basis": "The exact case requests a linear RGB8_USCALED image, with no mandatory image-format support."
+  },
+  {
+    "message": "longVector not supported at vktSpvAsmGraphicsShaderTestUtil.cpp:3165",
+    "case_regex": "(?:dEQP\\-VK\\.spirv_assembly\\.type\\.vec8\\.i32\\.ugreaterthanequal_tesse|dEQP\\-VK\\.spirv_assembly\\.type\\.vec1\\.i16\\.shift_right_arithmetic_shift32_test_high_part_zero_vert)",
+    "classification": "NotSupported",
+    "category": "optional feature",
+    "basis": "The named gate requires optional feature longVector, not advertised in the pinned profile. Review includes extension-conditional requirements in vkMandatoryFeatures.inl, and the direct mandatory-feature CTS check passes."
+  },
+  {
+    "message": "Source format feature sampled image filter linear not supported at vktApiBlittingTests.cpp:1324",
+    "case_regex": "(?:dEQP\\-VK\\.api\\.copy_and_blit\\.core\\.blit_image\\.all_formats\\.color\\.2d\\.r8g8b8a8_sscaled\\.a8b8g8r8_snorm_pack32\\.optimal_optimal_linear)",
+    "classification": "NotSupported",
+    "category": "format or memory configuration",
+    "basis": "The exact source is RGBA8_SSCALED. Linear-filter support is optional for scaled formats."
+  },
+  {
+    "message": "extendedDynamicState3SampleMask not supported at vktPipelineExtendedDynamicStateTests.cpp:3442",
+    "case_regex": "(?:dEQP\\-VK\\.pipeline\\.fast_linked_library\\.extended_dynamic_state\\.three_draws_dynamic\\.multi_sample_sample_mask_enable_with_null)",
+    "classification": "NotSupported",
+    "category": "optional feature",
+    "basis": "The named gate requires optional feature extendedDynamicState3SampleMask, not advertised in the pinned profile. Review includes extension-conditional requirements in vkMandatoryFeatures.inl, and the direct mandatory-feature CTS check passes."
+  },
+  {
+    "message": "Format not supported at vktApiImageClearingTests.cpp:823",
+    "case_regex": "(?:dEQP\\-VK\\.api\\.image_clearing\\.core\\.clear_color_image\\.1d\\.linear\\.remaining_array_layers_twostep\\.r8g8b8a8_snorm)",
+    "classification": "NotSupported",
+    "category": "format or memory configuration",
+    "basis": "The exact case requests a 1D linear SNORM image. Linear 1D image support is optional."
+  },
+  {
+    "message": "Unsupported format for min/max filtering: VK_FORMAT_D24_UNORM_S8_UINT",
+    "case_regex": "(?:dEQP\\-VK\\.pipeline\\.shader_object_linked_spirv\\.sampler\\.separate_stencil_usage\\.view_type\\.2d_array\\.format\\.d24_unorm_s8_uint\\.mag_reduce\\.comp_r_g_b_a\\.max)",
+    "classification": "NotSupported",
+    "category": "optional feature",
+    "basis": "samplerFilterMinmax and filterMinmaxImageComponentMapping are false; these optional feature/property requirements are not advertised."
+  },
+  {
+    "message": "Test variant uses non-device-local memory, which is not supported at vktMemoryModelMessagePassing.cpp:1546",
+    "case_regex": "(?:dEQP\\-VK\\.memory_model\\.write_after_read\\.ext\\.u32\\.noncoherent\\.fence_fence\\.atomicwrite\\.queuefamily\\.payload_nonlocal\\.image\\.guard_local\\.physbuffer\\.vert)",
+    "classification": "NotSupported",
+    "category": "format or memory configuration",
+    "basis": "The exact memory-model variant requires NonLocal memory. All advertised memory types are device local on this UMA GPU; non-local memory is optional."
+  },
+  {
+    "message": "VK_AMD_mixed_attachment_samples and VK_NV_framebuffer_mixed_samples with VK_NV_coverage_reduction_mode are not supported at vktPipelineMultisampleMixedAttachmentSamplesTests.cpp:1327",
+    "case_regex": "(?:dEQP\\-VK\\.pipeline\\.shader_object_unlinked_binary\\.multisample\\.mixed_attachment_samples\\.verify_standard_locations\\.coverage_2_color_1_depth_stencil_2\\.r8g8b8a8_unorm_s8_uint)",
+    "classification": "NotSupported",
+    "category": "optional extension",
+    "basis": "Unadvertised optional extension(s): VK_AMD_mixed_attachment_samples, VK_NV_framebuffer_mixed_samples, VK_NV_coverage_reduction_mode. Check against pinned vk.xml/CTS vkMandatoryFeatures.inl; no mandatory Vulkan 1.4 requirement for this capability."
+  },
+  {
+    "message": "Unsupported format for sampling: VK_FORMAT_ASTC_6x5_SFLOAT_BLOCK",
+    "case_regex": "(?:dEQP\\-VK\\.pipeline\\.monolithic\\.sampler\\.view_type\\.2d_unnormalized\\.format\\.astc_6x5_sfloat_block\\.address_modes\\.all_mode_clamp_to_border_opaque_white)",
+    "classification": "NotSupported",
+    "category": "format or memory configuration",
+    "basis": "This requires ASTC HDR sampling; textureCompressionASTC_HDR is not advertised."
+  },
+  {
+    "message": "Unsupported format for min/max filtering: VK_FORMAT_R32G32B32A32_SINT",
+    "case_regex": "(?:dEQP\\-VK\\.pipeline\\.monolithic\\.sampler\\.view_type\\.cube\\.format\\.r32g32b32a32_sint\\.min_reduce\\.comp_r_zero_zero_zero\\.min_compute)",
+    "classification": "NotSupported",
+    "category": "optional feature",
+    "basis": "samplerFilterMinmax and filterMinmaxImageComponentMapping are false; these optional feature/property requirements are not advertised."
+  },
+  {
+    "message": "Unsupported format for min/max filtering: VK_FORMAT_E5B9G9R9_UFLOAT_PACK32",
+    "case_regex": "(?:dEQP\\-VK\\.pipeline\\.monolithic\\.sampler\\.view_type\\.2d_array\\.format\\.e5b9g9r9_ufloat_pack32\\.min_reduce\\.comp_r_g_b_a\\.max)",
+    "classification": "NotSupported",
+    "category": "optional feature",
+    "basis": "samplerFilterMinmax and filterMinmaxImageComponentMapping are false; these optional feature/property requirements are not advertised."
+  },
+  {
+    "message": "Unsupported format for min/max filtering: VK_FORMAT_B4G4R4A4_UNORM_PACK16",
+    "case_regex": "(?:dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.sampler\\.view_type\\.1d_array\\.format\\.b4g4r4a4_unorm_pack16\\.mag_reduce\\.comp_r_zero_zero_zero\\.min_compute)",
+    "classification": "NotSupported",
+    "category": "optional feature",
+    "basis": "samplerFilterMinmax and filterMinmaxImageComponentMapping are false; these optional feature/property requirements are not advertised."
+  },
+  {
+    "message": "VK_ANDROID_external_format_resolve is not supported at vktTestCase.cpp:1394",
+    "case_regex": "(?:dEQP\\-VK\\.draw\\.dynamic_rendering\\.partial_secondary_cmd_buff\\.ahb_external_format_resolve\\.draw\\.AHARDWAREBUFFER_FORMAT_R10G10B10A2_UNORM\\.partial_render_area_6)",
+    "classification": "NotSupported",
+    "category": "optional extension",
+    "basis": "Unadvertised optional extension(s): VK_ANDROID_external_format_resolve. Check against pinned vk.xml/CTS vkMandatoryFeatures.inl; no mandatory Vulkan 1.4 requirement for this capability."
+  },
+  {
+    "message": "Format not supported for transfer at vktApiImageClearingTests.cpp:541",
+    "case_regex": "(?:dEQP\\-VK\\.api\\.image_clearing\\.core\\.clear_color_image\\.2d\\.linear\\.remaining_array_layers\\.r8g8b8_unorm)",
+    "classification": "NotSupported",
+    "category": "format or memory configuration",
+    "basis": "The exact case requires linear RGB8_UNORM transfer support. RGB8 has no mandatory format features."
+  },
+  {
+    "message": "Test variant uses memory type which is not supported at vktMemoryModelMessagePassing.cpp:364",
+    "case_regex": "(?:dEQP\\-VK\\.memory_model\\.write_after_read\\.core11\\.u32\\.coherent\\.control_barrier\\.atomicwrite\\.subgroup\\.payload_local\\.buffer\\.guard_nonlocal\\.buffer\\.comp)",
+    "classification": "NotSupported",
+    "category": "format or memory configuration",
+    "basis": "The exact memory-model guard buffer requires NonLocal memory (vktMemoryModelMessagePassing.cpp:342-364); that memory topology is optional."
+  },
+  {
+    "message": "Device does not support the specified format in subgroup operations at vktSubgroupsArithmeticTests.cpp:288",
+    "case_regex": "(?:dEQP\\-VK\\.subgroups\\.arithmetic\\.mesh\\.subgroupinclusiveadd_dvec4_mesh_requiredsubgroupsize)",
+    "classification": "NotSupported",
+    "category": "format or memory configuration",
+    "basis": "The exact case uses dvec4 mesh subgroup arithmetic. shaderFloat64 and meshShader are both optional and not advertised."
+  },
+  {
+    "message": "Unsupported subgroup size at vktSubgroupsBallotBroadcastTests.cpp:318",
+    "case_regex": "(?:dEQP\\-VK\\.subgroups\\.ballot_broadcast\\.compute\\.subgroupbroadcastfirst_uint64_t_requiredsubgroupsize16)",
+    "classification": "NotSupported",
+    "category": "format or memory configuration",
+    "basis": "The exact case requires subgroup size 16; minSubgroupSize=maxSubgroupSize=32 and requiredSubgroupSizeStages is empty. That size is optional."
+  },
+  {
+    "message": "Format not supported. at vktYCbCrConversionTests.cpp:554",
+    "case_regex": "(?:dEQP\\-VK\\.ycbcr\\.conversion\\.r12x4g12x4b12x4a12x4_unorm_4pack16\\.ycbcr_601\\.itu_full\\.linear_tiling_linear_binding_7)",
+    "classification": "NotSupported",
+    "category": "format or memory configuration",
+    "basis": "The exact case requires linear tiling of R12X4G12X4B12X4A12X4, not a mandatory YCbCr image configuration."
+  },
+  {
+    "message": "Requested sample count is not supported at vktPipelineMultisampleImageTests.cpp:609",
+    "case_regex": "(?:dEQP\\-VK\\.pipeline\\.fast_linked_library\\.multisample\\.sampled_image\\.64x64_4\\.r32_uint\\.samples_8)",
+    "classification": "NotSupported",
+    "category": "optional sample count",
+    "basis": "The frozen cases request 8/16/32 samples, above the advertised 1/2/4 masks. Vulkan does not require these sample counts for these formats."
+  },
+  {
+    "message": "Unsupported format for min/max filtering: VK_FORMAT_R16G16_UINT",
+    "case_regex": "(?:dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.sampler\\.view_type\\.1d_array\\.format\\.r16g16_uint\\.mag_reduce\\.comp_r_zero_zero_zero\\.min)",
+    "classification": "NotSupported",
+    "category": "optional feature",
+    "basis": "samplerFilterMinmax and filterMinmaxImageComponentMapping are false; these optional feature/property requirements are not advertised."
+  },
+  {
+    "message": "Sparse binding not supported. at vktTestCase.cpp:972",
+    "case_regex": "(?:dEQP\\-VK\\.texture\\.swizzle\\.texture_coordinate\\.r8g8_sint_2d_npot_sparse_yy|dEQP\\-VK\\.texture\\.swizzle\\.component_mapping\\.color\\.r16_uscaled_2d_pot_sparse_gggg|dEQP\\-VK\\.texture\\.swizzle\\.component_mapping\\.color\\.eac_r11g11_snorm_block_2d_npot_sparse_zzzz)",
+    "classification": "NotSupported",
+    "category": "optional feature",
+    "basis": "The named gate requires optional feature sparseBinding, not advertised in the pinned profile. Review includes extension-conditional requirements in vkMandatoryFeatures.inl, and the direct mandatory-feature CTS check passes."
+  },
+  {
+    "message": "VK_EXT_conservative_rasterization is not supported at vktTestCase.cpp:1394",
+    "case_regex": "(?:dEQP\\-VK\\.rasterization\\.conservative\\.overestimate\\.samples_32\\.points\\.normal\\.0_50)",
+    "classification": "NotSupported",
+    "category": "optional extension",
+    "basis": "Unadvertised optional extension(s): VK_EXT_conservative_rasterization. Check against pinned vk.xml/CTS vkMandatoryFeatures.inl; no mandatory Vulkan 1.4 requirement for this capability."
+  },
+  {
+    "message": "Layout not supported for dst host copy at vktImageHostImageCopyTests.cpp:1872",
+    "case_regex": "(?:dEQP\\-VK\\.image\\.host_image_copy\\.optimal\\.preinitialized\\.general\\.present_src\\.32x32x1_2\\.0\\.r16_sfloat)",
+    "classification": "NotSupported",
+    "category": "format or memory configuration",
+    "basis": "The exact case requests PRESENT_SRC as a host destination layout. It is not advertised in pCopyDstLayouts and is not a required host-copy layout."
+  },
+  {
+    "message": "Sparse bindings feature is not supported at vktApiBufferTests.cpp:141",
+    "case_regex": "(?:dEQP\\-VK\\.api\\.buffer\\.suballocation\\.transfer_dst\\.uniform_texel\\.uniform\\.storage\\.index\\.vertex\\.indirect\\.create\\.binding_residency)",
+    "classification": "NotSupported",
+    "category": "optional feature",
+    "basis": "The named gate requires optional feature sparseBinding, not advertised in the pinned profile. Review includes extension-conditional requirements in vkMandatoryFeatures.inl, and the direct mandatory-feature CTS check passes."
+  },
+  {
+    "message": "Unsupported format for min/max filtering: VK_FORMAT_R8_SINT",
+    "case_regex": "(?:dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.sampler\\.view_type\\.1d_array\\.format\\.r8_sint\\.mag_reduce\\.comp_identity_zero_zero_zero\\.min_compute)",
+    "classification": "NotSupported",
+    "category": "optional feature",
+    "basis": "samplerFilterMinmax and filterMinmaxImageComponentMapping are false; these optional feature/property requirements are not advertised."
+  },
+  {
+    "message": "VK_EXT_descriptor_buffer is not supported at vktBindingDescriptorBufferTests.cpp:2356",
+    "case_regex": "(?:dEQP\\-VK\\.binding_model\\.descriptor_buffer\\.sparse_residency_buffer\\.robust\\.null_descriptor\\.graphics_rgen_sampled_image|dEQP\\-VK\\.binding_model\\.descriptor_buffer\\.sparse_binding_buffer\\.embedded_imm_samplers\\.graphics_tese_buffers1_samplers8)",
+    "classification": "NotSupported",
+    "category": "optional extension",
+    "basis": "Unadvertised optional extension(s): VK_EXT_descriptor_buffer. Check against pinned vk.xml/CTS vkMandatoryFeatures.inl; no mandatory Vulkan 1.4 requirement for this capability."
+  },
+  {
+    "message": "Mesh shaders not supported at vktBindingDescriptorSetRandomTests.cpp:409",
+    "case_regex": "(?:dEQP\\-VK\\.binding_model\\.descriptorset_random\\.sets4\\.dynindexed\\.noubo\\.nosbo\\.nosampledimg\\.outimgonly\\.noiub\\.nouab\\.mesh\\.noia\\.0)",
+    "classification": "NotSupported",
+    "category": "optional feature",
+    "basis": "The meshShader feature/extension is optional and not advertised."
+  },
+  {
+    "message": "VK_FORMAT_R8G8B8A8_UNORM: sample count not supported at vktPipelineMultisampledRenderToSingleSampledTests.cpp:979",
+    "case_regex": "(?:dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.multisample\\.misc\\.dynamic_rendering\\.clear_attachments\\.r8g8b8a8_unorm_r16g16b16a16_sfloat_r16g16b16a16_sint_d16_unorm\\.8x\\.ds_resolve_sample_zero\\.sub_framebuffer)",
+    "classification": "NotSupported",
+    "category": "optional sample count",
+    "basis": "The frozen cases request 8/16/32 samples, above the advertised 1/2/4 masks. Vulkan does not require these sample counts for these formats."
+  },
+  {
+    "message": "VK_EXT_image_compression_control is not supported at vktTestCase.cpp:1394",
+    "case_regex": "(?:dEQP\\-VK\\.api\\.image_compression_control\\.create_image\\.fixed_rate_default\\.b8g8r8a8_sint)",
+    "classification": "NotSupported",
+    "category": "optional extension",
+    "basis": "Unadvertised optional extension(s): VK_EXT_image_compression_control. Check against pinned vk.xml/CTS vkMandatoryFeatures.inl; no mandatory Vulkan 1.4 requirement for this capability."
+  },
+  {
+    "message": "VK_KHR_ray_query is not supported at vktTestCase.cpp:1394",
+    "case_regex": "(?:dEQP\\-VK\\.ray_query\\.opacity_micromap\\.render\\.rgen_shader\\.disable_opacity_micromap_instance_force_2_state_instance_force_2_state_ray_flag\\.map_value\\.2\\.level_10)",
+    "classification": "NotSupported",
+    "category": "optional extension",
+    "basis": "Unadvertised optional extension(s): VK_KHR_ray_query. Check against pinned vk.xml/CTS vkMandatoryFeatures.inl; no mandatory Vulkan 1.4 requirement for this capability."
+  },
+  {
+    "message": "VK_KHR_maintenance10 is not supported at vktTestCase.cpp:1394",
+    "case_regex": "(?:dEQP\\-VK\\.api\\.ds_color_copy\\.d24_unorm_s8_uint_r32_sfloat_depth_level0_to_level3_tq)",
+    "classification": "NotSupported",
+    "category": "optional extension",
+    "basis": "Unadvertised optional extension(s): VK_KHR_maintenance10. Check against pinned vk.xml/CTS vkMandatoryFeatures.inl; no mandatory Vulkan 1.4 requirement for this capability."
+  },
+  {
+    "message": "Unsupported format for min/max filtering: VK_FORMAT_R4G4B4A4_UNORM_PACK16",
+    "case_regex": "(?:dEQP\\-VK\\.pipeline\\.shader_object_unlinked_spirv\\.sampler\\.view_type\\.3d\\.format\\.r4g4b4a4_unorm_pack16\\.mag_reduce\\.comp_r_zero_zero_zero\\.min)",
+    "classification": "NotSupported",
+    "category": "optional feature",
+    "basis": "samplerFilterMinmax and filterMinmaxImageComponentMapping are false; these optional feature/property requirements are not advertised."
+  },
+  {
+    "message": "Unsupported number of rasterization samples at vktPipelineMultisampleTests.cpp:867",
+    "case_regex": "(?:dEQP\\-VK\\.pipeline\\.monolithic\\.multisample\\.sample_mask\\.mask_random\\.samples_32\\.primitive_point)",
+    "classification": "NotSupported",
+    "category": "optional sample count",
+    "basis": "The frozen cases request 8/16/32 samples, above the advertised 1/2/4 masks. Vulkan does not require these sample counts for these formats."
+  },
+  {
+    "message": "Format not supported: VK_FORMAT_ASTC_6x6x6_UNORM_BLOCK_EXT at vktTextureTestUtil.cpp:846",
+    "case_regex": "(?:dEQP\\-VK\\.texture\\.compressed_3D\\.astc_6x6x6_unorm_block_ext_3d_pot)",
+    "classification": "NotSupported",
+    "category": "format or memory configuration",
+    "basis": "ASTC 3D is an unadvertised optional extension format."
+  },
+  {
+    "message": "Protected Memory feature not supported by the device at vktProtectedMemUtils.cpp:113",
+    "case_regex": "(?:dEQP\\-VK\\.protected_memory\\.interaction\\.ycbcr\\.g8b8g8r8_422_unorm\\.compute\\.ycbcr_601\\.itu_narrow\\.tiling_optimal_midpoint_disjoint)",
+    "classification": "NotSupported",
+    "category": "optional feature",
+    "basis": "The named gate requires optional feature protectedMemory, not advertised in the pinned profile. Review includes extension-conditional requirements in vkMandatoryFeatures.inl, and the direct mandatory-feature CTS check passes."
+  }
+]

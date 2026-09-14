@@ -1,0 +1,26 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.image.texel_view_compatible.graphic.basic.3d_image.texture_write.etc2_r8g8b8a8_unorm_block.r32g32b32a32_uint",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed26-extended-gate",
+      "--deqp-case=dEQP-VK.image.texel_view_compatible.graphic.basic.3d_image.texture_write.etc2_r8g8b8a8_unorm_block.r32g32b32a32_uint",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T081352364101Z-cts26-extended-gate/cts/000/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Pass",
+    "started_unix": 1789373633.6825123,
+    "eligibility": {
+      "case": "dEQP-VK.image.texel_view_compatible.graphic.basic.3d_image.texture_write.etc2_r8g8b8a8_unorm_block.r32g32b32a32_uint",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.36154951000025903,
+    "finished_unix": 1789373634.0491614,
+    "pid": 4599
+  }
+]
