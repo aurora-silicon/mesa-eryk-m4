@@ -58,3 +58,17 @@ peak 56.75 C. Evidence:
 `_provenance/experiments/20260914T080012963601Z-cts26-scaled-blit-oracle`.
 Thus 42/47 are resolved: 33 Mesa fixes and nine identified CTS corrections.
 Five remain; skip audit is still pending.
+
+## CTS scaled clear and sampler declarations
+
+Four remaining scaled cases Pass with `cts-scaled-types.patch`, using the
+separately built and hashed CTS binary. Correct integer sampler declarations
+for floating sampled types, and convert the clear union to float32 for scaled
+formats at the API boundary. Preserve the original integer reference values,
+input generation and comparison thresholds. Includes the already qualified
+scaled blit/image sampler and signed packed-value reference corrections.
+
+Hardware evidence: `_provenance/experiments/20260914T080404534872Z-cts26-scaled-types`.
+Peak 56.75 C; original CTS source and binary restored after building.
+Resolved: **46/47** (33 Mesa fixes, 13 CTS corrections). The mixed MRT MSAA
+case remains a real driver mismatch. These are not 46 unmodified-CTS passes.

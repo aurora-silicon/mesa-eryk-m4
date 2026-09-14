@@ -1,0 +1,98 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.api.image_clearing.core.clear_color_image.1d.optimal.remaining_array_layers_twostep.r8g8b8_uscaled_71x1",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed26-scaled-types",
+      "--deqp-case=dEQP-VK.api.image_clearing.core.clear_color_image.1d.optimal.remaining_array_layers_twostep.r8g8b8_uscaled_71x1",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T080404534872Z-cts26-scaled-types/cts/000/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Pass",
+    "started_unix": 1789373046.530803,
+    "eligibility": {
+      "case": "dEQP-VK.api.image_clearing.core.clear_color_image.1d.optimal.remaining_array_layers_twostep.r8g8b8_uscaled_71x1",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "cmdClearColorImage passed",
+    "returncode": 0,
+    "seconds": 0.4845349689999239,
+    "finished_unix": 1789373047.0204332,
+    "pid": 3924
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.api.image_clearing.core.clear_color_image.2d.optimal.remaining_array_layers_twostep.r8g8b8a8_sscaled_64x11",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed26-scaled-types",
+      "--deqp-case=dEQP-VK.api.image_clearing.core.clear_color_image.2d.optimal.remaining_array_layers_twostep.r8g8b8a8_sscaled_64x11",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T080404534872Z-cts26-scaled-types/cts/001/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Pass",
+    "started_unix": 1789373046.535955,
+    "eligibility": {
+      "case": "dEQP-VK.api.image_clearing.core.clear_color_image.2d.optimal.remaining_array_layers_twostep.r8g8b8a8_sscaled_64x11",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "cmdClearColorImage passed",
+    "returncode": 0,
+    "seconds": 0.5458169949997682,
+    "finished_unix": 1789373047.0869973,
+    "pid": 3925
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.pipeline.shader_object_unlinked_spirv.image.suballocation.sampling_type.combined.view_type.2d_array.format.r16g16b16_uscaled.count_1.size.1x1_array_of_6",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed26-scaled-types",
+      "--deqp-case=dEQP-VK.pipeline.shader_object_unlinked_spirv.image.suballocation.sampling_type.combined.view_type.2d_array.format.r16g16b16_uscaled.count_1.size.1x1_array_of_6",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T080404534872Z-cts26-scaled-types/cts/002/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Pass",
+    "started_unix": 1789373046.5412517,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.shader_object_unlinked_spirv.image.suballocation.sampling_type.combined.view_type.2d_array.format.r16g16b16_uscaled.count_1.size.1x1_array_of_6",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.5547347110000374,
+    "finished_unix": 1789373047.1018672,
+    "pid": 3926
+  },
+  {
+    "index": 3,
+    "case": "dEQP-VK.pipeline.shader_object_unlinked_spirv.sampler.view_type.3d.format.a2r10g10b10_uscaled_pack32.address_modes.uvw_mode_repeat_mode_clamp_to_edge_mode_mirrored_repeat",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed26-scaled-types",
+      "--deqp-case=dEQP-VK.pipeline.shader_object_unlinked_spirv.sampler.view_type.3d.format.a2r10g10b10_uscaled_pack32.address_modes.uvw_mode_repeat_mode_clamp_to_edge_mode_mirrored_repeat",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T080404534872Z-cts26-scaled-types/cts/003/result.qpa"
+    ],
+    "boot_id": "53bc6b69-2791-4588-934a-8e6cdacf8aa9",
+    "status": "Pass",
+    "started_unix": 1789373046.54721,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.shader_object_unlinked_spirv.sampler.view_type.3d.format.a2r10g10b10_uscaled_pack32.address_modes.uvw_mode_repeat_mode_clamp_to_edge_mode_mirrored_repeat",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.5707012269999723,
+    "finished_unix": 1789373047.1239014,
+    "pid": 3928
+  }
+]
