@@ -1,0 +1,27 @@
+{
+  "selected": 9348,
+  "recorded": 9348,
+  "completed": 4140,
+  "counts": {
+    "Pass": 1834,
+    "Unrun": 5161,
+    "NotSupported": 2297,
+    "Interrupted": 47,
+    "Fail": 8,
+    "Crash": 1
+  },
+  "classifications": {
+    "unclassified": 9348
+  },
+  "elapsed_seconds": 112.63022796701989,
+  "preparation_seconds": 1.4975978040019982,
+  "runner_seconds": 108.111161809,
+  "jobs": 20,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "7f1c4ab0d7bf10f72460c24f7eed21c3fa3146997352cf881ff4160ffe899e2d",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T180127314294Z-cts29-continuation-9348",
+  "guard_verdict": "process_failure",
+  "command_returncode": 1,
+  "peak_temperature_c": 64.0
+}

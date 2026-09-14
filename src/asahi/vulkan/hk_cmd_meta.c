@@ -1723,16 +1723,23 @@ hk_meta_copy_get_image_properties(struct hk_image *img)
          props.stencil.component_mask = BITFIELD_MASK(1);
          break;
       case VK_FORMAT_D32_SFLOAT_S8_UINT:
-         props.depth.view_format = VK_FORMAT_R32G32_UINT;
+      case VK_FORMAT_D24_UNORM_S8_UINT:
+      case VK_FORMAT_D16_UNORM_S8_UINT:
+         /* Depth and stencil have independent allocations. Internal copy
+          * views select the plane by aspect and reinterpret its storage,
+          * including the float storage used for D24. */
+         props.depth.view_format = img->vk.format == VK_FORMAT_D16_UNORM_S8_UINT
+                                      ? VK_FORMAT_R16_UINT : VK_FORMAT_R32_UINT;
          props.depth.component_mask = BITFIELD_BIT(0);
-         props.stencil.view_format = VK_FORMAT_R32G32_UINT;
-         props.stencil.component_mask = BITFIELD_BIT(1);
+         props.stencil.view_format = VK_FORMAT_R8_UINT;
+         props.stencil.component_mask = BITFIELD_BIT(0);
          break;
       case VK_FORMAT_D16_UNORM:
          props.depth.view_format = VK_FORMAT_R16_UINT;
          props.depth.component_mask = BITFIELD_BIT(0);
          break;
       case VK_FORMAT_D32_SFLOAT:
+      case VK_FORMAT_X8_D24_UNORM_PACK32:
          props.depth.view_format = VK_FORMAT_R32_UINT;
          props.depth.component_mask = BITFIELD_BIT(0);
          break;

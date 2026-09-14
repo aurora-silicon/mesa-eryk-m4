@@ -458,6 +458,9 @@ hk_GetPhysicalDeviceImageFormatProperties2(
    if (pImageFormatInfo->flags & (VK_IMAGE_CREATE_SPARSE_ALIASED_BIT |
                                   VK_IMAGE_CREATE_SPARSE_BINDING_BIT |
                                   VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT)) {
+      if (!pdev->vk.supported_features.sparseBinding)
+         return VK_ERROR_FORMAT_NOT_SUPPORTED;
+
       features &= ~VK_FORMAT_FEATURE_2_HOST_IMAGE_TRANSFER_BIT_EXT;
 
       /* We also do not support sparse RGB32 uniform texel buffers, as we do not

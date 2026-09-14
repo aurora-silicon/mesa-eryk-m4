@@ -22,3 +22,22 @@ Build using tools/cts-patched-build.py with reference/vk-gl-cts-1.4.6.2 and
 build/cts-1.4-arm64. The build manifest records executable/patch hashes and
 restoration of original source files. This is an adapted diagnostic CTS build,
 not an unmodified conformance submission. Remaining cases/fixes are in progress.
+
+## Split depth/stencil copies and sparse queries
+
+Continuation run2 completed another 4,140 cases before a Mesa assertion in
+`depth_stencil_msaa_copy.partial.d24_unorm_s8_uint_D_2_bit_bind_offset`.
+The graphics copy properties still described interleaved D32/S8 and omitted
+D24/S8 entirely, although image allocation splits both into depth and stencil
+planes. Use one-component raw views of each physical plane, including D24 float
+storage; preserve aspect selection and partial multisample copies.
+
+Two sparse image format queries also contradicted the advertised sparseBinding
+feature. Reject sparse image flags when sparseBinding is false, including through
+the shared sparse format query path. No feature advertisement was changed.
+
+All three original cases pass with installed Mesa SHA256
+`16ae1f0c91889e3e4bf4deb8c9157ae83c793f504f12045681cf48e65e0081ef`,
+0.609 seconds runner time, peak 58.25 C, watchdog guard pass.
+Evidence: `20260914T180951615594Z-cts29-depth-sparse-fixed`.
+The full frozen sample remains incomplete; no broad regression was run.
