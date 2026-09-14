@@ -328,3 +328,26 @@ peak 60.5 C, with unchanged Mesa. Full cumulative patch and exact build hashes
 are in `cts-scaled-and-cosited.patch` and `cts-cosited-build.json`.
 The original fail remains retained. The grow_shrink.33 renderpass case also
 passes on the halfword tile-read fix (`20260914T150419124001Z-cts28-next-numeric`).
+
+## Vertex image fetch and terminal exports
+
+The volatile robust 3D storage-image vertex shader had two compiler gaps.
+Earlier terminating paths incorrectly disabled bundling of exports that all
+belong to the final block. Preserve those paths and only reorder exports
+locally in that block. Integer-mip fetches also hardcoded PACK_SMPIR to staging
+half6 even when the coordinates occupied the separate image bank at half16.
+Pack mip (and array layer where applicable) at coordinate-base + 6.
+
+Native G16G 3D-read capture `build/cts14-crash-fixes/texture3d-lod-native`,
+text-750.bin offset172, independently encodes mip at half14 with coordinates
+at half8; the byte-exact texture-core test checks that relocation.
+The saved vertex compiler replay now compiles to 6442 bytes. Original CTS case
+passes in `20260914T151835879088Z-cts28-vertex-lod-bank`, peak57.75 C,
+installed library SHA256
+`8d539236b78721b6b2d2f9e3e235515f14939311467142067f5df4c123d5aff6`.
+
+Cumulative results are 4642 Pass / 16 Fail / 5342 NotSupported, 63 originally
+failing/crashing/timing-out cases resolved. These are latest per-case results
+across builds, including the separately documented CTS reference corrections;
+this is not an uninterrupted same-build run. The concurrency fault discussed
+above is still not proven fixed.

@@ -692,22 +692,26 @@ agx3_tex_decode_fetch(enum agx_isa_encoding enc, const void *instruction,
 
 /* Fresh native G17P LOD fragment witnesses use this 12-byte PACK_SMPIR for a
  * scalar half LOD, preserving the source when it remains live. f5=6 selects
- * operand bank 6, not architectural r3. */
+ * operand bank 6, not architectural r3. Integer fetches pair this operand
+ * with their coordinate bank: the native G16G 3D read uses f5=14 for
+ * coordinates at half8. */
 static bool
-stage_lod(enum agx_isa_encoding enc, uint16_t src, uint8_t slot,
-                   uint16_t wait_mask, bool src_cache, bool src_discard, bool integer, bool uniform,
-                   uint8_t out[AGX3_TEX_MAX_LENGTH], uint8_t *len)
+stage_lod(enum agx_isa_encoding enc, uint16_t src, uint16_t staging_coord,
+          uint8_t slot, uint16_t wait_mask, bool src_cache, bool src_discard,
+          bool integer, bool uniform,
+          uint8_t out[AGX3_TEX_MAX_LENGTH], uint8_t *len)
 {
    if (!out || !len)
       return false;
    memset(out, 0, AGX3_TEX_MAX_LENGTH);
    *len = 0;
-   if (enc != AGX_ISA_ENCODING_AGX3B || src >= 256 || slot < 1 || slot > 6 ||
+   if (enc != AGX_ISA_ENCODING_AGX3B || src >= 256 ||
+       (staging_coord & 7) || staging_coord > 56 || slot < 1 || slot > 6 ||
        (wait_mask & ~0x3f) || (src_cache && src_discard))
       return false;
 
    const struct agx3_field_kv base[] = {
-      KV(5, 6), KV(9, 5), KV(10, 2), KV(23, uniform ? 3 : 2), KV(24, 1),
+      KV(5, staging_coord + 6), KV(9, 5), KV(10, 2), KV(23, uniform ? 3 : 2), KV(24, 1),
       KV(38, 1), KV(51, 1), KV(52, 2), KV(74, integer ? 3 : 2), KV(75, 16),
    };
    struct agx3_field_kv ov[10];
@@ -737,17 +741,20 @@ agx3_tex_stage_lod(enum agx_isa_encoding enc, uint16_t src, uint8_t slot,
                    uint16_t wait_mask, bool src_cache, bool src_discard,
                    uint8_t out[AGX3_TEX_MAX_LENGTH], uint8_t *len)
 {
-   return stage_lod(enc, src, slot, wait_mask, src_cache, src_discard, false, false, out, len);
+   return stage_lod(enc, src, 0, slot, wait_mask, src_cache, src_discard,
+                    false, false, out, len);
 }
 
 bool
-agx3_tex_stage_fetch_lod(enum agx_isa_encoding enc, uint16_t src, bool uniform, uint8_t slot,
-                         uint16_t wait_mask, bool src_cache, bool src_discard,
+agx3_tex_stage_fetch_lod(enum agx_isa_encoding enc, uint16_t src, bool uniform,
+                         uint16_t staging_coord, uint8_t slot, uint16_t wait_mask,
+                         bool src_cache, bool src_discard,
                          uint8_t out[AGX3_TEX_MAX_LENGTH], uint8_t *len)
 {
    /* Apple G16G Metal tex.read(coord, varying_uint): PACK_SMPIR f74=3;
     * source half2, slot1 gives 1705540600040004f0c00c00. */
-   return stage_lod(enc, src, slot, wait_mask, src_cache, src_discard, true, uniform, out, len);
+   return stage_lod(enc, src, staging_coord, slot, wait_mask, src_cache,
+                    src_discard, true, uniform, out, len);
 }
 
 /* The dynamic array-layer witness uses PACK_SMPIR like register LOD, but its
@@ -834,8 +841,8 @@ agx3_tex_stage_layer_lod(enum agx_isa_encoding enc, uint16_t layer,
  * layer r0, uniform mip u24 -> 1705540600006000d0c16400. */
 bool
 agx3_tex_stage_fetch_layer_lod(enum agx_isa_encoding enc, uint16_t layer,
-                              uint16_t lod, bool uniform, uint8_t slot,
-                              uint16_t wait_mask, bool layer_discard,
+                              uint16_t lod, bool uniform, uint16_t staging_coord,
+                              uint8_t slot, uint16_t wait_mask, bool layer_discard,
                               bool lod_discard,
                               uint8_t out[AGX3_TEX_MAX_LENGTH], uint8_t *len)
 {
@@ -844,10 +851,11 @@ agx3_tex_stage_fetch_layer_lod(enum agx_isa_encoding enc, uint16_t layer,
    memset(out, 0, AGX3_TEX_MAX_LENGTH);
    *len = 0;
    if (enc != AGX_ISA_ENCODING_AGX3B || layer >= 256 || lod >= 256 ||
+       (staging_coord & 7) || staging_coord > 56 ||
        slot < 1 || slot > 6 || (wait_mask & ~0x3f))
       return false;
    const struct agx3_field_kv base[] = {
-      KV(5,6), KV(9,5), KV(10,2), KV(12,slot), KV(16,layer & 127),
+      KV(5,staging_coord + 6), KV(9,5), KV(10,2), KV(12,slot), KV(16,layer & 127),
       KV(23,2), KV(24,1), KV(27,layer_discard),
       KV(uniform ? 31 : 30, uniform ? lod : lod & 127),
       KV(37,uniform ? 3 : 2), KV(38,1), KV(41,!uniform && lod_discard),

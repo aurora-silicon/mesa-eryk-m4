@@ -811,7 +811,7 @@ agx3_emit_texture_fetch(struct util_dynarray *emission,
    const bool array = I->dim == AGX_DIM_2D_ARRAY || I->dim == AGX_DIM_2D_MS_ARRAY;
    const bool register_lod = I->lod_mode == AGX_LOD_MODE_LOD_MIN;
    const bool valid_lod = register_lod ?
-      enc == AGX_ISA_ENCODING_AGX3B && stage_coordinates && staging_coord == 0 &&
+      enc == AGX_ISA_ENCODING_AGX3B && stage_coordinates && !(staging_coord & 7) && staging_coord <= 56 &&
       (I->dim == AGX_DIM_2D || three_d || (array && !ms)) &&
       (agx3_tex_plain_reg(I->src[1]) ||
        (I->src[1].type == AGX_INDEX_UNIFORM && !I->src[1].memory &&
@@ -854,12 +854,12 @@ agx3_emit_texture_fetch(struct util_dynarray *emission,
       if (array)
          encoded = agx3_tex_stage_fetch_layer_lod(
             enc, I->src[0].value + 4, I->src[1].value,
-            I->src[1].type == AGX_INDEX_UNIFORM, slot, wait_mask,
+            I->src[1].type == AGX_INDEX_UNIFORM, staging_coord, slot, wait_mask,
             I->src[0].discard, I->src[1].discard, bytes, &len);
       else
          encoded = agx3_tex_stage_fetch_lod(
             enc, I->src[1].value, I->src[1].type == AGX_INDEX_UNIFORM,
-            slot, wait_mask, I->src[1].cache, I->src[1].discard, bytes, &len);
+            staging_coord, slot, wait_mask, I->src[1].cache, I->src[1].discard, bytes, &len);
       if (!encoded || !agx3_append(emission, bytes, len))
          return false;
       wait_mask = 0;
@@ -3357,7 +3357,7 @@ agx3_g17p_vertex_output_count(agx_context *ctx, enum agx_isa_encoding enc,
             /* Earlier control flow and producers retain ordinary encoding
              * validation. The terminal output protocol owns only this final
              * block, with no conditional or earlier vertex writeout. */
-            if (I->op == AGX_OPCODE_ST_VARY || I->op == AGX_OPCODE_STOP)
+            if (I->op == AGX_OPCODE_ST_VARY)
                return 0;
             continue;
          }
@@ -3424,7 +3424,14 @@ agx3_outputs_are_terminal(agx_context *ctx, unsigned count, bool allow_constants
 {
    unsigned next = 0;
    bool stopped = false;
-   agx_foreach_instr_global(ctx, I) {
+   agx_block *output_block = NULL;
+   agx_foreach_block(ctx, block)
+      output_block = block;
+   if (!output_block)
+      return false;
+   /* The output-count scan already excludes writes in earlier blocks.
+    * Early terminating paths do not change this final block's writeout. */
+   agx_foreach_instr_in_block(output_block, I) {
       if (stopped)
          return false;
       if (I->op == AGX_OPCODE_ST_VARY) {

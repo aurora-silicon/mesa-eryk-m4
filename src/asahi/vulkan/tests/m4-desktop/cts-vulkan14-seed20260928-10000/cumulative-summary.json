@@ -1,9 +1,9 @@
 {
   "selected": 10000,
   "counts": {
-    "Pass": 4639,
+    "Pass": 4642,
     "NotSupported": 5342,
-    "Fail": 19
+    "Fail": 16
   },
   "inputs": [
     {
@@ -177,9 +177,21 @@
     {
       "path": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T150311030546Z-cts28-shared-byte-cts/remote/cts/results.json",
       "sha256": "1d9d29af92c5524ccf761347797ff8390f9fe70d7086869f4a3b6d60ad4a1049"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T150419124001Z-cts28-next-numeric/remote/cts/results.json",
+      "sha256": "2076a6e2a6c8306b0a01edc5cc00f542005e57df4a93a338fb99b8ff18ecd96e"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T150825416650Z-cts28-cosited-reference/remote/cts/results.json",
+      "sha256": "55708078b30c26601f5f577cfc0435a42a7c93d55fa0f37d6b7d4f75496bc947"
+    },
+    {
+      "path": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260914T151835879088Z-cts28-vertex-lod-bank/remote/cts/results.json",
+      "sha256": "4a6cc42c37312102beb8f002b2736f9f0d9a56975d74dddde413bd7a6b3217dc"
     }
   ],
   "cases_sha256": "22dbfe086b845a35ac2e396cf0c4088589443cb566ffd50ad3a4512e3cc57339",
-  "resolved_failures": 60,
+  "resolved_failures": 63,
   "limitation": "Cumulative evidence across builds and attempts; not an uninterrupted same-build run."
 }

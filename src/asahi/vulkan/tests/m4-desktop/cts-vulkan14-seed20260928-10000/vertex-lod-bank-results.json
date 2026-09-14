@@ -1,0 +1,26 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.robustness.image_robustness.push.notemplate.r32i.dontunroll.volatile.storage_image.fmt_qual.img.samples_1.3d.vert",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed28-cosited-corrected",
+      "--deqp-case=dEQP-VK.robustness.image_robustness.push.notemplate.r32i.dontunroll.volatile.storage_image.fmt_qual.img.samples_1.3d.vert",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T151835879088Z-cts28-vertex-lod-bank/cts/000/result.qpa"
+    ],
+    "boot_id": "6beeda9c-789c-45ef-8f7a-46a3c2f0f1fd",
+    "status": "Pass",
+    "started_unix": 1789399117.1557918,
+    "eligibility": {
+      "case": "dEQP-VK.robustness.image_robustness.push.notemplate.r32i.dontunroll.volatile.storage_image.fmt_qual.img.samples_1.3d.vert",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.4619536229999994,
+    "finished_unix": 1789399117.622834,
+    "pid": 1626
+  }
+]

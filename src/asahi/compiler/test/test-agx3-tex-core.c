@@ -1236,10 +1236,10 @@ test_m4_integer_fetch_lod(void)
    static const uint8_t pack[] = {0x17,0x05,0x54,0x06,0x00,0x04,0x00,0x04,0xf0,0xc0,0x0c,0x00};
    static const uint8_t fetch[] = {0x05,0x80,0x0c,0xb8,0xb0,0x00,0x80,0x24,0x00,0x01,0x00,0x00,0x01,0x00};
    uint8_t out[AGX3_TEX_MAX_LENGTH], len;
-   CHECK(agx3_tex_stage_fetch_lod(AGX_ISA_ENCODING_AGX3B,2,false,1,0,false,true,out,&len));
+   CHECK(agx3_tex_stage_fetch_lod(AGX_ISA_ENCODING_AGX3B,2,false,0,1,0,false,true,out,&len));
    CHECK(len==sizeof(pack) && !memcmp(out,pack,len));
    static const uint8_t uniform_pack[] = {0x17,0x05,0x54,0x06,0x00,0x20,0x00,0x04,0xf0,0x40,0x0c,0x00};
-   CHECK(agx3_tex_stage_fetch_lod(AGX_ISA_ENCODING_AGX3B,16,true,1,0,false,false,out,&len));
+   CHECK(agx3_tex_stage_fetch_lod(AGX_ISA_ENCODING_AGX3B,16,true,0,1,0,false,false,out,&len));
    CHECK(len==sizeof(uniform_pack) && !memcmp(out,uniform_pack,len));
    struct agx3_tex_fetch_desc d = {
       .dest=0,.coord=0,.width=AGX3_TEX_W32,.mask=15,.slot=1,
@@ -1249,6 +1249,14 @@ test_m4_integer_fetch_lod(void)
    CHECK(agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
    CHECK(len==sizeof(fetch) && !memcmp(out,fetch,len));
    CHECK(roundtrip(AGX_ISA_ENCODING_AGX3B,&d)==0);
+   /* The same native 3D witness packs mip r3l into staging half14,
+    * paired with coordinates at half8, rather than the bank-zero half6. */
+   static const uint8_t pack3d[] = {
+      0x17,0x05,0x54,0x0e,0x00,0x0c,0x00,0x04,0xf0,0xc4,0x0c,0x00
+   };
+   CHECK(agx3_tex_stage_fetch_lod(AGX_ISA_ENCODING_AGX3B,
+      6,false,8,2,0,false,true,out,&len));
+   CHECK(len==sizeof(pack3d) && !memcmp(out,pack3d,len));
    /* Independent G16G texture3d<uint> read at a runtime mip level.
     * texture3d-lod-native/text-750.bin offset 0xda, Apple 32023.883. */
    static const uint8_t fetch3d[] = {
@@ -1278,10 +1286,10 @@ test_m4_integer_fetch_lod(void)
       0x05,0x80,0x0c,0xb8,0xb0,0x00,0xa0,0x24,0x00,0x00,0x00,0x00,0x01,0x00
    };
    CHECK(agx3_tex_stage_fetch_layer_lod(AGX_ISA_ENCODING_AGX3B,
-      4,6,false,1,0,true,true,out,&len));
+      4,6,false,0,1,0,true,true,out,&len));
    CHECK(len==sizeof(array_pack) && !memcmp(out,array_pack,len));
    CHECK(agx3_tex_stage_fetch_layer_lod(AGX_ISA_ENCODING_AGX3B,
-      0,24,true,1,0,true,false,out,&len));
+      0,24,true,0,1,0,true,false,out,&len));
    CHECK(len==sizeof(array_ulod) && !memcmp(out,array_ulod,len));
    d = (struct agx3_tex_fetch_desc) {
       .dest=0,.coord=0,.width=AGX3_TEX_W32,.mask=15,.slot=1,
