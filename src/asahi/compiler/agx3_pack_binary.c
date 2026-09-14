@@ -3834,7 +3834,8 @@ agx3_mrt_eot_selector(enum pipe_format logical, enum agx_format physical,
  * coordinates come from the tile grid. Keep typed stores in attachment order. */
 static unsigned
 agx3_native_mrt_eot(const agx_context *ctx, enum agx_isa_encoding enc,
-                    uint8_t selectors[(FRAG_RESULT_MAX - FRAG_RESULT_DATA0)])
+                    uint8_t selectors[(FRAG_RESULT_MAX - FRAG_RESULT_DATA0)],
+                    bool *layered, bool *multisample)
 {
    if (enc != AGX_ISA_ENCODING_AGX3B || ctx->stage != MESA_SHADER_COMPUTE ||
        ctx->is_preamble || ctx->key->no_stop)
@@ -3842,10 +3843,27 @@ agx3_native_mrt_eot(const agx_context *ctx, enum agx_isa_encoding enc,
    unsigned constants[AGX_NUM_REGS];
    for (unsigned i = 0; i < ARRAY_SIZE(constants); ++i)
       constants[i] = UINT_MAX;
-   unsigned x = UINT_MAX, y = UINT_MAX, count = 0;
+   unsigned origin[AGX_NUM_REGS] = {0}, count = 0;
+   enum agx_dim dimension = AGX_DIM_2D;
    agx_foreach_instr_global(ctx, I) {
       if (I->op == AGX_OPCODE_STOP)
          continue;
+      if (I->op == AGX_OPCODE_BITOP) {
+         if ((I->truth_table & 0xfu) != AGX3_SEL_TT_MOV || I->saturate ||
+             I->nr_dests != 1 || I->nr_srcs != 2 ||
+             !agx3_tex_plain_reg(I->dest[0]) || I->dest[0].size != AGX_SIZE_32 ||
+             agx_channels(I->dest[0]) != 1 || I->dest[0].value >= AGX_NUM_REGS ||
+             !agx3_tex_plain_reg(I->src[0]) || I->src[0].size != AGX_SIZE_32 ||
+             agx_channels(I->src[0]) != 1 || I->src[0].value >= AGX_NUM_REGS ||
+             !agx3_tex_imm(I->src[1], 0))
+            return 0;
+         const unsigned src = I->src[0].value, dst = I->dest[0].value;
+         if (!origin[src] && constants[src] == UINT_MAX)
+            return 0;
+         origin[dst] = origin[src];
+         constants[dst] = constants[src];
+         continue;
+      }
       if (I->op == AGX_OPCODE_GET_SR || I->op == AGX_OPCODE_MOV_IMM) {
          if (I->nr_dests != 1 || I->nr_srcs ||
              !agx3_src_is_register(I->dest[0]) || I->dest[0].memory ||
@@ -3857,24 +3875,37 @@ agx3_native_mrt_eot(const agx_context *ctx, enum agx_isa_encoding enc,
             if (I->imm > UINT8_MAX)
                return 0;
             constants[reg] = I->imm;
-         } else if (I->sr == AGX_SR_THREAD_POSITION_IN_GRID_X && x == UINT_MAX)
-            x = reg;
-         else if (I->sr == AGX_SR_THREAD_POSITION_IN_GRID_Y && y == UINT_MAX)
-            y = reg;
-         else
-            return 0;
+            origin[reg] = 0;
+         } else {
+            origin[reg] = I->sr == AGX_SR_THREAD_POSITION_IN_GRID_X ? 1 :
+                          I->sr == AGX_SR_THREAD_POSITION_IN_GRID_Y ? 2 :
+                          I->sr == AGX_SR_THREADGROUP_POSITION_IN_GRID_Z ? 3 : 0;
+            constants[reg] = UINT_MAX;
+            if (!origin[reg])
+               return 0;
+         }
          continue;
       }
+      const bool array = I->dim == AGX_DIM_2D_ARRAY || I->dim == AGX_DIM_2D_MS_ARRAY;
+      const bool ms = I->dim == AGX_DIM_2D_MS || I->dim == AGX_DIM_2D_MS_ARRAY;
       if (I->op != AGX_OPCODE_BLOCK_IMAGE_STORE ||
           count >= (FRAG_RESULT_MAX - FRAG_RESULT_DATA0) || I->nr_dests ||
-          I->nr_srcs != 4 || I->dim != AGX_DIM_2D || !I->explicit_coords ||
+          I->nr_srcs != 4 ||
+          (!array && !ms && I->dim != AGX_DIM_2D) ||
+          (count && I->dim != dimension) || !I->explicit_coords ||
           !agx3_tex_imm(I->src[0], 0) || !agx3_tex_imm(I->src[1], count) ||
           !agx3_tex_plain_reg(I->src[2]) || I->src[2].size != AGX_SIZE_32 ||
           agx_channels(I->src[2]) != 1 || I->src[2].value >= AGX_NUM_REGS ||
           constants[I->src[2].value] == UINT_MAX ||
           !agx3_tex_plain_reg(I->src[3]) || I->src[3].size != AGX_SIZE_32 ||
-          agx_channels(I->src[3]) != 2 || I->src[3].value != x || y != x + 2)
+          agx_channels(I->src[3]) != (array ? 3 : 2) ||
+          I->src[3].value + (array ? 4 : 2) >= AGX_NUM_REGS ||
+          origin[I->src[3].value] != 1 || origin[I->src[3].value + 2] != 2 ||
+          (array && origin[I->src[3].value + 4] != 3))
          return 0;
+      dimension = I->dim;
+      *layered = array;
+      *multisample = ms;
       if (ctx->key->native_eot_formats[count] != PIPE_FORMAT_NONE) {
          if (!agx3_mrt_eot_selector(ctx->key->native_eot_formats[count],
                                     I->format, &selectors[count])) {
@@ -3917,7 +3948,7 @@ agx3_native_mrt_eot(const agx_context *ctx, enum agx_isa_encoding enc,
 static bool
 agx3_emit_native_mrt_eot(struct util_dynarray *emission,
                          enum agx_isa_encoding enc, unsigned count,
-                         const uint8_t *selectors)
+                         const uint8_t *selectors, bool layered, bool ms)
 {
    /* Native tile-grid coordinate ABI, shared by same-partition EOTs.
     * GPR halves0/2 hold Y/X; halves4/5 are the grid scales. */
@@ -3927,7 +3958,16 @@ agx3_emit_native_mrt_eot(struct util_dynarray *emission,
       0x9f,0x10,0x54,0x02,0x03,0x04,0x14,0x00,0x50,0x26,0x0a,0x00,
       0x9f,0x20,0x54,0x00,0x03,0x00,0x10,0x00,0x50,0x26,0x0a,0x00,
    };
-   if (!agx3_append(emission, header, sizeof(header)))
+   static const uint8_t layered_header[] = {
+      0x1c,0x9c,0x10,0x06,0x24,0xa8,0x10,0x06,
+      0x0c,0x9d,0x10,0x26,0x44,0xa9,0x10,0x26,0x34,0xc3,0x10,0x46,
+      0x9f,0x10,0x54,0x04,0x03,0x04,0x10,0x00,0x50,0x26,0x0a,0x00,
+      0x9f,0x20,0x54,0x02,0x03,0x00,0x20,0x00,0x50,0x26,0x0a,0x00,
+      0x97,0x45,0x54,0x00,0x03,0x0c,0x10,0x00,0xf0,0x88,0x00,0x00,
+   };
+   /* Native type8 MRT builtins keep X/Y/packed-layer in GPR halves4/2/0. */
+   if (!agx3_append(emission, layered ? layered_header : header,
+                    layered ? sizeof(layered_header) : sizeof(header)))
       return false;
    const unsigned slots = 6;
    for (unsigned first = 0; first < count; first += slots) {
@@ -3939,7 +3979,7 @@ agx3_emit_native_mrt_eot(struct util_dynarray *emission,
          const unsigned slot = rt - first + 1;
          uint8_t bytes[AGX3_MAX_WORDS * 2], len;
          const struct agx3_field_kv pack[] = {
-            {9,5},{10,2},{12,slot},{5,8*rt+4},{23,3},{24,1},
+            {9,5},{10,2},{12,slot},{5,8*rt+(layered ? 6 : 4)},{23,3},{24,1},
             {17,4*rt+4},{38,1},{37,1},{52,2},{51,1},
             {74,8},{75,16},{76,7},{77,24},
          };
@@ -3947,10 +3987,10 @@ agx3_emit_native_mrt_eot(struct util_dynarray *emission,
                                  NULL, 0, bytes, &len) ||
              !agx3_append(emission, bytes, len))
             return false;
-         for (unsigned c = 0; c < 2; ++c) {
+         for (unsigned c = 0; c < (layered ? 3 : 2); ++c) {
             const struct agx3_field_kv copy[] = {
                {9,5},{10,2},{23,2},{24,2},{12,slot},
-               {5,8*rt+2*c},{16,c ? 0 : 2},
+               {5,8*rt+2*c},{16,layered ? 4 - 2*c : (c ? 0 : 2)},
                {25,rt+1<count},{27,rt+1==count},
             };
             if ((!agx3_bind_compose(enc, "copy", 0, copy, ARRAY_SIZE(copy),
@@ -3965,7 +4005,8 @@ agx3_emit_native_mrt_eot(struct util_dynarray *emission,
          unsigned slot = rt - first + 1;
          const struct agx3_field_kv store[] = {
             {9,5},{5,8*rt},{12,slot},{13,1},{16+slot,1},
-            {32,1},{73,1},{29,selectors[rt]},{30,1},{45,3},{46,3},
+            {32,1},{73,1},{29,selectors[rt]},{30,ms ? 2 : 1},
+            {31,layered ? 2 : 0},{45,3},{46,3},
             {59,1},{60,1},{51,rt},
          };
          uint8_t bytes[AGX3_MAX_WORDS * 2], len;
@@ -4185,11 +4226,14 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
    }
 
    uint8_t selectors[(FRAG_RESULT_MAX - FRAG_RESULT_DATA0)];
-   unsigned mrt_count = agx3_native_mrt_eot(ctx, enc, selectors);
+   bool mrt_layered = false, mrt_ms = false;
+   unsigned mrt_count = agx3_native_mrt_eot(ctx, enc, selectors,
+                                           &mrt_layered, &mrt_ms);
    if (mrt_count) {
       ctx->max_reg = MAX2(ctx->max_reg, 7);
       ctx->agx3_staging_halfs = MAX2(ctx->agx3_staging_halfs, 8 * mrt_count);
-      return agx3_emit_native_mrt_eot(emission, enc, mrt_count, selectors);
+      return agx3_emit_native_mrt_eot(emission, enc, mrt_count, selectors,
+                                        mrt_layered, mrt_ms);
    }
 
    bool rt0_multisample;

@@ -446,3 +446,19 @@ no fault/reboot. Tested library includes the separate layered-MRT fix:
 Keep opt-in VBO address/stride/clamp diagnostics for future failures.
 Running total: **85/91 failures resolved** (73 Mesa fixes, 12 CTS corrections),
 6 remaining. No broad regression campaign.
+
+## Layered multisample MRT stores
+
+Use native type8 coordinate packing and per-attachment staging for layered
+multisample EOT programs. Preserve the layer value across attachment stores
+and retire each staging bank before reuse. The saved Apple-generated G16G
+four-attachment program supplies the coordinate and IMGWBLK field witness.
+
+Three original cases now Pass: R8_UNORM four-sample layers6 (in prefix-mrt),
+ABGR8_UNORM two-sample layers6 and RGBA16_SNORM two-sample layers3. The
+RG32F four-attachment case remains rejected by the inherited 32767-byte tile
+allocation limit; it is not counted as a pass. Peak57.0 C, no fault/reboot.
+Tested library SHA256:
+`4bc807bc6a64e855bc001684769ddcc3a5adce1a5bbf4d892b48b9a162633fb1`.
+Running total: **88/91 failures resolved** (76 Mesa fixes, 12 CTS corrections),
+3 remaining. No broad regression campaign.
