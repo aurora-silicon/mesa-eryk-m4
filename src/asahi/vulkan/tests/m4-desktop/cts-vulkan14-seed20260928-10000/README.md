@@ -5,7 +5,13 @@ Uses the separately identified seed27 precision-corrected CTS binary,
 SHA256 `25e691e613ff9f3a386fd282dd48f0658b86126f56e2ff16c2e95378825d12fc`.
 Original CTS changes and provenance are retained in the preceding sample.
 All 10,000 cases have initial terminal results across interrupted segments.
-Fixes and skip review remain in progress; this is not a same-build full pass.
+Final cumulative ledger22: **4,658 Pass / 5,342 optional NotSupported**.
+**Zero remaining Fail/Crash/Timeout/ShouldSupport**, with a passing observation
+for each of the 79 original failing cases (including documented CTS fixes).
+This is cumulative evidence across builds, not a same-build full regression.
+The intermittent concurrent job979 fault's root cause remains unproven; its
+case and retained prefix passed on recheck. Do not infer full stability or
+conformance from this sample. Later sections identify each CTS/library revision.
 
 First segment: 220 Pass, 170 NotSupported, 5 Fail, 33 Interrupted,
 9572 Unrun. A GPU fault ended the run; 63.461 seconds includes recovery,
@@ -596,3 +602,21 @@ they require a different prefix table; no incompatible bindings are merged.
 Ledger21: **4,657 Pass / 1 Fail / 5,342 optional NotSupported**, **78 original
 failures resolved**, including documented CTS corrections. Cumulative evidence
 across builds, not a full regression or conformance claim.
+
+## Final mixed-format spill validation
+
+`20260914T172248731557Z-cts28-emrt-resources-recovered` passes the original
+mixed-format multisubpass `random_158` in **1.323 seconds**, without changing
+its shader, render-pass sequence, blending or comparisons. The launch builder
+now includes the texture reads introduced by a spilled render-target epilog
+when validating the linked program and binding its native heap prefix.
+Library SHA256 `02039a41fd70c83ca9484c9c6b6cf60fb68a1535485dc27f308f9683fe2c9dde`.
+Watchdog timeout 60 seconds; all thermal channels monitored, peak **60.75 C**.
+The earlier `172054` attempt never acquired the guard lease and is not a test
+result. Its evidence is retained locally, separate from this passing run.
+
+Ledger22: **4,658 Pass / 5,342 optional NotSupported**, no failing terminal
+cases, **79 original failures resolved**. The unsupported review has no
+ShouldSupport entries. Broad regression remains deferred as requested.
+The display manager is active, normal default remains graphical, and the
+watchdog broker was verified armed at 60 seconds and idle after this run.

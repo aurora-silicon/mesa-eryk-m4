@@ -1,0 +1,26 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.pipeline.monolithic.multisample.misc.multi_subpass.r8g8b8a8_unorm_r16g16b16a16_sfloat_r32g32b32a32_uint_d24_unorm_s8_uint.random_158",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed28-scaled-texelview-supported",
+      "--deqp-case=dEQP-VK.pipeline.monolithic.multisample.misc.multi_subpass.r8g8b8a8_unorm_r16g16b16a16_sfloat_r32g32b32a32_uint_d24_unorm_s8_uint.random_158",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T172248731557Z-cts28-emrt-resources-recovered/cts/000/result.qpa"
+    ],
+    "boot_id": "a39b8fe5-14f1-42e6-9106-c2dc007b8fe7",
+    "status": "Pass",
+    "started_unix": 1789406570.219984,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.monolithic.multisample.misc.multi_subpass.r8g8b8a8_unorm_r16g16b16a16_sfloat_r32g32b32a32_uint_d24_unorm_s8_uint.random_158",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 1.323471695000002,
+    "finished_unix": 1789406571.548563,
+    "pid": 968
+  }
+]
