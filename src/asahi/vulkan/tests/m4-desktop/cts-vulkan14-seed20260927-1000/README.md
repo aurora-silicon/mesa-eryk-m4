@@ -59,3 +59,12 @@ peak 56.5 C. The earlier fault and compute-only diagnostic are retained under
 `20260914T090017418489Z-cts27-robust` and
 `20260914T090919945727Z-cts27-robust-packet-diagnostic`.
 Running total: 18/21 original failures resolved (7 Mesa, 11 corrected CTS).
+
+## ShouldSupport
+
+The compatible BC1/RG32_UINT input-attachment case passes after correcting
+the CTS extended-usage feature gate (`20260914T085009788148Z-cts27-layout`).
+Formatless storage texel-buffer reads were implemented but their format
+feature bit was missing. Advertising it makes the sampled rgba32i null
+descriptor case pass, together with its non-null len_16 counterpart; evidence
+`20260914T091708835574Z-cts27-formatless`, peak 56.75 C.
