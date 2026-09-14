@@ -2068,6 +2068,14 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
       bool no_tests =
          nir_src_is_const(instr->src[1]) && nir_src_as_uint(instr->src[1]) == 0;
 
+      /* Only affected samples can run tests. A static pipeline mask uses
+       * complementary affected/live masks to kill excluded samples in the
+       * prolog; its nonzero live operand does not test any of them. */
+      if (nir_src_is_const(instr->src[0]) &&
+          nir_src_is_const(instr->src[1]))
+         no_tests = !(nir_src_as_uint(instr->src[0]) &
+                      nir_src_as_uint(instr->src[1]));
+
       if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B) {
          /* Read current coverage for every update. The immutable input mask
           * can resurrect samples killed by an earlier discard. Preserve the

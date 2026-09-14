@@ -486,3 +486,21 @@ All experiments used the watchdog and thermal guard. Ledger16: **4,649 Pass /
 Cumulative results across builds, not a broad regression or conformance claim.
 The native-link diagnostic can now retain a single-sample fragment too; the
 launch trace includes depth-test and shader state for reproducible diagnosis.
+
+## Static pipeline masks must not finish depth/stencil tests
+
+`20260914T164630645335Z-cts28-mask-only` passes both remaining sampled
+sample-mask depth/stencil failures: the separate-layout four-sample stencil
+MAX resolve, and fast-linked `z_export.sample_mask_pipeline_static_atc`.
+A pipeline mask emits complementary affected/live operands. Their intersection
+is empty: the operation only discards excluded samples. Classifying it from
+the live operand alone incorrectly acquired and released class1 before the
+actual epilog depth/stencil or alpha-to-coverage operation. Recognize constant
+disjoint operands as discard-only. No added submission waits or CPU copies.
+
+Both original cases pass with unchanged CTS expectations. Hardware watchdog
+and thermal monitoring remained active. Library SHA256:
+`941aaf56fecc43cd3bd188d4534c6b4b424051cd5a3f2be068181ea15a1cc8f2`.
+Host compiler replayer and ARM Vulkan library build successfully.
+Ledger17: **4,651 Pass / 7 Fail / 5,342 optional NotSupported**, **72 original
+failures resolved** across builds. Broad regression remains deferred.

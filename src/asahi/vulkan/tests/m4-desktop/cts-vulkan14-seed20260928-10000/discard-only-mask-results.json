@@ -1,0 +1,50 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.renderpasses.renderpass2.depth_stencil_resolve.image_2d_5_1.samples_4.d16_unorm_s8_uint_separate_layouts.depth_zero_stencil_max_testing_stencil_samplemask",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed28-signed-corrected",
+      "--deqp-case=dEQP-VK.renderpasses.renderpass2.depth_stencil_resolve.image_2d_5_1.samples_4.d16_unorm_s8_uint_separate_layouts.depth_zero_stencil_max_testing_stencil_samplemask",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T164630645335Z-cts28-mask-only/cts/000/result.qpa"
+    ],
+    "boot_id": "15d81d37-45d1-42b3-ada6-fe3160541e0d",
+    "status": "Pass",
+    "started_unix": 1789404391.893131,
+    "eligibility": {
+      "case": "dEQP-VK.renderpasses.renderpass2.depth_stencil_resolve.image_2d_5_1.samples_4.d16_unorm_s8_uint_separate_layouts.depth_zero_stencil_max_testing_stencil_samplemask",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.562373727999784,
+    "finished_unix": 1789404392.460566,
+    "pid": 3714
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.pipeline.fast_linked_library.multisample.z_export.sample_mask_pipeline_static_atc",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed28-signed-corrected",
+      "--deqp-case=dEQP-VK.pipeline.fast_linked_library.multisample.z_export.sample_mask_pipeline_static_atc",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T164630645335Z-cts28-mask-only/cts/001/result.qpa"
+    ],
+    "boot_id": "15d81d37-45d1-42b3-ada6-fe3160541e0d",
+    "status": "Pass",
+    "started_unix": 1789404392.4719467,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.fast_linked_library.multisample.z_export.sample_mask_pipeline_static_atc",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.7653371440001138,
+    "finished_unix": 1789404393.243085,
+    "pid": 3715
+  }
+]
