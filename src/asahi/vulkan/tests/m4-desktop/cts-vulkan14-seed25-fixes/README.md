@@ -229,3 +229,15 @@ and packed RGBA4 to RG8_UNORM. Peak 58.0 C, no GPU fault/reboot. Library SHA256:
 `f41d0dc63cd8942e312d294001b22668f77c60fee7a925b5e645b3e15df5ffde`.
 Running total: **63/91 failures resolved** (57 Mesa fixes, 6 CTS corrections),
 28 remaining. No broad regression campaign.
+
+## Fragment reads of clip distances
+
+Accept the ordinary UVS copies of CLIP_DIST0/1 in fragment varying linkage,
+in addition to their separate clipper outputs. The vertex lowering already
+emits these interpolated copies. Perspective and component bounds checks
+remain unchanged. The original dynamic-index clip/cull fragment-read case
+now Passes on unmodified CTS. Peak 57.75 C, no GPU fault/reboot. Library SHA256:
+`d875e72527e15001f474d8ac76e2051ae64de0c123712fbc140bdeb56c537f9d`.
+Running total: **64/91 failures resolved** (58 Mesa fixes, 6 CTS corrections),
+27 remaining. Both original crashes have passing targeted retests.
+No broad regression campaign.

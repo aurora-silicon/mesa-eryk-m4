@@ -1039,11 +1039,14 @@ hk_g17p_smooth_varyings_supported(struct hk_cmd_buffer *cmd,
              b->count != 2 || !b->smooth || !b->perspective || !has_rhw)
             return false;
       } else {
-         /* Cull-distance lowering carries sign indicators in these
-          * ordinary UVS slots for noperspective fragment interpolation. */
-         const bool cull_distance = b->slot == VARYING_SLOT_CULL_PRIMITIVE ||
-                                    b->slot == VARYING_SLOT_CULL_PRIMITIVE + 1;
-         if ((!cull_distance &&
+         /* Clip distances read by the fragment shader have ordinary UVS
+          * copies in addition to their clipper outputs. Cull lowering also
+          * carries sign indicators in ordinary interpolated UVS slots. */
+         const bool distance = b->slot == VARYING_SLOT_CLIP_DIST0 ||
+                               b->slot == VARYING_SLOT_CLIP_DIST1 ||
+                               b->slot == VARYING_SLOT_CULL_PRIMITIVE ||
+                               b->slot == VARYING_SLOT_CULL_PRIMITIVE + 1;
+         if ((!distance &&
               (b->slot < VARYING_SLOT_VAR0 || b->slot > VARYING_SLOT_VAR31)) ||
              (b->perspective && !has_rhw) ||
              b->offset + b->count > vs->info.uvs.components[b->slot])

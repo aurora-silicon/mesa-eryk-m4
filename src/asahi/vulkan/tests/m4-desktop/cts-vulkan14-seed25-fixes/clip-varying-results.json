@@ -1,0 +1,26 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.clipping.user_defined.clip_cull_distance_dynamic_index.vert.4_4_fragmentshader_read",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.clipping.user_defined.clip_cull_distance_dynamic_index.vert.4_4_fragmentshader_read",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260914T041517367778Z-cts14-clip-varying-fixed/cts/000/result.qpa"
+    ],
+    "boot_id": "0ca1f3f9-acb4-4b79-8a3c-15498f475016",
+    "status": "Pass",
+    "started_unix": 1789359318.5898542,
+    "eligibility": {
+      "case": "dEQP-VK.clipping.user_defined.clip_cull_distance_dynamic_index.vert.4_4_fragmentshader_read",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.25981666799998493,
+    "finished_unix": 1789359318.8548422,
+    "pid": 2001
+  }
+]
