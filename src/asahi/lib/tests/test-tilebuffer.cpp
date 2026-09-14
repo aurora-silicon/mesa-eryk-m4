@@ -229,16 +229,30 @@ TEST(Tilebuffer, NativeWideSample)
       PIPE_FORMAT_R32G32B32A32_FLOAT, PIPE_FORMAT_R32G32B32A32_FLOAT,
    };
    auto native = agx_build_tilebuffer_layout_with_limits(formats, 6, 1, false,
-                                                        32768, 2048, 248);
+                                                        0, 2048, 248);
    ASSERT_FALSE(agx_tilebuffer_spills(&native));
    ASSERT_EQ(96u, native.sample_size_B);
    ASSERT_EQ(256u, native.tile_size);
    ASSERT_EQ(80u, native._offset_B[5]);
    auto deferred = agx_build_tilebuffer_layout_with_limits(formats, 6, 0, false,
-                                                          32768, 2048, 248);
+                                                          0, 2048, 248);
    agx_tilebuffer_set_samples(&deferred, 1);
    ASSERT_EQ(native.sample_size_B, deferred.sample_size_B);
    ASSERT_FALSE(agx_tilebuffer_spills(&deferred));
    auto legacy = agx_build_tilebuffer_layout(formats, 6, 1, false);
    ASSERT_TRUE(legacy.spilled[4]);
+}
+
+TEST(Tilebuffer, NativeWideMultisampleBoundary)
+{
+   const enum pipe_format format = PIPE_FORMAT_R32G32B32A32_UINT;
+   auto tib = agx_build_tilebuffer_layout_with_limits(&format, 1, 2, true,
+                                                     0, 2048, 248);
+   ASSERT_EQ(16u, tib.sample_size_B);
+   ASSERT_EQ(512u, tib.tile_size);
+   ASSERT_LT(agx_tilebuffer_total_size(&tib), 32768u);
+   auto deferred = agx_build_tilebuffer_layout_with_limits(&format, 1, 0, true,
+                                                          0, 2048, 248);
+   agx_tilebuffer_set_samples(&deferred, 2);
+   ASSERT_EQ(tib.tile_size, deferred.tile_size);
 }

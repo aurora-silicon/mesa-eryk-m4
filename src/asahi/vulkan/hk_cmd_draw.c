@@ -1043,11 +1043,11 @@ hk_CmdBeginRendering(VkCommandBuffer commandBuffer,
    /* Keep native color storage capacity separate from raster sample geometry.
     * J713 native 4x captures use 32x16 microtiles (2048 samples). Selecting
     * 32x32 solely because 32 KiB fits stalls even a constant-color draw.
-    * A 2048-sample budget retains full 32 KiB MRT storage in smaller tiles.
+    * A 2048-sample budget is independent of the strict 32 KiB storage limit.
     * Carry both budgets into deferred sample counts and fragment epilogs. */
    render->tilebuffer = agx_build_tilebuffer_layout_with_limits(
       formats, render->color_att_count, render->tilebuffer.nr_samples, layered,
-      agx_native_graphics(&dev->dev) ? 32768 : 0,
+      0, /* Preserve the allocator's strict 32 KiB tile capacity. */
       dev->dev.chip == AGX_CHIP_G16G ? 2048 : 0,
       agx_native_graphics(&dev->dev) ? 248 : 0);
 

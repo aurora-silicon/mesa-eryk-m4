@@ -68,3 +68,19 @@ Formatless storage texel-buffer reads were implemented but their format
 feature bit was missing. Advertising it makes the sampled rgba32i null
 descriptor case pass, together with its non-null len_16 counterpart; evidence
 `20260914T091708835574Z-cts27-formatless`, peak 56.75 C.
+
+## Strict tile capacity
+
+Remove the native override that admitted an exactly 32 KiB tile. Preserve the
+shared allocator's strict less-than-32-KiB bound, separately from the native
+sample-stride and raster sample limits. RGBA32 at 2x now chooses 32x16 tiles.
+The original layered UINT case and its float counterpart both pass, along with
+their single-sample controls: `20260914T092725045112Z-cts27-strict-tile`,
+peak 56.75 C. Host boundary tests cover initial and deferred sample counts.
+
+Diagnostics had localized the first mismatch to layer 4, pixel (160,0).
+The Apple type8 EOT binary matched ours byte-for-byte, and earlier pixels
+contained all four channels; this was not an export-format conversion defect.
+The temporary post-completion diagnostic patch is retained for reproducibility
+and is absent from the final driver.
+Running total: 19/21 original failures resolved (8 Mesa, 11 corrected CTS).

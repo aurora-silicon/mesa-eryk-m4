@@ -154,7 +154,7 @@ hk_agx3_g17p_rt0_tile_layout_supported(struct agx_tilebuffer_layout *tib)
        (tib->tile_size != 1024 && tib->tile_size != 512 &&
         tib->tile_size != 256) ||
        (tib->sample_size_B & 7) || tib->sample_size_B > 248 ||
-       tib->sample_size_B * tib->nr_samples * tib->tile_size > 32768)
+       tib->sample_size_B * tib->nr_samples * tib->tile_size >= 32768)
       return false;
    unsigned begin[AGX_MAX_RENDER_TARGETS], end[AGX_MAX_RENDER_TARGETS],
       count = 0;
