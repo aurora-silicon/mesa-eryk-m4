@@ -42,7 +42,7 @@ def select(args):
     else:
         labels = {c: dict(classification=('platform-excluded' if args.linux_only and
                        ('win32' in c or '.android.' in c) else 'unclassified'),
-                       rule='legacy unfiltered selection', requirements=[]) for c in cases}
+                       rule='unfiltered selection; requirements not reviewed', requirements=[]) for c in cases}
     accepted = {'required', 'advertised'} if classifier else {'unclassified'}
     eligible = [c for c in cases if labels[c]['classification'] in accepted]
     if args.count < 1 or args.count > len(eligible):
@@ -82,7 +82,8 @@ def select(args):
         linux_only=bool(classifier) or args.linux_only, mustpass=str(args.mustpass.resolve()),
         **provenance,
         method='Python random.Random(seed).sample, original mustpass order after recorded eligibility filter',
-        coverage_note='Reviewed rule coverage only; unclassified cases are excluded, not claimed optional or unsupported.',
+        coverage_note=('Reviewed rule coverage only; unclassified cases are excluded, not claimed optional or unsupported.'
+                       if classifier else 'Unfiltered sample; requirements are unclassified. Capability skips remain separate from passes.'),
         categories=dict(collections.Counter(c.split('.')[1] for c in chosen)), cases=chosen)
     save(args.output / 'selection.json', summary)
     print(json.dumps({k: v for k, v in summary.items() if k != 'cases'}, indent=2))
@@ -98,6 +99,33 @@ def case_metadata(path):
             or [c['case'] for c in meta['cases']] != raw.decode().splitlines()):
         raise ValueError(f'Case metadata does not match frozen case list: {sidecar}')
     return meta
+
+
+def display_environment():
+    """Use a live user compositor, or SDDM's compositor before user login."""
+    sockets = sorted(Path('/run/user').glob('*/wayland-*'),
+                     key=lambda p: (p.parent.name != '1000', str(p)))
+    socket = next((p for p in sockets if p.is_socket()), None)
+    if socket is None:
+        return {}
+    result = dict(XDG_RUNTIME_DIR=str(socket.parent), WAYLAND_DISPLAY=socket.name)
+    # Xwayland may not have started when the greeter inherited its environment.
+    # Take its actual display argument, matching the Wayland socket owner.
+    for proc in sorted(Path('/proc').glob('[0-9]*')):
+        try:
+            if proc.stat().st_uid != socket.stat().st_uid:
+                continue
+            argv = (proc / 'cmdline').read_bytes().decode().strip('\0').split('\0')
+            if argv and Path(argv[0]).name == 'Xwayland':
+                display = next((s for s in argv[1:] if re.fullmatch(r':\d+', s)), None)
+                if display:
+                    result['DISPLAY'] = display
+                    if '-auth' in argv:
+                        result['XAUTHORITY'] = argv[argv.index('-auth') + 1]
+                    break
+        except (OSError, UnicodeError, IndexError):
+            continue
+    return result
 
 
 def batch(args):
@@ -137,8 +165,7 @@ def batch(args):
         env.update(VK_DRIVER_FILES='/usr/share/vulkan/icd.d/lvp_icd.json',
                    VK_ICD_FILENAMES='/usr/share/vulkan/icd.d/lvp_icd.json',
                    LD_LIBRARY_PATH='/usr/lib')
-    displays = sorted(Path('/run/user/1000').glob('wayland-*'))
-    env['WAYLAND_DISPLAY'] = next((p.name for p in displays if p.is_socket()), 'wayland-1')
+    env.update(display_environment())
     capture = out / 'compiler-captures'
     capture.mkdir()
     env['AGX_COMPILER_CAPTURE_DIR'] = str(capture)
@@ -147,7 +174,7 @@ def batch(args):
         env['AGX_COMPILER_CAPTURE_SUCCESS'] = 'all'
         env['MESA_SHADER_CACHE_DISABLE'] = 'true'
     save(out / 'environment.json', {k: v for k, v in env.items() if k.startswith(
-         ('VK_', 'ASAHI_', 'AGX_', 'HK_', 'MESA_', 'LD_LIBRARY', 'WAYLAND_', 'XDG_RUNTIME'))})
+         ('VK_', 'ASAHI_', 'AGX_', 'HK_', 'MESA_', 'LD_LIBRARY', 'WAYLAND_', 'XDG_RUNTIME', 'DISPLAY', 'XAUTHORITY'))})
     save(out / 'binary.json', dict(path=str(args.binary), sha256=hashlib.sha256(args.binary.read_bytes()).hexdigest()))
     if args.backend == 'deqp-runner':
         from cts_deqp_backend import run

@@ -323,3 +323,41 @@ nonpasses, CTS corrections, the 30.17s -> 10.87s CPU comparison optimization,
 M4 multisample exports and Zink integer resolves. Bulk/campaign defaults use
 the explicitly adapted `deqp-vk-seed24-corrected` binary. Original reports and
 binaries remain unchanged; the bulk per-case timeout is now 60s.
+
+## Vulkan 1.4 CTS
+
+`cts-mustpass.py MUSTPASS --output NEW_DIRECTORY` expands the modern split
+mustpass files recursively in their original order, rejects duplicate names,
+cycles and includes outside the root directory, and saves every input hash.
+It is an offline list operation and applies no capability or result filtering.
+
+The separate `reference/vk-gl-cts-1.4.6.2` checkout pins the official
+`vulkan-cts-1.4.6.2` tag (`f6a29701220f34dd1407513bfe80d74ca7b392ce`).
+Fetch its dependencies with `python3 external/fetch_sources.py`. Configure
+`build/cts-1.4-arm64` using the same ARM64 toolchain as above, Release,
+`-DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DDE_CPU=DE_CPU_ARM_64` and
+`-DSELECTED_BUILD_TARGETS=deqp-vk -DWAYLAND_SCANNER=/usr/bin/wayland-scanner`; build `ninja -j14 deqp-vk`.
+The 1.0 diagnostic patches are not applied to this checkout.
+
+```
+python3 tools/cts-mustpass.py \
+  reference/vk-gl-cts-1.4.6.2/external/vulkancts/mustpass/main/vk-default.txt \
+  --output build/cts-1.4-baseline/mustpass
+python3 tools/cts-sample.py select --scope all --linux-only \
+  --mustpass build/cts-1.4-baseline/mustpass/mustpass.txt \
+  --seed 20260925 --count 1000 --output build/cts-vulkan14-seed20260925-1000
+```
+
+The reviewed 1.0 requirement catalog cannot label the new list. This explicit
+unfiltered mode labels requirements **unclassified**, skips Windows/Android
+platform entries before selection, and retains CTS NotSupported separately.
+It is a broad smoke test, not a required/advertised or conformance claim.
+Do not replace skipped/failed cases after seeing their outcomes.
+Use `cts-bulk.py` with the separately installed 1.4 `--binary` and its matching
+`vulkan/` assets, the existing patched deqp-runner, 20 workers and the mandatory
+watchdog/thermal guard. Retain exact executable hashes and original QPA results.
+
+`cts-sample.py batch` discovers a live Wayland socket, preferring user 1000,
+and falls back to SDDM's compositor before login. It records the actual runtime
+directory and Xwayland display/authentication path when available. This avoids
+window-system setup failures caused by assuming a logged-in user session.
