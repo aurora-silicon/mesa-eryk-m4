@@ -3070,6 +3070,15 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
    primary_fields.words[1] |= polygon_mode << 18;
    primary_fields.words[3] |= polygon_mode << 18;
 
+   /* Bits 15:8 of both face words hold the 4:4 fixed-point line width with
+    * the off-by-one applied, exactly as FRAGMENT_FACE does; the template's
+    * 0x0f is width 1.0. Metal never widens lines, so this is the only
+    * place the dynamic width reaches the native record
+    * (dynamic_state.*.line_width, rs_state.line_width, image.* clears). */
+   const uint32_t line_width = agx_pack_line_width(dyn->rs.line.width);
+   primary_fields.words[1] = (primary_fields.words[1] & ~0xff00u) | (line_width << 8);
+   primary_fields.words[3] = (primary_fields.words[3] & ~0xff00u) | (line_width << 8);
+
    /* Each draw already owns its complete PRIMARY_FACE record. Native depth
     * control only changes these two words; retain the allocation and staging
     * layout and do not add launches, cache flushes or device-global state. */
@@ -4628,7 +4637,8 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
    /* A pure cull/winding update needs new immutable fragment state, but
     * leaves the vertex program and its VDM state unchanged. */
    if (agx_native_graphics(&dev->dev) && !g17p_native_bind_tail_emitted &&
-       (IS_DIRTY(RS_CULL_MODE) || IS_DIRTY(RS_FRONT_FACE))) {
+       (IS_DIRTY(RS_CULL_MODE) || IS_DIRTY(RS_FRONT_FACE) ||
+        IS_DIRTY(RS_LINE_WIDTH) || IS_DIRTY(RS_POLYGON_MODE))) {
       if (!hk_g17p_emit_native_bind_tail(cmd, cs, &out)) {
          vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
          cs->current = out;
