@@ -46,6 +46,7 @@ Total counted: 1,000,000; the 22 early-fragment cases whose unterminated `printf
 - `b1c9e8c0538` agx3: give background tile stores the fragment colour ownership protocol (24 layered 4x 96/128-bit image_clearing cases; probe compiler/test/probes/g16g-layered-ms-clear-probe.c)
 - `208adb42e85` agx/agx3: mask colour stores after forced early tests on G16G (7 early_fragment discard/sample-mask cases; Metal witnesses in compiler/test/probes/README-g16g-early-sample-mask.md)
 - `589fb73d33d` agx/agx3: keep quad helper lanes alive through demote on G16G (5 glsl.demote *_deriv and 3 helper_invocation cases; probes in compiler/test/probes/README-g16g-demote-quad-helpers.md)
+- `c7381aaae2c` agx: honour the constant-plane marker in native coefficient interpolation (8 draw.*.multiple_interpolation with_sample_decoration.1_sample cases; replica probe and raw coefficient dump in compiler/test/probes/README-g16g-constant-plane-marker.md)
 
 Each fix was verified against the 1,000-case regression set (`build/claude-perf/reg1000/cases.txt`, 815 Pass / 186 NotSupported) before installation.
 
