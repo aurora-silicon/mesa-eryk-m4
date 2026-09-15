@@ -1,0 +1,156 @@
+[
+ {
+  "segment": "1020000-1030000",
+  "attempt": "run-attempt1-crash-interp",
+  "status": "Crash",
+  "case": "dEQP-VK.pipeline.fast_linked_library.misc.interpolate_at_sample_no_sample_shading",
+  "message": "Runner detected abnormal execution; inspect QPA/log"
+ },
+ {
+  "segment": "1030000-1040000",
+  "attempt": "run",
+  "status": "Fail",
+  "case": "dEQP-VK.pipeline.fast_linked_library.multisample.z_export.depth_stencil_static_atc",
+  "message": "retcode: VK_ERROR_FEATURE_NOT_PRESENT at vkPipelineConstructionUtil.cpp:176"
+ },
+ {
+  "segment": "1030000-1040000",
+  "attempt": "run",
+  "status": "Fail",
+  "case": "dEQP-VK.pipeline.fast_linked_library.multisample.z_export.depth_stencil_static_atc_dynamic_rendering",
+  "message": "retcode: VK_ERROR_FEATURE_NOT_PRESENT at vkPipelineConstructionUtil.cpp:176"
+ },
+ {
+  "segment": "1030000-1040000",
+  "attempt": "run",
+  "status": "Fail",
+  "case": "dEQP-VK.pipeline.fast_linked_library.multisample.z_export.sample_mask_static_atc",
+  "message": "Unexpected color, depth or stencil result; check log for details"
+ },
+ {
+  "segment": "1030000-1040000",
+  "attempt": "run",
+  "status": "Fail",
+  "case": "dEQP-VK.pipeline.fast_linked_library.multisample.z_export.sample_mask_static_atc_dynamic_rendering",
+  "message": "Unexpected color, depth or stencil result; check log for details"
+ },
+ {
+  "segment": "1030000-1040000",
+  "attempt": "run",
+  "status": "Fail",
+  "case": "dEQP-VK.pipeline.fast_linked_library.multisample.z_export.stencil_static_atc",
+  "message": "retcode: VK_ERROR_FEATURE_NOT_PRESENT at vkPipelineConstructionUtil.cpp:176"
+ },
+ {
+  "segment": "1030000-1040000",
+  "attempt": "run",
+  "status": "Fail",
+  "case": "dEQP-VK.pipeline.fast_linked_library.multisample.z_export.stencil_static_atc_dynamic_rendering",
+  "message": "retcode: VK_ERROR_FEATURE_NOT_PRESENT at vkPipelineConstructionUtil.cpp:176"
+ },
+ {
+  "segment": "1030000-1040000",
+  "attempt": "run",
+  "status": "Fail",
+  "case": "dEQP-VK.pipeline.fast_linked_library.multisample.z_export.write_all_static_atc",
+  "message": "retcode: VK_ERROR_FEATURE_NOT_PRESENT at vkPipelineConstructionUtil.cpp:176"
+ },
+ {
+  "segment": "1030000-1040000",
+  "attempt": "run",
+  "status": "Fail",
+  "case": "dEQP-VK.pipeline.fast_linked_library.multisample.z_export.write_all_static_atc_dynamic_rendering",
+  "message": "retcode: VK_ERROR_FEATURE_NOT_PRESENT at vkPipelineConstructionUtil.cpp:176"
+ },
+ {
+  "segment": "1030000-1040000",
+  "attempt": "run",
+  "status": "Fail",
+  "case": "dEQP-VK.pipeline.fast_linked_library.multisample_interpolation.sample_interpolate_at_distinct_values.137_191_1.samples_4",
+  "message": "Expected numSamples+1 different colors in the output image"
+ },
+ {
+  "segment": "1030000-1040000",
+  "attempt": "run",
+  "status": "Fail",
+  "case": "dEQP-VK.pipeline.fast_linked_library.multisample_interpolation.sample_qualifier_distinct_values.137_191_1.samples_4",
+  "message": "Expected numSamples+1 different colors in the output image"
+ },
+ {
+  "segment": "1120000-1130000",
+  "attempt": "run-attempt1-dualsrc-timeouts",
+  "status": "Timeout",
+  "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.a2r10g10b10_unorm_pack32",
+  "message": "Runner detected abnormal execution; inspect QPA/log"
+ },
+ {
+  "segment": "1120000-1130000",
+  "attempt": "run-attempt1-dualsrc-timeouts",
+  "status": "Timeout",
+  "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.a4b4g4r4_unorm_pack16",
+  "message": "Runner detected abnormal execution; inspect QPA/log"
+ },
+ {
+  "segment": "1120000-1130000",
+  "attempt": "run-attempt1-dualsrc-timeouts",
+  "status": "Timeout",
+  "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.a4r4g4b4_unorm_pack16",
+  "message": "Runner detected abnormal execution; inspect QPA/log"
+ },
+ {
+  "segment": "1120000-1130000",
+  "attempt": "run-attempt1-dualsrc-timeouts",
+  "status": "Timeout",
+  "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.b4g4r4a4_unorm_pack16",
+  "message": "Runner detected abnormal execution; inspect QPA/log"
+ },
+ {
+  "segment": "1120000-1130000",
+  "attempt": "run-attempt1-dualsrc-timeouts",
+  "status": "Timeout",
+  "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.r16g16b16a16_sfloat",
+  "message": "Runner detected abnormal execution; inspect QPA/log"
+ },
+ {
+  "segment": "1120000-1130000",
+  "attempt": "run-attempt1-dualsrc-timeouts",
+  "status": "Timeout",
+  "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.r16g16b16a16_snorm",
+  "message": "Runner detected abnormal execution; inspect QPA/log"
+ },
+ {
+  "segment": "1120000-1130000",
+  "attempt": "run-attempt1-dualsrc-timeouts",
+  "status": "Timeout",
+  "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.r32g32b32a32_sfloat",
+  "message": "Runner detected abnormal execution; inspect QPA/log"
+ },
+ {
+  "segment": "1120000-1130000",
+  "attempt": "run-attempt1-dualsrc-timeouts",
+  "status": "Timeout",
+  "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.r4g4b4a4_unorm_pack16",
+  "message": "Runner detected abnormal execution; inspect QPA/log"
+ },
+ {
+  "segment": "1120000-1130000",
+  "attempt": "run-attempt1-dualsrc-timeouts",
+  "status": "Timeout",
+  "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.r5g5b5a1_unorm_pack16",
+  "message": "Runner detected abnormal execution; inspect QPA/log"
+ },
+ {
+  "segment": "1120000-1130000",
+  "attempt": "run-attempt1-dualsrc-timeouts",
+  "status": "Timeout",
+  "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.r8g8b8a8_snorm",
+  "message": "Runner detected abnormal execution; inspect QPA/log"
+ },
+ {
+  "segment": "1120000-1130000",
+  "attempt": "run-attempt1-dualsrc-timeouts",
+  "status": "Timeout",
+  "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.r8g8b8a8_unorm",
+  "message": "Runner detected abnormal execution; inspect QPA/log"
+ }
+]

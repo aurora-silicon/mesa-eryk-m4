@@ -1,0 +1,221 @@
+{
+ "note": "42 dual_source.multi_attachments cases of segment 13 run with 2 workers, 1 case per group, 60 s bound",
+ "counts": {
+  "Pass": 40,
+  "NotSupported": 2
+ },
+ "runner_seconds": 235.64481555300017,
+ "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260915T071937885884Z-claude-dualsrc-all-jobs2",
+ "results": [
+  {
+   "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.a1r5g5b5_unorm_pack16",
+   "status": "Pass",
+   "seconds": 24.244497
+  },
+  {
+   "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.a2b10g10r10_unorm_pack32",
+   "status": "Pass",
+   "seconds": 24.698503
+  },
+  {
+   "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.a2r10g10b10_unorm_pack32",
+   "status": "Pass",
+   "seconds": 24.344498
+  },
+  {
+   "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.a4b4g4r4_unorm_pack16",
+   "status": "Pass",
+   "seconds": 23.76152
+  },
+  {
+   "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.a4r4g4b4_unorm_pack16",
+   "status": "Pass",
+   "seconds": 25.098097
+  },
+  {
+   "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.b10g11r11_ufloat_pack32",
+   "status": "Pass",
+   "seconds": 0.7562234
+  },
+  {
+   "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.b4g4r4a4_unorm_pack16",
+   "status": "Pass",
+   "seconds": 26.914558
+  },
+  {
+   "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.b5g5r5a1_unorm_pack16",
+   "status": "Pass",
+   "seconds": 24.199196
+  },
+  {
+   "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.e5b9g9r9_ufloat_pack32",
+   "status": "Pass",
+   "seconds": 0.72510695
+  },
+  {
+   "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.r10x6g10x6b10x6a10x6_unorm_4pack16",
+   "status": "NotSupported",
+   "seconds": 0.000151754
+  },
+  {
+   "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.r16_sfloat",
+   "status": "Pass",
+   "seconds": 0.6244843
+  },
+  {
+   "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.r16_snorm",
+   "status": "Pass",
+   "seconds": 0.6368785
+  },
+  {
+   "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.r16_unorm",
+   "status": "Pass",
+   "seconds": 0.66679156
+  },
+  {
+   "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.r16g16_sfloat",
+   "status": "Pass",
+   "seconds": 0.69979876
+  },
+  {
+   "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.r16g16_snorm",
+   "status": "Pass",
+   "seconds": 0.6199453
+  },
+  {
+   "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.r16g16_unorm",
+   "status": "Pass",
+   "seconds": 0.6287679
+  },
+  {
+   "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.r16g16b16_sfloat",
+   "status": "Pass",
+   "seconds": 0.59352714
+  },
+  {
+   "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.r16g16b16_snorm",
+   "status": "Pass",
+   "seconds": 0.81429696
+  },
+  {
+   "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.r16g16b16_unorm",
+   "status": "Pass",
+   "seconds": 0.71027076
+  },
+  {
+   "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.r16g16b16a16_sfloat",
+   "status": "Pass",
+   "seconds": 22.869545
+  },
+  {
+   "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.r16g16b16a16_snorm",
+   "status": "Pass",
+   "seconds": 34.229656
+  },
+  {
+   "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.r16g16b16a16_unorm",
+   "status": "Pass",
+   "seconds": 28.191809
+  },
+  {
+   "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.r32_sfloat",
+   "status": "Pass",
+   "seconds": 0.65291584
+  },
+  {
+   "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.r32g32_sfloat",
+   "status": "Pass",
+   "seconds": 0.70815825
+  },
+  {
+   "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.r32g32b32_sfloat",
+   "status": "Pass",
+   "seconds": 0.666916
+  },
+  {
+   "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.r32g32b32a32_sfloat",
+   "status": "Pass",
+   "seconds": 26.71946
+  },
+  {
+   "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.r4g4_unorm_pack8",
+   "status": "NotSupported",
+   "seconds": 0.000116278
+  },
+  {
+   "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.r4g4b4a4_unorm_pack16",
+   "status": "Pass",
+   "seconds": 24.204134
+  },
+  {
+   "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.r5g5b5a1_unorm_pack16",
+   "status": "Pass",
+   "seconds": 25.79716
+  },
+  {
+   "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.r5g6b5_unorm_pack16",
+   "status": "Pass",
+   "seconds": 0.7059888
+  },
+  {
+   "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.r8_snorm",
+   "status": "Pass",
+   "seconds": 0.5553742
+  },
+  {
+   "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.r8_srgb",
+   "status": "Pass",
+   "seconds": 0.7131072
+  },
+  {
+   "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.r8_unorm",
+   "status": "Pass",
+   "seconds": 0.59932065
+  },
+  {
+   "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.r8g8_snorm",
+   "status": "Pass",
+   "seconds": 0.6432695
+  },
+  {
+   "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.r8g8_srgb",
+   "status": "Pass",
+   "seconds": 0.65988916
+  },
+  {
+   "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.r8g8_unorm",
+   "status": "Pass",
+   "seconds": 0.6564669
+  },
+  {
+   "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.r8g8b8_snorm",
+   "status": "Pass",
+   "seconds": 0.70585054
+  },
+  {
+   "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.r8g8b8_srgb",
+   "status": "Pass",
+   "seconds": 0.7100763
+  },
+  {
+   "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.r8g8b8_unorm",
+   "status": "Pass",
+   "seconds": 0.6623659
+  },
+  {
+   "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.r8g8b8a8_snorm",
+   "status": "Pass",
+   "seconds": 27.073654
+  },
+  {
+   "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.r8g8b8a8_srgb",
+   "status": "Pass",
+   "seconds": 32.158375
+  },
+  {
+   "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.r8g8b8a8_unorm",
+   "status": "Pass",
+   "seconds": 24.022764
+  }
+ ]
+}
