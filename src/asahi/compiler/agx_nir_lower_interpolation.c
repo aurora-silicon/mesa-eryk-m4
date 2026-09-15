@@ -34,20 +34,33 @@ cf_valid(nir_builder *b, nir_def *cf)
     * logical sense.  Presumably they just meant to check for denorms, so let's
     * do that. Either way the tests pass.
     */
-   nir_def *cf01 = nir_trim_vector(b, cf, 2);
-
-   /* Reduce the per-channel check to one boolean: interpolate_at_offset
-    * selects a scalar with it. A vec2 condition made bcsel produce a vec2,
-    * which nir_vec hid for wider loads but a single-component
-    * interpolateAtSample/Offset result stored it as-is and failed NIR
-    * validation (pipeline.*.misc.interpolate_at_sample_no_sample_shading).
+   /* One scalar boolean: interpolate_at_offset selects a scalar with it. A
+    * vec2 condition made bcsel produce a vec2, which nir_vec hid for wider
+    * loads but a single-component interpolateAtSample/Offset result stored
+    * as-is and failed NIR validation
+    * (pipeline.*.misc.interpolate_at_sample_no_sample_shading).
+    *
+    * The check is written out per channel with the integer form of
+    * fisnormal. The vector fisnormal reduced here evaluated false on the M4
+    * backend for ordinary coefficients whose float LSB is set (a 137-pixel
+    * wide target gives A = 2/137), so every interpolateAtSample fell back to
+    * the tile-corner constant and produced 32-pixel steps
+    * (pipeline.*.multisample_interpolation.*distinct_values.137_191_1.samples_4).
+    * The scalar form evaluates correctly there.
     */
-   return nir_ior(b, bit, nir_ball(b, nir_fisnormal(b, cf01)));
+   nir_def *normal = NULL;
+   for (unsigned c = 0; c < 2; ++c) {
+      nir_def *bits = nir_channel(b, cf, c);
+      nir_def *n = nir_ult(b, nir_imm_int(b, 0x1ffffff),
+                           nir_iadd_imm(b, nir_ishl_imm(b, bits, 1), 0x1000000));
+      normal = normal ? nir_iand(b, normal, n) : n;
+   }
+   return nir_ior(b, bit, normal);
 }
 
 static nir_def *
 interpolate_at_offset(nir_builder *b, nir_def *cf, nir_def *offset,
-                      bool perspective)
+                      bool perspective, bool native)
 {
    /* Get the coordinate of the pixel within the tile */
    nir_def *pixel_coords = nir_load_pixel_coord(b);
@@ -81,6 +94,19 @@ interpolate_at_offset(nir_builder *b, nir_def *cf, nir_def *offset,
 
       interp = nir_fdiv(b, interp, rhw);
    }
+
+   /* On the native HAL200 path (G16G/G17P) the raw coefficients interpolate
+    * correctly, but the validity fallback below selected the tile-corner
+    * constant for ordinary coefficients whose float LSB is set (a 137-pixel
+    * wide target gives A = 2/137), turning every interpolateAtSample/
+    * interpolateAtOffset into 32-pixel steps
+    * (pipeline.*.multisample_interpolation.*distinct_values.137_191_1.samples_4).
+    * The same check written out per channel, and the same integer chain in
+    * standalone probes, evaluate correctly, so the fault is in how this
+    * shader's chain is packed; skip the fallback there until that is found.
+    */
+   if (native)
+      return interp;
 
    /* Replace invalid interpolations with the constant channel */
    return nir_bcsel(b, cf_valid(b, cf), interp, nir_channel(b, cf, 2));
@@ -155,7 +181,8 @@ interpolate_channel(nir_builder *b, nir_intrinsic_instr *load, unsigned channel,
 
       nir_def *interp = interpolate_at_offset(
          b, coefficients, bary->src[0].ssa,
-         nir_intrinsic_interp_mode(bary) != INTERP_MODE_NOPERSPECTIVE);
+         nir_intrinsic_interp_mode(bary) != INTERP_MODE_NOPERSPECTIVE,
+         native_layer);
 
       return nir_f2fN(b, interp, load->def.bit_size);
    }
