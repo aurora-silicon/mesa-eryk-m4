@@ -1130,6 +1130,23 @@ agx_open_device(void *memctx, struct agx_device *dev)
    simple_mtx_init(&dev->vma_lock, mtx_plain);
    util_vma_heap_init(&dev->main_heap, user_start, user_size);
    util_vma_heap_init(&dev->usc_heap, dev->shader_base, shader_size);
+
+   /* Capture/replay buffers replay their captured addresses with fixed VA
+    * allocations. Placing them in the shared heap let an ordinary allocation
+    * made between capture and replay occupy a captured range
+    * (binding_model.buffer_device_address.capture_replay_stress.seed_3 failed
+    * with "Sparse VMA allocation failed"). Reserve a region for them. */
+   {
+      const uint64_t replay_size = MIN2(user_size / 8, 64ull << 30);
+      const uint64_t replay_base =
+         replay_size >= (1ull << 30)
+            ? util_vma_heap_alloc(&dev->main_heap, replay_size, 1ull << 30)
+            : 0;
+      if (replay_base)
+         util_vma_heap_init(&dev->replay_heap, replay_base, replay_size);
+      else
+         memset(&dev->replay_heap, 0, sizeof(dev->replay_heap));
+   }
    if (agx_native_graphics(dev) &&
        !agx_g17p_vdm_alias_heap_init(&dev->g17p_vdm_alias_heap)) {
       fprintf(stderr, "Failed to initialize G17P low VDM alias heap\n");
@@ -1351,6 +1368,8 @@ agx_close_device(struct agx_device *dev)
    util_sparse_array_finish(&dev->bo_map);
    agxdecode_destroy_context(dev->agxdecode);
 
+   if (dev->replay_heap.free_size)
+      util_vma_heap_finish(&dev->replay_heap);
    util_vma_heap_finish(&dev->main_heap);
    util_vma_heap_finish(&dev->usc_heap);
    if (agx_native_graphics(dev))

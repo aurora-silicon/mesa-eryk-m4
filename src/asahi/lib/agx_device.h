@@ -256,6 +256,9 @@ struct agx_device {
    struct agx_bo *g17p_render_context_bo;
    struct util_vma_heap main_heap;
    struct util_vma_heap usc_heap;
+   /* Carved out of main_heap for VK_BUFFER_CREATE_DEVICE_ADDRESS_CAPTURE_REPLAY_BIT
+    * buffers: their captured addresses can only collide with each other. */
+   struct util_vma_heap replay_heap;
    /* Native command-pool BO aliases with representable 32-bit context offsets.
     * Protected by vma_lock like the other heaps. */
    struct util_vma_heap g17p_vdm_alias_heap;
