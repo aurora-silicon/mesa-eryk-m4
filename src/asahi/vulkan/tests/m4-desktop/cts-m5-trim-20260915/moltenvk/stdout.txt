@@ -1,0 +1,15 @@
+Writing test log into /private/var/tmp/cts-comparison-20260915/results/moltenvk/case.qpa
+dEQP Core unknown (0xcafebabe) starting..
+  target implementation = 'OS X'
+
+Test case 'dEQP-VK.api.command_buffers.trim_command_pool'..
+  Pass (Pass)
+
+DONE!
+
+Test run totals:
+  Passed:        1/1 (100.0%)
+  Failed:        0/1 (0.0%)
+  Not supported: 0/1 (0.0%)
+  Warnings:      0/1 (0.0%)
+  Waived:        0/1 (0.0%)

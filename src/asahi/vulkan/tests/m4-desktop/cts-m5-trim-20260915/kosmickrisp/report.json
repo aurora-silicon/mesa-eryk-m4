@@ -1,0 +1,34 @@
+{
+  "host": "eryks-MacBook-Air.local",
+  "platform": "macOS-26.6.2-arm64-arm-64bit",
+  "case": "dEQP-VK.api.command_buffers.trim_command_pool",
+  "command": [
+    "/private/var/tmp/cts-comparison-20260915/build/external/vulkancts/modules/vulkan/deqp-vk",
+    "--deqp-case=dEQP-VK.api.command_buffers.trim_command_pool",
+    "--deqp-log-filename=/private/var/tmp/cts-comparison-20260915/results/kosmickrisp/case.qpa",
+    "--deqp-log-images=disable",
+    "--deqp-log-shader-sources=disable",
+    "--deqp-vk-library-path=/private/var/tmp/cts-comparison-20260915/sdk/macOS/lib/libvulkan.1.4.357.dylib"
+  ],
+  "binary_sha256": "ab74447b72e4ca0298c1e037d04f1afbc9102cb5a1694fcf70531e032d20c8be",
+  "icd": "/private/var/tmp/cts-comparison-20260915/sdk/macOS/share/vulkan/icd.d/libkosmickrisp_icd.json",
+  "wall_seconds": 1.341660375,
+  "timeout_seconds": 60,
+  "timed_out": false,
+  "exit_code": 0,
+  "statuses": [
+    "Pass"
+  ],
+  "case_seconds": [
+    0.558004
+  ],
+  "icd_json": {
+    "ICD": {
+      "api_version": "1.4.0",
+      "library_path": "../../../lib/libvulkan_kosmickrisp.dylib"
+    },
+    "file_format_version": "1.0.0"
+  },
+  "driver_sha256": "21bb3e989c3a9e446129525c5dc1e609e5a419ba50e95ec55c6d79172dcb6dd6",
+  "loader_sha256": "b9efad7eae9d6325103ebe6bd7d837593ffbcded491d1e761c96088e368bf551"
+}

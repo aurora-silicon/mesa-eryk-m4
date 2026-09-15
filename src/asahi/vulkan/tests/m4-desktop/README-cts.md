@@ -520,3 +520,11 @@ Compare isolated timings with isolated timings. Keep contended M4 timings,
 different architectures, clock policies and driver versions explicit. The host
 build is the pinned upstream CTS; any target-specific CTS reference corrections
 must be checked for relevance to the selected case before comparing results.
+
+The same wrapper also supports macOS comparisons with explicit `--library`,
+`--icd` and `--vulkaninfo` paths from a staged Vulkan SDK. It sets the loader
+path only for its child processes and records loader/driver hashes. Linux ARM
+execution remains refused; the M4 watchdog/thermal workflow is unchanged.
+M5 first-attempt MoltenVK/KosmicKrisp evidence is versioned under
+`tests/m4-desktop/cts-m5-trim-20260915/`. On macOS use `DEQP_TARGET=osx`;
+unrelated Vulkan video tests are disabled on that platform.
