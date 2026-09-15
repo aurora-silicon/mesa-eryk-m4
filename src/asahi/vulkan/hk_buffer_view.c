@@ -48,6 +48,18 @@ hk_get_buffer_format_features(struct hk_physical_device *pdev,
 
       if (p_format == PIPE_FORMAT_R32_UINT || p_format == PIPE_FORMAT_R32_SINT)
          features |= VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_ATOMIC_BIT;
+
+      /* The Gen9 unformatted-store lowering converts 8/16-bit and sRGB
+       * channels; alpha-only and packed 10-bit signed buffers are not
+       * covered and the image path does not advertise them either
+       * (image.store.without_format.buffer.{a8_unorm,a2b10g10r10_sint,
+       * a2r10g10b10_sint}*). Follow the image advertisement. */
+      if (agx_chip_descriptor_generation(pdev->dev.chip) == 9 &&
+          !(hk_get_image_format_features(pdev, vk_format,
+                                         VK_IMAGE_TILING_OPTIMAL) &
+            VK_FORMAT_FEATURE_2_STORAGE_WRITE_WITHOUT_FORMAT_BIT))
+         features &= ~(VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT |
+                       VK_FORMAT_FEATURE_2_STORAGE_WRITE_WITHOUT_FORMAT_BIT);
    }
 
    return features;
