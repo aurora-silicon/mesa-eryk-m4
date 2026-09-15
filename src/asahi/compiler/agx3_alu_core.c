@@ -1439,10 +1439,19 @@ agx3_alu_hfma(enum agx_isa_encoding enc, uint16_t dest,
    /* The three-register form begins at ep3.  The shorter entries alias a
     * two-source layout and cannot represent all three independent operands. */
    for (unsigned ep = 3; ep < 6; ++ep) {
+      /* The 8-byte form carries a single-slot wait selector in bits 61..63
+       * (value n waits slot n), not a per-slot mask; the table composes the
+       * two-slot mask {1,2} into selector 7, which waits nothing. Multi-slot
+       * waits need the 10-byte form. */
+      if (ep == 3 && (wait_mask & (wait_mask - 1)))
+         continue;
       if (agx3_bind_compose(enc, "f16fma", ep, base, 8, fields, 20, out,
                             len)) {
-         /* metal-nt canonicalizes the otherwise ignored tail bits of ep3. */
-         if (*len == 8)
+         /* metal-nt canonicalizes the tail bits of a wait-free ep3 to 0xc0.
+          * Those bits are the wait selector: ORing them over a real slot
+          * turned "wait slot 5" into selector 7 and the FMA read the addend
+          * before its load landed (compute.pipeline.basic.pk_immediate). */
+         if (*len == 8 && wait_mask == 0)
             out[7] |= 0xc0;
          return true;
       }

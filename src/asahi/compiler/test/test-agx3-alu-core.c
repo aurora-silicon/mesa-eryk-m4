@@ -1132,6 +1132,23 @@ static void test_native_half_fma(void)
                        true, false, false, true, 32, bytes, &len));
    exact(bytes, len, "00850684028600080082");
 
+   /* A single-slot wait rides in the 8-byte selector (value = slot) and the
+    * canonical wait-free tail must not be ORed over it. Slot 5 stays 5;
+    * two slots fall through to the 10-byte mask form. */
+   const uint16_t wait_src[] = {16, 7, 15};
+   const enum agx3_alu_hint wait_hints[] = {
+      AGX3_ALU_HINT_NONE, AGX3_ALU_HINT_CACHE, AGX3_ALU_HINT_NONE,
+   };
+   assert(agx3_alu_hfma(AGX_ISA_ENCODING_AGX3B, 15, wait_src, wait_hints,
+                        false, false, false, false, 1u << 4, bytes, &len));
+   exact(bytes, len, "78100687010f00a0");
+   assert(agx3_alu_hfma(AGX_ISA_ENCODING_AGX3B, 15, wait_src, wait_hints,
+                        false, false, false, false, 0x3, bytes, &len));
+   assert(len == 10);
+   assert(agx3_alu_hfma(AGX_ISA_ENCODING_AGX3B, 15, wait_src, wait_hints,
+                        false, false, false, false, 1u << 5, bytes, &len));
+   exact(bytes, len, "78100687010f00c0");
+
 }
 
 static void test_native_widen_half(void)
