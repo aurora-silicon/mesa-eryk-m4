@@ -4538,6 +4538,24 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
    }
    unsigned g17p_link_packs_seen = 0;
    bool g17p_colour_open = false;
+   /* Coverage updates share class 1. Apple's early-test discard fragments
+    * acquire it once before the first MOVMSK, stage the later coverage word
+    * in halves 2..3 on slot 2, and release the class after the last update
+    * (witness build/claude-fix/witness/early.metal fsearlydiscard,
+    * fsearlymaskdiscard). Releasing after the first update let the pixel
+    * commit its coverage before a later kill, so early_fragment_tests plus
+    * gl_SampleMask = 0 or discard still stored colour on G16G. The deferral
+    * is applied to straight-line shaders only; control flow keeps the
+    * per-operation release. */
+   unsigned coverage_ops_total = 0, coverage_ops_seen = 0;
+   bool coverage_class_open = false;
+   agx_foreach_instr_global(ctx, cov_I) {
+      if (cov_I->op == AGX_OPCODE_SAMPLE_MASK_AGX3)
+         coverage_ops_total++;
+   }
+   const bool coverage_defer_release =
+      list_length(&ctx->blocks) == 1 && coverage_ops_total > 1 &&
+      !ctx->key->fs.inside_sample_loop;
    /* Native background clear/reload shaders (ignore_tib_dependencies) own
     * the tile like a fragment epilog does; see the ST_TILE emission. */
    const bool g17p_background_protocol =
@@ -5474,8 +5492,15 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                g17p_colour_open = true;
             }
             uint8_t bytes[AGX3_ALU_MAX_LENGTH], len;
-            if (!agx3_stage_copy_source(enc, 0, I->src[1].value,
-                                         I->src[1].discard, 1,
+            /* Alternate the staged coverage word between halves 0 and 2
+             * (slots 1 and 2) across updates, as the native discard
+             * fragments do for their second MOVMSK. */
+            const unsigned coverage_index = coverage_ops_seen++;
+            const bool coverage_last = coverage_ops_seen == coverage_ops_total;
+            const uint16_t coverage_half = (coverage_index & 1) ? 2 : 0;
+            const uint8_t coverage_slot = (coverage_index & 1) ? 2 : 1;
+            if (!agx3_stage_copy_source(enc, coverage_half, I->src[1].value,
+                                         I->src[1].discard, coverage_slot,
                                          wait | outstanding_here, bytes, &len) ||
                 !agx3_append(emission, bytes, len))
                AGX3_REFUSE(I);
@@ -5483,25 +5508,36 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
              * the complete coverage word before acquiring class1. Keep
              * this ordering within the atomic pseudo rather than inheriting
              * the AGX2 wait-before-mask-calculation schedule. */
-            if ((I->imm & 2) && !ctx->key->fs.inside_sample_loop &&
+            const bool acquires = (I->imm & 2) && !ctx->key->fs.inside_sample_loop;
+            if (acquires && !coverage_class_open &&
                 (!agx3_pixel_wait(enc, 1, 0, bytes, &len) ||
                  !agx3_append(emission, bytes, len)))
                AGX3_REFUSE(I);
+            if (acquires)
+               coverage_class_open = true;
             const struct agx3_zs_desc zs = {
-               .value = 0, .value_kill = true, .slot = 1, .wait_mask = 1,
+               .value = coverage_half, .value_kill = true,
+               .slot = coverage_slot, .wait_mask = 1u << (coverage_slot - 1),
             };
             if (!agx3_zs_encode_sample_mask(enc, &zs, bytes, &len) ||
                 !agx3_append(emission, bytes, len))
                AGX3_REFUSE(I);
-            /* Only the operation running tests acquired class 1 above.
-             * An earlier discard-only update must not release that class
-             * before the final coverage operation has acquired it. */
-            if ((I->imm & 2) && !ctx->key->fs.inside_sample_loop &&
-                (!agx3_pixel_release(enc, 1, false, 0, bytes, &len) ||
-                 !agx3_append(emission, bytes, len)))
-               AGX3_REFUSE(I);
+            /* Only an operation running tests acquired class 1 above. An
+             * earlier discard-only update must not release that class
+             * before the final coverage operation has acquired it, and a
+             * later kill must still see the class held: release after the
+             * last update of a straight-line shader. */
+            const bool release_now = coverage_class_open &&
+               (coverage_defer_release ? coverage_last : acquires);
+            if (release_now) {
+               if (!agx3_pixel_release(enc, 1, false, 0, bytes, &len) ||
+                   !agx3_append(emission, bytes, len))
+                  AGX3_REFUSE(I);
+               coverage_class_open = false;
+            }
             outstanding = 0;
-            ctx->agx3_staging_halfs = MAX2(ctx->agx3_staging_halfs, 2);
+            ctx->agx3_staging_halfs =
+               MAX2(ctx->agx3_staging_halfs, coverage_half + 2);
             continue;
          }
 

@@ -722,7 +722,14 @@ agx_nir_fs_epilog(nir_builder *b, const void *key_)
 struct lower_epilog_ctx {
    struct agx_fs_epilog_link_info *info;
    nir_variable *masked_samples;
-   bool preserve_early_demote;
+   /* Keep the early demote in the main shader as well as exporting the
+    * written-sample mask. G17P's single-sample coverage update through
+    * MOVMSK is grounded, while its multisample colour stores after forced
+    * early tests must be masked in the epilog (native em2/edyn witnesses
+    * in compiler/test/probes/README-g16g-early-sample-mask.md). */
+   bool keep_early_demote;
+   /* AGX2 elides a constant 1.0 alpha on RT0; G17P keeps it exported. */
+   bool elide_loc0_w_1;
 };
 
 static bool
@@ -751,12 +758,6 @@ lower_output_to_epilog(nir_builder *b, nir_intrinsic_instr *intr, void *data)
    if (intr->intrinsic == nir_intrinsic_demote_samples &&
        b->shader->info.fs.early_fragment_tests) {
 
-      /* G17P has no sample operand on LSTCOL.  Keep the demote in the main
-       * shader so its grounded MOVMSK lowering updates coverage before the
-       * linked epilog emits the ordinary whole-pixel store. */
-      if (ctx->preserve_early_demote)
-         return false;
-
       if (!ctx->masked_samples) {
          b->cursor = nir_before_impl(nir_shader_get_entrypoint(b->shader));
 
@@ -776,7 +777,8 @@ lower_output_to_epilog(nir_builder *b, nir_intrinsic_instr *intr, void *data)
       mask = nir_iand(b, mask, mask_2);
       nir_store_var(b, ctx->masked_samples, mask, nir_component_mask(1));
 
-      nir_instr_remove(&intr->instr);
+      if (!ctx->keep_early_demote)
+         nir_instr_remove(&intr->instr);
       return true;
    }
 
@@ -824,7 +826,7 @@ lower_output_to_epilog(nir_builder *b, nir_intrinsic_instr *intr, void *data)
       /* G17P's mixed-width MRT epilog cannot materialize the elided alpha
        * through AGX2's 16-bit immediate move. Keep it in the ordinary export
        * ABI, which is also what native multi-target shaders use. */
-      if (!ctx->preserve_early_demote && loc == 0 && c == 3 &&
+      if (ctx->elide_loc0_w_1 && loc == 0 && c == 3 &&
           nir_scalar_is_const(s) &&
           nir_scalar_as_uint(s) == one_f) {
 
@@ -842,11 +844,12 @@ lower_output_to_epilog(nir_builder *b, nir_intrinsic_instr *intr, void *data)
 
 static bool
 lower_fs_output_to_epilog(nir_shader *s, struct agx_fs_epilog_link_info *out,
-                          bool preserve_early_demote)
+                          bool g17p)
 {
    struct lower_epilog_ctx ctx = {
       .info = out,
-      .preserve_early_demote = preserve_early_demote,
+      .keep_early_demote = g17p,
+      .elide_loc0_w_1 = !g17p,
    };
 
    nir_shader_intrinsics_pass(s, lower_output_to_epilog,

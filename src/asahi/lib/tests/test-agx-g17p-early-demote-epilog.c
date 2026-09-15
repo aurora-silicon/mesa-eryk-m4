@@ -121,12 +121,17 @@ main(void)
       return 1;
    }
 
+   /* The early demote stays in the main shader for its single-sample MOVMSK
+    * coverage update, and the written-sample mask is also exported so the
+    * multisample epilog can mask its colour store (native em2/edyn
+    * witnesses in compiler/test/probes/README-g16g-early-sample-mask.md). */
    nir_shader *main = build_early_demote_fs();
    struct agx_fs_epilog_link_info link = {0};
    if (!agx_nir_lower_fs_output_to_epilog_g17p(main, &link) ||
-       link.sample_mask_after_force_early ||
-       count_intrinsic(main, nir_intrinsic_demote_samples) != 1) {
-      fprintf(stderr, "G17P split moved the early demote into LSTCOL\n");
+       !link.sample_mask_after_force_early ||
+       count_intrinsic(main, nir_intrinsic_demote_samples) != 1 ||
+       count_intrinsic(main, nir_intrinsic_export_agx) < 5) {
+      fprintf(stderr, "G17P split did not keep the early demote and export its mask\n");
       return 1;
    }
 
@@ -155,7 +160,11 @@ main(void)
    nir_builder b =
       nir_builder_init_simple_shader(0, &agx_nir_options, "G17P FS epilog");
    agx_nir_fs_epilog(&b, &epilog_key);
+   /* The written-sample mask reaches the store as a dynamic sample operand;
+    * at 1x the native canonicalization folds it to sample zero, leaving the
+    * main shader's MOVMSK to kill the pixel. */
    if (count_dynamic_tile_samples(b.shader) != 1 ||
+       count_intrinsic(b.shader, nir_intrinsic_load_exported_agx) < 2 ||
        !agx_nir_lower_g17p_1x_tile_samples(b.shader) ||
        count_dynamic_tile_samples(b.shader) != 0) {
       fprintf(stderr, "G17P 1x sample-shaded epilog was not canonicalized\n");
