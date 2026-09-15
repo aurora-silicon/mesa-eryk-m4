@@ -660,12 +660,19 @@ asahi_append_fragment_attachments(struct hk_device *dev,
  * on the CTS once lossless compression is enabled. This needs to be
  * investigated before we can reenable this mechanism. We are likely missing a
  * cache flush or barrier somewhere.
+ *
+ * The native M4 path does not use lossless compression and its kernel runtime
+ * executes a packet's commands strictly in order, so one submission per
+ * vkQueueSubmit is the default there: every extra ioctl costs a full
+ * scheduler and firmware round trip (about 0.8 ms on J713) against tens of
+ * microseconds of GPU work for a small command buffer.
  */
 static inline unsigned
 max_commands_per_submit(struct hk_device *dev)
 {
+   const bool batch = HK_PERF(dev, BATCH) || agx_native_graphics(&dev->dev);
    return hk_drm_submit_command_limit(
-      HK_PERF(dev, BATCH), dev->dev.params.max_commands_per_submission);
+      batch, dev->dev.params.max_commands_per_submission);
 }
 
 static VkResult
