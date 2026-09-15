@@ -168,6 +168,18 @@ hk_CreateBufferView(VkDevice _device, const VkBufferViewCreateInfo *pCreateInfo,
       cfg.layers = 1;
       cfg.levels = 1;
 
+      /* Gen9 storage stores go through the unformatted-store lowering,
+       * which reads type/channels/sRGB from a software-ABI copy and
+       * encodes sRGB itself (as image views do). Give the shader that copy
+       * and keep the native heap entry linear so the PBE does not encode
+       * a second time (image.store.without_format.buffer.*_srgb, a8_unorm,
+       * a2b10g10r10_sint_pack32). */
+      if (generation == 9) {
+         memset(&view->pbe_software, 0, sizeof(view->pbe_software));
+         AGX_PBE_pack(view->pbe_software.opaque, &cfg);
+         view->storage_software_valid = true;
+         cfg.srgb = false;
+      }
       view->storage_pbe_valid =
          hk_pack_native_pbe(generation, &view->pbe, &cfg);
    } else {

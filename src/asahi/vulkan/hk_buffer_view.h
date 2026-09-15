@@ -22,9 +22,14 @@ struct hk_buffer_view {
    struct vk_buffer_view vk;
    struct hk_native_texture_descriptor tex;
    struct hk_native_pbe_descriptor pbe;
+   /* Gen9 descriptor-set copy in the software PBE ABI (type, channels,
+    * sRGB bit 125) consumed by the unformatted store lowering; the heap
+    * entry above keeps native bytes with a linear colour space. */
+   struct hk_native_pbe_descriptor pbe_software;
    uint32_t sampled_heap_index;
    uint32_t storage_heap_index;
    bool storage_pbe_valid;
+   bool storage_software_valid;
 };
 
 VK_DEFINE_NONDISP_HANDLE_CASTS(hk_buffer_view, vk.base, VkBufferView,

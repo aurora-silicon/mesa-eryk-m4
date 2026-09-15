@@ -317,7 +317,8 @@ write_buffer_view_desc(struct hk_descriptor_set *set,
       heap_index = view->sampled_heap_index;
       if (storage) {
          if (view->storage_pbe_valid) {
-            desc.pbe = view->pbe;
+            desc.pbe = generation == 9 && view->storage_software_valid
+                          ? view->pbe_software : view->pbe;
             storage_heap_index = view->storage_heap_index;
          } else {
             hk_set_null_native_pbe(generation, &desc.pbe);
