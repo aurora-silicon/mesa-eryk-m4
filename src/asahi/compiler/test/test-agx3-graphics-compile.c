@@ -695,13 +695,25 @@ test_g17p_background_clear(void)
    };
    struct agx_shader_part part = {0};
    const bool compiled = agx_compile_shader_nir(nir, &key, &part);
-   const bool ok = compiled && part.binary != NULL &&
-                   part.info.binary_size > sizeof(agx3_end) &&
-                   part.info.push_count == key.reserved_preamble &&
-                   !part.info.has_preamble &&
-                   memcmp((const uint8_t *)part.binary +
-                             part.info.binary_size - sizeof(agx3_end),
-                          agx3_end, sizeof(agx3_end)) == 0;
+   /* The tile store owns the pixel like a fragment epilog: entry gate and
+    * colour writeout wait before LSTCOL, release before the end. */
+   static const uint8_t entry[] = {0x87, 0x02, 0x54, 0x00, 0x06, 0x00,
+                                   0x87, 0x02, 0x54, 0x0c, 0x08, 0x00};
+   static const uint8_t release[] = {0x07, 0x02, 0x54, 0x0c, 0x02, 0x00};
+   bool ok = compiled && part.binary != NULL &&
+             part.info.binary_size > sizeof(agx3_end) + sizeof(release) &&
+             part.info.push_count == key.reserved_preamble &&
+             !part.info.has_preamble &&
+             memcmp((const uint8_t *)part.binary +
+                       part.info.binary_size - sizeof(agx3_end),
+                    agx3_end, sizeof(agx3_end)) == 0 &&
+             memcmp((const uint8_t *)part.binary + part.info.binary_size -
+                       sizeof(agx3_end) - sizeof(release),
+                    release, sizeof(release)) == 0;
+   bool gated = false;
+   for (unsigned i = 0; ok && i + sizeof(entry) <= part.info.binary_size; i++)
+      gated |= !memcmp((const uint8_t *)part.binary + i, entry, sizeof(entry));
+   ok &= gated;
    if (!ok)
       fprintf(stderr, "AGX3b background-clear compiler mismatch\n");
 
@@ -735,13 +747,27 @@ test_g17p_background_f16_clear_narrowing(void)
       "\x1b\x06\x01\x08\x01\x03\x1c\x81\x04\x02"
       "\x1b\x08\x01\x08\x11\x03\x1c\x81\x00\x02"
       "\x2b\x0a\x01\x08\x11\x05\x1c\x81\x04\x02"
-      "\xe7\x06\x54\x00\x00\x00\x01\x0e\x00\x00\x00\x00"
+      /* Live coverage (SR39 low nibble) masks the immediate sample set. */
+      "\x24\xc2\x10\x06"
+      "\x24\x8f\x06\x00\x00\x00\x00\x00"
+      "\x33\x04\x1f\x04\x10\x20\x00\x00\x00\x00"
+      "\x24\xff\x02\x00\x02\x00\x00\x00"
+      "\x23\x06\x1f\x04\x04\x00\x00\x00\x00\x00"
+      /* Colour ownership: entry gate, writeout wait, store, release. */
+      "\x87\x02\x54\x00\x06\x00"
+      "\x87\x02\x54\x0c\x08\x00"
+      "\xe7\x06\x54\x00\x00\x00\x05\x0e\x08\x00\x00\x08"
+      "\x07\x02\x54\x0c\x02\x00"
       "\x0e\x00\x00\x00";
    bool ok = compiled && part.binary != NULL &&
              part.info.binary_size == sizeof(expected) - 1 &&
              !memcmp(part.binary, expected, sizeof(expected) - 1);
-   if (!ok)
-      fprintf(stderr, "AGX3b f16 background-clear narrowing mismatch\n");
+   if (!ok) {
+      fprintf(stderr, "AGX3b f16 background-clear narrowing mismatch:");
+      for (unsigned i = 0; part.binary && i < part.info.binary_size; i++)
+         fprintf(stderr, "%s%02x", i % 2 ? "" : " ", ((uint8_t *)part.binary)[i]);
+      fprintf(stderr, "\n");
+   }
 
    free(part.binary);
    ralloc_free(nir);

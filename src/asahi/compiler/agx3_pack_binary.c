@@ -4538,6 +4538,11 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
    }
    unsigned g17p_link_packs_seen = 0;
    bool g17p_colour_open = false;
+   /* Native background clear/reload shaders (ignore_tib_dependencies) own
+    * the tile like a fragment epilog does; see the ST_TILE emission. */
+   const bool g17p_background_protocol =
+      enc == AGX_ISA_ENCODING_AGX3B && ctx->stage == MESA_SHADER_FRAGMENT &&
+      ctx->key->fs.ignore_tib_dependencies && !g17p_pixel_protocol;
    const bool g17p_position_protocol =
       agx3_is_g17p_float2_position_vs(ctx, enc);
    unsigned g17p_positions_staged = 0;
@@ -5269,6 +5274,25 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                if (!agx3_emit_pixel(emission, enc, g17p_deferred_write, 0))
                   AGX3_REFUSE(I);
             }
+            /* Background clear/reload shaders carry no WAIT_PIX in IR, but
+             * their LSTCOL needs the same colour ownership protocol as an
+             * ordinary fragment epilog: the entry gate, then the colour
+             * writeout wait before each store. Without it the M4 loses the
+             * upper 64 bits of 16-byte 4x samples on empty tiles once the
+             * pass exceeds about 1 MiB (probe 20260915 claude-lmsclear5..13;
+             * the same shader with the gate keeps every sample). */
+            if (I->op == AGX_OPCODE_ST_TILE && g17p_background_protocol) {
+               uint8_t pix[AGX3_PIXEL_MAX_LENGTH], pix_len = 0;
+               if (!g17p_colour_open) {
+                  if (!agx3_pixel_colour_entry(enc, pix, &pix_len) ||
+                      !agx3_append(emission, pix, pix_len))
+                     AGX3_REFUSE(I);
+                  g17p_colour_open = true;
+               }
+               if (!agx3_pixel_wait(enc, 0xc, 0, pix, &pix_len) ||
+                   !agx3_append(emission, pix, pix_len))
+                  AGX3_REFUSE(I);
+            }
             /* LLDCOL has no qualified incoming-wait form. Retire reused
              * scoreboard slots before issuing the next tile read. */
             uint16_t tile_wait = wait;
@@ -5280,7 +5304,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             if (!agx3_emit_tile(emission, enc, I, slot, tile_wait, first, last))
                AGX3_REFUSE(I);
 
-            if (g17p_pixel_protocol && I->op == AGX_OPCODE_ST_TILE && last) {
+            if ((g17p_pixel_protocol || g17p_background_protocol) &&
+                I->op == AGX_OPCODE_ST_TILE && last) {
                uint8_t release[AGX3_PIXEL_MAX_LENGTH];
                uint8_t release_len = 0;
                if (!g17p_colour_open ||
