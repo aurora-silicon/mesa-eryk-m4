@@ -1,27 +1,3 @@
-dEQP-VK.api.image_clearing.core.clear_color_attachment.multiple_layers.r32g32b32_sfloat_200x180_sample_count_4	Fail	0270000-0280000	Color value mismatch! Ref:(0.2, 0.1, 0.7, 0.8) Mask:(1, 1, 1, 0) Threshold:(1.40
-dEQP-VK.api.image_clearing.core.clear_color_attachment.multiple_layers.r32g32b32_sfloat_64x11_sample_count_4	Fail	0270000-0280000	Color value mismatch! Ref:(0.2, 0.1, 0.7, 0.8) Mask:(1, 1, 1, 0) Threshold:(1.40
-dEQP-VK.api.image_clearing.core.clear_color_attachment.multiple_layers.r32g32b32_sint_200x180_sample_count_4	Fail	0270000-0280000	Color value mismatch! Ref:(429496736, 214748368, 1503238528, 1717986944) Mask:(1
-dEQP-VK.api.image_clearing.core.clear_color_attachment.multiple_layers.r32g32b32_sint_64x11_sample_count_4	Fail	0270000-0280000	Color value mismatch! Ref:(429496736, 214748368, 1503238528, 1717986944) Mask:(1
-dEQP-VK.api.image_clearing.core.clear_color_attachment.multiple_layers.r32g32b32_uint_200x180_sample_count_4	Fail	0270000-0280000	Color value mismatch! Ref:(858993472, 429496736, 3006477056, 3435973888) Mask:(1
-dEQP-VK.api.image_clearing.core.clear_color_attachment.multiple_layers.r32g32b32_uint_64x11_sample_count_4	Fail	0270000-0280000	Color value mismatch! Ref:(858993472, 429496736, 3006477056, 3435973888) Mask:(1
-dEQP-VK.api.image_clearing.core.clear_color_attachment.multiple_layers.r32g32b32a32_sfloat_200x180_sample_count_4	Fail	0270000-0280000	Color value mismatch! Ref:(0.2, 0.1, 0.7, 0.8) Mask:(1, 1, 1, 1) Threshold:(1.40
-dEQP-VK.api.image_clearing.core.clear_color_attachment.multiple_layers.r32g32b32a32_sfloat_64x11_sample_count_4	Fail	0270000-0280000	Color value mismatch! Ref:(0.2, 0.1, 0.7, 0.8) Mask:(1, 1, 1, 1) Threshold:(1.40
-dEQP-VK.api.image_clearing.core.clear_color_attachment.multiple_layers.r32g32b32a32_sint_200x180_sample_count_4	Fail	0270000-0280000	Color value mismatch! Ref:(429496736, 214748368, 1503238528, 1717986944) Mask:(1
-dEQP-VK.api.image_clearing.core.clear_color_attachment.multiple_layers.r32g32b32a32_sint_64x11_sample_count_4	Fail	0270000-0280000	Color value mismatch! Ref:(429496736, 214748368, 1503238528, 1717986944) Mask:(1
-dEQP-VK.api.image_clearing.core.clear_color_attachment.multiple_layers.r32g32b32a32_uint_200x180_sample_count_4	Fail	0270000-0280000	Color value mismatch! Ref:(858993472, 429496736, 3006477056, 3435973888) Mask:(1
-dEQP-VK.api.image_clearing.core.clear_color_attachment.multiple_layers.r32g32b32a32_uint_64x11_sample_count_4	Fail	0270000-0280000	Color value mismatch! Ref:(858993472, 429496736, 3006477056, 3435973888) Mask:(1
-dEQP-VK.api.image_clearing.dedicated_allocation.clear_color_attachment.multiple_layers.r32g32b32_sfloat_200x180_sample_count_4	Fail	0290000-0300000	Color value mismatch! Ref:(0.2, 0.1, 0.7, 0.8) Mask:(1, 1, 1, 0) Threshold:(1.40
-dEQP-VK.api.image_clearing.dedicated_allocation.clear_color_attachment.multiple_layers.r32g32b32_sfloat_64x11_sample_count_4	Fail	0290000-0300000	Color value mismatch! Ref:(0.2, 0.1, 0.7, 0.8) Mask:(1, 1, 1, 0) Threshold:(1.40
-dEQP-VK.api.image_clearing.dedicated_allocation.clear_color_attachment.multiple_layers.r32g32b32_sint_200x180_sample_count_4	Fail	0290000-0300000	Color value mismatch! Ref:(429496736, 214748368, 1503238528, 1717986944) Mask:(1
-dEQP-VK.api.image_clearing.dedicated_allocation.clear_color_attachment.multiple_layers.r32g32b32_sint_64x11_sample_count_4	Fail	0290000-0300000	Color value mismatch! Ref:(429496736, 214748368, 1503238528, 1717986944) Mask:(1
-dEQP-VK.api.image_clearing.dedicated_allocation.clear_color_attachment.multiple_layers.r32g32b32_uint_200x180_sample_count_4	Fail	0290000-0300000	Color value mismatch! Ref:(858993472, 429496736, 3006477056, 3435973888) Mask:(1
-dEQP-VK.api.image_clearing.dedicated_allocation.clear_color_attachment.multiple_layers.r32g32b32_uint_64x11_sample_count_4	Fail	0290000-0300000	Color value mismatch! Ref:(858993472, 429496736, 3006477056, 3435973888) Mask:(1
-dEQP-VK.api.image_clearing.dedicated_allocation.clear_color_attachment.multiple_layers.r32g32b32a32_sfloat_200x180_sample_count_4	Fail	0290000-0300000	Color value mismatch! Ref:(0.2, 0.1, 0.7, 0.8) Mask:(1, 1, 1, 1) Threshold:(1.40
-dEQP-VK.api.image_clearing.dedicated_allocation.clear_color_attachment.multiple_layers.r32g32b32a32_sfloat_64x11_sample_count_4	Fail	0290000-0300000	Color value mismatch! Ref:(0.2, 0.1, 0.7, 0.8) Mask:(1, 1, 1, 1) Threshold:(1.40
-dEQP-VK.api.image_clearing.dedicated_allocation.clear_color_attachment.multiple_layers.r32g32b32a32_sint_200x180_sample_count_4	Fail	0290000-0300000	Color value mismatch! Ref:(429496736, 214748368, 1503238528, 1717986944) Mask:(1
-dEQP-VK.api.image_clearing.dedicated_allocation.clear_color_attachment.multiple_layers.r32g32b32a32_sint_64x11_sample_count_4	Fail	0290000-0300000	Color value mismatch! Ref:(429496736, 214748368, 1503238528, 1717986944) Mask:(1
-dEQP-VK.api.image_clearing.dedicated_allocation.clear_color_attachment.multiple_layers.r32g32b32a32_uint_200x180_sample_count_4	Fail	0290000-0300000	Color value mismatch! Ref:(858993472, 429496736, 3006477056, 3435973888) Mask:(1
-dEQP-VK.api.image_clearing.dedicated_allocation.clear_color_attachment.multiple_layers.r32g32b32a32_uint_64x11_sample_count_4	Fail	0290000-0300000	Color value mismatch! Ref:(858993472, 429496736, 3006477056, 3435973888) Mask:(1
 dEQP-VK.api.object_management.alloc_callback_fail.descriptor_set_layout_empty	QualityWarning	0320000-0330000	Allocation callbacks not called
 dEQP-VK.api.object_management.alloc_callback_fail.descriptor_set_layout_single	QualityWarning	0320000-0330000	Allocation callbacks not called
 dEQP-VK.api.object_management.alloc_callback_fail.pipeline_layout_empty	QualityWarning	0320000-0330000	Allocation callbacks not called
@@ -49,46 +25,6 @@ dEQP-VK.glsl.demote.dynamic_loop_deriv	Fail	0770000-0780000	Image mismatch
 dEQP-VK.glsl.demote.function_deriv	Fail	0770000-0780000	Image mismatch
 dEQP-VK.glsl.demote.function_static_loop_deriv	Fail	0770000-0780000	Image mismatch
 dEQP-VK.glsl.demote.static_loop_deriv	Fail	0770000-0780000	Image mismatch
-dEQP-VK.glsl.texture_functions.query.texturequerylod.isamplercube_clamp_max	Fail	0780000-0790000	Got unexpected result
-dEQP-VK.glsl.texture_functions.query.texturequerylod.isamplercube_clamp_min	Fail	0780000-0790000	Got unexpected result
-dEQP-VK.glsl.texture_functions.query.texturequerylod.isamplercube_fragment	Fail	0780000-0790000	Got unexpected result
-dEQP-VK.glsl.texture_functions.query.texturequerylod.isamplercubearray_clamp_max	Fail	0780000-0790000	Got unexpected result
-dEQP-VK.glsl.texture_functions.query.texturequerylod.isamplercubearray_clamp_min	Fail	0780000-0790000	Got unexpected result
-dEQP-VK.glsl.texture_functions.query.texturequerylod.isamplercubearray_fragment	Fail	0780000-0790000	Got unexpected result
-dEQP-VK.glsl.texture_functions.query.texturequerylod.isamplercubearraynon_zero_base_level_fragment	Fail	0780000-0790000	Got unexpected result
-dEQP-VK.glsl.texture_functions.query.texturequerylod.isamplercubenon_zero_base_level_fragment	Fail	0780000-0790000	Got unexpected result
-dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercube_fixed_clamp_max	Fail	0780000-0790000	Got unexpected result
-dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercube_fixed_clamp_min	Fail	0780000-0790000	Got unexpected result
-dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercube_fixed_fragment	Fail	0780000-0790000	Got unexpected result
-dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercube_fixednon_zero_base_level_fragment	Fail	0780000-0790000	Got unexpected result
-dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercube_float_clamp_max	Fail	0780000-0790000	Got unexpected result
-dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercube_float_clamp_min	Fail	0780000-0790000	Got unexpected result
-dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercube_float_fragment	Fail	0780000-0790000	Got unexpected result
-dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercube_floatnon_zero_base_level_fragment	Fail	0780000-0790000	Got unexpected result
-dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercubearray_fixed_clamp_max	Fail	0780000-0790000	Got unexpected result
-dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercubearray_fixed_clamp_min	Fail	0780000-0790000	Got unexpected result
-dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercubearray_fixed_fragment	Fail	0780000-0790000	Got unexpected result
-dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercubearray_fixednon_zero_base_level_fragment	Fail	0780000-0790000	Got unexpected result
-dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercubearray_float_clamp_max	Fail	0780000-0790000	Got unexpected result
-dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercubearray_float_clamp_min	Fail	0780000-0790000	Got unexpected result
-dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercubearray_float_fragment	Fail	0780000-0790000	Got unexpected result
-dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercubearray_floatnon_zero_base_level_fragment	Fail	0780000-0790000	Got unexpected result
-dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercubearrayshadow_clamp_max	Fail	0780000-0790000	Got unexpected result
-dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercubearrayshadow_clamp_min	Fail	0780000-0790000	Got unexpected result
-dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercubearrayshadow_fragment	Fail	0780000-0790000	Got unexpected result
-dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercubearrayshadownon_zero_base_level_fragment	Fail	0780000-0790000	Got unexpected result
-dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercubeshadow_clamp_max	Fail	0780000-0790000	Got unexpected result
-dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercubeshadow_clamp_min	Fail	0780000-0790000	Got unexpected result
-dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercubeshadow_fragment	Fail	0780000-0790000	Got unexpected result
-dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercubeshadownon_zero_base_level_fragment	Fail	0780000-0790000	Got unexpected result
-dEQP-VK.glsl.texture_functions.query.texturequerylod.usamplercube_clamp_max	Fail	0780000-0790000	Got unexpected result
-dEQP-VK.glsl.texture_functions.query.texturequerylod.usamplercube_clamp_min	Fail	0780000-0790000	Got unexpected result
-dEQP-VK.glsl.texture_functions.query.texturequerylod.usamplercube_fragment	Fail	0780000-0790000	Got unexpected result
-dEQP-VK.glsl.texture_functions.query.texturequerylod.usamplercubearray_clamp_max	Fail	0780000-0790000	Got unexpected result
-dEQP-VK.glsl.texture_functions.query.texturequerylod.usamplercubearray_clamp_min	Fail	0780000-0790000	Got unexpected result
-dEQP-VK.glsl.texture_functions.query.texturequerylod.usamplercubearray_fragment	Fail	0780000-0790000	Got unexpected result
-dEQP-VK.glsl.texture_functions.query.texturequerylod.usamplercubearraynon_zero_base_level_fragment	Fail	0780000-0790000	Got unexpected result
-dEQP-VK.glsl.texture_functions.query.texturequerylod.usamplercubenon_zero_base_level_fragment	Fail	0780000-0790000	Got unexpected result
 dEQP-VK.graphicsfuzz.cov-dfdx-dfdy-after-nested-loops	Fail	0790000-0800000	Fail
 dEQP-VK.graphicsfuzz.cov-function-two-loops-limit-using-arguments-array-element-copies	Fail	0790000-0800000	Fail
 dEQP-VK.graphicsfuzz.cov-global-loop-counter-accumulate-integer-condition-large-array-elements	Fail	0790000-0800000	Fail
