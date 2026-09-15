@@ -2680,7 +2680,15 @@ hk_CmdCopyImage2(VkCommandBuffer commandBuffer,
         vk_format_is_compressed(src_image->vk.format) ||
         vk_format_is_compressed(dst_image->vk.format) ||
         hk_native_raw_copy_format(src_image->vk.format) ||
-        hk_native_raw_copy_format(dst_image->vk.format))) {
+        hk_native_raw_copy_format(dst_image->vk.format) ||
+        /* 24-bit depth is stored as float32. A copy to or from another
+         * format (a 32-bit colour image, VK_KHR_maintenance8) must repack
+         * the 24-bit value; the raw block copy does, the render-based copy
+         * through an R32_UINT view would move the float bits
+         * (api.ds_color_copy.*x8_d24_unorm_pack32*). */
+        ((hk_depth24_format(src_image->vk.format) ||
+          hk_depth24_format(dst_image->vk.format)) &&
+         src_image->vk.format != dst_image->vk.format))) {
       struct hk_meta_save save;
       hk_meta_begin(cmd, &save, VK_PIPELINE_BIND_POINT_COMPUTE);
       for (unsigned r = 0; r < pCopyImageInfo->regionCount; ++r) {
