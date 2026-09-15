@@ -606,7 +606,8 @@ g17p_cube_sample_shape(const nir_tex_instr *tex)
        (tex->backend_flags & ~AGX_TEXTURE_FLAG_CLAMP_TO_0) != 0 ||
        (tex->dest_type != nir_type_float32 &&
         tex->dest_type != nir_type_int32 &&
-        tex->dest_type != nir_type_uint32) || tex->def.num_components != (tex->is_shadow && !gather ? 1 : 4) ||
+        tex->dest_type != nir_type_uint32) ||
+       tex->def.num_components != (query ? 2 : tex->is_shadow && !gather ? 1 : 4) ||
        tex->def.bit_size != 32 ||
        nir_tex_instr_src_index(tex, nir_tex_src_texture_handle) < 0 ||
        nir_tex_instr_src_index(tex, nir_tex_src_sampler_handle) < 0)
