@@ -1,0 +1,2 @@
+segments 8 {'Pass': 36722, 'Unrun': 1930, 'NotSupported': 41275, 'Interrupted': 71, 'Timeout': 1, 'Fail': 1}
+0030000-0040000 Fail dEQP-VK.api.copy_and_blit.copy_commands2.image_to_image.dimensions.src16384x6_dst16384x6.r4g4b4a4_unorm_pack16.r4g4b4a4_unorm_pack16.general_optimal Pass

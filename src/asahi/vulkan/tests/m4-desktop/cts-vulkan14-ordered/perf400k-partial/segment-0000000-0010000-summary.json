@@ -1,0 +1,26 @@
+{
+  "selected": 10000,
+  "recorded": 10000,
+  "completed": 7999,
+  "counts": {
+    "Pass": 3142,
+    "Unrun": 1930,
+    "NotSupported": 4856,
+    "Interrupted": 71,
+    "Timeout": 1
+  },
+  "classifications": {
+    "unclassified": 10000
+  },
+  "elapsed_seconds": 96.38870073898579,
+  "preparation_seconds": 1.6730141669977456,
+  "runner_seconds": 90.627860737,
+  "jobs": 20,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "fd57f82b4ff66da0679c4e0e689ee0083b08419a0e78ea361f95fc6e89659d89",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260915T021917287478Z-cts-perf400k-r2-s01",
+  "guard_verdict": "process_failure",
+  "command_returncode": 1,
+  "peak_temperature_c": 59.0
+}

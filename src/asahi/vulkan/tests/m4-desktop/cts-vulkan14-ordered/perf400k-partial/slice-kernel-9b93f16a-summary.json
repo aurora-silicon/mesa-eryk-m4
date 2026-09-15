@@ -1,0 +1,22 @@
+{
+  "selected": 2000,
+  "recorded": 2000,
+  "completed": 2000,
+  "counts": {
+    "Pass": 2000
+  },
+  "classifications": {
+    "unclassified": 2000
+  },
+  "elapsed_seconds": 22.28386700199917,
+  "preparation_seconds": 1.557124066981487,
+  "runner_seconds": 18.087217054000007,
+  "jobs": 20,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "6a5f4cf26faa17de2c057d9c86e0ffe15f9c0318041c499f757d65d568456537",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260915T020022690577Z-claude-perf-kernel25",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 58.5
+}
