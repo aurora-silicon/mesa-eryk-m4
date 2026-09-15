@@ -58,6 +58,26 @@ cf_valid(nir_builder *b, nir_def *cf)
    return nir_ior(b, bit, normal);
 }
 
+/* On the native HAL200 path the rasterizer stores a plane whose three vertex
+ * values are equal as a constant: A and B hold the integer 1 (a denormal with
+ * the significand LSB set) and C the value, without the 1/W factor of a
+ * perspective plane. The hardware interpolator honours the marker; the
+ * coefficient math here must select C. This is the encoding Apple's compiler
+ * tests (significand nonzero, exponent 0 or 1), written without the shifted
+ * compare chain of cf_valid that misevaluated on G16G for ordinary
+ * coefficients with the float LSB set (A = 2/137 on a 137-pixel wide target,
+ * pipeline.*.multisample_interpolation.*distinct_values.137_191_1.samples_4).
+ */
+static nir_def *
+cf_constant_marker(nir_builder *b, nir_def *cf)
+{
+   nir_def *a = nir_channel(b, cf, 0);
+   nir_def *exponent_small =
+      nir_ult_imm(b, nir_iand_imm(b, a, 0x7f800000), 0x01000000);
+   nir_def *significand = nir_ine_imm(b, nir_iand_imm(b, a, 0x007fffff), 0);
+   return nir_iand(b, exponent_small, significand);
+}
+
 static nir_def *
 interpolate_at_offset(nir_builder *b, nir_def *cf, nir_def *offset,
                       bool perspective, bool native)
@@ -95,18 +115,13 @@ interpolate_at_offset(nir_builder *b, nir_def *cf, nir_def *offset,
       interp = nir_fdiv(b, interp, rhw);
    }
 
-   /* On the native HAL200 path (G16G/G17P) the raw coefficients interpolate
-    * correctly, but the validity fallback below selected the tile-corner
-    * constant for ordinary coefficients whose float LSB is set (a 137-pixel
-    * wide target gives A = 2/137), turning every interpolateAtSample/
-    * interpolateAtOffset into 32-pixel steps
-    * (pipeline.*.multisample_interpolation.*distinct_values.137_191_1.samples_4).
-    * The same check written out per channel, and the same integer chain in
-    * standalone probes, evaluate correctly, so the fault is in how this
-    * shader's chain is packed; skip the fallback there until that is found.
+   /* Constant planes carry the value in C. Without this a sample-qualified
+    * varying read at 1x returned alpha equal to W for a constant alpha of one
+    * (draw.*.multiple_interpolation.*.with_sample_decoration.1_sample).
     */
    if (native)
-      return interp;
+      return nir_bcsel(b, cf_constant_marker(b, cf), nir_channel(b, cf, 2),
+                       interp);
 
    /* Replace invalid interpolations with the constant channel */
    return nir_bcsel(b, cf_valid(b, cf), interp, nir_channel(b, cf, 2));
