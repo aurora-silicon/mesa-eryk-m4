@@ -1,0 +1,5 @@
+{
+  "source": "/home/council/dev/ESP32KeySim_m4/macos-devmem/g16state.py",
+  "source_sha256": "fcc0bc879fd4c2ff3a588f7cbc9648281a4683e0dc50e10791d1abd0f03aef39",
+  "adaptation": "Explicit output contract; MMIO opt-in; exact-build render graph and engine prefixes; post-return SKU identity and firmware-global walk corrections."
+}

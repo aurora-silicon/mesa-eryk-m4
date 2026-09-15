@@ -220,3 +220,23 @@ resources and firmware ktrace. Finite active captures055901(depth1024x1024,
 state. Native four-layer RunFragment+0x50 is1, not4; do not infer its meaning
 from single-layer records. Compiler type3 EOT emits the same layered header
 and PACK_IMGWIR sequence observed in the working native color capture.
+
+## Completion and cache-generation captures (2026-09-15)
+
+`run.py fill --dispatches 2 --capture --active --firmware-trace` uses two
+compute encoders writing disjoint halves of the same 4 MiB output. Metal may
+coalesce them into one RunCompute: count captured commands before interpreting
+this as a multi-command flush experiment. Both immediate and delayed full reads
+remain mandatory. The finite dwell is diagnostic, not a performance baseline.
+
+The collector retains validated compute notifier, user/firmware stamps and SKU
+bytes at execution and completion, including UAT walks for every backing page.
+Completion records refer to previously validated addresses; compare UUIDs and
+stamps because the allocation may have been reused. Physical SKU capture now
+supports page crossings instead of assuming contiguous single-page backing.
+
+Native M4/25G83 captures 20260915T030333Z (compute) and 20260915T030432Z
+(render) passed immediate and delayed output checks. Compute notifier +8 and
+StartCompute +0x34 contain generation0. Canonical StartVertex +0x4c and
+StartFragment +0x64 also contain generation0. This evidence motivates checking
+Linux generation matching; it does not establish Linux cache coherency.

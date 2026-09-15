@@ -10,6 +10,8 @@ p.add_argument('--firmware-trace', action='store_true', help='Enable bounded nat
 p.add_argument('--active', action='store_true')
 p.add_argument('--render-active', action='store_true', help='Capture finite repeated render passes without a compute dwell')
 p.add_argument('--repeat', type=int, default=1)
+p.add_argument('--dispatches', type=int, choices=[1, 2], default=1,
+               help='Fill: separate compute encoders in one command buffer, writing disjoint halves')
 p.add_argument('--width', type=int, choices=[8, 32, 128, 1024])
 p.add_argument('--iterations', type=int, default=20)
 p.add_argument('--layers', type=int, choices=[1,4], default=4)
@@ -19,6 +21,7 @@ p.add_argument('--resolve-compute', action='store_true')
 p.add_argument('--workspace-root', type=pathlib.Path)
 p.add_argument('--host', default='root@mac-m4')
 a = p.parse_args()
+if a.dispatches != 1 and a.kind != 'fill': p.error('--dispatches requires fill')
 if a.color and a.kind != 'layer-depth': p.error('--color requires layer-depth')
 if a.width is None: a.width = 8 if a.kind == "image-array" else 1024
 if (a.kind == "image-array") != (a.width in (8, 32)):
@@ -34,6 +37,7 @@ if a.resolve_compute and a.kind != 'multisample': p.error('--resolve-compute nee
 root = (a.workspace_root or pathlib.Path(__file__).resolve().parents[2]).resolve()
 remote = '/private/var/tmp/m4-native-traces-20260910'
 name = datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ-') + a.kind
+if a.kind == 'fill': name += f'-dispatches{a.dispatches}'
 if a.kind == 'image-array': name += f'-{a.width}'
 if a.kind == 'layer-depth': name += f'-{a.width}-layers{a.layers}' + ('-color' if a.color else '')
 if a.kind == 'fragment': name += f'-{a.width}-loop{a.iterations}'
@@ -47,6 +51,7 @@ out.mkdir(parents=True, exist_ok=False)
 probe = [remote + '/' + a.kind + '-probe', '--source', remote + '/' +
          ({'fill':'fill.metal','fragment':'fragment-loop.metal','multisample':'multisample.metal','image-array':'image-array.metal','layer-depth':'layer-depth.metal'}[a.kind]),
          '--output', remote + '/' + name + '-pixels']
+if a.kind == 'fill': probe += ['--dispatches', str(a.dispatches)]
 if a.kind == 'layer-depth': probe += ['--width',str(a.width),'--layers',str(a.layers),'--repeat',str(a.repeat)]
 if a.color: probe += ['--color']
 if a.kind == 'image-array': probe += ['--width', str(a.width)]
