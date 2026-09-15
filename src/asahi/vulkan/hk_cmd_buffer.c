@@ -1323,9 +1323,15 @@ hk_g17p_graphics_uniform_ranges(
       return false;
    }
    if (s->info.agx3_indexed_sampler_valid || native_spills) {
+      /* Geometry and tessellation shaders run as compute with the same
+       * texture/sampler table pointers at uniform halves 0..7 and their
+       * root at AGX_G17P_TXF_ROOT_HALFS (geometry.basic.output_vary_by_texture). */
       if ((s->b.info.stage != MESA_SHADER_FRAGMENT &&
            s->b.info.stage != MESA_SHADER_VERTEX &&
-           s->b.info.stage != MESA_SHADER_COMPUTE) ||
+           s->b.info.stage != MESA_SHADER_COMPUTE &&
+           s->b.info.stage != MESA_SHADER_GEOMETRY &&
+           s->b.info.stage != MESA_SHADER_TESS_CTRL &&
+           s->b.info.stage != MESA_SHADER_TESS_EVAL) ||
           !dev->sampled_images.bo || !dev->samplers.table.bo)
          return false;
       const uint64_t pointers[4] = {

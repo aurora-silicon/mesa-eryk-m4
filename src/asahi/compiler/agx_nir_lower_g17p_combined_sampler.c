@@ -9,6 +9,15 @@
 #include "nir.h"
 #include "nir_builder.h"
 
+/* Geometry and tessellation shaders run as compute on G16G and, like vertex
+ * shaders, have no derivatives: they may only use explicit-LOD forms. */
+static bool
+g17p_explicit_lod_stage(mesa_shader_stage stage)
+{
+   return stage == MESA_SHADER_VERTEX || stage == MESA_SHADER_GEOMETRY ||
+          stage == MESA_SHADER_TESS_CTRL || stage == MESA_SHADER_TESS_EVAL;
+}
+
 static bool
 g17p_register_sample_offset(const nir_tex_instr *tex)
 {
@@ -405,7 +414,7 @@ agx_nir_lower_g17p_indexed_samplers(nir_shader *shader)
 {
    if (!shader || (shader->info.stage != MESA_SHADER_FRAGMENT &&
                    shader->info.stage != MESA_SHADER_COMPUTE &&
-                   shader->info.stage != MESA_SHADER_VERTEX))
+                   !g17p_explicit_lod_stage(shader->info.stage)))
       return false;
 
    unsigned native_image_reads = 0;
@@ -477,10 +486,10 @@ agx_nir_lower_g17p_indexed_samplers(nir_shader *shader)
             const bool fetch = g17p_indexed_fetch_shape(
                tex, shader->info.stage == MESA_SHADER_FRAGMENT ||
                     shader->info.stage == MESA_SHADER_COMPUTE ||
-                    shader->info.stage == MESA_SHADER_VERTEX);
+                    g17p_explicit_lod_stage(shader->info.stage));
             /* Vertex stages have no derivatives, but explicit-LOD sampling
              * uses the same native operation as fragment/compute stages. */
-            if (shader->info.stage == MESA_SHADER_VERTEX && !fetch &&
+            if (g17p_explicit_lod_stage(shader->info.stage) && !fetch &&
                 tex->op != nir_texop_txl && tex->op != nir_texop_txd)
                return false;
             if (!fetch && (!g17p_sample_shape(tex) ||
@@ -620,7 +629,7 @@ g17p_cube_sample_shape(const nir_tex_instr *tex)
 bool
 agx_nir_lower_g17p_cube_samples(nir_shader *shader, bool native_cube)
 {
-   if (!shader || (shader->info.stage != MESA_SHADER_VERTEX &&
+   if (!shader || (!g17p_explicit_lod_stage(shader->info.stage) &&
                    shader->info.stage != MESA_SHADER_FRAGMENT &&
                    shader->info.stage != MESA_SHADER_COMPUTE))
       return false;
@@ -907,7 +916,7 @@ agx_nir_lower_g17p_bindless_storage(nir_shader *shader)
 {
    if (shader->info.stage != MESA_SHADER_COMPUTE &&
        shader->info.stage != MESA_SHADER_FRAGMENT &&
-       shader->info.stage != MESA_SHADER_VERTEX)
+       !g17p_explicit_lod_stage(shader->info.stage))
       return false;
    bool progress = false;
    nir_foreach_function_impl(impl, shader) {

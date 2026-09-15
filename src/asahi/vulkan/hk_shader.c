@@ -1853,8 +1853,11 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
       }
    }
 
+   /* Geometry shaders execute as compute and, like vertex shaders, sample
+    * with explicit levels only (geometry.basic.output_vary_by_texture). */
    if (agx_chip_uses_hal200_ioto(dev->dev.chip) &&
        (nir->info.stage == MESA_SHADER_VERTEX ||
+        nir->info.stage == MESA_SHADER_GEOMETRY ||
         sw_stage == MESA_SHADER_TESS_CTRL)) {
       NIR_PASS(_, nir, agx_nir_lower_g17p_cube_samples,
                dev->dev.params.chip_id == 0x8132);

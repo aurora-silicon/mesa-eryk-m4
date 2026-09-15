@@ -5106,7 +5106,10 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
              * compute kernel witness and does not consume derivatives. */
             const bool explicit_level =
                (ctx->stage == MESA_SHADER_COMPUTE ||
-                ctx->stage == MESA_SHADER_VERTEX) &&
+                ctx->stage == MESA_SHADER_VERTEX ||
+                ctx->stage == MESA_SHADER_GEOMETRY ||
+                ctx->stage == MESA_SHADER_TESS_CTRL ||
+                ctx->stage == MESA_SHADER_TESS_EVAL) &&
                (I->lod_mode == AGX_LOD_MODE_LOD_MIN ||
                 I->lod_mode == AGX_LOD_MODE_LOD_GRAD);
             const bool compute_gather = ctx->stage == MESA_SHADER_COMPUTE &&
