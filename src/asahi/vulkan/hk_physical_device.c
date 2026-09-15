@@ -926,7 +926,10 @@ hk_get_device_properties(const struct agx_device *dev,
       .independentResolveNone = true,
       .independentResolve = true,
       .driverID = VK_DRIVER_ID_MESA_HONEYKRISP,
-      .conformanceVersion = (VkConformanceVersion){1, 4, 0, 0},
+      /* The CTS release this port is qualified against; the driver
+       * properties test requires a version the CTS knows, and 1.4.0.0 is
+       * not in its list. This is not a conformance claim. */
+      .conformanceVersion = (VkConformanceVersion){1, 4, 6, 2},
       .denormBehaviorIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_ALL,
       .roundingModeIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_ALL,
       .shaderSignedZeroInfNanPreserveFloat16 = true,
