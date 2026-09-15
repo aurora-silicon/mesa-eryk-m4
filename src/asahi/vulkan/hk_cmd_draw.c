@@ -5242,10 +5242,30 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
       }
 
       /* Geometry/restart lowering may eliminate all primitives even when
-       * the API draw was nonempty. Such a draw needs no index-list span. */
+       * the API draw was nonempty. Such a draw needs no index-list span,
+       * but a freshly published native bind tail still expects its
+       * draw-state selector word: leaving it open faulted the render
+       * (geometry.emit.triangle_strip_emit_0_end_1 and every other
+       * geometry shader emitting no complete primitive). */
       if (!agx_is_indirect(draw.b) &&
-          (!draw.b.count[0] || !draw.b.count[1]))
+          (!draw.b.count[0] || !draw.b.count[1])) {
+         if (agx_native_graphics(&dev->dev) && g17p_native_bind_tail_emitted) {
+            struct agx_ptr state = hk_pool_vdm_alloc(cmd, 8, 4);
+            uint32_t offset;
+            if (!state.cpu || !hk_g17p_upload_draw_indices(
+                   state.cpu, 8, state.gpu,
+                   cs->scissor.size - 16 * (MAX2(dyn->vp.viewport_count, 1) - 1),
+                   cs->depth_bias.size, &offset)) {
+               vk_command_buffer_set_error(&cmd->vk,
+                                           VK_ERROR_OUT_OF_DEVICE_MEMORY);
+               return;
+            }
+            memcpy(out, &offset, sizeof(offset));
+            out += sizeof(offset);
+            cs->current = out;
+         }
          continue;
+      }
 
       enum agx_primitive topology = cmd->state.gfx.topology;
       if (!needs_idx_robust &&
