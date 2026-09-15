@@ -388,6 +388,7 @@ void agx_preprocess_nir(nir_shader *nir);
 void agx_preprocess_nir_g17p(nir_shader *nir);
 bool agx_nir_lower_discard_zs_emit(nir_shader *s);
 bool agx_nir_lower_sample_mask(nir_shader *s);
+bool agx_nir_lower_sample_mask_deferred(nir_shader *s);
 bool agx_nir_lower_interpolation(nir_shader *s);
 bool agx_nir_lower_interpolation_g17p(nir_shader *s);
 

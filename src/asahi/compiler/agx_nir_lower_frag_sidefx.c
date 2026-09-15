@@ -57,7 +57,7 @@ pass(struct nir_builder *b, nir_intrinsic_instr *intr, void *data)
 }
 
 bool
-agx_nir_lower_frag_sidefx(nir_shader *s)
+agx_nir_lower_frag_sidefx(nir_shader *s, bool all_helper_writes)
 {
    assert(s->info.stage == MESA_SHADER_FRAGMENT);
 
@@ -67,9 +67,11 @@ agx_nir_lower_frag_sidefx(nir_shader *s)
 
    /* Lower writes from helper invocations with the common pass. The hardware
     * will predicate simple writes for us, but that fails with sample shading so
-    * we do that in software too.
+    * we do that in software too. G16G does not predicate them either: demoted
+    * lanes kept storing through plain SSBO writes on the native path.
     */
-   NIR_PASS(_, s, nir_lower_helper_writes, s->info.fs.uses_sample_shading);
+   NIR_PASS(_, s, nir_lower_helper_writes,
+            s->info.fs.uses_sample_shading || all_helper_writes);
 
    bool writes_zs =
       s->info.outputs_written &

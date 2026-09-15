@@ -5508,8 +5508,15 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
              * the complete coverage word before acquiring class1. Keep
              * this ordering within the atomic pseudo rather than inheriting
              * the AGX2 wait-before-mask-calculation schedule. */
-            const bool acquires = (I->imm & 2) && !ctx->key->fs.inside_sample_loop;
-            if (acquires && !coverage_class_open &&
+            /* Only an update running tests acquires class 1; a bare kill
+             * keeps the unacquired form (acquiring around kills lost the
+             * depth writes of z_export and forced-early sample-mask
+             * shaders). The class stays held across consecutive updates of a
+             * straight-line shader. */
+            const bool acquires = (I->imm & 2) &&
+                                  !ctx->key->fs.inside_sample_loop &&
+                                  !coverage_class_open;
+            if (acquires &&
                 (!agx3_pixel_wait(enc, 1, 0, bytes, &len) ||
                  !agx3_append(emission, bytes, len)))
                AGX3_REFUSE(I);
@@ -5528,7 +5535,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
              * later kill must still see the class held: release after the
              * last update of a straight-line shader. */
             const bool release_now = coverage_class_open &&
-               (coverage_defer_release ? coverage_last : acquires);
+               (!coverage_defer_release || coverage_last);
             if (release_now) {
                if (!agx3_pixel_release(enc, 1, false, 0, bytes, &len) ||
                    !agx3_append(emission, bytes, len))
@@ -5546,8 +5553,17 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             struct agx3_sr_desc d;
             uint8_t bytes[AGX3_SR_MAX_LENGTH];
             uint8_t len = 0;
-            if (!agx3_translate_sr(I, slot, wait, &d) ||
-                !agx3_sr_encode(enc, &d, bytes, &len))
+            if (!agx3_translate_sr(I, slot, wait, &d))
+               AGX3_REFUSE(I);
+            /* The original-SR2 long form is another input marker that drops
+             * out-of-primitive helper lanes. Apple's dfdx-using
+             * simd_is_helper_thread fragment reads SR2 in the short form
+             * (probes/g16g-early-sample-mask.md, fsdemotehelper); keep quads
+             * complete the same way when derivatives or quad operations need
+             * them. */
+            if (needs_quad_helpers && I->sr == AGX_SR_IS_ACTIVE_THREAD)
+               d.original_coverage = false;
+            if (!agx3_sr_encode(enc, &d, bytes, &len))
                AGX3_REFUSE(I);
             memcpy(util_dynarray_grow_bytes(emission, 1, len), bytes, len);
             continue;

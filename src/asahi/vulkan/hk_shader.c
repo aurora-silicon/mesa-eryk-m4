@@ -2004,7 +2004,10 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
          NIR_PASS(_, nir, agx_nir_lower_fs_output_to_epilog,
                   &shader->info.fs.epilog_key);
       }
-      NIR_PASS(_, nir, agx_nir_lower_sample_mask);
+      if (agx_chip_uses_hal200_ioto(dev->dev.chip))
+         NIR_PASS(_, nir, agx_nir_lower_sample_mask_deferred);
+      else
+         NIR_PASS(_, nir, agx_nir_lower_sample_mask);
 
       if (nir->info.fs.uses_sample_shading) {
          /* Ensure the sample mask is preserved in register */
