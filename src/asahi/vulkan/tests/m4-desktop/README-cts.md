@@ -360,11 +360,25 @@ than independent crashes. Raw runner status and worker exit remain recorded. Aft
 `cts_deqp_backend.collect`, retaining the failed guard verdict. No automatic
 retry or reboot is performed by this tool.
 
+`cts-bulk.py --env KEY=VALUE` (repeatable) passes an explicit driver
+environment override to the remote runner for a bounded experiment, such as
+`HK_PERFTEST=batch`. The override is recorded in that run's `environment.json`;
+the fixed batch defaults are unchanged for runs without it.
+
 `summary.json` separates runner wall time, guard/transport wall time and staging
 time. Do not equate a completed guard with all tests passing. Current default
 binary is the explicitly patched CTS diagnostic build; results are not an
 unmodified Khronos conformance submission. Use `--binary` to select another
 exact build and retain its identity.
+
+For the Vulkan 1.4 catalog, the current corrected executable is
+`/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit` (SHA256
+36bcc144d4b3c0edc5b638f20331fbc4e1be388d89da652890af870b8e5697dc), built
+from the cumulative `cts-scaled-blit.patch` recorded under the Mesa
+`tests/m4-desktop/cts-vulkan14-ordered/rest70k/` report. It supersedes
+`deqp-vk-seed30-scaled-compute` for new runs; completed batches keep the
+binary hash they recorded. `deqp-vk-blit-diagnostic2` on the target is the
+verdict-neutral numeric logging build for blit mismatches.
 
 `cts-bulk-report.py --cases ORIGINAL_CASES --output NEW_REPORT SEGMENT...`
 combines manually inspected continuations offline. It re-reads retained QPA and
@@ -485,3 +499,24 @@ stops at the first incomplete/fatal segment for inspection. `--first-segment`
 continues at a later prepared segment after earlier outcomes were retained;
 it never reruns or reclassifies failures. Recover interrupted cases separately,
 using their original names and metadata. Default outer segment bound is 900s.
+
+## Native x86 timing comparison
+
+`cts-host-case.py` runs one exact case on the local x86 workstation, with an
+explicit ICD and a 60-second process bound. It saves device/driver identity,
+binary hash, QPA, stdout, CTS case duration and separate process wall time.
+It refuses ARM hosts; it does not replace M4 watchdog/thermal guarded execution.
+Output directories cannot be overwritten. A timeout is a failed run.
+
+Build the pinned CTS source natively with:
+
+```
+cmake -S reference/vk-gl-cts-1.4.6.2 -B build/cts-1.4-host -G Ninja -DCMAKE_BUILD_TYPE=Release -DDEQP_TARGET=default
+cmake --build build/cts-1.4-host --target deqp-vk -j12
+python3 tools/cts-host-case.py --binary build/cts-1.4-host/external/vulkancts/modules/vulkan/deqp-vk --case dEQP-VK.api.command_buffers.trim_command_pool --output build/cts-host-trim/run1
+```
+
+Compare isolated timings with isolated timings. Keep contended M4 timings,
+different architectures, clock policies and driver versions explicit. The host
+build is the pinned upstream CTS; any target-specific CTS reference corrections
+must be checked for relevance to the selected case before comparing results.

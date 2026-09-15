@@ -1,0 +1,15 @@
+Writing test log into /home/council/dev/dirtyroom_m4/build/cts-host-trim/run1/case.qpa
+dEQP Core vulkan-cts-1.4.6.2-0-gf6a29701220f34dd1407513bfe80d74ca7b392ce (0xf6a29701) starting..
+  target implementation = 'Default'
+
+Test case 'dEQP-VK.api.command_buffers.trim_command_pool'..
+  Pass (Pass)
+
+DONE!
+
+Test run totals:
+  Passed:        1/1 (100.0%)
+  Failed:        0/1 (0.0%)
+  Not supported: 0/1 (0.0%)
+  Warnings:      0/1 (0.0%)
+  Waived:        0/1 (0.0%)

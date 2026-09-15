@@ -1,0 +1,23 @@
+{
+  "host": "mini",
+  "case": "dEQP-VK.api.command_buffers.trim_command_pool",
+  "command": [
+    "/home/council/dev/dirtyroom_m4/build/cts-1.4-host/external/vulkancts/modules/vulkan/deqp-vk",
+    "--deqp-case=dEQP-VK.api.command_buffers.trim_command_pool",
+    "--deqp-log-filename=/home/council/dev/dirtyroom_m4/build/cts-host-trim/run1/case.qpa",
+    "--deqp-log-images=disable",
+    "--deqp-log-shader-sources=disable"
+  ],
+  "binary_sha256": "2de1232928ffdcf86f54185f5f1997315441894968aa42c4277889e075091e86",
+  "icd": "/usr/share/vulkan/icd.d/radeon_icd.json",
+  "wall_seconds": 0.31448984798043966,
+  "timeout_seconds": 60,
+  "timed_out": false,
+  "exit_code": 0,
+  "statuses": [
+    "Pass"
+  ],
+  "case_seconds": [
+    0.225327
+  ]
+}
