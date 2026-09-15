@@ -6,9 +6,9 @@ Ordered Vulkan 1.4 CTS catalog (vulkan-cts-1.4.6.2 binary `deqp-vk-seed30-scaled
 
 | Status | Cases |
 |---|---|
-| Pass | 428,373 |
-| NotSupported | 571,337 |
-| Fail | 264 |
+| Pass | 428,519 |
+| NotSupported | 571,349 |
+| Fail | 106 |
 | QualityWarning | 4 |
 | Timeout | 11 |
 | Unrun | 9 |
@@ -39,27 +39,27 @@ Total counted: 1,000,000; the 22 early-fragment cases whose unterminated `printf
 - `bf3daaa6dd5` hk: program the dynamic line width into the native G16G face records (49 dynamic_state cases)
 - `cd5a25269d9` agx: clamp the AGX3 sine polynomial to unit magnitude (8 precision.cos cases)
 - `183b84c977d` hk: give Gen9 storage texel buffers a software PBE copy (28 sRGB storage texel buffer cases)
+- `c429156e146` hk: keep integer texels in scaled-format storage read descriptors (144 texel_view_compatible uscaled cases)
+- `36542e13479` hk: follow the image advertisement for unformatted storage texel buffers on Gen9 (12 a8/a2*10 sint buffer cases become NotSupported)
+- `64d138e4f81` hk/agx3: sample textures natively from geometry and tessellation shaders (2 geometry.basic cases)
 
 Each fix was verified against the 1,000-case regression set (`build/claude-perf/reg1000/cases.txt`, 815 Pass / 186 NotSupported) before installation.
 
 ## Open failures
 
-290 cases remain non-passing after rechecking every original failure with the final library:
+132 cases remain non-passing after rechecking every original failure with the final library:
 
 | Family | Cases | Diagnosis |
 |---|---|---|
-| image.texel_view_compatible | 144 | every `r16g16b16a16_uscaled` uncompressed view of a 64-bit block format (bc1/bc4/eac_r11/etc2); the scaled storage load/store round trip through the texel-compatible view is not bit-exact. Other uncompressed formats pass (6,709 cases). |
 | glsl.texture_functions | 40 | cube and cube-array `texturequerylod`: the projected-face query form (native f74=10 face pack, f146 query) returns an integer LOD exactly one level above the reference. 3D queries, cube bias and every shadow gradient form now pass. |
 | api.image_clearing | 24 | `clear_color_attachment.multiple_layers.r32g32b32{,a32}_*_sample_count_4`: layered 4x 96/128-bit clears resolve with the blue and alpha channels zero (single-layer and 1x pass); the layered multisample store of 16x16-tile formats writes 64 of the 128 bits. |
 | pipeline.fast_linked_library | 22 | `blend.dual_source.multi_attachments.*` and their neighbours: throughput timeouts under 20 workers (known from the 1.0M-1.2M range), not a rendering defect. |
 | graphicsfuzz | 17 | packer refusals: `stack_store` with a register index (dynamically addressed private-array stores have no native witness) and `break_if_icmp` shapes the control-flow packer does not admit (32-bit register compares with inversion, nested flag slots). |
-| image.store | 12 | `without_format.buffer.a8_unorm*` and `a2{b,r}10g10b10_sint_pack32*`: the unformatted buffer store lowering converts only 8/16-bit integer channels; alpha-only and packed 10-bit signed stores are still wrong (sRGB buffers fixed). |
 | fragment_operations.early_fragment | 7 | `sample_count_early_fragment_tests_depth_samples_*` and `discard_early_fragment_tests_*`: with `early_fragment_tests`, samples killed by `gl_SampleMask = 0`/`discard` after the early test still store colour on G16G (1 or 2 of 4 samples). The samplemask/discard variants also print without a newline, which the runner misreads as a crash; they were run one per process. |
 | draw.dynamic_rendering | 6 | `multiple_interpolation.*.with_sample_decoration.1_sample`: the `sample`-qualified reference render writes alpha 0.5 on edge pixels at one sample (smooth and centroid match). |
 | draw.renderpass | 5 | `shader_invocation.helper_invocation_volatile{,_mem_model}` and the interpolation case above: after `demote`, helper status and quad operations do not follow the demoted lanes on G16G. |
 | glsl.demote | 5 | `*_deriv`: derivatives and `helperInvocationEXT()` after `demote` (same root cause as helper_invocation_volatile). |
 | api.object_management | 4 | `alloc_callback_fail.*`: allocation callbacks not invoked for a few object types. |
-| geometry.basic | 2 | `output_vary_by_texture{,_instancing}`: implicit-LOD texture sampling inside a geometry shader (executed as compute) is refused by the packer. |
 | multiview.multisample | 1 | `no_queries.max_multi_view_view_count` (renderpass and renderpass2): two cases, not investigated. |
 | multiview.renderpass2 | 1 | see multiview.multisample. |
 
