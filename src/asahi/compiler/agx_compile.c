@@ -4955,6 +4955,10 @@ agx_lower_sincos_impl(struct nir_builder *b, nir_instr *instr, void *data)
       for (unsigned i = 0; i < ARRAY_SIZE(coefficients); ++i)
          p = nir_ffma(b, p, r2, nir_imm_float(b, coefficients[i]));
       nir_def *result = nir_fmul(b, r, p);
+      /* The polynomial rounds to 1.000002 at r = pi/2, which cos(x) for
+       * tiny |x| hits directly (glsl.builtin.precision.cos.* expect at most
+       * 1.0). True sine never leaves [-1, 1]; clamp the magnitude. */
+      result = nir_fmin(b, result, nir_imm_float(b, 1.0));
       result = nir_bcsel(b, nir_flt_imm(b, t, 0.0), nir_fneg(b, result), result);
       return nir_f2fN(b, result, bits);
    }
