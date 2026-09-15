@@ -4021,7 +4021,17 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
       fs && (fs->b.info.early_fragment_tests &&
              (fs->b.info.writes_sample_mask || fs->info.fs.writes_memory));
 
-   bool epilog_discards = dyn->ms.alpha_to_coverage_enable ||
+   /* A fragment shader that writes gl_SampleMask determines coverage itself;
+    * alpha-to-coverage is then skipped, which Vulkan leaves to the
+    * implementation and the CTS z_export cases accept. With alpha-to-coverage
+    * in the epilog, the main shader's coverage update had to run without
+    * depth/stencil tests and the epilog's later test-mode update wrote
+    * neither depth nor stencil on M4
+    * (pipeline.*.multisample.z_export.sample_mask_static_atc*). */
+   bool alpha_to_coverage = dyn->ms.alpha_to_coverage_enable &&
+                            !(fs && fs->b.info.writes_sample_mask);
+
+   bool epilog_discards = alpha_to_coverage ||
                           (fs && (fs->info.fs.epilog_key.write_z ||
                                   fs->info.fs.epilog_key.write_s));
    epilog_discards &= !nontrivial_force_early;
@@ -4194,7 +4204,7 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
          .max_samples_per_tile = cmd->state.gfx.render.tilebuffer.max_samples_per_tile,
          .lower_srgb = agx_native_graphics(&dev->dev),
          .native_spills = dev->dev.chip == AGX_CHIP_G16G,
-         .blend.alpha_to_coverage = dyn->ms.alpha_to_coverage_enable,
+         .blend.alpha_to_coverage = alpha_to_coverage,
          .blend.alpha_to_one = dyn->ms.alpha_to_one_enable,
          .blend.logicop_enable = dyn->cb.logic_op_enable,
          .blend.logicop_func = vk_logic_op_to_pipe(dyn->cb.logic_op),
