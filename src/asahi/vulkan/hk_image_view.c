@@ -242,7 +242,12 @@ pack_texture(struct hk_device *dev, struct hk_image_view *view,
    if (agx_native_graphics(&dev->dev)) {
       enum pipe_format normalized = hk_uscaled_normalized_format(p_format);
       enum pipe_format integer = hk_scaled_texture_format(p_format);
-      if (normalized != PIPE_FORMAT_NONE)
+      /* Sampling scales a normalized fetch in the shader; storage reads
+       * must see raw integer texels, both for formatted integer loads
+       * (image.texel_view_compatible.*.r16g16b16a16_uscaled with an
+       * rgba16ui image) and for the unformatted-load conversion, which keys
+       * on an integer descriptor type. */
+      if (normalized != PIPE_FORMAT_NONE && usage != HK_DESC_USAGE_STORAGE)
          p_format = normalized;
       else if (integer != PIPE_FORMAT_NONE)
          p_format = integer;
