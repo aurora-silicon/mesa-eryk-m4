@@ -13,13 +13,6 @@ dEQP-VK.draw.renderpass.multiple_interpolation.structured.with_sample_decoration
 dEQP-VK.draw.renderpass.shader_invocation.helper_invocation	Fail	0630000-0640000	Fail
 dEQP-VK.draw.renderpass.shader_invocation.helper_invocation_volatile	Fail	0630000-0640000	Fail
 dEQP-VK.draw.renderpass.shader_invocation.helper_invocation_volatile_mem_model	Fail	0630000-0640000	Fail
-dEQP-VK.fragment_operations.early_fragment.discard_early_fragment_tests_depth	Fail	0630000-0640000	Runner detected abnormal execution; inspect QPA/log
-dEQP-VK.fragment_operations.early_fragment.sample_count_early_fragment_tests_depth_samples_2	Fail	0630000-0640000	Rendered color image is not correct
-dEQP-VK.fragment_operations.early_fragment.sample_count_early_fragment_tests_depth_samples_2_maintenance5	Fail	0630000-0640000	Rendered color image is not correct
-dEQP-VK.fragment_operations.early_fragment.sample_count_early_fragment_tests_depth_samples_4	Fail	0630000-0640000	Rendered color image is not correct
-dEQP-VK.fragment_operations.early_fragment.sample_count_early_fragment_tests_depth_samples_4_maintenance5	Fail	0630000-0640000	Rendered color image is not correct
-dEQP-VK.fragment_operations.early_fragment.samplemask_early_fragment_tests_depth_samples_2	Fail	0630000-0640000	Runner detected abnormal execution; inspect QPA/log
-dEQP-VK.fragment_operations.early_fragment.samplemask_early_fragment_tests_depth_samples_4	Fail	0630000-0640000	Runner detected abnormal execution; inspect QPA/log
 dEQP-VK.glsl.demote.basic_deriv	Fail	0770000-0780000	Image mismatch
 dEQP-VK.glsl.demote.dynamic_loop_deriv	Fail	0770000-0780000	Image mismatch
 dEQP-VK.glsl.demote.function_deriv	Fail	0770000-0780000	Image mismatch
