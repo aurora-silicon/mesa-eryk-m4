@@ -6,9 +6,9 @@ Ordered Vulkan 1.4 CTS catalog (vulkan-cts-1.4.6.2 binary `deqp-vk-seed30-scaled
 
 | Status | Cases |
 |---|---|
-| Pass | 428,590 |
+| Pass | 428,598 |
 | NotSupported | 571,349 |
-| Fail | 35 |
+| Fail | 27 |
 | QualityWarning | 4 |
 | Timeout | 11 |
 | Unrun | 9 |
@@ -45,21 +45,21 @@ Total counted: 1,000,000; the 22 early-fragment cases whose unterminated `printf
 - `ef40540a804` agx: project cube LOD queries through the cube sampling pass (40 cube/cube-array texturequerylod cases)
 - `b1c9e8c0538` agx3: give background tile stores the fragment colour ownership protocol (24 layered 4x 96/128-bit image_clearing cases; probe compiler/test/probes/g16g-layered-ms-clear-probe.c)
 - `208adb42e85` agx/agx3: mask colour stores after forced early tests on G16G (7 early_fragment discard/sample-mask cases; Metal witnesses in compiler/test/probes/README-g16g-early-sample-mask.md)
+- `589fb73d33d` agx/agx3: keep quad helper lanes alive through demote on G16G (5 glsl.demote *_deriv and 3 helper_invocation cases; probes in compiler/test/probes/README-g16g-demote-quad-helpers.md)
 
 Each fix was verified against the 1,000-case regression set (`build/claude-perf/reg1000/cases.txt`, 815 Pass / 186 NotSupported) before installation.
 
 ## Open failures
 
-61 cases remain non-passing after rechecking every original failure with the final library:
+53 cases remain non-passing after rechecking every original failure with the final library:
 
 | Family | Cases | Diagnosis |
 |---|---|---|
 | pipeline.fast_linked_library | 22 | `blend.dual_source.multi_attachments.*` and their neighbours: throughput timeouts under 20 workers (known from the 1.0M-1.2M range), not a rendering defect. |
 | graphicsfuzz | 17 | packer refusals: `stack_store` with a register index (dynamically addressed private-array stores have no native witness) and `break_if_icmp` shapes the control-flow packer does not admit (32-bit register compares with inversion, nested flag slots). |
 | draw.dynamic_rendering | 6 | `multiple_interpolation.*.with_sample_decoration.1_sample`: the `sample`-qualified reference render writes alpha 0.5 on edge pixels at one sample (smooth and centroid match). |
-| draw.renderpass | 5 | `shader_invocation.helper_invocation_volatile{,_mem_model}` and the interpolation case above: after `demote`, helper status and quad operations do not follow the demoted lanes on G16G. |
-| glsl.demote | 5 | `*_deriv`: derivatives and `helperInvocationEXT()` after `demote` (same root cause as helper_invocation_volatile). |
 | api.object_management | 4 | `alloc_callback_fail.*`: allocation callbacks not invoked for a few object types. |
+| draw.renderpass | 2 | `multiple_interpolation.*.with_sample_decoration.1_sample`: same as draw.dynamic_rendering. |
 | multiview.multisample | 1 | `no_queries.max_multi_view_view_count` (renderpass and renderpass2): two cases, not investigated. |
 | multiview.renderpass2 | 1 | see multiview.multisample. |
 
