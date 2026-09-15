@@ -2,25 +2,6 @@ dEQP-VK.api.object_management.alloc_callback_fail.descriptor_set_layout_empty	Qu
 dEQP-VK.api.object_management.alloc_callback_fail.descriptor_set_layout_single	QualityWarning	0320000-0330000	Allocation callbacks not called
 dEQP-VK.api.object_management.alloc_callback_fail.pipeline_layout_empty	QualityWarning	0320000-0330000	Allocation callbacks not called
 dEQP-VK.api.object_management.alloc_callback_fail.pipeline_layout_single	QualityWarning	0320000-0330000	Allocation callbacks not called
-dEQP-VK.graphicsfuzz.cov-dfdx-dfdy-after-nested-loops	Fail	0790000-0800000	Fail
-dEQP-VK.graphicsfuzz.cov-function-two-loops-limit-using-arguments-array-element-copies	Fail	0790000-0800000	Fail
-dEQP-VK.graphicsfuzz.cov-global-loop-counter-accumulate-integer-condition-large-array-elements	Fail	0790000-0800000	Fail
-dEQP-VK.graphicsfuzz.cov-large-int-array-nested-loops-set-ivec-index-component-sum	Fail	0790000-0800000	Fail
-dEQP-VK.graphicsfuzz.cov-nested-loop-large-array-index-using-vector-components	Fail	0790000-0800000	Fail
-dEQP-VK.graphicsfuzz.cov-nested-loops-global-loop-counter-do-while-accumulate-float	Fail	0790000-0800000	Fail
-dEQP-VK.graphicsfuzz.cov-nested-loops-set-struct-data-verify-in-function	Fail	0790000-0800000	Fail
-dEQP-VK.graphicsfuzz.cov-optimize-phis-for	Fail	0790000-0800000	Fail
-dEQP-VK.graphicsfuzz.cov-scaled-number-nested-loops	Fail	0790000-0800000	Fail
-dEQP-VK.graphicsfuzz.cov-scaled-number-nested-loops-array-access	Fail	0790000-0800000	Fail
-dEQP-VK.graphicsfuzz.spv-access-chains	Fail	0790000-0800000	Fail
-dEQP-VK.graphicsfuzz.spv-copy-object	Fail	0790000-0800000	Fail
-dEQP-VK.graphicsfuzz.spv-dead-break-and-unroll	Fail	0790000-0800000	Fail
-dEQP-VK.graphicsfuzz.spv-stable-maze-O-dead-code	Fail	0790000-0800000	Fail
-dEQP-VK.graphicsfuzz.spv-stable-maze-O-memory-accesses	Fail	0790000-0800000	Fail
-dEQP-VK.graphicsfuzz.spv-stable-maze-flatten-copy-composite	Fail	0790000-0800000	Fail
-dEQP-VK.graphicsfuzz.stable-triangle-array-nested-loop	Fail	0790000-0800000	Fail
-dEQP-VK.multiview.multisample.no_queries.max_multi_view_view_count	Fail	0980000-0990000	Fail
-dEQP-VK.multiview.renderpass2.multisample.no_queries.max_multi_view_view_count	Fail	0980000-0990000	Fail
 dEQP-VK.pipeline.fast_linked_library.blend.dual_source.multi_attachments.a1r5g5b5_unorm_pack16	Interrupted	0990000-1000000	Worker killed during coordinated runner stop; not an independent crash
 dEQP-VK.pipeline.fast_linked_library.blend.dual_source.multi_attachments.a2b10g10r10_unorm_pack32	Unrun	0990000-1000000	No completed result before coordinated runner stop
 dEQP-VK.pipeline.fast_linked_library.blend.dual_source.multi_attachments.a2r10g10b10_unorm_pack32	Timeout	0990000-1000000	Runner detected abnormal execution; inspect QPA/log

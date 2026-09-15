@@ -6,15 +6,14 @@ Ordered Vulkan 1.4 CTS catalog (vulkan-cts-1.4.6.2 binary `deqp-vk-seed30-scaled
 
 | Status | Cases |
 |---|---|
-| Pass | 428,606 |
+| Pass | 428,625 |
 | NotSupported | 571,349 |
-| Fail | 19 |
 | QualityWarning | 4 |
 | Timeout | 11 |
 | Unrun | 9 |
 | Interrupted | 2 |
 
-Total counted: 1,000,000; the 22 early-fragment cases whose unterminated `printf` confuses deqp-runner were run one per process (3 of them fail and are counted as Fail). NotSupported means the feature is not advertised and, per the campaign rule, was not implemented.
+Total counted: 1,000,000; the 22 early-fragment cases whose unterminated `printf` confuses deqp-runner were run one per process and judged by their QPA status. NotSupported means the feature is not advertised and, per the campaign rule, was not implemented.
 
 ## Crashes and stops
 
@@ -47,20 +46,19 @@ Total counted: 1,000,000; the 22 early-fragment cases whose unterminated `printf
 - `208adb42e85` agx/agx3: mask colour stores after forced early tests on G16G (7 early_fragment discard/sample-mask cases; Metal witnesses in compiler/test/probes/README-g16g-early-sample-mask.md)
 - `589fb73d33d` agx/agx3: keep quad helper lanes alive through demote on G16G (5 glsl.demote *_deriv and 3 helper_invocation cases; probes in compiler/test/probes/README-g16g-demote-quad-helpers.md)
 - `c7381aaae2c` agx: honour the constant-plane marker in native coefficient interpolation (8 draw.*.multiple_interpolation with_sample_decoration.1_sample cases; replica probe and raw coefficient dump in compiler/test/probes/README-g16g-constant-plane-marker.md)
+- `631743e0897` agx/agx3: pack dynamic stack stores, deep loop tests and high-register int2flt (17 graphicsfuzz cases; witnesses and the dynamic-store oracle in compiler/test/probes/README-g16g-dynamic-stack-store.md)
+- the two `multiview.{renderpass,renderpass2}.multisample.no_queries.max_multi_view_view_count` failures pass on every recheck with the final library (four runs, plus all 48 multiview multisample cases).
 
 Each fix was verified against the 1,000-case regression set (`build/claude-perf/reg1000/cases.txt`, 815 Pass / 186 NotSupported) before installation.
 
 ## Open failures
 
-45 cases remain non-passing after rechecking every original failure with the final library:
+26 cases remain non-passing after rechecking every original failure with the final library:
 
 | Family | Cases | Diagnosis |
 |---|---|---|
 | pipeline.fast_linked_library | 22 | `blend.dual_source.multi_attachments.*` and their neighbours: throughput timeouts under 20 workers (known from the 1.0M-1.2M range), not a rendering defect. |
-| graphicsfuzz | 17 | packer refusals: `stack_store` with a register index (dynamically addressed private-array stores have no native witness) and `break_if_icmp` shapes the control-flow packer does not admit (32-bit register compares with inversion, nested flag slots). |
 | api.object_management | 4 | `alloc_callback_fail.*`: allocation callbacks not invoked for a few object types. |
-| multiview.multisample | 1 | `no_queries.max_multi_view_view_count` (renderpass and renderpass2): two cases, not investigated. |
-| multiview.renderpass2 | 1 | see multiview.multisample. |
 
 The full list with statuses is in `build/claude-fix/final-tally.json` (`remaining`).
 
