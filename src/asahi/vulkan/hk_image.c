@@ -577,6 +577,20 @@ hk_GetPhysicalDeviceImageFormatProperties2(
       sampleCounts =
          VK_SAMPLE_COUNT_1_BIT | VK_SAMPLE_COUNT_2_BIT | VK_SAMPLE_COUNT_4_BIT;
 
+      if (pdev->dev.chip == AGX_CHIP_G16G) {
+         /* The native G16G render-target layout is grounded for these two
+          * packed float formats at one sample only
+          * (hk_native_single_target_layout_supported), so multisampled
+          * attachments of them fail at vkEndCommandBuffer
+          * (api.image_clearing.core.clear_color_attachment.*.{b10g11r11,e5b9g9r9}_ufloat_pack32_*_sample_count_{2,4}).
+          * Do not advertise what the layout refuses. */
+         const enum pipe_format pipe =
+            hk_format_to_pipe_format(pImageFormatInfo->format);
+         if (pipe == PIPE_FORMAT_R11G11B10_FLOAT ||
+             pipe == PIPE_FORMAT_R9G9B9E5_FLOAT)
+            sampleCounts = VK_SAMPLE_COUNT_1_BIT;
+      }
+
       if (agx_native_graphics(&pdev->dev) && pdev->dev.chip != AGX_CHIP_G16G) {
          const enum pipe_format pipe =
             hk_format_to_pipe_format(pImageFormatInfo->format);
