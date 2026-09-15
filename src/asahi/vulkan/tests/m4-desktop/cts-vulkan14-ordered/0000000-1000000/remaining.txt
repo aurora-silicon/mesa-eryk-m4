@@ -108,18 +108,6 @@ dEQP-VK.graphicsfuzz.spv-stable-maze-O-dead-code	Fail	0790000-0800000	Fail
 dEQP-VK.graphicsfuzz.spv-stable-maze-O-memory-accesses	Fail	0790000-0800000	Fail
 dEQP-VK.graphicsfuzz.spv-stable-maze-flatten-copy-composite	Fail	0790000-0800000	Fail
 dEQP-VK.graphicsfuzz.stable-triangle-array-nested-loop	Fail	0790000-0800000	Fail
-dEQP-VK.image.load_store.without_any_format.buffer.a8b8g8r8_srgb_pack32	Fail	0890000-0900000	Image comparison failed
-dEQP-VK.image.load_store.without_any_format.buffer.a8b8g8r8_srgb_pack32_minalign	Fail	0890000-0900000	Image comparison failed
-dEQP-VK.image.load_store.without_any_format.buffer.a8b8g8r8_srgb_pack32_minalign_uniform	Fail	0890000-0900000	Image comparison failed
-dEQP-VK.image.load_store.without_any_format.buffer.b8g8r8a8_srgb	Fail	0890000-0900000	Image comparison failed
-dEQP-VK.image.load_store.without_any_format.buffer.b8g8r8a8_srgb_minalign	Fail	0890000-0900000	Image comparison failed
-dEQP-VK.image.load_store.without_any_format.buffer.b8g8r8a8_srgb_minalign_uniform	Fail	0890000-0900000	Image comparison failed
-dEQP-VK.image.load_store.without_any_format.buffer.r8g8_srgb	Fail	0890000-0900000	Image comparison failed
-dEQP-VK.image.load_store.without_any_format.buffer.r8g8_srgb_minalign	Fail	0890000-0900000	Image comparison failed
-dEQP-VK.image.load_store.without_any_format.buffer.r8g8_srgb_minalign_uniform	Fail	0890000-0900000	Image comparison failed
-dEQP-VK.image.load_store.without_any_format.buffer.r8g8b8a8_srgb	Fail	0890000-0900000	Image comparison failed
-dEQP-VK.image.load_store.without_any_format.buffer.r8g8b8a8_srgb_minalign	Fail	0890000-0900000	Image comparison failed
-dEQP-VK.image.load_store.without_any_format.buffer.r8g8b8a8_srgb_minalign_uniform	Fail	0890000-0900000	Image comparison failed
 dEQP-VK.image.store.without_format.buffer.a2b10g10r10_sint_pack32	Fail	0910000-0920000	Image comparison failed
 dEQP-VK.image.store.without_format.buffer.a2b10g10r10_sint_pack32_linear	Fail	0910000-0920000	Image comparison failed
 dEQP-VK.image.store.without_format.buffer.a2b10g10r10_sint_pack32_minalign	Fail	0910000-0920000	Image comparison failed
@@ -132,22 +120,6 @@ dEQP-VK.image.store.without_format.buffer.a8_unorm	Fail	0910000-0920000	Image co
 dEQP-VK.image.store.without_format.buffer.a8_unorm_linear	Fail	0910000-0920000	Image comparison failed
 dEQP-VK.image.store.without_format.buffer.a8_unorm_minalign	Fail	0910000-0920000	Image comparison failed
 dEQP-VK.image.store.without_format.buffer.a8_unorm_minalign_linear	Fail	0910000-0920000	Image comparison failed
-dEQP-VK.image.store.without_format.buffer.a8b8g8r8_srgb_pack32	Fail	0910000-0920000	Image comparison failed
-dEQP-VK.image.store.without_format.buffer.a8b8g8r8_srgb_pack32_linear	Fail	0910000-0920000	Image comparison failed
-dEQP-VK.image.store.without_format.buffer.a8b8g8r8_srgb_pack32_minalign	Fail	0910000-0920000	Image comparison failed
-dEQP-VK.image.store.without_format.buffer.a8b8g8r8_srgb_pack32_minalign_linear	Fail	0910000-0920000	Image comparison failed
-dEQP-VK.image.store.without_format.buffer.b8g8r8a8_srgb	Fail	0910000-0920000	Image comparison failed
-dEQP-VK.image.store.without_format.buffer.b8g8r8a8_srgb_linear	Fail	0910000-0920000	Image comparison failed
-dEQP-VK.image.store.without_format.buffer.b8g8r8a8_srgb_minalign	Fail	0910000-0920000	Image comparison failed
-dEQP-VK.image.store.without_format.buffer.b8g8r8a8_srgb_minalign_linear	Fail	0910000-0920000	Image comparison failed
-dEQP-VK.image.store.without_format.buffer.r8g8_srgb	Fail	0910000-0920000	Image comparison failed
-dEQP-VK.image.store.without_format.buffer.r8g8_srgb_linear	Fail	0910000-0920000	Image comparison failed
-dEQP-VK.image.store.without_format.buffer.r8g8_srgb_minalign	Fail	0910000-0920000	Image comparison failed
-dEQP-VK.image.store.without_format.buffer.r8g8_srgb_minalign_linear	Fail	0910000-0920000	Image comparison failed
-dEQP-VK.image.store.without_format.buffer.r8g8b8a8_srgb	Fail	0910000-0920000	Image comparison failed
-dEQP-VK.image.store.without_format.buffer.r8g8b8a8_srgb_linear	Fail	0910000-0920000	Image comparison failed
-dEQP-VK.image.store.without_format.buffer.r8g8b8a8_srgb_minalign	Fail	0910000-0920000	Image comparison failed
-dEQP-VK.image.store.without_format.buffer.r8g8b8a8_srgb_minalign_linear	Fail	0910000-0920000	Image comparison failed
 dEQP-VK.image.texel_view_compatible.compute.basic.1d_image.image_load.bc1_rgb_srgb_block.r16g16b16a16_uscaled	Fail	0920000-0930000	Decompression failed
 dEQP-VK.image.texel_view_compatible.compute.basic.1d_image.image_load.bc1_rgb_unorm_block.r16g16b16a16_uscaled	Fail	0920000-0930000	Decompression failed
 dEQP-VK.image.texel_view_compatible.compute.basic.1d_image.image_load.bc1_rgba_srgb_block.r16g16b16a16_uscaled	Fail	0920000-0930000	Decompression failed
