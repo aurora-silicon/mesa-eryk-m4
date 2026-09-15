@@ -48,6 +48,10 @@ dual-source family in segment 13 (below). Peak temperature 68.25 C.
    Standalone probes (`build/claude-fix/probe/`, experiments
    `20260915T07*-claude-probe*`) show the same integer chain evaluating
    correctly, so the packing fault behind the original check remains open.
+   Superseded by `c7381aaae2c`: the check is the rasterizer's constant-plane
+   marker (A = B = integer 1, value in C, no 1/W factor), now tested
+   directly on the native path; the six 137_191_1 cases still pass and the
+   0-1M `with_sample_decoration.1_sample` cases are fixed.
 4. `6dde9655d4f` hk: skip alpha-to-coverage when the fragment shader writes
    gl_SampleMask. With alpha-to-coverage in the epilog the main shader's
    coverage update ran without tests and the epilog's test-mode update wrote

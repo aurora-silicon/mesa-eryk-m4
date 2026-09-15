@@ -2,14 +2,6 @@ dEQP-VK.api.object_management.alloc_callback_fail.descriptor_set_layout_empty	Qu
 dEQP-VK.api.object_management.alloc_callback_fail.descriptor_set_layout_single	QualityWarning	0320000-0330000	Allocation callbacks not called
 dEQP-VK.api.object_management.alloc_callback_fail.pipeline_layout_empty	QualityWarning	0320000-0330000	Allocation callbacks not called
 dEQP-VK.api.object_management.alloc_callback_fail.pipeline_layout_single	QualityWarning	0320000-0330000	Allocation callbacks not called
-dEQP-VK.draw.dynamic_rendering.complete_secondary_cmd_buff.multiple_interpolation.separate.with_sample_decoration.1_sample	Fail	0600000-0610000	smooth and sample produced different results without multisampling
-dEQP-VK.draw.dynamic_rendering.complete_secondary_cmd_buff.multiple_interpolation.structured.with_sample_decoration.1_sample	Fail	0600000-0610000	smooth and sample produced different results without multisampling
-dEQP-VK.draw.dynamic_rendering.partial_secondary_cmd_buff.multiple_interpolation.separate.with_sample_decoration.1_sample	Fail	0600000-0610000	smooth and sample produced different results without multisampling
-dEQP-VK.draw.dynamic_rendering.partial_secondary_cmd_buff.multiple_interpolation.structured.with_sample_decoration.1_sample	Fail	0600000-0610000	smooth and sample produced different results without multisampling
-dEQP-VK.draw.dynamic_rendering.primary_cmd_buff.multiple_interpolation.separate.with_sample_decoration.1_sample	Fail	0620000-0630000	smooth and sample produced different results without multisampling
-dEQP-VK.draw.dynamic_rendering.primary_cmd_buff.multiple_interpolation.structured.with_sample_decoration.1_sample	Fail	0620000-0630000	smooth and sample produced different results without multisampling
-dEQP-VK.draw.renderpass.multiple_interpolation.separate.with_sample_decoration.1_sample	Fail	0630000-0640000	smooth and sample produced different results without multisampling
-dEQP-VK.draw.renderpass.multiple_interpolation.structured.with_sample_decoration.1_sample	Fail	0630000-0640000	smooth and sample produced different results without multisampling
 dEQP-VK.graphicsfuzz.cov-dfdx-dfdy-after-nested-loops	Fail	0790000-0800000	Fail
 dEQP-VK.graphicsfuzz.cov-function-two-loops-limit-using-arguments-array-element-copies	Fail	0790000-0800000	Fail
 dEQP-VK.graphicsfuzz.cov-global-loop-counter-accumulate-integer-condition-large-array-elements	Fail	0790000-0800000	Fail
