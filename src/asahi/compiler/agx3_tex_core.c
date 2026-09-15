@@ -169,10 +169,15 @@ sample_ok(enum agx_isa_encoding enc, const struct agx3_tex_sample_desc *d)
        d->texture > 15 || d->sampler > 15)
       return false;
 
+   /* Native calculate_*_lod on cube, cube array and 3D textures (lod-query.metal
+    * fragment witnesses, 2026-09-15) keep the 2D form with f76 naming the
+    * dimension; cube arrays carry the implicit layer zero (f37/f77=1). Mesa
+    * publishes the query through the bias-register form with a zero bias. */
    if (d->query_lod &&
-       (enc != AGX_ISA_ENCODING_AGX3B || d->cube || d->three_d ||
+       (enc != AGX_ISA_ENCODING_AGX3B ||
         d->shadow || d->gather || d->sample_offset || d->mask != 3 ||
-        d->width != AGX3_TEX_W32 || d->lod != AGX3_TEX_LOD_AUTO))
+        d->width != AGX3_TEX_W32 ||
+        (d->lod != AGX3_TEX_LOD_AUTO && d->lod != AGX3_TEX_LOD_BIAS_REGISTER)))
       return false;
 
    if (d->three_d && (enc != AGX_ISA_ENCODING_AGX3B || d->array ||
@@ -184,12 +189,16 @@ sample_ok(enum agx_isa_encoding enc, const struct agx3_tex_sample_desc *d)
                         d->lod != AGX3_TEX_LOD_AUTO)))
       return false;
 
+   /* Native sample_compare(gradient2d) keeps the reference in half4 and the
+    * derivatives at half8 (shadow-grad.metal witnesses, 2026-09-15). */
    if (d->lod == AGX3_TEX_LOD_GRAD &&
-       (enc != AGX_ISA_ENCODING_AGX3B || d->cube || d->shadow || d->gather))
+       (enc != AGX_ISA_ENCODING_AGX3B || d->cube || d->gather))
       return false;
 
+   /* Native cube/cube-array sample(bias()) (lod-query.metal fscubebias and
+    * fscubearrbias) packs the face with the bias like the register level. */
    if (d->lod == AGX3_TEX_LOD_BIAS_REGISTER &&
-       (enc != AGX_ISA_ENCODING_AGX3B || d->cube || d->gather))
+       (enc != AGX_ISA_ENCODING_AGX3B || d->gather))
       return false;
 
    /* G16G sample(level(0), int2(-1,2)) uses the same packed signed
@@ -209,7 +218,7 @@ sample_ok(enum agx_isa_encoding enc, const struct agx3_tex_sample_desc *d)
     * layer. Non-array gradients occupy their separate coordinate banks. */
    if (d->dynamic_offset &&
        (d->sample_offset || d->gather || d->query_lod ||
-        (d->array && d->lod == AGX3_TEX_LOD_GRAD) ||
+        (d->array && d->lod == AGX3_TEX_LOD_GRAD && !d->shadow) ||
         (d->lod != AGX3_TEX_LOD_REGISTER &&
          d->lod != AGX3_TEX_LOD_BIAS_REGISTER &&
          d->lod != AGX3_TEX_LOD_GRAD)))
@@ -250,7 +259,8 @@ sample_ok(enum agx_isa_encoding enc, const struct agx3_tex_sample_desc *d)
    if (d->cube && (enc != AGX_ISA_ENCODING_AGX3B ||
                    (d->lod != AGX3_TEX_LOD_AUTO &&
                     d->lod != AGX3_TEX_LOD_LEVEL &&
-                    d->lod != AGX3_TEX_LOD_REGISTER)))
+                    d->lod != AGX3_TEX_LOD_REGISTER &&
+                    d->lod != AGX3_TEX_LOD_BIAS_REGISTER)))
       return false;
 
    /* Register LOD and layer use one fused PACK_SMPIR operand. */
@@ -769,11 +779,11 @@ agx3_tex_stage_fetch_lod(enum agx_isa_encoding enc, uint16_t src, bool uniform,
  * baseline's f74=2/f75=16 silently leaves the sample destination unwritten.
  * Register-indexed array samples use the independently witnessed slot-6 form
  * 1705540600180000f0e40400 for discarded r6. */
-bool
-agx3_tex_stage_array_layer(enum agx_isa_encoding enc, uint16_t src,
-                           uint8_t slot, uint16_t wait_mask, bool src_cache,
-                           bool src_discard,
-                           uint8_t out[AGX3_TEX_MAX_LENGTH], uint8_t *len)
+static bool
+stage_layer_or_face(enum agx_isa_encoding enc, uint16_t src,
+                    uint8_t slot, uint16_t wait_mask, bool src_cache,
+                    bool src_discard, bool cube_face,
+                    uint8_t out[AGX3_TEX_MAX_LENGTH], uint8_t *len)
 {
    if (!out || !len)
       return false;
@@ -783,9 +793,12 @@ agx3_tex_stage_array_layer(enum agx_isa_encoding enc, uint16_t src,
        (wait_mask & ~0x3f) || (src_cache && src_discard))
       return false;
 
+   /* f74=10 is the cube-face selector of the register-level cube packs;
+    * native calculate_*_lod on texturecube publishes the face alone with it
+    * (lod-query.metal fscube: 1705540600040004f0c00000). */
    const struct agx3_field_kv base[] = {
       KV(5, 6), KV(9, 5), KV(10, 2), KV(23, 2), KV(24, 1),
-      KV(38, 1), KV(51, 1), KV(52, 2), KV(74, 4),
+      KV(38, 1), KV(51, 1), KV(52, 2), KV(74, cube_face ? 10 : 4),
    };
    struct agx3_field_kv ov[10];
    unsigned n = 0;
@@ -802,6 +815,26 @@ agx3_tex_stage_array_layer(enum agx_isa_encoding enc, uint16_t src,
 
    out[6] |= (src >> 7) & 1;
    return true;
+}
+
+bool
+agx3_tex_stage_array_layer(enum agx_isa_encoding enc, uint16_t src,
+                           uint8_t slot, uint16_t wait_mask, bool src_cache,
+                           bool src_discard,
+                           uint8_t out[AGX3_TEX_MAX_LENGTH], uint8_t *len)
+{
+   return stage_layer_or_face(enc, src, slot, wait_mask, src_cache,
+                              src_discard, false, out, len);
+}
+
+bool
+agx3_tex_stage_cube_face(enum agx_isa_encoding enc, uint16_t src,
+                         uint8_t slot, uint16_t wait_mask, bool src_cache,
+                         bool src_discard,
+                         uint8_t out[AGX3_TEX_MAX_LENGTH], uint8_t *len)
+{
+   return stage_layer_or_face(enc, src, slot, wait_mask, src_cache,
+                              src_discard, true, out, len);
 }
 
 /* AIR-NT 32023.883 G16G texture2d_array.sample(level(v.w)) packs the

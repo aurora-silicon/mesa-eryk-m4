@@ -1236,6 +1236,77 @@ test_m4_shadow_witnesses(void)
 }
 
 static int
+test_m4_shadow_gradient_witnesses(void)
+{
+   /* AIR-NT applegpu_g16g compute kernels, shadow-grad.metal (2026-09-15):
+    * depth2d / depth2d_array sample_compare with gradient2d, with and
+    * without a register offset. Reference at staging half4, derivatives at
+    * half8, layer in bank6 (f77=2), offset via f141=2. */
+   const struct {struct agx3_tex_sample_desc desc; uint8_t bytes[14];} cases[] = {
+      { {.width=AGX3_TEX_W32, .mask=1, .slot=1, .wait_mask=2, .coord_kill=true,
+         .final=true, .shadow=true, .lod=AGX3_TEX_LOD_GRAD},
+        {0x05,0x80,0x0c,0xa0,0x10,0x01,0x24,0x01,0,0,0,0,0x01,0} },
+      { {.width=AGX3_TEX_W32, .mask=1, .slot=1, .wait_mask=2, .coord_kill=true,
+         .final=true, .shadow=true, .lod=AGX3_TEX_LOD_GRAD, .dynamic_offset=true},
+        {0x05,0x80,0x0c,0xa0,0x10,0x01,0x64,0x01,0,0,0,0,0x01,0} },
+      { {.width=AGX3_TEX_W32, .mask=1, .slot=1, .wait_mask=2, .coord_kill=true,
+         .final=true, .shadow=true, .array=true, .lod=AGX3_TEX_LOD_GRAD},
+        {0x05,0x80,0x0c,0xa0,0x10,0x01,0x2c,0x01,0,0,0,0,0x01,0} },
+      { {.width=AGX3_TEX_W32, .mask=1, .slot=1, .wait_mask=1, .coord_kill=true,
+         .final=true, .shadow=true, .array=true, .lod=AGX3_TEX_LOD_GRAD, .dynamic_offset=true},
+        {0x05,0x80,0x0c,0xa0,0x90,0x00,0x6c,0x01,0,0,0,0,0x01,0} },
+   };
+   for (unsigned i = 0; i < sizeof(cases) / sizeof(cases[0]); ++i) {
+      uint8_t out[AGX3_TEX_MAX_LENGTH], len;
+      CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B, &cases[i].desc, out, &len));
+      CHECK(len == sizeof(cases[i].bytes) && !memcmp(out, cases[i].bytes, len));
+   }
+   return 0;
+}
+
+static int
+test_m4_cube_query_bias_witnesses(void)
+{
+   /* AIR-NT applegpu_g16g fragment pipelines, lod-query.metal (2026-09-15):
+    * calculate_*_lod on texturecube / texturecube_array / texture3d and
+    * sample(bias()) on texturecube / texturecube_array. The constexpr
+    * sampler lands in immediate slot 1. */
+   const struct {struct agx3_tex_sample_desc desc; uint8_t bytes[14];} cases[] = {
+      { {.width=AGX3_TEX_W32, .mask=3, .slot=1, .wait_mask=1, .coord_kill=true,
+         .final=true, .query_lod=true, .cube=true, .sampler=1, .lod=AGX3_TEX_LOD_AUTO},
+        {0x05,0x80,0x0c,0xa8,0xb0,0x00,0x10,0x00,0x01,0x01,0x20,0x00,0x01,0x00} },
+      { {.width=AGX3_TEX_W32, .mask=3, .slot=1, .wait_mask=1, .coord_kill=true,
+         .final=true, .query_lod=true, .cube=true, .array=true, .sampler=1, .lod=AGX3_TEX_LOD_AUTO},
+        {0x05,0x80,0x0c,0xa8,0xb0,0x00,0x13,0x01,0x01,0x01,0x20,0x00,0x01,0x00} },
+      { {.width=AGX3_TEX_W32, .mask=3, .slot=1, .wait_mask=1, .coord_kill=true,
+         .final=true, .query_lod=true, .three_d=true, .sampler=1, .lod=AGX3_TEX_LOD_AUTO},
+        {0x05,0x80,0x0c,0xa8,0xb0,0x00,0x80,0x01,0x01,0x01,0x20,0x00,0x01,0x00} },
+      { {.width=AGX3_TEX_W32, .mask=15, .slot=1, .wait_mask=1, .coord_kill=true,
+         .final=true, .cube=true, .sampler=1, .lod=AGX3_TEX_LOD_BIAS_REGISTER},
+        {0x05,0x80,0x0c,0xb8,0xb0,0x00,0x14,0x00,0x01,0x01,0x10,0x00,0x01,0x00} },
+      { {.width=AGX3_TEX_W32, .mask=15, .slot=1, .wait_mask=2, .coord_kill=true,
+         .final=true, .cube=true, .array=true, .sampler=1, .lod=AGX3_TEX_LOD_BIAS_REGISTER},
+        {0x05,0x80,0x0c,0xb8,0x30,0x01,0x18,0x00,0x01,0x01,0x10,0x00,0x01,0x00} },
+   };
+   for (unsigned i = 0; i < sizeof(cases) / sizeof(cases[0]); ++i) {
+      uint8_t out[AGX3_TEX_MAX_LENGTH], len;
+      CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B, &cases[i].desc, out, &len));
+      CHECK(len == sizeof(cases[i].bytes) && !memcmp(out, cases[i].bytes, len));
+   }
+   /* Cube queries publish the face alone with the cube selector (fscube). */
+   const uint8_t face_pack[] = {0x17,0x05,0x54,0x06,0x00,0x04,0x00,0x04,0xf0,0xc0,0x00,0x00};
+   uint8_t face_out[AGX3_TEX_MAX_LENGTH], face_len;
+   CHECK(agx3_tex_stage_cube_face(AGX_ISA_ENCODING_AGX3B, 2, 1, 0, false, true, face_out, &face_len));
+   CHECK(face_len == sizeof(face_pack) && !memcmp(face_out, face_pack, face_len));
+   /* Face half2 plus bias half3 in one PACK_SMPIR, as the register level. */
+   const uint8_t bias_pack[] = {0x17,0x05,0x54,0x06,0x00,0x04,0x0c,0x00,0xf0,0xc0,0x11,0x00};
+   uint8_t out[AGX3_TEX_MAX_LENGTH], len;
+   CHECK(agx3_tex_stage_layer_lod(AGX_ISA_ENCODING_AGX3B, 2, 3, 1, 0, true, true, true, out, &len));
+   CHECK(len == sizeof(bias_pack) && !memcmp(out, bias_pack, len));
+   return 0;
+}
+
+static int
 test_m4_integer_fetch_lod(void)
 {
    /* Apple offline compiler 32023.883, explicit applegpu_g16g target.
@@ -1603,8 +1674,13 @@ test_m4_query_lod(void)
    d.array = true;
    CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
    CHECK(len == sizeof(native_array) && !memcmp(out, native_array, len));
+   /* Cube-array queries keep the implicit layer and add the cube dimension
+    * (lod-query.metal fscubearr, sampler slot 0 here). */
+   const uint8_t native_cube_array[] = {
+      0x05,0x80,0x0c,0xa8,0xb0,0,0x13,0x01,1,0,0x20,0,1,0};
    d.cube = true;
-   CHECK(!agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
+   CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
+   CHECK(len == sizeof(native_cube_array) && !memcmp(out, native_cube_array, len));
    return 0;
 }
 
@@ -1634,6 +1710,8 @@ int
 main(void)
 {
    CHECK(test_m4_explicit_gradients() == 0);
+   CHECK(test_m4_shadow_gradient_witnesses() == 0);
+   CHECK(test_m4_cube_query_bias_witnesses() == 0);
    CHECK(test_m4_cube_array_register_lod() == 0);
    CHECK(test_m4_query_lod() == 0);
    CHECK(test_m4_3d_bias_offset() == 0);

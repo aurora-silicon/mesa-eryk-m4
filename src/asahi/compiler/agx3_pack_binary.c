@@ -1095,8 +1095,12 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
        agx_channels(I->src[5]) == (I->offset ? 2 : 1) &&
        !(I->src[5].value & 1) &&
        I->src[5].value <= (I->offset ? 252 : 254)) : (sample_offset || dynamic_offset || agx_is_null(I->src[5]));
+   /* Native sample_compare(gradient2d) witnesses (build/claude-fix/witness,
+    * AIR-NT applegpu_g16g): the F32 reference stays in staging half4 and the
+    * interleaved derivatives follow at half8, exactly like the colour form,
+    * with f74=0/f143=1 as in every other depth comparison. */
    const bool valid_lod = gradient ?
-      (enc == AGX_ISA_ENCODING_AGX3B && !cube && !shadow && !gather &&
+      (enc == AGX_ISA_ENCODING_AGX3B && !cube && !gather &&
        agx3_tex_plain_reg(I->src[1]) && I->src[1].size == AGX_SIZE_32 &&
        agx_channels(I->src[1]) == (three_d ? 6 : 4) &&
        !(I->src[1].value & 1) && I->src[1].value <= 256 - (three_d ? 12 : 8)) :
@@ -1114,7 +1118,10 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
     * fit. Only unstaged 2D samples retain SMP's narrower coordinate bound. */
    const bool fixed_coord = gradient || explicit_lod || bias || array || cube ||
       three_d || shadow || (enc == AGX_ISA_ENCODING_AGX3B && I->src[0].value > 60);
-   const unsigned coord_components = I->query_lod ? 2 : cube && array ? 4 :
+   /* LOD queries drop the array layer (implicit zero); cube queries still
+    * carry the projected face and 3D queries their depth coordinate. */
+   const unsigned coord_components = I->query_lod ? ((cube || three_d) ? 3 : 2) :
+                                     cube && array ? 4 :
                                      (array || cube || three_d) ? 3 : 2;
    const unsigned max_coord = fixed_coord ? 256 - 2 * coord_components : 60;
    if (I->nr_dests != 1 || I->nr_srcs != 6 ||
@@ -1137,7 +1144,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
          I->src[3].size != AGX_SIZE_64 || I->src[4].size != AGX_SIZE_64 ||
          agx_channels(I->src[3]) != 1 || agx_channels(I->src[4]) != 1 ||
          (I->src[3].value & 1) || (I->src[4].value & 1))) ||
-       !valid_compare || (bias && (cube || gather)) ||
+       !valid_compare || (bias && gather) ||
        (I->dim != AGX_DIM_2D && I->dim != AGX_DIM_2D_ARRAY && !cube && !three_d) ||
        (array && enc != AGX_ISA_ENCODING_AGX3B) ||
        (I->mask == 0 || (I->mask & ~15u)) ||
@@ -1173,7 +1180,8 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
 
    const bool array_lod = (array || cube) && (explicit_lod || bias) &&
                           (!immediate_lod || dynamic_offset);
-   const bool cube_array_lod = cube && array && array_lod;
+   /* Cube-array LOD queries publish only the face (native fscubearr). */
+   const bool cube_array_lod = cube && array && array_lod && !I->query_lod;
    if (dynamic_offset) {
       if (!agx3_tex_stage_copy_hints(enc, 6, I->src[5].value + (shadow ? 2 : 0),
                                     stage_slot, wait_mask,
@@ -1218,7 +1226,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
        !agx3_append(emission, bytes, len))
       return false;
 
-   if (array && cube && !cube_array_lod &&
+   if (array && cube && !cube_array_lod && !I->query_lod &&
        (!agx3_tex_stage_cube_array(enc, I->src[0].value + 6,
                                    I->src[0].value + 4, stage_slot,
                                    I->src[0].discard, I->src[0].discard,
@@ -1226,10 +1234,13 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
         !agx3_append(emission, bytes, len)))
       return false;
 
-   if ((array || cube) && !I->query_lod && !(array && cube) && !array_lod &&
-       (!agx3_tex_stage_array_layer(enc, I->src[0].value + 4, stage_slot, 0,
-                                   I->src[0].cache, I->src[0].discard,
-                                   bytes, &len) ||
+   /* Cube LOD queries publish the projected face (native fscube/fscubearr
+    * witnesses); 2D-array queries keep the implicit layer zero instead. */
+   if ((array || cube) && !array_lod &&
+       (I->query_lod ? cube : !(array && cube)) &&
+       (!(I->query_lod ? agx3_tex_stage_cube_face : agx3_tex_stage_array_layer)(
+           enc, I->src[0].value + 4, stage_slot, 0,
+           I->src[0].cache, I->src[0].discard, bytes, &len) ||
         !agx3_append(emission, bytes, len)))
       return false;
 

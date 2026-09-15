@@ -26,16 +26,21 @@ g17p_sample_shape(const nir_tex_instr *tex)
    const bool gather = tex->op == nir_texop_tg4;
    const bool query = tex->op == nir_texop_lod;
    const bool gradient = tex->op == nir_texop_txd;
-   if (gradient && (cube || tex->is_shadow))
+   /* Native witnesses (2026-09-15): sample_compare(gradient2d) on 2D and
+    * 2D-array depth textures, calculate_*_lod on cube/cube-array/3D and
+    * sample(bias()) on cube/cube-array. Cube gradients and shadow queries
+    * stay refused. */
+   if (gradient && cube)
       return false;
    if ((tex->op != nir_texop_tex && tex->op != nir_texop_txb &&
        tex->op != nir_texop_txl && !gather && !query && !gradient) ||
-       (query && (three_d || cube || tex->is_shadow)) ||
        (tex->sampler_dim != GLSL_SAMPLER_DIM_2D && !three_d &&
         !(cube &&
-          (tex->op == nir_texop_tex || tex->op == nir_texop_txl || gather))) ||
+          (tex->op == nir_texop_tex || tex->op == nir_texop_txl || gather ||
+           tex->op == nir_texop_txb || query))) ||
        tex->is_sparse ||
-       tex->coord_components != (query ? 2 : cube && tex->is_array ? 4 :
+       tex->coord_components != (query ? ((cube || three_d) ? 3 : 2) :
+                                cube && tex->is_array ? 4 :
                                 (tex->is_array || cube || three_d) ? 3 : 2) ||
        (tex->backend_flags & ~(AGX_TEXTURE_FLAG_CLAMP_TO_0 |
                                AGX_TEXTURE_FLAG_NO_CLAMP)) != 0 ||
@@ -52,7 +57,7 @@ g17p_sample_shape(const nir_tex_instr *tex)
       const int lod = nir_tex_instr_src_index(tex, nir_tex_src_lod);
       if (tex->is_array || tex->is_shadow ||
           (tex->op != nir_texop_tex && tex->op != nir_texop_txb && !gradient &&
-           (tex->op != nir_texop_txl || lod < 0)))
+           !query && (tex->op != nir_texop_txl || lod < 0)))
          return false;
    }
 
@@ -71,7 +76,7 @@ g17p_sample_shape(const nir_tex_instr *tex)
        tex->op == nir_texop_txb || tex->op == nir_texop_txd) &&
       nir_src_num_components(tex->src[offset].src) == 1 &&
       nir_src_bit_size(tex->src[offset].src) == 32;
-   if (tex->is_shadow != (compare >= 0) ||
+   if ((query ? compare >= 0 : tex->is_shadow != (compare >= 0)) ||
        (compare >= 0 && (nir_src_bit_size(tex->src[compare].src) != 32 ||
                         nir_src_num_components(tex->src[compare].src) != 1)) ||
        tex->num_srcs != ((has_bias || has_lod) ? 4 : 3) + tex->is_shadow + (literal_offset || dynamic_offset) + 2 * gradient ||
@@ -484,7 +489,8 @@ agx_nir_lower_g17p_indexed_samplers(nir_shader *shader)
                             tex->op != nir_texop_tg4 &&
                             !(tex->op == nir_texop_txb &&
                               (tex->sampler_dim == GLSL_SAMPLER_DIM_2D ||
-                               tex->sampler_dim == GLSL_SAMPLER_DIM_3D))))) {
+                               tex->sampler_dim == GLSL_SAMPLER_DIM_3D ||
+                               tex->sampler_dim == GLSL_SAMPLER_DIM_CUBE))))) {
                if (getenv("AGX_NATIVE_RESOURCE_DIAGNOSTICS")) {
                   fprintf(stderr, "Native indexed texture shape refused: op=%u dim=%u flags=%u coords=%u sources=%u\n",
                           tex->op, tex->sampler_dim, tex->backend_flags,
@@ -533,6 +539,10 @@ agx_nir_lower_g17p_indexed_samplers(nir_shader *shader)
             if (tex->op == nir_texop_lod &&
                 nir_tex_instr_src_index(tex, nir_tex_src_bias) >= 0)
                nir_steal_tex_src(tex, nir_tex_src_bias);
+            /* A query on a depth texture has no comparator: it is the
+             * ordinary two-component LOD calculation. */
+            if (tex->op == nir_texop_lod)
+               tex->is_shadow = false;
             nir_intrinsic_instr *image = nir_src_as_intrinsic(
                tex->src[nir_tex_instr_src_index(tex, nir_tex_src_texture_handle)].src);
             const bool fetch = tex->op == nir_texop_txf || tex->op == nir_texop_txf_ms;
@@ -572,13 +582,18 @@ g17p_cube_sample_shape(const nir_tex_instr *tex)
 {
    const bool level = tex->op == nir_texop_txl;
    const bool gather = tex->op == nir_texop_tg4;
+   const bool bias = tex->op == nir_texop_txb;
+   const bool query = tex->op == nir_texop_lod;
    const int lod = nir_tex_instr_src_index(tex, nir_tex_src_lod);
-   if ((tex->op != nir_texop_tex && !level && !gather) ||
-       (level && lod < 0) ||
+   const bool has_bias = nir_tex_instr_src_index(tex, nir_tex_src_bias) >= 0;
+   /* Bias samples and LOD queries project like implicit samples; the
+    * query's zero software bias is removed by the native sampler pass. */
+   if ((tex->op != nir_texop_tex && !level && !gather && !bias && !query) ||
+       (level && lod < 0) || (bias && !has_bias) ||
        tex->sampler_dim != GLSL_SAMPLER_DIM_CUBE ||
        tex->is_sparse ||
-       tex->coord_components != (tex->is_array ? 4 : 3) ||
-       tex->num_srcs != (level ? 4 : 3) + tex->is_shadow ||
+       tex->coord_components != (tex->is_array && !query ? 4 : 3) ||
+       tex->num_srcs != ((level || has_bias) ? 4 : 3) + tex->is_shadow ||
        (tex->backend_flags & ~AGX_TEXTURE_FLAG_CLAMP_TO_0) != 0 ||
        (tex->dest_type != nir_type_float32 &&
         tex->dest_type != nir_type_int32 &&
@@ -592,7 +607,8 @@ g17p_cube_sample_shape(const nir_tex_instr *tex)
    if (coord < 0)
       coord = nir_tex_instr_src_index(tex, nir_tex_src_backend1);
 
-   return coord >= 0 && nir_src_num_components(tex->src[coord].src) == (tex->is_array ? 4 : 3) &&
+   return coord >= 0 &&
+          nir_src_num_components(tex->src[coord].src) == (tex->is_array && !query ? 4 : 3) &&
           nir_src_bit_size(tex->src[coord].src) == 32;
 }
 
@@ -686,9 +702,10 @@ agx_nir_lower_g17p_cube_samples(nir_shader *shader, bool native_cube)
             nir_def *mapped = nir_vec3(&b, nir_ffma(&b, sc, scale, half),
                                        nir_ffma(&b, tc, scale, half), face);
 
-            if (tex->is_array) {
+            if (tex->is_array && tex->op != nir_texop_lod) {
                /* Ordinary texture lowering already rounded, clamped and
-                * converted the array index; preserve its integer bits. */
+                * converted the array index; preserve its integer bits.
+                * LOD queries carry no layer (implicit zero natively). */
                mapped = nir_vec4(&b, nir_channel(&b, mapped, 0),
                                   nir_channel(&b, mapped, 1), face,
                                   nir_channel(&b, coord, 3));

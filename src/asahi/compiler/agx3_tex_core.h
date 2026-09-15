@@ -207,6 +207,11 @@ bool agx3_tex_stage_cube_array(enum agx_isa_encoding enc, uint16_t layer,
                               bool face_discard,
                               uint8_t out[AGX3_TEX_MAX_LENGTH], uint8_t *len);
 
+/* Cube LOD queries publish the projected face with the cube selector. */
+bool agx3_tex_stage_cube_face(enum agx_isa_encoding enc, uint16_t src,
+                              uint8_t slot, uint16_t wait_mask, bool src_cache,
+                              bool src_discard,
+                              uint8_t out[AGX3_TEX_MAX_LENGTH], uint8_t *len);
 bool agx3_tex_stage_array_layer(enum agx_isa_encoding enc, uint16_t src,
                                 uint8_t slot, uint16_t wait_mask,
                                 bool src_cache, bool src_discard,
