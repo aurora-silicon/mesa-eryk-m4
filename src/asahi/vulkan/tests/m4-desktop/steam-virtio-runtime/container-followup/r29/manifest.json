@@ -1,0 +1,35 @@
+{
+  "id": "20260916T221310398693Z-steam-fex-sandbox-baseline-r29",
+  "hypothesis": "Reproduce CEF nested namespace FEX server failure independently of the browser",
+  "command": [
+    "python3",
+    "/opt/m4-dx11-qualification/headless-glx-command.py",
+    "--output",
+    "/root/asahi-evidence/20260916T221310398693Z-steam-fex-sandbox-baseline-r29",
+    "--seconds",
+    "55",
+    "--",
+    "python3",
+    "/opt/m4-dx11-qualification/muvm-dx11-probe.py",
+    "--mode",
+    "runtime64",
+    "--seconds",
+    "45",
+    "--overlay",
+    "/opt/m4-steam/mesa-multilib-r7.erofs"
+  ],
+  "expected_success": "^PASS: GLX 64-bit",
+  "seconds": 65,
+  "sources": {
+    "mesa": {
+      "head": "e2558ae72bb8907e81df646805f39752a953846e",
+      "status": " M src/asahi/vulkan/tests/m4-desktop/asahi-session.py\n M src/asahi/vulkan/tests/m4-desktop/desktop-launch.py\n M src/asahi/vulkan/tests/m4-desktop/vulkan-trim-host.py\n",
+      "patch_sha256": "5e2d497d60e1d628dff40755eaa4e4e0c35a30dad301dcb9bd51d052b6ad40f5"
+    },
+    "kernel": {
+      "head": "353e76a9660f35de4dd892068424194c5666dc39",
+      "status": "",
+      "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

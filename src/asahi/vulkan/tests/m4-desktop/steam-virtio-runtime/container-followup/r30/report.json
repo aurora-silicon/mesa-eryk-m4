@@ -1,0 +1,25 @@
+{
+  "id": "20260916T221414013523Z-steam-fex-sandbox-socket-r30",
+  "verdict": "pass",
+  "transport_returncode": 0,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T221414013523Z-steam-fex-sandbox-socket-r30",
+  "observations": {
+    "pixel_results": [
+      "PASS: FEX child in nested user/network namespace",
+      "PASS: GLX 64-bit visual/context/readback 256 pixels"
+    ],
+    "pixel_result_count": 2,
+    "thermal_samples": 43,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 70.75,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 70.75,
+      "Ta000m": 63.5,
+      "Te000m": 60.0,
+      "Te001m": 70.75,
+      "Tp000m": 66.0,
+      "Tp001m": 70.5
+    }
+  }
+}

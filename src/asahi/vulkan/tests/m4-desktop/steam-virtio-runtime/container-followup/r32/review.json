@@ -1,0 +1,5 @@
+{
+  "harness_pass_means": "bounded observation only",
+  "steam_login_pass": false,
+  "review": "Sandbox enabled after preserving/removing crash sentinel. Storage subprocess repeatedly fails pthread_create; no login."
+}

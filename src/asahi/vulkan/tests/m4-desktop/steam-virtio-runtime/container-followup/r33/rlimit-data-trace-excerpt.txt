@@ -1,0 +1,28 @@
+653   22:24:03.645223 mmap(0xaaabb9ee6000, 8388608, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_ANONYMOUS, -1, 0) = 0xaaabb9ee6000
+653   22:24:03.645795 clone(child_stack=0xaaabba6e6000, flags=CLONE_NEWPID|SIGCHLD) = 4
+708   22:24:03.647788 mmap(0xaaabba6e6000, 327680, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_ANONYMOUS, -1, 0) = 0xaaabba6e6000
+708   22:24:03.648476 mprotect(0xaaabba6e6000, 4096, PROT_READ) = 0
+708   22:24:03.652251 --- SIGBUS {si_signo=SIGBUS, si_code=BUS_ADRALN, si_addr=0x556edbaadc2e} ---
+708   22:24:03.652426 --- SIGBUS {si_signo=SIGBUS, si_code=BUS_ADRALN, si_addr=0x7ffff7b35dd9} ---
+708   22:24:03.655312 prctl(PR_SET_NAME, "steamwebhelper") = 0
+708   22:24:03.658648 --- SIGBUS {si_signo=SIGBUS, si_code=BUS_ADRALN, si_addr=0x7fffec5b5a4f} ---
+708   22:24:03.660532 --- SIGBUS {si_signo=SIGBUS, si_code=BUS_ADRALN, si_addr=0x556edbac703f} ---
+708   22:24:03.662355 --- SIGBUS {si_signo=SIGBUS, si_code=BUS_ADRALN, si_addr=0x556edbab9bac} ---
+708   22:24:03.662596 --- SIGBUS {si_signo=SIGBUS, si_code=BUS_ADRALN, si_addr=0x7fffec5b5e5d} ---
+708   22:24:03.665831 mmap(NULL, 262144, PROT_READ, MAP_SHARED, 18, 0) = 0x7fffe6743000
+708   22:24:03.678620 --- SIGBUS {si_signo=SIGBUS, si_code=BUS_ADRALN, si_addr=0x556edbaba0af} ---
+708   22:24:03.679214 mmap(NULL, 16384, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x7fffe673f000
+708   22:24:03.679769 mmap(NULL, 16368, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x7fffe673b000
+708   22:24:03.683061 --- SIGBUS {si_signo=SIGBUS, si_code=BUS_ADRALN, si_addr=0x7fffffffcd6d} ---
+708   22:24:03.698175 --- SIGBUS {si_signo=SIGBUS, si_code=BUS_ADRALN, si_addr=0x7fffffffd16f} ---
+708   22:24:03.701786 --- SIGBUS {si_signo=SIGBUS, si_code=BUS_ADRALN, si_addr=0x556edbabb76d} ---
+708   22:24:03.713115 --- SIGBUS {si_signo=SIGBUS, si_code=BUS_ADRALN, si_addr=0x556edbabc2dc} ---
+708   22:24:03.730222 prlimit64(0, RLIMIT_DATA, NULL, {rlim_cur=RLIM64_INFINITY, rlim_max=RLIM64_INFINITY}) = 0
+708   22:24:03.731460 prlimit64(0, RLIMIT_DATA, {rlim_cur=4194304*1024, rlim_max=4194304*1024}, NULL) = 0
+708   22:24:03.731805 prlimit64(0, RLIMIT_DATA, NULL, {rlim_cur=4194304*1024, rlim_max=4194304*1024}) = 0
+708   22:24:03.735843 mmap(NULL, 8392704, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_STACK, -1, 0) = -1 ENOMEM (Cannot allocate memory)
+708   22:24:03.743069 mmap(0xaaabba736000, 253952, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_ANONYMOUS, -1, 0) = -1 ENOMEM (Cannot allocate memory)
+708   22:24:03.745357 mprotect(0xaaaab0419000, 12288, PROT_READ|PROT_WRITE) = -1 ENOMEM (Cannot allocate memory)
+708   22:24:03.745837 --- SIGILL {si_signo=SIGILL, si_code=ILL_ILLOPC, si_addr=0xaaaaac093d58} ---
+708   22:24:03.745988 --- SIGILL {si_signo=SIGILL, si_code=ILL_ILLOPC, si_addr=0xaaaaac093d58} ---
+[excerpt ends; full trace retained in workspace build/steam-device-lost/r33-clone.strace]

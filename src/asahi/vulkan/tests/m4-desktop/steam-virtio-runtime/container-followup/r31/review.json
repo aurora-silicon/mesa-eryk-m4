@@ -1,0 +1,5 @@
+{
+  "harness_pass_means": "bounded observation only",
+  "steam_login_pass": false,
+  "review": "CEF automatically disabled its sandbox due to the earlier crash sentinel; final image is still the launcher splash."
+}

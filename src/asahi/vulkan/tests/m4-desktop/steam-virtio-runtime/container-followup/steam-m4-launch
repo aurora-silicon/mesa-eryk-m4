@@ -1,0 +1,5 @@
+#!/bin/sh
+# Installed as /usr/local/bin/steam. Keep the distribution launcher and its
+# update logic, while selecting the matching Mesa overlay for its microVM.
+export PATH="/usr/local/libexec/m4-steam:$PATH"
+exec /usr/bin/steam "$@"

@@ -1,0 +1,40 @@
+{
+  "id": "20260916T222038348208Z-steam-m4-sandbox-clean-r32",
+  "hypothesis": "A clean CEF initialization with the shared FEX socket preserves the sandbox and exposes any remaining startup blocker",
+  "command": [
+    "python3",
+    "/opt/m4-dx11-qualification/headless-glx-command.py",
+    "--output",
+    "/root/asahi-evidence/20260916T222038348208Z-steam-m4-sandbox-clean-r32",
+    "--seconds",
+    "130",
+    "--",
+    "python3",
+    "/root/app-observe.py",
+    "--headless",
+    "--guard-output",
+    "/root/asahi-evidence/20260916T222038348208Z-steam-m4-sandbox-clean-r32",
+    "--seconds",
+    "120",
+    "--retain",
+    "/usr/local/libexec/m4-steam/muvm",
+    "--retain",
+    "/usr/local/libexec/m4-steam/guest-session.py",
+    "--",
+    "/usr/local/bin/steam"
+  ],
+  "expected_success": "^PASS: bounded real application observation completed",
+  "seconds": 140,
+  "sources": {
+    "mesa": {
+      "head": "e2558ae72bb8907e81df646805f39752a953846e",
+      "status": " M src/asahi/vulkan/tests/m4-desktop/asahi-session.py\n M src/asahi/vulkan/tests/m4-desktop/desktop-launch.py\n M src/asahi/vulkan/tests/m4-desktop/vulkan-trim-host.py\n",
+      "patch_sha256": "5e2d497d60e1d628dff40755eaa4e4e0c35a30dad301dcb9bd51d052b6ad40f5"
+    },
+    "kernel": {
+      "head": "353e76a9660f35de4dd892068424194c5666dc39",
+      "status": "",
+      "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+#!/bin/sh
+# Installed as /usr/local/libexec/m4-steam/muvm; only the Steam wrapper uses it.
+[ "$1" = "--" ] || { echo 'Expected the Steam launcher command separator' >&2; exit 2; }
+shift
+exec /usr/bin/muvm \
+    -f /usr/share/fex-emu/RootFS/default.erofs \
+    -f /usr/share/fex-emu/overlays/mesa-i386.erofs \
+    -f /usr/share/fex-emu/overlays/mesa-x86_64.erofs \
+    -f /opt/m4-steam/mesa-multilib-r7.erofs \
+    -e ASAHI_M4_EXPERIMENTAL=1 \
+    -e ASAHI_MESA_DEBUG=nocompress \
+    -e VK_DRIVER_FILES=/usr/share/vulkan/icd.d/asahi_icd.x86_64.json:/usr/share/vulkan/icd.d/asahi_icd.i686.json \
+    -e LD_LIBRARY_PATH=/usr/lib:/usr/lib32 \
+    -e MESA_LOADER_DRIVER_OVERRIDE=zink \
+    -e GALLIUM_DRIVER=zink \
+    -e LIBGL_DRIVERS_PATH=/usr/lib/dri:/usr/lib32/dri \
+    -e GBM_BACKENDS_PATH=/usr/lib/gbm:/usr/lib32/gbm \
+    -e __EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/50_mesa.json \
+    -- /usr/bin/python3 /usr/local/libexec/m4-steam/guest-session.py "$@"

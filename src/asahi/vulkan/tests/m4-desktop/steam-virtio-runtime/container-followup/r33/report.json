@@ -1,0 +1,24 @@
+{
+  "id": "20260916T222331622656Z-steam-m4-thread-diagnosis-r33",
+  "verdict": "pass",
+  "transport_returncode": 0,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T222331622656Z-steam-m4-thread-diagnosis-r33",
+  "observations": {
+    "pixel_results": [
+      "PASS: bounded real application observation completed; inspect images and renderer evidence"
+    ],
+    "pixel_result_count": 1,
+    "thermal_samples": 258,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 65.5,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 65.5,
+      "Ta000m": 63.25,
+      "Te000m": 59.75,
+      "Te001m": 65.5,
+      "Tp000m": 63.75,
+      "Tp001m": 64.75
+    }
+  }
+}

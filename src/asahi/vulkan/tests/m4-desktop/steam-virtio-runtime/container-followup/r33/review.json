@@ -1,0 +1,5 @@
+{
+  "harness_pass_means": "bounded observation only",
+  "steam_login_pass": false,
+  "review": "Native ARM services now load native driver paths. Native syscall trace proves CEF RLIMIT_DATA=4 GiB causes subsequent stack mmap ENOMEM under FEX; no login."
+}
