@@ -539,6 +539,14 @@ agx3_map_sr(enum agx_sr sr, uint8_t *apple, enum agx3_sr_width *width)
       SR(AGX_SR_IS_ACTIVE_THREAD, 2, AGX3_SR_W16);
       SR(AGX_SR_BACKFACING, 41, AGX3_SR_W16);
       SR(AGX_SR_RENDER_TARGET_LAYER, 12, AGX3_SR_W16);
+      /* Apple's uniform-address atomic election reads the active-thread
+       * index (SR 34) and count (SR 36) of the SIMD-group, and quad_is_first
+       * reads SR 33, all into half registers in the short form, also after
+       * discard_fragment (build/claude-fix/witness-sr59/REPORT.md, 15/15
+       * byte-exact re-encodes). */
+      SR(AGX_SR_ACTIVE_THREAD_INDEX_IN_QUAD, 33, AGX3_SR_W16);
+      SR(AGX_SR_ACTIVE_THREAD_INDEX_IN_SUBGROUP, 34, AGX3_SR_W16);
+      SR(AGX_SR_TOTAL_ACTIVE_THREADS_IN_SUBGROUP, 36, AGX3_SR_W16);
       /* The invocation enums carry hardware SR bytes (0xd8/0xdd), while
        * agx3_sr_core consumes Apple's normalized f21 value. */
       SR(AGX_SR_INSTANCE_ID, 46, AGX3_SR_W32);
