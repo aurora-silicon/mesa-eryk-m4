@@ -1,0 +1,18 @@
+{
+  "mesa_commit": "2ff0cdafc84b17257754f9c98e191d078d24ae76",
+  "dxvk_commit": "7df3596eed49cb79f07c18869a1a9a8c067efe04",
+  "dxvk_submodules": " 9df86f2341616ef1888ae59919feaa6d4fad693d include/native/directx (heads/main)\n 04f10f650d514df88b76d25e83db360142c7b174 include/spirv (04f10f6)\n 8864cdc896bbc2a9b6eb36b3218fc9ef57908d77 include/vulkan (8864cdc)\n bf14419e5fa7eacb817b7b632f03cb61d61bbad7 subprojects/dxbc-spirv (heads/main)\n c8ad050fcb29e42a2f57d9f59e97488f465c436d subprojects/dxbc-spirv/submodules/spirv_headers (c8ad050)\n 275e6459c7ab1ddd4b125f28d0440716e4888078 subprojects/libdisplay-info (heads/windows)\n",
+  "library_sha256": "d93caac400ab98ee961e5902976066872b7a3dcb2e4811d85e9de7e16c88a01d",
+  "binaries": {
+    "build/dxvk-host/src/d3d11/libdxvk_d3d11.so.0.30101": "5f3474713d4620ebd9f4f1abb3c006ead8f561205b84b0b1eff3627b06cc2786",
+    "build/dxvk-host/src/dxgi/libdxvk_dxgi.so.0.30101": "0f07cb932f3d20e127a8b1dcdaac8af28c0d6d76d9233ade86032a1840edca71",
+    "build/dxvk-arm64/src/d3d11/libdxvk_d3d11.so.0.30101": "8eec1f06ca7a07fe2fedaefe091ffb4e6d3f2f0a983b856648a6b95fbe59837b",
+    "build/dxvk-arm64/src/dxgi/libdxvk_dxgi.so.0.30101": "a441619ae13bcd03fc9d12c434d071b1cb83a1b4faf7744950285c98963b4f35"
+  },
+  "limitations": [
+    "Native ARM64 DXVK, no Wine/FEX/Steam or swapchain presentation exercised.",
+    "Lavapipe reference uses descriptor buffer; M4 uses DXVK legacy descriptor path.",
+    "First M4 attempt stopped before device creation because test incorrectly expected Apple PCI vendor ID; corrected test requires Apple M4 name and device ID 0x8132.",
+    "No feature spoofing or unsupported extension enabling."
+  ]
+}

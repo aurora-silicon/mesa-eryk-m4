@@ -1,0 +1,496 @@
+{
+  "device": "Apple M4 (G16G B0)",
+  "dxvk_commit": "7df3596eed49cb79f07c18869a1a9a8c067efe04",
+  "inputs": {
+    "reference/dxvk/src/dxvk/dxvk_device_info.cpp": "22831999af72c66ee4d59102772ea51ddebc29bf4a97c324d62de1f16646d1e3",
+    "_provenance/experiments/20260916T192058103253Z-dx11-baseline-vulkaninfo/remote/command.log": "4824b16934b089e6df597880300ee94e23161ce7726edaa2d9d301f9533250f4"
+  },
+  "checks": [
+    {
+      "group": "core.features",
+      "name": "depthBiasClamp",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "core.features",
+      "name": "depthClamp",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "core.features",
+      "name": "dualSrcBlend",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "core.features",
+      "name": "fillModeNonSolid",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "core.features",
+      "name": "fragmentStoresAndAtomics",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "core.features",
+      "name": "fullDrawIndexUint32",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "core.features",
+      "name": "geometryShader",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "core.features",
+      "name": "imageCubeArray",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "core.features",
+      "name": "independentBlend",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "core.features",
+      "name": "multiDrawIndirect",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "core.features",
+      "name": "multiViewport",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "core.features",
+      "name": "occlusionQueryPrecise",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "core.features",
+      "name": "robustBufferAccess",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "core.features",
+      "name": "sampleRateShading",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "core.features",
+      "name": "samplerAnisotropy",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "core.features",
+      "name": "shaderClipDistance",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "core.features",
+      "name": "shaderCullDistance",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "core.features",
+      "name": "shaderImageGatherExtended",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "core.features",
+      "name": "shaderInt16",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "core.features",
+      "name": "shaderInt64",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "core.features",
+      "name": "shaderSampledImageArrayDynamicIndexing",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "core.features",
+      "name": "textureCompressionBC",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "vk11",
+      "name": "shaderDrawParameters",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "vk11",
+      "name": "storageBuffer16BitAccess",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "vk12",
+      "name": "bufferDeviceAddress",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "vk12",
+      "name": "descriptorIndexing",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "vk12",
+      "name": "storageBuffer8BitAccess",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "vk12",
+      "name": "descriptorBindingSampledImageUpdateAfterBind",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "vk12",
+      "name": "descriptorBindingUpdateUnusedWhilePending",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "vk12",
+      "name": "descriptorBindingPartiallyBound",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "vk12",
+      "name": "hostQueryReset",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "vk12",
+      "name": "runtimeDescriptorArray",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "vk12",
+      "name": "samplerMirrorClampToEdge",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "vk12",
+      "name": "scalarBlockLayout",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "vk12",
+      "name": "shaderInt8",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "vk12",
+      "name": "timelineSemaphore",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "vk12",
+      "name": "uniformBufferStandardLayout",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "vk12",
+      "name": "vulkanMemoryModel",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "vk13",
+      "name": "inlineUniformBlock",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "vk13",
+      "name": "computeFullSubgroups",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "vk13",
+      "name": "dynamicRendering",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "vk13",
+      "name": "maintenance4",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "vk13",
+      "name": "shaderDemoteToHelperInvocation",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "vk13",
+      "name": "shaderZeroInitializeWorkgroupMemory",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "vk13",
+      "name": "subgroupSizeControl",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "vk13",
+      "name": "synchronization2",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "extDepthClipEnable",
+      "name": "depthClipEnable",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "extRobustness2",
+      "name": "robustBufferAccess2",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "extRobustness2",
+      "name": "nullDescriptor",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "khrMaintenance5",
+      "name": "maintenance5",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "khrMaintenance6",
+      "name": "maintenance6",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "D3D11 level/correctness",
+      "name": "drawIndirectFirstInstance",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "D3D11 level/correctness",
+      "name": "tessellationShader",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "D3D11 level/correctness",
+      "name": "logicOp",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "D3D11 level/correctness",
+      "name": "vertexPipelineStoresAndAtomics",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "D3D11 level/correctness",
+      "name": "robustImageAccess2",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "D3D11 level/correctness",
+      "name": "transformFeedback",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "D3D11 level/correctness",
+      "name": "geometryStreams",
+      "values": [
+        "true"
+      ],
+      "passed": true
+    },
+    {
+      "group": "extension",
+      "name": "VK_KHR_load_store_op_none",
+      "passed": true
+    },
+    {
+      "group": "extension",
+      "name": "VK_KHR_swapchain",
+      "passed": true
+    },
+    {
+      "group": "limit",
+      "name": "Vulkan >= 1.4",
+      "passed": true
+    },
+    {
+      "group": "limit",
+      "name": "push constants >= 256",
+      "passed": true
+    }
+  ],
+  "passed": true,
+  "limitation": "Capability advertisement only; native DXVK and Steam execution must be tested separately."
+}
