@@ -1,0 +1,32 @@
+{
+  "id": "20260916T230056813822Z-zink-imported-view-parent-after",
+  "verdict": "pass",
+  "transport_returncode": 0,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T230056813822Z-zink-imported-view-parent-after",
+  "observations": {
+    "pixel_results": [
+      "fourcc=34325241 modifier=c00000000000001 bgra=0 pbo=0 bad=0 first=191,64,16,255",
+      "fourcc=34325241 modifier=c00000000000001 bgra=0 pbo=1 bad=0 first=191,64,16,255",
+      "fourcc=34325241 modifier=c00000000000001 bgra=1 pbo=0 bad=0 first=16,64,191,255",
+      "fourcc=34325241 modifier=c00000000000001 bgra=1 pbo=1 bad=0 first=16,64,191,255",
+      "fourcc=34324241 modifier=c00000000000001 bgra=0 pbo=0 bad=0 first=191,64,16,255",
+      "fourcc=34324241 modifier=c00000000000001 bgra=0 pbo=1 bad=0 first=191,64,16,255",
+      "fourcc=34324241 modifier=c00000000000001 bgra=1 pbo=0 bad=0 first=16,64,191,255",
+      "fourcc=34324241 modifier=c00000000000001 bgra=1 pbo=1 bad=0 first=16,64,191,255",
+      "PASS: DMA-BUF framebuffer readback"
+    ],
+    "pixel_result_count": 9,
+    "thermal_samples": 2,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 57.75,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 57.75,
+      "Ta000m": 57.75,
+      "Te000m": 55.75,
+      "Te001m": 53.5,
+      "Tp000m": 57.75,
+      "Tp001m": 53.25
+    }
+  }
+}

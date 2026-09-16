@@ -1,0 +1,105 @@
+CASE 0 1 texture
+Renderer zink Vulkan 1.4(Apple M4 (G16G B0) (MESA_HONEYKRISP))
+samples=1 blit_readback=0
+fourcc=34325241 modifier=0 bgra=0 pbo=0 bad=0 first=191,64,16,255
+fourcc=34325241 modifier=0 bgra=0 pbo=1 bad=0 first=191,64,16,255
+fourcc=34325241 modifier=0 bgra=1 pbo=0 bad=0 first=16,64,191,255
+fourcc=34325241 modifier=0 bgra=1 pbo=1 bad=0 first=16,64,191,255
+samples=1 blit_readback=0
+fourcc=34324241 modifier=0 bgra=0 pbo=0 bad=0 first=191,64,16,255
+fourcc=34324241 modifier=0 bgra=0 pbo=1 bad=0 first=191,64,16,255
+fourcc=34324241 modifier=0 bgra=1 pbo=0 bad=0 first=16,64,191,255
+fourcc=34324241 modifier=0 bgra=1 pbo=1 bad=0 first=16,64,191,255
+PASS: DMA-BUF framebuffer readback
+CASE 0 1 texture-view
+Renderer zink Vulkan 1.4(Apple M4 (G16G B0) (MESA_HONEYKRISP))
+samples=1 blit_readback=0
+fourcc=34325241 modifier=0 bgra=0 pbo=0 bad=0 first=191,64,16,255
+fourcc=34325241 modifier=0 bgra=0 pbo=1 bad=0 first=191,64,16,255
+fourcc=34325241 modifier=0 bgra=1 pbo=0 bad=0 first=16,64,191,255
+fourcc=34325241 modifier=0 bgra=1 pbo=1 bad=0 first=16,64,191,255
+samples=1 blit_readback=0
+fourcc=34324241 modifier=0 bgra=0 pbo=0 bad=0 first=191,64,16,255
+fourcc=34324241 modifier=0 bgra=0 pbo=1 bad=0 first=191,64,16,255
+fourcc=34324241 modifier=0 bgra=1 pbo=0 bad=0 first=16,64,191,255
+fourcc=34324241 modifier=0 bgra=1 pbo=1 bad=0 first=16,64,191,255
+PASS: DMA-BUF framebuffer readback
+CASE 0 4 texture
+Renderer zink Vulkan 1.4(Apple M4 (G16G B0) (MESA_HONEYKRISP))
+samples=4 blit_readback=0
+fourcc=34325241 modifier=0 bgra=0 pbo=0 bad=0 first=191,64,16,255
+fourcc=34325241 modifier=0 bgra=0 pbo=1 bad=0 first=191,64,16,255
+fourcc=34325241 modifier=0 bgra=1 pbo=0 bad=0 first=16,64,191,255
+fourcc=34325241 modifier=0 bgra=1 pbo=1 bad=0 first=16,64,191,255
+samples=4 blit_readback=0
+fourcc=34324241 modifier=0 bgra=0 pbo=0 bad=0 first=191,64,16,255
+fourcc=34324241 modifier=0 bgra=0 pbo=1 bad=0 first=191,64,16,255
+fourcc=34324241 modifier=0 bgra=1 pbo=0 bad=0 first=16,64,191,255
+fourcc=34324241 modifier=0 bgra=1 pbo=1 bad=0 first=16,64,191,255
+PASS: DMA-BUF framebuffer readback
+CASE 0 4 texture-view
+Renderer zink Vulkan 1.4(Apple M4 (G16G B0) (MESA_HONEYKRISP))
+samples=4 blit_readback=0
+fourcc=34325241 modifier=0 bgra=0 pbo=0 bad=0 first=191,64,16,255
+fourcc=34325241 modifier=0 bgra=0 pbo=1 bad=0 first=191,64,16,255
+fourcc=34325241 modifier=0 bgra=1 pbo=0 bad=0 first=16,64,191,255
+fourcc=34325241 modifier=0 bgra=1 pbo=1 bad=0 first=16,64,191,255
+samples=4 blit_readback=0
+fourcc=34324241 modifier=0 bgra=0 pbo=0 bad=0 first=191,64,16,255
+fourcc=34324241 modifier=0 bgra=0 pbo=1 bad=0 first=191,64,16,255
+fourcc=34324241 modifier=0 bgra=1 pbo=0 bad=0 first=16,64,191,255
+fourcc=34324241 modifier=0 bgra=1 pbo=1 bad=0 first=16,64,191,255
+PASS: DMA-BUF framebuffer readback
+CASE 0x0c00000000000001 1 texture
+Renderer zink Vulkan 1.4(Apple M4 (G16G B0) (MESA_HONEYKRISP))
+samples=1 blit_readback=0
+fourcc=34325241 modifier=c00000000000001 bgra=0 pbo=0 bad=0 first=191,64,16,255
+fourcc=34325241 modifier=c00000000000001 bgra=0 pbo=1 bad=0 first=191,64,16,255
+fourcc=34325241 modifier=c00000000000001 bgra=1 pbo=0 bad=0 first=16,64,191,255
+fourcc=34325241 modifier=c00000000000001 bgra=1 pbo=1 bad=0 first=16,64,191,255
+samples=1 blit_readback=0
+fourcc=34324241 modifier=c00000000000001 bgra=0 pbo=0 bad=0 first=191,64,16,255
+fourcc=34324241 modifier=c00000000000001 bgra=0 pbo=1 bad=0 first=191,64,16,255
+fourcc=34324241 modifier=c00000000000001 bgra=1 pbo=0 bad=0 first=16,64,191,255
+fourcc=34324241 modifier=c00000000000001 bgra=1 pbo=1 bad=0 first=16,64,191,255
+PASS: DMA-BUF framebuffer readback
+CASE 0x0c00000000000001 1 texture-view
+Renderer zink Vulkan 1.4(Apple M4 (G16G B0) (MESA_HONEYKRISP))
+samples=1 blit_readback=0
+fourcc=34325241 modifier=c00000000000001 bgra=0 pbo=0 bad=0 first=191,64,16,255
+fourcc=34325241 modifier=c00000000000001 bgra=0 pbo=1 bad=0 first=191,64,16,255
+fourcc=34325241 modifier=c00000000000001 bgra=1 pbo=0 bad=0 first=16,64,191,255
+fourcc=34325241 modifier=c00000000000001 bgra=1 pbo=1 bad=0 first=16,64,191,255
+samples=1 blit_readback=0
+fourcc=34324241 modifier=c00000000000001 bgra=0 pbo=0 bad=0 first=191,64,16,255
+fourcc=34324241 modifier=c00000000000001 bgra=0 pbo=1 bad=0 first=191,64,16,255
+fourcc=34324241 modifier=c00000000000001 bgra=1 pbo=0 bad=0 first=16,64,191,255
+fourcc=34324241 modifier=c00000000000001 bgra=1 pbo=1 bad=0 first=16,64,191,255
+PASS: DMA-BUF framebuffer readback
+CASE 0x0c00000000000001 4 texture
+Renderer zink Vulkan 1.4(Apple M4 (G16G B0) (MESA_HONEYKRISP))
+samples=4 blit_readback=0
+fourcc=34325241 modifier=c00000000000001 bgra=0 pbo=0 bad=0 first=191,64,16,255
+fourcc=34325241 modifier=c00000000000001 bgra=0 pbo=1 bad=0 first=191,64,16,255
+fourcc=34325241 modifier=c00000000000001 bgra=1 pbo=0 bad=0 first=16,64,191,255
+fourcc=34325241 modifier=c00000000000001 bgra=1 pbo=1 bad=0 first=16,64,191,255
+samples=4 blit_readback=0
+fourcc=34324241 modifier=c00000000000001 bgra=0 pbo=0 bad=0 first=191,64,16,255
+fourcc=34324241 modifier=c00000000000001 bgra=0 pbo=1 bad=0 first=191,64,16,255
+fourcc=34324241 modifier=c00000000000001 bgra=1 pbo=0 bad=0 first=16,64,191,255
+fourcc=34324241 modifier=c00000000000001 bgra=1 pbo=1 bad=0 first=16,64,191,255
+PASS: DMA-BUF framebuffer readback
+CASE 0x0c00000000000001 4 texture-view
+Renderer zink Vulkan 1.4(Apple M4 (G16G B0) (MESA_HONEYKRISP))
+samples=4 blit_readback=0
+fourcc=34325241 modifier=c00000000000001 bgra=0 pbo=0 bad=0 first=191,64,16,255
+fourcc=34325241 modifier=c00000000000001 bgra=0 pbo=1 bad=0 first=191,64,16,255
+fourcc=34325241 modifier=c00000000000001 bgra=1 pbo=0 bad=0 first=16,64,191,255
+fourcc=34325241 modifier=c00000000000001 bgra=1 pbo=1 bad=0 first=16,64,191,255
+samples=4 blit_readback=0
+fourcc=34324241 modifier=c00000000000001 bgra=0 pbo=0 bad=0 first=191,64,16,255
+fourcc=34324241 modifier=c00000000000001 bgra=0 pbo=1 bad=0 first=191,64,16,255
+fourcc=34324241 modifier=c00000000000001 bgra=1 pbo=0 bad=0 first=16,64,191,255
+fourcc=34324241 modifier=c00000000000001 bgra=1 pbo=1 bad=0 first=16,64,191,255
+PASS: DMA-BUF framebuffer readback
+PASS: eight DMA-BUF readback configurations

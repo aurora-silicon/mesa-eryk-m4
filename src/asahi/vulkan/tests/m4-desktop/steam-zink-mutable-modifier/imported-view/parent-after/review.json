@@ -1,0 +1,4 @@
+{
+  "verdict": "validation_error",
+  "reason": "Pixels pass, but transient image lacks transfer/sampling usage. Original classifier missed mixed-case Validation Error."
+}

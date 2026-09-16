@@ -299,8 +299,12 @@ zink_create_transient_surface(struct zink_context *ctx, const struct pipe_surfac
       struct pipe_resource rtempl = *psurf->texture;
       rtempl.next = NULL;
       rtempl.nr_samples = nr_samples;
-      rtempl.bind &= ~(PIPE_BIND_LINEAR | ZINK_BIND_DMABUF);
-      rtempl.bind |= ZINK_BIND_TRANSIENT;
+      rtempl.bind &= ~(PIPE_BIND_LINEAR | ZINK_BIND_DMABUF | ZINK_BIND_TRANSIENT);
+      /* A format-reinterpretation backing image is also sampled/copied for
+       * readback and presentation. Only MSAA resolve attachments can restrict
+       * their Vulkan usage to attachment operations. */
+      if (nr_samples > 1)
+         rtempl.bind |= ZINK_BIND_TRANSIENT;
       if (zink_format_needs_mutable(rtempl.format, psurf->format, true))
          rtempl.bind |= ZINK_BIND_MUTABLE;
       zink_resource_reference(&res->transient, NULL);

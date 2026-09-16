@@ -1,0 +1,52 @@
+Renderer zink Vulkan 1.4(Apple M4 (G16G B0) (MESA_HONEYKRISP))
+samples=1 blit_readback=0
+Validation Error: [ VUID-VkImageMemoryBarrier2-oldLayout-01212 ] | MessageID = 0x4636ad61
+vkCmdPipelineBarrier2(): pDependencyInfo->pImageMemoryBarriers[0].newLayout (VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) is not compatible with VkImage 0x1e000000001e usage flags VK_IMAGE_USAGE_2_COLOR_ATTACHMENT_BIT_KHR.
+The Vulkan spec states: If layouts are not ignored, oldLayout or newLayout is VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL then image must have been created with the VK_IMAGE_USAGE_TRANSFER_SRC_BIT usage flag set (https://docs.vulkan.org/spec/latest/chapters/synchronization.html#VUID-VkImageMemoryBarrier2-oldLayout-01212)
+Objects: 1
+    [0] VkImage 0x1e000000001e
+
+Validation Error: [ VUID-vkCmdCopyImageToBuffer-srcImage-00186 ] | MessageID = 0x30009145
+vkCmdCopyImageToBuffer(): srcImage (VkImage 0x1e000000001e) was created with VK_IMAGE_USAGE_2_COLOR_ATTACHMENT_BIT_KHR but requires VK_IMAGE_USAGE_2_TRANSFER_SRC_BIT_KHR.
+The Vulkan spec states: srcImage must have been created with the VK_IMAGE_USAGE_TRANSFER_SRC_BIT usage flag set (https://docs.vulkan.org/spec/latest/chapters/copies.html#VUID-vkCmdCopyImageToBuffer-srcImage-00186)
+Objects: 2
+    [0] VkCommandBuffer 0xaaaac38cbad0[zink barrier cmdbuf]
+    [1] VkImage 0x1e000000001e
+
+fourcc=34325241 modifier=c00000000000001 bgra=0 pbo=0 bad=0 first=191,64,16,255
+Validation Error: [ VUID-vkCmdCopyImage-aspect-06662 ] | MessageID = 0x2c4809f4
+vkCmdCopyImage(): srcImage (VkImage 0x1e000000001e) was created with VK_IMAGE_USAGE_2_COLOR_ATTACHMENT_BIT_KHR but requires VK_IMAGE_USAGE_2_TRANSFER_SRC_BIT_KHR.
+The Vulkan spec states: If the aspect member of any element of pRegions includes any flag other than VK_IMAGE_ASPECT_STENCIL_BIT or srcImage was not created with separate stencil usage, srcImage must have been created with the VK_IMAGE_USAGE_TRANSFER_SRC_BIT usage flag set (https://docs.vulkan.org/spec/latest/chapters/copies.html#VUID-vkCmdCopyImage-aspect-06662)
+Objects: 2
+    [0] VkCommandBuffer 0xaaaac38ea4d0[zink barrier cmdbuf]
+    [1] VkImage 0x1e000000001e
+
+fourcc=34325241 modifier=c00000000000001 bgra=0 pbo=1 bad=0 first=191,64,16,255
+Validation Error: [ VUID-VkImageMemoryBarrier2-oldLayout-01212 ] | MessageID = 0x4636ad61
+vkCmdPipelineBarrier2(): pDependencyInfo->pImageMemoryBarriers[0].oldLayout (VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) is not compatible with VkImage 0x1e000000001e usage flags VK_IMAGE_USAGE_2_COLOR_ATTACHMENT_BIT_KHR.
+The Vulkan spec states: If layouts are not ignored, oldLayout or newLayout is VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL then image must have been created with the VK_IMAGE_USAGE_TRANSFER_SRC_BIT usage flag set (https://docs.vulkan.org/spec/latest/chapters/synchronization.html#VUID-VkImageMemoryBarrier2-oldLayout-01212)
+Objects: 1
+    [0] VkImage 0x1e000000001e
+
+Validation Error: [ VUID-VkImageMemoryBarrier2-oldLayout-01211 ] | MessageID = 0x81a3e635
+vkCmdPipelineBarrier2(): pDependencyInfo->pImageMemoryBarriers[0].newLayout (VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) is not compatible with VkImage 0x1e000000001e usage flags VK_IMAGE_USAGE_2_COLOR_ATTACHMENT_BIT_KHR.
+The Vulkan spec states: If layouts are not ignored, oldLayout or newLayout is VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL then image must have been created with the VK_IMAGE_USAGE_SAMPLED_BIT or VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT usage flag set (https://docs.vulkan.org/spec/latest/chapters/synchronization.html#VUID-VkImageMemoryBarrier2-oldLayout-01211)
+Objects: 1
+    [0] VkImage 0x1e000000001e
+
+Validation Error: [ VUID-VkWriteDescriptorSet-descriptorType-00337 ] | MessageID = 0x95f3717f
+vkUpdateDescriptorSetWithTemplate(): pDescriptorWrites[0].pImageInfo[0].imageView references an image which was not created with VK_IMAGE_USAGE_SAMPLED_BIT, but descriptorType is VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER.
+VkImage 0x1e000000001e was created with VK_IMAGE_USAGE_2_COLOR_ATTACHMENT_BIT_KHR.
+The Vulkan spec states: If descriptorType is VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE or VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, the imageView member of each element of pImageInfo must have been created with the VK_IMAGE_USAGE_SAMPLED_BIT usage flag set (https://docs.vulkan.org/spec/latest/chapters/descriptorsets.html#VUID-VkWriteDescriptorSet-descriptorType-00337)
+Objects: 2
+    [0] VkImageView 0x1f000000001f
+    [1] VkImage 0x1e000000001e
+
+fourcc=34325241 modifier=c00000000000001 bgra=1 pbo=0 bad=0 first=16,64,191,255
+fourcc=34325241 modifier=c00000000000001 bgra=1 pbo=1 bad=0 first=16,64,191,255
+samples=1 blit_readback=0
+fourcc=34324241 modifier=c00000000000001 bgra=0 pbo=0 bad=0 first=191,64,16,255
+fourcc=34324241 modifier=c00000000000001 bgra=0 pbo=1 bad=0 first=191,64,16,255
+fourcc=34324241 modifier=c00000000000001 bgra=1 pbo=0 bad=0 first=16,64,191,255
+fourcc=34324241 modifier=c00000000000001 bgra=1 pbo=1 bad=0 first=16,64,191,255
+PASS: DMA-BUF framebuffer readback

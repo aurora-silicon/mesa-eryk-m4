@@ -1,0 +1,32 @@
+{
+  "id": "20260916T230232052107Z-zink-imported-view-usage-after",
+  "hypothesis": "Format fallback images preserve sampling and copy usage as well as parent dirty state",
+  "command": [
+    "env",
+    "VK_DRIVER_FILES=/opt/asahi-m4-port/asahi_icd.json",
+    "ASAHI_M4_EXPERIMENTAL=1",
+    "LD_LIBRARY_PATH=/opt/asahi-m4-port/lib",
+    "LIBGL_DRIVERS_PATH=/opt/asahi-m4-port/lib/dri",
+    "GBM_BACKENDS_PATH=/opt/asahi-m4-port/lib/gbm",
+    "MESA_LOADER_DRIVER_OVERRIDE=zink",
+    "VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation",
+    "/root/dmabuf-view-probe",
+    "0x0c00000000000001",
+    "1",
+    "texture-view"
+  ],
+  "expected_success": "^PASS: DMA-BUF framebuffer readback",
+  "seconds": 25,
+  "sources": {
+    "mesa": {
+      "head": "be73420e28dff2e57ecdd5f1a0016747d2537359",
+      "status": " M src/asahi/vulkan/tests/m4-desktop/asahi-session.py\n M src/asahi/vulkan/tests/m4-desktop/desktop-launch.py\n M src/asahi/vulkan/tests/m4-desktop/vulkan-trim-host.py\n M src/gallium/drivers/zink/zink_context.c\n M src/gallium/drivers/zink/zink_surface.c\n",
+      "patch_sha256": "f317b2c25fdcbdf9ff43d8b1683849f68f82ba23ea36756c9b2e728d688b5078"
+    },
+    "kernel": {
+      "head": "353e76a9660f35de4dd892068424194c5666dc39",
+      "status": " M drivers/gpu/drm/apple/tools/m4_dcp_native_callbacks_test.py\n M drivers/gpu/drm/apple/tools/rtkit-probe/m4_dcp_kms.c\n M drivers/gpu/drm/apple/tools/rtkit-probe/m4_dcp_native.c\n M drivers/gpu/drm/apple/tools/rtkit-probe/m4_dcp_native.h\n",
+      "patch_sha256": "75483f68c68f49c961aed04c2d639124e7736b70ddb58eee16f5137a48af2994"
+    }
+  }
+}

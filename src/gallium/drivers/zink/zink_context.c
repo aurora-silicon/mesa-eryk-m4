@@ -3261,8 +3261,9 @@ begin_rendering(struct zink_context *ctx, bool check_attachment_shadow)
       struct zink_resource *res = zink_resource(ctx->fb_state.cbufs[i].texture);
       if (res) {
          if (!ctx->transient_msrtss && ctx->transient_attachments & BITFIELD_BIT(i) && ctx->rp_draw) {
-            res = res->transient;
+            /* Readers and presentation start from the imported resource. */
             res->unflushed_transient = true;
+            res = res->transient;
          }
          /* swapchain acquire can fail */
          if (prep_fb_attachment(ctx, res, i)) {
