@@ -1,0 +1,18 @@
+#version 450
+#extension GL_EXT_shader_atomic_int64 : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
+layout(local_size_x=64) in;
+layout(set=0,binding=0,std430) coherent buffer Data {uint data[];} src;
+shared uint64_t local_counter;
+uint64_t increment(){return atomicAdd(local_counter,uint64_t(1));}
+void main(){
+ if(gl_LocalInvocationIndex==0u)local_counter=uint64_t(src.data[0])|(uint64_t(src.data[1])<<32);
+ barrier();
+ uint64_t old=increment();
+ barrier();
+ if(gl_LocalInvocationIndex==0u){src.data[272u+gl_WorkGroupID.x*2u]=uint(local_counter);src.data[273u+gl_WorkGroupID.x*2u]=uint(local_counter>>32);}
+ uint64_t first=uint64_t(4294967168u)|(uint64_t(0u)<<32);
+ uint64_t ordinal=old-first;
+ if(ordinal<uint64_t(64u)) atomicAdd(src.data[16u+gl_WorkGroupID.x*64u+uint(ordinal)],1u);
+ else atomicOr(src.data[3],1u);
+}

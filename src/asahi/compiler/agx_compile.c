@@ -1601,10 +1601,21 @@ agx_lower_agx3_stack_vectors(agx_context *ctx)
    }
 }
 
+static agx_index
+agx_scratch_offset(agx_builder *b, nir_src *src)
+{
+   agx_index offset = agx_src_index(src);
+   if (!b->shader->atomic_tps_reserved)
+      return offset;
+   if (nir_src_is_const(*src))
+      return agx_immediate(nir_src_as_uint(*src) + 16);
+   return agx_iadd(b, offset, agx_immediate(16), 0);
+}
+
 static void
 agx_emit_load_scratch(agx_builder *b, agx_index dst, nir_intrinsic_instr *instr)
 {
-   agx_index offset = agx_src_index(&instr->src[0]);
+   agx_index offset = agx_scratch_offset(b, &instr->src[0]);
    enum agx_format format = format_for_bitsize(instr->def.bit_size);
    unsigned nr = instr->def.num_components;
    unsigned mask = BITFIELD_MASK(nr);
@@ -1618,7 +1629,7 @@ static void
 agx_emit_store_scratch(agx_builder *b, nir_intrinsic_instr *instr)
 {
    agx_index value = agx_recollect_vector(b, instr->src[0]);
-   agx_index offset = agx_src_index(&instr->src[1]);
+   agx_index offset = agx_scratch_offset(b, &instr->src[1]);
    enum agx_format format = format_for_bitsize(nir_src_bit_size(instr->src[0]));
    unsigned mask = BITFIELD_MASK(nir_src_num_components(instr->src[0]));
 
@@ -5920,6 +5931,23 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
       ctx->any_cf = key->fs.inside_sample_loop;
    }
 
+   /* CLR's grounded compact form addresses a low TPS word. Reserve it
+    * before assigning NIR scratch and RA spill addresses, rather than
+    * appending it after a potentially large spill frame. */
+   if (key->dev.encoding == AGX_ISA_ENCODING_AGX3B) {
+      nir_foreach_block(block, impl) {
+         nir_foreach_instr(instr, block) {
+            if (instr->type != nir_instr_type_intrinsic)
+               continue;
+            nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+            if ((intr->intrinsic == nir_intrinsic_global_atomic_agx ||
+                 intr->intrinsic == nir_intrinsic_global_atomic_swap_agx) &&
+                !nir_def_is_unused(&intr->def))
+               ctx->atomic_tps_reserved = true;
+         }
+      }
+   }
+
    ctx->alloc = impl->ssa_alloc;
    emit_cf_list(ctx, &impl->body);
    agx_emit_phis_deferred(ctx);
@@ -5941,6 +5969,8 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
       assert(!ctx->is_preamble && "preambles don't use scratch");
       ctx->scratch_size_B = align(nir->scratch_size, 16);
    }
+   if (ctx->atomic_tps_reserved)
+      ctx->scratch_size_B += 16;
 
    /* Stop the main shader or preamble shader after the exit block. For real
     * functions, we would return here.

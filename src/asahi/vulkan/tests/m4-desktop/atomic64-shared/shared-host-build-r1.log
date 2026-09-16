@@ -1,0 +1,6 @@
+ninja: Entering directory `build/mesa-m4-asahi-host'
+[1/7] Generating src/git_sha1.h with a custom command
+[2/5] Compiling C object src/asahi/vulkan/libhk.a.p/hk_nir_lower_atomic64.c.o
+[3/5] Compiling C object src/asahi/vulkan/libhk.a.p/hk_physical_device.c.o
+[4/5] Linking static target src/asahi/vulkan/libhk.a
+[5/5] Linking target src/asahi/vulkan/libvulkan_asahi.so

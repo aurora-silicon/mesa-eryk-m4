@@ -1,0 +1,26 @@
+{
+  "case": "spill",
+  "vectors": 64,
+  "words": 16384,
+  "atomic_return": true,
+  "workgroups": [
+    1,
+    1,
+    1
+  ],
+  "command": [
+    "glslangValidator",
+    "-V",
+    "build/directx-atomic64/tps-spill-r1/probe.comp",
+    "-o",
+    "build/directx-atomic64/tps-spill-r1/probe.spv"
+  ],
+  "gpu_executed": false,
+  "sha256": {
+    "probe.comp": "ebb09daf850f86a862364514a0ba4ae7bd1e17f2cf31ca7ad04e97bb3f28d4fb",
+    "input.bin": "0d3911c673f55ef68fd0325e7031b14e07a8360aaf564259cb1c592b63cf363b",
+    "reference.bin": "0b79431733889113e9190a356faf8001b924e7233547fc9aee9fc62712eab49f",
+    "probe.spv": "e76fb3ae4c084a3da518827f3b183d194d22cfc5337ba90569bb02c5fc0f7bc7",
+    "compile.log": "f70eaff7c435c775e699ab52514ddf5186e9533cb325435c2f06ec61504e7ca8"
+  }
+}

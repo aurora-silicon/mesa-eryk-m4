@@ -344,7 +344,7 @@ hk_get_device_features(
       .uniformAndStorageBuffer8BitAccess = true,
       .storagePushConstant8 = true,
       .shaderBufferInt64Atomics = dev->chip == AGX_CHIP_G16G,
-      .shaderSharedInt64Atomics = false,
+      .shaderSharedInt64Atomics = dev->chip == AGX_CHIP_G16G,
       .shaderFloat16 = true,
       .shaderInt8 = true,
       .descriptorIndexing = true,

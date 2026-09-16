@@ -4424,7 +4424,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
    const unsigned initial_size = emission->size;
    /* One reusable atomic return word, disjoint from NIR scratch and RA spills.
     * Each return is reloaded before the next operation can reuse this word. */
-   const uint32_t atomic_tps_half = ALIGN_POT(ctx->scratch_size_B, 4) / 2;
+   const uint32_t atomic_tps_half =
+      ctx->atomic_tps_reserved ? 0 : ALIGN_POT(ctx->scratch_size_B, 4) / 2;
    ctx->agx3_staging_known = true;
    ctx->agx3_fltnorm_start = false;
 

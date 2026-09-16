@@ -1,0 +1,19 @@
+LOCK64_CASE: carry-64
+PASS: carry-64
+LOCK64_CASE: sign-64
+PASS: sign-64
+LOCK64_CASE: wrap-64
+PASS: wrap-64
+LOCK64_CASE: carry-256
+PASS: carry-256
+LOCK64_CASE: sign-256
+PASS: sign-256
+LOCK64_CASE: wrap-256
+PASS: wrap-256
+LOCK64_CASE: carry-1024
+PASS: carry-1024
+LOCK64_CASE: sign-1024
+PASS: sign-1024
+LOCK64_CASE: wrap-1024
+PASS: wrap-1024
+PASS: nine atomic64 lock configurations

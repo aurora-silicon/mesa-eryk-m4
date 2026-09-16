@@ -496,6 +496,8 @@ typedef struct {
    mesa_shader_stage stage;
    bool is_preamble;
    unsigned scratch_size_B;
+   /* Reserve the low TPS word for AGX3B device-atomic returned values. */
+   bool atomic_tps_reserved;
 
    struct list_head blocks; /* list of agx_block */
    struct agx_shader_info *out;

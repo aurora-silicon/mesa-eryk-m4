@@ -1,0 +1,3 @@
+ATOMIC64_CASE: add
+FAIL: add
+FAIL: ten shared atomic64 operations and returned values

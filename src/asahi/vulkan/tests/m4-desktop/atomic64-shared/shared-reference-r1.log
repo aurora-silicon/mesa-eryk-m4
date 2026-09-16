@@ -1,0 +1,21 @@
+ATOMIC64_CASE: add
+PASS: add
+ATOMIC64_CASE: min
+PASS: min
+ATOMIC64_CASE: max
+PASS: max
+ATOMIC64_CASE: smin
+PASS: smin
+ATOMIC64_CASE: smax
+PASS: smax
+ATOMIC64_CASE: and
+PASS: and
+ATOMIC64_CASE: or
+PASS: or
+ATOMIC64_CASE: xor
+PASS: xor
+ATOMIC64_CASE: exchange
+PASS: exchange
+ATOMIC64_CASE: compare_swap
+PASS: compare_swap
+PASS: ten shared atomic64 operations and returned values

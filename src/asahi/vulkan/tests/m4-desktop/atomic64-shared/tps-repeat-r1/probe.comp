@@ -1,0 +1,43 @@
+#version 450
+layout(local_size_x=32) in;
+layout(set=0,binding=0,std430) coherent volatile buffer B{uvec4 w[];};
+void main(){
+uint b=gl_GlobalInvocationID.x*33;
+uvec4 a[32];
+a[0]=w[b+0];
+a[1]=w[b+1];
+a[2]=w[b+2];
+a[3]=w[b+3];
+a[4]=w[b+4];
+a[5]=w[b+5];
+a[6]=w[b+6];
+a[7]=w[b+7];
+a[8]=w[b+8];
+a[9]=w[b+9];
+a[10]=w[b+10];
+a[11]=w[b+11];
+a[12]=w[b+12];
+a[13]=w[b+13];
+a[14]=w[b+14];
+a[15]=w[b+15];
+a[16]=w[b+16];
+a[17]=w[b+17];
+a[18]=w[b+18];
+a[19]=w[b+19];
+a[20]=w[b+20];
+a[21]=w[b+21];
+a[22]=w[b+22];
+a[23]=w[b+23];
+a[24]=w[b+24];
+a[25]=w[b+25];
+a[26]=w[b+26];
+a[27]=w[b+27];
+a[28]=w[b+28];
+a[29]=w[b+29];
+a[30]=w[b+30];
+a[31]=w[b+31];
+uint old=atomicAdd(w[b].x,7u);
+uint index=w[b+32].x&31;
+w[b+32]=a[index]^a[0]^a[5]^a[31];
+w[b].y=old;
+}

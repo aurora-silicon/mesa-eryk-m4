@@ -36,7 +36,9 @@ lower_atomic(nir_builder *b, nir_intrinsic_instr *intr, UNUSED void *data)
    if ((intr->intrinsic != nir_intrinsic_global_atomic &&
         intr->intrinsic != nir_intrinsic_global_atomic_swap &&
         intr->intrinsic != nir_intrinsic_global_atomic_agx &&
-        intr->intrinsic != nir_intrinsic_global_atomic_swap_agx) ||
+        intr->intrinsic != nir_intrinsic_global_atomic_swap_agx &&
+        intr->intrinsic != nir_intrinsic_shared_atomic &&
+        intr->intrinsic != nir_intrinsic_shared_atomic_swap) ||
        intr->def.bit_size != 64)
       return false;
 
@@ -72,7 +74,11 @@ lower_atomic(nir_builder *b, nir_intrinsic_instr *intr, UNUSED void *data)
       nir_iadd_imm(b, nir_load_root_agx(b),
                    hk_root_descriptor_offset(atomic64_lock)),
       .align_mul = 8, .access = ACCESS_CAN_SPECULATE);
+   const bool shared = intr->intrinsic == nir_intrinsic_shared_atomic ||
+                       intr->intrinsic == nir_intrinsic_shared_atomic_swap;
    nir_def *address = intr->src[0].ssa;
+   if (shared)
+      address = nir_iadd_imm(b, address, nir_intrinsic_base(intr));
    if (intr->intrinsic == nir_intrinsic_global_atomic_agx ||
        intr->intrinsic == nir_intrinsic_global_atomic_swap_agx) {
       nir_def *index = nir_intrinsic_sign_extend(intr)
@@ -94,16 +100,30 @@ lower_atomic(nir_builder *b, nir_intrinsic_instr *intr, UNUSED void *data)
    nir_push_if(b, nir_ieq_imm(b, acquired, 0));
    device_fence(b, NIR_MEMORY_ACQUIRE);
 
-   nir_def *low = nir_global_atomic(b, 32, address, nir_imm_int(b, 0),
-                                    .atomic_op = nir_atomic_op_ior);
-   nir_def *high = nir_global_atomic(b, 32, high_address, nir_imm_int(b, 0),
-                                     .atomic_op = nir_atomic_op_ior);
+   nir_def *low = shared ? nir_shared_atomic(b, 32, address, nir_imm_int(b, 0),
+                                             .atomic_op = nir_atomic_op_ior)
+                         : nir_global_atomic(b, 32, address, nir_imm_int(b, 0),
+                                             .atomic_op = nir_atomic_op_ior);
+   nir_def *high =
+      shared ? nir_shared_atomic(b, 32, high_address, nir_imm_int(b, 0),
+                                 .atomic_op = nir_atomic_op_ior)
+             : nir_global_atomic(b, 32, high_address, nir_imm_int(b, 0),
+                                 .atomic_op = nir_atomic_op_ior);
    nir_def *old = nir_pack_64_2x32_split(b, low, high);
    nir_def *value = updated_value(b, intr, old);
-   nir_global_atomic(b, 32, address, nir_unpack_64_2x32_split_x(b, value),
-                     .atomic_op = nir_atomic_op_xchg);
-   nir_global_atomic(b, 32, high_address, nir_unpack_64_2x32_split_y(b, value),
-                     .atomic_op = nir_atomic_op_xchg);
+   if (shared) {
+      nir_shared_atomic(b, 32, address, nir_unpack_64_2x32_split_x(b, value),
+                        .atomic_op = nir_atomic_op_xchg);
+      nir_shared_atomic(b, 32, high_address,
+                        nir_unpack_64_2x32_split_y(b, value),
+                        .atomic_op = nir_atomic_op_xchg);
+   } else {
+      nir_global_atomic(b, 32, address, nir_unpack_64_2x32_split_x(b, value),
+                        .atomic_op = nir_atomic_op_xchg);
+      nir_global_atomic(b, 32, high_address,
+                        nir_unpack_64_2x32_split_y(b, value),
+                        .atomic_op = nir_atomic_op_xchg);
+   }
    device_fence(b, NIR_MEMORY_RELEASE);
    nir_global_atomic(b, 32, lock, nir_imm_int(b, 0),
                      .atomic_op = nir_atomic_op_xchg);

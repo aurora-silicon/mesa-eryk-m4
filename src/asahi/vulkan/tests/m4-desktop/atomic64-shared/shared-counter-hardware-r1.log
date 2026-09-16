@@ -1,0 +1,34 @@
+Evidence: /home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T142406553917Z-dx-atomic64-shared-counter-r1
+{
+  "id": "20260916T142406553917Z-dx-atomic64-shared-counter-r1",
+  "verdict": "pass",
+  "transport_returncode": 0,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T142406553917Z-dx-atomic64-shared-counter-r1",
+  "observations": {
+    "pixel_results": [
+      "PASS: carry-64",
+      "PASS: sign-64",
+      "PASS: wrap-64",
+      "PASS: carry-256",
+      "PASS: sign-256",
+      "PASS: wrap-256",
+      "PASS: carry-1024",
+      "PASS: sign-1024",
+      "PASS: wrap-1024",
+      "PASS: nine atomic64 lock configurations"
+    ],
+    "pixel_result_count": 10,
+    "thermal_samples": 8,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 58.25,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 58.25,
+      "Ta000m": 55.0,
+      "Te000m": 55.0,
+      "Te001m": 54.0,
+      "Tp000m": 58.25,
+      "Tp001m": 54.0
+    }
+  }
+}

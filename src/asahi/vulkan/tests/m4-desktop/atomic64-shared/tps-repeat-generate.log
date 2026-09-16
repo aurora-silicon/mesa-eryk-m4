@@ -1,0 +1,26 @@
+{
+  "case": "repeat",
+  "vectors": 32,
+  "words": 4224,
+  "atomic_return": true,
+  "workgroups": [
+    1,
+    1,
+    1
+  ],
+  "command": [
+    "glslangValidator",
+    "-V",
+    "build/directx-atomic64/tps-repeat-r1/probe.comp",
+    "-o",
+    "build/directx-atomic64/tps-repeat-r1/probe.spv"
+  ],
+  "gpu_executed": false,
+  "sha256": {
+    "probe.comp": "3083a6b59dbe40d974424d9ed1b4a39ba5c0367246698cf479e6483a986468cc",
+    "input.bin": "4efe0aa0eaa111382c7fb1f122725888b22024191daa03100e9e98be569bcdc9",
+    "reference.bin": "14d59eae02fe28b3c8c808025eee4c36727972f45077dd2a45d2d4eb14a75c30",
+    "probe.spv": "90a19824f7be6caf6ade66cbc02c373b36c319d3ae2348483b33b6152f8a8f8c",
+    "compile.log": "24b23e399b6008bf964bdd4ffbc292db0ca8320e3fed97a5f6fa4845faffe838"
+  }
+}

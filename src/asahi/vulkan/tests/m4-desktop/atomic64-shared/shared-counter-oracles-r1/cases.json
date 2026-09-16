@@ -1,0 +1,65 @@
+[
+  {
+    "name": "carry-64",
+    "groups": 1,
+    "env": {
+      "M4_ORACLE_ATOMIC64": "shared"
+    }
+  },
+  {
+    "name": "sign-64",
+    "groups": 1,
+    "env": {
+      "M4_ORACLE_ATOMIC64": "shared"
+    }
+  },
+  {
+    "name": "wrap-64",
+    "groups": 1,
+    "env": {
+      "M4_ORACLE_ATOMIC64": "shared"
+    }
+  },
+  {
+    "name": "carry-256",
+    "groups": 4,
+    "env": {
+      "M4_ORACLE_ATOMIC64": "shared"
+    }
+  },
+  {
+    "name": "sign-256",
+    "groups": 4,
+    "env": {
+      "M4_ORACLE_ATOMIC64": "shared"
+    }
+  },
+  {
+    "name": "wrap-256",
+    "groups": 4,
+    "env": {
+      "M4_ORACLE_ATOMIC64": "shared"
+    }
+  },
+  {
+    "name": "carry-1024",
+    "groups": 16,
+    "env": {
+      "M4_ORACLE_ATOMIC64": "shared"
+    }
+  },
+  {
+    "name": "sign-1024",
+    "groups": 16,
+    "env": {
+      "M4_ORACLE_ATOMIC64": "shared"
+    }
+  },
+  {
+    "name": "wrap-1024",
+    "groups": 16,
+    "env": {
+      "M4_ORACLE_ATOMIC64": "shared"
+    }
+  }
+]

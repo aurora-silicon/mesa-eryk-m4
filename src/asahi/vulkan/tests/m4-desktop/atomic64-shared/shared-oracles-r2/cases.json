@@ -1,0 +1,72 @@
+[
+  {
+    "name": "add",
+    "groups": 1,
+    "env": {
+      "M4_ORACLE_ATOMIC64": "shared"
+    }
+  },
+  {
+    "name": "min",
+    "groups": 1,
+    "env": {
+      "M4_ORACLE_ATOMIC64": "shared"
+    }
+  },
+  {
+    "name": "max",
+    "groups": 1,
+    "env": {
+      "M4_ORACLE_ATOMIC64": "shared"
+    }
+  },
+  {
+    "name": "smin",
+    "groups": 1,
+    "env": {
+      "M4_ORACLE_ATOMIC64": "shared"
+    }
+  },
+  {
+    "name": "smax",
+    "groups": 1,
+    "env": {
+      "M4_ORACLE_ATOMIC64": "shared"
+    }
+  },
+  {
+    "name": "and",
+    "groups": 1,
+    "env": {
+      "M4_ORACLE_ATOMIC64": "shared"
+    }
+  },
+  {
+    "name": "or",
+    "groups": 1,
+    "env": {
+      "M4_ORACLE_ATOMIC64": "shared"
+    }
+  },
+  {
+    "name": "xor",
+    "groups": 1,
+    "env": {
+      "M4_ORACLE_ATOMIC64": "shared"
+    }
+  },
+  {
+    "name": "exchange",
+    "groups": 1,
+    "env": {
+      "M4_ORACLE_ATOMIC64": "shared"
+    }
+  },
+  {
+    "name": "compare_swap",
+    "groups": 1,
+    "env": {
+      "M4_ORACLE_ATOMIC64": "shared"
+    }
+  }
+]

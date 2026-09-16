@@ -1,0 +1,43 @@
+ninja: Entering directory `build/mesa-m4-asahi-arm64'
+[1/45] Generating src/git_sha1.h with a custom command
+[2/42] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_lower_64bit.c.o
+[3/42] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_nir_lower_shared_bitsize.c.o
+[4/42] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_lower_divergent_shuffle.c.o
+[5/42] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_lower_spill.c.o
+[6/42] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_lower_uniform_sources.c.o
+[7/42] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_lower_pseudo.c.o
+[8/42] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_lower_parallel_copy.c.o
+[9/42] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_dce.c.o
+[10/42] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_liveness.c.o
+[11/42] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_nir_lower_discard_zs_emit.c.o
+[12/42] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_pack.c.o
+[13/42] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_nir_lower_frag_sidefx.c.o
+[14/42] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_insert_waits.c.o
+[15/42] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_performance.c.o
+[16/42] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_print.c.o
+[17/42] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_nir_opt_preamble.c.o
+[18/42] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_opt_empty_else.c.o
+[19/42] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_nir_lower_sample_mask.c.o
+[20/42] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_ir.c.o
+[21/42] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_pressure_schedule.c.o
+[22/42] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_opt_break_if.c.o
+[23/42] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_opt_jmp_none.c.o
+[24/42] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_opt_cse.c.o
+[25/42] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_opt_register_cache.c.o
+[26/42] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_opt_compact_constants.c.o
+[27/42] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_repair_ssa.c.o
+[28/42] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_opt_promote_constants.c.o
+[29/42] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_validate_ra.c.o
+[30/42] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_validate.c.o
+[31/42] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_reindex_ssa.c.o
+[32/42] Compiling C object src/asahi/vulkan/libhk.a.p/hk_nir_prefetch_descriptors.c.o
+[33/42] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_nir_lower_g17p_combined_sampler.c.o
+[34/42] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_optimizer.c.o
+[35/42] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_spill.c.o
+[36/42] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_register_allocate.c.o
+[37/42] Compiling C object src/asahi/vulkan/libhk.a.p/hk_cmd_draw.c.o
+[38/42] Linking static target src/asahi/vulkan/libhk.a
+[39/42] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx3_pack_binary.c.o
+[40/42] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_compile.c.o
+[41/42] Linking static target src/asahi/compiler/libasahi_compiler.a
+[42/42] Linking target src/asahi/vulkan/libvulkan_asahi.so

@@ -1,0 +1,25 @@
+Evidence: /home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T143336584734Z-dx-shared64-tps-oracles-r1
+{
+  "id": "20260916T143336584734Z-dx-shared64-tps-oracles-r1",
+  "verdict": "readback_mismatch",
+  "transport_returncode": 1,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T143336584734Z-dx-shared64-tps-oracles-r1",
+  "observations": {
+    "pixel_results": [
+      "FAIL: tps-repeat-r1"
+    ],
+    "pixel_result_count": 1,
+    "thermal_samples": 7,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 57.5,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 57.5,
+      "Ta000m": 54.25,
+      "Te000m": 54.5,
+      "Te001m": 53.25,
+      "Tp000m": 57.5,
+      "Tp001m": 53.25
+    }
+  }
+}

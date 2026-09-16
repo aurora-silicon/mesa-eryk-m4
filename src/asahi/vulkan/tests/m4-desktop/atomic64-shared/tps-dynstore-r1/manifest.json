@@ -1,0 +1,26 @@
+{
+  "case": "dynstore",
+  "vectors": 32,
+  "words": 4352,
+  "atomic_return": true,
+  "workgroups": [
+    1,
+    1,
+    1
+  ],
+  "command": [
+    "glslangValidator",
+    "-V",
+    "build/directx-atomic64/tps-dynstore-r1/probe.comp",
+    "-o",
+    "build/directx-atomic64/tps-dynstore-r1/probe.spv"
+  ],
+  "gpu_executed": false,
+  "sha256": {
+    "probe.comp": "af733f83ed4c052438ac84fce70374cf4cee5ef517cf82e602a5e7f0e6b0ce8a",
+    "input.bin": "1c6ba0297cffc73befb45a1f0ccdea8bac9550aac6cbebe8a4977372cd95bf85",
+    "reference.bin": "ff80f392ef7ed6959d1cd967299147f6e74008cd5c80e9a141d84df76eca12f1",
+    "probe.spv": "1dd99f82ca852373a748099e18feb0253cc7c7c549fd5a226d2d351d010d86a9",
+    "compile.log": "ad04021e8229b6d8bb9587d2c555f91a88f5e1ce52eebe328738a43e878a3c0c"
+  }
+}

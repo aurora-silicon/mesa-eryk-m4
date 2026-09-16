@@ -1,0 +1,40 @@
+ninja: Entering directory `build/mesa-m4-asahi-arm64'
+[1/39] Generating src/git_sha1.h with a custom command
+[2/39] Generating src/asahi/lib/libagx_shaders.h with a custom command
+[3/39] Compiling C object src/asahi/lib/libasahi_lib.a.p/agx_scratch.c.o
+[4/39] Compiling C object src/asahi/lib/libasahi_lib.a.p/meson-generated_.._libagx_shaders.c.o
+[5/39] Compiling C object src/asahi/lib/libasahi_lib.a.p/agx_border.c.o
+[6/39] Compiling C object src/asahi/vulkan/libhk.a.p/meson-generated_.._.._lib_libagx_shaders.c.o
+[7/39] Compiling C object src/asahi/lib/libasahi_lib.a.p/agx_device.c.o
+[8/39] Compiling C object src/asahi/lib/libasahi_lib.a.p/agx_bg_eot.c.o
+[9/39] Compiling C object src/asahi/lib/libasahi_lib.a.p/agx_nir_lower_uvs.c.o
+[10/39] Compiling C object src/asahi/vulkan/libhk.a.p/hk_buffer.c.o
+[11/39] Compiling C object src/asahi/vulkan/libhk.a.p/hk_cmd_lifetime.c.o
+[12/39] Compiling C object src/asahi/vulkan/libhk.a.p/hk_buffer_view.c.o
+[13/39] Compiling C object src/asahi/vulkan/libhk.a.p/hk_cmd_buffer.c.o
+[14/39] Compiling C object src/asahi/vulkan/libhk.a.p/hk_cmd_clear.c.o
+[15/39] Compiling C object src/asahi/vulkan/libhk.a.p/hk_cmd_dispatch.c.o
+[16/39] Compiling C object src/asahi/vulkan/libhk.a.p/hk_cmd_draw.c.o
+[17/39] Compiling C object src/asahi/vulkan/libhk.a.p/hk_cmd_pool.c.o
+[18/39] Compiling C object src/asahi/vulkan/libhk.a.p/hk_descriptor_set.c.o
+[19/39] Compiling C object src/asahi/vulkan/libhk.a.p/hk_descriptor_set_layout.c.o
+[20/39] Compiling C object src/asahi/vulkan/libhk.a.p/hk_cmd_meta.c.o
+[21/39] Compiling C object src/asahi/vulkan/libhk.a.p/hk_descriptor_table.c.o
+[22/39] Compiling C object src/asahi/vulkan/libhk.a.p/hk_device_memory.c.o
+[23/39] Compiling C object src/asahi/vulkan/libhk.a.p/hk_device.c.o
+[24/39] Compiling C object src/asahi/vulkan/libhk.a.p/hk_image.c.o
+[25/39] Compiling C object src/asahi/vulkan/libhk.a.p/hk_image_view.c.o
+[26/39] Compiling C object src/asahi/vulkan/libhk.a.p/hk_event.c.o
+[27/39] Compiling C object src/asahi/vulkan/libhk.a.p/hk_nir_lower_descriptors.c.o
+[28/39] Compiling C object src/asahi/vulkan/libhk.a.p/hk_nir_passthrough_gs.c.o
+[29/39] Compiling C object src/asahi/vulkan/libhk.a.p/hk_query_pool.c.o
+[30/39] Compiling C object src/asahi/vulkan/libhk.a.p/hk_sampler.c.o
+[31/39] Compiling C object src/asahi/vulkan/libhk.a.p/hk_nir_lower_minmax.c.o
+[32/39] Compiling C object src/asahi/vulkan/libhk.a.p/hk_nir_lower_atomic64.c.o
+[33/39] Compiling C object src/asahi/vulkan/libhk.a.p/hk_queue.c.o
+[34/39] Compiling C object src/asahi/vulkan/libhk.a.p/hk_nir_lower_sparse_access.c.o
+[35/39] Compiling C object src/asahi/vulkan/libhk.a.p/hk_shader.c.o
+[36/39] Linking static target src/asahi/lib/libasahi_lib.a
+[37/39] Compiling C object src/asahi/vulkan/libhk.a.p/hk_physical_device.c.o
+[38/39] Linking static target src/asahi/vulkan/libhk.a
+[39/39] Linking target src/asahi/vulkan/libvulkan_asahi.so

@@ -1,0 +1,7 @@
+PASS: tps-repeat-r1
+PASS: tps-repeat-r1-forced
+PASS: tps-dynstore-r1
+PASS: tps-dynstore-r1-forced
+PASS: tps-spill-r1
+PASS: tps-spill-r1-forced
+PASS: six atomic-return scratch and spill configurations
