@@ -38,6 +38,7 @@
 #endif
 
 #include "vk_format.h"
+#include "vulkan/runtime/vk_format_info.h"
 #include "util/u_blitter.h"
 #include "util/u_debug.h"
 #include "util/format/u_format.h"
@@ -1298,6 +1299,49 @@ create_image(struct zink_screen *screen, struct zink_resource_object *obj,
    }
    init_ici(screen, &ici, templ, templ->bind, ici_modifier_count);
 
+   /* General mutable resources may be reinterpreted as any compatible format,
+    * not just the linear/sRGB pair. Modifier images require an explicit list
+    * even in this case (for example, Xwayland's BGRA to RGBA render view).
+    * Install it after init_ici(), which removes the restricted sRGB list for
+    * ZINK_BIND_MUTABLE resources.
+    */
+   VkFormat mutable_formats[PIPE_FORMAT_COUNT];
+   if ((templ->bind & ZINK_BIND_MUTABLE) &&
+       ici.tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT &&
+       !util_format_is_yuv(templ->format)) {
+      const struct vk_format_class_info *class = vk_format_get_class_info(ici.format);
+      unsigned count = class->format_count;
+      assert(count && count <= ARRAY_SIZE(mutable_formats));
+      memcpy(mutable_formats, class->formats, count * sizeof(VkFormat));
+      if (ici.flags & VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT) {
+         class = vk_format_class_get_info(vk_format_get_blocksizebits(ici.format) == 64 ?
+                                         MESA_VK_FORMAT_CLASS_64_BIT : MESA_VK_FORMAT_CLASS_128_BIT);
+         assert(count + class->format_count <= ARRAY_SIZE(mutable_formats));
+         memcpy(mutable_formats + count, class->formats, class->format_count * sizeof(VkFormat));
+         count += class->format_count;
+      }
+      /* The registry also contains formats from extensions which this device
+       * has not enabled. Only include formats Zink actually exposes.
+       */
+      unsigned supported_count = 0;
+      for (unsigned i = 0; i < count; i++) {
+         enum pipe_format pf = vk_format_to_pipe_format(mutable_formats[i]);
+         if (pf != PIPE_FORMAT_NONE && zink_get_format(screen, pf) == mutable_formats[i]) {
+            const struct zink_format_props *props = zink_get_format_props(screen, pf);
+            if (props->optimalTilingFeatures || props->linearTilingFeatures)
+               mutable_formats[supported_count++] = mutable_formats[i];
+         }
+      }
+      assert(supported_count);
+      format_list = (VkImageFormatListCreateInfo) {
+         .sType = VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO,
+         .pNext = ici.pNext,
+         .viewFormatCount = supported_count,
+         .pViewFormats = mutable_formats,
+      };
+      ici.pNext = &format_list;
+   }
+
    bool success = false;
    uint64_t mod = eval_ici(screen, &ici, templ, templ->bind, ici_modifier_count, ici_modifiers, &success);
    if (ici.format == VK_FORMAT_A8_UNORM_KHR && !success) {
@@ -1305,7 +1349,8 @@ create_image(struct zink_screen *screen, struct zink_resource_object *obj,
       mod = eval_ici(screen, &ici, templ, templ->bind, ici_modifier_count, ici_modifiers, &success);
    }
    /* images with modifiers MUST have a format list if they are mutable */
-   if (modifiers_count && ici.flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT) {
+   if (ici.tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT &&
+       ici.flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT) {
       const VkImageFormatListCreateInfo *format_list = vk_find_struct_const(&ici, IMAGE_FORMAT_LIST_CREATE_INFO);
       assert(format_list);
       if (!format_list)

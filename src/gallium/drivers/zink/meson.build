@@ -88,7 +88,7 @@ subdir('nir_to_spirv')
 
 libzink = static_library(
   'zink',
-  [files_libzink, zink_device_info, zink_instance, zink_nir_algebraic_c, vk_dispatch_table, spirv_info_h],
+  [files_libzink, zink_device_info, zink_instance, zink_nir_algebraic_c, vk_dispatch_table, spirv_info_h, vk_format_info],
   gnu_symbol_visibility : 'hidden',
   include_directories : [inc_include, inc_src, inc_gallium, inc_gallium_aux, inc_vulkan_util, inc_zink_vk],
   link_args : [ld_args_build_id],
@@ -108,6 +108,18 @@ driver_zink = declare_dependency(
   compile_args : '-DGALLIUM_ZINK',
   link_with : zink_deps,
 )
+
+# Manual, GPU-backed regression; deliberately not registered as an automatic test.
+if system_has_kms_drm
+  executable(
+    'zink_mutable_modifier_probe',
+    'zink_mutable_modifier_probe.c',
+    include_directories : [inc_include, inc_src, inc_gallium, inc_gallium_aux, inc_vulkan_util],
+    dependencies : [driver_zink, idep_mesautil, idep_nir, idep_vtn, idep_vulkan_util, idep_xmlconfig, dep_libdrm],
+    link_with : [libgallium],
+    build_by_default : false,
+  )
+endif
 
 if with_tests
   test(

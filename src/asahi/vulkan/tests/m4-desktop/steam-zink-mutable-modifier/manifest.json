@@ -1,0 +1,13 @@
+{
+  "experiments": [
+    "20260916T202513507480Z-zink-mutable-direct-before",
+    "20260916T202431301169Z-zink-mutable-direct-after",
+    "20260916T202842753671Z-zink-mutable-controls",
+    "20260916T202617515770Z-steam-xwayland-recovery",
+    "20260916T202654363678Z-steam-zink-fixed-startup-r1"
+  ],
+  "gallium_sha256": "c1661154f811c7217b89a0c83c5801784fb2e74664acdbe8adf4c3cd3f65ced6",
+  "vulkan_sha256": "d93caac400ab98ee961e5902976066872b7a3dcb2e4811d85e9de7e16c88a01d",
+  "boot_id": "45207b91-c3d3-44da-9fcc-f64aaf52a6dc",
+  "archive_sha256": "d8d99295ae4f979c28182c8e1e6347848721333e13cd4cac0f7bb469f39a006a"
+}

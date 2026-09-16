@@ -1,0 +1,4 @@
+ninja: Entering directory `build/mesa-m4-asahi-arm64'
+[1/3] Compiling C object src/gallium/drivers/zink/libzink.a.p/zink_resource.c.o
+[2/3] Linking static target src/gallium/drivers/zink/libzink.a
+[3/3] Linking target src/gallium/drivers/zink/zink_mutable_modifier_probe
