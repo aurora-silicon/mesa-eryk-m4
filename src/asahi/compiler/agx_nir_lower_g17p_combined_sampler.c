@@ -3,6 +3,9 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include <stdio.h>
+#include "agx_compiler.h"
+#include "agx_debug.h"
 #include "agx_nir.h"
 #include "agx_nir_texture.h"
 
@@ -975,6 +978,11 @@ agx_nir_lower_g17p_bindless_storage(nir_shader *shader)
                  format != PIPE_FORMAT_B8G8R8A8_UNORM &&
                  format != PIPE_FORMAT_R8G8B8A8_SNORM &&
                  format != PIPE_FORMAT_R10G10B10A2_UNORM &&
+                 /* Same RGB10A2 store lane layout as R10G10B10A2; the PBE
+                  * descriptor swizzles, as for the accepted UINT twin
+                  * (dynamic_rendering ... multisample_resolve.
+                  * a2r10g10b10_unorm_pack32.max_attachments_8_samples_4). */
+                 format != PIPE_FORMAT_B10G10R10A2_UNORM &&
                  format != PIPE_FORMAT_R5G6B5_UNORM &&
                  format != PIPE_FORMAT_B5G6R5_UNORM &&
                  format != PIPE_FORMAT_R16_FLOAT &&
@@ -983,8 +991,18 @@ agx_nir_lower_g17p_bindless_storage(nir_shader *shader)
                  !(format == PIPE_FORMAT_NONE &&
                    (nir_intrinsic_src_type(intr) == nir_type_float32 ||
                     nir_intrinsic_src_type(intr) == nir_type_int32 ||
-                    nir_intrinsic_src_type(intr) == nir_type_uint32))))
+                    nir_intrinsic_src_type(intr) == nir_type_uint32)))) {
+               if (agx_compiler_debug & AGX_DBG_SHADERS)
+                  fprintf(stderr,
+                          "G17P bindless store left legacy: handle=%s dim=%u "
+                          "array=%u format=%u src_type=%u\n",
+                          handle ? nir_intrinsic_infos[handle->intrinsic].name
+                                 : "none",
+                          nir_intrinsic_image_dim(intr),
+                          nir_intrinsic_image_array(intr), format,
+                          nir_intrinsic_src_type(intr));
                continue;
+            }
             /* Storage cube coordinates address faces as ordinary array
              * layers, including a non-array cube's six faces. */
             if (cube) {

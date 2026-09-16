@@ -1997,6 +1997,23 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
 
       /* Discards must be lowering before lowering MSAA to handle discards */
       NIR_PASS(_, nir, agx_nir_lower_discard_zs_emit);
+
+      /* A fragment shader that writes gl_SampleMask runs its own coverage
+       * update with depth/stencil tests, so the epilog cannot apply
+       * alpha-to-coverage afterwards (its later test-mode update wrote
+       * neither depth nor stencil on M4). Apply it here instead, gated on
+       * the draw's enable, before that coverage update: the demoted samples
+       * then skip the tests and the colour store, and occlusion queries
+       * count only the surviving samples
+       * (query_pool.discard.normal.*.alpha_to_coverage). */
+      if (nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_SAMPLE_MASK)) {
+         nir_builder b = nir_builder_at(
+            nir_before_impl(nir_shader_get_entrypoint(nir)));
+         nir_def *enable =
+            nir_ine_imm(&b, nir_load_alpha_to_coverage_agx(&b), 0);
+         NIR_PASS(_, nir, nir_lower_alpha_to_coverage, false, enable);
+      }
+
       if (agx_chip_uses_hal200_ioto(dev->dev.chip)) {
          NIR_PASS(_, nir, agx_nir_lower_fs_output_to_epilog_g17p,
                   &shader->info.fs.epilog_key);
@@ -2031,11 +2048,11 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
          NIR_PASS(_, nir, agx_nir_lower_interpolation_g17p);
       else
          NIR_PASS(_, nir, agx_nir_lower_interpolation);
-      if (agx_chip_uses_hal200_ioto(dev->dev.chip)) {
-         NIR_PASS(_, nir, nir_shader_intrinsics_pass,
-                  hk_g17p_lower_flat_nonfan_triangles,
-                  nir_metadata_control_flow, NULL);
-      }
+      /* Flat inputs keep the first-fan B/C selection on every chip; the
+       * descriptor lowering reads draw.provoking from the root table for
+       * it, so triangle fans with the first provoking vertex
+       * (rasterization.flatshading.triangle_fan, provoking_vertex.draw.*.
+       * triangle_fan) interpolate the fan vertex the rasterizer stored. */
    }
 
    /* Normally, vertex shaders need to write a default point size. However, if

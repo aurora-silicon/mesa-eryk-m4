@@ -1032,14 +1032,19 @@ hk_g17p_smooth_varyings_supported(struct hk_cmd_buffer *cmd,
       const struct agx_cf_binding *b = &cf->bindings[i];
       if (b->count == 0 || b->count > 4 || b->cf_base != next_cf)
          return false;
+      /* Flat inputs: the fragment shader selects B for the first-fan
+       * provoking mode (draw.provoking == 1, only set for fans) and C
+       * otherwise, matching the legacy interpolation path. */
       if (!b->smooth &&
           (b->perspective ||
            (gfx->topology != AGX_PRIMITIVE_POINTS &&
             gfx->topology != AGX_PRIMITIVE_TRIANGLES &&
             gfx->topology != AGX_PRIMITIVE_TRIANGLE_STRIP &&
+            gfx->topology != AGX_PRIMITIVE_TRIANGLE_FAN &&
             gfx->topology != AGX_PRIMITIVE_LINES &&
             gfx->topology != AGX_PRIMITIVE_LINE_STRIP) ||
-           (gfx->provoking != 0 && gfx->provoking != 2)))
+           (gfx->provoking == 1 &&
+            gfx->topology != AGX_PRIMITIVE_TRIANGLE_FAN)))
          return false;
       if (b->slot == VARYING_SLOT_POS) {
          /* System coefficients precede user coefficients: optional W,
