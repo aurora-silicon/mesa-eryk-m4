@@ -3083,14 +3083,21 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
     * control only changes these two words; retain the allocation and staging
     * layout and do not add launches, cache flushes or device-global state. */
    const bool depth_test = render->depth_att.iview && dyn->ds.depth.test_enable;
+   /* A shader with side effects under VK_COMPARE_OP_NEVER emulates the test
+    * by exporting NaN depth (agx_nir_lower_frag_sidefx); the hardware test
+    * must then pass everything, as FRAGMENT_FACE does, or the fragments
+    * never run (rasterization.frag_side_effects.*.depth_never). */
+   const VkCompareOp depth_compare =
+      gfx->descriptors.root.draw.force_never_in_shader
+         ? VK_COMPARE_OP_ALWAYS : dyn->ds.depth.compare_op;
    if (dyn->ds.depth.bounds_test.enable ||
        !agx_ppp_hal200_depth_face_pack(
           dev->dev.chip, depth_test, dyn->ds.depth.write_enable,
-          dyn->ds.depth.compare_op, primary_fields.words[1],
+          depth_compare, primary_fields.words[1],
           &primary_fields.words[1]) ||
        !agx_ppp_hal200_depth_face_pack(
           dev->dev.chip, depth_test, dyn->ds.depth.write_enable,
-          dyn->ds.depth.compare_op, primary_fields.words[3],
+          depth_compare, primary_fields.words[3],
           &primary_fields.words[3]))
       return false;
 
@@ -3137,6 +3144,16 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
                                          cull_fields.words[0],
                                          &cull_fields.words[0]))
       return false;
+   /* The native cull word keeps the CULL layout (flat-shading vertex 8:7,
+    * depth clip/clamp 11:10, front face 16, discard 17). Bit 15 is
+    * primitive MSAA, which the common path sets for Bresenham lines so a
+    * covered pixel covers all of its samples
+    * (rasterization.primitives_multisample_*.no_stipple.bresenham_lines*). */
+   if (gfx->object_type == AGX_OBJECT_TYPE_LINE &&
+       dyn->rs.line.mode == VK_LINE_RASTERIZATION_MODE_BRESENHAM_KHR)
+      cull_fields.words[0] |= UINT32_C(1) << 15;
+   else
+      cull_fields.words[0] &= ~(UINT32_C(1) << 15);
    if (!agx_ppp_hal200_depth_clip_pack(
           dev->dev.chip,
           vk_rasterization_state_depth_clip_enable(&dyn->rs),
