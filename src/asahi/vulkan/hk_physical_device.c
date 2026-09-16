@@ -715,6 +715,7 @@ hk_get_device_features(
        * Hardware qualification returned adjacent in-image texels for both
        * X- and Y-out-of-range coordinates, violating the zero RGB guarantee
        * shared by robustImageAccess and robustImageAccess2. G16G now inserts
+       * explicit view bounds for robust image operations in NIR, and the
        * out-of-bounds alpha of a format-less load or texel fetch follows the
        * bound view's alpha swizzle (robustImageAccess2, CTS robustness2). */
       features->robustImageAccess = dev->chip == AGX_CHIP_G16G;
