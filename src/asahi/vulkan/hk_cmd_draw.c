@@ -3135,9 +3135,18 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
    struct agx_ppp_hal200_graphics_fields cull_fields = {
       .words = {UINT32_C(0x00000480)},
    };
+   /* Software tessellation emits its own winding; fold the domain's
+    * orientation into the front face as the common CULL packet does
+    * (shader_object.misc.state.*.vert_tess_frag.cull.*). */
+   bool front_face_ccw = dyn->rs.front_face == VK_FRONT_FACE_COUNTER_CLOCKWISE;
+   if (gfx->shaders[MESA_SHADER_TESS_CTRL] &&
+       !gfx->shaders[MESA_SHADER_GEOMETRY]) {
+      front_face_ccw ^= gfx->tess.info.ccw;
+      front_face_ccw ^= dyn->ts.domain_origin ==
+                        VK_TESSELLATION_DOMAIN_ORIGIN_LOWER_LEFT;
+   }
    if (!agx_ppp_hal200_cull_mode_pack(
-          dev->dev.chip, dyn->rs.cull_mode,
-          dyn->rs.front_face == VK_FRONT_FACE_COUNTER_CLOCKWISE,
+          dev->dev.chip, dyn->rs.cull_mode, front_face_ccw,
           cull_fields.words[0], &cull_fields.words[0]))
       return false;
    if (!agx_ppp_hal200_cull_provoking_pack(dev->dev.chip, gfx->provoking,
@@ -5164,6 +5173,19 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
    if (agx_native_graphics(&dev->dev) && draw_.indexed) {
       uint64_t address;
       uint32_t size_word;
+      /* A direct draw that reads past the bound range is lowered by the
+       * robustness kernel into an in-bounds GPU-generated Index List when a
+       * robust buffer access feature is enabled, so only its lowered form
+       * has to fit the native span (robustness.bind_index_buffer2.*.oo_size,
+       * oo_whole_size). */
+      const bool robust_overread =
+         !agx_is_indirect(draw_.b) && draw_.index_buffer_range_B &&
+         !cmd->state.gfx.shaders[MESA_SHADER_GEOMETRY] &&
+         !cmd->state.gfx.shaders[MESA_SHADER_TESS_EVAL] &&
+         (dev->vk.enabled_features.robustBufferAccess ||
+          dev->vk.enabled_features.robustBufferAccess2 ||
+          dev->vk.enabled_features.pipelineRobustness) &&
+         agx_direct_draw_overreads_indices(draw_);
       if ((draw_.index_size != AGX_INDEX_SIZE_U8 &&
            draw_.index_size != AGX_INDEX_SIZE_U16 &&
            draw_.index_size != AGX_INDEX_SIZE_U32) ||
@@ -5171,7 +5193,8 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
           (agx_is_indirect(draw_.b)
               ? (!draw_.b.ptr ||
                  (draw_.index_buffer_range_B && !draw_.index_buffer))
-              : draw_.index_buffer_range_B && !agx_vdm_hal200_index_range(
+              : draw_.index_buffer_range_B && !robust_overread &&
+                   !agx_vdm_hal200_index_range(
                    draw_.index_buffer, draw_.index_buffer_range_B, draw_.start,
                    draw_.b.count[0], agx_index_size_to_B(draw_.index_size),
                    &address, &size_word))) {

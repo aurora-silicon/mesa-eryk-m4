@@ -2718,6 +2718,24 @@ agx_lower_agx3_half_converts(agx_context *ctx)
          I->src[1] = byte;
          I->src[0].value = AGX_CONVERT_U16_TO_F;
       }
+      if (I->src[0].value == AGX_CONVERT_S8_TO_F &&
+          I->round == AGX_ROUND_RTE) {
+         /* Sign-extend the byte inside its half register with the grounded
+          * half bit operations and add (x ^ 0x80) - 0x80, then use the
+          * native signed-half conversion
+          * (spirv_assembly.instruction.*.convertstof.int8_to_float*). */
+         agx_builder before = agx_init_builder(ctx, agx_before_instr(I));
+         agx_index byte = agx_temp(ctx, AGX_SIZE_16);
+         agx_and_to(&before, byte, I->src[1], agx_immediate(0xff));
+         agx_index flipped = agx_temp(ctx, AGX_SIZE_16);
+         agx_bitop_to(&before, flipped, byte, agx_mov_imm(&before, 16, 0x80),
+                      0x6);
+         agx_index extended = agx_temp(ctx, AGX_SIZE_16);
+         agx_iadd_to(&before, extended, flipped,
+                     agx_mov_imm(&before, 16, 0xff80), 0);
+         I->src[1] = extended;
+         I->src[0].value = AGX_CONVERT_S16_TO_F;
+      }
       if (I->dest[0].size == AGX_SIZE_32 &&
           (I->src[0].value == AGX_CONVERT_F_TO_S32 ||
            I->src[0].value == AGX_CONVERT_F_TO_U32) &&
@@ -3640,7 +3658,20 @@ agx_materialize_agx3_alu_constants(agx_context *ctx)
             if (src.type != AGX_INDEX_IMMEDIATE && modified &&
                 (src.abs || src.neg || src.size == AGX_SIZE_16)) {
                agx_index plain = agx_temp(ctx, AGX_SIZE_32);
-               agx_fmov_to(&b, plain, src);
+               if (src.size == AGX_SIZE_32 && src.abs && src.neg) {
+                  /* -|x| has no grounded F32 move; clear then flip the
+                   * sign bit (robustness2.*.vertex_attribute_fetch.
+                   * no_fmt_qual.len_25{2,6}.*.1d.vert). */
+                  agx_index bare = src;
+                  bare.abs = bare.neg = false;
+                  agx_index cleared = agx_temp(ctx, AGX_SIZE_32);
+                  agx_bitop_to(&b, cleared, bare,
+                               agx_mov_imm(&b, 32, 0x7fffffff), 0x8);
+                  agx_bitop_to(&b, plain, cleared,
+                               agx_mov_imm(&b, 32, 0x80000000), 0x6);
+               } else {
+                  agx_fmov_to(&b, plain, src);
+               }
                I->src[s] = plain;
                continue;
             }
@@ -3658,11 +3689,17 @@ agx_materialize_agx3_alu_constants(agx_context *ctx)
 
       /* Same-width F16 fmov is an FADD with negative zero. Apply sign
        * modifiers to the bits, preserving the half value and signed zero. */
+      /* The 32-bit form has grounded |x| and -|x|+1 encodings only; -|x|
+       * takes the same bit route (robustness2.*.vertex_attribute_fetch.
+       * no_fmt_qual.len_25{2,6}.*.1d.vert). */
       if (ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
           I->op == AGX_OPCODE_FADD && !I->saturate &&
-          I->dest[0].size == AGX_SIZE_16 &&
-          (I->src[0].size == AGX_SIZE_16 ||
-           (I->src[0].size == AGX_SIZE_32 && (I->src[0].abs || I->src[0].neg))) &&
+          ((I->dest[0].size == AGX_SIZE_16 &&
+            (I->src[0].size == AGX_SIZE_16 ||
+             (I->src[0].size == AGX_SIZE_32 &&
+              (I->src[0].abs || I->src[0].neg)))) ||
+           (I->dest[0].size == AGX_SIZE_32 && I->src[0].size == AGX_SIZE_32 &&
+            I->src[0].abs && I->src[0].neg)) &&
           I->src[0].type != AGX_INDEX_IMMEDIATE &&
           I->src[1].type == AGX_INDEX_IMMEDIATE &&
           ((I->src[1].value == 0 && I->src[1].neg) ||
