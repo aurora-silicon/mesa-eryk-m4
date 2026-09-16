@@ -1,0 +1,802 @@
+ninja: Entering directory `/home/council/dev/dirtyroom_m4/build/mesa-m4-asahi-host'
+[1/412] Generating src/asahi/compiler/agx_replay_abi.h with a custom command
+[2/412] Generating src/git_sha1.h with a custom command
+[3/412] Generating src/compiler/nir/nir_intrinsics_indices.h with a custom command
+[4/412] Generating src/compiler/nir/nir_intrinsics.h with a custom command
+[5/412] Generating src/compiler/nir/nir_intrinsic.c with a custom command
+[6/412] Generating src/compiler/nir/nir_opcodes.h with a custom command (wrapped by meson to capture output)
+[7/412] Generating src/compiler/nir/nir_opcodes.c with a custom command (wrapped by meson to capture output)
+[8/412] Generating src/compiler/nir/nir_builder_opcodes.h with a custom command (wrapped by meson to capture output)
+[9/412] Compiling C object src/compiler/nir/libnir.a.p/nir_clip_cull_distance_io_utils.c.o
+[10/412] Compiling C object src/compiler/nir/libnir.a.p/meson-generated_.._nir_intrinsics.c.o
+[11/412] Compiling C object src/compiler/nir/libnir.a.p/nir_builtin_builder.c.o
+[12/412] Compiling C object src/compiler/nir/libnir.a.p/nir_clone.c.o
+[13/412] Compiling C object src/compiler/nir/libnir.a.p/nir_control_flow.c.o
+[14/412] Compiling C object src/compiler/nir/libnir.a.p/nir_deref.c.o
+[15/412] Compiling C object src/compiler/nir/libnir.a.p/nir_divergence_analysis.c.o
+[16/412] Compiling C object src/compiler/nir/libnir.a.p/meson-generated_.._nir_opcodes.c.o
+[17/412] Compiling C object src/compiler/nir/libnir.a.p/nir.c.o
+[18/412] Compiling C object src/compiler/nir/libnir.a.p/nir_builder.c.o
+[19/412] Compiling C object src/compiler/nir/libnir.a.p/nir_dominance.c.o
+[20/412] Compiling C object src/compiler/nir/libnir.a.p/nir_dominance_lca.c.o
+[21/412] Compiling C object src/compiler/nir/libnir.a.p/nir_downgrade_pls_vars.c.o
+[22/412] Compiling C object src/compiler/nir/libnir.a.p/nir_fixup_is_exported.c.o
+[23/412] Compiling C object src/compiler/nir/libnir.a.p/nir_format_convert.c.o
+[24/412] Generating src/compiler/nir/nir_constant_expressions.c with a custom command (wrapped by meson to capture output)
+[25/412] Compiling C object src/compiler/nir/libnir.a.p/meson-generated_.._nir_opt_algebraic.c.o
+[26/412] Compiling C object src/compiler/nir/libnir.a.p/nir_from_ssa.c.o
+[27/412] Compiling C object src/compiler/nir/libnir.a.p/nir_functions.c.o
+[28/412] Compiling C object src/compiler/nir/libnir.a.p/nir_gather_info.c.o
+[29/412] Compiling C object src/compiler/nir/libnir.a.p/nir_gather_output_deps.c.o
+[30/412] Compiling C object src/compiler/nir/libnir.a.p/nir_gather_tcs_info.c.o
+[31/412] Compiling C object src/compiler/nir/libnir.a.p/nir_gather_types.c.o
+[32/412] Compiling C object src/compiler/nir/libnir.a.p/nir_gather_xfb_info.c.o
+[33/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_group_loads.c.o
+[34/412] Compiling C object src/compiler/nir/libnir.a.p/nir_gs_count_vertices.c.o
+[35/412] Compiling C object src/compiler/nir/libnir.a.p/nir_inline_sysval.c.o
+[36/412] Compiling C object src/compiler/nir/libnir.a.p/nir_inline_uniforms.c.o
+[37/412] Compiling C object src/compiler/nir/libnir.a.p/nir_instr_set.c.o
+[38/412] Compiling C object src/compiler/nir/libnir.a.p/nir_io_add_xfb_info.c.o
+[39/412] Compiling C object src/compiler/nir/libnir.a.p/nir_legacy.c.o
+[40/412] Compiling C object src/compiler/nir/libnir.a.p/nir_linking_helpers.c.o
+[41/412] Compiling C object src/compiler/nir/libnir.a.p/nir_liveness.c.o
+[42/412] Compiling C object src/compiler/nir/libnir.a.p/nir_loop_analyze.c.o
+[43/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_alu.c.o
+[44/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_alu_width.c.o
+[45/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_alpha.c.o
+[46/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_amul.c.o
+[47/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_array_deref_of_vec.c.o
+[48/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_atomics_to_ssbo.c.o
+[49/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_bitmap.c.o
+[50/412] Compiling C object src/compiler/nir/libnir.a.p/meson-generated_.._nir_constant_expressions.c.o
+[51/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_blend.c.o
+[52/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_bool_to_float.c.o
+[53/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_bool_to_int32.c.o
+[54/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_calls_to_builtins.c.o
+[55/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_cl_images.c.o
+[56/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_clamp_color_outputs.c.o
+[57/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_clip_halfz.c.o
+[58/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_clip.c.o
+[59/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_continue_constructs.c.o
+[60/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_clip_disable.c.o
+[61/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_const_arrays_to_uniforms.c.o
+[62/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_convert_alu_types.c.o
+[63/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_cooperative_matrix.c.o
+[64/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_variable_initializers.c.o
+[65/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_discard_if.c.o
+[66/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_double_ops.c.o
+[67/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_explicit_io.c.o
+[68/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_fb_read.c.o
+[69/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_flatshade.c.o
+[70/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_floats.c.o
+[71/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_flrp.c.o
+[72/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_fp16_conv.c.o
+[73/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_fragcoord_wtrans.c.o
+[74/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_frag_coord_to_pixel_coord.c.o
+[75/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_fragcolor.c.o
+[76/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_frexp.c.o
+[77/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_global_vars_to_local.c.o
+[78/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_goto_ifs.c.o
+[79/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_gs_intrinsics.c.o
+[80/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_halt_to_return.c.o
+[81/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_helper_writes.c.o
+[82/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_load_const_to_scalar.c.o
+[83/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_idiv.c.o
+[84/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_locals_to_regs.c.o
+[85/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_image.c.o
+[86/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_image_atomics_to_global.c.o
+[87/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_indirect_derefs_to_if_else_trees.c.o
+[88/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_input_attachments.c.o
+[89/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_int64.c.o
+[90/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_int_to_float.c.o
+[91/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_interpolation.c.o
+[92/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_io.c.o
+[93/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_io_array_vars_to_elements.c.o
+[94/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_io_indirect_loads.c.o
+[95/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_io_vars_to_temporaries.c.o
+[96/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_io_to_scalar.c.o
+[97/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_io_vars_to_scalar.c.o
+[98/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_is_helper_invocation.c.o
+[99/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_multiview.c.o
+[100/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_mediump.c.o
+[101/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_mem_access_bit_sizes.c.o
+[102/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_memcpy.c.o
+[103/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_memory_model.c.o
+[104/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_non_uniform_access.c.o
+[105/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_packing.c.o
+[106/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_passthrough_edgeflags.c.o
+[107/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_patch_vertices.c.o
+[108/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_phis_to_scalar.c.o
+[109/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_pntc_ytransform.c.o
+[110/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_point_size.c.o
+[111/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_point_smooth.c.o
+[112/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_poly_line_smooth.c.o
+[113/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_printf.c.o
+[114/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_reg_intrinsics_to_ssa.c.o
+[115/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_readonly_images_to_tex.c.o
+[116/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_returns.c.o
+[117/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_robust_access.c.o
+[118/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_samplers.c.o
+[119/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_scratch.c.o
+[120/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_shader_calls.c.o
+[121/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_ssbo.c.o
+[122/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_sample_shading.c.o
+[123/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_scratch_to_var.c.o
+[124/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_subgroups.c.o
+[125/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_system_values.c.o
+[126/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_single_sampled.c.o
+[127/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_task_shader.c.o
+[128/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_terminate_to_demote.c.o
+[129/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_tess_coord_z.c.o
+[130/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_tex_shadow.c.o
+[131/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_texcoord_replace.c.o
+[132/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_texcoord_replace_late.c.o
+[133/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_tex.c.o
+[134/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_two_sided_color.c.o
+[135/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_undef_to_zero.c.o
+[136/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_vars_to_ssa.c.o
+[137/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_var_copies.c.o
+[138/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_vec_to_regs.c.o
+[139/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_vec3_to_vec4.c.o
+[140/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_view_index_to_device_index.c.o
+[141/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_viewport_transform.c.o
+[142/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_wpos_center.c.o
+[143/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_wpos_ytransform.c.o
+[144/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_wrmasks.c.o
+[145/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_bit_size.c.o
+[146/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_ubo_vec4.c.o
+[147/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_uniforms_to_ubo.c.o
+[148/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_workgroup_size.c.o
+[149/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_sysvals_to_varyings.c.o
+[150/412] Compiling C object src/compiler/nir/libnir.a.p/nir_mod_analysis.c.o
+[151/412] Compiling C object src/compiler/nir/libnir.a.p/nir_metadata.c.o
+[152/412] Compiling C object src/compiler/nir/libnir.a.p/nir_move_output_stores_to_end.c.o
+[153/412] Compiling C object src/compiler/nir/libnir.a.p/nir_move_vec_src_uses_to_dest.c.o
+[154/412] Compiling C object src/compiler/nir/libnir.a.p/nir_normalize_cubemap_coords.c.o
+[155/412] Compiling C object src/compiler/nir/libnir.a.p/nir_normalize_sin_cos.c.o
+[156/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_access.c.o
+[157/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_barriers.c.o
+[158/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_barycentric.c.o
+[159/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_call.c.o
+[160/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_clip_cull_const.c.o
+[161/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_combine_stores.c.o
+[162/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_comparison_pre.c.o
+[163/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_constant_folding.c.o
+[164/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_copy_prop_vars.c.o
+[165/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_copy_propagate.c.o
+[166/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_cse.c.o
+[167/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_dce.c.o
+[168/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_dead_cf.c.o
+[169/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_dead_write_vars.c.o
+[170/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_find_array_copies.c.o
+[171/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_fp_math_ctrl.c.o
+[172/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_frag_coord_to_pixel_coord.c.o
+[173/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_fragdepth.c.o
+[174/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_gcm.c.o
+[175/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_generate_bfi.c.o
+[176/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_idiv_const.c.o
+[177/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_if.c.o
+[178/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_intrinsics.c.o
+[179/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_load_skip_helpers.c.o
+[180/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_large_constants.c.o
+[181/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_licm.c.o
+[182/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_load_store_vectorize.c.o
+[183/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_loop.c.o
+[184/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_loop_unroll.c.o
+[185/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_memcpy.c.o
+[186/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_move.c.o
+[187/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_move_discards_to_top.c.o
+[188/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_move_to_top.c.o
+[189/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_mqsad.c.o
+[190/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_non_uniform_access.c.o
+[191/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_offsets.c.o
+[192/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_peephole_select.c.o
+[193/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_phi_precision.c.o
+[194/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_phi_to_bool.c.o
+[195/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_preamble.c.o
+[196/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_ray_queries.c.o
+[197/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_reassociate.c.o
+[198/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_reassociate_bfi.c.o
+[199/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_remove_phis.c.o
+[200/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_rematerialize_compares.c.o
+[201/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_shrink_stores.c.o
+[202/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_shrink_vectors.c.o
+[203/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_sink.c.o
+[204/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_uniform_atomics.c.o
+[205/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_uniform_subgroup.c.o
+[206/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_undef.c.o
+[207/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_uub.c.o
+[208/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_vectorize.c.o
+[209/412] Compiling C object src/compiler/nir/libnir.a.p/nir_passthrough_gs.c.o
+[210/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_varyings.c.o
+[211/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_vectorize_io.c.o
+[212/412] Compiling C object src/compiler/nir/libnir.a.p/nir_opt_vectorize_io_vars.c.o
+[213/412] Compiling C object src/compiler/nir/libnir.a.p/nir_passthrough_tcs.c.o
+[214/412] Compiling C object src/compiler/nir/libnir.a.p/nir_phi_builder.c.o
+[215/412] Compiling C object src/compiler/nir/libnir.a.p/nir_print.c.o
+[216/412] Compiling C object src/compiler/nir/libnir.a.p/nir_propagate_invariant.c.o
+[217/412] Compiling C object src/compiler/nir/libnir.a.p/nir_range_analysis.c.o
+[218/412] Compiling C object src/compiler/nir/libnir.a.p/nir_recompute_io_bases.c.o
+[219/412] Compiling C object src/compiler/nir/libnir.a.p/nir_remove_dead_variables.c.o
+[220/412] Compiling C object src/compiler/nir/libnir.a.p/nir_remove_outputs.c.o
+[221/412] Compiling C object src/compiler/nir/libnir.a.p/nir_remove_tex_shadow.c.o
+[222/412] Compiling C object src/compiler/nir/libnir.a.p/nir_repair_ssa.c.o
+[223/412] Compiling C object src/compiler/nir/libnir.a.p/nir_scale_fdiv.c.o
+[224/412] Compiling C object src/compiler/nir/libnir.a.p/nir_schedule.c.o
+[225/412] Compiling C object src/compiler/nir/libnir.a.p/nir_search.c.o
+[226/412] Compiling C object src/compiler/nir/libnir.a.p/nir_serialize.c.o
+[227/412] Compiling C object src/compiler/nir/libnir.a.p/nir_separate_merged_clip_cull_io.c.o
+[228/412] Compiling C object src/compiler/nir/libnir.a.p/nir_shader_bisect.c.o
+[229/412] Compiling C object src/compiler/nir/libnir.a.p/nir_split_64bit_vec3_and_vec4.c.o
+[230/412] Compiling C object src/compiler/nir/libnir.a.p/nir_split_conversions.c.o
+[231/412] Compiling C object src/compiler/nir/libnir.a.p/nir_split_per_member_structs.c.o
+[232/412] Compiling C object src/compiler/nir/libnir.a.p/nir_split_var_copies.c.o
+[233/412] Compiling C object src/compiler/nir/libnir.a.p/nir_sweep.c.o
+[234/412] Compiling C object src/compiler/nir/libnir.a.p/nir_split_vars.c.o
+[235/412] Compiling C object src/compiler/nir/libnir.a.p/nir_to_lcssa.c.o
+[236/412] Compiling C object src/compiler/nir/libnir.a.p/nir_trivialize_registers.c.o
+[237/412] Compiling C object src/compiler/nir/libnir.a.p/nir_unlower_io_to_vars.c.o
+[238/412] Compiling C object src/compiler/nir/libnir.a.p/nir_use_dominance.c.o
+[239/412] Compiling C object src/compiler/nir/libnir.a.p/nir_worklist.c.o
+[240/412] Compiling C object src/compiler/nir/libnir.a.p/nir_lower_atomics.c.o
+[241/412] Compiling C object src/compiler/nir/libnir.a.p/nir_validate.c.o
+[242/412] Compiling C object src/compiler/spirv/libvtn.a.p/meson-generated_.._vtn_gather_types.c.o
+[243/412] Compiling C object src/compiler/spirv/libvtn.a.p/gl_spirv.c.o
+[244/412] Compiling C object src/compiler/spirv/libvtn.a.p/vtn_alu.c.o
+[245/412] Compiling C object src/compiler/spirv/libvtn.a.p/vtn_amd.c.o
+[246/412] Compiling C object src/compiler/spirv/libvtn.a.p/vtn_cfg.c.o
+[247/412] Compiling C object src/compiler/spirv/libvtn.a.p/spirv_to_nir.c.o
+[248/412] Compiling C object src/compiler/spirv/libvtn.a.p/vtn_cmat.c.o
+[249/412] Compiling C object src/compiler/spirv/libvtn.a.p/vtn_debug.c.o
+[250/412] Compiling C object src/compiler/spirv/libvtn.a.p/vtn_glsl450.c.o
+[251/412] Compiling C object src/compiler/spirv/libvtn.a.p/vtn_opencl.c.o
+[252/412] Compiling C object src/compiler/spirv/libvtn.a.p/vtn_structured_cfg.c.o
+[253/412] Compiling C object src/compiler/spirv/libvtn.a.p/vtn_subgroup.c.o
+[254/412] Compiling C object src/compiler/spirv/libvtn.a.p/vtn_variables.c.o
+[255/412] Compiling C object src/compiler/clc/liblibmesaclc.a.p/clc.c.o
+[256/412] Compiling C object src/compiler/spirv/vtn_bindgen2.p/vtn_bindgen2.c.o
+[257/412] Compiling C object src/compiler/clc/liblibmesaclc.a.p/nir_load_libclc.c.o
+[258/412] Compiling C object src/asahi/clc/asahi_clc.p/asahi_clc.c.o
+[259/412] Compiling C++ object src/asahi/compiler/agx_tests.p/test_test-compact-constants.cpp.o
+[260/412] Compiling C++ object src/asahi/compiler/agx_tests.p/test_test-minifloat.cpp.o
+[261/412] Compiling C++ object src/asahi/compiler/agx_tests.p/test_test-lower-pseudo.cpp.o
+[262/412] Compiling C++ object src/asahi/compiler/agx_tests.p/test_test-optimizer.cpp.o
+[263/412] Compiling C++ object src/asahi/compiler/agx_tests.p/test_test-repair-ssa.cpp.o
+[264/412] Compiling C++ object src/asahi/compiler/agx_tests.p/test_test-lower-spill.cpp.o
+[265/412] Compiling C object src/asahi/compiler/agx3_interleave_test.p/test_test-agx3-interleave.c.o
+[266/412] Compiling C object src/asahi/compiler/agx3_norm16_test.p/test_test-agx3-norm16.c.o
+[267/412] Compiling C++ object src/asahi/compiler/agx_tests.p/test_test-lower-parallel-copy.cpp.o
+[268/412] Compiling C object src/asahi/compiler/agx3_compile_fail_closed_test.p/test_test-agx3-compile-fail-closed.c.o
+[269/412] Linking static target src/compiler/spirv/libvtn.a
+[270/412] Compiling C object src/asahi/compiler/agx3_int64_test.p/test_test-agx3-int64.c.o
+[271/412] Compiling C object src/asahi/compiler/agx3_workgroup_test.p/test_test-agx3-workgroup.c.o
+[272/412] Linking static target src/compiler/clc/liblibmesaclc.a
+[273/412] Compiling C object src/asahi/compiler/agx3_multi_store_test.p/test_test-agx3-multi-store.c.o
+[274/412] Compiling C object src/asahi/compiler/agx3_event_wait_test.p/test_test-agx3-event-wait.c.o
+[275/412] Compiling C object src/asahi/compiler/agx3_rgb10_memory_test.p/test_test-agx3-rgb10-memory.c.o
+[276/412] Compiling C object src/asahi/compiler/agx3_ray_query_prerequisites_test.p/test_test-agx3-ray-query-prerequisites.c.o
+[277/412] Compiling C object src/asahi/compiler/agx3_graphics_compile_test.p/test_test-agx3-graphics-compile.c.o
+[278/412] Compiling C object src/asahi/compiler/agx_register_bank_test.p/test_test-register-bank.c.o
+[279/412] Compiling C object src/asahi/lib/asahi-native-uniform-prefix.p/tests_test-native-uniform-prefix.c.o
+[280/412] Compiling C object src/asahi/lib/asahi-g17p-early-demote-epilog.p/tests_test-agx-g17p-early-demote-epilog.c.o
+[281/412] Compiling C object src/asahi/lib/asahi-g17p-advanced-blend.p/tests_test-agx-g17p-advanced-blend.c.o
+[282/412] Compiling C++ object src/asahi/compiler/agx_tests.p/test_test-agx3-pack-binary.cpp.o
+[283/412] Compiling C object src/asahi/lib/asahi-blend-key.p/tests_test-agx-blend-key.c.o
+[284/412] Compiling C object src/asahi/lib/asahi-g17p-srgb-epilog.p/tests_test-agx-g17p-srgb-epilog.c.o
+[285/412] Compiling C object src/asahi/lib/asahi-g17p-mrt-epilog.p/tests_test-agx-g17p-mrt-epilog.c.o
+[286/412] Compiling C object src/asahi/vulkan/hk_descriptor_prefetch_test.p/hk_nir_prefetch_descriptors.c.o
+[287/412] Compiling C object src/asahi/lib/asahi-g17p-f16-io.p/tests_test-agx-f16-io.c.o
+[288/412] Compiling C object src/asahi/vulkan/hk_descriptor_prefetch_test.p/tests_test-hk-descriptor-prefetch.c.o
+[289/412] Compiling C object src/asahi/vulkan/hk_vbo_raw_test.p/tests_test-hk-vbo-raw.c.o
+[290/412] Linking static target src/compiler/nir/libnir.a
+[291/412] Compiling C object src/asahi/vulkan/hk_native_descriptor_test.p/tests_test-hk-native-descriptor.c.o
+[292/412] Linking target src/asahi/vulkan/hk_native_descriptor_test
+[293/412] Linking target src/asahi/vulkan/hk_descriptor_prefetch_test
+[294/412] Linking target src/compiler/spirv/vtn_bindgen2
+[295/412] Linking target src/compiler/clc/mesa_clc
+[296/412] Generating src/poly/cl/libpoly.spv with a custom command
+[297/412] Generating src/poly/cl/libpoly.cpp with a custom command
+[298/412] Compiling C object src/poly/nir/liblibpoly_nir.a.p/poly_nir_lower_sysvals.c.o
+[299/412] Compiling C object src/poly/nir/liblibpoly_nir.a.p/poly_nir_lower_tess.c.o
+[300/412] Compiling C object src/poly/nir/liblibpoly_nir.a.p/poly_nir_lower_vs.c.o
+[301/412] Compiling C++ object src/poly/nir/liblibpoly_nir.a.p/meson-generated_.._.._cl_libpoly.cpp.o
+[302/412] Compiling C object src/poly/nir/liblibpoly_nir.a.p/poly_nir_lower_gs.c.o
+[303/412] Linking static target src/poly/nir/liblibpoly_nir.a
+[304/412] Generating src/asahi/libagx/libagx.spv with a custom command
+[305/412] Generating src/asahi/libagx/libagx.cpp with a custom command
+[306/412] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_liveness.c.o
+[307/412] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/meson-generated_.._agx_nir_algebraic.c.o
+[308/412] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_dce.c.o
+[309/412] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_nir_lower_cull_distance.c.o
+[310/412] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_nir_lower_fminmax.c.o
+[311/412] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_nir_lower_frag_sidefx.c.o
+[312/412] Compiling C++ object src/asahi/compiler/libasahi_compiler.a.p/meson-generated_.._.._libagx_libagx.cpp.o
+[313/412] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_insert_waits.c.o
+[314/412] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_nir_lower_address.c.o
+[315/412] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_nir_lower_sample_mask.c.o
+[316/412] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_nir_lower_discard_zs_emit.c.o
+[317/412] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_nir_lower_interpolation.c.o
+[318/412] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_nir_lower_g17p_combined_sampler.c.o
+[319/412] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_nir_ray_query.c.o
+[320/412] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_nir_lower_shared_bitsize.c.o
+[321/412] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_nir_lower_subgroups.c.o
+[322/412] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_nir_lower_texture.c.o
+[323/412] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_nir_opt_preamble.c.o
+[324/412] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_lower_64bit.c.o
+[325/412] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_lower_divergent_shuffle.c.o
+[326/412] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_lower_parallel_copy.c.o
+[327/412] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_lower_pseudo.c.o
+[328/412] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_lower_spill.c.o
+[329/412] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_lower_uniform_sources.c.o
+[330/412] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_pack.c.o
+[331/412] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_performance.c.o
+[332/412] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx3_pack_binary.c.o
+[333/412] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_print.c.o
+[334/412] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_opt_break_if.c.o
+[335/412] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_pressure_schedule.c.o
+[336/412] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_opt_cse.c.o
+[337/412] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_opt_empty_else.c.o
+[338/412] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_ir.c.o
+[339/412] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_opt_compact_constants.c.o
+[340/412] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_opt_promote_constants.c.o
+[341/412] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_opt_register_cache.c.o
+[342/412] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_optimizer.c.o
+[343/412] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_repair_ssa.c.o
+[344/412] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_reindex_ssa.c.o
+[345/412] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_opt_jmp_none.c.o
+[346/412] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_validate.c.o
+[347/412] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_spill.c.o
+[348/412] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_register_allocate.c.o
+[349/412] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_validate_ra.c.o
+[350/412] Compiling C++ object src/asahi/compiler/agx3_g17p_producers_test.p/meson-generated_.._.._libagx_libagx.cpp.o
+[351/412] Compiling C++ object src/asahi/vulkan/hk_cmd_lifetime_test.p/meson-generated_.._.._libagx_libagx.cpp.o
+[352/412] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_compile.c.o
+[353/412] Linking static target src/asahi/compiler/libasahi_compiler.a
+[354/412] Linking target src/asahi/vulkan/hk_agx3_raytracing_core_test
+[355/412] Linking target src/asahi/compiler/agx3_tex_core_test
+[356/412] Linking target src/asahi/vulkan/hk_agx3_tile_core_test
+[357/412] Linking target src/asahi/compiler/agx3_ray_query_prerequisites_test
+[358/412] Linking target src/asahi/compiler/agx3_g17p_producers_test
+[359/412] Linking target src/asahi/compiler/agx3_norm16_test
+[360/412] Linking target src/asahi/compiler/agx3_int64_test
+[361/412] Linking target src/asahi/compiler/agx3_compile_fail_closed_test
+[362/412] Linking target src/asahi/compiler/agx3_interleave_test
+[363/412] Linking target src/asahi/compiler/agx3_workgroup_test
+[364/412] Linking target src/asahi/compiler/agx3_multi_store_test
+[365/412] Linking target src/asahi/compiler/agx3_rgb10_memory_test
+[366/412] Linking target src/asahi/compiler/agx_register_bank_test
+[367/412] Linking target src/asahi/compiler/agx3_event_wait_test
+[368/412] Linking target src/asahi/compiler/agx3_graphics_compile_test
+[369/412] Linking target src/asahi/clc/asahi_clc
+[370/412] Linking target src/asahi/compiler/agx_tests
+[371/412] Generating src/asahi/lib/libagx_shaders.h with a custom command
+[372/412] Compiling C object src/asahi/lib/libasahi_lib.a.p/agx_nir_lower_msaa.c.o
+[373/412] Compiling C object src/asahi/lib/libasahi_lib.a.p/agx_border.c.o
+[374/412] Compiling C++ object src/asahi/lib/libasahi_lib.a.p/meson-generated_.._.._libagx_libagx.cpp.o
+[375/412] Compiling C object src/asahi/lib/libasahi_lib.a.p/agx_linker.c.o
+[376/412] Compiling C object src/asahi/lib/libasahi_lib.a.p/agx_nir_lower_tilebuffer.c.o
+[377/412] Compiling C object src/asahi/lib/libasahi_lib.a.p/agx_bg_eot.c.o
+[378/412] Compiling C object src/asahi/lib/libasahi_lib.a.p/meson-generated_.._libagx_shaders.c.o
+[379/412] Compiling C object src/asahi/lib/libasahi_lib.a.p/agx_device.c.o
+[380/412] Compiling C object src/asahi/lib/libasahi_lib.a.p/agx_nir_lower_sample_intrinsics.c.o
+[381/412] Compiling C object src/asahi/lib/libasahi_lib.a.p/agx_scratch.c.o
+[382/412] Compiling C++ object src/asahi/lib/libasahi_lib.a.p/meson-generated_.._.._.._poly_cl_libpoly.cpp.o
+[383/412] Compiling C object src/asahi/lib/libasahi_lib.a.p/agx_nir_lower_vbo.c.o
+[384/412] Compiling C object src/asahi/lib/libasahi_lib.a.p/agx_nir_prolog_epilog.c.o
+[385/412] Compiling C object src/asahi/lib/libasahi_lib.a.p/agx_nir_lower_uvs.c.o
+[386/412] Compiling C object src/asahi/vulkan/hk_cmd_lifetime_test.p/hk_cmd_lifetime.c.o
+In file included from ../../mesa/m4-asahi/src/asahi/vulkan/hk_cmd_lifetime.c:2:
+../../mesa/m4-asahi/src/asahi/vulkan/hk_cmd_buffer.h: In function ‘hk_cmd_buffer_get_cs_general’:
+../../mesa/m4-asahi/src/asahi/vulkan/hk_cmd_buffer.h:694:26: warning: pointer of type ‘void *’ used in arithmetic [-Wpointer-arith]
+  694 |          .end = root.cpu + initial_size,
+      |                          ^
+../../mesa/m4-asahi/src/asahi/vulkan/hk_cmd_buffer.h: In function ‘hk_cs_alloc_for_indirect’:
+../../mesa/m4-asahi/src/asahi/vulkan/hk_cmd_buffer.h:742:16: warning: pointer of type ‘void *’ used in arithmetic [-Wpointer-arith]
+  742 |    cs->current += size_B;
+      |                ^~
+[387/412] Compiling C object src/asahi/vulkan/hk_cmd_lifetime_test.p/tests_test-hk-cmd-lifetime.c.o
+In file included from ../../mesa/m4-asahi/src/asahi/vulkan/tests/test-hk-cmd-lifetime.c:2:
+../../mesa/m4-asahi/src/asahi/vulkan/tests/../hk_cmd_buffer.h: In function ‘hk_cmd_buffer_get_cs_general’:
+../../mesa/m4-asahi/src/asahi/vulkan/tests/../hk_cmd_buffer.h:694:26: warning: pointer of type ‘void *’ used in arithmetic [-Wpointer-arith]
+  694 |          .end = root.cpu + initial_size,
+      |                          ^
+../../mesa/m4-asahi/src/asahi/vulkan/tests/../hk_cmd_buffer.h: In function ‘hk_cs_alloc_for_indirect’:
+../../mesa/m4-asahi/src/asahi/vulkan/tests/../hk_cmd_buffer.h:742:16: warning: pointer of type ‘void *’ used in arithmetic [-Wpointer-arith]
+  742 |    cs->current += size_B;
+      |                ^~
+[388/412] Compiling C object src/asahi/vulkan/hk_printf_root_test.p/tests_test-hk-printf-root.c.o
+[389/412] Compiling C object src/asahi/vulkan/hk_printf_root_test.p/hk_nir_lower_descriptors.c.o
+[390/412] Linking static target src/asahi/lib/libasahi_lib.a
+[391/412] Linking target src/asahi/vulkan/hk_agx3_ioto_profile_core_test
+[392/412] Linking target src/asahi/vulkan/hk_agx3_ppp_hal300_depth_stencil_test
+[393/412] Linking target src/asahi/vulkan/hk_agx3_ioto_preshader_core_test
+[394/412] Linking target src/asahi/vulkan/hk_agx3_ioto_decode_test
+[395/412] Linking target src/asahi/vulkan/hk_agx3_ppp_hal300_depth_bias_scissor_test
+[396/412] Linking target src/asahi/vulkan/hk_agx3_ioto_state_core_test
+[397/412] Linking target src/asahi/vulkan/hk_agx3_vdm_decode_test
+[398/412] Linking target src/asahi/vulkan/hk_native_sampler_test
+[399/412] Linking target src/asahi/vulkan/hk_agx3_ppp_viewport_payload_test
+[400/412] Linking target src/asahi/vulkan/hk_agx3_ppp_w_clamp_cull2_test
+[401/412] Linking target src/asahi/vulkan/hk_agx3_ioto_program_core_test
+[402/412] Linking target src/asahi/lib/libasahi_tests
+[403/412] Linking target src/asahi/vulkan/hk_printf_root_test
+[404/412] Linking target src/asahi/vulkan/hk_cmd_lifetime_test
+[405/412] Linking target src/asahi/lib/asahi-g17p-f16-io
+[406/412] Linking target src/asahi/lib/asahi-blend-key
+[407/412] Linking target src/asahi/lib/asahi-g17p-mrt-epilog
+[408/412] Linking target src/asahi/lib/asahi-native-uniform-prefix
+[409/412] Linking target src/asahi/vulkan/hk_vbo_raw_test
+[410/412] Linking target src/asahi/lib/asahi-g17p-early-demote-epilog
+[411/412] Linking target src/asahi/lib/asahi-g17p-advanced-blend
+[412/412] Linking target src/asahi/lib/asahi-g17p-srgb-epilog
+  1/114 asahi - mesa:agx2_disasm                                OK              0.06s
+  2/114 asahi - mesa:agx3_ldimm_disasm                          OK              0.05s
+  3/114 asahi - mesa:agx3_subgroup_core                         OK              0.04s
+  4/114 asahi - mesa:agx3_atomic_core                           OK              0.04s
+  5/114 asahi - mesa:agx3_tex_core                              OK              0.03s
+  6/114 asahi - mesa:agx3_local_tps_core                        OK              0.03s
+  7/114 asahi - mesa:agx3_static_spill_core                     OK              0.02s
+  8/114 asahi - mesa:agx3_falu_mod_core                         OK              0.02s
+  9/114 asahi - mesa:agx3_vary_core                             OK              0.02s
+ 10/114 asahi - mesa:agx3_cf_core                               OK              0.02s
+ 11/114 asahi - mesa:agx3_mem_core                              OK              0.01s
+ 12/114 asahi - mesa:asahi-agx3-packing                         FAIL            0.08s   exit status 1
+>>> MSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1:print_stacktrace=1 UBSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1:print_stacktrace=1 MESON_TEST_ITERATION=1 MALLOC_PERTURB_=107 ASAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1 /home/council/dev/dirtyroom_m4/build/mesa-m4-asahi-host/src/asahi/genxml/asahi-agx3-packing
+――――――――――――――――――――――――――――――――――――― ✀  ―――――――――――――――――――――――――――――――――――――
+stderr:
+AGX3 live indexed VDM mismatch
+――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――
+
+ 13/114 asahi - mesa:agx3_opcode_mapping                        FAIL            0.08s   exit status 1
+>>> MSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1:print_stacktrace=1 MALLOC_PERTURB_=214 UBSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1:print_stacktrace=1 MESON_TEST_ITERATION=1 ASAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1 /usr/bin/python3.14 /home/council/dev/dirtyroom_m4/build/mesa-m4-asahi-host/../../mesa/m4-asahi/src/asahi/compiler/test/test-agx3-opcodes.py
+――――――――――――――――――――――――――――――――――――― ✀  ―――――――――――――――――――――――――――――――――――――
+stderr:
+Traceback (most recent call last):
+  File "/home/council/dev/dirtyroom_m4/build/mesa-m4-asahi-host/../../mesa/m4-asahi/src/asahi/compiler/test/test-agx3-opcodes.py", line 21, in <module>
+    assert sum(op.agx3_mnemonic is not None for op in opcodes.values()) == 8
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError
+――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――
+
+ 14/114 asahi - mesa:agx2_python_disasm                         OK              0.10s
+ 15/114 asahi - mesa:agx3_pack                                  OK              0.09s
+ 16/114 asahi - mesa:agx3_select_core                           OK              0.05s
+ 17/114 asahi - mesa:agx3_tile_core                             OK              0.05s
+ 18/114 asahi - mesa:agx3_g17p_producers                        OK              0.05s
+ 19/114 asahi - mesa:agx3_smp_witness                           OK              0.04s
+ 20/114 asahi - mesa:agx3_compose_corpus                        OK              0.04s
+ 21/114 asahi - mesa:agx3_slot_core                             OK              0.04s
+ 22/114 asahi - mesa:agx3_iadd_core                             OK              0.03s
+ 23/114 asahi - mesa:agx3_isel_core                             OK              0.03s
+ 24/114 asahi - mesa:agx3_copy_core                             OK              0.03s
+ 25/114 asahi - mesa:agx3_scs_core                              OK              0.03s
+ 26/114 asahi - mesa:agx3_ioto_uniform_program                  OK              0.05s
+ 27/114 asahi - mesa:agx3_compile_fail_closed                   FAIL            0.04s   exit status 1
+>>> MSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1:print_stacktrace=1 UBSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1:print_stacktrace=1 MESON_TEST_ITERATION=1 MALLOC_PERTURB_=174 ASAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1 /home/council/dev/dirtyroom_m4/build/mesa-m4-asahi-host/src/asahi/compiler/agx3_compile_fail_closed_test
+――――――――――――――――――――――――――――――――――――― ✀  ―――――――――――――――――――――――――――――――――――――
+stderr:
+AGX3 preflight: unlowered runtime printf buffer address
+agx3_pack_binary.c:5528: no grounded AGX3 encoding for uniform_store
+   uniform_store ^r0:r1, #8, x, #0x0
+AGX3 accepted a scratch-using compute shader; if stack access is now grounded, widen hk_g17p_compute_shader_supported() in the same change
+――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――
+
+ 28/114 asahi - mesa:agx3_interleave                            OK              0.04s
+ 29/114 asahi - mesa:agx3_norm16                                OK              0.04s
+ 30/114 asahi - mesa:agx3_int64                                 OK              0.04s
+ 31/114 asahi - mesa:agx3_workgroup                             OK              0.03s
+ 32/114 asahi - mesa:agx_register_bank                          OK              0.01s
+ 33/114 asahi - mesa:agx3_multi_store                           FAIL            0.04s   exit status 1
+>>> MSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1:print_stacktrace=1 UBSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1:print_stacktrace=1 MESON_TEST_ITERATION=1 MALLOC_PERTURB_=230 ASAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1 /home/council/dev/dirtyroom_m4/build/mesa-m4-asahi-host/src/asahi/compiler/agx3_multi_store_test
+――――――――――――――――――――――――――――――――――――― ✀  ―――――――――――――――――――――――――――――――――――――
+stdout:
+22 checks, 3 failures
+stderr:
+FAIL ../../mesa/m4-asahi/src/asahi/compiler/test/test-agx3-multi-store.c:418: len == sizeof(expected) && memcmp(out, expected, len) == 0
+FAIL ../../mesa/m4-asahi/src/asahi/compiler/test/test-agx3-multi-store.c:450: add_found
+FAIL ../../mesa/m4-asahi/src/asahi/compiler/test/test-agx3-multi-store.c:457: add_found && memcmp(add, want_add, sizeof(want_add)) == 0
+1 global store(s): ok
+2 global store(s): ok
+3 global store(s): ok
+4 global store(s): ok
+――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――
+
+ 34/114 asahi - mesa:agx3_event_wait                            FAIL            0.04s   exit status 1
+>>> MSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1:print_stacktrace=1 UBSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1:print_stacktrace=1 MESON_TEST_ITERATION=1 MALLOC_PERTURB_=221 ASAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1 /home/council/dev/dirtyroom_m4/build/mesa-m4-asahi-host/src/asahi/compiler/agx3_event_wait_test
+――――――――――――――――――――――――――――――――――――― ✀  ―――――――――――――――――――――――――――――――――――――
+stderr:
+AGX3b event-wait poll was not encoded safely
+1b0401082b0601080a0523030200050000000f0554010f05541a1b040108670054040000000011000040020006042a0523030600070000008f0454260f0054deffffffffff000f06040200000f06040100000e000000
+――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――
+
+ 35/114 asahi - mesa:agx3_pixel_core                            FAIL            0.04s   exit status 1
+>>> MSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1:print_stacktrace=1 UBSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1:print_stacktrace=1 MESON_TEST_ITERATION=1 MALLOC_PERTURB_=69 ASAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1 /home/council/dev/dirtyroom_m4/build/mesa-m4-asahi-host/src/asahi/compiler/agx3_pixel_core_test
+――――――――――――――――――――――――――――――――――――― ✀  ―――――――――――――――――――――――――――――――――――――
+stderr:
+AGX3b colour entry: got , expected 870254000600
+agx3_pixel_core: 1/39 checks failed
+――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――
+
+ 36/114 asahi - mesa:agx3_funop_core                            FAIL            0.03s   exit status 1
+>>> MSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1:print_stacktrace=1 UBSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1:print_stacktrace=1 MALLOC_PERTURB_=49 MESON_TEST_ITERATION=1 ASAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1 /home/council/dev/dirtyroom_m4/build/mesa-m4-asahi-host/src/asahi/compiler/agx3_funop_core_test
+――――――――――――――――――――――――――――――――――――― ✀  ―――――――――――――――――――――――――――――――――――――
+stderr:
+register out of range: accepted, expected refusal
+agx3_funop_core: 1/59 checks failed
+――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――
+
+ 37/114 asahi - mesa:agx3_rt_core                               FAIL            0.03s   exit status 1
+>>> MSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1:print_stacktrace=1 UBSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1:print_stacktrace=1 MALLOC_PERTURB_=131 MESON_TEST_ITERATION=1 ASAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1 /home/council/dev/dirtyroom_m4/build/mesa-m4-asahi-host/src/asahi/compiler/agx3_rt_core_test
+――――――――――――――――――――――――――――――――――――― ✀  ―――――――――――――――――――――――――――――――――――――
+stderr:
+AGX3b intersect_ray: got , expected 5f10540000412640c7504c00
+AGX3c intersect_ray: got 27042901a2c1ae0201982700, expected 27042901a2c1ae02019827000020
+AGX3b intersect_ray: got 5f10540400412640c7504c000000, expected 5f10540400412640c7504c00
+AGX3c intersect_ray: got 27042901a2c1ae0201982700, expected 27042901a2c1ae02019827000022
+AGX3b intersect_ray site: got 5f10540000412640c7504c000000, expected 5f10540000412640c7504c00
+AGX3c intersect_ray site: got 27042901a2c1ae0201982700, expected 27042901a2c1ae02019827000020
+AGX3b continue_ray: got 5f11540000000000000000000000, expected 5f1154000000
+AGX3c continue_ray: got 2704090022c0, expected 2704090022c0af02
+AGX3b update barrier: got 0704540809000000, expected 070454080900
+AGX3b update_node: got df0554000000, expected df055400
+AGX3c update_node: got 27000100, expected 270001002200ad02
+AGX3b update_node expansion: got 070454080900df05, expected 070454080900df055400
+AGX3c update_node expansion: got 17090006000027000100, expected 170900060000270001002200ad02
+intersect_ray b reg 2: refusal left length 14
+agx3_rt_core: 14/53 checks failed
+――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――
+
+ 38/114 asahi - mesa:agx3_rgb10_memory                          OK              0.05s
+ 39/114 asahi - mesa:agx3_graphics_compile                      FAIL            0.06s   exit status 1
+>>> MSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1:print_stacktrace=1 UBSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1:print_stacktrace=1 MESON_TEST_ITERATION=1 MALLOC_PERTURB_=2 ASAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1 /home/council/dev/dirtyroom_m4/build/mesa-m4-asahi-host/src/asahi/compiler/agx3_graphics_compile_test
+――――――――――――――――――――――――――――――――――――― ✀  ―――――――――――――――――――――――――――――――――――――
+stderr:
+agx3_pack_binary.c:7703: no grounded AGX3 encoding for block_image_store
+   block_image_store #0, #0, ^r2, ^r0...r1, #0x0, 2d
+agx3_pack_binary.c:7703: no grounded AGX3 encoding for block_image_store
+   block_image_store #0, #0, ^r2, ^r0...r1, #0x0, 2d
+AGX3b vs-g17p-div3-mul-high: missing leading SR 0xdd rld
+AGX3b vs-g17p-div3-mul-high: accepted but binary is malformed
+AGX3b vs-g17p-half2-varying: G17P binary/resource metadata mismatch
+actual main (162 bytes, staging 12 halfs): 0cdd1006671054020100200049010040440029023c8100c229811c05800039023c81080219811c07800067004408000020005700004040000b0821441b0b27004200000400002b0d27004200000800003b0f27004200000c00004b0527004200001000005b032700420000140000571654000040480057265402204049005746540440404a005786540660404b005706550880404c005706560aa0404d000e000000
+AGX3b vs-g17p-half2-varying: accepted but binary is malformed
+AGX3b fs-flat-colour: G17P binary/resource metadata mismatch
+actual main (94 bytes, staging 0 halfs): 048f0200000000008702540006008702540c080004c2140613001f0008200000000004ff02000200000003021f00040000000000970454030250c05004c8970454020220805004c8e70654020000014e080000080702540c02000e000000
+AGX3b fs-flat-colour: accepted but binary is malformed
+AGX3b fs-discard: unexpectedly accepted
+agx3_pack_binary.c:7703: no grounded AGX3 encoding for iadd
+   r1 = iadd ^r1, #255.neg, shift=0
+AGX3c vs-register-multiply-minus-byte: REJECTED by agx3_pack_binary
+agx3_pack_binary.c:5463: no grounded AGX3 encoding for st_tile
+   st_tile ^r0l...r0h, #255, _, xyzw, #0x0
+AGX3c fs-flat-colour: REJECTED by agx3_pack_binary
+agx3_pack_binary.c:5463: no grounded AGX3 encoding for st_tile
+   st_tile ^r0l...r0h, #255, _, xyzw, #0x0
+AGX3c fs-interpolated-varying: REJECTED by agx3_pack_binary
+agx3_pack_binary.c:5463: no grounded AGX3 encoding for ld_tile
+   r0l...r0h = ld_tile #255, _, xyzw, #0x0
+AGX3c fs-tilebuffer-load: REJECTED by agx3_pack_binary
+agx3_pack_binary.c:5463: no grounded AGX3 encoding for st_tile
+   st_tile ^r0l...r0h, #255, _, xyzw, #0x0
+AGX3c fs-textured-triangle: REJECTED by agx3_pack_binary
+agx3_pack_binary.c:5463: no grounded AGX3 encoding for st_tile
+   st_tile ^r0l...r0h, #255, _, xyzw, #0x0
+AGX3c fs-vkcube-combined-sampler: REJECTED by agx3_pack_binary
+agx3_pack_binary.c:5463: no grounded AGX3 encoding for st_tile
+   st_tile ^r0l...r0h, #255, _, xyzw, #0x0
+AGX3c fs-descriptor-resource: REJECTED by agx3_pack_binary
+agx3_pack_binary.c:7703: no grounded AGX3 encoding for imad
+   r0 = imad ^r1l.abs, ^r2, ^r0l.abs, shift=0
+AGX3c fs-meta-rgba-upload: REJECTED by agx3_pack_binary
+agx3_pack_binary.c:5463: no grounded AGX3 encoding for st_tile
+   st_tile ^r1l...r1h, #255, _, xyzw, #0x0
+AGX3c fs-transcendentals: REJECTED by agx3_pack_binary
+agx3_pack_binary.c:7703: no grounded AGX3 encoding for sample_mask
+   sample_mask #255, #0
+――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――
+
+ 40/114 asahi - mesa:agx3_ray_query_prerequisites               OK              0.05s
+ 41/114 asahi - mesa:agx_tests                                  FAIL            0.10s   killed by signal 6 SIGABRT
+>>> MSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1:print_stacktrace=1 UBSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1:print_stacktrace=1 MESON_TEST_ITERATION=1 MALLOC_PERTURB_=94 ASAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1 /home/council/dev/dirtyroom_m4/build/mesa-m4-asahi-host/src/asahi/compiler/agx_tests
+――――――――――――――――――――――――――――――――――――― ✀  ―――――――――――――――――――――――――――――――――――――
+Listing only the last 100 lines from a long log.
+[       OK ] AGX3PackBinary.TileStoreMovesFixedHighEpilogInputToLowRegisters (0 ms)
+[ RUN      ] AGX3PackBinary.NativeStencilAndDepthExportsKeepEightByteStaging
+[       OK ] AGX3PackBinary.NativeStencilAndDepthExportsKeepEightByteStaging (0 ms)
+[ RUN      ] AGX3PackBinary.StraightLineALU
+../../mesa/m4-asahi/src/asahi/compiler/test/test-agx3-pack-binary.cpp:294: Failure
+Expected equality of these values:
+  pack(b)
+    Which is: { '\f' (12, 0xC), '\xF8' (248), '\x2' (2), '\x12' (18), '\x18' (24), '\b' (8), '\xA2' (162), '\x1' (1), ')' (41, 0x29), '\x3' (3), '\0', '\x1' (1), '9' (57, 0x39), '\x3' (3), '\x1' (1), '\x5' (5), '\x9F' (159), '\x1' (1), 'T' (84, 0x54), '\x4' (4), '\x2' (2), '\0', '\b' (8), '\xA8' (168), '\x11' (17), '\x5' (5), '\xE' (14), '\0', '\0', '\0' }
+  want
+    Which is: { '\f' (12, 0xC), '\xF8' (248), '\x2' (2), '\x12' (18), '\x18' (24), '\b' (8), '\xA2' (162), '\x1' (1), ')' (41, 0x29), '\x3' (3), '\0', '\x1' (1), '9' (57, 0x39), '\x3' (3), '\x1' (1), '\x5' (5), '\x9F' (159), '\x1' (1), 'V' (86, 0x56), '\x4' (4), '\x2' (2), '\0', '\b' (8), '\xA8' (168), '\x13' (19), '\x5' (5), '\xE' (14), '\0', '\0', '\0' }
+[  FAILED  ] AGX3PackBinary.StraightLineALU (0 ms)
+[ RUN      ] AGX3PackBinary.G17PRG16IntegerEOTUsesExactNativeI16Program
+[       OK ] AGX3PackBinary.G17PRG16IntegerEOTUsesExactNativeI16Program (0 ms)
+[ RUN      ] AGX3PackBinary.G17PI8EOTUsesExactOneWordNativeProgram
+[       OK ] AGX3PackBinary.G17PI8EOTUsesExactOneWordNativeProgram (0 ms)
+[ RUN      ] AGX3PackBinary.G16MultisampleEOT_rg16f
+[       OK ] AGX3PackBinary.G16MultisampleEOT_rg16f (0 ms)
+[ RUN      ] AGX3PackBinary.G16MultisampleEOT_rgba32f
+[       OK ] AGX3PackBinary.G16MultisampleEOT_rgba32f (0 ms)
+[ RUN      ] AGX3PackBinary.G16MultisampleEOT_rgba8i
+[       OK ] AGX3PackBinary.G16MultisampleEOT_rgba8i (0 ms)
+[ RUN      ] AGX3PackBinary.G16MultisampleEOT_rg16snorm
+[       OK ] AGX3PackBinary.G16MultisampleEOT_rg16snorm (0 ms)
+[ RUN      ] AGX3PackBinary.G16MultisampleEOT_rgba16i
+[       OK ] AGX3PackBinary.G16MultisampleEOT_rgba16i (0 ms)
+[ RUN      ] AGX3PackBinary.G17PS8NormEOTUsesExactNativeProgram
+[       OK ] AGX3PackBinary.G17PS8NormEOTUsesExactNativeProgram (0 ms)
+[ RUN      ] AGX3PackBinary.G17PRG16EOTUsesExactOneWordNativeProgram
+[       OK ] AGX3PackBinary.G17PRG16EOTUsesExactOneWordNativeProgram (0 ms)
+[ RUN      ] AGX3PackBinary.G17PScalarI32EOTUsesExactNativeProgram
+[       OK ] AGX3PackBinary.G17PScalarI32EOTUsesExactNativeProgram (0 ms)
+[ RUN      ] AGX3PackBinary.G16GFloat32EOTUsesExactNativeProgram
+[       OK ] AGX3PackBinary.G16GFloat32EOTUsesExactNativeProgram (0 ms)
+[ RUN      ] AGX3PackBinary.G17PRG32UintEOTUsesExactTwoWordNativeProgram
+[       OK ] AGX3PackBinary.G17PRG32UintEOTUsesExactTwoWordNativeProgram (0 ms)
+[ RUN      ] AGX3PackBinary.G17PI32EOTRefusesConflictingSelectorOverrides
+[       OK ] AGX3PackBinary.G17PI32EOTRefusesConflictingSelectorOverrides (0 ms)
+[ RUN      ] AGX3PackBinary.G17PI32EOTRefusesAmbiguousWordCount
+[       OK ] AGX3PackBinary.G17PI32EOTRefusesAmbiguousWordCount (0 ms)
+[ RUN      ] AGX3PackBinary.G17PRGBA16UNORMEOTUsesNativeTwoWordProgram
+[       OK ] AGX3PackBinary.G17PRGBA16UNORMEOTUsesNativeTwoWordProgram (0 ms)
+[ RUN      ] AGX3PackBinary.G17PRG16SNORMEOTUsesExactOneWordNativeProgram
+[       OK ] AGX3PackBinary.G17PRG16SNORMEOTUsesExactOneWordNativeProgram (0 ms)
+[ RUN      ] AGX3PackBinary.G17PRGBA16SNORMEOTUsesExactTwoWordNativeProgram
+[       OK ] AGX3PackBinary.G17PRGBA16SNORMEOTUsesExactTwoWordNativeProgram (0 ms)
+[ RUN      ] AGX3PackBinary.G17PScalarNorm16EOTUsesExactNativeProgram
+[       OK ] AGX3PackBinary.G17PScalarNorm16EOTUsesExactNativeProgram (0 ms)
+[ RUN      ] AGX3PackBinary.G17PU16NormEOTRefusesAmbiguousWordCount
+[       OK ] AGX3PackBinary.G17PU16NormEOTRefusesAmbiguousWordCount (0 ms)
+[ RUN      ] AGX3PackBinary.HalfUVPreservesSharedHalfAndOperandOrder
+[       OK ] AGX3PackBinary.HalfUVPreservesSharedHalfAndOperandOrder (0 ms)
+[ RUN      ] AGX3PackBinary.HalfUVRefusesUngroundedModes
+stderr:
+Pass produced unexpected results  Actual:
+block0 {
+   r1 = mov_imm #0x0
+   r1 = mov r4
+   r6 = shuffle r2, r1
+   r1 = mov_imm #0x0
+}
+
+ Expected:
+block0 {
+   r0 = mov_imm #0x0
+   r0 = mov r4
+   r6 = shuffle r2, r0
+   r0 = mov_imm #0x0
+}
+
+
+agx3_pack_binary.c:7703: no grounded AGX3 encoding for block_image_store
+   block_image_store #0, #0, r2, r0...r1, #0x0, 2d
+agx3_pack_binary.c:7703: no grounded AGX3 encoding for block_image_store
+   block_image_store #0, #0, r2, r0...r1, #0x0, 2d
+agx3_pack_binary.c:7703: no grounded AGX3 encoding for block_image_store
+   block_image_store #0, #0, r2, r0...r1, #0x0, 2d
+agx3_pack_binary.c:7703: no grounded AGX3 encoding for block_image_store
+   block_image_store #0, #0, r2, r0...r1, #0x0, 2d
+agx3_pack_binary.c:7703: no grounded AGX3 encoding for block_image_store
+   block_image_store #0, #0, r2, r0...r1, #0x0, 2d
+agx3_pack_binary.c:7703: no grounded AGX3 encoding for block_image_store
+   block_image_store #0, #0, r2, r0...r1, #0x0, 2d
+agx3_pack_binary.c:7703: no grounded AGX3 encoding for block_image_store
+   block_image_store #0, #0, r2, r0...r1, #0x0, 2d
+agx3_pack_binary.c:7703: no grounded AGX3 encoding for block_image_store
+   block_image_store #0, #0, r2, r0...r1, #0x0, 2d
+agx3_pack_binary.c:7703: no grounded AGX3 encoding for block_image_store
+   block_image_store #0, #0, r2, r0...r1, #0x0, 2d
+agx3_pack_binary.c:7206: no grounded AGX3 encoding for fmul
+   r1 = fmul r0, r5l
+agx3_pack_binary.c:7206: no grounded AGX3 encoding for fmul
+   r1 = fmul r0, r5l.neg
+agx3_pack_binary.c:7206: no grounded AGX3 encoding for fmul
+   r1 = fmul r0, r5l.abs
+agx3_pack_binary.c:7206: no grounded AGX3 encoding for fmul
+   r1 = fmul r0, $^r5l
+agx3_pack_binary.c:7206: no grounded AGX3 encoding for fmul
+   r1 = fmul r0, r5l
+agx3_pack_binary.c:7206: no grounded AGX3 encoding for fmul
+   r1 = fmul agx_tests: ../../mesa/m4-asahi/src/asahi/compiler/agx_print.c:20: agx_print_sized: Assertion `(value & 1) == 0' failed.
+――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――
+
+ 42/114 asahi - mesa:asahi_layout_tests                         OK              0.06s
+ 43/114 asahi - mesa:asahi-native-uniform-prefix                OK              0.06s
+ 44/114 asahi - mesa:asahi-agx-rt-bvh                           OK              0.06s
+ 45/114 asahi - mesa:asahi-agx-chip                             OK              0.06s
+ 46/114 asahi - mesa:asahi-agx-linker-container                 OK              0.05s
+ 47/114 asahi - mesa:asahi-g17p-early-demote-epilog             OK              0.06s
+ 48/114 asahi - mesa:asahi-g17p-advanced-blend                  OK              0.06s
+ 49/114 asahi - mesa:asahi-g17p-srgb-epilog                     OK              0.05s
+ 50/114 asahi - mesa:asahi-g17p-mrt-epilog                      OK              0.04s
+ 51/114 asahi - mesa:asahi-blend-key                            OK              0.07s
+ 52/114 asahi - mesa:asahi-g17p-f16-io                          OK              0.05s
+ 53/114 asahi - mesa:asahi-ppp-hal200-raster-core               OK              0.05s
+ 54/114 asahi - mesa:asahi-agx-va-runtime-hole                  OK              0.05s
+ 55/114 asahi - mesa:asahi-agx-scs-layout                       OK              0.05s
+ 56/114 asahi - mesa:asahi-agx-ioto-core                        OK              0.05s
+ 57/114 asahi - mesa:asahi-agx-ioto-profile-core                OK              0.05s
+ 58/114 asahi - mesa:asahi-agx-ioto-imageblock-core             OK              0.04s
+ 59/114 asahi - mesa:asahi-agx-ioto-state-core                  OK              0.04s
+ 60/114 asahi - mesa:asahi-agx-ioto-load-core                   OK              0.04s
+ 61/114 asahi - mesa:asahi-agx-ioto-preshader-core              OK              0.05s
+ 62/114 asahi - mesa:asahi-agx-ioto-program-core                OK              0.05s
+ 63/114 asahi - mesa:asahi-vdm-decode-core                      OK              0.04s
+ 64/114 asahi - mesa:asahi-agx3-cdm-decode-core                 OK              0.04s
+ 65/114 asahi - mesa:asahi-agx3-cdm-direct-launch-semantic-core OK              0.05s
+ 66/114 asahi - mesa:asahi-agx3-compute-program-core            OK              0.05s
+ 67/114 asahi - mesa:asahi_feature_matrix                       OK              0.05s
+ 68/114 asahi - mesa:asahi-texture-side-entry                   OK              0.04s
+ 69/114 asahi - mesa:asahi-vdm-barrier-core                     OK              0.04s
+ 70/114 asahi - mesa:asahi-vdm-index-list-core                  OK              0.05s
+ 71/114 asahi - mesa:asahi-pbe-agx3-core                        OK              0.04s
+ 72/114 asahi - mesa:asahi-ppp-hal200-graphics-core             OK              0.04s
+ 73/114 asahi - mesa:asahi-ppp-hal300-depth-bias-scissor-core   OK              0.04s
+ 74/114 asahi - mesa:asahi-ppp-hal300-depth-stencil-core        OK              0.04s
+ 75/114 asahi - mesa:asahi-ppp-viewport-payload-core            OK              0.04s
+ 76/114 asahi - mesa:asahi-ppp-w-clamp-cull2-core               OK              0.04s
+ 77/114 asahi - mesa:asahi-ppp-decode-core                      OK              0.04s
+ 78/114 asahi - mesa:asahi-vdm-hal200-bind-tail-core            OK              0.04s
+ 79/114 asahi - mesa:asahi-vdm-hal200-direct-draw-core          OK              0.05s
+ 80/114 asahi - mesa:asahi-vdm-ppp-state-core                   OK              0.05s
+ 81/114 asahi - mesa:asahi-ppp-finalizer                        OK              0.05s
+ 82/114 asahi - mesa:asahi-vdm-stream-link-core                 OK              0.05s
+ 83/114 asahi - mesa:asahi-vdm-stream-terminate-core            OK              0.05s
+ 84/114 asahi - mesa:agx3_ioto_load_packer                      OK              0.27s
+ 85/114 asahi - mesa:asahi-vdm-tessellate-core                  OK              0.05s
+ 86/114 asahi - mesa:asahi-vdm-state-update-core                OK              0.05s
+ 87/114 asahi - mesa:asahi-vdm-state-core                       OK              0.05s
+ 88/114 asahi - mesa:libasahi_tests                             OK              0.05s
+ 89/114 asahi - mesa:hk_cs_root_size                            OK              0.05s
+ 90/114 asahi - mesa:hk_cmd_lifetime                            OK              0.05s
+ 91/114 asahi - mesa:hk_g17p_full_frame_scissor                 OK              0.05s
+ 92/114 asahi - mesa:hk_g17p_draw_state_upload                  OK              0.05s
+ 93/114 asahi - mesa:hk_printf_root                             OK              0.04s
+ 94/114 asahi - mesa:hk_descriptor_prefetch                     OK              0.05s
+ 95/114 asahi - mesa:hk_g17p_meta_copy_core                     OK              0.05s
+ 96/114 asahi - mesa:hk_drm_render_core                         OK              0.05s
+ 97/114 asahi - mesa:hk_agx3_ioto_decode                        OK              0.05s
+ 98/114 asahi - mesa:hk_agx3_ioto_profile_core                  OK              0.05s
+ 99/114 asahi - mesa:hk_agx3_ioto_preshader_core                OK              0.05s
+100/114 asahi - mesa:hk_vbo_raw                                 OK              0.05s
+101/114 asahi - mesa:hk_agx3_ioto_state_core                    OK              0.04s
+102/114 asahi - mesa:hk_agx3_tile_core                          OK              0.04s
+103/114 asahi - mesa:hk_agx3_raytracing_core                    OK              0.04s
+104/114 asahi - mesa:hk_agx3_ioto_program_core                  OK              0.05s
+105/114 asahi - mesa:hk_agx3_ppp_hal300_depth_bias_scissor      OK              0.03s
+106/114 asahi - mesa:hk_agx3_ppp_hal300_depth_stencil           OK              0.03s
+107/114 asahi - mesa:hk_agx3_ppp_viewport_payload               OK              0.03s
+108/114 asahi - mesa:hk_agx3_ppp_w_clamp_cull2                  OK              0.03s
+109/114 asahi - mesa:hk_agx3_vdm_decode                         OK              0.02s
+110/114 asahi - mesa:hk_native_sampler                          OK              0.01s
+111/114 asahi - mesa:hk_texel_alignment                         OK              0.01s
+112/114 asahi - mesa:hk_memory_budget_core                      OK              0.01s
+113/114 asahi - mesa:hk_native_descriptor                       FAIL            0.07s   killed by signal 6 SIGABRT
+>>> MSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1:print_stacktrace=1 UBSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1:print_stacktrace=1 MESON_TEST_ITERATION=1 MALLOC_PERTURB_=148 ASAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1 /home/council/dev/dirtyroom_m4/build/mesa-m4-asahi-host/src/asahi/vulkan/hk_native_descriptor_test
+――――――――――――――――――――――――――――――――――――― ✀  ―――――――――――――――――――――――――――――――――――――
+stderr:
+hk_native_descriptor_test: ../../mesa/m4-asahi/src/asahi/vulkan/tests/test-hk-native-descriptor.c:838: main: Assertion `!hk_pack_native_pbe(9, &native_pbe, &pbe)' failed.
+――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――
+
+114/114 asahi - mesa:agx3_alu_core                              OK              1.58s
+
+Summary of Failures:
+
+ 12/114 asahi - mesa:asahi-agx3-packing                         FAIL            0.08s   exit status 1
+ 13/114 asahi - mesa:agx3_opcode_mapping                        FAIL            0.08s   exit status 1
+ 27/114 asahi - mesa:agx3_compile_fail_closed                   FAIL            0.04s   exit status 1
+ 33/114 asahi - mesa:agx3_multi_store                           FAIL            0.04s   exit status 1
+ 34/114 asahi - mesa:agx3_event_wait                            FAIL            0.04s   exit status 1
+ 35/114 asahi - mesa:agx3_pixel_core                            FAIL            0.04s   exit status 1
+ 36/114 asahi - mesa:agx3_funop_core                            FAIL            0.03s   exit status 1
+ 37/114 asahi - mesa:agx3_rt_core                               FAIL            0.03s   exit status 1
+ 39/114 asahi - mesa:agx3_graphics_compile                      FAIL            0.06s   exit status 1
+ 41/114 asahi - mesa:agx_tests                                  FAIL            0.10s   killed by signal 6 SIGABRT
+113/114 asahi - mesa:hk_native_descriptor                       FAIL            0.07s   killed by signal 6 SIGABRT
+
+Ok:                103 
+Fail:              11  
+
+Full log written to /home/council/dev/dirtyroom_m4/build/mesa-m4-asahi-host/meson-logs/testlog.txt

@@ -209,8 +209,13 @@ hk_get_image_format_features(struct hk_physical_device *pdev,
 {
    const struct vk_format_ycbcr_info *ycbcr_info =
       vk_format_get_ycbcr_info(vk_format);
-   if (ycbcr_info == NULL)
-      return hk_get_image_plane_format_features(pdev, vk_format, tiling);
+   if (ycbcr_info == NULL) {
+      VkFormatFeatureFlags2 features = hk_get_image_plane_format_features(pdev, vk_format, tiling);
+      if (pdev->dev.chip == AGX_CHIP_G16G &&
+          (features & VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_LINEAR_BIT))
+         features |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_MINMAX_BIT;
+      return features;
+   }
 
    /* For multi-plane, we get the feature flags of each plane separately,
     * then take their intersection as the overall format feature flags

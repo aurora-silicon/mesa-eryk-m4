@@ -448,3 +448,5 @@ hk_passthrough_gs_key_size(uint16_t output_count)
 }
 
 void hk_nir_passthrough_gs(struct nir_builder *b, const void *key_);
+
+bool hk_nir_lower_minmax(nir_shader *nir, bool view_min);

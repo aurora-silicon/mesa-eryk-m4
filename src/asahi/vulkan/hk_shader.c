@@ -288,13 +288,15 @@ hk_populate_fs_key(struct hk_fs_key *key,
 enum hk_feature_key {
    HK_FEAT_CUSTOM_BORDER = BITFIELD_BIT(0),
    HK_FEAT_IMAGE_VIEW_MIN_LOD = BITFIELD_BIT(1),
+   HK_FEAT_SAMPLER_MINMAX = BITFIELD_BIT(2),
 };
 
 static enum hk_feature_key
 hk_make_feature_key(const struct vk_features *feats)
 {
    return ((!feats || feats->customBorderColors) ? HK_FEAT_CUSTOM_BORDER : 0) |
-          ((!feats || feats->minLod) ? HK_FEAT_IMAGE_VIEW_MIN_LOD : 0);
+          ((!feats || feats->minLod) ? HK_FEAT_IMAGE_VIEW_MIN_LOD : 0) |
+          ((!feats || feats->samplerFilterMinmax) ? HK_FEAT_SAMPLER_MINMAX : 0);
 }
 
 static void
@@ -1410,6 +1412,12 @@ query_min_lod(nir_builder *b, nir_tex_instr *tex, bool int_coords)
 static bool
 lower_min_lod(nir_builder *b, nir_tex_instr *tex, UNUSED void *_data)
 {
+   /* Reduction already selected the two levels using the view minimum.
+    * Clamping each centre tap again would suppress the lower level. */
+   if (tex->backend_flags & AGX_TEXTURE_FLAG_MINMAX_TAP) {
+      tex->backend_flags &= ~AGX_TEXTURE_FLAG_MINMAX_TAP;
+      return true;
+   }
    if (nir_tex_instr_is_query(tex))
       return false;
 
@@ -1741,6 +1749,19 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
       NIR_PASS(_, nir, nir_lower_tex, &offsets);
       NIR_PASS(_, nir, nir_shader_tex_pass, hk_lower_native_robust_txf,
                nir_metadata_control_flow, NULL);
+   }
+
+   if (dev->dev.chip == AGX_CHIP_G16G &&
+       (features & (HK_FEAT_SAMPLER_MINMAX | HK_FEAT_IMAGE_VIEW_MIN_LOD))) {
+      /* Keep cube gradients until reduction has selected its anisotropic
+       * footprint. The usual early pass turns them into scalar LODs. */
+      const nir_lower_tex_options prepare = {
+         .lower_1d = true,
+         .lower_txp = ~0u,
+         .lower_invalid_implicit_lod = true,
+      };
+      NIR_PASS(_, nir, nir_lower_tex, &prepare);
+      NIR_PASS(_, nir, hk_nir_lower_minmax, features & HK_FEAT_IMAGE_VIEW_MIN_LOD);
    }
 
    /* We must do early lowering before hk_nir_lower_descriptors, since this will

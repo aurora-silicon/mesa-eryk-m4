@@ -624,6 +624,16 @@ try_lower_intrin(nir_builder *b, nir_intrinsic_instr *intrin,
       return true;
    }
 
+   case nir_intrinsic_load_sampler_descriptor_agx: {
+      b->cursor = nir_instr_remove(&intrin->instr);
+      const struct hk_sampled_image_descriptor_layout native =
+         hk_sampled_image_descriptor_layout(ctx->descriptor_generation);
+      nir_def *state = load_resource_deref_desc(
+         b, 2, 32, nir_src_as_deref(intrin->src[0]), native.sampler, ctx);
+      nir_def_rewrite_uses(&intrin->def, state);
+      return true;
+   }
+
    case nir_intrinsic_load_texture_descriptor_word_agx: {
       /* First word of the (plane 0) texture descriptor of a sampled image. */
       b->cursor = nir_instr_remove(&intrin->instr);
@@ -793,13 +803,21 @@ lower_tex(nir_builder *b, nir_tex_instr *tex,
          offs = native.clamp_0_sampler_index;
       }
 
+      bool centre = tex->backend_flags & AGX_TEXTURE_FLAG_CENTRE_SAMPLER;
+      if (centre) {
+         offs = native.sampler +
+            offsetof(struct hk_sampled_image_descriptor_sw, centre_sampler_index) +
+            (clamp_to_0 ? 2 : 0);
+         tex->backend_flags &= ~AGX_TEXTURE_FLAG_CENTRE_SAMPLER;
+      }
+
       nir_def *index = load_resource_deref_desc(
          b, 1, 16, nir_src_as_deref(nir_src_for_ssa(sampler)),
          plane_offset_B + offs, ctx);
       if (clamp_to_0)
          index = nir_iand_imm(b, index, HK_BORDER_IS_INT_BIT - 1);
 
-      if (!clamp_to_0) {
+      if (!clamp_to_0 || centre) {
          uint32_t set, binding;
          nir_def *idx;
          get_resource_deref_binding(b,

@@ -80,6 +80,7 @@ hk_files = files(
   'hk_sampler.c',
   'hk_sampler.h',
   'hk_shader.c',
+  'hk_nir_lower_minmax.c',
   'hk_shader.h',
   'hk_wsi.c',
   'hk_wsi.h'

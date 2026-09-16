@@ -20,6 +20,7 @@
 #define HK_PBE_DESCRIPTOR_AGX2_SIZE     24
 #define HK_PBE_DESCRIPTOR_AGX3_SIZE     32
 #define HK_SAMPLED_IMAGE_SW_SIZE        40
+#define HK_SAMPLED_IMAGE_GEN9_SW_SIZE   44
 #define HK_TEXEL_BUFFER_GEN9_SIZE       96
 #define HK_TEXEL_BUFFER_RESIDENCY_OFFSET 72
 
@@ -90,7 +91,8 @@ hk_sampled_image_descriptor_layout(unsigned generation)
       .min_lod = texture_size + 14,
       .min_lod_uint = texture_size + 16,
       .border = texture_size + 20,
-      .stride = texture_size + HK_SAMPLED_IMAGE_SW_SIZE,
+      .stride = texture_size + (generation == 9 ? HK_SAMPLED_IMAGE_GEN9_SW_SIZE
+                                               : HK_SAMPLED_IMAGE_SW_SIZE),
    };
 }
 

@@ -4479,8 +4479,10 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
              nir_src_is_const(instr->src[i].src)) {
             const float level = nir_src_as_float(instr->src[i].src);
             /* An immediate LOD leaves the auxiliary staging operand free
-             * for an array layer. Preserve exactly representable levels. */
+             * for an array layer. Shadow immediates are qualified only at
+             * zero; keep nonzero comparisons in the witnessed register form. */
             if (level >= 0.0f && level * 64.0f <= 0xfff &&
+                (!instr->is_shadow || level == 0.0f) &&
                 level * 64.0f == (float)(uint16_t)(level * 64.0f) &&
                 agx_minifloat_exact(level))
                lod = agx_immediate_f(level);
@@ -4717,7 +4719,9 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
     *
     * TODO: Check if it works with sparse.
     */
-   bool masked = (instr->op != nir_texop_tg4) && !instr->is_sparse;
+   /* Native LOD queries publish both words even when only one is used. */
+   bool masked = instr->op != nir_texop_tg4 && instr->op != nir_texop_lod &&
+                 !instr->is_sparse;
    I->mask = agx_expand_tex_to(b, &instr->def, tmp, masked);
    /* The residency result is not a colour component. For sparse depth
     * comparisons it is the second word; only the first is in the SMP mask. */

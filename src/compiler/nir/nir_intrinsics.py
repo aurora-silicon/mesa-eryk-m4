@@ -2365,6 +2365,10 @@ intrinsic("load_texture_descriptor_word_agx", [1], 1, [],
           flags=[CAN_ELIMINATE, CAN_REORDER],
           bit_sizes=[32])
 
+# Software fp16 sampler clamps/bias and filter flags, addressed by sampler deref.
+intrinsic("load_sampler_descriptor_agx", [1], 2, [],
+          flags=[CAN_ELIMINATE, CAN_REORDER], bit_sizes=[32])
+
 # Same for the read (texture) half of a storage image deref (source 0).
 intrinsic("load_image_descriptor_word_agx", [1], 1, [],
           flags=[CAN_ELIMINATE, CAN_REORDER],

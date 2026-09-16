@@ -148,7 +148,12 @@ write_sampled_image_view_desc(struct hk_descriptor_set *set,
           */
          desc[plane].sw.sampler_index =
             sampler->planes[sampler_plane].hw->index + 28;
-         desc[plane].sw.sampler = sampler->planes[sampler_plane].hw->key;
+         desc[plane].sw.sampler = (sampler->shader_reduction || sampler->shader_view_min)
+            ? sampler->reduction_state : sampler->planes[sampler_plane].hw->key;
+         for (unsigned i = 0; i < 2; ++i)
+            desc[plane].sw.centre_sampler_index[i] = sampler->centre[i]
+               ? sampler->centre[i]->index + 28
+               : sampler->planes[MIN2(i, sampler->plane_count - 1)].hw->index + 28;
          desc[plane].sw.lod_bias_fp16 = sampler->lod_bias_fp16;
          desc[plane].sw.clamp_0_sampler_index_or_negative = -1;
       }
@@ -176,7 +181,7 @@ write_sampled_image_view_desc(struct hk_descriptor_set *set,
       uint8_t *dst = packed + plane * native.stride;
       memcpy(dst + native.texture, &desc[plane].tex,
              hk_texture_descriptor_size(generation));
-      memcpy(dst + native.sampler, &desc[plane].sw, sizeof(desc[plane].sw));
+      memcpy(dst + native.sampler, &desc[plane].sw, native.stride - native.sampler);
    }
    write_desc(set, binding, elem, packed, native.stride * plane_count);
 }

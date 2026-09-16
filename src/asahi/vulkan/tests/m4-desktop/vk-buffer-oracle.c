@@ -189,13 +189,24 @@ int main(int argc, char **argv) {
     die("invalid group count");
   const char *image_option = getenv("M4_ORACLE_IMAGE_FORMAT");
   const bool image_cube = getenv("M4_ORACLE_IMAGE_CUBE") != NULL;
-  const unsigned image_layers = image_cube ? 6 : 1;
+  const char *layers_option = getenv("M4_ORACLE_IMAGE_LAYERS");
+  const unsigned image_layers = image_cube ? 6 : layers_option ? strtoul(layers_option, &end, 0) : 1;
+  if (layers_option && (image_cube || *end || !image_layers || image_layers > 2)) die("invalid image layers");
+  const char *mips_option = getenv("M4_ORACLE_IMAGE_MIPS");
+  const unsigned image_mips = mips_option ? strtoul(mips_option, &end, 0) : 1;
+  if (mips_option && (*end || !image_mips || image_mips > 5)) die("invalid image mips");
+  const char *reduction_option = getenv("M4_ORACLE_REDUCTION");
+  const unsigned reduction = reduction_option ? strtoul(reduction_option, &end, 0) : 0;
+  if (reduction_option && (*end || reduction > 2)) die("invalid reduction mode");
+  const char *view_min_option = getenv("M4_ORACLE_VIEW_MIN_LOD");
   const bool image_ms = getenv("M4_ORACLE_IMAGE_MS4") != NULL;
   const bool image_depth = getenv("M4_ORACLE_IMAGE_DEPTH") != NULL;
   const bool shader_residency = getenv("M4_ORACLE_RESIDENCY") != NULL;
   VkFormat image_format = image_option ? (VkFormat)strtoul(image_option, &end, 0) : 0;
   if (image_option && (*end || !image_format)) die("invalid image format");
-  if (image_ms && (image_depth || image_cube)) die("MS image oracle currently uses color");
+  if (image_ms && (image_depth || image_cube || image_mips > 1)) die("MS image oracle currently uses color");
+  if (image_mips > 1 && image_format != VK_FORMAT_R32_SFLOAT &&
+      image_format != VK_FORMAT_D32_SFLOAT) die("mip oracle requires R32_SFLOAT or D32_SFLOAT");
   const uint32_t image_width = 16, image_height = 16;
   const char *fill_option = getenv("M4_ORACLE_FILL32");
   const bool copy_option = getenv("M4_ORACLE_COPY") && !strcmp(getenv("M4_ORACLE_COPY"), "1");
@@ -288,7 +299,7 @@ int main(int argc, char **argv) {
       .applicationVersion = 1,
       .pEngineName = "none",
       .engineVersion = 1,
-      .apiVersion = texel_format_option ? VK_API_VERSION_1_3 : VK_API_VERSION_1_1,
+      .apiVersion = texel_format_option ? VK_API_VERSION_1_3 : reduction_option ? VK_API_VERSION_1_2 : VK_API_VERSION_1_1,
   };
   const VkInstanceCreateInfo instance_info = {
       .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
@@ -416,8 +427,27 @@ int main(int argc, char **argv) {
     subgroup.pNext = feature_chain;
     feature_chain = &subgroup;
   }
-  const char *extensions[4];
+  VkPhysicalDeviceVulkan12Features minmax = {.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES};
+  if (reduction_option) {
+    if (want_half || want_byte || want_subgroup_types) die("minmax oracle feature-chain conflict");
+    VkPhysicalDeviceFeatures2 query = {.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,.pNext=&minmax};
+    vkGetPhysicalDeviceFeatures2(physical,&query);
+    if (!minmax.samplerFilterMinmax) die("samplerFilterMinmax unavailable");
+    minmax = (VkPhysicalDeviceVulkan12Features){.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
+      .samplerFilterMinmax=VK_TRUE,.samplerMirrorClampToEdge=VK_TRUE,.pNext=feature_chain};
+    feature_chain=&minmax;
+  }
+  VkPhysicalDeviceImageViewMinLodFeaturesEXT view_min = {
+    .sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_VIEW_MIN_LOD_FEATURES_EXT};
+  if (view_min_option) {
+    VkPhysicalDeviceFeatures2 query = {.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,.pNext=&view_min};
+    vkGetPhysicalDeviceFeatures2(physical,&query);
+    if (!view_min.minLod) die("view minLod unavailable");
+    view_min.pNext=feature_chain;feature_chain=&view_min;
+  }
+  const char *extensions[5];
   unsigned extension_count = 0;
+  if (view_min_option) extensions[extension_count++] = VK_EXT_IMAGE_VIEW_MIN_LOD_EXTENSION_NAME;
   if (want_half || want_byte)
     extensions[extension_count++] = VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME;
   if (want_byte)
@@ -444,6 +474,8 @@ int main(int argc, char **argv) {
       .sparseResidencyAliased = sparse_alias || sparse_texel,
       .sparseResidencyBuffer = sparse_texel, .shaderResourceResidency = sparse_texel || shader_residency,
       .shaderInt64 = VK_TRUE,
+      .shaderResourceMinLod = getenv("M4_ORACLE_MIN_LOD") != NULL,
+      .samplerAnisotropy = getenv("M4_ORACLE_ANISOTROPY") != NULL,
       .shaderStorageImageExtendedFormats = texel_storage};
   const VkDeviceCreateInfo device_info = {
       .pEnabledFeatures = &features,
@@ -626,7 +658,7 @@ int main(int argc, char **argv) {
     VkImageCreateInfo ci = {.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
       .imageType=VK_IMAGE_TYPE_2D,.format=image_format,.extent={image_width,image_height,1},
       .flags=image_cube?VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT:0,
-      .mipLevels=1,.arrayLayers=image_layers,.samples=image_ms?VK_SAMPLE_COUNT_4_BIT:VK_SAMPLE_COUNT_1_BIT,.tiling=VK_IMAGE_TILING_OPTIMAL,
+      .mipLevels=image_mips,.arrayLayers=image_layers,.samples=image_ms?VK_SAMPLE_COUNT_4_BIT:VK_SAMPLE_COUNT_1_BIT,.tiling=VK_IMAGE_TILING_OPTIMAL,
       .usage=VK_IMAGE_USAGE_SAMPLED_BIT|VK_IMAGE_USAGE_TRANSFER_DST_BIT,
       .sharingMode=VK_SHARING_MODE_EXCLUSIVE};
     check(vkCreateImage(device,&ci,NULL,&sampled_image),"create sampled image");
@@ -636,14 +668,30 @@ int main(int argc, char **argv) {
     check(vkAllocateMemory(device,&ai,NULL,&image_memory),"allocate sampled image");
     check(vkBindImageMemory(device,sampled_image,image_memory,0),"bind sampled image");
     VkImageViewCreateInfo vi={.sType=VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-      .image=sampled_image,.viewType=image_cube?VK_IMAGE_VIEW_TYPE_CUBE:VK_IMAGE_VIEW_TYPE_2D,.format=image_format,
-      .subresourceRange={image_aspect,0,1,0,image_layers}};
+      .image=sampled_image,.viewType=image_cube?VK_IMAGE_VIEW_TYPE_CUBE:image_layers>1?VK_IMAGE_VIEW_TYPE_2D_ARRAY:VK_IMAGE_VIEW_TYPE_2D,.format=image_format,
+      .subresourceRange={image_aspect,0,image_mips,0,image_layers}};
+    VkImageViewMinLodCreateInfoEXT vmin={.sType=VK_STRUCTURE_TYPE_IMAGE_VIEW_MIN_LOD_CREATE_INFO_EXT,
+      .minLod=view_min_option?strtof(view_min_option,NULL):0};
+    if (view_min_option) vi.pNext=&vmin;
     check(vkCreateImageView(device,&vi,NULL,&sampled_view),"create sampled view");
     VkSamplerCreateInfo si={.sType=VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
       .magFilter=VK_FILTER_NEAREST,.minFilter=VK_FILTER_NEAREST,.mipmapMode=VK_SAMPLER_MIPMAP_MODE_NEAREST,
       .addressModeU=VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,.addressModeV=VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
       .addressModeW=VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,.compareEnable=image_depth,
       .compareOp=VK_COMPARE_OP_LESS_OR_EQUAL,.maxLod=0};
+    VkSamplerReductionModeCreateInfo reduce={.sType=VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO,
+      .reductionMode=reduction};
+    if (reduction_option) si.pNext=&reduce;
+    if (getenv("M4_ORACLE_LINEAR")) si.magFilter=si.minFilter=VK_FILTER_LINEAR;
+    if (getenv("M4_ORACLE_ANISOTROPY")) { si.anisotropyEnable=VK_TRUE;si.maxAnisotropy=strtof(getenv("M4_ORACLE_ANISOTROPY"),NULL); }
+    if (getenv("M4_ORACLE_MAG_FILTER")) si.magFilter=atoi(getenv("M4_ORACLE_MAG_FILTER"));
+    if (getenv("M4_ORACLE_MIP_LINEAR")) si.mipmapMode=VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    si.maxLod=image_mips-1;
+    if (getenv("M4_ORACLE_SAMPLER_MIN")) si.minLod=strtof(getenv("M4_ORACLE_SAMPLER_MIN"),NULL);
+    if (getenv("M4_ORACLE_SAMPLER_MAX")) si.maxLod=strtof(getenv("M4_ORACLE_SAMPLER_MAX"),NULL);
+    if (getenv("M4_ORACLE_SAMPLER_BIAS")) si.mipLodBias=strtof(getenv("M4_ORACLE_SAMPLER_BIAS"),NULL);
+    if (getenv("M4_ORACLE_ADDRESS")) si.addressModeU=si.addressModeV=si.addressModeW=atoi(getenv("M4_ORACLE_ADDRESS"));
+    if (getenv("M4_ORACLE_BORDER")) si.borderColor=atoi(getenv("M4_ORACLE_BORDER"));
     check(vkCreateSampler(device,&si,NULL,&image_sampler),"create image sampler");
     image_descriptor=(VkDescriptorImageInfo){image_sampler,sampled_view,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
     bindings[0].descriptorType=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -789,7 +837,7 @@ int main(int argc, char **argv) {
       .dstAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT,.oldLayout=VK_IMAGE_LAYOUT_UNDEFINED,
       .newLayout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,.srcQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED,
       .dstQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED,.image=sampled_image,
-      .subresourceRange={image_aspect,0,1,0,image_layers}};
+      .subresourceRange={image_aspect,0,image_mips,0,image_layers}};
     vkCmdPipelineBarrier(command_buffer,VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,VK_PIPELINE_STAGE_TRANSFER_BIT,
                          0,0,NULL,0,NULL,1,&barrier);
     VkBufferImageCopy copy={.imageSubresource={image_aspect,0,0,image_layers},.imageExtent={image_width,image_height,1}};
@@ -798,7 +846,14 @@ int main(int argc, char **argv) {
       vkCmdClearColorImage(command_buffer,sampled_image,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                            &clear,1,&barrier.subresourceRange);
     } else {
-    vkCmdCopyBufferToImage(command_buffer,buffer,sampled_image,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,1,&copy);
+    VkDeviceSize mip_offset=0;
+    for (unsigned mip=0;mip<image_mips;++mip) {
+      copy.imageSubresource.mipLevel=mip;
+      copy.imageExtent.width=image_width>>mip;copy.imageExtent.height=image_height>>mip;
+      copy.bufferOffset=mip_offset;
+      vkCmdCopyBufferToImage(command_buffer,buffer,sampled_image,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,1,&copy);
+      mip_offset+=(VkDeviceSize)copy.imageExtent.width*copy.imageExtent.height*image_layers*4;
+    }
     }
     barrier.srcAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT;barrier.dstAccessMask=VK_ACCESS_SHADER_READ_BIT;
     barrier.oldLayout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;barrier.newLayout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;

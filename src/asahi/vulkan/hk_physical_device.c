@@ -368,7 +368,8 @@ hk_get_device_features(
       .descriptorBindingPartiallyBound = true,
       .descriptorBindingVariableDescriptorCount = true,
       .runtimeDescriptorArray = true,
-      .samplerFilterMinmax = instance->fake_minmax,
+      .samplerFilterMinmax = instance->fake_minmax ||
+         dev->chip == AGX_CHIP_G16G,
       .scalarBlockLayout = true,
       .imagelessFramebuffer = true,
       .uniformBufferStandardLayout = true,
@@ -986,8 +987,9 @@ hk_get_device_properties(const struct agx_device *dev,
       .maxDescriptorSetUpdateAfterBindSampledImages = HK_MAX_DESCRIPTORS,
       .maxDescriptorSetUpdateAfterBindStorageImages = HK_MAX_DESCRIPTORS,
       .maxDescriptorSetUpdateAfterBindInputAttachments = HK_MAX_DESCRIPTORS,
-      .filterMinmaxSingleComponentFormats = instance->fake_minmax,
-      .filterMinmaxImageComponentMapping = false,
+      .filterMinmaxSingleComponentFormats = instance->fake_minmax ||
+         dev->chip == AGX_CHIP_G16G,
+      .filterMinmaxImageComponentMapping = dev->chip == AGX_CHIP_G16G,
       .maxTimelineSemaphoreValueDifference = UINT64_MAX,
       .framebufferIntegerColorSampleCounts = other_sample_counts,
 
@@ -1386,6 +1388,7 @@ hk_create_drm_physical_device(struct vk_instance *_instance,
 
    struct vk_device_extension_table supported_extensions;
    hk_get_device_extensions(instance, &supported_extensions);
+   supported_extensions.EXT_sampler_filter_minmax |= pdev->dev.chip == AGX_CHIP_G16G;
    supported_extensions.EXT_image_view_min_lod |= pdev->dev.chip == AGX_CHIP_G16G;
 
    /* HAL200 advanced blend epilogs currently complete without a fault but

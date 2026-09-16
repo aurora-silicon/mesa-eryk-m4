@@ -195,6 +195,7 @@ agx_optimizer_inline_imm(agx_context *ctx, agx_instr **defs, agx_instr *I)
                           ? _mesa_half_to_float(def->imm) : uif(def->imm);
          float scaled = level * 64.0f;
          if (level >= 0.0f && scaled <= 0xfff &&
+             (!I->shadow || level == 0.0f) &&
              scaled == (float)(uint16_t)scaled && agx_minifloat_exact(level))
             I->src[s] = agx_immediate_f(level);
          continue;

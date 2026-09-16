@@ -256,9 +256,42 @@ hk_CreateSampler(VkDevice device,
       warned_custom_border = true;
    }
 
+   /* HAL200 cannot reduce in its sampler. Retain the requested footprint in
+    * the descriptor set, and use centre/nearest hardware taps for reduction. */
+   VkSamplerCreateInfo nearest;
+   VkSamplerReductionMode native_reduction = sampler->vk.reduction_mode;
+   sampler->shader_reduction = pdev->dev.chip == AGX_CHIP_G16G &&
+      native_reduction != VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE;
+   sampler->shader_view_min = pdev->dev.chip == AGX_CHIP_G16G &&
+      dev->vk.enabled_features.minLod && !sampler->vk.ycbcr_conversion;
+   if (sampler->shader_reduction || sampler->shader_view_min) {
+      sampler->reduction_state.opaque[0] = _mesa_float_to_half(info->minLod) |
+         ((uint32_t)_mesa_float_to_half(info->maxLod) << 16);
+      sampler->reduction_state.opaque[1] = _mesa_float_to_half(info->mipLodBias) |
+         (info->magFilter == VK_FILTER_LINEAR ? HK_MINMAX_MAG_LINEAR : 0) |
+         (info->minFilter == VK_FILTER_LINEAR ? HK_MINMAX_MIN_LINEAR : 0) |
+         (info->mipmapMode == VK_SAMPLER_MIPMAP_MODE_LINEAR ? HK_MINMAX_MIP_LINEAR : 0) |
+         (info->unnormalizedCoordinates ? HK_MINMAX_UNNORMALIZED : 0) |
+         (info->flags & VK_SAMPLER_CREATE_NON_SEAMLESS_CUBE_MAP_BIT_EXT ? HK_MINMAX_SEAMFUL : 0) |
+         (native_reduction << HK_MINMAX_MODE_SHIFT) |
+         ((info->anisotropyEnable ? util_next_power_of_two(MAX2(info->maxAnisotropy, 1)) : 1)
+          << HK_MINMAX_ANISOTROPY_SHIFT);
+      nearest = *info;
+      nearest.magFilter = nearest.minFilter = VK_FILTER_NEAREST;
+      nearest.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+      nearest.minLod = 0;
+      nearest.maxLod = VK_LOD_CLAMP_NONE;
+      nearest.mipLodBias = 0;
+      nearest.anisotropyEnable = false;
+      if (sampler->shader_reduction) {
+         info = &nearest;
+         native_reduction = VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE;
+      }
+   }
+
    struct hk_native_sampler_descriptor samp;
    if (!pack_sampler(pdev, info, true, workaround_rgba4, int_border_custom,
-                     sampler->vk.reduction_mode, &samp)) {
+                     native_reduction, &samp)) {
       hk_DestroySampler(device, hk_sampler_to_handle(sampler), pAllocator);
       return vk_error(dev, VK_ERROR_FEATURE_NOT_PRESENT);
    }
@@ -307,7 +340,7 @@ hk_CreateSampler(VkDevice device,
 
          if (!pack_sampler(pdev, &plane2_info, false, workaround_rgba4,
                           int_border_custom,
-                           sampler->vk.reduction_mode, &samp)) {
+                           native_reduction, &samp)) {
             hk_DestroySampler(device, hk_sampler_to_handle(sampler),
                               pAllocator);
             return vk_error(dev, VK_ERROR_FEATURE_NOT_PRESENT);
@@ -328,7 +361,7 @@ hk_CreateSampler(VkDevice device,
        * and clamp-to-0 variants. We treat these as planes.
        */
       if (!pack_sampler(pdev, info, false, workaround_rgba4, int_border_custom,
-                        sampler->vk.reduction_mode, &samp)) {
+                        native_reduction, &samp)) {
          hk_DestroySampler(device, hk_sampler_to_handle(sampler), pAllocator);
          return vk_error(dev, VK_ERROR_FEATURE_NOT_PRESENT);
       }
@@ -364,6 +397,21 @@ hk_CreateSampler(VkDevice device,
       sampler->border_is_int = vk_border_color_is_int(info->borderColor);
    }
 
+   if (sampler->shader_view_min && !sampler->shader_reduction) {
+      for (unsigned i = 0; i < (custom_border ? 2 : 1); ++i) {
+         if (!pack_sampler(pdev, &nearest, i == 0, workaround_rgba4,
+                           int_border_custom, native_reduction, &samp)) {
+            hk_DestroySampler(device, hk_sampler_to_handle(sampler), pAllocator);
+            return vk_error(dev, VK_ERROR_FEATURE_NOT_PRESENT);
+         }
+         result = hk_sampler_heap_add(dev, &samp, &sampler->centre[i]);
+         if (result != VK_SUCCESS) {
+            hk_DestroySampler(device, hk_sampler_to_handle(sampler), pAllocator);
+            return result;
+         }
+      }
+   }
+
    *pSampler = hk_sampler_to_handle(sampler);
 
    return VK_SUCCESS;
@@ -381,6 +429,10 @@ hk_DestroySampler(VkDevice device, VkSampler _sampler,
 
    for (uint8_t plane = 0; plane < sampler->plane_count; plane++) {
       hk_sampler_heap_remove(dev, sampler->planes[plane].hw);
+   }
+   for (unsigned i = 0; i < 2; ++i) {
+      if (sampler->centre[i])
+         hk_sampler_heap_remove(dev, sampler->centre[i]);
    }
 
    vk_sampler_destroy(&dev->vk, pAllocator, &sampler->vk);

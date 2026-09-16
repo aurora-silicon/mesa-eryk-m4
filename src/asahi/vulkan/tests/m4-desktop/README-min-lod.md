@@ -72,3 +72,9 @@ Final tested library SHA256:
 `8e922dc8a194d3ee7c59b2e980b35950fa457e298dc402c6a757f54235eeb8af`.
 Strict sparse behavior and other missing DirectX capabilities remain open;
 these results do not establish Steam readiness.
+
+Further qualification found sampler-bias/maxLod ordering gaps beyond these CTS
+cases. The sampler-minmax change repairs ordinary weighted view minima too;
+see README-sampler-minmax.md for independent weighted/depth probes and the
+combined1940-case regression. Earlier CTS passes remain valid evidence of
+their coverage, not exhaustive sampler/view combinations.

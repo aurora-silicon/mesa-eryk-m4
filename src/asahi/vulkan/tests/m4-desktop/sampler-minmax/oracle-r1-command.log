@@ -1,0 +1,482 @@
+Probe environment: {'AGX_MESA_DEBUG': '', 'ASAHI_M4_EXPERIMENTAL': '1', 'ASAHI_MESA_DEBUG': 'nocompress', 'HK_EXPERIMENTAL_MINMAX': '1', 'HK_G17P_LAUNCH_TRACE': '0', 'M4_TEST_CPU_MAX_KHZ': '4104000', 'ZINK_DEBUG': 'sync'}
+M4 probe start monotonic=10602.569933578
+ORACLE_SUITE: minmax
+MINMAX_CASE: 00-min
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 01-min
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 02-min
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 03-min
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 04-min
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 05-min
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 06-min
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 07-min
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 08-min
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 09-min
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 10-min
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 11-min
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 12-min
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 13-min
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 14-min
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 15-min
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 16-min
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 17-min
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 18-min
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 19-min
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 20-min
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 21-min
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 22-min
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 23-min
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 24-min
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 25-min
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 26-min
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 27-min
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 28-min
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 29-min
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 30-min
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 31-min
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 32-max
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 33-max
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 34-max
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 35-max
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 36-max
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 37-max
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 38-max
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 39-max
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 40-max
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 41-max
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 42-max
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 43-max
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 44-max
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 45-max
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 46-max
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 47-max
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 48-max
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 49-max
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 50-max
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 51-max
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 52-max
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 53-max
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 54-max
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 55-max
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 56-max
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 57-max
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 58-max
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 59-max
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 60-max
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 61-max
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 62-max
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+MINMAX_CASE: 63-max
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+PASS: minmax sampler oracles
+ORACLE_SUITE: view
+VIEW_MIN_CASE: 00
+PASS: view minimum numeric check 00 max_error=0.0625
+VIEW_MIN_CASE: 01
+PASS: view minimum numeric check 01 max_error=0.0
+VIEW_MIN_CASE: 02
+PASS: view minimum numeric check 02 max_error=0.0
+VIEW_MIN_CASE: 03
+PASS: view minimum numeric check 03 max_error=0.0
+VIEW_MIN_CASE: 04
+PASS: view minimum numeric check 04 max_error=0.0
+VIEW_MIN_CASE: 05
+PASS: view minimum numeric check 05 max_error=0.0
+VIEW_MIN_CASE: 06
+PASS: view minimum numeric check 06 max_error=0.0
+VIEW_MIN_CASE: 07
+PASS: view minimum numeric check 07 max_error=0.0
+PASS: view minimum sampler combinations
+ORACLE_SUITE: weighted
+MINMAX_CASE: 00-weighted
+word 4097 got 0x408a0001 expected 0x408a0000 input 0
+word 4099 got 0xbf880028 expected 0xbf880000 input 0
+word 4101 got 0x40c0ffff expected 0x40c10000 input 0
+word 4103 got 0xc1128004 expected 0xc1128000 input 0
+word 4105 got 0x3fa3ffe8 expected 0x3fa40000 input 0
+word 4107 got 0xc13e8003 expected 0xc13e8000 input 0
+word 4109 got 0x3f4fffc0 expected 0x3f500000 input 0
+word 4113 got 0x40681fee expected 0x40682000 input 0
+device: Apple M4 (G16G B0) (0x8132)
+FAIL: buffer oracle bad=419/8192 watched_bad=0 on queue 0 flags=0xf
+PASS: weighted numeric check 00-weighted max_error=5.7220458984375e-06
+MINMAX_CASE: 01-weighted
+word 4097 got 0x3dffff00 expected 0x3e000000 input 0
+word 4099 got 0x4083fffa expected 0x40840000 input 0
+word 4101 got 0xbfc00014 expected 0xbfc00000 input 0
+word 4103 got 0x40d9fffb expected 0x40da0000 input 0
+word 4105 got 0xbfc00014 expected 0xbfc00000 input 0
+word 4107 got 0x413afffd expected 0x413b0000 input 0
+word 4109 got 0x3dffff00 expected 0x3e000000 input 0
+word 4111 got 0x4188ffff expected 0x41890000 input 0
+device: Apple M4 (G16G B0) (0x8132)
+FAIL: buffer oracle bad=397/8192 watched_bad=0 on queue 0 flags=0xf
+PASS: weighted numeric check 01-weighted max_error=7.62939453125e-06
+MINMAX_CASE: 02-weighted
+word 4097 got 0xbfc00014 expected 0xbfc00000 input 0
+word 4099 got 0xbf300028 expected 0xbf300000 input 0
+word 4101 got 0xbfc00014 expected 0xbfc00000 input 0
+word 4103 got 0x3fabffec expected 0x3fac0000 input 0
+word 4105 got 0xbfc00014 expected 0xbfc00000 input 0
+word 4107 got 0x40c6fffb expected 0x40c70000 input 0
+word 4109 got 0x3dffff00 expected 0x3e000000 input 0
+word 4111 got 0x4144ffff expected 0x41450000 input 0
+device: Apple M4 (G16G B0) (0x8132)
+FAIL: buffer oracle bad=398/8192 watched_bad=0 on queue 0 flags=0xf
+PASS: weighted numeric check 02-weighted max_error=7.62939453125e-06
+MINMAX_CASE: 03-weighted
+word 4101 got 0x3f9fbfff expected 0x3f9fc000 input 0
+word 4105 got 0x3f92bffe expected 0x3f92c000 input 0
+word 4109 got 0x3f86fffc expected 0x3f870000 input 0
+word 4113 got 0x3ffd3ffe expected 0x3ffd4000 input 0
+word 4117 got 0x40391fff expected 0x40392000 input 0
+word 4125 got 0x40970fff expected 0x40971000 input 0
+word 4133 got 0x40500001 expected 0x40500000 input 0
+word 4137 got 0xbe8ffffa expected 0xbe900000 input 0
+device: Apple M4 (G16G B0) (0x8132)
+FAIL: buffer oracle bad=380/8192 watched_bad=0 on queue 0 flags=0xf
+PASS: weighted numeric check 03-weighted max_error=5.7220458984375e-06
+MINMAX_CASE: 04-weighted
+word 4097 got 0x3dffff00 expected 0x3e000000 input 0
+word 4099 got 0x4083fffa expected 0x40840000 input 0
+word 4101 got 0xbfc00014 expected 0xbfc00000 input 0
+word 4103 got 0x40d9fffb expected 0x40da0000 input 0
+word 4105 got 0xbfc00014 expected 0xbfc00000 input 0
+word 4107 got 0x413afffd expected 0x413b0000 input 0
+word 4109 got 0x3dffff00 expected 0x3e000000 input 0
+word 4111 got 0x4188ffff expected 0x41890000 input 0
+device: Apple M4 (G16G B0) (0x8132)
+FAIL: buffer oracle bad=397/8192 watched_bad=0 on queue 0 flags=0xf
+PASS: weighted numeric check 04-weighted max_error=7.62939453125e-06
+MINMAX_CASE: 05-weighted
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+PASS: weighted numeric check 05-weighted max_error=0.0
+MINMAX_CASE: 06-weighted
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+PASS: weighted numeric check 06-weighted max_error=0.0
+MINMAX_CASE: 07-weighted
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+PASS: weighted numeric check 07-weighted max_error=0.0
+MINMAX_CASE: 08-weighted
+word 4097 got 0x418bfffe expected 0x418c0000 input 0
+word 4101 got 0x418bfffe expected 0x418c0000 input 0
+word 4103 got 0x411c8001 expected 0x411c8000 input 0
+word 4105 got 0x418bfffe expected 0x418c0000 input 0
+word 4107 got 0x41068004 expected 0x41068000 input 0
+word 4109 got 0x418bfffe expected 0x418c0000 input 0
+word 4111 got 0x40d6000d expected 0x40d60000 input 0
+word 4113 got 0x418f3ffe expected 0x418f4000 input 0
+device: Apple M4 (G16G B0) (0x8132)
+FAIL: buffer oracle bad=405/8192 watched_bad=0 on queue 0 flags=0xf
+PASS: weighted numeric check 08-weighted max_error=1.33514404296875e-05
+MINMAX_CASE: 09-weighted
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+PASS: weighted numeric check 09-weighted max_error=0.0
+MINMAX_CASE: 10-weighted
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+PASS: weighted numeric check 10-weighted max_error=0.0
+MINMAX_CASE: 11-weighted
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+PASS: weighted numeric check 11-weighted max_error=0.0
+MINMAX_CASE: 12-weighted
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+PASS: weighted numeric check 12-weighted max_error=0.0
+MINMAX_CASE: 13-weighted
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+PASS: weighted numeric check 13-weighted max_error=0.0
+MINMAX_CASE: 14-weighted
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+PASS: weighted numeric check 14-weighted max_error=0.0
+MINMAX_CASE: 15-weighted
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+PASS: weighted numeric check 15-weighted max_error=0.0
+MINMAX_CASE: 16-weighted
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+PASS: weighted numeric check 16-weighted max_error=0.0
+MINMAX_CASE: 17-weighted
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+PASS: weighted numeric check 17-weighted max_error=0.0
+MINMAX_CASE: 18-weighted
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+PASS: weighted numeric check 18-weighted max_error=0.0
+MINMAX_CASE: 19-weighted
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+PASS: weighted numeric check 19-weighted max_error=0.0
+MINMAX_CASE: 20-weighted
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+PASS: weighted numeric check 20-weighted max_error=0.0
+MINMAX_CASE: 21-weighted
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+PASS: weighted numeric check 21-weighted max_error=0.0
+MINMAX_CASE: 22-weighted
+word 4097 got 0xbfc00014 expected 0xbfc00000 input 0
+word 4099 got 0xbfc00014 expected 0xbfc00000 input 0
+word 4101 got 0xbfc00014 expected 0xbfc00000 input 0
+word 4103 got 0xbfc00014 expected 0xbfc00000 input 0
+word 4105 got 0xbfc00014 expected 0xbfc00000 input 0
+word 4107 got 0x4137fffd expected 0x41380000 input 0
+word 4109 got 0xbfc00014 expected 0xbfc00000 input 0
+word 4111 got 0x4137fffd expected 0x41380000 input 0
+device: Apple M4 (G16G B0) (0x8132)
+FAIL: buffer oracle bad=382/8192 watched_bad=0 on queue 0 flags=0xf
+PASS: weighted numeric check 22-weighted max_error=7.62939453125e-06
+MINMAX_CASE: 23-weighted
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+PASS: weighted numeric check 23-weighted max_error=0.0
+MINMAX_CASE: 24-weighted
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+PASS: weighted numeric check 24-weighted max_error=0.0
+MINMAX_CASE: 25-weighted
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+PASS: weighted numeric check 25-weighted max_error=0.0
+MINMAX_CASE: 26-weighted
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+PASS: weighted numeric check 26-weighted max_error=0.0
+MINMAX_CASE: 27-weighted
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+PASS: weighted numeric check 27-weighted max_error=0.0
+MINMAX_CASE: 28-weighted
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+PASS: weighted numeric check 28-weighted max_error=0.0
+MINMAX_CASE: 29-weighted
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+PASS: weighted numeric check 29-weighted max_error=0.0
+MINMAX_CASE: 30-weighted
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+PASS: weighted numeric check 30-weighted max_error=0.0
+MINMAX_CASE: 31-weighted
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf
+PASS: weighted numeric check 31-weighted max_error=0.0
+PASS: minmax sampler oracles
+Renderer: zink Vulkan 1.4(Apple M4 (G16G B0) (MESA_HONEYKRISP))
+x=8 scale=0.25 -> level=1.25 lod=-1.25 (ref lod -1.25)
+x=24 scale=0.5 -> level=1.25 lod=-0.25 (ref lod -0.25)
+x=40 scale=1 -> level=1.25 lod=0.75 (ref lod 0.75)
+x=56 scale=2 -> level=1.75 lod=1.75 (ref lod 1.75)
+x=72 scale=4 -> level=2.66016 lod=2.66016 (ref lod 2.75)
+x=88 scale=8 -> level=1.25 lod=1.12891 (ref lod 3.75)
+x=104 scale=16 -> level=1.25 lod=0.40625 (ref lod 4.75)
+x=120 scale=32 -> level=1.25 lod=-0.078125 (ref lod 5.75)
+M4 probe FAIL mode 0
+Renderer: zink Vulkan 1.4(Apple M4 (G16G B0) (MESA_HONEYKRISP))
+x=8 scale=0.25 -> level=1 lod=-1.25 (ref lod -1.25)
+x=24 scale=0.5 -> level=1 lod=-0.25 (ref lod -0.25)
+x=40 scale=1 -> level=1 lod=0.75 (ref lod 0.75)
+x=56 scale=2 -> level=2 lod=1.75 (ref lod 1.75)
+x=72 scale=4 -> level=3 lod=2.66016 (ref lod 2.75)
+x=88 scale=8 -> level=1 lod=1.12891 (ref lod 3.75)
+x=104 scale=16 -> level=1 lod=0.40625 (ref lod 4.75)
+x=120 scale=32 -> level=1 lod=-0.078125 (ref lod 5.75)
+M4 probe FAIL mode 0
+Renderer: zink Vulkan 1.4(Apple M4 (G16G B0) (MESA_HONEYKRISP))
+x=8 scale=0.25 -> level=1.25 lod=-1.25 (ref lod -1.25)
+x=24 scale=0.5 -> level=1.25 lod=-0.25 (ref lod -0.25)
+x=40 scale=1 -> level=1.25 lod=0.75 (ref lod 0.75)
+x=56 scale=2 -> level=1.75 lod=1.75 (ref lod 1.75)
+x=72 scale=4 -> level=2.66016 lod=2.66016 (ref lod 2.75)
+x=88 scale=8 -> level=1.25 lod=1.12891 (ref lod 3.75)
+x=104 scale=16 -> level=1.25 lod=0.40625 (ref lod 4.75)
+x=120 scale=32 -> level=1.25 lod=-0.078125 (ref lod 5.75)
+M4 probe FAIL mode 0
+Renderer: zink Vulkan 1.4(Apple M4 (G16G B0) (MESA_HONEYKRISP))
+x=8 scale=0.25 -> level=1 lod=-1.25 (ref lod -1.25)
+x=24 scale=0.5 -> level=1 lod=-0.25 (ref lod -0.25)
+x=40 scale=1 -> level=1 lod=0.75 (ref lod 0.75)
+x=56 scale=2 -> level=2 lod=1.75 (ref lod 1.75)
+x=72 scale=4 -> level=3 lod=2.66016 (ref lod 2.75)
+x=88 scale=8 -> level=1 lod=1.12891 (ref lod 3.75)
+x=104 scale=16 -> level=1 lod=0.40625 (ref lod 4.75)
+x=120 scale=32 -> level=1 lod=-0.078125 (ref lod 5.75)
+M4 probe FAIL mode 0
+Renderer: zink Vulkan 1.4(Apple M4 (G16G B0) (MESA_HONEYKRISP))
+x=8 scale=0.25 -> level=1.25 lod=-1.25 (ref lod -1.25)
+x=24 scale=0.5 -> level=1.25 lod=-0.25 (ref lod -0.25)
+x=40 scale=1 -> level=1.25 lod=0.75 (ref lod 0.75)
+x=56 scale=2 -> level=1.75 lod=1.75 (ref lod 1.75)
+x=72 scale=4 -> level=2.75 lod=2.75 (ref lod 2.75)
+x=88 scale=8 -> level=3.25 lod=3.75 (ref lod 3.75)
+x=104 scale=16 -> level=3.25 lod=4.75 (ref lod 4.75)
+x=120 scale=32 -> level=3.25 lod=5.75 (ref lod 5.75)
+M4 probe PASS mode 1
+Renderer: zink Vulkan 1.4(Apple M4 (G16G B0) (MESA_HONEYKRISP))
+x=8 scale=0.25 -> level=1 lod=-1.25 (ref lod -1.25)
+x=24 scale=0.5 -> level=1 lod=-0.25 (ref lod -0.25)
+x=40 scale=1 -> level=1 lod=0.75 (ref lod 0.75)
+x=56 scale=2 -> level=2 lod=1.75 (ref lod 1.75)
+x=72 scale=4 -> level=3 lod=2.75 (ref lod 2.75)
+x=88 scale=8 -> level=3 lod=3.75 (ref lod 3.75)
+x=104 scale=16 -> level=3 lod=4.75 (ref lod 4.75)
+x=120 scale=32 -> level=3 lod=5.75 (ref lod 5.75)
+M4 probe PASS mode 1
+Renderer: zink Vulkan 1.4(Apple M4 (G16G B0) (MESA_HONEYKRISP))
+x=8 scale=0.25 -> level=1.25 lod=-1.25 (ref lod -1.25)
+x=24 scale=0.5 -> level=1.25 lod=-0.25 (ref lod -0.25)
+x=40 scale=1 -> level=1.25 lod=0.75 (ref lod 0.75)
+x=56 scale=2 -> level=1.75 lod=1.75 (ref lod 1.75)
+x=72 scale=4 -> level=2.75 lod=2.75 (ref lod 2.75)
+x=88 scale=8 -> level=3.25 lod=3.75 (ref lod 3.75)
+x=104 scale=16 -> level=3.25 lod=4.75 (ref lod 4.75)
+x=120 scale=32 -> level=3.25 lod=5.75 (ref lod 5.75)
+M4 probe PASS mode 1
+Renderer: zink Vulkan 1.4(Apple M4 (G16G B0) (MESA_HONEYKRISP))
+x=8 scale=0.25 -> level=1 lod=-1.25 (ref lod -1.25)
+x=24 scale=0.5 -> level=1 lod=-0.25 (ref lod -0.25)
+x=40 scale=1 -> level=1 lod=0.75 (ref lod 0.75)
+x=56 scale=2 -> level=2 lod=1.75 (ref lod 1.75)
+x=72 scale=4 -> level=3 lod=2.75 (ref lod 2.75)
+x=88 scale=8 -> level=3 lod=3.75 (ref lod 3.75)
+x=104 scale=16 -> level=3 lod=4.75 (ref lod 4.75)
+x=120 scale=32 -> level=3 lod=5.75 (ref lod 5.75)
+M4 probe PASS mode 1
+FAIL: combined minmax and view minimum oracles
+M4 probe end monotonic=10626.313877295

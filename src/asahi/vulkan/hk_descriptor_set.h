@@ -47,20 +47,22 @@ struct hk_sampled_image_descriptor_sw {
    uint16_t scaled_conversion;
    /* TODO: This should probably be a heap! */
    uint32_t border[4];
-   /* Native G17P global texture index; the descriptor's size is unchanged. */
+   /* Native global texture index at its established software-tail offset. */
    uint32_t sampled_heap_index;
+   /* Gen9 centre taps for filtering after the image-view minimum LOD. */
+   uint16_t centre_sampler_index[2];
 };
 static_assert(offsetof(struct hk_sampled_image_descriptor_sw, sampled_heap_index) == 36,
               "native texture heap index keeps the reserved software tail ABI");
 static_assert(sizeof(struct hk_sampled_image_descriptor_sw) ==
-                 HK_SAMPLED_IMAGE_SW_SIZE,
+                 HK_SAMPLED_IMAGE_GEN9_SW_SIZE,
               "hk_sampled_image_descriptor_sw has no holes");
 
 struct hk_sampled_image_descriptor {
    struct hk_native_texture_descriptor tex;
    struct hk_sampled_image_descriptor_sw sw;
 };
-static_assert(sizeof(struct hk_sampled_image_descriptor) == 72,
+static_assert(sizeof(struct hk_sampled_image_descriptor) == 76,
               "maximum sampled descriptor has no holes");
 
 struct hk_storage_image_descriptor {

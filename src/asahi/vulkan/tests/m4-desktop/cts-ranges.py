@@ -123,6 +123,49 @@ def select_range(args):
     print(json.dumps(summary, indent=2))
 
 
+def annotate(args):
+    """Attach catalog identities to an existing targeted list without changing it."""
+    manifest = json.loads((args.catalog / 'catalog.json').read_text())
+    if manifest.get('schema') != 1:
+        raise ValueError('Unsupported catalog schema')
+    raw = args.cases.read_bytes()
+    names = raw.decode('ascii').splitlines()
+    if not names or len(set(names)) != len(names):
+        raise ValueError('Expected unique, nonempty case list')
+    selected = dict.fromkeys(names)
+    digest = hashlib.sha256()
+    previous = None
+    count = 0
+    with (args.catalog / 'catalog.txt').open('rb') as source:
+        for index, line in enumerate(source):
+            digest.update(line)
+            if (not re.fullmatch(rb'dEQP-VK\.[A-Za-z0-9_.-]+\n', line)
+                    or (previous is not None and line <= previous)):
+                raise ValueError('Catalog must contain unique, sorted CTS names')
+            previous = line
+            count += 1
+            name = line.decode('ascii').rstrip('\n')
+            if name in selected:
+                selected[name] = index
+    if count != manifest['count'] or digest.hexdigest() != manifest['catalog_sha256']:
+        raise ValueError('Catalog checksum/count mismatch; do not renumber the campaign')
+    absent = [name for name, index in selected.items() if index is None]
+    if absent:
+        raise ValueError(f'Cases absent from the pinned catalog: {absent[:5]}')
+    meta = dict(schema=1, cases_sha256=hashlib.sha256(raw).hexdigest(),
+                provenance=dict(catalog=str(args.catalog.resolve()),
+                    catalog_sha256=digest.hexdigest(), cts_revision=manifest['cts_revision'],
+                    method='Existing targeted selection; catalog identities attached without reordering'),
+                cases=[dict(case=name, catalog_index=selected[name],
+                    classification='unclassified', requirements=[],
+                    rule='Targeted frozen-catalog cases; audit capability skips separately')
+                    for name in names])
+    sidecar = args.cases.with_suffix('.meta.json')
+    with sidecar.open('x') as out:
+        out.write(json.dumps(meta, indent=2) + '\n')
+    print(f'Indexed {len(names)} cases: {sidecar}')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest='command', required=True)
@@ -138,6 +181,10 @@ def main():
     selection.add_argument('--end', type=int, required=True)
     selection.add_argument('--output', type=Path, required=True)
     selection.set_defaults(run=select_range)
+    annotation = commands.add_parser('annotate', help='Attach catalog indices to a targeted case list')
+    annotation.add_argument('--catalog', type=Path, required=True)
+    annotation.add_argument('--cases', type=Path, required=True)
+    annotation.set_defaults(run=annotate)
     args = parser.parse_args()
     args.run(args)
 

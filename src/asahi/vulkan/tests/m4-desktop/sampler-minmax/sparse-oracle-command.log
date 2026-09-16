@@ -1,0 +1,132 @@
+Probe environment: {'AGX_MESA_DEBUG': '', 'ASAHI_M4_EXPERIMENTAL': '1', 'ASAHI_MESA_DEBUG': 'nocompress', 'HK_EXPERIMENTAL_MINMAX': '1', 'HK_G17P_LAUNCH_TRACE': '0', 'M4_TEST_CPU_MAX_KHZ': '4104000', 'ZINK_DEBUG': 'sync'}
+M4 probe start monotonic=11907.780500856
+MINMAX_CASE: 00-min
+PASS: exact minmax 00-min
+MINMAX_CASE: 01-min
+PASS: exact minmax 01-min
+MINMAX_CASE: 02-min
+PASS: exact minmax 02-min
+MINMAX_CASE: 03-min
+PASS: exact minmax 03-min
+MINMAX_CASE: 04-min
+PASS: exact minmax 04-min
+MINMAX_CASE: 05-min
+PASS: exact minmax 05-min
+MINMAX_CASE: 06-min
+PASS: exact minmax 06-min
+MINMAX_CASE: 07-min
+PASS: exact minmax 07-min
+MINMAX_CASE: 08-min
+PASS: exact minmax 08-min
+MINMAX_CASE: 09-min
+PASS: exact minmax 09-min
+MINMAX_CASE: 10-min
+PASS: exact minmax 10-min
+MINMAX_CASE: 11-min
+PASS: exact minmax 11-min
+MINMAX_CASE: 12-min
+PASS: exact minmax 12-min
+MINMAX_CASE: 13-min
+PASS: exact minmax 13-min
+MINMAX_CASE: 14-min
+PASS: exact minmax 14-min
+MINMAX_CASE: 15-min
+PASS: exact minmax 15-min
+MINMAX_CASE: 16-min
+PASS: exact minmax 16-min
+MINMAX_CASE: 17-min
+PASS: exact minmax 17-min
+MINMAX_CASE: 18-min
+PASS: exact minmax 18-min
+MINMAX_CASE: 19-min
+PASS: exact minmax 19-min
+MINMAX_CASE: 20-min
+PASS: exact minmax 20-min
+MINMAX_CASE: 21-min
+PASS: exact minmax 21-min
+MINMAX_CASE: 22-min
+PASS: exact minmax 22-min
+MINMAX_CASE: 23-min
+PASS: exact minmax 23-min
+MINMAX_CASE: 24-min
+PASS: exact minmax 24-min
+MINMAX_CASE: 25-min
+PASS: exact minmax 25-min
+MINMAX_CASE: 26-min
+PASS: exact minmax 26-min
+MINMAX_CASE: 27-min
+PASS: exact minmax 27-min
+MINMAX_CASE: 28-min
+PASS: exact minmax 28-min
+MINMAX_CASE: 29-min
+PASS: exact minmax 29-min
+MINMAX_CASE: 30-min
+PASS: exact minmax 30-min
+MINMAX_CASE: 31-min
+PASS: exact minmax 31-min
+MINMAX_CASE: 32-max
+PASS: exact minmax 32-max
+MINMAX_CASE: 33-max
+PASS: exact minmax 33-max
+MINMAX_CASE: 34-max
+PASS: exact minmax 34-max
+MINMAX_CASE: 35-max
+PASS: exact minmax 35-max
+MINMAX_CASE: 36-max
+PASS: exact minmax 36-max
+MINMAX_CASE: 37-max
+PASS: exact minmax 37-max
+MINMAX_CASE: 38-max
+PASS: exact minmax 38-max
+MINMAX_CASE: 39-max
+PASS: exact minmax 39-max
+MINMAX_CASE: 40-max
+PASS: exact minmax 40-max
+MINMAX_CASE: 41-max
+PASS: exact minmax 41-max
+MINMAX_CASE: 42-max
+PASS: exact minmax 42-max
+MINMAX_CASE: 43-max
+PASS: exact minmax 43-max
+MINMAX_CASE: 44-max
+PASS: exact minmax 44-max
+MINMAX_CASE: 45-max
+PASS: exact minmax 45-max
+MINMAX_CASE: 46-max
+PASS: exact minmax 46-max
+MINMAX_CASE: 47-max
+PASS: exact minmax 47-max
+MINMAX_CASE: 48-max
+PASS: exact minmax 48-max
+MINMAX_CASE: 49-max
+PASS: exact minmax 49-max
+MINMAX_CASE: 50-max
+PASS: exact minmax 50-max
+MINMAX_CASE: 51-max
+PASS: exact minmax 51-max
+MINMAX_CASE: 52-max
+PASS: exact minmax 52-max
+MINMAX_CASE: 53-max
+PASS: exact minmax 53-max
+MINMAX_CASE: 54-max
+PASS: exact minmax 54-max
+MINMAX_CASE: 55-max
+PASS: exact minmax 55-max
+MINMAX_CASE: 56-max
+PASS: exact minmax 56-max
+MINMAX_CASE: 57-max
+PASS: exact minmax 57-max
+MINMAX_CASE: 58-max
+PASS: exact minmax 58-max
+MINMAX_CASE: 59-max
+PASS: exact minmax 59-max
+MINMAX_CASE: 60-max
+PASS: exact minmax 60-max
+MINMAX_CASE: 61-max
+PASS: exact minmax 61-max
+MINMAX_CASE: 62-max
+PASS: exact minmax 62-max
+MINMAX_CASE: 63-max
+PASS: exact minmax 63-max
+PASS: minmax sampler oracles
+M4 probe end monotonic=11921.711800391
