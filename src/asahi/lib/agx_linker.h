@@ -299,6 +299,11 @@ struct agx_fs_epilog_key {
    bool preserve_zero_mask;
    bool lower_srgb;
    bool native_spills;
+
+   /* Render targets whose tile value must be stored back unchanged (colour
+    * write disabled while raster coverage still makes the tile nonempty).
+    * Independent of blending, so it also holds for pure-integer formats. */
+   uint8_t preserve_rt;
 };
 
 void agx_nir_vs_prolog(struct nir_builder *b, const void *key_);
