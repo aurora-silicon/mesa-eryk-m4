@@ -4774,12 +4774,17 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
          if (I->op == AGX_OPCODE_EXPORT)
             continue;
          e->is_async = agx3_is_async(I);
-         /* A release fence must also finish reads whose values are consumed
-          * later. Register dependencies alone would let the release atomic
-          * overtake such a read and violate write-after-read ordering. */
-         e->drain = I->op == AGX_OPCODE_SCOPED_BARRIER_AGX3 &&
-            (I->imm == AGX3_BARRIER_SCOPE_DEVICE ||
-             I->imm == AGX3_BARRIER_SCOPE_DEVICE_FENCE);
+         /* Finish reads whose values may only be consumed later. Besides
+          * release atomics, an image write can alias a preceding texture
+          * read without depending on its GPR result. Waiting only for the
+          * write's sources would let it overwrite the texel before the read
+          * completes. G16G's separate read/write staging banks do not imply
+          * ordering of the accesses themselves. */
+         e->drain =
+            (enc == AGX_ISA_ENCODING_AGX3B && I->op == AGX_OPCODE_IMAGE_WRITE) ||
+            (I->op == AGX_OPCODE_SCOPED_BARRIER_AGX3 &&
+             (I->imm == AGX3_BARRIER_SCOPE_DEVICE ||
+              I->imm == AGX3_BARRIER_SCOPE_DEVICE_FENCE));
          /* IMGWCI completes on the slot used by its staging COPYs. Retain
           * that dependency until a texture fence or overlapping publisher
           * consumes it. A barrier without the completion wait reads stale

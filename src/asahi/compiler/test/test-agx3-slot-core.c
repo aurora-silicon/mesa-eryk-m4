@@ -49,6 +49,22 @@ int main(void)
       CHECK(r[3].slot==0 && r[3].wait_mask==0);      /* add result is sync */
    }
 
+   /* An image write must finish earlier reads even when their values are
+    * consumed later. Unlike a pure fence, the draining write itself starts
+    * an asynchronous generation which the later texture fence must retain. */
+   {
+      struct agx3_slot_instr write = ld(AGX3_SLOT_IMAGE_WRITE_TOKEN);
+      write.drain = true;
+      write.preferred_slot = 2;
+      struct agx3_slot_instr p[] = {
+         ld(0), ld(2), write, st(0), st(AGX3_SLOT_IMAGE_WRITE_TOKEN),
+      };
+      CHECK(agx3_slot_assign(p, 5, 6, r));
+      CHECK(r[2].wait_mask == 3 && r[2].slot == 2);
+      CHECK(r[3].wait_mask == 0);
+      CHECK(r[4].wait_mask == 2);
+   }
+
    /* Waited once = satisfied globally: two consumers of the same load; only the
     * first waits. */
    {

@@ -640,7 +640,7 @@ hk_get_device_features(
 
       /* VK_EXT_shader_image_atomic_int64 */
       .shaderImageInt64Atomics = dev->chip == AGX_CHIP_G16G,
-      .sparseImageInt64Atomics = false,
+      .sparseImageInt64Atomics = dev->chip == AGX_CHIP_G16G,
 
       /* VK_EXT_shader_module_identifier */
       .shaderModuleIdentifier = true,

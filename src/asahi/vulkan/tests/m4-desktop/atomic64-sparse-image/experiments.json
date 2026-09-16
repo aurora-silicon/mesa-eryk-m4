@@ -1,0 +1,30 @@
+[
+  {
+    "name": "image-sparse-probe-r1",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T160604278186Z-dx-image64-sparse-probe-r1"
+  },
+  {
+    "name": "image-sparse-full-r1",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T160634146279Z-dx-image64-sparse-full-r1"
+  },
+  {
+    "name": "image-sparse-default-full",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T174648927488Z-dx-image64-sparse-default-full"
+  },
+  {
+    "name": "image-sparse-default-regression",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T175627390935Z-dx-image64-sparse-default-regression"
+  },
+  {
+    "name": "oracles-failed",
+    "evidence": "_provenance/experiments/20260916T155937160480Z-dx-sparse-image64-oracles-r1"
+  },
+  {
+    "name": "oracles-fixed",
+    "evidence": "_provenance/experiments/20260916T160526638178Z-dx-sparse-image64-oracles-r2"
+  },
+  {
+    "name": "oracles-default",
+    "evidence": "_provenance/experiments/20260916T180143141701Z-dx-image64-sparse-default-oracles"
+  }
+]

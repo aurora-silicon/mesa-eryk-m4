@@ -89,7 +89,7 @@ VK_FN(vkWaitSemaphores);
 VK_FN(vkQueueWaitIdle);
 VK_FN(vkWaitForFences);
 
-static void die(const char *what) {
+static _Noreturn void die(const char *what) {
   fprintf(stderr, "vk-buffer-oracle: %s\n", what);
   exit(EXIT_FAILURE);
 }
@@ -212,18 +212,31 @@ int main(int argc, char **argv) {
   if (image_ms && (image_depth || image_cube || image_mips > 1)) die("MS image oracle currently uses color");
   if (image_mips > 1 && image_format != VK_FORMAT_R32_SFLOAT &&
       image_format != VK_FORMAT_D32_SFLOAT) die("mip oracle requires R32_SFLOAT or D32_SFLOAT");
+  const bool image64 = image_format == VK_FORMAT_R64_UINT || image_format == VK_FORMAT_R64_SINT;
+  const uint32_t image_pixel_bytes = image64 ? 8 : 4;
+  const uint32_t sparse_tile_height = image64 ? 64 : 128;
   const char *sparse_image_option = getenv("M4_ORACLE_SPARSE_IMAGE_MASK");
   const bool sparse_wait = getenv("M4_ORACLE_SPARSE_WAIT") != NULL;
   if (sparse_wait && !sparse_image_option) die("sparse wait requires image mode");
   const unsigned sparse_image_mask = sparse_image_option ? strtoul(sparse_image_option, &end, 0) : 0;
   if (sparse_image_option && (*end || sparse_image_mask > 3 || !image_option ||
       image_cube || image_layers != 1 || image_mips != 1 || image_depth || image_ms ||
-      image_format != VK_FORMAT_R32_UINT)) die("sparse image oracle requires two R32_UINT tiles");
+      (image_format != VK_FORMAT_R32_UINT && !image64))) die("sparse image oracle requires two R32 or R64 integer tiles");
   const bool storage_image = getenv("M4_ORACLE_STORAGE_IMAGE") != NULL;
   if (storage_image && !image_option) die("storage image requires image mode");
   const VkImageLayout image_layout = storage_image ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-  const uint32_t image_width = sparse_image_option ? 256 : 16;
-  const uint32_t image_height = sparse_image_option ? 128 : 16;
+  uint32_t image_width = sparse_image_option ? 256 : 16;
+  uint32_t image_height = sparse_image_option ? sparse_tile_height : 16;
+  const char *image_extent = getenv("M4_ORACLE_IMAGE_EXTENT");
+  if (image_extent) {
+    unsigned width, height; char trailing;
+    if (!image_option || sparse_image_option || image_cube || image_depth || image_ms ||
+        image_mips != 1 || image_layers != 1 ||
+        sscanf(image_extent, "%ux%u%c", &width, &height, &trailing) != 2 ||
+        !width || !height || width > 4096 || height > 4096)
+      die("invalid ordinary image extent");
+    image_width = width; image_height = height;
+  }
   const char *fill_option = getenv("M4_ORACLE_FILL32");
   const bool copy_option = getenv("M4_ORACLE_COPY") && !strcmp(getenv("M4_ORACLE_COPY"), "1");
   const bool transfer_option = fill_option || copy_option;
@@ -458,7 +471,9 @@ int main(int argc, char **argv) {
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, .pNext = &image_atomic64};
     vkGetPhysicalDeviceFeatures2(physical, &query);
     if (!image_atomic64.shaderImageInt64Atomics) die("image int64 atomics unavailable");
-    image_atomic64.sparseImageInt64Atomics = VK_FALSE;
+    if (sparse_image_option && !image_atomic64.sparseImageInt64Atomics)
+      die("sparse image int64 atomics unavailable");
+    image_atomic64.sparseImageInt64Atomics = sparse_image_option != NULL;
     image_atomic64.pNext = feature_chain;
     feature_chain = &image_atomic64;
   }
@@ -771,18 +786,18 @@ int main(int argc, char **argv) {
       .allocationSize=req.size,.memoryTypeIndex=find_memory_type(&memory_properties,req.memoryTypeBits,0)};
     check(vkAllocateMemory(device,&ai,NULL,&image_memory),"allocate sampled image");
     if (sparse_image_option) {
-      if (binding_stride < image_width * image_height * 4) die("sparse image input too small");
+      if (binding_stride < image_width * image_height * image_pixel_bytes) die("sparse image input too small");
       uint32_t count = 1; VkSparseImageMemoryRequirements sparse_req;
       vkGetImageSparseMemoryRequirements(device,sampled_image,&count,&sparse_req);
       if (count != 1 || sparse_req.imageMipTailFirstLod == 0 ||
           sparse_req.formatProperties.imageGranularity.width != 128 ||
-          sparse_req.formatProperties.imageGranularity.height != 128 ||
+          sparse_req.formatProperties.imageGranularity.height != sparse_tile_height ||
           sparse_req.formatProperties.imageGranularity.depth != 1)
         die("unexpected sparse image tile layout");
       VkSparseImageMemoryBind tiles[2]; uint32_t n = 0;
       for (unsigned tile = 0; tile < 2; ++tile) if (sparse_image_mask & (1u << tile))
         tiles[n++] = (VkSparseImageMemoryBind){.subresource={VK_IMAGE_ASPECT_COLOR_BIT,0,0},
-          .offset={tile*128,0,0},.extent={128,128,1},.memory=image_memory,.memoryOffset=tile*65536};
+          .offset={tile*128,0,0},.extent={128,sparse_tile_height,1},.memory=image_memory,.memoryOffset=tile*65536};
       VkSparseImageMemoryBindInfo images={sampled_image,n,tiles};
       VkBindSparseInfo bind={.sType=VK_STRUCTURE_TYPE_BIND_SPARSE_INFO,
         .imageBindCount=n ? 1 : 0,.pImageBinds=&images};
@@ -811,7 +826,7 @@ int main(int argc, char **argv) {
         vkDestroySemaphore(device,semaphore,NULL);
       }
       check(vkQueueWaitIdle(queue),"wait sparse image binding");
-      printf("sparse image mask=%u granularity=128x128 memory=%llu\n",sparse_image_mask,(unsigned long long)req.size);
+      printf("sparse image mask=%u granularity=128x%u memory=%llu\n",sparse_image_mask,sparse_tile_height,(unsigned long long)req.size);
     } else check(vkBindImageMemory(device,sampled_image,image_memory,0),"bind sampled image");
     VkImageViewCreateInfo vi={.sType=VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
       .image=sampled_image,.viewType=image_cube?VK_IMAGE_VIEW_TYPE_CUBE:image_layers>1?VK_IMAGE_VIEW_TYPE_2D_ARRAY:VK_IMAGE_VIEW_TYPE_2D,.format=image_format,
@@ -979,6 +994,8 @@ int main(int argc, char **argv) {
   check(vkBeginCommandBuffer(command_buffer, &begin_info),
         "vkBeginCommandBuffer");
   if (image_option) {
+    if (image_extent && binding_stride < (size_t)image_width * image_height * image_pixel_bytes)
+      die("ordinary image input too small");
     VkImageMemoryBarrier barrier={.sType=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
       .dstAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT,.oldLayout=VK_IMAGE_LAYOUT_UNDEFINED,
       .newLayout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,.srcQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED,
