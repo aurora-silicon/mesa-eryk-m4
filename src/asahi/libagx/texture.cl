@@ -249,7 +249,10 @@ libagx_texture_load_rgb32_gen9(constant struct agx_texture_gen9_packed *ptr,
                               uint coord, bool is_float)
 {
    agx_unpack(NULL, ptr, TEXTURE_GEN9, d);
-   uint64_t addr = d.address + ((uint64_t)(coord * 3)) * 4;
+   /* Vulkan permits a three-component view to start at a component-aligned
+    * offset. Its Gen9 software tail is in bytes, unlike ordinary texel views.
+    */
+   uint64_t addr = d.address + d.buffer_offset_sw + ((uint64_t)(coord * 3)) * 4;
    constant uint3 *data = (constant uint3 *)addr;
    return (uint4)(*data, is_float ? as_uint(1.0f) : 1);
 }

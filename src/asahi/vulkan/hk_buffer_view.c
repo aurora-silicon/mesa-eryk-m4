@@ -109,13 +109,22 @@ hk_CreateBufferView(VkDevice _device, const VkBufferViewCreateInfo *pCreateInfo,
    uint64_t head_offset_B = view->vk.offset & ~0xf;
    uint64_t rw_base = hk_buffer_address_rw(buffer, 0) + head_offset_B;
    uint64_t ro_base = hk_buffer_address_ro(buffer, 0) + head_offset_B;
-   uint32_t tail_offset_B = view->vk.offset & 0xf;
-   uint32_t tail_offset_el = tail_offset_B / util_format_get_blocksize(format);
-   assert(tail_offset_el * util_format_get_blocksize(format) == tail_offset_B &&
-          "must be texel aligned");
-
    const unsigned generation =
       agx_chip_descriptor_generation(device->dev.chip);
+   const unsigned blocksize_B = util_format_get_blocksize(format);
+   const bool rgb32 = generation == 9 && blocksize_B == 12;
+   uint32_t tail_offset_B = view->vk.offset & 0xf;
+   uint32_t tail_offset_el = tail_offset_B / blocksize_B;
+   assert((rgb32 ? tail_offset_B % 4 == 0
+                 : tail_offset_el * blocksize_B == tail_offset_B) &&
+          "must be texel (or RGB32 component) aligned");
+
+   /* Include the leading texels when a shifted view crosses a hardware row.
+    * Gen9 RGB32 uses raw loads: its software offset is in bytes so offsets
+    * aligned to a single 32-bit component are representable as Vulkan allows.
+    */
+   const uint32_t span_el = view->vk.elements +
+      DIV_ROUND_UP(tail_offset_B, blocksize_B);
 
    struct AGX_TEXTURE texture = {AGX_TEXTURE_header};
    {
@@ -129,12 +138,12 @@ hk_CreateBufferView(VkDevice _device, const VkBufferViewCreateInfo *pCreateInfo,
       texture.swizzle_a = agx_channel_from_pipe(format_swizzle[3]);
 
       texture.width = AGX_TEXTURE_BUFFER_WIDTH;
-      texture.height = DIV_ROUND_UP(view->vk.elements, texture.width);
+      texture.height = DIV_ROUND_UP(span_el, texture.width);
       texture.first_level = texture.last_level = 0;
 
       texture.address = ro_base;
       texture.buffer_size_sw = view->vk.elements;
-      texture.buffer_offset_sw = tail_offset_el;
+      texture.buffer_offset_sw = rgb32 ? tail_offset_B : tail_offset_el;
 
       texture.srgb = (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB);
       texture.srgb_2_channel =
@@ -174,7 +183,7 @@ hk_CreateBufferView(VkDevice _device, const VkBufferViewCreateInfo *pCreateInfo,
       cfg.buffer_offset_sw = tail_offset_el;
 
       cfg.width = AGX_TEXTURE_BUFFER_WIDTH;
-      cfg.height = DIV_ROUND_UP(view->vk.elements, cfg.width);
+      cfg.height = DIV_ROUND_UP(span_el, cfg.width);
       cfg.level = 0;
       cfg.stride = (cfg.width * util_format_get_blocksize(format)) - 4;
       cfg.layers = 1;
@@ -191,6 +200,11 @@ hk_CreateBufferView(VkDevice _device, const VkBufferViewCreateInfo *pCreateInfo,
          AGX_PBE_pack(view->pbe_software.opaque, &cfg);
          view->storage_software_valid = true;
          cfg.srgb = false;
+         /* Descriptor crawls apply the tail from the software PBE before
+          * converting coordinates to 2D. The hardware entry only needs the
+          * aligned base, and has no software tail field.
+          */
+         cfg.buffer_offset_sw = 0;
       }
       view->storage_pbe_valid =
          hk_pack_native_pbe(generation, &view->pbe, &cfg);

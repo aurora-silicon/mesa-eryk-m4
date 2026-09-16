@@ -119,9 +119,10 @@ hk_texel_buffer_descriptor_stride(unsigned generation)
       : hk_storage_image_descriptor_layout(generation).stride;
 }
 
-/* AGX3 buffer descriptors have no recovered equivalent for AGX2's software
- * tail offset.  Keep those unavailable rather than aliasing unknown bits in a
- * native descriptor.  Multisample descriptor representation is recovered on
+/* Gen9 buffer views use software-owned word 2, with the same offset location
+ * as AGX2. The packer checks that no hardware extension aliases this word.
+ * Gen10's tail representation remains unavailable.
+ * Multisample descriptor representation is recovered on
  * both AGX3 generations; this is not by itself an execution/capability gate.
  */
 static inline bool
@@ -134,7 +135,8 @@ hk_native_texture_supported(unsigned generation, bool multisampled,
    if (!hk_descriptor_generation_is_agx3(generation))
       return false;
 
-   return buffer_tail_offset == 0;
+   return buffer_tail_offset == 0 ||
+          (generation == 9 && !multisampled && buffer_tail_offset < 16);
 }
 
 /* Return whether the sampled-texture descriptor has a recovered representation

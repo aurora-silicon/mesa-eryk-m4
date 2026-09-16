@@ -1,0 +1,23 @@
+{
+  "selected": 870,
+  "recorded": 870,
+  "completed": 870,
+  "counts": {
+    "Pass": 490,
+    "NotSupported": 380
+  },
+  "classifications": {
+    "unclassified": 870
+  },
+  "elapsed_seconds": 22.191362914978527,
+  "preparation_seconds": 1.5417135549942032,
+  "runner_seconds": 19.824224544999993,
+  "jobs": 12,
+  "tests_per_group": 1,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "d433491b2504af20250d6741b9b546e4530faa8b7c1b42343f4fb3fcf824b0c0",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T072031515992Z-dx-texel-minalign",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 64.5
+}

@@ -302,7 +302,7 @@ main(void)
    assert(hk_native_texture_supported(7, true, 12));
    assert(hk_native_texture_supported(9, true, 0));
    assert(hk_native_texture_supported(9, false, 0));
-   assert(!hk_native_texture_supported(9, false, 4));
+   assert(hk_native_texture_supported(9, false, 4));
    assert(hk_native_texture_supported(10, true, 0));
    assert(!hk_native_texture_supported(10, false, 12));
    assert(hk_native_texture_sample_count_representable(7, 2));

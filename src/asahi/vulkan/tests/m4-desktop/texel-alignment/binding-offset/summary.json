@@ -1,0 +1,22 @@
+{
+  "selected": 2400,
+  "recorded": 2400,
+  "completed": 2400,
+  "counts": {
+    "Pass": 2400
+  },
+  "classifications": {
+    "unclassified": 2400
+  },
+  "elapsed_seconds": 129.8076094079879,
+  "preparation_seconds": 1.6129479489754885,
+  "runner_seconds": 126.427703355,
+  "jobs": 12,
+  "tests_per_group": 1,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "d0e9f6de93f5dc764cd72b9bc050b1d2e8daaf59223ca5b206e219fb1b71045d",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T072110957318Z-dx-texel-binding-offset",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 66.5
+}

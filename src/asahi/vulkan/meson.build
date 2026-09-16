@@ -469,6 +469,21 @@ if with_tests
     ),
     suite : ['asahi'],
   )
+  test(
+    'hk_texel_alignment',
+    executable(
+      'hk_texel_alignment_test',
+      files('tests/test-hk-texel-alignment.c',
+            'hk_native_descriptor_pack.c', '../lib/agx_pbe_agx3_core.c'),
+      include_directories : [
+        include_directories('.'), inc_include, inc_src, inc_asahi,
+      ],
+      dependencies : [idep_agx_pack, idep_mesautil],
+      c_args : [c_msvc_compat_args, '-UNDEBUG'],
+      gnu_symbol_visibility : 'hidden',
+    ),
+    suite : ['asahi'],
+  )
 
   test(
     'hk_memory_budget_core',

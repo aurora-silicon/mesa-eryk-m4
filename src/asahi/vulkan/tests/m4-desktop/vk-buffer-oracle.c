@@ -26,6 +26,7 @@ VK_FN(vkCreateInstance);
 VK_FN(vkDestroyInstance);
 VK_FN(vkEnumeratePhysicalDevices);
 VK_FN(vkGetPhysicalDeviceProperties);
+VK_FN(vkGetPhysicalDeviceProperties2);
 VK_FN(vkGetPhysicalDeviceFeatures2);
 VK_FN(vkGetPhysicalDeviceMemoryProperties);
 VK_FN(vkGetPhysicalDeviceQueueFamilyProperties);
@@ -34,6 +35,8 @@ VK_FN(vkDestroyDevice);
 VK_FN(vkGetDeviceQueue);
 VK_FN(vkCreateBuffer);
 VK_FN(vkDestroyBuffer);
+VK_FN(vkCreateBufferView);
+VK_FN(vkDestroyBufferView);
 VK_FN(vkGetBufferMemoryRequirements);
 VK_FN(vkAllocateMemory);
 VK_FN(vkFreeMemory);
@@ -155,6 +158,26 @@ int main(int argc, char **argv) {
   const char *fill_option = getenv("M4_ORACLE_FILL32");
   const bool copy_option = getenv("M4_ORACLE_COPY") && !strcmp(getenv("M4_ORACLE_COPY"), "1");
   const bool transfer_option = fill_option || copy_option;
+  const char *texel_format_option = getenv("M4_ORACLE_TEXEL_FORMAT");
+  VkFormat texel_format = VK_FORMAT_UNDEFINED;
+  VkDeviceSize texel_offset = 0, texel_range = 0;
+  const bool texel_storage = getenv("M4_ORACLE_TEXEL_STORAGE") &&
+                            !strcmp(getenv("M4_ORACLE_TEXEL_STORAGE"), "1");
+  if (texel_format_option) {
+    unsigned long f = strtoul(texel_format_option, &end, 0);
+    if (*end || !f || f > INT32_MAX || transfer_option)
+      die("invalid texel format or transfer/texel combination");
+    texel_format = (VkFormat)f;
+    const char *offset = getenv("M4_ORACLE_TEXEL_OFFSET");
+    const char *range = getenv("M4_ORACLE_TEXEL_RANGE");
+    if (!offset || !range) die("texel mode requires offset and range");
+    texel_offset = strtoull(offset, &end, 0);
+    if (*end) die("invalid texel offset");
+    texel_range = strtoull(range, &end, 0);
+    if (*end || !texel_range || texel_offset > input_size ||
+        texel_range > input_size - texel_offset)
+      die("invalid texel range");
+  }
   if (fill_option && copy_option) die("choose fill or copy");
   if (copy_option && input_size % 8) die("copy requires two equal word-aligned halves");
   uint32_t fill_value = 0;
@@ -203,7 +226,7 @@ int main(int argc, char **argv) {
       .applicationVersion = 1,
       .pEngineName = "none",
       .engineVersion = 1,
-      .apiVersion = VK_API_VERSION_1_1,
+      .apiVersion = texel_format_option ? VK_API_VERSION_1_3 : VK_API_VERSION_1_1,
   };
   const VkInstanceCreateInfo instance_info = {
       .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
@@ -216,6 +239,7 @@ int main(int argc, char **argv) {
   LOAD_INSTANCE(instance, vkDestroyInstance);
   LOAD_INSTANCE(instance, vkEnumeratePhysicalDevices);
   LOAD_INSTANCE(instance, vkGetPhysicalDeviceProperties);
+  LOAD_INSTANCE(instance, vkGetPhysicalDeviceProperties2);
   LOAD_INSTANCE(instance, vkGetPhysicalDeviceFeatures2);
   LOAD_INSTANCE(instance, vkGetPhysicalDeviceMemoryProperties);
   LOAD_INSTANCE(instance, vkGetPhysicalDeviceQueueFamilyProperties);
@@ -254,6 +278,19 @@ int main(int argc, char **argv) {
                    "M4 Vulkan device was not found");
 
   printf("device: %s (%#x)\n", properties.deviceName, properties.deviceID);
+  if (texel_format_option) {
+    VkPhysicalDeviceVulkan13Properties p13 = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES};
+    VkPhysicalDeviceProperties2 p2 = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2, .pNext = &p13};
+    vkGetPhysicalDeviceProperties2(physical, &p2);
+    if (!p13.uniformTexelBufferOffsetSingleTexelAlignment ||
+        !p13.storageTexelBufferOffsetSingleTexelAlignment)
+      die("single-texel alignment not advertised");
+    printf("texel format=%u offset=%llu range=%llu storage=%u\n", texel_format,
+           (unsigned long long)texel_offset, (unsigned long long)texel_range,
+           texel_storage);
+  }
   if (groups > properties.limits.maxComputeWorkGroupCount[0])
     die("group count exceeds device limit");
   uint32_t queue_family_count = 0;
@@ -325,7 +362,9 @@ int main(int argc, char **argv) {
     extensions[extension_count++] = VK_KHR_8BIT_STORAGE_EXTENSION_NAME;
   if (want_subgroup_types)
     extensions[extension_count++] = VK_KHR_SHADER_SUBGROUP_EXTENDED_TYPES_EXTENSION_NAME;
-  const VkPhysicalDeviceFeatures features = {.shaderInt64 = VK_TRUE};
+  const VkPhysicalDeviceFeatures features = {
+      .shaderInt64 = VK_TRUE,
+      .shaderStorageImageExtendedFormats = texel_storage};
   const VkDeviceCreateInfo device_info = {
       .pEnabledFeatures = &features,
       .pNext = feature_chain,
@@ -343,6 +382,8 @@ int main(int argc, char **argv) {
   LOAD_DEVICE(device, vkGetDeviceQueue);
   LOAD_DEVICE(device, vkCreateBuffer);
   LOAD_DEVICE(device, vkDestroyBuffer);
+  LOAD_DEVICE(device, vkCreateBufferView);
+  LOAD_DEVICE(device, vkDestroyBufferView);
   LOAD_DEVICE(device, vkGetBufferMemoryRequirements);
   LOAD_DEVICE(device, vkAllocateMemory);
   LOAD_DEVICE(device, vkFreeMemory);
@@ -385,7 +426,8 @@ int main(int argc, char **argv) {
   const VkBufferCreateInfo buffer_info = {
       .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
       .size = buffer_size,
-      .usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+      .usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT |
+               (texel_format_option ? (texel_storage ? VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT : VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT) : 0),
       .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
   };
   VkBuffer buffer;
@@ -414,31 +456,57 @@ int main(int argc, char **argv) {
         "vkMapMemory");
   memcpy(mapped, input, input_size);
 
-  const VkDescriptorSetLayoutBinding binding = {
-      .binding = 0,
-      .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-      .descriptorCount = 1,
-      .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
-  };
+  unsigned binding_count = 1;
+  const char *binding_option = getenv("M4_ORACLE_BINDING_COUNT");
+  if (binding_option) {
+    char *end;
+    unsigned long parsed = strtoul(binding_option, &end, 10);
+    if (!*binding_option || *end || parsed < 1 || parsed > 16)
+      die("binding count must be 1..16");
+    binding_count = parsed;
+  }
+  if (buffer_size % binding_count)
+    die("buffer size must divide evenly into bindings");
+  VkDeviceSize binding_stride = buffer_size / binding_count;
+  if (texel_format_option && (binding_count != 2 ||
+      texel_offset > binding_stride || texel_range > binding_stride - texel_offset))
+    die("texel mode requires two bindings and a view inside the first half");
+  if (binding_count > 1 && binding_stride % properties.limits.minStorageBufferOffsetAlignment)
+    die("binding ranges must satisfy minStorageBufferOffsetAlignment");
+  VkDescriptorSetLayoutBinding bindings[16];
+  for (unsigned i = 0; i < binding_count; ++i)
+    bindings[i] = (VkDescriptorSetLayoutBinding) {
+      .binding = i, .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+      .descriptorCount = 1, .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
+    };
+  VkDescriptorType texel_type = texel_storage ?
+    VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER : VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+  VkBufferView texel_view = VK_NULL_HANDLE;
+  if (texel_format_option) {
+    bindings[0].descriptorType = texel_type;
+    VkBufferViewCreateInfo vi = {
+      .sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO, .buffer = buffer,
+      .format = texel_format, .offset = texel_offset, .range = texel_range};
+    check(vkCreateBufferView(device, &vi, NULL, &texel_view), "vkCreateBufferView");
+  }
   const VkDescriptorSetLayoutCreateInfo set_layout_info = {
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-      .bindingCount = 1,
-      .pBindings = &binding,
+      .bindingCount = binding_count, .pBindings = bindings,
   };
   VkDescriptorSetLayout set_layout;
   check(
       vkCreateDescriptorSetLayout(device, &set_layout_info, NULL, &set_layout),
       "vkCreateDescriptorSetLayout");
 
-  const VkDescriptorPoolSize pool_size = {
+  const VkDescriptorPoolSize pool_size[2] = {{
       .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-      .descriptorCount = 1,
-  };
+      .descriptorCount = binding_count,
+  }, {texel_type, 1}};
   const VkDescriptorPoolCreateInfo pool_info = {
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
       .maxSets = 1,
-      .poolSizeCount = 1,
-      .pPoolSizes = &pool_size,
+      .poolSizeCount = texel_format_option ? 2 : 1,
+      .pPoolSizes = pool_size,
   };
   VkDescriptorPool descriptor_pool;
   check(vkCreateDescriptorPool(device, &pool_info, NULL, &descriptor_pool),
@@ -453,20 +521,25 @@ int main(int argc, char **argv) {
   VkDescriptorSet descriptor_set;
   check(vkAllocateDescriptorSets(device, &set_info, &descriptor_set),
         "vkAllocateDescriptorSets");
-  const VkDescriptorBufferInfo descriptor_buffer = {
-      .buffer = buffer,
-      .offset = 0,
-      .range = buffer_size,
-  };
-  const VkWriteDescriptorSet descriptor_write = {
-      .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-      .dstSet = descriptor_set,
-      .dstBinding = 0,
-      .descriptorCount = 1,
-      .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-      .pBufferInfo = &descriptor_buffer,
-  };
-  vkUpdateDescriptorSets(device, 1, &descriptor_write, 0, NULL);
+  VkDescriptorBufferInfo descriptor_buffers[16];
+  VkWriteDescriptorSet descriptor_writes[16];
+  for (unsigned i = 0; i < binding_count; ++i) {
+    descriptor_buffers[i] = (VkDescriptorBufferInfo) {
+        .buffer = buffer, .offset = i * binding_stride, .range = binding_stride,
+    };
+    descriptor_writes[i] = (VkWriteDescriptorSet) {
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, .dstSet = descriptor_set,
+        .dstBinding = i, .descriptorCount = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+        .pBufferInfo = &descriptor_buffers[i],
+    };
+  }
+  if (texel_format_option) {
+    descriptor_writes[0].descriptorType = texel_type;
+    descriptor_writes[0].pBufferInfo = NULL;
+    descriptor_writes[0].pTexelBufferView = &texel_view;
+  }
+  vkUpdateDescriptorSets(device, binding_count, descriptor_writes, 0, NULL);
 
   VkShaderModule shader = VK_NULL_HANDLE;
   VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
@@ -648,6 +721,7 @@ int main(int argc, char **argv) {
   vkDestroyShaderModule(device, shader, NULL);
   vkDestroyDescriptorPool(device, descriptor_pool, NULL);
   vkDestroyDescriptorSetLayout(device, set_layout, NULL);
+  if (texel_view) vkDestroyBufferView(device, texel_view, NULL);
   vkUnmapMemory(device, memory);
   vkDestroyBuffer(device, buffer, NULL);
   vkFreeMemory(device, memory, NULL);

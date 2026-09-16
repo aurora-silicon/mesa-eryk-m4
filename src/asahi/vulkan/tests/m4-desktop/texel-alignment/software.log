@@ -1,0 +1,65 @@
+CASE: r8ui-1-fetch
+device: llvmpipe (LLVM 22.1.8, 256 bits) (0)
+texel format=13 offset=1 range=16384 storage=0
+PASS: buffer oracle bad=0/262144 watched_bad=0 on queue 0 flags=0xf
+CASE: r8ui-1-store
+device: llvmpipe (LLVM 22.1.8, 256 bits) (0)
+texel format=13 offset=1 range=16384 storage=1
+PASS: buffer oracle bad=0/262144 watched_bad=0 on queue 0 flags=0xf
+CASE: r8ui-15-fetch
+device: llvmpipe (LLVM 22.1.8, 256 bits) (0)
+texel format=13 offset=15 range=16384 storage=0
+PASS: buffer oracle bad=0/262144 watched_bad=0 on queue 0 flags=0xf
+CASE: r8ui-15-store
+device: llvmpipe (LLVM 22.1.8, 256 bits) (0)
+texel format=13 offset=15 range=16384 storage=1
+PASS: buffer oracle bad=0/262144 watched_bad=0 on queue 0 flags=0xf
+CASE: r32ui-4-fetch
+device: llvmpipe (LLVM 22.1.8, 256 bits) (0)
+texel format=98 offset=4 range=65536 storage=0
+PASS: buffer oracle bad=0/262144 watched_bad=0 on queue 0 flags=0xf
+CASE: r32ui-4-store
+device: llvmpipe (LLVM 22.1.8, 256 bits) (0)
+texel format=98 offset=4 range=65536 storage=1
+PASS: buffer oracle bad=0/262144 watched_bad=0 on queue 0 flags=0xf
+CASE: r32ui-4-atomic
+device: llvmpipe (LLVM 22.1.8, 256 bits) (0)
+texel format=98 offset=4 range=65536 storage=1
+PASS: buffer oracle bad=0/262144 watched_bad=0 on queue 0 flags=0xf
+CASE: r32ui-12-fetch
+device: llvmpipe (LLVM 22.1.8, 256 bits) (0)
+texel format=98 offset=12 range=65536 storage=0
+PASS: buffer oracle bad=0/262144 watched_bad=0 on queue 0 flags=0xf
+CASE: r32ui-12-store
+device: llvmpipe (LLVM 22.1.8, 256 bits) (0)
+texel format=98 offset=12 range=65536 storage=1
+PASS: buffer oracle bad=0/262144 watched_bad=0 on queue 0 flags=0xf
+CASE: r32ui-12-atomic
+device: llvmpipe (LLVM 22.1.8, 256 bits) (0)
+texel format=98 offset=12 range=65536 storage=1
+PASS: buffer oracle bad=0/262144 watched_bad=0 on queue 0 flags=0xf
+CASE: rgb32ui-4-fetch
+device: llvmpipe (LLVM 22.1.8, 256 bits) (0)
+texel format=104 offset=4 range=196608 storage=0
+PASS: buffer oracle bad=0/262144 watched_bad=0 on queue 0 flags=0xf
+CASE: rgb32ui-8-fetch
+device: llvmpipe (LLVM 22.1.8, 256 bits) (0)
+texel format=104 offset=8 range=196608 storage=0
+PASS: buffer oracle bad=0/262144 watched_bad=0 on queue 0 flags=0xf
+CASE: rgb32ui-12-fetch
+device: llvmpipe (LLVM 22.1.8, 256 bits) (0)
+texel format=104 offset=12 range=196608 storage=0
+PASS: buffer oracle bad=0/262144 watched_bad=0 on queue 0 flags=0xf
+CASE: rgb32f-4-fetch
+device: llvmpipe (LLVM 22.1.8, 256 bits) (0)
+texel format=106 offset=4 range=196608 storage=0
+PASS: buffer oracle bad=0/262144 watched_bad=0 on queue 0 flags=0xf
+CASE: rgb32f-8-fetch
+device: llvmpipe (LLVM 22.1.8, 256 bits) (0)
+texel format=106 offset=8 range=196608 storage=0
+PASS: buffer oracle bad=0/262144 watched_bad=0 on queue 0 flags=0xf
+CASE: rgb32f-12-fetch
+device: llvmpipe (LLVM 22.1.8, 256 bits) (0)
+texel format=106 offset=12 range=196608 storage=0
+PASS: buffer oracle bad=0/262144 watched_bad=0 on queue 0 flags=0xf
+PASS: all texel alignment oracles

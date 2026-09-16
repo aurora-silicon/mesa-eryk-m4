@@ -149,6 +149,7 @@ static bool
 lower_buffer_texture(nir_builder *b, nir_tex_instr *tex, bool gen9)
 {
    nir_def *coord = nir_steal_tex_src(tex, nir_tex_src_coord);
+   nir_def *view_coord = coord;
    nir_def *size = nir_get_texture_size(b, tex);
    nir_def *oob = nir_uge(b, coord, size);
 
@@ -170,7 +171,8 @@ lower_buffer_texture(nir_builder *b, nir_tex_instr *tex, bool gen9)
       b, nir_iand(b, libagx_texture_is_rgb32(b, desc), nir_inot(b, oob)));
 
    nir_def *raw = gen9
-      ? libagx_texture_load_rgb32_gen9(b, desc, coord, nir_imm_bool(b, is_float))
+      ? libagx_texture_load_rgb32_gen9(b, desc, view_coord,
+                                      nir_imm_bool(b, is_float))
       : libagx_texture_load_rgb32(b, desc, coord, nir_imm_bool(b, is_float));
    nir_def *rgb32 = nir_trim_vector(b, raw, nir_tex_instr_result_size(tex));
 

@@ -738,7 +738,8 @@ hk_get_device_properties(const struct agx_device *dev,
    const unsigned descriptor_generation =
       agx_chip_descriptor_generation(dev->chip);
    const bool texel_buffer_single_texel_alignment =
-      hk_descriptor_generation_is_agx2(descriptor_generation);
+      hk_descriptor_generation_is_agx2(descriptor_generation) ||
+      descriptor_generation == 9;
 
    /* Note: update nir_shader_compiler_options.max_samples when changing this. */
    const VkSampleCountFlagBits sample_counts =
@@ -772,7 +773,11 @@ hk_get_device_properties(const struct agx_device *dev,
       .maxImageDimension3D = 16384,
       .maxImageDimensionCube = 16384,
       .maxImageArrayLayers = 2048,
-      .maxTexelBufferElements = AGX_TEXTURE_BUFFER_MAX_SIZE,
+      /* Reserve room for the largest software tail (15 one-byte texels) so
+       * a maximally-sized, minimally-aligned view fits the 2D descriptor.
+       */
+      .maxTexelBufferElements = AGX_TEXTURE_BUFFER_MAX_SIZE -
+                               (descriptor_generation == 9 ? 15 : 0),
       .maxUniformBufferRange = 65536,
 
       /* From a hardware perspective, storage buffers are lowered to global

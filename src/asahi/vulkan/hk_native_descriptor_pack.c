@@ -79,8 +79,9 @@ hk_pack_native_texture(unsigned generation,
 
       /* Word 2 is software-owned for non-extended linear buffer views.
        * Do not alias buffer metadata with a hardware extension or mip range. */
-      if (legacy->buffer_size_sw &&
-          (legacy->dimension != AGX_TEXTURE_DIMENSION_2D ||
+      if ((legacy->buffer_size_sw || legacy->buffer_offset_sw) &&
+          (!legacy->buffer_size_sw ||
+           legacy->dimension != AGX_TEXTURE_DIMENSION_2D ||
            legacy->layout != AGX_LAYOUT_LINEAR || extended ||
            legacy->compressed || legacy->depth != 1))
          return false;
