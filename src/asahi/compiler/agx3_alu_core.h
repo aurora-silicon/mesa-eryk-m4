@@ -275,6 +275,24 @@ bool agx3_alu_fmax_half(enum agx_isa_encoding enc, uint16_t dest,
                         uint16_t wait_mask, uint8_t out[AGX3_ALU_MAX_LENGTH],
                         uint8_t *len);
 
+/* Tied f32 minimum/maximum: fsel condition 3 (LTN, IEEE minNum) or 7 (GTN,
+ * maxNum) with each input tied into both the comparison and the selection,
+ * i.e. src[0] == src[2] and src[1] == src[3]. Apple's -fno-fast-math
+ * fmin/fmax/clamp emit exactly this form (build/claude-fix/witness-fminmax-nan).
+ * wait_mask is 0, 1 (field 102, slot 0) or 32 (field 107, slot 5); any other
+ * mask fails closed and must be retired before the instruction. */
+bool agx3_alu_fmin_f32(enum agx_isa_encoding enc, uint16_t dest,
+                       const uint16_t src[4],
+                       const enum agx3_alu_hint hints[4], bool dest_cache,
+                       uint16_t wait_mask, uint8_t out[AGX3_ALU_MAX_LENGTH],
+                       uint8_t *len);
+
+bool agx3_alu_fmax_f32(enum agx_isa_encoding enc, uint16_t dest,
+                       const uint16_t src[4],
+                       const enum agx3_alu_hint hints[4], bool dest_cache,
+                       uint16_t wait_mask, uint8_t out[AGX3_ALU_MAX_LENGTH],
+                       uint8_t *len);
+
 bool agx3_alu_hrcp(enum agx_isa_encoding enc, uint16_t dest, uint16_t src,
                    enum agx3_alu_hint hint, bool dest_cache,
                    uint16_t wait_mask, uint8_t out[AGX3_ALU_MAX_LENGTH],

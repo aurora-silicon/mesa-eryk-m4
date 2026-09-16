@@ -6091,6 +6091,52 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             continue;
          }
 
+         /* Native tied f32 comparison/selection is scalar fmin/fmax. fsel
+          * condition 3/7 with tied operands is IEEE minNum/maxNum (returns
+          * the non-NaN operand): Apple's -fno-fast-math fmin/fmax/clamp emit
+          * exactly this form. It must precede the generic FSEL handlers
+          * below: their former LTN->GE / GTN->LE rewrite with swapped
+          * selects yielded `a >= b ? b : a`, which returns the NaN whenever
+          * src0 is NaN (float_controls2.fp32.*.nmin/nmax/nclamp NotNaN). */
+         if (enc == AGX_ISA_ENCODING_AGX3B && I->op == AGX_OPCODE_FCMPSEL &&
+             I->nr_dests == 1 && I->nr_srcs == 4 && !I->invert_cond &&
+             (I->fcond == AGX_FCOND_LTN || I->fcond == AGX_FCOND_GTN) &&
+             !I->saturate &&
+             agx3_src_is_register(I->dest[0]) && !I->dest[0].memory &&
+             I->dest[0].size == AGX_SIZE_32 && agx_channels(I->dest[0]) == 1 &&
+             I->src[0].value == I->src[2].value &&
+             I->src[1].value == I->src[3].value) {
+            uint16_t src[4];
+            enum agx3_alu_hint hints[4];
+            bool invalid = false;
+            for (unsigned i = 0; i < 4; ++i) {
+               const agx_index x = I->src[i];
+               invalid |= !agx3_src_is_register(x) || x.memory ||
+                  x.size != AGX_SIZE_32 || agx_channels(x) != 1 ||
+                  x.abs || x.neg || x.kill || (x.cache && x.discard);
+               src[i] = x.value;
+               hints[i] = agx3_post_ra_hint(x);
+            }
+            if (invalid)
+               AGX3_REFUSE(I);
+            uint16_t f32_wait = wait;
+            if (f32_wait != 0 && f32_wait != 1 && f32_wait != 32) {
+               if (!agx3_retire_slots_noop(emission, enc, f32_wait))
+                  AGX3_REFUSE(I);
+               f32_wait = 0;
+            }
+            uint8_t bytes[AGX3_ALU_MAX_LENGTH], len;
+            const bool composed = I->fcond == AGX_FCOND_GTN
+               ? agx3_alu_fmax_f32(enc, I->dest[0].value, src, hints,
+                                   I->dest[0].cache, f32_wait, bytes, &len)
+               : agx3_alu_fmin_f32(enc, I->dest[0].value, src, hints,
+                                   I->dest[0].cache, f32_wait, bytes, &len);
+            if (!composed ||
+                !agx3_append(emission, bytes, len))
+               AGX3_REFUSE(I);
+            continue;
+         }
+
          /* Native scalar half comparison/select.  This is the general
           * shaderFloat16 ternary form: compare two half registers and select
           * either of two half registers without widening or materializing a
@@ -6123,13 +6169,11 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
 
             unsigned condition = I->fcond;
             bool swap = I->invert_cond;
-            if (condition == AGX_FCOND_LTN) {
-               condition = AGX_FCOND_GE;
-               swap = !swap;
-            } else if (condition == AGX_FCOND_GTN) {
-               condition = AGX_FCOND_LE;
-               swap = !swap;
-            }
+            /* LTN/GTN are the min/max conditions (a < b || isnan(b)); the
+             * former GE/LE + swap rewrite selects the NaN when src0 is NaN,
+             * and no untied condition-3/7 select is witnessed. Fail closed. */
+            if (condition == AGX_FCOND_LTN || condition == AGX_FCOND_GTN)
+               AGX3_REFUSE(I);
             if (swap) {
                const uint16_t value = src[2];
                const enum agx3_alu_hint hint = hints[2];
@@ -6171,13 +6215,9 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                 (compare.size == AGX_SIZE_16 || compare.size == AGX_SIZE_32)) {
                unsigned condition = I->fcond;
                bool swap = I->invert_cond;
-               if (condition == AGX_FCOND_LTN) {
-                  condition = AGX_FCOND_GE;
-                  swap = !swap;
-               } else if (condition == AGX_FCOND_GTN) {
-                  condition = AGX_FCOND_LE;
-                  swap = !swap;
-               }
+               /* Min/max conditions: see the tied handlers above. */
+               if (condition == AGX_FCOND_LTN || condition == AGX_FCOND_GTN)
+                  AGX3_REFUSE(I);
                if (zero_first) {
                   switch (condition) {
                   case AGX_FCOND_LT: condition = AGX_FCOND_GT; break;
@@ -6319,8 +6359,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             const agx_index compare=I->src[zero_first?1:0];
             unsigned condition=I->fcond;
             bool swap=I->invert_cond;
-            if(condition==AGX_FCOND_LTN) {condition=AGX_FCOND_GE;swap=!swap;}
-            else if(condition==AGX_FCOND_GTN) {condition=AGX_FCOND_LE;swap=!swap;}
+            /* Min/max conditions: see the tied handlers above. */
+            if(condition==AGX_FCOND_LTN || condition==AGX_FCOND_GTN)AGX3_REFUSE(I);
             if(zero_first) {
                switch(condition) {
                case AGX_FCOND_LT:condition=AGX_FCOND_GT;break;
@@ -6368,8 +6408,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             const bool compare_zero=zero_first || agx3_src_is_zero_imm(I->src[1]);
             unsigned condition=I->fcond;
             bool swap=I->invert_cond;
-            if(condition==AGX_FCOND_LTN) {condition=AGX_FCOND_GE;swap=!swap;}
-            else if(condition==AGX_FCOND_GTN) {condition=AGX_FCOND_LE;swap=!swap;}
+            /* Min/max conditions: see the tied handlers above. */
+            if(condition==AGX_FCOND_LTN || condition==AGX_FCOND_GTN)AGX3_REFUSE(I);
             if(zero_first) {
                switch(condition) {
                case AGX_FCOND_LT:condition=AGX_FCOND_GT;break;
@@ -6433,13 +6473,11 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             uint8_t bytes[AGX3_ALU_MAX_LENGTH], len;
             unsigned condition = I->fcond;
             bool swap = I->invert_cond;
-            if (condition == AGX_FCOND_LTN) {
-               condition = AGX_FCOND_GE;
-               swap = !swap;
-            } else if (condition == AGX_FCOND_GTN) {
-               condition = AGX_FCOND_LE;
-               swap = !swap;
-            }
+            /* LTN/GTN are the min/max conditions (a < b || isnan(b)); the
+             * former GE/LE + swap rewrite selects the NaN when src0 is NaN,
+             * and no untied condition-3/7 select is witnessed. Fail closed. */
+            if (condition == AGX_FCOND_LTN || condition == AGX_FCOND_GTN)
+               AGX3_REFUSE(I);
             uint16_t fsel_wait = wait;
             if (fsel_wait != 0 && fsel_wait != 32) {
                if (!agx3_retire_slots_noop(emission, enc, fsel_wait))

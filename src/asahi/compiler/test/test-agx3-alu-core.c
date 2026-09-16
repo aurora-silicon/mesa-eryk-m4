@@ -1397,6 +1397,53 @@ static void test_native_half_max(void)
    puts("Native half maximum: exact internal-clamp/dead Apple FSEL vectors and fail-closed bounds PASS");
 }
 
+/* Tied f32 minimum/maximum: every vector is an Apple G16G witness from
+ * build/claude-fix/witness-fminmax-nan (probes.metal, -fno-fast-math and
+ * default fast-math produce identical bytes for fmin/fmax/clamp). */
+static void test_native_f32_minmax(void)
+{
+   uint8_t bytes[AGX3_ALU_MAX_LENGTH],len;
+   const enum agx3_alu_hint dead[]={AGX3_ALU_HINT_DISCARD,AGX3_ALU_HINT_DISCARD,
+      AGX3_ALU_HINT_DISCARD,AGX3_ALU_HINT_DISCARD};
+   const enum agx3_alu_hint cached[]={AGX3_ALU_HINT_CACHE,AGX3_ALU_HINT_CACHE,
+      AGX3_ALU_HINT_CACHE,AGX3_ALU_HINT_CACHE};
+
+   /* cs_fmin_f / cs_fmax_f / cs_min_f: fmin(x, y) after two device loads. */
+   const uint16_t ab[]={2,4,2,4};
+   assert(agx3_alu_fmin_f32(AGX_ISA_ENCODING_AGX3B,2,ab,dead,false,32,bytes,&len));
+   exact(bytes,len,"12031e0501c0");
+   assert(agx3_alu_fmax_f32(AGX_ISA_ENCODING_AGX3B,2,ab,dead,false,32,bytes,&len));
+   exact(bytes,len,"12031e0500c0");
+
+   /* cs_clamp_f: fmax into a cached destination, then fmin waiting on slot 0. */
+   const uint16_t lo[]={4,6,4,6};
+   assert(agx3_alu_fmax_f32(AGX_ISA_ENCODING_AGX3B,4,lo,dead,true,32,bytes,&len));
+   exact(bytes,len,"22053e0700c0");
+   /* cs_fmin3_f: the same shape as a minimum. */
+   assert(agx3_alu_fmin_f32(AGX_ISA_ENCODING_AGX3B,4,lo,dead,true,32,bytes,&len));
+   exact(bytes,len,"22053e0701c0");
+   const uint16_t hi[]={4,2,4,2};
+   assert(agx3_alu_fmin_f32(AGX_ISA_ENCODING_AGX3B,2,hi,dead,false,1,bytes,&len));
+   exact(bytes,len,"12051e030120");
+
+   /* cs_fmin_f_reg: min/max of two products, no wait, retained and dead
+    * lifetime hints. */
+   const uint16_t prod[]={0,8,0,8};
+   assert(agx3_alu_fmin_f32(AGX_ISA_ENCODING_AGX3B,4,prod,cached,true,0,bytes,&len));
+   exact(bytes,len,"228126890100");
+   assert(agx3_alu_fmax_f32(AGX_ISA_ENCODING_AGX3B,0,prod,dead,true,0,bytes,&len));
+   exact(bytes,len,"02013e090000");
+
+   /* Fail closed: unwitnessed wait masks, odd registers, other encodings. */
+   assert(!agx3_alu_fmin_f32(AGX_ISA_ENCODING_AGX3B,2,ab,dead,false,33,bytes,&len));
+   assert(!agx3_alu_fmin_f32(AGX_ISA_ENCODING_AGX3B,2,ab,dead,false,2,bytes,&len));
+   const uint16_t odd[]={2,5,2,5};
+   assert(!agx3_alu_fmax_f32(AGX_ISA_ENCODING_AGX3B,2,odd,dead,false,0,bytes,&len));
+   assert(!agx3_alu_fmax_f32(AGX_ISA_ENCODING_AGX3B,3,ab,dead,false,0,bytes,&len));
+   assert(!agx3_alu_fmin_f32(AGX_ISA_ENCODING_AGX3C,2,ab,dead,false,0,bytes,&len));
+   puts("Native f32 minimum/maximum: eight exact Apple G16G fsel vectors and fail-closed bounds PASS");
+}
+
 static void test_native_half_clamp(void)
 {
    uint8_t bytes[AGX3_ALU_MAX_LENGTH],len;
@@ -1528,6 +1575,7 @@ int main(void){
    test_native_half_compare_select();
    test_native_half_min();
    test_native_half_max();
+   test_native_f32_minmax();
    test_native_half_clamp();
    test_native_half_reciprocal();
    test_native_asr32();

@@ -1280,6 +1280,76 @@ agx3_alu_fmax_half(enum agx_isa_encoding enc, uint16_t dest,
                                wait_mask, out, len);
 }
 
+/* The 32-bit twin of agx3_alu_fminmax_half: the same field set with the
+ * 32-bit width selectors. Condition 3/7 with tied operands is IEEE
+ * minNum/maxNum (returns the non-NaN operand): Apple's -fno-fast-math
+ * fmin/fmax/clamp compile to exactly this instruction, byte-exact for all
+ * eight G16G witnesses in build/claude-fix/witness-fminmax-nan. Wait slots 0
+ * (field 102) and 5 (field 107) are witnessed inline; other masks fail
+ * closed. */
+static bool
+agx3_alu_fminmax_f32(enum agx_isa_encoding enc, uint16_t dest,
+                     const uint16_t src[4],
+                     const enum agx3_alu_hint hints[4], bool maximum,
+                     bool dest_cache, uint16_t wait_mask,
+                     uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len)
+{
+   if (enc != AGX_ISA_ENCODING_AGX3B || !src || !hints || !out || !len ||
+       dest >= 256 || (dest & 1) ||
+       (wait_mask != 0 && wait_mask != 1 && wait_mask != 32))
+      return false;
+   for (unsigned i = 0; i < 4; ++i) {
+      if (src[i] >= 256 || (src[i] & 1) ||
+          (unsigned)hints[i] > AGX3_ALU_HINT_CACHE)
+         return false;
+   }
+
+   const struct agx3_field_kv base[] = {
+      {10,2},{11,2},{42,2},{43,2},{59,2},{60,2},{76,2},{77,2},{93,2},{94,2},
+   };
+   struct agx3_field_kv fields[17] = {
+      {3,dest},{12,dest_cache},{35,src[0]},{52,src[1]},
+      {69,src[2]},{86,src[3]},{110,maximum ? 7 : 3},
+      {107,wait_mask == 32},{102,wait_mask == 1},
+   };
+   const unsigned cache[] = {44,61,78,95};
+   const unsigned discard[] = {46,63,80,97};
+   unsigned n = 9;
+   for (unsigned i = 0; i < 4; ++i) {
+      fields[n++] = (struct agx3_field_kv){cache[i],
+         hints[i] == AGX3_ALU_HINT_CACHE};
+      fields[n++] = (struct agx3_field_kv){discard[i],
+         hints[i] == AGX3_ALU_HINT_DISCARD};
+   }
+   for (unsigned ep = 0; ep < 28; ++ep) {
+      if (agx3_bind_compose(enc, "fsel", ep, base, 10, fields, n, out, len))
+         return true;
+   }
+   return false;
+}
+
+bool
+agx3_alu_fmin_f32(enum agx_isa_encoding enc, uint16_t dest,
+                  const uint16_t src[4],
+                  const enum agx3_alu_hint hints[4], bool dest_cache,
+                  uint16_t wait_mask, uint8_t out[AGX3_ALU_MAX_LENGTH],
+                  uint8_t *len)
+{
+   return agx3_alu_fminmax_f32(enc, dest, src, hints, false, dest_cache,
+                               wait_mask, out, len);
+}
+
+bool
+agx3_alu_fmax_f32(enum agx_isa_encoding enc, uint16_t dest,
+                  const uint16_t src[4],
+                  const enum agx3_alu_hint hints[4], bool dest_cache,
+                  uint16_t wait_mask, uint8_t out[AGX3_ALU_MAX_LENGTH],
+                  uint8_t *len)
+{
+   return agx3_alu_fminmax_f32(enc, dest, src, hints, true, dest_cache,
+                               wait_mask, out, len);
+}
+
 bool
 agx3_alu_hrcp(enum agx_isa_encoding enc, uint16_t dest, uint16_t src,
               enum agx3_alu_hint hint, bool dest_cache, uint16_t wait_mask,
