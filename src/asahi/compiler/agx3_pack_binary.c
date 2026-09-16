@@ -2870,7 +2870,7 @@ agx3_emit_scoped_barrier(struct util_dynarray *emission,
 {
    if (wait_mask != 0 || I->op != AGX_OPCODE_SCOPED_BARRIER_AGX3 ||
        I->nr_dests != 0 || I->nr_srcs != 0 ||
-       I->imm > AGX3_BARRIER_SCOPE_DEVICE_FENCE)
+       I->imm > AGX3_BARRIER_SCOPE_INTERLOCK)
       return false;
 
    struct agx3_encoded_scoped_barrier encoded;
@@ -4653,8 +4653,18 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
       }
       g17p_blend_protocol &= phase == 4;
    }
+   /* The main fragment part can interlock storage without containing a
+    * tilebuffer store: colour/depth writes live in the separately linked
+    * epilog. It still needs the native entry gate before its first wait. */
+   const bool g17p_interlock_protocol = enc == AGX_ISA_ENCODING_AGX3B &&
+      ctx->stage == MESA_SHADER_FRAGMENT &&
+      (ctx->nir->info.fs.pixel_interlock_ordered ||
+       ctx->nir->info.fs.pixel_interlock_unordered ||
+       ctx->nir->info.fs.sample_interlock_ordered ||
+       ctx->nir->info.fs.sample_interlock_unordered);
    const bool g17p_pixel_protocol =
-      g17p_colour_protocol || g17p_blend_protocol || has_coverage_write;
+      g17p_colour_protocol || g17p_blend_protocol || has_coverage_write ||
+      g17p_interlock_protocol;
    const agx_instr *g17p_deferred_write = g17p_pixel_protocol ?
       agx3_g17p_deferred_write_wait(ctx, g17p_blend_protocol) : NULL;
    agx3_g17p_colour_link_info(ctx, g17p_colour_protocol &&
@@ -4784,7 +4794,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             (enc == AGX_ISA_ENCODING_AGX3B && I->op == AGX_OPCODE_IMAGE_WRITE) ||
             (I->op == AGX_OPCODE_SCOPED_BARRIER_AGX3 &&
              (I->imm == AGX3_BARRIER_SCOPE_DEVICE ||
-              I->imm == AGX3_BARRIER_SCOPE_DEVICE_FENCE));
+              I->imm == AGX3_BARRIER_SCOPE_DEVICE_FENCE ||
+              I->imm == AGX3_BARRIER_SCOPE_INTERLOCK));
          /* IMGWCI completes on the slot used by its staging COPYs. Retain
           * that dependency until a texture fence or overlapping publisher
           * consumes it. A barrier without the completion wait reads stale
@@ -5315,7 +5326,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                  /* Dead blend reads can leave separate class-8/class-4
                   * waits around a store-only shader. Acquire before the
                   * first surviving colour wait, preserving both waits. */
-                 (g17p_colour_protocol && (I->writeout & 0xc)) ||
+                 ((g17p_colour_protocol || g17p_interlock_protocol) &&
+                  (I->writeout & 0xc)) ||
                  I->writeout == (g17p_blend_protocol ? 8 : 0xc)) &&
                 !g17p_colour_open) {
                uint8_t entry[AGX3_PIXEL_MAX_LENGTH];

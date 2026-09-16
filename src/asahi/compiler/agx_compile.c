@@ -2434,9 +2434,24 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
    }
 
    case nir_intrinsic_begin_invocation_interlock: {
-      agx_wait_pixel_mask(b, 0xC);
+      /* Native ordered storage acquires pixel ownership before memory access.
+       * Keep ownership through the fragment/sample-loop epilog, which performs
+       * the normal final release. Tilebuffer spills retain their existing wait.
+       */
+      if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+          (b->shader->nir->info.fs.pixel_interlock_ordered ||
+           b->shader->nir->info.fs.pixel_interlock_unordered)) {
+         agx_wait_pixel_mask(b, 8);
+      } else {
+         agx_wait_pixel_mask(b, 0xC);
+      }
       return NULL;
    }
+
+   case nir_intrinsic_end_invocation_interlock:
+      assert(b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B);
+      agx_scoped_barrier_agx3(b, AGX3_BARRIER_SCOPE_INTERLOCK);
+      return NULL;
 
    case nir_intrinsic_ddx:
    case nir_intrinsic_ddx_coarse:
@@ -6882,7 +6897,15 @@ agx_compile_shader_nir_inner(nir_shader *nir, struct agx_shader_key *key,
       else
          info->depth_layout = layout;
 
-      info->reads_tib = nir->info.fs.uses_fbfetch_output;
+      /* Interlocked storage requires a dependent pass even when it does
+       * not read the tilebuffer. The linker also uses this dependency to
+       * retain ownership across a per-sample invocation loop. */
+      info->reads_tib = nir->info.fs.uses_fbfetch_output ||
+         (key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+          (nir->info.fs.pixel_interlock_ordered ||
+           nir->info.fs.pixel_interlock_unordered ||
+           nir->info.fs.sample_interlock_ordered ||
+           nir->info.fs.sample_interlock_unordered));
       info->early_fragment_tests = nir->info.fs.early_fragment_tests;
    } else if (nir->info.stage == MESA_SHADER_COMPUTE) {
       info->imageblock_stride = nir->info.cs.image_block_size_per_thread_agx;

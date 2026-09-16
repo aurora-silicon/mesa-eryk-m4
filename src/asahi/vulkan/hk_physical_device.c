@@ -638,6 +638,11 @@ hk_get_device_features(
       .robustImageAccess2 = true,
       .nullDescriptor = true,
 
+      /* Pixel interlock still lacks exclusion across disjoint sample coverage. */
+      .fragmentShaderPixelInterlock = dev->chip == AGX_CHIP_G16G &&
+         debug_get_bool_option("HK_EXPERIMENTAL_INTERLOCK", false),
+      .fragmentShaderSampleInterlock = dev->chip == AGX_CHIP_G16G,
+
       /* VK_EXT_shader_image_atomic_int64 */
       .shaderImageInt64Atomics = dev->chip == AGX_CHIP_G16G,
       .sparseImageInt64Atomics = dev->chip == AGX_CHIP_G16G,
@@ -1392,6 +1397,9 @@ hk_create_drm_physical_device(struct vk_instance *_instance,
    supported_extensions.EXT_image_view_min_lod |= pdev->dev.chip == AGX_CHIP_G16G;
    supported_extensions.KHR_shader_atomic_int64 |= pdev->dev.chip == AGX_CHIP_G16G;
    supported_extensions.EXT_shader_image_atomic_int64 |=
+      pdev->dev.chip == AGX_CHIP_G16G;
+
+   supported_extensions.EXT_fragment_shader_interlock =
       pdev->dev.chip == AGX_CHIP_G16G;
 
    /* HAL200 advanced blend epilogs currently complete without a fault but

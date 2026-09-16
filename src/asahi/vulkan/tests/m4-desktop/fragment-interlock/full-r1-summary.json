@@ -1,0 +1,24 @@
+{
+  "selected": 576,
+  "recorded": 576,
+  "completed": 576,
+  "counts": {
+    "Pass": 346,
+    "Fail": 38,
+    "NotSupported": 192
+  },
+  "classifications": {
+    "unclassified": 576
+  },
+  "elapsed_seconds": 34.52964870003052,
+  "preparation_seconds": 1.5846099799964577,
+  "runner_seconds": 30.011367019998943,
+  "jobs": 12,
+  "tests_per_group": 1,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "f0015584e36819d2056f36faf049b85af57f92ea6c14ac13f9042c8d9881ad67",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T181552344502Z-dx-interlock-full-r1",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 60.75
+}

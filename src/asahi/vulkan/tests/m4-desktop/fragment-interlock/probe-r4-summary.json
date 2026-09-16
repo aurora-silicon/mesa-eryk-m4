@@ -1,0 +1,22 @@
+{
+  "selected": 48,
+  "recorded": 48,
+  "completed": 48,
+  "counts": {
+    "Pass": 48
+  },
+  "classifications": {
+    "unclassified": 48
+  },
+  "elapsed_seconds": 8.3749661979964,
+  "preparation_seconds": 1.5731907699955627,
+  "runner_seconds": 4.035410835998846,
+  "jobs": 12,
+  "tests_per_group": 1,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "f8eb45e2427d4c762909c04e93b06a63c2fe2762140090c9577b9238b8188cd3",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T181526277124Z-dx-interlock-probe-r4",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 58.25
+}

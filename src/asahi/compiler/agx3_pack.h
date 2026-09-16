@@ -217,6 +217,7 @@ enum agx3_barrier_scope {
    AGX3_BARRIER_SCOPE_DEVICE,
    AGX3_BARRIER_SCOPE_TEXTURE,
    AGX3_BARRIER_SCOPE_DEVICE_FENCE,
+   AGX3_BARRIER_SCOPE_INTERLOCK,
 };
 
 struct agx3_encoded_scoped_barrier {

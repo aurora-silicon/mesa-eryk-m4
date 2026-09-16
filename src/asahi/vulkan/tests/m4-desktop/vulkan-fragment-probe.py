@@ -22,6 +22,10 @@ def main():
     parser.add_argument('--format', choices=['rgba8', 'srgb8'], default='rgba8')
     parser.add_argument('--samples', type=int, choices=[1, 2, 4], default=1)
     parser.add_argument('--sample-shading', action='store_true', help='Enable sampleRateShading and shade every raster sample')
+    parser.add_argument('--interlock', choices=['pixel', 'sample'],
+        help='Request EXT_fragment_shader_interlock and the selected feature')
+    parser.add_argument('--instances', type=int, default=1,
+        help='Draw overlapping instances for ordered fragment storage probes')
     parser.add_argument('--occlusion-query', action='store_true',
         help='Report a non-precise samples-passed query around the diagnostic draw')
     parser.add_argument('--allow-unadvertised-samples', action='store_true',
@@ -51,6 +55,8 @@ def main():
     parser.add_argument('--host-compile-only', action='store_true')
     parser.add_argument('--run-host-shim', action='store_true', help=
         'Build and run the host compile-only probe under the M4 no-op DRM shim')
+    parser.add_argument('--host-env', action='append', default=[], metavar='KEY=VALUE',
+        help='Explicit recorded environment override for --run-host-shim')
     parser.add_argument('--record-command-buffer', action='store_true', help=
         'With --run-host-shim, also record one draw without submitting it')
     parser.add_argument('--sysroot', type=Path, default=Path(
@@ -59,12 +65,20 @@ def main():
     args.host_compile_only |= args.run_host_shim
     if args.reference_host and args.host_compile_only:
         parser.error('--reference-host conflicts with compile-only')
+    if not 1 <= args.instances <= 4096:
+        parser.error('--instances must be between 1 and 4096')
+    if args.interlock and args.transform_feedback:
+        parser.error('interlock and transform-feedback probes must be separate')
     if bool(args.storage_stage) != bool(args.storage_expected):
         parser.error('--storage-stage and --storage-expected are required together')
     if args.storage_stage and args.transform_feedback:
         parser.error('storage and XFB probes must be separate')
     if args.record_command_buffer and not args.run_host_shim:
         parser.error('--record-command-buffer requires --run-host-shim')
+    if args.host_env and not args.run_host_shim:
+        parser.error('--host-env requires --run-host-shim')
+    if any('=' not in item or not item.split('=', 1)[0] for item in args.host_env):
+        parser.error('--host-env needs KEY=VALUE')
     if args.transform_feedback and not args.vertex:
         parser.error('--transform-feedback requires an XFB-decorated --vertex')
     if args.transform_feedback_resume and not args.transform_feedback:
@@ -106,6 +120,16 @@ def main():
         replace_once('   const VkDeviceCreateInfo device_info = {',
             '   const VkPhysicalDeviceFeatures test_features = {' + ', '.join(features) + '};\n'
             '   const VkDeviceCreateInfo device_info = {\n      .pEnabledFeatures = &test_features,')
+    if args.interlock:
+        feature = 'fragmentShader' + args.interlock.capitalize() + 'Interlock'
+        replace_once('   const VkDeviceCreateInfo device_info = {',
+            '   const VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT interlock_features = {\n'
+            '      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT,\n'
+            '      .' + feature + ' = VK_TRUE};\n'
+            '   const char *interlock_extensions[] = {VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME};\n'
+            '   const VkDeviceCreateInfo device_info = {\n'
+            '      .pNext = &interlock_features,\n'
+            '      .enabledExtensionCount = 1, .ppEnabledExtensionNames = interlock_extensions,')
     if args.geometry:
         replace_once('   VkShaderModule vert_module, frag_module;',
             '   VkShaderModule geom_module;\n'
@@ -390,6 +414,10 @@ def main():
         source = source.replace(marker, marker + '\n'
             '   puts("PASS: pipeline compilation only; no GPU submission");\n'
             '   return EXIT_SUCCESS;\n')
+    if args.instances != 1:
+        draw = ('   vkCmdDrawIndexed(command_buffer, 3, 1, 0, 0, 0);' if args.indexed
+                else '   vkCmdDraw(command_buffer, 3, 1, 0, 0);')
+        replace_once(draw, draw.replace(', 3, 1,', ', 3, ' + str(args.instances) + ','))
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=False)
     shutil.copyfile(args.source, output / 'probe.frag')
@@ -429,6 +457,7 @@ def main():
     files = {f.name: hashlib.sha256(f.read_bytes()).hexdigest()
              for f in output.iterdir() if f.is_file()}
     manifest = {
+        'interlock': args.interlock, 'instances': args.instances,
         'sample_shading': args.sample_shading,
         'format': args.format, 'samples': args.samples, 'rgba': args.rgba, 'right_rgba': args.right_rgba,
         'occlusion_query': args.occlusion_query,
@@ -459,6 +488,7 @@ def main():
             MESA_SHADER_CACHE_DISABLE='true', LD_PRELOAD=str(shim),
             VK_DRIVER_FILES=str(icd), AGX_COMPILER_CAPTURE_DIR=str(captures),
             AGX_COMPILER_CAPTURE_SUCCESS='all')
+        overrides.update(item.split('=', 1) for item in args.host_env)
         env.update(overrides)
         manifest['host_environment'] = overrides
         manifest['host_sha256'] = {str(f): hashlib.sha256(f.read_bytes()).hexdigest()

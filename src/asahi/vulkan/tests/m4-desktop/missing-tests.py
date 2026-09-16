@@ -64,7 +64,9 @@ OVERLAYS += ['build/directx-subgroup/prefix-basic-r4',
              'build/directx-atomic64/image-default-regression',
              'build/directx-atomic64/formatless-default-regression',
              'build/directx-atomic64/image-sparse-default-full',
-             'build/directx-atomic64/image-sparse-default-regression']
+             'build/directx-atomic64/image-sparse-default-regression',
+             'build/directx-interlock/sample-default-full-r1',
+             'build/directx-interlock/sample-default-regression']
 
 CLASSES = [  # (regex on the reason, class, priority); first match wins
     (r'sparse|Sparse', 'feature-implementable', 2),
