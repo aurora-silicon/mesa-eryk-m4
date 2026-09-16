@@ -1,0 +1,6 @@
+{
+  "original_verdict": "missing_success_evidence",
+  "reason": "Original expected regex omitted D3D11; all five application oracles passed.",
+  "corrected_expected_success": "^PASS: D3D11 native DXVK smoke complete",
+  "reviewed_verdict": "pass"
+}

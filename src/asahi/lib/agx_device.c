@@ -97,8 +97,8 @@ agx_drm_bo_sync_for_device(struct agx_device *dev, struct agx_bo *bo,
 /*
  * honeykrisp-h1-execution.md SS1/SS2.1: Linux body for the `bo_free` op
  * (the DRM_IOCTL_GEM_CLOSE tail of the former inline agx_bo_free()).
- * Installed in both agx_device_drm_ops and agx_virtio_device_ops -- GEM
- * handles are always local-fd DRM-core objects, even under virtio-gpu.
+ * Installed in agx_device_drm_ops. The virtio backend must also flush
+ * buffered host commands before closing the local GEM handle.
  */
 void
 agx_drm_bo_close(struct agx_device *dev, uint32_t handle)

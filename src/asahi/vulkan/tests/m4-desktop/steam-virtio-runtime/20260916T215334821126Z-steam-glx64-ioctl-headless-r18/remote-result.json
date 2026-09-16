@@ -1,0 +1,62 @@
+{
+  "command": [
+    "python3",
+    "/opt/m4-dx11-qualification/headless-glx-command.py",
+    "--output",
+    "/root/asahi-evidence/20260916T215334821126Z-steam-glx64-ioctl-headless-r18",
+    "--",
+    "python3",
+    "/opt/m4-dx11-qualification/muvm-dx11-probe.py",
+    "--mode",
+    "gl64",
+    "--seconds",
+    "25",
+    "--overlay",
+    "/opt/m4-steam/mesa-log-r4.erofs",
+    "--host-drm-trace"
+  ],
+  "seconds": 40,
+  "boot_id": "6d3f861e-1909-43d4-951e-3d834a41455e",
+  "watchdog": {
+    "device": "/dev/watchdog0",
+    "identity": "Apple SoC Watchdog",
+    "timeout_seconds": 60,
+    "initial_timeleft_seconds": 59,
+    "periodic_keepalive": false,
+    "armed": true,
+    "ssh_broker_lease": true
+  },
+  "returncode": 1,
+  "thermal": {
+    "startup_limit_mc": 95000,
+    "stop_limit_mc": 95000,
+    "interval_seconds": 0.5,
+    "samples": 13,
+    "sync_interval_seconds": 5,
+    "peak_temperatures_mc": {
+      "PMP aggregate die hotspot": 57750,
+      "Ta000m": 56000,
+      "Te000m": 55250,
+      "Te001m": 53500,
+      "Tp000m": 57750,
+      "Tp001m": 53500
+    },
+    "failure": null,
+    "dedicated_gpu_sensor_verified": false,
+    "log": "temperatures.jsonl",
+    "cpu_frequency_caps": [
+      {
+        "policy": "policy0",
+        "old_min_khz": 912000,
+        "old_max_khz": 1800000,
+        "max_khz": 1800000
+      },
+      {
+        "policy": "policy1",
+        "old_min_khz": 900000,
+        "old_max_khz": 1860000,
+        "max_khz": 1860000
+      }
+    ]
+  }
+}

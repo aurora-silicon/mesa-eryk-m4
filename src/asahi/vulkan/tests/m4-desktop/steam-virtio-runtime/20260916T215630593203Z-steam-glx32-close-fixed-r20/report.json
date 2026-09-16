@@ -1,0 +1,24 @@
+{
+  "id": "20260916T215630593203Z-steam-glx32-close-fixed-r20",
+  "verdict": "pass",
+  "transport_returncode": 0,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T215630593203Z-steam-glx32-close-fixed-r20",
+  "observations": {
+    "pixel_results": [
+      "PASS: GLX 32-bit visual/context/readback 256 pixels"
+    ],
+    "pixel_result_count": 1,
+    "thermal_samples": 15,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 58.5,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 58.5,
+      "Ta000m": 56.25,
+      "Te000m": 55.75,
+      "Te001m": 55.0,
+      "Tp000m": 58.5,
+      "Tp001m": 55.25
+    }
+  }
+}

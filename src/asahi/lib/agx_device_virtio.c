@@ -60,6 +60,11 @@ agx_virtio_bo_alloc(struct agx_device *dev, size_t size, size_t align,
    /* executable implies low va */
    assert(!(flags & AGX_BO_EXEC) || (flags & AGX_BO_LOW_VA));
 
+   /* Match the native backend: M4 instruction fetch requires read-only GPU
+    * mappings. The guest CPU mapping remains writable for shader uploads. */
+   if (dev->chip == AGX_CHIP_G16G && (flags & AGX_BO_EXEC))
+      flags |= AGX_BO_READONLY;
+
    struct asahi_ccmd_gem_new_req req = {
       .hdr = ASAHI_CCMD(GEM_NEW, sizeof(req)),
       .size = size,
@@ -277,6 +282,14 @@ agx_virtio_submit(struct agx_device *dev, struct drm_asahi_submit *submit,
    return ret;
 }
 
+static void
+agx_virtio_bo_close(struct agx_device *dev, uint32_t handle)
+{
+   /* Bind requests may still be buffered in vdrm. Flush them before closing
+    * the guest handle detaches its resource from the host context. */
+   vdrm_bo_close(dev->vdrm, handle);
+}
+
 const agx_device_ops_t agx_virtio_device_ops = {
    .bo_alloc = agx_virtio_bo_alloc,
    .bo_bind = agx_virtio_bo_bind,
@@ -288,15 +301,33 @@ const agx_device_ops_t agx_virtio_device_ops = {
    /*
     * honeykrisp-h1-execution.md SS1/SS2.1: same Linux-generic bodies as
     * agx_device_drm_ops (agx_device.c) -- asahi_simple_ioctl already
-    * dispatches on dev->is_virtio internally, and GEM_CLOSE/munmap are
-    * DRM-core/OS behavior on the local guest fd, unaffected by whether the
-    * asahi-specific ioctls above are vdrm-forwarded.
+    * dispatches on dev->is_virtio internally, and munmap is local OS behavior.
+    * BO closing additionally needs to flush the buffered host commands.
     */
    .simple_ioctl = asahi_simple_ioctl,
    .bo_munmap = agx_drm_bo_munmap,
    .bo_sync_for_device = agx_drm_bo_sync_for_device,
-   .bo_free = agx_drm_bo_close,
+   .bo_free = agx_virtio_bo_close,
 };
+
+bool
+agx_virtio_has_error(struct agx_device *dev)
+{
+   struct asahi_shmem *shmem = (void *)dev->vdrm->shmem;
+
+   /* GET_PARAMS forwarding only supports the device parameters (group 0).
+    * In particular, a host VM_STATUS feature bit does not make that ioctl
+    * valid on the guest's virtio-gpu fd. Use the native-context protocol's
+    * sticky asynchronous error counters instead. */
+   uint32_t async = vdrm_shmem_has_field(shmem, async_error) ?
+      p_atomic_read(&shmem->async_error) : 0;
+   uint32_t global = vdrm_shmem_has_field(shmem, global_faults) ?
+      p_atomic_read(&shmem->global_faults) : 0;
+   if (async || global)
+      fprintf(stderr, "Asahi native-context errors: async=%u global=%u\n",
+              async, global);
+   return async || global;
+}
 
 bool
 agx_virtio_open_device(struct agx_device *dev)

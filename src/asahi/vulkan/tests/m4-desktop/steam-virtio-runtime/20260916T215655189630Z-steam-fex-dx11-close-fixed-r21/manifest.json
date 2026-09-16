@@ -1,0 +1,28 @@
+{
+  "id": "20260916T215655189630Z-steam-fex-dx11-close-fixed-r21",
+  "hypothesis": "The final multilib guest overlay preserves DXVK clear triangle and compute correctness under FEX",
+  "command": [
+    "python3",
+    "/opt/m4-dx11-qualification/muvm-dx11-probe.py",
+    "--mode",
+    "fex",
+    "--seconds",
+    "25",
+    "--overlay",
+    "/opt/m4-steam/mesa-multilib-r5.erofs"
+  ],
+  "expected_success": "^PASS: DXBC compute",
+  "seconds": 35,
+  "sources": {
+    "mesa": {
+      "head": "146af75cca9285e8682c19be07e4cfd0608694b4",
+      "status": " M src/asahi/lib/agx_device.c\n M src/asahi/lib/agx_device_virtio.c\n M src/asahi/lib/agx_device_virtio.h\n M src/asahi/vulkan/hk_device.c\n M src/asahi/vulkan/tests/m4-desktop/asahi-session.py\n M src/asahi/vulkan/tests/m4-desktop/desktop-launch.py\n M src/asahi/vulkan/tests/m4-desktop/vulkan-trim-host.py\n",
+      "patch_sha256": "63ab5916a63432c37fd72df426a2b84fa9cdd15d3557e0c5633bb2aaee64a18f"
+    },
+    "kernel": {
+      "head": "353e76a9660f35de4dd892068424194c5666dc39",
+      "status": "",
+      "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

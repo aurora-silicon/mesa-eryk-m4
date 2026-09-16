@@ -1,0 +1,15 @@
+Private headless GPU display: :1
+Host command: ['runuser', '-u', 'e', '--', 'muvm', '-f', '/usr/share/fex-emu/RootFS/default.erofs', '-f', '/usr/share/fex-emu/overlays/mesa-i386.erofs', '-f', '/usr/share/fex-emu/overlays/mesa-x86_64.erofs', '-f', '/opt/m4-steam/mesa-multilib-r5.erofs', '--mem=2048', '--vram=512', '--cpu-list=0-3', '-i', '--', '/usr/bin/python3', '/opt/m4-dx11-qualification/muvm-dx11-probe.py', '--guest', '--mode', 'gl64', '--seconds', '25', '--overlay', '/opt/m4-steam/mesa-multilib-r5.erofs'] runtime: /tmp/m4-muvm-4cxshpph
+]3008;start=eaa0e10aef0142ae9859389af2b04855;user=e;hostname=omarchy;machineid=08f00288676248028d78d74e740230c1;bootid=6d3f861e190943d4951e3d834a41455e;pid=1442;pidfdid=28827;comm=runuser;targetuser=e;type=session\No IPv6 nameserver available for NDP/DHCPv6
+DRM-ERROR pid=1443 fd=90 request=0xc0106401 ret=-1 errno=13
+Using default interface naming scheme 'v261'.
+Guest kernel: posix.uname_result(sysname='Linux', nodename='omarchy', release='6.12.91', version='#1 SMP Mon Jun  1 16:28:39 CEST 2026', machine='aarch64')
+Guest page size: 4096
+Guest command: ['/usr/bin/FEXInterpreter', '/opt/m4-dx11-qualification/glx-probe64'] ICD: /opt/m4-steam/icd.json
+DRM-ERROR pid=1443 fd=693 request=0xc0106401 ret=-1 errno=13
+DRM-ERROR pid=1443 fd=693 request=0xc01064d1 ret=-1 errno=22
+DRM-ERROR pid=1443 fd=708 request=0xc0106401 ret=-1 errno=13
+DRM-ERROR pid=1443 fd=708 request=0xc01064d1 ret=-1 errno=22
+GLX 64-bit renderer: zink Vulkan 1.4(Apple M4 (G16G B0) (MESA_HONEYKRISP))
+PASS: GLX 64-bit visual/context/readback 256 pixels
+]3008;end=eaa0e10aef0142ae9859389af2b04855\

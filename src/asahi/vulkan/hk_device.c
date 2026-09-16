@@ -21,6 +21,7 @@
 #include "asahi/genxml/agx_pack.h"
 #include "asahi/lib/agx_bo.h"
 #include "asahi/lib/agx_device.h"
+#include "asahi/lib/agx_device_virtio.h"
 #include "compiler/nir/nir_builder.h"
 #include "poly/geometry.h"
 #include "util/hash_table.h"
@@ -370,7 +371,10 @@ static VkResult
 hk_check_status(struct vk_device *device)
 {
    struct hk_device *dev = container_of(device, struct hk_device, vk);
-   if (dev->dev.params.features & DRM_ASAHI_FEATURE_VM_STATUS) {
+   if (dev->dev.is_virtio) {
+      if (agx_virtio_has_error(&dev->dev))
+         return vk_device_set_lost(&dev->vk, "Asahi native-context protocol error");
+   } else if (dev->dev.params.features & DRM_ASAHI_FEATURE_VM_STATUS) {
       struct drm_asahi_vm_status status = {.vm_id = dev->dev.vm_id};
       struct drm_asahi_get_params query = {
          .param_group = DRM_ASAHI_PARAM_GROUP_VM_STATUS,

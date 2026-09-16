@@ -1,0 +1,34 @@
+{
+  "id": "20260916T215334821126Z-steam-glx64-ioctl-headless-r18",
+  "hypothesis": "Trace the GLX native-context async error on a private GPU Xwayland display",
+  "command": [
+    "python3",
+    "/opt/m4-dx11-qualification/headless-glx-command.py",
+    "--output",
+    "/root/asahi-evidence/20260916T215334821126Z-steam-glx64-ioctl-headless-r18",
+    "--",
+    "python3",
+    "/opt/m4-dx11-qualification/muvm-dx11-probe.py",
+    "--mode",
+    "gl64",
+    "--seconds",
+    "25",
+    "--overlay",
+    "/opt/m4-steam/mesa-log-r4.erofs",
+    "--host-drm-trace"
+  ],
+  "expected_success": "^PASS: GLX 64-bit",
+  "seconds": 40,
+  "sources": {
+    "mesa": {
+      "head": "146af75cca9285e8682c19be07e4cfd0608694b4",
+      "status": " M src/asahi/lib/agx_device_virtio.c\n M src/asahi/lib/agx_device_virtio.h\n M src/asahi/vulkan/hk_device.c\n M src/asahi/vulkan/tests/m4-desktop/asahi-session.py\n M src/asahi/vulkan/tests/m4-desktop/desktop-launch.py\n M src/asahi/vulkan/tests/m4-desktop/vulkan-trim-host.py\n",
+      "patch_sha256": "48506a90c6a12fae2a1e55993df91cd9eff7a8dee043f395320817fbfb08d600"
+    },
+    "kernel": {
+      "head": "353e76a9660f35de4dd892068424194c5666dc39",
+      "status": "",
+      "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

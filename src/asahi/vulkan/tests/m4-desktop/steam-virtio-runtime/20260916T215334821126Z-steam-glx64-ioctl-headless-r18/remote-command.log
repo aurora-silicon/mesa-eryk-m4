@@ -1,0 +1,22 @@
+Private headless GPU display: :1
+Host command: ['runuser', '-u', 'e', '--', 'muvm', '-f', '/usr/share/fex-emu/RootFS/default.erofs', '-f', '/usr/share/fex-emu/overlays/mesa-i386.erofs', '-f', '/usr/share/fex-emu/overlays/mesa-x86_64.erofs', '-f', '/opt/m4-steam/mesa-log-r4.erofs', '--mem=2048', '--vram=512', '--cpu-list=0-3', '-i', '--', '/usr/bin/python3', '/opt/m4-dx11-qualification/muvm-dx11-probe.py', '--guest', '--mode', 'gl64', '--seconds', '25', '--overlay', '/opt/m4-steam/mesa-log-r4.erofs'] runtime: /tmp/m4-muvm-80a1k48x
+]3008;start=54c94b2b52eb4df098cd7d9ad9a0b484;user=e;hostname=omarchy;machineid=08f00288676248028d78d74e740230c1;bootid=6d3f861e190943d4951e3d834a41455e;pid=1181;pidfdid=24690;comm=runuser;targetuser=e;type=session\No IPv6 nameserver available for NDP/DHCPv6
+DRM-ERROR pid=1182 fd=90 request=0xc0106401 ret=-1 errno=13
+Using default interface naming scheme 'v261'.
+Guest kernel: posix.uname_result(sysname='Linux', nodename='omarchy', release='6.12.91', version='#1 SMP Mon Jun  1 16:28:39 CEST 2026', machine='aarch64')
+Guest page size: 4096
+Guest command: ['/usr/bin/FEXInterpreter', '/opt/m4-dx11-qualification/glx-probe64'] ICD: /opt/m4-steam/icd.json
+DRM-ERROR pid=1182 fd=693 request=0xc0106401 ret=-1 errno=13
+DRM-ERROR pid=1182 fd=693 request=0xc01064d1 ret=-1 errno=22
+DRM-ERROR pid=1182 fd=708 request=0xc0106401 ret=-1 errno=13
+DRM-ERROR pid=1182 fd=708 request=0xc01064d1 ret=-1 errno=22
+DRM-ERROR pid=1182 fd=708 request=0x40186444 ret=-1 errno=2
+  VM_BIND vm=1 count=1 stride=32
+  flags=0x2 handle=0 offset=0 range=0x4000 addr=0x8efdd1c000
+GLX 64-bit renderer: zink Vulkan 1.4(Apple M4 (G16G B0) (MESA_HONEYKRISP))
+Asahi native-context errors: async=1 global=0
+MESA: warning: ../../mesa/m4-asahi/src/asahi/vulkan/hk_device.c:376: Asahi native-context protocol error (VK_ERROR_DEVICE_LOST)
+MESA: error: zink: DEVICE LOST!
+FAIL: pixels[i*4] == 255 && pixels[i*4+1] == 0 && pixels[i*4+2] == 0 && pixels[i*4+3] == 255
+"/usr/bin/python3" process exited with status code: 1
+]3008;end=54c94b2b52eb4df098cd7d9ad9a0b484\
