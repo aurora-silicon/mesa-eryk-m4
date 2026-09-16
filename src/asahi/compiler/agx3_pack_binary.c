@@ -81,6 +81,15 @@ agx3_report_refusal(const agx_instr *I, unsigned line)
    agx_print_instr(I, stderr);
 }
 
+/* Texture staging refusals inside agx3_emit_texture_sample: name the step. */
+#define AGX3_TEX_REFUSE()                                                      \
+   do {                                                                        \
+      if (agx_compiler_debug & AGX_DBG_SHADERS)                                \
+         fprintf(stderr, "AGX3 texture_sample refused at %s:%u\n", __FILE__,  \
+                 __LINE__);                                                    \
+      return false;                                                            \
+   } while (0)
+
 #define AGX3_REFUSE(I)                                                         \
    do {                                                                        \
       agx3_report_refusal((I), __LINE__);                                      \
@@ -1162,12 +1171,12 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
       fprintf(stderr, "AGX3 sample shape: lod=%u valid_lod=%u bias=%u imm=%u offset=%u literal=%u dynamic=%u compare=%u bindless_zero=%u\n",
               I->lod_mode, valid_lod, bias, immediate, I->offset, sample_offset,
               dynamic_offset, valid_compare, agx3_tex_imm(I->src[2], 0));
-      return false;
+      AGX3_TEX_REFUSE();
    }
 
    /* The witnessed copy form carries at most one producer dependency. */
    if (wait_mask & (wait_mask - 1))
-      return false;
+      AGX3_TEX_REFUSE();
 
    const bool register_operands = !immediate &&
       (I->src[3].type == AGX_INDEX_REGISTER ||
@@ -1195,7 +1204,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
                                     stage_slot, wait_mask,
                                     I->src[5].cache, I->src[5].discard, bytes, &len) ||
           !agx3_append(emission, bytes, len))
-         return false;
+         AGX3_TEX_REFUSE();
       wait_mask = 0;
    } else if (cube_array_lod) {
       if (!agx3_tex_stage_cube_array_lod(enc, I->src[0].value + 4,
@@ -1204,7 +1213,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
                                         I->src[0].discard, I->src[1].discard,
                                         bytes, &len) ||
           !agx3_append(emission, bytes, len))
-         return false;
+         AGX3_TEX_REFUSE();
       wait_mask = 0;
    } else if (array_lod) {
       if (!agx3_tex_stage_layer_lod(enc, I->src[0].value + 4,
@@ -1212,14 +1221,14 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
                                    I->src[0].discard, I->src[1].discard, cube,
                                    bytes, &len) ||
           !agx3_append(emission, bytes, len))
-         return false;
+         AGX3_TEX_REFUSE();
       wait_mask = 0;
    } else if ((explicit_lod && !immediate_lod) || bias) {
       if (!agx3_tex_stage_lod(enc, I->src[1].value, stage_slot, wait_mask,
                              I->src[1].cache, I->src[1].discard,
                              bytes, &len) ||
           !agx3_append(emission, bytes, len))
-         return false;
+         AGX3_TEX_REFUSE();
       wait_mask = 0;
    }
 
@@ -1227,20 +1236,24 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
           enc == AGX_ISA_ENCODING_AGX3B && I->src[0].cache,
           enc != AGX_ISA_ENCODING_AGX3B || I->src[0].discard, bytes, &len) ||
        !agx3_append(emission, bytes, len))
-      return false;
+      AGX3_TEX_REFUSE();
    if (!agx3_tex_stage_copy_hints(enc, coord + 2, I->src[0].value + 2, stage_slot, 0,
           enc == AGX_ISA_ENCODING_AGX3B && I->src[0].cache,
           enc != AGX_ISA_ENCODING_AGX3B || I->src[0].discard, bytes, &len) ||
        !agx3_append(emission, bytes, len))
-      return false;
+      AGX3_TEX_REFUSE();
 
    if (array && cube && !cube_array_lod && !I->query_lod &&
        (!agx3_tex_stage_cube_array(enc, I->src[0].value + 6,
                                    I->src[0].value + 4, stage_slot,
                                    I->src[0].discard, I->src[0].discard,
                                    bytes, &len) ||
-        !agx3_append(emission, bytes, len)))
-      return false;
+        !agx3_append(emission, bytes, len))) {
+      if (agx_compiler_debug & AGX_DBG_SHADERS)
+         fprintf(stderr, "AGX3 cube-array layer/face staging refused: layer=%u face=%u slot=%u\n",
+                 I->src[0].value + 6, I->src[0].value + 4, stage_slot);
+      AGX3_TEX_REFUSE();
+   }
 
    /* Cube LOD queries publish the projected face (native fscube/fscubearr
     * witnesses); 2D-array queries keep the implicit layer zero instead. */
@@ -1250,14 +1263,14 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
            enc, I->src[0].value + 4, stage_slot, 0,
            I->src[0].cache, I->src[0].discard, bytes, &len) ||
         !agx3_append(emission, bytes, len)))
-      return false;
+      AGX3_TEX_REFUSE();
 
    if (three_d &&
        (!agx3_tex_stage_copy_hints(enc, coord + 4, I->src[0].value + 4,
                                    stage_slot, 0, I->src[0].cache,
                                    I->src[0].discard, bytes, &len) ||
         !agx3_append(emission, bytes, len)))
-      return false;
+      AGX3_TEX_REFUSE();
 
    /* Apple's M4 sample_compare publishes the F32 reference with an ordinary
     * signalling COPY to half4, after x/y in halves0/2. Array-layer packing
@@ -1267,7 +1280,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
                                   I->src[5].cache, I->src[5].discard,
                                   bytes, &len) ||
         !agx3_append(emission, bytes, len)))
-      return false;
+      AGX3_TEX_REFUSE();
 
    /* Native gradient2d/3d witnesses publish interleaved ddx/ddy pairs
     * in a separate F32 operand bank, without PACK_SMPIR conversion. */
@@ -1277,7 +1290,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
                 I->src[1].value + 2 * i, stage_slot, 0,
                 I->src[1].cache, I->src[1].discard, bytes, &len) ||
              !agx3_append(emission, bytes, len))
-            return false;
+            AGX3_TEX_REFUSE();
       }
    }
 
@@ -1317,8 +1330,18 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
       .sample_offset = sample_offset ? I->src[5].value : 0,
       .dynamic_offset = dynamic_offset,
    };
-   return agx3_tex_encode_sample(enc, &d, bytes, &len) &&
-          agx3_append(emission, bytes, len);
+   if (!agx3_tex_encode_sample(enc, &d, bytes, &len)) {
+      if (agx_compiler_debug & AGX_DBG_SHADERS)
+         fprintf(stderr,
+                 "AGX3 sample refused: dim=%u array=%u cube=%u 3d=%u lod=%u "
+                 "lod_x64=%u width=%u mask=%x shadow=%u gather=%u query=%u "
+                 "offset=%u dynamic_offset=%u slot=%u\n",
+                 I->dim, d.array, d.cube, d.three_d, d.lod, d.lod_x64, d.width,
+                 d.mask, d.shadow, d.gather, d.query_lod, d.sample_offset,
+                 d.dynamic_offset, d.slot);
+      AGX3_TEX_REFUSE();
+   }
+   return agx3_append(emission, bytes, len);
 }
 
 static int

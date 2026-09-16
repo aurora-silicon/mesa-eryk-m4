@@ -115,6 +115,10 @@ struct ra_ctx {
 
    /* SSA values that must begin in G17P's corpus-grounded low store bank. */
    BITSET_WORD *low_gpr;
+   /* Values that must be allocated below half 128: coordinates of a
+    * cube-array sample with a register LOD (the fused layer/face/LOD
+    * PACK_SMPIR operand carries a seven-bit layer register). */
+   BITSET_WORD *tex_low128;
 };
 
 /*
@@ -357,6 +361,9 @@ dest_limit(const struct ra_ctx *rctx, const agx_instr *I, unsigned d)
    if (rctx->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
        BITSET_TEST(rctx->low_gpr, I->dest[d].value))
       limit = MIN2(limit, 16);
+   if (rctx->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+       BITSET_TEST(rctx->tex_low128, I->dest[d].value))
+      limit = MIN2(limit, 128);
    return limit;
 }
 
@@ -1696,12 +1703,23 @@ agx_ra(agx_context *ctx)
    enum agx_size *sizes = calloc(ctx->alloc, sizeof(enum agx_size));
    BITSET_WORD *visited = BITSET_CALLOC(ctx->alloc);
    BITSET_WORD *low_gpr = BITSET_CALLOC(ctx->alloc);
+   BITSET_WORD *tex_low128 = BITSET_CALLOC(ctx->alloc);
    unsigned max_ncomps = 1;
 
    agx_foreach_instr_global(ctx, I) {
       if (ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
           I->op == AGX_OPCODE_ST_TILE && I->src[0].type == AGX_INDEX_NORMAL)
          BITSET_SET(low_gpr, I->src[0].value);
+
+      /* agx3_tex_stage_cube_array_lod encodes the layer register (coords + 6
+       * halves) in seven bits; keep such coordinate vectors below half 128. */
+      if (ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+          I->op == AGX_OPCODE_TEXTURE_SAMPLE && I->dim == AGX_DIM_CUBE_ARRAY &&
+          I->src[0].type == AGX_INDEX_NORMAL && I->nr_srcs > 1 &&
+          I->src[1].type == AGX_INDEX_NORMAL &&
+          (I->lod_mode == AGX_LOD_MODE_LOD_MIN ||
+           I->lod_mode == AGX_LOD_MODE_AUTO_LOD_BIAS))
+         BITSET_SET(tex_low128, I->src[0].value);
 
       /* Record collects/phis so we can coalesce when assigning */
       if (I->op == AGX_OPCODE_COLLECT || I->op == AGX_OPCODE_PHI ||
@@ -1774,6 +1792,7 @@ agx_ra(agx_context *ctx)
          .classes = classes,
          .visited = visited,
          .low_gpr = low_gpr,
+         .tex_low128 = tex_low128,
          .bound[RA_GPR] = max_regs,
          .bound[RA_MEM] = AGX_NUM_MODELED_REGS,
          .count[RA_GPR] = &reg_count,
@@ -1919,6 +1938,7 @@ agx_ra(agx_context *ctx)
 
    free(phi_web);
    free(low_gpr);
+   free(tex_low128);
    free(src_to_collect_phi);
    free(ncomps);
    free(ncomps_unrounded);
