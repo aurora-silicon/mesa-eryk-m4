@@ -1,0 +1,1396 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.pipeline.fast_linked_library.sampler.max_sampler_lod_bias.view_minlod",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Pass",
+    "seconds": 0.28016943,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.fast_linked_library.sampler.max_sampler_lod_bias.view_minlod",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.fast_linked_library.sampler.max_sampler_lod_bias.view_minlod.c10.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.max_sampler_lod_bias.view_minlod",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.monolithic.sampler.max_sampler_lod_bias.view_minlod",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.max_sampler_lod_bias.view_minlod_compute",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Skip",
+    "seconds": 0.000416294,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.monolithic.sampler.max_sampler_lod_bias.view_minlod_compute",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "NotSupported",
+    "message": "Exclusive compute queue not supported. at vktPipelineSamplerTests.cpp:2383",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.monolithic.sampler.max_sampler_lod_bias.view_minlod_compute.c12.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 3,
+    "case": "dEQP-VK.pipeline.pipeline_library.sampler.max_sampler_lod_bias.view_minlod",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.pipeline_library.sampler.max_sampler_lod_bias.view_minlod",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 4,
+    "case": "dEQP-VK.pipeline.shader_object_linked_binary.sampler.max_sampler_lod_bias.view_minlod",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.shader_object_linked_binary.sampler.max_sampler_lod_bias.view_minlod",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 5,
+    "case": "dEQP-VK.pipeline.shader_object_linked_spirv.sampler.max_sampler_lod_bias.view_minlod",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.shader_object_linked_spirv.sampler.max_sampler_lod_bias.view_minlod",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 6,
+    "case": "dEQP-VK.pipeline.shader_object_unlinked_binary.sampler.max_sampler_lod_bias.view_minlod",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Crash",
+    "seconds": 0.49223575,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.shader_object_unlinked_binary.sampler.max_sampler_lod_bias.view_minlod",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Interrupted",
+    "message": "Worker killed during coordinated runner stop; not an independent crash",
+    "worker_exit": "signal: 9 (SIGKILL)"
+  },
+  {
+    "index": 7,
+    "case": "dEQP-VK.pipeline.shader_object_unlinked_spirv.sampler.max_sampler_lod_bias.view_minlod",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Crash",
+    "seconds": 0.27623928,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.shader_object_unlinked_spirv.sampler.max_sampler_lod_bias.view_minlod",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Interrupted",
+    "message": "Worker killed during coordinated runner stop; not an independent crash",
+    "worker_exit": "signal: 9 (SIGKILL)"
+  },
+  {
+    "index": 8,
+    "case": "dEQP-VK.pipeline.shader_object_unlinked_spirv.sampler.max_sampler_lod_bias.view_minlod_compute",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.shader_object_unlinked_spirv.sampler.max_sampler_lod_bias.view_minlod_compute",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 9,
+    "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.base_level.linear_linear",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Crash",
+    "seconds": 0.9263278,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.base_level.linear_linear",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Crash",
+    "message": "Runner detected abnormal execution; inspect QPA/log",
+    "worker_exit": "signal: 6 (SIGABRT) (core dumped)"
+  },
+  {
+    "index": 10,
+    "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.base_level.linear_linear_compute",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.base_level.linear_linear_compute",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 11,
+    "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.base_level.linear_linear_integer_texel_coord",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.base_level.linear_linear_integer_texel_coord",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 12,
+    "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.base_level.linear_linear_integer_texel_coord_compute",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.base_level.linear_linear_integer_texel_coord_compute",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 13,
+    "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.base_level.linear_nearest",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Crash",
+    "seconds": 1.1486835,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.base_level.linear_nearest",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Crash",
+    "message": "Runner detected abnormal execution; inspect QPA/log",
+    "worker_exit": "signal: 6 (SIGABRT) (core dumped)"
+  },
+  {
+    "index": 14,
+    "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.base_level.linear_nearest_compute",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Skip",
+    "seconds": 0.11974209,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.base_level.linear_nearest_compute",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "NotSupported",
+    "message": "Exclusive compute queue not supported. at vktTextureTestUtil.cpp:767",
+    "qpa": "deqp-runner/dEQP-VK.texture.mipmap.2d.image_view_min_lod.base_level.linear_nearest_compute.c7.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 15,
+    "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.base_level.linear_nearest_integer_texel_coord",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.base_level.linear_nearest_integer_texel_coord",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 16,
+    "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.base_level.linear_nearest_integer_texel_coord_compute",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.base_level.linear_nearest_integer_texel_coord_compute",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 17,
+    "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.base_level.nearest_linear",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.base_level.nearest_linear",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 18,
+    "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.base_level.nearest_linear_compute",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Skip",
+    "seconds": 0.23793174,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.base_level.nearest_linear_compute",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "NotSupported",
+    "message": "Exclusive compute queue not supported. at vktTextureTestUtil.cpp:767",
+    "qpa": "deqp-runner/dEQP-VK.texture.mipmap.2d.image_view_min_lod.base_level.nearest_linear_compute.c6.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 19,
+    "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.base_level.nearest_linear_integer_texel_coord",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.base_level.nearest_linear_integer_texel_coord",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 20,
+    "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.base_level.nearest_linear_integer_texel_coord_compute",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.base_level.nearest_linear_integer_texel_coord_compute",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 21,
+    "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.base_level.nearest_nearest",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.base_level.nearest_nearest",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 22,
+    "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.base_level.nearest_nearest_compute",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.base_level.nearest_nearest_compute",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 23,
+    "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.base_level.nearest_nearest_integer_texel_coord",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.base_level.nearest_nearest_integer_texel_coord",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 24,
+    "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.base_level.nearest_nearest_integer_texel_coord_compute",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.base_level.nearest_nearest_integer_texel_coord_compute",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 25,
+    "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.min_lod.linear_linear",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.min_lod.linear_linear",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 26,
+    "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.min_lod.linear_linear_compute",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.min_lod.linear_linear_compute",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 27,
+    "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.min_lod.linear_linear_integer_texel_coord",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.min_lod.linear_linear_integer_texel_coord",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 28,
+    "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.min_lod.linear_linear_integer_texel_coord_compute",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Skip",
+    "seconds": 0.2419362,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.min_lod.linear_linear_integer_texel_coord_compute",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "NotSupported",
+    "message": "Exclusive compute queue not supported. at vktTextureTestUtil.cpp:767",
+    "qpa": "deqp-runner/dEQP-VK.texture.mipmap.2d.image_view_min_lod.min_lod.linear_linear_integer_texel_coord_compute.c1.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 29,
+    "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.min_lod.linear_nearest",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.min_lod.linear_nearest",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 30,
+    "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.min_lod.linear_nearest_compute",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Skip",
+    "seconds": 0.3825568,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.min_lod.linear_nearest_compute",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "NotSupported",
+    "message": "Exclusive compute queue not supported. at vktTextureTestUtil.cpp:767",
+    "qpa": "deqp-runner/dEQP-VK.texture.mipmap.2d.image_view_min_lod.min_lod.linear_nearest_compute.c9.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 31,
+    "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.min_lod.linear_nearest_integer_texel_coord",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.min_lod.linear_nearest_integer_texel_coord",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 32,
+    "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.min_lod.linear_nearest_integer_texel_coord_compute",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.min_lod.linear_nearest_integer_texel_coord_compute",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 33,
+    "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.min_lod.nearest_linear",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Crash",
+    "seconds": 1.1975713,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.min_lod.nearest_linear",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Crash",
+    "message": "Runner detected abnormal execution; inspect QPA/log",
+    "worker_exit": "signal: 6 (SIGABRT) (core dumped)"
+  },
+  {
+    "index": 34,
+    "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.min_lod.nearest_linear_compute",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.min_lod.nearest_linear_compute",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 35,
+    "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.min_lod.nearest_linear_integer_texel_coord",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.min_lod.nearest_linear_integer_texel_coord",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 36,
+    "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.min_lod.nearest_linear_integer_texel_coord_compute",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.min_lod.nearest_linear_integer_texel_coord_compute",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 37,
+    "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.min_lod.nearest_nearest",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.min_lod.nearest_nearest",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 38,
+    "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.min_lod.nearest_nearest_compute",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.min_lod.nearest_nearest_compute",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 39,
+    "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.min_lod.nearest_nearest_integer_texel_coord",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.min_lod.nearest_nearest_integer_texel_coord",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 40,
+    "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.min_lod.nearest_nearest_integer_texel_coord_compute",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.2d.image_view_min_lod.min_lod.nearest_nearest_integer_texel_coord_compute",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 41,
+    "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.base_level.linear_linear",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.base_level.linear_linear",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 42,
+    "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.base_level.linear_linear_compute",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.base_level.linear_linear_compute",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 43,
+    "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.base_level.linear_linear_integer_texel_coord",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.base_level.linear_linear_integer_texel_coord",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 44,
+    "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.base_level.linear_linear_integer_texel_coord_compute",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.base_level.linear_linear_integer_texel_coord_compute",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 45,
+    "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.base_level.linear_nearest",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.base_level.linear_nearest",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 46,
+    "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.base_level.linear_nearest_compute",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.base_level.linear_nearest_compute",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 47,
+    "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.base_level.linear_nearest_integer_texel_coord",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.base_level.linear_nearest_integer_texel_coord",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 48,
+    "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.base_level.linear_nearest_integer_texel_coord_compute",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.base_level.linear_nearest_integer_texel_coord_compute",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 49,
+    "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.base_level.nearest_linear",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.base_level.nearest_linear",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 50,
+    "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.base_level.nearest_linear_compute",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Skip",
+    "seconds": 0.12120957,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.base_level.nearest_linear_compute",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "NotSupported",
+    "message": "Exclusive compute queue not supported. at vktTextureTestUtil.cpp:767",
+    "qpa": "deqp-runner/dEQP-VK.texture.mipmap.3d.image_view_min_lod.base_level.nearest_linear_compute.c13.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 51,
+    "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.base_level.nearest_linear_integer_texel_coord",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.base_level.nearest_linear_integer_texel_coord",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 52,
+    "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.base_level.nearest_linear_integer_texel_coord_compute",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Skip",
+    "seconds": 0.16331983,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.base_level.nearest_linear_integer_texel_coord_compute",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "NotSupported",
+    "message": "Exclusive compute queue not supported. at vktTextureTestUtil.cpp:767",
+    "qpa": "deqp-runner/dEQP-VK.texture.mipmap.3d.image_view_min_lod.base_level.nearest_linear_integer_texel_coord_compute.c14.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 53,
+    "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.base_level.nearest_nearest",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Crash",
+    "seconds": 0.7566318,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.base_level.nearest_nearest",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Crash",
+    "message": "Runner detected abnormal execution; inspect QPA/log",
+    "worker_exit": "signal: 6 (SIGABRT) (core dumped)"
+  },
+  {
+    "index": 54,
+    "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.base_level.nearest_nearest_compute",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Skip",
+    "seconds": 0.5087059,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.base_level.nearest_nearest_compute",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "NotSupported",
+    "message": "Exclusive compute queue not supported. at vktTextureTestUtil.cpp:767",
+    "qpa": "deqp-runner/dEQP-VK.texture.mipmap.3d.image_view_min_lod.base_level.nearest_nearest_compute.c15.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 55,
+    "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.base_level.nearest_nearest_integer_texel_coord",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.base_level.nearest_nearest_integer_texel_coord",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 56,
+    "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.base_level.nearest_nearest_integer_texel_coord_compute",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.base_level.nearest_nearest_integer_texel_coord_compute",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 57,
+    "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.min_lod.linear_linear",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.min_lod.linear_linear",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 58,
+    "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.min_lod.linear_linear_compute",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.min_lod.linear_linear_compute",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 59,
+    "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.min_lod.linear_linear_integer_texel_coord",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.min_lod.linear_linear_integer_texel_coord",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 60,
+    "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.min_lod.linear_linear_integer_texel_coord_compute",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.min_lod.linear_linear_integer_texel_coord_compute",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 61,
+    "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.min_lod.linear_nearest",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Crash",
+    "seconds": 1.3342992,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.min_lod.linear_nearest",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Crash",
+    "message": "Runner detected abnormal execution; inspect QPA/log",
+    "worker_exit": "signal: 6 (SIGABRT) (core dumped)"
+  },
+  {
+    "index": 62,
+    "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.min_lod.linear_nearest_compute",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.min_lod.linear_nearest_compute",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 63,
+    "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.min_lod.linear_nearest_integer_texel_coord",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.min_lod.linear_nearest_integer_texel_coord",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 64,
+    "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.min_lod.linear_nearest_integer_texel_coord_compute",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.min_lod.linear_nearest_integer_texel_coord_compute",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 65,
+    "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.min_lod.nearest_linear",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Crash",
+    "seconds": 1.2939969,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.min_lod.nearest_linear",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Crash",
+    "message": "Runner detected abnormal execution; inspect QPA/log",
+    "worker_exit": "signal: 6 (SIGABRT) (core dumped)"
+  },
+  {
+    "index": 66,
+    "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.min_lod.nearest_linear_compute",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.min_lod.nearest_linear_compute",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 67,
+    "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.min_lod.nearest_linear_integer_texel_coord",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.min_lod.nearest_linear_integer_texel_coord",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 68,
+    "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.min_lod.nearest_linear_integer_texel_coord_compute",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.min_lod.nearest_linear_integer_texel_coord_compute",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 69,
+    "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.min_lod.nearest_nearest",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Crash",
+    "seconds": 1.1170752,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.min_lod.nearest_nearest",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Crash",
+    "message": "Runner detected abnormal execution; inspect QPA/log",
+    "worker_exit": "signal: 6 (SIGABRT) (core dumped)"
+  },
+  {
+    "index": 70,
+    "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.min_lod.nearest_nearest_compute",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.min_lod.nearest_nearest_compute",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 71,
+    "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.min_lod.nearest_nearest_integer_texel_coord",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.min_lod.nearest_nearest_integer_texel_coord",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 72,
+    "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.min_lod.nearest_nearest_integer_texel_coord_compute",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.3d.image_view_min_lod.min_lod.nearest_nearest_integer_texel_coord_compute",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 73,
+    "case": "dEQP-VK.texture.mipmap.cubemap.image_view_min_lod.base_level.linear_linear",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.cubemap.image_view_min_lod.base_level.linear_linear",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 74,
+    "case": "dEQP-VK.texture.mipmap.cubemap.image_view_min_lod.base_level.linear_linear_compute",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Skip",
+    "seconds": 0.14094093,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.cubemap.image_view_min_lod.base_level.linear_linear_compute",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "NotSupported",
+    "message": "Exclusive compute queue not supported. at vktTextureTestUtil.cpp:767",
+    "qpa": "deqp-runner/dEQP-VK.texture.mipmap.cubemap.image_view_min_lod.base_level.linear_linear_compute.c16.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 75,
+    "case": "dEQP-VK.texture.mipmap.cubemap.image_view_min_lod.base_level.linear_nearest",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.cubemap.image_view_min_lod.base_level.linear_nearest",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 76,
+    "case": "dEQP-VK.texture.mipmap.cubemap.image_view_min_lod.base_level.linear_nearest_compute",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.cubemap.image_view_min_lod.base_level.linear_nearest_compute",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 77,
+    "case": "dEQP-VK.texture.mipmap.cubemap.image_view_min_lod.base_level.nearest_linear",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.cubemap.image_view_min_lod.base_level.nearest_linear",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 78,
+    "case": "dEQP-VK.texture.mipmap.cubemap.image_view_min_lod.base_level.nearest_linear_compute",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.cubemap.image_view_min_lod.base_level.nearest_linear_compute",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 79,
+    "case": "dEQP-VK.texture.mipmap.cubemap.image_view_min_lod.base_level.nearest_nearest",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.cubemap.image_view_min_lod.base_level.nearest_nearest",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 80,
+    "case": "dEQP-VK.texture.mipmap.cubemap.image_view_min_lod.base_level.nearest_nearest_compute",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Skip",
+    "seconds": 0.15579262,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.cubemap.image_view_min_lod.base_level.nearest_nearest_compute",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "NotSupported",
+    "message": "Exclusive compute queue not supported. at vktTextureTestUtil.cpp:767",
+    "qpa": "deqp-runner/dEQP-VK.texture.mipmap.cubemap.image_view_min_lod.base_level.nearest_nearest_compute.c11.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 81,
+    "case": "dEQP-VK.texture.mipmap.cubemap.image_view_min_lod.min_lod.linear_linear",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.cubemap.image_view_min_lod.min_lod.linear_linear",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 82,
+    "case": "dEQP-VK.texture.mipmap.cubemap.image_view_min_lod.min_lod.linear_linear_compute",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.cubemap.image_view_min_lod.min_lod.linear_linear_compute",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 83,
+    "case": "dEQP-VK.texture.mipmap.cubemap.image_view_min_lod.min_lod.linear_nearest",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.cubemap.image_view_min_lod.min_lod.linear_nearest",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 84,
+    "case": "dEQP-VK.texture.mipmap.cubemap.image_view_min_lod.min_lod.linear_nearest_compute",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.cubemap.image_view_min_lod.min_lod.linear_nearest_compute",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 85,
+    "case": "dEQP-VK.texture.mipmap.cubemap.image_view_min_lod.min_lod.nearest_linear",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.cubemap.image_view_min_lod.min_lod.nearest_linear",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 86,
+    "case": "dEQP-VK.texture.mipmap.cubemap.image_view_min_lod.min_lod.nearest_linear_compute",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.cubemap.image_view_min_lod.min_lod.nearest_linear_compute",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 87,
+    "case": "dEQP-VK.texture.mipmap.cubemap.image_view_min_lod.min_lod.nearest_nearest",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Crash",
+    "seconds": 1.197708,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.cubemap.image_view_min_lod.min_lod.nearest_nearest",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Crash",
+    "message": "Runner detected abnormal execution; inspect QPA/log",
+    "worker_exit": "signal: 6 (SIGABRT) (core dumped)"
+  },
+  {
+    "index": 88,
+    "case": "dEQP-VK.texture.mipmap.cubemap.image_view_min_lod.min_lod.nearest_nearest_compute",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.cubemap.image_view_min_lod.min_lod.nearest_nearest_compute",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 89,
+    "case": "dEQP-VK.texture.mipmap.min_lod_gather.minlod_0_1.component_0",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Crash",
+    "seconds": 0.2418114,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.min_lod_gather.minlod_0_1.component_0",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Interrupted",
+    "message": "Worker killed during coordinated runner stop; not an independent crash",
+    "worker_exit": "signal: 9 (SIGKILL)"
+  },
+  {
+    "index": 90,
+    "case": "dEQP-VK.texture.mipmap.min_lod_gather.minlod_0_1.component_1",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.min_lod_gather.minlod_0_1.component_1",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 91,
+    "case": "dEQP-VK.texture.mipmap.min_lod_gather.minlod_0_1.component_2",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.min_lod_gather.minlod_0_1.component_2",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 92,
+    "case": "dEQP-VK.texture.mipmap.min_lod_gather.minlod_0_1.component_3",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Pass",
+    "seconds": 0.16930524,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.min_lod_gather.minlod_0_1.component_3",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/dEQP-VK.texture.mipmap.min_lod_gather.minlod_0_1.component_3.c8.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 93,
+    "case": "dEQP-VK.texture.mipmap.min_lod_gather.minlod_1_1.component_0",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.min_lod_gather.minlod_1_1.component_0",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 94,
+    "case": "dEQP-VK.texture.mipmap.min_lod_gather.minlod_1_1.component_1",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Crash",
+    "seconds": 0.4893282,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.min_lod_gather.minlod_1_1.component_1",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Interrupted",
+    "message": "Worker killed during coordinated runner stop; not an independent crash",
+    "worker_exit": "signal: 9 (SIGKILL)"
+  },
+  {
+    "index": 95,
+    "case": "dEQP-VK.texture.mipmap.min_lod_gather.minlod_1_1.component_2",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.min_lod_gather.minlod_1_1.component_2",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  },
+  {
+    "index": 96,
+    "case": "dEQP-VK.texture.mipmap.min_lod_gather.minlod_1_1.component_3",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Missing",
+    "seconds": null,
+    "eligibility": {
+      "case": "dEQP-VK.texture.mipmap.min_lod_gather.minlod_1_1.component_3",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Unrun",
+    "message": "No completed result before coordinated runner stop"
+  }
+]

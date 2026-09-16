@@ -230,10 +230,18 @@ sample_ok(enum agx_isa_encoding enc, const struct agx3_tex_sample_desc *d)
     * layer. Non-array gradients occupy their separate coordinate banks. */
    if (d->dynamic_offset &&
        (d->sample_offset || d->gather || d->query_lod ||
-        (d->array && d->lod == AGX3_TEX_LOD_GRAD && !d->shadow) ||
+        (d->array && d->lod == AGX3_TEX_LOD_GRAD && !d->shadow && !d->min_lod) ||
         (d->lod != AGX3_TEX_LOD_REGISTER &&
          d->lod != AGX3_TEX_LOD_BIAS_REGISTER &&
          d->lod != AGX3_TEX_LOD_GRAD)))
+      return false;
+
+   if (d->min_lod && (enc != AGX_ISA_ENCODING_AGX3B || d->gather ||
+                      d->query_lod || (d->lod != AGX3_TEX_LOD_BIAS_REGISTER &&
+                      d->lod != AGX3_TEX_LOD_GRAD && d->lod != AGX3_TEX_LOD_AUTO)))
+      return false;
+
+   if (d->min_lod_register && (!d->min_lod || d->min_lod_value >= 192))
       return false;
 
    if (d->retain_helpers && enc != AGX_ISA_ENCODING_AGX3B)
@@ -334,7 +342,7 @@ agx3_tex_encode_sample(enum agx_isa_encoding enc,
       base[nb++] = (struct agx3_field_kv)KV(61, 164);
    }
 
-   struct agx3_field_kv ov[32];
+   struct agx3_field_kv ov[36];
    unsigned n = 0;
    ov[n++] = (struct agx3_field_kv)KV(2, d->dest);
    ov[n++] = (struct agx3_field_kv)KV(10, d->width);
@@ -359,6 +367,8 @@ agx3_tex_encode_sample(enum agx_isa_encoding enc,
       ov[n++] = (struct agx3_field_kv)KV(51, 1);
       ov[n++] = (struct agx3_field_kv)KV(43, d->sample_offset);
    }
+   if (d->min_lod)
+      ov[n++] = (struct agx3_field_kv)KV(140, 2);
    if (d->dynamic_offset)
       ov[n++] = (struct agx3_field_kv)KV(141, 2);
    if (d->shadow)
@@ -395,6 +405,11 @@ agx3_tex_encode_sample(enum agx_isa_encoding enc,
       ov[n++] = (struct agx3_field_kv)KV(29, d->lod_x64);
       if (d->shadow || d->sample_offset)
          ov[n++] = (struct agx3_field_kv)KV(156, !d->retain_helpers);
+   }
+   if (d->min_lod_register) {
+      ov[n++] = (struct agx3_field_kv)KV(37, 2);
+      ov[n++] = (struct agx3_field_kv)KV(30, d->min_lod_value);
+      ov[n++] = (struct agx3_field_kv)KV(41, d->min_lod_discard);
    }
    if (enc == AGX_ISA_ENCODING_AGX3B)
       ov[n++] = (struct agx3_field_kv)KV(147, d->final ? 2 : 0);
@@ -776,6 +791,97 @@ agx3_tex_stage_lod(enum agx_isa_encoding enc, uint16_t src, uint8_t slot,
 {
    return stage_lod(enc, src, 0, slot, wait_mask, src_cache, src_discard,
                     false, false, out, len);
+}
+
+bool
+agx3_tex_pack_min_lod(enum agx_isa_encoding enc, uint16_t dest, uint16_t src,
+                      uint16_t wait_mask, bool discard,
+                      uint8_t out[AGX3_TEX_MAX_LENGTH], uint8_t *len)
+{
+   if (!out || !len || enc != AGX_ISA_ENCODING_AGX3B || dest >= 192 ||
+       (dest & 1) || src >= 192 || (wait_mask & ~0x3f))
+      return false;
+   const struct agx3_field_kv fields[] = {
+      KV(9,2), KV(10,2), KV(2,dest), KV(23,2), KV(24,1), KV(16,src),
+      KV(27,discard), KV(38,1), KV(37,1), KV(29,0),
+      KV(51,1), KV(52,2), KV(74,1), KV(75,0), KV(76,3), KV(77,16),
+   };
+   struct agx3_field_kv waits[6]; unsigned n = 0;
+   for (unsigned i = 0; i < 6; ++i)
+      if (wait_mask & (1u << i))
+         waits[n++] = (struct agx3_field_kv)KV(58+i,1);
+   return agx3_bind_compose(enc, "pack_smpir", 0, fields,
+                            sizeof(fields) / sizeof(fields[0]), waits, n, out, len);
+}
+
+/* AIR-NT G16G min_lod_clamp witnesses: f74=1 selects a half-float
+ * minimum independently of the bias/level selector. Array+bias uses bank4
+ * for the minimum while layer+bias occupy bank6. */
+bool
+agx3_tex_stage_min_lod(enum agx_isa_encoding enc, uint16_t src,
+                       uint16_t bank, uint16_t packed_base, uint8_t slot, uint16_t wait_mask,
+                       bool discard, uint8_t out[AGX3_TEX_MAX_LENGTH], uint8_t *len)
+{
+   if (!out || !len || enc != AGX_ISA_ENCODING_AGX3B || src >= 192 ||
+       (bank != 4 && bank != 6) || (packed_base != UINT16_MAX && packed_base >= 128) || slot < 1 || slot > 6 || (wait_mask & ~0x3f))
+      return false;
+   const struct agx3_field_kv base[] = {
+      KV(5,bank), KV(9,5), KV(10,2), KV(12,slot), KV(16,src),
+      KV(23,2), KV(24,1), KV(27,discard), KV(38,1),
+      KV(51,packed_base == UINT16_MAX ? 1 : 2), KV(52,2),
+      KV(74,1), KV(75,16), KV(44,packed_base == UINT16_MAX ? 0 : packed_base),
+   };
+   struct agx3_field_kv waits[6];
+   unsigned n = 0;
+   for (unsigned i = 0; i < 6; ++i)
+      if (wait_mask & (1u << i))
+         waits[n++] = (struct agx3_field_kv)KV(58+i,1);
+   return agx3_bind_compose(enc, "pack_smpir", 0, base, sizeof(base) / sizeof(base[0]),
+                            waits, n, out, len);
+}
+
+static bool
+stage_min_pair(enum agx_isa_encoding enc, uint16_t first, uint16_t second,
+               bool layer, uint16_t packed_base, uint8_t slot, uint16_t wait_mask,
+               bool first_discard, bool second_discard,
+               uint8_t out[AGX3_TEX_MAX_LENGTH], uint8_t *len)
+{
+   if (!out || !len || enc != AGX_ISA_ENCODING_AGX3B || first >= 192 || second >= 192 ||
+       (packed_base != UINT16_MAX && packed_base >= 128) ||
+       slot < 1 || slot > 6 || (wait_mask & ~0x3f))
+      return false;
+   struct agx3_field_kv base[] = {
+      KV(5,6), KV(9,5), KV(10,2), KV(12,slot), KV(16,first),
+      KV(23,2), KV(24,1), KV(27,first_discard), KV(30,second),
+      KV(37,2), KV(38,1), KV(41,second_discard), KV(51,packed_base == UINT16_MAX ? 1 : 2), KV(52,2),
+      KV(74,layer ? 4 : 1), KV(76,layer ? 1 : 2), KV(77,16),
+      KV(44,packed_base == UINT16_MAX ? 0 : packed_base), KV(55,0),
+   };
+   struct agx3_field_kv waits[6];
+   unsigned n = 0;
+   for (unsigned i = 0; i < 6; ++i)
+      if (wait_mask & (1u << i))
+         waits[n++] = (struct agx3_field_kv)KV(58+i,1);
+   return agx3_bind_compose(enc, "pack_smpir", 0, base, sizeof(base) / sizeof(base[0]),
+                            waits, n, out, len);
+}
+
+bool
+agx3_tex_stage_min_bias(enum agx_isa_encoding enc, uint16_t min, uint16_t bias,
+                        uint16_t packed_base, uint8_t slot, uint16_t wait_mask, bool discard,
+                        uint8_t out[AGX3_TEX_MAX_LENGTH], uint8_t *len)
+{
+   return stage_min_pair(enc, min, bias, false, packed_base, slot, wait_mask,
+                         discard, discard, out, len);
+}
+
+bool
+agx3_tex_stage_layer_min(enum agx_isa_encoding enc, uint16_t layer, uint16_t min,
+                         uint8_t slot, uint16_t wait_mask, bool layer_discard,
+                         bool min_discard, uint8_t out[AGX3_TEX_MAX_LENGTH], uint8_t *len)
+{
+   return stage_min_pair(enc, layer, min, true, UINT16_MAX, slot, wait_mask,
+                         layer_discard, min_discard, out, len);
 }
 
 bool

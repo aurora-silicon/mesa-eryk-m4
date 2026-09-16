@@ -596,7 +596,7 @@ hk_get_device_features(
 #endif
 
       /* VK_EXT_image_view_min_lod */
-      .minLod = instance->image_view_min_lod,
+      .minLod = dev->chip == AGX_CHIP_G16G || instance->image_view_min_lod,
 
       /* VK_EXT_map_memory_placed */
       .memoryMapPlaced = true,
@@ -704,7 +704,7 @@ hk_get_device_features(
       const bool sparse = dev->chip == AGX_CHIP_G16G;
       /* Native SMP residency plus live sparse texel-buffer bind metadata. */
       features->shaderResourceResidency = sparse;
-      features->shaderResourceMinLod = false;
+      features->shaderResourceMinLod = sparse;
       features->advancedBlendCoherentOperations = false;
       features->sparseBinding = sparse;
       /* Memory dependencies retain firmware cache publication for aliases. */
@@ -1386,6 +1386,7 @@ hk_create_drm_physical_device(struct vk_instance *_instance,
 
    struct vk_device_extension_table supported_extensions;
    hk_get_device_extensions(instance, &supported_extensions);
+   supported_extensions.EXT_image_view_min_lod |= pdev->dev.chip == AGX_CHIP_G16G;
 
    /* HAL200 advanced blend epilogs currently complete without a fault but
     * write zero instead of the blended colour.  Keep the extension private to

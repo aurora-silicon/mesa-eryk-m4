@@ -1714,12 +1714,23 @@ agx_ra(agx_context *ctx)
       /* agx3_tex_stage_cube_array_lod encodes the layer register (coords + 6
        * halves) in seven bits; keep such coordinate vectors below half 128. */
       if (ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
-          I->op == AGX_OPCODE_TEXTURE_SAMPLE && I->dim == AGX_DIM_CUBE_ARRAY &&
+          I->op == AGX_OPCODE_TEXTURE_SAMPLE &&
+          (I->dim == AGX_DIM_CUBE_ARRAY || I->dim == AGX_DIM_CUBE) &&
           I->src[0].type == AGX_INDEX_NORMAL && I->nr_srcs > 1 &&
           I->src[1].type == AGX_INDEX_NORMAL &&
           (I->lod_mode == AGX_LOD_MODE_LOD_MIN ||
-           I->lod_mode == AGX_LOD_MODE_AUTO_LOD_BIAS))
+           (I->lod_mode == AGX_LOD_MODE_AUTO_LOD_BIAS ||
+            I->lod_mode == AGX_LOD_MODE_AUTO_LOD_BIAS_MIN)))
          BITSET_SET(tex_low128, I->src[0].value);
+
+      /* Min-LOD staging preserves a packed offset as PACK_SMPIR's third
+       * operand, whose register selector is seven bits. */
+      if (ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+          I->op == AGX_OPCODE_TEXTURE_SAMPLE && I->nr_srcs > 5 && I->offset &&
+          I->src[5].type == AGX_INDEX_NORMAL &&
+          (I->lod_mode == AGX_LOD_MODE_AUTO_LOD_BIAS_MIN ||
+           I->lod_mode == AGX_LOD_MODE_LOD_GRAD_MIN))
+         BITSET_SET(tex_low128, I->src[5].value);
 
       /* Record collects/phis so we can coalesce when assigning */
       if (I->op == AGX_OPCODE_COLLECT || I->op == AGX_OPCODE_PHI ||

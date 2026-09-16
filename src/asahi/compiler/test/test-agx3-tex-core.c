@@ -1790,6 +1790,39 @@ main(void)
       CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B, &sample, out, &len));
       CHECK(memcmp(out, shadow_gather, len));
    }
+   {
+      /* G16G min_lod_clamp, bias+min and array+gradient native witnesses. */
+      uint8_t out[AGX3_TEX_MAX_LENGTH], len;
+      const uint8_t min_bias[] = {0x17,5,0x54,6,0,0x0e,0x18,0,0xf0,0xc0,0x21,0};
+      CHECK(agx3_tex_stage_min_bias(AGX_ISA_ENCODING_AGX3B, 7, 6, UINT16_MAX, 1, 0, true, out, &len));
+      CHECK(len == sizeof(min_bias) && !memcmp(out, min_bias, len));
+      const uint8_t min_array[] = {0x17,5,0x54,4,0,0x10,0x10,4,0xf0,0xc4,8,0};
+      CHECK(agx3_tex_stage_min_lod(AGX_ISA_ENCODING_AGX3B, 8, 4, UINT16_MAX, 2, 0, true, out, &len));
+      CHECK(len == sizeof(min_array) && !memcmp(out, min_array, len));
+      const uint8_t min_grad[] = {0x17,5,0x54,6,0,0x0c,0x10,4,0xf0,0xc0,8,0};
+      CHECK(agx3_tex_stage_min_lod(AGX_ISA_ENCODING_AGX3B, 6, 6, UINT16_MAX, 1, 0, true, out, &len));
+      CHECK(len == sizeof(min_grad) && !memcmp(out, min_grad, len));
+      const uint8_t layer_min[] = {0x17,5,0x54,6,0,8,0x14,0,0xf0,0xc4,0x2d,0};
+      CHECK(agx3_tex_stage_layer_min(AGX_ISA_ENCODING_AGX3B, 4, 5, 2, 0, true, true, out, &len));
+      CHECK(len == sizeof(layer_min) && !memcmp(out, layer_min, len));
+      struct agx3_tex_sample_desc d = {
+         .dest=0, .coord=0, .width=AGX3_TEX_W32, .mask=15,
+         .sampler=1, .slot=1, .wait_mask=1, .coord_kill=true, .final=true,
+         .lod=AGX3_TEX_LOD_BIAS_REGISTER, .min_lod=true,
+      };
+      const uint8_t smp[] = {5,0x80,0x0c,0xb8,0xb0,0,4,8,1,1,0x10,0,1,0};
+      CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
+      CHECK(len == sizeof(smp) && !memcmp(out, smp, len));
+      const uint8_t packed_min[] = {0x17,5,0x54,0,2,0,0,0,0xd0,0x88,0x60,0};
+      CHECK(agx3_tex_pack_min_lod(AGX_ISA_ENCODING_AGX3B, 0, 0, 0, true, out, &len));
+      CHECK(len == sizeof(packed_min) && !memcmp(out, packed_min, len));
+      CHECK(!agx3_tex_pack_min_lod(AGX_ISA_ENCODING_AGX3B, 1, 0, 0, true, out, &len));
+      d.dest = 2; d.mask = 1; d.shadow = true; d.array = true;
+      d.min_lod_register = true; d.min_lod_discard = true; d.wait_mask = 2;
+      const uint8_t shadow_min[] = {0x0d,0x80,0x0c,0xa0,0x10,1,0x42,0,1,1,0,8,1,0};
+      CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
+      CHECK(len == sizeof(shadow_min) && !memcmp(out, shadow_min, len));
+   }
    CHECK(test_m4_explicit_gradients() == 0);
    CHECK(test_m4_shadow_gradient_witnesses() == 0);
    CHECK(test_m4_cube_query_bias_witnesses() == 0);

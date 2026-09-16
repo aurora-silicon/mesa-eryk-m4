@@ -1,0 +1,23 @@
+{
+  "selected": 1843,
+  "recorded": 1843,
+  "completed": 1843,
+  "counts": {
+    "Pass": 1534,
+    "NotSupported": 309
+  },
+  "classifications": {
+    "unclassified": 1843
+  },
+  "elapsed_seconds": 62.89496601099381,
+  "preparation_seconds": 1.3707007039920427,
+  "runner_seconds": 59.008621668999695,
+  "jobs": 12,
+  "tests_per_group": 1,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "b4802efb9df59d66bfe746f273f8e3cb0ac84fc3b3270fc25a63e1453e3b1bbf",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T090847814693Z-dx-min-lod-final",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 64.0
+}

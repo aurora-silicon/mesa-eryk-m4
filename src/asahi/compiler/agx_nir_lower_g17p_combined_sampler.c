@@ -72,8 +72,9 @@ g17p_sample_shape(const nir_tex_instr *tex)
          return false;
    }
 
-   const bool has_bias =
-      nir_tex_instr_src_index(tex, nir_tex_src_bias) >= 0;
+   const bool packed_min = nir_tex_instr_src_index(tex, nir_tex_src_lod_bias_min_agx) >= 0;
+   const bool separate_min = nir_tex_instr_src_index(tex, nir_tex_src_min_lod) >= 0;
+   const bool has_bias = packed_min || nir_tex_instr_src_index(tex, nir_tex_src_bias) >= 0;
    const bool has_lod = nir_tex_instr_src_index(tex, nir_tex_src_lod) >= 0;
    const int compare = nir_tex_instr_src_index(tex, nir_tex_src_comparator);
    const int offset = nir_tex_instr_src_index(tex, nir_tex_src_backend2);
@@ -90,9 +91,9 @@ g17p_sample_shape(const nir_tex_instr *tex)
    if ((query ? compare >= 0 : tex->is_shadow != (compare >= 0)) ||
        (compare >= 0 && (nir_src_bit_size(tex->src[compare].src) != 32 ||
                         nir_src_num_components(tex->src[compare].src) != 1)) ||
-       tex->num_srcs != ((has_bias || has_lod) ? 4 : 3) + tex->is_shadow + (literal_offset || dynamic_offset) + 2 * gradient ||
+       tex->num_srcs != ((has_bias || has_lod) ? 4 : 3) + tex->is_shadow + (literal_offset || dynamic_offset) + 2 * gradient + separate_min ||
        has_lod != (tex->op == nir_texop_txl) ||
-       (has_bias != (tex->op == nir_texop_txb) && !query))
+       (has_bias != (tex->op == nir_texop_txb) && !query && !packed_min))
       return false;
 
    if (gradient) {
@@ -597,7 +598,8 @@ g17p_cube_sample_shape(const nir_tex_instr *tex)
    const bool bias = tex->op == nir_texop_txb;
    const bool query = tex->op == nir_texop_lod;
    const int lod = nir_tex_instr_src_index(tex, nir_tex_src_lod);
-   const bool has_bias = nir_tex_instr_src_index(tex, nir_tex_src_bias) >= 0;
+   const bool has_bias = nir_tex_instr_src_index(tex, nir_tex_src_bias) >= 0 ||
+      nir_tex_instr_src_index(tex, nir_tex_src_lod_bias_min_agx) >= 0;
    /* Bias samples and LOD queries project like implicit samples; the
     * query's zero software bias is removed by the native sampler pass. */
    if ((tex->op != nir_texop_tex && !level && !gather && !bias && !query) ||
@@ -711,6 +713,9 @@ agx_nir_lower_g17p_cube_samples(nir_shader *shader, bool native_cube)
                                         nir_imm_int(&b, 4), nir_imm_int(&b, 5));
             nir_def *face = nir_bcsel(&b, use_x, face_x,
                                       nir_bcsel(&b, use_y, face_y, face_z));
+            if (native_cube && !tex->is_array &&
+                nir_tex_instr_src_index(tex, nir_tex_src_lod_bias_min_agx) >= 0)
+               face = nir_ishl_imm(&b, face, 12);
             nir_def *mapped = nir_vec3(&b, nir_ffma(&b, sc, scale, half),
                                        nir_ffma(&b, tc, scale, half), face);
 

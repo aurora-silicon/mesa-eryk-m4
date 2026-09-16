@@ -1085,8 +1085,13 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
                          bool retain_helpers)
 {
    const bool explicit_lod = I->lod_mode == AGX_LOD_MODE_LOD_MIN;
-   const bool gradient = I->lod_mode == AGX_LOD_MODE_LOD_GRAD;
-   const bool bias = I->lod_mode == AGX_LOD_MODE_AUTO_LOD_BIAS;
+   const bool min_lod = I->lod_mode == AGX_LOD_MODE_AUTO_LOD_BIAS_MIN ||
+                        I->lod_mode == AGX_LOD_MODE_LOD_GRAD_MIN;
+   const bool gradient = I->lod_mode == AGX_LOD_MODE_LOD_GRAD ||
+                         I->lod_mode == AGX_LOD_MODE_LOD_GRAD_MIN;
+   const bool register_min = min_lod && !agx3_tex_imm(I->src[2], 0);
+   const bool bias = I->lod_mode == AGX_LOD_MODE_AUTO_LOD_BIAS ||
+                     I->lod_mode == AGX_LOD_MODE_AUTO_LOD_BIAS_MIN;
    const bool immediate_lod = explicit_lod &&
                               I->src[1].type == AGX_INDEX_IMMEDIATE;
    const float immediate_level = immediate_lod ?
@@ -1120,12 +1125,12 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
    const bool valid_lod = gradient ?
       (enc == AGX_ISA_ENCODING_AGX3B && !cube && !gather &&
        agx3_tex_plain_reg(I->src[1]) && I->src[1].size == AGX_SIZE_32 &&
-       agx_channels(I->src[1]) == (three_d ? 6 : 4) &&
-       !(I->src[1].value & 1) && I->src[1].value <= 256 - (three_d ? 12 : 8)) :
+       agx_channels(I->src[1]) == (three_d ? 6 : 4) + min_lod &&
+       !(I->src[1].value & 1) && I->src[1].value <= 192 - (three_d ? 12 : 8) - 2 * min_lod) :
       (explicit_lod || bias) ?
       (enc == AGX_ISA_ENCODING_AGX3B &&
        ((explicit_lod && valid_immediate_lod) ||
-        (agx3_tex_plain_reg(I->src[1]) && I->src[1].size == AGX_SIZE_16 &&
+        (agx3_tex_plain_reg(I->src[1]) && I->src[1].size == (min_lod ? AGX_SIZE_32 : AGX_SIZE_16) &&
          agx_channels(I->src[1]) == 1))) :
       (I->lod_mode == AGX_LOD_MODE_AUTO_LOD && agx3_tex_imm(I->src[1], 0));
    const bool immediate = I->nr_srcs == 6 &&
@@ -1152,7 +1157,9 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
        I->src[0].size != AGX_SIZE_32 ||
        agx_channels(I->src[0]) != coord_components ||
        (I->src[0].value & 3) || I->src[0].value > max_coord ||
-       !valid_lod || !agx3_tex_imm(I->src[2], 0) ||
+       !valid_lod ||
+       (register_min ? (!agx3_tex_plain_reg(I->src[2]) || I->src[2].size != AGX_SIZE_32)
+                     : !agx3_tex_imm(I->src[2], 0)) ||
        (immediate && (I->src[3].value > 15 || I->src[4].value > 15)) ||
        I->src[3].memory || I->src[3].abs || I->src[3].neg ||
        I->src[4].memory || I->src[4].abs || I->src[4].neg ||
@@ -1196,11 +1203,33 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
    uint8_t bytes[AGX3_TEX_MAX_LENGTH];
    uint8_t len = 0;
 
-   const bool array_lod = (array || cube) && (explicit_lod || bias) &&
+   const bool array_lod = (array || (cube && !min_lod)) && (explicit_lod || bias) &&
                           (!immediate_lod || dynamic_offset);
    /* Cube-array LOD queries publish only the face (native fscubearr). */
    const bool cube_array_lod = cube && array && array_lod && !I->query_lod;
-   if (dynamic_offset) {
+   if (min_lod && !register_min) {
+      const uint16_t min_src = I->src[1].value +
+                              (gradient ? (three_d ? 12 : 8) : 1);
+      bool ok;
+      if (gradient && array && !dynamic_offset) {
+         ok = agx3_tex_stage_layer_min(enc, I->src[0].value + 4, min_src,
+               stage_slot, wait_mask, I->src[0].discard, I->src[1].discard,
+               bytes, &len);
+      } else if (gradient || array) {
+         ok = agx3_tex_stage_min_lod(enc, min_src,
+               gradient ? 6 : 4,
+               dynamic_offset ? I->src[5].value + (shadow ? 2 : 0) : UINT16_MAX,
+               stage_slot, wait_mask, I->src[1].discard, bytes, &len);
+      } else {
+         ok = agx3_tex_stage_min_bias(enc, min_src, I->src[1].value,
+               (cube ? I->src[0].value + 4 : dynamic_offset ? I->src[5].value + (shadow ? 2 : 0) : UINT16_MAX),
+               stage_slot, wait_mask, I->src[1].discard, bytes, &len);
+      }
+      if (!ok || !agx3_append(emission, bytes, len))
+         AGX3_TEX_REFUSE();
+      wait_mask = 0;
+   }
+   if (dynamic_offset && (!min_lod || register_min || (array && !gradient))) {
       if (!agx3_tex_stage_copy_hints(enc, 6, I->src[5].value + (shadow ? 2 : 0),
                                     stage_slot, wait_mask,
                                     I->src[5].cache, I->src[5].discard, bytes, &len) ||
@@ -1224,7 +1253,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
           !agx3_append(emission, bytes, len))
          AGX3_TEX_REFUSE();
       wait_mask = 0;
-   } else if ((explicit_lod && !immediate_lod) || bias) {
+   } else if ((explicit_lod && !immediate_lod) || (bias && (!min_lod || register_min) && !array)) {
       if (!agx3_tex_stage_lod(enc, I->src[1].value, stage_slot, wait_mask,
                              I->src[1].cache, I->src[1].discard,
                              bytes, &len) ||
@@ -1258,7 +1287,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
 
    /* Cube LOD queries publish the projected face (native fscube/fscubearr
     * witnesses); 2D-array queries keep the implicit layer zero instead. */
-   if ((array || cube) && !array_lod &&
+   if ((array || cube) && !array_lod && !(min_lod && (cube || (gradient && array))) &&
        (I->query_lod ? cube : !(array && cube)) &&
        (!(I->query_lod ? agx3_tex_stage_cube_face : agx3_tex_stage_array_layer)(
            enc, I->src[0].value + 4, stage_slot, 0,
@@ -1301,6 +1330,10 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
       .width = I->dest[0].size == AGX_SIZE_32 ? AGX3_TEX_W32 : AGX3_TEX_W16,
       .mask = I->mask,
       .sparse = I->sparse,
+      .min_lod = min_lod,
+      .min_lod_register = register_min,
+      .min_lod_value = register_min ? I->src[2].value : 0,
+      .min_lod_discard = register_min && I->src[2].discard,
       .texture = immediate ? I->src[3].value : 0,
       .sampler = immediate ? I->src[4].value : 0,
       .texture_kind = immediate ? AGX3_TEX_OPERAND_IMMEDIATE :
@@ -2217,8 +2250,11 @@ agx3_append_texture_staging_tokens(const agx_instr *I, mesa_shader_stage stage,
 {
    unsigned base, halves;
    if (I->op == AGX_OPCODE_TEXTURE_SAMPLE) {
-      const bool gradient = I->lod_mode == AGX_LOD_MODE_LOD_GRAD;
+      const bool gradient = I->lod_mode == AGX_LOD_MODE_LOD_GRAD ||
+                            I->lod_mode == AGX_LOD_MODE_LOD_GRAD_MIN;
       const bool fixed = gradient || I->shadow || I->lod_mode == AGX_LOD_MODE_LOD_MIN ||
+         I->lod_mode == AGX_LOD_MODE_AUTO_LOD_BIAS ||
+         I->lod_mode == AGX_LOD_MODE_AUTO_LOD_BIAS_MIN ||
          I->dim == AGX_DIM_2D_ARRAY || I->dim == AGX_DIM_CUBE ||
          I->dim == AGX_DIM_3D;
       base = fixed ? 0 : I->src[0].value;
@@ -5222,7 +5258,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                 ctx->stage == MESA_SHADER_TESS_CTRL ||
                 ctx->stage == MESA_SHADER_TESS_EVAL) &&
                (I->lod_mode == AGX_LOD_MODE_LOD_MIN ||
-                I->lod_mode == AGX_LOD_MODE_LOD_GRAD);
+                (I->lod_mode == AGX_LOD_MODE_LOD_GRAD ||
+                 I->lod_mode == AGX_LOD_MODE_LOD_GRAD_MIN));
             const bool compute_gather = ctx->stage == MESA_SHADER_COMPUTE &&
                I->gather != AGX_GATHER_NONE;
             uint16_t sample_wait = wait;
@@ -5240,10 +5277,12 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             /* Projected cubes share the array face/layer staging bank. */
             ctx->agx3_staging_halfs =
                MAX2(ctx->agx3_staging_halfs,
-                    I->lod_mode == AGX_LOD_MODE_LOD_GRAD ?
+                    (I->lod_mode == AGX_LOD_MODE_LOD_GRAD ||
+                     I->lod_mode == AGX_LOD_MODE_LOD_GRAD_MIN) ?
                        (I->dim == AGX_DIM_3D ? 32 : 16) :
                     (I->shadow || I->lod_mode == AGX_LOD_MODE_LOD_MIN ||
                      I->lod_mode == AGX_LOD_MODE_AUTO_LOD_BIAS ||
+                     I->lod_mode == AGX_LOD_MODE_AUTO_LOD_BIAS_MIN ||
                      I->dim == AGX_DIM_2D_ARRAY || I->dim == AGX_DIM_CUBE ||
                      I->dim == AGX_DIM_CUBE_ARRAY ||
                      I->dim == AGX_DIM_3D)
@@ -5279,6 +5318,19 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                g17p_colour_open = true;
             }
             if (!agx3_emit_pixel(emission, enc, I, wait))
+               AGX3_REFUSE(I);
+            continue;
+         }
+
+         if (I->op == AGX_OPCODE_PACK_MIN_LOD_AGX3) {
+            if (enc != AGX_ISA_ENCODING_AGX3B ||
+                !agx3_tex_plain_reg(I->dest[0]) || I->dest[0].size != AGX_SIZE_32 ||
+                !agx3_tex_plain_reg(I->src[0]) || I->src[0].size != AGX_SIZE_16)
+               AGX3_REFUSE(I);
+            uint8_t bytes[AGX3_TEX_MAX_LENGTH], len;
+            if (!agx3_tex_pack_min_lod(enc, I->dest[0].value, I->src[0].value,
+                                       wait, I->src[0].discard, bytes, &len) ||
+                !agx3_append(emission, bytes, len))
                AGX3_REFUSE(I);
             continue;
          }

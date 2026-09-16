@@ -3601,7 +3601,8 @@ agx_materialize_agx3_alu_constants(agx_context *ctx)
          agx_mov_to(&b, wide, I->src[0]);
          I->src[0] = wide;
       }
-      if (I->op == AGX_OPCODE_PACK_LOD_OFFSET_AGX3 &&
+      if ((I->op == AGX_OPCODE_PACK_LOD_OFFSET_AGX3 ||
+           I->op == AGX_OPCODE_PACK_MIN_LOD_AGX3) &&
           I->src[0].type == AGX_INDEX_IMMEDIATE) {
          /* Copyprop folds the half LOD back to a raw immediate. The native
           * pack reads a half register, so restore its bit pattern before RA. */
@@ -4385,12 +4386,11 @@ agx_lod_mode_for_nir(nir_texop op, bool biased, bool min_lod, bool lod_is_zero)
 {
    switch (op) {
    case nir_texop_tex:
+      /* Zero-bias MinLod operations can retain implicit sampling after NIR
+       * folds the bias, including dynamically loaded image-view minima. */
+      return min_lod ? AGX_LOD_MODE_AUTO_LOD_BIAS_MIN : AGX_LOD_MODE_AUTO_LOD;
    case nir_texop_tg4:
-      /* We could support this for tex, but it's never actually seen because tex
-       * is always turned into txb to implement sampler LOD bias in Vulkan.
-       */
-      assert(!min_lod && "unimplemented");
-
+      assert(!min_lod);
       return AGX_LOD_MODE_AUTO_LOD;
    case nir_texop_txb:
       return min_lod ? AGX_LOD_MODE_AUTO_LOD_BIAS_MIN
@@ -4587,7 +4587,7 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
     * implicit derivatives with bias zero at instruction selection, after
     * NIR constant folding (which correctly turns txb(..., 0) into tex). */
    if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
-       instr->op == nir_texop_tex && !agx_is_null(packed_offset) &&
+       instr->op == nir_texop_tex && !has_min_lod && !agx_is_null(packed_offset) &&
        packed_offset.type != AGX_INDEX_IMMEDIATE) {
       lod_mode = AGX_LOD_MODE_AUTO_LOD_BIAS;
       lod = agx_mov_imm(b, 16, 0);
@@ -4601,10 +4601,15 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
    if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
        !agx_is_null(packed_offset) && packed_offset.type != AGX_INDEX_IMMEDIATE &&
        (lod_mode == AGX_LOD_MODE_LOD_MIN ||
-        lod_mode == AGX_LOD_MODE_AUTO_LOD_BIAS)) {
+        (lod_mode == AGX_LOD_MODE_AUTO_LOD_BIAS ||
+         lod_mode == AGX_LOD_MODE_AUTO_LOD_BIAS_MIN))) {
       /* Native G16G PACK_SMPIR inserts the F16 LOD as signed fixed-point
        * bits 16..27, preserving the three offset nibbles in the base word. */
       agx_index level = lod;
+      if (lod_mode == AGX_LOD_MODE_AUTO_LOD_BIAS_MIN) {
+         level = agx_temp(b->shader, AGX_SIZE_16);
+         agx_subdivide_to(b, level, lod, 0);
+      }
       if (level.type == AGX_INDEX_IMMEDIATE)
          level = agx_mov_imm(b, 16, _mesa_float_to_half(agx_minifloat_decode(level.value)));
       if (instr->is_array) {
@@ -4620,6 +4625,32 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
       agx_index auxiliary = agx_temp(b->shader, AGX_SIZE_32);
       agx_pack_lod_offset_agx3_to(b, auxiliary, level, packed_offset);
       packed_offset = auxiliary;
+   }
+
+   if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+       lod_mode == AGX_LOD_MODE_LOD_GRAD_MIN && instr->is_array &&
+       !agx_is_null(packed_offset) && packed_offset.type != AGX_INDEX_IMMEDIATE) {
+      agx_index layer_half = agx_temp(b->shader, AGX_SIZE_16);
+      agx_subdivide_to(b, layer_half, agx_emit_extract(b, coords, 2), 0);
+      agx_index layer = agx_temp(b->shader, AGX_SIZE_32);
+      agx_pack_layer_agx3_to(b, layer, layer_half);
+      packed_offset = agx_or(b, packed_offset, layer);
+   }
+
+   /* Native array depth+bias and 3D offset+bias consume the minimum as a
+    * packed scalar GPR because their staging operand bank is already full. */
+   if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+       lod_mode == AGX_LOD_MODE_AUTO_LOD_BIAS_MIN &&
+       ((instr->is_shadow && instr->is_array) ||
+        (instr->sampler_dim == GLSL_SAMPLER_DIM_3D &&
+         !agx_is_null(packed_offset) && packed_offset.type != AGX_INDEX_IMMEDIATE))) {
+      agx_index minimum = agx_temp(b->shader, AGX_SIZE_16);
+      agx_subdivide_to(b, minimum, lod, 1);
+      /* PACK_SMPIR and SMP consume a full word, even though the packed
+       * minimum occupies only its low bits. A half-sized allocation can
+       * overlap the next live value and corrupt repeated integer samples. */
+      bindless = agx_temp(b->shader, AGX_SIZE_32);
+      agx_pack_min_lod_agx3_to(b, bindless, minimum);
    }
 
    agx_index dst = agx_def_index(&instr->def);
@@ -4653,7 +4684,8 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
 
    if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
        instr->sampler_dim == GLSL_SAMPLER_DIM_CUBE && instr->is_array &&
-       instr->op == nir_texop_txl && lod.type != AGX_INDEX_IMMEDIATE) {
+       (instr->op == nir_texop_txl || instr->op == nir_texop_txb || has_min_lod) &&
+       lod.type != AGX_INDEX_IMMEDIATE) {
       /* Native three-source PACK_SMPIR consumes an already packed layer.
        * Keep this temporary visible to allocation instead of stealing a GPR. */
       agx_index xy_face_layer[4];

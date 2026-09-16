@@ -589,6 +589,7 @@ op("zs_emit_agx3", _, dests=0, srcs=2, imms=[IMM], can_eliminate=False,
    schedule_class="coverage")
 
 # Native multisample auxiliary coordinate packing (pure register operations).
+op("pack_min_lod_agx3", _, dests=1, srcs=1, agx3_mnemonic="pack_smpir")
 op("pack_layer_agx3", _, dests=1, srcs=1, agx3_mnemonic="pack_smpir")
 op("pack_sample_agx3", _, dests=1, srcs=2, agx3_mnemonic="pack_smpir")
 op("pack_lod_offset_agx3", _, dests=1, srcs=2, agx3_mnemonic="pack_smpir")

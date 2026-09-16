@@ -287,12 +287,14 @@ hk_populate_fs_key(struct hk_fs_key *key,
 
 enum hk_feature_key {
    HK_FEAT_CUSTOM_BORDER = BITFIELD_BIT(0),
+   HK_FEAT_IMAGE_VIEW_MIN_LOD = BITFIELD_BIT(1),
 };
 
 static enum hk_feature_key
 hk_make_feature_key(const struct vk_features *feats)
 {
-   return (!feats || feats->customBorderColors) ? HK_FEAT_CUSTOM_BORDER : 0;
+   return ((!feats || feats->customBorderColors) ? HK_FEAT_CUSTOM_BORDER : 0) |
+          ((!feats || feats->minLod) ? HK_FEAT_IMAGE_VIEW_MIN_LOD : 0);
 }
 
 static void
@@ -1459,6 +1461,11 @@ lower_min_lod(nir_builder *b, nir_tex_instr *tex, UNUSED void *_data)
          min_lod = nir_fmax(b, min_lod, nir_f2f16(b, other_min_lod));
       }
 
+      /* NIR min_lod sources are floating point, including texel fetches.
+       * The descriptor supplies the already-truncated integer threshold for
+       * integer-coordinate access; preserve that value when changing type. */
+      if (int_coords)
+         min_lod = nir_u2f16(b, min_lod);
       nir_tex_instr_add_src(tex, nir_tex_src_min_lod, min_lod);
    }
 
@@ -1623,14 +1630,15 @@ hk_native_robust_oob_alpha(nir_builder *b, nir_intrinsic_instr *load,
  * non-array explicit/bias LOD. Lower other shapes with NIR's coordinate
  * arithmetic, preserving their LOD and array-layer semantics. */
 static bool
-hk_lower_native_texture_offset(const nir_instr *instr, UNUSED const void *data)
+hk_lower_native_texture_offset(const nir_instr *instr, const void *data)
 {
    const nir_tex_instr *tex = nir_instr_as_tex(instr);
    const int offset = nir_tex_instr_src_index(tex, nir_tex_src_offset);
    if (offset < 0)
       return false;
    return tex->op == nir_texop_txf ||
-          (tex->is_array && tex->op == nir_texop_txd) ||
+          (tex->is_array && tex->op == nir_texop_txd && !data &&
+           nir_tex_instr_src_index(tex, nir_tex_src_min_lod) < 0) ||
           (tex->op == nir_texop_tg4 &&
            (tex->is_shadow || !nir_src_is_const(tex->src[offset].src)));
 }
@@ -1745,6 +1753,9 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
       const nir_lower_tex_options options = {
          .lower_txf_offset = true,
          .lower_offset_filter = hk_lower_native_texture_offset,
+         /* View minima are added below; preserve native gradient offsets
+          * whenever that pass will supply a minimum. */
+         .callback_data = (features & HK_FEAT_IMAGE_VIEW_MIN_LOD) ? &features : NULL,
       };
       NIR_PASS(_, nir, nir_lower_tex, &options);
    }
@@ -1756,14 +1767,16 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
        * descriptor lowering consumes the texture-size queries we create. */
       const nir_lower_tex_options offsets = {
          .lower_offset_filter = hk_lower_native_texture_offset,
+         /* View minima are added below; preserve native gradient offsets
+          * whenever that pass will supply a minimum. */
+         .callback_data = (features & HK_FEAT_IMAGE_VIEW_MIN_LOD) ? &features : NULL,
       };
       NIR_PASS(_, nir, nir_lower_tex, &offsets);
    }
 
-   struct hk_instance *instance = hk_physical_device_instance(
-      (struct hk_physical_device *)dev->vk.physical);
-
-   if (instance->image_view_min_lod) {
+   /* Only enabled devices need the dynamic descriptor minima. Include this
+    * in the feature key so pipeline caches cannot mix the two variants. */
+   if (features & HK_FEAT_IMAGE_VIEW_MIN_LOD) {
       NIR_PASS(_, nir, agx_nir_lower_image_view_min_lod);
    }
 

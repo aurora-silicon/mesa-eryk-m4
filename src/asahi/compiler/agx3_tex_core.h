@@ -157,6 +157,10 @@ struct agx3_tex_sample_desc {
    bool retain_helpers; /* AGX3B: keep helper coordinates for later samples */
    bool sparse;         /* M4 residency word follows the colour result. */
    uint8_t texture_control; /* SMP f112, as for fetches above. */
+   bool min_lod;        /* Per-sample half-float minimum LOD. */
+   bool min_lod_register; /* Auxiliary bank is full: packed minimum in GPR. */
+   uint16_t min_lod_value;
+   bool min_lod_discard;
    bool shadow;         /* M4: scalar depth compare, reference in staging half4 */
    bool query_lod;      /* M4 2D clamped/unclamped LOD query. */
    bool gather;         /* Four neighbouring texels from one colour channel. */
@@ -179,6 +183,25 @@ struct agx3_tex_sample_desc {
 bool agx3_tex_stage_lod(enum agx_isa_encoding enc, uint16_t src, uint8_t slot,
                        uint16_t wait_mask, bool src_cache, bool src_discard,
                        uint8_t out[AGX3_TEX_MAX_LENGTH], uint8_t *len);
+
+/* Convert F16 minimum into the full-word scalar SMP operand. */
+bool agx3_tex_pack_min_lod(enum agx_isa_encoding enc, uint16_t dest,
+                          uint16_t src, uint16_t wait_mask, bool discard,
+                          uint8_t out[AGX3_TEX_MAX_LENGTH], uint8_t *len);
+
+/* Minimum LOD alone in operand bank 4/6, or fused with bias in bank 6. */
+bool agx3_tex_stage_min_lod(enum agx_isa_encoding enc, uint16_t src,
+                           uint16_t bank, uint16_t packed_base, uint8_t slot, uint16_t wait_mask,
+                           bool discard, uint8_t out[AGX3_TEX_MAX_LENGTH],
+                           uint8_t *len);
+bool agx3_tex_stage_min_bias(enum agx_isa_encoding enc, uint16_t min,
+                            uint16_t bias, uint16_t packed_base, uint8_t slot, uint16_t wait_mask,
+                            bool discard, uint8_t out[AGX3_TEX_MAX_LENGTH],
+                            uint8_t *len);
+bool agx3_tex_stage_layer_min(enum agx_isa_encoding enc, uint16_t layer,
+                             uint16_t min, uint8_t slot, uint16_t wait_mask,
+                             bool layer_discard, bool min_discard,
+                             uint8_t out[AGX3_TEX_MAX_LENGTH], uint8_t *len);
 
 /* M4 texel fetch uses an integer LOD, not the sample path's half float. */
 bool agx3_tex_stage_fetch_lod(enum agx_isa_encoding enc, uint16_t src,

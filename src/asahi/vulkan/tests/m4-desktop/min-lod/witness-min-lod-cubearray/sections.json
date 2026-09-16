@@ -1,0 +1,38 @@
+[
+  {
+    "file": "text-ae0.bin",
+    "macho_offset": 2784,
+    "offset": 3472,
+    "bytes": 248,
+    "section_index": 1,
+    "address": 0,
+    "symbols": [
+      {
+        "name": "_agc.main",
+        "offset": 64
+      },
+      {
+        "name": "_agc.main.constant_program",
+        "offset": 0
+      }
+    ]
+  },
+  {
+    "file": "text-1290.bin",
+    "macho_offset": 4752,
+    "offset": 5520,
+    "bytes": 352,
+    "section_index": 1,
+    "address": 0,
+    "symbols": [
+      {
+        "name": "_agc.main",
+        "offset": 64
+      },
+      {
+        "name": "_agc.main.constant_program",
+        "offset": 0
+      }
+    ]
+  }
+]
