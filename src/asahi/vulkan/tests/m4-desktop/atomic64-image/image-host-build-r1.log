@@ -1,0 +1,18 @@
+ninja: Entering directory `build/mesa-m4-asahi-host'
+[1/19] Generating src/git_sha1.h with a custom command
+[2/17] Compiling C object src/asahi/vulkan/libhk.a.p/hk_format.c.o
+[3/17] Compiling C object src/asahi/vulkan/libhk.a.p/hk_device_memory.c.o
+[4/17] Compiling C object src/asahi/vulkan/libhk.a.p/hk_buffer_view.c.o
+[5/17] Compiling C object src/asahi/vulkan/libhk.a.p/hk_sampler.c.o
+[6/17] Compiling C object src/asahi/vulkan/libhk.a.p/hk_cmd_clear.c.o
+[7/17] Compiling C object src/asahi/vulkan/libhk.a.p/hk_physical_device.c.o
+[8/17] Compiling C object src/asahi/vulkan/libhk.a.p/hk_descriptor_set.c.o
+[9/17] Compiling C object src/asahi/vulkan/libhk.a.p/hk_image_view.c.o
+[10/17] Compiling C object src/asahi/vulkan/libhk.a.p/hk_image.c.o
+[11/17] Compiling C object src/asahi/vulkan/libhk.a.p/hk_queue.c.o
+[12/17] Compiling C object src/asahi/vulkan/libhk.a.p/hk_cmd_buffer.c.o
+[13/17] Compiling C object src/asahi/vulkan/libhk.a.p/hk_cmd_meta.c.o
+[14/17] Compiling C object src/asahi/vulkan/libhk.a.p/hk_cmd_draw.c.o
+[15/17] Compiling C object src/asahi/vulkan/libhk.a.p/hk_shader.c.o
+[16/17] Linking static target src/asahi/vulkan/libhk.a
+[17/17] Linking target src/asahi/vulkan/libvulkan_asahi.so

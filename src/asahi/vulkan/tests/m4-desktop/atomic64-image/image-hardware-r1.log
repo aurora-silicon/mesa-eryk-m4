@@ -1,0 +1,37 @@
+Evidence: /home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T144628358836Z-dx-image64-oracles-r1
+{
+  "id": "20260916T144628358836Z-dx-image64-oracles-r1",
+  "verdict": "pass",
+  "transport_returncode": 0,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T144628358836Z-dx-image64-oracles-r1",
+  "observations": {
+    "pixel_results": [
+      "PASS: add",
+      "PASS: min",
+      "PASS: max",
+      "PASS: smin",
+      "PASS: smax",
+      "PASS: and",
+      "PASS: or",
+      "PASS: xor",
+      "PASS: exchange",
+      "PASS: compare_swap",
+      "PASS: load",
+      "PASS: store",
+      "PASS: twelve image64 operation and load-store configurations"
+    ],
+    "pixel_result_count": 13,
+    "thermal_samples": 9,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 57.25,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 57.25,
+      "Ta000m": 54.25,
+      "Te000m": 54.0,
+      "Te001m": 53.25,
+      "Tp000m": 57.0,
+      "Tp001m": 53.25
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "Device feature longVector is not supported at vktImageMismatchedWriteOpTests.cpp:787": 2,
+  "VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT is not supported at vktRobustnessExtsTests.cpp:600": 1776,
+  "Exclusive compute queue not supported. at vktRobustnessExtsTests.cpp:726": 1706,
+  "VK_KHR_ray_tracing_pipeline is not supported at vktTestCase.cpp:1394": 3392,
+  "VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT is not supported at vktRobustnessExtsTests.cpp:610": 768,
+  "VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT is not supported at vktRobustnessExtsTests.cpp:589": 3456,
+  "VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT is not supported at vktRobustnessExtsTests.cpp:595": 83,
+  "shader64BitIndexing not supported by this implementation at vktRobustnessExtsTests.cpp:722": 80,
+  "VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT is not supported at vktRobustnessExtsTests.cpp:583": 1248,
+  "VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT is not supported at vktRobustnessExtsTests.cpp:573": 312,
+  "VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT not supported at vktRobustnessVertexAccessTests.cpp:538": 12,
+  "sparseImageInt64Atomics is not supported for device at vktSparseResourcesImageAlignedMipSize.cpp:104": 8,
+  "sparseImageInt64Atomics is not supported for device at vktSparseResourcesImageSparseBinding.cpp:126": 252,
+  "sparseImageInt64Atomics is not supported for device at vktSparseResourcesImageBlockShapes.cpp:134": 8,
+  "sparseImageInt64Atomics is not supported for device at vktSparseResourcesImageMemoryAliasing.cpp:151": 32,
+  "sparseImageInt64Atomics is not supported for device at vktSparseResourcesMipmapSparseResidency.cpp:104": 24,
+  "sparseImageInt64Atomics is not supported for device at vktSparseResourcesShaderIntrinsicsBase.cpp:565": 120
+}

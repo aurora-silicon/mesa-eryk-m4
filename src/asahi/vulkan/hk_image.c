@@ -74,6 +74,16 @@ hk_get_image_plane_format_features(struct hk_physical_device *pdev,
    if (p_format == PIPE_FORMAT_NONE)
       return 0;
 
+   if (pdev->dev.chip == AGX_CHIP_G16G &&
+       hk_storage_image_format(p_format) != p_format) {
+      if (tiling != VK_IMAGE_TILING_OPTIMAL)
+         return 0;
+      return VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT |
+             VK_FORMAT_FEATURE_2_STORAGE_IMAGE_ATOMIC_BIT |
+             VK_FORMAT_FEATURE_2_TRANSFER_SRC_BIT |
+             VK_FORMAT_FEATURE_2_TRANSFER_DST_BIT;
+   }
+
    enum pipe_format padded = hk_padded_image_format(p_format);
    if (agx_native_graphics(&pdev->dev) && padded != p_format) {
       /* Linear and external modifier layouts must retain the API's packed
@@ -1055,7 +1065,8 @@ hk_image_init(struct hk_device *dev, struct hk_image *image,
          .compressed = compressed,
          .mipmapped_z = pCreateInfo->imageType == VK_IMAGE_TYPE_3D,
          .format = agx_native_graphics(&dev->dev)
-            ? hk_padded_image_format(hk_format_to_pipe_format(format))
+            ? hk_storage_image_format(
+                 hk_padded_image_format(hk_format_to_pipe_format(format)))
             : hk_format_to_pipe_format(format),
 
          .linear_stride_B = linear_stride_B,

@@ -220,7 +220,7 @@ int main(int argc, char **argv) {
       image_cube || image_layers != 1 || image_mips != 1 || image_depth || image_ms ||
       image_format != VK_FORMAT_R32_UINT)) die("sparse image oracle requires two R32_UINT tiles");
   const bool storage_image = getenv("M4_ORACLE_STORAGE_IMAGE") != NULL;
-  if (storage_image && !sparse_image_option) die("storage image requires sparse image mode");
+  if (storage_image && !image_option) die("storage image requires image mode");
   const VkImageLayout image_layout = storage_image ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
   const uint32_t image_width = sparse_image_option ? 256 : 16;
   const uint32_t image_height = sparse_image_option ? 128 : 16;
@@ -450,6 +450,18 @@ int main(int argc, char **argv) {
     subgroup.pNext = feature_chain;
     feature_chain = &subgroup;
   }
+  const bool want_image_atomic64 = getenv("M4_ORACLE_IMAGE_ATOMIC64") != NULL;
+  VkPhysicalDeviceShaderImageAtomicInt64FeaturesEXT image_atomic64 = {
+    .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_IMAGE_ATOMIC_INT64_FEATURES_EXT};
+  if (want_image_atomic64) {
+    VkPhysicalDeviceFeatures2 query = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, .pNext = &image_atomic64};
+    vkGetPhysicalDeviceFeatures2(physical, &query);
+    if (!image_atomic64.shaderImageInt64Atomics) die("image int64 atomics unavailable");
+    image_atomic64.sparseImageInt64Atomics = VK_FALSE;
+    image_atomic64.pNext = feature_chain;
+    feature_chain = &image_atomic64;
+  }
   const bool want_atomic64 = getenv("M4_ORACLE_ATOMIC64") != NULL;
   const bool want_shared_atomic64 = want_atomic64 &&
     !strcmp(getenv("M4_ORACLE_ATOMIC64"), "shared");
@@ -488,13 +500,14 @@ int main(int argc, char **argv) {
     if (!view_min.minLod) die("view minLod unavailable");
     view_min.pNext=feature_chain;feature_chain=&view_min;
   }
-  const char *extensions[8];
+  const char *extensions[10];
   VkPhysicalDeviceTimelineSemaphoreFeatures timeline = {
     .sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES,
     .timelineSemaphore=VK_TRUE,.pNext=feature_chain};
   if (sparse_wait && !reduction_option) feature_chain=&timeline;
   if (sparse_wait && reduction_option) minmax.timelineSemaphore=VK_TRUE;
   unsigned extension_count = 0;
+  if (want_image_atomic64) extensions[extension_count++] = VK_EXT_SHADER_IMAGE_ATOMIC_INT64_EXTENSION_NAME;
   if (want_atomic64) extensions[extension_count++] = VK_KHR_SHADER_ATOMIC_INT64_EXTENSION_NAME;
   if (view_min_option) extensions[extension_count++] = VK_EXT_IMAGE_VIEW_MIN_LOD_EXTENSION_NAME;
   if (want_half || want_byte)
@@ -739,8 +752,8 @@ int main(int argc, char **argv) {
       .flags=(image_cube?VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT:0) |
              (sparse_image_option ? VK_IMAGE_CREATE_SPARSE_BINDING_BIT | VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT : 0),
       .mipLevels=image_mips,.arrayLayers=image_layers,.samples=image_ms?VK_SAMPLE_COUNT_4_BIT:VK_SAMPLE_COUNT_1_BIT,.tiling=VK_IMAGE_TILING_OPTIMAL,
-      .usage=VK_IMAGE_USAGE_SAMPLED_BIT|VK_IMAGE_USAGE_TRANSFER_DST_BIT |
-             (storage_image ? VK_IMAGE_USAGE_STORAGE_BIT : 0),
+      .usage=VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+             (storage_image ? VK_IMAGE_USAGE_STORAGE_BIT : VK_IMAGE_USAGE_SAMPLED_BIT),
       .sharingMode=VK_SHARING_MODE_EXCLUSIVE};
     check(vkCreateImage(device,&ci,NULL,&sampled_image),"create sampled image");
     VkMemoryRequirements req;vkGetImageMemoryRequirements(device,sampled_image,&req);
@@ -975,7 +988,8 @@ int main(int argc, char **argv) {
       copy.imageExtent.width=image_width>>mip;copy.imageExtent.height=image_height>>mip;
       copy.bufferOffset=mip_offset;
       vkCmdCopyBufferToImage(command_buffer,buffer,sampled_image,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,1,&copy);
-      mip_offset+=(VkDeviceSize)copy.imageExtent.width*copy.imageExtent.height*image_layers*4;
+      mip_offset+=(VkDeviceSize)copy.imageExtent.width*copy.imageExtent.height*image_layers*
+         ((image_format == VK_FORMAT_R64_UINT || image_format == VK_FORMAT_R64_SINT) ? 8 : 4);
     }
     }
     barrier.srcAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT;

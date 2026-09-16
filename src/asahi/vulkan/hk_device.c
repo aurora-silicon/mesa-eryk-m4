@@ -558,7 +558,7 @@ hk_CreateDevice(VkPhysicalDevice physicalDevice,
       memset(agx_bo_map(dev->buffer_alias_table), 0,
              dev->buffer_alias_leaf_count * 8ull);
       dev->atomic64_lock = agx_bo_create(&dev->dev, 16384, 16384, 0,
-                                        "64-bit atomic lock");
+                                        "64-bit atomic lock table");
       if (!dev->atomic64_lock) {
          result = VK_ERROR_OUT_OF_DEVICE_MEMORY;
          goto fail_dev;

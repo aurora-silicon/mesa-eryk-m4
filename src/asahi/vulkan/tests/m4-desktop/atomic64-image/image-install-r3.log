@@ -1,0 +1,2 @@
+Installed c59463aa9a8eb8db55320bcefde7e00f99be69768bd8d92ed5c39c560aca6498 /opt/asahi-m4-port/lib/libvulkan_asahi.so previous 674630625376a5b63f8404fc3fb34a6085b34b2b0603876c26aae4896ec69356
+Existing processes retain their previous Mesa mapping; validate the new library in a fresh process.

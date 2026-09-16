@@ -1,0 +1,10 @@
+word 2056 got 0 expected 0x1 input 0xdeadc0de
+word 2058 got 0 expected 0x1 input 0xdeadc0de
+word 2072 got 0 expected 0x1 input 0xdeadc0de
+word 2074 got 0 expected 0x1 input 0xdeadc0de
+word 2088 got 0 expected 0x1 input 0xdeadc0de
+word 2090 got 0 expected 0x1 input 0xdeadc0de
+word 2104 got 0 expected 0x1 input 0xdeadc0de
+word 2106 got 0 expected 0x1 input 0xdeadc0de
+device: llvmpipe (LLVM 22.1.8, 256 bits) (0)
+FAIL: buffer oracle bad=64/3072 watched_bad=0 on queue 0 flags=0xf

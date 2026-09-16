@@ -1,0 +1,76 @@
+{
+  "qualified_default_library_sha256": "bd34220a20e486893e6dcb1f10498f7ebea60e79984db0ea33bd6e066a5ce7ad",
+  "gated_full_library_sha256": "674630625376a5b63f8404fc3fb34a6085b34b2b0603876c26aae4896ec69356",
+  "gated_sparse_corrected_library_sha256": "c59463aa9a8eb8db55320bcefde7e00f99be69768bd8d92ed5c39c560aca6498",
+  "runs": [
+    {
+      "selected": 18789,
+      "recorded": 18789,
+      "completed": 18789,
+      "counts": {
+        "Pass": 5510,
+        "NotSupported": 13279
+      },
+      "classifications": {
+        "unclassified": 18789
+      },
+      "elapsed_seconds": 495.71332796197385,
+      "preparation_seconds": 1.7460392630309798,
+      "runner_seconds": 485.065392189,
+      "jobs": 12,
+      "tests_per_group": 1,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "19ae7855e1463d5dc34928e29c7c07e59c9ca7607f6d4a76537fadd0fc93847c",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T145033617843Z-dx-image64-cts-full-r1",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 71.25
+    },
+    {
+      "selected": 4214,
+      "recorded": 4214,
+      "completed": 4214,
+      "counts": {
+        "NotSupported": 2886,
+        "Pass": 1328
+      },
+      "classifications": {
+        "unclassified": 4214
+      },
+      "elapsed_seconds": 99.90135427401401,
+      "preparation_seconds": 1.583018682023976,
+      "runner_seconds": 95.91834107800003,
+      "jobs": 12,
+      "tests_per_group": 1,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "55c7c1d1d493330c89c41eea56d0c88c30325f819ca3b9901729a50f743dc8c7",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T150154559571Z-dx-image64-cts-extra-r2",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 66.75
+    },
+    {
+      "selected": 1356,
+      "recorded": 1356,
+      "completed": 1356,
+      "counts": {
+        "Pass": 1060,
+        "NotSupported": 296
+      },
+      "classifications": {
+        "unclassified": 1356
+      },
+      "elapsed_seconds": 50.63132174900966,
+      "preparation_seconds": 1.5065035129664466,
+      "runner_seconds": 47.497669248999955,
+      "jobs": 12,
+      "tests_per_group": 1,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "b955f54248b98e9ebb0b194cb7026c524b1d4ee14c402f191c445ef0db38617d",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T150610863215Z-dx-image64-default-regression",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 64.5
+    }
+  ]
+}

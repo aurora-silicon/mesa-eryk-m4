@@ -1,0 +1,12 @@
+#version 450
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
+#extension GL_EXT_shader_image_int64 : require
+#extension GL_ARB_sparse_texture2 : require
+layout(local_size_x=64) in;
+layout(set=0,binding=0,r64ui) uniform coherent u64image2D tex;
+layout(set=0,binding=1,std430) buffer Out {uint64_t data[];} dst;
+void main(){uint i=gl_GlobalInvocationID.x;ivec2 p=ivec2(i%16u,i/16u);
+uint64_t arg=uint64_t(0xfedcba98fffffffeul);
+uint64_t old=imageAtomicAnd(tex,p,arg);
+memoryBarrierImage();dst.data[i]=old;dst.data[256u+i]=imageLoad(tex,p).x;
+}

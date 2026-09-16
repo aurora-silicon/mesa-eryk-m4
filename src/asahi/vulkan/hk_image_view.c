@@ -230,6 +230,8 @@ pack_texture(struct hk_device *dev, struct hk_image_view *view,
                       texture_type != view->vk.view_type;
 
    enum pipe_format p_format = format_for_plane(view, view_plane);
+   if (dev->dev.chip == AGX_CHIP_G16G)
+      p_format = hk_storage_image_format(p_format);
    const unsigned packed_ycbcr = agx_native_graphics(&dev->dev)
       ? hk_packed_ycbcr_bits(view->vk.format) : 0;
    if (packed_ycbcr)
@@ -430,6 +432,8 @@ pack_pbe(struct hk_device *dev, struct hk_image_view *view, unsigned view_plane,
    unsigned layer = view->vk.base_array_layer;
 
    enum pipe_format p_format = format_for_plane(view, view_plane);
+   if (dev->dev.chip == AGX_CHIP_G16G)
+      p_format = hk_storage_image_format(p_format);
    if (agx_native_graphics(&dev->dev))
       p_format = hk_padded_image_format(p_format);
    if (agx_native_graphics(&dev->dev)) {

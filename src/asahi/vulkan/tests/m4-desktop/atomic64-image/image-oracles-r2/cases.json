@@ -1,0 +1,140 @@
+[
+  {
+    "name": "add",
+    "env": {
+      "M4_ORACLE_BINDING_COUNT": "2",
+      "M4_ORACLE_IMAGE_FORMAT": "110",
+      "M4_ORACLE_STORAGE_IMAGE": "1",
+      "M4_ORACLE_IMAGE_ATOMIC64": "1"
+    }
+  },
+  {
+    "name": "min",
+    "env": {
+      "M4_ORACLE_BINDING_COUNT": "2",
+      "M4_ORACLE_IMAGE_FORMAT": "110",
+      "M4_ORACLE_STORAGE_IMAGE": "1",
+      "M4_ORACLE_IMAGE_ATOMIC64": "1"
+    }
+  },
+  {
+    "name": "max",
+    "env": {
+      "M4_ORACLE_BINDING_COUNT": "2",
+      "M4_ORACLE_IMAGE_FORMAT": "110",
+      "M4_ORACLE_STORAGE_IMAGE": "1",
+      "M4_ORACLE_IMAGE_ATOMIC64": "1"
+    }
+  },
+  {
+    "name": "smin",
+    "env": {
+      "M4_ORACLE_BINDING_COUNT": "2",
+      "M4_ORACLE_IMAGE_FORMAT": "111",
+      "M4_ORACLE_STORAGE_IMAGE": "1",
+      "M4_ORACLE_IMAGE_ATOMIC64": "1"
+    }
+  },
+  {
+    "name": "smax",
+    "env": {
+      "M4_ORACLE_BINDING_COUNT": "2",
+      "M4_ORACLE_IMAGE_FORMAT": "111",
+      "M4_ORACLE_STORAGE_IMAGE": "1",
+      "M4_ORACLE_IMAGE_ATOMIC64": "1"
+    }
+  },
+  {
+    "name": "and",
+    "env": {
+      "M4_ORACLE_BINDING_COUNT": "2",
+      "M4_ORACLE_IMAGE_FORMAT": "110",
+      "M4_ORACLE_STORAGE_IMAGE": "1",
+      "M4_ORACLE_IMAGE_ATOMIC64": "1"
+    }
+  },
+  {
+    "name": "or",
+    "env": {
+      "M4_ORACLE_BINDING_COUNT": "2",
+      "M4_ORACLE_IMAGE_FORMAT": "110",
+      "M4_ORACLE_STORAGE_IMAGE": "1",
+      "M4_ORACLE_IMAGE_ATOMIC64": "1"
+    }
+  },
+  {
+    "name": "xor",
+    "env": {
+      "M4_ORACLE_BINDING_COUNT": "2",
+      "M4_ORACLE_IMAGE_FORMAT": "110",
+      "M4_ORACLE_STORAGE_IMAGE": "1",
+      "M4_ORACLE_IMAGE_ATOMIC64": "1"
+    }
+  },
+  {
+    "name": "exchange",
+    "env": {
+      "M4_ORACLE_BINDING_COUNT": "2",
+      "M4_ORACLE_IMAGE_FORMAT": "110",
+      "M4_ORACLE_STORAGE_IMAGE": "1",
+      "M4_ORACLE_IMAGE_ATOMIC64": "1"
+    }
+  },
+  {
+    "name": "compare_swap",
+    "env": {
+      "M4_ORACLE_BINDING_COUNT": "2",
+      "M4_ORACLE_IMAGE_FORMAT": "110",
+      "M4_ORACLE_STORAGE_IMAGE": "1",
+      "M4_ORACLE_IMAGE_ATOMIC64": "1"
+    }
+  },
+  {
+    "name": "load",
+    "env": {
+      "M4_ORACLE_BINDING_COUNT": "2",
+      "M4_ORACLE_IMAGE_FORMAT": "110",
+      "M4_ORACLE_STORAGE_IMAGE": "1",
+      "M4_ORACLE_IMAGE_ATOMIC64": "1"
+    }
+  },
+  {
+    "name": "store",
+    "env": {
+      "M4_ORACLE_BINDING_COUNT": "2",
+      "M4_ORACLE_IMAGE_FORMAT": "110",
+      "M4_ORACLE_STORAGE_IMAGE": "1",
+      "M4_ORACLE_IMAGE_ATOMIC64": "1"
+    }
+  },
+  {
+    "name": "contention-64",
+    "groups": 1,
+    "env": {
+      "M4_ORACLE_BINDING_COUNT": "2",
+      "M4_ORACLE_IMAGE_FORMAT": "110",
+      "M4_ORACLE_STORAGE_IMAGE": "1",
+      "M4_ORACLE_IMAGE_ATOMIC64": "1"
+    }
+  },
+  {
+    "name": "contention-256",
+    "groups": 4,
+    "env": {
+      "M4_ORACLE_BINDING_COUNT": "2",
+      "M4_ORACLE_IMAGE_FORMAT": "110",
+      "M4_ORACLE_STORAGE_IMAGE": "1",
+      "M4_ORACLE_IMAGE_ATOMIC64": "1"
+    }
+  },
+  {
+    "name": "contention-1024",
+    "groups": 16,
+    "env": {
+      "M4_ORACLE_BINDING_COUNT": "2",
+      "M4_ORACLE_IMAGE_FORMAT": "110",
+      "M4_ORACLE_STORAGE_IMAGE": "1",
+      "M4_ORACLE_IMAGE_ATOMIC64": "1"
+    }
+  }
+]

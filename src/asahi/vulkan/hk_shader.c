@@ -1167,6 +1167,51 @@ agx_nir_lower_custom_border(nir_shader *nir)
    return nir_shader_tex_pass(nir, lower, nir_metadata_none, NULL);
 }
 
+/* R64 integer storage views use native RG32 descriptors. Keep atomics in
+ * their logical format so address lowering still sees an eight-byte texel. */
+static bool
+lower_int64_storage(nir_builder *b, nir_intrinsic_instr *intr, void *unused)
+{
+   const bool sparse =
+      intr->intrinsic == nir_intrinsic_bindless_image_sparse_load;
+   const bool load = sparse ||
+      intr->intrinsic == nir_intrinsic_bindless_image_load;
+   const bool store = intr->intrinsic == nir_intrinsic_bindless_image_store;
+   if ((!load && !store) ||
+       (load ? intr->def.bit_size : nir_src_bit_size(intr->src[3])) != 64)
+      return false;
+
+   b->cursor = nir_before_instr(&intr->instr);
+   if (store) {
+      nir_def *value = nir_channel(b, intr->src[3].ssa, 0);
+      nir_src_rewrite(&intr->src[3],
+         nir_vec4(b, nir_unpack_64_2x32_split_x(b, value),
+                     nir_unpack_64_2x32_split_y(b, value),
+                     nir_imm_int(b, 0), nir_imm_int(b, 0)));
+      nir_intrinsic_set_src_type(intr, nir_type_uint32);
+      nir_intrinsic_set_format(intr, PIPE_FORMAT_R32G32_UINT);
+      return true;
+   }
+
+   nir_intrinsic_instr *copy = nir_instr_as_intrinsic(
+      nir_instr_clone(b->shader, &intr->instr));
+   copy->def.bit_size = 32;
+   copy->def.num_components = sparse ? 5 : 4;
+   copy->num_components = sparse ? 5 : 4;
+   nir_intrinsic_set_dest_type(copy, nir_type_uint32);
+   nir_intrinsic_set_format(copy, PIPE_FORMAT_R32G32_UINT);
+   nir_builder_instr_insert(b, &copy->instr);
+   nir_def *components[] = {
+      nir_pack_64_2x32_split(b, nir_channel(b, &copy->def, 0),
+                               nir_channel(b, &copy->def, 1)),
+      nir_imm_int64(b, 0), nir_imm_int64(b, 0), nir_imm_int64(b, 1),
+      sparse ? nir_u2u64(b, nir_channel(b, &copy->def, 4)) : NULL,
+   };
+   nir_def_replace(&intr->def,
+                   nir_vec(b, components, intr->def.num_components));
+   return true;
+}
+
 /* Unformatted float images may name scaled views. Their native descriptor
  * uses integer texels; the shader performs the Vulkan numerical conversion.
  * The descriptor's existing type/channel fields avoid a new software ABI. */
@@ -1893,6 +1938,8 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
    }
 
    if (agx_chip_descriptor_generation(dev->dev.chip) == 9) {
+      NIR_PASS(_, nir, nir_shader_intrinsics_pass, lower_int64_storage,
+               nir_metadata_control_flow, NULL);
       NIR_PASS(_, nir, nir_shader_intrinsics_pass, lower_scaled_storage,
                nir_metadata_none, NULL);
       NIR_PASS(_, nir, nir_shader_tex_pass, lower_scaled_sample,

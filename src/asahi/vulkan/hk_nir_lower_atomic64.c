@@ -88,8 +88,16 @@ lower_atomic(nir_builder *b, nir_intrinsic_instr *intr, UNUSED void *data)
    }
    nir_def *high_address = nir_iadd_imm(b, address, 4);
 
-   /* Buffer aliases have already been canonicalized. Keep all 64-bit
-    * operations under one device-wide lock, using native 32-bit atomic
+   /* All mappings preserve the offset within a 16-KiB GPU page. Select a
+    * lock by the aligned word's page offset so aliased virtual addresses
+    * still agree, while unrelated texels need not serialize globally.
+    * Shared addresses may collide across workgroups, which is harmless. */
+   nir_def *lock_offset = nir_ushr_imm(
+      b, nir_iand_imm(b, nir_u2u32(b, address), 0x3ff8), 1);
+   lock = nir_iadd(b, lock, nir_u2u64(b, lock_offset));
+
+   /* Buffer aliases have already been canonicalized. Keep each 64-bit
+    * operation under its device-wide lock, using native 32-bit atomic
     * accesses for the halves and device fences around the update.
     * A winning lane releases before leaving this loop, so lanes still
     * retrying never wait for a lock held by an inactive lane of their warp. */

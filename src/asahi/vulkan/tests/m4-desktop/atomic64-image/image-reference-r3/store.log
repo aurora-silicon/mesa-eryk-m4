@@ -1,0 +1,2 @@
+device: llvmpipe (LLVM 22.1.8, 256 bits) (0)
+PASS: buffer oracle bad=0/3072 watched_bad=0 on queue 0 flags=0xf

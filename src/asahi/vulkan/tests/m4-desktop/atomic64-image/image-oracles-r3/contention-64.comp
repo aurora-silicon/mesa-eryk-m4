@@ -1,0 +1,12 @@
+#version 450
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
+#extension GL_EXT_shader_image_int64 : require
+layout(local_size_x=64) in;
+layout(set=0,binding=0,r64ui) uniform coherent u64image2D tex;
+layout(set=0,binding=1,std430) buffer Out {uint data[];} dst;
+void main(){
+ uint64_t old=imageAtomicAdd(tex,ivec2(0),uint64_t(1));
+ uint64_t ordinal=old-uint64_t(0xffffffffffffff80ul);
+ if(ordinal<uint64_t(64)) atomicAdd(dst.data[uint(ordinal)],1u);
+ else atomicOr(dst.data[64],1u);
+}

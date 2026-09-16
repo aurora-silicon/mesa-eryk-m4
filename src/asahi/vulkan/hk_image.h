@@ -202,6 +202,14 @@ hk_padded_image_format(enum pipe_format format)
    }
 }
 
+/* Integer64 storage images preserve their eight bytes in two native words. */
+static inline enum pipe_format
+hk_storage_image_format(enum pipe_format format)
+{
+   return format == PIPE_FORMAT_R64_UINT || format == PIPE_FORMAT_R64_SINT
+             ? PIPE_FORMAT_R32G32_UINT : format;
+}
+
 static inline bool
 hk_depth24_format(VkFormat format)
 {
