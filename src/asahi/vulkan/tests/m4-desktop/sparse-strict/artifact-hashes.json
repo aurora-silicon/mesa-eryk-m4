@@ -1,0 +1,10 @@
+{
+  "minmax-qualified-library.so": "adac8f3f62e5a37ab479e3d421aa095ccb7903361b06eba3bf9cf4ba3de956c8",
+  "bfb1003185f-library.so": "469df023d1388974862603c45455310183aec4fec7b7eebf11f10b5b3a9f3e2b",
+  "strict-map-r2-library.so": "e87ab1e9f2bd2fdb3b5d0f95b4c18d01f736ee6f8b02fc943f04c1c67112f49f",
+  "strict-default-library.so": "15a958ca96a0ad50ce686308d815c830de4af836138e959ffedb5c057f6e6272",
+  "strict-optimized-library.so": "cc19556c0758d27c13ee2b60977bad08245307ea96157abe25fb687079e6cc0d",
+  "vk-buffer-oracle-strict-host": "a149dfea30147273ebd1c4aa254978a3b67a064735dcf7202b388985c9ac39de",
+  "vk-buffer-oracle-strict-arm64": "448b6d6f0360330c82d75275d01faed132535c52782bdd579166ee874f9b9695",
+  "vk-buffer-oracle-strict-buffer-arm64": "52e3cce3768837a05f45fce22f1c94be1e189be4fdb178800bfee3246d6cd0d6"
+}

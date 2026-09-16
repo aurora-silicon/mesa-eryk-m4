@@ -1,0 +1,48 @@
+{
+  "id": "20260916T121436147226Z-dx-strict-image-r2",
+  "verdict": "pass",
+  "transport_returncode": 0,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T121436147226Z-dx-strict-image-r2",
+  "observations": {
+    "pixel_results": [
+      "PASS: fetch-0",
+      "PASS: fetch-1",
+      "PASS: fetch-2",
+      "PASS: fetch-3",
+      "PASS: sparse-0",
+      "PASS: sparse-1",
+      "PASS: sparse-2",
+      "PASS: sparse-3",
+      "PASS: load-0",
+      "PASS: load-1",
+      "PASS: load-2",
+      "PASS: load-3",
+      "PASS: store-0",
+      "PASS: store-1",
+      "PASS: store-2",
+      "PASS: store-3",
+      "PASS: atomic-0",
+      "PASS: atomic-1",
+      "PASS: atomic-2",
+      "PASS: atomic-3",
+      "PASS: store-atomic-0",
+      "PASS: store-atomic-1",
+      "PASS: store-atomic-2",
+      "PASS: store-atomic-3",
+      "PASS: 24 strict sparse image configurations"
+    ],
+    "pixel_result_count": 25,
+    "thermal_samples": 8,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 62.0,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 62.0,
+      "Ta000m": 57.75,
+      "Te000m": 58.0,
+      "Te001m": 61.25,
+      "Tp000m": 62.0,
+      "Tp001m": 61.0
+    }
+  }
+}

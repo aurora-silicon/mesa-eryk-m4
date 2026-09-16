@@ -892,6 +892,10 @@ hk_cmd_buffer_upload_root(struct hk_cmd_buffer *cmd,
 
    root->root_desc_addr = root_ptr.gpu;
    root->printf_buffer_address = dev->dev.printf_buffer_address;
+   root->sparse_residency_map = dev->sparse_residency
+      ? dev->sparse_residency->va->addr : 0;
+   root->sparse_va_base = dev->dev.main_heap_base;
+   root->sparse_va_size = dev->dev.main_heap_size;
 
    memcpy(root_ptr.cpu, root, sizeof(*root));
    return root_ptr.gpu;

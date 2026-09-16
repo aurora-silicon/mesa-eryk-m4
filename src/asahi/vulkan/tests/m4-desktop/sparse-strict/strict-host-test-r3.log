@@ -1,0 +1,9 @@
+ninja: Entering directory `/home/council/dev/dirtyroom_m4/build/mesa-m4-asahi-host'
+[1/2] Compiling C object src/asahi/vulkan/hk_sparse_access_test.p/tests_test-hk-sparse-access.c.o
+[2/2] Linking target src/asahi/vulkan/hk_sparse_access_test
+1/1 asahi - mesa:hk_sparse_access OK              0.01s
+
+Ok:                1   
+Fail:              0   
+
+Full log written to /home/council/dev/dirtyroom_m4/build/mesa-m4-asahi-host/meson-logs/testlog.txt

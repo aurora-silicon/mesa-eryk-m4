@@ -289,14 +289,19 @@ enum hk_feature_key {
    HK_FEAT_CUSTOM_BORDER = BITFIELD_BIT(0),
    HK_FEAT_IMAGE_VIEW_MIN_LOD = BITFIELD_BIT(1),
    HK_FEAT_SAMPLER_MINMAX = BITFIELD_BIT(2),
+   HK_FEAT_STRICT_SPARSE = BITFIELD_BIT(3),
 };
 
 static enum hk_feature_key
-hk_make_feature_key(const struct vk_features *feats)
+hk_make_feature_key(const struct vk_physical_device *pdev,
+                    const struct vk_features *feats)
 {
    return ((!feats || feats->customBorderColors) ? HK_FEAT_CUSTOM_BORDER : 0) |
           ((!feats || feats->minLod) ? HK_FEAT_IMAGE_VIEW_MIN_LOD : 0) |
-          ((!feats || feats->samplerFilterMinmax) ? HK_FEAT_SAMPLER_MINMAX : 0);
+          ((!feats || feats->samplerFilterMinmax) ? HK_FEAT_SAMPLER_MINMAX : 0) |
+          ((pdev->properties.sparseResidencyNonResidentStrict &&
+            (!feats || feats->sparseResidencyBuffer || feats->sparseResidencyImage2D))
+              ? HK_FEAT_STRICT_SPARSE : 0);
 }
 
 static void
@@ -323,7 +328,7 @@ hk_hash_graphics_state(struct vk_physical_device *device,
       _mesa_blake3_update(&blake3_ctx, &is_multiview, sizeof(is_multiview));
    }
 
-   enum hk_feature_key feature_key = hk_make_feature_key(features);
+   enum hk_feature_key feature_key = hk_make_feature_key(device, features);
    _mesa_blake3_update(&blake3_ctx, &feature_key, sizeof(feature_key));
 
    _mesa_blake3_final(&blake3_ctx, blake3_out);
@@ -1902,6 +1907,10 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
             agx_chip_descriptor_generation(dev->dev.chip));
    NIR_PASS(_, nir, agx_nir_lower_multisampled_image_store);
 
+   if (dev->dev.chip == AGX_CHIP_G16G &&
+       (features & HK_FEAT_STRICT_SPARSE))
+      NIR_PASS(_, nir, hk_nir_lower_sparse_access);
+
    if (agx_chip_uses_hal200_ioto(dev->dev.chip))
       agx_preprocess_nir_g17p(nir);
    else
@@ -2698,7 +2707,7 @@ hk_compile_shader(struct hk_device *dev, struct vk_shader_compile_info *info,
                   struct hk_api_shader **shader_out)
 {
    VkResult result;
-   enum hk_feature_key features = hk_make_feature_key(vk_features);
+   enum hk_feature_key features = hk_make_feature_key(dev->vk.physical, vk_features);
 
    /* We consume the NIR, regardless of success or failure */
    nir_shader *nir = info->nir;
@@ -3057,7 +3066,7 @@ hk_compile_shaders(struct vk_device *vk_dev, uint32_t shader_count,
       const struct vk_shader_compile_info *info = &infos[i];
       /* TODO: Multiview with ESO */
       const bool is_multiview = state && state->mv->view_mask != 0;
-      enum hk_feature_key hk_features = hk_make_feature_key(features);
+      enum hk_feature_key hk_features = hk_make_feature_key(dev->vk.physical, features);
       nir_shader *nir = info->nir;
 
       hk_lower_nir(dev, nir, info->robustness, is_multiview,

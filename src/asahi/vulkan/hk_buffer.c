@@ -77,6 +77,31 @@ hk_get_bda_replay_addr(const VkBufferCreateInfo *pCreateInfo)
    return addr;
 }
 
+void
+hk_update_sparse_residency(struct hk_device *dev, uint64_t address,
+                            uint64_t size, bool resident)
+{
+   if (!dev->sparse_residency || !size)
+      return;
+
+   assert(address >= dev->dev.main_heap_base);
+   const uint64_t offset = address - dev->dev.main_heap_base;
+   assert(offset < dev->dev.main_heap_size &&
+          size <= dev->dev.main_heap_size - offset);
+   assert((offset % 16384) == 0 && (size % 16384) == 0);
+   const uint64_t first = offset / 16384, end = (offset + size) / 16384;
+   uint32_t *map = agx_bo_map(dev->sparse_residency);
+   simple_mtx_lock(&dev->sparse_residency_lock);
+   for (uint64_t page = first; page < end; ++page) {
+      const uint32_t bit = 1u << (page % 32);
+      if (resident)
+         map[page / 32] |= bit;
+      else
+         map[page / 32] &= ~bit;
+   }
+   simple_mtx_unlock(&dev->sparse_residency_lock);
+}
+
 VkResult
 hk_bind_scratch(struct hk_device *dev, struct agx_va *va, unsigned offset_B,
                 size_t size_B)
@@ -96,6 +121,7 @@ hk_bind_scratch(struct hk_device *dev, struct agx_va *va, unsigned offset_B,
    if (ret)
       return VK_ERROR_UNKNOWN;
 
+   hk_update_sparse_residency(dev, addr, size_B, false);
    return VK_SUCCESS;
 }
 
@@ -150,6 +176,7 @@ hk_CreateBuffer(VkDevice device, const VkBufferCreateInfo *pCreateInfo,
       /* Bind scratch pages to make read/write across the VA valid */
       VkResult result = hk_bind_scratch(dev, buffer->va, 0, vma_size_B);
       if (result != VK_SUCCESS) {
+         hk_update_sparse_residency(dev, buffer->va->addr, buffer->va->size_B, true);
          agx_va_free(&dev->dev, buffer->va, true);
          vk_buffer_destroy(&dev->vk, pAllocator, &buffer->vk);
          return result;
@@ -161,6 +188,7 @@ hk_CreateBuffer(VkDevice device, const VkBufferCreateInfo *pCreateInfo,
          buffer->residency = agx_bo_create(&dev->dev, map_size, 16384,
                                           AGX_BO_READONLY, "Buffer residency");
          if (!buffer->residency) {
+            hk_update_sparse_residency(dev, buffer->va->addr, buffer->va->size_B, true);
             agx_va_free(&dev->dev, buffer->va, true);
             vk_buffer_destroy(&dev->vk, pAllocator, &buffer->vk);
             return vk_error(dev, VK_ERROR_OUT_OF_DEVICE_MEMORY);
@@ -185,6 +213,7 @@ hk_DestroyBuffer(VkDevice device, VkBuffer _buffer,
       return;
 
    if (buffer->va) {
+      hk_update_sparse_residency(dev, buffer->va->addr, buffer->va->size_B, true);
       agx_va_free(&dev->dev, buffer->va, true);
    }
 
@@ -299,6 +328,8 @@ hk_BindBufferMemory2(VkDevice device, uint32_t bindInfoCount,
                         size, pBindInfos[i].memoryOffset, DRM_ASAHI_BIND_READ);
          if (ret)
             return VK_ERROR_UNKNOWN;
+         hk_update_sparse_residency(dev, buffer->va->addr,
+                                     buffer->va->size_B, true);
       } else {
          assert(buffer->vk.device_address == 0);
          buffer->vk.device_address =

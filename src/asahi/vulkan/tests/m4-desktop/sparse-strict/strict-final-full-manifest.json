@@ -1,0 +1,45 @@
+{
+  "id": "20260916T123029452068Z-dx-strict-final-full",
+  "hypothesis": "Measure frozen CTS cases with grouped first-attempt execution",
+  "command": [
+    "python3",
+    "/root/cts-bulk/dx-strict-final-full-b234deca2f13/cts-sample.py",
+    "batch",
+    "--backend",
+    "deqp-runner",
+    "--guard-output",
+    "/root/asahi-evidence/20260916T123029452068Z-dx-strict-final-full",
+    "--binary",
+    "/root/cts-1.4.6.2/deqp-vk-minmax-components",
+    "--cases",
+    "/root/cts-bulk/dx-strict-final-full-b234deca2f13/cases.txt",
+    "--deqp-runner",
+    "/root/cts-bulk/dx-strict-final-full-b234deca2f13/deqp-runner",
+    "--count",
+    "14319",
+    "--jobs",
+    "12",
+    "--tests-per-group",
+    "1",
+    "--runner-seconds",
+    "1700",
+    "--case-timeout",
+    "60",
+    "--renderer",
+    "m4"
+  ],
+  "expected_success": "^CTS_BATCH_COMPLETE:",
+  "seconds": 1720,
+  "sources": {
+    "mesa": {
+      "head": "cdc38790d8bcbf4f8b9c0d566d0b68efda7d2b76",
+      "status": " M src/asahi/vulkan/hk_buffer.c\n M src/asahi/vulkan/hk_buffer.h\n M src/asahi/vulkan/hk_cmd_buffer.c\n M src/asahi/vulkan/hk_cmd_buffer.h\n M src/asahi/vulkan/hk_device.c\n M src/asahi/vulkan/hk_device.h\n M src/asahi/vulkan/hk_image.c\n A src/asahi/vulkan/hk_nir_lower_sparse_access.c\n M src/asahi/vulkan/hk_physical_device.c\n M src/asahi/vulkan/hk_queue.c\n M src/asahi/vulkan/hk_shader.c\n M src/asahi/vulkan/hk_shader.h\n M src/asahi/vulkan/meson.build\n M src/asahi/vulkan/tests/m4-desktop/asahi-session.py\n M src/asahi/vulkan/tests/m4-desktop/desktop-launch.py\n M src/asahi/vulkan/tests/m4-desktop/vk-buffer-oracle.c\n M src/asahi/vulkan/tests/m4-desktop/vulkan-trim-host.py\n A src/asahi/vulkan/tests/test-hk-sparse-access.c\n?? src/asahi/vulkan/tests/m4-desktop/README-sparse-strict.md\n?? src/asahi/vulkan/tests/m4-desktop/sparse-strict-buffer-cases.py\n?? src/asahi/vulkan/tests/m4-desktop/sparse-strict-image-cases.py\n?? src/asahi/vulkan/tests/m4-desktop/sparse-strict/\n",
+      "patch_sha256": "399b200ab823120ac60fefa514719d96626671b7ddaa503bea231313c6dd6ed8"
+    },
+    "kernel": {
+      "head": "acfeb2a9ad782ffecd60daf62e527a161488fda4",
+      "status": "",
+      "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

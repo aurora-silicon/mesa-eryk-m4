@@ -133,6 +133,10 @@ struct hk_root_descriptor_table {
 
    /* Process-local on G17P; loaded through the root instead of cached code. */
    uint64_t printf_buffer_address;
+   /* Process-local sparse map and VA geometry, never embedded in cached code. */
+   uint64_t sparse_residency_map;
+   uint64_t sparse_va_base;
+   uint64_t sparse_va_size;
 };
 
 /* helper macro for computing root descriptor byte offsets */

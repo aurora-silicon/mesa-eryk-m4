@@ -104,6 +104,11 @@ struct hk_device {
       simple_mtx_t lock;
    } scratch;
 
+   /* One residency bit per 16 KiB primary VA page. Ordinary allocations
+    * remain set; only unbound sparse pages are cleared. */
+   struct agx_bo *sparse_residency;
+   simple_mtx_t sparse_residency_lock;
+
    uint32_t perftest;
 
    struct {

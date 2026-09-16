@@ -81,6 +81,7 @@ hk_files = files(
   'hk_sampler.h',
   'hk_shader.c',
   'hk_nir_lower_minmax.c',
+  'hk_nir_lower_sparse_access.c',
   'hk_shader.h',
   'hk_wsi.c',
   'hk_wsi.h'
@@ -174,6 +175,26 @@ if with_tests
       'hk_printf_root_test',
       files('tests/test-hk-printf-root.c',
             'hk_nir_lower_descriptors.c'),
+      include_directories : [
+        include_directories('.', '../libagx', '../../gallium/include',
+                            '../../gallium/auxiliary', '../../vulkan/runtime',
+                            '../../vulkan/util', '../../vulkan/wsi',
+                            '../../compiler/spirv', '../../virtio/virtio-gpu',
+                            '../../virtio/vdrm'),
+        inc_include, inc_src, inc_asahi,
+      ],
+      dependencies : [idep_nir, idep_mesautil],
+      gnu_symbol_visibility : 'hidden',
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
+    'hk_sparse_access',
+    executable(
+      'hk_sparse_access_test',
+      files('tests/test-hk-sparse-access.c',
+            'hk_nir_lower_sparse_access.c'),
       include_directories : [
         include_directories('.', '../libagx', '../../gallium/include',
                             '../../gallium/auxiliary', '../../vulkan/runtime',

@@ -1127,6 +1127,7 @@ hk_image_plane_finish(struct hk_device *dev, struct hk_image_plane *plane,
                       const VkAllocationCallbacks *pAllocator)
 {
    if (plane->va) {
+      hk_update_sparse_residency(dev, plane->va->addr, plane->va->size_B, true);
       agx_va_free(&dev->dev, plane->va, true);
    }
 

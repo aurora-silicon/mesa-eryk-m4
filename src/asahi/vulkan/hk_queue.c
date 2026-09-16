@@ -44,6 +44,8 @@
 #include "layout.h"
 #include "vk_drm_syncobj.h"
 #include "vk_sync.h"
+#include "vk_common_entrypoints.h"
+#include "hk_entrypoints.h"
 
 /* Opt-in, post-completion diagnostics. Resolve only owned, bounded mappings. */
 static const void *
@@ -966,6 +968,13 @@ hk_bind_builder_finish(struct hk_bind_builder *b)
                                "Sparse memory bind failed (%d)", ret);
    }
 
+   if (b->result == VK_SUCCESS) {
+      util_dynarray_foreach(&b->binds, struct drm_asahi_gem_bind_op, op) {
+         if (op->flags & DRM_ASAHI_BIND_WRITE)
+            hk_update_sparse_residency(b->dev, op->addr, op->range,
+               op->handle != b->dev->dev.scratch_bo->uapi_handle);
+      }
+   }
    util_dynarray_fini(&b->binds);
    return b->result;
 }
@@ -1204,6 +1213,14 @@ queue_submit(struct hk_device *dev, struct hk_queue *queue,
    if (submit->buffer_bind_count || submit->image_bind_count ||
        submit->image_opaque_bind_count) {
 
+      /* Publishing CPU-maintained residency must happen after the waits,
+       * not merely before a kernel submission that will eventually wait. */
+      if (dev->dev.chip == AGX_CHIP_G16G) {
+         VkResult waited = vk_sync_wait_many(&dev->vk, submit->wait_count,
+                                              submit->waits, 0, UINT64_MAX);
+         if (waited != VK_SUCCESS)
+            return waited;
+      }
       VkResult result = hk_queue_submit_bind_sparse_memory(dev, submit);
       if (result != VK_SUCCESS)
          return result;
@@ -1484,4 +1501,18 @@ hk_queue_finish(struct hk_device *dev, struct hk_queue *queue)
    agx_destroy_command_queue(&dev->dev, queue->drm.id);
    vk_queue_finish(&queue->vk);
    vk_free(&dev->vk.alloc, queue);
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL
+hk_QueueBindSparse(VkQueue _queue, uint32_t bindInfoCount,
+                   const VkBindSparseInfo *pBindInfo, VkFence fence)
+{
+   VK_FROM_HANDLE(vk_queue, vk_queue, _queue);
+   struct hk_queue *queue = container_of(vk_queue, struct hk_queue, vk);
+   if (bindInfoCount && hk_queue_device(queue)->dev.chip == AGX_CHIP_G16G) {
+      VkResult result = vk_queue_enable_submit_thread(&queue->vk);
+      if (result != VK_SUCCESS)
+         return result;
+   }
+   return vk_common_QueueBindSparse(_queue, bindInfoCount, pBindInfo, fence);
 }

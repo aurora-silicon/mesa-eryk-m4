@@ -893,10 +893,9 @@ hk_get_device_properties(const struct agx_device *dev,
       .nonCoherentAtomSize = 64,
 
       /* Vulkan 1.0 sparse properties */
-      /* The M4 kernel withholds soft faults (file.rs: the owned runtime does
-       * not apply the legacy fault_control); an unbound page read through the
-       * read/write address returns the scratch page, so reads are not strict. */
-      .sparseResidencyNonResidentStrict = dev->chip != AGX_CHIP_G16G,
+      /* G16G masks unbound global reads and suppresses unbound atomics using
+       * live VA residency. Images also retain their native sparse table. */
+      .sparseResidencyNonResidentStrict = true,
       .sparseResidencyAlignedMipSize = false,
       .sparseResidencyStandard2DBlockShape = true,
 

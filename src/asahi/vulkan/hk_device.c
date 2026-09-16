@@ -527,6 +527,23 @@ hk_CreateDevice(VkPhysicalDevice physicalDevice,
       goto fail_fd;
    }
 
+   simple_mtx_init(&dev->sparse_residency_lock, mtx_plain);
+   if (dev->dev.chip == AGX_CHIP_G16G) {
+      const uint64_t bytes = DIV_ROUND_UP(dev->dev.main_heap_size, 16384 * 8);
+      dev->sparse_residency = agx_bo_create(&dev->dev, bytes, 16384,
+                                          AGX_BO_READONLY, "Sparse VA residency");
+      if (!dev->sparse_residency) {
+         result = VK_ERROR_OUT_OF_DEVICE_MEMORY;
+         goto fail_dev;
+      }
+      memset(agx_bo_map(dev->sparse_residency), 0xff, bytes);
+   }
+
+   /* Sparse page-table publication runs on the CPU. A sparse wait may be
+    * signalled by a later host call, so it must not block the API thread. */
+   if (dev->dev.chip == AGX_CHIP_G16G)
+      vk_device_enable_threaded_submit(&dev->vk);
+
    vk_device_set_drm_fd(&dev->vk, dev->dev.fd);
    dev->vk.command_buffer_ops = &hk_cmd_buffer_ops;
    dev->vk.check_status = hk_check_status;
@@ -662,6 +679,8 @@ fail_sampled_images:
 fail_samplers:
    hk_destroy_sampler_heap(dev, &dev->samplers);
 fail_dev:
+   agx_bo_unreference(&dev->dev, dev->sparse_residency);
+   simple_mtx_destroy(&dev->sparse_residency_lock);
    agx_close_device(&dev->dev);
 fail_fd:
    close(dev->dev.fd);
@@ -712,6 +731,8 @@ hk_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
    hk_descriptor_table_finish(dev, &dev->occlusion_queries);
    agx_bo_unreference(&dev->dev, dev->rodata.bo);
    agx_bo_unreference(&dev->dev, dev->heap);
+   agx_bo_unreference(&dev->dev, dev->sparse_residency);
+   simple_mtx_destroy(&dev->sparse_residency_lock);
    agx_bg_eot_cleanup(&dev->bg_eot);
    agx_close_device(&dev->dev);
    vk_free(&dev->vk.alloc, dev);
