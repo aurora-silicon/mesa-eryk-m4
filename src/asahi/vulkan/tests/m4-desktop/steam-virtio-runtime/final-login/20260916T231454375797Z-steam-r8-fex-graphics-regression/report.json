@@ -1,0 +1,30 @@
+{
+  "id": "20260916T231454375797Z-steam-r8-fex-graphics-regression",
+  "verdict": "missing_success_evidence",
+  "transport_returncode": 0,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T231454375797Z-steam-r8-fex-graphics-regression",
+  "observations": {
+    "pixel_results": [
+      "PASS: GLX 32-bit visual/context/readback 256 pixels",
+      "PASS: GLX 64-bit visual/context/readback 256 pixels",
+      "PASS: D3D11 feature level 11_1 device creation",
+      "PASS: D3D11 clear/copy/map 4096 pixels",
+      "PASS: D3D11 DXBC triangle/interpolation 4096 pixels",
+      "PASS: D3D11 DXBC compute/UAV 256 words",
+      "PASS: D3D11 native DXVK smoke complete"
+    ],
+    "pixel_result_count": 7,
+    "thermal_samples": 26,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 61.75,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 61.75,
+      "Ta000m": 61.75,
+      "Te000m": 58.5,
+      "Te001m": 60.25,
+      "Tp000m": 61.25,
+      "Tp001m": 59.0
+    }
+  }
+}

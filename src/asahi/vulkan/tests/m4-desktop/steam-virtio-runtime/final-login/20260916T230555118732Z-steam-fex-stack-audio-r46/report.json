@@ -1,0 +1,24 @@
+{
+  "id": "20260916T230555118732Z-steam-fex-stack-audio-r46",
+  "verdict": "pass",
+  "transport_returncode": 0,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T230555118732Z-steam-fex-stack-audio-r46",
+  "observations": {
+    "pixel_results": [
+      "PASS: bounded real application observation completed; inspect images and renderer evidence"
+    ],
+    "pixel_result_count": 1,
+    "thermal_samples": 257,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 66.5,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 66.5,
+      "Ta000m": 60.5,
+      "Te000m": 58.5,
+      "Te001m": 66.5,
+      "Tp000m": 63.75,
+      "Tp001m": 65.0
+    }
+  }
+}

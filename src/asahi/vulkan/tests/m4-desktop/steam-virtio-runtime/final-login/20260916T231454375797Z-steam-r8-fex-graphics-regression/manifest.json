@@ -1,0 +1,30 @@
+{
+  "id": "20260916T231454375797Z-steam-r8-fex-graphics-regression",
+  "hypothesis": "FEX allocator changes and updated multilib Zink preserve GLX32 GLX64 and DXVK DirectX11 pixel oracles",
+  "command": [
+    "python3",
+    "/opt/m4-dx11-qualification/headless-glx-command.py",
+    "--output",
+    "/root/asahi-evidence/20260916T231454375797Z-steam-r8-fex-graphics-regression",
+    "--seconds",
+    "115",
+    "--",
+    "/usr/bin/python3",
+    "-c",
+    "import subprocess\nfor mode in ('gl32', 'gl64', 'fex'):\n subprocess.run(['python3', '/opt/m4-dx11-qualification/muvm-dx11-probe.py', '--mode', mode, '--overlay', '/opt/m4-steam/mesa-multilib-r8.erofs', '--seconds', '30'], check=True, timeout=33)\nprint('PASS: GLX32 GLX64 and DX11 regressions', flush=True)"
+  ],
+  "expected_success": "^PASS: GLX32 GLX64 and DX11 regressions",
+  "seconds": 125,
+  "sources": {
+    "mesa": {
+      "head": "689093d7237a2c7c9063e0b5316964405a438198",
+      "status": " M src/asahi/vulkan/tests/m4-desktop/asahi-session.py\n M src/asahi/vulkan/tests/m4-desktop/desktop-launch.py\n M src/asahi/vulkan/tests/m4-desktop/vulkan-trim-host.py\n",
+      "patch_sha256": "5e2d497d60e1d628dff40755eaa4e4e0c35a30dad301dcb9bd51d052b6ad40f5"
+    },
+    "kernel": {
+      "head": "0d5dc0bc24db8d6235b14752b53dd1a23167bf33",
+      "status": "",
+      "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

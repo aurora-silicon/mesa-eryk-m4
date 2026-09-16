@@ -1,0 +1,23 @@
+{
+  "id": "20260916T230555118732Z-steam-fex-stack-audio-r46",
+  "hypothesis": "Bounded FEX reservations and real desktop audio services allow sandboxed Steam UI initialization",
+  "command": [
+    "/bin/bash",
+    "-c",
+    "systemctl start user@1000.service && runuser -u e -- env XDG_RUNTIME_DIR=/run/user/1000 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus systemctl --user start pipewire.service wireplumber.service pipewire-pulse.service && python3 /opt/m4-dx11-qualification/headless-glx-command.py --audio-runtime /run/user/1000 --output \"/root/asahi-evidence/20260916T230555118732Z-steam-fex-stack-audio-r46\" --seconds 130 -- python3 /root/app-observe.py --headless --guard-output \"/root/asahi-evidence/20260916T230555118732Z-steam-fex-stack-audio-r46\" --seconds 120 --retain /usr/bin/FEX --retain /usr/local/libexec/m4-steam/muvm -- /usr/local/bin/steam"
+  ],
+  "expected_success": "^PASS: bounded real application observation completed",
+  "seconds": 150,
+  "sources": {
+    "mesa": {
+      "head": "689093d7237a2c7c9063e0b5316964405a438198",
+      "status": " M src/asahi/vulkan/tests/m4-desktop/asahi-session.py\n M src/asahi/vulkan/tests/m4-desktop/desktop-launch.py\n M src/asahi/vulkan/tests/m4-desktop/vulkan-trim-host.py\n",
+      "patch_sha256": "5e2d497d60e1d628dff40755eaa4e4e0c35a30dad301dcb9bd51d052b6ad40f5"
+    },
+    "kernel": {
+      "head": "0d5dc0bc24db8d6235b14752b53dd1a23167bf33",
+      "status": "",
+      "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

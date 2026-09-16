@@ -1,0 +1,4 @@
+{
+  "verdict": "pass",
+  "reason": "Original expected-success anchor missed the final PASS because muvm prefixed an OSC shell-integration marker. All GLX32/64 and DX11 oracles and guard pass. Classifier now strips terminal escapes from its view; raw evidence is unchanged."
+}
