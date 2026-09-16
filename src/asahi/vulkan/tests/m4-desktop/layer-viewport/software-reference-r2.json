@@ -1,0 +1,41 @@
+{
+  "source_sha256": "8c9429adfeee832a8eedbdce44284b54bf9fef06f90e8e3714762014aefe71a2",
+  "results": [
+    {
+      "stage": "vertex",
+      "mode": "layer",
+      "returncode": 0,
+      "output": "MESA-EGL: warning: failed to open /dev/dri/card1: Permission denied\nRenderer: llvmpipe (LLVM 22.1.8, 256 bits)\nPASS: vertex layer exact 256 pixels, bad=0\n"
+    },
+    {
+      "stage": "vertex",
+      "mode": "viewport",
+      "returncode": 0,
+      "output": "MESA-EGL: warning: failed to open /dev/dri/card1: Permission denied\nRenderer: llvmpipe (LLVM 22.1.8, 256 bits)\nPASS: vertex viewport exact 256 pixels, bad=0\n"
+    },
+    {
+      "stage": "vertex",
+      "mode": "both",
+      "returncode": 0,
+      "output": "MESA-EGL: warning: failed to open /dev/dri/card1: Permission denied\nRenderer: llvmpipe (LLVM 22.1.8, 256 bits)\nPASS: vertex both exact 1024 pixels, bad=0\n"
+    },
+    {
+      "stage": "tess",
+      "mode": "layer",
+      "returncode": 0,
+      "output": "MESA-EGL: warning: failed to open /dev/dri/card1: Permission denied\nRenderer: llvmpipe (LLVM 22.1.8, 256 bits)\nPASS: tess layer exact 256 pixels, bad=0\n"
+    },
+    {
+      "stage": "tess",
+      "mode": "viewport",
+      "returncode": 0,
+      "output": "MESA-EGL: warning: failed to open /dev/dri/card1: Permission denied\nRenderer: llvmpipe (LLVM 22.1.8, 256 bits)\nPASS: tess viewport exact 256 pixels, bad=0\n"
+    },
+    {
+      "stage": "tess",
+      "mode": "both",
+      "returncode": 0,
+      "output": "MESA-EGL: warning: failed to open /dev/dri/card1: Permission denied\nRenderer: llvmpipe (LLVM 22.1.8, 256 bits)\nPASS: tess both exact 1024 pixels, bad=0\n"
+    }
+  ]
+}

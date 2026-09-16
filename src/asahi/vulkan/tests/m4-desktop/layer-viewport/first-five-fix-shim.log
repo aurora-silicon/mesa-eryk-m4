@@ -1,0 +1,27 @@
+Writing test log into /home/council/dev/dirtyroom_m4/build/directx-layer/first-five-fix-shim.qpa
+dEQP Core vulkan-cts-1.4.6.2-0-gf6a29701220f34dd1407513bfe80d74ca7b392ce (0xf6a29701) starting..
+  target implementation = 'Default'
+
+Test case 'dEQP-VK.draw.dynamic_rendering.primary_cmd_buff.shader_layer.vertex_shader_3'..
+  Fail (Rendered image is not correct at vktDrawShaderLayerTests.cpp:941)
+
+Test case 'dEQP-VK.draw.dynamic_rendering.primary_cmd_buff.shader_layer.tessellation_shader_3'..
+  Fail (Rendered image is not correct at vktDrawShaderLayerTests.cpp:1006)
+
+Test case 'dEQP-VK.draw.dynamic_rendering.primary_cmd_buff.shader_viewport_index.vertex_shader_3'..
+  Fail (Rendered image is not correct at vktDrawShaderViewportIndexTests.cpp:996)
+
+Test case 'dEQP-VK.draw.dynamic_rendering.primary_cmd_buff.shader_viewport_index.fragment_shader_3'..
+  Fail (Rendered image is not correct at vktDrawShaderViewportIndexTests.cpp:996)
+
+Test case 'dEQP-VK.draw.dynamic_rendering.primary_cmd_buff.shader_viewport_index.tessellation_shader_3'..
+  Fail (Rendered image is not correct at vktDrawShaderViewportIndexTests.cpp:1064)
+
+DONE!
+
+Test run totals:
+  Passed:        0/5 (0.0%)
+  Failed:        5/5 (100.0%)
+  Not supported: 0/5 (0.0%)
+  Warnings:      0/5 (0.0%)
+  Waived:        0/5 (0.0%)

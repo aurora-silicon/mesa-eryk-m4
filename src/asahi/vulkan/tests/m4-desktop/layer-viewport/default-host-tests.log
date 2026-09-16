@@ -1,0 +1,394 @@
+ninja: Entering directory `/home/council/dev/dirtyroom_m4/build/mesa-m4-asahi-host'
+[1/23] Generating src/git_sha1.h with a custom command
+[2/21] Linking target src/asahi/vulkan/hk_agx3_ppp_w_clamp_cull2_test
+[3/21] Linking target src/asahi/vulkan/hk_agx3_ioto_decode_test
+[4/21] Linking target src/asahi/vulkan/hk_agx3_ppp_viewport_payload_test
+[5/21] Linking target src/asahi/vulkan/hk_agx3_ioto_preshader_core_test
+[6/21] Linking target src/asahi/vulkan/hk_agx3_ppp_hal300_depth_bias_scissor_test
+[7/21] Linking target src/asahi/vulkan/hk_agx3_ioto_profile_core_test
+[8/21] Linking target src/asahi/vulkan/hk_agx3_ioto_state_core_test
+[9/21] Linking target src/asahi/vulkan/hk_agx3_ppp_hal300_depth_stencil_test
+[10/21] Linking target src/asahi/vulkan/hk_native_sampler_test
+[11/21] Linking target src/asahi/vulkan/hk_agx3_vdm_decode_test
+[12/21] Linking target src/asahi/vulkan/hk_agx3_ioto_program_core_test
+[13/21] Linking target src/asahi/lib/libasahi_tests
+[14/21] Linking target src/asahi/lib/asahi-g17p-f16-io
+[15/21] Linking target src/asahi/lib/asahi-blend-key
+[16/21] Linking target src/asahi/lib/asahi-native-uniform-prefix
+[17/21] Linking target src/asahi/vulkan/hk_vbo_raw_test
+[18/21] Linking target src/asahi/lib/asahi-g17p-early-demote-epilog
+[19/21] Linking target src/asahi/lib/asahi-g17p-mrt-epilog
+[20/21] Linking target src/asahi/lib/asahi-g17p-srgb-epilog
+[21/21] Linking target src/asahi/lib/asahi-g17p-advanced-blend
+  1/115 asahi - mesa:agx2_disasm                                OK              0.05s
+  2/115 asahi - mesa:agx3_ldimm_disasm                          OK              0.05s
+  3/115 asahi - mesa:agx3_subgroup_core                         OK              0.04s
+  4/115 asahi - mesa:agx3_atomic_core                           OK              0.04s
+  5/115 asahi - mesa:agx3_tex_core                              OK              0.03s
+  6/115 asahi - mesa:agx3_local_tps_core                        OK              0.03s
+  7/115 asahi - mesa:agx3_static_spill_core                     OK              0.02s
+  8/115 asahi - mesa:agx3_falu_mod_core                         OK              0.02s
+  9/115 asahi - mesa:agx3_vary_core                             OK              0.02s
+ 10/115 asahi - mesa:agx3_cf_core                               OK              0.01s
+ 11/115 asahi - mesa:agx3_mem_core                              OK              0.01s
+ 12/115 asahi - mesa:asahi-agx3-packing                         FAIL            0.08s   exit status 1
+>>> MALLOC_PERTURB_=227 ASAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1 UBSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1:print_stacktrace=1 MESON_TEST_ITERATION=1 MSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1:print_stacktrace=1 /home/council/dev/dirtyroom_m4/build/mesa-m4-asahi-host/src/asahi/genxml/asahi-agx3-packing
+――――――――――――――――――――――――――――――――――――― ✀  ―――――――――――――――――――――――――――――――――――――
+stderr:
+AGX3 live indexed VDM mismatch
+――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――
+
+ 13/115 asahi - mesa:agx3_opcode_mapping                        FAIL            0.07s   exit status 1
+>>> ASAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1 UBSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1:print_stacktrace=1 MESON_TEST_ITERATION=1 MSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1:print_stacktrace=1 MALLOC_PERTURB_=151 /usr/bin/python3.14 /home/council/dev/dirtyroom_m4/build/mesa-m4-asahi-host/../../mesa/m4-asahi/src/asahi/compiler/test/test-agx3-opcodes.py
+――――――――――――――――――――――――――――――――――――― ✀  ―――――――――――――――――――――――――――――――――――――
+stderr:
+Traceback (most recent call last):
+  File "/home/council/dev/dirtyroom_m4/build/mesa-m4-asahi-host/../../mesa/m4-asahi/src/asahi/compiler/test/test-agx3-opcodes.py", line 21, in <module>
+    assert sum(op.agx3_mnemonic is not None for op in opcodes.values()) == 8
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError
+――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――
+
+ 14/115 asahi - mesa:agx3_pack                                  OK              0.08s
+ 15/115 asahi - mesa:agx2_python_disasm                         OK              0.09s
+ 16/115 asahi - mesa:agx3_select_core                           OK              0.05s
+ 17/115 asahi - mesa:agx3_tile_core                             OK              0.05s
+ 18/115 asahi - mesa:agx3_g17p_producers                        OK              0.04s
+ 19/115 asahi - mesa:agx3_smp_witness                           OK              0.04s
+ 20/115 asahi - mesa:agx3_compose_corpus                        OK              0.04s
+ 21/115 asahi - mesa:agx3_slot_core                             OK              0.04s
+ 22/115 asahi - mesa:agx3_iadd_core                             OK              0.03s
+ 23/115 asahi - mesa:agx3_isel_core                             OK              0.03s
+ 24/115 asahi - mesa:agx3_copy_core                             OK              0.03s
+ 25/115 asahi - mesa:agx3_scs_core                              OK              0.02s
+ 26/115 asahi - mesa:agx3_ioto_uniform_program                  OK              0.05s
+ 27/115 asahi - mesa:agx3_interleave                            OK              0.04s
+ 28/115 asahi - mesa:agx3_compile_fail_closed                   FAIL            0.05s   exit status 1
+>>> MALLOC_PERTURB_=173 ASAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1 UBSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1:print_stacktrace=1 MESON_TEST_ITERATION=1 MSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1:print_stacktrace=1 /home/council/dev/dirtyroom_m4/build/mesa-m4-asahi-host/src/asahi/compiler/agx3_compile_fail_closed_test
+――――――――――――――――――――――――――――――――――――― ✀  ―――――――――――――――――――――――――――――――――――――
+stderr:
+AGX3 preflight: unlowered runtime printf buffer address
+agx3_pack_binary.c:5528: no grounded AGX3 encoding for uniform_store
+   uniform_store ^r0:r1, #8, x, #0x0
+AGX3 accepted a scratch-using compute shader; if stack access is now grounded, widen hk_g17p_compute_shader_supported() in the same change
+――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――
+
+ 29/115 asahi - mesa:agx3_norm16                                OK              0.04s
+ 30/115 asahi - mesa:agx3_int64                                 OK              0.04s
+ 31/115 asahi - mesa:agx3_workgroup                             OK              0.04s
+ 32/115 asahi - mesa:agx_register_bank                          OK              0.02s
+ 33/115 asahi - mesa:agx3_multi_store                           FAIL            0.05s   exit status 1
+>>> MALLOC_PERTURB_=86 ASAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1 UBSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1:print_stacktrace=1 MESON_TEST_ITERATION=1 MSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1:print_stacktrace=1 /home/council/dev/dirtyroom_m4/build/mesa-m4-asahi-host/src/asahi/compiler/agx3_multi_store_test
+――――――――――――――――――――――――――――――――――――― ✀  ―――――――――――――――――――――――――――――――――――――
+stdout:
+22 checks, 3 failures
+stderr:
+FAIL ../../mesa/m4-asahi/src/asahi/compiler/test/test-agx3-multi-store.c:418: len == sizeof(expected) && memcmp(out, expected, len) == 0
+FAIL ../../mesa/m4-asahi/src/asahi/compiler/test/test-agx3-multi-store.c:450: add_found
+FAIL ../../mesa/m4-asahi/src/asahi/compiler/test/test-agx3-multi-store.c:457: add_found && memcmp(add, want_add, sizeof(want_add)) == 0
+1 global store(s): ok
+2 global store(s): ok
+3 global store(s): ok
+4 global store(s): ok
+――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――
+
+ 34/115 asahi - mesa:agx3_event_wait                            FAIL            0.05s   exit status 1
+>>> ASAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1 UBSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1:print_stacktrace=1 MESON_TEST_ITERATION=1 MSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1:print_stacktrace=1 MALLOC_PERTURB_=251 /home/council/dev/dirtyroom_m4/build/mesa-m4-asahi-host/src/asahi/compiler/agx3_event_wait_test
+――――――――――――――――――――――――――――――――――――― ✀  ―――――――――――――――――――――――――――――――――――――
+stderr:
+AGX3b event-wait poll was not encoded safely
+1b0401082b0601080a0523030200050000000f0554010f05541a1b040108670054040000000011000040020006042a0523030600070000008f0454260f0054deffffffffff000f06040200000f06040100000e000000
+――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――
+
+ 35/115 asahi - mesa:agx3_pixel_core                            FAIL            0.05s   exit status 1
+>>> MALLOC_PERTURB_=80 ASAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1 UBSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1:print_stacktrace=1 MESON_TEST_ITERATION=1 MSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1:print_stacktrace=1 /home/council/dev/dirtyroom_m4/build/mesa-m4-asahi-host/src/asahi/compiler/agx3_pixel_core_test
+――――――――――――――――――――――――――――――――――――― ✀  ―――――――――――――――――――――――――――――――――――――
+stderr:
+AGX3b colour entry: got , expected 870254000600
+agx3_pixel_core: 1/39 checks failed
+――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――
+
+ 36/115 asahi - mesa:agx3_funop_core                            FAIL            0.04s   exit status 1
+>>> MALLOC_PERTURB_=89 ASAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1 UBSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1:print_stacktrace=1 MESON_TEST_ITERATION=1 MSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1:print_stacktrace=1 /home/council/dev/dirtyroom_m4/build/mesa-m4-asahi-host/src/asahi/compiler/agx3_funop_core_test
+――――――――――――――――――――――――――――――――――――― ✀  ―――――――――――――――――――――――――――――――――――――
+stderr:
+register out of range: accepted, expected refusal
+agx3_funop_core: 1/59 checks failed
+――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――
+
+ 37/115 asahi - mesa:agx3_rt_core                               FAIL            0.04s   exit status 1
+>>> ASAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1 UBSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1:print_stacktrace=1 MESON_TEST_ITERATION=1 MSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1:print_stacktrace=1 MALLOC_PERTURB_=152 /home/council/dev/dirtyroom_m4/build/mesa-m4-asahi-host/src/asahi/compiler/agx3_rt_core_test
+――――――――――――――――――――――――――――――――――――― ✀  ―――――――――――――――――――――――――――――――――――――
+stderr:
+AGX3b intersect_ray: got , expected 5f10540000412640c7504c00
+AGX3c intersect_ray: got 27042901a2c1ae0201982700, expected 27042901a2c1ae02019827000020
+AGX3b intersect_ray: got 5f10540400412640c7504c000000, expected 5f10540400412640c7504c00
+AGX3c intersect_ray: got 27042901a2c1ae0201982700, expected 27042901a2c1ae02019827000022
+AGX3b intersect_ray site: got 5f10540000412640c7504c000000, expected 5f10540000412640c7504c00
+AGX3c intersect_ray site: got 27042901a2c1ae0201982700, expected 27042901a2c1ae02019827000020
+AGX3b continue_ray: got 5f11540000000000000000000000, expected 5f1154000000
+AGX3c continue_ray: got 2704090022c0, expected 2704090022c0af02
+AGX3b update barrier: got 0704540809000000, expected 070454080900
+AGX3b update_node: got df0554000000, expected df055400
+AGX3c update_node: got 27000100, expected 270001002200ad02
+AGX3b update_node expansion: got 070454080900df05, expected 070454080900df055400
+AGX3c update_node expansion: got 17090006000027000100, expected 170900060000270001002200ad02
+intersect_ray b reg 2: refusal left length 14
+agx3_rt_core: 14/53 checks failed
+――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――
+
+ 38/115 asahi - mesa:agx3_rgb10_memory                          OK              0.03s
+ 39/115 asahi - mesa:agx3_graphics_compile                      FAIL            0.06s   exit status 1
+>>> ASAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1 UBSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1:print_stacktrace=1 MESON_TEST_ITERATION=1 MSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1:print_stacktrace=1 MALLOC_PERTURB_=235 /home/council/dev/dirtyroom_m4/build/mesa-m4-asahi-host/src/asahi/compiler/agx3_graphics_compile_test
+――――――――――――――――――――――――――――――――――――― ✀  ―――――――――――――――――――――――――――――――――――――
+stderr:
+agx3_pack_binary.c:7703: no grounded AGX3 encoding for block_image_store
+   block_image_store #0, #0, ^r2, ^r0...r1, #0x0, 2d
+agx3_pack_binary.c:7703: no grounded AGX3 encoding for block_image_store
+   block_image_store #0, #0, ^r2, ^r0...r1, #0x0, 2d
+AGX3b vs-g17p-div3-mul-high: missing leading SR 0xdd rld
+AGX3b vs-g17p-div3-mul-high: accepted but binary is malformed
+AGX3b vs-g17p-half2-varying: G17P binary/resource metadata mismatch
+actual main (162 bytes, staging 12 halfs): 0cdd1006671054020100200049010040440029023c8100c229811c05800039023c81080219811c07800067004408000020005700004040000b0821441b0b27004200000400002b0d27004200000800003b0f27004200000c00004b0527004200001000005b032700420000140000571654000040480057265402204049005746540440404a005786540660404b005706550880404c005706560aa0404d000e000000
+AGX3b vs-g17p-half2-varying: accepted but binary is malformed
+AGX3b fs-flat-colour: G17P binary/resource metadata mismatch
+actual main (94 bytes, staging 0 halfs): 048f0200000000008702540006008702540c080004c2140613001f0008200000000004ff02000200000003021f00040000000000970454030250c05004c8970454020220805004c8e70654020000014e080000080702540c02000e000000
+AGX3b fs-flat-colour: accepted but binary is malformed
+AGX3b fs-discard: unexpectedly accepted
+agx3_pack_binary.c:7703: no grounded AGX3 encoding for iadd
+   r1 = iadd ^r1, #255.neg, shift=0
+AGX3c vs-register-multiply-minus-byte: REJECTED by agx3_pack_binary
+agx3_pack_binary.c:5463: no grounded AGX3 encoding for st_tile
+   st_tile ^r0l...r0h, #255, _, xyzw, #0x0
+AGX3c fs-flat-colour: REJECTED by agx3_pack_binary
+agx3_pack_binary.c:5463: no grounded AGX3 encoding for st_tile
+   st_tile ^r0l...r0h, #255, _, xyzw, #0x0
+AGX3c fs-interpolated-varying: REJECTED by agx3_pack_binary
+agx3_pack_binary.c:5463: no grounded AGX3 encoding for ld_tile
+   r0l...r0h = ld_tile #255, _, xyzw, #0x0
+AGX3c fs-tilebuffer-load: REJECTED by agx3_pack_binary
+agx3_pack_binary.c:5463: no grounded AGX3 encoding for st_tile
+   st_tile ^r0l...r0h, #255, _, xyzw, #0x0
+AGX3c fs-textured-triangle: REJECTED by agx3_pack_binary
+agx3_pack_binary.c:5463: no grounded AGX3 encoding for st_tile
+   st_tile ^r0l...r0h, #255, _, xyzw, #0x0
+AGX3c fs-vkcube-combined-sampler: REJECTED by agx3_pack_binary
+agx3_pack_binary.c:5463: no grounded AGX3 encoding for st_tile
+   st_tile ^r0l...r0h, #255, _, xyzw, #0x0
+AGX3c fs-descriptor-resource: REJECTED by agx3_pack_binary
+agx3_pack_binary.c:7703: no grounded AGX3 encoding for imad
+   r0 = imad ^r1l.abs, ^r2, ^r0l.abs, shift=0
+AGX3c fs-meta-rgba-upload: REJECTED by agx3_pack_binary
+agx3_pack_binary.c:5463: no grounded AGX3 encoding for st_tile
+   st_tile ^r1l...r1h, #255, _, xyzw, #0x0
+AGX3c fs-transcendentals: REJECTED by agx3_pack_binary
+agx3_pack_binary.c:7703: no grounded AGX3 encoding for sample_mask
+   sample_mask #255, #0
+――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――
+
+ 40/115 asahi - mesa:agx_tests                                  FAIL            0.11s   killed by signal 6 SIGABRT
+>>> MALLOC_PERTURB_=89 ASAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1 UBSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1:print_stacktrace=1 MESON_TEST_ITERATION=1 MSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1:print_stacktrace=1 /home/council/dev/dirtyroom_m4/build/mesa-m4-asahi-host/src/asahi/compiler/agx_tests
+――――――――――――――――――――――――――――――――――――― ✀  ―――――――――――――――――――――――――――――――――――――
+Listing only the last 100 lines from a long log.
+[       OK ] AGX3PackBinary.TileStoreMovesFixedHighEpilogInputToLowRegisters (0 ms)
+[ RUN      ] AGX3PackBinary.NativeStencilAndDepthExportsKeepEightByteStaging
+[       OK ] AGX3PackBinary.NativeStencilAndDepthExportsKeepEightByteStaging (0 ms)
+[ RUN      ] AGX3PackBinary.StraightLineALU
+../../mesa/m4-asahi/src/asahi/compiler/test/test-agx3-pack-binary.cpp:294: Failure
+Expected equality of these values:
+  pack(b)
+    Which is: { '\f' (12, 0xC), '\xF8' (248), '\x2' (2), '\x12' (18), '\x18' (24), '\b' (8), '\xA2' (162), '\x1' (1), ')' (41, 0x29), '\x3' (3), '\0', '\x1' (1), '9' (57, 0x39), '\x3' (3), '\x1' (1), '\x5' (5), '\x9F' (159), '\x1' (1), 'T' (84, 0x54), '\x4' (4), '\x2' (2), '\0', '\b' (8), '\xA8' (168), '\x11' (17), '\x5' (5), '\xE' (14), '\0', '\0', '\0' }
+  want
+    Which is: { '\f' (12, 0xC), '\xF8' (248), '\x2' (2), '\x12' (18), '\x18' (24), '\b' (8), '\xA2' (162), '\x1' (1), ')' (41, 0x29), '\x3' (3), '\0', '\x1' (1), '9' (57, 0x39), '\x3' (3), '\x1' (1), '\x5' (5), '\x9F' (159), '\x1' (1), 'V' (86, 0x56), '\x4' (4), '\x2' (2), '\0', '\b' (8), '\xA8' (168), '\x13' (19), '\x5' (5), '\xE' (14), '\0', '\0', '\0' }
+[  FAILED  ] AGX3PackBinary.StraightLineALU (0 ms)
+[ RUN      ] AGX3PackBinary.G17PRG16IntegerEOTUsesExactNativeI16Program
+[       OK ] AGX3PackBinary.G17PRG16IntegerEOTUsesExactNativeI16Program (0 ms)
+[ RUN      ] AGX3PackBinary.G17PI8EOTUsesExactOneWordNativeProgram
+[       OK ] AGX3PackBinary.G17PI8EOTUsesExactOneWordNativeProgram (0 ms)
+[ RUN      ] AGX3PackBinary.G16MultisampleEOT_rg16f
+[       OK ] AGX3PackBinary.G16MultisampleEOT_rg16f (0 ms)
+[ RUN      ] AGX3PackBinary.G16MultisampleEOT_rgba32f
+[       OK ] AGX3PackBinary.G16MultisampleEOT_rgba32f (0 ms)
+[ RUN      ] AGX3PackBinary.G16MultisampleEOT_rgba8i
+[       OK ] AGX3PackBinary.G16MultisampleEOT_rgba8i (0 ms)
+[ RUN      ] AGX3PackBinary.G16MultisampleEOT_rg16snorm
+[       OK ] AGX3PackBinary.G16MultisampleEOT_rg16snorm (0 ms)
+[ RUN      ] AGX3PackBinary.G16MultisampleEOT_rgba16i
+[       OK ] AGX3PackBinary.G16MultisampleEOT_rgba16i (0 ms)
+[ RUN      ] AGX3PackBinary.G17PS8NormEOTUsesExactNativeProgram
+[       OK ] AGX3PackBinary.G17PS8NormEOTUsesExactNativeProgram (0 ms)
+[ RUN      ] AGX3PackBinary.G17PRG16EOTUsesExactOneWordNativeProgram
+[       OK ] AGX3PackBinary.G17PRG16EOTUsesExactOneWordNativeProgram (0 ms)
+[ RUN      ] AGX3PackBinary.G17PScalarI32EOTUsesExactNativeProgram
+[       OK ] AGX3PackBinary.G17PScalarI32EOTUsesExactNativeProgram (0 ms)
+[ RUN      ] AGX3PackBinary.G16GFloat32EOTUsesExactNativeProgram
+[       OK ] AGX3PackBinary.G16GFloat32EOTUsesExactNativeProgram (0 ms)
+[ RUN      ] AGX3PackBinary.G17PRG32UintEOTUsesExactTwoWordNativeProgram
+[       OK ] AGX3PackBinary.G17PRG32UintEOTUsesExactTwoWordNativeProgram (0 ms)
+[ RUN      ] AGX3PackBinary.G17PI32EOTRefusesConflictingSelectorOverrides
+[       OK ] AGX3PackBinary.G17PI32EOTRefusesConflictingSelectorOverrides (0 ms)
+[ RUN      ] AGX3PackBinary.G17PI32EOTRefusesAmbiguousWordCount
+[       OK ] AGX3PackBinary.G17PI32EOTRefusesAmbiguousWordCount (0 ms)
+[ RUN      ] AGX3PackBinary.G17PRGBA16UNORMEOTUsesNativeTwoWordProgram
+[       OK ] AGX3PackBinary.G17PRGBA16UNORMEOTUsesNativeTwoWordProgram (0 ms)
+[ RUN      ] AGX3PackBinary.G17PRG16SNORMEOTUsesExactOneWordNativeProgram
+[       OK ] AGX3PackBinary.G17PRG16SNORMEOTUsesExactOneWordNativeProgram (0 ms)
+[ RUN      ] AGX3PackBinary.G17PRGBA16SNORMEOTUsesExactTwoWordNativeProgram
+[       OK ] AGX3PackBinary.G17PRGBA16SNORMEOTUsesExactTwoWordNativeProgram (0 ms)
+[ RUN      ] AGX3PackBinary.G17PScalarNorm16EOTUsesExactNativeProgram
+[       OK ] AGX3PackBinary.G17PScalarNorm16EOTUsesExactNativeProgram (0 ms)
+[ RUN      ] AGX3PackBinary.G17PU16NormEOTRefusesAmbiguousWordCount
+[       OK ] AGX3PackBinary.G17PU16NormEOTRefusesAmbiguousWordCount (0 ms)
+[ RUN      ] AGX3PackBinary.HalfUVPreservesSharedHalfAndOperandOrder
+[       OK ] AGX3PackBinary.HalfUVPreservesSharedHalfAndOperandOrder (0 ms)
+[ RUN      ] AGX3PackBinary.HalfUVRefusesUngroundedModes
+stderr:
+Pass produced unexpected results  Actual:
+block0 {
+   r1 = mov_imm #0x0
+   r1 = mov r4
+   r6 = shuffle r2, r1
+   r1 = mov_imm #0x0
+}
+
+ Expected:
+block0 {
+   r0 = mov_imm #0x0
+   r0 = mov r4
+   r6 = shuffle r2, r0
+   r0 = mov_imm #0x0
+}
+
+
+agx3_pack_binary.c:7703: no grounded AGX3 encoding for block_image_store
+   block_image_store #0, #0, r2, r0...r1, #0x0, 2d
+agx3_pack_binary.c:7703: no grounded AGX3 encoding for block_image_store
+   block_image_store #0, #0, r2, r0...r1, #0x0, 2d
+agx3_pack_binary.c:7703: no grounded AGX3 encoding for block_image_store
+   block_image_store #0, #0, r2, r0...r1, #0x0, 2d
+agx3_pack_binary.c:7703: no grounded AGX3 encoding for block_image_store
+   block_image_store #0, #0, r2, r0...r1, #0x0, 2d
+agx3_pack_binary.c:7703: no grounded AGX3 encoding for block_image_store
+   block_image_store #0, #0, r2, r0...r1, #0x0, 2d
+agx3_pack_binary.c:7703: no grounded AGX3 encoding for block_image_store
+   block_image_store #0, #0, r2, r0...r1, #0x0, 2d
+agx3_pack_binary.c:7703: no grounded AGX3 encoding for block_image_store
+   block_image_store #0, #0, r2, r0...r1, #0x0, 2d
+agx3_pack_binary.c:7703: no grounded AGX3 encoding for block_image_store
+   block_image_store #0, #0, r2, r0...r1, #0x0, 2d
+agx3_pack_binary.c:7703: no grounded AGX3 encoding for block_image_store
+   block_image_store #0, #0, r2, r0...r1, #0x0, 2d
+agx3_pack_binary.c:7206: no grounded AGX3 encoding for fmul
+   r1 = fmul r0, r5l
+agx3_pack_binary.c:7206: no grounded AGX3 encoding for fmul
+   r1 = fmul r0, r5l.neg
+agx3_pack_binary.c:7206: no grounded AGX3 encoding for fmul
+   r1 = fmul r0, r5l.abs
+agx3_pack_binary.c:7206: no grounded AGX3 encoding for fmul
+   r1 = fmul r0, $^r5l
+agx3_pack_binary.c:7206: no grounded AGX3 encoding for fmul
+   r1 = fmul r0, r5l
+agx3_pack_binary.c:7206: no grounded AGX3 encoding for fmul
+   r1 = fmul agx_tests: ../../mesa/m4-asahi/src/asahi/compiler/agx_print.c:20: agx_print_sized: Assertion `(value & 1) == 0' failed.
+――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――
+
+ 41/115 asahi - mesa:agx3_ray_query_prerequisites               OK              0.06s
+ 42/115 asahi - mesa:asahi_layout_tests                         OK              0.06s
+ 43/115 asahi - mesa:asahi-native-uniform-prefix                OK              0.07s
+ 44/115 asahi - mesa:asahi-agx-rt-bvh                           OK              0.06s
+ 45/115 asahi - mesa:asahi-agx-chip                             OK              0.06s
+ 46/115 asahi - mesa:asahi-agx-linker-container                 OK              0.06s
+ 47/115 asahi - mesa:asahi-g17p-early-demote-epilog             OK              0.06s
+ 48/115 asahi - mesa:asahi-g17p-advanced-blend                  OK              0.06s
+ 49/115 asahi - mesa:asahi-blend-key                            OK              0.05s
+ 50/115 asahi - mesa:asahi-g17p-srgb-epilog                     OK              0.05s
+ 51/115 asahi - mesa:asahi-g17p-mrt-epilog                      OK              0.05s
+ 52/115 asahi - mesa:asahi-g17p-f16-io                          OK              0.04s
+ 53/115 asahi - mesa:asahi-ppp-hal200-raster-core               OK              0.06s
+ 54/115 asahi - mesa:asahi-agx-va-runtime-hole                  OK              0.06s
+ 55/115 asahi - mesa:asahi-agx-scs-layout                       OK              0.06s
+ 56/115 asahi - mesa:asahi-agx-ioto-core                        OK              0.05s
+ 57/115 asahi - mesa:asahi-agx-ioto-profile-core                OK              0.05s
+ 58/115 asahi - mesa:asahi-agx-ioto-imageblock-core             OK              0.05s
+ 59/115 asahi - mesa:asahi-agx-ioto-state-core                  OK              0.05s
+ 60/115 asahi - mesa:asahi-agx-ioto-load-core                   OK              0.04s
+ 61/115 asahi - mesa:asahi-agx-ioto-preshader-core              OK              0.05s
+ 62/115 asahi - mesa:asahi-agx-ioto-program-core                OK              0.05s
+ 63/115 asahi - mesa:asahi-vdm-decode-core                      OK              0.05s
+ 64/115 asahi - mesa:asahi-agx3-cdm-decode-core                 OK              0.04s
+ 65/115 asahi - mesa:asahi-agx3-cdm-direct-launch-semantic-core OK              0.04s
+ 66/115 asahi - mesa:asahi-agx3-compute-program-core            OK              0.04s
+ 67/115 asahi - mesa:asahi-texture-side-entry                   OK              0.05s
+ 68/115 asahi - mesa:asahi_feature_matrix                       OK              0.05s
+ 69/115 asahi - mesa:asahi-vdm-barrier-core                     OK              0.05s
+ 70/115 asahi - mesa:asahi-vdm-index-list-core                  OK              0.05s
+ 71/115 asahi - mesa:asahi-pbe-agx3-core                        OK              0.05s
+ 72/115 asahi - mesa:asahi-ppp-hal200-graphics-core             OK              0.05s
+ 73/115 asahi - mesa:asahi-ppp-hal300-depth-bias-scissor-core   OK              0.05s
+ 74/115 asahi - mesa:asahi-ppp-hal300-depth-stencil-core        OK              0.04s
+ 75/115 asahi - mesa:asahi-ppp-viewport-payload-core            OK              0.05s
+ 76/115 asahi - mesa:asahi-ppp-w-clamp-cull2-core               OK              0.05s
+ 77/115 asahi - mesa:asahi-ppp-decode-core                      OK              0.05s
+ 78/115 asahi - mesa:asahi-vdm-hal200-bind-tail-core            OK              0.04s
+ 79/115 asahi - mesa:asahi-vdm-hal200-direct-draw-core          OK              0.04s
+ 80/115 asahi - mesa:asahi-vdm-ppp-state-core                   OK              0.04s
+ 81/115 asahi - mesa:asahi-ppp-finalizer                        OK              0.05s
+ 82/115 asahi - mesa:asahi-vdm-stream-link-core                 OK              0.05s
+ 83/115 asahi - mesa:agx3_ioto_load_packer                      OK              0.28s
+ 84/115 asahi - mesa:asahi-vdm-stream-terminate-core            OK              0.05s
+ 85/115 asahi - mesa:asahi-vdm-tessellate-core                  OK              0.05s
+ 86/115 asahi - mesa:asahi-vdm-state-update-core                OK              0.05s
+ 87/115 asahi - mesa:asahi-vdm-state-core                       OK              0.05s
+ 88/115 asahi - mesa:libasahi_tests                             OK              0.05s
+ 89/115 asahi - mesa:hk_cs_root_size                            OK              0.04s
+ 90/115 asahi - mesa:hk_cmd_lifetime                            OK              0.05s
+ 91/115 asahi - mesa:hk_g17p_full_frame_scissor                 OK              0.05s
+ 92/115 asahi - mesa:hk_g17p_draw_state_upload                  OK              0.05s
+ 93/115 asahi - mesa:hk_printf_root                             OK              0.05s
+ 94/115 asahi - mesa:hk_descriptor_prefetch                     OK              0.04s
+ 95/115 asahi - mesa:hk_sparse_access                           OK              0.06s
+ 96/115 asahi - mesa:hk_g17p_meta_copy_core                     OK              0.06s
+ 97/115 asahi - mesa:hk_drm_render_core                         OK              0.05s
+ 98/115 asahi - mesa:hk_agx3_ioto_decode                        OK              0.06s
+ 99/115 asahi - mesa:hk_agx3_ioto_profile_core                  OK              0.05s
+100/115 asahi - mesa:hk_agx3_ioto_preshader_core                OK              0.06s
+101/115 asahi - mesa:hk_vbo_raw                                 OK              0.05s
+102/115 asahi - mesa:hk_agx3_ioto_state_core                    OK              0.05s
+103/115 asahi - mesa:hk_agx3_tile_core                          OK              0.04s
+104/115 asahi - mesa:hk_agx3_ioto_program_core                  OK              0.05s
+105/115 asahi - mesa:hk_agx3_raytracing_core                    OK              0.04s
+106/115 asahi - mesa:hk_agx3_ppp_hal300_depth_bias_scissor      OK              0.03s
+107/115 asahi - mesa:hk_agx3_ppp_hal300_depth_stencil           OK              0.03s
+108/115 asahi - mesa:hk_agx3_ppp_viewport_payload               OK              0.03s
+109/115 asahi - mesa:hk_agx3_ppp_w_clamp_cull2                  OK              0.03s
+110/115 asahi - mesa:hk_agx3_vdm_decode                         OK              0.02s
+111/115 asahi - mesa:hk_native_sampler                          OK              0.01s
+112/115 asahi - mesa:hk_texel_alignment                         OK              0.01s
+113/115 asahi - mesa:hk_memory_budget_core                      OK              0.01s
+114/115 asahi - mesa:hk_native_descriptor                       FAIL            0.07s   killed by signal 6 SIGABRT
+>>> ASAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1 UBSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1:print_stacktrace=1 MESON_TEST_ITERATION=1 MSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1:print_stacktrace=1 MALLOC_PERTURB_=47 /home/council/dev/dirtyroom_m4/build/mesa-m4-asahi-host/src/asahi/vulkan/hk_native_descriptor_test
+――――――――――――――――――――――――――――――――――――― ✀  ―――――――――――――――――――――――――――――――――――――
+stderr:
+hk_native_descriptor_test: ../../mesa/m4-asahi/src/asahi/vulkan/tests/test-hk-native-descriptor.c:838: main: Assertion `!hk_pack_native_pbe(9, &native_pbe, &pbe)' failed.
+――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――
+
+115/115 asahi - mesa:agx3_alu_core                              OK              1.59s
+
+Summary of Failures:
+
+ 12/115 asahi - mesa:asahi-agx3-packing                         FAIL            0.08s   exit status 1
+ 13/115 asahi - mesa:agx3_opcode_mapping                        FAIL            0.07s   exit status 1
+ 28/115 asahi - mesa:agx3_compile_fail_closed                   FAIL            0.05s   exit status 1
+ 33/115 asahi - mesa:agx3_multi_store                           FAIL            0.05s   exit status 1
+ 34/115 asahi - mesa:agx3_event_wait                            FAIL            0.05s   exit status 1
+ 35/115 asahi - mesa:agx3_pixel_core                            FAIL            0.05s   exit status 1
+ 36/115 asahi - mesa:agx3_funop_core                            FAIL            0.04s   exit status 1
+ 37/115 asahi - mesa:agx3_rt_core                               FAIL            0.04s   exit status 1
+ 39/115 asahi - mesa:agx3_graphics_compile                      FAIL            0.06s   exit status 1
+ 40/115 asahi - mesa:agx_tests                                  FAIL            0.11s   killed by signal 6 SIGABRT
+114/115 asahi - mesa:hk_native_descriptor                       FAIL            0.07s   killed by signal 6 SIGABRT
+
+Ok:                104 
+Fail:              11  
+
+Full log written to /home/council/dev/dirtyroom_m4/build/mesa-m4-asahi-host/meson-logs/testlog.txt

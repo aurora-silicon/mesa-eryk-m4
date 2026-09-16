@@ -1121,6 +1121,7 @@ hk_g17p_smooth_varyings_supported(struct hk_cmd_buffer *cmd,
                                b->slot == VARYING_SLOT_CULL_PRIMITIVE ||
                                b->slot == VARYING_SLOT_CULL_PRIMITIVE + 1;
          if ((!distance && b->slot != VARYING_SLOT_LAYER &&
+              b->slot != VARYING_SLOT_VIEWPORT &&
               (b->slot < VARYING_SLOT_VAR0 || b->slot > VARYING_SLOT_VAR31)) ||
              (b->perspective && !has_rhw) ||
              b->offset + b->count > vs->info.uvs.components[b->slot])

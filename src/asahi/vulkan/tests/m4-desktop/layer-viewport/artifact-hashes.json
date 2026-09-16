@@ -1,0 +1,6 @@
+{
+  "tools/shader-layer-viewport-probe.c": "8c9429adfeee832a8eedbdce44284b54bf9fef06f90e8e3714762014aefe71a2",
+  "build/directx-layer/shader-layer-viewport-arm64": "441a23d8efe9021b86ba8805166d50d8e1f7599a38c84e8e32db3465319a4b68",
+  "build/directx-layer/gated-r1-library.so": "b244098ab5f222493494c0637c6b91b7c87bebc472fe747aa81fd3b10582906d",
+  "build/mesa-m4-asahi-arm64/src/asahi/vulkan/libvulkan_asahi.so": "97b9ef40f6da6862cd0d67f93bf04727d20264ae227830555193805acc3716b9"
+}

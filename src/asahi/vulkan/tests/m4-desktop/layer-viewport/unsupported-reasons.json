@@ -1,0 +1,5 @@
+{
+  "Exclusive transfer queue not supported. at vktTestCase.cpp:988": 208,
+  "Format does not support the required sample count at vktApiUseAfterCopyTests.cpp:382": 9,
+  "VK_EXT_device_generated_commands is not supported at vktTestCase.cpp:1394": 1836
+}

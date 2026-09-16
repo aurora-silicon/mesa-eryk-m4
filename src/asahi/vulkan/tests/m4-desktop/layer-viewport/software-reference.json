@@ -1,0 +1,66 @@
+{
+  "renderer": "llvmpipe (LLVM 22.1.8, 256 bits)",
+  "source_sha256": "0cab095e685e684e8b0dadc69ce588bee33cf0a7e820755cf4dd6cae186875a3",
+  "environment": {
+    "LIBGL_ALWAYS_SOFTWARE": "1",
+    "MESA_LOADER_DRIVER_OVERRIDE": "llvmpipe",
+    "M4_TEST_LLVMPIPE": "1"
+  },
+  "cases": [
+    {
+      "args": [
+        "vertex",
+        "layer"
+      ],
+      "returncode": 0,
+      "bad_pixels": 0,
+      "pixels": 256
+    },
+    {
+      "args": [
+        "vertex",
+        "viewport"
+      ],
+      "returncode": 0,
+      "bad_pixels": 0,
+      "pixels": 256
+    },
+    {
+      "args": [
+        "vertex",
+        "both"
+      ],
+      "returncode": 0,
+      "bad_pixels": 0,
+      "pixels": 1024
+    },
+    {
+      "args": [
+        "tess",
+        "layer"
+      ],
+      "returncode": 0,
+      "bad_pixels": 0,
+      "pixels": 256
+    },
+    {
+      "args": [
+        "tess",
+        "viewport"
+      ],
+      "returncode": 0,
+      "bad_pixels": 0,
+      "pixels": 256
+    },
+    {
+      "args": [
+        "tess",
+        "both"
+      ],
+      "returncode": 0,
+      "bad_pixels": 0,
+      "pixels": 1024
+    }
+  ],
+  "note": "Observed host software-reference results; no hardware claim."
+}

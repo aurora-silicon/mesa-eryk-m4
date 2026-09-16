@@ -1,0 +1,22 @@
+{
+  "selected": 5,
+  "recorded": 5,
+  "completed": 5,
+  "counts": {
+    "Pass": 5
+  },
+  "classifications": {
+    "unclassified": 5
+  },
+  "elapsed_seconds": 3.423877971014008,
+  "preparation_seconds": 1.5397124229930341,
+  "runner_seconds": 0.6093847310003184,
+  "jobs": 12,
+  "tests_per_group": 1,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "f71be3d79f7dd1595026d25f778c3408f953e0d761e65fbd18a706e62292eead",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T124101103051Z-dx-layer-first-five",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 61.0
+}

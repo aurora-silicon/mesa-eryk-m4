@@ -1,0 +1,32 @@
+Writing test log into /home/council/dev/dirtyroom_m4/build/directx-layer/first-five-shim.qpa
+dEQP Core vulkan-cts-1.4.6.2-0-gf6a29701220f34dd1407513bfe80d74ca7b392ce (0xf6a29701) starting..
+  target implementation = 'Default'
+
+Test case 'dEQP-VK.draw.dynamic_rendering.primary_cmd_buff.shader_layer.vertex_shader_3'..
+  Fail (Rendered image is not correct at vktDrawShaderLayerTests.cpp:941)
+
+Test case 'dEQP-VK.draw.dynamic_rendering.primary_cmd_buff.shader_layer.tessellation_shader_3'..
+  Fail (Rendered image is not correct at vktDrawShaderLayerTests.cpp:1006)
+
+Test case 'dEQP-VK.draw.dynamic_rendering.primary_cmd_buff.shader_viewport_index.vertex_shader_3'..
+  Fail (Rendered image is not correct at vktDrawShaderViewportIndexTests.cpp:996)
+
+Test case 'dEQP-VK.draw.dynamic_rendering.primary_cmd_buff.shader_viewport_index.fragment_shader_3'..
+MESA: error: HAL200 fragment rejected varyings=0 tile=1 cf=1/1 formats=84/0/0 samples=1 layered=0 size=8
+MESA: error: HAL200 varying state: topology=6 provoking=0 tess=0 vs-layout=2 uvs=7 user=2 reads-z=0
+MESA: error: HAL200 varying 0: slot=23 offset=0 count=1 base=0 smooth=0 perspective=0 vertex-components=1 linked-slot=5
+MESA: error: HAL200 program rejected stage=4 layout=0 outputs=0x10 uvs=0 user=0 groups=0/0/0/0/0 indexed-sampler=0 sets=1 prefetch=0 linked=0x563fa6b8eb40 size=1358
+MESA: error: failed to emit native HAL200 bind tail for G16G
+  Fail (vk.endCommandBuffer(commandBuffer): VK_ERROR_FEATURE_NOT_PRESENT at vkCmdUtil.cpp:74)
+
+Test case 'dEQP-VK.draw.dynamic_rendering.primary_cmd_buff.shader_viewport_index.tessellation_shader_3'..
+  Fail (Rendered image is not correct at vktDrawShaderViewportIndexTests.cpp:1064)
+
+DONE!
+
+Test run totals:
+  Passed:        0/5 (0.0%)
+  Failed:        5/5 (100.0%)
+  Not supported: 0/5 (0.0%)
+  Warnings:      0/5 (0.0%)
+  Waived:        0/5 (0.0%)

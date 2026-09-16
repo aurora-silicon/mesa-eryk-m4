@@ -383,11 +383,12 @@ hk_get_device_features(
       .vulkanMemoryModel = true,
       .vulkanMemoryModelDeviceScope = true,
       .vulkanMemoryModelAvailabilityVisibilityChains = false,
-      /* Native UVS/PPP emission currently supports a single target/viewport.
-       * In particular, advertising Layer makes Gallium's layered clear VS
-       * reach a layout rejected by hk_agx3_g17p_vertex_program_info(). */
-      .shaderOutputViewportIndex = !agx_native_graphics(dev),
-      .shaderOutputLayer = !agx_native_graphics(dev),
+      /* G16G exports the packed layer/viewport system value and ordinary
+       * flat varyings for the matching fragment inputs. */
+      .shaderOutputViewportIndex = !agx_native_graphics(dev) ||
+         dev->chip == AGX_CHIP_G16G,
+      .shaderOutputLayer = !agx_native_graphics(dev) ||
+         dev->chip == AGX_CHIP_G16G,
       .subgroupBroadcastDynamicId = true,
 
       /* Vulkan 1.3 */
@@ -1397,7 +1398,8 @@ hk_create_drm_physical_device(struct vk_instance *_instance,
       supported_extensions.EXT_blend_operation_advanced = false;
 
    /* The extension promises both features even to pre-1.2 applications. */
-   if (agx_native_graphics(&pdev->dev))
+   if (agx_native_graphics(&pdev->dev) &&
+       pdev->dev.chip != AGX_CHIP_G16G)
       supported_extensions.EXT_shader_viewport_index_layer = false;
 
    struct vk_features supported_features;

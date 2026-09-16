@@ -1,0 +1,30 @@
+{
+  "id": "20260916T124938282538Z-dx-layer-default-oracles",
+  "verdict": "pass",
+  "transport_returncode": 0,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T124938282538Z-dx-layer-default-oracles",
+  "observations": {
+    "pixel_results": [
+      "PASS: vertex layer exact 256 pixels, bad=0",
+      "PASS: vertex viewport exact 256 pixels, bad=0",
+      "PASS: vertex both exact 1024 pixels, bad=0",
+      "PASS: tess layer exact 256 pixels, bad=0",
+      "PASS: tess viewport exact 256 pixels, bad=0",
+      "PASS: tess both exact 1024 pixels, bad=0",
+      "PASS: six layer viewport configurations"
+    ],
+    "pixel_result_count": 7,
+    "thermal_samples": 5,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 61.25,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 61.25,
+      "Ta000m": 57.0,
+      "Te000m": 57.0,
+      "Te001m": 60.75,
+      "Tp000m": 61.25,
+      "Tp001m": 60.0
+    }
+  }
+}

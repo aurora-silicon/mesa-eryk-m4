@@ -1,0 +1,86 @@
+{
+  "20260916T124101103051Z-dx-layer-first-five": [
+    {
+      "policy": "policy0",
+      "old_min_khz": 912000,
+      "old_max_khz": 1512000,
+      "max_khz": 1512000
+    },
+    {
+      "policy": "policy1",
+      "old_min_khz": 900000,
+      "old_max_khz": 900000,
+      "max_khz": 900000
+    }
+  ],
+  "20260916T124140942161Z-dx-layer-oracles-r1": [
+    {
+      "policy": "policy0",
+      "old_min_khz": 912000,
+      "old_max_khz": 1512000,
+      "max_khz": 1512000
+    },
+    {
+      "policy": "policy1",
+      "old_min_khz": 900000,
+      "old_max_khz": 900000,
+      "max_khz": 900000
+    }
+  ],
+  "20260916T124300357595Z-dx-layer-all-r1": [
+    {
+      "policy": "policy0",
+      "old_min_khz": 912000,
+      "old_max_khz": 1512000,
+      "max_khz": 1512000
+    },
+    {
+      "policy": "policy1",
+      "old_min_khz": 900000,
+      "old_max_khz": 900000,
+      "max_khz": 900000
+    }
+  ],
+  "20260916T124521732629Z-dx-layer-oracles-r2": [
+    {
+      "policy": "policy0",
+      "old_min_khz": 912000,
+      "old_max_khz": 1512000,
+      "max_khz": 1512000
+    },
+    {
+      "policy": "policy1",
+      "old_min_khz": 900000,
+      "old_max_khz": 900000,
+      "max_khz": 900000
+    }
+  ],
+  "20260916T124623528461Z-dx-layer-default-regression": [
+    {
+      "policy": "policy0",
+      "old_min_khz": 912000,
+      "old_max_khz": 1512000,
+      "max_khz": 1512000
+    },
+    {
+      "policy": "policy1",
+      "old_min_khz": 900000,
+      "old_max_khz": 900000,
+      "max_khz": 900000
+    }
+  ],
+  "20260916T124938282538Z-dx-layer-default-oracles": [
+    {
+      "policy": "policy0",
+      "old_min_khz": 912000,
+      "old_max_khz": 1512000,
+      "max_khz": 1512000
+    },
+    {
+      "policy": "policy1",
+      "old_min_khz": 900000,
+      "old_max_khz": 900000,
+      "max_khz": 900000
+    }
+  ]
+}

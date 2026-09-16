@@ -1,0 +1,28 @@
+{
+  "id": "20260916T124938282538Z-dx-layer-default-oracles",
+  "hypothesis": "Default advertised layer and viewport support preserves all six independent routing configurations",
+  "command": [
+    "env",
+    "AGX_MESA_DEBUG=",
+    "HK_G17P_LAUNCH_TRACE=0",
+    "python3",
+    "/root/run-m4-gl.py",
+    "python3",
+    "/root/run-layer-viewport-oracles.py",
+    "/root/asahi-evidence/20260916T124938282538Z-dx-layer-default-oracles/oracles"
+  ],
+  "expected_success": "^PASS: six layer viewport configurations",
+  "seconds": 90,
+  "sources": {
+    "mesa": {
+      "head": "dce433bbeba84745bf97aab8d5cf16a5851c9b3b",
+      "status": " M src/asahi/vulkan/hk_cmd_buffer.c\n M src/asahi/vulkan/hk_physical_device.c\n M src/asahi/vulkan/tests/m4-desktop/asahi-session.py\n M src/asahi/vulkan/tests/m4-desktop/desktop-launch.py\n M src/asahi/vulkan/tests/m4-desktop/vulkan-trim-host.py\n?? src/asahi/vulkan/tests/m4-desktop/layer-viewport/\n?? src/asahi/vulkan/tests/m4-desktop/shader-layer-viewport-probe.c\n",
+      "patch_sha256": "2356ae8cd2b384348a6f6f9da63d2751c9e29778ad5d7b5177e6e0b1c6457ce6"
+    },
+    "kernel": {
+      "head": "acfeb2a9ad782ffecd60daf62e527a161488fda4",
+      "status": "",
+      "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}
