@@ -9,6 +9,7 @@
 #include "agx_bg_eot.h"
 #include "agx_helpers.h"
 #include "agx_scratch.h"
+#include "hk_buffer.h"
 #include "hk_cmd_buffer.h"
 #include "hk_descriptor_table.h"
 #include "hk_entrypoints.h"
@@ -537,6 +538,32 @@ hk_CreateDevice(VkPhysicalDevice physicalDevice,
          goto fail_dev;
       }
       memset(agx_bo_map(dev->sparse_residency), 0xff, bytes);
+      /* A leaf maps 4096 16-KiB pages (64 MiB). Absent leaves and zero
+       * entries mean identity; only sparse/capture-replay aliases need one. */
+      dev->buffer_alias_leaf_count =
+         DIV_ROUND_UP(dev->dev.main_heap_size, 1ull << 26);
+      dev->buffer_alias_leaves = calloc(dev->buffer_alias_leaf_count,
+                                        sizeof(*dev->buffer_alias_leaves));
+      if (!dev->buffer_alias_leaves) {
+         result = VK_ERROR_OUT_OF_HOST_MEMORY;
+         goto fail_dev;
+      }
+      dev->buffer_alias_table = agx_bo_create(
+         &dev->dev, dev->buffer_alias_leaf_count * 8ull, 16384, AGX_BO_READONLY,
+         "Buffer alias directory");
+      if (!dev->buffer_alias_table) {
+         result = VK_ERROR_OUT_OF_DEVICE_MEMORY;
+         goto fail_dev;
+      }
+      memset(agx_bo_map(dev->buffer_alias_table), 0,
+             dev->buffer_alias_leaf_count * 8ull);
+      dev->atomic64_lock = agx_bo_create(&dev->dev, 16384, 16384, 0,
+                                        "64-bit atomic lock");
+      if (!dev->atomic64_lock) {
+         result = VK_ERROR_OUT_OF_DEVICE_MEMORY;
+         goto fail_dev;
+      }
+      memset(agx_bo_map(dev->atomic64_lock), 0, 16384);
    }
 
    /* Sparse page-table publication runs on the CPU. A sparse wait may be
@@ -679,6 +706,8 @@ fail_sampled_images:
 fail_samplers:
    hk_destroy_sampler_heap(dev, &dev->samplers);
 fail_dev:
+   hk_finish_buffer_alias(dev);
+   agx_bo_unreference(&dev->dev, dev->atomic64_lock);
    agx_bo_unreference(&dev->dev, dev->sparse_residency);
    simple_mtx_destroy(&dev->sparse_residency_lock);
    agx_close_device(&dev->dev);
@@ -730,6 +759,8 @@ hk_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
       hk_descriptor_table_finish(dev, &dev->sampled_images);
    hk_descriptor_table_finish(dev, &dev->occlusion_queries);
    agx_bo_unreference(&dev->dev, dev->rodata.bo);
+   hk_finish_buffer_alias(dev);
+   agx_bo_unreference(&dev->dev, dev->atomic64_lock);
    agx_bo_unreference(&dev->dev, dev->heap);
    agx_bo_unreference(&dev->dev, dev->sparse_residency);
    simple_mtx_destroy(&dev->sparse_residency_lock);

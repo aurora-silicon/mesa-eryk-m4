@@ -82,6 +82,7 @@ hk_files = files(
   'hk_shader.c',
   'hk_nir_lower_minmax.c',
   'hk_nir_lower_sparse_access.c',
+  'hk_nir_lower_atomic64.c',
   'hk_shader.h',
   'hk_wsi.c',
   'hk_wsi.h'

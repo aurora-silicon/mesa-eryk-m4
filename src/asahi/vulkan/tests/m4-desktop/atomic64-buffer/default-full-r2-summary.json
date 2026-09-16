@@ -1,0 +1,26 @@
+{
+  "selected": 15576,
+  "recorded": 15576,
+  "completed": 6504,
+  "counts": {
+    "NotSupported": 2499,
+    "Unrun": 9064,
+    "Pass": 4004,
+    "Interrupted": 8,
+    "Timeout": 1
+  },
+  "classifications": {
+    "unclassified": 15576
+  },
+  "elapsed_seconds": 215.96509176999098,
+  "preparation_seconds": 1.6633957789745182,
+  "runner_seconds": 210.38303285000006,
+  "jobs": 12,
+  "tests_per_group": 1,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "933a908090a3f367f153743fbd3be923ad8f0fc9abc120ea258f0b9bcf17c919",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T140254698546Z-dx-atomic64-default-full-r2",
+  "guard_verdict": "process_failure",
+  "command_returncode": 1,
+  "peak_temperature_c": 67.75
+}

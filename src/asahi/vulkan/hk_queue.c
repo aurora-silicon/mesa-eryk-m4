@@ -842,6 +842,7 @@ struct hk_bind_builder {
 
    /* Array of drm_asahi_gem_bind_op's */
    struct util_dynarray binds;
+   struct util_dynarray canonical;
 };
 
 static inline struct hk_bind_builder
@@ -856,6 +857,7 @@ hk_bind_builder(struct hk_device *dev, struct vk_object_base *obj_base,
    };
 
    b.binds = UTIL_DYNARRAY_INIT;
+   b.canonical = UTIL_DYNARRAY_INIT;
    return b;
 }
 
@@ -939,6 +941,12 @@ hk_flush_bind(struct hk_bind_builder *b)
    }
 
    util_dynarray_append(&b->binds, op);
+   /* Image texture operations consume their own sparse page table and
+    * retain the image VA. Keep their global atomics in that same domain.
+    * Buffer aliases use the allocation VA for every global access. */
+   uint64_t canonical = b->mem && !b->image ?
+      b->mem->bo->va->addr + b->memoryOffset : 0;
+   util_dynarray_append(&b->canonical, canonical);
 
    /* Shadow a read-only mapping to the upper half */
    op.flags &= ~DRM_ASAHI_BIND_WRITE;
@@ -949,6 +957,7 @@ hk_flush_bind(struct hk_bind_builder *b)
    }
 
    util_dynarray_append(&b->binds, op);
+   util_dynarray_append(&b->canonical, canonical);
 
    return VK_SUCCESS;
 }
@@ -970,12 +979,18 @@ hk_bind_builder_finish(struct hk_bind_builder *b)
 
    if (b->result == VK_SUCCESS) {
       util_dynarray_foreach(&b->binds, struct drm_asahi_gem_bind_op, op) {
-         if (op->flags & DRM_ASAHI_BIND_WRITE)
+         if (op->flags & DRM_ASAHI_BIND_WRITE) {
             hk_update_sparse_residency(b->dev, op->addr, op->range,
                op->handle != b->dev->dev.scratch_bo->uapi_handle);
+            uint64_t canonical = ((uint64_t *) b->canonical.data)[
+               op - (struct drm_asahi_gem_bind_op *) b->binds.data];
+            VkResult result = hk_update_buffer_alias(b->dev, op->addr, op->range, canonical);
+            if (result != VK_SUCCESS) b->result = result;
+         }
       }
    }
    util_dynarray_fini(&b->binds);
+   util_dynarray_fini(&b->canonical);
    return b->result;
 }
 

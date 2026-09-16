@@ -28,6 +28,10 @@ struct hk_buffer {
 VK_DEFINE_NONDISP_HANDLE_CASTS(hk_buffer, vk.base, VkBuffer,
                                VK_OBJECT_TYPE_BUFFER)
 
+VkResult hk_update_buffer_alias(struct hk_device *dev, uint64_t address,
+                                uint64_t size, uint64_t canonical);
+void hk_finish_buffer_alias(struct hk_device *dev);
+
 void hk_update_sparse_residency(struct hk_device *dev, uint64_t address,
                                  uint64_t size, bool resident);
 

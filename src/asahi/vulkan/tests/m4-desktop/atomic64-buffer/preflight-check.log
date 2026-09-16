@@ -1,0 +1,8 @@
+usage: cts-bulk.py [-h] --cases CASES --runner RUNNER [--binary BINARY]
+                   --output OUTPUT --name NAME [--renderer {m4,lavapipe}]
+                   [--jobs JOBS] [--cpu-max-khz {1860000,4104000}]
+                   [--tests-per-group TESTS_PER_GROUP]
+                   [--runner-seconds RUNNER_SECONDS] [--case-timeout SECONDS]
+                   [--log-images] [--capture-success] [--capture-before]
+                   [--log-sources] [--env KEY=VALUE]
+cts-bulk.py: error: case metadata does not match frozen case list: build/directx-atomic64/default-full-cases.meta.json

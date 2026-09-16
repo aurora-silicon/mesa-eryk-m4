@@ -108,6 +108,10 @@ struct hk_device {
     * remain set; only unbound sparse pages are cleared. */
    struct agx_bo *sparse_residency;
    simple_mtx_t sparse_residency_lock;
+   struct agx_bo *atomic64_lock;
+   struct agx_bo *buffer_alias_table;
+   struct agx_bo **buffer_alias_leaves;
+   unsigned buffer_alias_leaf_count;
 
    uint32_t perftest;
 

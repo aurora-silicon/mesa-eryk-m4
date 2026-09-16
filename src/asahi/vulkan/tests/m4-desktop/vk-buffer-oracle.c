@@ -238,6 +238,10 @@ int main(int argc, char **argv) {
   const bool sparse_texel = sparse_mask_option != NULL;
   const bool sparse_ssbo = getenv("M4_ORACLE_SPARSE_SSBO") != NULL;
   const bool sparse_alias = getenv("M4_ORACLE_SPARSE_ALIAS") != NULL;
+  const bool sparse_reverse = getenv("M4_ORACLE_ALIAS_REVERSE_PAGES") != NULL;
+  if (sparse_reverse && !sparse_alias) die("reverse pages require sparse alias mode");
+  const bool sparse_full_views = getenv("M4_ORACLE_ALIAS_FULL_VIEWS") != NULL;
+  if (sparse_full_views && !sparse_alias) die("full alias views require sparse alias mode");
   const char *sparse_fill = getenv("M4_ORACLE_SPARSE_FILL");
   const char *sparse_shader = getenv("M4_ORACLE_SPARSE_SHADER");
   if (sparse_shader && (!sparse_alias || sparse_fill)) die("sparse shader mode conflict");
@@ -447,14 +451,18 @@ int main(int argc, char **argv) {
     feature_chain = &subgroup;
   }
   const bool want_atomic64 = getenv("M4_ORACLE_ATOMIC64") != NULL;
+  const bool want_shared_atomic64 = want_atomic64 &&
+    !strcmp(getenv("M4_ORACLE_ATOMIC64"), "shared");
   VkPhysicalDeviceShaderAtomicInt64Features atomic64 = {
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES};
   if (want_atomic64) {
     VkPhysicalDeviceFeatures2 query = {
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, .pNext = &atomic64};
     vkGetPhysicalDeviceFeatures2(physical, &query);
-    if (!atomic64.shaderBufferInt64Atomics) die("buffer int64 atomics unavailable");
-    atomic64.shaderSharedInt64Atomics = VK_FALSE;
+    if (want_shared_atomic64 ? !atomic64.shaderSharedInt64Atomics : !atomic64.shaderBufferInt64Atomics)
+      die(want_shared_atomic64 ? "shared int64 atomics unavailable" : "buffer int64 atomics unavailable");
+    atomic64.shaderBufferInt64Atomics = !want_shared_atomic64;
+    atomic64.shaderSharedInt64Atomics = want_shared_atomic64;
     if (!reduction_option) {
       atomic64.pNext = feature_chain;
       feature_chain = &atomic64;
@@ -468,7 +476,8 @@ int main(int argc, char **argv) {
     if (!minmax.samplerFilterMinmax) die("samplerFilterMinmax unavailable");
     minmax = (VkPhysicalDeviceVulkan12Features){.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
       .samplerFilterMinmax=VK_TRUE,.samplerMirrorClampToEdge=VK_TRUE,
-      .shaderBufferInt64Atomics=want_atomic64,.pNext=feature_chain};
+      .shaderBufferInt64Atomics=want_atomic64 && !want_shared_atomic64,
+      .shaderSharedInt64Atomics=want_shared_atomic64,.pNext=feature_chain};
     feature_chain=&minmax;
   }
   VkPhysicalDeviceImageViewMinLodFeaturesEXT view_min = {
@@ -653,12 +662,26 @@ int main(int argc, char **argv) {
     sparse_page_size = alias_requirements.alignment;
     VkSparseMemoryBind bind = {.resourceOffset = sparse_high,
       .size = alias_requirements.size - sparse_high, .memory = memory};
+    VkSparseMemoryBind *reverse_binds = NULL;
+    unsigned reverse_count = 0;
+    if (sparse_reverse) {
+      if (sparse_high || sparse_texel) die("reverse alias mode conflict");
+      reverse_count = alias_requirements.size / sparse_page_size;
+      reverse_binds = calloc(reverse_count, sizeof(*reverse_binds));
+      if (!reverse_binds) die("reverse alias allocation failed");
+      for (unsigned page = 0; page < reverse_count; ++page)
+        reverse_binds[page] = (VkSparseMemoryBind) {
+          .resourceOffset = page * sparse_page_size, .size = sparse_page_size,
+          .memory = memory, .memoryOffset = (reverse_count - page - 1) * sparse_page_size};
+    }
     VkSparseBufferMemoryBindInfo buffer_bind = {
-      .buffer = alias_buffer, .bindCount = 1, .pBinds = &bind};
+      .buffer = alias_buffer, .bindCount = sparse_reverse ? reverse_count : 1,
+      .pBinds = sparse_reverse ? reverse_binds : &bind};
     VkBindSparseInfo info = {.sType = VK_STRUCTURE_TYPE_BIND_SPARSE_INFO,
       .bufferBindCount = 1, .pBufferBinds = &buffer_bind};
     check(vkQueueBindSparse(queue, 1, &info, VK_NULL_HANDLE), "bind alias");
     check(vkQueueWaitIdle(queue), "wait alias bind");
+    free(reverse_binds);
     if (sparse_texel) {
       uint64_t mask = strtoull(sparse_mask_option, &end, 0);
       if (*end) die("invalid sparse page mask");
@@ -853,7 +876,7 @@ int main(int argc, char **argv) {
     descriptor_writes[0].pBufferInfo=NULL;
     descriptor_writes[0].pImageInfo=&image_descriptor;
   }
-  if (sparse_shader) {
+  if (sparse_shader || sparse_full_views) {
     descriptor_buffers[1].offset = 0;
     descriptor_buffers[1].range = buffer_size;
   }

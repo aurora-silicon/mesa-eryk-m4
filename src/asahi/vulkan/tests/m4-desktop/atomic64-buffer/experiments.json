@@ -1,0 +1,811 @@
+{
+  "20260916T130428636023Z-dx-atomic64-minmax-r1": {
+    "id": "20260916T130428636023Z-dx-atomic64-minmax-r1",
+    "verdict": "pass",
+    "transport_returncode": 0,
+    "evidence_fetched": true,
+    "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T130428636023Z-dx-atomic64-minmax-r1",
+    "observations": {
+      "pixel_results": [
+        "PASS: min-unique",
+        "PASS: min-single",
+        "PASS: min-striped",
+        "PASS: max-unique",
+        "PASS: max-single",
+        "PASS: max-striped",
+        "PASS: six unsigned atomic64 minmax configurations"
+      ],
+      "pixel_result_count": 7,
+      "thermal_samples": 3,
+      "malformed_thermal_samples": 0,
+      "peak_temperature_c": 61.25,
+      "channel_peaks_c": {
+        "PMP aggregate die hotspot": 61.25,
+        "Ta000m": 61.25,
+        "Te000m": 58.25,
+        "Te001m": 56.0,
+        "Tp000m": 59.25,
+        "Tp001m": 55.25
+      }
+    }
+  },
+  "20260916T130945184351Z-dx-atomic64-regression-r1": {
+    "id": "20260916T130945184351Z-dx-atomic64-regression-r1",
+    "verdict": "pass",
+    "transport_returncode": 0,
+    "evidence_fetched": true,
+    "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T130945184351Z-dx-atomic64-regression-r1",
+    "observations": {
+      "pixel_results": [],
+      "pixel_result_count": 0,
+      "thermal_samples": 62,
+      "malformed_thermal_samples": 0,
+      "peak_temperature_c": 64.0,
+      "channel_peaks_c": {
+        "PMP aggregate die hotspot": 64.0,
+        "Ta000m": 62.5,
+        "Te000m": 59.5,
+        "Te001m": 62.75,
+        "Tp000m": 64.0,
+        "Tp001m": 62.75
+      }
+    }
+  },
+  "20260916T131618861425Z-dx-atomic64-lock-r1": {
+    "id": "20260916T131618861425Z-dx-atomic64-lock-r1",
+    "verdict": "pass",
+    "transport_returncode": 0,
+    "evidence_fetched": true,
+    "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T131618861425Z-dx-atomic64-lock-r1",
+    "observations": {
+      "pixel_results": [
+        "PASS: carry-64",
+        "PASS: sign-64",
+        "PASS: wrap-64",
+        "PASS: carry-256",
+        "PASS: sign-256",
+        "PASS: wrap-256",
+        "PASS: carry-1024",
+        "PASS: sign-1024",
+        "PASS: wrap-1024",
+        "PASS: nine atomic64 lock configurations"
+      ],
+      "pixel_result_count": 10,
+      "thermal_samples": 4,
+      "malformed_thermal_samples": 0,
+      "peak_temperature_c": 61.5,
+      "channel_peaks_c": {
+        "PMP aggregate die hotspot": 61.5,
+        "Ta000m": 61.5,
+        "Te000m": 58.0,
+        "Te001m": 56.0,
+        "Tp000m": 59.25,
+        "Tp001m": 55.0
+      }
+    }
+  },
+  "20260916T131857900307Z-dx-atomic64-alias-lock-r1": {
+    "id": "20260916T131857900307Z-dx-atomic64-alias-lock-r1",
+    "verdict": "readback_mismatch",
+    "transport_returncode": 1,
+    "evidence_fetched": true,
+    "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T131857900307Z-dx-atomic64-alias-lock-r1",
+    "observations": {
+      "pixel_results": [
+        "FAIL: alias-carry-64",
+        "FAIL: nine atomic64 lock configurations"
+      ],
+      "pixel_result_count": 2,
+      "thermal_samples": 3,
+      "malformed_thermal_samples": 0,
+      "peak_temperature_c": 62.25,
+      "channel_peaks_c": {
+        "PMP aggregate die hotspot": 62.25,
+        "Ta000m": 62.25,
+        "Te000m": 58.0,
+        "Te001m": 55.75,
+        "Tp000m": 59.25,
+        "Tp001m": 54.75
+      }
+    }
+  },
+  "20260916T132535034888Z-dx-atomic64-alias-lock-r2": {
+    "id": "20260916T132535034888Z-dx-atomic64-alias-lock-r2",
+    "verdict": "readback_mismatch",
+    "transport_returncode": 1,
+    "evidence_fetched": true,
+    "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T132535034888Z-dx-atomic64-alias-lock-r2",
+    "observations": {
+      "pixel_results": [
+        "FAIL: alias-carry-64",
+        "FAIL: nine atomic64 lock configurations"
+      ],
+      "pixel_result_count": 2,
+      "thermal_samples": 3,
+      "malformed_thermal_samples": 0,
+      "peak_temperature_c": 60.25,
+      "channel_peaks_c": {
+        "PMP aggregate die hotspot": 60.25,
+        "Ta000m": 60.25,
+        "Te000m": 57.5,
+        "Te001m": 55.5,
+        "Tp000m": 59.25,
+        "Tp001m": 54.75
+      }
+    }
+  },
+  "20260916T133249067770Z-dx-atomic64-canonical-alias-r1": {
+    "id": "20260916T133249067770Z-dx-atomic64-canonical-alias-r1",
+    "verdict": "readback_mismatch",
+    "transport_returncode": 1,
+    "evidence_fetched": true,
+    "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T133249067770Z-dx-atomic64-canonical-alias-r1",
+    "observations": {
+      "pixel_results": [
+        "FAIL: alias-carry-64",
+        "FAIL: nine atomic64 lock configurations"
+      ],
+      "pixel_result_count": 2,
+      "thermal_samples": 3,
+      "malformed_thermal_samples": 0,
+      "peak_temperature_c": 61.25,
+      "channel_peaks_c": {
+        "PMP aggregate die hotspot": 61.25,
+        "Ta000m": 61.25,
+        "Te000m": 58.0,
+        "Te001m": 55.75,
+        "Tp000m": 59.25,
+        "Tp001m": 55.0
+      }
+    }
+  },
+  "20260916T133424412094Z-dx-atomic64-canonical-alias-r2": {
+    "id": "20260916T133424412094Z-dx-atomic64-canonical-alias-r2",
+    "verdict": "pass",
+    "transport_returncode": 0,
+    "evidence_fetched": true,
+    "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T133424412094Z-dx-atomic64-canonical-alias-r2",
+    "observations": {
+      "pixel_results": [
+        "PASS: alias-carry-64",
+        "PASS: alias-sign-64",
+        "PASS: alias-wrap-64",
+        "PASS: alias-carry-256",
+        "PASS: alias-sign-256",
+        "PASS: alias-wrap-256",
+        "PASS: alias-carry-1024",
+        "PASS: alias-sign-1024",
+        "PASS: alias-wrap-1024",
+        "PASS: nine atomic64 lock configurations"
+      ],
+      "pixel_result_count": 10,
+      "thermal_samples": 3,
+      "malformed_thermal_samples": 0,
+      "peak_temperature_c": 60.5,
+      "channel_peaks_c": {
+        "PMP aggregate die hotspot": 60.5,
+        "Ta000m": 60.5,
+        "Te000m": 56.75,
+        "Te001m": 54.5,
+        "Tp000m": 58.75,
+        "Tp001m": 54.25
+      }
+    }
+  },
+  "20260916T133537607044Z-dx-atomic64-buffer-lock-r1": {
+    "id": "20260916T133537607044Z-dx-atomic64-buffer-lock-r1",
+    "verdict": "pass",
+    "transport_returncode": 0,
+    "evidence_fetched": true,
+    "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T133537607044Z-dx-atomic64-buffer-lock-r1",
+    "observations": {
+      "pixel_results": [
+        "PASS: add",
+        "PASS: min",
+        "PASS: max",
+        "PASS: smin",
+        "PASS: smax",
+        "PASS: and",
+        "PASS: or",
+        "PASS: xor",
+        "PASS: exchange",
+        "PASS: compare_swap",
+        "PASS: ten buffer atomic64 operations and returned values"
+      ],
+      "pixel_result_count": 11,
+      "thermal_samples": 4,
+      "malformed_thermal_samples": 0,
+      "peak_temperature_c": 60.75,
+      "channel_peaks_c": {
+        "PMP aggregate die hotspot": 60.75,
+        "Ta000m": 60.75,
+        "Te000m": 58.0,
+        "Te001m": 55.5,
+        "Tp000m": 59.25,
+        "Tp001m": 55.0
+      }
+    }
+  },
+  "20260916T134148598821Z-dx-atomic64-buffer-cts-r1": {
+    "id": "20260916T134148598821Z-dx-atomic64-buffer-cts-r1",
+    "verdict": "gpu_timeout",
+    "transport_returncode": 255,
+    "evidence_fetched": true,
+    "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T134148598821Z-dx-atomic64-buffer-cts-r1",
+    "observations": {
+      "thermal_samples": 8,
+      "malformed_thermal_samples": 0,
+      "peak_temperature_c": 62.0,
+      "channel_peaks_c": {
+        "PMP aggregate die hotspot": 62.0,
+        "Ta000m": 61.75,
+        "Te000m": 58.25,
+        "Te001m": 62.0,
+        "Tp000m": 62.0,
+        "Tp001m": 60.75
+      }
+    }
+  },
+  "20260916T134327859740Z-dx-atomic64-counter-r1": {
+    "id": "20260916T134327859740Z-dx-atomic64-counter-r1",
+    "verdict": "pass",
+    "transport_returncode": 0,
+    "evidence_fetched": true,
+    "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T134327859740Z-dx-atomic64-counter-r1",
+    "observations": {
+      "pixel_results": [
+        "PASS: carry-64",
+        "PASS: sign-64",
+        "PASS: wrap-64",
+        "PASS: carry-256",
+        "PASS: sign-256",
+        "PASS: wrap-256",
+        "PASS: carry-1024",
+        "PASS: sign-1024",
+        "PASS: wrap-1024",
+        "PASS: nine atomic64 lock configurations"
+      ],
+      "pixel_result_count": 10,
+      "thermal_samples": 4,
+      "malformed_thermal_samples": 0,
+      "peak_temperature_c": 64.25,
+      "channel_peaks_c": {
+        "PMP aggregate die hotspot": 64.25,
+        "Ta000m": 59.25,
+        "Te000m": 56.25,
+        "Te001m": 63.25,
+        "Tp000m": 62.0,
+        "Tp001m": 63.75
+      }
+    }
+  },
+  "20260916T134357107063Z-dx-atomic64-alias-counter-r1": {
+    "id": "20260916T134357107063Z-dx-atomic64-alias-counter-r1",
+    "verdict": "pass",
+    "transport_returncode": 0,
+    "evidence_fetched": true,
+    "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T134357107063Z-dx-atomic64-alias-counter-r1",
+    "observations": {
+      "pixel_results": [
+        "PASS: alias-carry-64",
+        "PASS: alias-sign-64",
+        "PASS: alias-wrap-64",
+        "PASS: alias-carry-256",
+        "PASS: alias-sign-256",
+        "PASS: alias-wrap-256",
+        "PASS: alias-carry-1024",
+        "PASS: alias-sign-1024",
+        "PASS: alias-wrap-1024",
+        "PASS: nine atomic64 lock configurations"
+      ],
+      "pixel_result_count": 10,
+      "thermal_samples": 2,
+      "malformed_thermal_samples": 0,
+      "peak_temperature_c": 59.5,
+      "channel_peaks_c": {
+        "PMP aggregate die hotspot": 59.5,
+        "Ta000m": 59.5,
+        "Te000m": 56.25,
+        "Te001m": 54.5,
+        "Tp000m": 58.25,
+        "Tp001m": 53.75
+      }
+    }
+  },
+  "20260916T134555867473Z-dx-atomic64-geometry-r2": {
+    "id": "20260916T134555867473Z-dx-atomic64-geometry-r2",
+    "verdict": "pass",
+    "transport_returncode": 0,
+    "evidence_fetched": true,
+    "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T134555867473Z-dx-atomic64-geometry-r2",
+    "observations": {
+      "pixel_results": [],
+      "pixel_result_count": 0,
+      "thermal_samples": 4,
+      "malformed_thermal_samples": 0,
+      "peak_temperature_c": 60.25,
+      "channel_peaks_c": {
+        "PMP aggregate die hotspot": 60.25,
+        "Ta000m": 60.25,
+        "Te000m": 57.5,
+        "Te001m": 55.5,
+        "Tp000m": 59.25,
+        "Tp001m": 55.0
+      }
+    }
+  },
+  "20260916T134642101238Z-dx-atomic64-buffer-cts-r2": {
+    "id": "20260916T134642101238Z-dx-atomic64-buffer-cts-r2",
+    "verdict": "pass",
+    "transport_returncode": 0,
+    "evidence_fetched": true,
+    "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T134642101238Z-dx-atomic64-buffer-cts-r2",
+    "observations": {
+      "pixel_results": [],
+      "pixel_result_count": 0,
+      "thermal_samples": 21,
+      "malformed_thermal_samples": 0,
+      "peak_temperature_c": 63.0,
+      "channel_peaks_c": {
+        "PMP aggregate die hotspot": 63.0,
+        "Ta000m": 59.25,
+        "Te000m": 57.5,
+        "Te001m": 63.0,
+        "Tp000m": 62.25,
+        "Tp001m": 61.75
+      }
+    }
+  },
+  "20260916T134823382573Z-dx-atomic64-alias-visibility-r1": {
+    "id": "20260916T134823382573Z-dx-atomic64-alias-visibility-r1",
+    "verdict": "readback_mismatch",
+    "transport_returncode": 1,
+    "evidence_fetched": true,
+    "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T134823382573Z-dx-atomic64-alias-visibility-r1",
+    "observations": {
+      "pixel_results": [
+        "FAIL: atomic_then_load",
+        "FAIL: store_then_atomic",
+        "FAIL: two mixed alias visibility configurations"
+      ],
+      "pixel_result_count": 3,
+      "thermal_samples": 2,
+      "malformed_thermal_samples": 0,
+      "peak_temperature_c": 59.75,
+      "channel_peaks_c": {
+        "PMP aggregate die hotspot": 59.75,
+        "Ta000m": 59.75,
+        "Te000m": 56.25,
+        "Te001m": 54.5,
+        "Tp000m": 58.25,
+        "Tp001m": 53.75
+      }
+    }
+  },
+  "20260916T135045371763Z-dx-atomic64-alias-visibility-r2": {
+    "id": "20260916T135045371763Z-dx-atomic64-alias-visibility-r2",
+    "verdict": "pass",
+    "transport_returncode": 0,
+    "evidence_fetched": true,
+    "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T135045371763Z-dx-atomic64-alias-visibility-r2",
+    "observations": {
+      "pixel_results": [
+        "PASS: atomic_then_load",
+        "PASS: store_then_atomic",
+        "PASS: two mixed alias visibility configurations"
+      ],
+      "pixel_result_count": 3,
+      "thermal_samples": 2,
+      "malformed_thermal_samples": 0,
+      "peak_temperature_c": 60.25,
+      "channel_peaks_c": {
+        "PMP aggregate die hotspot": 60.25,
+        "Ta000m": 60.25,
+        "Te000m": 56.25,
+        "Te001m": 54.5,
+        "Tp000m": 58.25,
+        "Tp001m": 53.75
+      }
+    }
+  },
+  "20260916T135122807183Z-dx-atomic64-buffer-regression-r1": {
+    "id": "20260916T135122807183Z-dx-atomic64-buffer-regression-r1",
+    "verdict": "pass",
+    "transport_returncode": 0,
+    "evidence_fetched": true,
+    "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T135122807183Z-dx-atomic64-buffer-regression-r1",
+    "observations": {
+      "pixel_results": [],
+      "pixel_result_count": 0,
+      "thermal_samples": 80,
+      "malformed_thermal_samples": 0,
+      "peak_temperature_c": 64.5,
+      "channel_peaks_c": {
+        "PMP aggregate die hotspot": 64.5,
+        "Ta000m": 61.75,
+        "Te000m": 59.0,
+        "Te001m": 64.5,
+        "Tp000m": 64.5,
+        "Tp001m": 63.0
+      }
+    }
+  },
+  "20260916T135221699468Z-dx-atomic64-sparse-oracles-r1": {
+    "id": "20260916T135221699468Z-dx-atomic64-sparse-oracles-r1",
+    "verdict": "readback_mismatch",
+    "transport_returncode": 1,
+    "evidence_fetched": true,
+    "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T135221699468Z-dx-atomic64-sparse-oracles-r1",
+    "observations": {
+      "pixel_results": [
+        "PASS: fetch-0",
+        "PASS: fetch-1",
+        "PASS: fetch-2",
+        "PASS: fetch-3",
+        "PASS: sparse-0",
+        "PASS: sparse-1",
+        "PASS: sparse-2",
+        "PASS: sparse-3",
+        "PASS: load-0",
+        "PASS: load-1",
+        "PASS: load-2",
+        "PASS: load-3",
+        "PASS: store-0",
+        "PASS: store-1",
+        "PASS: store-2",
+        "PASS: store-3",
+        "PASS: atomic-0",
+        "FAIL: atomic-1",
+        "FAIL: atomic-2",
+        "FAIL: atomic-3",
+        "PASS: store-atomic-0",
+        "FAIL: store-atomic-1",
+        "FAIL: store-atomic-2",
+        "FAIL: store-atomic-3",
+        "FAIL: 24 strict sparse image configurations"
+      ],
+      "pixel_result_count": 25,
+      "thermal_samples": 8,
+      "malformed_thermal_samples": 0,
+      "peak_temperature_c": 63.0,
+      "channel_peaks_c": {
+        "PMP aggregate die hotspot": 63.0,
+        "Ta000m": 63.0,
+        "Te000m": 59.5,
+        "Te001m": 57.0,
+        "Tp000m": 60.75,
+        "Tp001m": 56.75
+      }
+    }
+  },
+  "20260916T135507731427Z-dx-atomic64-buffer-oracles-r2": {
+    "id": "20260916T135507731427Z-dx-atomic64-buffer-oracles-r2",
+    "verdict": "pass",
+    "transport_returncode": 0,
+    "evidence_fetched": true,
+    "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T135507731427Z-dx-atomic64-buffer-oracles-r2",
+    "observations": {
+      "pixel_results": [
+        "PASS: 32-0-store_atomic",
+        "PASS: 32-1-load",
+        "PASS: 32-1-store_load",
+        "PASS: 32-1-atomic_load",
+        "PASS: 32-1-store_atomic",
+        "PASS: 64-0-load",
+        "PASS: 64-0-store_load",
+        "PASS: 64-0-atomic_load",
+        "PASS: 64-0-store_atomic",
+        "PASS: 64-1-load",
+        "PASS: 64-1-store_load",
+        "PASS: 64-1-atomic_load",
+        "PASS: 64-1-store_atomic",
+        "PASS: sixteen mixed sparse alias configurations",
+        "PASS: min-unique",
+        "PASS: min-single",
+        "PASS: min-striped",
+        "PASS: max-unique",
+        "PASS: max-single",
+        "PASS: max-striped",
+        "PASS: six unsigned atomic64 minmax configurations",
+        "PASS: alias-carry-64",
+        "PASS: alias-sign-64",
+        "PASS: alias-wrap-64",
+        "PASS: alias-carry-256",
+        "PASS: alias-sign-256",
+        "PASS: alias-wrap-256",
+        "PASS: alias-carry-1024",
+        "PASS: alias-sign-1024",
+        "PASS: alias-wrap-1024",
+        "PASS: nine atomic64 lock configurations",
+        "PASS: 59 independent buffer atomic64 and alias configurations"
+      ],
+      "pixel_result_count": 66,
+      "thermal_samples": 12,
+      "malformed_thermal_samples": 0,
+      "peak_temperature_c": 61.5,
+      "channel_peaks_c": {
+        "PMP aggregate die hotspot": 61.5,
+        "Ta000m": 61.5,
+        "Te000m": 58.25,
+        "Te001m": 56.0,
+        "Tp000m": 59.25,
+        "Tp001m": 55.25
+      }
+    }
+  },
+  "20260916T135550665466Z-dx-atomic64-sparse-oracles-r2": {
+    "id": "20260916T135550665466Z-dx-atomic64-sparse-oracles-r2",
+    "verdict": "readback_mismatch",
+    "transport_returncode": 1,
+    "evidence_fetched": true,
+    "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T135550665466Z-dx-atomic64-sparse-oracles-r2",
+    "observations": {
+      "pixel_results": [
+        "PASS: exact minmax 33-max",
+        "PASS: exact minmax 34-max",
+        "PASS: exact minmax 35-max",
+        "PASS: exact minmax 36-max",
+        "PASS: exact minmax 37-max",
+        "PASS: exact minmax 38-max",
+        "PASS: exact minmax 39-max",
+        "PASS: exact minmax 40-max",
+        "PASS: exact minmax 41-max",
+        "PASS: exact minmax 42-max",
+        "PASS: exact minmax 43-max",
+        "PASS: exact minmax 44-max",
+        "PASS: exact minmax 45-max",
+        "PASS: exact minmax 46-max",
+        "PASS: exact minmax 47-max",
+        "PASS: exact minmax 48-max",
+        "PASS: exact minmax 49-max",
+        "PASS: exact minmax 50-max",
+        "PASS: exact minmax 51-max",
+        "PASS: exact minmax 52-max",
+        "PASS: exact minmax 53-max",
+        "PASS: exact minmax 54-max",
+        "PASS: exact minmax 55-max",
+        "PASS: exact minmax 56-max",
+        "PASS: exact minmax 57-max",
+        "PASS: exact minmax 58-max",
+        "PASS: exact minmax 59-max",
+        "PASS: exact minmax 60-max",
+        "FAIL: exact minmax 61-max",
+        "PASS: exact minmax 62-max",
+        "PASS: exact minmax 63-max",
+        "FAIL: minmax sampler oracles"
+      ],
+      "pixel_result_count": 156,
+      "thermal_samples": 78,
+      "malformed_thermal_samples": 0,
+      "peak_temperature_c": 67.25,
+      "channel_peaks_c": {
+        "PMP aggregate die hotspot": 67.25,
+        "Ta000m": 67.25,
+        "Te000m": 63.0,
+        "Te001m": 60.25,
+        "Tp000m": 63.75,
+        "Tp001m": 60.0
+      }
+    }
+  },
+  "20260916T135940346419Z-dx-atomic64-default-oracles": {
+    "id": "20260916T135940346419Z-dx-atomic64-default-oracles",
+    "verdict": "pass",
+    "transport_returncode": 0,
+    "evidence_fetched": true,
+    "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T135940346419Z-dx-atomic64-default-oracles",
+    "observations": {
+      "pixel_results": [
+        "PASS: exact minmax 35-max",
+        "PASS: exact minmax 36-max",
+        "PASS: exact minmax 37-max",
+        "PASS: exact minmax 38-max",
+        "PASS: exact minmax 39-max",
+        "PASS: exact minmax 40-max",
+        "PASS: exact minmax 41-max",
+        "PASS: exact minmax 42-max",
+        "PASS: exact minmax 43-max",
+        "PASS: exact minmax 44-max",
+        "PASS: exact minmax 45-max",
+        "PASS: exact minmax 46-max",
+        "PASS: exact minmax 47-max",
+        "PASS: exact minmax 48-max",
+        "PASS: exact minmax 49-max",
+        "PASS: exact minmax 50-max",
+        "PASS: exact minmax 51-max",
+        "PASS: exact minmax 52-max",
+        "PASS: exact minmax 53-max",
+        "PASS: exact minmax 54-max",
+        "PASS: exact minmax 55-max",
+        "PASS: exact minmax 56-max",
+        "PASS: exact minmax 57-max",
+        "PASS: exact minmax 58-max",
+        "PASS: exact minmax 59-max",
+        "PASS: exact minmax 60-max",
+        "PASS: exact minmax 61-max",
+        "PASS: exact minmax 62-max",
+        "PASS: exact minmax 63-max",
+        "PASS: minmax sampler oracles",
+        "PASS: default sampler 207 configurations",
+        "PASS: strict 88 and sampler 207 independent configurations"
+      ],
+      "pixel_result_count": 297,
+      "thermal_samples": 99,
+      "malformed_thermal_samples": 0,
+      "peak_temperature_c": 65.25,
+      "channel_peaks_c": {
+        "PMP aggregate die hotspot": 65.25,
+        "Ta000m": 65.25,
+        "Te000m": 61.75,
+        "Te001m": 60.0,
+        "Tp000m": 63.0,
+        "Tp001m": 59.0
+      }
+    }
+  },
+  "20260916T140105768429Z-dx-atomic64-default-full": {
+    "id": "20260916T140105768429Z-dx-atomic64-default-full",
+    "verdict": "process_failure",
+    "transport_returncode": 1,
+    "evidence_fetched": true,
+    "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T140105768429Z-dx-atomic64-default-full",
+    "observations": {
+      "pixel_results": [],
+      "pixel_result_count": 0,
+      "thermal_samples": 3,
+      "malformed_thermal_samples": 0,
+      "peak_temperature_c": 62.5,
+      "channel_peaks_c": {
+        "PMP aggregate die hotspot": 62.5,
+        "Ta000m": 62.5,
+        "Te000m": 59.0,
+        "Te001m": 57.0,
+        "Tp000m": 60.75,
+        "Tp001m": 56.25
+      }
+    }
+  },
+  "20260916T140254698546Z-dx-atomic64-default-full-r2": {
+    "id": "20260916T140254698546Z-dx-atomic64-default-full-r2",
+    "verdict": "process_failure",
+    "transport_returncode": 1,
+    "evidence_fetched": true,
+    "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T140254698546Z-dx-atomic64-default-full-r2",
+    "observations": {
+      "pixel_results": [],
+      "pixel_result_count": 0,
+      "thermal_samples": 425,
+      "malformed_thermal_samples": 0,
+      "peak_temperature_c": 67.75,
+      "channel_peaks_c": {
+        "PMP aggregate die hotspot": 67.75,
+        "Ta000m": 63.0,
+        "Te000m": 62.5,
+        "Te001m": 67.5,
+        "Tp000m": 67.75,
+        "Tp001m": 67.75
+      }
+    }
+  },
+  "20260916T140854595436Z-dx-atomic64-trim-single": {
+    "id": "20260916T140854595436Z-dx-atomic64-trim-single",
+    "verdict": "pass",
+    "transport_returncode": 0,
+    "evidence_fetched": true,
+    "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T140854595436Z-dx-atomic64-trim-single",
+    "observations": {
+      "pixel_results": [],
+      "pixel_result_count": 0,
+      "thermal_samples": 14,
+      "malformed_thermal_samples": 0,
+      "peak_temperature_c": 67.0,
+      "channel_peaks_c": {
+        "PMP aggregate die hotspot": 67.0,
+        "Ta000m": 62.25,
+        "Te000m": 59.0,
+        "Te001m": 66.75,
+        "Tp000m": 63.5,
+        "Tp001m": 67.0
+      }
+    }
+  },
+  "20260916T140917735974Z-dx-atomic64-default-sparse-full": {
+    "id": "20260916T140917735974Z-dx-atomic64-default-sparse-full",
+    "verdict": "pass",
+    "transport_returncode": 0,
+    "evidence_fetched": true,
+    "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T140917735974Z-dx-atomic64-default-sparse-full",
+    "observations": {
+      "pixel_results": [],
+      "pixel_result_count": 0,
+      "thermal_samples": 912,
+      "malformed_thermal_samples": 0,
+      "peak_temperature_c": 71.0,
+      "channel_peaks_c": {
+        "PMP aggregate die hotspot": 71.0,
+        "Ta000m": 64.5,
+        "Te000m": 64.0,
+        "Te001m": 69.5,
+        "Tp000m": 69.25,
+        "Tp001m": 71.0
+      }
+    }
+  },
+  "20260916T141746742905Z-dx-atomic64-default-regression": {
+    "id": "20260916T141746742905Z-dx-atomic64-default-regression",
+    "verdict": "pass",
+    "transport_returncode": 0,
+    "evidence_fetched": true,
+    "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T141746742905Z-dx-atomic64-default-regression",
+    "observations": {
+      "pixel_results": [],
+      "pixel_result_count": 0,
+      "thermal_samples": 98,
+      "malformed_thermal_samples": 0,
+      "peak_temperature_c": 62.75,
+      "channel_peaks_c": {
+        "PMP aggregate die hotspot": 62.5,
+        "Ta000m": 58.5,
+        "Te000m": 58.5,
+        "Te001m": 60.75,
+        "Tp000m": 62.75,
+        "Tp001m": 61.25
+      }
+    }
+  },
+  "20260916T141904389100Z-dx-atomic64-final-oracles": {
+    "id": "20260916T141904389100Z-dx-atomic64-final-oracles",
+    "verdict": "pass",
+    "transport_returncode": 0,
+    "evidence_fetched": true,
+    "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T141904389100Z-dx-atomic64-final-oracles",
+    "observations": {
+      "pixel_results": [
+        "PASS: 32-0-store_atomic",
+        "PASS: 32-1-load",
+        "PASS: 32-1-store_load",
+        "PASS: 32-1-atomic_load",
+        "PASS: 32-1-store_atomic",
+        "PASS: 64-0-load",
+        "PASS: 64-0-store_load",
+        "PASS: 64-0-atomic_load",
+        "PASS: 64-0-store_atomic",
+        "PASS: 64-1-load",
+        "PASS: 64-1-store_load",
+        "PASS: 64-1-atomic_load",
+        "PASS: 64-1-store_atomic",
+        "PASS: sixteen mixed sparse alias configurations",
+        "PASS: min-unique",
+        "PASS: min-single",
+        "PASS: min-striped",
+        "PASS: max-unique",
+        "PASS: max-single",
+        "PASS: max-striped",
+        "PASS: six unsigned atomic64 minmax configurations",
+        "PASS: alias-carry-64",
+        "PASS: alias-sign-64",
+        "PASS: alias-wrap-64",
+        "PASS: alias-carry-256",
+        "PASS: alias-sign-256",
+        "PASS: alias-wrap-256",
+        "PASS: alias-carry-1024",
+        "PASS: alias-sign-1024",
+        "PASS: alias-wrap-1024",
+        "PASS: nine atomic64 lock configurations",
+        "PASS: 59 independent buffer atomic64 and alias configurations"
+      ],
+      "pixel_result_count": 66,
+      "thermal_samples": 22,
+      "malformed_thermal_samples": 0,
+      "peak_temperature_c": 60.25,
+      "channel_peaks_c": {
+        "PMP aggregate die hotspot": 60.0,
+        "Ta000m": 56.75,
+        "Te000m": 57.0,
+        "Te001m": 56.0,
+        "Tp000m": 60.25,
+        "Tp001m": 56.0
+      }
+    }
+  }
+}

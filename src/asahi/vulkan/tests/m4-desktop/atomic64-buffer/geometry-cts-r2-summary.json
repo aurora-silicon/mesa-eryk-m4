@@ -1,0 +1,22 @@
+{
+  "selected": 1,
+  "recorded": 1,
+  "completed": 1,
+  "counts": {
+    "Pass": 1
+  },
+  "classifications": {
+    "unclassified": 1
+  },
+  "elapsed_seconds": 2.9091972979949787,
+  "preparation_seconds": 1.3815776410046965,
+  "runner_seconds": 1.009302961000003,
+  "jobs": 12,
+  "tests_per_group": 1,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "c88ecc0c43e14dfbe8c975b12684957e863ab06fa585379759c286695f06f2da",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T134555867473Z-dx-atomic64-geometry-r2",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 60.25
+}

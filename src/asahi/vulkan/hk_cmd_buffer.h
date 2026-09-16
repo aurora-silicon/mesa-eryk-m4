@@ -137,6 +137,8 @@ struct hk_root_descriptor_table {
    uint64_t sparse_residency_map;
    uint64_t sparse_va_base;
    uint64_t sparse_va_size;
+   uint64_t atomic64_lock;
+   uint64_t buffer_alias_table;
 };
 
 /* helper macro for computing root descriptor byte offsets */

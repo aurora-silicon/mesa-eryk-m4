@@ -20,6 +20,8 @@ p.add_argument('--output', type=Path, required=True)
 p.add_argument('--name', required=True)
 p.add_argument('--renderer', choices=('m4', 'lavapipe'), default='m4', help='Guarded renderer for hardware/reference comparisons')
 p.add_argument('--jobs', type=int, default=20)
+p.add_argument('--cpu-max-khz', type=int, default=1860000, choices=[1860000, 4104000],
+               help='CPU ceiling the guard applies during the run')
 p.add_argument('--tests-per-group', type=int, default=50)
 p.add_argument('--runner-seconds', type=int, default=90)
 p.add_argument('--case-timeout', type=int, default=60, choices=range(1, 121),
@@ -28,6 +30,8 @@ p.add_argument('--log-images', action='store_true', help='Retain reference/resul
 p.add_argument('--capture-success', action='store_true', help='Capture successful compiler inputs for offline diagnosis')
 p.add_argument('--capture-before', action='store_true', help='Save compiler inputs before compilation to diagnose assertions')
 p.add_argument('--log-sources', action='store_true', help='Retain CTS shader source in targeted runs')
+p.add_argument('--env', action='append', metavar='KEY=VALUE', default=[],
+               help='Recorded driver environment override passed to the remote runner')
 a = p.parse_args()
 if not re.fullmatch('[a-z0-9][a-z0-9-]*', a.name) or a.jobs < 1 or a.tests_per_group < 1 or not 1 <= a.runner_seconds <= 1700:
     p.error('invalid name or bounds')
@@ -35,6 +39,14 @@ raw = a.cases.read_bytes()
 cases = raw.decode().splitlines()
 if not cases or len(cases) != len(set(cases)):
     p.error('expected unique nonempty frozen case list')
+# Reject mismatched catalog identities locally, before staging or arming a run.
+sidecar = a.cases.with_suffix('.meta.json')
+if sidecar.exists():
+    metadata = json.loads(sidecar.read_text())
+    if (metadata.get('schema') != 1 or
+            metadata.get('cases_sha256') != hashlib.sha256(raw).hexdigest() or
+            [item['case'] for item in metadata['cases']] != cases):
+        p.error(f'case metadata does not match frozen case list: {sidecar}')
 a.output.mkdir(parents=True, exist_ok=False)
 remote = '/root/cts-bulk/' + a.name + '-' + hashlib.sha256(raw).hexdigest()[:12]
 host = 'root@omarchy-m4'
@@ -54,7 +66,8 @@ with (a.output/'stage.log').open('w') as log:
 preparation_seconds = time.monotonic()-prep
 command = [sys.executable, str(ROOT/'tools/gpu-experiment.py'), '--name', a.name,
     '--hypothesis', 'Measure frozen CTS cases with grouped first-attempt execution',
-    '--expect', '^CTS_BATCH_COMPLETE:', '--seconds', str(a.runner_seconds+20), '--',
+    '--expect', '^CTS_BATCH_COMPLETE:', '--seconds', str(a.runner_seconds+20),
+    '--cpu-max-khz', str(a.cpu_max_khz), '--',
     'python3', remote+'/cts-sample.py', 'batch', '--backend', 'deqp-runner',
     '--guard-output', '{output}', '--binary', a.binary, '--cases', remote+'/cases.txt',
     '--deqp-runner', remote+'/deqp-runner', '--count', str(len(cases)), '--jobs', str(a.jobs),
@@ -63,6 +76,8 @@ command = [sys.executable, str(ROOT/'tools/gpu-experiment.py'), '--name', a.name
 for option in ('log_images', 'log_sources', 'capture_success', 'capture_before'):
     if getattr(a, option):
         command.append('--' + option.replace('_', '-'))
+for item in a.env:
+    command += ['--env', item]
 begin = time.monotonic()
 with (a.output/'experiment.log').open('w') as log:
     rc = subprocess.run(command, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT).returncode

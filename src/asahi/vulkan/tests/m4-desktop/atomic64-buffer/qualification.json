@@ -1,0 +1,21 @@
+{
+  "buffer_default": true,
+  "shared": false,
+  "image": false,
+  "buffer_cts": {
+    "pass_count": 192,
+    "not_supported": 64,
+    "reason": "mesh/task"
+  },
+  "default_regression": "20260916T141746742905Z-dx-atomic64-default-regression",
+  "default_sparse": "20260916T140917735974Z-dx-atomic64-default-sparse-full",
+  "independent_atomic": "20260916T141904389100Z-dx-atomic64-final-oracles",
+  "independent_sparse_sampler": "20260916T135940346419Z-dx-atomic64-default-oracles",
+  "final_library_sha256": "3754044c611f814cb3fac3eb64a8da84ce1efe124a72f5e054edf5184d7bc5cb",
+  "full_sparse_library_sha256": "d7563a9dd21d89de38b2fcfe0103f34a9956ad3ca0bb28b67142c5b975bf2f7a",
+  "source_difference": "Final library adds an explicit host-allocation-failure error path and clarifies a lock comment; shader behavior is unchanged.",
+  "kernel": "acfeb2a9ad78",
+  "submit_timing_bit23": false,
+  "missing_groups": 736,
+  "missing_cases": 1664734
+}

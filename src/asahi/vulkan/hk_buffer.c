@@ -78,11 +78,56 @@ hk_get_bda_replay_addr(const VkBufferCreateInfo *pCreateInfo)
 }
 
 void
+hk_finish_buffer_alias(struct hk_device *dev)
+{
+   if (dev->buffer_alias_leaves) {
+      for (unsigned i = 0; i < dev->buffer_alias_leaf_count; ++i)
+         agx_bo_unreference(&dev->dev, dev->buffer_alias_leaves[i]);
+      free(dev->buffer_alias_leaves);
+   }
+   agx_bo_unreference(&dev->dev, dev->buffer_alias_table);
+}
+
+VkResult
+hk_update_buffer_alias(struct hk_device *dev, uint64_t address,
+                        uint64_t size, uint64_t canonical)
+{
+   if (!dev->buffer_alias_table || !size)
+      return VK_SUCCESS;
+   uint64_t offset = address - dev->dev.main_heap_base;
+   assert(offset < dev->dev.main_heap_size &&
+          size <= dev->dev.main_heap_size - offset);
+   assert(!(offset % 16384) && !(size % 16384) && !(canonical % 16384));
+   simple_mtx_lock(&dev->sparse_residency_lock);
+   uint64_t *directory = agx_bo_map(dev->buffer_alias_table);
+   for (uint64_t off = 0; off < size; off += 16384) {
+      unsigned index = (offset + off) >> 26;
+      if (!dev->buffer_alias_leaves[index]) {
+         if (!canonical) continue;
+         struct agx_bo *leaf = agx_bo_create(&dev->dev, 32768, 16384,
+                                            AGX_BO_READONLY, "Buffer alias leaf");
+         if (!leaf) {
+            simple_mtx_unlock(&dev->sparse_residency_lock);
+            return VK_ERROR_OUT_OF_DEVICE_MEMORY;
+         }
+         memset(agx_bo_map(leaf), 0, 32768);
+         dev->buffer_alias_leaves[index] = leaf;
+         directory[index] = leaf->va->addr;
+      }
+      uint64_t *leaf = agx_bo_map(dev->buffer_alias_leaves[index]);
+      leaf[((offset + off) >> 14) & 4095] = canonical ? canonical + off : 0;
+   }
+   simple_mtx_unlock(&dev->sparse_residency_lock);
+   return VK_SUCCESS;
+}
+
+void
 hk_update_sparse_residency(struct hk_device *dev, uint64_t address,
                             uint64_t size, bool resident)
 {
    if (!dev->sparse_residency || !size)
       return;
+   hk_update_buffer_alias(dev, address, size, 0);
 
    assert(address >= dev->dev.main_heap_base);
    const uint64_t offset = address - dev->dev.main_heap_base;
@@ -330,6 +375,9 @@ hk_BindBufferMemory2(VkDevice device, uint32_t bindInfoCount,
             return VK_ERROR_UNKNOWN;
          hk_update_sparse_residency(dev, buffer->va->addr,
                                      buffer->va->size_B, true);
+         VkResult alias_result = hk_update_buffer_alias(dev, buffer->va->addr,
+            size, mem->bo->va->addr + pBindInfos[i].memoryOffset);
+         if (alias_result != VK_SUCCESS) return alias_result;
       } else {
          assert(buffer->vk.device_address == 0);
          buffer->vk.device_address =

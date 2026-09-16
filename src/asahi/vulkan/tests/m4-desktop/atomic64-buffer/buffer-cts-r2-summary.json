@@ -1,0 +1,23 @@
+{
+  "selected": 256,
+  "recorded": 256,
+  "completed": 256,
+  "counts": {
+    "Pass": 192,
+    "NotSupported": 64
+  },
+  "classifications": {
+    "unclassified": 256
+  },
+  "elapsed_seconds": 11.942508206993807,
+  "preparation_seconds": 1.4232786369975656,
+  "runner_seconds": 9.707383902999993,
+  "jobs": 12,
+  "tests_per_group": 1,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "0a5e4b4bcdb4accb6e59acadd33e5a83b33023dec3530c4c87c4a8745688d63c",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T134642101238Z-dx-atomic64-buffer-cts-r2",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 63.0
+}

@@ -1,0 +1,25 @@
+{
+  "selected": 256,
+  "recorded": 256,
+  "completed": 11,
+  "counts": {
+    "Pass": 3,
+    "Unrun": 240,
+    "NotSupported": 8,
+    "Interrupted": 5
+  },
+  "classifications": {
+    "unclassified": 256
+  },
+  "elapsed_seconds": 55.5965242490056,
+  "preparation_seconds": 1.3410814160015434,
+  "runner_seconds": null,
+  "jobs": 12,
+  "tests_per_group": 1,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "0a5e4b4bcdb4accb6e59acadd33e5a83b33023dec3530c4c87c4a8745688d63c",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T134148598821Z-dx-atomic64-buffer-cts-r1",
+  "guard_verdict": "gpu_timeout",
+  "command_returncode": 1,
+  "peak_temperature_c": 62.0
+}

@@ -896,6 +896,8 @@ hk_cmd_buffer_upload_root(struct hk_cmd_buffer *cmd,
       ? dev->sparse_residency->va->addr : 0;
    root->sparse_va_base = dev->dev.main_heap_base;
    root->sparse_va_size = dev->dev.main_heap_size;
+   root->buffer_alias_table = dev->buffer_alias_table ? dev->buffer_alias_table->va->addr : 0;
+   root->atomic64_lock = dev->atomic64_lock ? dev->atomic64_lock->va->addr : 0;
 
    memcpy(root_ptr.cpu, root, sizeof(*root));
    return root_ptr.gpu;

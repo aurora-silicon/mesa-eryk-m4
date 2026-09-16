@@ -1907,6 +1907,9 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
             agx_chip_descriptor_generation(dev->dev.chip));
    NIR_PASS(_, nir, agx_nir_lower_multisampled_image_store);
 
+   if (dev->dev.chip == AGX_CHIP_G16G)
+      NIR_PASS(_, nir, hk_nir_lower_memory_aliases);
+
    if (dev->dev.chip == AGX_CHIP_G16G &&
        (features & HK_FEAT_STRICT_SPARSE))
       NIR_PASS(_, nir, hk_nir_lower_sparse_access);
@@ -2153,6 +2156,12 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
                nir_xfb_info *xfb_info, unsigned set_count,
                struct vk_descriptor_set_layout *const *set_layouts)
 {
+   /* Geometry's count variant removes application side effects. Expand
+    * atomic64 only after Poly split, otherwise it drops the lock release
+    * while retaining the acquisition that controls the retry loop. */
+   if (dev->dev.chip == AGX_CHIP_G16G && hk_nir_lower_atomic64(nir))
+      agx_preprocess_nir_g17p(nir);
+
    unsigned nr_vbos = 0;
    bool kill_psiz = false;
    shader->info.writes_memory = nir->info.writes_memory;

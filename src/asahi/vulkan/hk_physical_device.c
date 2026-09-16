@@ -343,7 +343,7 @@ hk_get_device_features(
       .storageBuffer8BitAccess = true,
       .uniformAndStorageBuffer8BitAccess = true,
       .storagePushConstant8 = true,
-      .shaderBufferInt64Atomics = false,
+      .shaderBufferInt64Atomics = dev->chip == AGX_CHIP_G16G,
       .shaderSharedInt64Atomics = false,
       .shaderFloat16 = true,
       .shaderInt8 = true,
@@ -1390,6 +1390,7 @@ hk_create_drm_physical_device(struct vk_instance *_instance,
    hk_get_device_extensions(instance, &supported_extensions);
    supported_extensions.EXT_sampler_filter_minmax |= pdev->dev.chip == AGX_CHIP_G16G;
    supported_extensions.EXT_image_view_min_lod |= pdev->dev.chip == AGX_CHIP_G16G;
+   supported_extensions.KHR_shader_atomic_int64 |= pdev->dev.chip == AGX_CHIP_G16G;
 
    /* HAL200 advanced blend epilogs currently complete without a fault but
     * write zero instead of the blended colour.  Keep the extension private to
