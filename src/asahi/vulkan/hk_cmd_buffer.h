@@ -378,6 +378,9 @@ struct hk_cs {
    /* GPU timestamp resets must retire before firmware writes query results. */
    bool ends_timestamp_reset;
 
+   /* M4 aliases need the firmware completion flush at a memory dependency. */
+   bool ends_memory_dependency;
+
    /* Active-context selector consumed by AGX3 VertexProgramVariant. */
    bool agx3_active_context_selector_valid;
    uint32_t agx3_raw_active_context_selector;
@@ -477,6 +480,8 @@ hk_cs_merge_cdm(struct hk_cs *a, const struct hk_cs *b)
 
    a->timestamp = b->timestamp;
    a->ends_timestamp_reset |= b->ends_timestamp_reset;
+   a->ends_memory_dependency |= b->ends_memory_dependency;
+
 
    a->stats.calls += b->stats.calls;
    a->stats.cmds += b->stats.cmds;

@@ -316,12 +316,7 @@ hk_buffer_address(const struct hk_buffer *buffer, uint64_t offset,
     * is NULL, the buffer is not sparse resident, so we don't need the fix up...
     * and indeed, there may not be a shadow map available.
     */
-   /* G16G: the read-only alias half returns wrong data for texel-buffer and
-    * storage reads of bound sparse pages (CTS sparse_resources.buffer.*
-    * sparse_residency read tests pass through the read/write address and fail
-    * through the alias). With residencyNonResidentStrict off, unbound pages
-    * may read anything, so the read/write mapping is the correct address. */
-   if (read_only && buffer->va && dev->dev.chip != AGX_CHIP_G16G) {
+   if (read_only && buffer->va) {
       addr = agx_rw_addr_to_ro(&dev->dev, addr);
    }
 

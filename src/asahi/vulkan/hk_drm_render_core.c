@@ -152,6 +152,26 @@ hk_drm_attachment_set_add(struct hk_drm_attachment_set *set,
    return true;
 }
 
+/* A failed merge must leave both commands' flush ranges intact. */
+bool
+hk_drm_attachment_set_merge(struct hk_drm_attachment_set *dst,
+                            const struct hk_drm_attachment_set *src,
+                            unsigned limit)
+{
+   if (!dst->complete || !src->complete)
+      return false;
+   struct hk_drm_attachment_set merged = *dst;
+   for (unsigned i = 0; i < src->count; i++) {
+      if (!hk_drm_attachment_set_add(&merged, src->list[i].pointer,
+                                      src->list[i].size))
+         return false;
+   }
+   if (merged.count > limit)
+      return false;
+   *dst = merged;
+   return true;
+}
+
 static bool
 hk_drm_command_is_attachment(uint16_t type)
 {

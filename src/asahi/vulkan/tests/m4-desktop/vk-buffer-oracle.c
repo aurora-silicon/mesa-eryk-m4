@@ -70,6 +70,8 @@ VK_FN(vkEndCommandBuffer);
 VK_FN(vkCreateFence);
 VK_FN(vkDestroyFence);
 VK_FN(vkQueueSubmit);
+VK_FN(vkQueueBindSparse);
+VK_FN(vkQueueWaitIdle);
 VK_FN(vkWaitForFences);
 
 static void die(const char *what) {
@@ -158,6 +160,12 @@ int main(int argc, char **argv) {
   const char *fill_option = getenv("M4_ORACLE_FILL32");
   const bool copy_option = getenv("M4_ORACLE_COPY") && !strcmp(getenv("M4_ORACLE_COPY"), "1");
   const bool transfer_option = fill_option || copy_option;
+  const bool sparse_alias = getenv("M4_ORACLE_SPARSE_ALIAS") != NULL;
+  const char *sparse_fill = getenv("M4_ORACLE_SPARSE_FILL");
+  const char *sparse_shader = getenv("M4_ORACLE_SPARSE_SHADER");
+  if (sparse_shader && (!sparse_alias || sparse_fill)) die("sparse shader mode conflict");
+  if (sparse_alias && (transfer_option || getenv("M4_ORACLE_TEXEL_FORMAT")))
+    die("sparse alias requires SSBO compute mode");
   const char *texel_format_option = getenv("M4_ORACLE_TEXEL_FORMAT");
   VkFormat texel_format = VK_FORMAT_UNDEFINED;
   VkDeviceSize texel_offset = 0, texel_range = 0;
@@ -354,7 +362,7 @@ int main(int argc, char **argv) {
     subgroup.pNext = feature_chain;
     feature_chain = &subgroup;
   }
-  const char *extensions[3];
+  const char *extensions[4];
   unsigned extension_count = 0;
   if (want_half || want_byte)
     extensions[extension_count++] = VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME;
@@ -362,7 +370,16 @@ int main(int argc, char **argv) {
     extensions[extension_count++] = VK_KHR_8BIT_STORAGE_EXTENSION_NAME;
   if (want_subgroup_types)
     extensions[extension_count++] = VK_KHR_SHADER_SUBGROUP_EXTENDED_TYPES_EXTENSION_NAME;
+  if (sparse_alias) {
+    VkPhysicalDeviceFeatures2 query = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
+    vkGetPhysicalDeviceFeatures2(physical, &query);
+    if (!query.features.sparseBinding || !query.features.sparseResidencyAliased ||
+        !(queue_flags & VK_QUEUE_SPARSE_BINDING_BIT))
+      die("sparse aliasing unavailable");
+  }
   const VkPhysicalDeviceFeatures features = {
+      .sparseBinding = sparse_alias, .sparseResidencyAliased = sparse_alias,
       .shaderInt64 = VK_TRUE,
       .shaderStorageImageExtendedFormats = texel_storage};
   const VkDeviceCreateInfo device_info = {
@@ -417,6 +434,8 @@ int main(int argc, char **argv) {
   LOAD_DEVICE(device, vkCreateFence);
   LOAD_DEVICE(device, vkDestroyFence);
   LOAD_DEVICE(device, vkQueueSubmit);
+  LOAD_DEVICE(device, vkQueueBindSparse);
+  LOAD_DEVICE(device, vkQueueWaitIdle);
   LOAD_DEVICE(device, vkWaitForFences);
 
   VkQueue queue;
@@ -456,6 +475,26 @@ int main(int argc, char **argv) {
         "vkMapMemory");
   memcpy(mapped, input, input_size);
 
+  VkBuffer alias_buffer = VK_NULL_HANDLE;
+  if (sparse_alias) {
+    VkBufferCreateInfo alias_info = buffer_info;
+    alias_info.flags = VK_BUFFER_CREATE_SPARSE_BINDING_BIT |
+                       VK_BUFFER_CREATE_SPARSE_ALIASED_BIT;
+    check(vkCreateBuffer(device, &alias_info, NULL, &alias_buffer), "create alias");
+    VkMemoryRequirements alias_requirements;
+    vkGetBufferMemoryRequirements(device, alias_buffer, &alias_requirements);
+    if (alias_requirements.size > requirements.size ||
+        !(alias_requirements.memoryTypeBits & (1u << memory_type)))
+      die("alias backing requirements differ");
+    VkSparseMemoryBind bind = {.size = alias_requirements.size, .memory = memory};
+    VkSparseBufferMemoryBindInfo buffer_bind = {
+      .buffer = alias_buffer, .bindCount = 1, .pBinds = &bind};
+    VkBindSparseInfo info = {.sType = VK_STRUCTURE_TYPE_BIND_SPARSE_INFO,
+      .bufferBindCount = 1, .pBufferBinds = &buffer_bind};
+    check(vkQueueBindSparse(queue, 1, &info, VK_NULL_HANDLE), "bind alias");
+    check(vkQueueWaitIdle(queue), "wait alias bind");
+  }
+
   unsigned binding_count = 1;
   const char *binding_option = getenv("M4_ORACLE_BINDING_COUNT");
   if (binding_option) {
@@ -465,6 +504,7 @@ int main(int argc, char **argv) {
       die("binding count must be 1..16");
     binding_count = parsed;
   }
+  if (sparse_alias && binding_count != 2) die("sparse alias needs two bindings");
   if (buffer_size % binding_count)
     die("buffer size must divide evenly into bindings");
   VkDeviceSize binding_stride = buffer_size / binding_count;
@@ -525,7 +565,8 @@ int main(int argc, char **argv) {
   VkWriteDescriptorSet descriptor_writes[16];
   for (unsigned i = 0; i < binding_count; ++i) {
     descriptor_buffers[i] = (VkDescriptorBufferInfo) {
-        .buffer = buffer, .offset = i * binding_stride, .range = binding_stride,
+        .buffer = (sparse_alias && i == 0) ? alias_buffer : buffer,
+        .offset = i * binding_stride, .range = binding_stride,
     };
     descriptor_writes[i] = (VkWriteDescriptorSet) {
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, .dstSet = descriptor_set,
@@ -539,8 +580,14 @@ int main(int argc, char **argv) {
     descriptor_writes[0].pBufferInfo = NULL;
     descriptor_writes[0].pTexelBufferView = &texel_view;
   }
+  if (sparse_shader) {
+    descriptor_buffers[1].offset = 0;
+    descriptor_buffers[1].range = buffer_size;
+  }
   vkUpdateDescriptorSets(device, binding_count, descriptor_writes, 0, NULL);
 
+  VkShaderModule producer_shader = VK_NULL_HANDLE;
+  VkPipeline producer_pipeline = VK_NULL_HANDLE;
   VkShaderModule shader = VK_NULL_HANDLE;
   VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
   VkPipeline pipeline = VK_NULL_HANDLE;
@@ -574,7 +621,20 @@ int main(int argc, char **argv) {
     check(vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &pipeline_info,
                                    NULL, &pipeline),
           "vkCreateComputePipelines");
-
+    if (sparse_shader) {
+      size_t producer_size;
+      void *producer_code = read_file(sparse_shader, &producer_size);
+      VkShaderModuleCreateInfo producer_info = shader_info;
+      producer_info.codeSize = producer_size;
+      producer_info.pCode = producer_code;
+      check(vkCreateShaderModule(device, &producer_info, NULL, &producer_shader),
+            "create producer shader");
+      free(producer_code);
+      VkComputePipelineCreateInfo producer = pipeline_info;
+      producer.stage.module = producer_shader;
+      check(vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &producer, NULL,
+                                     &producer_pipeline), "create producer pipeline");
+    }
   }
 
   const VkCommandPoolCreateInfo command_pool_info = {
@@ -603,6 +663,27 @@ int main(int argc, char **argv) {
     vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
     vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE,
                             pipeline_layout, 0, 1, &descriptor_set, 0, NULL);
+  }
+  if (sparse_shader) {
+    vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, producer_pipeline);
+    vkCmdDispatch(command_buffer, groups, 1, 1);
+    VkMemoryBarrier barrier = {.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
+      .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
+      .dstAccessMask = VK_ACCESS_SHADER_READ_BIT};
+    vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &barrier, 0, NULL, 0, NULL);
+    vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
+  }
+  if (sparse_fill) {
+    if (!sparse_alias) die("sparse fill requires sparse alias");
+    unsigned long value = strtoul(sparse_fill, &end, 0);
+    if (*end || value > UINT32_MAX) die("invalid sparse fill");
+    vkCmdFillBuffer(command_buffer, buffer, 0, buffer_size / 2, value);
+    VkMemoryBarrier barrier = {.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
+      .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+      .dstAccessMask = VK_ACCESS_SHADER_READ_BIT};
+    vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &barrier, 0, NULL, 0, NULL);
   }
   if (fill_option)
     vkCmdFillBuffer(command_buffer, buffer, 0, buffer_size, fill_value);
@@ -716,6 +797,8 @@ int main(int argc, char **argv) {
 
   vkDestroyFence(device, fence, NULL);
   vkDestroyCommandPool(device, command_pool, NULL);
+  vkDestroyPipeline(device, producer_pipeline, NULL);
+  vkDestroyShaderModule(device, producer_shader, NULL);
   vkDestroyPipeline(device, pipeline, NULL);
   vkDestroyPipelineLayout(device, pipeline_layout, NULL);
   vkDestroyShaderModule(device, shader, NULL);
@@ -723,6 +806,7 @@ int main(int argc, char **argv) {
   vkDestroyDescriptorSetLayout(device, set_layout, NULL);
   if (texel_view) vkDestroyBufferView(device, texel_view, NULL);
   vkUnmapMemory(device, memory);
+  if (alias_buffer) vkDestroyBuffer(device, alias_buffer, NULL);
   vkDestroyBuffer(device, buffer, NULL);
   vkFreeMemory(device, memory, NULL);
   vkDestroyDevice(device, NULL);

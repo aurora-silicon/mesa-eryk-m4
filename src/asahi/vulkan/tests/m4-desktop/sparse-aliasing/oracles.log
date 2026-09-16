@@ -1,0 +1,691 @@
+Probe environment: {'AGX_MESA_DEBUG': 'shaders,internal', 'ASAHI_M4_EXPERIMENTAL': '1', 'ASAHI_MESA_DEBUG': 'nocompress', 'HK_G17P_LAUNCH_TRACE': '1', 'M4_TEST_CPU_MAX_KHZ': '4104000', 'ZINK_DEBUG': 'sync'}
+M4 probe start monotonic=2180.024390584
+SPARSE_ALIAS_CASE: cpu
+G17P uniforms: stage=4 set_count=0 root=28 reserved=32
+device: Apple M4 (G16G B0) (0x8132)
+shader: MESA_SHADER_FRAGMENT
+name: empty FS
+internal: true
+max_subgroup_size: 128
+min_subgroup_size: 1
+flrp_lowered: true
+io_lowered: true
+decl_function main () (entrypoint)
+
+impl main {
+    block b0:  // preds:, succs: b1
+    block b1:
+}
+
+AGX3 binary: stage=4 preamble=0 encoding=1 size=0 hex=
+G17P uniforms: stage=5 set_count=1 root=0 reserved=8 half0 half4
+block0 {
+}
+
+block0 {
+}
+
+block0 {
+}
+
+shader: MESA_SHADER_COMPUTE
+source_blake3: {0x0c83a6e2, 0x7642c441, 0xf9ee47cb, 0x9acfe795, 0x1180b6e4, 0x56837742, 0x8917ad49, 0x08ac8b3a}
+workgroup_size: 64, 1, 1
+num_ssbos: 2
+system_values_read: 0x00000000'00000000'00000400'00000000
+api_subgroup_size: 32
+max_subgroup_size: 32
+min_subgroup_size: 32
+bit_sizes_int: 0x60
+flrp_lowered: true
+io_lowered: true
+writes_memory: true
+decl_function main () (entrypoint)
+
+impl main {
+    block b0:   // preds:
+    32x3   %0 = @load_global_invocation_id
+    64     %1 = @load_preamble (base=0)
+    32     %2 = load_const (0x00000000)
+    32     %3 = load_const (0x0000000b = 0.000000 = 11)
+    32x3   %4 = @load_constant_agx (%1, %3 (0xb)) (access=speculatable, base=1, format=r32_uint, sign_extend=1)
+    32     %5 = load_const (0x00000040 = 64)
+    32     %6 = imadshl_agx %4.x, %5 (0x40), %0.x, %2 (0x0)
+    64     %7 = @load_preamble (base=4)
+    32x4   %8 = @load_constant_agx (%7, %2 (0x0)) (access=speculatable, base=0, format=r32_uint, sign_extend=0)
+    64     %9 = pack_64_2x32_split %8.x, %8.y
+    32    %10 = @load_agx (%9, %6) (access=readonly|reorderable, base=0, format=r32_uint, sign_extend=0)
+    32    %11 = load_const (0x00000001 = 0.000000)
+    32x4  %12 = @load_constant_agx (%7, %11 (0x1)) (access=speculatable, base=2, format=r32_uint, sign_extend=1)
+    64    %13 = pack_64_2x32_split %12.x, %12.y
+                @store_agx (%10, %13, %6) (access=writeonly, base=0, format=r32_uint, sign_extend=0)
+                // succs: b1
+    block b1:
+}
+
+AGX3 binary: stage=5 preamble=0 encoding=1 size=90 hex=0ca0100667005408000000005d000b4002009f30540002100001502b220067005408010000009700004002006740540204002000d100004066006700540801000000170102400200e7805502040020001100009019000e000000
+G17P compute resources: txf=0 binding=0 storage=0 sampled_storage=0 preamble=0 local=0 texture=0 sampler=0 heap=0 scratch=0/0
+G17P uniform range[0]: start_halfs=0 size_halfs=8 address=86fdf18400
+G17P root: va=86fdf18400 set_count=1 push_count=8 reserved_preamble_formula=8 rodata(base=0 size16=0)
+G17P rootdesc: base=86fdf18400 len=32 bytes=0084f1fd86000000c0fff2fd8600000000000000000000000000000000000000
+G17P rootdesc fields: root_desc_addr=86fdf18400 sets[0]=86fdf2ffc0 constant_data_addr=0
+G17P dump: ioto-program base=10000054000 len=144
+G17P dump:   +0000 0c 80 02 fc 10 00 8c 0f 1c 86 02 00 02 00 00 00
+G17P dump:   +0010 67 00 54 04 00 00 00 00 17 00 00 40 22 00 06 08
+G17P dump:   +0020 06 00 06 00 06 00 77 00 2a 41 00 00 00 00 77 01
+G17P dump:   +0030 aa 87 09 00 00 02 04 00 f7 00 2a 00 00 00 00 00
+G17P dump:   +0040 00 00 1c 80 02 00 00 00 00 00 14 81 11 06 00 00
+G17P dump:   +0050 00 00 0c 80 02 00 04 00 00 00 9f 11 54 00 02 00
+G17P dump:   +0060 08 a8 10 05 1c 80 02 00 04 00 00 00 0f 12 54 00
+G17P dump:   +0070 4c 00 0b 04 09 04 1b 06 09 04 2b 08 09 04 3b 0a
+G17P dump:   +0080 09 04 03 00 07 00 02 00 00 00 60 00 0e 00 00 00
+G17P shader: va=1000004c3c0 size=90 nr_gprs=16 scratch=0 uniform_ranges=1 set_count=1 rodata(base=0 size16=0 off=0)
+G17P dump: shader-binary base=1000004c3c0 len=90
+G17P dump:   +0000 0c a0 10 06 67 00 54 08 00 00 00 00 5d 00 0b 40
+G17P dump:   +0010 02 00 9f 30 54 00 02 10 00 01 50 2b 22 00 67 00
+G17P dump:   +0020 54 08 01 00 00 00 97 00 00 40 02 00 67 40 54 02
+G17P dump:   +0030 04 00 20 00 d1 00 00 40 66 00 67 00 54 08 01 00
+G17P dump:   +0040 00 00 17 01 02 40 02 00 e7 80 55 02 04 00 20 00
+G17P dump:   +0050 11 00 00 90 19 00 0e 00 00 00
+G17P launch: usc_window=[10000000000,10100000000) program_va=10000054000 shader_va=1000004c000 words=00080000 01000000 00001500 40000001 pipeline=10000054000 pipeline_or=10000054000
+G17P cdm: base=86fdf08400 end=86fdf08430 len=48 linked=0 sampler_heap=0 sampler_count=0 helper(bin=0 data=0 cfg=0)
+G17P dump: cdm-stream base=86fdf08400 len=48
+G17P dump:   +0000 00 00 08 00 00 00 00 01 00 15 00 00 01 00 00 40
+G17P dump:   +0010 00 40 00 00 01 00 00 00 01 00 00 00 40 00 00 00
+G17P dump:   +0020 01 00 00 00 01 00 00 00 60 01 00 60 00 00 00 40
+block0 {
+   14 = get_sr #0x50
+   4 = device_load u0:u1, #11, xyz, shift=1, #0x0, slot 0
+   17, _, _ = split 4
+   6 = imad 17, #64, 14, shift=0
+   8 = device_load u2:u3, #0, xyzw, shift=0, #0x0, slot 0
+   20, 21, _, _ = split 8
+   9d = collect 20, 21
+   10 = device_load 9d, 6.abs, x, shift=0, #0x0, slot 0
+   12 = device_load u2:u3, #1, xyzw, shift=2, #0x0, slot 0
+   25, 26, _, _ = split 12
+   13d = collect 25, 26
+   device_store 10, 13d, 6.abs, x, shift=0, #0x0, slot 0
+   stop
+}
+
+block0 {
+   14 = get_sr #0x50
+   4 = device_load u0:u1, #11, xyz, shift=1, #0x0, slot 0
+   17, _, _ = split 4
+   6 = imad 17, #64, 14, shift=0
+   8 = device_load u2:u3, #0, xyzw, shift=0, #0x0, slot 0
+   20, 21, _, _ = split 8
+   9d = collect 20, 21
+   10 = device_load 9d, 6.abs, x, shift=0, #0x0, slot 0
+   12 = device_load u2:u3, #1, xyzw, shift=2, #0x0, slot 0
+   25, 26, _, _ = split 12
+   13d = collect 25, 26
+   device_store 10, 13d, 6.abs, x, shift=0, #0x0, slot 0
+   stop
+}
+
+block0 {
+   $r0 = get_sr #0x50
+   $r4...r6 = device_load u0:u1, #11, xyz, shift=1, #0x0, slot 0
+   r0 = imad ^r4, #64, ^r0, shift=0
+   r4...r7 = device_load u2:u3, #0, xyzw, shift=0, #0x0, slot 0
+   r1 = device_load ^r4:r5, r0.abs, x, shift=0, #0x0, slot 0
+   r4...r7 = device_load u2:u3, #1, xyzw, shift=2, #0x0, slot 0
+   device_store ^r1, ^r4:r5, ^r0.abs, x, shift=0, #0x0, slot 0
+   stop
+}
+
+PASS: buffer oracle bad=0/32768 watched_bad=0 on queue 0 flags=0xf
+SPARSE_ALIAS_CASE: transfer
+G17P uniforms: stage=4 set_count=0 root=28 reserved=32
+device: Apple M4 (G16G B0) (0x8132)
+shader: MESA_SHADER_FRAGMENT
+name: empty FS
+internal: true
+max_subgroup_size: 128
+min_subgroup_size: 1
+flrp_lowered: true
+io_lowered: true
+decl_function main () (entrypoint)
+
+impl main {
+    block b0:  // preds:, succs: b1
+    block b1:
+}
+
+AGX3 binary: stage=4 preamble=0 encoding=1 size=0 hex=
+G17P uniforms: stage=5 set_count=1 root=0 reserved=8 half0 half4
+block0 {
+}
+
+block0 {
+}
+
+block0 {
+}
+
+shader: MESA_SHADER_COMPUTE
+source_blake3: {0x0c83a6e2, 0x7642c441, 0xf9ee47cb, 0x9acfe795, 0x1180b6e4, 0x56837742, 0x8917ad49, 0x08ac8b3a}
+workgroup_size: 64, 1, 1
+num_ssbos: 2
+system_values_read: 0x00000000'00000000'00000400'00000000
+api_subgroup_size: 32
+max_subgroup_size: 32
+min_subgroup_size: 32
+bit_sizes_int: 0x60
+flrp_lowered: true
+io_lowered: true
+writes_memory: true
+decl_function main () (entrypoint)
+
+impl main {
+    block b0:   // preds:
+    32x3   %0 = @load_global_invocation_id
+    64     %1 = @load_preamble (base=0)
+    32     %2 = load_const (0x00000000)
+    32     %3 = load_const (0x0000000b = 0.000000 = 11)
+    32x3   %4 = @load_constant_agx (%1, %3 (0xb)) (access=speculatable, base=1, format=r32_uint, sign_extend=1)
+    32     %5 = load_const (0x00000040 = 64)
+    32     %6 = imadshl_agx %4.x, %5 (0x40), %0.x, %2 (0x0)
+    64     %7 = @load_preamble (base=4)
+    32x4   %8 = @load_constant_agx (%7, %2 (0x0)) (access=speculatable, base=0, format=r32_uint, sign_extend=0)
+    64     %9 = pack_64_2x32_split %8.x, %8.y
+    32    %10 = @load_agx (%9, %6) (access=readonly|reorderable, base=0, format=r32_uint, sign_extend=0)
+    32    %11 = load_const (0x00000001 = 0.000000)
+    32x4  %12 = @load_constant_agx (%7, %11 (0x1)) (access=speculatable, base=2, format=r32_uint, sign_extend=1)
+    64    %13 = pack_64_2x32_split %12.x, %12.y
+                @store_agx (%10, %13, %6) (access=writeonly, base=0, format=r32_uint, sign_extend=0)
+                // succs: b1
+    block b1:
+}
+
+AGX3 binary: stage=5 preamble=0 encoding=1 size=90 hex=0ca0100667005408000000005d000b4002009f30540002100001502b220067005408010000009700004002006740540204002000d100004066006700540801000000170102400200e7805502040020001100009019000e000000
+G17P uniforms: stage=5 set_count=1 root=0 reserved=8 half0
+block0 {
+   14 = get_sr #0x50
+   4 = device_load u0:u1, #11, xyz, shift=1, #0x0, slot 0
+   17, _, _ = split 4
+   6 = imad 17, #64, 14, shift=0
+   8 = device_load u2:u3, #0, xyzw, shift=0, #0x0, slot 0
+   20, 21, _, _ = split 8
+   9d = collect 20, 21
+   10 = device_load 9d, 6.abs, x, shift=0, #0x0, slot 0
+   12 = device_load u2:u3, #1, xyzw, shift=2, #0x0, slot 0
+   25, 26, _, _ = split 12
+   13d = collect 25, 26
+   device_store 10, 13d, 6.abs, x, shift=0, #0x0, slot 0
+   stop
+}
+
+block0 {
+   14 = get_sr #0x50
+   4 = device_load u0:u1, #11, xyz, shift=1, #0x0, slot 0
+   17, _, _ = split 4
+   6 = imad 17, #64, 14, shift=0
+   8 = device_load u2:u3, #0, xyzw, shift=0, #0x0, slot 0
+   20, 21, _, _ = split 8
+   9d = collect 20, 21
+   10 = device_load 9d, 6.abs, x, shift=0, #0x0, slot 0
+   12 = device_load u2:u3, #1, xyzw, shift=2, #0x0, slot 0
+   25, 26, _, _ = split 12
+   13d = collect 25, 26
+   device_store 10, 13d, 6.abs, x, shift=0, #0x0, slot 0
+   stop
+}
+
+block0 {
+   $r0 = get_sr #0x50
+   $r4...r6 = device_load u0:u1, #11, xyz, shift=1, #0x0, slot 0
+   r0 = imad ^r4, #64, ^r0, shift=0
+   r4...r7 = device_load u2:u3, #0, xyzw, shift=0, #0x0, slot 0
+   r1 = device_load ^r4:r5, r0.abs, x, shift=0, #0x0, slot 0
+   r4...r7 = device_load u2:u3, #1, xyzw, shift=2, #0x0, slot 0
+   device_store ^r1, ^r4:r5, ^r0.abs, x, shift=0, #0x0, slot 0
+   stop
+}
+
+shader: MESA_SHADER_COMPUTE
+name: vk-meta-fill-buffer
+internal: true
+workgroup_size: 64, 1, 1
+system_values_read: 0x00000000'00000000'00000400'00000000
+max_subgroup_size: 128
+min_subgroup_size: 1
+bit_sizes_int: 0x61
+flrp_lowered: true
+io_lowered: true
+writes_memory: true
+decl_function main () (entrypoint)
+
+impl main {
+    block b0:   // preds:
+    32x3   %0 = @load_global_invocation_id
+    64     %1 = @load_preamble (base=0)
+    32     %2 = load_const (0x00000000)
+    32     %3 = load_const (0x0000000b = 0.000000 = 11)
+    32x3   %4 = @load_constant_agx (%1, %3 (0xb)) (access=speculatable, base=1, format=r32_uint, sign_extend=1)
+    32     %5 = load_const (0x00000040 = 64)
+    32     %6 = imadshl_agx %4.x, %5 (0x40), %0.x, %2 (0x0)
+    32     %7 = load_const (0x00000004)
+    32     %8 = load_const (0x00000001)
+    32     %9 = imadshl_agx %2 (0x0), %8 (0x1), %6, %7 (0x4)
+    32    %10 = load_const (0x0000001f = 0.000000 = 31)
+    32x2  %11 = @load_constant_agx (%1, %10 (0x1f)) (access=speculatable, base=2, format=r32_uint, sign_extend=1)
+    1     %12 = ult %9, %11.y
+                // succs: b1 b2
+    if %12 {
+        block b1:   // preds: b0
+        32x4  %13 = vec4 %11.x, %11.x, %11.x, %11.x
+        32    %14 = load_const (0x0000003d = 0.000000 = 61)
+        32x2  %15 = @load_constant_agx (%1, %14 (0x3d)) (access=speculatable, base=1, format=r32_uint, sign_extend=1)
+        64    %16 = pack_64_2x32_split %15.x, %15.y
+                    @store_agx (%13, %16, %6) (access=none, base=2, format=r32_uint, sign_extend=0)
+                    // succs: b3
+    } else {
+        block b2:  // preds: b0, succs: b3
+    }
+    block b3:  // preds: b1 b2, succs: b4
+    block b4:
+}
+
+AGX3 binary: stage=5 preamble=0 encoding=1 size=130 hex=67005408000000001d000b4002001ca010269f30540202100011502b22002c043b02210027105404020c1000f0100500670054080000000099003e400200061006100a05230b0200050000000f0554016700540400000000d9003d4002005b8801006b8801007b080100e7805408020120001700001018000f06040100000e000000
+G17P compute resources: txf=0 binding=0 storage=0 sampled_storage=0 preamble=0 local=0 texture=0 sampler=0 heap=0 scratch=0/0
+G17P uniform range[0]: start_halfs=0 size_halfs=8 address=86fdf18400
+G17P root: va=86fdf18400 set_count=1 push_count=8 reserved_preamble_formula=8 rodata(base=0 size16=0)
+G17P rootdesc: base=86fdf18400 len=32 bytes=0084f1fd86000000c0fff2fd8600000000000000000000000000000000000000
+G17P rootdesc fields: root_desc_addr=86fdf18400 sets[0]=86fdf2ffc0 constant_data_addr=0
+G17P dump: ioto-program base=1000005c000 len=144
+G17P dump:   +0000 0c 80 02 fc 10 00 8c 0f 1c 86 02 00 02 00 00 00
+G17P dump:   +0010 67 00 54 04 00 00 00 00 17 00 00 40 22 00 06 08
+G17P dump:   +0020 06 00 06 00 06 00 77 00 2a 41 00 00 00 00 77 01
+G17P dump:   +0030 aa 87 0a 00 00 02 04 00 f7 00 2a 00 00 00 00 00
+G17P dump:   +0040 00 00 1c 80 02 00 00 00 00 00 14 81 11 06 00 00
+G17P dump:   +0050 00 00 0c 80 02 00 04 00 00 00 9f 11 54 00 02 00
+G17P dump:   +0060 08 a8 10 05 1c 80 02 00 04 00 00 00 0f 12 54 00
+G17P dump:   +0070 4c 00 0b 04 09 04 1b 06 09 04 2b 08 09 04 3b 0a
+G17P dump:   +0080 09 04 03 00 07 00 02 00 00 00 60 00 0e 00 00 00
+G17P shader: va=100000543c0 size=130 nr_gprs=16 scratch=0 uniform_ranges=1 set_count=1 rodata(base=0 size16=0 off=0)
+G17P dump: shader-binary base=100000543c0 len=130
+G17P dump:   +0000 67 00 54 08 00 00 00 00 1d 00 0b 40 02 00 1c a0
+G17P dump:   +0010 10 26 9f 30 54 02 02 10 00 11 50 2b 22 00 2c 04
+G17P dump:   +0020 3b 02 21 00 27 10 54 04 02 0c 10 00 f0 10 05 00
+G17P dump:   +0030 67 00 54 08 00 00 00 00 99 00 3e 40 02 00 06 10
+G17P dump:   +0040 06 10 0a 05 23 0b 02 00 05 00 00 00 0f 05 54 01
+G17P dump:   +0050 67 00 54 04 00 00 00 00 d9 00 3d 40 02 00 5b 88
+G17P dump:   +0060 01 00 6b 88 01 00 7b 08 01 00 e7 80 54 08 02 01
+G17P dump:   +0070 20 00 17 00 00 10 18 00 0f 06 04 01 00 00 0e 00
+G17P dump:   +0080 00 00
+G17P launch: usc_window=[10000000000,10100000000) program_va=1000005c000 shader_va=10000054000 words=00080000 01000000 00001700 40000001 pipeline=1000005c000 pipeline_or=1000005c000
+G17P compute resources: txf=0 binding=0 storage=0 sampled_storage=0 preamble=0 local=0 texture=0 sampler=0 heap=0 scratch=0/0
+G17P uniform range[0]: start_halfs=0 size_halfs=8 address=86fdef4000
+G17P root: va=86fdef4000 set_count=1 push_count=8 reserved_preamble_formula=8 rodata(base=0 size16=0)
+G17P rootdesc: base=86fdef4000 len=32 bytes=0040effd86000000c0fff2fd8600000000000000000000000000000000000000
+G17P rootdesc fields: root_desc_addr=86fdef4000 sets[0]=86fdf2ffc0 constant_data_addr=0
+G17P dump: ioto-program base=10000064000 len=144
+G17P dump:   +0000 0c 80 02 fc 00 00 7a 0f 1c 86 02 00 02 00 00 00
+G17P dump:   +0010 67 00 54 04 00 00 00 00 17 00 00 40 22 00 06 08
+G17P dump:   +0020 06 00 06 00 06 00 77 00 2a 41 00 00 00 00 77 01
+G17P dump:   +0030 aa 87 09 00 00 02 04 00 f7 00 2a 00 00 00 00 00
+G17P dump:   +0040 00 00 1c 80 02 00 00 00 00 00 14 81 11 06 00 00
+G17P dump:   +0050 00 00 0c 80 02 00 04 00 00 00 9f 11 54 00 02 00
+G17P dump:   +0060 08 a8 10 05 1c 80 02 00 04 00 00 00 0f 12 54 00
+G17P dump:   +0070 4c 00 0b 04 09 04 1b 06 09 04 2b 08 09 04 3b 0a
+G17P dump:   +0080 09 04 03 00 07 00 02 00 00 00 60 00 0e 00 00 00
+G17P shader: va=1000004c3c0 size=90 nr_gprs=16 scratch=0 uniform_ranges=1 set_count=1 rodata(base=0 size16=0 off=0)
+G17P dump: shader-binary base=1000004c3c0 len=90
+G17P dump:   +0000 0c a0 10 06 67 00 54 08 00 00 00 00 5d 00 0b 40
+G17P dump:   +0010 02 00 9f 30 54 00 02 10 00 01 50 2b 22 00 67 00
+G17P dump:   +0020 54 08 01 00 00 00 97 00 00 40 02 00 67 40 54 02
+G17P dump:   +0030 04 00 20 00 d1 00 00 40 66 00 67 00 54 08 01 00
+G17P dump:   +0040 00 00 17 01 02 40 02 00 e7 80 55 02 04 00 20 00
+G17P dump:   +0050 11 00 00 90 19 00 0e 00 00 00
+G17P launch: usc_window=[10000000000,10100000000) program_va=10000064000 shader_va=1000004c000 words=00080000 01000000 00001900 40000001 pipeline=10000064000 pipeline_or=10000064000
+G17P cdm: base=86fdf08400 end=86fdf08430 len=48 linked=0 sampler_heap=0 sampler_count=0 helper(bin=0 data=0 cfg=0)
+G17P dump: cdm-stream base=86fdf08400 len=48
+G17P dump:   +0000 00 00 08 00 00 00 00 01 00 17 00 00 01 00 00 40
+G17P dump:   +0010 00 10 00 00 01 00 00 00 01 00 00 00 40 00 00 00
+G17P dump:   +0020 01 00 00 00 01 00 00 00 60 01 00 60 00 00 00 40
+G17P cdm: base=86fdee4000 end=86fdee4030 len=48 linked=0 sampler_heap=0 sampler_count=0 helper(bin=0 data=0 cfg=0)
+G17P dump: cdm-stream base=86fdee4000 len=48
+G17P dump:   +0000 00 00 08 00 00 00 00 01 00 19 00 00 01 00 00 40
+G17P dump:   +0010 00 40 00 00 01 00 00 00 01 00 00 00 40 00 00 00
+G17P dump:   +0020 01 00 00 00 01 00 00 00 60 01 00 60 00 00 00 40
+block0 {
+   17 = get_sr #0x50
+   4 = device_load u0:u1, #11, xyz, shift=1, #0x0, slot 0
+   20, _, _ = split 4
+   6 = imad 20, #64, 17, shift=0
+   28 = mov 6
+   29 = mov_imm #0x4
+   9 = bfi #0, 28, 29, #0x0
+   11 = device_load u0:u1, #31, xy, shift=2, #0x0, slot 0
+   23, 24 = split 11
+   begin_cf
+   if_icmp 9, 24, #0xaaaad9b4e3e0, n=1
+} -> block1 block2
+
+block1 {
+   15 = device_load u0:u1, #61, xy, shift=1, #0x0, slot 0
+   25, 26 = split 15
+   16d = collect 25, 26
+   27 = collect 23, 23, 23, 23
+   device_store 27, 16d, 6.abs, xyzw, shift=2, #0x0, slot 0
+} -> block3  from block0
+
+block2 {
+   else_fcmp #0.000000, #0.000000, #0xaaaad9b4e3e0, n=1
+   pop_exec #0x0, n=1
+} -> block3  from block0
+
+block3 {
+   stop
+} from block1 block2
+
+block0 {
+   4 = device_load u0:u1, #11, xyz, shift=1, #0x0, slot 0
+   20, _, _ = split 4
+   17 = get_sr #0x50
+   6 = imad 20, #64, 17, shift=0
+   29 = mov_imm #0x4
+   28 = mov 6
+   9 = bfi #0, 28, 29, #0x0
+   11 = device_load u0:u1, #31, xy, shift=2, #0x0, slot 0
+   23, 24 = split 11
+   begin_cf
+   if_icmp 9, 24, #0xaaaad9b4e3e0, n=1
+} -> block1 block2
+
+block1 {
+   15 = device_load u0:u1, #61, xy, shift=1, #0x0, slot 0
+   25, 26 = split 15
+   16d = collect 25, 26
+   27 = collect 23, 23, 23, 23
+   device_store 27, 16d, 6.abs, xyzw, shift=2, #0x0, slot 0
+} -> block3  from block0
+
+block2 {
+   else_fcmp #0.000000, #0.000000, #0xaaaad9b4e3e0, n=1
+   pop_exec #0x0, n=1
+} -> block3  from block0
+
+block3 {
+   stop
+} from block1 block2
+
+block0 {
+   $r4...r6 = device_load u0:u1, #11, xyz, shift=1, #0x0, slot 0
+   $r1 = get_sr #0x50
+   $r1 = imad ^r4, #64, ^r1, shift=0
+   $r2 = mov_imm #0x4
+   $r3 = mov1 r1, #0
+   r2 = bfi #0, ^r3, ^r2, #0x0
+   r4...r5 = device_load u0:u1, #31, xy, shift=2, #0x0, slot 0
+   begin_cf
+   if_icmp ^r2, ^r5, #0xaaaad9b4e3e0, n=1
+} -> block1 block2
+
+block1 {
+   r2...r3 = device_load u0:u1, #61, xy, shift=1, #0x0, slot 0
+   r5 = mov1 $r4, #0
+   r6 = mov1 $r4, #0
+   r7 = mov1 r4, #0
+   device_store r4...r7, r2:r3, r1.abs, xyzw, shift=2, #0x0, slot 0
+} -> block3  from block0
+
+block2 {
+   pop_exec #0x0, n=1
+} -> block3  from block0
+
+block3 {
+   stop
+} from block1 block2
+
+PASS: buffer oracle bad=0/32768 watched_bad=0 on queue 0 flags=0xf
+SPARSE_ALIAS_CASE: shader
+G17P uniforms: stage=4 set_count=0 root=28 reserved=32
+device: Apple M4 (G16G B0) (0x8132)
+shader: MESA_SHADER_FRAGMENT
+name: empty FS
+internal: true
+max_subgroup_size: 128
+min_subgroup_size: 1
+flrp_lowered: true
+io_lowered: true
+decl_function main () (entrypoint)
+
+impl main {
+    block b0:  // preds:, succs: b1
+    block b1:
+}
+
+AGX3 binary: stage=4 preamble=0 encoding=1 size=0 hex=
+G17P uniforms: stage=5 set_count=1 root=0 reserved=8 half0 half4
+block0 {
+}
+
+block0 {
+}
+
+block0 {
+}
+
+shader: MESA_SHADER_COMPUTE
+source_blake3: {0xbb8f7829, 0x36ddd5e0, 0xdb928ce2, 0x199e5d8e, 0xf84b9291, 0x4f605d95, 0x429ce48c, 0x14434d02}
+workgroup_size: 64, 1, 1
+num_ssbos: 2
+system_values_read: 0x00000000'00000000'00000400'00000000
+api_subgroup_size: 32
+max_subgroup_size: 32
+min_subgroup_size: 32
+bit_sizes_int: 0x60
+flrp_lowered: true
+io_lowered: true
+writes_memory: true
+decl_function main () (entrypoint)
+
+impl main {
+    block b0:   // preds:
+    32x3   %0 = @load_global_invocation_id
+    64     %1 = @load_preamble (base=0)
+    32     %2 = load_const (0x00000000)
+    32     %3 = load_const (0x0000000b = 0.000000 = 11)
+    32x3   %4 = @load_constant_agx (%1, %3 (0xb)) (access=speculatable, base=1, format=r32_uint, sign_extend=1)
+    32     %5 = load_const (0x00000040 = 64)
+    32     %6 = imadshl_agx %4.x, %5 (0x40), %0.x, %2 (0x0)
+    64     %7 = @load_preamble (base=4)
+    32x4   %8 = @load_constant_agx (%7, %2 (0x0)) (access=speculatable, base=0, format=r32_uint, sign_extend=0)
+    64     %9 = pack_64_2x32_split %8.x, %8.y
+    32    %10 = @load_agx (%9, %6) (access=readonly|reorderable, base=0, format=r32_uint, sign_extend=0)
+    32    %11 = load_const (0x00000001 = 0.000000)
+    32x4  %12 = @load_constant_agx (%7, %11 (0x1)) (access=speculatable, base=2, format=r32_uint, sign_extend=1)
+    64    %13 = pack_64_2x32_split %12.x, %12.y
+    32    %14 = load_const (0x00004000 = 16384)
+    32    %15 = iadd %14 (0x4000), %6
+                @store_agx (%10, %13, %15) (access=writeonly, base=0, format=r32_uint, sign_extend=0)
+                // succs: b1
+    block b1:
+}
+
+AGX3 binary: stage=5 preamble=0 encoding=1 size=108 hex=0ca0100667005408000000005d000b4002009f30540002100001502b220067005408010000009700004002006740540204002000d1000040660067005408010000001701024002002c800200000002009f015400020800a81705e7805502040020001100009019000e000000
+G17P uniforms: stage=5 set_count=1 root=0 reserved=8 half0 half4
+block0 {
+   16 = get_sr #0x50
+   4 = device_load u0:u1, #11, xyz, shift=1, #0x0, slot 0
+   19, _, _ = split 4
+   6 = imad 19, #64, 16, shift=0
+   8 = device_load u2:u3, #0, xyzw, shift=0, #0x0, slot 0
+   22, 23, _, _ = split 8
+   9d = collect 22, 23
+   10 = device_load 9d, 6.abs, x, shift=0, #0x0, slot 0
+   12 = device_load u2:u3, #1, xyzw, shift=2, #0x0, slot 0
+   27, 28, _, _ = split 12
+   13d = collect 27, 28
+   14 = mov_imm #0x4000
+   15 = iadd 14, 6, shift=0
+   device_store 10, 13d, 15.abs, x, shift=0, #0x0, slot 0
+   stop
+}
+
+block0 {
+   16 = get_sr #0x50
+   4 = device_load u0:u1, #11, xyz, shift=1, #0x0, slot 0
+   19, _, _ = split 4
+   6 = imad 19, #64, 16, shift=0
+   8 = device_load u2:u3, #0, xyzw, shift=0, #0x0, slot 0
+   22, 23, _, _ = split 8
+   9d = collect 22, 23
+   10 = device_load 9d, 6.abs, x, shift=0, #0x0, slot 0
+   12 = device_load u2:u3, #1, xyzw, shift=2, #0x0, slot 0
+   27, 28, _, _ = split 12
+   13d = collect 27, 28
+   14 = mov_imm #0x4000
+   15 = iadd 14, 6, shift=0
+   device_store 10, 13d, 15.abs, x, shift=0, #0x0, slot 0
+   stop
+}
+
+block0 {
+   $r0 = get_sr #0x50
+   $r4...r6 = device_load u0:u1, #11, xyz, shift=1, #0x0, slot 0
+   $r0 = imad ^r4, #64, ^r0, shift=0
+   r4...r7 = device_load u2:u3, #0, xyzw, shift=0, #0x0, slot 0
+   r1 = device_load ^r4:r5, $r0.abs, x, shift=0, #0x0, slot 0
+   r4...r7 = device_load u2:u3, #1, xyzw, shift=2, #0x0, slot 0
+   $r2 = mov_imm #0x4000
+   r0 = iadd ^r2, ^r0, shift=0
+   device_store ^r1, ^r4:r5, ^r0.abs, x, shift=0, #0x0, slot 0
+   stop
+}
+
+shader: MESA_SHADER_COMPUTE
+source_blake3: {0x95982123, 0x4de4ba74, 0xdc9571b8, 0x538f384c, 0x6db8f4cd, 0x1754a4c1, 0x31579b91, 0x965a6f4b}
+workgroup_size: 64, 1, 1
+num_ssbos: 1
+system_values_read: 0x00000000'00000000'00000400'00000000
+api_subgroup_size: 32
+max_subgroup_size: 32
+min_subgroup_size: 32
+bit_sizes_int: 0x60
+flrp_lowered: true
+io_lowered: true
+writes_memory: true
+decl_function main () (entrypoint)
+
+impl main {
+    block b0:   // preds:
+    32x3   %0 = @load_global_invocation_id
+    64     %1 = @load_preamble (base=0)
+    32     %2 = load_const (0x00000000)
+    32     %3 = load_const (0x0000000b = 0.000000 = 11)
+    32x3   %4 = @load_constant_agx (%1, %3 (0xb)) (access=speculatable, base=1, format=r32_uint, sign_extend=1)
+    32     %5 = load_const (0x00000040 = 64)
+    32     %6 = imadshl_agx %4.x, %5 (0x40), %0.x, %2 (0x0)
+    64     %7 = @load_preamble (base=4)
+    32     %8 = load_const (0x00123abc = 0.000000 = 1194684)
+    32     %9 = load_const (0x00000001 = 0.000000)
+    32x4  %10 = @load_constant_agx (%7, %9 (0x1)) (access=speculatable, base=2, format=r32_uint, sign_extend=1)
+    64    %11 = pack_64_2x32_split %10.x, %10.y
+                @store_agx (%8 (0x123abc), %11, %6) (access=writeonly, base=0, format=r32_uint, sign_extend=0)
+                // succs: b1
+    block b1:
+}
+
+AGX3 binary: stage=5 preamble=0 encoding=1 size=74 hex=67005400000000001d000b40020067005408010000005700024002001ca01146002000009f40540002000011502b22001cbc02000a0c9100e7205402040020001100009019000e000000
+G17P compute resources: txf=0 binding=0 storage=0 sampled_storage=0 preamble=0 local=0 texture=0 sampler=0 heap=0 scratch=0/0
+G17P uniform range[0]: start_halfs=0 size_halfs=8 address=86fdf18400
+G17P root: va=86fdf18400 set_count=1 push_count=8 reserved_preamble_formula=8 rodata(base=0 size16=0)
+G17P rootdesc: base=86fdf18400 len=32 bytes=0084f1fd86000000c0fff2fd8600000000000000000000000000000000000000
+G17P rootdesc fields: root_desc_addr=86fdf18400 sets[0]=86fdf2ffc0 constant_data_addr=0
+G17P dump: ioto-program base=1000005c000 len=144
+G17P dump:   +0000 0c 80 02 fc 10 00 8c 0f 1c 86 02 00 02 00 00 00
+G17P dump:   +0010 67 00 54 04 00 00 00 00 17 00 00 40 22 00 06 08
+G17P dump:   +0020 06 00 06 00 06 00 77 00 2a 41 00 00 00 00 77 01
+G17P dump:   +0030 aa 87 0a 00 00 02 04 00 f7 00 2a 00 00 00 00 00
+G17P dump:   +0040 00 00 1c 80 02 00 00 00 00 00 14 81 11 06 00 00
+G17P dump:   +0050 00 00 0c 80 02 00 04 00 00 00 9f 11 54 00 02 00
+G17P dump:   +0060 08 a8 10 05 1c 80 02 00 04 00 00 00 0f 12 54 00
+G17P dump:   +0070 4c 00 0b 04 09 04 1b 06 09 04 2b 08 09 04 3b 0a
+G17P dump:   +0080 09 04 03 00 07 00 02 00 00 00 60 00 0e 00 00 00
+G17P shader: va=100000543c0 size=74 nr_gprs=16 scratch=0 uniform_ranges=1 set_count=1 rodata(base=0 size16=0 off=0)
+G17P dump: shader-binary base=100000543c0 len=74
+G17P dump:   +0000 67 00 54 00 00 00 00 00 1d 00 0b 40 02 00 67 00
+G17P dump:   +0010 54 08 01 00 00 00 57 00 02 40 02 00 1c a0 11 46
+G17P dump:   +0020 00 20 00 00 9f 40 54 00 02 00 00 11 50 2b 22 00
+G17P dump:   +0030 1c bc 02 00 0a 0c 91 00 e7 20 54 02 04 00 20 00
+G17P dump:   +0040 11 00 00 90 19 00 0e 00 00 00
+G17P launch: usc_window=[10000000000,10100000000) program_va=1000005c000 shader_va=10000054000 words=00080000 01000000 00001700 40000001 pipeline=1000005c000 pipeline_or=1000005c000
+G17P compute resources: txf=0 binding=0 storage=0 sampled_storage=0 preamble=0 local=0 texture=0 sampler=0 heap=0 scratch=0/0
+G17P uniform range[0]: start_halfs=0 size_halfs=8 address=86fdef4000
+G17P root: va=86fdef4000 set_count=1 push_count=8 reserved_preamble_formula=8 rodata(base=0 size16=0)
+G17P rootdesc: base=86fdef4000 len=32 bytes=0040effd86000000c0fff2fd8600000000000000000000000000000000000000
+G17P rootdesc fields: root_desc_addr=86fdef4000 sets[0]=86fdf2ffc0 constant_data_addr=0
+G17P dump: ioto-program base=10000064000 len=144
+G17P dump:   +0000 0c 80 02 fc 00 00 7a 0f 1c 86 02 00 02 00 00 00
+G17P dump:   +0010 67 00 54 04 00 00 00 00 17 00 00 40 22 00 06 08
+G17P dump:   +0020 06 00 06 00 06 00 77 00 2a 41 00 00 00 00 77 01
+G17P dump:   +0030 aa 87 09 00 00 02 04 00 f7 00 2a 00 00 00 00 00
+G17P dump:   +0040 00 00 1c 80 02 00 00 00 00 00 14 81 11 06 00 00
+G17P dump:   +0050 00 00 0c 80 02 00 04 00 00 00 9f 11 54 00 02 00
+G17P dump:   +0060 08 a8 10 05 1c 80 02 00 04 00 00 00 0f 12 54 00
+G17P dump:   +0070 4c 00 0b 04 09 04 1b 06 09 04 2b 08 09 04 3b 0a
+G17P dump:   +0080 09 04 03 00 07 00 02 00 00 00 60 00 0e 00 00 00
+G17P shader: va=1000004c3c0 size=108 nr_gprs=16 scratch=0 uniform_ranges=1 set_count=1 rodata(base=0 size16=0 off=0)
+G17P dump: shader-binary base=1000004c3c0 len=108
+G17P dump:   +0000 0c a0 10 06 67 00 54 08 00 00 00 00 5d 00 0b 40
+G17P dump:   +0010 02 00 9f 30 54 00 02 10 00 01 50 2b 22 00 67 00
+G17P dump:   +0020 54 08 01 00 00 00 97 00 00 40 02 00 67 40 54 02
+G17P dump:   +0030 04 00 20 00 d1 00 00 40 66 00 67 00 54 08 01 00
+G17P dump:   +0040 00 00 17 01 02 40 02 00 2c 80 02 00 00 00 02 00
+G17P dump:   +0050 9f 01 54 00 02 08 00 a8 17 05 e7 80 55 02 04 00
+G17P dump:   +0060 20 00 11 00 00 90 19 00 0e 00 00 00
+G17P launch: usc_window=[10000000000,10100000000) program_va=10000064000 shader_va=1000004c000 words=00080000 01000000 00001900 40000001 pipeline=10000064000 pipeline_or=10000064000
+G17P cdm: base=86fdf08400 end=86fdf08430 len=48 linked=0 sampler_heap=0 sampler_count=0 helper(bin=0 data=0 cfg=0)
+G17P dump: cdm-stream base=86fdf08400 len=48
+G17P dump:   +0000 00 00 08 00 00 00 00 01 00 17 00 00 01 00 00 40
+G17P dump:   +0010 00 40 00 00 01 00 00 00 01 00 00 00 40 00 00 00
+G17P dump:   +0020 01 00 00 00 01 00 00 00 60 01 00 60 00 00 00 40
+G17P cdm: base=86fdee4000 end=86fdee4030 len=48 linked=0 sampler_heap=0 sampler_count=0 helper(bin=0 data=0 cfg=0)
+G17P dump: cdm-stream base=86fdee4000 len=48
+G17P dump:   +0000 00 00 08 00 00 00 00 01 00 19 00 00 01 00 00 40
+G17P dump:   +0010 00 40 00 00 01 00 00 00 01 00 00 00 40 00 00 00
+G17P dump:   +0020 01 00 00 00 01 00 00 00 60 01 00 60 00 00 00 40
+block0 {
+   12 = get_sr #0x50
+   4 = device_load u0:u1, #11, xyz, shift=1, #0x0, slot 0
+   15, _, _ = split 4
+   6 = imad 15, #64, 12, shift=0
+   8 = mov_imm #0x123abc
+   10 = device_load u2:u3, #1, xyzw, shift=2, #0x0, slot 0
+   18, 19, _, _ = split 10
+   11d = collect 18, 19
+   device_store 8, 11d, 6.abs, x, shift=0, #0x0, slot 0
+   stop
+}
+
+block0 {
+   4 = device_load u0:u1, #11, xyz, shift=1, #0x0, slot 0
+   15, _, _ = split 4
+   10 = device_load u2:u3, #1, xyzw, shift=2, #0x0, slot 0
+   18, 19, _, _ = split 10
+   12 = get_sr #0x50
+   6 = imad 15, #64, 12, shift=0
+   11d = collect 18, 19
+   8 = mov_imm #0x123abc
+   device_store 8, 11d, 6.abs, x, shift=0, #0x0, slot 0
+   stop
+}
+
+block0 {
+   $r0...r2 = device_load u0:u1, #11, xyz, shift=1, #0x0, slot 0
+   r4...r7 = device_load u2:u3, #1, xyzw, shift=2, #0x0, slot 0
+   $r1 = get_sr #0x50
+   r0 = imad ^r0, #64, ^r1, shift=0
+   r1 = mov_imm #0x123abc
+   device_store ^r1, ^r4:r5, ^r0.abs, x, shift=0, #0x0, slot 0
+   stop
+}
+
+PASS: buffer oracle bad=0/32768 watched_bad=0 on queue 0 flags=0xf
+PASS: all sparse alias oracles
+M4 probe end monotonic=2180.238785415

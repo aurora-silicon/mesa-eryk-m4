@@ -176,6 +176,30 @@ test_fragment_attachment_ranges(void)
 }
 
 static void
+test_attachment_merge_preserves_flush_coverage(void)
+{
+   struct hk_drm_attachment_set a, b;
+   hk_drm_attachment_set_init(&a);
+   hk_drm_attachment_set_init(&b);
+   assert(hk_drm_attachment_set_add(&a, 0x1000, 0x1000));
+   assert(hk_drm_attachment_set_add(&b, 0x4000, 0x1000));
+   struct hk_drm_attachment_set original = a;
+   assert(!hk_drm_attachment_set_merge(&a, &b, 1));
+   assert(memcmp(&a, &original, sizeof(a)) == 0);
+   assert(hk_drm_attachment_set_merge(&a, &b, 2));
+   assert(a.complete && a.count == 2);
+   /* A bridge coalesces the two ranges even at the smaller hardware limit. */
+   hk_drm_attachment_set_init(&b);
+   assert(hk_drm_attachment_set_add(&b, 0x2000, 0x2000));
+   assert(hk_drm_attachment_set_merge(&a, &b, 1));
+   assert(a.count == 1 && a.list[0].pointer == 0x1000 && a.list[0].size == 0x4000);
+   b.complete = false;
+   original = a;
+   assert(!hk_drm_attachment_set_merge(&a, &b, 2));
+   assert(memcmp(&a, &original, sizeof(a)) == 0);
+}
+
+static void
 append_command(uint8_t *buffer, size_t *size, uint16_t type,
                uint16_t payload_size)
 {
@@ -239,6 +263,7 @@ main(void)
    test_g17p_zls_pixels_follow_backing_storage();
    test_g17p_inactive_zls_uses_neutral_depth();
    test_fragment_attachment_ranges();
+   test_attachment_merge_preserves_flush_coverage();
    test_hardware_command_spans_skip_attachment_commands();
    puts("Honeykrisp DRM render resource specs: all checks passed");
    return 0;

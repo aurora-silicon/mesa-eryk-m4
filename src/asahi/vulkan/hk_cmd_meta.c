@@ -1908,6 +1908,9 @@ hk_CmdCopyBuffer2(VkCommandBuffer commandBuffer, const VkCopyBufferInfo2 *info)
             region.size = tail;
          }
          vk_meta_copy_buffer(&cmd->vk, &dev->meta, &copy);
+         if (cmd->current_cs.cs)
+            hk_drm_attachment_set_add(&cmd->current_cs.cs->compute_attachments,
+                                      dst, info->pRegions[i].size);
       }
       hk_meta_end(cmd, &save, VK_PIPELINE_BIND_POINT_COMPUTE);
       return;

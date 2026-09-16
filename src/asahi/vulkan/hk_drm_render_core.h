@@ -54,6 +54,10 @@ void hk_drm_attachment_set_init(struct hk_drm_attachment_set *set);
 bool hk_drm_attachment_set_add(struct hk_drm_attachment_set *set,
                                uint64_t pointer, uint64_t size);
 
+bool hk_drm_attachment_set_merge(struct hk_drm_attachment_set *dst,
+                                 const struct hk_drm_attachment_set *src,
+                                 unsigned limit);
+
 bool hk_drm_next_command_span(const void *cmdbuf, size_t cmdbuf_size,
                               size_t start_offset, unsigned hardware_limit,
                               struct hk_drm_command_span *span);

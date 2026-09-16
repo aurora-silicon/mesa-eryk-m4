@@ -545,7 +545,11 @@ merge_control_streams(struct hk_cmd_buffer *cmd)
 
    list_for_each_entry_safe(struct hk_cs, cs, &cmd->control_streams, node) {
       if (cs->type == HK_CS_CDM && last && last->type == HK_CS_CDM &&
-          !last->timestamp.end.handle && !last->ends_timestamp_reset) {
+          !last->timestamp.end.handle && !last->ends_timestamp_reset &&
+          !last->ends_memory_dependency &&
+          hk_drm_attachment_set_merge(&last->compute_attachments,
+                                       &cs->compute_attachments,
+                                       hk_cmd_buffer_device(cmd)->dev.params.max_attachments)) {
 
          hk_cs_merge_cdm(last, cs);
          list_del(&cs->node);
@@ -606,6 +610,34 @@ hk_CmdPipelineBarrier2(VkCommandBuffer commandBuffer,
       return;
 
    perf_debug(cmd, "Pipeline barrier");
+
+   if (dev->dev.chip == AGX_CHIP_G16G) {
+      VkAccessFlags2 writes = 0;
+      for (unsigned i = 0; i < pDependencyInfo->memoryBarrierCount; i++) {
+         const VkMemoryBarrier2 *b = &pDependencyInfo->pMemoryBarriers[i];
+         writes |= vk_filter_src_access_flags2(b->srcStageMask, b->srcAccessMask);
+      }
+      for (unsigned i = 0; i < pDependencyInfo->bufferMemoryBarrierCount; i++) {
+         const VkBufferMemoryBarrier2 *b = &pDependencyInfo->pBufferMemoryBarriers[i];
+         writes |= vk_filter_src_access_flags2(b->srcStageMask, b->srcAccessMask);
+      }
+      for (unsigned i = 0; i < pDependencyInfo->imageMemoryBarrierCount; i++) {
+         const VkImageMemoryBarrier2 *b = &pDependencyInfo->pImageMemoryBarriers[i];
+         writes |= vk_filter_src_access_flags2(b->srcStageMask, b->srcAccessMask);
+      }
+      /* CDM's post-launch barrier orders accesses through the same VA but
+       * does not publish writes to another VA of the same physical page.
+       * Preserve the firmware completion flush for memory dependencies.
+       * Execution-only dependencies can still be merged. */
+      if (writes) {
+         struct hk_cs *streams[] = {cmd->current_cs.cs, cmd->current_cs.pre_gfx,
+                                    cmd->current_cs.post_gfx};
+         for (unsigned i = 0; i < ARRAY_SIZE(streams); i++) {
+            if (streams[i])
+               streams[i]->ends_memory_dependency = true;
+         }
+      }
+   }
 
    /* The big hammer. We end both compute and graphics batches. Ending compute
     * here is necessary to properly handle graphics->compute dependencies.

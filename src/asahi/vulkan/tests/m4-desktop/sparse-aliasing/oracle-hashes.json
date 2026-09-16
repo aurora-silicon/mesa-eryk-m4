@@ -1,0 +1,15 @@
+{
+  "tools/vk-buffer-oracle.c": "eeed67997121f574e5d05b449a889d4880362e4e89016873589c33906b76ab24",
+  "tools/sparse-alias-cases.py": "06bdb097716549dca05e62cf0f2f48975132554c2751b8472f1a95b917d84831",
+  "build/directx-sparse/vk-buffer-oracle": "dd19ce3e771ba2d7e4da350bc45e5dcbcb94ba11d91b48d8941f3503bcc2a8b6",
+  "build/directx-sparse/oracles/input.bin": "7b917f209db62a4e9d8572930dbe383d15969f9aed2b96b07908036e55a88b4f",
+  "build/directx-sparse/oracles/cpu-expected.bin": "b738a8032d86478699726d254e92f4e8c51dc9b20b777bff8e5a87c6a5a0d4d0",
+  "build/directx-sparse/oracles/gpu-expected.bin": "152e99be64cbd9fd18693a51fbf6d4ea053693e1da5ad586add9c699ee2b6f11",
+  "build/directx-sparse/oracles/read.comp": "300caa252ae2508633f139fa7577d16fbae978af3c8c0281d0e81901bf30e443",
+  "build/directx-sparse/oracles/read-wide.comp": "70645c3fe0682be8c1b75284e6183fe92bfe455ae798b0c896e8f62ddca89143",
+  "build/directx-sparse/oracles/write.comp": "42e405a10fc21f529a2068f059811012b09ce3896835a8a2d1c5b59ba991db21",
+  "build/directx-sparse/oracles/run.py": "ffa94e69ec44e38732e7dfabb953fb56147f5775c47d6936569be589efc33c3a",
+  "build/directx-sparse/oracles/read-wide.spv": "e28fab4d1692efa5bf59c1b4e749d2441353f3522040359e3a3449b9091e0d74",
+  "build/directx-sparse/oracles/read.spv": "378cb90d7809ed32e195076554d7585c169a5ece20dd9e2bc4b034f045788826",
+  "build/directx-sparse/oracles/write.spv": "b39ad1fe46c90ee7f859d77cffae6c744bff3912d8484b3814ab377791f1cd28"
+}

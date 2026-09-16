@@ -708,10 +708,8 @@ hk_get_device_features(
       features->shaderResourceMinLod = false;
       features->advancedBlendCoherentOperations = false;
       features->sparseBinding = sparse;
-      /* Aliasing one memory range at two virtual addresses reads stale or
-       * wrong data on G16G (CTS image_sparse_memory_aliasing and
-       * buffer.ssbo.sparse_binding_aliased fail alone); not advertised. */
-      features->sparseResidencyAliased = false;
+      /* Memory dependencies retain firmware cache publication for aliases. */
+      features->sparseResidencyAliased = sparse;
       features->sparseResidencyImage2D = sparse;
       features->sparseResidencyBuffer = sparse;
       // G16G exports the view index through its qualified layered UVS path.
