@@ -33,7 +33,9 @@ hk_get_buffer_format_features(struct hk_physical_device *pdev,
    if (pdev->dev.chip == AGX_CHIP_G16G &&
        hk_storage_image_format(p_format) != p_format)
       return VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_BIT |
-             VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_ATOMIC_BIT;
+             VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_ATOMIC_BIT |
+             VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT |
+             VK_FORMAT_FEATURE_2_STORAGE_WRITE_WITHOUT_FORMAT_BIT;
 
    if (agx_vbo_supports_format(p_format))
       features |= VK_FORMAT_FEATURE_2_VERTEX_BUFFER_BIT;

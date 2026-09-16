@@ -1,0 +1,30 @@
+[
+  {
+    "name": "image-formatless-r1",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T151221417464Z-dx-image64-formatless-r1"
+  },
+  {
+    "name": "image-formatless-r2",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T152136878887Z-dx-image64-formatless-r2"
+  },
+  {
+    "name": "image-formatless-r3",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T154327737064Z-dx-image64-formatless-r3"
+  },
+  {
+    "name": "formatless-memory-r1",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T152922066145Z-dx-image64-formatless-memory-r1"
+  },
+  {
+    "name": "formatless-memory-r2",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T153212995415Z-dx-image64-formatless-memory-r2"
+  },
+  {
+    "name": "formatless-memory-fixed-r1",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T154230554149Z-dx-image64-formatless-memory-fixed-r1"
+  },
+  {
+    "name": "formatless-default-regression",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T154722438094Z-dx-image64-formatless-default-regression"
+  }
+]

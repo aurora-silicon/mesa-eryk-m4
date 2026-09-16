@@ -1,0 +1,12 @@
+#version 450
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
+#extension GL_EXT_shader_image_int64 : require
+#extension GL_EXT_shader_image_load_formatted : require
+layout(local_size_x=64) in;
+layout(set=0,binding=0) uniform coherent writeonly u64imageBuffer tex;
+layout(set=0,binding=0,r64ui) uniform coherent readonly u64imageBuffer readback;
+layout(set=0,binding=1,std430) buffer Out {uint64_t data[];} dst;
+void main(){uint i=gl_GlobalInvocationID.x;int p=int(i);
+uint64_t old=imageLoad(readback,p).x;imageStore(tex,p,u64vec4(uint64_t(0xfedcba98fffffffeul)));
+memoryBarrierImage();dst.data[i]=old;dst.data[256u+i]=imageLoad(readback,p).x;
+}

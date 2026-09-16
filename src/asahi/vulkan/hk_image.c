@@ -81,7 +81,9 @@ hk_get_image_plane_format_features(struct hk_physical_device *pdev,
       return VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT |
              VK_FORMAT_FEATURE_2_STORAGE_IMAGE_ATOMIC_BIT |
              VK_FORMAT_FEATURE_2_TRANSFER_SRC_BIT |
-             VK_FORMAT_FEATURE_2_TRANSFER_DST_BIT;
+             VK_FORMAT_FEATURE_2_TRANSFER_DST_BIT |
+             VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT |
+             VK_FORMAT_FEATURE_2_STORAGE_WRITE_WITHOUT_FORMAT_BIT;
    }
 
    enum pipe_format padded = hk_padded_image_format(p_format);

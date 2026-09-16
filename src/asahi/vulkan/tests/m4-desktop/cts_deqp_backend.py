@@ -11,6 +11,63 @@ import subprocess
 import time
 
 
+def memory_sample(diagnostic=False):
+    """Read-only context for allocation failures; never renews the watchdog."""
+    sample = {'monotonic_seconds': time.monotonic()}
+    try:
+        sample['meminfo_kib'] = {
+            name.rstrip(':'): int(value)
+            for name, value, *unit in
+            (line.split() for line in Path('/proc/meminfo').read_text().splitlines())
+            if unit == ['kB']
+        }
+        sample['vmstat'] = {
+            name: int(value)
+            for name, value in
+            (line.split() for line in Path('/proc/vmstat').read_text().splitlines())
+            if name == 'oom_kill' or name.startswith(('allocstall', 'pgscan_direct'))
+        }
+        # PSI is optional in the target kernel; retain the core counters
+        # even when this file is unavailable.
+        pressure = Path('/proc/pressure/memory')
+        if pressure.exists():
+            sample['pressure'] = pressure.read_text().strip()
+    except OSError as exc:
+        sample['read_error'] = str(exc)
+    if diagnostic:
+        sample['clients'] = []
+        sample['kernel_workers'] = []
+        for proc in Path('/proc').glob('[0-9]*'):
+            try:
+                comm = (proc / 'comm').read_text().strip()
+                if comm.startswith('kworker'):
+                    stack = (proc / 'stack').read_text()
+                    if any(name in stack for name in ('asahi', 'fput', 'drm_', 'shmem')):
+                        sample['kernel_workers'].append(dict(pid=int(proc.name), comm=comm, stack=stack))
+                command = (proc / 'cmdline').read_bytes().replace(b'\0', b' ').decode(errors='replace')
+                if not any(name in command.split(' ', 1)[0] for name in ('deqp', 'Hyprland')):
+                    continue
+                client = dict(pid=int(proc.name), command=command,
+                              status=(proc / 'status').read_text(),
+                              smaps_rollup=(proc / 'smaps_rollup').read_text(), fds=[])
+                for fd in (proc / 'fd').iterdir():
+                    try:
+                        target = os.readlink(fd)
+                        if '/dev/dri/' in target or 'memfd:' in target or '/dev/shm/' in target:
+                            client['fds'].append(dict(fd=fd.name, target=target,
+                                info=(proc / 'fdinfo' / fd.name).read_text()))
+                    except OSError:
+                        pass  # A CTS child may exit between reads.
+                sample['clients'].append(client)
+            except OSError:
+                pass
+        try:
+            sample['drm_clients'] = Path('/sys/kernel/debug/dri/128/clients').read_text()
+        except OSError as exc:
+            sample['drm_clients_error'] = str(exc)
+    return sample
+
+
 def kill_tree(proc):
     # Remain in the outer guard's process group. It can always terminate the
     # entire workload, including this wrapper, on thermal/progress failure.
@@ -51,12 +108,19 @@ def run(args, check, boot, out, env, metadata, save):
     begin = time.monotonic()
     started = time.time()
     error = None
-    with (out / 'runner.log').open('w') as log:
+    with (out / 'runner.log').open('w') as log, \
+         (out / 'memory.jsonl').open('w') as memory:
         proc = subprocess.Popen(argv, cwd=args.binary.parent, env=env,
                                 stdout=log, stderr=subprocess.STDOUT)
+        next_memory = begin
         try:
             while proc.poll() is None:
                 check()
+                if time.monotonic() >= next_memory:
+                    memory.write(json.dumps(memory_sample(env.get('M4_CTS_MEMORY_DIAGNOSTIC') == '1')) + '\n')
+                    memory.flush()
+                    os.fsync(memory.fileno())
+                    next_memory = time.monotonic() + 5
                 if time.monotonic() - begin > args.runner_seconds:
                     raise TimeoutError('deqp-runner workload deadline reached')
                 time.sleep(0.2)
@@ -65,6 +129,9 @@ def run(args, check, boot, out, env, metadata, save):
             kill_tree(proc)
         log.flush()
         os.fsync(log.fileno())
+        memory.write(json.dumps(memory_sample(env.get('M4_CTS_MEMORY_DIAGNOSTIC') == '1')) + '\n')
+        memory.flush()
+        os.fsync(memory.fileno())
     elapsed = time.monotonic() - begin
     results = collect(out, cases, metadata, args.start, boot)
     save(out / 'results.json', results)

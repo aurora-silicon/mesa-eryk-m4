@@ -1,0 +1,23 @@
+{
+  "selected": 1000,
+  "recorded": 1000,
+  "completed": 1000,
+  "counts": {
+    "Pass": 392,
+    "NotSupported": 608
+  },
+  "classifications": {
+    "unclassified": 1000
+  },
+  "elapsed_seconds": 34.81734397902619,
+  "preparation_seconds": 1.4761122150230221,
+  "runner_seconds": 32.01297610800009,
+  "jobs": 12,
+  "tests_per_group": 1,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "53a546151c66c7b2066efc7321f4f1f322cd4052090890c723754db5d5e77969",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T152922066145Z-dx-image64-formatless-memory-r1",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 66.0
+}

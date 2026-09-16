@@ -1,0 +1,90 @@
+[
+  {
+    "name": "image-unsigned-load",
+    "env": {
+      "M4_ORACLE_BINDING_COUNT": "2",
+      "M4_ORACLE_IMAGE_ATOMIC64": "1",
+      "M4_ORACLE_IMAGE_FORMATLESS": "1",
+      "M4_ORACLE_IMAGE_FORMAT": "110",
+      "M4_ORACLE_STORAGE_IMAGE": "1"
+    }
+  },
+  {
+    "name": "image-unsigned-store",
+    "env": {
+      "M4_ORACLE_BINDING_COUNT": "2",
+      "M4_ORACLE_IMAGE_ATOMIC64": "1",
+      "M4_ORACLE_IMAGE_FORMATLESS": "1",
+      "M4_ORACLE_IMAGE_FORMAT": "110",
+      "M4_ORACLE_STORAGE_IMAGE": "1"
+    }
+  },
+  {
+    "name": "image-signed-load",
+    "env": {
+      "M4_ORACLE_BINDING_COUNT": "2",
+      "M4_ORACLE_IMAGE_ATOMIC64": "1",
+      "M4_ORACLE_IMAGE_FORMATLESS": "1",
+      "M4_ORACLE_IMAGE_FORMAT": "111",
+      "M4_ORACLE_STORAGE_IMAGE": "1"
+    }
+  },
+  {
+    "name": "image-signed-store",
+    "env": {
+      "M4_ORACLE_BINDING_COUNT": "2",
+      "M4_ORACLE_IMAGE_ATOMIC64": "1",
+      "M4_ORACLE_IMAGE_FORMATLESS": "1",
+      "M4_ORACLE_IMAGE_FORMAT": "111",
+      "M4_ORACLE_STORAGE_IMAGE": "1"
+    }
+  },
+  {
+    "name": "buffer-unsigned-load",
+    "env": {
+      "M4_ORACLE_BINDING_COUNT": "2",
+      "M4_ORACLE_IMAGE_ATOMIC64": "1",
+      "M4_ORACLE_IMAGE_FORMATLESS": "1",
+      "M4_ORACLE_TEXEL_FORMAT": "110",
+      "M4_ORACLE_TEXEL_STORAGE": "1",
+      "M4_ORACLE_TEXEL_OFFSET": "0",
+      "M4_ORACLE_TEXEL_RANGE": "2048"
+    }
+  },
+  {
+    "name": "buffer-unsigned-store",
+    "env": {
+      "M4_ORACLE_BINDING_COUNT": "2",
+      "M4_ORACLE_IMAGE_ATOMIC64": "1",
+      "M4_ORACLE_IMAGE_FORMATLESS": "1",
+      "M4_ORACLE_TEXEL_FORMAT": "110",
+      "M4_ORACLE_TEXEL_STORAGE": "1",
+      "M4_ORACLE_TEXEL_OFFSET": "0",
+      "M4_ORACLE_TEXEL_RANGE": "2048"
+    }
+  },
+  {
+    "name": "buffer-signed-load",
+    "env": {
+      "M4_ORACLE_BINDING_COUNT": "2",
+      "M4_ORACLE_IMAGE_ATOMIC64": "1",
+      "M4_ORACLE_IMAGE_FORMATLESS": "1",
+      "M4_ORACLE_TEXEL_FORMAT": "111",
+      "M4_ORACLE_TEXEL_STORAGE": "1",
+      "M4_ORACLE_TEXEL_OFFSET": "0",
+      "M4_ORACLE_TEXEL_RANGE": "2048"
+    }
+  },
+  {
+    "name": "buffer-signed-store",
+    "env": {
+      "M4_ORACLE_BINDING_COUNT": "2",
+      "M4_ORACLE_IMAGE_ATOMIC64": "1",
+      "M4_ORACLE_IMAGE_FORMATLESS": "1",
+      "M4_ORACLE_TEXEL_FORMAT": "111",
+      "M4_ORACLE_TEXEL_STORAGE": "1",
+      "M4_ORACLE_TEXEL_OFFSET": "0",
+      "M4_ORACLE_TEXEL_RANGE": "2048"
+    }
+  }
+]

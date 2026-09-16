@@ -539,6 +539,14 @@ int main(int argc, char **argv) {
     vkGetPhysicalDeviceFeatures2(physical, &query);
     if (!query.features.shaderResourceResidency) die("shader residency unavailable");
   }
+  const bool image_formatless = getenv("M4_ORACLE_IMAGE_FORMATLESS") != NULL;
+  if (image_formatless) {
+    VkPhysicalDeviceFeatures2 query = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
+    vkGetPhysicalDeviceFeatures2(physical, &query);
+    if (!query.features.shaderStorageImageReadWithoutFormat ||
+        !query.features.shaderStorageImageWriteWithoutFormat)
+      die("formatless storage images unavailable");
+  }
   const VkPhysicalDeviceFeatures features = {
       .sparseBinding = sparse_alias || sparse_texel || sparse_image_option,
       .sparseResidencyImage2D = sparse_image_option != NULL,
@@ -547,6 +555,8 @@ int main(int argc, char **argv) {
       .shaderInt64 = VK_TRUE,
       .shaderResourceMinLod = getenv("M4_ORACLE_MIN_LOD") != NULL,
       .samplerAnisotropy = getenv("M4_ORACLE_ANISOTROPY") != NULL,
+      .shaderStorageImageReadWithoutFormat = image_formatless,
+      .shaderStorageImageWriteWithoutFormat = image_formatless,
       .shaderStorageImageExtendedFormats = texel_storage};
   const VkDeviceCreateInfo device_info = {
       .pEnabledFeatures = &features,

@@ -23,7 +23,8 @@ PROGRESS_DIR = ROOT / 'missing_tests' / 'progress'
 RUNS_DIR = ROOT / 'build' / 'missing-tests'
 CATALOG = ROOT / 'build' / 'cts-vulkan14-ordered' / 'catalog' / 'catalog.txt'
 RUNNER = ROOT / 'reference/deqp-runner/target/aarch64-unknown-linux-gnu/release/deqp-runner'
-BINARY = '/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit'
+# Includes the documented scaled-blit and minmax-admission corrections.
+BINARY = '/root/cts-1.4.6.2/deqp-vk-minmax-components'
 RECORDS = ROOT / 'mesa/m4-asahi/src/asahi/vulkan/tests/m4-desktop/cts-vulkan14-ordered'
 BATCHES = ['build/cts-vulkan14-ordered-perf/run4/0000000-1000000',
            'build/cts-vulkan14-ordered-perf/run3/1000000-1200000',
@@ -40,7 +41,28 @@ OVERLAYS = ['build/claude-fix/steam-sparse2-r1', 'build/claude-fix/steam-rb3-r1'
             'build/claude-fix/r7-wsi-cs-basic', 'build/claude-fix/r7-wsi-cs-hdr'] + \
            ['build/claude-fix/r7-wsi-final-%d' % i for i in range(10)] + \
            sorted(glob.glob(str(ROOT / 'build/missing-tests/*/results.json')), key=os.path.getmtime)  # the loop's own runs
-OVERLAYS += ['build/directx-sparse/full-r1', 'build/directx-sparse/reg1000']
+OVERLAYS += ['build/directx-sparse/full-r1', 'build/directx-sparse/reg1000',
+             'build/directx-sparse/residency-full-final',
+             'build/directx-sparse/residency-complement-final',
+             'build/directx-sparse/residency-queries-final',
+             'build/directx-sparse/min-lod-offset-final']
+OVERLAYS += [f'build/directx-sparse/minmax-final-{start}-{end}'
+             for start, end in [(0,10000),(10000,20000),(20000,30000),
+                                (30000,40000),(40000,50000),(50000,53190)]]
+OVERLAYS += ['build/directx-subgroup/prefix-basic-r4',
+             'build/directx-subgroup/prefix-reg1000',
+             'build/directx-sparse/default-min-lod',
+             'build/directx-sparse/default-sparse',
+             'build/directx-sparse/strict-final-regression',
+             'build/directx-sparse/strict-final-full',
+             'build/directx-layer/default-regression',
+             'build/directx-atomic64/default-sparse-full',
+             'build/directx-atomic64/default-regression',
+             'build/directx-atomic64/shared-default-regression',
+             'build/directx-atomic64/image-cts-full-r1',
+             'build/directx-atomic64/image-cts-extra-r2',
+             'build/directx-atomic64/image-default-regression',
+             'build/directx-atomic64/formatless-default-regression']
 
 CLASSES = [  # (regex on the reason, class, priority); first match wins
     (r'sparse|Sparse', 'feature-implementable', 2),

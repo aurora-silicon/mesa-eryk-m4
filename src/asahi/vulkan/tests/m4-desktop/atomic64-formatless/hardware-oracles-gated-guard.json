@@ -1,0 +1,32 @@
+{
+  "id": "20260916T151806510429Z-dx-image64-formatless-oracles-r1",
+  "verdict": "pass",
+  "transport_returncode": 0,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T151806510429Z-dx-image64-formatless-oracles-r1",
+  "observations": {
+    "pixel_results": [
+      "PASS: image-unsigned-load",
+      "PASS: image-unsigned-store",
+      "PASS: image-signed-load",
+      "PASS: image-signed-store",
+      "PASS: buffer-unsigned-load",
+      "PASS: buffer-unsigned-store",
+      "PASS: buffer-signed-load",
+      "PASS: buffer-signed-store",
+      "PASS: eight formatless integer64 image and buffer configurations"
+    ],
+    "pixel_result_count": 9,
+    "thermal_samples": 4,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 64.5,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 64.5,
+      "Ta000m": 61.0,
+      "Te000m": 57.5,
+      "Te001m": 64.25,
+      "Tp000m": 63.75,
+      "Tp001m": 64.5
+    }
+  }
+}
