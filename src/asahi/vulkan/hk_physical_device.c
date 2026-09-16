@@ -701,13 +701,19 @@ hk_get_device_features(
       features->fragmentStoresAndAtomics = graphics_storage;
       features->shaderTessellationAndGeometryPointSize =
          dev->chip == AGX_CHIP_G16G;
+      const bool sparse = dev->chip == AGX_CHIP_G16G;
+      /* Residency fetches (sparse_image_load with a residency code) are not
+       * grounded on the native compiler yet. */
       features->shaderResourceResidency = false;
       features->shaderResourceMinLod = false;
       features->advancedBlendCoherentOperations = false;
-      features->sparseBinding = false;
+      features->sparseBinding = sparse;
+      /* Aliasing one memory range at two virtual addresses reads stale or
+       * wrong data on G16G (CTS image_sparse_memory_aliasing and
+       * buffer.ssbo.sparse_binding_aliased fail alone); not advertised. */
       features->sparseResidencyAliased = false;
-      features->sparseResidencyImage2D = false;
-      features->sparseResidencyBuffer = false;
+      features->sparseResidencyImage2D = sparse;
+      features->sparseResidencyBuffer = sparse;
       // G16G exports the view index through its qualified layered UVS path.
       features->multiview = dev->chip == AGX_CHIP_G16G;
       features->geometryStreams = dev->chip == AGX_CHIP_G16G;
@@ -884,7 +890,10 @@ hk_get_device_properties(const struct agx_device *dev,
       .nonCoherentAtomSize = 64,
 
       /* Vulkan 1.0 sparse properties */
-      .sparseResidencyNonResidentStrict = true,
+      /* The M4 kernel withholds soft faults (file.rs: the owned runtime does
+       * not apply the legacy fault_control); an unbound page read through the
+       * read/write address returns the scratch page, so reads are not strict. */
+      .sparseResidencyNonResidentStrict = dev->chip != AGX_CHIP_G16G,
       .sparseResidencyAlignedMipSize = false,
       .sparseResidencyStandard2DBlockShape = true,
 
@@ -1448,7 +1457,7 @@ hk_create_drm_physical_device(struct vk_instance *_instance,
    VkQueueFlags queue_flags =
       VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT |
       VK_QUEUE_SPARSE_BINDING_BIT;
-   if (agx_native_graphics(&pdev->dev)) {
+   if (agx_native_graphics(&pdev->dev) && pdev->dev.chip != AGX_CHIP_G16G) {
       /* Graphics, compute and transfers use the native HAL200 queue path.
        * Sparse binding still requires separate kernel support. */
       queue_flags = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT |
