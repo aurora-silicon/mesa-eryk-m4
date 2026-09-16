@@ -13,6 +13,7 @@
  * SPDX-License-Identifier: MIT
  */
 #include "hk_queue.h"
+#include "util/os_time.h"
 #include "hk_buffer.h"
 
 #include "agx_bg_eot.h"
@@ -696,7 +697,17 @@ queue_submit_single(struct hk_device *dev, struct drm_asahi_submit *submit,
       virt.extres = util_dynarray_begin(&dev->external_bos.list);
    }
 
+   static int64_t hk_timing_last_ns = 0;
+   const bool hk_timing = getenv("HK_SUBMIT_TIMING") != NULL;
+   int64_t hk_t0 = hk_timing ? os_time_get_nano() : 0;
    int ret = dev->dev.ops.submit(&dev->dev, submit, &virt);
+   if (hk_timing) {
+      int64_t t1 = os_time_get_nano();
+      fprintf(stderr, "HK_SUBMIT_TIMING t0_ns=%lld ioctl_us=%lld gap_us=%lld\n",
+              (long long)hk_t0, (long long)((t1 - hk_t0) / 1000),
+              (long long)(hk_timing_last_ns ? (hk_t0 - hk_timing_last_ns) / 1000 : 0));
+      hk_timing_last_ns = t1;
+   }
 
    if (dev->dev.is_virtio)
       u_rwlock_rdunlock(&dev->external_bos.lock);
