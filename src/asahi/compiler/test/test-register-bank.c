@@ -71,7 +71,7 @@ check(struct fixture *f, unsigned count)
       memcpy(after + c->dest, f->values + c->src.value, width * sizeof(uint16_t));
    }
    BITSET_DECLARE(assigned, AGX_NUM_REGS) = {0};
-   BITSET_SET_COUNT(assigned, 0, reserved_size(&f->shader));
+   BITSET_SET_COUNT(assigned, 0, agx_reserved_register_count(&f->shader));
    BITSET_SET_COUNT(assigned, result, count);
    for (unsigned ssa = 0; ssa < f->variables; ++ssa) {
       unsigned reg = f->assignments[ssa], width = f->widths[ssa];
@@ -119,7 +119,7 @@ main(void)
       init(&f, bound, reserved[(run / 4) % ARRAY_SIZE(reserved)]);
       /* Fill the whole low bank and all but count halves of the high bank.
        * Power-of-two vectors independently vary in width and scalar type. */
-      for (unsigned reg = reserved_size(&f.shader); reg < bound - count;) {
+      for (unsigned reg = agx_reserved_register_count(&f.shader); reg < bound - count;) {
          rng = rng * 1664525u + 1013904223u;
          unsigned width = 1u << ((rng >> 16) % 5);
          while (reg % width || reg + width > bound - count)
