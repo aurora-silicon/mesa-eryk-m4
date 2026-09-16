@@ -74,6 +74,30 @@ main(void)
    CHECK(check_device(AGX_ISA_ENCODING_AGX3B, base, b_add, sizeof(b_add)) == 0);
    CHECK(check_device(AGX_ISA_ENCODING_AGX3C, base, c_add, sizeof(c_add)) == 0);
 
+   /* G16G Metal917: two non-returning ulong min/max operations. */
+   struct agx3_device_atomic_desc wide = base;
+   wide.value64 = true;
+   wide.value_kill = false;
+   wide.op = AGX3_ATOMIC_UMIN;
+   wide.index_kind = AGX3_ATOMIC_INDEX_REGISTER;
+   wide.index = 4;
+   wide.index_shift = 3;
+   static const uint8_t b_min64[] =
+      {0x67,0x01,0x56,0x00,0x00,0x00,0x00,0x81,0x40,0x00,0x00,0x00,0x86,0x02};
+   CHECK(check_device(AGX_ISA_ENCODING_AGX3B, wide, b_min64, sizeof(b_min64)) == 0);
+   wide.op = AGX3_ATOMIC_UMAX;
+   wide.index_kill = true;
+   static const uint8_t b_max64[] =
+      {0x67,0x01,0x56,0x00,0x00,0x00,0x00,0x81,0x41,0x00,0x00,0x00,0x84,0x02};
+   CHECK(check_device(AGX_ISA_ENCODING_AGX3B, wide, b_max64, sizeof(b_max64)) == 0);
+   uint8_t wide_out[AGX3_ATOMIC_MAX_LENGTH], wide_len;
+   CHECK(!agx3_atomic_encode_device(AGX_ISA_ENCODING_AGX3C, &wide, wide_out, &wide_len));
+   wide.returns_value = true;
+   CHECK(!agx3_atomic_encode_device(AGX_ISA_ENCODING_AGX3B, &wide, wide_out, &wide_len));
+   wide.returns_value = false;
+   wide.op = AGX3_ATOMIC_ADD;
+   CHECK(!agx3_atomic_encode_device(AGX_ISA_ENCODING_AGX3B, &wide, wide_out, &wide_len));
+
    /* Native atomicvoid differs from the standalone add only in the
     * elected/partial-execution mode bit at byte +1. */
    struct agx3_device_atomic_desc elected_void = base;

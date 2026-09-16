@@ -446,6 +446,20 @@ int main(int argc, char **argv) {
     subgroup.pNext = feature_chain;
     feature_chain = &subgroup;
   }
+  const bool want_atomic64 = getenv("M4_ORACLE_ATOMIC64") != NULL;
+  VkPhysicalDeviceShaderAtomicInt64Features atomic64 = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES};
+  if (want_atomic64) {
+    VkPhysicalDeviceFeatures2 query = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, .pNext = &atomic64};
+    vkGetPhysicalDeviceFeatures2(physical, &query);
+    if (!atomic64.shaderBufferInt64Atomics) die("buffer int64 atomics unavailable");
+    atomic64.shaderSharedInt64Atomics = VK_FALSE;
+    if (!reduction_option) {
+      atomic64.pNext = feature_chain;
+      feature_chain = &atomic64;
+    }
+  }
   VkPhysicalDeviceVulkan12Features minmax = {.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES};
   if (reduction_option) {
     if (want_half || want_byte || want_subgroup_types) die("minmax oracle feature-chain conflict");
@@ -453,7 +467,8 @@ int main(int argc, char **argv) {
     vkGetPhysicalDeviceFeatures2(physical,&query);
     if (!minmax.samplerFilterMinmax) die("samplerFilterMinmax unavailable");
     minmax = (VkPhysicalDeviceVulkan12Features){.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
-      .samplerFilterMinmax=VK_TRUE,.samplerMirrorClampToEdge=VK_TRUE,.pNext=feature_chain};
+      .samplerFilterMinmax=VK_TRUE,.samplerMirrorClampToEdge=VK_TRUE,
+      .shaderBufferInt64Atomics=want_atomic64,.pNext=feature_chain};
     feature_chain=&minmax;
   }
   VkPhysicalDeviceImageViewMinLodFeaturesEXT view_min = {
@@ -464,13 +479,14 @@ int main(int argc, char **argv) {
     if (!view_min.minLod) die("view minLod unavailable");
     view_min.pNext=feature_chain;feature_chain=&view_min;
   }
-  const char *extensions[5];
+  const char *extensions[8];
   VkPhysicalDeviceTimelineSemaphoreFeatures timeline = {
     .sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES,
     .timelineSemaphore=VK_TRUE,.pNext=feature_chain};
   if (sparse_wait && !reduction_option) feature_chain=&timeline;
   if (sparse_wait && reduction_option) minmax.timelineSemaphore=VK_TRUE;
   unsigned extension_count = 0;
+  if (want_atomic64) extensions[extension_count++] = VK_KHR_SHADER_ATOMIC_INT64_EXTENSION_NAME;
   if (view_min_option) extensions[extension_count++] = VK_EXT_IMAGE_VIEW_MIN_LOD_EXTENSION_NAME;
   if (want_half || want_byte)
     extensions[extension_count++] = VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME;

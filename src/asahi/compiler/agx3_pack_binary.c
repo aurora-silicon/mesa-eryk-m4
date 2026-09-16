@@ -2022,9 +2022,9 @@ agx3_map_atomic_op(enum agx_atomic_opc in, enum agx3_atomic_op *out)
    return false;
 }
 
-/* Translate Mesa's global atomic IR into the fully witnessed 32-bit AGX3
- * family.  The address lowering represents a constant byte displacement as a
- * 32-bit element index; fold it back into the signed byte-offset field when it
+/* Translate Mesa's global atomic IR into qualified AGX3 forms. The address
+ * lowering represents a constant byte displacement as an element index of the
+ * atomic's width; fold it back into the signed byte-offset field when it
  * fits, matching Apple. AGX3b results are transferred from TPS by the caller. */
 static bool
 agx3_translate_device_atomic(const agx_instr *I,
@@ -2043,10 +2043,13 @@ agx3_translate_device_atomic(const agx_instr *I,
    const unsigned value_channels =
       d->op == AGX3_ATOMIC_CMPXCHG ? 2 : 1;
    const agx_index value = I->src[0];
-   if (!agx3_atomic_plain_reg(value, AGX_SIZE_32, value_channels))
+   d->value64 = value.size == AGX_SIZE_64;
+   if (!agx3_atomic_plain_reg(value, d->value64 ? AGX_SIZE_64 : AGX_SIZE_32,
+                             value_channels))
       return false;
    d->value = value.value;
-   d->value_kill = value.discard;
+   /* The qualified 64-bit native forms leave the discard hint clear. */
+   d->value_kill = !d->value64 && value.discard;
 
    const agx_index result = I->dest[0];
    d->returns_value = !agx_is_null(result);
@@ -2077,6 +2080,7 @@ agx3_translate_device_atomic(const agx_instr *I,
    }
 
    const agx_index index = I->src[2];
+   const unsigned index_shift = d->value64 ? 3 : 2;
    /* .abs marks zero extension of the address index, not integer abs.
     * A nonnegative immediate has the same folded byte offset in either mode. */
    if (index.memory || (index.abs && index.type != AGX_INDEX_IMMEDIATE) ||
@@ -2088,14 +2092,14 @@ agx3_translate_device_atomic(const agx_instr *I,
       if (index.kill || index.cache || index.discard ||
           index.value > UINT16_MAX)
          return false;
-      const uint64_t byte_offset = (uint64_t)index.value << 2;
+      const uint64_t byte_offset = (uint64_t)index.value << index_shift;
       if (byte_offset <= INT16_MAX) {
          d->index_kind = AGX3_ATOMIC_INDEX_IMMEDIATE;
          d->byte_offset = byte_offset;
       } else {
          d->index_kind = AGX3_ATOMIC_INDEX_IMMEDIATE;
          d->index = index.value;
-         d->index_shift = 2;
+         d->index_shift = index_shift;
       }
    } else if (agx3_src_is_register(index) && index.size == AGX_SIZE_32 &&
               !index.kill && !(index.cache && index.discard) &&
@@ -2103,13 +2107,13 @@ agx3_translate_device_atomic(const agx_instr *I,
       d->index_kind = AGX3_ATOMIC_INDEX_REGISTER;
       d->index = index.value;
       d->index_kill = index.discard;
-      d->index_shift = 2;
+      d->index_shift = index_shift;
    } else if (index.type == AGX_INDEX_UNIFORM && index.size == AGX_SIZE_32 &&
               index.value < 512 && !index.kill && !index.cache &&
               !index.discard) {
       d->index_kind = AGX3_ATOMIC_INDEX_UNIFORM;
       d->index = index.value;
-      d->index_shift = 2;
+      d->index_shift = index_shift;
    } else {
       return false;
    }

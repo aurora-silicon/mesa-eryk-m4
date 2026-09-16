@@ -1,0 +1,6 @@
+{
+  "tools/vk-buffer-oracle.c": "b6047376b8a750b1dcf9e6bc90e3626c9fd1dbe9fba4b6e0f8a2ca1d58e6cbbc",
+  "tools/atomic64-minmax-cases.py": "f68a5069802c7ee0c9f5058db77738db8a8f701f776acb4ac67c84b492370414",
+  "build/directx-atomic64/vk-buffer-oracle-arm64": "a7206b57997aa53cb6c60360e7f7144c39fd392d0605467df9c0cded67219395",
+  "build/mesa-m4-asahi-arm64/src/asahi/vulkan/libvulkan_asahi.so": "f3ef24b71421838b72232ee4fec991b2ba188a0a92b55fdd904ef8b4570500e7"
+}

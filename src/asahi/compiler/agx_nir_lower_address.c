@@ -120,8 +120,12 @@ pass(struct nir_builder *b, nir_intrinsic_instr *intr, void *data)
    unsigned bitsize = intr->intrinsic == nir_intrinsic_store_global
                          ? nir_src_bit_size(intr->src[0])
                          : intr->def.bit_size;
-   enum pipe_format format = format_for_bitsize(bitsize);
-   unsigned format_shift = util_logbase2(util_format_get_blocksize(format));
+   const bool atomic = intr->intrinsic == nir_intrinsic_global_atomic ||
+                       intr->intrinsic == nir_intrinsic_global_atomic_swap;
+   /* Atomics carry their width in the value, not a formatted-load field. */
+   enum pipe_format format = format_for_bitsize(atomic ? 32 : bitsize);
+   unsigned format_shift = atomic ? util_logbase2(bitsize / 8)
+                                 : util_logbase2(util_format_get_blocksize(format));
 
    nir_src *orig_offset = nir_get_io_offset_src(intr);
    nir_scalar base = nir_scalar_resolved(orig_offset->ssa, 0);

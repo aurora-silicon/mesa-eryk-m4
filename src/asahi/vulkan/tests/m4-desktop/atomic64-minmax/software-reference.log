@@ -1,0 +1,7 @@
+PASS: min-unique
+PASS: min-single
+PASS: min-striped
+PASS: max-unique
+PASS: max-single
+PASS: max-striped
+PASS: six unsigned atomic64 minmax configurations

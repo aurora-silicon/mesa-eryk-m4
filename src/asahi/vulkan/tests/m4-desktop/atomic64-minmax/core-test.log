@@ -1,0 +1,10 @@
+ninja: Entering directory `/home/council/dev/dirtyroom_m4/build/mesa-m4-asahi-host'
+[1/3] Compiling C object src/asahi/compiler/agx3_atomic_core_test.p/test_test-agx3-atomic-core.c.o
+[2/3] Compiling C object src/asahi/compiler/agx3_atomic_core_test.p/agx3_atomic_core.c.o
+[3/3] Linking target src/asahi/compiler/agx3_atomic_core_test
+1/1 asahi - mesa:agx3_atomic_core OK              0.00s
+
+Ok:                1   
+Fail:              0   
+
+Full log written to /home/council/dev/dirtyroom_m4/build/mesa-m4-asahi-host/meson-logs/testlog.txt

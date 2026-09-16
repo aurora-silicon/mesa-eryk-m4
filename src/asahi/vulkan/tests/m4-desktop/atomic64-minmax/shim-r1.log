@@ -1,0 +1,7 @@
+FAIL: min-unique
+PASS: min-single
+FAIL: min-striped
+FAIL: max-unique
+FAIL: max-single
+FAIL: max-striped
+FAIL: six unsigned atomic64 minmax configurations

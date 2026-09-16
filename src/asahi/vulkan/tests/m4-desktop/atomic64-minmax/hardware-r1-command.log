@@ -1,0 +1,10 @@
+Probe environment: {'AGX_MESA_DEBUG': '', 'ASAHI_M4_EXPERIMENTAL': '1', 'ASAHI_MESA_DEBUG': 'nocompress', 'HK_EXPERIMENTAL_ATOMIC64_NATIVE_MINMAX': '1', 'HK_G17P_LAUNCH_TRACE': '0', 'M4_TEST_CPU_MAX_KHZ': '4104000', 'ZINK_DEBUG': 'sync'}
+M4 probe start monotonic=20868.276236906
+PASS: min-unique
+PASS: min-single
+PASS: min-striped
+PASS: max-unique
+PASS: max-single
+PASS: max-striped
+PASS: six unsigned atomic64 minmax configurations
+M4 probe end monotonic=20868.590853321

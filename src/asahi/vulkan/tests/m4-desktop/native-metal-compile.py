@@ -12,6 +12,8 @@ p.add_argument('--output', type=Path, required=True)
 p.add_argument('--function', default='cs')
 p.add_argument('--stage', choices=['compute', 'render', 'builtin'], default='compute')
 p.add_argument('--compiler', help='Absolute offline compiler path on the Mac; defaults to xcrun')
+p.add_argument('--frontend', help='Absolute Metal frontend path on the Mac; defaults to xcrun metal')
+p.add_argument('--remote-python', default='python3', help='Remote Python executable (may be an absolute standalone path)')
 p.add_argument('--vertex-function', default='vs', help='Vertex function for render pipelines')
 p.add_argument('--rasterization-disabled', action='store_true', help='Compile a render pipeline without rasterization or a fragment stage')
 p.add_argument('--samples',type=int,default=1,choices=[1,2,4],help='Render pipeline raster sample count')
@@ -54,18 +56,20 @@ ok=run(['sw_vers']) and run(compiler+['--version'])
 if request['stage']=='builtin':
     if ok:ok=run(compiler+['-arch','applegpu_g16g','-platform_version','macos','26.0','26.0','-N','source.btnf','-o','output.archive'])
 else:
-    if ok:ok=run(['xcrun','metal','source.metal','-o','source.metallib'])
+    frontend=([request['frontend']] if request['frontend'] else ['xcrun','metal'])
+    if ok:ok=run(frontend+['source.metal','-o','source.metallib'])
     if ok:ok=run(compiler+['-arch','applegpu_g16g','-platform_version','macos','26.0','26.5','source.metallib','-N','pipeline.mtlp-json','-o','output.archive'])
 files={f.name:base64.b64encode(f.read_bytes()).decode() for f in root.iterdir() if f.is_file()}
 print(json.dumps({'ok':ok,'target':'applegpu_g16g','remote_directory':str(root),'commands':records,'files':files}))
 '''
-r = subprocess.run(['ssh','-o','ConnectTimeout=10',a.host,shlex.join(['python3','-c',remote])],
+r = subprocess.run(['ssh','-o','ConnectTimeout=10',a.host,shlex.join([a.remote_python,'-c',remote])],
                    input=json.dumps({'source':base64.b64encode(source).decode(),'function':a.function,
                                      'stage':a.stage,'rasterization_disabled':a.rasterization_disabled,'vertex_function':a.vertex_function,'pixel_format':a.pixel_format,'samples':a.samples,
-                                     'source_name':source_name,'compiler':a.compiler}),
+                                     'source_name':source_name,'compiler':a.compiler,'frontend':a.frontend}),
                    text=True,capture_output=True,timeout=180)
 (a.output/'transport-stderr.log').write_text(r.stderr)
-r.check_returncode()
+if r.returncode:
+    raise SystemExit(f'Remote compiler transport failed ({r.returncode}); see {a.output}/transport-stderr.log')
 result = json.loads(r.stdout)
 files = result.pop('files')
 result['host'] = a.host
@@ -118,7 +122,7 @@ while (start:=data.find(b'\xcf\xfa\xed\xfe',start)) >= 0:
                 name=data[q:q+16].split(b'\0')[0].decode()
                 segment=data[q+16:q+32].split(b'\0')[0].decode()
                 length,offset=struct.unpack_from('<QI',data,q+40)
-                if segment in ('__GPU_LD_MD', '__GPU_ARCH_LD_MD'):
+                if segment.startswith('__GPU_'):
                     if start+offset+length>len(data): raise RuntimeError('Metadata out of bounds')
                     (a.output/f'{segment}-{name}-{start:x}.bin').write_bytes(data[start+offset:start+offset+length])
                 if name=='__text':

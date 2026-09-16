@@ -30,7 +30,7 @@ op_ok(enum agx3_atomic_op op)
 static bool
 standalone_return_form(const struct agx3_device_atomic_desc *d)
 {
-   return d->op == AGX3_ATOMIC_XCHG ||
+   return d->value64 || d->op == AGX3_ATOMIC_XCHG ||
           (d->returns_value && d->op >= AGX3_ATOMIC_UMIN &&
            d->op <= AGX3_ATOMIC_IMAX);
 }
@@ -74,6 +74,12 @@ agx3_atomic_encode_device(enum agx_isa_encoding enc,
        (d->wait_mask & ~((1u << slot_count(enc)) - 1u)))
       return false;
 
+   if (d->value64 &&
+       (enc != AGX_ISA_ENCODING_AGX3B || d->returns_value ||
+        (d->op != AGX3_ATOMIC_UMIN && d->op != AGX3_ATOMIC_UMAX) ||
+        (d->value & 3) || d->value > 188))
+      return false;
+
    if (d->returns_value) {
       if (d->slot < 1 || d->slot > slot_count(enc))
          return false;
@@ -115,7 +121,7 @@ agx3_atomic_encode_device(enum agx_isa_encoding enc,
    unsigned n = 0;
 
    /* Cross-generation constants and named roles. */
-   f[n++] = (struct agx3_field_kv)KV(10, 2); /* witnessed 32-bit form */
+   f[n++] = (struct agx3_field_kv)KV(10, 2); /* common register operand form */
    f[n++] = (struct agx3_field_kv)KV(16, d->value);
    f[n++] = (struct agx3_field_kv)KV(23, 2);
    f[n++] = (struct agx3_field_kv)KV(24, 2);
@@ -129,7 +135,7 @@ agx3_atomic_encode_device(enum agx_isa_encoding enc,
    f[n++] = (struct agx3_field_kv)KV(53, 3);
    f[n++] = (struct agx3_field_kv)KV(68, 1);
    f[n++] = (struct agx3_field_kv)KV(88, d->op);
-   f[n++] = (struct agx3_field_kv)KV(90, 1);
+   f[n++] = (struct agx3_field_kv)KV(90, d->value64 ? 3 : 1);
    f[n++] = (struct agx3_field_kv)KV(92, d->index_shift);
    f[n++] =
       (struct agx3_field_kv)KV(93, (uint16_t)d->byte_offset);

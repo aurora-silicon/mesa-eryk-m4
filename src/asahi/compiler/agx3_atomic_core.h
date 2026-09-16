@@ -8,9 +8,9 @@
  * Apple's G15G/G16G/G17S compiler output. AGX3b device atomics return through
  * thread-private storage; AGX3c splits value and return registers. Threadgroup atomics
  * split them on both encodings.  G17P additionally grounds no-result
- * threadgroup atomics with immediate and register byte addresses.  No 64-bit
- * encoding has been witnessed, so the interface deliberately has no width
- * selector.
+ * threadgroup atomics with immediate and register byte addresses. G16G also
+ * witnesses unsigned 64-bit device min/max without a returned value. Other
+ * 64-bit operations and returning forms remain unsupported.
  */
 
 #pragma once
@@ -55,6 +55,7 @@ struct agx3_device_atomic_desc {
    uint16_t value; /* GPR half index */
    bool value_kill;
    bool exec_masked; /* instruction is inside partial/elected execution */
+   bool value64; /* AGX3b unsigned min/max, no returned value only */
 
    bool returns_value;
    uint16_t result; /* AGX3c GPR half index */
