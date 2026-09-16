@@ -699,7 +699,8 @@ hk_get_device_features(
       features->pipelineStatisticsQuery = dev->chip == AGX_CHIP_G16G;
       features->vertexPipelineStoresAndAtomics = graphics_storage;
       features->fragmentStoresAndAtomics = graphics_storage;
-      features->shaderTessellationAndGeometryPointSize = false;
+      features->shaderTessellationAndGeometryPointSize =
+         dev->chip == AGX_CHIP_G16G;
       features->shaderResourceResidency = false;
       features->shaderResourceMinLod = false;
       features->advancedBlendCoherentOperations = false;
