@@ -1439,10 +1439,25 @@ hk_lower_native_robust_txf(nir_builder *b, nir_tex_instr *tex, UNUSED void *data
    }
    nir_src_rewrite(&tex->src[coord_idx].src,
                    nir_bcsel(b, valid, coord, nir_imm_zero(b, components, 32)));
+   /* robustImageAccess2: an invalid fetch returns (0,0,0,1) for a view whose
+    * format has no alpha channel and (0,0,0,0) otherwise. The descriptor's
+    * alpha swizzle is the constant one exactly for alpha-less formats. */
+   nir_def *invalid_value = nir_imm_zero(b, tex->def.num_components,
+                                         tex->def.bit_size);
+   const int deref_idx = nir_tex_instr_src_index(tex, nir_tex_src_texture_deref);
+   if (tex->def.num_components == 4 && deref_idx >= 0) {
+      nir_def *word0 = nir_load_texture_descriptor_word_agx(
+         b, tex->src[deref_idx].src.ssa);
+      nir_def *swizzle_a = nir_ubitfield_extract_imm(b, word0, 25, 3);
+      nir_def *one = nir_alu_type_get_base_type(tex->dest_type) == nir_type_float
+                        ? nir_imm_floatN_t(b, 1, tex->def.bit_size)
+                        : nir_imm_intN_t(b, 1, tex->def.bit_size);
+      nir_def *alpha = nir_bcsel(b, nir_ieq_imm(b, swizzle_a, AGX_CHANNEL_1),
+                                 one, nir_imm_zero(b, 1, tex->def.bit_size));
+      invalid_value = nir_vector_insert_imm(b, invalid_value, alpha, 3);
+   }
    b->cursor = nir_after_instr(&tex->instr);
-   nir_def *result = nir_bcsel(b, valid, &tex->def,
-                               nir_imm_zero(b, tex->def.num_components,
-                                            tex->def.bit_size));
+   nir_def *result = nir_bcsel(b, valid, &tex->def, invalid_value);
    nir_def_rewrite_uses_after(&tex->def, result);
    return true;
 }
@@ -1461,6 +1476,34 @@ should_lower_robust(const nir_intrinsic_instr *intr, const void *data)
 
    return intr->intrinsic == nir_intrinsic_image_deref_atomic ||
           intr->intrinsic == nir_intrinsic_image_deref_atomic_swap;
+}
+
+/* robustImageAccess2 returns (0,0,0,1) out of bounds for a view whose format
+ * has no alpha channel and (0,0,0,0) otherwise. A load without a format
+ * qualifier reads that from the native texture descriptor: hk packs the
+ * format's swizzle into it, so the alpha swizzle is the constant one exactly
+ * for alpha-less formats, and the null descriptor swizzles alpha to zero. */
+static nir_def *
+hk_native_robust_oob_alpha(nir_builder *b, nir_intrinsic_instr *load,
+                           const void *data)
+{
+   const nir_alu_type type = nir_intrinsic_dest_type(load);
+   const unsigned bit_size = load->def.bit_size;
+   nir_def *zero = nir_imm_zero(b, 1, bit_size);
+   nir_def *one = nir_alu_type_get_base_type(type) == nir_type_float
+                     ? nir_imm_floatN_t(b, 1, bit_size)
+                     : nir_imm_intN_t(b, 1, bit_size);
+
+   /* The descriptor read is resolved by hk_nir_lower_descriptors, which runs
+    * after this pass; the wrap itself must precede descriptor lowering so
+    * the native read path's own coordinate clamp applies inside the branch. */
+   if (!(data && *(const bool *)data) ||
+       load->intrinsic != nir_intrinsic_image_deref_load)
+      return one;
+
+   nir_def *word0 = nir_load_image_descriptor_word_agx(b, load->src[0].ssa);
+   nir_def *swizzle_a = nir_ubitfield_extract_imm(b, word0, 25, 3);
+   return nir_bcsel(b, nir_ieq_imm(b, swizzle_a, AGX_CHANNEL_1), one, zero);
 }
 
 /* G16's qualified native offset forms cover immediate XYZ offsets and
@@ -1570,8 +1613,8 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
 
    const bool native_robust_images = dev->dev.chip == AGX_CHIP_G16G &&
       rs->images != VK_PIPELINE_ROBUSTNESS_IMAGE_BEHAVIOR_DISABLED_EXT;
-   NIR_PASS(_, nir, nir_lower_robust_access, should_lower_robust,
-            &native_robust_images);
+   NIR_PASS(_, nir, nir_lower_robust_access_cb, should_lower_robust,
+            hk_native_robust_oob_alpha, &native_robust_images);
    if (native_robust_images) {
       const nir_lower_tex_options offsets = {.lower_txf_offset = true};
       NIR_PASS(_, nir, nir_lower_tex, &offsets);
