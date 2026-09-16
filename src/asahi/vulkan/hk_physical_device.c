@@ -696,7 +696,10 @@ hk_get_device_features(
       features->geometryShader = graphics_storage;
       features->tessellationShader = graphics_storage;
       features->sampleRateShading = dev->chip == AGX_CHIP_G16G;
-      features->pipelineStatisticsQuery = false;
+      /* G16G runs the upstream counter path; the native query reset/copy
+       * and the statistics prolog's root push are qualified (CTS
+       * query_pool.statistics_query, 2026-09-16). */
+      features->pipelineStatisticsQuery = dev->chip == AGX_CHIP_G16G;
       features->vertexPipelineStoresAndAtomics = graphics_storage;
       features->fragmentStoresAndAtomics = graphics_storage;
       features->shaderTessellationAndGeometryPointSize = false;

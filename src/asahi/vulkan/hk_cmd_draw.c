@@ -2446,6 +2446,9 @@ hk_get_fast_linked_locked_fs(struct hk_device *dev, struct hk_shader *shader,
       ralloc_free(key_clone);
       return NULL;
    }
+   /* The statistics prolog reads the root table (query address) even when
+    * the main shader never does; the native launch must push the root. */
+   linked->prolog_uses_root = key->prolog.statistics;
 
    _mesa_hash_table_insert(shader->linked.ht, key_clone, linked);
    return linked;

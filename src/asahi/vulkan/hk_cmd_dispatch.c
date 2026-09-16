@@ -560,7 +560,7 @@ hk_dispatch_g17p_native_linked(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
    struct agx3_ioto_uniform_range ranges[HK_AGX3_G17P_GRAPHICS_MAX_RANGES];
    size_t range_count;
    if (!(graphics
-         ? hk_g17p_graphics_uniform_ranges(cmd, s, ranges, &range_count)
+         ? hk_g17p_graphics_uniform_ranges(cmd, s, NULL, ranges, &range_count)
          : hk_g17p_compute_uniform_ranges(s, root_ptr, texture_pointers,
                                           ranges, &range_count))) {
       vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);

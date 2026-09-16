@@ -1175,6 +1175,7 @@ hk_g17p_basic_graphics_program_supported(struct hk_cmd_buffer *cmd,
 bool
 hk_g17p_graphics_uniform_ranges(
    struct hk_cmd_buffer *cmd, struct hk_shader *s,
+   const struct hk_linked_shader *linked,
    struct agx3_ioto_uniform_range *ranges,
    size_t *range_count)
 {
@@ -1355,7 +1356,8 @@ hk_g17p_graphics_uniform_ranges(
       };
    }
 
-   if (s->info.agx3_uses_root || s->info.set_count != 0) {
+   if (s->info.agx3_uses_root || s->info.set_count != 0 ||
+       (linked && linked->prolog_uses_root)) {
       if (!root_ptr)
          return false;
 
@@ -1480,7 +1482,8 @@ hk_upload_usc_words(struct hk_cmd_buffer *cmd, struct hk_shader *s,
 
       struct agx3_ioto_uniform_range ranges[HK_AGX3_G17P_GRAPHICS_MAX_RANGES];
       size_t range_count;
-      if (!hk_g17p_graphics_uniform_ranges(cmd, s, ranges, &range_count)) {
+      if (!hk_g17p_graphics_uniform_ranges(cmd, s, linked, ranges,
+                                           &range_count)) {
          mesa_loge("HAL200 uniform ranges rejected stage=%u sets=%u prefetch=%u",
                    s->info.stage, s->info.set_count, s->info.ubo_prefetch_count);
          vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);

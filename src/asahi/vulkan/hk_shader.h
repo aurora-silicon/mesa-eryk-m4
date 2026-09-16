@@ -337,6 +337,9 @@ struct hk_linked_shader {
     */
    bool sw_indexing;
 
+   /* True if a linked prolog reads the root table (fragment statistics). */
+   bool prolog_uses_root;
+
    /* Distinct from hk_shader::counts due to addition of cf_binding_count, which
     * is delayed since it depends on cull distance.
     */

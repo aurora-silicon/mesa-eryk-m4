@@ -286,6 +286,22 @@ emit_zero_queries_g17p(struct hk_cmd_buffer *cmd, struct hk_query_pool *pool,
       return;
    }
 
+   case VK_QUERY_TYPE_PIPELINE_STATISTICS: {
+      /* One ordinary 64-bit counter per requested statistic, in the pool. */
+      assert(pool->query_stride ==
+             hk_reports_per_query(pool) * sizeof(uint64_t));
+      hk_g17p_meta_fill_addr(cmd, &cmd->current_cs.cs,
+                             hk_query_available_addr(pool, first_index),
+                             (uint64_t)num_queries * sizeof(uint32_t),
+                             set_available ? 1 : 0);
+      if (vk_command_buffer_has_error(&cmd->vk))
+         return;
+      hk_g17p_meta_fill_addr(cmd, &cmd->current_cs.cs,
+                             hk_query_report_addr(dev, pool, first_index),
+                             (uint64_t)num_queries * pool->query_stride, 0);
+      return;
+   }
+
    default:
       /* Other query layouts still need native reset support. */
       vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
@@ -601,8 +617,11 @@ hk_cmd_begin_end_query(struct hk_cmd_buffer *cmd, struct hk_query_pool *pool,
       struct hk_root_descriptor_table *root = &cmd->state.gfx.descriptors.root;
       cmd->state.gfx.descriptors.root_dirty = true;
 
-      root->draw.pipeline_stats = hk_query_report_addr(dev, pool, query);
-      root->draw.pipeline_stats_flags = pool->vk.pipeline_statistics;
+      /* Counting stops at EndQuery; a later internal dispatch (query copy,
+       * reset fill) must neither count itself nor trip the meta assertion. */
+      root->draw.pipeline_stats =
+         end ? 0 : hk_query_report_addr(dev, pool, query);
+      root->draw.pipeline_stats_flags = end ? 0 : pool->vk.pipeline_statistics;
 
       /* XXX: I don't think is correct... when does the query become available
        * exactly?
@@ -781,6 +800,7 @@ hk_CmdCopyQueryPoolResults(VkCommandBuffer commandBuffer, VkQueryPool queryPool,
       if ((pool->vk.query_type != VK_QUERY_TYPE_TIMESTAMP &&
            pool->vk.query_type != VK_QUERY_TYPE_OCCLUSION &&
            pool->vk.query_type != VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT &&
+           pool->vk.query_type != VK_QUERY_TYPE_PIPELINE_STATISTICS &&
            pool->vk.query_type != VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT) ||
           firstQuery > pool->vk.query_count ||
           queryCount > pool->vk.query_count - firstQuery) {
