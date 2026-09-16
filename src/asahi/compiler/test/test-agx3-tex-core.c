@@ -36,7 +36,8 @@ same(const struct agx3_tex_fetch_desc *a,
           a->texture_value == b->texture_value &&
           a->sampler_value == b->sampler_value &&
           a->texture_kill == b->texture_kill &&
-          a->register_lod == b->register_lod;
+          a->register_lod == b->register_lod && a->sparse == b->sparse &&
+          (a->texture_control ?: 4) == (b->texture_control ?: 4);
 }
 
 static int
@@ -1709,6 +1710,86 @@ test_m4_explicit_gradients(void)
 int
 main(void)
 {
+   {
+      /* Apple G16G sparse_read, residency-only.metal main+16. The native
+       * consumer reads bit zero of half18, after RGBA at half10..17. */
+      const uint8_t witness[] = {0x2d,0x80,0x0c,0x38,0xb0,0,0x17,1,0x90,2,
+                                 0x82,0,2,0,0,0x20,0,0,0,0};
+      struct agx3_tex_fetch_desc d = {
+         .dest=10, .coord=0, .width=AGX3_TEX_W32, .mask=15,
+         .texture_kind=AGX3_TEX_OPERAND_UNIFORM, .texture_value=16,
+         .slot=1, .wait_mask=1, .coord_kill=true, .sparse=true,
+         .texture_control=8,
+      };
+      uint8_t out[AGX3_TEX_MAX_LENGTH], len;
+      CHECK(agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
+      CHECK(len == sizeof(witness) && !memcmp(out, witness, len));
+      CHECK(roundtrip(AGX_ISA_ENCODING_AGX3B, &d) == 0);
+      /* Native array read differs only by f77=2. */
+      d.array = true;
+      uint8_t array[sizeof(witness)];
+      memcpy(array, witness, sizeof(array));
+      array[6] = 0x97;
+      CHECK(agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
+      CHECK(len == sizeof(array) && !memcmp(out, array, len));
+      CHECK(roundtrip(AGX_ISA_ENCODING_AGX3B, &d) == 0);
+      d.array = false;
+      d.three_d = true;
+      array[6] = 0x79;
+      array[7] = 0;
+      CHECK(agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
+      CHECK(len == sizeof(array) && !memcmp(out, array, len));
+      CHECK(roundtrip(AGX_ISA_ENCODING_AGX3B, &d) == 0);
+      d.three_d = false;
+      d.register_lod = true;
+      array[6] = 0x80;
+      array[7] = 0x24;
+      CHECK(agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
+      CHECK(len == sizeof(array) && !memcmp(out, array, len));
+      CHECK(roundtrip(AGX_ISA_ENCODING_AGX3B, &d) == 0);
+      struct agx3_tex_sample_desc sample = {
+         .dest=10, .coord=0, .width=AGX3_TEX_W32, .mask=15,
+         .texture_kind=AGX3_TEX_OPERAND_UNIFORM, .texture_value=16,
+         .slot=1, .wait_mask=1, .coord_kill=true, .sparse=true,
+         .texture_control=8,
+         .lod=AGX3_TEX_LOD_LEVEL,
+      };
+      memcpy(array, witness, sizeof(array));
+      array[6] = 9;
+      array[7] = 0;
+      array[10] = 0x92;
+      CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B, &sample, out, &len));
+      CHECK(len == sizeof(array) && !memcmp(out, array, len));
+      const uint8_t gather[] = {0x2d,0x80,0x0c,0x24,0x90,0,0,0,0x90,2,
+                                0x82,0,2,0,0,0x20,0,0,0,0};
+      sample.gather = true;
+      sample.lod = AGX3_TEX_LOD_AUTO;
+      CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B, &sample, out, &len));
+      CHECK(len == sizeof(gather) && !memcmp(out, gather, len));
+      const uint8_t shadow[] = {0x05,0x80,0x0c,0x20,0x90,0,0x29,0,0x90,2,
+                                0x82,0,2,0,0,0x20,0,0,0,0};
+      sample.gather = false;
+      sample.shadow = true;
+      sample.mask = 1;
+      sample.dest = 0;
+      sample.lod = AGX3_TEX_LOD_LEVEL;
+      sample.retain_helpers = true;
+      CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B, &sample, out, &len));
+      CHECK(len == sizeof(shadow) && !memcmp(out, shadow, len));
+      const uint8_t shadow_gather[] = {
+         0x2d,0x80,0x0c,0x24,0x90,0,0x20,0,0x90,2,
+         0x82,0,2,0,0,0x20,0,0,0,0};
+      sample.gather = true;
+      sample.mask = 15;
+      sample.dest = 10;
+      sample.lod = AGX3_TEX_LOD_AUTO;
+      CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B, &sample, out, &len));
+      CHECK(len == sizeof(shadow_gather) && !memcmp(out, shadow_gather, len));
+      /* Residency must not silently switch the driver's descriptor ABI. */
+      sample.texture_control = 0;
+      CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B, &sample, out, &len));
+      CHECK(memcmp(out, shadow_gather, len));
+   }
    CHECK(test_m4_explicit_gradients() == 0);
    CHECK(test_m4_shadow_gradient_witnesses() == 0);
    CHECK(test_m4_cube_query_bias_witnesses() == 0);

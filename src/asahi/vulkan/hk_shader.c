@@ -1109,6 +1109,13 @@ lower(nir_builder *b, nir_tex_instr *tex, UNUSED void *_data)
          border = nir_replicate(b, nir_channel(b, border, tex->component), 4);
       }
 
+      /* Border arithmetic operates on colour, never the sparse residency
+       * code. The two address modes touch the same mapped texels. */
+      nir_def *colour_1 = tex->is_sparse ? nir_trim_vector(b, clamp_to_1, 4)
+                                         : clamp_to_1;
+      nir_def *colour_0 = tex->is_sparse ? nir_trim_vector(b, clamp_to_0, 4)
+                                         : clamp_to_0;
+
       /* Combine together with the border */
       if (nir_alu_type_get_base_type(tex->dest_type) == nir_type_float &&
           tex->op != nir_texop_tg4) {
@@ -1120,16 +1127,22 @@ lower(nir_builder *b, nir_tex_instr *tex, UNUSED void *_data)
           *
           * Linear filtering is linear (duh), so lerping is compatible.
           */
-         replaced = nir_flrp(b, clamp_to_0, clamp_to_1, border);
+         replaced = nir_flrp(b, colour_0, colour_1, border);
          b->shader->info.flrp_lowered = false;
       } else {
          /* For integers, just select componentwise since there is no linear
           * filtering. Gathers also use this path since they are unfiltered in
           * each component.
           */
-         replaced = nir_bcsel(b, nir_ieq(b, clamp_to_0, clamp_to_1), clamp_to_0,
+         replaced = nir_bcsel(b, nir_ieq(b, colour_0, colour_1), colour_0,
                               border);
       }
+      if (tex->is_sparse)
+         replaced = nir_vec5(b, nir_channel(b, replaced, 0),
+                             nir_channel(b, replaced, 1),
+                             nir_channel(b, replaced, 2),
+                             nir_channel(b, replaced, 3),
+                             nir_channel(b, clamp_to_1, 4));
    }
    nir_pop_if(b, NULL);
 
@@ -1233,13 +1246,107 @@ lower_scaled_storage(nir_builder *b, nir_intrinsic_instr *intr, void *unused)
    return true;
 }
 
+/* Linear texel buffers are backed by valid zero/scratch pages when unbound.
+ * Unlike sparse images, their hardware descriptor has no sparse page table.
+ * Consult the buffer's bind metadata for residency while using the ordinary
+ * texture operation for its value. Descriptor copies retain a live map pointer,
+ * so queue rebinds do not require descriptor updates or shader recompilation.
+ */
+static bool
+lower_sparse_buffer_or_ms(nir_builder *b, nir_instr *instr, UNUSED void *data)
+{
+   nir_def *handle, *coord, *value;
+   nir_instr *clone;
+   bool multisample = false;
+   if (instr->type == nir_instr_type_tex) {
+      nir_tex_instr *tex = nir_instr_as_tex(instr);
+      multisample = tex->sampler_dim == GLSL_SAMPLER_DIM_MS;
+      if (!tex->is_sparse ||
+          (tex->sampler_dim != GLSL_SAMPLER_DIM_BUF && !multisample))
+         return false;
+      int h = nir_tex_instr_src_index(tex, nir_tex_src_texture_handle);
+      int c = nir_tex_instr_src_index(tex, nir_tex_src_coord);
+      assert(h >= 0 && c >= 0);
+      handle = tex->src[h].src.ssa;
+      coord = tex->src[c].src.ssa;
+      clone = nir_instr_clone(b->shader, instr);
+      nir_tex_instr *load = nir_instr_as_tex(clone);
+      load->is_sparse = false;
+      load->def.num_components = 4;
+      value = &load->def;
+   } else if (instr->type == nir_instr_type_intrinsic) {
+      nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+      if (intr->intrinsic != nir_intrinsic_bindless_image_sparse_load)
+         return false;
+      multisample = nir_intrinsic_image_dim(intr) == GLSL_SAMPLER_DIM_MS;
+      if (nir_intrinsic_image_dim(intr) != GLSL_SAMPLER_DIM_BUF && !multisample)
+         return false;
+      handle = intr->src[0].ssa;
+      b->cursor = nir_before_instr(instr);
+      coord = nir_channel(b, intr->src[1].ssa, 0);
+      clone = nir_instr_clone(b->shader, instr);
+      nir_intrinsic_instr *load = nir_instr_as_intrinsic(clone);
+      load->intrinsic = nir_intrinsic_bindless_image_load;
+      load->num_components = 4;
+      load->def.num_components = 4;
+      value = &load->def;
+   } else {
+      return false;
+   }
+
+   b->cursor = nir_before_instr(instr);
+   nir_instr_insert(b->cursor, clone);
+   b->cursor = nir_after_instr(clone);
+   /* No multisample sparse residency feature is exposed. Every valid MS
+    * image access is therefore resident, including sparse-bound MS images
+    * which must have all memory bound before use. */
+   if (multisample) {
+      nir_def *result = nir_vec5(b, nir_channel(b, value, 0),
+         nir_channel(b, value, 1), nir_channel(b, value, 2),
+         nir_channel(b, value, 3), nir_imm_int(b, 0));
+      nir_def_replace(instr->type == nir_instr_type_tex ?
+         &nir_instr_as_tex(instr)->def : &nir_instr_as_intrinsic(instr)->def, result);
+      return true;
+   }
+   nir_def *desc = nir_load_from_texture_handle_agx(b, handle);
+   nir_def *metadata = nir_iadd_imm(b, desc, HK_TEXEL_BUFFER_RESIDENCY_OFFSET);
+   nir_def *map = nir_load_global_constant(b, 1, 64, metadata, .align_mul = 8);
+   nir_def *info = nir_load_global_constant(b, 3, 32,
+      nir_iadd_imm(b, metadata, 8), .align_mul = 4);
+   nir_def *in_bounds = nir_ult(b, coord, nir_channel(b, info, 2));
+   nir_push_if(b, nir_iand(b, in_bounds, nir_ine_imm(b, map, 0)));
+   /* A maximum RGBA32 view can span 4 GiB including its page offset. */
+   nir_def *size = nir_u2u64(b, nir_channel(b, info, 1));
+   nir_def *offset = nir_iadd(b, nir_u2u64(b, nir_channel(b, info, 0)),
+                            nir_imul(b, nir_u2u64(b, coord), size));
+   nir_def *last = nir_iadd(b, offset, nir_iadd_imm(b, size, -1));
+   nir_def *first_addr = nir_iadd(b, map,
+      nir_ishl_imm(b, nir_ushr_imm(b, offset, 14), 2));
+   nir_def *last_addr = nir_iadd(b, map,
+      nir_ishl_imm(b, nir_ushr_imm(b, last, 14), 2));
+   nir_def *first_resident = nir_load_global(b, 1, 32, first_addr, .align_mul = 4);
+   nir_def *last_resident = nir_load_global(b, 1, 32, last_addr, .align_mul = 4);
+   nir_def *missing = nir_ixor(b, nir_iand(b, first_resident, last_resident), nir_imm_int(b, 1));
+   nir_push_else(b, NULL);
+   nir_def *resident = nir_imm_int(b, 0) /* AGX resident code */;
+   nir_pop_if(b, NULL);
+   nir_def *code = nir_if_phi(b, missing, resident);
+   nir_def *result = nir_vec5(b, nir_channel(b, value, 0),
+      nir_channel(b, value, 1), nir_channel(b, value, 2),
+      nir_channel(b, value, 3), code);
+   nir_def *old = instr->type == nir_instr_type_tex ?
+      &nir_instr_as_tex(instr)->def : &nir_instr_as_intrinsic(instr)->def;
+   nir_def_replace(old, result);
+   return true;
+}
+
 /* Image-view formats are dynamic descriptor state. Recover scaled samples
  * from the integer descriptor result without changing ordinary float samples. */
 static bool
 lower_scaled_sample(nir_builder *b, nir_tex_instr *tex, void *unused)
 {
    if (tex->dest_type != nir_type_float32 || tex->is_shadow ||
-       tex->sampler_dim == GLSL_SAMPLER_DIM_BUF || tex->is_sparse)
+       tex->sampler_dim == GLSL_SAMPLER_DIM_BUF)
       return false;
    switch (tex->op) {
    case nir_texop_tex: case nir_texop_txb: case nir_texop_txl:
@@ -1259,7 +1366,7 @@ lower_scaled_sample(nir_builder *b, nir_tex_instr *tex, void *unused)
    nir_def *kind = nir_load_global_constant(b, 1, 16,
       nir_iadd_imm(b, desc, offset), .align_mul = 2);
    b->cursor = nir_after_instr(&tex->instr);
-   nir_def *value = &tex->def;
+   nir_def *value = tex->is_sparse ? nir_trim_vector(b, &tex->def, 4) : &tex->def;
    nir_def *converted = nir_bcsel(b, nir_ieq_imm(b, kind, 1),
       nir_i2f32(b, value), nir_u2f32(b, value));
    nir_def *scale = nir_bcsel(b, nir_ine_imm(b, nir_iand_imm(b, kind, 4), 0),
@@ -1280,7 +1387,13 @@ lower_scaled_sample(nir_builder *b, nir_tex_instr *tex, void *unused)
    converted = nir_bcsel(b, nir_ieq_imm(b, nir_iand_imm(b, kind, 3), 3),
                            normalized, converted);
    nir_def *result = nir_bcsel(b, nir_ine_imm(b, kind, 0), converted, value);
-   nir_def_rewrite_uses_after(value, result);
+   if (tex->is_sparse)
+      result = nir_vec5(b, nir_channel(b, result, 0),
+                        nir_channel(b, result, 1),
+                        nir_channel(b, result, 2),
+                        nir_channel(b, result, 3),
+                        nir_channel(b, &tex->def, 4));
+   nir_def_rewrite_uses_after(&tex->def, result);
    return true;
 }
 
@@ -1746,6 +1859,10 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
       NIR_PASS(_, nir, nir_shader_tex_pass, lower_scaled_sample,
                nir_metadata_control_flow, NULL);
    }
+
+   if (agx_chip_descriptor_generation(dev->dev.chip) == 9)
+      NIR_PASS(_, nir, nir_shader_instructions_pass, lower_sparse_buffer_or_ms,
+               nir_metadata_none, NULL);
 
    NIR_PASS(_, nir, agx_nir_lower_texture_for_generation,
             agx_chip_descriptor_generation(dev->dev.chip));

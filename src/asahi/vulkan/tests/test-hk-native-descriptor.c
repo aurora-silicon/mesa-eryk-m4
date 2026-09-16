@@ -873,7 +873,7 @@ main(void)
 
    assert(hk_texel_buffer_descriptor_stride(7) == 48);
    assert(hk_texel_buffer_descriptor_stride(8) == 48);
-   assert(hk_texel_buffer_descriptor_stride(9) == 72);
+   assert(hk_texel_buffer_descriptor_stride(9) == 96);
    assert(hk_texel_buffer_descriptor_stride(10) == 72);
    assert(hk_texel_buffer_descriptor_stride(0) == 0);
 

@@ -1639,8 +1639,9 @@ agx_expand_tex_to(agx_builder *b, nir_def *def, agx_index src, bool masked)
    agx_index unpacked_channels[8] = {agx_null()};
 
    /* Hardware writes the masked components contiguously, expand out for NIR */
-   agx_emit_split(b, packed_channels, src,
-                  ALIGN_POT(nr_channels, 4) /* XXX: why not nr_channels */);
+   /* Sparse depth comparisons still reserve the sparse operation's full
+    * clobber span even though only colour + residency are consumed. */
+   agx_emit_split(b, packed_channels, src, agx_channels(src));
 
    for (unsigned i = 0; i < nr_channels; ++i) {
       unpacked_channels[i] =
@@ -1741,7 +1742,8 @@ agx_emit_image_load(agx_builder *b, agx_index dst, nir_intrinsic_instr *intr)
       lod_mode = AGX_LOD_MODE_AUTO_LOD;
       lod = agx_zero();
    } else if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
-              intr->intrinsic == nir_intrinsic_image_load &&
+              (intr->intrinsic == nir_intrinsic_image_load ||
+               intr->intrinsic == nir_intrinsic_image_sparse_load) &&
               dim == GLSL_SAMPLER_DIM_2D &&
               nir_src_is_const(intr->src[3]) &&
               nir_src_as_uint(intr->src[3]) == 0) {
@@ -4685,6 +4687,10 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
     */
    bool masked = (instr->op != nir_texop_tg4) && !instr->is_sparse;
    I->mask = agx_expand_tex_to(b, &instr->def, tmp, masked);
+   /* The residency result is not a colour component. For sparse depth
+    * comparisons it is the second word; only the first is in the SMP mask. */
+   if (instr->is_sparse)
+      I->mask &= BITFIELD_MASK(instr->def.num_components - 1);
 }
 
 static void

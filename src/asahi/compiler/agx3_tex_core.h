@@ -72,6 +72,10 @@ struct agx3_tex_fetch_desc {
    bool three_d;        /* 3D fetch: z at staging coord + 4. */
    bool multisample;    /* Native MS fetch auxiliary word at coord + 4. */
    bool register_lod;   /* Integer LOD published by PACK_SMPIR in bank 6. */
+   bool sparse;         /* M4 residency code follows the four colour lanes. */
+   /* SMP f112 is independent of residency: native heap accesses use 4,
+    * Apple's extended sparse-resource witnesses use 8. Zero selects 4. */
+   uint8_t texture_control;
    bool texture_kill;   /* Last use of an indirect texture index */
    /* Operand kinds. Zero is treated as IMMEDIATE so existing callers, which
     * set only `texture`, keep their exact previous encoding. */
@@ -151,6 +155,8 @@ struct agx3_tex_sample_desc {
    bool coord_kill;
    bool final;          /* witnessed final texture-op marker */
    bool retain_helpers; /* AGX3B: keep helper coordinates for later samples */
+   bool sparse;         /* M4 residency word follows the colour result. */
+   uint8_t texture_control; /* SMP f112, as for fetches above. */
    bool shadow;         /* M4: scalar depth compare, reference in staging half4 */
    bool query_lod;      /* M4 2D clamped/unclamped LOD query. */
    bool gather;         /* Four neighbouring texels from one colour channel. */

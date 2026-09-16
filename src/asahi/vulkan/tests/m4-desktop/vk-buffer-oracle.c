@@ -34,6 +34,16 @@ VK_FN(vkCreateDevice);
 VK_FN(vkDestroyDevice);
 VK_FN(vkGetDeviceQueue);
 VK_FN(vkCreateBuffer);
+VK_FN(vkCreateImage);
+VK_FN(vkDestroyImage);
+VK_FN(vkGetImageMemoryRequirements);
+VK_FN(vkBindImageMemory);
+VK_FN(vkCreateImageView);
+VK_FN(vkDestroyImageView);
+VK_FN(vkCreateSampler);
+VK_FN(vkDestroySampler);
+VK_FN(vkCmdCopyBufferToImage);
+VK_FN(vkCmdClearColorImage);
 VK_FN(vkDestroyBuffer);
 VK_FN(vkCreateBufferView);
 VK_FN(vkDestroyBufferView);
@@ -143,6 +153,26 @@ static void *read_file(const char *path, size_t *size) {
   return data;
 }
 
+static void bind_sparse_pages(VkQueue queue, VkBuffer buffer, VkDeviceMemory memory,
+                              VkDeviceSize size, VkDeviceSize page_size, uint64_t mask,
+                              VkDeviceSize resource_offset) {
+  const unsigned count = size / page_size;
+  if (size % page_size || count > 64) die("sparse oracle needs at most 64 whole pages");
+  VkSparseMemoryBind binds[64];
+  for (unsigned i = 0; i < count; ++i)
+    binds[i] = (VkSparseMemoryBind) {
+      .resourceOffset = resource_offset + i * page_size, .size = page_size,
+      .memory = (mask & (UINT64_C(1) << i)) ? memory : VK_NULL_HANDLE,
+      .memoryOffset = i * page_size,
+    };
+  VkSparseBufferMemoryBindInfo buffer_bind = {
+    .buffer = buffer, .bindCount = count, .pBinds = binds};
+  VkBindSparseInfo info = {.sType = VK_STRUCTURE_TYPE_BIND_SPARSE_INFO,
+    .bufferBindCount = 1, .pBufferBinds = &buffer_bind};
+  check(vkQueueBindSparse(queue, 1, &info, VK_NULL_HANDLE), "bind sparse oracle pages");
+  check(vkQueueWaitIdle(queue), "wait sparse oracle pages");
+}
+
 int main(int argc, char **argv) {
   if (argc != 6)
     die("usage: vk-buffer-oracle shader.spv input.bin expected.bin groups-x "
@@ -157,13 +187,35 @@ int main(int argc, char **argv) {
   unsigned long groups = strtoul(argv[4], &end, 10);
   if (!groups || *end || groups > UINT32_MAX)
     die("invalid group count");
+  const char *image_option = getenv("M4_ORACLE_IMAGE_FORMAT");
+  const bool image_cube = getenv("M4_ORACLE_IMAGE_CUBE") != NULL;
+  const unsigned image_layers = image_cube ? 6 : 1;
+  const bool image_ms = getenv("M4_ORACLE_IMAGE_MS4") != NULL;
+  const bool image_depth = getenv("M4_ORACLE_IMAGE_DEPTH") != NULL;
+  const bool shader_residency = getenv("M4_ORACLE_RESIDENCY") != NULL;
+  VkFormat image_format = image_option ? (VkFormat)strtoul(image_option, &end, 0) : 0;
+  if (image_option && (*end || !image_format)) die("invalid image format");
+  if (image_ms && (image_depth || image_cube)) die("MS image oracle currently uses color");
+  const uint32_t image_width = 16, image_height = 16;
   const char *fill_option = getenv("M4_ORACLE_FILL32");
   const bool copy_option = getenv("M4_ORACLE_COPY") && !strcmp(getenv("M4_ORACLE_COPY"), "1");
   const bool transfer_option = fill_option || copy_option;
+  const char *sparse_mask_option = getenv("M4_ORACLE_SPARSE_TEXEL_MASK");
+  const char *sparse_rebind_option = getenv("M4_ORACLE_SPARSE_REBIND_MASK");
+  const char *sparse_high_option = getenv("M4_ORACLE_SPARSE_HIGH_OFFSET");
+  VkDeviceSize sparse_high = sparse_high_option ? strtoull(sparse_high_option, &end, 0) : 0;
+  if (sparse_high_option && (*end || !sparse_mask_option || sparse_rebind_option ||
+      sparse_high % 16384 || sparse_high > (UINT64_C(1) << 36)))
+    die("invalid high sparse offset");
+  const VkDeviceSize texel_limit = sparse_high + input_size;
+  const bool sparse_texel = sparse_mask_option != NULL;
   const bool sparse_alias = getenv("M4_ORACLE_SPARSE_ALIAS") != NULL;
   const char *sparse_fill = getenv("M4_ORACLE_SPARSE_FILL");
   const char *sparse_shader = getenv("M4_ORACLE_SPARSE_SHADER");
   if (sparse_shader && (!sparse_alias || sparse_fill)) die("sparse shader mode conflict");
+  if (sparse_texel && (!getenv("M4_ORACLE_TEXEL_FORMAT") || sparse_alias))
+    die("sparse texel requires texel mode without alias mode");
+  if (sparse_rebind_option && !sparse_texel) die("rebind requires sparse texel mode");
   if (sparse_alias && (transfer_option || getenv("M4_ORACLE_TEXEL_FORMAT")))
     die("sparse alias requires SSBO compute mode");
   const char *texel_format_option = getenv("M4_ORACLE_TEXEL_FORMAT");
@@ -182,10 +234,12 @@ int main(int argc, char **argv) {
     texel_offset = strtoull(offset, &end, 0);
     if (*end) die("invalid texel offset");
     texel_range = strtoull(range, &end, 0);
-    if (*end || !texel_range || texel_offset > input_size ||
-        texel_range > input_size - texel_offset)
+    if (*end || !texel_range || texel_offset > texel_limit ||
+        texel_range > texel_limit - texel_offset)
       die("invalid texel range");
   }
+  if (image_option && (transfer_option || texel_format_option || sparse_alias || sparse_texel || sparse_rebind_option))
+    die("image mode requires ordinary compute mode");
   if (fill_option && copy_option) die("choose fill or copy");
   if (copy_option && input_size % 8) die("copy requires two equal word-aligned halves");
   uint32_t fill_value = 0;
@@ -370,16 +424,25 @@ int main(int argc, char **argv) {
     extensions[extension_count++] = VK_KHR_8BIT_STORAGE_EXTENSION_NAME;
   if (want_subgroup_types)
     extensions[extension_count++] = VK_KHR_SHADER_SUBGROUP_EXTENDED_TYPES_EXTENSION_NAME;
-  if (sparse_alias) {
+  if (sparse_alias || sparse_texel) {
     VkPhysicalDeviceFeatures2 query = {
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
     vkGetPhysicalDeviceFeatures2(physical, &query);
     if (!query.features.sparseBinding || !query.features.sparseResidencyAliased ||
         !(queue_flags & VK_QUEUE_SPARSE_BINDING_BIT))
       die("sparse aliasing unavailable");
+    if (sparse_texel && (!query.features.shaderResourceResidency || !query.features.sparseResidencyBuffer))
+      die("sparse texel residency unavailable");
+  }
+  if (shader_residency) {
+    VkPhysicalDeviceFeatures2 query = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
+    vkGetPhysicalDeviceFeatures2(physical, &query);
+    if (!query.features.shaderResourceResidency) die("shader residency unavailable");
   }
   const VkPhysicalDeviceFeatures features = {
-      .sparseBinding = sparse_alias, .sparseResidencyAliased = sparse_alias,
+      .sparseBinding = sparse_alias || sparse_texel,
+      .sparseResidencyAliased = sparse_alias || sparse_texel,
+      .sparseResidencyBuffer = sparse_texel, .shaderResourceResidency = sparse_texel || shader_residency,
       .shaderInt64 = VK_TRUE,
       .shaderStorageImageExtendedFormats = texel_storage};
   const VkDeviceCreateInfo device_info = {
@@ -398,6 +461,16 @@ int main(int argc, char **argv) {
   LOAD_DEVICE(device, vkDestroyDevice);
   LOAD_DEVICE(device, vkGetDeviceQueue);
   LOAD_DEVICE(device, vkCreateBuffer);
+  LOAD_DEVICE(device, vkCreateImage);
+  LOAD_DEVICE(device, vkDestroyImage);
+  LOAD_DEVICE(device, vkGetImageMemoryRequirements);
+  LOAD_DEVICE(device, vkBindImageMemory);
+  LOAD_DEVICE(device, vkCreateImageView);
+  LOAD_DEVICE(device, vkDestroyImageView);
+  LOAD_DEVICE(device, vkCreateSampler);
+  LOAD_DEVICE(device, vkDestroySampler);
+  LOAD_DEVICE(device, vkCmdCopyBufferToImage);
+  LOAD_DEVICE(device, vkCmdClearColorImage);
   LOAD_DEVICE(device, vkDestroyBuffer);
   LOAD_DEVICE(device, vkCreateBufferView);
   LOAD_DEVICE(device, vkDestroyBufferView);
@@ -476,23 +549,34 @@ int main(int argc, char **argv) {
   memcpy(mapped, input, input_size);
 
   VkBuffer alias_buffer = VK_NULL_HANDLE;
-  if (sparse_alias) {
+  VkDeviceSize sparse_page_size = 0;
+  if (sparse_alias || sparse_texel) {
     VkBufferCreateInfo alias_info = buffer_info;
+    alias_info.size += sparse_high;
     alias_info.flags = VK_BUFFER_CREATE_SPARSE_BINDING_BIT |
-                       VK_BUFFER_CREATE_SPARSE_ALIASED_BIT;
+                       VK_BUFFER_CREATE_SPARSE_ALIASED_BIT |
+                       (sparse_texel ? VK_BUFFER_CREATE_SPARSE_RESIDENCY_BIT : 0);
     check(vkCreateBuffer(device, &alias_info, NULL, &alias_buffer), "create alias");
     VkMemoryRequirements alias_requirements;
     vkGetBufferMemoryRequirements(device, alias_buffer, &alias_requirements);
-    if (alias_requirements.size > requirements.size ||
+    if (alias_requirements.size > requirements.size + sparse_high ||
         !(alias_requirements.memoryTypeBits & (1u << memory_type)))
       die("alias backing requirements differ");
-    VkSparseMemoryBind bind = {.size = alias_requirements.size, .memory = memory};
+    sparse_page_size = alias_requirements.alignment;
+    VkSparseMemoryBind bind = {.resourceOffset = sparse_high,
+      .size = alias_requirements.size - sparse_high, .memory = memory};
     VkSparseBufferMemoryBindInfo buffer_bind = {
       .buffer = alias_buffer, .bindCount = 1, .pBinds = &bind};
     VkBindSparseInfo info = {.sType = VK_STRUCTURE_TYPE_BIND_SPARSE_INFO,
       .bufferBindCount = 1, .pBufferBinds = &buffer_bind};
     check(vkQueueBindSparse(queue, 1, &info, VK_NULL_HANDLE), "bind alias");
     check(vkQueueWaitIdle(queue), "wait alias bind");
+    if (sparse_texel) {
+      uint64_t mask = strtoull(sparse_mask_option, &end, 0);
+      if (*end) die("invalid sparse page mask");
+      bind_sparse_pages(queue, alias_buffer, memory, alias_requirements.size - sparse_high,
+                        sparse_page_size, mask, sparse_high);
+    }
   }
 
   unsigned binding_count = 1;
@@ -509,7 +593,8 @@ int main(int argc, char **argv) {
     die("buffer size must divide evenly into bindings");
   VkDeviceSize binding_stride = buffer_size / binding_count;
   if (texel_format_option && (binding_count != 2 ||
-      texel_offset > binding_stride || texel_range > binding_stride - texel_offset))
+      texel_offset > binding_stride + sparse_high ||
+      texel_range > binding_stride + sparse_high - texel_offset))
     die("texel mode requires two bindings and a view inside the first half");
   if (binding_count > 1 && binding_stride % properties.limits.minStorageBufferOffsetAlignment)
     die("binding ranges must satisfy minStorageBufferOffsetAlignment");
@@ -525,9 +610,44 @@ int main(int argc, char **argv) {
   if (texel_format_option) {
     bindings[0].descriptorType = texel_type;
     VkBufferViewCreateInfo vi = {
-      .sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO, .buffer = buffer,
+      .sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO,
+      .buffer = sparse_texel ? alias_buffer : buffer,
       .format = texel_format, .offset = texel_offset, .range = texel_range};
     check(vkCreateBufferView(device, &vi, NULL, &texel_view), "vkCreateBufferView");
+  }
+  VkImage sampled_image = VK_NULL_HANDLE;
+  VkImageView sampled_view = VK_NULL_HANDLE;
+  VkSampler image_sampler = VK_NULL_HANDLE;
+  VkDeviceMemory image_memory = VK_NULL_HANDLE;
+  VkDescriptorImageInfo image_descriptor = {0};
+  const VkImageAspectFlags image_aspect = image_depth ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
+  if (image_option) {
+    if (binding_count != 2 || binding_stride < 4096) die("image mode requires two sufficiently large bindings");
+    VkImageCreateInfo ci = {.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+      .imageType=VK_IMAGE_TYPE_2D,.format=image_format,.extent={image_width,image_height,1},
+      .flags=image_cube?VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT:0,
+      .mipLevels=1,.arrayLayers=image_layers,.samples=image_ms?VK_SAMPLE_COUNT_4_BIT:VK_SAMPLE_COUNT_1_BIT,.tiling=VK_IMAGE_TILING_OPTIMAL,
+      .usage=VK_IMAGE_USAGE_SAMPLED_BIT|VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+      .sharingMode=VK_SHARING_MODE_EXCLUSIVE};
+    check(vkCreateImage(device,&ci,NULL,&sampled_image),"create sampled image");
+    VkMemoryRequirements req;vkGetImageMemoryRequirements(device,sampled_image,&req);
+    VkMemoryAllocateInfo ai={.sType=VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+      .allocationSize=req.size,.memoryTypeIndex=find_memory_type(&memory_properties,req.memoryTypeBits,0)};
+    check(vkAllocateMemory(device,&ai,NULL,&image_memory),"allocate sampled image");
+    check(vkBindImageMemory(device,sampled_image,image_memory,0),"bind sampled image");
+    VkImageViewCreateInfo vi={.sType=VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+      .image=sampled_image,.viewType=image_cube?VK_IMAGE_VIEW_TYPE_CUBE:VK_IMAGE_VIEW_TYPE_2D,.format=image_format,
+      .subresourceRange={image_aspect,0,1,0,image_layers}};
+    check(vkCreateImageView(device,&vi,NULL,&sampled_view),"create sampled view");
+    VkSamplerCreateInfo si={.sType=VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+      .magFilter=VK_FILTER_NEAREST,.minFilter=VK_FILTER_NEAREST,.mipmapMode=VK_SAMPLER_MIPMAP_MODE_NEAREST,
+      .addressModeU=VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,.addressModeV=VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+      .addressModeW=VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,.compareEnable=image_depth,
+      .compareOp=VK_COMPARE_OP_LESS_OR_EQUAL,.maxLod=0};
+    check(vkCreateSampler(device,&si,NULL,&image_sampler),"create image sampler");
+    image_descriptor=(VkDescriptorImageInfo){image_sampler,sampled_view,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+    bindings[0].descriptorType=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    texel_type=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
   }
   const VkDescriptorSetLayoutCreateInfo set_layout_info = {
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
@@ -545,7 +665,7 @@ int main(int argc, char **argv) {
   const VkDescriptorPoolCreateInfo pool_info = {
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
       .maxSets = 1,
-      .poolSizeCount = texel_format_option ? 2 : 1,
+      .poolSizeCount = (texel_format_option || image_option) ? 2 : 1,
       .pPoolSizes = pool_size,
   };
   VkDescriptorPool descriptor_pool;
@@ -579,6 +699,11 @@ int main(int argc, char **argv) {
     descriptor_writes[0].descriptorType = texel_type;
     descriptor_writes[0].pBufferInfo = NULL;
     descriptor_writes[0].pTexelBufferView = &texel_view;
+  }
+  if (image_option) {
+    descriptor_writes[0].descriptorType=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    descriptor_writes[0].pBufferInfo=NULL;
+    descriptor_writes[0].pImageInfo=&image_descriptor;
   }
   if (sparse_shader) {
     descriptor_buffers[1].offset = 0;
@@ -655,10 +780,31 @@ int main(int argc, char **argv) {
         "vkAllocateCommandBuffers");
   const VkCommandBufferBeginInfo begin_info = {
       .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-      .flags = transfer_option ? 0 : VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+      .flags = (transfer_option || sparse_rebind_option) ? 0 : VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
   };
   check(vkBeginCommandBuffer(command_buffer, &begin_info),
         "vkBeginCommandBuffer");
+  if (image_option) {
+    VkImageMemoryBarrier barrier={.sType=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+      .dstAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT,.oldLayout=VK_IMAGE_LAYOUT_UNDEFINED,
+      .newLayout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,.srcQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED,
+      .dstQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED,.image=sampled_image,
+      .subresourceRange={image_aspect,0,1,0,image_layers}};
+    vkCmdPipelineBarrier(command_buffer,VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,VK_PIPELINE_STAGE_TRANSFER_BIT,
+                         0,0,NULL,0,NULL,1,&barrier);
+    VkBufferImageCopy copy={.imageSubresource={image_aspect,0,0,image_layers},.imageExtent={image_width,image_height,1}};
+    if (image_ms) {
+      VkClearColorValue clear;memcpy(&clear,input,sizeof(clear));
+      vkCmdClearColorImage(command_buffer,sampled_image,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                           &clear,1,&barrier.subresourceRange);
+    } else {
+    vkCmdCopyBufferToImage(command_buffer,buffer,sampled_image,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,1,&copy);
+    }
+    barrier.srcAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT;barrier.dstAccessMask=VK_ACCESS_SHADER_READ_BIT;
+    barrier.oldLayout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;barrier.newLayout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    vkCmdPipelineBarrier(command_buffer,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                         0,0,NULL,0,NULL,1,&barrier);
+  }
   if (!transfer_option) {
     vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
     vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE,
@@ -717,6 +863,15 @@ int main(int argc, char **argv) {
       .commandBufferCount = 1,
       .pCommandBuffers = &command_buffer,
   };
+  if (sparse_rebind_option) {
+    check(vkQueueSubmit(queue, 1, &submit_info, fence), "sparse warmup submit");
+    check(vkWaitForFences(device, 1, &fence, true, UINT64_C(20000000000)),
+          "sparse warmup wait");
+    uint64_t mask = strtoull(sparse_rebind_option, &end, 0);
+    if (*end) die("invalid sparse rebind mask");
+    bind_sparse_pages(queue, alias_buffer, memory, buffer_size, sparse_page_size, mask, 0);
+    check(vkResetFences(device, 1, &fence), "reset sparse warmup fence");
+  }
   check(vkQueueSubmit(queue, 1, &submit_info, fence), "vkQueueSubmit");
   check(vkWaitForFences(device, 1, &fence, true, UINT64_C(20000000000)),
         "vkWaitForFences");
@@ -804,6 +959,10 @@ int main(int argc, char **argv) {
   vkDestroyShaderModule(device, shader, NULL);
   vkDestroyDescriptorPool(device, descriptor_pool, NULL);
   vkDestroyDescriptorSetLayout(device, set_layout, NULL);
+  if (image_sampler) vkDestroySampler(device,image_sampler,NULL);
+  if (sampled_view) vkDestroyImageView(device,sampled_view,NULL);
+  if (sampled_image) vkDestroyImage(device,sampled_image,NULL);
+  if (image_memory) vkFreeMemory(device,image_memory,NULL);
   if (texel_view) vkDestroyBufferView(device, texel_view, NULL);
   vkUnmapMemory(device, memory);
   if (alias_buffer) vkDestroyBuffer(device, alias_buffer, NULL);

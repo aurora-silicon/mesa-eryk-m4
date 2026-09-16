@@ -307,6 +307,7 @@ write_buffer_view_desc(struct hk_descriptor_set *set,
 {
    struct hk_storage_image_descriptor desc = {};
    uint32_t heap_index = 0, storage_heap_index = 0;
+   struct hk_texel_buffer_residency residency = {0};
    const unsigned generation = set->layout->descriptor_generation;
    const struct hk_storage_image_descriptor_layout native =
       hk_storage_image_descriptor_layout(generation);
@@ -315,6 +316,7 @@ write_buffer_view_desc(struct hk_descriptor_set *set,
       VK_FROM_HANDLE(hk_buffer_view, view, bufferView);
 
       desc.tex = view->tex;
+      residency = view->residency;
       heap_index = view->sampled_heap_index;
       if (storage) {
          if (view->storage_pbe_valid) {
@@ -342,6 +344,8 @@ write_buffer_view_desc(struct hk_descriptor_set *set,
          memcpy(packed + AGX_G17P_STORAGE_HEAP_INDEX_OFFSET,
                 &storage_heap_index, sizeof(storage_heap_index));
    }
+   if (generation == 9)
+      memcpy(packed + HK_TEXEL_BUFFER_RESIDENCY_OFFSET, &residency, sizeof(residency));
    write_desc(set, binding, elem, packed,
               hk_texel_buffer_descriptor_stride(generation));
 }

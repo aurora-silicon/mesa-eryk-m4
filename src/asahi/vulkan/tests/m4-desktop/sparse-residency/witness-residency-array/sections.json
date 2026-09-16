@@ -1,0 +1,20 @@
+[
+  {
+    "file": "text-710.bin",
+    "macho_offset": 1808,
+    "offset": 2496,
+    "bytes": 452,
+    "section_index": 1,
+    "address": 0,
+    "symbols": [
+      {
+        "name": "_agc.main",
+        "offset": 192
+      },
+      {
+        "name": "_agc.main.constant_program",
+        "offset": 0
+      }
+    ]
+  }
+]

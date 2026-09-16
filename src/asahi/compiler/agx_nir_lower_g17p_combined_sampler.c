@@ -50,7 +50,6 @@ g17p_sample_shape(const nir_tex_instr *tex)
         !(cube &&
           (tex->op == nir_texop_tex || tex->op == nir_texop_txl || gather ||
            tex->op == nir_texop_txb || query))) ||
-       tex->is_sparse ||
        tex->coord_components != (query ? ((cube || three_d) ? 3 : 2) :
                                 cube && tex->is_array ? 4 :
                                 (tex->is_array || cube || three_d) ? 3 : 2) ||
@@ -61,7 +60,7 @@ g17p_sample_shape(const nir_tex_instr *tex)
        (tex->dest_type != nir_type_float32 &&
         tex->dest_type != nir_type_int32 &&
         tex->dest_type != nir_type_uint32) ||
-       tex->def.num_components != (query ? 2 : tex->is_shadow && !gather ? 1 : 4) ||
+       tex->def.num_components != (query ? 2 : tex->is_shadow && !gather ? 1 : 4) + tex->is_sparse ||
        tex->def.bit_size != 32)
       return false;
 
@@ -356,9 +355,9 @@ g17p_indexed_fetch_shape(const nir_tex_instr *tex, bool allow_lod)
    const bool three_d = tex->sampler_dim == GLSL_SAMPLER_DIM_3D;
    const bool ms = tex->op == nir_texop_txf_ms && tex->sampler_dim == GLSL_SAMPLER_DIM_MS;
    if ((!ms && (tex->op != nir_texop_txf || (tex->sampler_dim != GLSL_SAMPLER_DIM_2D && !three_d))) ||
-       (three_d && tex->is_array) || tex->is_shadow || tex->is_sparse || tex->texture_index ||
+       (three_d && tex->is_array) || tex->is_shadow || tex->texture_index ||
        tex->sampler_index || tex->def.bit_size != 32 ||
-       tex->def.num_components != 4 ||
+       tex->def.num_components != (tex->is_sparse ? 5 : 4) ||
        (tex->dest_type != nir_type_float32 && tex->dest_type != nir_type_int32 &&
         tex->dest_type != nir_type_uint32) ||
        (!lowered_buffer &&
@@ -433,7 +432,8 @@ agx_nir_lower_g17p_indexed_samplers(nir_shader *shader)
             if (instr->type != nir_instr_type_intrinsic)
                continue;
             nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-            if (intr->intrinsic != nir_intrinsic_bindless_image_load)
+            const bool sparse = intr->intrinsic == nir_intrinsic_bindless_image_sparse_load;
+            if (intr->intrinsic != nir_intrinsic_bindless_image_load && !sparse)
                continue;
             nir_intrinsic_instr *handle = nir_src_as_intrinsic(intr->src[0]);
             /* Storage cubes address an integer face/layer, not a sampling
@@ -446,7 +446,7 @@ agx_nir_lower_g17p_indexed_samplers(nir_shader *shader)
             if (!handle || handle->intrinsic != nir_intrinsic_bindless_image_agx ||
                 (dim != GLSL_SAMPLER_DIM_2D && dim != GLSL_SAMPLER_DIM_3D && !ms) ||
                 (dim == GLSL_SAMPLER_DIM_3D && array) ||
-                intr->def.num_components > 4 ||
+                intr->def.num_components > (sparse ? 5 : 4) ||
                 intr->def.bit_size != 32 ||
                 (!ms && (!nir_src_is_const(intr->src[2]) || nir_src_as_uint(intr->src[2]) != 0)) ||
                 !nir_src_is_const(intr->src[3]) || nir_src_as_uint(intr->src[3]) != 0)
@@ -603,14 +603,13 @@ g17p_cube_sample_shape(const nir_tex_instr *tex)
    if ((tex->op != nir_texop_tex && !level && !gather && !bias && !query) ||
        (level && lod < 0) || (bias && !has_bias) ||
        tex->sampler_dim != GLSL_SAMPLER_DIM_CUBE ||
-       tex->is_sparse ||
        tex->coord_components != (tex->is_array && !query ? 4 : 3) ||
        tex->num_srcs != ((level || has_bias) ? 4 : 3) + tex->is_shadow ||
        (tex->backend_flags & ~AGX_TEXTURE_FLAG_CLAMP_TO_0) != 0 ||
        (tex->dest_type != nir_type_float32 &&
         tex->dest_type != nir_type_int32 &&
         tex->dest_type != nir_type_uint32) ||
-       tex->def.num_components != (query ? 2 : tex->is_shadow && !gather ? 1 : 4) ||
+       tex->def.num_components != (query ? 2 : tex->is_shadow && !gather ? 1 : 4) + tex->is_sparse ||
        tex->def.bit_size != 32 ||
        nir_tex_instr_src_index(tex, nir_tex_src_texture_handle) < 0 ||
        nir_tex_instr_src_index(tex, nir_tex_src_sampler_handle) < 0)

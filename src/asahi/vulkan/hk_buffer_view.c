@@ -113,6 +113,13 @@ hk_CreateBufferView(VkDevice _device, const VkBufferViewCreateInfo *pCreateInfo,
       agx_chip_descriptor_generation(device->dev.chip);
    const unsigned blocksize_B = util_format_get_blocksize(format);
    const bool rgb32 = generation == 9 && blocksize_B == 12;
+   view->residency = (struct hk_texel_buffer_residency) {
+      .map = buffer->residency ? buffer->residency->va->addr +
+                                  (view->vk.offset / 16384) * sizeof(uint32_t) : 0,
+      .page_offset_B = view->vk.offset % 16384,
+      .texel_size_B = blocksize_B,
+      .elements = view->vk.elements,
+   };
    uint32_t tail_offset_B = view->vk.offset & 0xf;
    uint32_t tail_offset_el = tail_offset_B / blocksize_B;
    assert((rgb32 ? tail_offset_B % 4 == 0

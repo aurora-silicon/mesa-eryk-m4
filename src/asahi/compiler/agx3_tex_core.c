@@ -29,7 +29,12 @@ fetch_ok(enum agx_isa_encoding enc, const struct agx3_tex_fetch_desc *d)
        (d->coord & 3) || d->coord > 60 ||
        (enc == AGX_ISA_ENCODING_AGX3B ? (!d->mask || d->mask > 15)
                                     : (d->mask != 1 && d->mask != 15)) ||
+       (d->texture_control && d->texture_control != 4 && d->texture_control != 8) ||
+       (d->texture_control == 8 && enc != AGX_ISA_ENCODING_AGX3B) ||
        d->texture > 15 ||
+       (d->sparse && (enc != AGX_ISA_ENCODING_AGX3B ||
+                      d->width != AGX3_TEX_W32 || d->mask != 15 ||
+                      d->multisample)) ||
        (d->register_lod && (enc != AGX_ISA_ENCODING_AGX3B || d->multisample)) ||
        (d->multisample && enc != AGX_ISA_ENCODING_AGX3B) ||
        (d->three_d && (enc != AGX_ISA_ENCODING_AGX3B || d->array ||
@@ -81,7 +86,7 @@ agx3_tex_encode_fetch(enum agx_isa_encoding enc,
 
    base[nb++] = (struct agx3_field_kv)KV(103, tk);
    base[nb++] = (struct agx3_field_kv)KV(104, tk == AGX3_TEX_OPERAND_IMMEDIATE ? 1 : 2);
-   base[nb++] = (struct agx3_field_kv)KV(112, 4);
+   base[nb++] = (struct agx3_field_kv)KV(112, d->texture_control ?: 4);
    base[nb++] = (struct agx3_field_kv)KV(118, 3);
    base[nb++] = (struct agx3_field_kv)KV(119, 3);
    base[nb++] = (struct agx3_field_kv)KV(132, sk);
@@ -120,6 +125,7 @@ agx3_tex_encode_fetch(enum agx_isa_encoding enc,
                                          : 126,
       d->sampler_value);
    ov[n++] = (struct agx3_field_kv)KV(107, d->texture_kill);
+   ov[n++] = (struct agx3_field_kv)KV(142, d->sparse);
    ov[n++] = (struct agx3_field_kv)KV(139, d->multisample ? 0 : d->register_lod ? 4 : 2);
    if (enc == AGX_ISA_ENCODING_AGX3B)
       ov[n++] = (struct agx3_field_kv)KV(147, d->final ? 2 : 0);
@@ -166,7 +172,13 @@ sample_ok(enum agx_isa_encoding enc, const struct agx3_tex_sample_desc *d)
    if ((d->width != AGX3_TEX_W16 && d->width != AGX3_TEX_W32) ||
        d->dest >= 128 || (d->width == AGX3_TEX_W32 && (d->dest & 1)) ||
        (d->coord & 3) || d->coord > 60 || !mask_witnessed(d->mask) ||
-       d->texture > 15 || d->sampler > 15)
+       (d->texture_control && d->texture_control != 4 && d->texture_control != 8) ||
+       (d->texture_control == 8 && enc != AGX_ISA_ENCODING_AGX3B) ||
+       d->texture > 15 || d->sampler > 15 ||
+       (d->sparse && (enc != AGX_ISA_ENCODING_AGX3B ||
+                      d->width != AGX3_TEX_W32 ||
+                      d->mask != (d->shadow && !d->gather ? 1 : 15) ||
+                      d->query_lod)))
       return false;
 
    /* Native calculate_*_lod on cube, cube array and 3D textures (lod-query.metal
@@ -269,7 +281,7 @@ sample_ok(enum agx_isa_encoding enc, const struct agx3_tex_sample_desc *d)
 
    const unsigned tk = d->texture_kind ? d->texture_kind : 1;
    const unsigned sk = d->sampler_kind ? d->sampler_kind : 1;
-   if (tk > 3 || sk > 3 || (tk == 1) != (sk == 1) ||
+   if (tk > 3 || sk > 3 || ((tk == 1) != (sk == 1) && !d->sparse) ||
        ((tk != 1 || sk != 1) && enc != AGX_ISA_ENCODING_AGX3B) ||
        (tk != 1 && ((d->texture_value & 1) || d->texture_value > 252)) ||
        (sk != 1 && ((d->sampler_value & 1) || d->sampler_value > 252)) ||
@@ -309,12 +321,12 @@ agx3_tex_encode_sample(enum agx_isa_encoding enc,
    base[nb++] = (struct agx3_field_kv)KV(89, 3);
    base[nb++] = (struct agx3_field_kv)KV(90, 3);
    base[nb++] = (struct agx3_field_kv)KV(103, tk);
-   base[nb++] = (struct agx3_field_kv)KV(104, immediate ? 1 : 2);
-   base[nb++] = (struct agx3_field_kv)KV(112, 4);
+   base[nb++] = (struct agx3_field_kv)KV(104, tk == AGX3_TEX_OPERAND_IMMEDIATE ? 1 : 2);
+   base[nb++] = (struct agx3_field_kv)KV(112, d->texture_control ?: 4);
    base[nb++] = (struct agx3_field_kv)KV(118, 3);
    base[nb++] = (struct agx3_field_kv)KV(119, 3);
    base[nb++] = (struct agx3_field_kv)KV(132, sk);
-   base[nb++] = (struct agx3_field_kv)KV(133, immediate ? 1 : 2);
+   base[nb++] = (struct agx3_field_kv)KV(133, sk == AGX3_TEX_OPERAND_IMMEDIATE ? 1 : 2);
    base[nb++] = (struct agx3_field_kv)KV(138, 1);
    if (enc == AGX_ISA_ENCODING_AGX3C) {
       base[nb++] = (struct agx3_field_kv)KV(24, 2);
@@ -322,7 +334,7 @@ agx3_tex_encode_sample(enum agx_isa_encoding enc,
       base[nb++] = (struct agx3_field_kv)KV(61, 164);
    }
 
-   struct agx3_field_kv ov[31];
+   struct agx3_field_kv ov[32];
    unsigned n = 0;
    ov[n++] = (struct agx3_field_kv)KV(2, d->dest);
    ov[n++] = (struct agx3_field_kv)KV(10, d->width);
@@ -331,6 +343,7 @@ agx3_tex_encode_sample(enum agx_isa_encoding enc,
    ov[n++] = (struct agx3_field_kv)KV(26, d->slot);
    ov[n++] = (struct agx3_field_kv)KV(27, d->coord_kill ? 1 : 0);
    ov[n++] = (struct agx3_field_kv)KV(75, d->mask);
+   ov[n++] = (struct agx3_field_kv)KV(142, d->sparse);
    ov[n++] = (struct agx3_field_kv)KV(76, d->cube ? 4 : d->three_d ? 3 : 1);
    ov[n++] = (struct agx3_field_kv)KV(78, 2);  /* filtered sample */
    if (d->query_lod)
@@ -659,11 +672,13 @@ agx3_tex_decode_fetch(enum agx_isa_encoding enc, const void *instruction,
            kind <= AGX3_TEX_OPERAND_UNIFORM; ++kind) {
          d.texture_kind = kind;
          d.texture_kill = kind == AGX3_TEX_OPERAND_REGISTER && (p[15] & 8);
-         for (unsigned axis = 0; axis < 16; ++axis) {
+         for (unsigned axis = 0; axis < 64; ++axis) {
             d.array = axis & 1;
             d.register_lod = axis & 2;
             d.multisample = axis & 4;
             d.three_d = axis & 8;
+            d.sparse = axis & 16;
+            d.texture_control = axis & 32 ? 8 : 4;
             uint8_t canonical[AGX3_TEX_MAX_LENGTH], length;
             if (agx3_tex_encode_fetch(enc, &d, canonical, &length) &&
                 length == instruction_size &&
@@ -688,13 +703,15 @@ agx3_tex_decode_fetch(enum agx_isa_encoding enc, const void *instruction,
    /* The array axis is a single selector the hand decoders above do not
     * extract; recover it the same way everything else here is validated, by
     * requiring one of the two readings to repack byte-for-byte. */
-   for (unsigned a = 0; a < 16; ++a) {
+   for (unsigned a = 0; a < 64; ++a) {
       uint8_t canonical[AGX3_TEX_MAX_LENGTH];
       uint8_t length = 0;
       d.array = a & 1;
       d.register_lod = a & 2;
       d.multisample = a & 4;
       d.three_d = a & 8;
+      d.sparse = a & 16;
+      d.texture_control = a & 32 ? 8 : 4;
       if (agx3_tex_encode_fetch(enc, &d, canonical, &length) &&
           length == instruction_size &&
           memcmp(canonical, instruction, length) == 0) {

@@ -1,0 +1,326 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_sparse_read_size_2_10_r32ui",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Pass",
+    "seconds": 0.08403957,
+    "eligibility": {
+      "catalog_index": 2668733,
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_sparse_read_size_2_10_r32ui",
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Complete shader residency feature qualification"
+    },
+    "status": "Pass",
+    "message": "Passed",
+    "qpa": "deqp-runner/c4.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_sparse_read_size_2_10_r32ui_strict",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Skip",
+    "seconds": 0.024806058,
+    "eligibility": {
+      "catalog_index": 2668734,
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_sparse_read_size_2_10_r32ui_strict",
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Complete shader residency feature qualification"
+    },
+    "status": "NotSupported",
+    "message": "Sparse buffers property residencyNonResidentStrict not supported at vktSparseResourcesBufferSparseResidency.cpp:1454",
+    "qpa": "deqp-runner/c3.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_sparse_read_size_2_10_r64ui",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Skip",
+    "seconds": 0.000266242,
+    "eligibility": {
+      "catalog_index": 2668735,
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_sparse_read_size_2_10_r64ui",
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Complete shader residency feature qualification"
+    },
+    "status": "NotSupported",
+    "message": "Format not supported for storage texel buffers at vktSparseResourcesBufferSparseResidency.cpp:1233",
+    "qpa": "deqp-runner/c5.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 3,
+    "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_sparse_read_size_2_10_r64ui_strict",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Skip",
+    "seconds": 3.0685e-05,
+    "eligibility": {
+      "catalog_index": 2668736,
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_sparse_read_size_2_10_r64ui_strict",
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Complete shader residency feature qualification"
+    },
+    "status": "NotSupported",
+    "message": "Format not supported for storage texel buffers at vktSparseResourcesBufferSparseResidency.cpp:1233",
+    "qpa": "deqp-runner/c10.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 4,
+    "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_sparse_read_size_2_16_r32ui",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Pass",
+    "seconds": 0.04571119,
+    "eligibility": {
+      "catalog_index": 2668737,
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_sparse_read_size_2_16_r32ui",
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Complete shader residency feature qualification"
+    },
+    "status": "Pass",
+    "message": "Passed",
+    "qpa": "deqp-runner/c14.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 5,
+    "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_sparse_read_size_2_16_r32ui_strict",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Skip",
+    "seconds": 0.022546252,
+    "eligibility": {
+      "catalog_index": 2668738,
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_sparse_read_size_2_16_r32ui_strict",
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Complete shader residency feature qualification"
+    },
+    "status": "NotSupported",
+    "message": "Sparse buffers property residencyNonResidentStrict not supported at vktSparseResourcesBufferSparseResidency.cpp:1454",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 6,
+    "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_sparse_read_size_2_16_r64ui",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Skip",
+    "seconds": 8.2578e-05,
+    "eligibility": {
+      "catalog_index": 2668739,
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_sparse_read_size_2_16_r64ui",
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Complete shader residency feature qualification"
+    },
+    "status": "NotSupported",
+    "message": "Format not supported for storage texel buffers at vktSparseResourcesBufferSparseResidency.cpp:1233",
+    "qpa": "deqp-runner/c17.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 7,
+    "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_sparse_read_size_2_16_r64ui_strict",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Skip",
+    "seconds": 0.000199873,
+    "eligibility": {
+      "catalog_index": 2668740,
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_sparse_read_size_2_16_r64ui_strict",
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Complete shader residency feature qualification"
+    },
+    "status": "NotSupported",
+    "message": "Format not supported for storage texel buffers at vktSparseResourcesBufferSparseResidency.cpp:1233",
+    "qpa": "deqp-runner/c11.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 8,
+    "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_sparse_read_size_2_24_r32ui",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Pass",
+    "seconds": 0.12093476,
+    "eligibility": {
+      "catalog_index": 2668741,
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_sparse_read_size_2_24_r32ui",
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Complete shader residency feature qualification"
+    },
+    "status": "Pass",
+    "message": "Passed",
+    "qpa": "deqp-runner/c15.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 9,
+    "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_sparse_read_size_2_24_r32ui_strict",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Skip",
+    "seconds": 0.04345263,
+    "eligibility": {
+      "catalog_index": 2668742,
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_sparse_read_size_2_24_r32ui_strict",
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Complete shader residency feature qualification"
+    },
+    "status": "NotSupported",
+    "message": "Sparse buffers property residencyNonResidentStrict not supported at vktSparseResourcesBufferSparseResidency.cpp:1454",
+    "qpa": "deqp-runner/c13.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 10,
+    "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_sparse_read_size_2_24_r64ui",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Skip",
+    "seconds": 0.000342362,
+    "eligibility": {
+      "catalog_index": 2668743,
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_sparse_read_size_2_24_r64ui",
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Complete shader residency feature qualification"
+    },
+    "status": "NotSupported",
+    "message": "Format not supported for storage texel buffers at vktSparseResourcesBufferSparseResidency.cpp:1233",
+    "qpa": "deqp-runner/c12.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 11,
+    "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_sparse_read_size_2_24_r64ui_strict",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Skip",
+    "seconds": 1.1227e-05,
+    "eligibility": {
+      "catalog_index": 2668744,
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_sparse_read_size_2_24_r64ui_strict",
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Complete shader residency feature qualification"
+    },
+    "status": "NotSupported",
+    "message": "Format not supported for storage texel buffers at vktSparseResourcesBufferSparseResidency.cpp:1233",
+    "qpa": "deqp-runner/c8.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 12,
+    "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.uniform_texel_buffer_sparse_fetch_size_2_10_r32ui",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Pass",
+    "seconds": 0.056896288,
+    "eligibility": {
+      "catalog_index": 2668751,
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.uniform_texel_buffer_sparse_fetch_size_2_10_r32ui",
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Complete shader residency feature qualification"
+    },
+    "status": "Pass",
+    "message": "Passed",
+    "qpa": "deqp-runner/c6.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 13,
+    "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.uniform_texel_buffer_sparse_fetch_size_2_10_r32ui_strict",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Skip",
+    "seconds": 0.02712219,
+    "eligibility": {
+      "catalog_index": 2668752,
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.uniform_texel_buffer_sparse_fetch_size_2_10_r32ui_strict",
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Complete shader residency feature qualification"
+    },
+    "status": "NotSupported",
+    "message": "Sparse buffers property residencyNonResidentStrict not supported at vktSparseResourcesBufferSparseResidency.cpp:1454",
+    "qpa": "deqp-runner/c7.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 14,
+    "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.uniform_texel_buffer_sparse_fetch_size_2_16_r32ui",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Pass",
+    "seconds": 0.040291004,
+    "eligibility": {
+      "catalog_index": 2668753,
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.uniform_texel_buffer_sparse_fetch_size_2_16_r32ui",
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Complete shader residency feature qualification"
+    },
+    "status": "Pass",
+    "message": "Passed",
+    "qpa": "deqp-runner/c1.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 15,
+    "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.uniform_texel_buffer_sparse_fetch_size_2_16_r32ui_strict",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Skip",
+    "seconds": 0.012473992,
+    "eligibility": {
+      "catalog_index": 2668754,
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.uniform_texel_buffer_sparse_fetch_size_2_16_r32ui_strict",
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Complete shader residency feature qualification"
+    },
+    "status": "NotSupported",
+    "message": "Sparse buffers property residencyNonResidentStrict not supported at vktSparseResourcesBufferSparseResidency.cpp:1454",
+    "qpa": "deqp-runner/c9.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 16,
+    "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.uniform_texel_buffer_sparse_fetch_size_2_24_r32ui",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Pass",
+    "seconds": 0.16288711,
+    "eligibility": {
+      "catalog_index": 2668755,
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.uniform_texel_buffer_sparse_fetch_size_2_24_r32ui",
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Complete shader residency feature qualification"
+    },
+    "status": "Pass",
+    "message": "Passed",
+    "qpa": "deqp-runner/c16.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 17,
+    "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.uniform_texel_buffer_sparse_fetch_size_2_24_r32ui_strict",
+    "boot_id": "2833aecc-694b-46ae-b124-2a1ebe0a4546",
+    "runner_status": "Skip",
+    "seconds": 0.027863199,
+    "eligibility": {
+      "catalog_index": 2668756,
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.uniform_texel_buffer_sparse_fetch_size_2_24_r32ui_strict",
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Complete shader residency feature qualification"
+    },
+    "status": "NotSupported",
+    "message": "Sparse buffers property residencyNonResidentStrict not supported at vktSparseResourcesBufferSparseResidency.cpp:1454",
+    "qpa": "deqp-runner/c2.r1.qpa",
+    "worker_exit": "exit status: 0"
+  }
+]

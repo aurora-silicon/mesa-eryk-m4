@@ -1,0 +1,23 @@
+{
+  "selected": 6201,
+  "recorded": 6201,
+  "completed": 6201,
+  "counts": {
+    "Pass": 3963,
+    "NotSupported": 2238
+  },
+  "classifications": {
+    "unclassified": 6201
+  },
+  "elapsed_seconds": 205.08325424202485,
+  "preparation_seconds": 1.413667479006108,
+  "runner_seconds": 199.33144144699963,
+  "jobs": 12,
+  "tests_per_group": 1,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "cf4f592c7239d0f289b17f26a7943b08a8d41aaff4442f21065a4b28089a5eca",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T084437866694Z-dx-residency-complement-final",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 68.0
+}

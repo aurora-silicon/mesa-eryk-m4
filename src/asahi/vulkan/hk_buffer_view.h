@@ -18,8 +18,19 @@ VkFormatFeatureFlags2
 hk_get_buffer_format_features(struct hk_physical_device *pdevice,
                               VkFormat format);
 
+struct hk_texel_buffer_residency {
+   uint64_t map;
+   uint32_t page_offset_B;
+   uint32_t texel_size_B;
+   uint32_t elements;
+   uint32_t reserved;
+};
+static_assert(sizeof(struct hk_texel_buffer_residency) == 24,
+              "texel buffer residency fills the Gen9 descriptor tail");
+
 struct hk_buffer_view {
    struct vk_buffer_view vk;
+   struct hk_texel_buffer_residency residency;
    struct hk_native_texture_descriptor tex;
    struct hk_native_pbe_descriptor pbe;
    /* Gen9 descriptor-set copy in the software PBE ABI (type, channels,

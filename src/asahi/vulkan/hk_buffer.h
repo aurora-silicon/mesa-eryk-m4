@@ -20,6 +20,9 @@ struct hk_buffer {
 
    /** Reserved VA for sparse buffers, NULL otherwise. */
    struct agx_va *va;
+   /* One CPU-updated residency word per 16 KiB virtual page. Linear texture
+    * reads use zero/scratch mappings and cannot report these holes natively. */
+   struct agx_bo *residency;
 };
 
 VK_DEFINE_NONDISP_HANDLE_CASTS(hk_buffer, vk.base, VkBuffer,

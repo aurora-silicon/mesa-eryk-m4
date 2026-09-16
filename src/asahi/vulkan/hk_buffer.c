@@ -148,7 +148,25 @@ hk_CreateBuffer(VkDevice device, const VkBufferCreateInfo *pCreateInfo,
       buffer->vk.device_address = buffer->va->addr;
 
       /* Bind scratch pages to make read/write across the VA valid */
-      hk_bind_scratch(dev, buffer->va, 0, vma_size_B);
+      VkResult result = hk_bind_scratch(dev, buffer->va, 0, vma_size_B);
+      if (result != VK_SUCCESS) {
+         agx_va_free(&dev->dev, buffer->va, true);
+         vk_buffer_destroy(&dev->vk, pAllocator, &buffer->vk);
+         return result;
+      }
+
+      if (dev->dev.chip == AGX_CHIP_G16G &&
+          (buffer->vk.create_flags & VK_BUFFER_CREATE_SPARSE_BINDING_BIT)) {
+         const size_t map_size = (vma_size_B / 16384) * sizeof(uint32_t);
+         buffer->residency = agx_bo_create(&dev->dev, map_size, 16384,
+                                          AGX_BO_READONLY, "Buffer residency");
+         if (!buffer->residency) {
+            agx_va_free(&dev->dev, buffer->va, true);
+            vk_buffer_destroy(&dev->vk, pAllocator, &buffer->vk);
+            return vk_error(dev, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+         }
+         memset(agx_bo_map(buffer->residency), 0, map_size);
+      }
    }
 
    *pBuffer = hk_buffer_to_handle(buffer);
@@ -170,6 +188,7 @@ hk_DestroyBuffer(VkDevice device, VkBuffer _buffer,
       agx_va_free(&dev->dev, buffer->va, true);
    }
 
+   agx_bo_unreference(&dev->dev, buffer->residency);
    vk_buffer_destroy(&dev->vk, pAllocator, &buffer->vk);
 }
 

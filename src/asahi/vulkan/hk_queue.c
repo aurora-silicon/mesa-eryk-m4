@@ -958,9 +958,12 @@ hk_bind_builder_finish(struct hk_bind_builder *b)
 
    /* Submit everything to the kernel at once */
    if (b->binds.size > 0) {
-      b->dev->dev.ops.bo_bind(
+      int ret = b->dev->dev.ops.bo_bind(
          &b->dev->dev, b->binds.data,
          util_dynarray_num_elements(&b->binds, struct drm_asahi_gem_bind_op));
+      if (ret)
+         b->result = vk_errorf(b->dev, VK_ERROR_UNKNOWN,
+                               "Sparse memory bind failed (%d)", ret);
    }
 
    util_dynarray_fini(&b->binds);
@@ -1012,7 +1015,18 @@ hk_sparse_buffer_bind_memory(struct hk_device *device,
                   bind->pBinds[i].size, bind->pBinds[i].memoryOffset);
    }
 
-   return hk_bind_builder_finish(&b);
+   int ret = hk_bind_builder_finish(&b);
+   if (ret == VK_SUCCESS && buffer->residency) {
+      uint32_t *map = agx_bo_map(buffer->residency);
+      for (uint32_t i = 0; i < bind->bindCount; ++i) {
+         const VkSparseMemoryBind *entry = &bind->pBinds[i];
+         const uint64_t first = entry->resourceOffset / 16384;
+         const uint64_t end = DIV_ROUND_UP(entry->resourceOffset + entry->size, 16384);
+         for (uint64_t page = first; page < end; ++page)
+            map[page] = entry->memory != VK_NULL_HANDLE;
+      }
+   }
+   return ret;
 }
 
 static VkResult

@@ -20,6 +20,8 @@
 #define HK_PBE_DESCRIPTOR_AGX2_SIZE     24
 #define HK_PBE_DESCRIPTOR_AGX3_SIZE     32
 #define HK_SAMPLED_IMAGE_SW_SIZE        40
+#define HK_TEXEL_BUFFER_GEN9_SIZE       96
+#define HK_TEXEL_BUFFER_RESIDENCY_OFFSET 72
 
 struct hk_sampled_image_descriptor_layout {
    uint8_t texture;
@@ -114,7 +116,8 @@ hk_storage_image_descriptor_layout(unsigned generation)
 static inline unsigned
 hk_texel_buffer_descriptor_stride(unsigned generation)
 {
-   return hk_descriptor_generation_is_agx3(generation)
+   return generation == 9 ? HK_TEXEL_BUFFER_GEN9_SIZE :
+      hk_descriptor_generation_is_agx3(generation)
       ? hk_sampled_image_descriptor_layout(generation).stride
       : hk_storage_image_descriptor_layout(generation).stride;
 }

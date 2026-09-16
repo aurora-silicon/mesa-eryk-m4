@@ -1,0 +1,30 @@
+{
+  "id": "20260916T084850657098Z-dx-residency-image-complete",
+  "verdict": "pass",
+  "transport_returncode": 0,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T084850657098Z-dx-residency-image-complete",
+  "observations": {
+    "pixel_results": [
+      "PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf",
+      "PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf",
+      "PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf",
+      "PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf",
+      "PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf",
+      "PASS: buffer oracle bad=0/8192 watched_bad=0 on queue 0 flags=0xf",
+      "PASS: sparse image residency oracles"
+    ],
+    "pixel_result_count": 7,
+    "thermal_samples": 5,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 61.25,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 61.0,
+      "Ta000m": 58.25,
+      "Te000m": 58.0,
+      "Te001m": 56.75,
+      "Tp000m": 61.25,
+      "Tp001m": 57.25
+    }
+  }
+}

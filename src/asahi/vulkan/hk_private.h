@@ -21,14 +21,9 @@
 #define HK_MIN_TEXEL_BUFFER_ALIGNMENT    16
 #define HK_MIN_UBO_ALIGNMENT             64
 #define HK_MAX_VIEWPORTS                 16
-/* Mutable bindings must accommodate the largest payload at the strongest
- * alignment of any permitted descriptor type. A 72-byte AGX3 sampled image
- * mixed with a 16-byte buffer descriptor needs an 80-byte array stride.
- */
+/* Mutable bindings include the Gen9 texel-buffer residency metadata. */
 #define HK_MAX_DESCRIPTOR_ALIGNMENT 16
-#define HK_MAX_DESCRIPTOR_SIZE                                                 \
-   ALIGN_POT(HK_TEXTURE_DESCRIPTOR_AGX3_SIZE + HK_SAMPLED_IMAGE_SW_SIZE,          \
-             HK_MAX_DESCRIPTOR_ALIGNMENT)
+#define HK_MAX_DESCRIPTOR_SIZE HK_TEXEL_BUFFER_GEN9_SIZE
 #define HK_MAX_PUSH_DESCRIPTORS          32
 #define HK_MAX_DESCRIPTOR_SET_SIZE       (1u << 30)
 #define HK_MAX_INLINE_UNIFORM_BLOCK_SIZE (1u << 16)

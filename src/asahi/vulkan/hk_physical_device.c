@@ -702,9 +702,8 @@ hk_get_device_features(
       features->shaderTessellationAndGeometryPointSize =
          dev->chip == AGX_CHIP_G16G;
       const bool sparse = dev->chip == AGX_CHIP_G16G;
-      /* Residency fetches (sparse_image_load with a residency code) are not
-       * grounded on the native compiler yet. */
-      features->shaderResourceResidency = false;
+      /* Native SMP residency plus live sparse texel-buffer bind metadata. */
+      features->shaderResourceResidency = sparse;
       features->shaderResourceMinLod = false;
       features->advancedBlendCoherentOperations = false;
       features->sparseBinding = sparse;

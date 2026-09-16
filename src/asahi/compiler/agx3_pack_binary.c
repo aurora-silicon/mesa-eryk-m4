@@ -847,7 +847,7 @@ agx3_emit_texture_fetch(struct util_dynarray *emission,
        !agx3_tex_plain_reg(I->dest[0]) ||
        (I->dest[0].size != AGX_SIZE_16 &&
         I->dest[0].size != AGX_SIZE_32) ||
-       agx_channels(I->dest[0]) != 4 || I->dest[0].value >= 128 ||
+       agx_channels(I->dest[0]) != (I->sparse ? 8 : 4) || I->dest[0].value >= 128 ||
        (I->dest[0].size == AGX_SIZE_32 && (I->dest[0].value & 1)) ||
        !agx3_tex_plain_reg(I->src[0]) ||
        I->src[0].size != AGX_SIZE_32 ||
@@ -865,10 +865,10 @@ agx3_emit_texture_fetch(struct util_dynarray *emission,
        !agx3_tex_imm(I->src[4], 0) ||
        !agx_is_null(I->src[5]) ||
        (I->dim != AGX_DIM_2D && !array && !ms && !three_d) ||
-       (enc == AGX_ISA_ENCODING_AGX3B ? (!I->mask || (I->mask & ~15u))
+       (enc == AGX_ISA_ENCODING_AGX3B ? (!I->mask || (I->mask & ~(I->sparse ? 31u : 15u)))
                                     : (I->mask != 1 && I->mask != 15)) ||
        I->offset || I->shadow ||
-       I->query_lod || I->gather != AGX_GATHER_NONE || I->sparse)
+       I->query_lod || I->gather != AGX_GATHER_NONE)
       return false;
 
    if (register_lod) {
@@ -910,7 +910,8 @@ agx3_emit_texture_fetch(struct util_dynarray *emission,
       .dest = I->dest[0].value,
       .coord = stage_coordinates ? staging_coord : I->src[0].value,
       .width = I->dest[0].size == AGX_SIZE_32 ? AGX3_TEX_W32 : AGX3_TEX_W16,
-      .mask = I->mask,
+      .mask = I->mask & 15,
+      .sparse = I->sparse,
       .texture = immediate ? I->src[3].value : 0,
       .texture_kind = immediate ? AGX3_TEX_OPERAND_IMMEDIATE :
          I->src[3].type == AGX_INDEX_UNIFORM ? AGX3_TEX_OPERAND_UNIFORM :
@@ -1145,7 +1146,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
        !agx3_tex_plain_reg(I->dest[0]) ||
        (I->dest[0].size != AGX_SIZE_16 &&
         I->dest[0].size != AGX_SIZE_32) ||
-       agx_channels(I->dest[0]) != 4 || I->dest[0].value >= 128 ||
+       agx_channels(I->dest[0]) != (I->sparse ? 8 : 4) || I->dest[0].value >= 128 ||
        (I->dest[0].size == AGX_SIZE_32 && (I->dest[0].value & 1)) ||
        !agx3_tex_plain_reg(I->src[0]) ||
        I->src[0].size != AGX_SIZE_32 ||
@@ -1164,10 +1165,10 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
        !valid_compare || (bias && gather) ||
        (I->dim != AGX_DIM_2D && I->dim != AGX_DIM_2D_ARRAY && !cube && !three_d) ||
        (array && enc != AGX_ISA_ENCODING_AGX3B) ||
-       (I->mask == 0 || (I->mask & ~15u)) ||
+       (I->mask == 0 || (I->mask & ~(I->sparse ? 31u : 15u))) ||
        (I->offset && !sample_offset && !dynamic_offset) ||
        (gather && (enc != AGX_ISA_ENCODING_AGX3B ||
-                   explicit_lod || I->mask != 15)) || I->sparse) {
+                   explicit_lod || (I->mask & 15) != 15))) {
       fprintf(stderr, "AGX3 sample shape: lod=%u valid_lod=%u bias=%u imm=%u offset=%u literal=%u dynamic=%u compare=%u bindless_zero=%u\n",
               I->lod_mode, valid_lod, bias, immediate, I->offset, sample_offset,
               dynamic_offset, valid_compare, agx3_tex_imm(I->src[2], 0));
@@ -1299,6 +1300,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
       .coord = coord,
       .width = I->dest[0].size == AGX_SIZE_32 ? AGX3_TEX_W32 : AGX3_TEX_W16,
       .mask = I->mask,
+      .sparse = I->sparse,
       .texture = immediate ? I->src[3].value : 0,
       .sampler = immediate ? I->src[4].value : 0,
       .texture_kind = immediate ? AGX3_TEX_OPERAND_IMMEDIATE :
