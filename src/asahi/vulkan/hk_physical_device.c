@@ -712,7 +712,7 @@ hk_get_device_features(
       features->sparseResidencyBuffer = false;
       // G16G exports the view index through its qualified layered UVS path.
       features->multiview = dev->chip == AGX_CHIP_G16G;
-      features->geometryStreams = false;
+      features->geometryStreams = dev->chip == AGX_CHIP_G16G;
       /* HAL200's native storage-image fetch is memory-safe, but its TEX
        * descriptor does not bounds-check against the Vulkan image view.
        * Hardware qualification returned adjacent in-image texels for both
