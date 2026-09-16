@@ -1,0 +1,134 @@
+{
+  "run": "build/directx-latency/perf2",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T070628346104Z-dx-perf2",
+  "guard_verdict": "pass",
+  "scope": "Single serial CTS case; wait-return gap includes both application and driver CPU work. Command active time includes firmware/host waits, not just GPU execution.",
+  "timings": {
+    "submit_ioctl": {
+      "count": 2500,
+      "median_ms": 0.057,
+      "p90_ms": 0.1,
+      "max_ms": 0.13,
+      "total_ms": 173.095
+    },
+    "submit_to_retire": {
+      "count": 2500,
+      "median_ms": 4.986699,
+      "p90_ms": 5.194213,
+      "max_ms": 18.769758,
+      "total_ms": 12520.370466
+    },
+    "fence_wait": {
+      "count": 2500,
+      "median_ms": 4.9233445,
+      "p90_ms": 5.138649,
+      "max_ms": 18.71739,
+      "total_ms": 12373.280207
+    },
+    "retire_to_wait_return": {
+      "count": 2500,
+      "median_ms": 0.015393500000000001,
+      "p90_ms": 0.020435,
+      "max_ms": 5.970558,
+      "total_ms": 46.523659
+    },
+    "wait_return_to_next_submit": {
+      "count": 2499,
+      "median_ms": 4.729721,
+      "p90_ms": 7.258511,
+      "max_ms": 87.936109,
+      "total_ms": 13463.733942
+    },
+    "fence_signal": {
+      "count": 2500,
+      "median_ms": 0.00275,
+      "p90_ms": 0.003333,
+      "max_ms": 0.00971,
+      "total_ms": 6.651639
+    },
+    "signal_to_wait_return": {
+      "count": 2500,
+      "median_ms": 0.012018,
+      "p90_ms": 0.017145,
+      "max_ms": 5.968141,
+      "total_ms": 38.593799
+    },
+    "command_0_pipe_2_prepare": {
+      "count": 2500,
+      "median_ms": 0.0407165,
+      "p90_ms": 0.056667,
+      "max_ms": 4.267295,
+      "total_ms": 114.744636
+    },
+    "command_0_pipe_2_active": {
+      "count": 2500,
+      "median_ms": 0.741377,
+      "p90_ms": 0.76049,
+      "max_ms": 7.114156,
+      "total_ms": 1899.739343
+    },
+    "latest_event_to_command_retire": {
+      "count": 12500,
+      "median_ms": 0.0478315,
+      "p90_ms": 0.059244,
+      "max_ms": 6.441234,
+      "total_ms": 621.195489
+    },
+    "command_1_pipe_1_prepare": {
+      "count": 2500,
+      "median_ms": 0.186186,
+      "p90_ms": 0.208356,
+      "max_ms": 2.621903,
+      "total_ms": 433.318699
+    },
+    "command_1_pipe_1_active": {
+      "count": 2500,
+      "median_ms": 1.158496,
+      "p90_ms": 1.330261,
+      "max_ms": 4.722847,
+      "total_ms": 2937.558352
+    },
+    "command_2_pipe_2_prepare": {
+      "count": 2500,
+      "median_ms": 0.038537,
+      "p90_ms": 0.046274,
+      "max_ms": 2.95037,
+      "total_ms": 100.409422
+    },
+    "command_2_pipe_2_active": {
+      "count": 2500,
+      "median_ms": 0.6947485,
+      "p90_ms": 0.768361,
+      "max_ms": 4.976502,
+      "total_ms": 1755.36099
+    },
+    "command_3_pipe_1_prepare": {
+      "count": 2500,
+      "median_ms": 0.1952685,
+      "p90_ms": 0.20552,
+      "max_ms": 2.538518,
+      "total_ms": 443.24068
+    },
+    "command_3_pipe_1_active": {
+      "count": 2500,
+      "median_ms": 1.1712285,
+      "p90_ms": 1.326814,
+      "max_ms": 3.619892,
+      "total_ms": 2950.923944
+    },
+    "command_4_pipe_2_prepare": {
+      "count": 2500,
+      "median_ms": 0.038188,
+      "p90_ms": 0.04504,
+      "max_ms": 2.229721,
+      "total_ms": 96.908074
+    },
+    "command_4_pipe_2_active": {
+      "count": 2500,
+      "median_ms": 0.5768335,
+      "p90_ms": 0.751266,
+      "max_ms": 2.884689,
+      "total_ms": 1571.247082
+    }
+  }
+}

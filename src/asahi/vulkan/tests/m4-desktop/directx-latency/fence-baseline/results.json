@@ -1,0 +1,18 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.r16g16b16a16_unorm",
+    "boot_id": "c061c12b-c031-4e7c-a2fd-967df682bb11",
+    "runner_status": "Pass",
+    "seconds": 28.786741,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.r16g16b16a16_unorm",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "2500 iteration(s) processed",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.monolithic.blend.dual_source.multi_attachments.r16g16b16a16_unorm.c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  }
+]

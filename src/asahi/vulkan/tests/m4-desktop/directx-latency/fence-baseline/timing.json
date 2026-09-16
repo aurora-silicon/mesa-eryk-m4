@@ -1,0 +1,43 @@
+{
+  "run": "build/directx-latency/fence-baseline",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260916T065852918665Z-dx-fence-baseline",
+  "guard_verdict": "pass",
+  "scope": "Single serial CTS case; wait-return gap includes both application and driver CPU work. Command active time includes firmware/host waits, not just GPU execution.",
+  "timings": {
+    "submit_ioctl": {
+      "count": 2500,
+      "median_ms": 0.095,
+      "p90_ms": 0.103,
+      "max_ms": 0.136,
+      "total_ms": 219.356
+    },
+    "submit_to_retire": {
+      "count": 2500,
+      "median_ms": 5.0215555,
+      "p90_ms": 5.223533,
+      "max_ms": 32.582425,
+      "total_ms": 12609.915237
+    },
+    "fence_wait": {
+      "count": 2500,
+      "median_ms": 4.9346775,
+      "p90_ms": 5.132814,
+      "max_ms": 32.522156,
+      "total_ms": 12398.863527
+    },
+    "retire_to_wait_return": {
+      "count": 2500,
+      "median_ms": 0.015,
+      "p90_ms": 0.017017,
+      "max_ms": 0.044893,
+      "total_ms": 37.688183
+    },
+    "wait_return_to_next_submit": {
+      "count": 2499,
+      "median_ms": 6.035137,
+      "p90_ms": 7.518548,
+      "max_ms": 82.317962,
+      "total_ms": 15477.659398
+    }
+  }
+}

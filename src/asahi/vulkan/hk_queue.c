@@ -697,7 +697,7 @@ queue_submit_single(struct hk_device *dev, struct drm_asahi_submit *submit,
       virt.extres = util_dynarray_begin(&dev->external_bos.list);
    }
 
-   static int64_t hk_timing_last_ns = 0;
+   static _Thread_local int64_t hk_timing_last_ns = 0;
    const bool hk_timing = getenv("HK_SUBMIT_TIMING") != NULL;
    int64_t hk_t0 = hk_timing ? os_time_get_nano() : 0;
    int ret = dev->dev.ops.submit(&dev->dev, submit, &virt);

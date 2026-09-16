@@ -156,6 +156,16 @@ agx_pack_blend_standard(enum pipe_blend_func rgb_func,
                         enum pipe_blendfactor alpha_src_factor,
                         enum pipe_blendfactor alpha_dst_factor)
 {
+   /* MIN/MAX use the unscaled source and destination. Keep ignored factors
+    * out of the epilog/fast-link cache keys, including dual-source factors
+    * which would otherwise request an unused second colour export.
+    */
+   if (rgb_func == PIPE_BLEND_MIN || rgb_func == PIPE_BLEND_MAX)
+      rgb_src_factor = rgb_dst_factor = PIPE_BLENDFACTOR_ONE;
+
+   if (alpha_func == PIPE_BLEND_MIN || alpha_func == PIPE_BLEND_MAX)
+      alpha_src_factor = alpha_dst_factor = PIPE_BLENDFACTOR_ONE;
+
    struct agx_blend_standard blend = {
       .rgb_func = rgb_func,
       .rgb_src_factor = rgb_src_factor,

@@ -23,6 +23,7 @@
 #include "compiler/nir/nir_builder.h"
 #include "poly/geometry.h"
 #include "util/hash_table.h"
+#include "util/os_time.h"
 #include "util/ralloc.h"
 #include "util/simple_mtx.h"
 #include "vulkan/vulkan_core.h"
@@ -386,6 +387,23 @@ hk_check_status(struct vk_device *device)
       }
    }
    return vk_check_printf_status(&dev->vk, &dev->dev.printf);
+}
+
+/* Share CLOCK_MONOTONIC with the submit and kernel completion diagnostics. */
+VKAPI_ATTR VkResult VKAPI_CALL
+hk_WaitForFences(VkDevice device, uint32_t fence_count,
+                 const VkFence *fences, VkBool32 wait_all, uint64_t timeout)
+{
+   const bool timing = getenv("HK_SUBMIT_TIMING") != NULL;
+   int64_t start = timing ? os_time_get_nano() : 0;
+   VkResult result = vk_common_WaitForFences(device, fence_count, fences,
+                                            wait_all, timeout);
+   if (timing) {
+      int64_t end = os_time_get_nano();
+      fprintf(stderr, "HK_FENCE_TIMING start_ns=%lld end_ns=%lld result=%d\n",
+              (long long)start, (long long)end, result);
+   }
+   return result;
 }
 
 /* The common wait entrypoints already invoke check_status. Their polling

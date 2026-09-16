@@ -1,0 +1,36 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 1K of event 'cpu-clock:u'
+# Event count (approx.): 10494949390
+#
+# Overhead  Command          Shared Object               Symbol
+# ........  ...............  ..........................  .......................................................................
+#
+     9.72%  deqp-vk-seed30-  libvulkan_asahi.so          [.] util_vma_heap_validate
+     6.26%  deqp-vk-seed30-  libvulkan_asahi.so          [.] match_expression
+     5.00%  deqp-vk-seed30-  libvulkan_asahi.so          [.] agx_validate
+     4.72%  deqp-vk-seed30-  libvulkan_asahi.so          [.] validate_instr
+     2.89%  deqp-vk-seed30-  libvulkan_asahi.so          [.] nir_algebraic_impl
+     2.89%  deqp-vk-seed30-  libvulkan_asahi.so          [.] validate_def
+     2.31%  deqp-vk-seed30-  libvulkan_asahi.so          [.] set_search_or_add
+     2.21%  deqp-vk-seed30-  libvulkan_asahi.so          [.] agx3_compose
+     1.83%  deqp-vk-seed30-  libvulkan_asahi.so          [.] apply_node
+     1.83%  deqp-vk-seed30-  libvulkan_asahi.so          [.] nir_ssa_alu_instr_src_components
+     1.64%  deqp-vk-seed30-  libvulkan_asahi.so          [.] nir_function_impl_lower_instructions
+     1.54%  deqp-vk-seed30-  libvulkan_asahi.so          [.] validate_src_dominance
+     1.54%  deqp-vk-seed30-  libvulkan_asahi.so          [.] validate_ssa_dominance
+     1.44%  deqp-vk-seed30-  libc.so.6                   [.] 0x000000000009de00
+     1.44%  deqp-vk-seed30-  libvulkan_asahi.so          [.] agx_ioto_decode_one
+     1.25%  deqp-vk-seed30-  libvulkan_asahi.so          [.] hash_instr
+     1.25%  deqp-vk-seed30-  libvulkan_asahi.so          [.] push_analysis_query
+     1.15%  deqp-vk-seed30-  libvulkan_asahi.so          [.] agx3_form_index
+     1.15%  deqp-vk-seed30-  libvulkan_asahi.so          [.] calculate_pressure_delta
+     1.15%  deqp-vk-seed30-  libvulkan_asahi.so          [.] dce_cf_list
+
+
+#
+# (Tip: To show context switches in perf report sample context add --switch-events to perf record.)
+#
