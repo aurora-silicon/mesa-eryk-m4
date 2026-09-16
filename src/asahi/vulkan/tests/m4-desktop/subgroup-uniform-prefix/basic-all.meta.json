@@ -1,0 +1,502 @@
+{
+  "schema": 1,
+  "cases_sha256": "0218f0976701ee8075af7478fd171cb914ae078141d37a31ac56cf4c7c83b5fe",
+  "provenance": {
+    "catalog": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-ordered/catalog",
+    "catalog_sha256": "72c1bb9d2f9f0425ab8a4f570d78abdc1d3a34b82173ec76b772dedc477526bf",
+    "cts_revision": "vulkan-cts-1.4.6.2:f6a29701220f34dd1407513bfe80d74ca7b392ce",
+    "method": "Existing targeted selection; catalog identities attached without reordering"
+  },
+  "cases": [
+    {
+      "case": "dEQP-VK.subgroups.basic.compute.subgroupbarrier",
+      "catalog_index": 2786616,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.compute.subgroupbarrier_requiredsubgroupsize",
+      "catalog_index": 2786617,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.compute.subgroupelect",
+      "catalog_index": 2786618,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.compute.subgroupelect_requiredsubgroupsize",
+      "catalog_index": 2786619,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.compute.subgroupmemorybarrier",
+      "catalog_index": 2786620,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.compute.subgroupmemorybarrier_requiredsubgroupsize",
+      "catalog_index": 2786621,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.compute.subgroupmemorybarrierbuffer",
+      "catalog_index": 2786622,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.compute.subgroupmemorybarrierbuffer_requiredsubgroupsize",
+      "catalog_index": 2786623,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.compute.subgroupmemorybarrierimage",
+      "catalog_index": 2786624,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.compute.subgroupmemorybarrierimage_requiredsubgroupsize",
+      "catalog_index": 2786625,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.compute.subgroupmemorybarriershared",
+      "catalog_index": 2786626,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.compute.subgroupmemorybarriershared_requiredsubgroupsize",
+      "catalog_index": 2786627,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.framebuffer.subgroupbarrier_fragment",
+      "catalog_index": 2786628,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.framebuffer.subgroupbarrier_geometry",
+      "catalog_index": 2786629,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.framebuffer.subgroupbarrier_tess_control",
+      "catalog_index": 2786630,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.framebuffer.subgroupbarrier_tess_eval",
+      "catalog_index": 2786631,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.framebuffer.subgroupbarrier_vertex",
+      "catalog_index": 2786632,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.framebuffer.subgroupelect_geometry",
+      "catalog_index": 2786633,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.framebuffer.subgroupelect_tess_control",
+      "catalog_index": 2786634,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.framebuffer.subgroupelect_tess_eval",
+      "catalog_index": 2786635,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.framebuffer.subgroupelect_vertex",
+      "catalog_index": 2786636,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.framebuffer.subgroupmemorybarrier_fragment",
+      "catalog_index": 2786637,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.framebuffer.subgroupmemorybarrier_geometry",
+      "catalog_index": 2786638,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.framebuffer.subgroupmemorybarrier_tess_control",
+      "catalog_index": 2786639,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.framebuffer.subgroupmemorybarrier_tess_eval",
+      "catalog_index": 2786640,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.framebuffer.subgroupmemorybarrier_vertex",
+      "catalog_index": 2786641,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.framebuffer.subgroupmemorybarrierbuffer_fragment",
+      "catalog_index": 2786642,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.framebuffer.subgroupmemorybarrierbuffer_geometry",
+      "catalog_index": 2786643,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.framebuffer.subgroupmemorybarrierbuffer_tess_control",
+      "catalog_index": 2786644,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.framebuffer.subgroupmemorybarrierbuffer_tess_eval",
+      "catalog_index": 2786645,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.framebuffer.subgroupmemorybarrierbuffer_vertex",
+      "catalog_index": 2786646,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.framebuffer.subgroupmemorybarrierimage_fragment",
+      "catalog_index": 2786647,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.framebuffer.subgroupmemorybarrierimage_geometry",
+      "catalog_index": 2786648,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.framebuffer.subgroupmemorybarrierimage_tess_control",
+      "catalog_index": 2786649,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.framebuffer.subgroupmemorybarrierimage_tess_eval",
+      "catalog_index": 2786650,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.framebuffer.subgroupmemorybarrierimage_vertex",
+      "catalog_index": 2786651,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.graphics.subgroupbarrier",
+      "catalog_index": 2786652,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.graphics.subgroupelect",
+      "catalog_index": 2786653,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.graphics.subgroupmemorybarrier",
+      "catalog_index": 2786654,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.graphics.subgroupmemorybarrierbuffer",
+      "catalog_index": 2786655,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.graphics.subgroupmemorybarrierimage",
+      "catalog_index": 2786656,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.mesh.subgroupbarrier_mesh",
+      "catalog_index": 2786657,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.mesh.subgroupbarrier_requiredsubgroupsize_mesh",
+      "catalog_index": 2786658,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.mesh.subgroupbarrier_requiredsubgroupsize_task",
+      "catalog_index": 2786659,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.mesh.subgroupbarrier_task",
+      "catalog_index": 2786660,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.mesh.subgroupelect_mesh",
+      "catalog_index": 2786661,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.mesh.subgroupelect_requiredsubgroupsize_mesh",
+      "catalog_index": 2786662,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.mesh.subgroupelect_requiredsubgroupsize_task",
+      "catalog_index": 2786663,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.mesh.subgroupelect_task",
+      "catalog_index": 2786664,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.mesh.subgroupmemorybarrier_mesh",
+      "catalog_index": 2786665,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.mesh.subgroupmemorybarrier_requiredsubgroupsize_mesh",
+      "catalog_index": 2786666,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.mesh.subgroupmemorybarrier_requiredsubgroupsize_task",
+      "catalog_index": 2786667,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.mesh.subgroupmemorybarrier_task",
+      "catalog_index": 2786668,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.mesh.subgroupmemorybarrierbuffer_mesh",
+      "catalog_index": 2786669,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.mesh.subgroupmemorybarrierbuffer_requiredsubgroupsize_mesh",
+      "catalog_index": 2786670,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.mesh.subgroupmemorybarrierbuffer_requiredsubgroupsize_task",
+      "catalog_index": 2786671,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.mesh.subgroupmemorybarrierbuffer_task",
+      "catalog_index": 2786672,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.mesh.subgroupmemorybarrierimage_mesh",
+      "catalog_index": 2786673,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.mesh.subgroupmemorybarrierimage_requiredsubgroupsize_mesh",
+      "catalog_index": 2786674,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.mesh.subgroupmemorybarrierimage_requiredsubgroupsize_task",
+      "catalog_index": 2786675,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.mesh.subgroupmemorybarrierimage_task",
+      "catalog_index": 2786676,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.mesh.subgroupmemorybarriershared_mesh",
+      "catalog_index": 2786677,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.mesh.subgroupmemorybarriershared_requiredsubgroupsize_mesh",
+      "catalog_index": 2786678,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.mesh.subgroupmemorybarriershared_requiredsubgroupsize_task",
+      "catalog_index": 2786679,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.mesh.subgroupmemorybarriershared_task",
+      "catalog_index": 2786680,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.ray_tracing.subgroupbarrier",
+      "catalog_index": 2786681,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.ray_tracing.subgroupelect",
+      "catalog_index": 2786682,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.ray_tracing.subgroupmemorybarrier",
+      "catalog_index": 2786683,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.ray_tracing.subgroupmemorybarrierbuffer",
+      "catalog_index": 2786684,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.subgroups.basic.ray_tracing.subgroupmemorybarrierimage",
+      "catalog_index": 2786685,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    }
+  ]
+}

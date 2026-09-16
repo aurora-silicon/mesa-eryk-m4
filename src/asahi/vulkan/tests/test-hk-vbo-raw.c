@@ -3,6 +3,7 @@
 #include "asahi/lib/agx_linker.h"
 #include "asahi/compiler/agx_compile.h"
 #include "asahi/compiler/agx_nir.h"
+#include "asahi/lib/agx_abi.h"
 #include "compiler/nir/nir_builder.h"
 #include <math.h>
 #include <stdio.h>
@@ -49,11 +50,11 @@ static void check_format(enum pipe_format format, unsigned stride, unsigned coun
    for(unsigned c=0;c<4;c++)CHECK(fabsf(value[c].f32-expected[c])<0.000001f);
    ralloc_free(b.shader);
 }
-static void check_prolog(bool native_raw)
+static void check_prolog(bool native_raw, bool hardware)
 {
    nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_VERTEX, &options,
                                                  "packed vertex prolog");
-   struct agx_vs_prolog_key key = {.hw = true};
+   struct agx_vs_prolog_key key = {.hw = hardware};
    key.attribs[0] = (struct agx_velem_key){.format = PIPE_FORMAT_R8G8B8A8_UNORM,
                                          .stride = 5};
    for (unsigned c = 0; c < 4; ++c) BITSET_SET(key.component_mask, c);
@@ -65,6 +66,10 @@ static void check_prolog(bool native_raw)
          nir_foreach_instr(instr, block) {
             if (instr->type != nir_instr_type_intrinsic) continue;
             nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+            /* Image writes populate uniform halves 0..15. Neither the
+             * hardware nor software vertex prolog may read parameters there. */
+            if (native_raw && intr->intrinsic == nir_intrinsic_load_preamble)
+               CHECK(nir_intrinsic_base(intr) >= AGX_ABI_VUNI_NATIVE_PREFIX);
             if (intr->intrinsic != nir_intrinsic_load_constant_agx) continue;
             ++loads;
             CHECK(nir_intrinsic_format(intr) ==
@@ -198,8 +203,10 @@ check_instance_divisor_compiles(uint32_t divisor)
 int main(void)
 {
    glsl_type_singleton_init_or_ref();
-   check_prolog(true);
-   check_prolog(false);
+   check_prolog(true, true);
+   check_prolog(true, false);
+   check_prolog(false, true);
+   check_prolog(false, false);
    check_format(PIPE_FORMAT_R8G8B8A8_UNORM,5,4,1,(uint32_t[]){0xff804020,0},(float[]){32.f/255,64.f/255,128.f/255,1});
    check_format(PIPE_FORMAT_B8G8R8A8_UNORM,5,4,1,(uint32_t[]){0xff804020,0},(float[]){128.f/255,64.f/255,32.f/255,1});
    check_format(PIPE_FORMAT_R8G8B8A8_SNORM,5,4,1,(uint32_t[]){0x7f00ff80,0},(float[]){-1,-1.f/127,0,1});

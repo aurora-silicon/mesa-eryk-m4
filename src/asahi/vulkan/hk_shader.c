@@ -2425,7 +2425,9 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
             nir_metadata_control_flow, &root);
 
    if (agx_chip_uses_hal200_ioto(dev->dev.chip) &&
-       nir->info.stage == MESA_SHADER_VERTEX) {
+       (nir->info.stage == MESA_SHADER_VERTEX || sw_stage == MESA_SHADER_VERTEX)) {
+      /* Software vertex execution keeps the vertex root and draw-parameter
+       * ABI. Image access reserves halves 0..15 in both execution engines. */
       agx_nir_reserve_native_vertex_prefix(nir);
       root += AGX_ABI_VUNI_NATIVE_PREFIX;
    }

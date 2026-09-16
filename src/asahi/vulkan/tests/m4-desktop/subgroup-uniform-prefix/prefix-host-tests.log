@@ -1,0 +1,11 @@
+ninja: Entering directory `/home/council/dev/dirtyroom_m4/build/mesa-m4-asahi-host'
+[1/6] Generating src/git_sha1.h with a custom command
+[2/3] Compiling C object src/asahi/vulkan/hk_vbo_raw_test.p/tests_test-hk-vbo-raw.c.o
+[3/3] Linking target src/asahi/vulkan/hk_vbo_raw_test
+1/2 asahi - mesa:asahi-native-uniform-prefix OK              0.01s
+2/2 asahi - mesa:hk_vbo_raw                  OK              0.01s
+
+Ok:                2   
+Fail:              0   
+
+Full log written to /home/council/dev/dirtyroom_m4/build/mesa-m4-asahi-host/meson-logs/testlog.txt

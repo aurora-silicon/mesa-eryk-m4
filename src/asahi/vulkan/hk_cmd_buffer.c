@@ -1215,7 +1215,8 @@ hk_g17p_graphics_uniform_ranges(
    const uint64_t root_ptr = cmd->state.gfx.root;
    size_t count = 0;
    const unsigned root_uniform = s->info.agx3_root_uniform;
-   const unsigned vertex_prefix = s->b.info.stage == MESA_SHADER_VERTEX
+   /* A vertex shader lowered to compute still consumes the vertex ABI. */
+   const unsigned vertex_prefix = s->info.stage == MESA_SHADER_VERTEX
       ? AGX_ABI_VUNI_NATIVE_PREFIX : 0;
 
    if (s->info.stage == MESA_SHADER_VERTEX) {
@@ -1265,7 +1266,7 @@ hk_g17p_graphics_uniform_ranges(
 
       if (s->b.info.stage == MESA_SHADER_COMPUTE) {
          ranges[count++] = (struct agx3_ioto_uniform_range){
-            .start_halfs = AGX_ABI_VUNI_VERTEX_PARAMS(nr_attribs),
+            .start_halfs = vertex_prefix + AGX_ABI_VUNI_VERTEX_PARAMS(nr_attribs),
             .size_halfs = 4,
             .address = root_ptr + hk_root_descriptor_offset(draw.vertex_params),
          };

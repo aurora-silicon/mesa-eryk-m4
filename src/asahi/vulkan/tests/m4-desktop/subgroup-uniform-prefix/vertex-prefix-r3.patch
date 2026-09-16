@@ -1,0 +1,143 @@
+--- a/src/asahi/lib/agx_nir_prolog_epilog.c
++++ b/src/asahi/lib/agx_nir_prolog_epilog.c
+@@ -195,7 +195,10 @@
+ void
+ agx_nir_reserve_native_vertex_prefix(nir_shader *nir)
+ {
+-   assert(nir->info.stage == MESA_SHADER_VERTEX);
++   /* Poly may execute the vertex shader as compute. Its vertex ABI still
++    * needs the same disjoint texture/image prefix as a hardware vertex. */
++   assert(nir->info.stage == MESA_SHADER_VERTEX ||
++          nir->info.stage == MESA_SHADER_COMPUTE);
+    reserve_native_uniform_prefix(nir, AGX_ABI_VUNI_NATIVE_PREFIX);
+ }
+ 
+@@ -312,10 +315,9 @@
+ agx_nir_vs_prolog_raw(nir_builder *b, const void *key)
+ {
+    agx_nir_vs_prolog_impl(b, key, true);
+-   /* Only VDM hardware vertices consume the native varying prefix. A VS
+-    * lowered to CDM keeps the compute ABI used by its main shader. */
+-   if (((const struct agx_vs_prolog_key *)key)->hw)
+-      agx_nir_reserve_native_vertex_prefix(b->shader);
++   /* Both execution engines share the relocated vertex ABI with the main
++    * shader. The image/texture prefix must not overlap prolog parameters. */
++   agx_nir_reserve_native_vertex_prefix(b->shader);
+ }
+ 
+ static bool
+--- a/src/asahi/lib/tests/test-native-uniform-prefix.c
++++ b/src/asahi/lib/tests/test-native-uniform-prefix.c
+@@ -21,12 +21,12 @@
+    nir_def *sampler = nir_bindless_sampler_agx(&b, offset, nir_imm_int(&b, 3), .desc_set = 60);
+    nir_def *other = nir_load_preamble(&b, 1, 32, .base = 12);
+ 
+-   if (stage == MESA_SHADER_VERTEX)
++   if (stage != MESA_SHADER_FRAGMENT)
+       agx_nir_reserve_native_vertex_prefix(b.shader);
+    else
+       agx_nir_reserve_native_fragment_prefix(b.shader);
+ 
+-   unsigned prefix = stage == MESA_SHADER_VERTEX ? AGX_ABI_VUNI_NATIVE_PREFIX
++   unsigned prefix = stage != MESA_SHADER_FRAGMENT ? AGX_ABI_VUNI_NATIVE_PREFIX
+                                                 : AGX_ABI_FUNI_NATIVE_PREFIX;
+    bool ok = nir_intrinsic_base(nir_def_as_intrinsic(pointer)) ==
+                 60 + prefix &&
+@@ -44,10 +44,11 @@
+ 
+ int main(void)
+ {
+-   if (!check(MESA_SHADER_VERTEX) || !check(MESA_SHADER_FRAGMENT)) {
++   if (!check(MESA_SHADER_VERTEX) || !check(MESA_SHADER_COMPUTE) ||
++       !check(MESA_SHADER_FRAGMENT)) {
+       fprintf(stderr, "native descriptor uniform relocation failed\n");
+       return 1;
+    }
+-   puts("PASS: native vertex and fragment descriptor uniform relocation");
++   puts("PASS: native hardware/software vertex and fragment descriptor uniform relocation");
+    return 0;
+ }
+--- a/src/asahi/vulkan/hk_cmd_buffer.c
++++ b/src/asahi/vulkan/hk_cmd_buffer.c
+@@ -1215,7 +1215,8 @@
+    const uint64_t root_ptr = cmd->state.gfx.root;
+    size_t count = 0;
+    const unsigned root_uniform = s->info.agx3_root_uniform;
+-   const unsigned vertex_prefix = s->b.info.stage == MESA_SHADER_VERTEX
++   /* A vertex shader lowered to compute still consumes the vertex ABI. */
++   const unsigned vertex_prefix = s->info.stage == MESA_SHADER_VERTEX
+       ? AGX_ABI_VUNI_NATIVE_PREFIX : 0;
+ 
+    if (s->info.stage == MESA_SHADER_VERTEX) {
+@@ -1265,7 +1266,7 @@
+ 
+       if (s->b.info.stage == MESA_SHADER_COMPUTE) {
+          ranges[count++] = (struct agx3_ioto_uniform_range){
+-            .start_halfs = AGX_ABI_VUNI_VERTEX_PARAMS(nr_attribs),
++            .start_halfs = vertex_prefix + AGX_ABI_VUNI_VERTEX_PARAMS(nr_attribs),
+             .size_halfs = 4,
+             .address = root_ptr + hk_root_descriptor_offset(draw.vertex_params),
+          };
+--- a/src/asahi/vulkan/hk_shader.c
++++ b/src/asahi/vulkan/hk_shader.c
+@@ -2446,7 +2446,9 @@
+             nir_metadata_control_flow, &root);
+ 
+    if (agx_chip_uses_hal200_ioto(dev->dev.chip) &&
+-       nir->info.stage == MESA_SHADER_VERTEX) {
++       (nir->info.stage == MESA_SHADER_VERTEX || sw_stage == MESA_SHADER_VERTEX)) {
++      /* Software vertex execution keeps the vertex root and draw-parameter
++       * ABI. Image access reserves halves 0..15 in both execution engines. */
+       agx_nir_reserve_native_vertex_prefix(nir);
+       root += AGX_ABI_VUNI_NATIVE_PREFIX;
+    }
+diff --git a/src/asahi/vulkan/tests/test-hk-vbo-raw.c b/src/asahi/vulkan/tests/test-hk-vbo-raw.c
+index c311b3eb607..1b48319a6f8 100644
+--- a/src/asahi/vulkan/tests/test-hk-vbo-raw.c
++++ b/src/asahi/vulkan/tests/test-hk-vbo-raw.c
+@@ -3,6 +3,7 @@
+ #include "asahi/lib/agx_linker.h"
+ #include "asahi/compiler/agx_compile.h"
+ #include "asahi/compiler/agx_nir.h"
++#include "asahi/lib/agx_abi.h"
+ #include "compiler/nir/nir_builder.h"
+ #include <math.h>
+ #include <stdio.h>
+@@ -49,11 +50,11 @@ static void check_format(enum pipe_format format, unsigned stride, unsigned coun
+    for(unsigned c=0;c<4;c++)CHECK(fabsf(value[c].f32-expected[c])<0.000001f);
+    ralloc_free(b.shader);
+ }
+-static void check_prolog(bool native_raw)
++static void check_prolog(bool native_raw, bool hardware)
+ {
+    nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_VERTEX, &options,
+                                                  "packed vertex prolog");
+-   struct agx_vs_prolog_key key = {.hw = true};
++   struct agx_vs_prolog_key key = {.hw = hardware};
+    key.attribs[0] = (struct agx_velem_key){.format = PIPE_FORMAT_R8G8B8A8_UNORM,
+                                          .stride = 5};
+    for (unsigned c = 0; c < 4; ++c) BITSET_SET(key.component_mask, c);
+@@ -65,6 +66,10 @@ static void check_prolog(bool native_raw)
+          nir_foreach_instr(instr, block) {
+             if (instr->type != nir_instr_type_intrinsic) continue;
+             nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
++            /* Image writes populate uniform halves 0..15. Neither the
++             * hardware nor software vertex prolog may read parameters there. */
++            if (native_raw && intr->intrinsic == nir_intrinsic_load_preamble)
++               CHECK(nir_intrinsic_base(intr) >= AGX_ABI_VUNI_NATIVE_PREFIX);
+             if (intr->intrinsic != nir_intrinsic_load_constant_agx) continue;
+             ++loads;
+             CHECK(nir_intrinsic_format(intr) ==
+@@ -198,8 +203,10 @@ check_instance_divisor_compiles(uint32_t divisor)
+ int main(void)
+ {
+    glsl_type_singleton_init_or_ref();
+-   check_prolog(true);
+-   check_prolog(false);
++   check_prolog(true, true);
++   check_prolog(true, false);
++   check_prolog(false, true);
++   check_prolog(false, false);
+    check_format(PIPE_FORMAT_R8G8B8A8_UNORM,5,4,1,(uint32_t[]){0xff804020,0},(float[]){32.f/255,64.f/255,128.f/255,1});
+    check_format(PIPE_FORMAT_B8G8R8A8_UNORM,5,4,1,(uint32_t[]){0xff804020,0},(float[]){128.f/255,64.f/255,32.f/255,1});
+    check_format(PIPE_FORMAT_R8G8B8A8_SNORM,5,4,1,(uint32_t[]){0x7f00ff80,0},(float[]){-1,-1.f/127,0,1});

@@ -1,0 +1,56 @@
+--- a/external/vulkancts/modules/vulkan/subgroups/vktSubgroupsBasicTests.cpp
++++ b/external/vulkancts/modules/vulkan/subgroups/vktSubgroupsBasicTests.cpp
+@@ -24,6 +24,7 @@
+  */ /*--------------------------------------------------------------------*/
+ 
+ #include "vktSubgroupsBasicTests.hpp"
++#include <cstdio>
+ #include "vktSubgroupsTestsUtils.hpp"
+ 
+ #include "tcuStringTemplate.hpp"
+@@ -187,7 +188,11 @@
+         uint32_t val = resultData[x];
+ 
+         if (val != ref)
++        {
++            std::fprintf(stderr, "M4_BARRIER_DETAIL width=%u lane=%u got=%u expected=%u subgroups=%u\n",
++                         width, x, val, ref, *reinterpret_cast<const uint32_t *>(datas[2]));
+             return false;
++        }
+     }
+ 
+     return true;
+--- a/external/vulkancts/modules/vulkan/subgroups/vktSubgroupsTestsUtils.cpp
++++ b/external/vulkancts/modules/vulkan/subgroups/vktSubgroupsTestsUtils.cpp
+@@ -24,6 +24,7 @@
+  */ /*--------------------------------------------------------------------*/
+ 
+ #include "vktSubgroupsTestsUtils.hpp"
++#include <cstdio>
+ #include "vkRayTracingUtil.hpp"
+ #include "tcuFloat.hpp"
+ #include "deRandom.hpp"
+@@ -3195,7 +3196,10 @@
+                 const uint32_t usedWidth =
+                     ((stagesVector[ndx] == VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) ? width * 2 : width);
+ 
+-                if (!checkResult(internalData, datas, usedWidth, subgroupSize, multiCall))
++                const bool passed = checkResult(internalData, datas, usedWidth, subgroupSize, multiCall);
++                std::fprintf(stderr, "M4_BARRIER_STAGE stage=%u draw_width=%u checked_width=%u pass=%u\n",
++                             static_cast<unsigned>(stagesVector[ndx]), width, usedWidth, passed);
++                if (!passed)
+                     failedIterations++;
+             }
+             if (shaderStageTested & VK_SHADER_STAGE_FRAGMENT_BIT)
+@@ -3219,7 +3223,10 @@
+                     }
+                 }
+ 
+-                if (!checkResult(internalData, datas, width, subgroupSize, false))
++                const bool passed = checkResult(internalData, datas, width, subgroupSize, false);
++                std::fprintf(stderr, "M4_BARRIER_STAGE stage=%u draw_width=%u checked_width=%u pass=%u\n",
++                             static_cast<unsigned>(VK_SHADER_STAGE_FRAGMENT_BIT), width, width, passed);
++                if (!passed)
+                     failedIterations++;
+             }
+ 

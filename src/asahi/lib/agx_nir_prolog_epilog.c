@@ -195,7 +195,10 @@ reserve_native_uniform_prefix(nir_shader *nir, unsigned prefix)
 void
 agx_nir_reserve_native_vertex_prefix(nir_shader *nir)
 {
-   assert(nir->info.stage == MESA_SHADER_VERTEX);
+   /* Poly may execute the vertex shader as compute. Its vertex ABI still
+    * needs the same disjoint texture/image prefix as a hardware vertex. */
+   assert(nir->info.stage == MESA_SHADER_VERTEX ||
+          nir->info.stage == MESA_SHADER_COMPUTE);
    reserve_native_uniform_prefix(nir, AGX_ABI_VUNI_NATIVE_PREFIX);
 }
 
@@ -312,10 +315,9 @@ void
 agx_nir_vs_prolog_raw(nir_builder *b, const void *key)
 {
    agx_nir_vs_prolog_impl(b, key, true);
-   /* Only VDM hardware vertices consume the native varying prefix. A VS
-    * lowered to CDM keeps the compute ABI used by its main shader. */
-   if (((const struct agx_vs_prolog_key *)key)->hw)
-      agx_nir_reserve_native_vertex_prefix(b->shader);
+   /* Both execution engines share the relocated vertex ABI with the main
+    * shader. The image/texture prefix must not overlap prolog parameters. */
+   agx_nir_reserve_native_vertex_prefix(b->shader);
 }
 
 static bool

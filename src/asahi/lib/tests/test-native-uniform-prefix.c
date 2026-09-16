@@ -21,12 +21,12 @@ check(mesa_shader_stage stage)
    nir_def *sampler = nir_bindless_sampler_agx(&b, offset, nir_imm_int(&b, 3), .desc_set = 60);
    nir_def *other = nir_load_preamble(&b, 1, 32, .base = 12);
 
-   if (stage == MESA_SHADER_VERTEX)
+   if (stage != MESA_SHADER_FRAGMENT)
       agx_nir_reserve_native_vertex_prefix(b.shader);
    else
       agx_nir_reserve_native_fragment_prefix(b.shader);
 
-   unsigned prefix = stage == MESA_SHADER_VERTEX ? AGX_ABI_VUNI_NATIVE_PREFIX
+   unsigned prefix = stage != MESA_SHADER_FRAGMENT ? AGX_ABI_VUNI_NATIVE_PREFIX
                                                 : AGX_ABI_FUNI_NATIVE_PREFIX;
    bool ok = nir_intrinsic_base(nir_def_as_intrinsic(pointer)) ==
                 60 + prefix &&
@@ -44,10 +44,11 @@ check(mesa_shader_stage stage)
 
 int main(void)
 {
-   if (!check(MESA_SHADER_VERTEX) || !check(MESA_SHADER_FRAGMENT)) {
+   if (!check(MESA_SHADER_VERTEX) || !check(MESA_SHADER_COMPUTE) ||
+       !check(MESA_SHADER_FRAGMENT)) {
       fprintf(stderr, "native descriptor uniform relocation failed\n");
       return 1;
    }
-   puts("PASS: native vertex and fragment descriptor uniform relocation");
+   puts("PASS: native hardware/software vertex and fragment descriptor uniform relocation");
    return 0;
 }
