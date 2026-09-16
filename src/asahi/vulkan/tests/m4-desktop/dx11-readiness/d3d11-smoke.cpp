@@ -1,6 +1,7 @@
 /* Native DXVK D3D11 readback oracle. Run on the M4 only under gpu-experiment.py.
  * No window or presentation: this qualifies the D3D11 translation path only. */
 #include <d3d11.h>
+#include <SDL3/SDL.h>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -30,10 +31,12 @@ static std::vector<unsigned char> read(const char *name) {
 }
 
 int main(int argc, char **argv) {
-   if (argc != 5) {
-      std::fprintf(stderr, "usage: d3d11-smoke {m4|reference} VS.dxbc PS.dxbc CS.dxbc\n");
+   if (argc != 5 && argc != 6) {
+      std::fprintf(stderr, "usage: d3d11-smoke {m4|reference} VS.dxbc PS.dxbc CS.dxbc [--present]\n");
       return 2;
    }
+   bool present = argc == 6 && !std::strcmp(argv[5], "--present");
+   if (argc == 6 && !present) return 2;
    bool reference = !std::strcmp(argv[1], "reference");
    if (!reference && std::strcmp(argv[1], "m4")) return 2;
    IDXGIFactory1 *factory = nullptr;
@@ -147,6 +150,34 @@ int main(int argc, char **argv) {
    ctx->Unmap(readback, 0);
    if (errors) { std::printf("FAIL: compute readback: %u words\n", errors); return 1; }
    std::printf("PASS: D3D11 DXBC compute/UAV 256 words\n");
+
+   if (present) {
+      SDL_Window *window = SDL_CreateWindow("M4 D3D11 qualification", width, height, SDL_WINDOW_VULKAN);
+      if (!window) { std::fprintf(stderr, "FAIL: SDL_CreateWindow: %s\n", SDL_GetError()); return 1; }
+      DXGI_SWAP_CHAIN_DESC swapDesc{};
+      swapDesc.BufferDesc.Width = width; swapDesc.BufferDesc.Height = height;
+      swapDesc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+      swapDesc.SampleDesc.Count = 1; swapDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+      swapDesc.BufferCount = 2; swapDesc.OutputWindow = reinterpret_cast<HWND>(window);
+      swapDesc.Windowed = TRUE; swapDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+      IDXGISwapChain *swap = nullptr;
+      CHECK(factory->CreateSwapChain(device, &swapDesc, &swap));
+      for (unsigned frame = 0; frame < 3; ++frame) {
+         ID3D11Texture2D *back = nullptr;
+         ID3D11RenderTargetView *backView = nullptr;
+         CHECK(swap->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void **>(&back)));
+         CHECK(device->CreateRenderTargetView(back, nullptr, &backView));
+         ctx->OMSetRenderTargets(1, &backView, nullptr);
+         ctx->Draw(3, 0);
+         ctx->OMSetRenderTargets(0, nullptr, nullptr);
+         CHECK(swap->Present(1, 0));
+         backView->Release(); back->Release();
+         SDL_PumpEvents();
+      }
+      ctx->Flush();
+      swap->Release(); SDL_DestroyWindow(window);
+      std::printf("PASS: D3D11 DXGI swapchain three FIFO presents\n");
+   }
    ctx->ClearState(); ctx->Flush();
    uav->Release(); readback->Release(); buffer->Release(); rs->Release();
    cs->Release(); ps->Release(); vs->Release(); rtv->Release(); staging->Release(); target->Release();

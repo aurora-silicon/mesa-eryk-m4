@@ -67,3 +67,25 @@ desktop stability, all D3D11 optional features, or DirectX 12 support. The
 Steam/FEX/muvm runtime still needs qualification with this M4 driver. Existing
 blend throughput timeouts under 12-worker contention remain open; this smoke
 test does not supersede those CTS records.
+
+## Native DXGI presentation follow-up
+
+`20260916T193558260774Z-dx11-native-present-headless-r1` passes the complete
+D3D11 oracle plus three FIFO swapchain presents against a private Hyprland
+headless output at1024x1024@1000. Host lavapipe/Xvfb also passes. This adds
+presentation coverage to the original offscreen milestone, not Steam/FEX
+coverage. DXVK disabled present timing when it could not determine refresh;
+FIFO presents passed, but this is not present-timing qualification.
+
+The panel-greeter run `20260916T193402837852Z-dx11-native-present-r1` timed out
+after swapchain creation and is preserved. The headless result must not be
+reported as a pass in that environment. No private compositor remained after
+the headless test; the normal display manager was active.
+
+The updated smoke tool accepts `--present` and links SDL3.
+`tools/headless-wayland-command.py --output DIR --seconds15 -- COMMAND` is a
+reusable target wrapper for bounded graphical commands. It must itself run
+inside gpu-experiment.py; it records/validates the1000Hz compositor mode and
+cleans up child process groups and the private runtime directory on exit.
+Sources, binaries, failed/pass guard records and compositor log are in
+`dx11-readiness/presentation.tar.gz`.
