@@ -1,3 +1,5 @@
+CPU-cap correction: the "full-clock CPU cap" below was the requested ceiling, not the effective limit. See README-sampler-minmax.md and effective-cpu-caps.json.
+
 # M4 sampler min/max reduction (qualification in progress, 2026-09-16)
 
 M4 HAL200 has no qualified native min/max sampler reduction. The Gen5 path

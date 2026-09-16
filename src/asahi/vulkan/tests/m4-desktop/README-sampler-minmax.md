@@ -106,3 +106,12 @@ qualification does not establish full DirectX or Steam application readiness.
 
 The 253-case fixed-family regression also passes: 252 Pass / one unrelated
 NotSupported, peak 64.25 C (`20260916T115215240222Z-dx-default-fixed-regression`).
+
+CPU-frequency clarification: these qualification runs requested the full-clock
+ceiling, but the guard preserves an already lower cap. Their effective policy
+maxima were 1,512,000 / 900,000 kHz, as recorded in the retained per-run
+`cpu-frequency-caps.json` files (compact copy: `effective-cpu-caps.json`). Do not
+interpret their elapsed times as full-clock performance measurements. Functional
+results and thermal/watchdog bounds are unchanged. The host restored the normal
+maxima before strict-sparse follow-up; the active CPU policy subsequently lowered
+them again, so each run's recorded effective limits remain authoritative.

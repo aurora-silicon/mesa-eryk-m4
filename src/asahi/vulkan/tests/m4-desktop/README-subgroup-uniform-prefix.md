@@ -44,3 +44,12 @@ host log are in `subgroup-uniform-prefix/`. Full traces/launch ranges are in the
 named root `_provenance/experiments/` directories. The tested library also
 contains the separately qualified sampler min/max work; this fix is independent
 of that lowering. This does not establish Steam application readiness.
+
+CPU-frequency clarification: these qualification runs requested the full-clock
+ceiling, but the guard preserves an already lower cap. Their effective policy
+maxima were 1,512,000 / 900,000 kHz, as recorded in the retained per-run
+`cpu-frequency-caps.json` files (compact copy: `effective-cpu-caps.json`). Do not
+interpret their elapsed times as full-clock performance measurements. Functional
+results and thermal/watchdog bounds are unchanged. The host restored the normal
+maxima before strict-sparse follow-up; the active CPU policy subsequently lowered
+them again, so each run's recorded effective limits remain authoritative.
