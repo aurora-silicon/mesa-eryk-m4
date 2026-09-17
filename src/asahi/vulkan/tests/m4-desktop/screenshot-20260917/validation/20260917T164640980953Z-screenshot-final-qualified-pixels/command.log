@@ -1,0 +1,2 @@
+PASS: default color picker returns a color and exits on selection
+PASS: picker reference scanouts captured and desktop restored

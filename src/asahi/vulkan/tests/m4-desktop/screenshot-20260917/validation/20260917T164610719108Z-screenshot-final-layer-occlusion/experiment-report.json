@@ -1,0 +1,24 @@
+{
+  "id": "20260917T164610719108Z-screenshot-final-layer-occlusion",
+  "verdict": "pass",
+  "transport_returncode": 0,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T164610719108Z-screenshot-final-layer-occlusion",
+  "observations": {
+    "pixel_results": [
+      "PASS: hidden commits stay idle; exposure and visible updates show current pixels"
+    ],
+    "pixel_result_count": 1,
+    "thermal_samples": 10,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 63.0,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 63.0,
+      "Ta000m": 59.5,
+      "Te000m": 56.75,
+      "Te001m": 63.0,
+      "Tp000m": 61.5,
+      "Tp001m": 60.75
+    }
+  }
+}

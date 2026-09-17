@@ -1,0 +1,26 @@
+{
+  "mesa": {
+    "path": "mesa/m4-asahi",
+    "commit": "6b89bb9a1cb4b45a727b9b95256d86dbbae7f877"
+  },
+  "kernel": {
+    "path": "linux/linux-asahi",
+    "commit": "b476abf105bf5693248014d61966262ead4e1252"
+  },
+  "hyprpicker": {
+    "path": "reference/hyprpicker-0.4.7",
+    "commit": "4e83bb065fa46a312e851fb59d065f12c6514331"
+  },
+  "slurp": {
+    "path": "reference/slurp-1.5.0",
+    "commit": "6dcee0691baa3e121a1d42e1cb4f4b497dff1168"
+  },
+  "hyprland": {
+    "path": "reference/hyprland-0.56.1",
+    "commit": "449c7c28075a39c19ed8ad4b02c111f4b262664e"
+  },
+  "aquamarine": {
+    "path": "reference/aquamarine-m4",
+    "commit": "ec1c95baefb5e2bf7fe989330892f2bb08c1d5f6"
+  }
+}

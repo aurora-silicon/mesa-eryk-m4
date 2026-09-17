@@ -1,0 +1,26 @@
+{
+  "large": {
+    "bytes": 17039360,
+    "mismatched_bytes": 0
+  },
+  "large:optimized:full-repaint": {
+    "bytes": 17039360,
+    "mismatched_bytes": 0
+  },
+  "large:reference:full-repaint": {
+    "bytes": 17039360,
+    "mismatched_bytes": 0
+  },
+  "small": {
+    "bytes": 17039360,
+    "mismatched_bytes": 0
+  },
+  "small:optimized:full-repaint": {
+    "bytes": 17039360,
+    "mismatched_bytes": 0
+  },
+  "small:reference:full-repaint": {
+    "bytes": 17039360,
+    "mismatched_bytes": 0
+  }
+}

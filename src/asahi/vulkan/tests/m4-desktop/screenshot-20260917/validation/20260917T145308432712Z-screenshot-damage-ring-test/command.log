@@ -1,0 +1,69 @@
+Running main() from /build/gtest/src/googletest-1.17.0/googletest/src/gtest_main.cc
+[==========] Running 30 tests from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 30 tests from DamageRing
+[ RUN      ] DamageRing.setSizeMarksDamageEntire
+[       OK ] DamageRing.setSizeMarksDamageEntire (0 ms)
+[ RUN      ] DamageRing.setSizeSameSizeNoChange
+[       OK ] DamageRing.setSizeSameSizeNoChange (0 ms)
+[ RUN      ] DamageRing.setSizeNewSizeReDamages
+[       OK ] DamageRing.setSizeNewSizeReDamages (0 ms)
+[ RUN      ] DamageRing.setSizeZeroSize
+[       OK ] DamageRing.setSizeZeroSize (0 ms)
+[ RUN      ] DamageRing.damageReturnsTrueForRegionInsideSize
+[       OK ] DamageRing.damageReturnsTrueForRegionInsideSize (0 ms)
+[ RUN      ] DamageRing.damageReturnsTrueForBoxInsideSize
+[       OK ] DamageRing.damageReturnsTrueForBoxInsideSize (0 ms)
+[ RUN      ] DamageRing.damageReturnsFalseForEmptyRegion
+[       OK ] DamageRing.damageReturnsFalseForEmptyRegion (0 ms)
+[ RUN      ] DamageRing.damageReturnsFalseForInvalidBox
+[       OK ] DamageRing.damageReturnsFalseForInvalidBox (0 ms)
+[ RUN      ] DamageRing.damageReturnsFalseForRegionOutsideSize
+[       OK ] DamageRing.damageReturnsFalseForRegionOutsideSize (0 ms)
+[ RUN      ] DamageRing.damageClipsRegionToSize
+[       OK ] DamageRing.damageClipsRegionToSize (0 ms)
+[ RUN      ] DamageRing.damageSetsHasChanged
+[       OK ] DamageRing.damageSetsHasChanged (0 ms)
+[ RUN      ] DamageRing.damageEntireSetsHasChanged
+[       OK ] DamageRing.damageEntireSetsHasChanged (0 ms)
+[ RUN      ] DamageRing.damageEntireOnZeroSizeDoesNotSetHasChanged
+[       OK ] DamageRing.damageEntireOnZeroSizeDoesNotSetHasChanged (0 ms)
+[ RUN      ] DamageRing.rotateClearsCurrentDamage
+[       OK ] DamageRing.rotateClearsCurrentDamage (0 ms)
+[ RUN      ] DamageRing.rotatePreservesCurrentAsPreviousForNextFrame
+[       OK ] DamageRing.rotatePreservesCurrentAsPreviousForNextFrame (0 ms)
+[ RUN      ] DamageRing.rotateMultipleTimes
+[       OK ] DamageRing.rotateMultipleTimes (0 ms)
+[ RUN      ] DamageRing.getBufferDamageAge0ReturnsFullScreen
+[       OK ] DamageRing.getBufferDamageAge0ReturnsFullScreen (0 ms)
+[ RUN      ] DamageRing.getBufferDamageNegativeAgeReturnsFullScreen
+[       OK ] DamageRing.getBufferDamageNegativeAgeReturnsFullScreen (0 ms)
+[ RUN      ] DamageRing.getBufferDamageExceedsRingLengthReturnsFullScreen
+[       OK ] DamageRing.getBufferDamageExceedsRingLengthReturnsFullScreen (0 ms)
+[ RUN      ] DamageRing.getBufferDamageAge1ReturnCurrentOnly
+[       OK ] DamageRing.getBufferDamageAge1ReturnCurrentOnly (0 ms)
+[ RUN      ] DamageRing.getBufferDamageAge2AccumulatesOnePreviousFrame
+[       OK ] DamageRing.getBufferDamageAge2AccumulatesOnePreviousFrame (0 ms)
+[ RUN      ] DamageRing.getBufferDamageAccumulatesUpToRingLength
+[       OK ] DamageRing.getBufferDamageAccumulatesUpToRingLength (0 ms)
+[ RUN      ] DamageRing.getBufferDamageCoalescesWhenTooManyRects
+[       OK ] DamageRing.getBufferDamageCoalescesWhenTooManyRects (0 ms)
+[ RUN      ] DamageRing.getBufferDamageEmptyRingReturnsEmptyForValidAge
+[       OK ] DamageRing.getBufferDamageEmptyRingReturnsEmptyForValidAge (0 ms)
+[ RUN      ] DamageRing.hasChangedFalseInitially
+[       OK ] DamageRing.hasChangedFalseInitially (0 ms)
+[ RUN      ] DamageRing.hasChangedTrueAfterDamage
+[       OK ] DamageRing.hasChangedTrueAfterDamage (0 ms)
+[ RUN      ] DamageRing.hasChangedFalseAfterRotate
+[       OK ] DamageRing.hasChangedFalseAfterRotate (0 ms)
+[ RUN      ] DamageRing.hasChangedTrueAfterDamageEntire
+[       OK ] DamageRing.hasChangedTrueAfterDamageEntire (0 ms)
+[ RUN      ] DamageRing.hasChangedFalseAfterDamageOutsideBounds
+[       OK ] DamageRing.hasChangedFalseAfterDamageOutsideBounds (0 ms)
+[ RUN      ] DamageRing.sparseSelectionEdgesDoNotBecomeFullScreenDamage
+[       OK ] DamageRing.sparseSelectionEdgesDoNotBecomeFullScreenDamage (0 ms)
+[----------] 30 tests from DamageRing (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 30 tests from 1 test suite ran. (0 ms total)
+[  PASSED  ] 30 tests.

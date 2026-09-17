@@ -1,0 +1,16 @@
+Probe environment: {'AGX_MESA_DEBUG': '', 'ASAHI_M4_EXPERIMENTAL': '1', 'ASAHI_MESA_DEBUG': 'nocompress', 'HK_G17P_LAUNCH_TRACE': '0', 'M4_TEST_CPU_MAX_KHZ': '4104000', 'ZINK_DEBUG': ''}
+M4 probe start monotonic=3470.106652134
+device=Apple M4 (G16G B0) device_id=0x8132
+raw upload format=9 bytes=62082 bad=0 extent=193x129 layers=2 mips=2 regions=128+2+2
+raw upload format=37 bytes=248328 bad=0 extent=193x129 layers=2 mips=2 regions=128+2+2
+raw upload format=44 bytes=248328 bad=0 extent=193x129 layers=2 mips=2 regions=128+2+2
+raw upload format=43 bytes=248328 bad=0 extent=193x129 layers=2 mips=2 regions=128+2+2
+raw upload format=50 bytes=248328 bad=0 extent=193x129 layers=2 mips=2 regions=128+2+2
+raw upload format=76 bytes=124164 bad=0 extent=193x129 layers=2 mips=2 regions=128+2+2
+raw upload format=97 bytes=496656 bad=0 extent=193x129 layers=2 mips=2 regions=128+2+2
+raw upload format=122 bytes=248328 bad=0 extent=193x129 layers=2 mips=2 regions=128+2+2
+raw upload format=109 bytes=993312 bad=0 extent=193x129 layers=2 mips=2 regions=128+2+2
+raw upload format=126 bytes=248328 bad=0 extent=193x129 layers=2 mips=2 regions=128+2+2
+raw upload format=130 bytes=248328 bad=0 extent=193x129 layers=2 mips=2 regions=128+2+2
+raw upload format=130 bytes=62082 bad=0 extent=193x129 layers=2 mips=2 regions=128+2+2
+M4 probe end monotonic=3470.421101151

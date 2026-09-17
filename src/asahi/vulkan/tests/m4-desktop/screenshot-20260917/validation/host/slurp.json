@@ -1,0 +1,7 @@
+[
+  {
+    "name": "slurp:render-damage",
+    "result": "OK",
+    "stdout": "PASS: 10800 full reference frames covered by damage\n"
+  }
+]

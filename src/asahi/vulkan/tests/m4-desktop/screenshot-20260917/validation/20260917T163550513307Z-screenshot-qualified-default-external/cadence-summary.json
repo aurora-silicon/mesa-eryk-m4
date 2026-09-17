@@ -1,0 +1,22 @@
+{
+  "pass_all": false,
+  "measurements": [
+    {
+      "phase": "wrapper",
+      "output": "external",
+      "seconds": 20.00735297900019,
+      "fps": 59.97794916996394,
+      "moving_warmup_seconds": 0.5,
+      "cadence": {
+        "intervals": 1198,
+        "missed_refreshes": 1,
+        "max_interval_ms": 33.772441,
+        "mean_interval_ms": 16.67990994824708,
+        "sequence_contiguous": true
+      },
+      "saved_png_valid": true,
+      "timestamp_source": "1 ms userspace sampling",
+      "pass": false
+    }
+  ]
+}

@@ -1,0 +1,282 @@
+{
+  "kernel": {
+    "returncode": 0,
+    "output": "Linux omarchy 7.1.9-dirtyroom-asahi1+ #15 SMP PREEMPT Thu Sep 17 15:05:15 CEST 2026 aarch64 GNU/Linux"
+  },
+  "boot_id": "33f53329-0966-4890-86fe-859709f125db",
+  "services": {
+    "display-manager.service": {
+      "returncode": 0,
+      "output": "active"
+    },
+    "m4-dcpext-desktop-lifecycle.service": {
+      "returncode": 0,
+      "output": "active"
+    }
+  },
+  "default_target": {
+    "returncode": 0,
+    "output": "Note: found \"systemd.unit\" on the kernel command line, which overrides the default unit.\ngraphical.target"
+  },
+  "watchdog": {
+    "returncode": 0,
+    "output": "{\"armed\": true, \"timeout_seconds\": 60, \"timeleft_seconds\": 58, \"fed\": false, \"mode\": \"idle\"}"
+  },
+  "governors": {
+    "/sys/devices/system/cpu/cpufreq/policy0/scaling_governor": "schedutil",
+    "/sys/devices/system/cpu/cpufreq/policy1/scaling_governor": "schedutil"
+  },
+  "cpu_max_khz": {
+    "/sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq": "4104000",
+    "/sys/devices/system/cpu/cpufreq/policy1/scaling_max_freq": "2892000"
+  },
+  "temporary_paths": {
+    "/etc/sddm.conf.d/zz-screenshot-test.conf": false,
+    "/run/m4-graphics/trace-hyprland": false,
+    "/etc/security/limits.d/90-m4-compositor.conf": false,
+    "/etc/gamemode.ini": false
+  },
+  "gamemode_package": {
+    "returncode": 1,
+    "output": "error: package 'gamemode' was not found"
+  },
+  "user": {
+    "returncode": 0,
+    "output": "uid=1000(e) gid=1000(e) groups=1000(e),998(wheel),992(input)"
+  },
+  "leftover_clients": {
+    "returncode": 1,
+    "output": ""
+  },
+  "installed_sha256": {
+    "/usr/local/bin/hyprpicker": "582d73f113ad0030f0ca9a6f5288fd38d4a04cb116716ba6bbd97f4f3c71c481",
+    "/usr/local/bin/slurp": "5646d47b07b0ae796554e369c6d692526f434e9e0a92cffcd4444b4318e4230a",
+    "/opt/m4-hyprland/bin/Hyprland": "9de785d208a07c7225a64230c5e8ddda4f30363ebd69ee71c1e4416aace603da",
+    "/opt/asahi-m4-port/lib/libaquamarine.so.13": "0126afd8035fd89e407d1ac7ba12cf77c0fe18266eafd3d528a940969b9ad88a",
+    "/opt/asahi-m4-port/lib/libvulkan_asahi.so": "e98995b3ba27b2a4f04493589e65670a75c66c7200884f594e2357bb6ed5c66d",
+    "/opt/asahi-m4-port/lib/libgallium-26.1.4.so": "33358f19b9b0b971ba9d20d12be56691819f4a3727191e4da3a6127675d304e0",
+    "/lib/modules/7.1.9-dirtyroom-asahi1+/kernel/drivers/gpu/drm/asahi/asahi.ko": "a5affc7dcc90cd7b29ae230ff7324fbd8712d9aadab7419882038e16b95a4f86"
+  },
+  "hyprland_pid": 51242,
+  "thread_policies": {
+    "51242": 0,
+    "51256": 0,
+    "51258": 3,
+    "51259": 0,
+    "51260": 3,
+    "51261": 0,
+    "51262": 0,
+    "51270": 0,
+    "51271": 0,
+    "51272": 0,
+    "51280": 0,
+    "51281": 0,
+    "51282": 0,
+    "51283": 3,
+    "51284": 0,
+    "51285": 0,
+    "51286": 0,
+    "51287": 0,
+    "51288": 0,
+    "51289": 0,
+    "51290": 0,
+    "51291": 0,
+    "51330": 0,
+    "51338": 3,
+    "51339": 3,
+    "51340": 3
+  },
+  "monitors": [
+    {
+      "id": 0,
+      "name": "eDP-1",
+      "description": "",
+      "make": "",
+      "model": "",
+      "serial": "",
+      "width": 2560,
+      "height": 1664,
+      "physicalWidth": 0,
+      "physicalHeight": 0,
+      "refreshRate": 60.0,
+      "x": 0,
+      "y": 0,
+      "activeWorkspace": {
+        "id": 1,
+        "name": "1"
+      },
+      "specialWorkspace": {
+        "id": 0,
+        "name": ""
+      },
+      "reserved": [
+        0,
+        32,
+        0,
+        0
+      ],
+      "scale": 2.0,
+      "transform": 0,
+      "focused": true,
+      "dpmsStatus": true,
+      "vrr": false,
+      "solitary": "0",
+      "solitaryBlockedBy": [
+        "WINDOWED",
+        "CANDIDATE"
+      ],
+      "activelyTearing": false,
+      "tearingBlockedBy": [
+        "NOT_TORN",
+        "USER",
+        "CANDIDATE"
+      ],
+      "directScanoutTo": "0",
+      "directScanoutBlockedBy": [
+        "USER",
+        "SW",
+        "CANDIDATE"
+      ],
+      "disabled": false,
+      "currentFormat": "XRGB8888",
+      "mirrorOf": "none",
+      "availableModes": [
+        "2560x1664@60.00Hz"
+      ],
+      "colorManagementPreset": "srgb",
+      "sdrBrightness": 1.0,
+      "sdrSaturation": 1.0,
+      "sdrMinLuminance": 0.2,
+      "sdrMaxLuminance": 80,
+      "hardwareCursorsInUse": true
+    },
+    {
+      "id": 1,
+      "name": "DP-1",
+      "description": "Philips Consumer Electronics Company PHL 237E7 UHB1707006721",
+      "make": "Philips Consumer Electronics Company",
+      "model": "PHL 237E7",
+      "serial": "UHB1707006721",
+      "width": 1920,
+      "height": 1080,
+      "physicalWidth": 510,
+      "physicalHeight": 290,
+      "refreshRate": 60.0,
+      "x": 1280,
+      "y": 0,
+      "activeWorkspace": {
+        "id": 2,
+        "name": "2"
+      },
+      "specialWorkspace": {
+        "id": 0,
+        "name": ""
+      },
+      "reserved": [
+        0,
+        32,
+        0,
+        0
+      ],
+      "scale": 1.0,
+      "transform": 0,
+      "focused": false,
+      "dpmsStatus": true,
+      "vrr": false,
+      "solitary": "0",
+      "solitaryBlockedBy": [
+        "WINDOWED",
+        "CANDIDATE"
+      ],
+      "activelyTearing": false,
+      "tearingBlockedBy": [
+        "NOT_TORN",
+        "USER",
+        "CANDIDATE"
+      ],
+      "directScanoutTo": "0",
+      "directScanoutBlockedBy": [
+        "USER",
+        "SW",
+        "CANDIDATE"
+      ],
+      "disabled": false,
+      "currentFormat": "XRGB8888",
+      "mirrorOf": "none",
+      "availableModes": [
+        "1920x1080@60.00Hz",
+        "1920x1080@60.00Hz",
+        "1920x1080@59.94Hz",
+        "1920x1080@50.00Hz",
+        "1680x1050@59.88Hz",
+        "1280x1024@75.03Hz",
+        "1280x1024@60.02Hz",
+        "1440x900@74.98Hz",
+        "1440x900@59.90Hz",
+        "1280x960@60.00Hz",
+        "1280x720@60.00Hz",
+        "1280x720@60.00Hz",
+        "1280x720@59.94Hz",
+        "1280x720@50.00Hz",
+        "1024x768@75.03Hz",
+        "1024x768@60.00Hz",
+        "800x600@75.00Hz",
+        "800x600@60.32Hz",
+        "720x576@50.00Hz",
+        "720x576@50.00Hz",
+        "720x576@50.00Hz",
+        "720x480@60.00Hz",
+        "720x480@60.00Hz",
+        "720x480@59.94Hz",
+        "720x480@59.94Hz",
+        "720x480@59.94Hz",
+        "640x480@75.00Hz",
+        "640x480@72.81Hz",
+        "640x480@60.00Hz",
+        "640x480@59.94Hz",
+        "640x480@59.94Hz"
+      ],
+      "colorManagementPreset": "srgb",
+      "sdrBrightness": 1.0,
+      "sdrSaturation": 1.0,
+      "sdrMinLuminance": 0.2,
+      "sdrMaxLuminance": 80,
+      "hardwareCursorsInUse": true
+    }
+  ],
+  "cursor_policy": {
+    "option": "cursor:no_hardware_cursors",
+    "int": 2,
+    "set": true
+  },
+  "loaded_graphics": [
+    "ffffa7460000-ffffa87f4000 r--p 00000000 00:21 12779215                   /opt/asahi-m4-port/lib/libvulkan_asahi.so",
+    "ffffa87f4000-ffffa8800000 ---p 01394000 00:21 12779215                   /opt/asahi-m4-port/lib/libvulkan_asahi.so",
+    "ffffa8800000-ffffa8c48000 r-xp 01390000 00:21 12779215                   /opt/asahi-m4-port/lib/libvulkan_asahi.so",
+    "ffffa8c48000-ffffa8c54000 ---p 017e8000 00:21 12779215                   /opt/asahi-m4-port/lib/libvulkan_asahi.so",
+    "ffffa8c54000-ffffa8cd0000 r--p 017d4000 00:21 12779215                   /opt/asahi-m4-port/lib/libvulkan_asahi.so",
+    "ffffa8cd0000-ffffa8cd4000 rw-p 01850000 00:21 12779215                   /opt/asahi-m4-port/lib/libvulkan_asahi.so",
+    "ffffa8cd4000-ffffa8ce0000 ---p 01874000 00:21 12779215                   /opt/asahi-m4-port/lib/libvulkan_asahi.so",
+    "ffffa8ce0000-ffffa8ce8000 rw-p 01850000 00:21 12779215                   /opt/asahi-m4-port/lib/libvulkan_asahi.so",
+    "ffffa8e90000-ffffa985c000 r--p 00000000 00:21 12779220                   /opt/asahi-m4-port/lib/libgallium-26.1.4.so",
+    "ffffa985c000-ffffa9868000 ---p 009cc000 00:21 12779220                   /opt/asahi-m4-port/lib/libgallium-26.1.4.so",
+    "ffffa9868000-ffffaa054000 r-xp 009c8000 00:21 12779220                   /opt/asahi-m4-port/lib/libgallium-26.1.4.so",
+    "ffffaa054000-ffffaa060000 ---p 011c4000 00:21 12779220                   /opt/asahi-m4-port/lib/libgallium-26.1.4.so",
+    "ffffaa060000-ffffaa0dc000 r--p 011b0000 00:21 12779220                   /opt/asahi-m4-port/lib/libgallium-26.1.4.so",
+    "ffffaa0dc000-ffffaa0e8000 ---p 0124c000 00:21 12779220                   /opt/asahi-m4-port/lib/libgallium-26.1.4.so",
+    "ffffaa0e8000-ffffaa0f0000 rw-p 01228000 00:21 12779220                   /opt/asahi-m4-port/lib/libgallium-26.1.4.so",
+    "ffffb2eb0000-ffffb2f34000 r--p 00000000 00:21 12779915                   /opt/asahi-m4-port/lib/libaquamarine.so.13",
+    "ffffb2f34000-ffffb2f40000 ---p 00084000 00:21 12779915                   /opt/asahi-m4-port/lib/libaquamarine.so.13",
+    "ffffb2f40000-ffffb3004000 r-xp 00080000 00:21 12779915                   /opt/asahi-m4-port/lib/libaquamarine.so.13",
+    "ffffb3004000-ffffb3010000 ---p 00154000 00:21 12779915                   /opt/asahi-m4-port/lib/libaquamarine.so.13",
+    "ffffb3010000-ffffb3014000 r--p 00140000 00:21 12779915                   /opt/asahi-m4-port/lib/libaquamarine.so.13",
+    "ffffb3014000-ffffb3018000 rw-p 00144000 00:21 12779915                   /opt/asahi-m4-port/lib/libaquamarine.so.13",
+    "ffffb3018000-ffffb3024000 ---p 00168000 00:21 12779915                   /opt/asahi-m4-port/lib/libaquamarine.so.13",
+    "ffffb3024000-ffffb302c000 rw-p 00144000 00:21 12779915                   /opt/asahi-m4-port/lib/libaquamarine.so.13"
+  ],
+  "kernel_warning_audit": {
+    "since_utc": "2026-09-17 16:43:45",
+    "firewall_lines_omitted": 11,
+    "other_lines": []
+  }
+}

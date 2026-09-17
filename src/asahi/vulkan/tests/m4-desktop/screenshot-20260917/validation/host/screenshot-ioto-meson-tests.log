@@ -1,0 +1,48 @@
+ninja: Entering directory `/home/council/dev/dirtyroom_m4/build/mesa-m4-asahi-host'
+[1/39] Compiling C object src/asahi/vulkan/hk_agx3_ioto_program_core_test.p/.._compiler_agx3_ioto_load_packer.c.o
+[2/39] Compiling C object src/asahi/vulkan/hk_agx3_ioto_program_core_test.p/.._compiler_agx3_mem_core.c.o
+[3/39] Compiling C object src/asahi/vulkan/hk_agx3_ioto_program_core_test.p/.._compiler_agx3_binder.c.o
+[4/39] Generating src/git_sha1.h with a custom command
+[5/39] Compiling C object src/asahi/vulkan/hk_agx3_ioto_program_core_test.p/.._compiler_agx3_compose_agx3_compose.c.o
+[6/39] Compiling C object src/asahi/vulkan/hk_agx3_ioto_program_core_test.p/.._compiler_agx3_ioto_uniform_program.c.o
+[7/39] Compiling C object src/asahi/vulkan/hk_agx3_ioto_program_core_test.p/hk_agx3_ioto_program_core.c.o
+[8/39] Compiling C object src/asahi/lib/asahi-agx-ioto-program-core.p/agx_ioto_profile_core.c.o
+[9/39] Compiling C object src/asahi/vulkan/hk_agx3_ioto_program_core_test.p/tests_test-hk-agx3-ioto-program-core.c.o
+[10/39] Compiling C object src/asahi/lib/asahi-agx-ioto-program-core.p/agx_ioto_preshader_core.c.o
+[11/39] Compiling C object src/asahi/lib/asahi-agx-ioto-core.p/agx_ioto_core.c.o
+[12/39] Compiling C object src/asahi/lib/asahi-agx-ioto-program-core.p/agx_ioto_core.c.o
+[13/39] Compiling C object src/asahi/lib/libasahi_decode.a.p/agx_ioto_core.c.o
+[14/39] Compiling C object src/asahi/lib/asahi-agx-ioto-program-core.p/agx_ioto_program_core.c.o
+[15/39] Compiling C object src/asahi/lib/libasahi_lib.a.p/agx_ioto_core.c.o
+[16/39] Compiling C object src/asahi/lib/asahi-agx-ioto-program-core.p/agx_ioto_state_core.c.o
+[17/39] Compiling C object src/asahi/lib/asahi-agx-ioto-program-core.p/agx_ioto_load_core.c.o
+[18/39] Compiling C object src/asahi/lib/asahi-agx-ioto-core.p/tests_test-agx-ioto-core.c.o
+[19/39] Linking target src/asahi/lib/asahi-agx-ioto-core
+[20/39] Compiling C object src/asahi/lib/asahi-agx-ioto-program-core.p/tests_test-agx-ioto-program-core.c.o
+[21/39] Linking target src/asahi/lib/asahi-agx-ioto-program-core
+[22/39] Compiling C object src/asahi/lib/libasahi_lib.a.p/agx_border.c.o
+[23/39] Compiling C object src/asahi/lib/libasahi_lib.a.p/agx_bo.c.o
+[24/39] Compiling C object src/asahi/lib/libasahi_lib.a.p/agx_scratch.c.o
+[25/39] Compiling C object src/asahi/lib/libasahi_lib.a.p/pool.c.o
+[26/39] Compiling C object src/asahi/lib/libasahi_lib.a.p/agx_va.c.o
+[27/39] Compiling C object src/asahi/lib/libasahi_lib.a.p/agx_device_virtio.c.o
+[28/39] Compiling C object src/asahi/lib/libasahi_lib.a.p/agx_linker.c.o
+[29/39] Compiling C object src/asahi/lib/libasahi_lib.a.p/agx_device.c.o
+[30/39] Compiling C object src/asahi/lib/libasahi_lib.a.p/agx_nir_lower_vbo.c.o
+[31/39] Compiling C object src/asahi/lib/libasahi_lib.a.p/agx_nir_lower_uvs.c.o
+[32/39] Compiling C object src/asahi/vulkan/hk_agx3_ioto_program_core_test.p/.._compiler_agx3_compose_agx3b_tables.c.o
+[33/39] Compiling C object src/asahi/lib/libasahi_lib.a.p/agx_bg_eot.c.o
+[34/39] Compiling C object src/asahi/lib/libasahi_decode.a.p/decode.c.o
+[35/39] Linking static target src/asahi/lib/libasahi_decode.a
+[36/39] Compiling C object src/asahi/lib/libasahi_lib.a.p/agx_nir_prolog_epilog.c.o
+[37/39] Linking static target src/asahi/lib/libasahi_lib.a
+[38/39] Compiling C object src/asahi/vulkan/hk_agx3_ioto_program_core_test.p/.._compiler_agx3_compose_agx3c_tables.c.o
+[39/39] Linking target src/asahi/vulkan/hk_agx3_ioto_program_core_test
+1/3 asahi - mesa:asahi-agx-ioto-program-core OK              0.01s
+2/3 asahi - mesa:hk_agx3_ioto_program_core   OK              0.00s
+3/3 asahi - mesa:asahi-agx-ioto-core         OK              0.53s
+
+Ok:                3   
+Fail:              0   
+
+Full log written to /home/council/dev/dirtyroom_m4/build/mesa-m4-asahi-host/meson-logs/testlog.txt

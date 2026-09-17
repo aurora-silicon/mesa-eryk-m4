@@ -1,0 +1,26 @@
+{
+  "hyprpicker": {
+    "build": "build/hyprpicker-m4-arm64/hyprpicker",
+    "sha256": "582d73f113ad0030f0ca9a6f5288fd38d4a04cb116716ba6bbd97f4f3c71c481"
+  },
+  "slurp": {
+    "build": "build/slurp-m4-arm64/slurp",
+    "sha256": "5646d47b07b0ae796554e369c6d692526f434e9e0a92cffcd4444b4318e4230a"
+  },
+  "hyprland": {
+    "build": "build/hyprland-m4-arm64/Hyprland",
+    "sha256": "9de785d208a07c7225a64230c5e8ddda4f30363ebd69ee71c1e4416aace603da"
+  },
+  "vulkan": {
+    "build": "build/mesa-m4-desktop-release/src/asahi/vulkan/libvulkan_asahi.so",
+    "sha256": "e98995b3ba27b2a4f04493589e65670a75c66c7200884f594e2357bb6ed5c66d"
+  },
+  "gallium": {
+    "build": "build/mesa-m4-desktop-release/src/gallium/targets/dri/libgallium-26.1.4.so",
+    "sha256": "33358f19b9b0b971ba9d20d12be56691819f4a3727191e4da3a6127675d304e0"
+  },
+  "aquamarine": {
+    "build": "build/aquamarine-m4-arm64/libaquamarine.so.0.14.0",
+    "sha256": "0126afd8035fd89e407d1ac7ba12cf77c0fe18266eafd3d528a940969b9ad88a"
+  }
+}

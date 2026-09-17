@@ -1,0 +1,35 @@
+{
+  "id": "20260917T163440462082Z-screenshot-qualified-raw-upload",
+  "verdict": "pass",
+  "transport_returncode": 0,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T163440462082Z-screenshot-qualified-raw-upload",
+  "observations": {
+    "pixel_results": [
+      "raw upload format=9 bytes=62082 bad=0 extent=193x129 layers=2 mips=2 regions=128+2+2",
+      "raw upload format=37 bytes=248328 bad=0 extent=193x129 layers=2 mips=2 regions=128+2+2",
+      "raw upload format=44 bytes=248328 bad=0 extent=193x129 layers=2 mips=2 regions=128+2+2",
+      "raw upload format=43 bytes=248328 bad=0 extent=193x129 layers=2 mips=2 regions=128+2+2",
+      "raw upload format=50 bytes=248328 bad=0 extent=193x129 layers=2 mips=2 regions=128+2+2",
+      "raw upload format=76 bytes=124164 bad=0 extent=193x129 layers=2 mips=2 regions=128+2+2",
+      "raw upload format=97 bytes=496656 bad=0 extent=193x129 layers=2 mips=2 regions=128+2+2",
+      "raw upload format=122 bytes=248328 bad=0 extent=193x129 layers=2 mips=2 regions=128+2+2",
+      "raw upload format=109 bytes=993312 bad=0 extent=193x129 layers=2 mips=2 regions=128+2+2",
+      "raw upload format=126 bytes=248328 bad=0 extent=193x129 layers=2 mips=2 regions=128+2+2",
+      "raw upload format=130 bytes=248328 bad=0 extent=193x129 layers=2 mips=2 regions=128+2+2",
+      "raw upload format=130 bytes=62082 bad=0 extent=193x129 layers=2 mips=2 regions=128+2+2"
+    ],
+    "pixel_result_count": 12,
+    "thermal_samples": 2,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 59.5,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 59.5,
+      "Ta000m": 59.5,
+      "Te000m": 56.25,
+      "Te001m": 54.5,
+      "Tp000m": 58.5,
+      "Tp001m": 54.0
+    }
+  }
+}

@@ -1,0 +1,285 @@
+diff --git a/src/helpers/LayerSurface.cpp b/src/helpers/LayerSurface.cpp
+index 3243cc8..ef16e98 100644
+--- a/src/helpers/LayerSurface.cpp
++++ b/src/helpers/LayerSurface.cpp
+@@ -66,19 +66,27 @@ CLayerSurface::~CLayerSurface() {
+ static void onCallbackDone(CLayerSurface* surf, uint32_t when) {
+     surf->frameCallback.reset();
+ 
+-    g_pHyprpicker->renderSurface(surf);
++    if (surf->dirty)
++        g_pHyprpicker->renderSurface(surf);
+ }
+ 
+-void CLayerSurface::sendFrame() {
+-    lastBuffer          = lastBuffer == 0 ? 1 : 0;
+-    const auto& PBUFFER = buffers[lastBuffer];
++void CLayerSurface::sendFrame(const SP<SPoolBuffer>& buffer) {
+ 
+     frameCallback = makeShared<CCWlCallback>(pSurface->sendFrame());
+     frameCallback->setDone([this](CCWlCallback* r, uint32_t when) { onCallbackDone(this, when); });
+ 
+     pSurface->sendDamageBuffer(0, 0, 0xFFFF, 0xFFFF);
+ 
+-    pSurface->sendAttach(PBUFFER->buffer.get(), 0, 0);
++    // A frozen opaque screenshot hides the live desktop beneath it. Limit the
++    // hint to 1:1 copies: resampling may introduce transparent edge pixels.
++    if (g_pHyprpicker->m_bRenderInactive && screenOpaque && buffer->pixelSize == screenBuffer->pixelSize) {
++        auto opaque = makeShared<CCWlRegion>(g_pHyprpicker->m_pCompositor->sendCreateRegion());
++        opaque->sendAdd(0, 0, m_pMonitor->size.x, m_pMonitor->size.y);
++        pSurface->sendSetOpaqueRegion(opaque.get());
++    } else
++        pSurface->sendSetOpaqueRegion(nullptr);
++
++    pSurface->sendAttach(buffer->buffer.get(), 0, 0);
+     if (!g_pHyprpicker->m_bNoFractional) {
+         pSurface->sendSetBufferScale(1);
+         pViewport->sendSetDestination(m_pMonitor->size.x, m_pMonitor->size.y);
+@@ -89,8 +97,7 @@ void CLayerSurface::sendFrame() {
+ }
+ 
+ void CLayerSurface::markDirty() {
+-    frameCallback = makeShared<CCWlCallback>(pSurface->sendFrame());
+-    frameCallback->setDone([this](CCWlCallback* r, uint32_t when) { onCallbackDone(this, when); });
+-
+     dirty = true;
++    if (!frameCallback)
++        g_pHyprpicker->renderSurface(this);
+ }
+diff --git a/src/helpers/LayerSurface.hpp b/src/helpers/LayerSurface.hpp
+index 46bc87c..58bd2ee 100644
+--- a/src/helpers/LayerSurface.hpp
++++ b/src/helpers/LayerSurface.hpp
+@@ -10,7 +10,7 @@ class CLayerSurface {
+     CLayerSurface(SMonitor*);
+     ~CLayerSurface();
+ 
+-    void                      sendFrame();
++    void                      sendFrame(const SP<SPoolBuffer>& buffer);
+     void                      markDirty();
+ 
+     SMonitor*                 m_pMonitor = nullptr;
+@@ -26,7 +26,6 @@ class CLayerSurface {
+     uint32_t                  ACKSerial       = 0;
+     bool                      working         = false;
+ 
+-    int                       lastBuffer = 0;
+     SP<SPoolBuffer>           buffers[2];
+ 
+     SP<SPoolBuffer>           screenBuffer;
+@@ -35,7 +34,8 @@ class CLayerSurface {
+ 
+     bool                      dirty = true;
+ 
+-    bool                      rendered = false;
++    bool                      rendered     = false;
++    bool                      screenOpaque = false;
+ 
+     SP<CCWlCallback>          frameCallback = nullptr;
+ };
+\ No newline at end of file
+diff --git a/src/helpers/Monitor.cpp b/src/helpers/Monitor.cpp
+index d8f5135..9a49e5a 100644
+--- a/src/helpers/Monitor.cpp
++++ b/src/helpers/Monitor.cpp
+@@ -108,6 +108,17 @@ void SMonitor::initSCFrame() {
+ 
+         cairo_surface_destroy(oldSurface);
+ 
++        // Screencopy can provide alpha. Advertise occlusion only after checking
++        // the actual transformed image, rather than assuming a format is opaque.
++        pLS->screenOpaque = true;
++        const auto pixels = static_cast<const uint32_t*>(newBuf->data);
++        for (size_t i = 0; i < static_cast<size_t>(transformedSize.x * transformedSize.y); ++i) {
++            if ((pixels[i] >> 24) != 0xFF) {
++                pLS->screenOpaque = false;
++                break;
++            }
++        }
++
+         pLS->screenBuffer = newBuf;
+ 
+         g_pHyprpicker->renderSurface(pLS);
+diff --git a/src/helpers/PoolBuffer.cpp b/src/helpers/PoolBuffer.cpp
+index 836f89f..2e66572 100644
+--- a/src/helpers/PoolBuffer.cpp
++++ b/src/helpers/PoolBuffer.cpp
+@@ -19,7 +19,13 @@ SPoolBuffer::SPoolBuffer(const Vector2D& pixelSize_, uint32_t format_, uint32_t
+     auto POOL = makeShared<CCWlShmPool>(g_pHyprpicker->m_pSHM->sendCreatePool(FD, SIZE));
+     buffer    = makeShared<CCWlBuffer>(POOL->sendCreateBuffer(0, pixelSize.x, pixelSize.y, stride, format));
+ 
+-    buffer->setRelease([this](CCWlBuffer* r) { busy = false; });
++    buffer->setRelease([this](CCWlBuffer* r) {
++        busy = false;
++        for (auto& surface : g_pHyprpicker->m_vLayerSurfaces) {
++            if ((surface->buffers[0].get() == this || surface->buffers[1].get() == this) && surface->dirty && !surface->frameCallback)
++                surface->markDirty();
++        }
++    });
+ 
+     POOL.reset();
+ 
+diff --git a/src/hyprpicker.cpp b/src/hyprpicker.cpp
+index 2f03fdc..5734a43 100644
+--- a/src/hyprpicker.cpp
++++ b/src/hyprpicker.cpp
+@@ -3,6 +3,8 @@
+ #include "src/notify/Notify.hpp"
+ #include <cmath>
+ #include <csignal>
++#include <cerrno>
++#include <poll.h>
+ #include <cstddef>
+ #include <cstdio>
+ #include <format>
+@@ -12,8 +14,15 @@
+ #include <xkbcommon/xkbcommon-keysyms.h>
+ #include <xkbcommon/xkbcommon.h>
+ 
++static int  signalPipe[2] = {-1, -1};
++
+ static void sigHandler(int sig) {
+-    g_pHyprpicker->m_bRunning.store(false);
++    const int  savedErrno = errno;
++    const char byte       = 1;
++    // Wake an idle event loop without calling Wayland from a signal handler.
++    if (signalPipe[1] >= 0)
++        (void)write(signalPipe[1], &byte, 1);
++    errno = savedErrno;
+ }
+ 
+ void CHyprpicker::init() {
+@@ -29,6 +38,8 @@ void CHyprpicker::init() {
+         return;
+     }
+ 
++    if (pipe2(signalPipe, O_CLOEXEC | O_NONBLOCK) < 0)
++        finish(1);
+     signal(SIGTERM, sigHandler);
+ 
+     m_pRegistry = makeShared<CCWlRegistry>((wl_proxy*)wl_display_get_registry(m_pWLDisplay));
+@@ -40,10 +51,10 @@ void CHyprpicker::init() {
+         } else if (strcmp(interface, wl_output_interface.name) == 0) {
+             m_mtTickMutex.lock();
+ 
+-            const auto PMONITOR = g_pHyprpicker->m_vMonitors
+-                                      .emplace_back(std::make_unique<SMonitor>(
+-                                          makeShared<CCWlOutput>((wl_proxy*)wl_registry_bind((wl_registry*)m_pRegistry->resource(), name, &wl_output_interface, 4))))
+-                                      .get();
++            const auto PMONITOR    = g_pHyprpicker->m_vMonitors
++                                         .emplace_back(std::make_unique<SMonitor>(
++                                             makeShared<CCWlOutput>((wl_proxy*)wl_registry_bind((wl_registry*)m_pRegistry->resource(), name, &wl_output_interface, 4))))
++                                         .get();
+             PMONITOR->wayland_name = name;
+ 
+             m_mtTickMutex.unlock();
+@@ -119,8 +130,31 @@ void CHyprpicker::init() {
+ 
+     wl_display_roundtrip(m_pWLDisplay);
+ 
+-    while (m_bRunning && wl_display_dispatch(m_pWLDisplay) != -1) {
+-        //renderSurface(m_pLastSurface);
++    while (m_bRunning) {
++        while (wl_display_prepare_read(m_pWLDisplay) != 0) {
++            if (wl_display_dispatch_pending(m_pWLDisplay) < 0)
++                finish(1);
++        }
++        const int flushed = wl_display_flush(m_pWLDisplay);
++        if (flushed < 0 && errno != EAGAIN) {
++            wl_display_cancel_read(m_pWLDisplay);
++            break;
++        }
++        pollfd    fds[] = {{wl_display_get_fd(m_pWLDisplay), static_cast<short>(POLLIN | (flushed < 0 ? POLLOUT : 0)), 0}, {signalPipe[0], POLLIN, 0}};
++        const int ready = poll(fds, 2, -1);
++        if (ready < 0 || fds[1].revents || (fds[0].revents & (POLLERR | POLLHUP))) {
++            wl_display_cancel_read(m_pWLDisplay);
++            if (ready < 0 && errno == EINTR)
++                continue;
++            break;
++        }
++        if (fds[0].revents & POLLIN) {
++            if (wl_display_read_events(m_pWLDisplay) < 0)
++                break;
++        } else
++            wl_display_cancel_read(m_pWLDisplay);
++        if (wl_display_dispatch_pending(m_pWLDisplay) < 0)
++            break;
+     }
+     finish(1);
+ }
+@@ -285,9 +319,6 @@ void CHyprpicker::recheckACK() {
+ 
+ void CHyprpicker::markDirty() {
+     for (auto& ls : m_vLayerSurfaces) {
+-        if (ls->frameCallback)
+-            continue;
+-
+         ls->markDirty();
+     }
+ }
+@@ -462,6 +493,8 @@ void CHyprpicker::renderSurface(CLayerSurface* pSurface, bool forceInactive) {
+         return;
+     }
+ 
++    pSurface->dirty = false;
++
+     PBUFFER->surface =
+         cairo_image_surface_create_for_data((unsigned char*)PBUFFER->data, CAIRO_FORMAT_ARGB32, PBUFFER->pixelSize.x, PBUFFER->pixelSize.y, PBUFFER->pixelSize.x * 4);
+ 
+@@ -638,7 +671,7 @@ void CHyprpicker::renderSurface(CLayerSurface* pSurface, bool forceInactive) {
+         cairo_set_source_rgba(PCAIRO, 0, 0, 0, 0);
+         cairo_rectangle(PCAIRO, 0, 0, PBUFFER->pixelSize.x, PBUFFER->pixelSize.y);
+         cairo_fill(PCAIRO);
+-    } else if (m_bCoordsInitialized) {
++    } else if (m_bCoordsInitialized || m_bRenderInactive) {
+         const auto SCALEBUFS  = pSurface->screenBuffer->pixelSize / PBUFFER->pixelSize;
+         const auto PATTERNPRE = cairo_pattern_create_for_surface(pSurface->screenBuffer->surface);
+         cairo_pattern_set_filter(PATTERNPRE, CAIRO_FILTER_BILINEAR);
+@@ -653,7 +686,7 @@ void CHyprpicker::renderSurface(CLayerSurface* pSurface, bool forceInactive) {
+         cairo_pattern_destroy(PATTERNPRE);
+     }
+ 
+-    pSurface->sendFrame();
++    pSurface->sendFrame(PBUFFER);
+     cairo_destroy(PCAIRO);
+     cairo_surface_destroy(PBUFFER->surface);
+ 
+@@ -755,7 +788,8 @@ void CHyprpicker::initMouse() {
+         if (m_pCursorShapeDevice)
+             m_pCursorShapeDevice->sendSetShape(serial, WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_CROSSHAIR);
+ 
+-        markDirty();
++        if (!m_bNoZoom || !m_bRenderInactive)
++            markDirty();
+     });
+     m_pPointer->setLeave([this](CCWlPointer* r, uint32_t timeMs, wl_proxy* surface) {
+         for (auto& ls : m_vLayerSurfaces) {
+@@ -766,7 +800,8 @@ void CHyprpicker::initMouse() {
+             }
+         }
+ 
+-        markDirty();
++        if (!m_bNoZoom || !m_bRenderInactive)
++            markDirty();
+     });
+     m_pPointer->setMotion([this](CCWlPointer* r, uint32_t timeMs, wl_fixed_t surface_x, wl_fixed_t surface_y) {
+         auto x = wl_fixed_to_double(surface_x);
+@@ -774,7 +809,8 @@ void CHyprpicker::initMouse() {
+ 
+         m_vLastCoords = {x, y};
+ 
+-        markDirty();
++        if (!m_bNoZoom || !m_bRenderInactive)
++            markDirty();
+     });
+     m_pPointer->setButton([this](CCWlPointer* r, uint32_t serial, uint32_t time, uint32_t button, uint32_t button_state) { outputColor(); });
+     m_pPointer->setAxis([this](CCWlPointer* r, uint32_t time, uint32_t axis, wl_fixed_t value) {
+@@ -797,6 +833,7 @@ void CHyprpicker::initMouse() {
+         else
+             m_fZoomScale = std::min(m_fZoomScale - delta, 100.);
+ 
+-        markDirty();
++        if (!m_bNoZoom || !m_bRenderInactive)
++            markDirty();
+     });
+ }

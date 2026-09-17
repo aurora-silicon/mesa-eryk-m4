@@ -1,0 +1,194 @@
+diff --git a/src/desktop/view/LayerSurface.cpp b/src/desktop/view/LayerSurface.cpp
+index 2143d5a..24c2c6d 100644
+--- a/src/desktop/view/LayerSurface.cpp
++++ b/src/desktop/view/LayerSurface.cpp
+@@ -308,8 +308,7 @@ void CLayerSurface::onCommit() {
+     if (m_layer == ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND || m_layer == ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM)
+         PMONITOR->m_blurFBDirty = true;
+ 
+-    CBox geomFixed = {m_geometry.x, m_geometry.y, m_geometry.width, m_geometry.height};
+-    g_pHyprRenderer->damageBox(geomFixed);
++    const auto OLD_GEOMETRY = m_geometry;
+ 
+     if (m_layerSurface->m_current.committed != 0) {
+         if (m_layerSurface->m_current.committed & CLayerShellResource::eCommittedState::STATE_LAYER && m_layerSurface->m_current.layer != m_layer) {
+@@ -353,6 +352,14 @@ void CLayerSurface::onCommit() {
+         }
+     }
+ 
++    // Content-only commits already carry surface damage. Invalidating the
++    // entire layer here turns a small picker update into a full-output redraw.
++    // Geometry and layer-state changes must still expose both old and new areas.
++    if (m_layerSurface->m_current.committed != 0 || OLD_GEOMETRY.pos() != m_geometry.pos() || OLD_GEOMETRY.size() != m_geometry.size()) {
++        g_pHyprRenderer->damageBox(OLD_GEOMETRY);
++        g_pHyprRenderer->damageBox(m_geometry);
++    }
++
+     if (m_realPosition->goal() != m_geometry.pos()) {
+         if (m_realPosition->isBeingAnimated())
+             *m_realPosition = m_geometry.pos();
+@@ -408,11 +415,52 @@ void CLayerSurface::onCommit() {
+ 
+     m_interactivity = m_layerSurface->m_current.interactivity;
+ 
+-    g_pHyprRenderer->damageSurface(m_wlSurface->resource(), m_position.x, m_position.y);
++    // A stable opaque layer above this one makes content-only changes invisible.
++    // Keep the committed buffer current, but avoid waking an otherwise idle
++    // output (and stalling another output) for e.g. a clock under a screen freeze.
++    // Geometry/state changes were damaged above and remain unconditional.
++    if (!contentFullyOccluded())
++        g_pHyprRenderer->damageSurface(m_wlSurface->resource(), m_position.x, m_position.y);
+ 
+     updateSurfaceScaleTransformDetails();
+ }
+ 
++bool CLayerSurface::contentFullyOccluded() const {
++    const auto MONITOR = m_monitor.lock();
++    if (!MONITOR || m_ruleApplicator->aboveLock().valueOrDefault())
++        return false;
++
++    // Restrict this fast path to content contained on this output and to a
++    // complete, untransformed logical output cover. Partial/animated coverage
++    // and same-layer ordering keep the ordinary damage path.
++    CRegion outside{m_geometry};
++    outside.subtract(MONITOR->logicalBox());
++    if (!outside.empty())
++        return false;
++
++    for (size_t layer = m_layer + 1; layer < MONITOR->m_layerSurfaceLayers.size(); ++layer) {
++        for (const auto& cover : MONITOR->m_layerSurfaceLayers[layer]) {
++            if (!cover || !cover->visible() || cover->m_noProcess || cover->m_ruleApplicator->aboveLock().valueOrDefault() || cover->m_ruleApplicator->blur().valueOrDefault() ||
++                cover->m_realPosition->isBeingAnimated() || cover->m_realSize->isBeingAnimated() || cover->alpha()[LS_ALPHA_FADE]->isBeingAnimated() ||
++                cover->alpha()[LS_ALPHA_FADE]->value() != 1.F)
++                continue;
++
++            const auto SURFACE  = cover->wlSurface();
++            const auto RESOURCE = SURFACE->resource();
++            if (!RESOURCE || !RESOURCE->m_current.texture || SURFACE->m_alphaModifier != 1.F || SURFACE->m_overallOpacity != 1.F || !SURFACE->m_visibleRegion.empty() ||
++                cover->position(GEOMETRIC_CURRENT) != MONITOR->m_position || cover->size(GEOMETRIC_CURRENT) != MONITOR->m_size || RESOURCE->m_current.size != MONITOR->m_size)
++                continue;
++
++            CRegion uncovered{CBox{{}, MONITOR->m_size}};
++            uncovered.subtract(RESOURCE->m_current.opaque);
++            if (uncovered.empty())
++                return true;
++        }
++    }
++
++    return false;
++}
++
+ int CLayerSurface::popupsCount() {
+     if (!m_layerSurface || !m_mapped || !m_popupHead)
+         return 0;
+diff --git a/src/desktop/view/LayerSurface.hpp b/src/desktop/view/LayerSurface.hpp
+index ce5791c..5ef800b 100644
+--- a/src/desktop/view/LayerSurface.hpp
++++ b/src/desktop/view/LayerSurface.hpp
+@@ -84,6 +84,7 @@ namespace Desktop::View {
+         } m_listeners;
+ 
+         void registerCallbacks();
++        bool contentFullyOccluded() const;
+ 
+         // fade in/out
+         Desktop::Types::CMultiAVarContainer<float, std::underlying_type_t<eLayerAlpha>> m_alpha;
+diff --git a/src/desktop/view/WLSurface.cpp b/src/desktop/view/WLSurface.cpp
+index cff780b..c8ff0e6 100644
+--- a/src/desktop/view/WLSurface.cpp
++++ b/src/desktop/view/WLSurface.cpp
+@@ -85,13 +85,24 @@ CRegion CWLSurface::computeDamage() const {
+     if (!m_resource->m_current.texture)
+         return {};
+ 
+-    CRegion damage = m_resource->m_current.accumulateBufferDamage();
+-    damage.transform(Math::wlTransformToHyprutils(m_resource->m_current.transform), m_resource->m_current.bufferSize.x, m_resource->m_current.bufferSize.y);
++    CRegion    damage = m_resource->m_current.accumulateBufferDamage();
+ 
+     const auto BUFSIZE = m_resource->m_current.bufferSize;
+     if (BUFSIZE.x <= 0 || BUFSIZE.y <= 0)
+         return {};
+ 
++    // Linear filtering can sample a changed texel from the neighboring output
++    // pixel. Include that footprint before transforming/scaling buffer damage;
++    // otherwise shrinking a translucent selection leaves old edge pixels.
++    // Keep sparse regions sparse instead of expanding their bounding box.
++    damage.intersect(CBox{{}, BUFSIZE});
++    CRegion filteredDamage;
++    damage.forEachRect([&filteredDamage](const auto& rect) {
++        filteredDamage.add(sc<double>(rect.x1) - 1, sc<double>(rect.y1) - 1, sc<double>(rect.x2) - rect.x1 + 2, sc<double>(rect.y2) - rect.y1 + 2);
++    });
++    damage = std::move(filteredDamage);
++    damage.transform(Math::wlTransformToHyprutils(m_resource->m_current.transform), BUFSIZE.x, BUFSIZE.y);
++
+     const auto CORRECTVEC = correctSmallVecBuf();
+ 
+     if (m_resource->m_current.viewport.hasSource)
+diff --git a/src/output/DamageRing.cpp b/src/output/DamageRing.cpp
+index 8f60584..e1200a0 100644
+--- a/src/output/DamageRing.cpp
++++ b/src/output/DamageRing.cpp
+@@ -55,9 +55,17 @@ CRegion CDamageRing::getBufferDamage(int age) {
+         damage.add(m_previous.at(j));
+     }
+ 
+-    // don't return a ludicrous amount of rects
+-    if (pixman_region32_n_rects(damage.pixman()) > 8)
+-        return damage.getExtents();
++    // Coalesce dense damage, but retain sparse borders and cursor trails.
++    // Nine narrow strips must not expand into a nearly full-screen repaint.
++    // Keep a hard complexity bound for pathological client damage.
++    const auto RECTS = pixman_region32_n_rects(damage.pixman());
++    if (RECTS > 8) {
++        uint64_t area = 0;
++        damage.forEachRect([&area](const auto& r) { area += uint64_t(r.x2 - r.x1) * uint64_t(r.y2 - r.y1); });
++        const auto EXTENTS = damage.getExtents();
++        if (RECTS > 64 || double(area) * 2 >= EXTENTS.w * EXTENTS.h)
++            return EXTENTS;
++    }
+ 
+     return damage;
+ }
+diff --git a/src/render/OpenGL.cpp b/src/render/OpenGL.cpp
+index 29e0d76..8a2c3ca 100644
+--- a/src/render/OpenGL.cpp
++++ b/src/render/OpenGL.cpp
+@@ -1581,6 +1581,10 @@ void CHyprOpenGLImpl::renderTextureInternal(SP<ITexture> tex, const CBox& box, c
+                 damageClip.intersect(data.clipRegion);
+         }
+ 
++        // A surface clip restricts damage; it must not replace it. Layer
++        // surfaces commonly clip to the entire monitor, which otherwise
++        // redraws every pixel even for a small pointer/selection update.
++        damageClip.intersect(*data.damage);
+         if (!damageClip.empty()) {
+             damageClip.forEachRect([this](const auto& RECT) {
+                 scissor(&RECT, g_pHyprRenderer->m_renderData.transformDamage);
+diff --git a/tests/helpers/DamageRing.cpp b/tests/helpers/DamageRing.cpp
+index 22d2cb5..7bababd 100644
+--- a/tests/helpers/DamageRing.cpp
++++ b/tests/helpers/DamageRing.cpp
+@@ -333,3 +333,23 @@ TEST(DamageRing, hasChangedFalseAfterDamageOutsideBounds) {
+     ring.damage(outside);
+     EXPECT_FALSE(ring.hasChanged());
+ }
++
++TEST(DamageRing, sparseSelectionEdgesDoNotBecomeFullScreenDamage) {
++    CDamageRing ring;
++    ring.setSize({2560, 1664});
++    ring.rotate();
++
++    CRegion expected;
++    for (int frame = 0; frame < DAMAGE_RING_PREVIOUS_LEN; ++frame) {
++        // Narrow changing edges plus separated cursor damage across buffers.
++        CRegion change{2200.0 + frame * 8, 60, 4, 1300};
++        change.add(CBox{60, 1400.0 + frame * 8, 2100, 4});
++        change.add(CBox{100.0 + frame * 100, 100, 8, 8});
++        expected.add(change);
++        ring.damage(change);
++        ring.rotate();
++    }
++    const auto damage = ring.getBufferDamage(DAMAGE_RING_PREVIOUS_LEN + 1);
++    EXPECT_TRUE(damage.copy().subtract(expected).empty());
++    EXPECT_TRUE(expected.copy().subtract(damage).empty());
++}

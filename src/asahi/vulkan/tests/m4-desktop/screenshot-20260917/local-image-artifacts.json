@@ -1,0 +1,57 @@
+[
+  {
+    "path": "_provenance/experiments/20260917T164425783916Z-screenshot-qualified-hidden-external/remote/captures/screenshot-2026-09-17_16-44-48.png",
+    "bytes": 1447938,
+    "sha256": "55466ef99d48673d0a8d87a8181789e1504ae5156ae8cc788bd46e2e7600607d"
+  },
+  {
+    "path": "_provenance/experiments/20260917T164537876237Z-screenshot-final-qualified-panel/remote/captures/screenshot-2026-09-17_16-46-00.png",
+    "bytes": 2890498,
+    "sha256": "1521e9a27b53ca5bb9828c3a87aed28cfe041d86cd79fc83f82eeae8d2cf2dfb"
+  },
+  {
+    "path": "_provenance/experiments/20260917T164640980953Z-screenshot-final-qualified-pixels/remote/optimized-large-repaint.m4fb",
+    "bytes": 17039392,
+    "sha256": "74ca531dddcd8bfb10f8aff9a2b148d04ffebba4c077382ea94d7554a37d7b54"
+  },
+  {
+    "path": "_provenance/experiments/20260917T164640980953Z-screenshot-final-qualified-pixels/remote/optimized-large.m4fb",
+    "bytes": 17039392,
+    "sha256": "8a0eadb7cfa2c93a8685f3d5d9647bb75fe5c62ac4ef1d5558626cf89522e769"
+  },
+  {
+    "path": "_provenance/experiments/20260917T164640980953Z-screenshot-final-qualified-pixels/remote/optimized-small-repaint.m4fb",
+    "bytes": 17039392,
+    "sha256": "a0a3ae36f70f9ac17047680b85910e6c416ec628ab60db53fa4218731f4ea08a"
+  },
+  {
+    "path": "_provenance/experiments/20260917T164640980953Z-screenshot-final-qualified-pixels/remote/optimized-small.m4fb",
+    "bytes": 17039392,
+    "sha256": "a82d0ac9ee50418cb8afd26cdb45a32218646161390e950571e1afd511e431b8"
+  },
+  {
+    "path": "_provenance/experiments/20260917T164640980953Z-screenshot-final-qualified-pixels/remote/reference-large-repaint.m4fb",
+    "bytes": 17039392,
+    "sha256": "51e9b002642a39f754ba5ff7ac7c38da1428f751e08764bf07438eb6180bf385"
+  },
+  {
+    "path": "_provenance/experiments/20260917T164640980953Z-screenshot-final-qualified-pixels/remote/reference-large.m4fb",
+    "bytes": 17039392,
+    "sha256": "74ca531dddcd8bfb10f8aff9a2b148d04ffebba4c077382ea94d7554a37d7b54"
+  },
+  {
+    "path": "_provenance/experiments/20260917T164640980953Z-screenshot-final-qualified-pixels/remote/reference-small-repaint.m4fb",
+    "bytes": 17039392,
+    "sha256": "a82d0ac9ee50418cb8afd26cdb45a32218646161390e950571e1afd511e431b8"
+  },
+  {
+    "path": "_provenance/experiments/20260917T164640980953Z-screenshot-final-qualified-pixels/remote/reference-small.m4fb",
+    "bytes": 17039392,
+    "sha256": "48cb9a3eb1f8ffa0e5de7850a80a5ef6abb7dc28ded4f5bec23bb45c60e3cc62"
+  },
+  {
+    "path": "_provenance/experiments/20260917T163550513307Z-screenshot-qualified-default-external/remote/captures/screenshot-2026-09-17_16-36-12.png",
+    "bytes": 1452858,
+    "sha256": "f0b9cff7308a173bd1691aea06697c3007743939435ab7060a9cd73cddc992ce"
+  }
+]

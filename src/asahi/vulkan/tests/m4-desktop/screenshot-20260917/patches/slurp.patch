@@ -1,0 +1,453 @@
+diff --git a/include/pool-buffer.h b/include/pool-buffer.h
+index e6ba0f1..2cffc50 100644
+--- a/include/pool-buffer.h
++++ b/include/pool-buffer.h
+@@ -14,6 +14,10 @@ struct pool_buffer {
+ 	void *data;
+ 	size_t size;
+ 	bool busy;
++	void (*released)(void *data);
++	void *released_data;
++	// NULL means uninitialized; otherwise accumulate changes since last use.
++	cairo_region_t *damage;
+ };
+ 
+ struct pool_buffer *get_next_buffer(struct wl_shm *shm,
+diff --git a/include/render.h b/include/render.h
+index 1e3ad21..20ab5d1 100644
+--- a/include/render.h
++++ b/include/render.h
+@@ -1,8 +1,12 @@
+ #ifndef _RENDER_H
+ #define _RENDER_H
+ 
++#include <cairo/cairo.h>
++
+ struct slurp_output;
+ 
++cairo_region_t *render_damage(struct slurp_output *output);
++
+ void render(struct slurp_output *output);
+ 
+ #endif
+diff --git a/include/slurp.h b/include/slurp.h
+index 5fe2ced..670679c 100644
+--- a/include/slurp.h
++++ b/include/slurp.h
+@@ -83,6 +83,10 @@ struct slurp_output {
+ 	int32_t width, height;
+ 	struct pool_buffer buffers[2];
+ 	struct pool_buffer *current_buffer;
++	cairo_region_t *damage_fills, *damage_details, *damage_borders;
++	bool damage_single;
++	struct slurp_box damage_geometry;
++	int32_t damage_scale;
+ 
+ 	struct wl_cursor_theme *cursor_theme;
+ 	struct wl_cursor_image *cursor_image;
+diff --git a/main.c b/main.c
+index 135c98a..e30fe52 100644
+--- a/main.c
++++ b/main.c
+@@ -561,12 +561,26 @@ static void destroy_output(struct slurp_output *output) {
+ 		wl_callback_destroy(output->frame_callback);
+ 	}
+ 	wl_output_destroy(output->wl_output);
++	if (output->damage_fills) {
++		cairo_region_destroy(output->damage_fills);
++		cairo_region_destroy(output->damage_details);
++		cairo_region_destroy(output->damage_borders);
++	}
+ 	free(output->logical_geometry.label);
+ 	free(output);
+ }
+ 
+ static const struct wl_callback_listener output_frame_listener;
+ 
++static void send_frame(struct slurp_output *output);
++
++static void output_buffer_released(void *data) {
++	struct slurp_output *output = data;
++	if (output->dirty && !output->frame_callback) {
++		send_frame(output);
++	}
++}
++
+ static void send_frame(struct slurp_output *output) {
+ 	struct slurp_state *state = output->state;
+ 
+@@ -583,10 +597,13 @@ static void send_frame(struct slurp_output *output) {
+ 		return;
+ 	}
+ 	output->current_buffer->busy = true;
++	output->current_buffer->released = output_buffer_released;
++	output->current_buffer->released_data = output;
+ 
+ 	cairo_identity_matrix(output->current_buffer->cairo);
+ 	cairo_scale(output->current_buffer->cairo, output->scale, output->scale);
+ 
++	cairo_region_t *damage = render_damage(output);
+ 	render(output);
+ 
+ 	// Schedule a frame in case the output becomes dirty again
+@@ -595,7 +612,12 @@ static void send_frame(struct slurp_output *output) {
+ 		&output_frame_listener, output);
+ 
+ 	wl_surface_attach(output->surface, output->current_buffer->buffer, 0, 0);
+-	wl_surface_damage(output->surface, 0, 0, output->width, output->height);
++	for (int i = 0; i < cairo_region_num_rectangles(damage); i++) {
++		cairo_rectangle_int_t rect;
++		cairo_region_get_rectangle(damage, i, &rect);
++		wl_surface_damage(output->surface, rect.x, rect.y, rect.width, rect.height);
++	}
++	cairo_region_destroy(damage);
+ 	wl_surface_set_buffer_scale(output->surface, output->scale);
+ 	wl_surface_commit(output->surface);
+ 	output->dirty = false;
+@@ -619,14 +641,11 @@ static const struct wl_callback_listener output_frame_listener = {
+ 
+ static void set_output_dirty(struct slurp_output *output) {
+ 	output->dirty = true;
+-	if (output->frame_callback) {
+-		return;
++	if (!output->frame_callback) {
++		// Resume drawing immediately after an idle period. Requesting an
++		// empty frame first adds a refresh of latency to pointer motion.
++		send_frame(output);
+ 	}
+-
+-	output->frame_callback = wl_surface_frame(output->surface);
+-	wl_callback_add_listener(output->frame_callback,
+-		&output_frame_listener, output);
+-	wl_surface_commit(output->surface);
+ }
+ 
+ static struct slurp_output *output_from_surface(struct slurp_state *state,
+diff --git a/meson.build b/meson.build
+index 6b28156..9fb94f1 100644
+--- a/meson.build
++++ b/meson.build
+@@ -61,3 +61,9 @@ if scdoc.found()
+ 		)
+ 	endforeach
+ endif
++
++damage_test = executable('render-damage-test',
++	['tests/render-damage.c', 'render.c', protos_src],
++	dependencies: [cairo, wayland_client, cc.find_library('m')],
++	include_directories: 'include')
++test('render-damage', damage_test)
+diff --git a/pool-buffer.c b/pool-buffer.c
+index add6f63..501d94d 100644
+--- a/pool-buffer.c
++++ b/pool-buffer.c
+@@ -57,6 +57,9 @@ static int create_shm_file(off_t size) {
+ static void buffer_handle_release(void *data, struct wl_buffer *wl_buffer) {
+ 	struct pool_buffer *buffer = data;
+ 	buffer->busy = false;
++	if (buffer->released) {
++		buffer->released(buffer->released_data);
++	}
+ }
+ 
+ static const struct wl_buffer_listener buffer_listener = {
+@@ -104,6 +107,9 @@ static struct pool_buffer *create_buffer(struct wl_shm *shm,
+ }
+ 
+ void finish_buffer(struct pool_buffer *buffer) {
++	if (buffer->damage) {
++		cairo_region_destroy(buffer->damage);
++	}
+ 	if (buffer->buffer) {
+ 		wl_buffer_destroy(buffer->buffer);
+ 	}
+diff --git a/render.c b/render.c
+index d91f8a3..41ac438 100644
+--- a/render.c
++++ b/render.c
+@@ -1,5 +1,6 @@
+ #include <cairo/cairo.h>
+ #include <stdio.h>
++#include <math.h>
+ #include <stdlib.h>
+ 
+ #include "pool-buffer.h"
+@@ -24,7 +25,7 @@ static void box_layout_to_output(struct slurp_box *box, struct slurp_output *out
+ 	box->y -= output->logical_geometry.y;
+ }
+ 
+-void render(struct slurp_output *output) {
++static void render_contents(struct slurp_output *output) {
+ 	struct slurp_state *state = output->state;
+ 	struct pool_buffer *buffer = output->current_buffer;
+ 	cairo_t *cairo = buffer->cairo;
+@@ -86,3 +87,150 @@ void render(struct slurp_output *output) {
+ 		}
+ 	}
+ }
++
++void render(struct slurp_output *output) {
++	struct pool_buffer *buffer = output->current_buffer;
++	cairo_t *cairo = buffer->cairo;
++	if (!buffer->damage) {
++		render_contents(output);
++	} else {
++		// Rectangular clips preserve Cairo's stroke rasterization. A complex
++		// clip mask can change antialias coverage at selection intersections.
++		for (int i = 0; i < cairo_region_num_rectangles(buffer->damage); i++) {
++			cairo_rectangle_int_t rect;
++			cairo_region_get_rectangle(buffer->damage, i, &rect);
++			cairo_save(cairo);
++			cairo_new_path(cairo);
++			cairo_rectangle(cairo, rect.x, rect.y, rect.width, rect.height);
++			cairo_clip(cairo);
++			render_contents(output);
++			cairo_restore(cairo);
++		}
++		cairo_region_destroy(buffer->damage);
++	}
++	buffer->damage = cairo_region_create();
++}
++
++/* Track changed selection fills separately from borders and labels. Overlapping
++ * fills have the same colour, so only their symmetric difference needs upload.
++ * Borders/text can change even inside that overlap and damage both positions.
++ * Each CPU buffer accumulates damage independently until it is reused.
++ */
++static void region_add_box(cairo_region_t *region, const struct slurp_box *box) {
++	cairo_rectangle_int_t rect = {box->x, box->y, box->width, box->height};
++	cairo_region_union_rectangle(region, &rect);
++}
++
++cairo_region_t *render_damage(struct slurp_output *output) {
++	struct slurp_state *state = output->state;
++	cairo_t *cairo = output->current_buffer->cairo;
++	cairo_region_t *fills = cairo_region_create();
++	cairo_region_t *details = cairo_region_create();
++	cairo_region_t *borders = cairo_region_create();
++	unsigned selections = 0;
++	bool single = true;
++	int pad = (state->border_weight + 1) / 2 + 1;
++	struct slurp_seat *seat;
++	wl_list_for_each(seat, &state->seats, link) {
++		struct slurp_selection *selection = slurp_seat_current_selection(seat);
++		if (!selection->has_selection ||
++				!box_intersect(&output->logical_geometry, &selection->selection)) {
++			continue;
++		}
++		struct slurp_box b = selection->selection;
++		box_layout_to_output(&b, output);
++		region_add_box(fills, &b);
++		selections++;
++		single &= b.width > 0 && b.height > 0;
++
++		// Include fractional stroke edges and their antialiasing fringe.
++		struct slurp_box outer = {.x = b.x - pad, .y = b.y - pad,
++			.width = b.width + 2 * pad, .height = b.height + 2 * pad};
++		cairo_region_t *border = cairo_region_create();
++		region_add_box(border, &outer);
++		if (b.width > 2 * pad && b.height > 2 * pad) {
++			cairo_rectangle_int_t inner = {b.x + pad, b.y + pad,
++				b.width - 2 * pad, b.height - 2 * pad};
++			cairo_region_subtract_rectangle(border, &inner);
++		}
++		cairo_region_union(borders, border);
++		cairo_region_destroy(border);
++
++		if (state->display_dimensions) {
++			cairo_select_font_face(cairo, state->font_family,
++				CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
++			cairo_set_font_size(cairo, 14);
++			char dimensions[12];
++			snprintf(dimensions, sizeof(dimensions), "%ix%i", b.width, b.height);
++			cairo_text_extents_t extents;
++			cairo_text_extents(cairo, dimensions, &extents);
++			int x = b.x + b.width + 10, y = b.y + b.height + 20;
++			cairo_rectangle_int_t text = {
++				floor(x + extents.x_bearing) - 1,
++				floor(y + extents.y_bearing) - 1,
++				ceil(extents.width) + 3, ceil(extents.height) + 3,
++			};
++			cairo_region_union_rectangle(details, &text);
++		}
++	}
++
++	single &= selections <= 1;
++	cairo_rectangle_int_t bounds = {0, 0, output->width, output->height};
++	bool same_geometry = output->damage_fills &&
++		output->damage_geometry.x == output->logical_geometry.x &&
++		output->damage_geometry.y == output->logical_geometry.y &&
++		output->damage_geometry.width == output->width &&
++		output->damage_geometry.height == output->height &&
++		output->damage_scale == output->scale;
++	cairo_region_t *damage;
++	if (same_geometry) {
++		damage = cairo_region_copy(fills);
++		cairo_region_xor(damage, output->damage_fills);
++		if (single && output->damage_single) {
++			// Unchanged straight edges have identical stroke coverage. Expand
++			// the changed fill by the stroke radius, including antialiasing,
++			// instead of uploading every edge of a large anchored selection.
++			cairo_region_t *expanded = cairo_region_create();
++			for (int i = 0; i < cairo_region_num_rectangles(damage); i++) {
++				cairo_rectangle_int_t r;
++				cairo_region_get_rectangle(damage, i, &r);
++				r.x -= pad;
++				r.y -= pad;
++				r.width += 2 * pad;
++				r.height += 2 * pad;
++				cairo_region_union_rectangle(expanded, &r);
++			}
++			cairo_region_destroy(damage);
++			damage = expanded;
++		} else {
++			// Overlapping seats can cover each other's borders. Preserve the
++			// conservative path, also for zero-width/height stroke geometry.
++			cairo_region_union(damage, borders);
++			cairo_region_union(damage, output->damage_borders);
++		}
++		cairo_region_union(damage, details);
++		cairo_region_union(damage, output->damage_details);
++		cairo_region_intersect_rectangle(damage, &bounds);
++	} else {
++		damage = cairo_region_create_rectangle(&bounds);
++	}
++	if (output->damage_fills) {
++		cairo_region_destroy(output->damage_fills);
++		cairo_region_destroy(output->damage_details);
++		cairo_region_destroy(output->damage_borders);
++	}
++	output->damage_fills = fills;
++	output->damage_details = details;
++	output->damage_borders = borders;
++	output->damage_single = single;
++	output->damage_geometry = output->logical_geometry;
++	output->damage_geometry.width = output->width;
++	output->damage_geometry.height = output->height;
++	output->damage_scale = output->scale;
++	for (int i = 0; i < 2; i++) {
++		if (output->buffers[i].damage) {
++			cairo_region_union(output->buffers[i].damage, damage);
++		}
++	}
++	return damage;
++}
+diff --git a/tests/render-damage.c b/tests/render-damage.c
+new file mode 100644
+index 0000000..8c9bad5
+--- /dev/null
++++ b/tests/render-damage.c
+@@ -0,0 +1,113 @@
++/* Compare complete Cairo reference frames. Every changed pixel must be covered
++ * by surface damage, regardless of buffer reuse, scale, overlap, or clipping. */
++#include <assert.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include "slurp.h"
++#include "render.h"
++
++bool box_intersect(const struct slurp_box *a, const struct slurp_box *b) {
++	return a->x < b->x + b->width && a->x + a->width > b->x &&
++		a->y < b->y + b->height && a->height + a->y > b->y;
++}
++
++int main(void) {
++	unsigned frames = 0;
++	for (int border = 1; border <= 6; border++) {
++		for (int count = 1; count <= 2; count++) {
++			for (int scale = 1; scale <= 3; scale++) {
++				struct slurp_state state = {
++					.colors = {0x00000088, 0x3366ffff, 0x00000000, 0x88228844},
++					.font_family = "sans-serif", .border_weight = border,
++					.display_dimensions = true,
++				};
++				wl_list_init(&state.seats);
++				wl_list_init(&state.boxes);
++				struct slurp_box choice = {.x = 5, .y = 10, .width = 140, .height = 130};
++				wl_list_insert(&state.boxes, &choice.link);
++				struct slurp_seat seats[2] = {0};
++				for (int i = 0; i < count; i++) {
++					wl_list_insert(&state.seats, &seats[i].link);
++				}
++				struct pool_buffer buffers[3] = {0};
++				int width = 256 * scale, height = 192 * scale;
++				for (int i = 0; i < 3; i++) {
++					buffers[i].surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, width, height);
++					buffers[i].cairo = cairo_create(buffers[i].surface);
++					cairo_scale(buffers[i].cairo, scale, scale);
++				}
++				struct slurp_output output = {.state = &state, .scale = scale,
++					.width = 256, .height = 192,
++					.logical_geometry = {.x = -35, .y = -20, .width = 256, .height = 192}};
++				output.buffers[0] = buffers[0];
++				output.buffers[1] = buffers[1];
++				uint32_t *previous = calloc(width * height, 4);
++				assert(previous);
++				for (int frame = 0; frame < 300; frame++) {
++					for (int i = 0; i < 2; i++) {
++						struct slurp_selection *s = &seats[i].pointer_selection;
++						s->has_selection = frame % (11 + i) != 0;
++						s->selection = (struct slurp_box){.x = (frame * (7 + i) % 330) - 90,
++							.y = (frame * (3 + i) % 220) - 60,
++							.width = frame * (5 + i) % 320, .height = frame * (2 + i) % 230};
++					}
++					if (frame == 150) {
++						output.logical_geometry.x += 20;
++						output.logical_geometry.y -= 15;
++					}
++					output.current_buffer = &output.buffers[frame % 2];
++					cairo_region_t *damage = render_damage(&output);
++					render(&output);
++					struct slurp_output reference = output;
++					reference.current_buffer = &buffers[2];
++					render(&reference);
++					cairo_region_destroy(buffers[2].damage);
++					buffers[2].damage = NULL;
++					cairo_surface_flush(buffers[2].surface);
++					if (memcmp(cairo_image_surface_get_data(output.current_buffer->surface),
++							cairo_image_surface_get_data(buffers[2].surface), width * height * 4)) {
++						uint32_t *aa = (uint32_t *)cairo_image_surface_get_data(output.current_buffer->surface);
++						uint32_t *bb = (uint32_t *)cairo_image_surface_get_data(buffers[2].surface);
++						for (int k = 0, n = 0; k < width * height && n < 8; k++) {
++							if (aa[k] != bb[k]) {
++								fprintf(stderr, "pixel %d,%d actual=%08x expected=%08x damage=%d\n",
++									k % width, k / width, aa[k], bb[k],
++									cairo_region_contains_point(damage, k % width / scale, k / width / scale));
++								n++;
++							}
++						}
++						fprintf(stderr, "Clipped render differs: scale=%d frame=%d\n", scale, frame);
++						return 1;
++					}
++					cairo_surface_flush(output.current_buffer->surface);
++					uint32_t *pixels = (uint32_t *)cairo_image_surface_get_data(output.current_buffer->surface);
++					for (int y = 0; y < height; y++) {
++						for (int x = 0; x < width; x++) {
++							if (pixels[y * width + x] != previous[y * width + x] &&
++									!cairo_region_contains_point(damage, x / scale, y / scale)) {
++								fprintf(stderr, "Undamaged changed pixel: scale=%d frame=%d x=%d y=%d\n", scale, frame, x, y);
++								return 1;
++							}
++						}
++					}
++					memcpy(previous, pixels, width * height * 4);
++					cairo_region_destroy(damage);
++					frames++;
++				}
++				free(previous);
++				cairo_region_destroy(output.damage_fills);
++				cairo_region_destroy(output.damage_details);
++				cairo_region_destroy(output.damage_borders);
++				for (int i = 0; i < 2; i++) {
++					cairo_region_destroy(output.buffers[i].damage);
++				}
++				for (int i = 0; i < 3; i++) {
++					cairo_destroy(buffers[i].cairo);
++					cairo_surface_destroy(buffers[i].surface);
++				}
++			}
++		}
++	}
++	printf("PASS: %u full reference frames covered by damage\n", frames);
++}

@@ -1,0 +1,25 @@
+{
+  "id": "20260917T164640980953Z-screenshot-final-qualified-pixels",
+  "verdict": "pass",
+  "transport_returncode": 0,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T164640980953Z-screenshot-final-qualified-pixels",
+  "observations": {
+    "pixel_results": [
+      "PASS: default color picker returns a color and exits on selection",
+      "PASS: picker reference scanouts captured and desktop restored"
+    ],
+    "pixel_result_count": 2,
+    "thermal_samples": 17,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 62.25,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 62.25,
+      "Ta000m": 62.25,
+      "Te000m": 58.5,
+      "Te001m": 56.5,
+      "Tp000m": 59.75,
+      "Tp001m": 56.75
+    }
+  }
+}

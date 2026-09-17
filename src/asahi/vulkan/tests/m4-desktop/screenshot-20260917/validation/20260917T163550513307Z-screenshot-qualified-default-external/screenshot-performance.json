@@ -1,0 +1,239 @@
+{
+  "pid": 41204,
+  "cursor_policy": 2,
+  "monitors": [
+    {
+      "id": 0,
+      "name": "eDP-1",
+      "description": "",
+      "make": "",
+      "model": "",
+      "serial": "",
+      "width": 2560,
+      "height": 1664,
+      "physicalWidth": 0,
+      "physicalHeight": 0,
+      "refreshRate": 60.0,
+      "x": 0,
+      "y": 0,
+      "activeWorkspace": {
+        "id": 1,
+        "name": "1"
+      },
+      "specialWorkspace": {
+        "id": 0,
+        "name": ""
+      },
+      "reserved": [
+        0,
+        32,
+        0,
+        0
+      ],
+      "scale": 2.0,
+      "transform": 0,
+      "focused": true,
+      "dpmsStatus": true,
+      "vrr": false,
+      "solitary": "0",
+      "solitaryBlockedBy": [
+        "WINDOWED",
+        "CANDIDATE"
+      ],
+      "activelyTearing": false,
+      "tearingBlockedBy": [
+        "NOT_TORN",
+        "USER",
+        "CANDIDATE"
+      ],
+      "directScanoutTo": "0",
+      "directScanoutBlockedBy": [
+        "USER",
+        "SW",
+        "CANDIDATE"
+      ],
+      "disabled": false,
+      "currentFormat": "XRGB8888",
+      "mirrorOf": "none",
+      "availableModes": [
+        "2560x1664@60.00Hz"
+      ],
+      "colorManagementPreset": "srgb",
+      "sdrBrightness": 1.0,
+      "sdrSaturation": 1.0,
+      "sdrMinLuminance": 0.2,
+      "sdrMaxLuminance": 80,
+      "hardwareCursorsInUse": true
+    },
+    {
+      "id": 1,
+      "name": "DP-1",
+      "description": "Philips Consumer Electronics Company PHL 237E7 UHB1707006721",
+      "make": "Philips Consumer Electronics Company",
+      "model": "PHL 237E7",
+      "serial": "UHB1707006721",
+      "width": 1920,
+      "height": 1080,
+      "physicalWidth": 510,
+      "physicalHeight": 290,
+      "refreshRate": 60.0,
+      "x": 1280,
+      "y": 0,
+      "activeWorkspace": {
+        "id": 2,
+        "name": "2"
+      },
+      "specialWorkspace": {
+        "id": 0,
+        "name": ""
+      },
+      "reserved": [
+        0,
+        32,
+        0,
+        0
+      ],
+      "scale": 1.0,
+      "transform": 0,
+      "focused": false,
+      "dpmsStatus": true,
+      "vrr": false,
+      "solitary": "0",
+      "solitaryBlockedBy": [
+        "WINDOWED",
+        "CANDIDATE"
+      ],
+      "activelyTearing": false,
+      "tearingBlockedBy": [
+        "NOT_TORN",
+        "USER",
+        "CANDIDATE"
+      ],
+      "directScanoutTo": "0",
+      "directScanoutBlockedBy": [
+        "USER",
+        "SW",
+        "CANDIDATE"
+      ],
+      "disabled": false,
+      "currentFormat": "XRGB8888",
+      "mirrorOf": "none",
+      "availableModes": [
+        "1920x1080@60.00Hz",
+        "1920x1080@60.00Hz",
+        "1920x1080@59.94Hz",
+        "1920x1080@50.00Hz",
+        "1680x1050@59.88Hz",
+        "1280x1024@75.03Hz",
+        "1280x1024@60.02Hz",
+        "1440x900@74.98Hz",
+        "1440x900@59.90Hz",
+        "1280x960@60.00Hz",
+        "1280x720@60.00Hz",
+        "1280x720@60.00Hz",
+        "1280x720@59.94Hz",
+        "1280x720@50.00Hz",
+        "1024x768@75.03Hz",
+        "1024x768@60.00Hz",
+        "800x600@75.00Hz",
+        "800x600@60.32Hz",
+        "720x576@50.00Hz",
+        "720x576@50.00Hz",
+        "720x576@50.00Hz",
+        "720x480@60.00Hz",
+        "720x480@60.00Hz",
+        "720x480@59.94Hz",
+        "720x480@59.94Hz",
+        "720x480@59.94Hz",
+        "640x480@75.00Hz",
+        "640x480@72.81Hz",
+        "640x480@60.00Hz",
+        "640x480@59.94Hz",
+        "640x480@59.94Hz"
+      ],
+      "colorManagementPreset": "srgb",
+      "sdrBrightness": 1.0,
+      "sdrSaturation": 1.0,
+      "sdrMinLuminance": 0.2,
+      "sdrMaxLuminance": 80,
+      "hardwareCursorsInUse": true
+    }
+  ],
+  "graphics_environment": {
+    "AQ_DRM_DEVICES": "/dev/dri/card2:/dev/dri/card0",
+    "MESA_GL_VERSION_OVERRIDE": "3.3",
+    "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+    "GALLIUM_DRIVER": "zink",
+    "MESA_GLES_VERSION_OVERRIDE": "3.0",
+    "AQ_USE_RENDER_NODE": "1",
+    "VK_DRIVER_FILES": "/opt/asahi-m4-port/asahi_icd.json"
+  },
+  "phases": [
+    {
+      "name": "wrapper",
+      "cursor_before": {
+        "x": 2656,
+        "y": 946
+      },
+      "cursor_after": {
+        "x": 2695,
+        "y": 933
+      },
+      "seconds": 20.00735297900019,
+      "moves": 2375,
+      "warmup_moves": 60,
+      "warmup_seconds": 0.5,
+      "motion": "circle",
+      "before": {
+        "/sys/kernel/debug/dri/soc:display-subsystem/m4_status": {
+          "completed": "11626",
+          "failed": "0",
+          "active_fb": "40",
+          "imported": "1",
+          "swap_total_us": "102972740",
+          "swap_max_us": "22192"
+        }
+      },
+      "after": {
+        "/sys/kernel/debug/dri/soc:display-subsystem/m4_status": {
+          "completed": "11627",
+          "failed": "0",
+          "active_fb": "46",
+          "imported": "1",
+          "swap_total_us": "102991545",
+          "swap_max_us": "22192"
+        }
+      },
+      "cpu_ticks_before": [
+        "861",
+        "462"
+      ],
+      "cpu_ticks_after": [
+        "1031",
+        "580"
+      ],
+      "children": [
+        {
+          "pid": 44264,
+          "returncode": null
+        }
+      ],
+      "panel_fps": 0.04998162430830329,
+      "external_fps": 59.97794916996394,
+      "start_monotonic": 3541.626619416,
+      "end_monotonic": 3561.633972395,
+      "panel_cadence": {
+        "intervals": 0,
+        "missed_refreshes": 0,
+        "max_interval_ms": 0,
+        "mean_interval_ms": 0,
+        "sequence_contiguous": true
+      },
+      "saved_png": "/root/asahi-evidence/20260917T163550513307Z-screenshot-qualified-default-external/captures/screenshot-2026-09-17_16-36-12.png",
+      "saved_png_size": [
+        1376,
+        902
+      ]
+    }
+  ]
+}

@@ -1,0 +1,93 @@
+diff --git a/include/aquamarine/backend/DRM.hpp b/include/aquamarine/backend/DRM.hpp
+index b39f739..a459b04 100644
+--- a/include/aquamarine/backend/DRM.hpp
++++ b/include/aquamarine/backend/DRM.hpp
+@@ -32,9 +32,10 @@ namespace Aquamarine {
+ 
+     class CDRMBufferUnimportable : public IAttachment {
+       public:
+-        CDRMBufferUnimportable() {
++        CDRMBufferUnimportable(Hyprutils::Memory::CWeakPointer<CDRMBackend> backend_) : backend(backend_) {
+             ;
+         }
++        Hyprutils::Memory::CWeakPointer<CDRMBackend> backend;
+         virtual ~CDRMBufferUnimportable() {
+             ;
+         }
+diff --git a/src/backend/drm/DRM.cpp b/src/backend/drm/DRM.cpp
+index 673fdda..7351f22 100644
+--- a/src/backend/drm/DRM.cpp
++++ b/src/backend/drm/DRM.cpp
+@@ -18,6 +18,7 @@
+ #include <system_error>
+ #include <unordered_set>
+ #include <sys/mman.h>
++#include <sys/stat.h>
+ #include <fcntl.h>
+ #include <unistd.h>
+ extern "C" {
+@@ -877,6 +878,19 @@ bool Aquamarine::CDRMBackend::registerGPU(SP<CSessionDevice> gpu_, SP<CDRMBacken
+     gpu     = gpu_;
+     primary = primary_;
+ 
++    // Split KMS controllers can scan out from the same rendering device. With
++    // render-node allocation enabled, each output should allocate against its
++    // own KMS formats/import cache, not copy through a second GPU swapchain.
++    // Device identity (not fd identity) matters: each backend opens the node.
++    // Preserve the ordinary multi-GPU path when either identity is unknown.
++    struct stat renderStat = {}, primaryRenderStat = {};
++    if (primary && envEnabled("AQ_USE_RENDER_NODE") && gpu->renderNodeFd >= 0 && primary->gpu->renderNodeFd >= 0 && fstat(gpu->renderNodeFd, &renderStat) == 0 &&
++        fstat(primary->gpu->renderNodeFd, &primaryRenderStat) == 0 && S_ISCHR(renderStat.st_mode) && S_ISCHR(primaryRenderStat.st_mode) &&
++        renderStat.st_rdev == primaryRenderStat.st_rdev) {
++        backend->log(AQ_LOG_DEBUG, std::format("drm: {} shares the primary render device; using direct KMS allocation", gpu->path));
++        primary = {};
++    }
++
+     auto driverFromName = [](const std::string_view name) {
+         if (name == "i915" || name == "xe")
+             return AQ_BACKEND_GPU_DRIVER_INTEL;
+@@ -2017,9 +2031,11 @@ bool Aquamarine::CDRMOutput::commitState(bool onlyTest) {
+         return false;
+     }
+ 
+-    if ((COMMITTED & COutputState::eOutputStateProperties::AQ_OUTPUT_STATE_BUFFER) && STATE.buffer->attachments.has<CDRMBufferUnimportable>()) {
+-        TRACE(backend->backend->log(AQ_LOG_TRACE, "drm: Cannot commit a KMS-unimportable buffer."));
+-        return false;
++    if (COMMITTED & COutputState::eOutputStateProperties::AQ_OUTPUT_STATE_BUFFER) {
++        if (const auto failed = STATE.buffer->attachments.get<CDRMBufferUnimportable>(); failed && failed->backend == backend) {
++            TRACE(backend->backend->log(AQ_LOG_TRACE, "drm: Cannot commit a KMS-unimportable buffer."));
++            return false;
++        }
+     }
+ 
+     // If we are changing the rendering format, we may need to reconfigure the output (aka modeset)
+@@ -2480,7 +2496,10 @@ SP<CDRMFB> Aquamarine::CDRMFB::create(SP<IBuffer> buffer_, Hyprutils::Memory::CW
+         *isNew = true;
+ 
+     if (auto at = buffer_->attachments.get<CDRMBufferAttachment>()) {
+-        fb = at->fb;
++        // Framebuffer IDs belong to the importing DRM device, even when
++        // multiple KMS controllers use the same GPU or mirror a buffer.
++        if (at->fb && at->fb->backend == backend_)
++            fb = at->fb;
+         TRACE(backend_->log(AQ_LOG_TRACE, std::format("drm: CDRMFB: buffer has drmfb attachment with fb {:x}", (uintptr_t)fb.get())));
+     }
+ 
+@@ -2511,7 +2530,7 @@ void Aquamarine::CDRMFB::import() {
+         return;
+     }
+ 
+-    if (buffer->attachments.has<CDRMBufferUnimportable>()) {
++    if (const auto failed = buffer->attachments.get<CDRMBufferUnimportable>(); failed && failed->backend == backend) {
+         backend->backend->log(AQ_LOG_ERROR, "drm: Buffer submitted is unimportable");
+         return;
+     }
+@@ -2532,7 +2551,7 @@ void Aquamarine::CDRMFB::import() {
+ 
+     if (!id) {
+         backend->backend->log(AQ_LOG_ERROR, "drm: Failed to submit a buffer to KMS");
+-        buffer->attachments.add(makeShared<CDRMBufferUnimportable>());
++        buffer->attachments.add(makeShared<CDRMBufferUnimportable>(backend));
+         drop();
+         return;
+     }
