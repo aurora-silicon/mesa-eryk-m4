@@ -18,6 +18,9 @@
 #define AGX_TEXTURE_FLAG_MINMAX_TAP (1 << 3)
 #define AGX_TEXTURE_FLAG_CENTRE_SAMPLER (1 << 4)
 
+/* Guarded ordinary-sampler shader arm; consumed before backend lowering. */
+#define AGX_TEXTURE_FLAG_PLAIN_SAMPLER (1 << 5)
+
 /* Texel buffers lowered to (at most) 16384x16384 2D textures */
 #define AGX_TEXTURE_BUFFER_WIDTH      16384
 #define AGX_TEXTURE_BUFFER_MAX_HEIGHT 16384

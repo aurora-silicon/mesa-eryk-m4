@@ -166,6 +166,8 @@ weight_sample(nir_builder *b, nir_tex_instr *tex, nir_def *value,
 static bool
 lower_minmax(nir_builder *b, nir_tex_instr *tex, void *data)
 {
+   if (tex->backend_flags & AGX_TEXTURE_FLAG_PLAIN_SAMPLER)
+      return false;
    if (tex->op != nir_texop_tex && tex->op != nir_texop_txb &&
        tex->op != nir_texop_txd && tex->op != nir_texop_txl &&
        tex->op != nir_texop_lod)

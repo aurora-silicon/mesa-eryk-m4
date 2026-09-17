@@ -8,6 +8,7 @@
  */
 #include "hk_shader.h"
 #include "hk_nir_preserve_sample_loops.h"
+#include "hk_nir_version_samples.h"
 
 #include "poly/nir/poly_nir.h"
 #include "agx_debug.h"
@@ -22,6 +23,7 @@
 #include "nir.h"
 #include "nir_serialize.h"
 #include "nir_builder.h"
+#include "nir_control_flow.h"
 #include "nir_format_convert.h"
 
 #include "agx_bo.h"
@@ -1128,6 +1130,10 @@ has_custom_border(nir_builder *b, nir_tex_instr *tex)
 static bool
 lower(nir_builder *b, nir_tex_instr *tex, UNUSED void *_data)
 {
+   if (tex->backend_flags & AGX_TEXTURE_FLAG_PLAIN_SAMPLER) {
+      tex->backend_flags &= ~AGX_TEXTURE_FLAG_PLAIN_SAMPLER;
+      return true;
+   }
    if (!nir_tex_instr_need_sampler(tex) || nir_tex_instr_is_query(tex))
       return false;
 
@@ -1844,6 +1850,24 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
                nir_metadata_control_flow, NULL);
    }
 
+   if (dev->dev.chip == AGX_CHIP_G16G &&
+       debug_get_bool_option("HK_M4_VERSION_SAMPLES", false)) {
+      nir_variable *sampler = hk_nir_sample_version_candidate(nir);
+      if (sampler && sampler->data.descriptor_set < set_layout_count &&
+          set_layouts[sampler->data.descriptor_set]) {
+         const struct hk_descriptor_set_layout *layout = vk_to_hk_descriptor_set_layout(
+            set_layouts[sampler->data.descriptor_set]);
+         if (sampler->data.binding < layout->binding_count) {
+            const struct hk_descriptor_set_binding_layout *binding =
+               &layout->binding[sampler->data.binding];
+            if (binding->type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER &&
+                binding->array_size == 1 && !binding->flags) {
+               NIR_PASS(_, nir, hk_nir_version_samples, sampler,
+                        features & HK_FEAT_IMAGE_VIEW_MIN_LOD);
+            }
+         }
+      }
+   }
    hk_capture_lowering(nir, "before-minmax", features);
    if (dev->dev.chip == AGX_CHIP_G16G &&
        (features & (HK_FEAT_SAMPLER_MINMAX | HK_FEAT_IMAGE_VIEW_MIN_LOD)) &&

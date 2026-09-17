@@ -14,8 +14,9 @@ int main(int argc, char **argv)
    if (argc != 2 && !(argc == 3 && (!strcmp(argv[2], "--check-native-resources") ||
                                   !strcmp(argv[2], "--gcm") ||
                                   !strcmp(argv[2], "--licm") ||
-                                  !strcmp(argv[2], "--gcm-no-vn")))) {
-      fprintf(stderr, "Usage: %s BUNDLE/input.bin [--check-native-resources|--gcm|--licm|--gcm-no-vn]\n", argv[0]);
+                                  !strcmp(argv[2], "--gcm-no-vn") ||
+                                  !strcmp(argv[2], "--print-nir")))) {
+      fprintf(stderr, "Usage: %s BUNDLE/input.bin [--check-native-resources|--gcm|--licm|--gcm-no-vn]\n       %s FRONTEND.nirbin --print-nir\n", argv[0], argv[0]);
       return 2;
    }
    FILE *f = fopen(argv[1], "rb");
@@ -29,6 +30,17 @@ int main(int argc, char **argv)
    fclose(f);
    struct blob_reader reader;
    blob_reader_init(&reader, data, size);
+   if (argc == 3 && !strcmp(argv[2], "--print-nir")) {
+      glsl_type_singleton_init_or_ref();
+      nir_shader *nir = nir_deserialize(NULL, &agx_nir_options, &reader);
+      if (!nir || reader.overrun || reader.current != reader.end) return 2;
+      nir_validate_shader(nir, "retained frontend NIR");
+      nir_print_shader(nir, stdout);
+      ralloc_free(nir);
+      glsl_type_singleton_decref();
+      free(data);
+      return 0;
+   }
    const char *magic = blob_read_bytes(&reader, 12);
    const char *abi = blob_read_bytes(&reader, 65);
    if (memcmp(magic, "AGXREPLAYv1", 12) || memcmp(abi, AGX_REPLAY_ABI, 65) ||
