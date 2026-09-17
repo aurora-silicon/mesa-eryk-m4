@@ -1,0 +1,32 @@
+{
+  "id": "20260917T191336403824Z-buoy-conditional-view-oracles",
+  "verdict": "pass",
+  "transport_returncode": 0,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T191336403824Z-buoy-conditional-view-oracles",
+  "observations": {
+    "pixel_results": [
+      "PASS: view minimum numeric check 00 max_error=0.0625",
+      "PASS: view minimum numeric check 01 max_error=0.0",
+      "PASS: view minimum numeric check 02 max_error=0.0",
+      "PASS: view minimum numeric check 03 max_error=0.0",
+      "PASS: view minimum numeric check 04 max_error=0.0",
+      "PASS: view minimum numeric check 05 max_error=0.0",
+      "PASS: view minimum numeric check 06 max_error=0.0",
+      "PASS: view minimum numeric check 07 max_error=0.0",
+      "PASS: view minimum sampler combinations"
+    ],
+    "pixel_result_count": 9,
+    "thermal_samples": 9,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 58.25,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 58.0,
+      "Ta000m": 54.5,
+      "Te000m": 54.75,
+      "Te001m": 53.75,
+      "Tp000m": 58.25,
+      "Tp001m": 53.75
+    }
+  }
+}

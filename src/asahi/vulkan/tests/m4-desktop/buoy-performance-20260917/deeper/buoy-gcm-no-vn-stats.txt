@@ -1,0 +1,3 @@
+Global code motion: changed
+FS shader: 59183 instrs, 49245 alu, 49245 fscib, 4646 ic, 532474 code size, 191 gprs, 66 uniforms, 0 scratch, 512 threads, 15 loops, 0:0 spills:fills, 0 preamble inst
+Compiler replay: PASS (532474 bytes)

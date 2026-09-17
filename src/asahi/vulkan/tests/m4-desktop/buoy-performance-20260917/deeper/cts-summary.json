@@ -1,0 +1,22 @@
+{
+  "selected": 57,
+  "recorded": 57,
+  "completed": 57,
+  "counts": {
+    "Pass": 57
+  },
+  "classifications": {
+    "unclassified": 57
+  },
+  "elapsed_seconds": 6.592589496052824,
+  "preparation_seconds": 1.732271020009648,
+  "runner_seconds": 2.2279548389997217,
+  "jobs": 4,
+  "tests_per_group": 8,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "7d5ddc2a6c93f4cc61841aca8c70aae488cc4f886a93bf796ef65327b500819a",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T195149807771Z-buoy-gcm-fragment-cts",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 60.5
+}

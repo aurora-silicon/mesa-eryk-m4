@@ -1,0 +1,1 @@
+FS shader: 24393 instrs, 21260 alu, 21260 fscib, 3434 ic, 213628 code size, 191 gprs, 66 uniforms, 0 scratch, 512 threads, 15 loops, 0:0 spills:fills, 0 preamble inst

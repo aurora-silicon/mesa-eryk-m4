@@ -11,8 +11,11 @@
 
 int main(int argc, char **argv)
 {
-   if (argc != 2 && !(argc == 3 && !strcmp(argv[2], "--check-native-resources"))) {
-      fprintf(stderr, "Usage: %s BUNDLE/input.bin [--check-native-resources]\n", argv[0]);
+   if (argc != 2 && !(argc == 3 && (!strcmp(argv[2], "--check-native-resources") ||
+                                  !strcmp(argv[2], "--gcm") ||
+                                  !strcmp(argv[2], "--licm") ||
+                                  !strcmp(argv[2], "--gcm-no-vn")))) {
+      fprintf(stderr, "Usage: %s BUNDLE/input.bin [--check-native-resources|--gcm|--licm|--gcm-no-vn]\n", argv[0]);
       return 2;
    }
    FILE *f = fopen(argv[1], "rb");
@@ -38,8 +41,24 @@ int main(int argc, char **argv)
    glsl_type_singleton_init_or_ref();
    nir_shader *nir = nir_deserialize(NULL, &agx_nir_options, &reader);
    if (!nir || reader.overrun || reader.current != reader.end) return 2;
+   /* Explicit diagnostic transforms replace the driver's default motion
+    * pass rather than applying it twice. */
+   if (argc == 3)
+      setenv("AGX_CODE_MOTION", "none", 1);
+   if (argc == 3 && (!strcmp(argv[2], "--gcm") || !strcmp(argv[2], "--gcm-no-vn"))) {
+      bool progress = nir_opt_gcm(nir, !strcmp(argv[2], "--gcm"));
+      fprintf(stderr, "Global code motion: %s\n", progress ? "changed" : "unchanged");
+      nir_validate_shader(nir, "after replay GCM");
+   }
+   if (argc == 3 && !strcmp(argv[2], "--licm")) {
+      bool progress = nir_opt_licm(nir);
+      nir_opt_cse(nir);
+      nir_opt_dce(nir);
+      fprintf(stderr, "Loop invariant code motion: %s\n", progress ? "changed" : "unchanged");
+      nir_validate_shader(nir, "after replay LICM");
+   }
    nir_print_shader(nir, stdout);
-   if (argc == 3) {
+   if (argc == 3 && !strcmp(argv[2], "--check-native-resources")) {
       bool indexed = agx_nir_lower_g17p_indexed_samplers(nir);
       bool images = indexed && agx_nir_lower_g17p_bindless_storage(nir);
       fprintf(stderr, "Native resource shape check: indexed=%d direct_images=%d\n",

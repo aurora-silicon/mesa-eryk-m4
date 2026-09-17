@@ -1,0 +1,24 @@
+{
+  "id": "20260917T194518992750Z-buoy-scaled-branch",
+  "verdict": "pass",
+  "transport_returncode": 0,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T194518992750Z-buoy-scaled-branch",
+  "observations": {
+    "pixel_results": [
+      "PASS: Chromium probe completed; inspect GPU diagnostics and screenshots"
+    ],
+    "pixel_result_count": 1,
+    "thermal_samples": 80,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 67.75,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 67.75,
+      "Ta000m": 63.0,
+      "Te000m": 63.75,
+      "Te001m": 64.75,
+      "Tp000m": 67.75,
+      "Tp001m": 65.5
+    }
+  }
+}

@@ -1,0 +1,2 @@
+FS shader: 33451 instrs, 26911 alu, 26911 fscib, 1378 ic, 292894 code size, 191 gprs, 66 uniforms, 40 scratch, 512 threads, 15 loops, 20:72 spills:fills, 0 preamble inst
+Compiler replay: PASS (292894 bytes)

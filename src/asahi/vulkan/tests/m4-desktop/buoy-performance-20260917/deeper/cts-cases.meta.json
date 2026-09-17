@@ -1,0 +1,410 @@
+{
+  "schema": 1,
+  "cases_sha256": "7d5ddc2a6c93f4cc61841aca8c70aae488cc4f886a93bf796ef65327b500819a",
+  "provenance": {
+    "catalog": "build/cts-vulkan14-ordered/catalog/catalog.txt",
+    "catalog_sha256": "72c1bb9d2f9f0425ab8a4f570d78abdc1d3a34b82173ec76b772dedc477526bf",
+    "selection": "Up to 16 evenly spaced cases each: fragment loops, derivatives, ordinary 2D filtering, fragment conditionals; targeted validation, not campaign coverage"
+  },
+  "cases": [
+    {
+      "case": "dEQP-VK.glsl.conditionals.if.complex_condition_fragment",
+      "catalog_index": 773019,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.glsl.conditionals.if.compound_statement_fragment",
+      "catalog_index": 773021,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.glsl.conditionals.if.if_else_fragment",
+      "catalog_index": 773023,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.glsl.conditionals.if.if_elseif_else_fragment",
+      "catalog_index": 773025,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.glsl.conditionals.if.if_elseif_fragment",
+      "catalog_index": 773027,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.glsl.conditionals.if.mixed_if_elseif_else_fragment",
+      "catalog_index": 773029,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.glsl.conditionals.if.sequence_condition_fragment",
+      "catalog_index": 773031,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.glsl.conditionals.if.sequence_statements_fragment",
+      "catalog_index": 773033,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.glsl.conditionals.if.single_statement_fragment",
+      "catalog_index": 773035,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.glsl.derivate.dfdx.constant.float",
+      "catalog_index": 774273,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.glsl.derivate.dfdx.static_loop.float_mediump",
+      "catalog_index": 774384,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.glsl.derivate.dfdxcoarse.fbo_float.vec4_highp",
+      "catalog_index": 774496,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.glsl.derivate.dfdxcoarse.uniform_if.vec2_highp",
+      "catalog_index": 774607,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.glsl.derivate.dfdxfine.output_store.vec3_highp",
+      "catalog_index": 774719,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.glsl.derivate.dfdxsubgroup.fbo_msaa2.vec2_mediump",
+      "catalog_index": 774830,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.glsl.derivate.dfdy.private_store.vec3_mediump",
+      "catalog_index": 774942,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.glsl.derivate.dfdycoarse.fbo.vec3_highp",
+      "catalog_index": 775053,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.glsl.derivate.dfdycoarse.texture.float.vec4_lowp",
+      "catalog_index": 775165,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.glsl.derivate.dfdyfine.linear.vec2_mediump",
+      "catalog_index": 775276,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.glsl.derivate.dfdysubgroup.fbo_float.vec2_highp",
+      "catalog_index": 775388,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.glsl.derivate.fwidth.output_store.float_highp",
+      "catalog_index": 775499,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.glsl.derivate.fwidthcoarse.dynamic_switch.float_highp",
+      "catalog_index": 775611,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.glsl.derivate.fwidthcoarse.texture.basic.vec3_mediump",
+      "catalog_index": 775722,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.glsl.derivate.fwidthfine.in_function.float_mediump",
+      "catalog_index": 775834,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.glsl.derivate.fwidthfine.uniform_switch.vec4_mediump",
+      "catalog_index": 775946,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.glsl.loops.generic.do_while_constant_iterations.basic_highp_float_fragment",
+      "catalog_index": 777094,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.glsl.loops.generic.for_uniform_iterations.basic_highp_float_fragment",
+      "catalog_index": 777134,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.glsl.loops.special.do_while_constant_iterations.dowhile_trap_fragment",
+      "catalog_index": 777176,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.glsl.loops.special.do_while_constant_iterations.single_statement_fragment",
+      "catalog_index": 777218,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.glsl.loops.special.do_while_dynamic_iterations.nested_tricky_dataflow_2_fragment",
+      "catalog_index": 777257,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.glsl.loops.special.do_while_uniform_iterations.empty_body_fragment",
+      "catalog_index": 777300,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.glsl.loops.special.do_while_uniform_iterations.unconditional_continue_fragment",
+      "catalog_index": 777342,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.glsl.loops.special.for_constant_iterations.post_fallthrough_fragment",
+      "catalog_index": 777384,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.glsl.loops.special.for_dynamic_iterations.ifblock_fragment",
+      "catalog_index": 777424,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.glsl.loops.special.for_dynamic_iterations.unconditional_continue_fragment",
+      "catalog_index": 777466,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.glsl.loops.special.for_uniform_iterations.post_fallthrough_fragment",
+      "catalog_index": 777508,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.glsl.loops.special.while_constant_iterations.infinite_with_conditional_break_fragment",
+      "catalog_index": 777550,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.glsl.loops.special.while_constant_iterations.unconditional_continue_fragment",
+      "catalog_index": 777590,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.glsl.loops.special.while_dynamic_iterations.post_fallthrough_fragment",
+      "catalog_index": 777632,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.glsl.loops.special.while_uniform_iterations.infinite_with_conditional_break_fragment",
+      "catalog_index": 777674,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.glsl.loops.special.while_uniform_iterations.vector_counter_fragment",
+      "catalog_index": 777716,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.texture.filtering.2d.combinations.linear.linear.clamp_to_border.clamp_to_border",
+      "catalog_index": 2935645,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.texture.filtering.2d.combinations.linear.linear.mirrored_repeat.repeat",
+      "catalog_index": 2935683,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.texture.filtering.2d.combinations.linear.nearest.mirror_clamp_to_edge.repeat",
+      "catalog_index": 2935723,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.texture.filtering.2d.combinations.linear_mipmap_linear.linear.clamp_to_edge.repeat",
+      "catalog_index": 2935813,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.texture.filtering.2d.combinations.linear_mipmap_linear.nearest.clamp_to_border.repeat",
+      "catalog_index": 2935853,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.texture.filtering.2d.combinations.linear_mipmap_linear.nearest.repeat.repeat",
+      "catalog_index": 2935893,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.texture.filtering.2d.combinations.linear_mipmap_nearest.linear.mirrored_repeat.repeat",
+      "catalog_index": 2935983,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.texture.filtering.2d.combinations.linear_mipmap_nearest.nearest.mirror_clamp_to_edge.repeat",
+      "catalog_index": 2936023,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.texture.filtering.2d.combinations.nearest.linear.clamp_to_edge.repeat",
+      "catalog_index": 2936113,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.texture.filtering.2d.combinations.nearest.nearest.clamp_to_border.repeat",
+      "catalog_index": 2936153,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.texture.filtering.2d.combinations.nearest.nearest.repeat.repeat",
+      "catalog_index": 2936193,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.texture.filtering.2d.combinations.nearest_mipmap_linear.linear.mirrored_repeat.repeat",
+      "catalog_index": 2936283,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.texture.filtering.2d.combinations.nearest_mipmap_linear.nearest.mirror_clamp_to_edge.repeat",
+      "catalog_index": 2936323,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.texture.filtering.2d.combinations.nearest_mipmap_nearest.linear.clamp_to_edge.repeat",
+      "catalog_index": 2936413,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.texture.filtering.2d.combinations.nearest_mipmap_nearest.nearest.clamp_to_border.repeat",
+      "catalog_index": 2936453,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    },
+    {
+      "case": "dEQP-VK.texture.filtering.2d.combinations.nearest_mipmap_nearest.nearest.repeat.repeat",
+      "catalog_index": 2936493,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted compiler regression validation"
+    }
+  ]
+}

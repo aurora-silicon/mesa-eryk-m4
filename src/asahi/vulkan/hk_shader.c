@@ -1846,7 +1846,8 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
 
    hk_capture_lowering(nir, "before-minmax", features);
    if (dev->dev.chip == AGX_CHIP_G16G &&
-       (features & (HK_FEAT_SAMPLER_MINMAX | HK_FEAT_IMAGE_VIEW_MIN_LOD))) {
+       (features & (HK_FEAT_SAMPLER_MINMAX | HK_FEAT_IMAGE_VIEW_MIN_LOD)) &&
+       !HK_PERF(dev, NOMINMAX)) {
       /* Keep cube gradients until reduction has selected its anisotropic
        * footprint. The usual early pass turns them into scalar LODs. */
       const nir_lower_tex_options prepare = {

@@ -1,0 +1,13 @@
+{
+  "width": 640,
+  "height": 360,
+  "time": 10,
+  "bytes": 921600,
+  "baseline_sha256": "6fb7bedc8eaa29e2a5e0c91622b62c7650445502ce03b92d3ca8aa44a265ff7e",
+  "candidate_sha256": "93836d1a7d64b4cf873b759f33b9844880a01d1376c984e1031522db1b0a577c",
+  "changed_bytes": 562,
+  "changed_pixels": 428,
+  "maximum_channel_difference": 49,
+  "mean_absolute_channel_difference": 0.0012717013888888888,
+  "exact_match": false
+}

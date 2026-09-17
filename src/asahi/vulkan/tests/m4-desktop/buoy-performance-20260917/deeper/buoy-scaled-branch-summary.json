@@ -1,0 +1,361 @@
+[
+  {
+    "experiment": "20260917T194518992750Z-buoy-scaled-branch",
+    "boot_id": "f3e21030-3dca-4dc6-95ee-64b71cabc781",
+    "timestamp_filter": "kernel timestamps >= recorded target uptime",
+    "render_groups": [
+      {
+        "width": 2560,
+        "height": 1664,
+        "asid": 52,
+        "passes": 57,
+        "fragment_total_ms": 22172.486249999998,
+        "fragment_median_ms": 2.4972083333333335,
+        "fragment_p95_ms": 812.431125,
+        "fragment_max_ms": 844.261875
+      },
+      {
+        "width": 2560,
+        "height": 1664,
+        "asid": 2,
+        "passes": 50,
+        "fragment_total_ms": 85.74275,
+        "fragment_median_ms": 1.6249166666666666,
+        "fragment_p95_ms": 2.619291666666667,
+        "fragment_max_ms": 5.186625
+      },
+      {
+        "width": 2512,
+        "height": 1552,
+        "asid": 52,
+        "passes": 17,
+        "fragment_total_ms": 13.478458333333332,
+        "fragment_median_ms": 0.77625,
+        "fragment_p95_ms": 1.0002916666666666,
+        "fragment_max_ms": 1.0002916666666666
+      },
+      {
+        "width": 1024,
+        "height": 512,
+        "asid": 52,
+        "passes": 18,
+        "fragment_total_ms": 9.431458333333333,
+        "fragment_median_ms": 0.5526041666666667,
+        "fragment_p95_ms": 0.5654583333333333,
+        "fragment_max_ms": 0.5654583333333333
+      },
+      {
+        "width": 128,
+        "height": 64,
+        "asid": 52,
+        "passes": 21,
+        "fragment_total_ms": 4.76775,
+        "fragment_median_ms": 0.21266666666666667,
+        "fragment_p95_ms": 0.2725416666666667,
+        "fragment_max_ms": 0.2728333333333333
+      },
+      {
+        "width": 128,
+        "height": 128,
+        "asid": 52,
+        "passes": 26,
+        "fragment_total_ms": 3.2799583333333335,
+        "fragment_median_ms": 0.20995833333333333,
+        "fragment_p95_ms": 0.21729166666666666,
+        "fragment_max_ms": 0.219125
+      },
+      {
+        "width": 2560,
+        "height": 1408,
+        "asid": 52,
+        "passes": 2,
+        "fragment_total_ms": 1.8132083333333333,
+        "fragment_median_ms": 0.9066041666666667,
+        "fragment_p95_ms": 1.0441666666666667,
+        "fragment_max_ms": 1.0441666666666667
+      },
+      {
+        "width": 1024,
+        "height": 64,
+        "asid": 52,
+        "passes": 19,
+        "fragment_total_ms": 1.5398333333333334,
+        "fragment_median_ms": 0.012166666666666666,
+        "fragment_p95_ms": 0.5650416666666667,
+        "fragment_max_ms": 0.5650416666666667
+      },
+      {
+        "width": 544,
+        "height": 256,
+        "asid": 52,
+        "passes": 36,
+        "fragment_total_ms": 1.4552083333333334,
+        "fragment_median_ms": 0.042124999999999996,
+        "fragment_p95_ms": 0.06208333333333333,
+        "fragment_max_ms": 0.06395833333333334
+      },
+      {
+        "width": 2048,
+        "height": 128,
+        "asid": 52,
+        "passes": 14,
+        "fragment_total_ms": 1.417625,
+        "fragment_median_ms": 0.05235416666666667,
+        "fragment_p95_ms": 0.387375,
+        "fragment_max_ms": 0.387375
+      },
+      {
+        "width": 1300,
+        "height": 852,
+        "asid": 52,
+        "passes": 5,
+        "fragment_total_ms": 1.3387083333333334,
+        "fragment_median_ms": 0.24979166666666666,
+        "fragment_p95_ms": 0.381875,
+        "fragment_max_ms": 0.381875
+      },
+      {
+        "width": 1312,
+        "height": 256,
+        "asid": 52,
+        "passes": 24,
+        "fragment_total_ms": 1.3297916666666667,
+        "fragment_median_ms": 0.0070625,
+        "fragment_p95_ms": 0.20516666666666666,
+        "fragment_max_ms": 0.20579166666666668
+      },
+      {
+        "width": 2816,
+        "height": 2048,
+        "asid": 52,
+        "passes": 1,
+        "fragment_total_ms": 1.1864166666666667,
+        "fragment_median_ms": 1.1864166666666667,
+        "fragment_p95_ms": 1.1864166666666667,
+        "fragment_max_ms": 1.1864166666666667
+      },
+      {
+        "width": 2528,
+        "height": 416,
+        "asid": 52,
+        "passes": 8,
+        "fragment_total_ms": 0.5685416666666667,
+        "fragment_median_ms": 0.007354166666666667,
+        "fragment_p95_ms": 0.238625,
+        "fragment_max_ms": 0.238625
+      },
+      {
+        "width": 1024,
+        "height": 32,
+        "asid": 52,
+        "passes": 3,
+        "fragment_total_ms": 0.5481666666666667,
+        "fragment_median_ms": 0.2679166666666667,
+        "fragment_p95_ms": 0.27379166666666666,
+        "fragment_max_ms": 0.27379166666666666
+      },
+      {
+        "width": 512,
+        "height": 32,
+        "asid": 52,
+        "passes": 3,
+        "fragment_total_ms": 0.5214583333333334,
+        "fragment_median_ms": 0.25695833333333334,
+        "fragment_p95_ms": 0.25716666666666665,
+        "fragment_max_ms": 0.25716666666666665
+      },
+      {
+        "width": 512,
+        "height": 256,
+        "asid": 52,
+        "passes": 18,
+        "fragment_total_ms": 0.410125,
+        "fragment_median_ms": 0.02225,
+        "fragment_p95_ms": 0.025958333333333333,
+        "fragment_max_ms": 0.025958333333333333
+      },
+      {
+        "width": 1056,
+        "height": 64,
+        "asid": 52,
+        "passes": 10,
+        "fragment_total_ms": 0.39425,
+        "fragment_median_ms": 0.03939583333333333,
+        "fragment_p95_ms": 0.07095833333333333,
+        "fragment_max_ms": 0.07095833333333333
+      },
+      {
+        "width": 64,
+        "height": 64,
+        "asid": 52,
+        "passes": 36,
+        "fragment_total_ms": 0.25383333333333336,
+        "fragment_median_ms": 0.006687500000000001,
+        "fragment_p95_ms": 0.017041666666666667,
+        "fragment_max_ms": 0.017583333333333333
+      },
+      {
+        "width": 32,
+        "height": 32,
+        "asid": 52,
+        "passes": 31,
+        "fragment_total_ms": 0.22779166666666667,
+        "fragment_median_ms": 0.007541666666666667,
+        "fragment_p95_ms": 0.0085,
+        "fragment_max_ms": 0.008916666666666666
+      },
+      {
+        "width": 256,
+        "height": 128,
+        "asid": 52,
+        "passes": 33,
+        "fragment_total_ms": 0.22175,
+        "fragment_median_ms": 0.006625,
+        "fragment_p95_ms": 0.007583333333333333,
+        "fragment_max_ms": 0.009041666666666667
+      },
+      {
+        "width": 16,
+        "height": 16,
+        "asid": 52,
+        "passes": 18,
+        "fragment_total_ms": 0.11975,
+        "fragment_median_ms": 0.00675,
+        "fragment_p95_ms": 0.009375,
+        "fragment_max_ms": 0.009375
+      },
+      {
+        "width": 256,
+        "height": 64,
+        "asid": 52,
+        "passes": 9,
+        "fragment_total_ms": 0.065375,
+        "fragment_median_ms": 0.007333333333333333,
+        "fragment_p95_ms": 0.009041666666666667,
+        "fragment_max_ms": 0.009041666666666667
+      },
+      {
+        "width": 16,
+        "height": 32,
+        "asid": 52,
+        "passes": 9,
+        "fragment_total_ms": 0.06145833333333333,
+        "fragment_median_ms": 0.007083333333333333,
+        "fragment_p95_ms": 0.007875,
+        "fragment_max_ms": 0.007875
+      },
+      {
+        "width": 2048,
+        "height": 2048,
+        "asid": 52,
+        "passes": 5,
+        "fragment_total_ms": 0.051333333333333335,
+        "fragment_median_ms": 0.010583333333333333,
+        "fragment_p95_ms": 0.011,
+        "fragment_max_ms": 0.011
+      },
+      {
+        "width": 1536,
+        "height": 128,
+        "asid": 52,
+        "passes": 1,
+        "fragment_total_ms": 0.03525,
+        "fragment_median_ms": 0.03525,
+        "fragment_p95_ms": 0.03525,
+        "fragment_max_ms": 0.03525
+      },
+      {
+        "width": 1536,
+        "height": 64,
+        "asid": 52,
+        "passes": 2,
+        "fragment_total_ms": 0.034125,
+        "fragment_median_ms": 0.0170625,
+        "fragment_p95_ms": 0.017958333333333333,
+        "fragment_max_ms": 0.017958333333333333
+      },
+      {
+        "width": 1064,
+        "height": 89,
+        "asid": 52,
+        "passes": 2,
+        "fragment_total_ms": 0.03333333333333333,
+        "fragment_median_ms": 0.016666666666666666,
+        "fragment_p95_ms": 0.017666666666666667,
+        "fragment_max_ms": 0.017666666666666667
+      },
+      {
+        "width": 512,
+        "height": 128,
+        "asid": 52,
+        "passes": 2,
+        "fragment_total_ms": 0.030375,
+        "fragment_median_ms": 0.0151875,
+        "fragment_p95_ms": 0.020166666666666666,
+        "fragment_max_ms": 0.020166666666666666
+      },
+      {
+        "width": 32,
+        "height": 64,
+        "asid": 52,
+        "passes": 3,
+        "fragment_total_ms": 0.020333333333333335,
+        "fragment_median_ms": 0.007166666666666667,
+        "fragment_p95_ms": 0.007875,
+        "fragment_max_ms": 0.007875
+      },
+      {
+        "width": 64,
+        "height": 128,
+        "asid": 52,
+        "passes": 3,
+        "fragment_total_ms": 0.016125,
+        "fragment_median_ms": 0.004541666666666667,
+        "fragment_p95_ms": 0.007083333333333333,
+        "fragment_max_ms": 0.007083333333333333
+      },
+      {
+        "width": 32,
+        "height": 16,
+        "asid": 52,
+        "passes": 2,
+        "fragment_total_ms": 0.011875,
+        "fragment_median_ms": 0.0059375,
+        "fragment_p95_ms": 0.007208333333333333,
+        "fragment_max_ms": 0.007208333333333333
+      },
+      {
+        "width": 16,
+        "height": 512,
+        "asid": 52,
+        "passes": 1,
+        "fragment_total_ms": 0.00725,
+        "fragment_median_ms": 0.00725,
+        "fragment_p95_ms": 0.00725,
+        "fragment_max_ms": 0.00725
+      }
+    ],
+    "page_animation": [
+      {
+        "window": 0,
+        "intervals": [
+          {
+            "seconds": 12.456908327000292,
+            "frames": 1,
+            "fps": 0.08027674072486385
+          },
+          {
+            "seconds": 5.034912609000003,
+            "frames": 3,
+            "fps": 0.5958395374405193
+          },
+          {
+            "seconds": 5.027438010999958,
+            "frames": 5,
+            "fps": 0.9945423472273702
+          }
+        ]
+      }
+    ]
+  }
+]

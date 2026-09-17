@@ -1,0 +1,35 @@
+[
+  {
+    "argv": [
+      "glslangValidator",
+      "-V",
+      "-R",
+      "--auto-map-bindings",
+      "--auto-map-locations",
+      "--set-default-uniform-block",
+      "BuoyUniforms",
+      "0",
+      "0",
+      "build/buoy-native-reproduce/buoy.frag",
+      "-o",
+      "build/buoy-native-reproduce/buoy.spv"
+    ],
+    "returncode": 0,
+    "stdout": "build/buoy-native-reproduce/buoy.frag\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "build/spirv-cross-host/usr/bin/spirv-cross",
+      "build/buoy-native-reproduce/buoy.spv",
+      "--msl",
+      "--msl-version",
+      "20100",
+      "--output",
+      "build/buoy-native-reproduce/buoy.metal"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": ""
+  }
+]

@@ -1,0 +1,9 @@
+{
+  "tools/shadertoy-buoy/Buoy.glsl": "991906ab7c9237e98f1badecd4af70f4fcc7190383b00ad72242fed4be783c17",
+  "tools/shadertoy-buoy/header.glsl": "054a2bb1478f91522daf8103ab04d7c95446e266abe3d668ba9d65845e8fdb9f",
+  "/usr/bin/glslangValidator": "ea9855f4b4a4fb47f2821957fb1946d1f8fee4dc9721b341cca96acf0a2aa444",
+  "build/spirv-cross-host/usr/bin/spirv-cross": "5ed7e956d5810d3471b6fc62fb6d44b0051a2a5747f029839034abef1831ec2a",
+  "build/buoy-native-reproduce/buoy.frag": "f4b5dbb3697356a3c403e027ee89c5ac0ebfbcc2a25aa87dc95b2c891b0c02ba",
+  "build/buoy-native-reproduce/buoy.spv": "88a1035669ab61cb56a953c966bfa9fa82e1d9062de61513d367ad07247b87d0",
+  "build/buoy-native-reproduce/buoy.metal": "f94feb5bf9ecf3cd69e6d275a84eae1f7f1752934afe97f0da212e82d4344619"
+}

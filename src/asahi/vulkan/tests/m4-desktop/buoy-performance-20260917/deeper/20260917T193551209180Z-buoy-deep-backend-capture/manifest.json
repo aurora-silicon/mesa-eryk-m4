@@ -1,0 +1,36 @@
+{
+  "id": "20260917T193551209180Z-buoy-deep-backend-capture",
+  "hypothesis": "Retain large Buoy compiler input without startup shaders exhausting capture quota",
+  "command": [
+    "python3",
+    "/root/chromium-probe.py",
+    "--guard-output",
+    "/root/asahi-evidence/20260917T193551209180Z-buoy-deep-backend-capture",
+    "--normal-launch",
+    "--url",
+    "file:///home/e/Buoy.html?w=640&h=360&t=0&compact=1",
+    "--observe-seconds",
+    "12",
+    "--cdp-timeout",
+    "20",
+    "--compiler-stats",
+    "--compiler-min-instructions",
+    "10000",
+    "--vulkan-library",
+    "/opt/asahi-m4-port/lib/libvulkan-buoy-deep-capture.so"
+  ],
+  "expected_success": "PASS: Chromium probe completed",
+  "seconds": 90,
+  "sources": {
+    "mesa": {
+      "head": "8c2a033efc4d6fa6cd0c37412a79382bef88651b",
+      "status": " M src/asahi/compiler/agx_compile.c\n M src/asahi/vulkan/hk_device.c\n M src/asahi/vulkan/hk_device.h\n M src/asahi/vulkan/hk_nir_lower_minmax.c\n M src/asahi/vulkan/hk_shader.c\n M src/asahi/vulkan/meson.build\n M src/asahi/vulkan/tests/m4-desktop/asahi-session.py\n M src/asahi/vulkan/tests/m4-desktop/desktop-launch.py\n M src/asahi/vulkan/tests/m4-desktop/sparse-metadata-20260917/resolutions.tsv\n M src/asahi/vulkan/tests/m4-desktop/vulkan-trim-host.py\n M src/gallium/drivers/zink/zink_batch.c\n?? src/asahi/vulkan/tests/m4-desktop/buoy-performance-20260917/\n?? src/asahi/vulkan/tests/test-hk-minmax-control-flow.c\n",
+      "patch_sha256": "cb481f91ab7fbfbefc86fd440b0ef69ad1cc561c9830ebf203a85ef2537a07d6"
+    },
+    "kernel": {
+      "head": "b476abf105bf5693248014d61966262ead4e1252",
+      "status": " M drivers/gpu/drm/Makefile\n M drivers/gpu/drm/apple/Kconfig\n M drivers/gpu/drm/apple/m4-dcpext/Makefile\n M drivers/gpu/drm/apple/m4-dcpext/runtime/dcpext_session_adapter.h\n M drivers/gpu/drm/apple/m4-dcpext/runtime/m4_dcpext_dma_probe.c\n M drivers/gpu/drm/asahi/g16_drm.rs\n M drivers/gpu/drm/asahi/g16_submit.rs\n M rust/kernel/drm/sched.rs\n?? drivers/gpu/drm/apple/m4-dcpext/runtime/dcpext_boot.h\n",
+      "patch_sha256": "e9bd1a7644164558d6782b268e710307f6fb9e5099bc53a0093f89de58874792"
+    }
+  }
+}

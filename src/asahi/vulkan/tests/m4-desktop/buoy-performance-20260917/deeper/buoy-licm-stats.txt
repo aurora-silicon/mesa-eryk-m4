@@ -1,0 +1,3 @@
+Loop invariant code motion: changed
+FS shader: 68101 instrs, 58056 alu, 58056 fscib, 5010 ic, 609016 code size, 191 gprs, 66 uniforms, 0 scratch, 512 threads, 15 loops, 0:0 spills:fills, 0 preamble inst
+Compiler replay: PASS (609016 bytes)

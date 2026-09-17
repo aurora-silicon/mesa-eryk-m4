@@ -1,0 +1,50 @@
+[
+  {
+    "id": "20260917T185539014535Z-buoy-single-full-resolution",
+    "verdict": "pass"
+  },
+  {
+    "id": "20260917T185827833389Z-buoy-shader-register-stats",
+    "verdict": "pass"
+  },
+  {
+    "id": "20260917T185954791876Z-buoy-single-prefetch-profile",
+    "verdict": "pass"
+  },
+  {
+    "id": "20260917T190104322918Z-buoy-border-cost-isolation",
+    "verdict": "pass"
+  },
+  {
+    "id": "20260917T190250770674Z-buoy-minmax-cost-isolation",
+    "verdict": "pass"
+  },
+  {
+    "id": "20260917T190436989432Z-buoy-conditional-minmax",
+    "verdict": "pass"
+  },
+  {
+    "id": "20260917T190611694629Z-buoy-fixed-reference",
+    "verdict": "process_failure"
+  },
+  {
+    "id": "20260917T190954008350Z-buoy-fixed-conditional",
+    "verdict": "pass"
+  },
+  {
+    "id": "20260917T191009909992Z-buoy-minmax-oracle-regression",
+    "verdict": "pass"
+  },
+  {
+    "id": "20260917T191322487670Z-buoy-conditional-weighted-oracles",
+    "verdict": "pass"
+  },
+  {
+    "id": "20260917T191336403824Z-buoy-conditional-view-oracles",
+    "verdict": "pass"
+  },
+  {
+    "id": "20260917T191437072587Z-buoy-installed-full-resolution",
+    "verdict": "pass"
+  }
+]

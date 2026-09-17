@@ -1,0 +1,24 @@
+{
+  "libraries": {
+    "paths": [
+      {
+        "label": "probe",
+        "path": "./source.metallib"
+      }
+    ]
+  },
+  "pipelines": {
+    "render_pipelines": [
+      {
+        "vertex_function": "alias:probe#vs",
+        "raster_sample_count": 1,
+        "fragment_function": "alias:probe#main0",
+        "color_attachments": [
+          {
+            "pixel_format": "RGBA8Unorm"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "id": "20260917T185954791876Z-buoy-single-prefetch-profile",
+  "verdict": "pass",
+  "transport_returncode": 0,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T185954791876Z-buoy-single-prefetch-profile",
+  "observations": {
+    "pixel_results": [
+      "PASS: Chromium probe completed; inspect GPU diagnostics and screenshots"
+    ],
+    "pixel_result_count": 1,
+    "thermal_samples": 49,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 77.0,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 76.75,
+      "Ta000m": 69.0,
+      "Te000m": 70.75,
+      "Te001m": 68.5,
+      "Tp000m": 77.0,
+      "Tp001m": 75.0
+    }
+  }
+}

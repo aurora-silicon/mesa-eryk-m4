@@ -6671,6 +6671,22 @@ agx_compile_shader_nir_inner(nir_shader *nir, struct agx_shader_key *key,
    agx_compiler_debug = agx_get_compiler_debug();
    struct agx_shader_info *info = &out->info;
 
+   /* Native fragment shaders have no constant program yet. Descriptor and
+    * sampler emulation therefore leaves substantial repeated work across
+    * blocks. GCM shares that work before backend lowering expands addresses
+    * and filtering arithmetic. Keep an override for bounded A/B diagnosis. */
+   if (key->dev.encoding == AGX_ISA_ENCODING_AGX3B) {
+      const char *motion = debug_get_option(
+         "AGX_CODE_MOTION", nir->info.stage == MESA_SHADER_FRAGMENT ? "gcm" : "none");
+      if (!strcmp(motion, "gcm") || !strcmp(motion, "gcm-no-vn")) {
+         NIR_PASS(_, nir, nir_opt_gcm, !strcmp(motion, "gcm"));
+      } else if (!strcmp(motion, "licm")) {
+         NIR_PASS(_, nir, nir_opt_licm);
+         NIR_PASS(_, nir, nir_opt_cse);
+         NIR_PASS(_, nir, nir_opt_dce);
+      }
+   }
+
    struct util_dynarray binary = UTIL_DYNARRAY_INIT;
 
    memset(out, 0, sizeof *out);
@@ -7021,11 +7037,25 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
 {
    const char *directory = getenv("AGX_COMPILER_CAPTURE_DIR");
    const char *capture_success = getenv("AGX_COMPILER_CAPTURE_SUCCESS");
-   const bool save_success = capture_success &&
+   bool save_success = capture_success &&
       (!strcmp(capture_success, "all") ||
        (!strcmp(capture_success, "vertex") && nir->info.stage == MESA_SHADER_VERTEX) ||
        (!strcmp(capture_success, "fragment") && nir->info.stage == MESA_SHADER_FRAGMENT) ||
        (!strcmp(capture_success, "compute") && nir->info.stage == MESA_SHADER_COMPUTE));
+   /* Keep browser startup shaders from exhausting the bounded capture quota
+    * before the large shader being profiled is compiled. Failures are still
+    * captured regardless of this successful-capture filter. */
+   if (save_success) {
+      unsigned minimum = debug_get_num_option("AGX_COMPILER_CAPTURE_MIN_INSTRUCTIONS", 0);
+      unsigned instructions = 0;
+      if (minimum) {
+         nir_foreach_function_impl(impl, nir)
+            nir_foreach_block(block, impl)
+               nir_foreach_instr(instr, block)
+                  ++instructions;
+         save_success = instructions >= minimum;
+      }
+   }
    struct blob input;
    blob_init(&input);
    FILE *previous = agx_failure_ir;

@@ -1,0 +1,15 @@
+{
+  "exact_match": true,
+  "readbacks": [
+    {
+      "variant": "reference",
+      "bytes": 921600,
+      "sha256": "6fb7bedc8eaa29e2a5e0c91622b62c7650445502ce03b92d3ca8aa44a265ff7e"
+    },
+    {
+      "variant": "conditional",
+      "bytes": 921600,
+      "sha256": "6fb7bedc8eaa29e2a5e0c91622b62c7650445502ce03b92d3ca8aa44a265ff7e"
+    }
+  ]
+}

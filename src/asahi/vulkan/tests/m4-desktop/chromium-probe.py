@@ -4,6 +4,7 @@
 Software reference uses the same browser/Zink with lavapipe. Retains page and
 scanout screenshots, CDP GPU diagnostics, process renderer maps and captures.
 """
+import concurrent.futures
 import argparse, base64, hashlib, importlib.util, json, os, pwd, shutil, signal, stat, subprocess, time, urllib.request
 from pathlib import Path
 import websocket
@@ -15,6 +16,9 @@ p.add_argument('--gallium-library', type=Path, help='Private per-process Gallium
 p.add_argument('--vulkan-library', type=Path, help='Private per-process Vulkan comparison')
 p.add_argument('--user-profile', type=Path, help='Use an existing idle user profile; retain diagnostics in a separate private directory')
 p.add_argument('--lowering-capture', action='store_true')
+p.add_argument('--compiler-stats', action='store_true', help='Retain successful compiler inputs and shader register/spill statistics')
+p.add_argument('--compiler-min-instructions', type=int, default=0, help='Filter successful compiler captures by input instruction count')
+p.add_argument('--code-motion', choices=['driver','none','gcm','licm','gcm-no-vn'], default='driver', help='Private compiler optimization comparison')
 p.add_argument('--stacks', action='store_true', help='Retain bounded GPU-process stacks before cleanup')
 p.add_argument('--browser-flag',action='append',default=[])
 p.add_argument('--normal-launch',action='store_true',help='Use /usr/bin/chromium and user launcher flags instead of explicit test GPU flags')
@@ -22,8 +26,12 @@ p.add_argument('--angle',choices=['gl','gles','vulkan'],default='gl')
 p.add_argument('--ozone',choices=['wayland','x11'],default='wayland')
 p.add_argument('--capture-profile',type=Path)
 p.add_argument('--url',default='https://mdn.github.io/dom-examples/webgl-examples/tutorial/sample6/')
-p.add_argument('--observe-seconds', type=int, default=5, choices=range(1,21))
+p.add_argument('--observe-seconds', type=int, default=5, choices=range(1,601))
 p.add_argument('--start-script', type=Path, help='Retained page action before bounded observation')
+p.add_argument('--cdp-timeout', type=int, default=8, choices=range(1,31), help='Bounded browser diagnostics timeout under concurrent load')
+p.add_argument('--windows', type=int, default=1, choices=range(1,11), help='Concurrent windows of the same URL; record per-window frame progress')
+p.add_argument('--second-url', help='Open a concurrent page in a separate window')
+p.add_argument('--second-start-script', type=Path, help='Bounded action in the second window')
 p.add_argument('--page-script', type=Path, help='Retained page diagnostics; pixelsBase64 is saved as pixels.rgba')
 a=p.parse_args()
 spec=importlib.util.spec_from_file_location('fw',Path(__file__).with_name('firmware-snapshot.py'));fw=importlib.util.module_from_spec(spec);spec.loader.exec_module(fw)
@@ -51,7 +59,11 @@ for line in Path('/etc/environment.d/90-omarchy-j713-rendering.conf').read_text(
 runtime=Path('/run/user/1000');sockets=[f for f in runtime.glob('wayland-*') if stat.S_ISSOCK(f.stat().st_mode)];assert len(sockets)==1
 env.update(HOME=u.pw_dir,USER='e',LOGNAME='e',XDG_RUNTIME_DIR=str(runtime),WAYLAND_DISPLAY=sockets[0].name,DBUS_SESSION_BUS_ADDRESS=f'unix:path={runtime}/bus',VK_DRIVER_FILES='/opt/asahi-m4-port/asahi_icd.json' if a.renderer=='asahi' else '/usr/share/vulkan/icd.d/lvp_icd.json',LIBGL_ALWAYS_SOFTWARE='0' if a.renderer=='asahi' else '1',LP_NUM_THREADS='4',AGX_COMPILER_CAPTURE_DIR=str(profile/'compiler'),MESA_SHADER_CACHE_DIR=str(profile/'mesa-cache'))
 (profile/'compiler').mkdir();os.chown(profile/'compiler',u.pw_uid,u.pw_gid)
+if a.code_motion != 'driver':env['AGX_CODE_MOTION']=a.code_motion
 if a.lowering_capture:env['HK_NIR_CAPTURE_DIR']=str(profile/'compiler')
+if a.compiler_stats:
+    env.update(AGX_MESA_DEBUG='shaderdb', AGX_COMPILER_CAPTURE_SUCCESS='fragment')
+    env['AGX_COMPILER_CAPTURE_MIN_INSTRUCTIONS']=str(a.compiler_min_instructions)
 if a.gallium_library:
     assert a.gallium_library.is_file()
     (profile/'lib').mkdir();os.chown(profile/'lib',u.pw_uid,u.pw_gid)
@@ -90,17 +102,17 @@ if a.normal_launch:
          '--no-default-browser-check','--remote-debugging-port=0',a.url,*a.browser_flag]
     flags=Path(u.pw_dir)/'.config/chromium-flags.conf'
     if flags.exists():shutil.copyfile(flags,out/'chromium-flags.conf')
-manifest=dict(renderer=a.renderer,angle=a.angle,normal_launch=a.normal_launch,observe_seconds=a.observe_seconds,command=cmd,environment={k:v for k,v in env.items() if k.startswith(('VK_','GFXRECON_','MESA_','GALLIUM_','LIBGL_','LD_LIBRARY_','ASAHI_','AGX_','GBM_','__EGL_'))},boot_id=boot)
+manifest=dict(renderer=a.renderer,angle=a.angle,normal_launch=a.normal_launch,observe_seconds=a.observe_seconds,second_url=a.second_url,windows=a.windows,command=cmd,environment={k:v for k,v in env.items() if k.startswith(('VK_','GFXRECON_','MESA_','GALLIUM_','LIBGL_','LD_LIBRARY_','ASAHI_','AGX_','HK_','GBM_','__EGL_'))},boot_id=boot)
 manifest['hashes']={f:hashlib.sha256(Path(f).read_bytes()).hexdigest() for f in ['/usr/lib/chromium/chromium','/usr/lib/chromium/libEGL.so','/usr/lib/chromium/libGLESv2.so','/opt/asahi-m4-port/lib/libvulkan_asahi.so','/opt/asahi-m4-port/lib/libgallium-26.1.4.so']}
 manifest['comparison_libraries']={str(f):hashlib.sha256(f.read_bytes()).hexdigest() for f in (a.gallium_library,a.vulkan_library) if f}
 (out/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
 child=None;sessions=[];seq=0
 def call(ws,method,params=None):
     global seq
-    check();seq+=1;ws.send(json.dumps(dict(id=seq,method=method,params=params or {})))
+    check();seq+=1;request_id=seq;ws.send(json.dumps(dict(id=request_id,method=method,params=params or {})))
     while True:
         r=json.loads(ws.recv())
-        if r.get('id')==seq:
+        if r.get('id')==request_id:
             if 'error' in r:raise RuntimeError(r['error'])
             return r['result']
 def interrupt(signum,frame):raise InterruptedError(f'signal {signum}')
@@ -114,25 +126,100 @@ try:
             if child.poll() is not None or time.monotonic()>deadline:raise RuntimeError('Chromium debugging endpoint unavailable')
             time.sleep(.2)
         port,browser_path=(browser_profile/'DevToolsActivePort').read_text().splitlines()[:2]
-        ws=websocket.create_connection('ws://127.0.0.1:'+port+browser_path,timeout=8,suppress_origin=True);sessions.append(ws)
+        ws=websocket.create_connection('ws://127.0.0.1:'+port+browser_path,timeout=a.cdp_timeout,suppress_origin=True);sessions.append(ws)
         gpu=call(ws,'SystemInfo.getInfo');(out/'gpu.json').write_text(json.dumps(gpu,indent=2)+'\n')
         print('Chromium GPU:',json.dumps(gpu['gpu']['devices']),flush=True)
         tabs=json.load(urllib.request.urlopen('http://127.0.0.1:'+port+'/json/list',timeout=5))
         tab=next(t for t in tabs if t['type']=='page' and t['url']==a.url)
-        page=websocket.create_connection(tab['webSocketDebuggerUrl'],timeout=8,suppress_origin=True);sessions.append(page)
+        page=websocket.create_connection(tab['webSocketDebuggerUrl'],timeout=a.cdp_timeout,suppress_origin=True);sessions.append(page)
         call(page,'Page.bringToFront')
-        def page_script(path):
+        def page_script(path, target=None):
             source=path.read_text()
-            response=call(page,'Runtime.evaluate',{'expression':'(function(){'+source+'\n})()', 'returnByValue':True, 'awaitPromise':True})
+            response=call(target or page,'Runtime.evaluate',{'expression':'(function(){'+source+'\n})()', 'returnByValue':True, 'awaitPromise':True})
             (out/path.name).write_text(source)
             if 'exceptionDetails' in response:raise RuntimeError(response['exceptionDetails'])
             return response['result'].get('value')
         if a.start_script:
             (out/'page-start.json').write_text(json.dumps(page_script(a.start_script),indent=2)+'\n')
+        second = None
+        if a.second_url:
+            created = call(ws, 'Target.createTarget', {'url':a.second_url,'newWindow':True})
+            tabs=json.load(urllib.request.urlopen('http://127.0.0.1:'+port+'/json/list',timeout=5))
+            tab2=next(t for t in tabs if t['id']==created['targetId'])
+            second=websocket.create_connection(tab2['webSocketDebuggerUrl'],timeout=a.cdp_timeout,suppress_origin=True)
+            sessions.append(second)
+            if a.second_start_script:
+                (out/'second-start.json').write_text(json.dumps(page_script(a.second_start_script,second),indent=2)+'\n')
+        pages = [page]
+        for index in range(1, a.windows):
+            created = call(ws, 'Target.createTarget', {'url':a.url,'newWindow':True})
+            tabs=json.load(urllib.request.urlopen('http://127.0.0.1:'+port+'/json/list',timeout=5))
+            extra_tab=next(t for t in tabs if t['id']==created['targetId'])
+            extra=websocket.create_connection(extra_tab['webSocketDebuggerUrl'],timeout=a.cdp_timeout,suppress_origin=True)
+            sessions.append(extra); pages.append(extra)
+            if a.start_script:
+                (out/f'window-{index}-start.json').write_text(json.dumps(page_script(a.start_script,extra),indent=2)+'\n')
+        if a.windows>1:
+            # Dwindle repeatedly splits its last leaf, eventually reducing a
+            # browser window to a zero-height viewport. Arrange only windows
+            # owned by this probe, without changing the user's layout config.
+            hc=['runuser','-u','e','--','env','XDG_RUNTIME_DIR='+str(runtime),'hyprctl','-i','0']
+            mapping_deadline=time.monotonic()+12
+            while True:
+                check()
+                clients=json.loads(subprocess.check_output(hc+['-j','clients'],timeout=3))
+                owned=[]
+                for client in clients:
+                    try:
+                        argv=Path('/proc',str(client['pid']),'cmdline').read_bytes()
+                        if ('--user-data-dir='+str(browser_profile)).encode() in argv: owned.append(client)
+                    except OSError: pass
+                if len(owned)==a.windows+(1 if second else 0): break
+                assert time.monotonic()<mapping_deadline, ('Not all owned browser windows mapped', len(owned))
+                time.sleep(.2)
+            mon=next(m for m in json.loads(subprocess.check_output(hc+['-j','monitors'],timeout=3)) if m['focused'])
+            cols=min(4,len(owned)); rows=(len(owned)+cols-1)//cols
+            width=int(mon['width']/mon['scale'])//cols
+            height=(int(mon['height']/mon['scale'])-40)//rows
+            for index,client in enumerate(owned):
+                selector=json.dumps('address:'+client['address'])
+                for action in [f'hl.dsp.window.float({{action="set",window={selector}}})',
+                    f'hl.dsp.window.resize({{x={width-12},y={height-12},window={selector}}})',
+                    f'hl.dsp.window.move({{x={mon["x"]+(index%cols)*width+6},y={mon["y"]+40+(index//cols)*height},window={selector}}})']:
+                    subprocess.run(hc+['dispatch',action],check=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,timeout=3)
+            (out/'window-layout.json').write_bytes(subprocess.check_output(hc+['-j','clients'],timeout=3))
         until=time.monotonic()+a.observe_seconds
-        while time.monotonic()<until:check();time.sleep(.2)
+        next_sample=0
+        def sample_window(item):
+            index,target=item
+            try:
+                value=call(target, 'Runtime.evaluate', {'expression':'({visibility:document.visibilityState,probe:JSON.parse(document.documentElement.dataset.m4Probe||"null")})','returnByValue':True})
+                return dict(monotonic=time.monotonic(),window=index,state=value)
+            except websocket.WebSocketTimeoutException as error:
+                return dict(monotonic=time.monotonic(),window=index,diagnostic_timeout=str(error))
+        with (out/'window-progress.jsonl').open('w') as progress, concurrent.futures.ThreadPoolExecutor(max_workers=a.windows) as pool:
+            while time.monotonic()<until:
+                check()
+                if time.monotonic()>=next_sample:
+                    for row in pool.map(sample_window,enumerate(pages)):
+                        progress.write(json.dumps(row)+'\n'); progress.flush()
+                    next_sample=time.monotonic()+5
+                time.sleep(.2)
+        if a.windows>1:
+            rows=[json.loads(line) for line in (out/'window-progress.jsonl').read_text().splitlines()]
+            for index in range(a.windows):
+                samples=[r for r in rows if r['window']==index and 'state' in r]
+                assert samples and time.monotonic()-samples[-1]['monotonic']<45, f'Window {index} stopped responding'
+                states=[r['state']['result'].get('value',{}) for r in samples]
+                states=[state for state in states if state.get('probe') and state['probe'].get('ready')]
+                assert len(states)>1 and all(s['probe'] and s['probe'].get('ready') and not s['probe'].get('error') and not s['probe'].get('glError') for s in states), f'Window {index} failed'
+                assert states[-1]['visibility']=='visible' and states[-1]['probe']['frames']>states[0]['probe']['frames']+10, f'Window {index} did not animate'
+
         state=call(page,'Runtime.evaluate',{'expression':'JSON.stringify({url:location.href,title:document.title,ready:document.readyState,visibility:document.visibilityState,probe:JSON.parse(document.documentElement.dataset.m4Probe||"null"),canvases:Array.from(document.querySelectorAll("canvas")).map(c=>({width:c.width,height:c.height}))})','returnByValue':True})
         (out/'page.json').write_text(json.dumps(state,indent=2)+'\n')
+        if second:
+            state2=call(second,'Runtime.evaluate',{'expression':'JSON.stringify({url:location.href,title:document.title,visibility:document.visibilityState,probe:JSON.parse(document.documentElement.dataset.m4Probe||"null"),canvases:Array.from(document.querySelectorAll("canvas")).map(c=>({width:c.width,height:c.height}))})','returnByValue':True})
+            (out/'second-page.json').write_text(json.dumps(state2,indent=2)+'\n')
         webgl=call(page,'Runtime.evaluate',{'expression':"""new Promise(resolve => {
           const timeout=setTimeout(() => resolve({animationFrameTimeout:true,visibility:document.visibilityState}),3000);
           requestAnimationFrame(() => { clearTimeout(timeout);
