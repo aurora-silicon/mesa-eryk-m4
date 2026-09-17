@@ -724,6 +724,10 @@ VK_FN(vkCmdDraw);
 VK_FN(vkCmdEndRenderPass);
 #if G17P_HOST_IMAGE_COPY
 VK_FN(vkCopyImageToMemoryEXT);
+#if M3_FIRST_TRIANGLE
+VK_FN(vkCopyMemoryToImageEXT);
+VK_FN(vkTransitionImageLayoutEXT);
+#endif
 #else
 VK_FN(vkCmdCopyImageToBuffer);
 #ifdef M4_UPLOAD_SUBRECT
@@ -1137,6 +1141,10 @@ main(void)
    LOAD_DEVICE(device, vkCmdEndRenderPass);
 #if G17P_HOST_IMAGE_COPY
    LOAD_DEVICE(device, vkCopyImageToMemoryEXT);
+#if M3_FIRST_TRIANGLE
+   LOAD_DEVICE(device, vkCopyMemoryToImageEXT);
+   LOAD_DEVICE(device, vkTransitionImageLayoutEXT);
+#endif
 #else
    LOAD_DEVICE(device, vkCmdCopyImageToBuffer);
 #ifdef M4_UPLOAD_SUBRECT
@@ -1659,6 +1667,53 @@ main(void)
          die("ASAHI_TEST_REPEAT must be 1..1000 (bounded test workload)");
       repeats = value;
    }
+#if M3_FIRST_TRIANGLE
+   uint64_t checksum = 0;
+   for (unsigned iteration = 0; iteration < repeats; ++iteration) {
+      if (iteration) {
+         vkDestroyFence(device, fence, NULL);
+         check(vkCreateFence(device, &fence_info, NULL, &fence), "vkCreateFence repeat");
+      }
+      /* Poison through Vulkan before every draw, and read the poison back.
+       * A stale image from an earlier successful draw cannot pass. */
+      const VkHostImageLayoutTransitionInfoEXT transition = {
+         .sType = VK_STRUCTURE_TYPE_HOST_IMAGE_LAYOUT_TRANSITION_INFO_EXT,
+         .image = image,
+         .oldLayout = iteration ? VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL : VK_IMAGE_LAYOUT_UNDEFINED,
+         .newLayout = VK_IMAGE_LAYOUT_GENERAL,
+         .subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1},
+      };
+      check(vkTransitionImageLayoutEXT(device, 1, &transition), "host layout transition");
+      uint8_t poison[IMAGE_BYTES];
+      memset(poison, 0xa5, sizeof(poison));
+      const VkMemoryToImageCopyEXT upload_region = {
+         .sType = VK_STRUCTURE_TYPE_MEMORY_TO_IMAGE_COPY_EXT,
+         .pHostPointer = poison,
+         .imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1},
+         .imageExtent = {IMAGE_WIDTH, IMAGE_HEIGHT, 1},
+      };
+      const VkCopyMemoryToImageInfoEXT upload = {
+         .sType = VK_STRUCTURE_TYPE_COPY_MEMORY_TO_IMAGE_INFO_EXT,
+         .dstImage = image, .dstImageLayout = VK_IMAGE_LAYOUT_GENERAL,
+         .regionCount = 1, .pRegions = &upload_region,
+      };
+      check(vkCopyMemoryToImageEXT(device, &upload), "poison image");
+      const VkImageToMemoryCopyEXT poison_region = {
+         .sType = VK_STRUCTURE_TYPE_IMAGE_TO_MEMORY_COPY_EXT,
+         .pHostPointer = readback_map,
+         .imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1},
+         .imageExtent = {IMAGE_WIDTH, IMAGE_HEIGHT, 1},
+      };
+      const VkCopyImageToMemoryInfoEXT poison_read = {
+         .sType = VK_STRUCTURE_TYPE_COPY_IMAGE_TO_MEMORY_INFO_EXT,
+         .srcImage = image, .srcImageLayout = VK_IMAGE_LAYOUT_GENERAL,
+         .regionCount = 1, .pRegions = &poison_region,
+      };
+      memset(readback_map, 0x5a, IMAGE_BYTES);
+      check(vkCopyImageToMemoryEXT(device, &poison_read), "verify poison");
+      if (memcmp(readback_map, poison, IMAGE_BYTES)) die("image poison did not take effect");
+      memset(readback_map, 0x5a, IMAGE_BYTES);
+#else
    for (unsigned iteration = 1; iteration < repeats; ++iteration) {
       VkFence iteration_fence;
       check(vkCreateFence(device, &fence_info, NULL, &iteration_fence), "vkCreateFence repeat");
@@ -1666,6 +1721,7 @@ main(void)
       check(vkWaitForFences(device, 1, &iteration_fence, true, UINT64_C(5000000000)), "vkWaitForFences repeat");
       vkDestroyFence(device, iteration_fence, NULL);
    }
+#endif
    check(vkQueueSubmit(queue, 1, &submit, fence), "vkQueueSubmit");
 #if G17P_F16_IO || G17P_RG16_UNORM || G17P_RGBA16_UNORM ||            \
    G17P_RG16_SNORM || G17P_R32_UINT || G17P_R32_SFLOAT ||             \
@@ -1689,7 +1745,9 @@ main(void)
          "vkWaitForFences");
 #endif
 
+#if !M3_FIRST_TRIANGLE
    printf(PROBE_NAME ": retired %u submissions\n", repeats);
+#endif
 #if G17P_MSAA_SAMPLES > 1
    if (getenv("ASAHI_TEST_RAW_MSAA")) {
       /* Diagnostic only: inspect the opaque optimal image allocation after
@@ -1748,8 +1806,16 @@ main(void)
    if (!verify_readback(readback_map))
       return EXIT_FAILURE;
 #endif
+#if M3_FIRST_TRIANGLE
+      checksum = fnv1a64(readback_map, IMAGE_BYTES);
+      printf("M3_DRAW {\"draw\":%u,\"pixels_match\":true,\"poison_verified\":true,\"checksum\":\"%016" PRIx64 "\"}\n", iteration + 1, checksum);
+      fflush(stdout);
+   }
+   printf(PROBE_NAME ": retired and verified %u consecutive submissions\n", repeats);
+#else
    const uint64_t checksum =
       fnv1a64(readback_map + READBACK_GUARD_BYTES, IMAGE_BYTES);
+#endif
 #if G17P_RGBA16_SINT
    printf(PROBE_NAME ": PASS — %ux%u RGBA16 SINT exact immediately/3s, "
                      "128 guard bytes unchanged, checksum %016" PRIx64 "\n",
