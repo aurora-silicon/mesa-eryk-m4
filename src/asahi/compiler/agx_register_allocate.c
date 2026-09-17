@@ -1740,7 +1740,9 @@ agx_ra(agx_context *ctx)
           I->op == AGX_OPCODE_TEXTURE_SAMPLE && I->nr_srcs > 5 && I->offset &&
           I->src[5].type == AGX_INDEX_NORMAL &&
           (I->lod_mode == AGX_LOD_MODE_AUTO_LOD_BIAS_MIN ||
-           I->lod_mode == AGX_LOD_MODE_LOD_GRAD_MIN))
+           I->lod_mode == AGX_LOD_MODE_LOD_GRAD_MIN ||
+           (I->dim == AGX_DIM_2D_ARRAY &&
+            I->lod_mode == AGX_LOD_MODE_LOD_GRAD)))
          BITSET_SET(tex_low128, I->src[5].value);
 
       /* Record collects/phis so we can coalesce when assigning */

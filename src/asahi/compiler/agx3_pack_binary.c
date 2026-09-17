@@ -1205,6 +1205,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
 
    const bool array_lod = (array || (cube && !min_lod)) && (explicit_lod || bias) &&
                           (!immediate_lod || dynamic_offset);
+   const bool array_gradient_offset = array && gradient && dynamic_offset && !min_lod;
    /* Cube-array LOD queries publish only the face (native fscubearr). */
    const bool cube_array_lod = cube && array && array_lod && !I->query_lod;
    if (min_lod && !register_min) {
@@ -1229,7 +1230,14 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
          AGX3_TEX_REFUSE();
       wait_mask = 0;
    }
-   if (dynamic_offset && (!min_lod || register_min || (array && !gradient))) {
+   if (array_gradient_offset) {
+      if (!agx3_tex_stage_array_layer_offset(enc, I->src[0].value + 4,
+             I->src[5].value + (shadow ? 2 : 0), stage_slot, wait_mask,
+             I->src[0].discard, bytes, &len) ||
+          !agx3_append(emission, bytes, len))
+         AGX3_TEX_REFUSE();
+      wait_mask = 0;
+   } else if (dynamic_offset && (!min_lod || register_min || (array && !gradient))) {
       if (!agx3_tex_stage_copy_hints(enc, 6, I->src[5].value + (shadow ? 2 : 0),
                                     stage_slot, wait_mask,
                                     I->src[5].cache, I->src[5].discard, bytes, &len) ||
@@ -1287,7 +1295,8 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
 
    /* Cube LOD queries publish the projected face (native fscube/fscubearr
     * witnesses); 2D-array queries keep the implicit layer zero instead. */
-   if ((array || cube) && !array_lod && !(min_lod && (cube || (gradient && array))) &&
+   if ((array || cube) && !array_lod && !array_gradient_offset &&
+       !(min_lod && (cube || (gradient && array))) &&
        (I->query_lod ? cube : !(array && cube)) &&
        (!(I->query_lod ? agx3_tex_stage_cube_face : agx3_tex_stage_array_layer)(
            enc, I->src[0].value + 4, stage_slot, 0,

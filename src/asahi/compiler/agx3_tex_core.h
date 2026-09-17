@@ -244,7 +244,12 @@ bool agx3_tex_stage_cube_face(enum agx_isa_encoding enc, uint16_t src,
 bool agx3_tex_stage_array_layer(enum agx_isa_encoding enc, uint16_t src,
                                 uint8_t slot, uint16_t wait_mask,
                                 bool src_cache, bool src_discard,
-                                uint8_t out[AGX3_TEX_MAX_LENGTH], uint8_t *len);
+                               uint8_t out[AGX3_TEX_MAX_LENGTH], uint8_t *len);
+
+bool agx3_tex_stage_array_layer_offset(enum agx_isa_encoding enc, uint16_t src,
+                                      uint16_t offset, uint8_t slot,
+                                      uint16_t wait_mask, bool src_discard,
+                                      uint8_t out[AGX3_TEX_MAX_LENGTH], uint8_t *len);
 
 bool agx3_tex_encode_sample(enum agx_isa_encoding enc,
                             const struct agx3_tex_sample_desc *d,

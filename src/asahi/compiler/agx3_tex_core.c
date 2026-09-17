@@ -905,7 +905,7 @@ agx3_tex_stage_fetch_lod(enum agx_isa_encoding enc, uint16_t src, bool uniform,
 static bool
 stage_layer_or_face(enum agx_isa_encoding enc, uint16_t src,
                     uint8_t slot, uint16_t wait_mask, bool src_cache,
-                    bool src_discard, bool cube_face,
+                    bool src_discard, bool cube_face, uint16_t packed_base,
                     uint8_t out[AGX3_TEX_MAX_LENGTH], uint8_t *len)
 {
    if (!out || !len)
@@ -913,7 +913,8 @@ stage_layer_or_face(enum agx_isa_encoding enc, uint16_t src,
    memset(out, 0, AGX3_TEX_MAX_LENGTH);
    *len = 0;
    if (enc != AGX_ISA_ENCODING_AGX3B || src >= 256 || slot < 1 || slot > 6 ||
-       (wait_mask & ~0x3f) || (src_cache && src_discard))
+       (wait_mask & ~0x3f) || (src_cache && src_discard) ||
+       (packed_base != UINT16_MAX && packed_base >= 128))
       return false;
 
    /* f74=10 is the cube-face selector of the register-level cube packs;
@@ -921,7 +922,9 @@ stage_layer_or_face(enum agx_isa_encoding enc, uint16_t src,
     * (lod-query.metal fscube: 1705540600040004f0c00000). */
    const struct agx3_field_kv base[] = {
       KV(5, 6), KV(9, 5), KV(10, 2), KV(23, 2), KV(24, 1),
-      KV(38, 1), KV(51, 1), KV(52, 2), KV(74, cube_face ? 10 : 4),
+      KV(38, 1), KV(51, packed_base == UINT16_MAX ? 1 : 2), KV(52, 2),
+      KV(44, packed_base == UINT16_MAX ? 0 : packed_base),
+      KV(74, cube_face ? 10 : 4),
    };
    struct agx3_field_kv ov[10];
    unsigned n = 0;
@@ -947,7 +950,20 @@ agx3_tex_stage_array_layer(enum agx_isa_encoding enc, uint16_t src,
                            uint8_t out[AGX3_TEX_MAX_LENGTH], uint8_t *len)
 {
    return stage_layer_or_face(enc, src, slot, wait_mask, src_cache,
-                              src_discard, false, out, len);
+                              src_discard, false, UINT16_MAX, out, len);
+}
+
+bool
+agx3_tex_stage_array_layer_offset(enum agx_isa_encoding enc, uint16_t src,
+                                  uint16_t offset, uint8_t slot,
+                                  uint16_t wait_mask, bool src_discard,
+                                  uint8_t out[AGX3_TEX_MAX_LENGTH], uint8_t *len)
+{
+   /* The layer occupies the low 12 bits, offsets bits 12..15 and 28..31.
+    * Preserve the packed offsets through PACK_SMPIR's base operand instead
+    * of publishing two overwriting values to staging bank 6. */
+   return stage_layer_or_face(enc, src, slot, wait_mask, false,
+                              src_discard, false, offset, out, len);
 }
 
 bool
@@ -957,7 +973,7 @@ agx3_tex_stage_cube_face(enum agx_isa_encoding enc, uint16_t src,
                          uint8_t out[AGX3_TEX_MAX_LENGTH], uint8_t *len)
 {
    return stage_layer_or_face(enc, src, slot, wait_mask, src_cache,
-                              src_discard, true, out, len);
+                              src_discard, true, UINT16_MAX, out, len);
 }
 
 /* AIR-NT 32023.883 G16G texture2d_array.sample(level(v.w)) packs the
