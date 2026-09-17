@@ -528,3 +528,44 @@ execution remains refused; the M4 watchdog/thermal workflow is unchanged.
 M5 first-attempt MoltenVK/KosmicKrisp evidence is versioned under
 `tests/m4-desktop/cts-m5-trim-20260915/`. On macOS use `DEQP_TARGET=osx`;
 unrelated Vulkan video tests are disabled on that platform.
+
+## Full same-build retest (2026-09-17)
+
+`cts-retest.py --output CAMPAIGN --binary REMOTE_CTS --run` drives consecutive 10,000-case
+segments from the pinned 3,206,030-case catalog via the existing bulk guards.
+It imports earlier segment results, pins installed Vulkan/Gallium/kernel-module,
+CTS and runner hashes, and never reruns terminal outcomes. It stops for explicit
+operator review after a fatal/incomplete segment. Record the reason with
+`--review RUN_DIRECTORY=REASON`; only uncompleted indices are resumed.
+This is an evidence-collection workflow, not a driver or CTS repair loop.
+
+`progress.json` records coverage/counts; `failures.tsv` includes every terminal
+outcome other than Pass or ordinary NotSupported, with original global index
+and source evidence. `results.sqlite3` indexes all outcomes; segment JSON/QPA
+retains original attempts and interrupted work. Guard-incomplete runs must be
+reported as such even if they contain completed CTS Pass records. A clean
+reboot does not retrospectively qualify a run whose final guard result was lost.
+
+Completed evidence is checksum-synced to the host before rsync removes the
+corresponding target files. Host evidence and all failure logs remain intact.
+
+`cts-bulk.py --headless --jobs 1` starts a private compositor using
+`cts-headless.py` inside the same watchdog/thermal lease. The output must be
+1024x1024@1000; its environment and logs are retained. All children remain in
+the outer guard's process group, and the wrapper cleans up on normal exit or
+signals. The retest uses this for WSI segments (100 cases maximum), ensuring
+one worker per compositor. X11 cases require that compositor's own Xwayland;
+missing startup is infrastructure failure, never an unsupported test result.
+
+A separate preparatory colorspace.basic run passed in 50.2 seconds with the
+September 17 compiler build. It qualifies the harness, not an extra catalog
+completion. The 60-second case deadline is unchanged.
+
+The CTS executable must now be selected explicitly with `--binary`. For a
+regression comparison, use the exact previously qualified executable. Original
+release CTS and locally corrected CTS are different baselines; do not call
+failures caused by switching between them GPU regressions. This requirement
+was added after all 348 scaled-blit failures in the September 17 original-CTS
+retest passed with the existing corrected CTS and unchanged GPU driver.
+The private Xwayland startup selection has not yet received a dedicated X11
+qualification; the headless qualification above is Wayland only.

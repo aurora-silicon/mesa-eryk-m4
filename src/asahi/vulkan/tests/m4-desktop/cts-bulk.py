@@ -30,9 +30,12 @@ p.add_argument('--log-images', action='store_true', help='Retain reference/resul
 p.add_argument('--capture-success', action='store_true', help='Capture successful compiler inputs for offline diagnosis')
 p.add_argument('--capture-before', action='store_true', help='Save compiler inputs before compilation to diagnose assertions')
 p.add_argument('--log-sources', action='store_true', help='Retain CTS shader source in targeted runs')
+p.add_argument('--headless', action='store_true', help='Private 1000 Hz compositor for one WSI worker')
 p.add_argument('--env', action='append', metavar='KEY=VALUE', default=[],
                help='Recorded driver environment override passed to the remote runner')
 a = p.parse_args()
+if a.headless and a.jobs != 1:
+    p.error('--headless requires --jobs 1 (one worker per compositor)')
 if not re.fullmatch('[a-z0-9][a-z0-9-]*', a.name) or a.jobs < 1 or a.tests_per_group < 1 or not 1 <= a.runner_seconds <= 1700:
     p.error('invalid name or bounds')
 raw = a.cases.read_bytes()
@@ -63,6 +66,9 @@ with (a.output/'stage.log').open('w') as log:
         subprocess.run(['ssh', host, 'rm -f '+shlex.quote(remote+'/cases.meta.json')], check=True, stdout=log, stderr=subprocess.STDOUT)
     subprocess.run(['scp', str(ROOT/'tools/cts-sample.py'), str(ROOT/'tools/cts_deqp_backend.py'),
                     host+':'+remote+'/'], check=True, stdout=log, stderr=subprocess.STDOUT)
+    if a.headless:
+        subprocess.run(['scp', str(ROOT/'tools/cts-headless.py'), host+':'+remote+'/'],
+                       check=True, stdout=log, stderr=subprocess.STDOUT)
 preparation_seconds = time.monotonic()-prep
 command = [sys.executable, str(ROOT/'tools/gpu-experiment.py'), '--name', a.name,
     '--hypothesis', 'Measure frozen CTS cases with grouped first-attempt execution',
@@ -78,6 +84,10 @@ for option in ('log_images', 'log_sources', 'capture_success', 'capture_before')
         command.append('--' + option.replace('_', '-'))
 for item in a.env:
     command += ['--env', item]
+if a.headless:
+    separator = command.index('--') + 1
+    command[separator:separator] = ['python3', remote+'/cts-headless.py',
+                                  '--guard-output', '{output}', '--']
 begin = time.monotonic()
 with (a.output/'experiment.log').open('w') as log:
     rc = subprocess.run(command, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT).returncode
