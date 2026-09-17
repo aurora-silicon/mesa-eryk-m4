@@ -1,0 +1,265 @@
+{
+  "selected": 10000,
+  "recorded": 10000,
+  "counts": {
+    "NotSupported": 5114,
+    "Pass": 4886
+  },
+  "runner_seconds": 599.624411591999,
+  "elapsed_seconds": 670.4305400730227,
+  "segments": [
+    {
+      "selected": 1000,
+      "recorded": 1000,
+      "completed": 1000,
+      "counts": {
+        "NotSupported": 505,
+        "Pass": 495
+      },
+      "classifications": {
+        "unclassified": 1000
+      },
+      "elapsed_seconds": 58.77770054503344,
+      "preparation_seconds": 1.5387841960182413,
+      "runner_seconds": 53.76787717700017,
+      "jobs": 4,
+      "tests_per_group": 10,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "1dec26bdb0a05a76a2dafe62040ce0148a2caaff905717fd7230b8f957ba304b",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T213510809803Z-buoy-version-10k-01",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 63.0
+    },
+    {
+      "selected": 1000,
+      "recorded": 1000,
+      "completed": 1000,
+      "counts": {
+        "Pass": 485,
+        "NotSupported": 515
+      },
+      "classifications": {
+        "unclassified": 1000
+      },
+      "elapsed_seconds": 66.11735086300177,
+      "preparation_seconds": 1.530897143005859,
+      "runner_seconds": 61.45169027699967,
+      "jobs": 4,
+      "tests_per_group": 10,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "c4f3925e82fcbd8a7a98356d67d43d5fc065ed12507b3353df0cd04b51478625",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T213611182985Z-buoy-version-10k-02",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 64.5
+    },
+    {
+      "selected": 1000,
+      "recorded": 1000,
+      "completed": 1000,
+      "counts": {
+        "NotSupported": 520,
+        "Pass": 480
+      },
+      "classifications": {
+        "unclassified": 1000
+      },
+      "elapsed_seconds": 57.994634979986586,
+      "preparation_seconds": 1.5883978949859738,
+      "runner_seconds": 53.77271479199999,
+      "jobs": 4,
+      "tests_per_group": 10,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "308db1a89f51eec91e6f075891467b1fa8b80c1adf6c9cb44ec9144232e9e660",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T213718947747Z-buoy-version-10k-03",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 62.75
+    },
+    {
+      "selected": 1000,
+      "recorded": 1000,
+      "completed": 1000,
+      "counts": {
+        "Pass": 491,
+        "NotSupported": 509
+      },
+      "classifications": {
+        "unclassified": 1000
+      },
+      "elapsed_seconds": 77.82026564498665,
+      "preparation_seconds": 1.598888223990798,
+      "runner_seconds": 72.94307748099982,
+      "jobs": 4,
+      "tests_per_group": 10,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "20d006207f78d9b1357fedad0a533656e043f77324ea76537162f5d2843d11d4",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T213818622377Z-buoy-version-10k-04",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 65.75
+    },
+    {
+      "selected": 1000,
+      "recorded": 1000,
+      "completed": 1000,
+      "counts": {
+        "Pass": 502,
+        "NotSupported": 498
+      },
+      "classifications": {
+        "unclassified": 1000
+      },
+      "elapsed_seconds": 68.76526761095738,
+      "preparation_seconds": 1.6360761289834045,
+      "runner_seconds": 63.82725494399983,
+      "jobs": 4,
+      "tests_per_group": 10,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "81132fd048047710c65dac2cd63eb666ebe301a600c31c2cf0eeda896f61f3b8",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T213938213662Z-buoy-version-10k-05",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 64.75
+    },
+    {
+      "selected": 1000,
+      "recorded": 1000,
+      "completed": 1000,
+      "counts": {
+        "NotSupported": 494,
+        "Pass": 506
+      },
+      "classifications": {
+        "unclassified": 1000
+      },
+      "elapsed_seconds": 64.14513267495204,
+      "preparation_seconds": 1.4449047210509889,
+      "runner_seconds": 59.192739763999725,
+      "jobs": 4,
+      "tests_per_group": 10,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "c0929668547213b7f593082e3bb08616b78eddfa735321ccba522f39fc7fba67",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T214048493062Z-buoy-version-10k-06",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 63.0
+    },
+    {
+      "selected": 1000,
+      "recorded": 1000,
+      "completed": 1000,
+      "counts": {
+        "NotSupported": 520,
+        "Pass": 480
+      },
+      "classifications": {
+        "unclassified": 1000
+      },
+      "elapsed_seconds": 57.30077979102498,
+      "preparation_seconds": 1.6139693839941174,
+      "runner_seconds": 52.15812932499966,
+      "jobs": 4,
+      "tests_per_group": 10,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "21179844d4dcc5777098db326b3229be430923aded7aa371732e476c71b28b65",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T214154396949Z-buoy-version-10k-07",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 63.75
+    },
+    {
+      "selected": 1000,
+      "recorded": 1000,
+      "completed": 1000,
+      "counts": {
+        "Pass": 505,
+        "NotSupported": 495
+      },
+      "classifications": {
+        "unclassified": 1000
+      },
+      "elapsed_seconds": 63.33334928797558,
+      "preparation_seconds": 1.6196074159815907,
+      "runner_seconds": 58.19641284100044,
+      "jobs": 4,
+      "tests_per_group": 10,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "1458473f63c5b80209c5e1caaed87c6d4c1052e6ac053d703443c4f1c1fde5e1",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T214253364934Z-buoy-version-10k-08",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 64.5
+    },
+    {
+      "selected": 1000,
+      "recorded": 1000,
+      "completed": 1000,
+      "counts": {
+        "NotSupported": 525,
+        "Pass": 475
+      },
+      "classifications": {
+        "unclassified": 1000
+      },
+      "elapsed_seconds": 61.6553362160339,
+      "preparation_seconds": 1.5697650770307519,
+      "runner_seconds": 56.69190260200003,
+      "jobs": 4,
+      "tests_per_group": 10,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "fdd6000ab79be83ae6a944e8889512728c5a6380fd8c3a9db8d77d9116ca0b96",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T214358345071Z-buoy-version-10k-09",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 65.5
+    },
+    {
+      "selected": 909,
+      "recorded": 909,
+      "completed": 909,
+      "counts": {
+        "NotSupported": 443,
+        "Pass": 466
+      },
+      "classifications": {
+        "unclassified": 909
+      },
+      "elapsed_seconds": 51.824335355020594,
+      "preparation_seconds": 1.5991451630252413,
+      "runner_seconds": 48.51926248799964,
+      "jobs": 4,
+      "tests_per_group": 10,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "f4d2b6f3068f07d52ff3b7b560beb5f2dd413ec362eeb55bc2593eae5bdba632",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T214501679720Z-buoy-version-10k-10",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 63.75
+    },
+    {
+      "selected": 91,
+      "recorded": 91,
+      "completed": 91,
+      "counts": {
+        "NotSupported": 90,
+        "Pass": 1
+      },
+      "classifications": {
+        "unclassified": 91
+      },
+      "elapsed_seconds": 24.276088468031958,
+      "preparation_seconds": 1.7472752230241895,
+      "runner_seconds": 19.103349901,
+      "jobs": 1,
+      "tests_per_group": 1,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "af8686adb4286152cd112a8f7938b6b73c892bf6afbd1dcaa101b435f5e630d4",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T214555337399Z-buoy-version-10k-wsi",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 61.25
+    }
+  ]
+}

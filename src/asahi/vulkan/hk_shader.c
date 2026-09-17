@@ -1851,7 +1851,7 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
    }
 
    if (dev->dev.chip == AGX_CHIP_G16G &&
-       debug_get_bool_option("HK_M4_VERSION_SAMPLES", false)) {
+       debug_get_bool_option("HK_M4_VERSION_SAMPLES", true)) {
       nir_variable *sampler = hk_nir_sample_version_candidate(nir);
       if (sampler && sampler->data.descriptor_set < set_layout_count &&
           set_layouts[sampler->data.descriptor_set]) {
