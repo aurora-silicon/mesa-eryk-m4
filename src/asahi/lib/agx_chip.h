@@ -148,7 +148,9 @@ enum agx_submission_model {
 static inline bool
 agx_chip_uses_hal200_ioto(enum agx_chip chip)
 {
-   return chip == AGX_CHIP_G16G || chip == AGX_CHIP_G17P;
+   /* G15S uses the same IOTO/AGX3b shader loading convention. Its kernel
+    * firmware ABI remains distinct and its device admission is opt-in. */
+   return chip == AGX_CHIP_G15S || chip == AGX_CHIP_G16G || chip == AGX_CHIP_G17P;
 }
 
 #ifdef __cplusplus

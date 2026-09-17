@@ -1099,8 +1099,7 @@ hk_dispatch_with_local_size(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
       return;
 
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
-   if (agx_chip_command_stream_generation(dev->dev.chip) ==
-       AGX_CS_GENERATION_HAL200) {
+   if (agx_chip_uses_hal200_ioto(dev->dev.chip)) {
       hk_reserve_scratch(cmd, cs, s);
       hk_dispatch_g17p_native(cmd, cs, s, grid, local_size);
       return;

@@ -905,7 +905,17 @@ hk_agx3_g17p_compute_program_generate(
 
    struct hk_agx3_g17p_compute_program staged = {0};
    size_t written = 0;
-   if (desc->uniform_range_count == 0) {
+   if (chip == AGX_CHIP_G15S && desc->uniform_range_count == 0) {
+      /* The qualified RTKit 2419 M3 compute launch loads the body and
+       * terminates, without the newer default-profile protocol. Bound this
+       * initial form to the register-only shader footprint witnessed there.
+       */
+      if (desc->scratch_size || desc->threadgroup_memory_size_B || desc->nr_gprs > 8)
+         return false;
+      memcpy(staged.bytes, tail.bytes + AGX_IOTO_SPECLM_SIZE, AGX_IOTO_LDSHDR_SIZE);
+      staged.bytes[AGX_IOTO_LDSHDR_SIZE] = 0x0e;
+      written = AGX_IOTO_LDSHDR_SIZE + 4;
+   } else if (desc->uniform_range_count == 0) {
       if (!agx_ioto_g17p_no_resource_program_compose(
              desc->program_va, &tail, staged.bytes, sizeof(staged.bytes),
              &written))

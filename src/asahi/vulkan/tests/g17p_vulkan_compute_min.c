@@ -18,7 +18,11 @@
 #include <string.h>
 #include <unistd.h>
 
-#if defined(M4_COMPARE_HALF)
+#if defined(M3_BDA)
+#include "m3_vulkan_bda_spv.h"
+#define COMPUTE_SPV m3_vulkan_bda_spv
+#define TEST_NAME "m3-vulkan-bda"
+#elif defined(M4_COMPARE_HALF)
 #include "m4_vulkan_compare_half_spv.h"
 #define COMPUTE_SPV m4_vulkan_compare_half_spv
 #define TEST_NAME "m4-vulkan-compare-half"
@@ -71,7 +75,11 @@
 #ifndef TEST_DEVICE_ID
 #define TEST_DEVICE_ID 0x8140
 #endif
-#define ELEMENT_COUNT   32
+#ifdef M3_BDA
+#define ELEMENT_COUNT 1
+#else
+#define ELEMENT_COUNT 32
+#endif
 #ifdef G17P_NULL_DESCRIPTOR
 #define GUARD_COUNT 32
 #else
@@ -97,6 +105,9 @@ VK_FN(vkCreateDevice);
 VK_FN(vkDestroyDevice);
 VK_FN(vkGetDeviceQueue);
 VK_FN(vkCreateBuffer);
+#ifdef M3_BDA
+VK_FN(vkGetBufferDeviceAddress);
+#endif
 VK_FN(vkDestroyBuffer);
 VK_FN(vkGetBufferMemoryRequirements);
 VK_FN(vkAllocateMemory);
@@ -172,6 +183,9 @@ find_memory_type(const VkPhysicalDeviceMemoryProperties *properties,
                  uint32_t allowed, VkMemoryPropertyFlags required)
 {
    for (uint32_t i = 0; i < properties->memoryTypeCount; ++i) {
+      if (getenv("M3_TEST_UNCACHED") &&
+          (properties->memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_HOST_CACHED_BIT))
+         continue;
       if ((allowed & (1u << i)) &&
           (properties->memoryTypes[i].propertyFlags & required) == required)
          return i;
@@ -204,7 +218,11 @@ main(int argc, char **argv)
       .applicationVersion = 1,
       .pEngineName = "none",
       .engineVersion = 1,
+#ifdef M3_BDA
+      .apiVersion = VK_API_VERSION_1_2,
+#else
       .apiVersion = VK_API_VERSION_1_1,
+#endif
    };
    const VkInstanceCreateInfo instance_info = {
       .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
@@ -313,6 +331,12 @@ main(int argc, char **argv)
 #endif
    const VkDeviceCreateInfo device_info = {
       .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+#ifdef M3_BDA
+      .pNext = &(VkPhysicalDeviceVulkan12Features){
+         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
+         .bufferDeviceAddress = VK_TRUE,
+      },
+#endif
 #ifdef M4_HALF_ARITHMETIC
       .pEnabledFeatures = &(VkPhysicalDeviceFeatures){.shaderInt16 = VK_TRUE},
 #endif
@@ -335,6 +359,9 @@ main(int argc, char **argv)
    LOAD_DEVICE(device, vkDestroyDevice);
    LOAD_DEVICE(device, vkGetDeviceQueue);
    LOAD_DEVICE(device, vkCreateBuffer);
+#ifdef M3_BDA
+   LOAD_DEVICE(device, vkGetBufferDeviceAddress);
+#endif
    LOAD_DEVICE(device, vkDestroyBuffer);
    LOAD_DEVICE(device, vkGetBufferMemoryRequirements);
    LOAD_DEVICE(device, vkAllocateMemory);
@@ -377,7 +404,11 @@ main(int argc, char **argv)
    const VkBufferCreateInfo buffer_info = {
       .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
       .size = buffer_size,
-      .usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+      .usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+#ifdef M3_BDA
+         | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+#endif
+         ,
       .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
    };
    VkBuffer buffer;
@@ -394,6 +425,12 @@ main(int argc, char **argv)
          VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
    const VkMemoryAllocateInfo memory_info = {
       .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+#ifdef M3_BDA
+      .pNext = &(VkMemoryAllocateFlagsInfo){
+         .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO,
+         .flags = VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT,
+      },
+#endif
       .allocationSize = requirements.size,
       .memoryTypeIndex = memory_type,
    };
@@ -539,13 +576,31 @@ main(int argc, char **argv)
          "vkCreateShaderModule");
    const VkPipelineLayoutCreateInfo pipeline_layout_info = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+#ifdef M3_BDA
+      .setLayoutCount = 0,
+#else
       .setLayoutCount = 1,
       .pSetLayouts = &set_layout,
+#endif
    };
    VkPipelineLayout pipeline_layout;
    check(vkCreatePipelineLayout(device, &pipeline_layout_info, NULL,
                                 &pipeline_layout),
          "vkCreatePipelineLayout");
+#ifdef M3_BDA
+   const VkBufferDeviceAddressInfo address_info = {
+      .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO, .buffer = buffer,
+   };
+   const uint64_t output_address = vkGetBufferDeviceAddress(device, &address_info);
+   if (!output_address) die("zero buffer device address");
+   const uint32_t address_words[] = {output_address, output_address >> 32};
+   const VkSpecializationMapEntry address_entries[] = {{0, 0, 4}, {1, 4, 4}};
+   const VkSpecializationInfo address_specialization = {
+      .mapEntryCount = 2, .pMapEntries = address_entries,
+      .dataSize = sizeof(address_words), .pData = address_words,
+   };
+   fprintf(stderr, TEST_NAME ": output device address=%llx\n", (unsigned long long)output_address);
+#endif
    const VkComputePipelineCreateInfo pipeline_info = {
       .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
       .stage =
@@ -554,6 +609,9 @@ main(int argc, char **argv)
             .stage = VK_SHADER_STAGE_COMPUTE_BIT,
             .module = shader,
             .pName = "main",
+#ifdef M3_BDA
+            .pSpecializationInfo = &address_specialization,
+#endif
          },
       .layout = pipeline_layout,
    };
@@ -586,8 +644,10 @@ main(int argc, char **argv)
    check(vkBeginCommandBuffer(command_buffer, &begin_info),
          "vkBeginCommandBuffer");
    vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
+#ifndef M3_BDA
    vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE,
                            pipeline_layout, 0, 1, &descriptor_set, 0, NULL);
+#endif
    vkCmdDispatch(command_buffer, 1, 1, 1);
    const VkBufferMemoryBarrier host_barrier = {
       .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
@@ -623,8 +683,14 @@ main(int argc, char **argv)
       .pCommandBuffers = &command_buffer,
    };
    check(vkQueueSubmit(queue, 1, &submit_info, fence), "vkQueueSubmit");
-   check(vkWaitForFences(device, 1, &fence, true, UINT64_MAX),
-         "vkWaitForFences");
+   VkResult waited = vkWaitForFences(device, 1, &fence, true, 5000000000ull);
+   if (waited != VK_SUCCESS) {
+      fprintf(stderr, "GPU buffer after failed fence:");
+      for (unsigned i = 0; i < ELEMENT_COUNT; i++)
+         fprintf(stderr, " %08x", mapped[i]);
+      fprintf(stderr, "\n");
+   }
+   check(waited, "vkWaitForFences");
 
    unsigned untouched = 0, zeroed = 0, wrong = 0, first_bad = UINT32_MAX;
    for (uint32_t i = 0; i < ELEMENT_COUNT; ++i) {
@@ -740,6 +806,8 @@ main(int argc, char **argv)
    printf(TEST_NAME ": PASS — 32 exact half subtraction, reciprocal, integer multiply/add/shift results\n");
 #elif defined(M4_HALF_CONVERSION)
    printf(TEST_NAME ": PASS — 32 exact signed/unsigned binary16 boundary conversions\n");
+#elif defined(M3_BDA)
+   printf(TEST_NAME ": PASS — Vulkan fence completed and GPU stored 0x12340000 through a buffer device address\n");
 #else
    printf("g17p-vulkan-compute-min: PASS — 32 buffer writes on queue family %u "
           "(flags %#x, private G17P compute route)\n",
