@@ -762,7 +762,12 @@ agx_open_device(void *memctx, struct agx_device *dev)
       dev->params.num_clusters_total == 1 && dev->params.usc_generation == 3 &&
       dev->params.gpu_hal_generation == 200 &&
       debug_get_bool_option("ASAHI_M4_EXPERIMENTAL", false);
-   if (!m4_experimental && !agx_params_driver_supported(&dev->params)) {
+   const bool m3_experimental = dev->chip == AGX_CHIP_G15S &&
+      dev->params.chip_id == 0x6030 && dev->params.num_dies == 1 &&
+      dev->params.num_clusters_total == 2 && dev->params.usc_generation == 3 &&
+      dev->params.gpu_hal_generation == 0 &&
+      debug_get_bool_option("ASAHI_M3_EXPERIMENTAL", false);
+   if (!m3_experimental && !m4_experimental && !agx_params_driver_supported(&dev->params)) {
       if (dev->chip == AGX_CHIP_UNKNOWN) {
          fprintf(stderr,
                  "Unsupported Apple GPU architecture G%u (variant 0x%x, %u "
@@ -1160,7 +1165,7 @@ agx_open_device(void *memctx, struct agx_device *dev)
    const char *usc_low_env = getenv("ASAHI_G17P_USC_LOW");
    const bool usc_low = usc_low_env != NULL && usc_low_env[0] == '1' &&
                         usc_low_env[1] == '\0';
-   if (usc_low || dev->chip == AGX_CHIP_G16G)
+   if (usc_low || dev->chip == AGX_CHIP_G16G || dev->chip == AGX_CHIP_G15S)
       dev->usc_heap.alloc_high = false;
 
    if (dev->chip == AGX_CHIP_G17P) {
@@ -1324,7 +1329,7 @@ agx_open_device(void *memctx, struct agx_device *dev)
       }
 
       struct agx_bo *usc_base = agx_create_fixed_bo(
-         dev, usc_base_size, dev->chip == AGX_CHIP_G16G ? 0 : AGX_BO_WRITEBACK, dev->shader_base,
+         dev, usc_base_size, (dev->chip == AGX_CHIP_G16G || dev->chip == AGX_CHIP_G15S) ? 0 : AGX_BO_WRITEBACK, dev->shader_base,
          DRM_ASAHI_BIND_READ, "HAL200 USC window base");
       if (usc_base == NULL) {
          fprintf(stderr, "Failed to bind the USC window base page\n");

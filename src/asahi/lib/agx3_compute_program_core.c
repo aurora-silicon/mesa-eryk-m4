@@ -148,6 +148,28 @@ agx3_g17p_native_compute_launch_pack(
          return false;
    }
 
+   /* T6030 with RTKit 2419 consumes the older G15 launch layout.
+    * M3 compute-15's output-positive stream has control word 0x40,
+    * with VA[47:32] in word1[31:16], rather than the later HAL200
+    * pointer descriptor/control word. Only the witnessed 1D form is
+    * admitted here until the remaining dimension bits are qualified.
+    */
+   if (program->chip == AGX_CHIP_G15S) {
+      if (grid->dimensions != 1 || program->launch_template.word1 != 0)
+         return false;
+      agx3_cmdstream_store_le32(packed, program->launch_template.word0);
+      agx3_cmdstream_store_le32(packed + 4,
+                                 (uint32_t)(program->program_va >> 32) << 16);
+      agx3_cmdstream_store_le32(packed + 8,
+                                 (uint32_t)(program->program_va >> 6));
+      agx3_cmdstream_store_le32(packed + 12, 0x40);
+      for (unsigned axis = 0; axis < 3; ++axis) {
+         agx3_cmdstream_store_le32(packed + 16 + axis * 4, global_size[axis]);
+         agx3_cmdstream_store_le32(packed + 28 + axis * 4, grid->local_size[axis]);
+      }
+      return true;
+   }
+
    /* The output-positive A18 Pro add3 record stores the Ioto program pointer
     * as a low VA>>6 word followed by 0x40000000 | VA[47:40].  Word 1 still
     * carries the upper pointer bits and must be derived from the VA, not
