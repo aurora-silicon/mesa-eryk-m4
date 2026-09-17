@@ -1,0 +1,22 @@
+{
+  "id": "20260917T200126887981Z-random10k-20260917-s01",
+  "verdict": "pass",
+  "transport_returncode": 0,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T200126887981Z-random10k-20260917-s01",
+  "observations": {
+    "pixel_results": [],
+    "pixel_result_count": 0,
+    "thermal_samples": 63,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 62.5,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 62.5,
+      "Ta000m": 58.5,
+      "Te000m": 58.5,
+      "Te001m": 60.0,
+      "Tp000m": 62.5,
+      "Tp001m": 60.75
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "backend": "deqp-runner",
+  "jobs": 4,
+  "tests_per_group": 25,
+  "elapsed_seconds": 23.970391688000063,
+  "started_unix": 1789675942.0203402,
+  "finished_unix": 1789675966.0870168,
+  "returncode": 1,
+  "error": null,
+  "completed": 995,
+  "case_timeout_seconds": 60
+}

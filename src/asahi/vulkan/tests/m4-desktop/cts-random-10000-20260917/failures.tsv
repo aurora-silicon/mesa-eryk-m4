@@ -1,0 +1,152 @@
+catalog_index	status	case	message
+2058642	Fail	dEQP-VK.pipeline.shader_object_unlinked_spirv.sampler.view_type.3d.format.a2r10g10b10_uscaled_pack32.address_modes.uvw_mode_mirrored_repeat_mode_clamp_to_border_mode_mirror_clamp_to_edge	Image mismatch
+61621	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.r8g8_snorm.general_general_linear	Result image is incorrect
+86889	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_unorm.r8g8_sscaled.optimal_general_nearest	Result image is incorrect
+1190436	Fail	dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.combined.view_type.3d.format.a2b10g10r10_uscaled_pack32.count_1.size.17x11x5	Image mismatch
+1246334	Fail	dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.separate.view_type.2d_array.format.r16g16b16_uscaled.count_8.size.pipeline_protected_flag_32x16_array_of_6	Image mismatch
+1156740	Fail	dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.combined.view_type.1d.format.r8g8_uscaled.count_8.size.443x1	Image mismatch
+61299	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.b8g8r8a8_snorm.optimal_optimal_linear	Result image is incorrect
+89643	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.bc1_rgba_unorm_block.r16g16b16_uscaled.optimal_general_nearest	Result image is incorrect
+120427	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r16g16_uscaled.a8b8g8r8_unorm_pack32.optimal_general_nearest	Result image is incorrect
+76732	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b10g11r11_ufloat_pack32.r16_uscaled.general_general_linear	Result image is incorrect
+134179	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r32g32_sfloat.r16g16b16a16_sscaled.general_general_nearest	Result image is incorrect
+139179	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r4g4b4a4_unorm_pack16.b8g8r8a8_sscaled.optimal_optimal_linear	Result image is incorrect
+134952	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r32g32b32_sfloat.a8b8g8r8_uscaled_pack32.optimal_optimal_nearest	Result image is incorrect
+67558	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.astc_12x12_unorm_block.r16g16b16_sscaled.general_general_linear	Result image is incorrect
+155073	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r8g8_unorm.r8g8b8_uscaled.optimal_optimal_linear	Result image is incorrect
+74087	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.astc_8x5_unorm_block.r8_uscaled.general_general_nearest	Result image is incorrect
+89982	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.bc1_rgba_unorm_block.r8g8b8_uscaled.optimal_optimal_nearest	Result image is incorrect
+62939	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.astc_10x5_unorm_block.a2b10g10r10_uscaled_pack32.general_general_nearest	Result image is incorrect
+159861	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r8g8b8_uscaled.r16_sfloat.general_general_nearest	Result image is incorrect
+125732	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r16g16b16_unorm.r8g8_sscaled.general_general_linear	Result image is incorrect
+2719789	Fail	dEQP-VK.spirv_assembly.instruction.graphics.float_controls2.fp16.input_args.sin_testedWithout_NotNaN_OR_NotInf_arg1_inf_arg2_unused_res_nan_deco_vert	Resource returned doesn&apos;t match with expected
+285225	Fail	dEQP-VK.api.image_clearing.core.clear_color_image.2d.linear.single_layer.r8_uscaled_200x180	Color value mismatch! Ref:(25, 127, 76, 229) Mask:(1, 0, 0, 0) Threshold:(1, 1, 1, 1) Color:(0, 0, 0, 1)
+113807	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r16_sscaled.b5g6r5_unorm_pack16.optimal_general_nearest	Result image is incorrect
+131869	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r16g16b16a16_uscaled.r5g5b5a1_unorm_pack16.general_optimal_linear	Result image is incorrect
+2757021	Crash	dEQP-VK.ssbo.layout.3_level_unsized_array.std430.column_major_mat4	Runner detected abnormal execution; inspect QPA/log
+1264230	Fail	dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.separate.view_type.3d.format.r8g8b8a8_uscaled.count_1.size.5x11x17	Image mismatch
+68375	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.astc_4x4_unorm_block.b8g8r8_uscaled.general_general_nearest	Result image is incorrect
+116354	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r16_uscaled.r8g8b8_unorm.linear_optimal_nearest	Result image is incorrect
+123585	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r16g16b16_sscaled.a1r5g5b5_unorm_pack16.optimal_general_nearest	Result image is incorrect
+79051	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b5g5r5a1_unorm_pack16.r8g8b8_uscaled.general_optimal_linear	Result image is incorrect
+1801668	Fail	dEQP-VK.pipeline.shader_object_unlinked_spirv.image.suballocation.sampling_type.combined.view_type.1d.format.a2b10g10r10_uscaled_pack32.count_1.size.2x1	Image mismatch
+152334	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r8g8_snorm.a8b8g8r8_sscaled_pack32.general_general_linear	Result image is incorrect
+112448	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r16_sfloat.r8g8b8_sscaled.general_general_linear	Result image is incorrect
+68638	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.astc_4x4_unorm_block.r16g16b16_uscaled.optimal_general_linear	Result image is incorrect
+61942	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.astc_10x10_unorm_block.a2r10g10b10_uscaled_pack32.general_general_linear	Result image is incorrect
+70598	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.astc_5x5_unorm_block.r16_uscaled.optimal_optimal_nearest	Result image is incorrect
+51221	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2b10g10r10_uscaled_pack32.r16_sfloat.linear_general_nearest	Result image is incorrect
+111653	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r16_sfloat.b8g8r8a8_sscaled.optimal_optimal_linear	Result image is incorrect
+124938	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r16g16b16_unorm.b8g8r8_sscaled.optimal_optimal_nearest	Result image is incorrect
+1276062	Fail	dEQP-VK.pipeline.monolithic.image_view.view_type.1d.format.r8g8b8a8_uscaled.subresource_range.lod_mip_levels	Image mismatch
+150443	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r8_unorm.a8b8g8r8_uscaled_pack32.general_general_nearest	Result image is incorrect
+114410	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r16_sscaled.r8g8b8_snorm.optimal_optimal_nearest	Result image is incorrect
+2762331	Crash	dEQP-VK.ssbo.phys.layout.3_level_unsized_array.std430.mat4	Runner detected abnormal execution; inspect QPA/log
+155704	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r8g8_uscaled.r16g16b16a16_unorm.general_optimal_nearest	Result image is incorrect
+109784	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r12x4_unorm_pack16.r16g16_sscaled.general_general_linear	Result image is incorrect
+315109	Fail	dEQP-VK.api.image_clearing.dedicated_allocation.clear_color_image.3d.optimal.single_layer.r16g16_uscaled_55x21x11_multiple_subresourcerange	Color value mismatch! Ref:(6553, 32767, 19660, 58981) Mask:(1, 1, 0, 0) Threshold:(1, 1, 1, 1) Color:(0, 0, 0, 1)
+1804898	Fail	dEQP-VK.pipeline.shader_object_unlinked_spirv.image.suballocation.sampling_type.combined.view_type.1d_array.format.a2b10g10r10_uscaled_pack32.count_1.size.2x1_array_of_6	Image mismatch
+1162222	Fail	dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.combined.view_type.1d_array.format.r16_uscaled.count_8.size.512x1_array_of_6	Image mismatch
+303271	Fail	dEQP-VK.api.image_clearing.dedicated_allocation.clear_color_image.1d.optimal.remaining_array_layers.r16_sscaled_71x1	Color value mismatch! Ref:(3276, 16383, 9830, 29490) Mask:(1, 0, 0, 0) Threshold:(1, 1, 1, 1) Color:(0, 0, 0, 1)
+1171186	Fail	dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.combined.view_type.2d.format.b8g8r8_uscaled.count_1.size.3x3	Image mismatch
+114203	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r16_sscaled.r32g32_sfloat.general_general_nearest	Result image is incorrect
+81622	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8_sscaled.r16g16_unorm.optimal_optimal_nearest	Result image is incorrect
+69940	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.astc_5x4_unorm_block.r8g8_sscaled.optimal_general_linear	Result image is incorrect
+1155172	Fail	dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.combined.view_type.1d.format.r16g16b16a16_uscaled.count_4.size.443x1	Image mismatch
+112104	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r16_sfloat.r16g16b16a16_uscaled.optimal_optimal_nearest	Result image is incorrect
+3148721	Fail	dEQP-VK.ycbcr.conversion.g12x4_b12x4r12x4_2plane_420_unorm_3pack16.chroma_reconstruction.linear.explicit_linear_midpoint_cosited_tiling_linear	Result comparison failed
+51353	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2b10g10r10_uscaled_pack32.r16g16b16_sfloat.optimal_general_nearest	Result image is incorrect
+83037	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8_unorm.r8g8b8_uscaled.optimal_optimal_linear	Result image is incorrect
+1184818	Fail	dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.combined.view_type.2d_array.format.r16g16_uscaled.count_8.size.32x16_array_of_6	Image mismatch
+3150703	Fail	dEQP-VK.ycbcr.conversion.g16_b16r16_2plane_420_unorm.chroma_reconstruction.nearest.explicit_linear_midpoint_cosited_tiling_optimal_disjoint_swapped_chroma	Result comparison failed
+1209392	Fail	dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.combined.view_type.cube_array.format.b8g8r8a8_uscaled.count_8.size.13x13_array_of_36	Image mismatch
+315680	Fail	dEQP-VK.api.image_clearing.dedicated_allocation.clear_color_image.3d.optimal.single_layer.r8g8b8a8_sscaled_200x180x16	Color value mismatch! Ref:(12, 63, 38, 114) Mask:(1, 1, 1, 1) Threshold:(1, 1, 1, 1) Color:(0, 0, 0, 0)
+3132220	ResourceError	dEQP-VK.wsi.wayland.incremental_present.scale_none.fifo_latest_ready.rotate_180.inherit.reference	Failed to bind compositor at tcuLnxWayland.cpp:114
+286770	Fail	dEQP-VK.api.image_clearing.core.clear_color_image.2d.optimal.multiple_layers.r8g8_sscaled_200x180	Color value mismatch! Ref:(12, 63, 38, 114) Mask:(1, 1, 0, 0) Threshold:(1, 1, 1, 1) Color:(0, 0, 0, 1)
+1224938	Fail	dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.separate.view_type.1d_array.format.r16g16b16a16_uscaled.count_1.size.pipeline_protected_flag_2x1_array_of_6	Image mismatch
+154728	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r8g8_unorm.r16g16b16_uscaled.general_general_linear	Result image is incorrect
+315174	Fail	dEQP-VK.api.image_clearing.dedicated_allocation.clear_color_image.3d.optimal.single_layer.r16g16b16_uscaled_multiple_subresourcerange	Color value mismatch! Ref:(6553, 32767, 19660, 58981) Mask:(1, 1, 1, 0) Threshold:(1, 1, 1, 1) Color:(0, 0, 0, 1)
+1245660	Fail	dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.separate.view_type.2d_array.format.r16g16_uscaled.count_1.size.3x3_array_of_3	Image mismatch
+3152478	Fail	dEQP-VK.ycbcr.conversion.g8_b8r8_2plane_420_unorm.chroma_reconstruction.linear.explicit_linear_midpoint_midpoint_tiling_optimal_disjoint	Result comparison failed
+72878	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.astc_6x6_unorm_block.r16g16b16a16_uscaled.general_optimal_nearest	Result image is incorrect
+2758642	Crash	dEQP-VK.ssbo.layout.random.8bit.all_shared_buffer.32	Runner detected abnormal execution; inspect QPA/log
+118354	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r16g16_sscaled.a1b5g5r5_unorm_pack16.optimal_optimal_nearest	Result image is incorrect
+3146967	Fail	dEQP-VK.ycbcr.conversion.g10x6_b10x6r10x6_2plane_420_unorm_3pack16.chroma_reconstruction.nearest.explicit_linear_midpoint_midpoint_tiling_optimal_disjoint_swapped_chroma	Result comparison failed
+2761280	Crash	dEQP-VK.ssbo.layout.unsized_struct_array.per_block_buffer.std430_instance_array_comp_access	Runner detected abnormal execution; inspect QPA/log
+1156700	Fail	dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.combined.view_type.1d.format.r8g8_uscaled.count_1.size.13x1	Image mismatch
+290208	Fail	dEQP-VK.api.image_clearing.core.clear_color_image.2d.optimal.single_layer.r16g16_sscaled_33x128_multiple_subresourcerange	Color value mismatch! Ref:(3276, 16383, 9830, 29490) Mask:(1, 1, 0, 0) Threshold:(1, 1, 1, 1) Color:(0, 0, 0, 1)
+1820780	Fail	dEQP-VK.pipeline.shader_object_unlinked_spirv.image.suballocation.sampling_type.combined.view_type.2d_array.format.r8g8b8a8_uscaled.count_1.size.32x32_array_of_6	Image mismatch
+2958794	Crash	dEQP-VK.texture.swizzle.texture_coordinate.r16g16_uscaled_2d_pot_yx	Runner detected abnormal execution; inspect QPA/log
+8829	Fail	dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.e5b9g9r9_ufloat_pack32.a2r10g10b10_uscaled_pack32.general_optimal_nearest	Result image is incorrect
+128231	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r16g16b16a16_snorm.r16_sscaled.general_general_nearest	Result image is incorrect
+160909	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r8g8b8a8_snorm.r16_uscaled.general_optimal_linear	Result image is incorrect
+128644	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r16g16b16a16_snorm.r8g8_sscaled.general_general_linear	Result image is incorrect
+126935	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r16g16b16a16_sfloat.a2b10g10r10_uscaled_pack32.general_optimal_linear	Result image is incorrect
+115501	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r16_unorm.r8g8b8a8_uscaled.optimal_optimal_linear	Result image is incorrect
+1223696	Fail	dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.separate.view_type.1d_array.format.r16g16_uscaled.count_1.size.pipeline_protected_flag_13x1_array_of_3	Image mismatch
+2020628	Fail	dEQP-VK.pipeline.shader_object_unlinked_spirv.sampler.view_type.1d_array.format.a2r10g10b10_uscaled_pack32.mag_reduce.comp_identity_zero_zero_zero.min	Image mismatch
+2012464	Fail	dEQP-VK.pipeline.shader_object_unlinked_spirv.sampler.view_type.1d.format.a2r10g10b10_uscaled_pack32.address_modes.uvw_mode_mirrored_repeat_mode_mirror_clamp_to_edge_mode_clamp_to_edge	Image mismatch
+1890099	Fail	dEQP-VK.pipeline.shader_object_unlinked_spirv.image_view.view_type.cube_array.format.r8g8b8a8_uscaled.subresource_range.lod_mip_levels_array_base_and_size	Image mismatch
+1862034	Fail	dEQP-VK.pipeline.shader_object_unlinked_spirv.image.suballocation.sampling_type.separate.view_type.cube_array.format.r8_uscaled.count_8.size.13x13_array_of_36	Image mismatch
+70792	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.astc_5x5_unorm_block.r16g16b16a16_uscaled.optimal_general_linear	Result image is incorrect
+8895	Fail	dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.color.2d.e5b9g9r9_ufloat_pack32.a8b8g8r8_uscaled_pack32.optimal_optimal_nearest	Result image is incorrect
+1214950	Fail	dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.separate.view_type.1d.format.r16_uscaled.count_1.size.32x1	Image mismatch
+1171194	Fail	dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.combined.view_type.2d.format.b8g8r8_uscaled.count_1.size.pipeline_protected_flag_1x1	Image mismatch
+99576	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.e5b9g9r9_ufloat_pack32.r8g8_sscaled.optimal_optimal_nearest	Result image is incorrect
+786725	Fail	dEQP-VK.glsl.texture_functions.texturegradoffset.mirrored.sampler1darrayshadow_fragment	Image mismatch
+78362	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b5g5r5a1_unorm_pack16.a8b8g8r8_uscaled_pack32.general_optimal_nearest	Result image is incorrect
+54990	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2r10g10b10_uscaled_pack32.b8g8r8a8_snorm.general_general_linear	Result image is incorrect
+114649	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r16_unorm.a2b10g10r10_uscaled_pack32.optimal_optimal_linear	Result image is incorrect
+2952522	Crash	dEQP-VK.texture.swizzle.component_mapping.color.r16_uscaled_2d_npot_sparse_bbbb	Runner detected abnormal execution; inspect QPA/log
+51704	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2b10g10r10_uscaled_pack32.r8g8b8_snorm.optimal_optimal_nearest	Result image is incorrect
+85986	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_sscaled.r8g8b8a8_snorm.optimal_optimal_nearest	Result image is incorrect
+98897	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.e5b9g9r9_ufloat_pack32.a2r10g10b10_uscaled_pack32.general_optimal_linear	Result image is incorrect
+1159582	Fail	dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.combined.view_type.1d_array.format.a8b8g8r8_uscaled_pack32.count_8.size.512x1_array_of_6	Image mismatch
+99104	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.e5b9g9r9_ufloat_pack32.b8g8r8a8_uscaled.optimal_general_linear	Result image is incorrect
+164528	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r8g8b8a8_uscaled.r32_sfloat.linear_optimal_nearest	Result image is incorrect
+3149789	Fail	dEQP-VK.ycbcr.conversion.g16_b16_r16_3plane_420_unorm.chroma_reconstruction.linear.explicit_linear_cosited_midpoint_tiling_optimal	Result comparison failed
+122026	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r16g16b16_sfloat.r16g16b16a16_sscaled.general_general_nearest	Result image is incorrect
+54651	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2r10g10b10_unorm_pack32.r8g8b8_uscaled.general_optimal_linear	Result image is incorrect
+2960094	Crash	dEQP-VK.texture.swizzle.texture_coordinate.r8g8b8a8_sscaled_2d_npot_sparse_xx	Runner detected abnormal execution; inspect QPA/log
+1237442	Fail	dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.separate.view_type.2d_array.format.a2b10g10r10_sscaled_pack32.count_8.size.32x16_array_of_6	Image mismatch
+76793	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b10g11r11_ufloat_pack32.r16g16_uscaled.general_general_nearest	Result image is incorrect
+156444	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r8g8b8_snorm.b8g8r8a8_uscaled.optimal_optimal_nearest	Result image is incorrect
+54384	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2r10g10b10_unorm_pack32.r16g16b16a16_uscaled.optimal_general_linear	Result image is incorrect
+149336	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r8_sscaled.a2b10g10r10_unorm_pack32.optimal_optimal_nearest	Result image is incorrect
+131471	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r16g16b16a16_uscaled.b8g8r8a8_unorm.general_general_nearest	Result image is incorrect
+2080616	Fail	dEQP-VK.pipeline.shader_object_unlinked_spirv.sampler.view_type.cube_array.format.a2r10g10b10_uscaled_pack32.mag_reduce.comp_r_g_b_a.max	Image mismatch
+1214330	Fail	dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.separate.view_type.1d.format.b8g8r8a8_uscaled.count_1.size.443x1	Image mismatch
+1890093	Fail	dEQP-VK.pipeline.shader_object_unlinked_spirv.image_view.view_type.cube_array.format.r8g8b8a8_uscaled.subresource_range.lod_base_mip_level_base_array_layer_remaining_levels_and_layers	Image mismatch
+1223670	Fail	dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.separate.view_type.1d_array.format.r16g16_uscaled.count_1.size.2x1_array_of_6	Image mismatch
+126365	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r16g16b16_uscaled.r16g16_snorm.general_optimal_linear	Result image is incorrect
+1880990	Fail	dEQP-VK.pipeline.shader_object_unlinked_spirv.image_view.view_type.3d.format.r8g8b8a8_uscaled.subresource_range.lod_base_mip_level_remaining_levels	Image mismatch
+93023	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.bc4_snorm_block.r8g8b8a8_sscaled.general_optimal_linear	Result image is incorrect
+313204	Fail	dEQP-VK.api.image_clearing.dedicated_allocation.clear_color_image.2d.optimal.single_layer.r16g16b16a16_sscaled_64x11_multiple_subresourcerange	Color value mismatch! Ref:(3276, 16383, 9830, 29490) Mask:(1, 1, 1, 1) Threshold:(1, 1, 1, 1) Color:(0, 0, 0, 0)
+2762094	Crash	dEQP-VK.ssbo.phys.layout.3_level_unsized_array.scalar.mat3	Runner detected abnormal execution; inspect QPA/log
+61532	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_uscaled_pack32.r32g32b32_sfloat.general_optimal_nearest	Result image is incorrect
+89565	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.bc1_rgba_unorm_block.r16g16_uscaled.general_general_nearest	Result image is incorrect
+2953330	Crash	dEQP-VK.texture.swizzle.component_mapping.color.r16g16b16_sscaled_2d_pot_aaaa	Runner detected abnormal execution; inspect QPA/log
+86664	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.b8g8r8a8_unorm.r16g16b16a16_sscaled.general_optimal_nearest	Result image is incorrect
+1259558	Fail	dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.separate.view_type.3d.format.r16_uscaled.count_1.size.pipeline_protected_flag_16x16x16	Image mismatch
+1824376	Fail	dEQP-VK.pipeline.shader_object_unlinked_spirv.image.suballocation.sampling_type.combined.view_type.3d.format.b8g8r8a8_uscaled.count_1.size.5x11x17	Image mismatch
+2762578	Crash	dEQP-VK.ssbo.phys.layout.basic_unsized_array.std140.row_major_mat2x4_comp_access_store_cols	Runner detected abnormal execution; inspect QPA/log
+122888	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r16g16b16_snorm.b8g8r8_sscaled.optimal_general_linear	Result image is incorrect
+1270276	Fail	dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.separate.view_type.cube_array.format.b8g8r8a8_uscaled.count_1.size.pipeline_protected_flag_32x32_array_of_36	Image mismatch
+122751	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r16g16b16_snorm.a2r10g10b10_uscaled_pack32.general_general_nearest	Result image is incorrect
+924188	Fail	dEQP-VK.image.texel_view_compatible.compute.basic.2d_image.texel_fetch.eac_r11_snorm_block.r16g16b16a16_uscaled	Decompression failed
+1828878	Fail	dEQP-VK.pipeline.shader_object_unlinked_spirv.image.suballocation.sampling_type.combined.view_type.cube.format.r16g16b16a16_uscaled.count_4.size.13x13	Image mismatch
+1882318	Fail	dEQP-VK.pipeline.shader_object_unlinked_spirv.image_view.view_type.cube.format.b8g8r8_uscaled.component_swizzle.a_r_g_b	Image mismatch
+62159	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.astc_10x10_unorm_block.b8g8r8a8_uscaled.general_general_nearest	Result image is incorrect
+1176076	Fail	dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.combined.view_type.2d.format.r8g8b8a8_uscaled.count_1.size.8x16	Image mismatch
+2012428	Fail	dEQP-VK.pipeline.shader_object_unlinked_spirv.sampler.view_type.1d.format.a2r10g10b10_uscaled_pack32.address_modes.all_mode_mirrored_repeat	Image mismatch
+127161	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r16g16b16a16_sfloat.b8g8r8a8_sscaled.general_general_nearest	Result image is incorrect
+57396	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a4r4g4b4_unorm_pack16.r8g8b8_sscaled.optimal_general_linear	Result image is incorrect
+139332	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r4g4b4a4_unorm_pack16.r16_uscaled.optimal_optimal_linear	Result image is incorrect
+2957012	Crash	dEQP-VK.texture.swizzle.component_mapping.color.r8g8b8a8_sscaled_2d_pot_oooo	Runner detected abnormal execution; inspect QPA/log
+49775	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a2b10g10r10_sscaled_pack32.r8g8b8_snorm.general_general_nearest	Result image is incorrect
+313707	Fail	dEQP-VK.api.image_clearing.dedicated_allocation.clear_color_image.2d.optimal.single_layer.r8g8_uscaled_multiple_subresourcerange	Color value mismatch! Ref:(25, 127, 76, 229) Mask:(1, 1, 0, 0) Threshold:(1, 1, 1, 1) Color:(0, 0, 0, 1)
+1168182	Fail	dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.combined.view_type.2d.format.a2b10g10r10_sscaled_pack32.count_1.size.pipeline_protected_flag_2x2	Image mismatch
+109649	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r12x4_unorm_pack16.b8g8r8a8_sscaled.general_optimal_linear	Result image is incorrect
+65711	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.astc_10x8_unorm_block.r8_sscaled.general_general_nearest	Result image is incorrect
+152557	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r8g8_snorm.r16_sscaled.general_general_nearest	Result image is incorrect
+121629	Fail	dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r16g16b16_sfloat.b8g8r8a8_sscaled.optimal_general_linear	Result image is incorrect

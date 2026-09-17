@@ -1,0 +1,530 @@
+[
+  {
+    "selected": 1000,
+    "recorded": 1000,
+    "completed": 1000,
+    "counts": {
+      "NotSupported": 506,
+      "Pass": 478,
+      "Fail": 16
+    },
+    "classifications": {
+      "unclassified": 1000
+    },
+    "elapsed_seconds": 34.224635917984415,
+    "preparation_seconds": 1.5116868870100006,
+    "runner_seconds": 28.774597505999736,
+    "jobs": 20,
+    "tests_per_group": 25,
+    "case_timeout_seconds": 60,
+    "cases_sha256": "1dec26bdb0a05a76a2dafe62040ce0148a2caaff905717fd7230b8f957ba304b",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T200126887981Z-random10k-20260917-s01",
+    "guard_verdict": "pass",
+    "command_returncode": 0,
+    "peak_temperature_c": 62.5
+  },
+  {
+    "selected": 1000,
+    "recorded": 1000,
+    "completed": 292,
+    "counts": {
+      "Unrun": 674,
+      "NotSupported": 129,
+      "Pass": 159,
+      "Interrupted": 34,
+      "Fail": 3,
+      "Crash": 1
+    },
+    "classifications": {
+      "unclassified": 1000
+    },
+    "elapsed_seconds": 88.19580669800052,
+    "preparation_seconds": 1.6147560099489056,
+    "runner_seconds": 46.217336327999874,
+    "jobs": 20,
+    "tests_per_group": 25,
+    "case_timeout_seconds": 60,
+    "cases_sha256": "c4f3925e82fcbd8a7a98356d67d43d5fc065ed12507b3353df0cd04b51478625",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T200246846347Z-random10k-20260917-s02",
+    "guard_verdict": "process_failure",
+    "command_returncode": 1,
+    "peak_temperature_c": 61.75
+  },
+  {
+    "selected": 708,
+    "recorded": 708,
+    "completed": 708,
+    "counts": {
+      "Pass": 312,
+      "NotSupported": 388,
+      "Fail": 8
+    },
+    "classifications": {
+      "unclassified": 708
+    },
+    "elapsed_seconds": 22.902637787046842,
+    "preparation_seconds": 1.4669749079621397,
+    "runner_seconds": 20.53529071199999,
+    "jobs": 4,
+    "tests_per_group": 25,
+    "case_timeout_seconds": 60,
+    "cases_sha256": "01a1371302c05699cc21f366afdd097244340a6e88902b30c44cbb6fd91a374b",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T200557537757Z-random10k-20260917-s02remaining",
+    "guard_verdict": "pass",
+    "command_returncode": 0,
+    "peak_temperature_c": 67.0
+  },
+  {
+    "selected": 1000,
+    "recorded": 1000,
+    "completed": 1000,
+    "counts": {
+      "NotSupported": 520,
+      "Fail": 13,
+      "Pass": 467
+    },
+    "classifications": {
+      "unclassified": 1000
+    },
+    "elapsed_seconds": 27.5281321790535,
+    "preparation_seconds": 1.4420078300172463,
+    "runner_seconds": 25.17629622999999,
+    "jobs": 4,
+    "tests_per_group": 25,
+    "case_timeout_seconds": 60,
+    "cases_sha256": "308db1a89f51eec91e6f075891467b1fa8b80c1adf6c9cb44ec9144232e9e660",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T200621927716Z-random10k-20260917-s03",
+    "guard_verdict": "pass",
+    "command_returncode": 0,
+    "peak_temperature_c": 67.0
+  },
+  {
+    "selected": 1000,
+    "recorded": 1000,
+    "completed": 987,
+    "counts": {
+      "Pass": 463,
+      "NotSupported": 501,
+      "Fail": 22,
+      "Crash": 1,
+      "Unrun": 11,
+      "Interrupted": 2
+    },
+    "classifications": {
+      "unclassified": 1000
+    },
+    "elapsed_seconds": 58.17340327502461,
+    "preparation_seconds": 1.522757795988582,
+    "runner_seconds": 54.719747635000004,
+    "jobs": 4,
+    "tests_per_group": 25,
+    "case_timeout_seconds": 60,
+    "cases_sha256": "20d006207f78d9b1357fedad0a533656e043f77324ea76537162f5d2843d11d4",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T200651029231Z-random10k-20260917-s04",
+    "guard_verdict": "process_failure",
+    "command_returncode": 1,
+    "peak_temperature_c": 65.75
+  },
+  {
+    "selected": 13,
+    "recorded": 13,
+    "completed": 13,
+    "counts": {
+      "NotSupported": 8,
+      "Pass": 5
+    },
+    "classifications": {
+      "unclassified": 13
+    },
+    "elapsed_seconds": 3.121440300019458,
+    "preparation_seconds": 1.4521735510206781,
+    "runner_seconds": 0.6209274220000225,
+    "jobs": 4,
+    "tests_per_group": 25,
+    "case_timeout_seconds": 60,
+    "cases_sha256": "df920080d0d6032cdc4707e41d4c73b77a3cddd0e3c6cc86427cdef61f20eb43",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T200850912610Z-random10k-20260917-s04remaining",
+    "guard_verdict": "pass",
+    "command_returncode": 0,
+    "peak_temperature_c": 62.75
+  },
+  {
+    "selected": 1000,
+    "recorded": 1000,
+    "completed": 326,
+    "counts": {
+      "Pass": 147,
+      "Unrun": 670,
+      "NotSupported": 174,
+      "Interrupted": 4,
+      "Fail": 3,
+      "Crash": 2
+    },
+    "classifications": {
+      "unclassified": 1000
+    },
+    "elapsed_seconds": 25.850548377959058,
+    "preparation_seconds": 1.5443234689882956,
+    "runner_seconds": 23.139714332999972,
+    "jobs": 4,
+    "tests_per_group": 25,
+    "case_timeout_seconds": 60,
+    "cases_sha256": "81132fd048047710c65dac2cd63eb666ebe301a600c31c2cf0eeda896f61f3b8",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T200855623721Z-random10k-20260917-s05",
+    "guard_verdict": "process_failure",
+    "command_returncode": 1,
+    "peak_temperature_c": 69.25
+  },
+  {
+    "selected": 674,
+    "recorded": 674,
+    "completed": 674,
+    "counts": {
+      "NotSupported": 326,
+      "Pass": 342,
+      "Fail": 6
+    },
+    "classifications": {
+      "unclassified": 674
+    },
+    "elapsed_seconds": 19.071040011011064,
+    "preparation_seconds": 1.5199914230033755,
+    "runner_seconds": 16.328979430000004,
+    "jobs": 4,
+    "tests_per_group": 25,
+    "case_timeout_seconds": 60,
+    "cases_sha256": "1193c949fcb758763f3761bfb6942681d88d97da387fdebfed72391a864baba6",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T201047133136Z-random10k-20260917-s05remaining",
+    "guard_verdict": "pass",
+    "command_returncode": 0,
+    "peak_temperature_c": 65.25
+  },
+  {
+    "selected": 1000,
+    "recorded": 1000,
+    "completed": 833,
+    "counts": {
+      "NotSupported": 404,
+      "Pass": 412,
+      "Unrun": 160,
+      "Fail": 16,
+      "Interrupted": 7,
+      "Crash": 1
+    },
+    "classifications": {
+      "unclassified": 1000
+    },
+    "elapsed_seconds": 23.7720628810348,
+    "preparation_seconds": 1.4895997509593144,
+    "runner_seconds": 20.953746771,
+    "jobs": 4,
+    "tests_per_group": 25,
+    "case_timeout_seconds": 60,
+    "cases_sha256": "c0929668547213b7f593082e3bb08616b78eddfa735321ccba522f39fc7fba67",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T201107741643Z-random10k-20260917-s06",
+    "guard_verdict": "process_failure",
+    "command_returncode": 1,
+    "peak_temperature_c": 66.75
+  },
+  {
+    "selected": 167,
+    "recorded": 167,
+    "completed": 167,
+    "counts": {
+      "NotSupported": 91,
+      "Pass": 76
+    },
+    "classifications": {
+      "unclassified": 167
+    },
+    "elapsed_seconds": 7.355161387997214,
+    "preparation_seconds": 1.5900963549502194,
+    "runner_seconds": 4.836291337999967,
+    "jobs": 4,
+    "tests_per_group": 25,
+    "case_timeout_seconds": 60,
+    "cases_sha256": "ad47f94b68c0bd638d1b981373e1a63504fb509111ab0da51ff8888c74eb0e98",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T201212037974Z-random10k-20260917-s06remaining4",
+    "guard_verdict": "pass",
+    "command_returncode": 0,
+    "peak_temperature_c": 63.75
+  },
+  {
+    "selected": 1000,
+    "recorded": 1000,
+    "completed": 995,
+    "counts": {
+      "NotSupported": 517,
+      "Pass": 463,
+      "Unrun": 5,
+      "Fail": 14,
+      "Crash": 1
+    },
+    "classifications": {
+      "unclassified": 1000
+    },
+    "elapsed_seconds": 26.844910006038845,
+    "preparation_seconds": 1.5285732020274736,
+    "runner_seconds": 23.970391688000063,
+    "jobs": 4,
+    "tests_per_group": 25,
+    "case_timeout_seconds": 60,
+    "cases_sha256": "21179844d4dcc5777098db326b3229be430923aded7aa371732e476c71b28b65",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T201220964143Z-random10k-20260917-s07",
+    "guard_verdict": "process_failure",
+    "command_returncode": 1,
+    "peak_temperature_c": 66.75
+  },
+  {
+    "selected": 5,
+    "recorded": 5,
+    "completed": 5,
+    "counts": {
+      "NotSupported": 5
+    },
+    "classifications": {
+      "unclassified": 5
+    },
+    "elapsed_seconds": 2.635217239963822,
+    "preparation_seconds": 1.4152701039565727,
+    "runner_seconds": 0.21721010700002807,
+    "jobs": 4,
+    "tests_per_group": 25,
+    "case_timeout_seconds": 60,
+    "cases_sha256": "29b436b57ae75bb854595de808200e65a4463c470e7c703ed66f25687fa5f155",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T201323757258Z-random10k-20260917-s07remaining5",
+    "guard_verdict": "pass",
+    "command_returncode": 0,
+    "peak_temperature_c": 61.75
+  },
+  {
+    "selected": 1000,
+    "recorded": 1000,
+    "completed": 639,
+    "counts": {
+      "Pass": 305,
+      "NotSupported": 324,
+      "Unrun": 357,
+      "Fail": 9,
+      "Interrupted": 4,
+      "Crash": 1
+    },
+    "classifications": {
+      "unclassified": 1000
+    },
+    "elapsed_seconds": 20.439250993949827,
+    "preparation_seconds": 1.5374854889814742,
+    "runner_seconds": 17.72009288000004,
+    "jobs": 4,
+    "tests_per_group": 25,
+    "case_timeout_seconds": 60,
+    "cases_sha256": "1458473f63c5b80209c5e1caaed87c6d4c1052e6ac053d703443c4f1c1fde5e1",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T201327968807Z-random10k-20260917-s08",
+    "guard_verdict": "process_failure",
+    "command_returncode": 1,
+    "peak_temperature_c": 69.0
+  },
+  {
+    "selected": 361,
+    "recorded": 361,
+    "completed": 200,
+    "counts": {
+      "NotSupported": 95,
+      "Pass": 99,
+      "Interrupted": 5,
+      "Unrun": 156,
+      "Crash": 1,
+      "Fail": 5
+    },
+    "classifications": {
+      "unclassified": 361
+    },
+    "elapsed_seconds": 8.455319606000558,
+    "preparation_seconds": 1.4978299590293318,
+    "runner_seconds": 5.848443640000028,
+    "jobs": 4,
+    "tests_per_group": 25,
+    "case_timeout_seconds": 60,
+    "cases_sha256": "921ec80089c494aa055eb6b6fab300ba355462e6ad56f037468c00336e2a3123",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T201431866359Z-random10k-20260917-s08remaining6",
+    "guard_verdict": "process_failure",
+    "command_returncode": 1,
+    "peak_temperature_c": 64.25
+  },
+  {
+    "selected": 161,
+    "recorded": 161,
+    "completed": 161,
+    "counts": {
+      "Pass": 85,
+      "NotSupported": 76
+    },
+    "classifications": {
+      "unclassified": 161
+    },
+    "elapsed_seconds": 7.981056171003729,
+    "preparation_seconds": 1.451358166988939,
+    "runner_seconds": 5.445455369000001,
+    "jobs": 4,
+    "tests_per_group": 25,
+    "case_timeout_seconds": 60,
+    "cases_sha256": "9fea21ff11d973efb88da0cf30207dc2289d0d07739f165fc20f279e7b31c7e4",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T201534959819Z-random10k-20260917-s08remaining7",
+    "guard_verdict": "pass",
+    "command_returncode": 0,
+    "peak_temperature_c": 63.0
+  },
+  {
+    "selected": 1000,
+    "recorded": 1000,
+    "completed": 64,
+    "counts": {
+      "Unrun": 930,
+      "Pass": 35,
+      "Interrupted": 6,
+      "NotSupported": 24,
+      "Fail": 4,
+      "Crash": 1
+    },
+    "classifications": {
+      "unclassified": 1000
+    },
+    "elapsed_seconds": 5.1403024879982695,
+    "preparation_seconds": 1.5757692370098084,
+    "runner_seconds": 2.6330546589999813,
+    "jobs": 4,
+    "tests_per_group": 25,
+    "case_timeout_seconds": 60,
+    "cases_sha256": "fdd6000ab79be83ae6a944e8889512728c5a6380fd8c3a9db8d77d9116ca0b96",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T201544562824Z-random10k-20260917-s09",
+    "guard_verdict": "process_failure",
+    "command_returncode": 1,
+    "peak_temperature_c": 63.75
+  },
+  {
+    "selected": 936,
+    "recorded": 936,
+    "completed": 599,
+    "counts": {
+      "NotSupported": 303,
+      "Pass": 291,
+      "Unrun": 332,
+      "Interrupted": 5,
+      "Fail": 4,
+      "Crash": 1
+    },
+    "classifications": {
+      "unclassified": 936
+    },
+    "elapsed_seconds": 18.756089106027503,
+    "preparation_seconds": 1.6049452500301413,
+    "runner_seconds": 16.119670303999897,
+    "jobs": 4,
+    "tests_per_group": 25,
+    "case_timeout_seconds": 60,
+    "cases_sha256": "e2e2a3efa8a1cca7838713b225ce0abb34644a9fb085f70c474688e838ff2045",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T201645720378Z-random10k-20260917-s09remaining8",
+    "guard_verdict": "process_failure",
+    "command_returncode": 1,
+    "peak_temperature_c": 65.0
+  },
+  {
+    "selected": 337,
+    "recorded": 337,
+    "completed": 337,
+    "counts": {
+      "NotSupported": 200,
+      "Pass": 134,
+      "Fail": 3
+    },
+    "classifications": {
+      "unclassified": 337
+    },
+    "elapsed_seconds": 12.278626827988774,
+    "preparation_seconds": 1.5542871799552813,
+    "runner_seconds": 9.667719842999986,
+    "jobs": 4,
+    "tests_per_group": 25,
+    "case_timeout_seconds": 60,
+    "cases_sha256": "b5f10a9045dd274c5d81c1f684cf107c205d0c6dc4790d81ff49ba0d6b833de7",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T201740343733Z-random10k-20260917-s09remaining9",
+    "guard_verdict": "pass",
+    "command_returncode": 0,
+    "peak_temperature_c": 64.25
+  },
+  {
+    "selected": 909,
+    "recorded": 909,
+    "completed": 342,
+    "counts": {
+      "NotSupported": 165,
+      "Unrun": 559,
+      "Pass": 169,
+      "Interrupted": 8,
+      "Fail": 7,
+      "Crash": 1
+    },
+    "classifications": {
+      "unclassified": 909
+    },
+    "elapsed_seconds": 11.551690066989977,
+    "preparation_seconds": 1.5129631480085663,
+    "runner_seconds": 8.866024512000081,
+    "jobs": 4,
+    "tests_per_group": 25,
+    "case_timeout_seconds": 60,
+    "cases_sha256": "f4d2b6f3068f07d52ff3b7b560beb5f2dd413ec362eeb55bc2593eae5bdba632",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T201754178978Z-random10k-20260917-s10",
+    "guard_verdict": "process_failure",
+    "command_returncode": 1,
+    "peak_temperature_c": 65.0
+  },
+  {
+    "selected": 567,
+    "recorded": 567,
+    "completed": 567,
+    "counts": {
+      "Pass": 281,
+      "NotSupported": 280,
+      "Fail": 6
+    },
+    "classifications": {
+      "unclassified": 567
+    },
+    "elapsed_seconds": 17.24042448902037,
+    "preparation_seconds": 1.4849177330033854,
+    "runner_seconds": 14.507113989999993,
+    "jobs": 4,
+    "tests_per_group": 25,
+    "case_timeout_seconds": 60,
+    "cases_sha256": "531081cfe8f1a013aa730f6f5da84f48511c2ee03c8a48a551061f9cf4fdce5a",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T201839284554Z-random10k-20260917-s10remaining10",
+    "guard_verdict": "pass",
+    "command_returncode": 0,
+    "peak_temperature_c": 65.0
+  },
+  {
+    "selected": 91,
+    "recorded": 91,
+    "completed": 91,
+    "counts": {
+      "NotSupported": 89,
+      "ResourceError": 1,
+      "Pass": 1
+    },
+    "classifications": {
+      "unclassified": 91
+    },
+    "elapsed_seconds": 21.27661350998096,
+    "preparation_seconds": 1.6564103360287845,
+    "runner_seconds": 11.676399257000071,
+    "jobs": 1,
+    "tests_per_group": 1,
+    "case_timeout_seconds": 60,
+    "cases_sha256": "af8686adb4286152cd112a8f7938b6b73c892bf6afbd1dcaa101b435f5e630d4",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T201858230818Z-random10k-20260917-swsi",
+    "guard_verdict": "process_failure",
+    "command_returncode": 1,
+    "peak_temperature_c": 67.5
+  }
+]

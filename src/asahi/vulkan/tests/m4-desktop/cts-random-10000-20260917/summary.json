@@ -1,0 +1,33 @@
+{
+  "selected": 10000,
+  "completed": 10000,
+  "counts": {
+    "NotSupported": 5125,
+    "Pass": 4724,
+    "Fail": 139,
+    "Crash": 11,
+    "ResourceError": 1
+  },
+  "seed": 202609172000,
+  "cases_sha256": "e16b78dc041b1a095b36590dc7dfa97fd43654e8f02568fba60420b12a013b19",
+  "catalog_sha256": "72c1bb9d2f9f0425ab8a4f570d78abdc1d3a34b82173ec76b772dedc477526bf",
+  "same_binary_identity": {
+    "/opt/asahi-m4-port/lib/libvulkan_asahi.so": "e6d7de50d5a7c9ebc0fe361685280a3f7b644770dfecb7b8f657d202172a965b",
+    "/root/cts-1.4.6.2/deqp-vk": "542459f13f3378f0af79ac9062d7e7fce6cd4853ab76adda69ae50889483b7e8",
+    "/lib/modules/7.1.9-dirtyroom-asahi2+/kernel/drivers/gpu/drm/asahi/asahi.ko": "a3479f63cc851b8118bd7b5b79b11005ec425b0a5779c50970d1f637051fb81f"
+  },
+  "boots": [
+    "cbeae91f-0786-4125-a3d0-6ac01998f91c",
+    "f3e21030-3dca-4dc6-95ee-64b71cabc781"
+  ],
+  "segments": 21,
+  "runner_seconds": 357.9745039539997,
+  "guarded_segment_wall_seconds": 462.7943693200941,
+  "staging_seconds": 31.974177784868516,
+  "first_runner_start_unix": 1789675288.7864501,
+  "last_runner_finish_unix": 1789676351.643952,
+  "peak_temperature_c": 69.25,
+  "complete": true,
+  "limitation": "Same binaries across interrupted segments and recovery boots; not an uninterrupted throughput benchmark. Skips are not passes.",
+  "first_to_last_runner_wall_seconds": 1062.857501745224
+}

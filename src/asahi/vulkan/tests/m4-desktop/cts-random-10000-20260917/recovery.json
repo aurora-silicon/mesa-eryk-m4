@@ -1,0 +1,8 @@
+{
+  "cause": "Global memory exhaustion with 20 CTS workers; kernel WARN in dma_fence_set_error from Packet.finish; one process SIGSEGV. Guard rebooted.",
+  "original_boot": "f3e21030-3dca-4dc6-95ee-64b71cabc781",
+  "recovered_boot": "cbeae91f-0786-4125-a3d0-6ac01998f91c",
+  "decision": "Preserve all terminal outcomes; resume only 708 unrun/interrupted cases and subsequent segments at 4 workers. No driver or CTS changes.",
+  "crash": "dEQP-VK.ssbo.layout.3_level_unsized_array.std430.column_major_mat4",
+  "pending_count": 708
+}

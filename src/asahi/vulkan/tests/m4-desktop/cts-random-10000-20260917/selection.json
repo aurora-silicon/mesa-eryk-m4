@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "count": 10000,
+  "catalog_count": 3206030,
+  "cases_sha256": "e16b78dc041b1a095b36590dc7dfa97fd43654e8f02568fba60420b12a013b19",
+  "catalog": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-ordered/catalog",
+  "catalog_sha256": "72c1bb9d2f9f0425ab8a4f570d78abdc1d3a34b82173ec76b772dedc477526bf",
+  "cts_revision": "vulkan-cts-1.4.6.2:f6a29701220f34dd1407513bfe80d74ca7b392ce",
+  "seed": 202609172000,
+  "method": "Python random.Random.sample of catalog indices without replacement",
+  "capability_filter": false,
+  "result_filter": false
+}

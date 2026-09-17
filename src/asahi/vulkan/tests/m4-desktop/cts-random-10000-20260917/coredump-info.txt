@@ -1,0 +1,129 @@
+           PID: 14962 (deqp-vk)
+           TID: 14962 (deqp-vk)
+           UID: 0 (root)
+           GID: 0 (root)
+        Signal: 11 (SEGV) si_code: SEGV_MAPERR
+     Timestamp: Thu 2026-09-17 20:03:21 GMT (5min ago)
+  Command Line: /root/cts-1.4.6.2/deqp-vk --deqp-log-images=disable --deqp-log-shader-sources=disable --deqp-caselist-file=/root/asahi-evidence/20260917T200246846347Z-random10k-20260917-s02/cts/deqp-runner/c7.r1.caselist.txt --deqp-log-filename=/root/asahi-evidence/20260917T200246846347Z-random10k-20260917-s02/cts/deqp-runner/c7.r1.qpa --deqp-log-flush=disable
+    Executable: /root/cts-1.4.6.2/deqp-vk
+ Control Group: /user.slice/user-0.slice/session-746.scope
+          Unit: session-746.scope
+         Slice: user-0.slice
+       Session: 746
+     Owner UID: 0 (root)
+       Boot ID: f3e210303dca4dc695ee64b71cabc781
+    Machine ID: 08f00288676248028d78d74e740230c1
+      Hostname: omarchy
+       Storage: /var/lib/systemd/coredump/core.deqp-vk.0.f3e210303dca4dc695ee64b71cabc781.14962.1789675401000000.zst (present)
+  Size on Disk: 161M
+       Message: Process 14962 (deqp-vk) of user 0 dumped core.
+                
+                Stack trace of thread 14962:
+                #0  0x0000ffffb97fe9a8 n/a (n/a + 0x0)
+                #1  0x0000fffff449bb68 n/a (n/a + 0x0)
+                #2  0x0000ffffb97fc51c n/a (n/a + 0x0)
+                #3  0x0000ffffb9763218 n/a (n/a + 0x0)
+                #4  0x0000ffffb975bc34 n/a (n/a + 0x0)
+                #5  0x0000ffffb954ccbc n/a (n/a + 0x0)
+                #6  0x0000ffffb954a9ac n/a (n/a + 0x0)
+                #7  0x0000ffffb954d864 n/a (n/a + 0x0)
+                #8  0x0000ffffb94e2dc4 n/a (n/a + 0x0)
+                #9  0x0000ffffb94dac88 n/a (n/a + 0x0)
+                #10 0x0000aaaae4b5eb18 n/a (n/a + 0x0)
+                #11 0x0000aaaae3047de4 n/a (n/a + 0x0)
+                #12 0x0000aaaae1c3a738 n/a (n/a + 0x0)
+                #13 0x0000aaaae523e508 n/a (n/a + 0x0)
+                #14 0x0000aaaae523d508 n/a (n/a + 0x0)
+                #15 0x0000aaaae521003c n/a (n/a + 0x0)
+                #16 0x0000aaaae1c2f2cc n/a (n/a + 0x0)
+                #17 0x0000ffffb9cc2d94 n/a (n/a + 0x0)
+                #18 0x0000ffffb9cc2ef8 n/a (n/a + 0x0)
+                #19 0x0000aaaae1c2f0f0 n/a (n/a + 0x0)
+                ELF object binary architecture: AARCH64
+
+           PID: 3667 (deqp-vk)
+           TID: 3667 (deqp-vk)
+           UID: 0 (root)
+           GID: 0 (root)
+        Signal: 11 (SEGV) si_code: SEGV_MAPERR
+     Timestamp: Thu 2026-09-17 20:07:39 GMT (1min 36s ago)
+  Command Line: /root/cts-1.4.6.2/deqp-vk --deqp-log-images=disable --deqp-log-shader-sources=disable --deqp-caselist-file=/root/asahi-evidence/20260917T200651029231Z-random10k-20260917-s04/cts/deqp-runner/c37.r1.caselist.txt --deqp-log-filename=/root/asahi-evidence/20260917T200651029231Z-random10k-20260917-s04/cts/deqp-runner/c37.r1.qpa --deqp-log-flush=disable
+    Executable: /root/cts-1.4.6.2/deqp-vk
+ Control Group: /user.slice/user-0.slice/session-46.scope
+          Unit: session-46.scope
+         Slice: user-0.slice
+       Session: 46
+     Owner UID: 0 (root)
+       Boot ID: cbeae91f07864125a3d06ac01998f91c
+    Machine ID: 08f00288676248028d78d74e740230c1
+      Hostname: omarchy
+       Storage: /var/lib/systemd/coredump/core.deqp-vk.0.cbeae91f07864125a3d06ac01998f91c.3667.1789675659000000.zst (present)
+  Size on Disk: 160.6M
+       Message: Process 3667 (deqp-vk) of user 0 dumped core.
+                
+                Stack trace of thread 3667:
+                #0  0x0000ffff9abee9a8 n/a (n/a + 0x0)
+                #1  0x0000ffffdcecc5b8 n/a (n/a + 0x0)
+                #2  0x0000ffff9abec51c n/a (n/a + 0x0)
+                #3  0x0000ffff9ab53218 n/a (n/a + 0x0)
+                #4  0x0000ffff9ab4bc34 n/a (n/a + 0x0)
+                #5  0x0000ffff9a93ccbc n/a (n/a + 0x0)
+                #6  0x0000ffff9a93a9ac n/a (n/a + 0x0)
+                #7  0x0000ffff9a93d864 n/a (n/a + 0x0)
+                #8  0x0000ffff9a8d2dc4 n/a (n/a + 0x0)
+                #9  0x0000ffff9a8cac88 n/a (n/a + 0x0)
+                #10 0x0000aaaae5adeb18 n/a (n/a + 0x0)
+                #11 0x0000aaaae3fc7de4 n/a (n/a + 0x0)
+                #12 0x0000aaaae2bba738 n/a (n/a + 0x0)
+                #13 0x0000aaaae61be508 n/a (n/a + 0x0)
+                #14 0x0000aaaae61bd508 n/a (n/a + 0x0)
+                #15 0x0000aaaae619003c n/a (n/a + 0x0)
+                #16 0x0000aaaae2baf2cc n/a (n/a + 0x0)
+                #17 0x0000ffff9b0b2d94 n/a (n/a + 0x0)
+                #18 0x0000ffff9b0b2ef8 n/a (n/a + 0x0)
+                #19 0x0000aaaae2baf0f0 n/a (n/a + 0x0)
+                ELF object binary architecture: AARCH64
+
+           PID: 4501 (deqp-vk)
+           TID: 4501 (deqp-vk)
+           UID: 0 (root)
+           GID: 0 (root)
+        Signal: 11 (SEGV) si_code: SEGV_MAPERR
+     Timestamp: Thu 2026-09-17 20:09:05 GMT (10s ago)
+  Command Line: /root/cts-1.4.6.2/deqp-vk --deqp-log-images=disable --deqp-log-shader-sources=disable --deqp-caselist-file=/root/asahi-evidence/20260917T200855623721Z-random10k-20260917-s05/cts/deqp-runner/c10.r1.caselist.txt --deqp-log-filename=/root/asahi-evidence/20260917T200855623721Z-random10k-20260917-s05/cts/deqp-runner/c10.r1.qpa --deqp-log-flush=disable
+    Executable: /root/cts-1.4.6.2/deqp-vk
+ Control Group: /user.slice/user-0.slice/session-77.scope
+          Unit: session-77.scope
+         Slice: user-0.slice
+       Session: 77
+     Owner UID: 0 (root)
+       Boot ID: cbeae91f07864125a3d06ac01998f91c
+    Machine ID: 08f00288676248028d78d74e740230c1
+      Hostname: omarchy
+       Storage: /var/lib/systemd/coredump/core.deqp-vk.0.cbeae91f07864125a3d06ac01998f91c.4501.1789675745000000.zst (present)
+  Size on Disk: 32.9M
+       Message: Process 4501 (deqp-vk) of user 0 dumped core.
+                
+                Stack trace of thread 4501:
+                #0  0x0000ffff8fb4e9a8 n/a (n/a + 0x0)
+                #1  0x0000ffffe4b6c0f8 n/a (n/a + 0x0)
+                #2  0x0000ffff8fb4c51c n/a (n/a + 0x0)
+                #3  0x0000ffff8fab3218 n/a (n/a + 0x0)
+                #4  0x0000ffff8faabc34 n/a (n/a + 0x0)
+                #5  0x0000ffff8f89ccbc n/a (n/a + 0x0)
+                #6  0x0000ffff8f89a9ac n/a (n/a + 0x0)
+                #7  0x0000ffff8f89d864 n/a (n/a + 0x0)
+                #8  0x0000ffff8f832dc4 n/a (n/a + 0x0)
+                #9  0x0000ffff8f82ac88 n/a (n/a + 0x0)
+                #10 0x0000aaaad3e7eb18 n/a (n/a + 0x0)
+                #11 0x0000aaaad2367de4 n/a (n/a + 0x0)
+                #12 0x0000aaaad0f5a738 n/a (n/a + 0x0)
+                #13 0x0000aaaad455e508 n/a (n/a + 0x0)
+                #14 0x0000aaaad455d508 n/a (n/a + 0x0)
+                #15 0x0000aaaad453003c n/a (n/a + 0x0)
+                #16 0x0000aaaad0f4f2cc n/a (n/a + 0x0)
+                #17 0x0000ffff90012d94 n/a (n/a + 0x0)
+                #18 0x0000ffff90012ef8 n/a (n/a + 0x0)
+                #19 0x0000aaaad0f4f0f0 n/a (n/a + 0x0)
+                ELF object binary architecture: AARCH64
+-- Notice: 1 systemd-coredump@.service unit is running, output may be incomplete.
