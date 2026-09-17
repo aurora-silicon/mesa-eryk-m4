@@ -1722,8 +1722,7 @@ hk_upload_usc_words(struct hk_cmd_buffer *cmd, struct hk_shader *s,
    }
 
 
-   if (agx_chip_command_stream_generation(dev->dev.chip) ==
-       AGX_CS_GENERATION_HAL200) {
+   if (agx_native_graphics(&dev->dev)) {
       if (!agx_native_graphics(&dev->dev) ||
           !hk_g17p_basic_graphics_program_supported(cmd, s, linked)) {
          mesa_loge("HAL200 program rejected stage=%u layout=%u outputs=%#llx "

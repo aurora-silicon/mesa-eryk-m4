@@ -1158,6 +1158,14 @@ agx_open_device(void *memctx, struct agx_device *dev)
       return false;
    }
 
+   /* Experimental M3 owns a fixed parameter-page list in this aperture. */
+   if (dev->chip == AGX_CHIP_G15S &&
+       !util_vma_heap_alloc_addr(&dev->g17p_vdm_alias_heap,
+                                UINT64_C(0x1074000000), 0x28000)) {
+      fprintf(stderr, "Failed to reserve M3 parameter page list\n");
+      return false;
+   }
+
    /* util_vma_heap_init() defaults to alloc_high, which puts every shader and
     * Ioto program within a few pages of the TOP of the 4GiB USC window.  The
     * only G17P configuration ever observed to execute keeps its code inside
