@@ -5152,6 +5152,13 @@ agx_lower_sincos_impl(struct nir_builder *b, nir_instr *instr, void *data)
        * 1.0). True sine never leaves [-1, 1]; clamp the magnitude. */
       result = nir_fmin(b, result, nir_imm_float(b, 1.0));
       result = nir_bcsel(b, nir_flt_imm(b, t, 0.0), nir_fneg(b, result), result);
+      /* The magnitude clamp uses minNum semantics and would turn NaN into
+       * one. Preserve the original operation's non-finite-input behavior
+       * when its float controls require it (including sin/cos(infinity)). */
+      if (alu->fp_math_ctrl & (nir_fp_preserve_inf | nir_fp_preserve_nan)) {
+         nir_def *finite = nir_flt(b, nir_fabs(b, x), nir_imm_float(b, INFINITY));
+         result = nir_bcsel(b, finite, result, nir_imm_float(b, NAN));
+      }
       return nir_f2fN(b, result, bits);
    }
    nir_def *turns = nir_fmul_imm(b, x, M_1_PI * 0.5f);
