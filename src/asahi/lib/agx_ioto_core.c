@@ -30,27 +30,27 @@ struct agx_ioto_form {
 #define FW(index, val, msk)                                                    \
    { .word = (index), .value = UINT16_C(val), .mask = UINT16_C(msk) }
 #define FORM1(k, enc, len, a)                                                  \
-   {                                                                           \
+   [AGX_IOTO_KIND_##k] = {                                                    \
       .kind = AGX_IOTO_KIND_##k, .encoding = AGX_IOTO_ENCODING_##enc,          \
       .length = (len), .fixed_word_count = 1, .fixed = {a},                    \
    }
 #define FORM2(k, enc, len, a, b)                                               \
-   {                                                                           \
+   [AGX_IOTO_KIND_##k] = {                                                    \
       .kind = AGX_IOTO_KIND_##k, .encoding = AGX_IOTO_ENCODING_##enc,          \
       .length = (len), .fixed_word_count = 2, .fixed = {a, b},                 \
    }
 #define FORM3(k, enc, len, a, b, c)                                            \
-   {                                                                           \
+   [AGX_IOTO_KIND_##k] = {                                                    \
       .kind = AGX_IOTO_KIND_##k, .encoding = AGX_IOTO_ENCODING_##enc,          \
       .length = (len), .fixed_word_count = 3, .fixed = {a, b, c},              \
    }
 #define FORM4(k, enc, len, a, b, c, d)                                         \
-   {                                                                           \
+   [AGX_IOTO_KIND_##k] = {                                                    \
       .kind = AGX_IOTO_KIND_##k, .encoding = AGX_IOTO_ENCODING_##enc,          \
       .length = (len), .fixed_word_count = 4, .fixed = {a, b, c, d},           \
    }
 #define FORM5(k, enc, len, a, b, c, d, e)                                      \
-   {                                                                           \
+   [AGX_IOTO_KIND_##k] = {                                                    \
       .kind = AGX_IOTO_KIND_##k, .encoding = AGX_IOTO_ENCODING_##enc,          \
       .length = (len), .fixed_word_count = 5, .fixed = {a, b, c, d, e},        \
    }
@@ -194,6 +194,41 @@ static const struct agx_ioto_form agx_ioto_gpu1_forms[] = {
 #undef FORM1
 #undef FW
 
+/* Every opcode fixes the low three bits of its first byte. Index candidates
+ * by those bits, but still validate every possible match (including truncated
+ * prefixes). Kind-indexed forms also make the known-kind lookup constant time.
+ * The decoder tests compare this index against the independent full grammar.
+ */
+_Static_assert(AGX_IOTO_KIND_COUNT <= 64, "Ioto candidate bitset overflow");
+#define K(kind) (UINT64_C(1) << AGX_IOTO_KIND_##kind)
+static const uint64_t agx_ioto_candidates[2][8] = {
+   [AGX_IOTO_ENCODING_GPU0] =
+      {
+         [6] = K(NOP_EP0) | K(NOP_EP1) | K(NOP_EP2) | K(NOP_EP3) | K(NOP_EP4) |
+               K(NOP_EP5) | K(NOP_EP6) | K(NOP_EP7) | K(NOP_EP8) | K(NOP_EP9),
+         [4] = K(LDIMM_EP0) | K(LDIMM_EP1) | K(LDIMM_EP2) | K(RLD_EP1),
+         [3] = K(COPY_EP0) | K(COPY_EP1),
+         [7] = K(SPECLM_EP0) | K(LDSHDR_EP0) | K(SPECTPR_EP0) | K(IADD_EP0) |
+               K(B_EP0) | K(BL_EP0) | K(CNDCALL_EP0) | K(CNDRET_EP0) |
+               K(SETPROFILECTL_EP0),
+      },
+   [AGX_IOTO_ENCODING_GPU1] =
+      {
+         [6] = K(NOP_EP0) | K(NOP_EP1) | K(NOP_EP2) | K(NOP_EP3) | K(NOP_EP4) |
+               K(NOP_EP5) | K(NOP_EP6) | K(NOP_EP7) | K(NOP_EP8) | K(NOP_EP9) |
+               K(NOP_EP10) | K(B_EP1_COMPACT) | K(B_EP1) | K(BL_EP1_COMPACT) |
+               K(BL_EP1),
+         [4] = K(LDIMM_EP0) | K(LDIMM_EP1) | K(LDIMM_EP2) | K(LDIMM_EP3) |
+               K(RLD_EP0) | K(RLD_EP1),
+         [3] = K(COPY_EP0) | K(COPY_EP1),
+         [7] = K(SPECLM_EP0) | K(LDSHDR_EP0) | K(SPECTPR_EP0) | K(IADD_EP0) |
+               K(CNDCALL_EP0) | K(CNDRET_EP0) | K(LDDEV_EP0) | K(LDDEV_EP1) |
+               K(LDDEV_EP2) | K(LDDEV_EP3) | K(LDDEV_EP4) | K(LDDEV_EP5) |
+               K(PIXREL_EP0) | K(PIXWAIT_EP0) | K(SETPROFILECTL_EP0),
+      },
+};
+#undef K
+
 static enum agx_ioto_encoding
 agx_ioto_target_encoding(enum agx_chip chip)
 {
@@ -242,13 +277,12 @@ static const struct agx_ioto_form *
 agx_ioto_find_form(enum agx_ioto_encoding encoding, enum agx_ioto_kind kind)
 {
    size_t count;
-   const struct agx_ioto_form *forms = agx_ioto_encoding_forms(encoding, &count);
-   for (size_t i = 0; i < count; ++i) {
-      if (forms[i].kind == kind)
-         return &forms[i];
-   }
-
-   return NULL;
+   const struct agx_ioto_form *forms =
+      agx_ioto_encoding_forms(encoding, &count);
+   return kind > AGX_IOTO_KIND_INVALID && (unsigned)kind < count &&
+                forms[kind].kind == kind
+             ? &forms[kind]
+             : NULL;
 }
 
 size_t
@@ -343,13 +377,16 @@ agx_ioto_decode_one(enum agx_chip chip, const void *stream, size_t available,
 
    size_t count;
    const struct agx_ioto_form *forms = agx_ioto_encoding_forms(encoding, &count);
-   for (size_t i = 0; i < count; ++i) {
-      const struct agx_ioto_form *form = &forms[i];
+   uint64_t candidates = agx_ioto_candidates[encoding][bytes[0] & 7];
+   while (candidates) {
+      const unsigned kind = __builtin_ctzll(candidates);
+      candidates &= candidates - 1;
+      const struct agx_ioto_form *form = &forms[kind];
       /* Every form begins with a word-zero opcode predicate. Reject using
        * the first available byte before checking longer prefixes. Keep all
        * candidates: ambiguous and truncated streams must still fail. */
-      if (((bytes[0] ^ form->fixed[0].value) &
-           form->fixed[0].mask & 0xff) != 0 ||
+      if (((bytes[0] ^ form->fixed[0].value) & form->fixed[0].mask & 0xff) !=
+             0 ||
           !agx_ioto_prefix_matches(form, bytes, available))
          continue;
 

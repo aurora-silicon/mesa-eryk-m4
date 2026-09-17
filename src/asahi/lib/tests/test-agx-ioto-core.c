@@ -659,6 +659,71 @@ check_program_records(void)
    return 0;
 }
 
+/* Compare the candidate index against the independent literal grammar. Walk
+ * every first word, every truncation length, and two opaque payloads. Neither
+ * unknown opcodes nor partial prefixes may turn into accepted instructions. */
+static int
+check_indexed_decode(void)
+{
+   for (unsigned encoding = 0; encoding < 2; encoding++) {
+      const struct expected_form *forms = encoding ? gpu1_forms : gpu0_forms;
+      const size_t count = encoding ? sizeof(gpu1_forms) / sizeof(gpu1_forms[0])
+                                    : sizeof(gpu0_forms) / sizeof(gpu0_forms[0]);
+      const enum agx_chip chip = encoding ? AGX_CHIP_G17G : AGX_CHIP_G16G;
+      for (unsigned prefix = 0; prefix <= UINT16_MAX; prefix++) {
+         for (unsigned payload = 0; payload < 2; payload++) {
+            uint8_t bytes[AGX_IOTO_MAX_RECORD_SIZE];
+            memset(bytes, payload ? 0xff : 0, sizeof(bytes));
+            bytes[0] = prefix;
+            bytes[1] = prefix >> 8;
+            for (size_t length = 1; length <= sizeof(bytes); length++) {
+               const struct expected_form *match = NULL;
+               unsigned matches = 0;
+               bool incomplete = false;
+               for (size_t i = 0; i < count; i++) {
+                  const struct expected_form *f = &forms[i];
+                  bool valid = true;
+                  /* Byte-wise reference, independent of the decoder's
+                   * word-predicate implementation and candidate buckets. */
+                  for (size_t j = 0; j < f->fixed_word_count; j++) {
+                     for (unsigned half = 0; half < 2; half++) {
+                        const size_t at = f->fixed[j].word * 2 + half;
+                        if (at < length && at < f->length &&
+                            ((bytes[at] ^ (f->fixed[j].value >> (half * 8))) &
+                             ((f->fixed[j].mask >> (half * 8)) & 0xff)))
+                           valid = false;
+                     }
+                  }
+                  if (!valid)
+                     continue;
+                  if (length < f->length)
+                     incomplete = true;
+                  else {
+                     match = f;
+                     matches++;
+                  }
+               }
+               struct agx_ioto_record actual;
+               size_t consumed = 99;
+               memset(&actual, 0xff, sizeof(actual));
+               const bool accepted = agx_ioto_decode_one(chip, bytes, length,
+                                                         &actual, &consumed);
+               CHECK(accepted == (matches == 1 && !incomplete));
+               if (accepted) {
+                  CHECK(actual.kind == match->kind);
+                  CHECK(consumed == match->length);
+                  CHECK(!memcmp(actual.bytes, bytes, consumed));
+               } else {
+                  CHECK(record_clear(&actual));
+                  CHECK(consumed == 0);
+               }
+            }
+         }
+      }
+   }
+   return 0;
+}
+
 int
 main(void)
 {
@@ -670,7 +735,8 @@ main(void)
                       sizeof(gpu1_targets) / sizeof(gpu1_targets[0]),
                       gpu1_forms, sizeof(gpu1_forms) / sizeof(gpu1_forms[0])))
       return 1;
-   if (check_corpus_vectors() || check_failures() || check_program_records())
+   if (check_corpus_vectors() || check_failures() || check_program_records() ||
+       check_indexed_decode())
       return 1;
 
    printf("AGX3 Ioto raw core: %u checks passed\n", checks);
