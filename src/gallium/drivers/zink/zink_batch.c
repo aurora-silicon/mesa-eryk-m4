@@ -13,6 +13,11 @@
 #endif
 
 #define MAX_VIEW_COUNT 500
+/* Bound CPU runahead before thousands of draws accumulate behind a busy GPU.
+ * A browser shares the submit worker between its WebGL contexts; throttling
+ * only at 5000 batches can block that worker for longer than its watchdog.
+ */
+#define MAX_PENDING_BATCHES 64
 
 void
 debug_describe_zink_batch_state(char *buf, const struct zink_batch_state *ptr)
@@ -620,9 +625,10 @@ post_submit(struct zink_batch_state *bs, struct zink_screen *screen)
          /* if nothing can save us, abort */
          abort();
       screen->device_lost = true;
-   } else if (bs->ctx->batch_states_count > 5000) {
-      /* throttle in case something crazy is happening */
-      zink_screen_timeline_wait(screen, bs->fence.batch_id - 2500, OS_TIMEOUT_INFINITE);
+   } else if (bs->ctx->batch_states_count > MAX_PENDING_BATCHES &&
+              bs->fence.batch_id > MAX_PENDING_BATCHES / 2) {
+      zink_screen_timeline_wait(screen, bs->fence.batch_id - MAX_PENDING_BATCHES / 2,
+                                OS_TIMEOUT_INFINITE);
    } else if (screen->curr_batch - screen->last_finished > 5) {
       /* try to avoid ooming by regularly checking for batch completion */
       zink_screen_timeline_wait(screen, screen->last_finished + 1, 0);
