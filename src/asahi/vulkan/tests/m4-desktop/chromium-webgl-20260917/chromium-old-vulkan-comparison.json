@@ -1,0 +1,7 @@
+{
+  "old_vulkan": "_provenance/experiments/20260917T171536795728Z-chromium-old-vulkan-fixed-frame/remote/chromium/pixels.rgba",
+  "fixed_vulkan": "_provenance/experiments/20260917T171228131876Z-chromium-installed-fixed-frame/remote/chromium/pixels.rgba",
+  "different_bytes": 383213,
+  "mean_absolute_byte_difference": 2.1770562065972223,
+  "max_difference": 176
+}

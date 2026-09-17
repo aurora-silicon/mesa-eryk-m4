@@ -11,6 +11,11 @@ p=argparse.ArgumentParser(description=__doc__)
 p.add_argument('--guard-output',type=Path,required=True)
 p.add_argument('--renderer',choices=['asahi','lavapipe'],default='asahi')
 p.add_argument('--capture',action='store_true')
+p.add_argument('--gallium-library', type=Path, help='Private per-process Gallium comparison; does not replace the desktop library')
+p.add_argument('--vulkan-library', type=Path, help='Private per-process Vulkan comparison')
+p.add_argument('--user-profile', type=Path, help='Use an existing idle user profile; retain diagnostics in a separate private directory')
+p.add_argument('--lowering-capture', action='store_true')
+p.add_argument('--stacks', action='store_true', help='Retain bounded GPU-process stacks before cleanup')
 p.add_argument('--browser-flag',action='append',default=[])
 p.add_argument('--normal-launch',action='store_true',help='Use /usr/bin/chromium and user launcher flags instead of explicit test GPU flags')
 p.add_argument('--angle',choices=['gl','gles','vulkan'],default='gl')
@@ -27,6 +32,17 @@ def check():fw.check_guard(a.guard_output,boot)
 check();out=a.guard_output/'chromium';out.mkdir()
 u=pwd.getpwnam('e');profile=Path(u.pw_dir)/'.cache/m4-chromium-probes'/a.guard_output.name;profile.mkdir(parents=True)
 for f in [profile.parent,profile]:os.chown(f,u.pw_uid,u.pw_gid)
+browser_profile=a.user_profile or profile
+if a.user_profile:
+    assert a.normal_launch and browser_profile.is_dir()
+    for proc in Path('/proc').glob('[0-9]*'):
+        try:
+            assert not (proc.stat().st_uid==u.pw_uid and 'chromium' in (proc/'exe').resolve().name), 'Close the existing browser before using its profile'
+        except OSError:pass
+    # Chromium leaves this ephemeral endpoint file after a normal shutdown.
+    # The profile is idle (checked above); wait for this launch's new endpoint.
+    (browser_profile/'DevToolsActivePort').unlink(missing_ok=True)
+
 env=dict(os.environ)
 for k in list(env):
     if k.startswith(('VK_','AGX_','GFXRECON_')):env.pop(k)
@@ -35,6 +51,18 @@ for line in Path('/etc/environment.d/90-omarchy-j713-rendering.conf').read_text(
 runtime=Path('/run/user/1000');sockets=[f for f in runtime.glob('wayland-*') if stat.S_ISSOCK(f.stat().st_mode)];assert len(sockets)==1
 env.update(HOME=u.pw_dir,USER='e',LOGNAME='e',XDG_RUNTIME_DIR=str(runtime),WAYLAND_DISPLAY=sockets[0].name,DBUS_SESSION_BUS_ADDRESS=f'unix:path={runtime}/bus',VK_DRIVER_FILES='/opt/asahi-m4-port/asahi_icd.json' if a.renderer=='asahi' else '/usr/share/vulkan/icd.d/lvp_icd.json',LIBGL_ALWAYS_SOFTWARE='0' if a.renderer=='asahi' else '1',LP_NUM_THREADS='4',AGX_COMPILER_CAPTURE_DIR=str(profile/'compiler'),MESA_SHADER_CACHE_DIR=str(profile/'mesa-cache'))
 (profile/'compiler').mkdir();os.chown(profile/'compiler',u.pw_uid,u.pw_gid)
+if a.lowering_capture:env['HK_NIR_CAPTURE_DIR']=str(profile/'compiler')
+if a.gallium_library:
+    assert a.gallium_library.is_file()
+    (profile/'lib').mkdir();os.chown(profile/'lib',u.pw_uid,u.pw_gid)
+    (profile/'lib/libgallium-26.1.4.so').symlink_to(a.gallium_library.resolve())
+    env['LD_LIBRARY_PATH']=str(profile/'lib')+':'+env.get('LD_LIBRARY_PATH','')
+if a.vulkan_library:
+    assert a.vulkan_library.is_file()
+    icd=profile/'comparison-icd.json'
+    icd.write_text(json.dumps({'file_format_version':'1.0.0','ICD':{'library_path':str(a.vulkan_library.resolve()),'api_version':'1.4.0'}}))
+    os.chown(icd,u.pw_uid,u.pw_gid)
+    env['VK_DRIVER_FILES']=str(icd)
 if a.capture:env.update(VK_LAYER_PATH='/opt/gfxreconstruct/share/vulkan/explicit_layer.d',VK_INSTANCE_LAYERS='VK_LAYER_LUNARG_gfxreconstruct',GFXRECON_CAPTURE_FILE=str(profile/'chromium-${ProcessId}.gfxr'),GFXRECON_CAPTURE_FILE_TIMESTAMP='false',GFXRECON_CAPTURE_FILE_FLUSH='true')
 if a.capture_profile:
     assert a.capture and a.renderer=='lavapipe'
@@ -52,18 +80,19 @@ if a.capture_profile:
         VK_KHRONOS_PROFILES_SIMULATE_CAPABILITIES='SIMULATE_API_VERSION_BIT,SIMULATE_FEATURES_BIT,SIMULATE_EXTENSIONS_BIT,SIMULATE_PROPERTIES_BIT,SIMULATE_FORMATS_BIT',
         VK_KHRONOS_PROFILES_DEFAULT_FEATURE_VALUES='DEFAULT_FEATURE_VALUES_FALSE',
         VK_KHRONOS_PROFILES_EXCLUDE_DEVICE_EXTENSIONS=','.join(report['removed_reference_extensions']))
-cmd=['/usr/lib/chromium/chromium','--user-data-dir='+str(profile),'--no-first-run','--no-default-browser-check','--ozone-platform='+a.ozone,'--use-gl=angle','--use-angle='+a.angle,'--ignore-gpu-blocklist','--enable-gpu-rasterization','--remote-debugging-port=0',a.url]
+cmd=['/usr/lib/chromium/chromium','--user-data-dir='+str(browser_profile),'--no-first-run','--no-default-browser-check','--ozone-platform='+a.ozone,'--use-gl=angle','--use-angle='+a.angle,'--ignore-gpu-blocklist','--enable-gpu-rasterization','--remote-debugging-port=0',a.url]
 cmd += ['--enable-logging=stderr','--vmodule=gpu_init=2,gl_factory=2,gl_surface_egl=2'] + a.browser_flag
 if a.ozone=='x11':env['DISPLAY']=':0'
 if a.angle=='vulkan':cmd.append('--enable-features=Vulkan,VulkanFromANGLE,DefaultANGLEVulkan')
 if a.normal_launch:
     assert a.angle=='gl' and a.ozone=='wayland', 'Normal launch uses configured GPU/platform flags'
-    cmd=['/usr/bin/chromium','--user-data-dir='+str(profile),'--no-first-run',
+    cmd=['/usr/bin/chromium','--user-data-dir='+str(browser_profile),'--no-first-run',
          '--no-default-browser-check','--remote-debugging-port=0',a.url,*a.browser_flag]
     flags=Path(u.pw_dir)/'.config/chromium-flags.conf'
     if flags.exists():shutil.copyfile(flags,out/'chromium-flags.conf')
 manifest=dict(renderer=a.renderer,angle=a.angle,normal_launch=a.normal_launch,observe_seconds=a.observe_seconds,command=cmd,environment={k:v for k,v in env.items() if k.startswith(('VK_','GFXRECON_','MESA_','GALLIUM_','LIBGL_','LD_LIBRARY_','ASAHI_','AGX_','GBM_','__EGL_'))},boot_id=boot)
 manifest['hashes']={f:hashlib.sha256(Path(f).read_bytes()).hexdigest() for f in ['/usr/lib/chromium/chromium','/usr/lib/chromium/libEGL.so','/usr/lib/chromium/libGLESv2.so','/opt/asahi-m4-port/lib/libvulkan_asahi.so','/opt/asahi-m4-port/lib/libgallium-26.1.4.so']}
+manifest['comparison_libraries']={str(f):hashlib.sha256(f.read_bytes()).hexdigest() for f in (a.gallium_library,a.vulkan_library) if f}
 (out/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
 child=None;sessions=[];seq=0
 def call(ws,method,params=None):
@@ -80,16 +109,16 @@ try:
     with (out/'browser.log').open('w') as log:
         child=subprocess.Popen(['runuser','-u','e','--',*cmd],env=env,stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
         deadline=time.monotonic()+15
-        while not (profile/'DevToolsActivePort').exists():
+        while not (browser_profile/'DevToolsActivePort').exists():
             check()
             if child.poll() is not None or time.monotonic()>deadline:raise RuntimeError('Chromium debugging endpoint unavailable')
             time.sleep(.2)
-        port,browser_path=(profile/'DevToolsActivePort').read_text().splitlines()[:2]
+        port,browser_path=(browser_profile/'DevToolsActivePort').read_text().splitlines()[:2]
         ws=websocket.create_connection('ws://127.0.0.1:'+port+browser_path,timeout=8,suppress_origin=True);sessions.append(ws)
         gpu=call(ws,'SystemInfo.getInfo');(out/'gpu.json').write_text(json.dumps(gpu,indent=2)+'\n')
         print('Chromium GPU:',json.dumps(gpu['gpu']['devices']),flush=True)
         tabs=json.load(urllib.request.urlopen('http://127.0.0.1:'+port+'/json/list',timeout=5))
-        tab=next(t for t in tabs if t['type']=='page')
+        tab=next(t for t in tabs if t['type']=='page' and t['url']==a.url)
         page=websocket.create_connection(tab['webSocketDebuggerUrl'],timeout=8,suppress_origin=True);sessions.append(page)
         call(page,'Page.bringToFront')
         def page_script(path):
@@ -130,7 +159,12 @@ try:
                 diagnostics.update(pixels_file='pixels.rgba',pixels_bytes=len(pixels))
             (out/'diagnostics.json').write_text(json.dumps(diagnostics,indent=2)+'\n')
             print('Page diagnostics:',json.dumps(diagnostics),flush=True)
-        shot=call(page,'Page.captureScreenshot',{'format':'png'});(out/'page.png').write_bytes(base64.b64decode(shot['data']))
+        try:
+            shot=call(page,'Page.captureScreenshot',{'format':'png'})
+            (out/'page.png').write_bytes(base64.b64decode(shot['data']))
+        except Exception as error:
+            # A wedged presentation path must not discard GPU/process evidence.
+            (out/'screenshot-error.json').write_text(json.dumps({'error': str(error)})+'\n')
         nodes={f.resolve() for f in Path('/sys/kernel/debug/dri').glob('*/m4_scanout')};assert len(nodes)==1
         (out/'desktop.m4fb').write_bytes(nodes.pop().read_bytes())
         for proc in Path('/proc').glob('[0-9]*'):
@@ -140,6 +174,17 @@ try:
                     (out/f'{proc.name}-argv.json').write_text(json.dumps((proc/'cmdline').read_bytes().decode(errors='replace').split('\0')))
             except OSError:pass
 finally:
+    for proc in Path('/proc').glob('[0-9]*'):
+        try:
+            if proc.stat().st_uid!=u.pw_uid or 'chromium' not in (proc/'exe').resolve().name:continue
+            argv=(proc/'cmdline').read_bytes().decode(errors='replace').split('\0')
+            (out/f'{proc.name}-maps.txt').write_text((proc/'maps').read_text())
+            (out/f'{proc.name}-argv.json').write_text(json.dumps(argv))
+            if a.stacks and any('--type=gpu-process' in value for value in argv):
+                with (out/f'{proc.name}-stack.txt').open('w') as stack:
+                    try:subprocess.run(['eu-stack','-p',proc.name],stdout=stack,stderr=stack,timeout=4)
+                    except subprocess.TimeoutExpired:stack.write('Stack capture timed out\n')
+        except OSError:pass
     for ws in sessions:ws.close()
     if child and child.poll() is None:
         os.killpg(child.pid,signal.SIGTERM)

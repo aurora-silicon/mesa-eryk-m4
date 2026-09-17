@@ -1,0 +1,10 @@
+{
+  "reference": "_provenance/experiments/20260913T100126943783Z-chromium-buoy-normal/remote/chromium/pixels.rgba",
+  "candidate": "_provenance/experiments/20260917T171228131876Z-chromium-installed-fixed-frame/remote/chromium/pixels.rgba",
+  "reference_sha256": "e2f51852d34483ac95e3637a6fb5123851c8500b3ee32e35fc9e26e3c392aeba",
+  "candidate_sha256": "6fb7bedc8eaa29e2a5e0c91622b62c7650445502ce03b92d3ca8aa44a265ff7e",
+  "different_bytes": 383213,
+  "total_bytes": 921600,
+  "mean_absolute_byte_difference": 2.1770562065972223,
+  "maximum_byte_difference": 176
+}

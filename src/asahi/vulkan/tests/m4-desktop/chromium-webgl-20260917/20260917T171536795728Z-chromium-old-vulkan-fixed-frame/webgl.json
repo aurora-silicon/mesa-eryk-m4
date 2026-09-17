@@ -1,0 +1,18 @@
+{
+  "result": {
+    "type": "object",
+    "value": [
+      {
+        "context": true,
+        "lost": false,
+        "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+        "renderer": "ANGLE (Mesa, zink Vulkan 1.4(Apple M4 (G16G B0) (MESA_HONEYKRISP)), OpenGL ES 3.0)",
+        "error": 0,
+        "width": 64,
+        "height": 64,
+        "nonblack": 12288,
+        "hash": 3796021022
+      }
+    ]
+  }
+}

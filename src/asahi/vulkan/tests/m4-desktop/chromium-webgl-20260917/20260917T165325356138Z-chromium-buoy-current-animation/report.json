@@ -1,0 +1,22 @@
+{
+  "id": "20260917T165325356138Z-chromium-buoy-current-animation",
+  "verdict": "process_failure",
+  "transport_returncode": 1,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T165325356138Z-chromium-buoy-current-animation",
+  "observations": {
+    "pixel_results": [],
+    "pixel_result_count": 0,
+    "thermal_samples": 48,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 63.25,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 63.25,
+      "Ta000m": 61.25,
+      "Te000m": 58.0,
+      "Te001m": 62.0,
+      "Tp000m": 63.25,
+      "Tp001m": 62.0
+    }
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "renderer": "asahi",
+  "angle": "gl",
+  "normal_launch": true,
+  "observe_seconds": 5,
+  "command": [
+    "/usr/bin/chromium",
+    "--user-data-dir=/home/e/.cache/m4-chromium-probes/20260917T165527479333Z-chromium-buoy-old-gallium",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--remote-debugging-port=0",
+    "file:///home/e/Buoy.html?t=10&w=640&h=360"
+  ],
+  "environment": {
+    "VK_DRIVER_FILES": "/opt/asahi-m4-port/asahi_icd.json",
+    "ASAHI_M4_EXPERIMENTAL": "1",
+    "LD_LIBRARY_PATH": "/home/e/.cache/m4-chromium-probes/20260917T165527479333Z-chromium-buoy-old-gallium/lib:/opt/asahi-m4-port/lib",
+    "LIBGL_DRIVERS_PATH": "/opt/asahi-m4-port/lib/dri",
+    "GBM_BACKENDS_PATH": "/opt/asahi-m4-port/lib/gbm",
+    "__EGL_VENDOR_LIBRARY_FILENAMES": "/opt/asahi-m4-port/egl.json",
+    "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+    "GALLIUM_DRIVER": "zink",
+    "ASAHI_MESA_DEBUG": "nocompress",
+    "LIBGL_ALWAYS_SOFTWARE": "0",
+    "MESA_GL_VERSION_OVERRIDE": "3.3",
+    "MESA_GLES_VERSION_OVERRIDE": "3.0",
+    "AGX_COMPILER_CAPTURE_DIR": "/home/e/.cache/m4-chromium-probes/20260917T165527479333Z-chromium-buoy-old-gallium/compiler",
+    "MESA_SHADER_CACHE_DIR": "/home/e/.cache/m4-chromium-probes/20260917T165527479333Z-chromium-buoy-old-gallium/mesa-cache"
+  },
+  "boot_id": "33f53329-0966-4890-86fe-859709f125db",
+  "hashes": {
+    "/usr/lib/chromium/chromium": "2f0002bce6c72188c9426f083e6e802c690eacbbc4fee03b2c08343833fcd1b0",
+    "/usr/lib/chromium/libEGL.so": "7a763fca9152018a26adbae2b21060c4fed9b412ec11a35dad4af1103c86fb79",
+    "/usr/lib/chromium/libGLESv2.so": "6edadb5cdddeb8a682cf1822de6028795121aaa407574a5bb18c89a0f60cd325",
+    "/opt/asahi-m4-port/lib/libvulkan_asahi.so": "e98995b3ba27b2a4f04493589e65670a75c66c7200884f594e2357bb6ed5c66d",
+    "/opt/asahi-m4-port/lib/libgallium-26.1.4.so": "33358f19b9b0b971ba9d20d12be56691819f4a3727191e4da3a6127675d304e0"
+  },
+  "comparison_libraries": {
+    "/opt/asahi-m4-port/lib/libgallium-26.1.4.so.before-14c9d843ca2131198ea3a61587e37fc8b7b79a3e39e98bb0c59da209ccae5ba5": "14c9d843ca2131198ea3a61587e37fc8b7b79a3e39e98bb0c59da209ccae5ba5"
+  }
+}

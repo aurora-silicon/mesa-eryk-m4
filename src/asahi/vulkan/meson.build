@@ -81,6 +81,7 @@ hk_files = files(
   'hk_sampler.h',
   'hk_shader.c',
   'hk_nir_lower_minmax.c',
+  'hk_nir_preserve_sample_loops.c',
   'hk_nir_lower_sparse_access.c',
   'hk_nir_lower_atomic64.c',
   'hk_shader.h',
@@ -89,6 +90,16 @@ hk_files = files(
 )
 
 if with_tests
+  test(
+    'hk_sample_loops',
+    executable('hk_sample_loops_test',
+      files('tests/test-hk-sample-loops.c', 'hk_nir_preserve_sample_loops.c'),
+      include_directories : [include_directories('.'), inc_include, inc_src, inc_asahi],
+      dependencies : [idep_nir, idep_mesautil],
+      link_with : [libasahi_compiler],
+    ),
+    suite : ['asahi'],
+  )
   test(
     'hk_cs_root_size',
     executable(

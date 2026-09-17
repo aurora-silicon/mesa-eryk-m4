@@ -1,0 +1,24 @@
+{
+  "id": "20260917T171536795728Z-chromium-old-vulkan-fixed-frame",
+  "verdict": "pass",
+  "transport_returncode": 0,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T171536795728Z-chromium-old-vulkan-fixed-frame",
+  "observations": {
+    "pixel_results": [
+      "PASS: Chromium probe completed; inspect GPU diagnostics and screenshots"
+    ],
+    "pixel_result_count": 1,
+    "thermal_samples": 23,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 62.75,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 62.75,
+      "Ta000m": 61.75,
+      "Te000m": 58.5,
+      "Te001m": 61.75,
+      "Tp000m": 62.75,
+      "Tp001m": 62.25
+    }
+  }
+}

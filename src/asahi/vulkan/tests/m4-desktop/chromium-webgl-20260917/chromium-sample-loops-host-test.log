@@ -1,0 +1,2 @@
+Captured shader texture instructions: early unroll=241 preserved=48
+PASS: sampled and nested loops remain bounded; unrelated loops still unroll

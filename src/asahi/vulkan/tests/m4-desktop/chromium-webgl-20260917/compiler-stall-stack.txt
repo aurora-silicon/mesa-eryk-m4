@@ -1,0 +1,51 @@
+PID 55953 - process
+TID 55953:
+#0  0x0000ffff90a2f99c nir_index_ssa_defs
+#1  0x0000ffff90a34afc nir_call_serialized
+#2  0x0000ffff907f1ac8 libagx_txs_gen9
+#3  0x0000ffff90b77850 lower_tex_crawl
+#4  0x0000ffff90b760fc nir_shader_instructions_pass
+#5  0x0000ffff90b752fc agx_nir_lower_texture_for_generation
+#6  0x0000ffff9091ae8c hk_lower_nir
+#7  0x0000ffff9091cef0 hk_compile_shaders
+#8  0x0000ffff908b2944 vk_compile_shaders
+#9  0x0000ffff908a9e18 vk_common_CreateGraphicsPipelines
+#10 0x0000ffff93357688 zink_create_gfx_pipeline
+#11 0x0000ffff9330b348 VkPipeline_T* zink_get_gfx_pipeline<(zink_dynamic_state)3, false, false>(zink_context*, zink_gfx_program*, zink_gfx_pipeline_state*, mesa_prim)
+#12 0x0000ffff9330edb0 bool update_gfx_pipeline<(zink_dynamic_state)3, true>(zink_context*, zink_batch_state*, mesa_prim)
+#13 0x0000ffff933399b4 void zink_draw<(zink_multidraw)1, (zink_dynamic_state)3, true, false>(pipe_context*, pipe_draw_info const*, unsigned int, pipe_draw_indirect_info const*, pipe_draw_start_count_bias const*, unsigned int, pipe_vertex_state*, unsigned int)
+#14 0x0000ffff9327a14c tc_batch_execute
+#15 0x0000ffff932703ec _tc_sync
+#16 0x0000ffff93272d1c tc_flush
+#17 0x0000ffff92e36568 st_glFlush
+#18 0x0000ffff92cd0cfc _mesa_unmarshal_Flush
+#19 0x0000ffff92c165b4 glthread_unmarshal_batch
+#20 0x0000ffff92c161dc _mesa_glthread_finish
+#21 0x0000aaaae7e348f8
+#22 0x0000aaaae7e348f8
+#23 0x005faaaae7ce4104
+#24 0x000daaaae7d14ae8
+#25 0x007eaaaaef91cbfc
+#26 0x0066aaaaef916ed4
+#27 0x0015aaaaef87415c
+#28 0x0020aaaaef84e4bc
+#29 0x001daaaaf0e5bde4
+#30 0x005caaaaf0f6b1b0
+#31 0x0055aaaaf0f3d220
+#32 0x003baaaaf0f397a4
+#33 0x0014aaaaf0f3f8a4
+#34 0x004daaaaf0f444f0
+#35 0x006aaaaae86d4ae0
+#36 0x0058aaaaea3c527c
+#37 0x0055aaaaee8066e8
+#38 0x0001aaaaee82acc8
+#39 0x0014aaaaee7ac980
+#40 0x003eaaaaee82b800
+#41 0x0059aaaaee7e5850
+#42 0x003caaaaf1e32380
+#43 0x0000aaaaed42b504
+#44 0x0061aaaaed42d314
+#45 0x0014aaaaed429bf8
+#46 0x007eaaaae74d4d08
+#47 0x007dffff9a7b2d94
+#48 0x0000ffff9a7b2ef8 __libc_start_main

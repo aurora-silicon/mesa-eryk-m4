@@ -7,6 +7,7 @@
  * SPDX-License-Identifier: MIT
  */
 #include "hk_shader.h"
+#include "hk_nir_preserve_sample_loops.h"
 
 #include "poly/nir/poly_nir.h"
 #include "agx_debug.h"
@@ -19,6 +20,7 @@
 #include "hk_agx3_vdm_decode.h"
 #include "libagx.h"
 #include "nir.h"
+#include "nir_serialize.h"
 #include "nir_builder.h"
 #include "nir_format_convert.h"
 
@@ -61,6 +63,43 @@
 #include "util/simple_mtx.h"
 #include "util/u_debug.h"
 #include "vulkan/vulkan_core.h"
+
+/* Development capture before texture lowering, which can fail before the
+ * backend's existing AGX compiler capture point is reached. */
+static void
+hk_capture_lowering(nir_shader *nir, const char *phase, unsigned features)
+{
+   const char *directory = getenv("HK_NIR_CAPTURE_DIR");
+   if (!directory)
+      return;
+   unsigned count = 0, textures = 0;
+   nir_foreach_function_impl(impl, nir) {
+      nir_foreach_block(block, impl) {
+         nir_foreach_instr(instr, block) {
+            ++count;
+            textures += instr->type == nir_instr_type_tex;
+         }
+      }
+   }
+   fprintf(stderr, "HK lowering %s stage=%u features=%x instructions=%u textures=%u\n",
+           phase, nir->info.stage, features, count, textures);
+   if (count < 1000)
+      return;
+   static unsigned serial;
+   char path[1024];
+   if (snprintf(path, sizeof(path), "%s/hk-%u-%s-%u.nirbin", directory,
+                (unsigned)getpid(), phase, p_atomic_inc_return(&serial)) >= sizeof(path))
+      return;
+   FILE *file = fopen(path, "wb");
+   if (!file)
+      return;
+   struct blob blob;
+   blob_init(&blob);
+   nir_serialize(&blob, nir, false);
+   fwrite(blob.data, 1, blob.size, file);
+   fclose(file);
+   blob_finish(&blob);
+}
 
 struct hk_fs_key {
    bool zs_self_dep;
@@ -139,6 +178,10 @@ hk_preprocess_nir_internal(struct vk_physical_device *vk_pdev, nir_shader *nir)
       NIR_PASS(_, nir, nir_lower_halt_to_return);
       NIR_PASS(_, nir, nir_lower_returns);
    }
+
+   hk_capture_lowering(nir, "preprocess-input", 0);
+   if (((struct hk_physical_device *)vk_pdev)->dev.chip == AGX_CHIP_G16G)
+      NIR_PASS(_, nir, hk_nir_preserve_sample_loops);
 
    /* Unroll loops before lowering indirects via
     * nir_lower_io_vars_to_temporaries */
@@ -1801,6 +1844,7 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
                nir_metadata_control_flow, NULL);
    }
 
+   hk_capture_lowering(nir, "before-minmax", features);
    if (dev->dev.chip == AGX_CHIP_G16G &&
        (features & (HK_FEAT_SAMPLER_MINMAX | HK_FEAT_IMAGE_VIEW_MIN_LOD))) {
       /* Keep cube gradients until reduction has selected its anisotropic
@@ -1813,6 +1857,8 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
       NIR_PASS(_, nir, nir_lower_tex, &prepare);
       NIR_PASS(_, nir, hk_nir_lower_minmax, features & HK_FEAT_IMAGE_VIEW_MIN_LOD);
    }
+
+   hk_capture_lowering(nir, "after-minmax", features);
 
    /* We must do early lowering before hk_nir_lower_descriptors, since this will
     * create lod_bias instructions.
@@ -1950,8 +1996,10 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
       NIR_PASS(_, nir, nir_shader_instructions_pass, lower_sparse_buffer_or_ms,
                nir_metadata_none, NULL);
 
+   hk_capture_lowering(nir, "before-texture", features);
    NIR_PASS(_, nir, agx_nir_lower_texture_for_generation,
             agx_chip_descriptor_generation(dev->dev.chip));
+   hk_capture_lowering(nir, "after-texture", features);
    NIR_PASS(_, nir, agx_nir_lower_multisampled_image_store);
 
    if (dev->dev.chip == AGX_CHIP_G16G)
