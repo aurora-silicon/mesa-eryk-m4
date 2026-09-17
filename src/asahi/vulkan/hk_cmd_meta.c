@@ -2467,6 +2467,46 @@ hk_bind_point(bool gfx)
               : VK_PIPELINE_BIND_POINT_COMPUTE;
 }
 
+/* Small raw uploads avoid creating a render pass for each narrow SHM damage
+ * rectangle. Large transfers retain the render path; its bulk throughput is
+ * better. Restrict this to the qualified uncompressed four-byte colour layout.
+ */
+static bool
+hk_m4_small_raw_upload(struct hk_device *dev, const struct hk_image *image,
+                       const VkCopyBufferToImageInfo2 *info)
+{
+   if (dev->dev.chip != AGX_CHIP_G16G || image->plane_count != 1 ||
+       image->planes[0].layout.compressed ||
+       image->vk.samples != VK_SAMPLE_COUNT_1_BIT ||
+       image->vk.image_type != VK_IMAGE_TYPE_2D ||
+       (info->dstImageLayout != VK_IMAGE_LAYOUT_GENERAL &&
+        info->dstImageLayout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL))
+      return false;
+
+   switch (image->vk.format) {
+   case VK_FORMAT_R8G8B8A8_UNORM:
+   case VK_FORMAT_B8G8R8A8_UNORM:
+   case VK_FORMAT_R8G8B8A8_SRGB:
+   case VK_FORMAT_B8G8R8A8_SRGB:
+      break;
+   default:
+      return false;
+   }
+   const uint64_t budget =
+      (uint64_t)image->vk.extent.width * image->vk.extent.height / 4;
+   uint64_t texels = 0;
+   for (unsigned i = 0; i < info->regionCount; ++i) {
+      const VkBufferImageCopy2 *r = &info->pRegions[i];
+      const uint64_t count =
+         (uint64_t)r->imageExtent.width * r->imageExtent.height *
+         vk_image_subresource_layer_count(&image->vk, &r->imageSubresource);
+      if (count >= budget - texels)
+         return false;
+      texels += count;
+   }
+   return texels != 0;
+}
+
 VKAPI_ATTR void VKAPI_CALL
 hk_CmdCopyBufferToImage2(VkCommandBuffer commandBuffer,
                          const VkCopyBufferToImageInfo2 *pCopyBufferToImageInfo)
@@ -2498,7 +2538,8 @@ hk_CmdCopyBufferToImage2(VkCommandBuffer commandBuffer,
 
    bool gfx = hk_copy_requires_gfx(dst_image);
    if (agx_native_graphics(&dev->dev)) {
-      if (hk_native_raw_copy_format(dst_image->vk.format) ||
+      if (hk_m4_small_raw_upload(dev, dst_image, pCopyBufferToImageInfo) ||
+          hk_native_raw_copy_format(dst_image->vk.format) ||
           !hk_g17p_copy_buffer_to_image_supported(
              dev, dst_image, pCopyBufferToImageInfo)) {
          struct hk_meta_save save;
