@@ -1,0 +1,28 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.api.buffer_memory_requirements.create_sparse_binding.ext_mem_flags_excluded.method1.size_req_other_usage_bits",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.api.buffer_memory_requirements.create_sparse_binding.ext_mem_flags_excluded.method1.size_req_other_usage_bits",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260917T173800382874Z-cts-sparse-profile-proc/cts/000/result.qpa"
+    ],
+    "boot_id": "5e08bdfe-3c47-43b8-8e17-7fa0ff2aab36",
+    "status": "Timeout",
+    "started_unix": 1789666681.464495,
+    "eligibility": {
+      "case": "dEQP-VK.api.buffer_memory_requirements.create_sparse_binding.ext_mem_flags_excluded.method1.size_req_other_usage_bits",
+      "catalog_index": 3315,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    "message": "Exceeded the recorded 20s per-case bound",
+    "returncode": -9,
+    "seconds": 20.005801178000013,
+    "finished_unix": 1789666701.5137832,
+    "pid": 1377
+  }
+]

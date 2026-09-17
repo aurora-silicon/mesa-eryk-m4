@@ -1,0 +1,22 @@
+{
+  "selected": 348,
+  "recorded": 348,
+  "completed": 348,
+  "counts": {
+    "Pass": 348
+  },
+  "classifications": {
+    "unclassified": 348
+  },
+  "elapsed_seconds": 13.277621110028122,
+  "preparation_seconds": 1.4721909890067764,
+  "runner_seconds": 9.860592984000007,
+  "jobs": 20,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "46b482e22e82cbd2146566b6ebd0362acfeb4ab8219bbf42bd27bae1856b2ca0",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T173441961965Z-cts-immediate-scaled-blits-corrected",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 62.75
+}

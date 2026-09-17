@@ -12,6 +12,7 @@
 #include "hk_device_memory.h"
 #include "hk_entrypoints.h"
 #include "hk_physical_device.h"
+#include "util/bitset.h"
 
 static uint32_t
 hk_get_buffer_alignment(const struct hk_physical_device *pdev,
@@ -100,10 +101,18 @@ hk_update_buffer_alias(struct hk_device *dev, uint64_t address,
    assert(!(offset % 16384) && !(size % 16384) && !(canonical % 16384));
    simple_mtx_lock(&dev->sparse_residency_lock);
    uint64_t *directory = agx_bo_map(dev->buffer_alias_table);
-   for (uint64_t off = 0; off < size; off += 16384) {
+   for (uint64_t off = 0; off < size;) {
       unsigned index = (offset + off) >> 26;
+      unsigned first = ((offset + off) >> 14) & 4095;
+      unsigned count = MIN2((size - off) >> 14, 4096 - first);
       if (!dev->buffer_alias_leaves[index]) {
-         if (!canonical) continue;
+         /* An absent leaf already means identity for its entire 64 MiB
+          * span. Do not visit every 16 KiB page of an unbound large buffer.
+          */
+         if (!canonical) {
+            off += (uint64_t)count << 14;
+            continue;
+         }
          struct agx_bo *leaf = agx_bo_create(&dev->dev, 32768, 16384,
                                             AGX_BO_READONLY, "Buffer alias leaf");
          if (!leaf) {
@@ -115,7 +124,13 @@ hk_update_buffer_alias(struct hk_device *dev, uint64_t address,
          directory[index] = leaf->va->addr;
       }
       uint64_t *leaf = agx_bo_map(dev->buffer_alias_leaves[index]);
-      leaf[((offset + off) >> 14) & 4095] = canonical ? canonical + off : 0;
+      if (canonical) {
+         for (unsigned i = 0; i < count; ++i)
+            leaf[first + i] = canonical + off + ((uint64_t)i << 14);
+      } else {
+         memset(leaf + first, 0, count * sizeof(*leaf));
+      }
+      off += (uint64_t)count << 14;
    }
    simple_mtx_unlock(&dev->sparse_residency_lock);
    return VK_SUCCESS;
@@ -137,13 +152,15 @@ hk_update_sparse_residency(struct hk_device *dev, uint64_t address,
    const uint64_t first = offset / 16384, end = (offset + size) / 16384;
    uint32_t *map = agx_bo_map(dev->sparse_residency);
    simple_mtx_lock(&dev->sparse_residency_lock);
-   for (uint64_t page = first; page < end; ++page) {
-      const uint32_t bit = 1u << (page % 32);
-      if (resident)
-         map[page / 32] |= bit;
-      else
-         map[page / 32] &= ~bit;
-   }
+   /* The VA window fits in the bitset helper's signed index domain. Updating
+    * whole words avoids millions of read/modify/write operations when CTS or
+    * an application creates a large, initially unbound sparse buffer.
+    */
+   assert(end <= INT_MAX);
+   if (resident)
+      BITSET_SET_RANGE(map, first, end - 1);
+   else
+      BITSET_CLEAR_RANGE(map, first, end - 1);
    simple_mtx_unlock(&dev->sparse_residency_lock);
 }
 

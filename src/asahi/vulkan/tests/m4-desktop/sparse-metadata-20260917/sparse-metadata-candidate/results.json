@@ -1,0 +1,164 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.api.buffer_memory_requirements.create_sparse_binding.ext_mem_flags_excluded.method1.size_req_other_usage_bits",
+    "boot_id": "5e08bdfe-3c47-43b8-8e17-7fa0ff2aab36",
+    "runner_status": "Pass",
+    "seconds": 12.279784,
+    "eligibility": {
+      "case": "dEQP-VK.api.buffer_memory_requirements.create_sparse_binding.ext_mem_flags_excluded.method1.size_req_other_usage_bits",
+      "catalog_index": 3315,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "3255",
+    "qpa": "deqp-runner/c3.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.api.buffer_memory_requirements.create_sparse_binding.ext_mem_flags_excluded.method2.size_req_storage_usage_bits",
+    "boot_id": "5e08bdfe-3c47-43b8-8e17-7fa0ff2aab36",
+    "runner_status": "Pass",
+    "seconds": 16.459831,
+    "eligibility": {
+      "case": "dEQP-VK.api.buffer_memory_requirements.create_sparse_binding.ext_mem_flags_excluded.method2.size_req_storage_usage_bits",
+      "catalog_index": 3326,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "6615",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.api.buffer_memory_requirements.create_sparse_binding_sparse_aliased.ext_mem_flags_excluded.method1.size_req_storage_usage_bits",
+    "boot_id": "5e08bdfe-3c47-43b8-8e17-7fa0ff2aab36",
+    "runner_status": "Pass",
+    "seconds": 13.98633,
+    "eligibility": {
+      "case": "dEQP-VK.api.buffer_memory_requirements.create_sparse_binding_sparse_aliased.ext_mem_flags_excluded.method1.size_req_storage_usage_bits",
+      "catalog_index": 3356,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "6615",
+    "qpa": "deqp-runner/c6.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 3,
+    "case": "dEQP-VK.api.buffer_memory_requirements.create_sparse_binding_sparse_aliased.ext_mem_flags_excluded.method2.size_req_other_usage_bits",
+    "boot_id": "5e08bdfe-3c47-43b8-8e17-7fa0ff2aab36",
+    "runner_status": "Pass",
+    "seconds": 10.128178,
+    "eligibility": {
+      "case": "dEQP-VK.api.buffer_memory_requirements.create_sparse_binding_sparse_aliased.ext_mem_flags_excluded.method2.size_req_other_usage_bits",
+      "catalog_index": 3365,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "3255",
+    "qpa": "deqp-runner/c8.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 4,
+    "case": "dEQP-VK.api.buffer_memory_requirements.create_sparse_binding_sparse_aliased.ext_mem_flags_excluded.method2.size_req_storage_usage_bits",
+    "boot_id": "5e08bdfe-3c47-43b8-8e17-7fa0ff2aab36",
+    "runner_status": "Pass",
+    "seconds": 14.512208,
+    "eligibility": {
+      "case": "dEQP-VK.api.buffer_memory_requirements.create_sparse_binding_sparse_aliased.ext_mem_flags_excluded.method2.size_req_storage_usage_bits",
+      "catalog_index": 3366,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "6615",
+    "qpa": "deqp-runner/c7.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 5,
+    "case": "dEQP-VK.api.buffer_memory_requirements.create_sparse_binding_sparse_residency.ext_mem_flags_excluded.method1.size_req_other_usage_bits",
+    "boot_id": "5e08bdfe-3c47-43b8-8e17-7fa0ff2aab36",
+    "runner_status": "Pass",
+    "seconds": 9.707293,
+    "eligibility": {
+      "case": "dEQP-VK.api.buffer_memory_requirements.create_sparse_binding_sparse_residency.ext_mem_flags_excluded.method1.size_req_other_usage_bits",
+      "catalog_index": 3395,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "3255",
+    "qpa": "deqp-runner/c5.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 6,
+    "case": "dEQP-VK.api.buffer_memory_requirements.create_sparse_binding_sparse_residency.ext_mem_flags_excluded.method1.size_req_storage_usage_bits",
+    "boot_id": "5e08bdfe-3c47-43b8-8e17-7fa0ff2aab36",
+    "runner_status": "Pass",
+    "seconds": 13.946672,
+    "eligibility": {
+      "case": "dEQP-VK.api.buffer_memory_requirements.create_sparse_binding_sparse_residency.ext_mem_flags_excluded.method1.size_req_storage_usage_bits",
+      "catalog_index": 3396,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "6615",
+    "qpa": "deqp-runner/c2.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 7,
+    "case": "dEQP-VK.api.buffer_memory_requirements.create_sparse_binding_sparse_residency.ext_mem_flags_excluded.method2.size_req_storage_usage_bits",
+    "boot_id": "5e08bdfe-3c47-43b8-8e17-7fa0ff2aab36",
+    "runner_status": "Pass",
+    "seconds": 15.371895,
+    "eligibility": {
+      "case": "dEQP-VK.api.buffer_memory_requirements.create_sparse_binding_sparse_residency.ext_mem_flags_excluded.method2.size_req_storage_usage_bits",
+      "catalog_index": 3406,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "6615",
+    "qpa": "deqp-runner/c4.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 8,
+    "case": "dEQP-VK.api.buffer_memory_requirements.create_sparse_binding_sparse_residency_sparse_aliased.ext_mem_flags_excluded.method1.size_req_storage_usage_bits",
+    "boot_id": "5e08bdfe-3c47-43b8-8e17-7fa0ff2aab36",
+    "runner_status": "Pass",
+    "seconds": 13.652146,
+    "eligibility": {
+      "case": "dEQP-VK.api.buffer_memory_requirements.create_sparse_binding_sparse_residency_sparse_aliased.ext_mem_flags_excluded.method1.size_req_storage_usage_bits",
+      "catalog_index": 3436,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    "status": "Pass",
+    "message": "6615",
+    "qpa": "deqp-runner/c1.r1.qpa",
+    "worker_exit": "exit status: 0"
+  }
+]

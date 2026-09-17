@@ -1,0 +1,22 @@
+{
+  "selected": 9,
+  "recorded": 9,
+  "completed": 9,
+  "counts": {
+    "Pass": 9
+  },
+  "classifications": {
+    "unclassified": 9
+  },
+  "elapsed_seconds": 19.057719534961507,
+  "preparation_seconds": 1.381073355965782,
+  "runner_seconds": 16.571510690000025,
+  "jobs": 20,
+  "tests_per_group": 1,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "30433f9ee56f616a0f084784bb156781cc45e0cf6ff1df84056b0f08c33b0e81",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T173953395831Z-cts-sparse-metadata-ranges",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 67.75
+}

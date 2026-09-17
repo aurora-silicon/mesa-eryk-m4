@@ -1,0 +1,24 @@
+PID 1377 - process
+TID 1377:
+#0  0x0000ffff8eb35f8c hk_update_sparse_residency
+#1  0x0000ffff8eb36308 hk_CreateBuffer
+#2  0x0000aaaad588c800 vk::createBuffer(vk::DeviceInterface const&, vk::VkDevice_s*, vk::VkBufferCreateInfo const*, vk::VkAllocationCallbacks const*)
+#3  0x0000aaaad2d16560 vkt::api::(anonymous namespace)::BufferMemoryRequirementsInstance::iterate()
+#4  0x0000aaaad296a738 vkt::TestCaseExecutor::iterate(tcu::TestCase*)
+#5  0x0000aaaad5f6e508 tcu::TestSessionExecutor::iterateTestCase(tcu::TestCase*)
+#6  0x0000aaaad5f6d508 tcu::TestSessionExecutor::iterate()
+#7  0x0000aaaad5f4003c tcu::App::iterate()
+#8  0x0000aaaad295f2cc main
+#9  0x0000ffff8f2f2d94
+#10 0x0000ffff8f2f2ef8 __libc_start_main
+#11 0x0000aaaad295f0f0 _start
+TID 1379:
+#0  0x0000ffff8f361c68
+#1  0x0000ffff8f355074
+#2  0x0000ffff8f355424
+#3  0x0000ffff8f357ddc pthread_cond_wait
+#4  0x0000ffff8ec745c8 cnd_wait
+#5  0x0000ffff8ec40aac util_queue_thread_func
+#6  0x0000ffff8ec747b0 impl_thrd_routine
+#7  0x0000ffff8f358978
+#8  0x0000ffff8f3be75c
