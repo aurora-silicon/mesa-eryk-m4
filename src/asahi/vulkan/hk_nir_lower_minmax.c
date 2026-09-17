@@ -184,6 +184,16 @@ lower_minmax(nir_builder *b, nir_tex_instr *tex, void *data)
                                            1, nir_type_float16, false, false))
            : nir_imm_float(b, 0);
    nir_def *coord = source(tex, nir_tex_src_coord);
+   nir_def *needs_reduction =
+      nir_ior(b, nir_inot(b, weighted), nir_fgt_imm(b, view_min, 0));
+   /* Explicit LOD/gradient operations do not need quad derivatives. Keep
+    * their footprint queries and arithmetic inside the reduction path: an
+    * ordinary weighted sampler must not pay for software reduction setup.
+    * Implicit derivatives and LOD queries must remain outside this branch,
+    * since a nonuniform sampler can make it divergent within a quad. */
+   const bool explicit_lod = tex->op == nir_texop_txl || tex->op == nir_texop_txd;
+   if (explicit_lod)
+      nir_push_if(b, needs_reduction);
    const bool cube = tex->sampler_dim == GLSL_SAMPLER_DIM_CUBE;
    const unsigned dims = tex->sampler_dim == GLSL_SAMPLER_DIM_3D ? 3 : 2;
    nir_def *size0 = nir_build_texture_query(b, tex, nir_texop_txs, 0,
@@ -239,8 +249,8 @@ lower_minmax(nir_builder *b, nir_tex_instr *tex, void *data)
                       nir_fmul_imm(b, nir_flog2(b, nir_fmax(b, dx2, dy2)), .5),
                       lod);
    }
-   nir_push_if(b,
-               nir_ior(b, nir_inot(b, weighted), nir_fgt_imm(b, view_min, 0)));
+   if (!explicit_lod)
+      nir_push_if(b, needs_reduction);
    nir_def *count = nir_imm_int(b, 1), *major_delta = NULL;
    if (dx) {
       nir_def *max_aniso = nir_u2f32(

@@ -91,6 +91,16 @@ hk_files = files(
 
 if with_tests
   test(
+    'hk_minmax_control_flow',
+    executable('hk_minmax_control_flow_test',
+      files('tests/test-hk-minmax-control-flow.c', 'hk_nir_lower_minmax.c'),
+      include_directories : [include_directories('.'), inc_include, inc_src, inc_asahi, inc_gallium, inc_gallium_aux, inc_virtio_gpu, inc_virtio_vdrm],
+      dependencies : [idep_nir, idep_mesautil, idep_libagx, idep_vulkan_runtime_headers, idep_vulkan_util_headers, idep_vulkan_wsi_headers],
+      link_with : [libasahi_compiler],
+    ),
+    suite : ['asahi'],
+  )
+  test(
     'hk_sample_loops',
     executable('hk_sample_loops_test',
       files('tests/test-hk-sample-loops.c', 'hk_nir_preserve_sample_loops.c'),
