@@ -1,0 +1,59 @@
+{
+  "command": [
+    "python3",
+    "/root/chromium-probe.py",
+    "--guard-output",
+    "/root/asahi-evidence/20260917T205506164515Z-buoy-random10k-fixes-installed",
+    "--normal-launch",
+    "--url",
+    "file:///home/e/Buoy.html?w=2560&h=1664&t=0&compact=1",
+    "--observe-seconds",
+    "30",
+    "--cdp-timeout",
+    "20"
+  ],
+  "seconds": 100,
+  "boot_id": "c1d4e2ae-a093-41cb-b7b1-bccb8f6dcf36",
+  "watchdog": {
+    "device": "/dev/watchdog0",
+    "identity": "Apple SoC Watchdog",
+    "timeout_seconds": 60,
+    "initial_timeleft_seconds": 59,
+    "periodic_keepalive": false,
+    "armed": true,
+    "ssh_broker_lease": true
+  },
+  "returncode": 0,
+  "thermal": {
+    "startup_limit_mc": 95000,
+    "stop_limit_mc": 95000,
+    "interval_seconds": 0.5,
+    "samples": 77,
+    "sync_interval_seconds": 5,
+    "peak_temperatures_mc": {
+      "PMP aggregate die hotspot": 81750,
+      "Ta000m": 73250,
+      "Te000m": 75000,
+      "Te001m": 72250,
+      "Tp000m": 81750,
+      "Tp001m": 76750
+    },
+    "failure": null,
+    "dedicated_gpu_sensor_verified": false,
+    "log": "temperatures.jsonl",
+    "cpu_frequency_caps": [
+      {
+        "policy": "policy0",
+        "old_min_khz": 912000,
+        "old_max_khz": 4104000,
+        "max_khz": 4104000
+      },
+      {
+        "policy": "policy1",
+        "old_min_khz": 900000,
+        "old_max_khz": 2892000,
+        "max_khz": 2892000
+      }
+    ]
+  }
+}

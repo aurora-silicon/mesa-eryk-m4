@@ -1,0 +1,40 @@
+{
+  "command": [
+    "python3",
+    "/root/cts-bulk/random10k-driver8-installed-d0643847e530/cts-sample.py",
+    "batch",
+    "--backend",
+    "deqp-runner",
+    "--guard-output",
+    "/root/asahi-evidence/20260917T205240510245Z-random10k-driver8-installed",
+    "--binary",
+    "/root/cts-1.4.6.2/deqp-vk",
+    "--cases",
+    "/root/cts-bulk/random10k-driver8-installed-d0643847e530/cases.txt",
+    "--deqp-runner",
+    "/root/cts-bulk/random10k-driver8-installed-d0643847e530/deqp-runner",
+    "--count",
+    "8",
+    "--jobs",
+    "2",
+    "--tests-per-group",
+    "1",
+    "--runner-seconds",
+    "120",
+    "--case-timeout",
+    "60",
+    "--renderer",
+    "m4"
+  ],
+  "seconds": 140,
+  "boot_id": "c1d4e2ae-a093-41cb-b7b1-bccb8f6dcf36",
+  "watchdog": {
+    "device": "/dev/watchdog0",
+    "identity": "Apple SoC Watchdog",
+    "timeout_seconds": 60,
+    "initial_timeleft_seconds": 59,
+    "periodic_keepalive": false,
+    "armed": true,
+    "ssh_broker_lease": true
+  }
+}

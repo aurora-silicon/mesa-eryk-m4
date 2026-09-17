@@ -1,0 +1,22 @@
+{
+  "selected": 8,
+  "recorded": 8,
+  "completed": 8,
+  "counts": {
+    "Pass": 8
+  },
+  "classifications": {
+    "unclassified": 8
+  },
+  "elapsed_seconds": 46.74575827899389,
+  "preparation_seconds": 1.3396211030194536,
+  "runner_seconds": 44.781043238999985,
+  "jobs": 2,
+  "tests_per_group": 1,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "d0643847e530117954b42c1300ca22a500db4d2bc52b2825276cb7defc730292",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T205240510245Z-random10k-driver8-installed",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 68.5
+}

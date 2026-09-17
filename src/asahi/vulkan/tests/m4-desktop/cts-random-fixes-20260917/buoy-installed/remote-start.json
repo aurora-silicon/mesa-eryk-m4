@@ -1,0 +1,26 @@
+{
+  "command": [
+    "python3",
+    "/root/chromium-probe.py",
+    "--guard-output",
+    "/root/asahi-evidence/20260917T205506164515Z-buoy-random10k-fixes-installed",
+    "--normal-launch",
+    "--url",
+    "file:///home/e/Buoy.html?w=2560&h=1664&t=0&compact=1",
+    "--observe-seconds",
+    "30",
+    "--cdp-timeout",
+    "20"
+  ],
+  "seconds": 100,
+  "boot_id": "c1d4e2ae-a093-41cb-b7b1-bccb8f6dcf36",
+  "watchdog": {
+    "device": "/dev/watchdog0",
+    "identity": "Apple SoC Watchdog",
+    "timeout_seconds": 60,
+    "initial_timeleft_seconds": 59,
+    "periodic_keepalive": false,
+    "armed": true,
+    "ssh_broker_lease": true
+  }
+}

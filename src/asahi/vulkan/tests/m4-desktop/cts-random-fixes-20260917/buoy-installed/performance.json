@@ -1,0 +1,371 @@
+[
+  {
+    "experiment": "20260917T205506164515Z-buoy-random10k-fixes-installed",
+    "boot_id": "c1d4e2ae-a093-41cb-b7b1-bccb8f6dcf36",
+    "timestamp_filter": "kernel timestamps >= recorded target uptime",
+    "render_groups": [
+      {
+        "width": 2560,
+        "height": 1664,
+        "asid": 16,
+        "passes": 570,
+        "fragment_total_ms": 26428.959458333335,
+        "fragment_median_ms": 2.1974791666666667,
+        "fragment_p95_ms": 92.40266666666666,
+        "fragment_max_ms": 93.739375
+      },
+      {
+        "width": 2560,
+        "height": 1664,
+        "asid": 2,
+        "passes": 580,
+        "fragment_total_ms": 927.6325416666666,
+        "fragment_median_ms": 1.62325,
+        "fragment_p95_ms": 1.8343333333333334,
+        "fragment_max_ms": 3.2434166666666666
+      },
+      {
+        "width": 2512,
+        "height": 1552,
+        "asid": 16,
+        "passes": 273,
+        "fragment_total_ms": 410.400625,
+        "fragment_median_ms": 1.4922916666666666,
+        "fragment_p95_ms": 1.588125,
+        "fragment_max_ms": 2.3575416666666666
+      },
+      {
+        "width": 2816,
+        "height": 2048,
+        "asid": 16,
+        "passes": 9,
+        "fragment_total_ms": 16.023666666666667,
+        "fragment_median_ms": 1.5355,
+        "fragment_p95_ms": 2.154333333333333,
+        "fragment_max_ms": 2.154333333333333
+      },
+      {
+        "width": 1024,
+        "height": 512,
+        "asid": 16,
+        "passes": 18,
+        "fragment_total_ms": 9.73625,
+        "fragment_median_ms": 0.5602083333333334,
+        "fragment_p95_ms": 0.5877083333333334,
+        "fragment_max_ms": 0.5877083333333334
+      },
+      {
+        "width": 1300,
+        "height": 852,
+        "asid": 16,
+        "passes": 4,
+        "fragment_total_ms": 4.29125,
+        "fragment_median_ms": 1.0781874999999999,
+        "fragment_p95_ms": 1.091,
+        "fragment_max_ms": 1.091
+      },
+      {
+        "width": 128,
+        "height": 64,
+        "asid": 16,
+        "passes": 21,
+        "fragment_total_ms": 4.153041666666667,
+        "fragment_median_ms": 0.18329166666666666,
+        "fragment_p95_ms": 0.24058333333333334,
+        "fragment_max_ms": 0.24179166666666665
+      },
+      {
+        "width": 2560,
+        "height": 1408,
+        "asid": 16,
+        "passes": 3,
+        "fragment_total_ms": 3.669375,
+        "fragment_median_ms": 1.555375,
+        "fragment_p95_ms": 2.080416666666667,
+        "fragment_max_ms": 2.080416666666667
+      },
+      {
+        "width": 128,
+        "height": 128,
+        "asid": 16,
+        "passes": 26,
+        "fragment_total_ms": 2.88875,
+        "fragment_median_ms": 0.18395833333333333,
+        "fragment_p95_ms": 0.18983333333333333,
+        "fragment_max_ms": 0.19225
+      },
+      {
+        "width": 1024,
+        "height": 64,
+        "asid": 16,
+        "passes": 23,
+        "fragment_total_ms": 2.5896666666666666,
+        "fragment_median_ms": 0.032,
+        "fragment_p95_ms": 0.46979166666666666,
+        "fragment_max_ms": 0.487375
+      },
+      {
+        "width": 544,
+        "height": 256,
+        "asid": 16,
+        "passes": 36,
+        "fragment_total_ms": 1.660625,
+        "fragment_median_ms": 0.04897916666666667,
+        "fragment_p95_ms": 0.07470833333333333,
+        "fragment_max_ms": 0.07591666666666666
+      },
+      {
+        "width": 2048,
+        "height": 128,
+        "asid": 16,
+        "passes": 14,
+        "fragment_total_ms": 1.627375,
+        "fragment_median_ms": 0.0531875,
+        "fragment_p95_ms": 0.39116666666666666,
+        "fragment_max_ms": 0.39116666666666666
+      },
+      {
+        "width": 512,
+        "height": 256,
+        "asid": 16,
+        "passes": 18,
+        "fragment_total_ms": 1.4003333333333334,
+        "fragment_median_ms": 0.077875,
+        "fragment_p95_ms": 0.09479166666666666,
+        "fragment_max_ms": 0.09479166666666666
+      },
+      {
+        "width": 1312,
+        "height": 256,
+        "asid": 16,
+        "passes": 23,
+        "fragment_total_ms": 1.191125,
+        "fragment_median_ms": 0.009125,
+        "fragment_p95_ms": 0.20708333333333334,
+        "fragment_max_ms": 0.20820833333333333
+      },
+      {
+        "width": 1056,
+        "height": 64,
+        "asid": 16,
+        "passes": 14,
+        "fragment_total_ms": 0.7653333333333333,
+        "fragment_median_ms": 0.04729166666666667,
+        "fragment_p95_ms": 0.17875,
+        "fragment_max_ms": 0.17875
+      },
+      {
+        "width": 256,
+        "height": 128,
+        "asid": 16,
+        "passes": 33,
+        "fragment_total_ms": 0.6295416666666667,
+        "fragment_median_ms": 0.020416666666666666,
+        "fragment_p95_ms": 0.024041666666666666,
+        "fragment_max_ms": 0.024291666666666666
+      },
+      {
+        "width": 1024,
+        "height": 32,
+        "asid": 16,
+        "passes": 3,
+        "fragment_total_ms": 0.6163333333333333,
+        "fragment_median_ms": 0.229875,
+        "fragment_p95_ms": 0.352,
+        "fragment_max_ms": 0.352
+      },
+      {
+        "width": 2528,
+        "height": 416,
+        "asid": 16,
+        "passes": 8,
+        "fragment_total_ms": 0.528625,
+        "fragment_median_ms": 0.009125,
+        "fragment_p95_ms": 0.21016666666666667,
+        "fragment_max_ms": 0.21016666666666667
+      },
+      {
+        "width": 512,
+        "height": 32,
+        "asid": 16,
+        "passes": 3,
+        "fragment_total_ms": 0.459375,
+        "fragment_median_ms": 0.21833333333333332,
+        "fragment_p95_ms": 0.21970833333333334,
+        "fragment_max_ms": 0.21970833333333334
+      },
+      {
+        "width": 64,
+        "height": 64,
+        "asid": 16,
+        "passes": 41,
+        "fragment_total_ms": 0.35983333333333334,
+        "fragment_median_ms": 0.00825,
+        "fragment_p95_ms": 0.02125,
+        "fragment_max_ms": 0.021666666666666667
+      },
+      {
+        "width": 32,
+        "height": 32,
+        "asid": 16,
+        "passes": 28,
+        "fragment_total_ms": 0.24512499999999998,
+        "fragment_median_ms": 0.008479166666666666,
+        "fragment_p95_ms": 0.011708333333333333,
+        "fragment_max_ms": 0.014916666666666667
+      },
+      {
+        "width": 16,
+        "height": 16,
+        "asid": 16,
+        "passes": 20,
+        "fragment_total_ms": 0.1675,
+        "fragment_median_ms": 0.008666666666666666,
+        "fragment_p95_ms": 0.011958333333333333,
+        "fragment_max_ms": 0.011958333333333333
+      },
+      {
+        "width": 256,
+        "height": 64,
+        "asid": 16,
+        "passes": 9,
+        "fragment_total_ms": 0.10112499999999999,
+        "fragment_median_ms": 0.010791666666666666,
+        "fragment_p95_ms": 0.015083333333333334,
+        "fragment_max_ms": 0.015083333333333334
+      },
+      {
+        "width": 2048,
+        "height": 2048,
+        "asid": 16,
+        "passes": 7,
+        "fragment_total_ms": 0.08662500000000001,
+        "fragment_median_ms": 0.010416666666666666,
+        "fragment_p95_ms": 0.023583333333333335,
+        "fragment_max_ms": 0.023583333333333335
+      },
+      {
+        "width": 1536,
+        "height": 64,
+        "asid": 16,
+        "passes": 3,
+        "fragment_total_ms": 0.06004166666666667,
+        "fragment_median_ms": 0.016958333333333332,
+        "fragment_p95_ms": 0.026166666666666668,
+        "fragment_max_ms": 0.026166666666666668
+      },
+      {
+        "width": 16,
+        "height": 32,
+        "asid": 16,
+        "passes": 7,
+        "fragment_total_ms": 0.058708333333333335,
+        "fragment_median_ms": 0.008541666666666666,
+        "fragment_p95_ms": 0.0105,
+        "fragment_max_ms": 0.0105
+      },
+      {
+        "width": 512,
+        "height": 128,
+        "asid": 16,
+        "passes": 2,
+        "fragment_total_ms": 0.05354166666666667,
+        "fragment_median_ms": 0.026770833333333334,
+        "fragment_p95_ms": 0.03204166666666667,
+        "fragment_max_ms": 0.03204166666666667
+      },
+      {
+        "width": 1536,
+        "height": 128,
+        "asid": 16,
+        "passes": 1,
+        "fragment_total_ms": 0.043875,
+        "fragment_median_ms": 0.043875,
+        "fragment_p95_ms": 0.043875,
+        "fragment_max_ms": 0.043875
+      },
+      {
+        "width": 1064,
+        "height": 89,
+        "asid": 16,
+        "passes": 2,
+        "fragment_total_ms": 0.037375,
+        "fragment_median_ms": 0.0186875,
+        "fragment_p95_ms": 0.019375,
+        "fragment_max_ms": 0.019375
+      },
+      {
+        "width": 32,
+        "height": 64,
+        "asid": 16,
+        "passes": 3,
+        "fragment_total_ms": 0.025125,
+        "fragment_median_ms": 0.008375,
+        "fragment_p95_ms": 0.010416666666666666,
+        "fragment_max_ms": 0.010416666666666666
+      },
+      {
+        "width": 64,
+        "height": 128,
+        "asid": 16,
+        "passes": 3,
+        "fragment_total_ms": 0.018208333333333333,
+        "fragment_median_ms": 0.0045,
+        "fragment_p95_ms": 0.009208333333333334,
+        "fragment_max_ms": 0.009208333333333334
+      },
+      {
+        "width": 32,
+        "height": 16,
+        "asid": 16,
+        "passes": 2,
+        "fragment_total_ms": 0.015541666666666667,
+        "fragment_median_ms": 0.007770833333333334,
+        "fragment_p95_ms": 0.010958333333333334,
+        "fragment_max_ms": 0.010958333333333334
+      },
+      {
+        "width": 16,
+        "height": 512,
+        "asid": 16,
+        "passes": 1,
+        "fragment_total_ms": 0.008875,
+        "fragment_median_ms": 0.008875,
+        "fragment_p95_ms": 0.008875,
+        "fragment_max_ms": 0.008875
+      }
+    ],
+    "page_animation": [
+      {
+        "window": 0,
+        "intervals": [
+          {
+            "seconds": 5.016500866000001,
+            "frames": 20,
+            "fps": 3.9868427284748713
+          },
+          {
+            "seconds": 5.010021911999985,
+            "frames": 46,
+            "fps": 9.181596569432356
+          },
+          {
+            "seconds": 5.016591547000019,
+            "frames": 47,
+            "fps": 9.368911054380451
+          },
+          {
+            "seconds": 5.022708530999978,
+            "frames": 46,
+            "fps": 9.15840521425634
+          },
+          {
+            "seconds": 5.023124009000014,
+            "frames": 46,
+            "fps": 9.157647694458875
+          }
+        ]
+      }
+    ]
+  }
+]

@@ -1,0 +1,24 @@
+{
+  "boot_id": "c1d4e2ae-a093-41cb-b7b1-bccb8f6dcf36",
+  "uptime_seconds": 193.88,
+  "kernel": "7.1.9-dirtyroom-asahi2+",
+  "files": {
+    "/opt/asahi-m4-port/lib/libvulkan_asahi.so": "7dfcc35ce402c8727abaad3f0c1346fa2df456fa64bb0e2168acf5565bcd597d",
+    "/root/guarded-command.py": "669b6a86759611b2f27680894e0075ee2e4702aca04b99ffd2f5d44c533b5a65",
+    "/opt/asahi-m4-port/lib/libgallium-26.1.4.so": "c0f940f82686992079b651f0644de8d38ee75b8535a2a6dae8131b5a0a94a6b3",
+    "/root/run-m4-gl.py": "6842d9bb244b52e7b358b63af9548c1a08d6c6a3244da61efe1b157006df8471",
+    "/root/firmware-snapshot.py": "bf0c13a257aa0a9025a31147038fddcfc311d24645e9e5f912c54f44aec06f24",
+    "/root/g16-fault-dump.py": "c3988ddf0ad9e10e2b9736582c9ab7c59c90a62090d0e34a32db1ba46c917bf3",
+    "/lib/modules/7.1.9-dirtyroom-asahi2+/kernel/drivers/gpu/drm/asahi/asahi.ko": "5652210b1726e0629a0a8ccdef4f7c04b1899aa26b20fce845c945c54a985d84",
+    "/root/g16-submit-test/experiment_watchdog.py": "28600768bceb930a3528471fd7982db9247ec86c00f4a522456b70e38001e18d",
+    "/root/g16-submit-test/experiment_thermals.py": "ee7b7f72f8e0b0cd2e966868da43b026079959856c569ba67d642cf9ae033f1d",
+    "/root/cts-bulk/random10k-wsi91-installed-af8686adb428/cts-headless.py": "23e90d5468ad3cdf99f7fc1794d1b9c11f694de72657d2e613955b5238ad6db1",
+    "/root/cts-bulk/random10k-wsi91-installed-af8686adb428/cts-sample.py": "012f0ffa36c4b05808485e6f44d8e2b76634b44883f8908bd4553f1d63dac20e",
+    "/root/cts-1.4.6.2/deqp-vk": "542459f13f3378f0af79ac9062d7e7fce6cd4853ab76adda69ae50889483b7e8",
+    "/root/cts-bulk/random10k-wsi91-installed-af8686adb428/cases.txt": "af8686adb4286152cd112a8f7938b6b73c892bf6afbd1dcaa101b435f5e630d4",
+    "/root/cts-bulk/random10k-wsi91-installed-af8686adb428/deqp-runner": "f0f3f2ed10d24239dc91000a7ae3c15167ff290e2cba9a71e73c650a8ffccc56"
+  },
+  "display_status": {
+    "/sys/kernel/debug/dri/soc:display-subsystem/m4_status": "completed 84\nfailed 0\nactive_fb 43\nimported 1\nswap_total_us 753674\nswap_max_us 18897\n"
+  }
+}

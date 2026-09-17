@@ -1,0 +1,42 @@
+{
+  "command": [
+    "python3",
+    "/root/cts-bulk/random10k-nonwsi150-v4-43d00fc9b2c4/cts-sample.py",
+    "batch",
+    "--backend",
+    "deqp-runner",
+    "--guard-output",
+    "/root/asahi-evidence/20260917T204342555203Z-random10k-nonwsi150-v4",
+    "--binary",
+    "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+    "--cases",
+    "/root/cts-bulk/random10k-nonwsi150-v4-43d00fc9b2c4/cases.txt",
+    "--deqp-runner",
+    "/root/cts-bulk/random10k-nonwsi150-v4-43d00fc9b2c4/deqp-runner",
+    "--count",
+    "150",
+    "--jobs",
+    "2",
+    "--tests-per-group",
+    "1",
+    "--runner-seconds",
+    "120",
+    "--case-timeout",
+    "60",
+    "--renderer",
+    "m4",
+    "--env",
+    "VK_DRIVER_FILES=/root/random10k-v4.json"
+  ],
+  "seconds": 140,
+  "boot_id": "cbeae91f-0786-4125-a3d0-6ac01998f91c",
+  "watchdog": {
+    "device": "/dev/watchdog0",
+    "identity": "Apple SoC Watchdog",
+    "timeout_seconds": 60,
+    "initial_timeleft_seconds": 59,
+    "periodic_keepalive": false,
+    "armed": true,
+    "ssh_broker_lease": true
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "selected": 5,
+  "recorded": 5,
+  "completed": 5,
+  "counts": {
+    "Pass": 5
+  },
+  "classifications": {
+    "unclassified": 5
+  },
+  "elapsed_seconds": 3.5415736340219155,
+  "preparation_seconds": 1.6034330860129558,
+  "runner_seconds": 1.0193490509998355,
+  "jobs": 1,
+  "tests_per_group": 1,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "4e7f7185fee266a48159231ae3eb12f98d3a00ee72227c164388bce7823ec7cc",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T203731282976Z-random10k-swizzle5-corrected",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 60.25
+}

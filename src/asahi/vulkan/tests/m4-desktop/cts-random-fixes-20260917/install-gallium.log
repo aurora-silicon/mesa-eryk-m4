@@ -1,0 +1,2 @@
+Installed c0f940f82686992079b651f0644de8d38ee75b8535a2a6dae8131b5a0a94a6b3 /opt/asahi-m4-port/lib/libgallium-26.1.4.so previous 33358f19b9b0b971ba9d20d12be56691819f4a3727191e4da3a6127675d304e0
+Existing processes retain their previous Mesa mapping; validate the new library in a fresh process.

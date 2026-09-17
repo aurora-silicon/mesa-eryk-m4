@@ -1,0 +1,23 @@
+{
+  "selected": 2,
+  "recorded": 2,
+  "completed": 1,
+  "counts": {
+    "Crash": 1,
+    "Unrun": 1
+  },
+  "classifications": {
+    "unclassified": 2
+  },
+  "elapsed_seconds": 3.7134457739884965,
+  "preparation_seconds": 1.359004276979249,
+  "runner_seconds": 1.2187213039999278,
+  "jobs": 1,
+  "tests_per_group": 1,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "21c75cd57f812ac2d18cb766e1b0889ab0121d7a1bc57ec029331a6384be2f91",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T203806031752Z-random10k-remaining2-v2",
+  "guard_verdict": "process_failure",
+  "command_returncode": 1,
+  "peak_temperature_c": 60.25
+}

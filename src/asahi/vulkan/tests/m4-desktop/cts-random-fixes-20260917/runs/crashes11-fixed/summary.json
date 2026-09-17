@@ -1,0 +1,25 @@
+{
+  "selected": 11,
+  "recorded": 11,
+  "completed": 4,
+  "counts": {
+    "Pass": 3,
+    "Unrun": 6,
+    "Interrupted": 1,
+    "Crash": 1
+  },
+  "classifications": {
+    "unclassified": 11
+  },
+  "elapsed_seconds": 34.15281944995513,
+  "preparation_seconds": 1.479499752051197,
+  "runner_seconds": 31.51855807900006,
+  "jobs": 2,
+  "tests_per_group": 1,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "9f75d61a3da2a508c944827b9c0ce1450f89dbb761e9e2f7d580683ba2d2d85e",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T203350965841Z-random10k-spill-crashes11",
+  "guard_verdict": "process_failure",
+  "command_returncode": 1,
+  "peak_temperature_c": 65.0
+}

@@ -1,0 +1,24 @@
+{
+  "selected": 91,
+  "recorded": 91,
+  "completed": 91,
+  "counts": {
+    "NotSupported": 89,
+    "ResourceError": 1,
+    "Pass": 1
+  },
+  "classifications": {
+    "unclassified": 91
+  },
+  "elapsed_seconds": 21.204141277994495,
+  "preparation_seconds": 1.6828614000114612,
+  "runner_seconds": 11.876841199999944,
+  "jobs": 1,
+  "tests_per_group": 1,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "af8686adb4286152cd112a8f7938b6b73c892bf6afbd1dcaa101b435f5e630d4",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T204609126698Z-random10k-wsi91-repro",
+  "guard_verdict": "process_failure",
+  "command_returncode": 1,
+  "peak_temperature_c": 65.5
+}

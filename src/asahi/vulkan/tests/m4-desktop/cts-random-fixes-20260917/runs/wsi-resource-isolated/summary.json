@@ -1,0 +1,22 @@
+{
+  "selected": 1,
+  "recorded": 1,
+  "completed": 1,
+  "counts": {
+    "NotSupported": 1
+  },
+  "classifications": {
+    "unclassified": 1
+  },
+  "elapsed_seconds": 7.4864758510375395,
+  "preparation_seconds": 1.6135302160400897,
+  "runner_seconds": 0.4225744710001891,
+  "jobs": 1,
+  "tests_per_group": 1,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "b3549a7256d774594b2f2672ce79211271e67ccb900537444f2c4baccd93c8c8",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T204024121468Z-random10k-wsi-resource-isolated",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 60.0
+}

@@ -1,0 +1,22 @@
+{
+  "selected": 3,
+  "recorded": 3,
+  "completed": 3,
+  "counts": {
+    "Pass": 3
+  },
+  "classifications": {
+    "unclassified": 3
+  },
+  "elapsed_seconds": 28.922668024955783,
+  "preparation_seconds": 1.731082332029473,
+  "runner_seconds": 26.30293230999996,
+  "jobs": 2,
+  "tests_per_group": 1,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "cf83e97090d495ed5e812c97c55e6dc1c975ae21c64029112b1e77829b87c79c",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T203543432692Z-random10k-spill-ssbo-remaining",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 65.25
+}

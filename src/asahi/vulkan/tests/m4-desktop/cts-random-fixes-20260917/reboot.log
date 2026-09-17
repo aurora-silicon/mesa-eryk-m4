@@ -1,0 +1,2 @@
+Watchdog armed: {"device": "/dev/watchdog0", "identity": "Apple SoC Watchdog", "timeout_seconds": 60, "initial_timeleft_seconds": 59, "periodic_keepalive": false, "armed": true, "ssh_broker_lease": true}
+Connection to omarchy-m4 closed by remote host.

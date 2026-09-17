@@ -56,6 +56,26 @@ so this is deterministic selection/coverage, not a promise of identical scheduli
 The collector uses a set for expected-case membership to avoid quadratic lookup
 cost when reconciling large batches. All existing evidence and timeout rules apply.
 
+## Random samples from the same frozen catalog
+
+For an explicitly requested random retest, sample catalog indices uniformly
+without replacement and retain both the seed and exact names:
+
+```sh
+python3 tools/cts-ranges.py random \
+  --catalog build/cts-vulkan14-ordered/catalog \
+  --seed 202609172000 --count 10000 \
+  --output build/cts-random-10000-20260917
+```
+
+This samples the entire frozen catalog without capability or prior-result
+filtering. Skips remain outcomes, and every case retains its original global
+index. It does not change the consecutive campaign's coverage ledger. Execute
+bounded segments through `cts-bulk.py`; place WSI cases on private headless
+compositors with one worker per compositor. Record changes of worker count,
+reboots, interruptions, runner time and end-to-end wall time separately.
+Random selection does not imply uniform runtime or memory use per test.
+
 # Historical Vulkan CTS sample
 
 `cts-sample.py select` now defaults to Linux cases with reviewed Vulkan 1.0
@@ -471,7 +491,10 @@ byte with the existing composer. Anonymous field values are not semantic names;
 instruction boundaries and hardware behavior still require source/capture
 context. Range candidate search and expansion are bounded. Missing candidates
 do not establish that an encoding is impossible. The helper builds a small
-host-only composer library in `build/`; it never executes GPU work.
+host-only composer library in `build/`; it never executes GPU work. With
+`--scan`, it checks every two-byte candidate offset starting at OFFSET and
+prints each exact match with its offset; matches are not proven instruction
+boundaries. Tables are parsed once for the scan.
 
 `native-local-atomic-decode.c` specializes candidate scanning for returned
 register-addressed G16G shared-memory atomics. Exact matches go to stdout;
@@ -529,6 +552,39 @@ M5 first-attempt MoltenVK/KosmicKrisp evidence is versioned under
 `tests/m4-desktop/cts-m5-trim-20260915/`. On macOS use `DEQP_TARGET=osx`;
 unrelated Vulkan video tests are disabled on that platform.
 
+## Layer-free CTS environment
+
+`cts-sample.py` sets `VK_LAYER_PATH` and `VK_IMPLICIT_LAYER_PATH` to
+`/var/empty` for the M4 renderer, so the loader scans no layer manifests.
+The target has validation, extra, profiles and Mesa implicit layer packages
+installed; parsing all seven manifests on every `vkCreateInstance` made
+`dEQP-VK.api.device_init.create_instance_device_intentional_alloc_fail.basic`
+(one instance creation per loader allocation) exceed the 60 s bound even
+alone, while it completes in a few seconds without manifests. Layers are not
+part of a conformance run; the driver itself is unchanged by this setting.
+
+Targeted feature/debug lists can retain their existing membership and order
+while carrying the same global catalog identities:
+
+```sh
+python3 tools/cts-ranges.py annotate --catalog build/cts-vulkan14-ordered/catalog \
+  --cases build/my-feature/cases.txt
+```
+
+This verifies the full catalog hash/count and every selected name, then creates
+`cases.meta.json` for the bulk runner. It rejects duplicate/unknown names and
+existing sidecars. It does not change the list, renumber catalog cases, replace
+skips, or constitute a new consecutive coverage range. Earlier targeted records
+may instead retain a separate `*.indices.json`; do not rewrite their evidence
+as though the runner received the newer sidecar.
+
+`native-form-decode.py TEXT.bin '*' OFFSET --walk` walks consecutive encoded
+instructions from a known entry offset. It stops at unmatched bytes or ambiguous
+instruction lengths. Every reported candidate must reproduce its bytes through
+the composer; anonymous fields remain anonymous. A complete walk is useful for
+comparing native compiler witnesses, but does not establish field semantics or
+hardware correctness. `--walk` and `--scan` are mutually exclusive.
+
 ## Full same-build retest (2026-09-17)
 
 `cts-retest.py --output CAMPAIGN --binary REMOTE_CTS --run` drives consecutive 10,000-case
@@ -569,3 +625,18 @@ was added after all 348 scaled-blit failures in the September 17 original-CTS
 retest passed with the existing corrected CTS and unchanged GPU driver.
 The private Xwayland startup selection has not yet received a dedicated X11
 qualification; the headless qualification above is Wayland only.
+
+### Private compositor renderer comparisons (2026-09-17)
+
+`cts-bulk.py --headless --jobs 1 --headless-env KEY=VALUE` applies a recorded
+override to the private compositor itself; ordinary `--env` still configures
+CTS. This allows a private Gallium/ICD comparison without changing the desktop.
+Overrides are saved in `headless/renderer-overrides.json`. Both processes remain
+inside the same watchdog/thermal guard; case limits and pacing do not change.
+Example: `--headless-env LD_LIBRARY_PATH=/root/cts-runahead/lib:/opt/asahi-m4-port/lib`.
+
+The bulk runner default now matches the documented corrected Vulkan 1.4 build,
+`deqp-vk-seed30-scaled-blit`; use `--binary /root/cts-1.4.6.2/deqp-vk` explicitly
+for the unmodified reference. The latter still has known scaled-format and
+YCbCr reference errors and scaled-swizzle crashes. Always retain the selected
+binary hash and distinguish these attempts from a driver regression.

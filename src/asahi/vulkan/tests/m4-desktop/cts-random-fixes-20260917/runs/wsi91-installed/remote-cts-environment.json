@@ -1,0 +1,15 @@
+{
+  "XDG_RUNTIME_DIR": "/run/m4-cts-headless-2872",
+  "VK_DRIVER_FILES": "/opt/asahi-m4-port/asahi_icd.json",
+  "VK_ICD_FILENAMES": "/opt/asahi-m4-port/asahi_icd.json",
+  "ASAHI_M4_EXPERIMENTAL": "1",
+  "LD_LIBRARY_PATH": "/opt/asahi-m4-port/lib",
+  "ASAHI_MESA_DEBUG": "nocompress",
+  "HK_DEBUG_LOG": "1",
+  "VK_LAYER_PATH": "/var/empty",
+  "VK_IMPLICIT_LAYER_PATH": "/var/empty",
+  "WAYLAND_DISPLAY": "wayland-1",
+  "DISPLAY": ":1",
+  "AGX_COMPILER_CAPTURE_DIR": "/root/asahi-evidence/20260917T205410952866Z-random10k-wsi91-installed/cts/compiler-captures",
+  "XAUTHORITY": ""
+}

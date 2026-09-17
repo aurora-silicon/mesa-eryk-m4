@@ -1,0 +1,23 @@
+{
+  "selected": 91,
+  "recorded": 91,
+  "completed": 91,
+  "counts": {
+    "NotSupported": 90,
+    "Pass": 1
+  },
+  "classifications": {
+    "unclassified": 91
+  },
+  "elapsed_seconds": 15.574518300010823,
+  "preparation_seconds": 1.7444009860046208,
+  "runner_seconds": 11.465144732000226,
+  "jobs": 1,
+  "tests_per_group": 1,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "af8686adb4286152cd112a8f7938b6b73c892bf6afbd1dcaa101b435f5e630d4",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T204648511672Z-random10k-wsi91-bounded",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 61.5
+}

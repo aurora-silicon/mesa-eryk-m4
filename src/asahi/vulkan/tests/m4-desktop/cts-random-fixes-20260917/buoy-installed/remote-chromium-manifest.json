@@ -1,0 +1,41 @@
+{
+  "renderer": "asahi",
+  "angle": "gl",
+  "normal_launch": true,
+  "observe_seconds": 30,
+  "second_url": null,
+  "windows": 1,
+  "command": [
+    "/usr/bin/chromium",
+    "--user-data-dir=/home/e/.cache/m4-chromium-probes/20260917T205506164515Z-buoy-random10k-fixes-installed",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--remote-debugging-port=0",
+    "file:///home/e/Buoy.html?w=2560&h=1664&t=0&compact=1"
+  ],
+  "environment": {
+    "VK_DRIVER_FILES": "/opt/asahi-m4-port/asahi_icd.json",
+    "ASAHI_M4_EXPERIMENTAL": "1",
+    "LD_LIBRARY_PATH": "/opt/asahi-m4-port/lib",
+    "LIBGL_DRIVERS_PATH": "/opt/asahi-m4-port/lib/dri",
+    "GBM_BACKENDS_PATH": "/opt/asahi-m4-port/lib/gbm",
+    "__EGL_VENDOR_LIBRARY_FILENAMES": "/opt/asahi-m4-port/egl.json",
+    "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+    "GALLIUM_DRIVER": "zink",
+    "ASAHI_MESA_DEBUG": "nocompress",
+    "LIBGL_ALWAYS_SOFTWARE": "0",
+    "MESA_GL_VERSION_OVERRIDE": "3.3",
+    "MESA_GLES_VERSION_OVERRIDE": "3.0",
+    "AGX_COMPILER_CAPTURE_DIR": "/home/e/.cache/m4-chromium-probes/20260917T205506164515Z-buoy-random10k-fixes-installed/compiler",
+    "MESA_SHADER_CACHE_DIR": "/home/e/.cache/m4-chromium-probes/20260917T205506164515Z-buoy-random10k-fixes-installed/mesa-cache"
+  },
+  "boot_id": "c1d4e2ae-a093-41cb-b7b1-bccb8f6dcf36",
+  "hashes": {
+    "/usr/lib/chromium/chromium": "2f0002bce6c72188c9426f083e6e802c690eacbbc4fee03b2c08343833fcd1b0",
+    "/usr/lib/chromium/libEGL.so": "7a763fca9152018a26adbae2b21060c4fed9b412ec11a35dad4af1103c86fb79",
+    "/usr/lib/chromium/libGLESv2.so": "6edadb5cdddeb8a682cf1822de6028795121aaa407574a5bb18c89a0f60cd325",
+    "/opt/asahi-m4-port/lib/libvulkan_asahi.so": "7dfcc35ce402c8727abaad3f0c1346fa2df456fa64bb0e2168acf5565bcd597d",
+    "/opt/asahi-m4-port/lib/libgallium-26.1.4.so": "c0f940f82686992079b651f0644de8d38ee75b8535a2a6dae8131b5a0a94a6b3"
+  },
+  "comparison_libraries": {}
+}

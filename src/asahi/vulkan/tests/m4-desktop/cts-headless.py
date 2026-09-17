@@ -16,6 +16,7 @@ import time
 
 p = argparse.ArgumentParser(description=__doc__)
 p.add_argument('--guard-output', required=True, type=Path)
+p.add_argument('--env', action='append', default=[], metavar='KEY=VALUE')
 p.add_argument('command', nargs=argparse.REMAINDER)
 a = p.parse_args()
 command = a.command[1:] if a.command[:1] == ['--'] else a.command
@@ -48,6 +49,9 @@ for k in list(env):
         env.pop(k)
 env.update(XDG_RUNTIME_DIR=str(runtime), HOME='/root', USER='root',
            AQ_HEADLESS_RENDER_NODE='/dev/dri/renderD128', HYPRLAND_NO_SD_NOTIFY='1', AQ_USE_RENDER_NODE='1')
+overrides = dict(item.split('=', 1) for item in a.env)
+env.update(overrides)
+(out/'renderer-overrides.json').write_text(json.dumps(overrides, indent=2)+'\n')
 config = out/'headless.lua'
 config.write_text('''hl.monitor({ output = "HEADLESS-1", mode = "1024x1024@1000", position = "0x0", scale = 1 })
 hl.config({

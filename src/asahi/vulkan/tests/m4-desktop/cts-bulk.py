@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 p = argparse.ArgumentParser(description=__doc__)
 p.add_argument('--cases', type=Path, required=True)
 p.add_argument('--runner', type=Path, required=True, help='ARM64 deqp-runner with retained local patch')
-p.add_argument('--binary', default='/root/cts-1.0.2.6/deqp-vk-seed24-corrected')
+p.add_argument('--binary', default='/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit')
 p.add_argument('--output', type=Path, required=True)
 p.add_argument('--name', required=True)
 p.add_argument('--renderer', choices=('m4', 'lavapipe'), default='m4', help='Guarded renderer for hardware/reference comparisons')
@@ -31,11 +31,15 @@ p.add_argument('--capture-success', action='store_true', help='Capture successfu
 p.add_argument('--capture-before', action='store_true', help='Save compiler inputs before compilation to diagnose assertions')
 p.add_argument('--log-sources', action='store_true', help='Retain CTS shader source in targeted runs')
 p.add_argument('--headless', action='store_true', help='Private 1000 Hz compositor for one WSI worker')
+p.add_argument('--headless-env', action='append', metavar='KEY=VALUE', default=[],
+               help='Recorded environment override for the private compositor')
 p.add_argument('--env', action='append', metavar='KEY=VALUE', default=[],
                help='Recorded driver environment override passed to the remote runner')
 a = p.parse_args()
 if a.headless and a.jobs != 1:
     p.error('--headless requires --jobs 1 (one worker per compositor)')
+if a.headless_env and not a.headless:
+    p.error('--headless-env requires --headless')
 if not re.fullmatch('[a-z0-9][a-z0-9-]*', a.name) or a.jobs < 1 or a.tests_per_group < 1 or not 1 <= a.runner_seconds <= 1700:
     p.error('invalid name or bounds')
 raw = a.cases.read_bytes()
@@ -86,8 +90,10 @@ for item in a.env:
     command += ['--env', item]
 if a.headless:
     separator = command.index('--') + 1
-    command[separator:separator] = ['python3', remote+'/cts-headless.py',
-                                  '--guard-output', '{output}', '--']
+    wrapper = ['python3', remote+'/cts-headless.py', '--guard-output', '{output}']
+    for item in a.headless_env:
+        wrapper += ['--env', item]
+    command[separator:separator] = wrapper + ['--']
 begin = time.monotonic()
 with (a.output/'experiment.log').open('w') as log:
     rc = subprocess.run(command, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT).returncode

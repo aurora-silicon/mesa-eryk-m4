@@ -1,0 +1,22 @@
+{
+  "id": "20260917T203543432692Z-random10k-spill-ssbo-remaining",
+  "verdict": "pass",
+  "transport_returncode": 0,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260917T203543432692Z-random10k-spill-ssbo-remaining",
+  "observations": {
+    "pixel_results": [],
+    "pixel_result_count": 0,
+    "thermal_samples": 55,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 65.25,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 65.25,
+      "Ta000m": 57.25,
+      "Te000m": 57.0,
+      "Te001m": 64.5,
+      "Tp000m": 61.75,
+      "Tp001m": 65.25
+    }
+  }
+}

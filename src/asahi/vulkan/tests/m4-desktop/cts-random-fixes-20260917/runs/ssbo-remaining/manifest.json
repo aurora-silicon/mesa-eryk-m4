@@ -1,0 +1,47 @@
+{
+  "id": "20260917T203543432692Z-random10k-spill-ssbo-remaining",
+  "hypothesis": "Measure frozen CTS cases with grouped first-attempt execution",
+  "command": [
+    "python3",
+    "/root/cts-bulk/random10k-spill-ssbo-remaining-cf83e97090d4/cts-sample.py",
+    "batch",
+    "--backend",
+    "deqp-runner",
+    "--guard-output",
+    "/root/asahi-evidence/20260917T203543432692Z-random10k-spill-ssbo-remaining",
+    "--binary",
+    "/root/cts-1.4.6.2/deqp-vk",
+    "--cases",
+    "/root/cts-bulk/random10k-spill-ssbo-remaining-cf83e97090d4/cases.txt",
+    "--deqp-runner",
+    "/root/cts-bulk/random10k-spill-ssbo-remaining-cf83e97090d4/deqp-runner",
+    "--count",
+    "3",
+    "--jobs",
+    "2",
+    "--tests-per-group",
+    "1",
+    "--runner-seconds",
+    "120",
+    "--case-timeout",
+    "60",
+    "--renderer",
+    "m4",
+    "--env",
+    "VK_DRIVER_FILES=/root/random10k-spill.json"
+  ],
+  "expected_success": "^CTS_BATCH_COMPLETE:",
+  "seconds": 140,
+  "sources": {
+    "mesa": {
+      "head": "e2ca999e5d137f5b94d34bd895368c5f6732d494",
+      "status": " M src/asahi/compiler/agx_compile.c\n M src/asahi/compiler/agx_compiler.h\n M src/asahi/compiler/agx_register_allocate.c\n M src/asahi/compiler/test/test-register-bank.c\n M src/asahi/vulkan/tests/m4-desktop/asahi-session.py\n M src/asahi/vulkan/tests/m4-desktop/desktop-launch.py\n M src/asahi/vulkan/tests/m4-desktop/sparse-metadata-20260917/resolutions.tsv\n M src/asahi/vulkan/tests/m4-desktop/vulkan-trim-host.py\n M src/gallium/drivers/zink/zink_batch.c\n",
+      "patch_sha256": "f12f28afeabddbf50ce6bd8e8e60d97ef34cd351960e979332c7bc6b3ed05c33"
+    },
+    "kernel": {
+      "head": "566e77f49635be0d05cf16e4f12d79ba5a5f8524",
+      "status": " M drivers/gpu/drm/Makefile\n M drivers/gpu/drm/apple/Kconfig\n M drivers/gpu/drm/apple/m4-dcpext/Makefile\n M drivers/gpu/drm/apple/m4-dcpext/runtime/dcpext_session_adapter.h\n M drivers/gpu/drm/apple/m4-dcpext/runtime/m4_dcpext_dma_probe.c\n M drivers/gpu/drm/asahi/g16_drm.rs\n M drivers/gpu/drm/asahi/g16_submit.rs\n M rust/kernel/drm/sched.rs\n?? drivers/gpu/drm/apple/m4-dcpext/runtime/dcpext_boot.h\n",
+      "patch_sha256": "257f082919dd591aae5f358d826b9af651f024ef4da7b1e3ab07c36c5dd0fb49"
+    }
+  }
+}
