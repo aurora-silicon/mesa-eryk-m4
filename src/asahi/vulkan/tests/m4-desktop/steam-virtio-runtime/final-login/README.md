@@ -29,5 +29,7 @@ pixels, 4096 triangle/interpolation pixels and 256 compute words. Guard peak
 61.75 °C. The original report missed a PTY OSC prefix on the last success line;
 review.json records the corrected pass without rewriting raw evidence.
 
-The separate DCP D114 handler is installed but its real hourly callback is
-still awaiting qualification at the time of this record.
+The separate DCP D114 handler passed its real hourly callback on September 17:
+four events accepted, followed by 18 correct physical-panel cursor redraws.
+Kernel qualification evidence is in rtkit-probe/d114-evidence. This does not
+extend the Steam qualification to account login or games.
