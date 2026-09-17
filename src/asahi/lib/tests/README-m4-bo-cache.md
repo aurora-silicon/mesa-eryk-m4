@@ -26,3 +26,20 @@ shader errors, peaking at 52 C. Frames172530,179895,187257 are pixel-identical
 to the previous M4 baseline. This does not remove the existing small llvmpipe
 differences or cold GPU-readback defect. No other GPU platform is qualified
 by these J713 results.
+
+## Screenshot frame pacing (2026-09-17)
+
+Whole-second cache ages made expired objects leave together, under the cache
+and map locks on the submit thread. The screenshot profile
+`20260917T145941058282Z-screenshot-frame-spikes` shows missed panel refreshes
+at integer monotonic seconds and BO-free/VMA-validation stacks.
+
+Use nanosecond insertion ages and reclaim at most one stale object per cache
+insertion. The 256 MiB cap, explicit byte-pressure trims, WDDM trim generations
+and full teardown eviction retain their behavior. An idle process may retain
+stale cached objects until its next insertion or explicit trim, as before.
+`tests/test-bo-cache.c` exercises the real cache with mocked BO freeing; the
+`tests/run-bo-cache-test.py HOST_MESA_BUILD --output NEW_DIR` (also exposed as
+workspace `tools/bo-cache-test.py`)
+compiles it with assertions and tests precise age boundaries, bounded cleanup,
+pressure and byte-budget behavior without a DRM device.

@@ -93,24 +93,24 @@ agx_bo_cache_fetch(struct agx_device *dev, size_t size, size_t align,
    return bo;
 }
 
+/* Reclaim at most one stale allocation per insertion. Freeing an entire
+ * age cohort while holding the cache/map locks stalls the submitting thread.
+ * Nanosecond ages avoid synchronizing that work at whole-second boundaries.
+ * The byte budget and explicit pressure/teardown trims remain independent.
+ */
 static void
-agx_bo_cache_evict_stale_bos(struct agx_device *dev, int64_t now_sec)
+agx_bo_cache_evict_stale_bos(struct agx_device *dev, int64_t now_ns)
 {
-   list_for_each_entry_safe(struct agx_bo, entry, &dev->bo_cache.lru,
-                            lru_link) {
-      /* We want all entries that have been used more than 1 sec ago to be
-       * dropped, others can be kept.  Note the <= 2 check and not <= 1. It's
-       * here to account for the fact that we're only testing ->tv_sec, not
-       * ->tv_nsec.  That means we might keep entries that are between 1 and 2
-       * seconds old, but we don't really care, as long as unused BOs are
-       * dropped at some point.
-       */
-      if (now_sec - entry->last_used <= 2)
-         break;
+   if (list_is_empty(&dev->bo_cache.lru))
+      return;
 
-      agx_bo_cache_remove_locked(dev, entry);
-      agx_bo_free(dev, entry);
-   }
+   struct agx_bo *entry =
+      list_first_entry(&dev->bo_cache.lru, struct agx_bo, lru_link);
+   if (now_ns - entry->last_used_ns <= INT64_C(2000000000))
+      return;
+
+   agx_bo_cache_remove_locked(dev, entry);
+   agx_bo_free(dev, entry);
 }
 
 static void
@@ -120,9 +120,9 @@ agx_bo_cache_put_locked(struct agx_device *dev, struct agx_bo *bo)
    /* Add us to the bucket */
    list_addtail(&bo->bucket_link, bucket);
 
-   /* Add us to the LRU list and update the last_used field. */
+   /* Add us to the LRU list and update the last_used_ns field. */
    list_addtail(&bo->lru_link, &dev->bo_cache.lru);
-   bo->last_used = os_time_get_nano() / INT64_C(1000000000);
+   bo->last_used_ns = os_time_get_nano();
    bo->cache_generation = dev->bo_cache.trim_generation;
 
    /* Update statistics */
@@ -141,7 +141,7 @@ agx_bo_cache_put_locked(struct agx_device *dev, struct agx_bo *bo)
    bo->label = "Unused (BO cache)";
 
    /* Let's do some cleanup in the BO cache while we hold the lock. */
-   agx_bo_cache_evict_stale_bos(dev, bo->last_used);
+   agx_bo_cache_evict_stale_bos(dev, bo->last_used_ns);
 }
 
 /* Tries to add a BO to the cache. Returns if it was successful */

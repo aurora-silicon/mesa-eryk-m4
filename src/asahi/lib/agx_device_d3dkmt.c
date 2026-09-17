@@ -1077,7 +1077,7 @@ agx_d3dkmt_bo_rotate_runtime_identities(struct agx_device *dev,
       struct agx_va *va;
       void *map;
       uint64_t writer;
-      time_t last_used;
+      int64_t last_used_ns;
       uint64_t cache_generation;
       int prime_fd;
    } first = {
@@ -1085,7 +1085,7 @@ agx_d3dkmt_bo_rotate_runtime_identities(struct agx_device *dev,
       .va = bos[0]->va,
       .map = bos[0]->_map,
       .writer = bos[0]->writer,
-      .last_used = bos[0]->last_used,
+      .last_used_ns = bos[0]->last_used_ns,
       .cache_generation = bos[0]->cache_generation,
       .prime_fd = bos[0]->prime_fd,
    };
@@ -1095,7 +1095,7 @@ agx_d3dkmt_bo_rotate_runtime_identities(struct agx_device *dev,
       bos[i]->va = bos[i + 1]->va;
       bos[i]->_map = bos[i + 1]->_map;
       bos[i]->writer = bos[i + 1]->writer;
-      bos[i]->last_used = bos[i + 1]->last_used;
+      bos[i]->last_used_ns = bos[i + 1]->last_used_ns;
       bos[i]->cache_generation = bos[i + 1]->cache_generation;
       bos[i]->prime_fd = bos[i + 1]->prime_fd;
    }
@@ -1103,7 +1103,7 @@ agx_d3dkmt_bo_rotate_runtime_identities(struct agx_device *dev,
    bos[count - 1]->va = first.va;
    bos[count - 1]->_map = first.map;
    bos[count - 1]->writer = first.writer;
-   bos[count - 1]->last_used = first.last_used;
+   bos[count - 1]->last_used_ns = first.last_used_ns;
    bos[count - 1]->cache_generation = first.cache_generation;
    bos[count - 1]->prime_fd = first.prime_fd;
    agx_bo_read_set_changed(dev);

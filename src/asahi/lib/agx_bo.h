@@ -83,8 +83,8 @@ struct agx_bo {
    /* Convenience */
    struct agx_device *dev;
 
-   /* The time this BO was used last, so we can evict stale BOs. */
-   time_t last_used;
+   /* Monotonic nanoseconds when this BO was last returned to the cache. */
+   int64_t last_used_ns;
 
    /* BO-cache generation in which this allocation was last returned to the
     * cache.  WDDM periodic trim uses this to retain allocations referenced
