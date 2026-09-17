@@ -11,6 +11,7 @@ import json
 import os
 from pathlib import Path
 import re
+import random
 import subprocess
 import tempfile
 
@@ -123,6 +124,51 @@ def select_range(args):
     print(json.dumps(summary, indent=2))
 
 
+def select_random(args):
+    """Uniform sampling without replacement; preserve original catalog indices."""
+    manifest = json.loads((args.catalog / 'catalog.json').read_text())
+    if manifest.get('schema') != 1 or not 1 <= args.count <= manifest['count']:
+        raise ValueError('Unsupported catalog or invalid sample count')
+    indices = random.Random(args.seed).sample(range(manifest['count']), args.count)
+    wanted = set(indices)
+    selected = {}
+    digest = hashlib.sha256()
+    previous = None
+    count = 0
+    with (args.catalog / 'catalog.txt').open('rb') as source:
+        for index, line in enumerate(source):
+            digest.update(line)
+            if (not re.fullmatch(rb'dEQP-VK\.[A-Za-z0-9_.-]+\n', line)
+                    or (previous is not None and line <= previous)):
+                raise ValueError('Catalog must contain unique, sorted CTS names')
+            previous = line
+            count += 1
+            if index in wanted:
+                selected[index] = line.decode('ascii').rstrip('\n')
+    if count != manifest['count'] or digest.hexdigest() != manifest['catalog_sha256']:
+        raise ValueError('Catalog checksum/count mismatch; do not renumber the campaign')
+    raw = ''.join(selected[i] + '\n' for i in indices).encode('ascii')
+    provenance = dict(catalog=str(args.catalog.resolve()),
+                      catalog_sha256=digest.hexdigest(),
+                      cts_revision=manifest['cts_revision'], seed=args.seed,
+                      method='Python random.Random.sample of catalog indices without replacement',
+                      capability_filter=False, result_filter=False)
+    summary = dict(schema=1, count=args.count, catalog_count=count,
+                   cases_sha256=hashlib.sha256(raw).hexdigest(), **provenance)
+    with destination(args.output) as temporary:
+        stage = Path(temporary)
+        (stage / 'cases.txt').write_bytes(raw)
+        write_json(stage / 'cases.meta.json', dict(
+            schema=1, cases_sha256=summary['cases_sha256'], provenance=provenance,
+            cases=[dict(case=selected[i], catalog_index=i,
+                        classification='unclassified', requirements=[],
+                        rule='Random frozen-catalog case; audit capability skips separately')
+                   for i in indices]))
+        write_json(stage / 'selection.json', summary)
+        stage.rename(args.output)
+    print(json.dumps(summary, indent=2))
+
+
 def annotate(args):
     """Attach catalog identities to an existing targeted list without changing it."""
     manifest = json.loads((args.catalog / 'catalog.json').read_text())
@@ -181,6 +227,12 @@ def main():
     selection.add_argument('--end', type=int, required=True)
     selection.add_argument('--output', type=Path, required=True)
     selection.set_defaults(run=select_range)
+    sample = commands.add_parser('random', help='Seeded sample without replacement from the frozen catalog')
+    sample.add_argument('--catalog', type=Path, required=True)
+    sample.add_argument('--seed', type=int, required=True)
+    sample.add_argument('--count', type=int, required=True)
+    sample.add_argument('--output', type=Path, required=True)
+    sample.set_defaults(run=select_random)
     annotation = commands.add_parser('annotate', help='Attach catalog indices to a targeted case list')
     annotation.add_argument('--catalog', type=Path, required=True)
     annotation.add_argument('--cases', type=Path, required=True)
