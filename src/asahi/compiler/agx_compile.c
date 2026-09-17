@@ -6060,7 +6060,12 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
 
    AGX_PASS(ctx, agx3_sink_vertex_outputs);
 
-   AGX_PASS(ctx, agx_ra);
+   if (!agx_ra(ctx)) {
+      binary->size = initial_binary_size;
+      ralloc_free(ctx);
+      return false;
+   }
+   agx_validate(ctx, "agx_ra");
    agx_lower_64bit_postra(ctx);
    agx_lower_agx3_stack_vectors(ctx);
 

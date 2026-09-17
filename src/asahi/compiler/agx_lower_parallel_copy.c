@@ -106,12 +106,12 @@ struct copy_ctx {
     * source. Once this drops to zero, then the physreg is unblocked and can
     * be moved to.
     */
-   unsigned physreg_use_count[AGX_NUM_MODELED_REGS];
+   unsigned *physreg_use_count;
 
    /* For each physreg, the pending copy_entry that uses it as a dest. */
-   struct agx_copy *physreg_dest[AGX_NUM_MODELED_REGS];
+   struct agx_copy **physreg_dest;
 
-   struct agx_copy entries[AGX_NUM_MODELED_REGS];
+   struct agx_copy *entries;
 };
 
 static bool
@@ -194,22 +194,35 @@ agx_emit_parallel_copies_for_class(agx_builder *b, struct agx_copy *copies,
    copies = copies2;
    num_copies = num_copies2;
 
-   /* Set up the bookkeeping.  copy_ctx carries three AGX_NUM_MODELED_REGS
-    * (2048) entry arrays -- roughly 72 KiB -- and this runs on whatever
-    * thread the application called into the driver on.  A 1 MiB default
-    * Windows thread stack does not have that to spare underneath the rest of
-    * the compiler, so keep it on the heap.
-    */
-   struct copy_ctx *ctx = calloc(1, sizeof(*ctx));
-   if (ctx == NULL) {
+   /* Size scratch bookkeeping for this copy set, not the maximum shader
+    * stack. Register-only copies must remain cheap as spill capacity grows. */
+   unsigned capacity = 0;
+   for (unsigned i = 0; i < num_copies; ++i) {
+      unsigned width = agx_size_align_16(copies[i].src.size);
+      capacity = MAX2(capacity, copies[i].dest + width);
+      if (is_real(&copies[i]))
+         capacity = MAX2(capacity, copies[i].src.value + width);
+   }
+   if (!capacity) {
+      free(copies2);
+      return;
+   }
+   capacity = ALIGN_POT(capacity, 2);
+   assert(capacity <= AGX_NUM_MODELED_REGS);
+   struct copy_ctx state = {
+      .entry_count = num_copies,
+      .entries = calloc(capacity, sizeof(struct agx_copy)),
+      .physreg_use_count = calloc(capacity, sizeof(unsigned)),
+      .physreg_dest = calloc(capacity, sizeof(struct agx_copy *)),
+   };
+   struct copy_ctx *ctx = &state;
+   if (!ctx->entries || !ctx->physreg_use_count || !ctx->physreg_dest) {
+      free(ctx->entries);
+      free(ctx->physreg_use_count);
+      free(ctx->physreg_dest);
       free(copies2);
       UNREACHABLE("failed to allocate parallel-copy context");
    }
-
-   ctx->entry_count = num_copies;
-
-   memset(ctx->physreg_dest, 0, sizeof(ctx->physreg_dest));
-   memset(ctx->physreg_use_count, 0, sizeof(ctx->physreg_use_count));
 
    for (unsigned i = 0; i < ctx->entry_count; i++) {
       struct agx_copy *entry = &copies[i];
@@ -240,7 +253,7 @@ agx_emit_parallel_copies_for_class(agx_builder *b, struct agx_copy *copies,
          continue;
 
       unsigned next_dest = entry->dest + 1;
-      assert(next_dest < ARRAY_SIZE(ctx->physreg_dest) && "aligned reg");
+      assert(next_dest < capacity && "aligned reg");
 
       struct agx_copy *next_copy = ctx->physreg_dest[next_dest];
       if (!next_copy)
@@ -402,7 +415,9 @@ agx_emit_parallel_copies_for_class(agx_builder *b, struct agx_copy *copies,
       entry->done = true;
    }
 
-   free(ctx);
+   free(ctx->physreg_use_count);
+   free(ctx->physreg_dest);
+   free(ctx->entries);
    free(copies2);
 }
 

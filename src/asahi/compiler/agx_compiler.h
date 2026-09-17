@@ -26,8 +26,9 @@ extern "C" {
 /* u0-u255 inclusive, as pairs of 16-bits */
 #define AGX_NUM_UNIFORMS (512)
 
-/* Semi-arbitrary limit for spill slot allocation */
-#define AGX_NUM_MODELED_REGS_LOG2 (11)
+/* Model the signed 16-bit byte range of the native stack adjustment.
+ * Physical GPR bounds remain separate. Each spill slot holds two bytes. */
+#define AGX_NUM_MODELED_REGS_LOG2 (14)
 #define AGX_NUM_MODELED_REGS      (1 << AGX_NUM_MODELED_REGS_LOG2)
 
 /* Limit on number of sources for non-phi instructions */
@@ -93,7 +94,7 @@ typedef struct {
     */
    unsigned reg : AGX_NUM_MODELED_REGS_LOG2;
    bool has_reg     : 1;
-   unsigned padding : 6;
+   unsigned padding : 17 - AGX_NUM_MODELED_REGS_LOG2;
 } agx_index;
 static_assert(sizeof(agx_index) == 8, "packed");
 
@@ -1062,7 +1063,7 @@ bool agx3_sink_vertex_outputs(agx_context *ctx);
 void agx_spill(agx_context *ctx, unsigned k, bool remat_only);
 void agx_repair_ssa(agx_context *ctx);
 void agx_reindex_ssa(agx_context *ctx);
-void agx_ra(agx_context *ctx);
+bool agx_ra(agx_context *ctx);
 unsigned agx_reserved_register_count(agx_context *ctx);
 
 /* AGX3b device atomics return through their value register.  Legalize the

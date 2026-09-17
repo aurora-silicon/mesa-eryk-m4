@@ -44,7 +44,8 @@ vars_equal(struct var_offset x, struct var_offset y)
 
 /* Represents the contents of a single register file */
 struct regfile {
-   struct var_offset r[RA_CLASSES][AGX_NUM_MODELED_REGS];
+   struct var_offset *r[RA_CLASSES];
+   unsigned count[RA_CLASSES];
 };
 
 static void
@@ -52,7 +53,7 @@ print_regfile(struct regfile *file, FILE *fp)
 {
    fprintf(fp, "regfile: \n");
    for (enum ra_class cls = 0; cls < RA_CLASSES; ++cls) {
-      for (unsigned r = 0; r < AGX_NUM_MODELED_REGS; ++r) {
+      for (unsigned r = 0; r < file->count[cls]; ++r) {
          struct var_offset v = file->r[cls][r];
 
          if (v.defined) {
@@ -83,7 +84,7 @@ copy_reg(struct regfile *file, agx_index dst, agx_index src)
    enum ra_class src_cls = ra_class_for_index(src);
 
    for (uint8_t offs = 0; offs < agx_index_size_16(dst); ++offs) {
-      assert(dst.value + offs < ARRAY_SIZE(file->r[dst_cls]));
+      assert(dst.value + offs < file->count[dst_cls]);
       file->r[dst_cls][dst.value + offs] = file->r[src_cls][src.value + offs];
    }
 }
@@ -101,8 +102,8 @@ swap_regs(struct regfile *file, agx_index a, agx_index b)
    assert(size == agx_index_size_16(b));
 
    for (uint8_t offs = 0; offs < size; ++offs) {
-      assert(a.value + offs < ARRAY_SIZE(file->r[a_cls]));
-      assert(b.value + offs < ARRAY_SIZE(file->r[b_cls]));
+      assert(a.value + offs < file->count[a_cls]);
+      assert(b.value + offs < file->count[b_cls]);
 
       struct var_offset tmp = file->r[a_cls][a.value + offs];
       file->r[a_cls][a.value + offs] = file->r[b_cls][b.value + offs];
@@ -117,7 +118,7 @@ record_dest(struct regfile *file, agx_index idx)
    enum ra_class cls = ra_class_for_index(idx);
 
    for (uint8_t offs = 0; offs < agx_index_size_16(idx); ++offs) {
-      assert(idx.reg + offs < ARRAY_SIZE(file->r[cls]));
+      assert(idx.reg + offs < file->count[cls]);
       file->r[cls][idx.reg + offs] = var_index(idx, offs);
    }
 }
@@ -129,7 +130,7 @@ validate_src(agx_instr *I, unsigned s, struct regfile *file, agx_index idx)
    enum ra_class cls = ra_class_for_index(idx);
 
    for (uint8_t offs = 0; offs < agx_index_size_16(idx); ++offs) {
-      assert(idx.reg + offs < ARRAY_SIZE(file->r[cls]));
+      assert(idx.reg + offs < file->count[cls]);
       struct var_offset actual = file->r[cls][idx.reg + offs];
 
       agx_validate_assert(file, I, s, offs, actual.defined);
@@ -165,7 +166,7 @@ validate_block(agx_context *ctx, agx_block *block, struct regfile *blocks)
          struct regfile *pred_file = &blocks[(*pred)->index];
 
          for (enum ra_class cls = 0; cls < RA_CLASSES; ++cls) {
-            for (unsigned r = 0; r < AGX_NUM_MODELED_REGS; ++r) {
+            for (unsigned r = 0; r < file->count[cls]; ++r) {
                if (first_pred)
                   file->r[cls][r] = pred_file->r[cls][r];
                else if (!vars_equal(file->r[cls][r], pred_file->r[cls][r]))
@@ -288,6 +289,18 @@ agx_validate_ra(agx_context *ctx)
 {
    bool succ = true;
    struct regfile *blocks = calloc(ctx->num_blocks, sizeof(*blocks));
+   unsigned counts[RA_CLASSES] = {
+      [RA_GPR] = AGX_NUM_REGS,
+      [RA_MEM] = (ctx->scratch_size_B - ctx->spill_base_B) / 2,
+   };
+   unsigned stride = counts[RA_GPR] + counts[RA_MEM];
+   struct var_offset *storage = calloc(ctx->num_blocks, stride * sizeof(*storage));
+   assert(blocks && storage);
+   for (unsigned i = 0; i < ctx->num_blocks; ++i) {
+      blocks[i].r[RA_GPR] = storage + i * stride;
+      blocks[i].r[RA_MEM] = blocks[i].r[RA_GPR] + counts[RA_GPR];
+      memcpy(blocks[i].count, counts, sizeof(counts));
+   }
 
    agx_foreach_block(ctx, block) {
       succ &= validate_block(ctx, block, blocks);
@@ -298,6 +311,7 @@ agx_validate_ra(agx_context *ctx)
       UNREACHABLE("invalid RA");
    }
 
+   free(storage);
    free(blocks);
 }
 

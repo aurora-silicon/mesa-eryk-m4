@@ -712,6 +712,9 @@ find_regs(struct ra_ctx *rctx, agx_instr *I, unsigned dest_idx, unsigned count,
 
    if (find_regs_simple(rctx, cls, count, align, limit, &reg)) {
       return reg;
+   } else if (cls == RA_MEM) {
+      /* Spill slots cannot use the physical GPR shuffle allocator. */
+      return ~0u;
    } else {
       assert(!rctx->early_killed && "no live range splits with early kill");
       assert(cls == RA_GPR && "no memory live range splits");
@@ -1166,7 +1169,7 @@ try_kill_early_sources(struct ra_ctx *rctx, const agx_instr *I,
 
 /** Assign registers to SSA values in a block. */
 
-static void
+static bool
 agx_ra_assign_local(struct ra_ctx *rctx)
 {
    BITSET_DECLARE(used_regs_gpr, AGX_NUM_REGS) = {0};
@@ -1291,7 +1294,8 @@ agx_ra_assign_local(struct ra_ctx *rctx)
          I->src[0].type == AGX_INDEX_NORMAL &&
          I->src[1].type == AGX_INDEX_NORMAL;
 
-      if (I->nr_dests == 1 && !g17p_ft1 && !g17p_srl_boundary &&
+      if (I->nr_dests == 1 && !I->dest[0].memory &&
+          !g17p_ft1 && !g17p_srl_boundary &&
           !g17p_reg_isub && !g17p_reg_and) {
          unsigned first_src = 0;
          unsigned end = 0;
@@ -1321,7 +1325,12 @@ agx_ra_assign_local(struct ra_ctx *rctx)
          if (I->op == AGX_OPCODE_PHI && I->dest[d].has_reg)
             continue;
 
-         assign_regs(rctx, I->dest[d], pick_regs(rctx, I, d));
+         unsigned reg = pick_regs(rctx, I, d);
+         if (reg == ~0u) {
+            free(ssa_to_reg);
+            return false;
+         }
+         assign_regs(rctx, I->dest[d], reg);
       }
 
       /* Free late-killed sources */
@@ -1369,6 +1378,7 @@ agx_ra_assign_local(struct ra_ctx *rctx)
    }
 
    free(rctx->ssa_to_reg);
+   return true;
 }
 
 /*
@@ -1538,7 +1548,7 @@ agx_lower_agx3b_tile_sources(agx_context *ctx)
    }
 }
 
-void
+bool
 agx_ra(agx_context *ctx)
 {
    agx_lower_agx3b_atomic_returns(ctx);
@@ -1705,6 +1715,7 @@ agx_ra(agx_context *ctx)
    BITSET_WORD *low_gpr = BITSET_CALLOC(ctx->alloc);
    BITSET_WORD *tex_low128 = BITSET_CALLOC(ctx->alloc);
    unsigned max_ncomps = 1;
+   unsigned memory_bound = 0;
 
    agx_foreach_instr_global(ctx, I) {
       if (ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
@@ -1748,6 +1759,12 @@ agx_ra(agx_context *ctx)
          ncomps[v] = util_next_power_of_two(ncomps_unrounded[v]);
          sizes[v] = I->dest[d].size;
          classes[v] = ra_class_for_index(I->dest[d]);
+         /* At most one slot per memory SSA, including worst-case alignment.
+          * Keep small shaders' bookkeeping small even though the model can
+          * now represent the full stack range. */
+         if (classes[v] == RA_MEM)
+            memory_bound = MIN2(AGX_NUM_MODELED_REGS,
+                               memory_bound + 2 * ncomps[v] - 1);
 
          max_ncomps = MAX2(max_ncomps, ncomps[v]);
       }
@@ -1787,12 +1804,19 @@ agx_ra(agx_context *ctx)
    assert(max_regs <= max_possible_regs);
 
    unsigned reg_count = 0, mem_slot_count = 0;
+   bool success = true;
+   memory_bound = ALIGN_POT(memory_bound, 16);
+   if (ctx->key->dev.encoding != AGX_ISA_ENCODING_AGX2) {
+      unsigned available = ctx->scratch_size_B < INT16_MAX ?
+         ROUND_DOWN_TO((INT16_MAX - ctx->scratch_size_B) / 2, 16) : 0;
+      memory_bound = MIN2(memory_bound, available);
+   }
 
    /* Assign registers in dominance-order. This coincides with source-order due
     * to a NIR invariant, so we do not need special handling for this.
     */
    agx_foreach_block(ctx, block) {
-      agx_ra_assign_local(&(struct ra_ctx){
+      if (!agx_ra_assign_local(&(struct ra_ctx){
          .shader = ctx,
          .block = block,
          .src_to_collect_phi = src_to_collect_phi,
@@ -1805,10 +1829,14 @@ agx_ra(agx_context *ctx)
          .low_gpr = low_gpr,
          .tex_low128 = tex_low128,
          .bound[RA_GPR] = max_regs,
-         .bound[RA_MEM] = AGX_NUM_MODELED_REGS,
+         .bound[RA_MEM] = memory_bound,
          .count[RA_GPR] = &reg_count,
          .count[RA_MEM] = &mem_slot_count,
-      });
+      })) {
+         fprintf(stderr, "AGX: shader exhausted %u spill slots\n", memory_bound);
+         success = false;
+         goto cleanup;
+      }
    }
 
    ctx->max_reg = reg_count ? (reg_count - 1) : 0;
@@ -1940,6 +1968,7 @@ agx_ra(agx_context *ctx)
    if (spilling)
       agx_lower_spill(ctx);
 
+cleanup:
    agx_foreach_block(ctx, block) {
       for (unsigned i = 0; i < ARRAY_SIZE(block->reg_to_ssa_out); ++i) {
          free(block->reg_to_ssa_out[i]);
@@ -1956,4 +1985,5 @@ agx_ra(agx_context *ctx)
    free(sizes);
    free(classes);
    free(visited);
+   return success;
 }

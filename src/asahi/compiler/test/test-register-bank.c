@@ -90,6 +90,22 @@ int
 main(void)
 {
    struct fixture f;
+   /* A shader spilling beyond the old 4 KiB table must allocate memory, not
+    * enter the GPR shuffle path. Exhaustion must leave live GPRs untouched. */
+   init(&f, 192, 2);
+   BITSET_DECLARE(memory, AGX_NUM_MODELED_REGS) = {0};
+   f.ra.used_regs[RA_MEM] = memory;
+   f.ra.bound[RA_MEM] = AGX_NUM_MODELED_REGS;
+   f.ra.early_killed = true;
+   agx_index spill = {.type = AGX_INDEX_NORMAL, .value = 511,
+                     .size = AGX_SIZE_64, .memory = true};
+   agx_instr mov = {.op = AGX_OPCODE_MOV, .nr_dests = 1, .dest = &spill};
+   BITSET_SET_COUNT(memory, 0, 2048);
+   assert(find_regs(&f.ra, &mov, 0, 4, 4) == 2048);
+   BITSET_SET_COUNT(memory, 0, AGX_NUM_MODELED_REGS);
+   assert(find_regs(&f.ra, &mov, 0, 4, 4) == ~0u);
+   assert(f.high_water == 0);
+
    init(&f, 256, 0);
    for (unsigned reg = 0; reg < 128; reg += 2)
       value(&f, reg, 2, AGX_SIZE_32);
