@@ -1,0 +1,43 @@
+{
+  "title": "Buoy",
+  "info": {
+    "id": "XdsGDB",
+    "date": "1378762363",
+    "viewed": 91949,
+    "name": "Buoy",
+    "username": "TekF",
+    "description": "A ray-traced sphere floating in a ray-marched ocean. Refraction & reflection effects.\nIt looks particularly nice when you pause it and move the camera.",
+    "likes": 376,
+    "published": 3,
+    "flags": 0,
+    "usePreview": 1,
+    "tags": [
+      "raytracing",
+      "raymarching",
+      "noise",
+      "reflection",
+      "refraction"
+    ],
+    "hasliked": 0,
+    "parentid": "",
+    "parentname": ""
+  },
+  "texture": {
+    "width": 256,
+    "height": 256,
+    "url": "https://www.shadertoy.com/media/a/f735bee5b64ef98879dc618b016ecf7939a5756040c2cde21ccb15e69a6e1cfb.png"
+  },
+  "error": false,
+  "errorString": "No Errors",
+  "source_sha256": "991906ab7c9237e98f1badecd4af70f4fcc7190383b00ad72242fed4be783c17",
+  "texture_sha256": "dd02b2807ed6a94ee58d812a2f3b682b9ff782056215f5b881f790c720124526",
+  "render_extent": [
+    3840,
+    2160
+  ],
+  "artifacts": {
+    "buoy.vert.spv": "58a13742238c0651b8eeda455ba8962c12f41d9d627cd90480d3ed38cdf90a5c",
+    "buoy.frag.spv": "f71f1bc0d89744f0ee23c9d8cd54d57a66009b701d8dbe786703e95446ead885",
+    "noise.rgba": "9b9988584cf53009613ea6c150a75e9f63c76806e9689f83fd909b636b89306d"
+  }
+}
