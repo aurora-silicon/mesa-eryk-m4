@@ -103,3 +103,32 @@ Original configuration is `config.before-performance.ini` in isolated state.
 - `20260918T101514148510Z-factorio-candidate-cached-start`
 
 Live-game FPS qualification remains ongoing.
+
+## Adjacent timestamp reset batching
+
+EndCommandBuffer may merge consecutive reset-only compute streams, while
+retaining the completion boundary before a timestamp producer or consumer.
+Each reset formerly forced a separate firmware command even when followed by
+another independent reset. The memory-dependency and attachment checks remain.
+
+`vulkan-query-copy-probe.c` mode 3 writes 64 queries, individually resets each,
+rewrites even queries, and copies all results and availability. Even queries
+wait for availability and must be nonzero and monotonic; odd queries must be
+unavailable (their values are undefined). Passes on lavapipe, baseline and
+candidate hardware. Frozen timestamp CTS: 908 Pass, 26 NotSupported, no failures,
+28.187 seconds runner time. Original native frame 2: zero differing pixels.
+This qualifies correctness; live FPS gains are not yet measured.
+
+Evidence: `20260918T103448735616Z-factorio-reset-merge-candidate`,
+`20260918T103511642334Z-factorio-reset-timestamp-cts`,
+`20260918T103600276298Z-factorio-reset-merge-frame`.
+
+A separate kernel polling experiment (eight 10us busy polls instead of four
+sleeping polls) did not improve checked tiny-command turnaround: median
+0.651644 ms baseline, 0.663076 ms candidate. Source, module and initramfs were
+restored and the original kernel rebooted. `gpu-turnaround-probe.py` retains
+this bounded, CPU-readback-checked experiment. Do not deploy the rejected build.
+
+`factorio-ui-step.py` checks that the actual game window exists before input or
+capture. Live guest perf sampling coincided with game exits; causation remains
+unresolved. Avoid it for subsequent FPS qualification.

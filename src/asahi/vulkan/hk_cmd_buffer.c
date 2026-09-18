@@ -545,7 +545,13 @@ merge_control_streams(struct hk_cmd_buffer *cmd)
 
    list_for_each_entry_safe(struct hk_cs, cs, &cmd->control_streams, node) {
       if (cs->type == HK_CS_CDM && last && last->type == HK_CS_CDM &&
-          !last->timestamp.end.handle && !last->ends_timestamp_reset &&
+          !last->timestamp.end.handle &&
+          /* Reset-only successors can share the same completion flush. Keep
+           * the boundary before the subsequent timestamp producer/consumer,
+           * which runs through a different firmware memory agent. Zink emits
+           * many adjacent single-query resets in its reordered command buffer.
+           */
+          (!last->ends_timestamp_reset || cs->ends_timestamp_reset) &&
           !last->ends_memory_dependency &&
           hk_drm_attachment_set_merge(&last->compute_attachments,
                                        &cs->compute_attachments,
