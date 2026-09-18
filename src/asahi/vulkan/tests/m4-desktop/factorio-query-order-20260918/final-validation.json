@@ -1,0 +1,94 @@
+{
+  "screenshot": "build/steam-crash-20260918/factorio-final-paused.png",
+  "sha256": "6fd4d44e6a7e0afc2680fcef4b99d194d42b92eb5155c84e8ab8e1ed6834826c",
+  "reports": {
+    "20260918T012806972925Z-factorio-steam-sprite-load-continuation": {
+      "id": "20260918T012806972925Z-factorio-steam-sprite-load-continuation",
+      "verdict": "pass",
+      "transport_returncode": 0,
+      "evidence_fetched": true,
+      "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260918T012806972925Z-factorio-steam-sprite-load-continuation",
+      "observations": {
+        "pixel_results": [],
+        "pixel_result_count": 0,
+        "thermal_samples": 256,
+        "malformed_thermal_samples": 0,
+        "peak_temperature_c": 66.5,
+        "channel_peaks_c": {
+          "PMP aggregate die hotspot": 66.5,
+          "Ta000m": 61.0,
+          "Te000m": 61.25,
+          "Te001m": 65.5,
+          "Tp000m": 66.5,
+          "Tp001m": 65.5
+        }
+      }
+    },
+    "20260918T014311707995Z-factorio-start-freeplay": {
+      "id": "20260918T014311707995Z-factorio-start-freeplay",
+      "verdict": "pass",
+      "transport_returncode": 0,
+      "evidence_fetched": true,
+      "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260918T014311707995Z-factorio-start-freeplay",
+      "observations": {
+        "pixel_results": [],
+        "pixel_result_count": 0,
+        "thermal_samples": 11,
+        "malformed_thermal_samples": 0,
+        "peak_temperature_c": 70.75,
+        "channel_peaks_c": {
+          "PMP aggregate die hotspot": 70.75,
+          "Ta000m": 64.25,
+          "Te000m": 64.75,
+          "Te001m": 68.0,
+          "Tp000m": 69.5,
+          "Tp001m": 70.75
+        }
+      }
+    },
+    "20260918T014427595695Z-factorio-freeplay-control": {
+      "id": "20260918T014427595695Z-factorio-freeplay-control",
+      "verdict": "pass",
+      "transport_returncode": 0,
+      "evidence_fetched": true,
+      "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260918T014427595695Z-factorio-freeplay-control",
+      "observations": {
+        "pixel_results": [],
+        "pixel_result_count": 0,
+        "thermal_samples": 10,
+        "malformed_thermal_samples": 0,
+        "peak_temperature_c": 67.25,
+        "channel_peaks_c": {
+          "PMP aggregate die hotspot": 67.25,
+          "Ta000m": 63.0,
+          "Te000m": 63.0,
+          "Te001m": 64.5,
+          "Tp000m": 67.25,
+          "Tp001m": 65.25
+        }
+      }
+    },
+    "20260918T014858932876Z-factorio-final-pause": {
+      "id": "20260918T014858932876Z-factorio-final-pause",
+      "verdict": "pass",
+      "transport_returncode": 0,
+      "evidence_fetched": true,
+      "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260918T014858932876Z-factorio-final-pause",
+      "observations": {
+        "pixel_results": [],
+        "pixel_result_count": 0,
+        "thermal_samples": 9,
+        "malformed_thermal_samples": 0,
+        "peak_temperature_c": 68.0,
+        "channel_peaks_c": {
+          "PMP aggregate die hotspot": 68.0,
+          "Ta000m": 63.0,
+          "Te000m": 62.75,
+          "Te001m": 67.25,
+          "Tp000m": 68.0,
+          "Tp001m": 67.0
+        }
+      }
+    }
+  }
+}

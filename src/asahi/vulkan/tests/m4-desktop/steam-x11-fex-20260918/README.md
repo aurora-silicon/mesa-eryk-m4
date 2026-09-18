@@ -23,7 +23,9 @@ Twelve Library/Home transitions preserve SharedJSContext with accelerated CEF:
 `20260918T000509740526Z-steam-fixed-menu-quiet-verified` (peak 67 C).
 Archive traffic was paused for that run. A prior run timed out on a 5-second
 CDP invocation without a renderer crash; do not count that as a crash or pass.
-Factorio installation/application qualification is still in progress here.
+Factorio subsequently reached a playable Freeplay world through Steam; see
+`../factorio-query-order-20260918/README.md` for final application qualification,
+the additional GPU query-order fix, swap reserve and remaining visual defects.
 
 `guarded-command.py` now retains a complete continuous kernel stream on short
 runs as well as long ones. A slow optional journal query records its error and
