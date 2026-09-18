@@ -1,0 +1,24 @@
+{
+  "hyprland_pid": 5856,
+  "library_inode": 12928560,
+  "monitors": [
+    {
+      "name": "eDP-1",
+      "description": "",
+      "width": 2560,
+      "height": 1664,
+      "refreshRate": 60.0
+    },
+    {
+      "name": "DP-1",
+      "description": "Philips Consumer Electronics Company PHL 237E7 UHB1707006721",
+      "width": 1920,
+      "height": 1080,
+      "refreshRate": 60.0
+    }
+  ]
+}
+PASS: desktop uses final M4 driver
+ok
+{"compositor_pid": "5856", "compositor_caps": {"CapInh": 34368126976, "CapPrm": 8388608, "CapEff": 8388608, "CapBnd": 2199023255551, "CapAmb": 0}, "child_caps": {"CapInh": 34368126976, "CapPrm": 0, "CapEff": 0, "CapBnd": 2199023255551, "CapAmb": 0}}
+PASS: high priority compositor; child capabilities cleared; desktop active

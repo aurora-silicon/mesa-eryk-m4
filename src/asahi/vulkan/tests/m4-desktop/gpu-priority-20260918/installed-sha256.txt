@@ -1,0 +1,8 @@
+3a5b6a8d7f20947ec33ee305060c21abe27e55a661013bf113490bdc9a398d89  /boot/asahi/Image.asahi2
+825262912a0786829f3c6e436ecd2838ced768eb8642946ce2d0f0af8747b2bd  /boot/asahi/initramfs.asahi2.cpio
+83ad1e6c302c465f45d84b797304645bcbf977b356111015538d85a87525e8be  /lib/modules/7.1.9-dirtyroom-asahi2+/kernel/drivers/gpu/drm/asahi/asahi.ko
+60b265351dc13fe6fd2e9eec34db9cb7138fcae6e9def027390c3dd7bd57ad83  /opt/asahi-m4-port/lib/libvulkan_asahi.so
+cbc2b1b482dd0ac3e99785ae0f0558021fab1deb6661de48c6ec2f0e0c42a0d9  /opt/asahi-m4-port/lib/libgallium-26.1.4.so
+cf1a97cb576c53c1015454e1404bd7089d32de91eb55ee0a4d9ca838ad38a1b5  /opt/m4-hyprland/bin/Hyprland
+528ad4f35ceee01b124f4145704edec3ea0b2d582db936c1b1139a1ad9c25a0a  /usr/local/libexec/m4-hyprland-priority
+f208ae742bf0407b3ec48688b98660652fe5a37b0bd132e9a037a9d891d85770  /usr/local/share/drirc.d/99-m4-compositor-priority.conf

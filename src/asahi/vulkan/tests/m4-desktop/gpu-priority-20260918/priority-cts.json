@@ -1,0 +1,23 @@
+{
+  "selected": 402,
+  "recorded": 402,
+  "completed": 402,
+  "counts": {
+    "Pass": 114,
+    "NotSupported": 288
+  },
+  "classifications": {
+    "unclassified": 402
+  },
+  "elapsed_seconds": 10.258422957966104,
+  "preparation_seconds": 1.5271370859700255,
+  "runner_seconds": 6.651155900999981,
+  "jobs": 2,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "e57067a13a21bc81cbacaae1b947adbd7e6987b7d771c2ece4f6a9e924f3aa21",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260918T085805852754Z-priority-api-transition-v2",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 61.25
+}

@@ -1,0 +1,110 @@
+{
+  "start": 642.417320778,
+  "end": 648.422416343,
+  "intervals": 355,
+  "missing_records": 0,
+  "median_ms": 16.663655,
+  "p95_ms": 16.68277,
+  "p99_ms": 16.689072,
+  "max_ms": 16.695413,
+  "over_50_ms": 0,
+  "failures": 0,
+  "largest_gaps": [
+    {
+      "sequence": 301,
+      "completed_seconds": 642.688011458,
+      "interval_ms": 16.695413,
+      "before_submit_ms": 3.99572,
+      "swap_ms": 12.699693,
+      "status": 0
+    },
+    {
+      "sequence": 336,
+      "completed_seconds": 643.271240927,
+      "interval_ms": 16.691872,
+      "before_submit_ms": 5.500372,
+      "swap_ms": 11.1915,
+      "status": 0
+    },
+    {
+      "sequence": 530,
+      "completed_seconds": 646.504028031,
+      "interval_ms": 16.689925,
+      "before_submit_ms": 4.53068,
+      "swap_ms": 12.159245,
+      "status": 0
+    },
+    {
+      "sequence": 559,
+      "completed_seconds": 646.987284634,
+      "interval_ms": 16.689467,
+      "before_submit_ms": 5.327718,
+      "swap_ms": 11.361749,
+      "status": 0
+    },
+    {
+      "sequence": 597,
+      "completed_seconds": 647.620492488,
+      "interval_ms": 16.689072,
+      "before_submit_ms": 5.49776,
+      "swap_ms": 11.191312,
+      "status": 0
+    },
+    {
+      "sequence": 450,
+      "completed_seconds": 645.170909231,
+      "interval_ms": 16.688234,
+      "before_submit_ms": 4.691294,
+      "swap_ms": 11.99694,
+      "status": 0
+    },
+    {
+      "sequence": 389,
+      "completed_seconds": 644.154418414,
+      "interval_ms": 16.687396,
+      "before_submit_ms": 5.759811,
+      "swap_ms": 10.927585,
+      "status": 0
+    },
+    {
+      "sequence": 393,
+      "completed_seconds": 644.221069611,
+      "interval_ms": 16.686771,
+      "before_submit_ms": 4.641987,
+      "swap_ms": 12.044784,
+      "status": 0
+    },
+    {
+      "sequence": 398,
+      "completed_seconds": 644.304386706,
+      "interval_ms": 16.686354,
+      "before_submit_ms": 5.488464,
+      "swap_ms": 11.19789,
+      "status": 0
+    },
+    {
+      "sequence": 519,
+      "completed_seconds": 646.320713802,
+      "interval_ms": 16.685885,
+      "before_submit_ms": 4.713732,
+      "swap_ms": 11.972153,
+      "status": 0
+    },
+    {
+      "sequence": 299,
+      "completed_seconds": 642.654675658,
+      "interval_ms": 16.685163,
+      "before_submit_ms": 5.013879,
+      "swap_ms": 11.671284,
+      "status": 0
+    },
+    {
+      "sequence": 385,
+      "completed_seconds": 644.087756327,
+      "interval_ms": 16.684146,
+      "before_submit_ms": 4.548825,
+      "swap_ms": 12.135321,
+      "status": 0
+    }
+  ]
+}

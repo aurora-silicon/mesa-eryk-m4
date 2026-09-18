@@ -1,0 +1,13 @@
+priority 0 return 0 PASS: priority probe readbacks
+ Device: Apple M4 (G16G B0)
+
+priority 1 return 0 PASS: priority probe readbacks
+ Device: Apple M4 (G16G B0)
+
+priority 2 return 2  Device: Apple M4 (G16G B0)
+vkCreateDevice(physical,&di,0,&device): -1000174001
+
+priority 3 return 2  Device: Apple M4 (G16G B0)
+vkCreateDevice(physical,&di,0,&device): -1000174001
+
+PASS: unprivileged low/medium accepted; high/realtime denied

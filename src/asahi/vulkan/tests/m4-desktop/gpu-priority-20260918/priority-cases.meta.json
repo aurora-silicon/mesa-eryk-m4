@@ -1,0 +1,2826 @@
+{
+  "schema": 1,
+  "cases_sha256": "e57067a13a21bc81cbacaae1b947adbd7e6987b7d771c2ece4f6a9e924f3aa21",
+  "cases": [
+    {
+      "case": "dEQP-VK.api.device_init.create_device_global_priority.basic",
+      "catalog_index": 269231,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.api.device_init.create_device_global_priority_khr.basic",
+      "catalog_index": 269232,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.api.device_init.create_device_global_priority_query.basic",
+      "catalog_index": 269233,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.api.device_init.create_device_global_priority_query_khr.basic",
+      "catalog_index": 269234,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.api.device_init.create_device_unsupported_features.global_priority_query_features",
+      "catalog_index": 269307,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.api.info.get_physical_device_properties2.features.global_priority_query_features",
+      "catalog_index": 319038,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.high.no_sync.no_modifiers.from_compute_to_graphics",
+      "catalog_index": 2836817,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.high.no_sync.no_modifiers.from_compute_to_transfer",
+      "catalog_index": 2836818,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.high.no_sync.no_modifiers.from_graphics_to_compute",
+      "catalog_index": 2836819,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.high.no_sync.no_modifiers.from_transfer_to_compute",
+      "catalog_index": 2836820,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.high.no_sync.protected.from_compute_to_graphics",
+      "catalog_index": 2836821,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.high.no_sync.protected.from_compute_to_transfer",
+      "catalog_index": 2836822,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.high.no_sync.protected.from_graphics_to_compute",
+      "catalog_index": 2836823,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.high.no_sync.protected.from_transfer_to_compute",
+      "catalog_index": 2836824,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.high.no_sync.sparse.from_compute_to_graphics",
+      "catalog_index": 2836825,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.high.no_sync.sparse.from_compute_to_transfer",
+      "catalog_index": 2836826,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.high.no_sync.sparse.from_graphics_to_compute",
+      "catalog_index": 2836827,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.high.no_sync.sparse.from_transfer_to_compute",
+      "catalog_index": 2836828,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.high.semaphore.no_modifiers.from_compute_to_graphics",
+      "catalog_index": 2836829,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.high.semaphore.no_modifiers.from_compute_to_transfer",
+      "catalog_index": 2836830,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.high.semaphore.no_modifiers.from_graphics_to_compute",
+      "catalog_index": 2836831,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.high.semaphore.no_modifiers.from_transfer_to_compute",
+      "catalog_index": 2836832,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.high.semaphore.protected.from_compute_to_graphics",
+      "catalog_index": 2836833,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.high.semaphore.protected.from_compute_to_transfer",
+      "catalog_index": 2836834,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.high.semaphore.protected.from_graphics_to_compute",
+      "catalog_index": 2836835,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.high.semaphore.protected.from_transfer_to_compute",
+      "catalog_index": 2836836,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.high.semaphore.sparse.from_compute_to_graphics",
+      "catalog_index": 2836837,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.high.semaphore.sparse.from_compute_to_transfer",
+      "catalog_index": 2836838,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.high.semaphore.sparse.from_graphics_to_compute",
+      "catalog_index": 2836839,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.high.semaphore.sparse.from_transfer_to_compute",
+      "catalog_index": 2836840,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.low.no_sync.no_modifiers.from_compute_to_graphics",
+      "catalog_index": 2836841,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.low.no_sync.no_modifiers.from_compute_to_transfer",
+      "catalog_index": 2836842,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.low.no_sync.no_modifiers.from_graphics_to_compute",
+      "catalog_index": 2836843,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.low.no_sync.no_modifiers.from_transfer_to_compute",
+      "catalog_index": 2836844,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.low.no_sync.protected.from_compute_to_graphics",
+      "catalog_index": 2836845,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.low.no_sync.protected.from_compute_to_transfer",
+      "catalog_index": 2836846,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.low.no_sync.protected.from_graphics_to_compute",
+      "catalog_index": 2836847,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.low.no_sync.protected.from_transfer_to_compute",
+      "catalog_index": 2836848,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.low.no_sync.sparse.from_compute_to_graphics",
+      "catalog_index": 2836849,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.low.no_sync.sparse.from_compute_to_transfer",
+      "catalog_index": 2836850,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.low.no_sync.sparse.from_graphics_to_compute",
+      "catalog_index": 2836851,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.low.no_sync.sparse.from_transfer_to_compute",
+      "catalog_index": 2836852,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.low.semaphore.no_modifiers.from_compute_to_graphics",
+      "catalog_index": 2836853,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.low.semaphore.no_modifiers.from_compute_to_transfer",
+      "catalog_index": 2836854,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.low.semaphore.no_modifiers.from_graphics_to_compute",
+      "catalog_index": 2836855,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.low.semaphore.no_modifiers.from_transfer_to_compute",
+      "catalog_index": 2836856,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.low.semaphore.protected.from_compute_to_graphics",
+      "catalog_index": 2836857,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.low.semaphore.protected.from_compute_to_transfer",
+      "catalog_index": 2836858,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.low.semaphore.protected.from_graphics_to_compute",
+      "catalog_index": 2836859,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.low.semaphore.protected.from_transfer_to_compute",
+      "catalog_index": 2836860,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.low.semaphore.sparse.from_compute_to_graphics",
+      "catalog_index": 2836861,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.low.semaphore.sparse.from_compute_to_transfer",
+      "catalog_index": 2836862,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.low.semaphore.sparse.from_graphics_to_compute",
+      "catalog_index": 2836863,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.low.semaphore.sparse.from_transfer_to_compute",
+      "catalog_index": 2836864,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.medium.no_sync.no_modifiers.from_compute_to_graphics",
+      "catalog_index": 2836865,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.medium.no_sync.no_modifiers.from_compute_to_transfer",
+      "catalog_index": 2836866,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.medium.no_sync.no_modifiers.from_graphics_to_compute",
+      "catalog_index": 2836867,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.medium.no_sync.no_modifiers.from_transfer_to_compute",
+      "catalog_index": 2836868,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.medium.no_sync.protected.from_compute_to_graphics",
+      "catalog_index": 2836869,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.medium.no_sync.protected.from_compute_to_transfer",
+      "catalog_index": 2836870,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.medium.no_sync.protected.from_graphics_to_compute",
+      "catalog_index": 2836871,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.medium.no_sync.protected.from_transfer_to_compute",
+      "catalog_index": 2836872,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.medium.no_sync.sparse.from_compute_to_graphics",
+      "catalog_index": 2836873,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.medium.no_sync.sparse.from_compute_to_transfer",
+      "catalog_index": 2836874,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.medium.no_sync.sparse.from_graphics_to_compute",
+      "catalog_index": 2836875,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.medium.no_sync.sparse.from_transfer_to_compute",
+      "catalog_index": 2836876,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.medium.semaphore.no_modifiers.from_compute_to_graphics",
+      "catalog_index": 2836877,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.medium.semaphore.no_modifiers.from_compute_to_transfer",
+      "catalog_index": 2836878,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.medium.semaphore.no_modifiers.from_graphics_to_compute",
+      "catalog_index": 2836879,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.medium.semaphore.no_modifiers.from_transfer_to_compute",
+      "catalog_index": 2836880,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.medium.semaphore.protected.from_compute_to_graphics",
+      "catalog_index": 2836881,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.medium.semaphore.protected.from_compute_to_transfer",
+      "catalog_index": 2836882,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.medium.semaphore.protected.from_graphics_to_compute",
+      "catalog_index": 2836883,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.medium.semaphore.protected.from_transfer_to_compute",
+      "catalog_index": 2836884,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.medium.semaphore.sparse.from_compute_to_graphics",
+      "catalog_index": 2836885,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.medium.semaphore.sparse.from_compute_to_transfer",
+      "catalog_index": 2836886,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.medium.semaphore.sparse.from_graphics_to_compute",
+      "catalog_index": 2836887,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.medium.semaphore.sparse.from_transfer_to_compute",
+      "catalog_index": 2836888,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_high_to_compute_realtime",
+      "catalog_index": 2836889,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_high_to_compute_realtime_double_preemption",
+      "catalog_index": 2836890,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_high_to_exclusive-compute_realtime",
+      "catalog_index": 2836891,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_high_to_exclusive-compute_realtime_double_preemption",
+      "catalog_index": 2836892,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_high_to_exclusive-transfer_realtime",
+      "catalog_index": 2836893,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_high_to_exclusive-transfer_realtime_double_preemption",
+      "catalog_index": 2836894,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_high_to_graphics_realtime",
+      "catalog_index": 2836895,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_high_to_graphics_realtime_double_preemption",
+      "catalog_index": 2836896,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_high_to_transfer_realtime",
+      "catalog_index": 2836897,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_high_to_transfer_realtime_double_preemption",
+      "catalog_index": 2836898,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_low_to_compute_high",
+      "catalog_index": 2836899,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_low_to_compute_high_double_preemption",
+      "catalog_index": 2836900,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_low_to_compute_medium",
+      "catalog_index": 2836901,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_low_to_compute_medium_double_preemption",
+      "catalog_index": 2836902,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_low_to_compute_realtime",
+      "catalog_index": 2836903,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_low_to_compute_realtime_double_preemption",
+      "catalog_index": 2836904,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_low_to_exclusive-compute_high",
+      "catalog_index": 2836905,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_low_to_exclusive-compute_high_double_preemption",
+      "catalog_index": 2836906,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_low_to_exclusive-compute_medium",
+      "catalog_index": 2836907,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_low_to_exclusive-compute_medium_double_preemption",
+      "catalog_index": 2836908,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_low_to_exclusive-compute_realtime",
+      "catalog_index": 2836909,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_low_to_exclusive-compute_realtime_double_preemption",
+      "catalog_index": 2836910,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_low_to_exclusive-transfer_high",
+      "catalog_index": 2836911,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_low_to_exclusive-transfer_high_double_preemption",
+      "catalog_index": 2836912,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_low_to_exclusive-transfer_medium",
+      "catalog_index": 2836913,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_low_to_exclusive-transfer_medium_double_preemption",
+      "catalog_index": 2836914,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_low_to_exclusive-transfer_realtime",
+      "catalog_index": 2836915,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_low_to_exclusive-transfer_realtime_double_preemption",
+      "catalog_index": 2836916,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_low_to_graphics_high",
+      "catalog_index": 2836917,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_low_to_graphics_high_double_preemption",
+      "catalog_index": 2836918,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_low_to_graphics_medium",
+      "catalog_index": 2836919,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_low_to_graphics_medium_double_preemption",
+      "catalog_index": 2836920,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_low_to_graphics_realtime",
+      "catalog_index": 2836921,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_low_to_graphics_realtime_double_preemption",
+      "catalog_index": 2836922,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_low_to_transfer_high",
+      "catalog_index": 2836923,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_low_to_transfer_high_double_preemption",
+      "catalog_index": 2836924,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_low_to_transfer_medium",
+      "catalog_index": 2836925,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_low_to_transfer_medium_double_preemption",
+      "catalog_index": 2836926,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_low_to_transfer_realtime",
+      "catalog_index": 2836927,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_low_to_transfer_realtime_double_preemption",
+      "catalog_index": 2836928,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_medium_to_compute_high",
+      "catalog_index": 2836929,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_medium_to_compute_high_double_preemption",
+      "catalog_index": 2836930,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_medium_to_compute_realtime",
+      "catalog_index": 2836931,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_medium_to_compute_realtime_double_preemption",
+      "catalog_index": 2836932,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_medium_to_exclusive-compute_high",
+      "catalog_index": 2836933,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_medium_to_exclusive-compute_high_double_preemption",
+      "catalog_index": 2836934,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_medium_to_exclusive-compute_realtime",
+      "catalog_index": 2836935,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_medium_to_exclusive-compute_realtime_double_preemption",
+      "catalog_index": 2836936,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_medium_to_exclusive-transfer_high",
+      "catalog_index": 2836937,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_medium_to_exclusive-transfer_high_double_preemption",
+      "catalog_index": 2836938,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_medium_to_exclusive-transfer_realtime",
+      "catalog_index": 2836939,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_medium_to_exclusive-transfer_realtime_double_preemption",
+      "catalog_index": 2836940,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_medium_to_graphics_high",
+      "catalog_index": 2836941,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_medium_to_graphics_high_double_preemption",
+      "catalog_index": 2836942,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_medium_to_graphics_realtime",
+      "catalog_index": 2836943,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_medium_to_graphics_realtime_double_preemption",
+      "catalog_index": 2836944,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_medium_to_transfer_high",
+      "catalog_index": 2836945,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_medium_to_transfer_high_double_preemption",
+      "catalog_index": 2836946,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_medium_to_transfer_realtime",
+      "catalog_index": 2836947,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.compute_medium_to_transfer_realtime_double_preemption",
+      "catalog_index": 2836948,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_high_to_compute_realtime",
+      "catalog_index": 2836949,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_high_to_compute_realtime_double_preemption",
+      "catalog_index": 2836950,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_high_to_exclusive-compute_realtime",
+      "catalog_index": 2836951,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_high_to_exclusive-compute_realtime_double_preemption",
+      "catalog_index": 2836952,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_high_to_exclusive-transfer_realtime",
+      "catalog_index": 2836953,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_high_to_exclusive-transfer_realtime_double_preemption",
+      "catalog_index": 2836954,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_high_to_graphics_realtime",
+      "catalog_index": 2836955,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_high_to_graphics_realtime_double_preemption",
+      "catalog_index": 2836956,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_high_to_transfer_realtime",
+      "catalog_index": 2836957,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_high_to_transfer_realtime_double_preemption",
+      "catalog_index": 2836958,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_low_to_compute_high",
+      "catalog_index": 2836959,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_low_to_compute_high_double_preemption",
+      "catalog_index": 2836960,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_low_to_compute_medium",
+      "catalog_index": 2836961,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_low_to_compute_medium_double_preemption",
+      "catalog_index": 2836962,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_low_to_compute_realtime",
+      "catalog_index": 2836963,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_low_to_compute_realtime_double_preemption",
+      "catalog_index": 2836964,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_low_to_exclusive-compute_high",
+      "catalog_index": 2836965,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_low_to_exclusive-compute_high_double_preemption",
+      "catalog_index": 2836966,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_low_to_exclusive-compute_medium",
+      "catalog_index": 2836967,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_low_to_exclusive-compute_medium_double_preemption",
+      "catalog_index": 2836968,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_low_to_exclusive-compute_realtime",
+      "catalog_index": 2836969,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_low_to_exclusive-compute_realtime_double_preemption",
+      "catalog_index": 2836970,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_low_to_exclusive-transfer_high",
+      "catalog_index": 2836971,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_low_to_exclusive-transfer_high_double_preemption",
+      "catalog_index": 2836972,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_low_to_exclusive-transfer_medium",
+      "catalog_index": 2836973,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_low_to_exclusive-transfer_medium_double_preemption",
+      "catalog_index": 2836974,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_low_to_exclusive-transfer_realtime",
+      "catalog_index": 2836975,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_low_to_exclusive-transfer_realtime_double_preemption",
+      "catalog_index": 2836976,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_low_to_graphics_high",
+      "catalog_index": 2836977,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_low_to_graphics_high_double_preemption",
+      "catalog_index": 2836978,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_low_to_graphics_medium",
+      "catalog_index": 2836979,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_low_to_graphics_medium_double_preemption",
+      "catalog_index": 2836980,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_low_to_graphics_realtime",
+      "catalog_index": 2836981,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_low_to_graphics_realtime_double_preemption",
+      "catalog_index": 2836982,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_low_to_transfer_high",
+      "catalog_index": 2836983,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_low_to_transfer_high_double_preemption",
+      "catalog_index": 2836984,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_low_to_transfer_medium",
+      "catalog_index": 2836985,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_low_to_transfer_medium_double_preemption",
+      "catalog_index": 2836986,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_low_to_transfer_realtime",
+      "catalog_index": 2836987,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_low_to_transfer_realtime_double_preemption",
+      "catalog_index": 2836988,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_medium_to_compute_high",
+      "catalog_index": 2836989,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_medium_to_compute_high_double_preemption",
+      "catalog_index": 2836990,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_medium_to_compute_realtime",
+      "catalog_index": 2836991,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_medium_to_compute_realtime_double_preemption",
+      "catalog_index": 2836992,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_medium_to_exclusive-compute_high",
+      "catalog_index": 2836993,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_medium_to_exclusive-compute_high_double_preemption",
+      "catalog_index": 2836994,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_medium_to_exclusive-compute_realtime",
+      "catalog_index": 2836995,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_medium_to_exclusive-compute_realtime_double_preemption",
+      "catalog_index": 2836996,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_medium_to_exclusive-transfer_high",
+      "catalog_index": 2836997,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_medium_to_exclusive-transfer_high_double_preemption",
+      "catalog_index": 2836998,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_medium_to_exclusive-transfer_realtime",
+      "catalog_index": 2836999,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_medium_to_exclusive-transfer_realtime_double_preemption",
+      "catalog_index": 2837000,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_medium_to_graphics_high",
+      "catalog_index": 2837001,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_medium_to_graphics_high_double_preemption",
+      "catalog_index": 2837002,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_medium_to_graphics_realtime",
+      "catalog_index": 2837003,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_medium_to_graphics_realtime_double_preemption",
+      "catalog_index": 2837004,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_medium_to_transfer_high",
+      "catalog_index": 2837005,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_medium_to_transfer_high_double_preemption",
+      "catalog_index": 2837006,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_medium_to_transfer_realtime",
+      "catalog_index": 2837007,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-compute_medium_to_transfer_realtime_double_preemption",
+      "catalog_index": 2837008,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_high_to_compute_realtime",
+      "catalog_index": 2837009,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_high_to_compute_realtime_double_preemption",
+      "catalog_index": 2837010,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_high_to_exclusive-compute_realtime",
+      "catalog_index": 2837011,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_high_to_exclusive-compute_realtime_double_preemption",
+      "catalog_index": 2837012,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_high_to_exclusive-transfer_realtime",
+      "catalog_index": 2837013,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_high_to_exclusive-transfer_realtime_double_preemption",
+      "catalog_index": 2837014,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_high_to_graphics_realtime",
+      "catalog_index": 2837015,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_high_to_graphics_realtime_double_preemption",
+      "catalog_index": 2837016,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_high_to_transfer_realtime",
+      "catalog_index": 2837017,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_high_to_transfer_realtime_double_preemption",
+      "catalog_index": 2837018,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_low_to_compute_high",
+      "catalog_index": 2837019,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_low_to_compute_high_double_preemption",
+      "catalog_index": 2837020,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_low_to_compute_medium",
+      "catalog_index": 2837021,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_low_to_compute_medium_double_preemption",
+      "catalog_index": 2837022,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_low_to_compute_realtime",
+      "catalog_index": 2837023,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_low_to_compute_realtime_double_preemption",
+      "catalog_index": 2837024,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_low_to_exclusive-compute_high",
+      "catalog_index": 2837025,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_low_to_exclusive-compute_high_double_preemption",
+      "catalog_index": 2837026,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_low_to_exclusive-compute_medium",
+      "catalog_index": 2837027,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_low_to_exclusive-compute_medium_double_preemption",
+      "catalog_index": 2837028,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_low_to_exclusive-compute_realtime",
+      "catalog_index": 2837029,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_low_to_exclusive-compute_realtime_double_preemption",
+      "catalog_index": 2837030,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_low_to_exclusive-transfer_high",
+      "catalog_index": 2837031,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_low_to_exclusive-transfer_high_double_preemption",
+      "catalog_index": 2837032,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_low_to_exclusive-transfer_medium",
+      "catalog_index": 2837033,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_low_to_exclusive-transfer_medium_double_preemption",
+      "catalog_index": 2837034,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_low_to_exclusive-transfer_realtime",
+      "catalog_index": 2837035,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_low_to_exclusive-transfer_realtime_double_preemption",
+      "catalog_index": 2837036,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_low_to_graphics_high",
+      "catalog_index": 2837037,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_low_to_graphics_high_double_preemption",
+      "catalog_index": 2837038,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_low_to_graphics_medium",
+      "catalog_index": 2837039,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_low_to_graphics_medium_double_preemption",
+      "catalog_index": 2837040,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_low_to_graphics_realtime",
+      "catalog_index": 2837041,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_low_to_graphics_realtime_double_preemption",
+      "catalog_index": 2837042,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_low_to_transfer_high",
+      "catalog_index": 2837043,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_low_to_transfer_high_double_preemption",
+      "catalog_index": 2837044,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_low_to_transfer_medium",
+      "catalog_index": 2837045,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_low_to_transfer_medium_double_preemption",
+      "catalog_index": 2837046,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_low_to_transfer_realtime",
+      "catalog_index": 2837047,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_low_to_transfer_realtime_double_preemption",
+      "catalog_index": 2837048,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_medium_to_compute_high",
+      "catalog_index": 2837049,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_medium_to_compute_high_double_preemption",
+      "catalog_index": 2837050,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_medium_to_compute_realtime",
+      "catalog_index": 2837051,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_medium_to_compute_realtime_double_preemption",
+      "catalog_index": 2837052,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_medium_to_exclusive-compute_high",
+      "catalog_index": 2837053,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_medium_to_exclusive-compute_high_double_preemption",
+      "catalog_index": 2837054,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_medium_to_exclusive-compute_realtime",
+      "catalog_index": 2837055,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_medium_to_exclusive-compute_realtime_double_preemption",
+      "catalog_index": 2837056,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_medium_to_exclusive-transfer_high",
+      "catalog_index": 2837057,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_medium_to_exclusive-transfer_high_double_preemption",
+      "catalog_index": 2837058,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_medium_to_exclusive-transfer_realtime",
+      "catalog_index": 2837059,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_medium_to_exclusive-transfer_realtime_double_preemption",
+      "catalog_index": 2837060,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_medium_to_graphics_high",
+      "catalog_index": 2837061,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_medium_to_graphics_high_double_preemption",
+      "catalog_index": 2837062,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_medium_to_graphics_realtime",
+      "catalog_index": 2837063,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_medium_to_graphics_realtime_double_preemption",
+      "catalog_index": 2837064,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_medium_to_transfer_high",
+      "catalog_index": 2837065,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_medium_to_transfer_high_double_preemption",
+      "catalog_index": 2837066,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_medium_to_transfer_realtime",
+      "catalog_index": 2837067,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.exclusive-transfer_medium_to_transfer_realtime_double_preemption",
+      "catalog_index": 2837068,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_high_to_compute_realtime",
+      "catalog_index": 2837069,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_high_to_compute_realtime_double_preemption",
+      "catalog_index": 2837070,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_high_to_exclusive-compute_realtime",
+      "catalog_index": 2837071,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_high_to_exclusive-compute_realtime_double_preemption",
+      "catalog_index": 2837072,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_high_to_exclusive-transfer_realtime",
+      "catalog_index": 2837073,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_high_to_exclusive-transfer_realtime_double_preemption",
+      "catalog_index": 2837074,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_high_to_graphics_realtime",
+      "catalog_index": 2837075,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_high_to_graphics_realtime_double_preemption",
+      "catalog_index": 2837076,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_high_to_transfer_realtime",
+      "catalog_index": 2837077,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_high_to_transfer_realtime_double_preemption",
+      "catalog_index": 2837078,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_low_to_compute_high",
+      "catalog_index": 2837079,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_low_to_compute_high_double_preemption",
+      "catalog_index": 2837080,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_low_to_compute_medium",
+      "catalog_index": 2837081,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_low_to_compute_medium_double_preemption",
+      "catalog_index": 2837082,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_low_to_compute_realtime",
+      "catalog_index": 2837083,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_low_to_compute_realtime_double_preemption",
+      "catalog_index": 2837084,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_low_to_exclusive-compute_high",
+      "catalog_index": 2837085,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_low_to_exclusive-compute_high_double_preemption",
+      "catalog_index": 2837086,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_low_to_exclusive-compute_medium",
+      "catalog_index": 2837087,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_low_to_exclusive-compute_medium_double_preemption",
+      "catalog_index": 2837088,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_low_to_exclusive-compute_realtime",
+      "catalog_index": 2837089,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_low_to_exclusive-compute_realtime_double_preemption",
+      "catalog_index": 2837090,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_low_to_exclusive-transfer_high",
+      "catalog_index": 2837091,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_low_to_exclusive-transfer_high_double_preemption",
+      "catalog_index": 2837092,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_low_to_exclusive-transfer_medium",
+      "catalog_index": 2837093,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_low_to_exclusive-transfer_medium_double_preemption",
+      "catalog_index": 2837094,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_low_to_exclusive-transfer_realtime",
+      "catalog_index": 2837095,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_low_to_exclusive-transfer_realtime_double_preemption",
+      "catalog_index": 2837096,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_low_to_graphics_high",
+      "catalog_index": 2837097,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_low_to_graphics_high_double_preemption",
+      "catalog_index": 2837098,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_low_to_graphics_medium",
+      "catalog_index": 2837099,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_low_to_graphics_medium_double_preemption",
+      "catalog_index": 2837100,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_low_to_graphics_realtime",
+      "catalog_index": 2837101,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_low_to_graphics_realtime_double_preemption",
+      "catalog_index": 2837102,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_low_to_transfer_high",
+      "catalog_index": 2837103,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_low_to_transfer_high_double_preemption",
+      "catalog_index": 2837104,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_low_to_transfer_medium",
+      "catalog_index": 2837105,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_low_to_transfer_medium_double_preemption",
+      "catalog_index": 2837106,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_low_to_transfer_realtime",
+      "catalog_index": 2837107,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_low_to_transfer_realtime_double_preemption",
+      "catalog_index": 2837108,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_medium_to_compute_high",
+      "catalog_index": 2837109,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_medium_to_compute_high_double_preemption",
+      "catalog_index": 2837110,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_medium_to_compute_realtime",
+      "catalog_index": 2837111,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_medium_to_compute_realtime_double_preemption",
+      "catalog_index": 2837112,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_medium_to_exclusive-compute_high",
+      "catalog_index": 2837113,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_medium_to_exclusive-compute_high_double_preemption",
+      "catalog_index": 2837114,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_medium_to_exclusive-compute_realtime",
+      "catalog_index": 2837115,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_medium_to_exclusive-compute_realtime_double_preemption",
+      "catalog_index": 2837116,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_medium_to_exclusive-transfer_high",
+      "catalog_index": 2837117,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_medium_to_exclusive-transfer_high_double_preemption",
+      "catalog_index": 2837118,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_medium_to_exclusive-transfer_realtime",
+      "catalog_index": 2837119,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_medium_to_exclusive-transfer_realtime_double_preemption",
+      "catalog_index": 2837120,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_medium_to_graphics_high",
+      "catalog_index": 2837121,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_medium_to_graphics_high_double_preemption",
+      "catalog_index": 2837122,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_medium_to_graphics_realtime",
+      "catalog_index": 2837123,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_medium_to_graphics_realtime_double_preemption",
+      "catalog_index": 2837124,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_medium_to_transfer_high",
+      "catalog_index": 2837125,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_medium_to_transfer_high_double_preemption",
+      "catalog_index": 2837126,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_medium_to_transfer_realtime",
+      "catalog_index": 2837127,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.graphics_medium_to_transfer_realtime_double_preemption",
+      "catalog_index": 2837128,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_high_to_compute_realtime",
+      "catalog_index": 2837129,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_high_to_compute_realtime_double_preemption",
+      "catalog_index": 2837130,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_high_to_exclusive-compute_realtime",
+      "catalog_index": 2837131,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_high_to_exclusive-compute_realtime_double_preemption",
+      "catalog_index": 2837132,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_high_to_exclusive-transfer_realtime",
+      "catalog_index": 2837133,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_high_to_exclusive-transfer_realtime_double_preemption",
+      "catalog_index": 2837134,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_high_to_graphics_realtime",
+      "catalog_index": 2837135,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_high_to_graphics_realtime_double_preemption",
+      "catalog_index": 2837136,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_high_to_transfer_realtime",
+      "catalog_index": 2837137,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_high_to_transfer_realtime_double_preemption",
+      "catalog_index": 2837138,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_low_to_compute_high",
+      "catalog_index": 2837139,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_low_to_compute_high_double_preemption",
+      "catalog_index": 2837140,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_low_to_compute_medium",
+      "catalog_index": 2837141,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_low_to_compute_medium_double_preemption",
+      "catalog_index": 2837142,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_low_to_compute_realtime",
+      "catalog_index": 2837143,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_low_to_compute_realtime_double_preemption",
+      "catalog_index": 2837144,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_low_to_exclusive-compute_high",
+      "catalog_index": 2837145,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_low_to_exclusive-compute_high_double_preemption",
+      "catalog_index": 2837146,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_low_to_exclusive-compute_medium",
+      "catalog_index": 2837147,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_low_to_exclusive-compute_medium_double_preemption",
+      "catalog_index": 2837148,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_low_to_exclusive-compute_realtime",
+      "catalog_index": 2837149,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_low_to_exclusive-compute_realtime_double_preemption",
+      "catalog_index": 2837150,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_low_to_exclusive-transfer_high",
+      "catalog_index": 2837151,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_low_to_exclusive-transfer_high_double_preemption",
+      "catalog_index": 2837152,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_low_to_exclusive-transfer_medium",
+      "catalog_index": 2837153,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_low_to_exclusive-transfer_medium_double_preemption",
+      "catalog_index": 2837154,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_low_to_exclusive-transfer_realtime",
+      "catalog_index": 2837155,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_low_to_exclusive-transfer_realtime_double_preemption",
+      "catalog_index": 2837156,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_low_to_graphics_high",
+      "catalog_index": 2837157,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_low_to_graphics_high_double_preemption",
+      "catalog_index": 2837158,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_low_to_graphics_medium",
+      "catalog_index": 2837159,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_low_to_graphics_medium_double_preemption",
+      "catalog_index": 2837160,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_low_to_graphics_realtime",
+      "catalog_index": 2837161,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_low_to_graphics_realtime_double_preemption",
+      "catalog_index": 2837162,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_low_to_transfer_high",
+      "catalog_index": 2837163,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_low_to_transfer_high_double_preemption",
+      "catalog_index": 2837164,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_low_to_transfer_medium",
+      "catalog_index": 2837165,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_low_to_transfer_medium_double_preemption",
+      "catalog_index": 2837166,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_low_to_transfer_realtime",
+      "catalog_index": 2837167,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_low_to_transfer_realtime_double_preemption",
+      "catalog_index": 2837168,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_medium_to_compute_high",
+      "catalog_index": 2837169,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_medium_to_compute_high_double_preemption",
+      "catalog_index": 2837170,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_medium_to_compute_realtime",
+      "catalog_index": 2837171,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_medium_to_compute_realtime_double_preemption",
+      "catalog_index": 2837172,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_medium_to_exclusive-compute_high",
+      "catalog_index": 2837173,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_medium_to_exclusive-compute_high_double_preemption",
+      "catalog_index": 2837174,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_medium_to_exclusive-compute_realtime",
+      "catalog_index": 2837175,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_medium_to_exclusive-compute_realtime_double_preemption",
+      "catalog_index": 2837176,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_medium_to_exclusive-transfer_high",
+      "catalog_index": 2837177,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_medium_to_exclusive-transfer_high_double_preemption",
+      "catalog_index": 2837178,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_medium_to_exclusive-transfer_realtime",
+      "catalog_index": 2837179,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_medium_to_exclusive-transfer_realtime_double_preemption",
+      "catalog_index": 2837180,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_medium_to_graphics_high",
+      "catalog_index": 2837181,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_medium_to_graphics_high_double_preemption",
+      "catalog_index": 2837182,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_medium_to_graphics_realtime",
+      "catalog_index": 2837183,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_medium_to_graphics_realtime_double_preemption",
+      "catalog_index": 2837184,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_medium_to_transfer_high",
+      "catalog_index": 2837185,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_medium_to_transfer_high_double_preemption",
+      "catalog_index": 2837186,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_medium_to_transfer_realtime",
+      "catalog_index": 2837187,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.preemption.transfer_medium_to_transfer_realtime_double_preemption",
+      "catalog_index": 2837188,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.realtime.no_sync.no_modifiers.from_compute_to_graphics",
+      "catalog_index": 2837189,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.realtime.no_sync.no_modifiers.from_compute_to_transfer",
+      "catalog_index": 2837190,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.realtime.no_sync.no_modifiers.from_graphics_to_compute",
+      "catalog_index": 2837191,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.realtime.no_sync.no_modifiers.from_transfer_to_compute",
+      "catalog_index": 2837192,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.realtime.no_sync.protected.from_compute_to_graphics",
+      "catalog_index": 2837193,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.realtime.no_sync.protected.from_compute_to_transfer",
+      "catalog_index": 2837194,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.realtime.no_sync.protected.from_graphics_to_compute",
+      "catalog_index": 2837195,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.realtime.no_sync.protected.from_transfer_to_compute",
+      "catalog_index": 2837196,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.realtime.no_sync.sparse.from_compute_to_graphics",
+      "catalog_index": 2837197,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.realtime.no_sync.sparse.from_compute_to_transfer",
+      "catalog_index": 2837198,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.realtime.no_sync.sparse.from_graphics_to_compute",
+      "catalog_index": 2837199,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.realtime.no_sync.sparse.from_transfer_to_compute",
+      "catalog_index": 2837200,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.realtime.semaphore.no_modifiers.from_compute_to_graphics",
+      "catalog_index": 2837201,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.realtime.semaphore.no_modifiers.from_compute_to_transfer",
+      "catalog_index": 2837202,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.realtime.semaphore.no_modifiers.from_graphics_to_compute",
+      "catalog_index": 2837203,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.realtime.semaphore.no_modifiers.from_transfer_to_compute",
+      "catalog_index": 2837204,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.realtime.semaphore.protected.from_compute_to_graphics",
+      "catalog_index": 2837205,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.realtime.semaphore.protected.from_compute_to_transfer",
+      "catalog_index": 2837206,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.realtime.semaphore.protected.from_graphics_to_compute",
+      "catalog_index": 2837207,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.realtime.semaphore.protected.from_transfer_to_compute",
+      "catalog_index": 2837208,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.realtime.semaphore.sparse.from_compute_to_graphics",
+      "catalog_index": 2837209,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.realtime.semaphore.sparse.from_compute_to_transfer",
+      "catalog_index": 2837210,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.realtime.semaphore.sparse.from_graphics_to_compute",
+      "catalog_index": 2837211,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    },
+    {
+      "case": "dEQP-VK.synchronization.global_priority_transition.realtime.semaphore.sparse.from_transfer_to_compute",
+      "catalog_index": 2837212,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Priority API and transition regression"
+    }
+  ],
+  "provenance": {
+    "catalog_sha256": "72c1bb9d2f9f0425ab8a4f570d78abdc1d3a34b82173ec76b772dedc477526bf",
+    "catalog": "build/cts-vulkan14-ordered/catalog",
+    "cts_revision": "vulkan-cts-1.4.6.2:f6a29701220f34dd1407513bfe80d74ca7b392ce",
+    "method": "All frozen cases containing global_priority; no outcome or capability filtering"
+  }
+}

@@ -1,0 +1,4 @@
+dEQP-VK.ssbo.phys.layout.random.8bit.vector_types.21
+dEQP-VK.pipeline.monolithic.descriptor_limits.compute_shader.samplers_1024
+dEQP-VK.api.info.image_format_properties.1d.optimal.r8g8b8_srgb
+dEQP-VK.memory_model.write_after_read.ext.u64.noncoherent.atomic_atomic.atomicrmw.subgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp

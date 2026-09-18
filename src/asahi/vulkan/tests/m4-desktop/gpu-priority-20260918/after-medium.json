@@ -1,0 +1,20 @@
+{
+  "heavy": {
+    "samples": 3,
+    "min_ms": 53.943867,
+    "median_ms": 89.013663,
+    "p95_ms": 91.935784,
+    "max_ms": 91.935784,
+    "first_start_ns": 75353871454,
+    "last_end_ns": 75588848518
+  },
+  "foreground": {
+    "samples": 40,
+    "min_ms": 2.132001,
+    "median_ms": 2.24312,
+    "p95_ms": 4.612038,
+    "max_ms": 7.052717,
+    "first_start_ns": 75369682585,
+    "last_end_ns": 75469461856
+  }
+}
