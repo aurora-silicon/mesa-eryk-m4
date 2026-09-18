@@ -8,6 +8,8 @@ The game's settings/logs/saves live in a separate, explicitly supplied directory
 import argparse
 import json
 import os
+import math
+import statistics
 from pathlib import Path
 import signal
 import subprocess
@@ -19,9 +21,11 @@ p.add_argument('--state', type=Path, required=True)
 p.add_argument('--launcher', required=True)
 p.add_argument('--seconds', type=int, default=480)
 p.add_argument('--observe-seconds', type=int, default=0, help='After initialization, measure this long then stop the benchmark service')
+p.add_argument('--fps-log', type=Path, help='Retain a fresh Gallium invisible-HUD fps file after bounded observation')
 p.add_argument('--screenshot', action='store_true', help='Explicitly request an initial visual reference')
 a = p.parse_args()
 assert 10 <= a.seconds <= 900
+assert not a.fps_log or a.observe_seconds >= 10
 guard = json.loads((a.output/'start.json').read_text())
 assert guard['watchdog']['armed'] and guard['watchdog']['timeout_seconds'] == 60
 assert int(os.environ['M4_TEST_CPU_MAX_KHZ']) == 4104000
@@ -93,9 +97,19 @@ try:
                 assert child.poll() is None, 'Factorio exited during final observation'
                 result = dict(initialized=True, launcher_elapsed_seconds=time.monotonic()-start,
                               vm_pids=vms(), launcher=a.launcher, state=str(a.state), unit=unit)
-                (a.output/'factorio-result.json').write_text(json.dumps(result, indent=2))
                 if a.observe_seconds:
                     subprocess.run(['systemctl', 'stop', unit], check=True, timeout=15)
+                if a.fps_log:
+                    assert a.fps_log.stat().st_mtime >= wall, 'Stale FPS log'
+                    fps_text = a.fps_log.read_text()
+                    (a.output/'menu-fps.txt').write_text(fps_text)
+                    samples = [float(line) for line in fps_text.splitlines()]
+                    assert len(samples) >= 12 and all(math.isfinite(x) and x >= 0 for x in samples)
+                    tail = samples[-12:]
+                    result['menu_fps'] = dict(source='Gallium invisible HUD',
+                        tail_samples=len(tail), mean=statistics.mean(tail),
+                        minimum=min(tail), maximum=max(tail))
+                (a.output/'factorio-result.json').write_text(json.dumps(result, indent=2))
                 success = True
                 print('FACTORIO_STANDALONE_INITIALISED', json.dumps(result), flush=True)
                 break

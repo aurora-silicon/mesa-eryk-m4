@@ -235,3 +235,17 @@ promotion variants showed no material replay improvement. Disabling the FS
 counter prolog for diagnosis also showed no material improvement after the
 subgroup reduction fix. Descriptor/UBO prefetch produced incorrect pixels and
 remains disabled. None of these rejected variants is installed as a default.
+
+A loop-only GCM heuristic was also rejected: the replay stayed pixel-identical
+and all 2187 sampler/derivative cases retained 1929 Pass and 258 NotSupported,
+but actual menu FPS fell from 8.43 to roughly 7.5. The retained Buoy compiler
+input produced identical backend text after host-pointer normalization with
+default versus forced GCM. Nevertheless, this was not a Factorio improvement,
+so the default compiler policy remains unchanged. Evidence:
+`20260918T130019041344Z-factorio-loop-gcm-frame`,
+`20260918T130058834535Z-factorio-loop-sampler-cts`,
+`20260918T130233565435Z-factorio-loop-menu-fps`.
+
+The bounded observer accepts `--fps-log <HUD-directory>/fps` to retain fresh
+samples automatically and summarize the final 12 samples in its result JSON.
+It rejects stale or invalid sample files. No screenshot or input is involved.
