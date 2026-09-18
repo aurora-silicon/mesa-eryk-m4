@@ -273,3 +273,26 @@ Evidence: `20260918T130549206801Z-factorio-compute-clear-frame`,
 `20260918T130957757014Z-factorio-compute-clear-depth-cts`,
 `20260918T131132691470Z-factorio-compute-clear-timestamp-cts`,
 `20260918T131239876715Z-factorio-compute-clear-menu-fps` (peak 70.25 C).
+
+## Resource-loader completion-slot correction
+
+The GPU0 resource-loader round waited on bit 1 because it incorrectly treated
+register-source metadata (`data.value == 1`) as a scoreboard index. Native
+LDDEV actually signals slot 1, whose wait bit is 0. Build the wait mask from
+each load's returned `signal_slot`, including previously emitted loads in
+a two-phase round. Register allocation must not choose completion slots.
+
+With fragment descriptor prefetch explicitly enabled, this fixes all 32
+failures in an 80-case combined-image-sampler descriptor-binding selection:
+80 Pass after the change. The retained Factorio frame also becomes exactly
+pixel-identical, from 2,108,616 differing pixels before. Core, native packer
+and uniform-program unit tests pass, including the two-phase-round check.
+Evidence: `20260918T132016065064Z-factorio-prefetch-sampler-bindings-cts`
+(before), `20260918T132624096055Z-factorio-prefetch-wait-cts` (after),
+`20260918T133030029070Z-factorio-prefetch-wait-frame`.
+
+This is a correctness fix, not yet a qualified performance improvement.
+The initial untouched-menu observation with fragment descriptor prefetch
+measured 8.058 FPS, below the previous 9.470 FPS result. Prefetch remains
+opt-in while the wait correction and prefetch cost are measured separately.
+Evidence: `20260918T133129518087Z-factorio-prefetch-wait-menu-fps`.

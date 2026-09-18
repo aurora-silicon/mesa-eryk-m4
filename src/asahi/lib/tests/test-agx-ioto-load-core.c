@@ -470,7 +470,7 @@ test_two_phase_and_nops(void)
    CHECK(agx_ioto_load_finish_round(&f.core, true, &emit, workspace(&f)));
    CHECK(f.core.load_count == 0 && f.core.current_gpr_dwords == 0);
    CHECK(f.core.cache_count == 0);
-   CHECK(f.bytes[after_loads + 0] == 0x06 && f.bytes[after_loads + 1] == 0x08);
+   CHECK(f.bytes[after_loads + 0] == 0x06 && f.bytes[after_loads + 1] == 0x04);
    CHECK(f.bytes[after_loads + 2] == 0x06 && f.bytes[after_loads + 3] == 0x00);
    CHECK(ctx.copies == 4);
    return true;

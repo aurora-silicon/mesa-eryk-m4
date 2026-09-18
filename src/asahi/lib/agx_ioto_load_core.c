@@ -426,12 +426,14 @@ agx_ioto_load_finish_round(struct agx_ioto_load_core *core, bool complete_round,
    }
 
    if (complete_round && core->gpu0_round_nops) {
-      static const uint8_t hazard_for_value[6] = {1, 2, 4, 8, 16, 32};
+      /* The completion slots are one-based. Register-source metadata is
+       * unrelated to the scoreboard slot selected by pack_load. Include
+       * loads emitted by an earlier incomplete round as well. */
       uint8_t hazard = 0;
       for (size_t i = 0; i < core->load_count; ++i) {
-         const int32_t value = workspace.loads[i].data.value;
-         if (value >= 0 && value < 6)
-            hazard |= hazard_for_value[value];
+         const uint8_t slot = workspace.loads[i].signal_slot;
+         if (slot >= 1 && slot <= 6)
+            hazard |= 1u << (slot - 1);
       }
 
       uint8_t nop[AGX_IOTO_LOAD_NOP_SIZE];
