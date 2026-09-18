@@ -31,6 +31,23 @@ Default persistent code caching is disabled and named EnableCodeCachingWIP;
 it was not enabled for this investigation. In-process translated-code reuse
 still exists. No claim is made that all compilation is redundant.
 
+Follow-up clarification: this is the older FEX-2604 code-map/offline-compiler
+cache, not the newer automatic JIT disk cache. The local code identifies
+executables by path in CodeCache::ComputeCodeMapId and leaves CodeCacheConfigId
+at zero with a TODO to distinguish active configurations. These are concrete
+unfinished cache-identity details; they do not establish a cache-related bug in
+our uncached launch.
+
+Upstream's September release introduces a separate DiskCache option enabled
+with FEX_DISKCACHE=1. Its release notes explicitly describe unbounded cache
+growth for JIT applications, missing size limits/stale-entry cleanup, and
+possible invalidation conflicts after file contents change. These limitations
+belong to that release, not a measurement of our old build. Our FEX-2604 tree
+does not contain the DiskCache option. Before testing the new implementation,
+update FEX while preserving/reassessing our allocator and lookup-cache fixes;
+merely enabling EnableCodeCachingWIP is not the same experiment.
+Source: https://fex-emu.com/FEX-2609/ (published September 7, 2026).
+
 The initial user launch logged 33.15 seconds of Steam system startup after
 verification. Verification itself took about four seconds, update checking
 about one second; authentication connected within about two seconds of LogOn.
