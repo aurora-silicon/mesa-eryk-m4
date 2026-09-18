@@ -202,3 +202,36 @@ process launches by default. `--observe-seconds N` observes the untouched menu
 for a bounded interval and stops the benchmark service afterwards;
 `--screenshot` explicitly requests a visual reference. This implements the
 user's request to stop using UI interaction while optimizing the driver.
+
+## Reuse the preceding render's timestamp
+
+A timestamp immediately after EndRendering can use that completed VDM's
+firmware timestamp, without launching an otherwise empty CDM. Only the actual
+tail render with no existing timestamp is eligible, and no active compute
+stream may intervene. Post-render availability writes and transfers retain
+their order. The timestamp still measures hardware completion, not a CPU clock.
+
+All 934 frozen timestamp cases: 908 Pass, 26 NotSupported, no failures,
+27.168 s runner time. Retained Factorio frame: zero differing pixels. Bounded
+untouched-menu observation improved from roughly 7.7 FPS to 8.4 FPS; this is
+still far below the user's 60 FPS goal. The comparison uses the same quiet
+kernel, graphics settings and private x86 Vulkan build apart from this change.
+Evidence: `20260918T125509398864Z-factorio-tail-timestamp-cts`,
+`20260918T125553028973Z-factorio-tail-timestamp-frame`,
+`20260918T125401742537Z-factorio-quiet-menu-fps`,
+`20260918T125705839090Z-factorio-tail-menu-fps`.
+
+Actual FPS is available without input, overlays or screenshots using Zink's
+`GALLIUM_HUD=fps GALLIUM_HUD_VISIBLE=false GALLIUM_HUD_DUMP_DIR=<directory>`.
+Read the resulting `fps` file after the bounded observer stops the process.
+This is application swap cadence; earlier geometry counts were inferred FPS.
+The Vulkan overlay-layer attempt aborted during initialization, so it is not
+used. The same driver without that layer started normally.
+
+Follow-up constant-program diagnostic with explicit GPR copies of uniform
+sources still failed custom-border pixels (`20260918T124424938263Z-factorio-preamble-gpr-oracles`).
+That prototype was again removed. Register-demand, no-schedule and no-constant-
+promotion variants showed no material replay improvement. Disabling the FS
+counter prolog for diagnosis also showed no material improvement after the
+subgroup reduction fix. Descriptor/UBO prefetch produced incorrect pixels and
+remains disabled. None of these rejected variants is installed as a default.

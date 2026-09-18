@@ -10,14 +10,23 @@ from collections import defaultdict
 import json
 import re
 import statistics
+from pathlib import Path
 
 p = argparse.ArgumentParser(description=__doc__)
 p.add_argument('log')
+p.add_argument('--tail-seconds', type=float, help='Restrict to the last N seconds in this log')
+p.add_argument('--frame-geometry', help='A known once-per-frame pass, e.g. 628x388; reports inferred frame cadence')
 a = p.parse_args()
+lines = Path(a.log).read_text().splitlines()
+if a.tail_seconds is not None:
+    stamps = [float(m[1]) for line in lines if (m := re.match(r'\[\s*([\d.]+)\]', line))]
+    cutoff = max(stamps) - a.tail_seconds
+    lines = [line for line in lines if (m := re.match(r'\[\s*([\d.]+)\]', line)) and float(m[1]) >= cutoff]
 groups = defaultdict(list)
+frames = defaultdict(list)
 owner = None
 times = []
-for line in open(a.log):
+for line in lines:
     t = re.match(r'\[\s*([\d.]+)\]', line)
     if t:
         times.append(float(t[1]))
@@ -25,6 +34,8 @@ for line in open(a.log):
     compute = re.search(r'owned compute user context=(\d+)', line)
     if render:
         owner = (render[2], render[1])
+        if a.frame_geometry == render[1] and t:
+            frames[render[2]].append(float(t[1]))
     elif compute:
         owner = (compute[1], 'compute')
     if 'userspace GPU job' in line and 'retired' in line:
@@ -41,4 +52,4 @@ for (asid, kind), values in sorted(groups.items()):
                                 p95=data[min(len(data)-1, int(len(data)*.95))])
     rows.append(row)
 print(json.dumps(dict(log=a.log, span_seconds=times[-1]-times[0] if times else 0,
-                      groups=rows), indent=2))
+                      groups=rows, inferred_frames=[dict(asid=int(asid), geometry=a.frame_geometry, count=len(v), span_seconds=v[-1]-v[0], fps=(len(v)-1)/(v[-1]-v[0])) for asid,v in frames.items() if len(v)>1 and v[-1]>v[0]]), indent=2))

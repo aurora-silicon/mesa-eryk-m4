@@ -523,8 +523,28 @@ hk_CmdWriteTimestamp2(VkCommandBuffer commandBuffer,
       hk_cmd_buffer_end_compute(cmd);
    }
 
-   struct hk_cs *cs = hk_cmd_buffer_get_cs_general(
-      cmd, after_gfx ? &cmd->current_cs.gfx : &cmd->current_cs.cs, true);
+   /* EndRendering closes the VDM, but its completion timestamp is still
+    * available until submission. Reuse it for a following timestamp when
+    * nothing was recorded after the render. Otherwise a bottom-of-pipe
+    * timestamp following EndRendering costs a dummy compute dispatch and a
+    * separate firmware command. Finishing all earlier stages is a valid
+    * (stronger) execution dependency for any requested timestamp stage.
+    *
+    * Only reuse the actual tail: a post-graphics query-availability write,
+    * transfer, or other compute stream must remain before this timestamp.
+    * Do not overwrite an existing timestamp or move an active CDM's write.
+    */
+   struct hk_cs *cs = NULL;
+   if (agx_native_graphics(&dev->dev) && !after_gfx &&
+       !cmd->current_cs.cs && !list_is_empty(&cmd->control_streams)) {
+      struct hk_cs *tail =
+         list_last_entry(&cmd->control_streams, struct hk_cs, node);
+      if (tail->type == HK_CS_VDM && !tail->timestamp.end.addr)
+         cs = tail;
+   }
+   if (!cs)
+      cs = hk_cmd_buffer_get_cs_general(
+         cmd, after_gfx ? &cmd->current_cs.gfx : &cmd->current_cs.cs, true);
    if (!cs)
       return;
 
@@ -533,7 +553,8 @@ hk_CmdWriteTimestamp2(VkCommandBuffer commandBuffer,
     * The shader has no memory effects; the query still uses the firmware's
     * hardware timestamp, never a host clock or a delayed readback.
     */
-   if (agx_native_graphics(&dev->dev) && !after_gfx && cs->stats.cmds == 0) {
+   if (agx_native_graphics(&dev->dev) && cs->type == HK_CS_CDM &&
+       cs->stats.cmds == 0) {
       hk_native_meta_timestamp_dispatch(cmd);
       if (vk_command_buffer_has_error(&cmd->vk))
          return;
