@@ -417,3 +417,12 @@ endpoints. The M4 fragment-statistics/pixel checks also pass. The untouched
 menu averages 9.812 FPS (9.465–10.060); it is still far short of the target.
 Evidence: `20260918T144831199903Z-factorio-zink-cpu-timer-checks`,
 `20260918T144925992674Z-factorio-zink-cpu-timer-menu`.
+
+The direct CPU result path also covers single pipeline-statistics queries.
+Contiguous retained slots are read together and accumulated with the existing
+per-start conversion (including line-loop vertex counts). Eager QBO copies
+remain for other query types. The extended M4 probe checks statistics across
+a flush and GL query-buffer output, plus the existing exact edge/pixel cases;
+all pass. The untouched menu reaches 10.950 FPS (10.840–11.160).
+Evidence: `20260918T145301857201Z-factorio-zink-cpu-statistics-checks`,
+`20260918T145341775521Z-factorio-zink-cpu-statistics-menu`.

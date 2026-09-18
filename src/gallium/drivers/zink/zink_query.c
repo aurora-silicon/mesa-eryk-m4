@@ -361,6 +361,12 @@ is_time_query(struct zink_query *query)
 }
 
 static bool
+has_direct_cpu_results(struct zink_query *query)
+{
+   return is_time_query(query) || query->type == PIPE_QUERY_PIPELINE_STATISTICS_SINGLE;
+}
+
+static bool
 is_so_overflow_query(struct zink_query *query)
 {
    return query->type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE || query->type == PIPE_QUERY_SO_OVERFLOW_PREDICATE;
@@ -701,6 +707,45 @@ get_time_query_result(struct pipe_context *pctx, struct zink_query *query,
 }
 
 static bool
+get_statistics_query_result(struct pipe_context *pctx, struct zink_query *query,
+                            bool wait, union pipe_query_result *result)
+{
+   struct zink_context *ctx = zink_context(pctx);
+   struct zink_screen *screen = zink_screen(pctx->screen);
+   unsigned count = get_num_starts(query);
+   util_query_clear_result(result, query->type);
+   if (!count)
+      return true;
+   unsigned nresults = get_num_results(query);
+   uint64_t *values = calloc(count, nresults * sizeof(uint64_t));
+   if (!values)
+      return false;
+   struct zink_query_start *starts = query->starts.data;
+   bool success = true;
+   for (unsigned first = 0; first < count;) {
+      struct zink_vk_query *q = starts[first].vkq[0];
+      unsigned length = 1;
+      while (first + length < count &&
+             starts[first + length].vkq[0]->pool == q->pool &&
+             starts[first + length].vkq[0]->query_id == q->query_id + length)
+         ++length;
+      unsigned stride = nresults * sizeof(uint64_t);
+      VkResult status = VKCTX(GetQueryPoolResults)(screen->dev, q->pool->query_pool,
+         q->query_id, length, length * stride, values + first * nresults, stride,
+         VK_QUERY_RESULT_64_BIT | (wait ? VK_QUERY_RESULT_WAIT_BIT : 0));
+      if (status != VK_SUCCESS) {
+         success = false;
+         break;
+      }
+      first += length;
+   }
+   if (success)
+      check_query_results(query, result, count, values, NULL);
+   free(values);
+   return success;
+}
+
+static bool
 get_query_result(struct pipe_context *pctx,
                       struct pipe_query *q,
                       bool wait,
@@ -710,6 +755,8 @@ get_query_result(struct pipe_context *pctx,
    struct zink_query *query = (struct zink_query *)q;
    if (is_time_query(query))
       return get_time_query_result(pctx, query, wait, result);
+   if (query->type == PIPE_QUERY_PIPELINE_STATISTICS_SINGLE)
+      return get_statistics_query_result(pctx, query, wait, result);
    unsigned flags = PIPE_MAP_READ;
 
    if (!wait)
@@ -781,10 +828,10 @@ force_cpu_read(struct zink_context *ctx, struct pipe_query *pquery, enum pipe_qu
    struct zink_query *query = (struct zink_query*)pquery;
    union pipe_query_result result = {0};
 
-   if (query->needs_update && !is_time_query(query))
+   if (query->needs_update && !has_direct_cpu_results(query))
       update_qbo(ctx, query);
 
-   bool success = is_time_query(query)
+   bool success = has_direct_cpu_results(query)
       ? zink_get_query_result(pctx, pquery, true, &result)
       : get_query_result(pctx, pquery, true, &result);
    if (!success) {
@@ -861,7 +908,7 @@ reset_query_range(struct zink_context *ctx, struct zink_query *q)
 static void
 reset_qbos(struct zink_context *ctx, struct zink_query *q)
 {
-   if (q->needs_update && !is_time_query(q))
+   if (q->needs_update && !has_direct_cpu_results(q))
       update_qbo(ctx, q);
 
    q->needs_reset = false;
@@ -1194,7 +1241,7 @@ zink_get_query_result(struct pipe_context *pctx,
       return true;
    }
 
-   if (query->needs_update && !is_time_query(query)) {
+   if (query->needs_update && !has_direct_cpu_results(query)) {
       assert(!ctx->tc || !threaded_query(q)->flushed);
       update_qbo(ctx, query);
    }
@@ -1234,7 +1281,7 @@ suspend_query(struct zink_context *ctx, struct zink_query *query)
    /* if a query isn't active here then we don't need to reactivate it on the next batch */
    if (query->active && !is_time_query(query))
       end_query(ctx, query);
-   if (query->needs_update && !is_time_query(query) && !ctx->in_rp)
+   if (query->needs_update && !has_direct_cpu_results(query) && !ctx->in_rp)
       update_qbo(ctx, query);
 }
 
@@ -1362,7 +1409,7 @@ zink_set_active_query_state(struct pipe_context *pctx, bool enable)
 void
 zink_query_sync(struct zink_context *ctx, struct zink_query *query)
 {
-   if (query->needs_update && !is_time_query(query))
+   if (query->needs_update && !has_direct_cpu_results(query))
       update_qbo(ctx, query);
 }
 
