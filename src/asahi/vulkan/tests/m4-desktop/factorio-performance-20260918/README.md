@@ -85,3 +85,21 @@ Evidence:
 The running-menu baseline sampled 90.70% guest CPU idle. Roughly 12 render
 passes plus 42 computes occurred per menu frame; a heavy render pass reached
 36 ms. End-to-end 60 FPS and improved application startup remain pending.
+
+## Real application and atlas cache
+
+The x86_64 candidate runs via a private ICD under
+`/home/e/.local/share/factorio-driver`; desktop/Steam libraries remain untouched.
+First cache-producing launch with subgroup counters: 162.379 s. Then enabling
+Factorio's supported `cache-sprite-atlas=true` allows the next initialization in
+**12.372 s**, versus original 169.474 s (13.7x); same preset, compression,
+resolution and 1117.04 MB reported VRAM. Cache file 1070486358 bytes.
+The observer's 20.100 s elapsed includes VM startup, its final 3 s liveness
+wait and screenshot/process collection. Do not present it as pure game time.
+Most gain is the application cache, not a claim of faster cold GPU compression.
+Original configuration is `config.before-performance.ini` in isolated state.
+
+- `20260918T101130506324Z-factorio-candidate-create-atlas-cache`
+- `20260918T101514148510Z-factorio-candidate-cached-start`
+
+Live-game FPS qualification remains ongoing.
