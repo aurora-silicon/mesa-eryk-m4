@@ -1645,7 +1645,7 @@ zink_destroy_screen(struct pipe_screen *pscreen)
       simple_mtx_lock(&device_lock);
       set_foreach(&device_table, entry) {
          struct zink_device *zdev = (void*)entry->key;
-         if (zdev->pdev == screen->pdev) {
+         if (zdev->dev == screen->dev) {
             zdev->refcount--;
             if (!zdev->refcount) {
                VKSCR(DestroyDevice)(zdev->dev, NULL);
@@ -2800,6 +2800,10 @@ get_device(struct zink_screen *screen, VkDeviceCreateInfo *dci)
       mesa_loge("ZINK: vkCreateDevice failed (%s)", vk_Result_to_str(result));
       simple_mtx_unlock(&device_lock);
       return NULL;
+   }
+   if (screen->info.have_KHR_global_priority && screen->driconf.queue_priority != 1) {
+      static const char *names[] = {"low", "medium", "high", "realtime"};
+      mesa_logi("ZINK: Vulkan queue priority %s", names[screen->driconf.queue_priority]);
    }
 
    struct zink_device *zdev = malloc(sizeof(struct zink_device));
