@@ -1631,7 +1631,7 @@ hk_upload_geometry_params(struct hk_cmd_buffer *cmd, struct agx_draw draw)
    struct hk_descriptor_state *desc = &cmd->state.gfx.descriptors;
    struct hk_graphics_state *gfx = &cmd->state.gfx;
    struct hk_api_shader *gs = gfx->shaders[MESA_SHADER_GEOMETRY];
-   struct hk_shader *fs = hk_only_variant(gfx->shaders[MESA_SHADER_FRAGMENT]);
+   struct hk_shader *fs = hk_bound_fs(gfx);
    struct hk_shader *count = hk_count_gs_variant(gs);
 
    /* XXX: We should deduplicate this logic */
@@ -3005,7 +3005,7 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
    if (!agx_native_graphics(&dev->dev) || !out || !*out)
       return false;
 
-   struct hk_shader *fs = hk_only_variant(gfx->shaders[MESA_SHADER_FRAGMENT]);
+   struct hk_shader *fs = hk_bound_fs(gfx);
    struct hk_linked_shader *linked_fs = gfx->linked[MESA_SHADER_FRAGMENT];
    if (!fs || !linked_fs)
       return false;
@@ -3530,7 +3530,7 @@ hk_flush_ppp_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs, uint8_t **out,
 
    struct hk_graphics_state *gfx = &cmd->state.gfx;
    struct hk_shader *hw_vs = hk_bound_hw_vs(gfx);
-   struct hk_shader *fs = hk_only_variant(gfx->shaders[MESA_SHADER_FRAGMENT]);
+   struct hk_shader *fs = hk_bound_fs(gfx);
 
    bool hw_vs_dirty = IS_SHADER_DIRTY(VERTEX) || IS_SHADER_DIRTY(TESS_EVAL) ||
                       IS_SHADER_DIRTY(GEOMETRY);
@@ -4001,7 +4001,7 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
    assert(cs->current + 0x1000 < cs->end && "already ensured space");
    uint8_t *out = cs->current;
 
-   struct hk_shader *fs = hk_only_variant(gfx->shaders[MESA_SHADER_FRAGMENT]);
+   struct hk_shader *fs = hk_bound_fs(gfx);
 
    bool gt_dirty = IS_SHADER_DIRTY(TESS_CTRL) || IS_SHADER_DIRTY(TESS_EVAL) ||
                    IS_SHADER_DIRTY(GEOMETRY);
@@ -4857,7 +4857,7 @@ hk_handle_passthrough_gs(struct hk_cmd_buffer *cmd, struct agx_draw draw)
    };
 
    if (agx_native_graphics(&dev->dev)) {
-      struct hk_shader *fs = hk_only_variant(gfx->shaders[MESA_SHADER_FRAGMENT]);
+      struct hk_shader *fs = hk_bound_fs(gfx);
       key->known_interpolation_qualifiers = true;
       key->linear_varyings = fs->info.fs.interp.linear;
       key->perspective_varyings =
@@ -4884,6 +4884,36 @@ hk_handle_passthrough_gs(struct hk_cmd_buffer *cmd, struct agx_draw draw)
    hk_cmd_bind_graphics_shader(cmd, MESA_SHADER_GEOMETRY, gs);
 }
 
+/* Descriptor contents are immutable for these bindings while pending. Sparse
+ * and capture/replay shadow addresses must retain GPU-side alias resolution. */
+static bool
+hk_fs_can_use_direct_ubos(struct hk_cmd_buffer *cmd)
+{
+   struct hk_graphics_state *gfx = &cmd->state.gfx;
+   struct hk_api_shader *api = gfx->shaders[MESA_SHADER_FRAGMENT];
+   if (!api || !api->variants[1].info.ubo_prefetch_direct)
+      return false;
+   const struct hk_shader_info *info = &api->variants[1].info;
+   const struct hk_descriptor_state *state = &gfx->descriptors;
+   struct hk_device *dev = hk_cmd_buffer_device(cmd);
+   for (unsigned i = 0; i < info->ubo_prefetch_count; ++i) {
+      const struct hk_ubo_prefetch *load = &info->ubo_prefetch[i];
+      struct hk_descriptor_set *set = state->sets[load->set];
+      const uint8_t *data = set ? set->mapped_ptr :
+         state->push[load->set] ? state->push[load->set]->data : NULL;
+      const uint32_t size = set ? state->set_sizes[load->set] :
+         state->push[load->set] ? sizeof(state->push[load->set]->data) : 0;
+      if (!data || load->descriptor_offset_B > size ||
+          sizeof(struct hk_buffer_address) > size - load->descriptor_offset_B)
+         return false;
+      struct hk_buffer_address address;
+      memcpy(&address, data + load->descriptor_offset_B, sizeof(address));
+      if (agx_addr_is_ro(&dev->dev, address.base_addr))
+         return false;
+   }
+   return true;
+}
+
 static struct hk_cs *
 hk_flush_gfx_state(struct hk_cmd_buffer *cmd, uint32_t draw_id,
                    struct agx_draw *draw, bool *needs_idx_robust,
@@ -4899,6 +4929,16 @@ hk_flush_gfx_state(struct hk_cmd_buffer *cmd, uint32_t draw_id,
 
    if (!cs)
       return NULL;
+
+   bool direct_ubos = hk_fs_can_use_direct_ubos(cmd);
+   if (direct_ubos != gfx->fs_ubo_direct) {
+      if (debug_get_bool_option("HK_M4_PREFETCH_AUDIT", false))
+         fprintf(stderr, "M4 fragment UBO variant: %s\n",
+                 direct_ubos ? "ordinary" : "general");
+      gfx->fs_ubo_direct = direct_ubos;
+      gfx->shaders_dirty |= BITFIELD_BIT(MESA_SHADER_FRAGMENT);
+      desc->root_dirty = true;
+   }
 
    /* Annoyingly,
     * VK_DEPTH_BIAS_REPRESENTATION_LEAST_REPRESENTABLE_VALUE_FORCE_UNORM_EXT is
@@ -5527,7 +5567,7 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
       struct hk_graphics_state *memory_gfx = &cmd->state.gfx;
       cs->writes_memory |= hk_bound_hw_vs(memory_gfx)->info.writes_memory;
       struct hk_shader *memory_fs =
-         hk_only_variant(memory_gfx->shaders[MESA_SHADER_FRAGMENT]);
+         hk_bound_fs(memory_gfx);
       cs->writes_memory |= memory_fs && memory_fs->info.writes_memory;
       cs->stats.cmds++;
    }

@@ -575,3 +575,31 @@ Evidence: `20260918T161858416381Z-fragment-constants-copy-lowering`,
 `20260918T161921650542Z-factorio-fs-constants-frame`,
 `20260918T162002290908Z-factorio-fs-constants-cts`,
 `20260918T162111183275Z-factorio-fs-constants-menu`.
+
+## Separate executable for immutable ordinary UBOs
+
+`HK_M4_PREFETCH_VARIANT=true`, together with `HK_M4_PREFETCH_UBOS=true`,
+compiles an additional G16G fragment executable. Command recording examines
+only immutable descriptor metadata; ordinary primary addresses select the
+specialized executable, while sparse/capture-replay shadow addresses retain
+the original GPU resolution path. Descriptor rebinding dirties the fragment
+shader when eligibility changes. Contents are still read by the GPU. Dynamic,
+update-after-bind and partially bound bindings retain the general path.
+Shader binary version is 12 because the serialized fragment variant count and
+metadata changed. This remains opt-in; experiments disable the shader cache.
+
+Retained cloud: 7218 instructions / 191 half-registers / 12 scratch bytes
+becomes 4016 / 143 / 0, with nominal compiler occupancy 512 -> 704 threads.
+Original retained Factorio frame: zero differing pixels. The 80 pinned UBO
+CTS cases all pass. `gl-ubo-variant-probe.c` verifies 16384 pixels across
+16 draws alternating ordinary and sparse buffers and updating their contents.
+The audit flag logs executable transitions independently of pixel checks.
+Untouched live menu: 9.912 FPS (9.533–10.210), peak 64 C; the preceding
+constant-array run was 9.620. These are changing scenes and do not establish
+a controlled FPS improvement. The 60 FPS target is still unmet.
+
+Evidence: `20260918T164314104861Z-factorio-ubo-variant-frame`,
+`20260918T164438309470Z-factorio-ubo-variant-cts`,
+`20260918T164537634001Z-factorio-ubo-variant-sparse`,
+`20260918T164612396912Z-factorio-ubo-variant-menu`, and
+`20260918T164937489205Z-factorio-ubo-variant-switch-audit`.

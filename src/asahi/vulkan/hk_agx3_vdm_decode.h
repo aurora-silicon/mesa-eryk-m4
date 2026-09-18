@@ -23,7 +23,7 @@ extern "C" {
 /* Bump whenever the Honeykrisp shader payload below changes.  Vulkan shader
  * binaries carry this version outside the driver-private blob, so stale
  * layouts are rejected before any fields are consumed. */
-#define HK_AGX3_SHADER_BINARY_VERSION 11u
+#define HK_AGX3_SHADER_BINARY_VERSION 12u
 
 /* G16G native VS metadata for 29 float4 user locations reports 120 f32
  * words (position + 116 user words), with the f16 output count absent. This

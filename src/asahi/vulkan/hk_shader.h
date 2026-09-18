@@ -116,6 +116,7 @@ struct hk_shader_info {
    struct hk_descriptor_prefetch descriptor_prefetch[HK_MAX_SETS];
    struct hk_ubo_prefetch ubo_prefetch[HK_UBO_PREFETCH_MAX];
    unsigned ubo_prefetch_count;
+   bool ubo_prefetch_direct;
 
    /* The bounded G17P graphics/compute path lowers one Gen9 combined
     * image/sampler to native texture/sampler state 0. Command recording joins
@@ -246,6 +247,9 @@ hk_num_variants(mesa_shader_stage stage)
    case MESA_SHADER_GEOMETRY:
       return HK_GS_VARIANTS;
 
+   case MESA_SHADER_FRAGMENT:
+      return 2; /* General and immutable ordinary-UBO variants. */
+
    default:
       return 1;
    }
@@ -278,6 +282,8 @@ hk_variant_name(struct hk_api_shader *obj, struct hk_shader *variant)
 
    if (hk_num_variants(obj->vk.stage) == 1) {
       return NULL;
+   } else if (obj->vk.stage == MESA_SHADER_FRAGMENT) {
+      return i == 0 ? "General" : "Ordinary UBO";
    } else if (obj->vk.stage == MESA_SHADER_GEOMETRY) {
       assert(i < ARRAY_SIZE(hk_gs_variant_name));
       return hk_gs_variant_name[i];
@@ -293,7 +299,8 @@ hk_only_variant(struct hk_api_shader *obj)
    if (!obj)
       return NULL;
 
-   assert(hk_num_variants(obj->vk.stage) == 1);
+   assert(hk_num_variants(obj->vk.stage) == 1 ||
+          obj->vk.stage == MESA_SHADER_FRAGMENT);
    return &obj->variants[0];
 }
 

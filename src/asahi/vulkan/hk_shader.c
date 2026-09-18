@@ -2124,6 +2124,25 @@ hk_init_link_ht(struct hk_shader *shader, mesa_shader_stage sw_stage)
                                       : VK_SUCCESS;
 }
 
+/* Remove only the explicit eligibility tests introduced by UBO prefetch.
+ * Command recording chooses this executable only for ordinary immutable UBOs. */
+static bool
+hk_specialize_ubo_direct(nir_builder *b, nir_intrinsic_instr *intr, void *data)
+{
+   const struct hk_shader_info *info = data;
+   if (intr->intrinsic != nir_intrinsic_load_preamble ||
+       intr->def.bit_size != 32 || intr->def.num_components != 1)
+      return false;
+   for (unsigned i = 0; i < info->ubo_prefetch_count; ++i) {
+      if (nir_intrinsic_base(intr) == info->ubo_prefetch[i].direct_half) {
+         b->cursor = nir_before_instr(&intr->instr);
+         nir_def_replace(&intr->def, nir_imm_int(b, 1));
+         return true;
+      }
+   }
+   return false;
+}
+
 static bool
 lower_uniforms(nir_builder *b, nir_intrinsic_instr *intr, void *data)
 {
@@ -2576,6 +2595,13 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
       NIR_PASS(_, nir, hk_nir_prefetch_ubos, root + 4, set_count, &reserved,
                shader->info.ubo_prefetch, &shader->info.ubo_prefetch_count,
                hk_ubo_prefetch_binding_allowed, (void *)set_layouts);
+      if (shader->info.ubo_prefetch_direct) {
+         NIR_PASS(_, nir, nir_shader_intrinsics_pass, hk_specialize_ubo_direct,
+                  nir_metadata_control_flow, &shader->info);
+         NIR_PASS(_, nir, nir_opt_constant_folding);
+         NIR_PASS(_, nir, nir_opt_dead_cf);
+         NIR_PASS(_, nir, nir_opt_dce);
+      }
       NIR_PASS(_, nir, hk_nir_lower_memory_aliases);
       if (features & HK_FEAT_STRICT_SPARSE)
          NIR_PASS(_, nir, hk_nir_lower_sparse_access);
@@ -3064,11 +3090,25 @@ hk_compile_shader(struct hk_device *dev, struct vk_shader_compile_info *info,
       }
    } else {
       struct hk_shader *shader = hk_only_variant(obj);
+      const bool direct_variant = sw_stage == MESA_SHADER_FRAGMENT &&
+         dev->dev.chip == AGX_CHIP_G16G &&
+         debug_get_bool_option("HK_M4_PREFETCH_UBOS", false) &&
+         debug_get_bool_option("HK_M4_PREFETCH_VARIANT", false);
+      nir_shader *direct_nir = direct_variant ? nir_shader_clone(NULL, nir) : NULL;
 
       /* hk_compile_nir takes ownership of nir */
       result = hk_compile_nir(dev, pAllocator, nir, info->flags,
                               info->robustness, key, features, shader, sw_stage,
                               true, NULL, info->set_layout_count, info->set_layouts);
+      if (result == VK_SUCCESS && direct_nir && shader->info.ubo_prefetch_count) {
+         struct hk_shader *direct = &obj->variants[1];
+         direct->info.ubo_prefetch_direct = true;
+         result = hk_compile_nir(dev, pAllocator, direct_nir, info->flags,
+                                info->robustness, key, features, direct, sw_stage,
+                                true, NULL, info->set_layout_count, info->set_layouts);
+         direct_nir = NULL;
+      }
+      ralloc_free(direct_nir);
       if (result != VK_SUCCESS) {
          hk_api_shader_destroy(&dev->vk, &obj->vk, pAllocator);
          return result;

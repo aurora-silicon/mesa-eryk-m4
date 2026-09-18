@@ -252,6 +252,7 @@ struct hk_graphics_state {
    uint64_t draw_params;
    uint64_t draw_id_ptr;
 
+   bool fs_ubo_direct;
    uint32_t shaders_dirty;
    struct hk_api_shader *shaders[MESA_SHADER_MESH + 1];
 
@@ -583,6 +584,14 @@ hk_cmd_buffer_pool(struct hk_cmd_buffer *cmd)
  * The hardware vertex shader is supplied by the last geometry stage. The
  * geometry pipeline is vertex->tess->geometry so we search backwards.
  */
+static inline struct hk_shader *
+hk_bound_fs(struct hk_graphics_state *gfx)
+{
+   struct hk_api_shader *fs = gfx->shaders[MESA_SHADER_FRAGMENT];
+   return fs ? &fs->variants[gfx->fs_ubo_direct &&
+                             fs->variants[1].info.ubo_prefetch_direct] : NULL;
+}
+
 static inline struct hk_shader *
 hk_bound_hw_vs(struct hk_graphics_state *gfx)
 {
