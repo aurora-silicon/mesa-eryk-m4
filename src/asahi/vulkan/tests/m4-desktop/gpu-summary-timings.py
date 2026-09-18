@@ -18,7 +18,7 @@ rows = []
 for line in a.log.read_text().splitlines():
     if 'userspace GPU job' not in line or 'summary_span_ns=' not in line:
         continue
-    rows.append({k:int(v) for k,v in re.findall(r'\b([a-z_]+)=(\d+)', line)})
+    rows.append({k:int(v) for k,v in re.findall(r'\b([a-z_]+)=(-?\d+)', line)})
 if not rows:
     p.error('No SubmitSummary intervals')
 end = rows[-1]['monotonic_ns']
@@ -45,4 +45,7 @@ if 'render_private_clear_bytes' in sums:
         private_mean_bytes=sums['render_private_clear_bytes']/n if n else None,
         private_seconds=sums['render_private_clear_ns']/1e9,
         total_seconds=sums['render_clear_ns']/1e9)
+if 'render_tiling_ns' in sums:
+    result['render_stages_seconds'] = {name:sums['render_'+name+'_ns']/1e9
+                                       for name in ['tiling','stage_gap','fragment']}
 print(json.dumps(result,indent=2))
