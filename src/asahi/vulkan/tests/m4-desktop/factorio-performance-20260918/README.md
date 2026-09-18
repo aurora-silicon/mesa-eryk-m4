@@ -347,3 +347,42 @@ active duration 629 us. Render fragment work is also substantial. Separately,
 a temporary x86 resource-loader profiler measured only about 12 ms of CPU
 work per second across its two threads. That profiler was removed after use;
 retained guest mappings confirm the intended private ICD was loaded.
+
+
+## Zink query initialization and timer-copy batching
+
+Zink allocates query slots monotonically, never reusing a slot in a pool.
+Initialize a fresh pool once with the supported host-reset operation instead
+of issuing a GPU reset for every slot. Remember that initial state for all
+subsequent allocations, including maintenance9 reset-on-create pools.
+Older devices without either facility retain the existing GPU-reset path.
+
+A TIME_ELAPSED begin previously copied its start timestamp immediately when
+outside a render pass. Mark the results pending and let ordinary query
+synchronization copy the endpoints together. A flush between the begin and
+end still preserves the start slot and its result.
+
+CPU readback, query-buffer readback, empty occlusion, timers, and timers
+spanning a flush pass for 520 iterations per mode on both lavapipe and M4.
+This crosses the 500-slot pool boundary. The fragment-statistics benchmark
+also retains exact covered-sample counts and checked edge pixels.
+Hardware: `20260918T142512786638Z-factorio-zink-query-batching-checks`,
+peak 63.25 C. All checks use private libraries; guest maps confirm the new
+Gallium and intended native Vulkan driver are loaded under FEX.
+
+Untouched main-menu observations with the same Vulkan ICD: host-reset only
+8.722 FPS; adding timer batching 9.420 FPS (8.961–9.804). In the final
+15-second timing window the latter executes about 30 compute commands per
+frame, versus about 45 with the earlier guest Zink. These are short dynamic
+scene observations, not a 60 FPS or long-run stability claim.
+Evidence: `20260918T142125424648Z-factorio-zink-host-reset-menu`,
+`20260918T142311507753Z-factorio-zink-timer-batch-menu`.
+
+The attempted extension of timestamp absorption to compute was rejected.
+A flush-only stream does not produce firmware engine timestamps. Requiring
+an actual non-timestamp dispatch avoided that case but still timed out in
+broader CTS. Both attempts were reverted; only the validated render-start
+optimization remains. The guards retained evidence and recovered normal
+SDDM/autologin after each timeout. Evidence:
+`20260918T141347465541Z-factorio-timestamp-compute-start-cts`,
+`20260918T141627894996Z-factorio-timestamp-compute-work-start-cts`.

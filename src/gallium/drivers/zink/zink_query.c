@@ -22,6 +22,7 @@ struct zink_query_pool {
    VkQueryPool query_pool;
    unsigned last_range;
    unsigned refcount;
+   bool initially_reset;
 };
 
 struct zink_query_buffer {
@@ -194,10 +195,11 @@ find_or_allocate_qp(struct zink_context *ctx, struct zink_query *q, unsigned idx
    list_for_each_entry(struct zink_query_pool, pool, &ctx->query_pools, list) {
       if (pool->vk_query_type == vk_query_type) {
          if (vk_query_type == VK_QUERY_TYPE_PIPELINE_STATISTICS) {
-            if (pool->pipeline_stats == pipeline_stats)
-               return pool;
-         } else
-            return pool;
+            if (pool->pipeline_stats != pipeline_stats)
+               continue;
+         }
+         *vkq_needs_reset = !pool->initially_reset;
+         return pool;
       }
    }
 
@@ -225,6 +227,16 @@ find_or_allocate_qp(struct zink_context *ctx, struct zink_query *q, unsigned idx
       return NULL;
    }
 
+   /* Slots are allocated monotonically and are never reused in this pool.
+    * Reset a fresh pool once on the host, before any queue can reference it,
+    * instead of submitting one GPU reset for every newly allocated slot. */
+   new_pool->initially_reset = screen->info.have_KHR_maintenance9;
+   if (!new_pool->initially_reset && screen->info.have_vulkan12 &&
+       screen->info.feats12.hostQueryReset) {
+      VKSCR(ResetQueryPool)(screen->dev, new_pool->query_pool, 0, NUM_QUERIES);
+      new_pool->initially_reset = true;
+   }
+   *vkq_needs_reset = !new_pool->initially_reset;
    list_addtail(&new_pool->list, &ctx->query_pools);
    return new_pool;
 }
@@ -912,8 +924,10 @@ begin_query(struct zink_context *ctx, struct zink_query *q)
    struct zink_query_start *start = util_dynarray_top_ptr(&q->starts, struct zink_query_start);
    if (q->type == PIPE_QUERY_TIME_ELAPSED) {
       VKCTX(CmdWriteTimestamp)(ctx->bs->cmdbuf, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, start->vkq[0]->pool->query_pool, start->vkq[0]->query_id);
-      if (!ctx->in_rp)
-         update_qbo(ctx, q);
+      /* The start slot remains owned until the complete query is discarded.
+       * Copy both endpoints together at the normal query synchronization
+       * point instead of ending a batch just to copy the start timestamp. */
+      q->needs_update = true;
       zink_batch_usage_set(&q->batch_uses, ctx->bs);
       _mesa_set_add(&ctx->bs->active_queries, q);
    }
