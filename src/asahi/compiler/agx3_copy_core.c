@@ -118,9 +118,15 @@ agx3_copy_encode_reg_to_uniform(enum agx_isa_encoding encoding,
       KV(27, kill ? 1 : 0),
    };
 
-   return agx3_bind_compose(encoding, "copy", 0, baseline,
-                            AGX3_COPY_ARRAY_SIZE(baseline), overrides,
-                            AGX3_COPY_ARRAY_SIZE(overrides), out, len);
+   /* The compact form only addresses the low uniform halves. The same
+    * extended COPY used by the resource loader covers the remaining file. */
+   for (unsigned ep = 0; ep < 2; ++ep) {
+      if (agx3_bind_compose(encoding, "copy", ep, baseline,
+                           AGX3_COPY_ARRAY_SIZE(baseline), overrides,
+                           AGX3_COPY_ARRAY_SIZE(overrides), out, len))
+         return true;
+   }
+   return false;
 }
 
 bool

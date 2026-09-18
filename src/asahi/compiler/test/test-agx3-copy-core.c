@@ -176,6 +176,19 @@ main(void)
       }
    }
 
+   /* Match the extended uniform write already used by the native Ioto
+    * resource loader. A high uniform destination must not alias a low one. */
+   {
+      static const uint8_t expected[] = {
+         0xbb, 0x3f, 0x0f, 0x00, 0x42, 0x11, 0x00, 0x00, 0x00, 0x00,
+      };
+      uint8_t bytes[AGX3_COPY_MAX_LENGTH], length = 0;
+      CHECK(agx3_copy_encode_reg_to_uniform(AGX_ISA_ENCODING_AGX3B,
+                                             150, 190, true, bytes, &length));
+      CHECK(length == sizeof(expected));
+      CHECK(!memcmp(bytes, expected, sizeof(expected)));
+   }
+
    /* Fail closed outside the witnessed domain. */
    uint8_t out[AGX3_COPY_MAX_LENGTH];
    uint8_t len = 0;
