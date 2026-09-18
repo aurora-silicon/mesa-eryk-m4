@@ -35,4 +35,32 @@ The simple passing probe qualified that setup in
 `20260918T010220127887Z-query-copy-steam-container-capture-home`.
 A software replay of the application capture is blocked by device extension and
 feature differences; no unsupported capabilities were silently removed.
-Original application validation remains outstanding at this checkpoint.
+Fixed native replay passed in
+`20260918T011010516942Z-factorio-query-order-native-replay`: all 12 complete frames,
+1.15 seconds, peak 67 C. Replay explicitly used offscreen swapchains, memory
+rebinding and omitted pipeline caches. Its mapped-image layout warning means
+this is execution/dependency evidence, not a pixel-correctness claim.
+Capture SHA-256: `04f8335b1a4ae67dc2182de5437ed049c986f3d5afd19da381e7564fda79afe7`.
+
+Steam multilib image r9 contains the fixed x86_64 and i686 Vulkan libraries,
+retaining the existing Zink/GLX/EGL stack. Packing verified both architecture
+manifests in `20260918T010912626913Z-steam-query-order-pack-r9`; image SHA-256:
+`eb54d99f6c672a86e831e93d87daf4802efa71ebe775da99791a6e8738f65f48`.
+The normal launch options were restored before original application validation.
+
+The first normal application load passed query initialization but hit host OOM
+while allocating full-quality Space Age texture atlases:
+`20260918T011401182334Z-factorio-steam-fixed-first-load`. Kernel evidence reports
+6,090,032 KiB unevictable memory, VM anon RSS 7,052,144 KiB, zero swap, and an
+OOM kill of the complete VM. This is a separate memory-capacity failure, not a
+recurrence of the query deadlock. A 4 GiB swapfile was subsequently activated
+in its own Btrfs subvolume, with a persistent nofail fstab entry;
+`20260918T012028160450Z-factorio-host-swap-reserve` passes activation checks.
+The helper retains the prior fstab and does not change graphics settings.
+
+Kernel tools commit `c6dd2e3a1e33` also prevents full-clock guards from rewriting
+the current thermal QoS ceiling as a permanent user cap. Nine temporary-sysfs
+tests pass, including thermal stop, sensor loss, disabled policy, stale samples,
+lower-cap enforcement, and recovery from a temporary thermal ceiling. The
+95 C cutoff and mandatory CPU thermal policy remain enforced. Original user
+maxima were restored at idle (cooling states zero) before the retry.
