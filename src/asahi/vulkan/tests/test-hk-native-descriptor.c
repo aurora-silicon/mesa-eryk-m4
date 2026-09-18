@@ -367,6 +367,12 @@ main(void)
    };
    semantic.address = 0x10000080000ull;
    semantic.acceleration_buffer = 0x100000a0000ull;
+   assert(hk_pack_native_texture(9, &native_packed, &semantic));
+   struct AGX_TEXTURE_GEN9 compressed_texture;
+   AGX_TEXTURE_GEN9_unpack(NULL, (uint8_t *)native_packed.opaque, &compressed_texture);
+   assert(compressed_texture.compressed);
+   assert(compressed_texture.extended);
+   assert(compressed_texture.acceleration_buffer == semantic.acceleration_buffer);
    assert(hk_pack_native_texture(10, &native_packed, &semantic));
    assert(memcmp(&native_packed, m5_texture, sizeof(m5_texture)) == 0);
 
@@ -835,7 +841,10 @@ main(void)
    assert(memcmp(&native_pbe, linear_pbe, sizeof(linear_pbe)) == 0);
    pbe.stride = 0;
    pbe.layout = AGX_LAYOUT_GPU;
-   CHECK_PBE_REJECT(pbe.dimension = AGX_TEXTURE_DIMENSION_2D_ARRAY);
+   pbe.dimension = AGX_TEXTURE_DIMENSION_2D_ARRAY;
+   assert(hk_pack_native_pbe(9, &native_pbe, &pbe));
+   CHECK_PBE_REJECT(pbe.layers = 0);
+   pbe.layers = 1;
    pbe.dimension = AGX_TEXTURE_DIMENSION_2D;
    CHECK_PBE_REJECT(pbe.compressed = true);
    pbe.compressed = false;
@@ -908,6 +917,35 @@ main(void)
    buffer_tex.extended = false;
    buffer_tex.last_level = 1;
    assert(!hk_pack_native_texture(9, &full_buffer, &buffer_tex));
+
+   /* Independent pinned native StateFields witness (SP+32=metadata),
+    * 64x64 twiddled RGBA8 at 0x12340000, metadata 0x56780000. */
+   struct AGX_PBE compressed = {
+      AGX_PBE_header, .dimension = AGX_TEXTURE_DIMENSION_2D,
+      .layout = AGX_LAYOUT_TWIDDLED, .channels = AGX_CHANNELS_R8G8B8A8,
+      .type = AGX_TEXTURE_TYPE_UNORM,
+      .swizzle_r = AGX_CHANNEL_R, .swizzle_g = AGX_CHANNEL_G,
+      .swizzle_b = AGX_CHANNEL_B, .swizzle_a = AGX_CHANNEL_A,
+      .width = 64, .height = 64, .buffer = 0x12340000,
+      .compressed = true, .extended = true,
+      .acceleration_buffer = 0x56780000,
+   };
+   const uint8_t compression_witness[32] = {
+      0x12,0x0a,0xe4,0x3f,0xc0,0x0f,0x00,0x08,
+      0x00,0x40,0x23,0x01,0x00,0x00,0x00,0x80,
+      0x00,0x80,0x67,0x05,0x00,0x00,0x00,0x00,
+      0,0,0,0,0,0,0,0,
+   };
+   assert(hk_pack_native_pbe(9, &native_pbe, &compressed));
+   assert(!memcmp(native_pbe.opaque, compression_witness, 32));
+   assert(!hk_pack_native_pbe(10, &native_pbe, &compressed));
+   compressed.acceleration_buffer++;
+   assert(!hk_pack_native_pbe(9, &native_pbe, &compressed));
+   compressed.acceleration_buffer = UINT64_C(1) << 48;
+   assert(!hk_pack_native_pbe(9, &native_pbe, &compressed));
+   compressed.acceleration_buffer = 0x56780000;
+   compressed.levels = 2;
+   assert(!hk_pack_native_pbe(9, &native_pbe, &compressed));
 
    puts("honeykrisp native descriptor geometry/policy: passed");
    return 0;

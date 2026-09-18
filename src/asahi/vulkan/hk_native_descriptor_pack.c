@@ -111,6 +111,9 @@ hk_pack_native_texture(unsigned generation,
          .height = legacy->height,
          .samples = legacy->samples,
          .has_levels = has_levels,
+         /* 25G83 encodeImageReadState 0x4ad0b4..0x4ad0bc derives
+          * word0[59] from the nonzero compression metadata address. */
+         .compressed = legacy->compressed,
          .state_control = legacy->mode | (legacy->compression << 2),
          .address = legacy->address,
          .srgb = legacy->srgb,
@@ -213,9 +216,12 @@ hk_pack_native_pbe(unsigned generation,
       return false;
 
    /* The recovered subset deliberately excludes every field whose Gen9/10
-    * semantic placement is incomplete: compression, sparse mode,
+    * semantic placement is incomplete: sparse mode,
     * gamma and the software-addressing sideband.
     */
+   const bool compressed = generation == 9 && legacy->compressed &&
+      legacy->extended && legacy->dimension == AGX_TEXTURE_DIMENSION_2D &&
+      legacy->level == 0 && legacy->levels == 1 && !legacy->unk_mipmapped;
    const bool array = generation == 9 &&
       (legacy->dimension == AGX_TEXTURE_DIMENSION_2D_ARRAY ||
        legacy->dimension == AGX_TEXTURE_DIMENSION_2D_ARRAY_MULTISAMPLED);
@@ -235,15 +241,15 @@ hk_pack_native_pbe(unsigned generation,
        (ms ? legacy->samples > AGX_SAMPLE_COUNT_4 ||
               legacy->layout == AGX_LAYOUT_LINEAR
            : legacy->samples != AGX_SAMPLE_COUNT_2) ||
-       legacy->compressed || legacy->mode != AGX_IMAGE_MODE_NORMAL ||
+       (legacy->compressed && !compressed) || legacy->mode != AGX_IMAGE_MODE_NORMAL ||
        (!three_d && !array && legacy->layers != 1) ||
        (generation != 9 && (legacy->level != 0 || legacy->levels != 1 ||
                             legacy->unk_mipmapped)) ||
-       legacy->srgb || legacy->extended ||
+       legacy->srgb || (legacy->extended && !compressed) ||
        (legacy->layout == AGX_LAYOUT_LINEAR
            ? legacy->stride < 12 || legacy->stride > UINT32_MAX - 4
                                              : legacy->stride != 0) ||
-       legacy->acceleration_buffer ||
+       (legacy->acceleration_buffer && !compressed) ||
        legacy->depth_linear != 1 || legacy->layer_stride_linear ||
        legacy->level_offset_sw || legacy->aligned_width_msaa_sw ||
        legacy->sample_count_log2_sw || legacy->tile_width_sw != 1 ||
@@ -269,7 +275,10 @@ hk_pack_native_pbe(unsigned generation,
       .page_aligned_layers = legacy->page_aligned_layers,
    };
    struct agx_pbe_agx3_descriptor packed;
-   const bool valid = array
+   const bool valid = compressed
+      ? agx_pbe_agx3_compressed_2d_pack(generation, &fields,
+                                       legacy->acceleration_buffer, &packed)
+      : array
       ? agx_pbe_agx3_array_pack(generation, &fields, legacy->layers,
                                 legacy->level, legacy->levels, &packed)
       : three_d

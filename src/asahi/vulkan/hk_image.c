@@ -332,29 +332,16 @@ hk_can_compress(const struct agx_device *dev, VkFormat format, unsigned plane,
    if (dev->debug & AGX_DBG_NOCOMPRESS)
       return false;
 
-   /*
-    * AGX3 has no grounded compressed PBE (write) descriptor. The read side is
-    * fine -- hk_pack_native_texture() carries the compression mode and the
-    * acceleration buffer -- but hk_pack_native_pbe() accepts only the plain 2D
-    * subset, so a compressed colour attachment cannot be stored at
-    * end-of-tile, and every render pass with a store fails at
-    * pack_pbe()/eot_pbe_valid.
-    *
-    * Storing one through a non-compressed descriptor is not an option: it
-    * would put raw pixels where every reader expects compressed blocks plus
-    * their metadata. The image must therefore not be compressed in the first
-    * place. Unlike the shader encodings, a descriptor layout cannot be
-    * witnessed with the Metal compiler probes -- descriptors are built by the
-    * driver, not the shader compiler -- so this stays closed until the
-    * compressed AGX3 PBE form is recovered from a real macOS descriptor.
-    *
-    * Cost is performance only. Delete this together with that descriptor.
-    */
+   /* Experimental Gen9 single-level 2D write descriptors are witnessed by
+    * the pinned native constructor. Keep allocation opt-in until GPU data
+    * and metadata layout have been qualified. */
    if (hk_descriptor_generation_is_agx3(
-          agx_chip_descriptor_generation(dev->chip))) {
-      perf_debug_dev(dev, "No compression: no AGX3 PBE descriptor yet");
+          agx_chip_descriptor_generation(dev->chip)) &&
+       !(dev->chip == AGX_CHIP_G16G &&
+         debug_get_bool_option("HK_M4_COMPRESSED_2D", false) && samples == 1 &&
+         (format == VK_FORMAT_R8G8B8A8_UNORM ||
+          format == VK_FORMAT_B8G8R8A8_UNORM)))
       return false;
-   }
 
    /* TODO: Handle compression with sparse. This should be doable but it's a bit
     * subtle. Correctness first.
@@ -375,9 +362,10 @@ hk_can_compress(const struct agx_device *dev, VkFormat format, unsigned plane,
     * Interestingly, the relevant CTS tests pass on G13G and G14C, but not on
     * G13D. For now, conservatively ban compression with feedback loops.
     */
-   if (usage &
-       (VK_IMAGE_USAGE_HOST_TRANSFER_BIT_EXT | VK_IMAGE_USAGE_STORAGE_BIT |
-        VK_IMAGE_USAGE_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT)) {
+   if ((usage & (VK_IMAGE_USAGE_HOST_TRANSFER_BIT_EXT | VK_IMAGE_USAGE_STORAGE_BIT)) ||
+       ((usage & VK_IMAGE_USAGE_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT) &&
+        !(dev->chip == AGX_CHIP_G16G &&
+          debug_get_bool_option("HK_M4_COMPRESSED_FEEDBACK", false)))) {
 
       perf_debug_dev(
          dev, "No compression: incompatible usage -%s%s%s",
@@ -882,6 +870,11 @@ static bool
 hk_can_compress_create_info(struct hk_device *dev, unsigned plane,
                             const VkImageCreateInfo *info)
 {
+   if (dev->dev.chip == AGX_CHIP_G16G &&
+       (info->imageType != VK_IMAGE_TYPE_2D || info->mipLevels != 1 ||
+        info->arrayLayers != 1))
+      return false;
+
    return hk_can_compress(&dev->dev, info->format, plane, info->extent.width,
                           info->extent.height, info->samples, info->flags,
                           info->usage, info->pNext);
@@ -1060,6 +1053,10 @@ hk_image_init(struct hk_device *dev, struct hk_image *image,
 
       bool compressed =
          hk_map_compression(dev, pCreateInfo, plane, image->vk.drm_format_mod);
+      if (compressed && debug_get_bool_option("HK_M4_COMPRESSION_AUDIT", false))
+         fprintf(stderr, "M4 compressed image: %ux%u format=%u usage=0x%x\n",
+                 pCreateInfo->extent.width, pCreateInfo->extent.height,
+                 pCreateInfo->format, pCreateInfo->usage);
 
       image->planes[plane].layout = (struct ail_layout){
          .policy = ail_layout_policy_for_descriptor_generation(
