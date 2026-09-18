@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: MIT
- * CPU-checked ordinary/sparse UBOs and shader variant rebinds; use the hardware experiment guard.
+ * CPU-checked ordinary/custom-border sampler executable rebinds; use the hardware experiment guard.
  * cc -O2 gl-plain-sampler-probe.c -lEGL -lGL -o gl-plain-sampler-probe
  */
 #define GL_GLEXT_PROTOTYPES

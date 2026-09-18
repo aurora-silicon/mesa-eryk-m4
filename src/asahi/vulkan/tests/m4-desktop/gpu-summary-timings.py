@@ -14,8 +14,9 @@ p = argparse.ArgumentParser(description=__doc__)
 p.add_argument('log', type=Path)
 p.add_argument('--tail-seconds', type=float)
 a = p.parse_args()
+lines = a.log.read_text().splitlines()
 rows = []
-for line in a.log.read_text().splitlines():
+for line in lines:
     if 'userspace GPU job' not in line or 'summary_span_ns=' not in line:
         continue
     rows.append({k:int(v) for k,v in re.findall(r'\b([a-z_]+)=(-?\d+)', line)})
@@ -48,4 +49,36 @@ if 'render_private_clear_bytes' in sums:
 if 'render_tiling_ns' in sums:
     result['render_stages_seconds'] = {name:sums['render_'+name+'_ns']/1e9
                                        for name in ['tiling','stage_gap','fragment']}
+selected = {r['monotonic_ns'] for r in rows}
+geometry = {}
+waits = []
+for line in lines:
+    if 'render geometry summary' not in line and 'completion wait totals' not in line:
+        continue
+    r = {k:int(v) for k,v in re.findall(r'\b([a-z_]+)=(-?\d+)', line)}
+    if 'completion wait totals' in line:
+        waits.append(r)
+        continue
+    if r['monotonic_ns'] not in selected:
+        continue
+    key = (r['asid'], r['width'], r['height'])
+    g = geometry.setdefault(key, dict(asid=key[0], width=key[1], height=key[2],
+        commands=0, prepare_ns=0, active_ns=0, fragment_ns=0, max_fragment_ns=0))
+    for name in ['commands', 'prepare_ns', 'active_ns', 'fragment_ns']:
+        g[name] += r[name]
+    g['max_fragment_ns'] = max(g['max_fragment_ns'], r['max_fragment_ns'])
+if geometry:
+    result['render_geometry'] = sorted(geometry.values(), key=lambda g:g['fragment_ns'], reverse=True)
+if waits:
+    included = [w for w in waits if w['monotonic_ns'] in selected]
+    prior = [w for w in waits if w['monotonic_ns'] < min(selected)]
+    # Cumulative counters require a preceding sample. Without one, omit the
+    # first interval from the deltas rather than including the whole boot.
+    if included and (prior or len(included) > 1):
+        first = prior[-1] if prior else included[0]
+        last = included[-1]
+        result['completion_wait_deltas'] = {
+            k:last[k]-first[k] for k in ['messages','waits','late','timeouts']}
+        result['completion_wait_deltas']['span_seconds'] = (last['monotonic_ns']-first['monotonic_ns'])/1e9
+        result['completion_wait_deltas']['geometry_overflow'] = sum(w['geometry_overflow'] for w in included)
 print(json.dumps(result,indent=2))
