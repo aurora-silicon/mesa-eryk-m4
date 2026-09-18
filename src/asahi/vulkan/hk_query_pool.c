@@ -543,6 +543,10 @@ hk_CmdWriteTimestamp2(VkCommandBuffer commandBuffer,
       hk_cmd_buffer_end_compute(cmd);
    }
 
+   const bool retirement_copies =
+      (dev->dev.params.features & DRM_ASAHI_FEATURE_RENDER_TIMESTAMP_COPIES) &&
+      debug_get_bool_option("HK_M4_TIMESTAMP_COPIES", false);
+
    /* EndRendering closes the VDM, but its completion timestamp is still
     * available until submission. Reuse it for a following timestamp when
     * nothing was recorded after the render. Otherwise a bottom-of-pipe
@@ -552,14 +556,19 @@ hk_CmdWriteTimestamp2(VkCommandBuffer commandBuffer,
     *
     * Only reuse the actual tail: a post-graphics query-availability write,
     * transfer, or other compute stream must remain before this timestamp.
-    * Do not overwrite an existing timestamp or move an active CDM's write.
+    * An occupied timestamp can fan out at exact retirement when supported.
+    * Never overwrite it or move an active CDM's write.
     */
    struct hk_cs *cs = NULL;
    if (agx_native_graphics(&dev->dev) && !after_gfx &&
-       !cmd->current_cs.cs && !list_is_empty(&cmd->control_streams)) {
+       !cmd->current_cs.cs && !cmd->current_cs.post_gfx &&
+       !list_is_empty(&cmd->control_streams)) {
       struct hk_cs *tail =
          list_last_entry(&cmd->control_streams, struct hk_cs, node);
-      if (tail->type == HK_CS_VDM && !tail->timestamp.end.addr)
+      if (tail->type == HK_CS_VDM &&
+          (!tail->timestamp.end.addr ||
+           (retirement_copies && tail->timestamp.end_copy_count <
+                                   ARRAY_SIZE(tail->timestamp.end_copies))))
          cs = tail;
    }
    if (!cs)
@@ -583,11 +592,10 @@ hk_CmdWriteTimestamp2(VkCommandBuffer commandBuffer,
    }
 
    if (cs->timestamp.end.addr) {
-      assert(after_gfx && "compute is handled above");
+      assert(cs->type == HK_CS_VDM && "compute is handled above");
 
       if (cs->type == HK_CS_VDM &&
-          (dev->dev.params.features & DRM_ASAHI_FEATURE_RENDER_TIMESTAMP_COPIES) &&
-          debug_get_bool_option("HK_M4_TIMESTAMP_COPIES", false) &&
+          retirement_copies &&
           cs->timestamp.end_copy_count < ARRAY_SIZE(cs->timestamp.end_copies)) {
          /* All timestamps inside this pass already share its completion
           * timestamp. Let retirement publish additional destinations without
@@ -699,15 +707,24 @@ hk_cmd_begin_end_query(struct hk_cmd_buffer *cmd, struct hk_query_pool *pool,
             cs = tail;
       }
       /* Use all 64 bits: the low word of the hardware counter periodically
-       * wraps to zero. Never steal an occupied timestamp destination, and
-       * keep empty queries on their ordered GPU availability-write path. */
+       * wraps to zero. A duplicate of an occupied completion timestamp also
+       * supplies availability, without an extra compute write. Keep empty
+       * queries on their ordered GPU availability-write path. */
+      const bool copy_completion = cs && cs->timestamp.end.addr &&
+         (dev->dev.params.features & DRM_ASAHI_FEATURE_RENDER_TIMESTAMP_COPIES) &&
+         debug_get_bool_option("HK_M4_TIMESTAMP_COPIES", false) &&
+         cs->timestamp.end_copy_count < ARRAY_SIZE(cs->timestamp.end_copies);
       if (pool->timestamp_available && graphics && cs && cs->stats.cmds &&
-          !cs->timestamp.end.addr && !cmd->current_cs.post_gfx) {
-         cs->timestamp.end = (struct agx_timestamp_req){
+          (!cs->timestamp.end.addr || copy_completion) && !cmd->current_cs.post_gfx) {
+         struct agx_timestamp_req available = {
             .addr = hk_query_available_addr(pool, query),
             .handle = pool->handle,
             .offset_B = query * hk_query_available_stride(pool),
          };
+         if (copy_completion)
+            cs->timestamp.end_copies[cs->timestamp.end_copy_count++] = available;
+         else
+            cs->timestamp.end = available;
       } else {
          hk_queue_write(cmd, hk_query_available_addr(pool, query), 1, graphics);
       }

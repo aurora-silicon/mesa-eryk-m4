@@ -4,6 +4,8 @@
  * Mode 3: 64 adjacent individual timestamp resets after prior writes; rewrite
  * even queries and verify odd queries become unavailable. Unavailable result
  * values are undefined and are deliberately not compared.
+ * Mode 4: render-end timestamp followed by eleven writes after EndRendering;
+ * verify monotonicity and CPU/GPU result copies, including overflow.
  * cc -O2 -Wall -Wextra vulkan-query-copy-probe.c -o vulkan-query-copy-probe
  * -lvulkan Run only inside gpu-experiment.py on hardware. No window system
  * required.
@@ -33,12 +35,12 @@ static uint32_t memtype(uint32_t bits, VkMemoryPropertyFlags flags) {
 int main(int argc, char **argv) {
   const unsigned queue_count = 1;
   int mode = argc > 1 ? atoi(argv[1]) : 0;
-  if (mode < 0 || mode > 3)
+  if (mode < 0 || mode > 4)
     return 2;
-  unsigned queries = mode == 3 ? 64 : 4;
+  unsigned queries = mode == 3 ? 64 : mode == 4 ? 12 : 4;
   VkInstance instance;
   VkApplicationInfo app = {.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
-                           .apiVersion = VK_API_VERSION_1_2};
+                           .apiVersion = VK_API_VERSION_1_3};
   VkInstanceCreateInfo ic = {.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
                              .pApplicationInfo = &app};
   CHECK(vkCreateInstance(&ic, NULL, &instance));
@@ -70,6 +72,10 @@ int main(int argc, char **argv) {
   VkPhysicalDeviceTimelineSemaphoreFeatures tf = {
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES,
       .timelineSemaphore = VK_TRUE};
+  VkPhysicalDeviceDynamicRenderingFeatures df = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES,
+      .dynamicRendering = mode == 4};
+  tf.pNext = &df;
   VkPhysicalDeviceFeatures features = {.pipelineStatisticsQuery = mode == 2};
   VkDeviceCreateInfo di = {.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
                            .pNext = &tf,
@@ -115,6 +121,26 @@ int main(int argc, char **argv) {
       .commandBufferCount = 1};
   CHECK(vkAllocateCommandBuffers(dev, &ca, cmds));
 
+  VkImage image = VK_NULL_HANDLE;
+  VkDeviceMemory image_memory = VK_NULL_HANDLE;
+  VkImageView view = VK_NULL_HANDLE;
+  if (mode == 4) {
+    VkImageCreateInfo ii = {.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+      .imageType = VK_IMAGE_TYPE_2D, .format = VK_FORMAT_R8G8B8A8_UNORM,
+      .extent = {16,16,1}, .mipLevels = 1, .arrayLayers = 1,
+      .samples = VK_SAMPLE_COUNT_1_BIT, .tiling = VK_IMAGE_TILING_OPTIMAL,
+      .usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT};
+    CHECK(vkCreateImage(dev, &ii, NULL, &image));
+    vkGetImageMemoryRequirements(dev, image, &req);
+    ai.allocationSize = req.size;
+    ai.memoryTypeIndex = memtype(req.memoryTypeBits, 0);
+    CHECK(vkAllocateMemory(dev, &ai, NULL, &image_memory));
+    CHECK(vkBindImageMemory(dev, image, image_memory, 0));
+    VkImageViewCreateInfo vi = {.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+      .image = image, .viewType = VK_IMAGE_VIEW_TYPE_2D, .format = ii.format,
+      .subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT,0,1,0,1}};
+    CHECK(vkCreateImageView(dev, &vi, NULL, &view));
+  }
   VkQueryPool query;
   VkQueryPoolCreateInfo qc = {
       .sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO,
@@ -138,6 +164,29 @@ int main(int argc, char **argv) {
     for (unsigned i = 0; i < queries; i += 2)
       vkCmdWriteTimestamp(cmds[0], VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, query, i);
   }
+  if (mode == 4) {
+    VkImageMemoryBarrier ib = {.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+      .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+      .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+      .newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+      .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .image = image, .subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT,0,1,0,1}};
+    vkCmdPipelineBarrier(cmds[0], VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,0,0,NULL,0,NULL,1,&ib);
+    VkRenderingAttachmentInfo ra = {.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+      .imageView = view, .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+      .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR, .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+      .clearValue = {.color = {.float32 = {1,0,0,1}}}};
+    VkRenderingInfo ri = {.sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+      .renderArea = {{0,0},{16,16}}, .layerCount = 1,
+      .colorAttachmentCount = 1, .pColorAttachments = &ra};
+    vkCmdBeginRendering(cmds[0], &ri);
+    vkCmdWriteTimestamp(cmds[0], VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, query, 0);
+    vkCmdEndRendering(cmds[0]);
+    for (unsigned i = 1; i < queries; i++)
+      vkCmdWriteTimestamp(cmds[0], VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, query, i);
+  }
   unsigned write = mode == 1;
   if (mode == 2) {
     vkCmdBeginQuery(cmds[0], query, 0, 0);
@@ -156,7 +205,7 @@ int main(int argc, char **argv) {
   } else vkCmdCopyQueryPoolResults(cmds[0], query, 0, mode == 2 ? 1 : queries, buffer, 0, 16,
                             VK_QUERY_RESULT_64_BIT |
                                 VK_QUERY_RESULT_WITH_AVAILABILITY_BIT |
-                                (mode == 2 ? VK_QUERY_RESULT_WAIT_BIT : 0));
+                                (mode == 2 || mode == 4 ? VK_QUERY_RESULT_WAIT_BIT : 0));
   VkMemoryBarrier barrier = {.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
                              .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
                              .dstAccessMask = VK_ACCESS_HOST_READ_BIT};
@@ -176,7 +225,12 @@ int main(int argc, char **argv) {
   for (unsigned i = 0; i < (mode == 2 ? 1 : queries); i++) {
     printf("query%u value=%llx available=%llu\n", i,
            (unsigned long long)v[2 * i], (unsigned long long)v[2 * i + 1]);
-    if (mode == 3) {
+    if (mode == 4) {
+      if (!v[2*i+1] || !v[2*i] || (i && v[2*i] < v[2*(i-1)])) return 1;
+      uint64_t cpu;
+      CHECK(vkGetQueryPoolResults(dev, query, i, 1, sizeof(cpu), &cpu, 8, VK_QUERY_RESULT_64_BIT));
+      if (cpu != v[2*i]) return 1;
+    } else if (mode == 3) {
       if (v[2*i+1] != (i % 2 == 0)) return 1;
       if (i % 2 == 0 && (!v[2*i] || (i >= 2 && v[2*i] < v[2*(i-2)]))) return 1;
     } else if (mode == 2) {
@@ -192,6 +246,11 @@ int main(int argc, char **argv) {
   vkUnmapMemory(dev, allocation);
   vkDestroyBuffer(dev, buffer, NULL);
   vkFreeMemory(dev, allocation, NULL);
+  if (mode == 4) {
+    vkDestroyImageView(dev, view, NULL);
+    vkDestroyImage(dev, image, NULL);
+    vkFreeMemory(dev, image_memory, NULL);
+  }
   vkDestroyDevice(dev, NULL);
   vkDestroyInstance(instance, NULL);
   return 0;

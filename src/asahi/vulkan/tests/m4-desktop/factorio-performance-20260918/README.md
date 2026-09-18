@@ -713,3 +713,22 @@ retained Factorio frame pixel-for-pixel. The uncached menu observation
 3.198 FPS sample and otherwise up to 11.98; this does not demonstrate an FPS gain.
 Future performance observations enable a separate cache keyed by library hash
 and the chosen experimental compiler options; replay validation can disable it.
+
+## Timestamp copies after a closed render pass
+
+An occupied tail VDM timestamp can now fan out after EndRendering when no
+compute or post-graphics work intervenes, within the existing eight-copy
+capacity. Full capacity retains separate hardware timestamp commands. A
+statistics query can also use an occupied render completion for its nonzero
+64-bit availability cell. Both paths require HK_M4_TIMESTAMP_COPIES and the
+kernel feature; query values remain firmware timestamps.
+
+The Vulkan query probe's mode 4 writes one timestamp inside a clear render
+and eleven afterward, then copies results on the GPU and compares CPU reads.
+`20260918T213528617593Z-factorio-tail-copies-queries` confirms eight retirement
+copies, three overflow commands and monotonic matching values.
+`20260918T213741536790Z-factorio-tail-copy-statistics` checks exact fragment
+counts and edge pixels across query ordering, query-buffer reads and flushes;
+its command log confirms use of the shared completion timestamp.
+`20260918T213802226186Z-factorio-tail-copies-frame` matches the retained Factorio
+frame with zero differing pixels. No broad CTS run or 60 FPS claim.
