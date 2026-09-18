@@ -24,6 +24,7 @@ struct hk_ubo_prefetch {
    uint16_t set;
    uint16_t uniform_half;
    uint16_t size_B;
+   uint16_t direct_half;
 };
 typedef bool (*hk_ubo_prefetch_allowed)(void *data, unsigned set, unsigned offset);
 bool hk_nir_prefetch_ubos(nir_shader *nir, unsigned set_base, unsigned set_count,

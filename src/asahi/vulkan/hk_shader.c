@@ -2027,10 +2027,13 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
    hk_capture_lowering(nir, "after-texture", features);
    NIR_PASS(_, nir, agx_nir_lower_multisampled_image_store);
 
-   if (dev->dev.chip == AGX_CHIP_G16G)
+   const bool defer_ubo_aliases = dev->dev.chip == AGX_CHIP_G16G &&
+      nir->info.stage == MESA_SHADER_FRAGMENT &&
+      debug_get_bool_option("HK_M4_PREFETCH_UBOS", false);
+   if (dev->dev.chip == AGX_CHIP_G16G && !defer_ubo_aliases)
       NIR_PASS(_, nir, hk_nir_lower_memory_aliases);
 
-   if (dev->dev.chip == AGX_CHIP_G16G &&
+   if (dev->dev.chip == AGX_CHIP_G16G && !defer_ubo_aliases &&
        (features & HK_FEAT_STRICT_SPARSE))
       NIR_PASS(_, nir, hk_nir_lower_sparse_access);
 
@@ -2573,6 +2576,21 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
 
    /* XXX: rename */
    NIR_PASS(_, nir, hk_lower_uvs_index, sw_stage, nr_vbos);
+   unsigned reserved = root + (4 * (1 + set_count));
+   shader->info.agx3_root_uniform = root;
+   if (dev->dev.chip == AGX_CHIP_G16G && sw_stage == MESA_SHADER_FRAGMENT &&
+       debug_get_bool_option("HK_M4_PREFETCH_UBOS", false)) {
+      NIR_PASS(_, nir, hk_nir_prefetch_ubos, root + 4, set_count, &reserved,
+               shader->info.ubo_prefetch, &shader->info.ubo_prefetch_count,
+               hk_ubo_prefetch_binding_allowed, (void *)set_layouts);
+      NIR_PASS(_, nir, hk_nir_lower_memory_aliases);
+      if (features & HK_FEAT_STRICT_SPARSE)
+         NIR_PASS(_, nir, hk_nir_lower_sparse_access);
+      agx_preprocess_nir_g17p(nir);
+      if (debug_get_bool_option("HK_M4_PREFETCH_AUDIT", false))
+         fprintf(stderr, "M4 UBO prefetch: loads=%u reserved=%u\n",
+                 shader->info.ubo_prefetch_count, reserved);
+   }
    /* Stage lowering can introduce driver sysvals (for example discard's
     * no_epilog_discard mask). hk_lower_uvs_index turns those into root
     * accesses, so gather the resource requirement after that pass and before
@@ -2589,19 +2607,10 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
        * ABI. Image access reserves halves 0..15 in both execution engines. */
       agx_nir_reserve_native_vertex_prefix(nir);
       root += AGX_ABI_VUNI_NATIVE_PREFIX;
+      reserved += AGX_ABI_VUNI_NATIVE_PREFIX;
+      shader->info.agx3_root_uniform = root;
    }
 
-   unsigned reserved = root + (4 * (1 + set_count));
-   shader->info.agx3_root_uniform = root;
-   if (dev->dev.chip == AGX_CHIP_G16G && sw_stage == MESA_SHADER_FRAGMENT &&
-       debug_get_bool_option("HK_M4_PREFETCH_UBOS", false)) {
-      NIR_PASS(_, nir, hk_nir_prefetch_ubos, root + 4, set_count, &reserved,
-               shader->info.ubo_prefetch, &shader->info.ubo_prefetch_count,
-               hk_ubo_prefetch_binding_allowed, (void *)set_layouts);
-      if (debug_get_bool_option("HK_M4_PREFETCH_AUDIT", false))
-         fprintf(stderr, "M4 UBO prefetch: loads=%u reserved=%u\n",
-                 shader->info.ubo_prefetch_count, reserved);
-   }
    if (dev->dev.chip == AGX_CHIP_G16G &&
        debug_get_bool_option("HK_M4_PREFETCH_DESCRIPTORS", false) &&
        (sw_stage == MESA_SHADER_FRAGMENT || (sw_stage == MESA_SHADER_VERTEX && hw))) {

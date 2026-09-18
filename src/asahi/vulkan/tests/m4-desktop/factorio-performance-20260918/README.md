@@ -426,3 +426,33 @@ a flush and GL query-buffer output, plus the existing exact edge/pixel cases;
 all pass. The untouched menu reaches 10.950 FPS (10.840–11.160).
 Evidence: `20260918T145301857201Z-factorio-zink-cpu-statistics-checks`,
 `20260918T145341775521Z-factorio-zink-cpu-statistics-menu`.
+
+## Opt-in direct UBO prefetch with sparse fallback
+
+The old opt-in UBO matcher ran after alias/residency lowering and matched no
+Factorio loads. For fragment prefetch, defer those lowerings until immutable
+UBO descriptors have been recognized. Each prefetched scalar has a shared
+per-descriptor eligibility uniform. The encoder selects only ordinary primary
+addresses; sparse/capture-replay UBOs use their read-only shadow address and
+retain the original shader access with execution-time alias/residency checks.
+The CPU reads descriptor metadata only, never UBO contents or sparse mappings.
+Update-after-bind, partial and dynamic bindings remain on the original path.
+
+Host NIR tests check descriptor matching before/after uniform lowering and
+that direct/sparse branches retain the appropriate memory access. Initial
+hardware UBO binding selection: 80 Pass. Final shared-eligibility variant:
+1,929 Pass / 258 NotSupported sampling cases, no failures. The original frame
+is pixel-identical. Its heaviest pass is now 8.7–9.0 ms versus 15.3 ms originally.
+
+The first version alone averaged 8.618 FPS, so it was not enabled by default.
+With shared eligibility and direct CPU timer/statistics results, the untouched
+menu averages 13.625 FPS (12.950–14.360). This remains opt-in through
+HK_M4_PREFETCH_UBOS=true; sparse fallback has host coverage but still needs a
+focused fragment UBO sparse-rebinding hardware oracle before default enablement.
+
+Evidence: `20260918T144332924568Z-factorio-ubo-direct-frame`,
+`20260918T144424364714Z-factorio-zink-ubo-direct-menu`,
+`20260918T144550856932Z-factorio-ubo-direct-cts`,
+`20260918T145519391560Z-factorio-ubo-shared-direct-frame`,
+`20260918T145640928251Z-factorio-ubo-shared-sampler-cts`,
+`20260918T145807777922Z-factorio-zink-stats-ubo-menu`.

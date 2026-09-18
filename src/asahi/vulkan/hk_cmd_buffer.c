@@ -1447,14 +1447,25 @@ hk_g17p_graphics_uniform_ranges(
                          load->size_B <= address.size - load->offset_B;
       /* UBO contents are loaded by the GPU at execution. The CPU only reads
        * immutable descriptor metadata and implements the original bound test. */
-      uint64_t source = valid ? address.base_addr + load->offset_B :
-                                AGX_ZERO_PAGE_ADDRESS;
-      if (valid && source < address.base_addr)
+      const bool direct = !agx_addr_is_ro(&dev->dev, address.base_addr);
+      uint64_t source = valid && direct ? address.base_addr + load->offset_B :
+                                          AGX_ZERO_PAGE_ADDRESS;
+      if (valid && direct && source < address.base_addr)
          return false;
       ranges[count++] = (struct agx3_ioto_uniform_range){
          .start_halfs = load->uniform_half, .size_halfs = load->size_B / 2,
          .address = source,
       };
+      if (load->direct_half == load->uniform_half + 2) {
+         const uint32_t eligible = direct;
+         uint64_t eligible_va = hk_pool_upload(cmd, &eligible, sizeof(eligible), 4);
+         if (!eligible_va)
+            return false;
+         ranges[count++] = (struct agx3_ioto_uniform_range){
+            .start_halfs = load->direct_half, .size_halfs = 2,
+            .address = eligible_va,
+         };
+      }
    }
 
    for (unsigned set = 0; set < s->info.set_count; ++set) {

@@ -22,11 +22,12 @@ static bool allow_ubo(void *data, unsigned set, unsigned offset)
    return *(bool *)data && set == 0 && offset == 64;
 }
 
-static void test_ubo(void)
+static void test_ubo(bool early, bool direct)
 {
    nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT, NULL,
                                                  "bounded UBO prefetch");
-   nir_def *table = nir_load_preamble(&b, 1, 64, .base = 24);
+   nir_def *table = early ? nir_load_descriptor_set_agx(&b, .desc_set = 0) :
+                           nir_load_preamble(&b, 1, 64, .base = 24);
    nir_def *desc = nir_load_global_constant(&b, 4, 32,
                          nir_iadd_imm(&b, table, 64), .align_mul = 16);
    nir_def *pointer = nir_pack_64_2x32_split(&b, nir_channel(&b, desc, 0),
@@ -49,14 +50,40 @@ static void test_ubo(void)
    assert(count == 1 && end == 32 && loads[0].set == 0);
    assert(loads[0].descriptor_offset_B == 64 && loads[0].offset_B == 40);
    assert(loads[0].size_B == 4 && loads[0].uniform_half == 28);
-   assert(nir_src_as_intrinsic(store->src[0])->intrinsic == nir_intrinsic_load_preamble);
+   assert(nir_def_instr(store->src[0].ssa)->type == nir_instr_type_phi);
    nir_validate_shader(b.shader, "bounded UBO prefetch");
+   nir_foreach_block(block, b.impl) {
+      nir_foreach_instr_safe(instr, block) {
+         if (instr->type != nir_instr_type_intrinsic) continue;
+         nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+         if (intr->intrinsic == nir_intrinsic_load_preamble &&
+             nir_intrinsic_base(intr) == 30) {
+            b.cursor = nir_before_instr(instr);
+            nir_def_replace(&intr->def, nir_imm_int(&b, direct));
+         }
+      }
+   }
+   bool progress;
+   do {
+      progress = false;
+      NIR_PASS(progress, b.shader, nir_opt_constant_folding);
+      NIR_PASS(progress, b.shader, nir_opt_dead_cf);
+      NIR_PASS(progress, b.shader, nir_opt_dce);
+   } while (progress);
+   unsigned fallback_loads = 0;
+   nir_foreach_block(block, b.impl)
+      nir_foreach_instr(instr, block)
+         fallback_loads += instr->type == nir_instr_type_intrinsic &&
+            nir_instr_as_intrinsic(instr)->intrinsic == nir_intrinsic_load_global;
+   assert(fallback_loads == !direct);
+   nir_validate_shader(b.shader, "direct and sparse UBO branches");
    ralloc_free(b.shader);
 }
 
 int main(void)
 {
-   test_ubo();
+   test_ubo(false, false); test_ubo(false, true);
+   test_ubo(true, false); test_ubo(true, true);
    nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT, NULL, "descriptor prefetch");
    nir_intrinsic_instr *ubo = load(&b, 24, nir_imm_int(&b, 4), 2, 4, 32);
    nir_intrinsic_instr *sampler = load(&b, 32, nir_imm_int(&b, 5), 2, 2, 16);

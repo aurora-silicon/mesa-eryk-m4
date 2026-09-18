@@ -4,6 +4,7 @@
 #include "nir_builder.h"
 #include "asahi/lib/agx_abi.h"
 #include "util/format/u_format.h"
+#include "util/u_dynarray.h"
 
 static bool
 descriptor_load(nir_intrinsic_instr *intr, unsigned set_base,
@@ -54,10 +55,15 @@ descriptor_load(nir_intrinsic_instr *intr, unsigned set_base,
    }
 
    nir_intrinsic_instr *base = nir_src_as_intrinsic(base_src);
-   if (!base || base->intrinsic != nir_intrinsic_load_preamble ||
-       base->def.bit_size != 64 || base->def.num_components != 1)
+   if (!base || base->def.bit_size != 64 || base->def.num_components != 1)
       return false;
-   unsigned half = nir_intrinsic_base(base);
+   unsigned half;
+   if (base->intrinsic == nir_intrinsic_load_descriptor_set_agx)
+      half = set_base + 4 * nir_intrinsic_desc_set(base);
+   else if (base->intrinsic == nir_intrinsic_load_preamble)
+      half = nir_intrinsic_base(base);
+   else
+      return false;
    if (half < set_base || (half - set_base) % 4 ||
        (half - set_base) / 4 >= set_count)
       return false;
@@ -209,6 +215,9 @@ hk_nir_prefetch_ubos(nir_shader *nir, unsigned set_base, unsigned set_count,
    bool progress = false;
    nir_foreach_function_impl(impl, nir) {
       bool changed = false;
+      struct candidate { nir_intrinsic_instr *intr; unsigned entry; };
+      struct util_dynarray candidates;
+      util_dynarray_init(&candidates, NULL);
       nir_foreach_block(block, impl) {
          nir_foreach_instr_safe(instr, block) {
             if (instr->type != nir_instr_type_intrinsic)
@@ -227,20 +236,50 @@ hk_nir_prefetch_ubos(nir_shader *nir, unsigned set_base, unsigned set_count,
             }
             if (entry == *load_count) {
                unsigned start = align(*uniform_end, 4);
-               if (entry == HK_UBO_PREFETCH_MAX || start + 4 > AGX_NUM_UNIFORMS)
+               /* Two load ranges per entry, leaving room for roots, texture
+                * tables, descriptors and constants in the 128-chunk loader. */
+               if (entry == 48 || start + 4 > AGX_NUM_UNIFORMS)
                   continue;
                load.uniform_half = start;
+               load.direct_half = start + 2;
+               for (unsigned i = 0; i < entry; ++i) {
+                  if (loads[i].set == load.set &&
+                      loads[i].descriptor_offset_B == load.descriptor_offset_B) {
+                     load.direct_half = loads[i].direct_half;
+                     break;
+                  }
+               }
                loads[entry] = load;
                *uniform_end = start + 4;
                ++*load_count;
             }
-            nir_builder b = nir_builder_at(nir_before_instr(instr));
-            nir_def_replace(&intr->def, nir_load_preamble(&b, 1, 32,
-                                      .base = loads[entry].uniform_half));
-            changed = true;
+            util_dynarray_append(&candidates,
+                                 ((struct candidate){intr, entry}));
          }
       }
-      nir_progress(changed, impl, nir_metadata_control_flow);
+      util_dynarray_foreach(&candidates, struct candidate, c) {
+         nir_intrinsic_instr *intr = c->intr;
+         nir_instr *instr = &intr->instr;
+         unsigned entry = c->entry;
+         nir_builder b = nir_builder_at(nir_before_instr(instr));
+         unsigned half = loads[entry].uniform_half;
+         /* Sparse/capture-replay UBOs retain the ordinary shader path.
+          * The encoder publishes eligibility beside the prefetched value;
+          * it never resolves a mutable sparse mapping while recording. */
+         nir_def *direct = nir_load_preamble(&b, 1, 32,
+                                            .base = loads[entry].direct_half);
+         nir_push_if(&b, nir_ine_imm(&b, direct, 0));
+         nir_def *value = nir_load_preamble(&b, 1, 32, .base = half);
+         nir_push_else(&b, NULL);
+         nir_intrinsic_instr *fallback =
+            nir_instr_as_intrinsic(nir_instr_clone(nir, instr));
+         nir_builder_instr_insert(&b, &fallback->instr);
+         nir_pop_if(&b, NULL);
+         nir_def_replace(&intr->def, nir_if_phi(&b, value, &fallback->def));
+         changed = true;
+      }
+      util_dynarray_fini(&candidates);
+      nir_progress(changed, impl, nir_metadata_none);
       progress |= changed;
    }
    return progress;
