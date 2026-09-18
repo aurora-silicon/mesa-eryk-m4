@@ -1456,9 +1456,10 @@ hk_queue_init(struct hk_device *dev, const VkDeviceQueueCreateInfo *pCreateInfo,
       priority_info ? priority_info->globalPriority
                     : VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_KHR;
 
-   /* High-priority scheduling still needs kernel qualification. */
+   /* M4's shared DRM scheduler enforces privileged priorities in the kernel. */
    enum drm_asahi_priority drm_priority = translate_priority(priority);
-   if (drm_priority >= DRM_ASAHI_PRIORITY_HIGH) {
+   if (drm_priority >= DRM_ASAHI_PRIORITY_HIGH &&
+       dev->dev.chip != AGX_CHIP_G16G) {
       vk_free(&dev->vk.alloc, queue);
       return VK_ERROR_NOT_PERMITTED_EXT;
    }

@@ -143,6 +143,7 @@ enum zink_descriptor_mode zink_descriptor_mode;
 
 struct zink_device {
    unsigned refcount;
+   int queue_priority;
    VkPhysicalDevice pdev;
    VkDevice dev;
    struct zink_device_info *info;
@@ -2786,7 +2787,8 @@ get_device(struct zink_screen *screen, VkDeviceCreateInfo *dci)
 
    set_foreach(&device_table, entry) {
       struct zink_device *zdev = (void*)entry->key;
-      if (zdev->pdev != screen->pdev)
+      if (zdev->pdev != screen->pdev ||
+          zdev->queue_priority != screen->driconf.queue_priority)
          continue;
       zdev->refcount++;
       simple_mtx_unlock(&device_lock);
@@ -2794,11 +2796,20 @@ get_device(struct zink_screen *screen, VkDeviceCreateInfo *dci)
    }
 
    VkResult result = VKSCR(CreateDevice)(screen->pdev, dci, NULL, &dev);
-   if (result != VK_SUCCESS)
+   if (result != VK_SUCCESS) {
       mesa_loge("ZINK: vkCreateDevice failed (%s)", vk_Result_to_str(result));
+      simple_mtx_unlock(&device_lock);
+      return NULL;
+   }
 
    struct zink_device *zdev = malloc(sizeof(struct zink_device));
+   if (!zdev) {
+      VKSCR(DestroyDevice)(dev, NULL);
+      simple_mtx_unlock(&device_lock);
+      return NULL;
+   }
    zdev->refcount = 1;
+   zdev->queue_priority = screen->driconf.queue_priority;
    zdev->pdev = screen->pdev;
    zdev->dev = dev;
    simple_mtx_init(&zdev->queue_lock, mtx_plain);
@@ -2811,6 +2822,14 @@ static struct zink_device*
 zink_create_logical_device(struct zink_screen *screen)
 {
    VkDeviceQueueCreateInfo qci[2] = {0};
+   static const VkQueueGlobalPriorityKHR priorities[] = {
+      VK_QUEUE_GLOBAL_PRIORITY_LOW_KHR, VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_KHR,
+      VK_QUEUE_GLOBAL_PRIORITY_HIGH_KHR, VK_QUEUE_GLOBAL_PRIORITY_REALTIME_KHR,
+   };
+   VkDeviceQueueGlobalPriorityCreateInfoKHR priority = {
+      .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_GLOBAL_PRIORITY_CREATE_INFO_KHR,
+      .globalPriority = priorities[screen->driconf.queue_priority],
+   };
    uint32_t queues[3] = {
       screen->gfx_queue,
       screen->sparse_queue,
@@ -2821,6 +2840,8 @@ zink_create_logical_device(struct zink_screen *screen)
       qci[i].queueFamilyIndex = queues[i];
       qci[i].queueCount = 1;
       qci[i].pQueuePriorities = &dummy;
+      if (screen->info.have_KHR_global_priority)
+         qci[i].pNext = &priority;
    }
 
    unsigned num_queues = 1;
@@ -3416,10 +3437,12 @@ zink_internal_create_screen(const struct pipe_screen_config *config, int64_t dev
       goto fail;
    }
 
+   screen->driconf.queue_priority = 1;
    if (config) {
       driParseConfigFiles(config->options, config->options_info, 0, "zink",
                           NULL, NULL, NULL, 0, NULL, 0);
       screen->driconf.dual_color_blend_by_location = driQueryOptionb(config->options, "dual_color_blend_by_location");
+      screen->driconf.queue_priority = driQueryOptioni(config->options, "zink_queue_priority");
       //screen->driconf.inline_uniforms = driQueryOptionb(config->options, "radeonsi_inline_uniforms");
       screen->driconf.emulate_point_smooth = driQueryOptionb(config->options, "zink_emulate_point_smooth");
       screen->driconf.zink_shader_object_enable = driQueryOptionb(config->options, "zink_shader_object_enable");
@@ -3575,7 +3598,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config, int64_t dev
    disable_features(screen);
 
    struct zink_device *zdev = zink_create_logical_device(screen);
-   if (!zdev->dev)
+   if (!zdev || !zdev->dev)
       goto fail;
    screen->dev = zdev->dev;
    screen->queue_lock = &zdev->queue_lock;

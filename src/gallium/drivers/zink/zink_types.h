@@ -1514,6 +1514,7 @@ struct zink_screen {
 
    struct {
       bool dual_color_blend_by_location;
+      int queue_priority;
       bool inline_uniforms;
       bool emulate_point_smooth;
       bool zink_shader_object_enable;

@@ -149,6 +149,7 @@ EXTENSIONS = [
               alias="pci",
               properties=True),
     Extension("VK_EXT_memory_budget"),
+    Extension("VK_KHR_global_priority"),
     Extension("VK_EXT_memory_priority", alias="memprio", features=True),
     Extension("VK_EXT_pageable_device_local_memory", alias="mempage", features=True),
     Extension("VK_KHR_draw_indirect_count"),
