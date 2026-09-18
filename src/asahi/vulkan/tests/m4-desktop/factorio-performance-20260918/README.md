@@ -785,3 +785,36 @@ Kernel f96e39d3e06b additionally wakes completion processing from the RTKit IRQ
 callback. Its 2048-readback probe measures 0.632 ms/command median versus
 0.658 ms previously. Same-submission scheduler handoffs average only 16–17 us;
 `gpu-summary-timings.py` reports them separately from preparation and active time.
+
+
+Native graphics thunks (2026-09-18 late session)
+----------------------------------------------
+
+FEX now uses native ARM64 GL and Vulkan for Factorio. Its normal launcher points
+at the desktop `/opt/asahi-m4-port` installation, so subsequent native Mesa updates
+also update this application's renderer. FEX changes and cross-build recipe are
+in `reference/FEX-2604`, commits a1e8091, 818accb, ddc1175 and c8b89b5; see its
+`docs/m4-graphics-thunks.md`. The x86 Mesa copies remain as rollback evidence and
+for clients whose thunks are not qualified; Factorio no longer maps them.
+
+Both API bridges are required: the game probes Vulkan during its GL startup.
+GL alone lost adapter discovery and selected a different, uncached atlas layout.
+With both enabled, the original atlas cache loads and initialization takes
+12.6–14.6 seconds. The native menu run ends at 17.29 FPS; the profiled shared
+installation run ends at 15.50 FPS. These are different animated scenes, not
+controlled before/after measurements. **60 FPS is not achieved.**
+
+Evidence: `20260918T225258919777Z-factorio-native-gl-vk-thunks`,
+`20260918T225455540980Z-factorio-native-mesa-install`, and
+`20260918T225526121530Z-factorio-native-shared-profile`. The latter has 141 CPU
+samples: 95 JIT (89 Factorio, zero Mesa) and 46 native. It retains process mappings
+showing the GL guest/host bridge and `/opt/asahi-m4-port` ARM64 Mesa libraries.
+Temperatures stayed below 67 C in these runs. No full CTS run was attempted.
+
+The observer now recognizes failed-window creation as an immediate startup
+failure. Optional `FACTORIO_LOADER_TRACE=1` and `FACTORIO_NATIVE_GDB=1` capture
+loader opens and a native backtrace respectively; these are diagnostic launches,
+not timing runs. The GDB helper's CPU-frame decoding is specific to this FEX
+build. `FACTORIO_PROFILE_STARTUP=1` permits an eight-second profile before menu
+initialization; set `FACTORIO_DRIVER_PROFILE=1` and an appropriate
+`FACTORIO_PROFILE_DELAY`. All launches remain under the host hardware guard.
