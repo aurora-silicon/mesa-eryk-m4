@@ -673,31 +673,49 @@ sort_by_size(const void *a_, const void *b_, void *sizes_)
  *    to do the copy in parallel along the incoming edges.
  */
 static void
-agx_emit_move_before_phi(agx_context *ctx, agx_block *block,
-                         struct agx_copy *copy)
+agx_emit_moves_before_phi(agx_context *ctx, agx_block *block,
+                         struct util_dynarray *copies)
 {
-   assert(!copy->dest_mem && !copy->src.memory && "no memory shuffles");
-
-   /* Look for the phi writing the destination */
+   /* Match every source against the original phi destinations. Updating one
+    * phi before looking up the next copy can make a copy chain match the
+    * already moved phi instead of the value originally in that register.
+    */
+   unsigned count = util_dynarray_num_elements(copies, struct agx_copy);
+   bool *matched = calloc(count, sizeof(bool));
    agx_foreach_phi_in_block(block, phi) {
-      if (agx_is_equiv(agx_as_register(phi->dest[0]), copy->src) &&
-          !phi->dest[0].memory) {
-
-         phi->dest[0].reg = copy->dest;
-         return;
+      if ((phi->dest[0].type == AGX_INDEX_NORMAL && !phi->dest[0].has_reg) ||
+          phi->dest[0].memory)
+         continue;
+      unsigned i = 0;
+      util_dynarray_foreach(copies, struct agx_copy, copy) {
+         assert(!copy->dest_mem && !copy->src.memory && "no memory shuffles");
+         if (agx_is_equiv(agx_as_register(phi->dest[0]), copy->src)) {
+            if (phi->dest[0].type == AGX_INDEX_REGISTER)
+               phi->dest[0].value = copy->dest;
+            else
+               phi->dest[0].reg = copy->dest;
+            matched[i] = true;
+            break;
+         }
+         ++i;
       }
    }
 
-   /* There wasn't such a phi, so it's live-in. Insert a phi instead. */
+   /* Unmatched sources are live-ins. Insert their phis only after all
+    * original destinations have been examined.
+    */
    agx_builder b = agx_init_builder(ctx, agx_before_block(block));
-
-   agx_instr *phi = agx_phi_to(&b, agx_register_like(copy->dest, copy->src),
-                               agx_num_predecessors(block));
-   assert(!copy->src.kill);
-
-   agx_foreach_src(phi, s) {
-      phi->src[s] = copy->src;
+   unsigned i = 0;
+   util_dynarray_foreach(copies, struct agx_copy, copy) {
+      if (matched[i++])
+         continue;
+      agx_instr *phi = agx_phi_to(&b, agx_register_like(copy->dest, copy->src),
+                                agx_num_predecessors(block));
+      assert(!copy->src.kill);
+      agx_foreach_src(phi, s)
+         phi->src[s] = copy->src;
    }
+   free(matched);
 }
 
 static unsigned
@@ -727,9 +745,7 @@ find_regs(struct ra_ctx *rctx, agx_instr *I, unsigned dest_idx, unsigned count,
        * insert instructions before the phi.
        */
       if (I->op == AGX_OPCODE_PHI) {
-         util_dynarray_foreach(&copies, struct agx_copy, copy) {
-            agx_emit_move_before_phi(rctx->shader, rctx->block, copy);
-         }
+         agx_emit_moves_before_phi(rctx->shader, rctx->block, &copies);
       } else {
          agx_builder b = agx_init_builder(rctx->shader, agx_before_instr(I));
          agx_emit_parallel_copies(

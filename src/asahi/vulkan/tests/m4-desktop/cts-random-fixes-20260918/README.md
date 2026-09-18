@@ -33,5 +33,27 @@ pass: `20260918T071255781618Z-cts-fixes-api-neighbors`, peak 61.5 C,
 library identities are retained under `build/cts-fixes-20260918/` and the
 corresponding `_provenance/experiments/` directories.
 
-The random-sample compiler crash and memory-model device loss are separate
-outstanding issues at this checkpoint.
+The memory-model device loss remains outstanding at this checkpoint.
+
+## Register allocation at phi nodes
+
+`ssbo.phys.layout.random.8bit.vector_types.21` aborted in RA validation.
+The allocator moved phi destinations one copy at a time. A later move could
+then match an already moved phi, losing the original parallel-copy mapping.
+Match all copies against each original phi before inserting live-in phis;
+handle both SSA and register-only destinations, and skip unallocated phis.
+
+The captured compiler input is retained in `ra-shuffle-input/`. From the
+workspace root, build `build/mesa-m4-asahi-host/src/asahi/compiler/agx_shader_replay`
+and use `tools/compiler-replay.py <this-directory>/ra-shuffle-input --output NEW`.
+The baseline aborts with invalid RA sources; the fixed replay exits zero.
+The original hardware case passes, as do all 25 physical 8-bit random vector
+SSBO cases on the final library: `20260918T071557271496Z-cts-fixes-ra-final`.
+Peak 60.75 C; 2.827 seconds runner time. The 22 LowerParallelCopy, LowerSpill,
+and RepairSSA unit tests pass, along with the static spill core test.
+
+A broader `agx_tests` invocation encountered stale expected shuffle registers
+and an assertion while printing an intentionally invalid packer operand;
+those tests do not exercise this RA path. Their output is retained in
+`build/cts-fixes-20260918/compiler-unit-tests.log`; no broad-unit-suite pass
+is claimed.
