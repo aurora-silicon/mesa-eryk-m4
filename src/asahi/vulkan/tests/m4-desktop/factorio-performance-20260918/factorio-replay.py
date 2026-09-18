@@ -17,8 +17,11 @@ p.add_argument('--capture-shaders', action='store_true')
 a = p.parse_args()
 guard = json.loads((a.output / 'start.json').read_text())
 assert guard['watchdog']['armed'] and guard['watchdog']['timeout_seconds'] == 60
-subprocess.run(['systemctl', 'stop', 'm4-factorio-standalone.service'],
-               check=True, timeout=15)
+state = subprocess.check_output(['systemctl', 'show', '--property=LoadState',
+    '--value', 'm4-factorio-standalone.service'], text=True, timeout=5).strip()
+if state != 'not-found':
+    subprocess.run(['systemctl', 'stop', 'm4-factorio-standalone.service'],
+                   check=True, timeout=15)
 env = os.environ.copy()
 if a.capture_shaders:
     capture = a.output / 'frontend-nir'

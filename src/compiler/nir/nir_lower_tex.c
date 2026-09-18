@@ -1754,9 +1754,13 @@ nir_lower_tex_block(nir_block *block, nir_builder *b,
          progress |= lower_tex_packing(b, tex, options);
       }
 
-      /* Although tg4 takes a sampler, it ignores the LOD bias. */
+      /* Only LOD-selecting operations apply sampler bias. Descriptor queries
+       * may also need a sampler, but adding a bias source to them is invalid.
+       * Gathers likewise ignore the bias. */
       if (options->lower_sampler_lod_bias &&
-          nir_tex_instr_need_sampler(tex) && tex->op != nir_texop_tg4) {
+          (tex->op == nir_texop_tex || tex->op == nir_texop_txb ||
+           tex->op == nir_texop_txd || tex->op == nir_texop_txl ||
+           tex->op == nir_texop_lod)) {
          lower_sampler_lod_bias(b, tex);
          progress = true;
       }

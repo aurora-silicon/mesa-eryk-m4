@@ -157,3 +157,28 @@ The user requested no more UI interaction: measure/optimize the main menu only.
 with optional compiler captures, without mouse/keyboard input.
 `gpu-command-timings.py` summarizes serialized retirement logs by ASID/geometry;
 GPU render spans include the interval between tiling and fragment work.
+
+## Rejected broader shader specialization; metadata-query fix
+
+A broader whole-body ordinary path for up to eight scalar 2D/3D samplers
+was pixel-correct but regressed GPU time (138.74 ms, compared to uniform
+baseline 103.87 ms across 36 full-size replay passes). Disabling GCM reduced
+it to 96.03 ms, still no improvement over the simpler shader with GCM disabled
+(93.19 ms). The broader specialization was removed, not deployed.
+
+It exposed a generic NIR bug: sampler metadata queries were treated as
+LOD-selecting instructions and received an invalid bias source. Only actual
+sampling and LOD-query operations should receive sampler LOD bias.
+The retained failure is `20260918T112433607365Z-factorio-multi-sampler-frame`;
+corrected replay `20260918T113035994267Z-factorio-multi-sampler-bias-frame`
+is pixel-identical. Six implicit sampler oracles (ordinary, custom border,
+min/max, minimum LOD, combined border/minimum LOD) pass in
+`20260918T113613570583Z-factorio-implicit-sampler-oracles`.
+The generator now has `--implicit`; explicit-LOD remains its default.
+
+`gpu-turnaround-probe.py` brackets the checked command sequence with
+`counter-clock.c` readings. Interpolating the architected-counter/monotonic
+offset avoids NTP drift across samples. Evidence:
+`20260918T111317290086Z-factorio-turnaround-clock-correlation`.
+Cross-domain clock offset uncertainty means this is diagnostic correlation,
+not yet proof of exact firmware-versus-host latency attribution.
