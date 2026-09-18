@@ -195,6 +195,24 @@ check_texture_descriptor(void)
    ralloc_free(b.shader);
 }
 
+static void
+check_alias_metadata(unsigned dereferences, bool alias_root)
+{
+   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, &options,
+                                                  "alias metadata provenance");
+   nir_def *pointer = nir_load_global_constant(&b, 1, 64,
+      nir_iadd_imm(&b, nir_load_root_agx(&b), alias_root ?
+         hk_root_descriptor_offset(buffer_alias_table) : 128), .align_mul = 8);
+   for (unsigned i = 0; i < dereferences; ++i)
+      pointer = nir_load_global_constant(&b, 1, 64,
+         nir_iadd_imm(&b, pointer, 8), .align_mul = 8);
+   nir_store_shared(&b, pointer, nir_imm_int(&b, 0), .align_mul = 8);
+   CHECK(hk_nir_lower_sparse_access(b.shader) ==
+         (alias_root ? dereferences > 2 : dereferences > 0));
+   nir_validate_shader(b.shader, "alias metadata versus application address");
+   ralloc_free(b.shader);
+}
+
 int main(void)
 {
    unsigned count = 0;
@@ -224,6 +242,10 @@ int main(void)
       }
    check_descriptor_pointer(false); check_descriptor_pointer(true);
    check_texture_descriptor();
+   for (unsigned depth = 0; depth <= 4; ++depth) {
+      check_alias_metadata(depth, false);
+      check_alias_metadata(depth, true);
+   }
    printf("PASS: %u sparse byte/vector masks and bound/unbound atomic execution\n", count);
    return 0;
 }

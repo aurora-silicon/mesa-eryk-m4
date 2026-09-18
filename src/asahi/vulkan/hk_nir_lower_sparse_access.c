@@ -76,6 +76,47 @@ canonical_address(nir_builder *b, const struct sparse_map *map,
    return nir_if_phi(b, canonical, fallback);
 }
 
+/* Only the first two levels of the alias table are driver-owned memory.
+ * Entries in a leaf are application addresses, and dereferencing those still
+ * requires residency checks. Do not treat arbitrary pointers loaded from
+ * descriptors or push constants as metadata. */
+static unsigned
+alias_table_level(nir_def *address)
+{
+   nir_instr *instr = nir_def_instr(address);
+   if (instr->type == nir_instr_type_alu) {
+      nir_alu_instr *alu = nir_instr_as_alu(instr);
+      return alu->op == nir_op_iadd
+                ? MAX2(alias_table_level(alu->src[0].src.ssa),
+                       alias_table_level(alu->src[1].src.ssa))
+                : 0;
+   }
+   if (instr->type != nir_instr_type_intrinsic)
+      return 0;
+   nir_intrinsic_instr *load = nir_instr_as_intrinsic(instr);
+   if (load->intrinsic != nir_intrinsic_load_global_constant ||
+       load->def.bit_size != 64 || load->def.num_components != 1)
+      return 0;
+
+   nir_def *src = load->src[0].ssa;
+   nir_instr *src_instr = nir_def_instr(src);
+   if (src_instr->type == nir_instr_type_alu) {
+      nir_alu_instr *alu = nir_instr_as_alu(src_instr);
+      if (alu->op == nir_op_iadd) {
+         for (unsigned i = 0; i < 2; ++i) {
+            nir_instr *base = nir_def_instr(alu->src[i].src.ssa);
+            if (base->type == nir_instr_type_intrinsic &&
+                nir_instr_as_intrinsic(base)->intrinsic == nir_intrinsic_load_root_agx &&
+                nir_src_is_const(alu->src[1 - i].src) &&
+                nir_src_as_uint(alu->src[1 - i].src) ==
+                   hk_root_descriptor_offset(buffer_alias_table))
+               return 1;
+         }
+      }
+   }
+   return alias_table_level(src) == 1 ? 2 : 0;
+}
+
 /* Root/set addresses are driver metadata, not application pointers. Do not
  * add residency work to each descriptor lookup. Stop at a memory load: a BDA
  * read from push constants or an SSBO must still be checked at its pointee. */
@@ -108,7 +149,7 @@ lower_access(nir_builder *b, nir_intrinsic_instr *intr, UNUSED void *data)
 
    nir_def *address = intr->src[0].ssa;
    if (intr->intrinsic == nir_intrinsic_load_global_constant &&
-       is_descriptor_address(address))
+       (is_descriptor_address(address) || alias_table_level(address)))
       return false;
    assert(address->bit_size == 64);
    b->cursor =

@@ -386,3 +386,18 @@ optimization remains. The guards retained evidence and recovered normal
 SDDM/autologin after each timeout. Evidence:
 `20260918T141347465541Z-factorio-timestamp-compute-start-cts`,
 `20260918T141627894996Z-factorio-timestamp-compute-work-start-cts`.
+
+## Alias metadata residency work
+
+The strict-sparse pass was checking the residency of the driver's own alias
+lookup directory and leaves. Follow only the exact buffer_alias_table root
+field through two pointer levels to omit those checks. Application addresses
+loaded from the leaves, and arbitrary pointers from descriptors/push constants,
+still receive strict residency handling. Host tests cover both pointer chains
+through four dereferences, in addition to the existing byte/page tests.
+
+The retained Factorio frame is pixel-identical (zero differing pixels). The
+heaviest pass falls from about 15.3 ms to 14 ms; this is not a 60 FPS result.
+All 32 selected sparse-alias CTS cases pass. Evidence:
+`20260918T143742040678Z-factorio-alias-metadata-frame`,
+`20260918T143943993571Z-factorio-alias-metadata-cts`.
