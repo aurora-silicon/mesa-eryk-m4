@@ -182,3 +182,23 @@ offset avoids NTP drift across samples. Evidence:
 `20260918T111317290086Z-factorio-turnaround-clock-correlation`.
 Cross-domain clock offset uncertainty means this is diagnostic correlation,
 not yet proof of exact firmware-versus-host latency attribution.
+
+## Constant-program feasibility checkpoint (not enabled)
+
+Appending a compiler-generated fragment preamble to the native Ioto program
+is not qualified. Ordinary implicit sampling passed, but custom-border sampling
+returned incorrect pixels. Exporting only 32-bit values avoids the first encoder
+rejection; larger application shaders still require uniform writes outside the
+compact encoding's range. The opt-in prototype was removed from the driver.
+The diagnostic patch remains in the workspace build directory (it also contains
+pre-existing native-Buoy context and must not be blindly applied).
+
+Evidence: `20260918T115739889858Z-factorio-native-preamble32-oracles`,
+`20260918T120456449395Z-factorio-native-preamble32-frame`,
+`20260918T121529486376Z-factorio-preamble-border-ir`.
+
+`factorio-standalone-observe.py` now avoids screenshots and secondary guest
+process launches by default. `--observe-seconds N` observes the untouched menu
+for a bounded interval and stops the benchmark service afterwards;
+`--screenshot` explicitly requests a visual reference. This implements the
+user's request to stop using UI interaction while optimizing the driver.

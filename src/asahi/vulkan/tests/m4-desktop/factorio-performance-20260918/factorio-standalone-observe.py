@@ -18,6 +18,8 @@ p.add_argument('--output', type=Path, required=True)
 p.add_argument('--state', type=Path, required=True)
 p.add_argument('--launcher', required=True)
 p.add_argument('--seconds', type=int, default=480)
+p.add_argument('--observe-seconds', type=int, default=0, help='After initialization, measure this long then stop the benchmark service')
+p.add_argument('--screenshot', action='store_true', help='Explicitly request an initial visual reference')
 a = p.parse_args()
 assert 10 <= a.seconds <= 900
 guard = json.loads((a.output/'start.json').read_text())
@@ -77,18 +79,23 @@ try:
                 time.sleep(3)
                 assert child.poll() is None, 'Factorio exited just after initialization'
                 desktop = ['python3', '/root/steam-desktop-command.py']
-                with (a.output/'guest-processes.txt').open('w') as snapshot:
-                    subprocess.run(desktop + ['/usr/bin/muvm', '--privileged', '-i', '--',
-                        '/usr/bin/ps', '-eo', 'pid,ppid,comm,args'],
-                        stdout=snapshot, stderr=subprocess.STDOUT, check=True, timeout=10)
-                with (a.output/'factorio-menu.png').open('wb') as image:
-                    subprocess.run(desktop + ['/usr/bin/grim', '-o', 'eDP-1', '-'],
-                        stdout=image, check=True, timeout=10)
+                if a.screenshot:
+                    with (a.output/'factorio-menu.png').open('wb') as image:
+                        subprocess.run(desktop + ['/usr/bin/grim', '-o', 'eDP-1', '-'],
+                            stdout=image, check=True, timeout=10)
+                if a.observe_seconds:
+                    assert 0 < a.observe_seconds <= 120
+                    deadline = time.monotonic() + a.observe_seconds
+                    while time.monotonic() < deadline:
+                        assert child.poll() is None, 'Factorio exited during timing'
+                        time.sleep(.5)
                 subprocess.run(['systemctl', 'is-active', '--quiet', unit], check=True)
                 assert child.poll() is None, 'Factorio exited during final observation'
                 result = dict(initialized=True, launcher_elapsed_seconds=time.monotonic()-start,
                               vm_pids=vms(), launcher=a.launcher, state=str(a.state), unit=unit)
                 (a.output/'factorio-result.json').write_text(json.dumps(result, indent=2))
+                if a.observe_seconds:
+                    subprocess.run(['systemctl', 'stop', unit], check=True, timeout=15)
                 success = True
                 print('FACTORIO_STANDALONE_INITIALISED', json.dumps(result), flush=True)
                 break
