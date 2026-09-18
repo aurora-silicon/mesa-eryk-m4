@@ -353,12 +353,7 @@ raw_record_valid(const struct agx_ioto_load_core *core,
    }
 
    const enum agx_ioto_kind kind = raw_ioto_kind(raw->kind);
-   struct agx_ioto_record validated;
-   size_t consumed = 0;
-   return kind != AGX_IOTO_KIND_INVALID &&
-          agx_ioto_validate_kind(core->chip, kind, raw->bytes, raw->length,
-                                 &validated, &consumed) &&
-          consumed == raw->length;
+   return agx_ioto_check_kind(core->chip, kind, raw->bytes, raw->length);
 }
 
 static bool

@@ -133,14 +133,10 @@ g17p_type0_tail_valid(const struct agx_ioto_state_tail_output *packed_tail)
    };
    size_t offset = 0;
    for (size_t i = 0; i < sizeof(kinds) / sizeof(kinds[0]); ++i) {
-      struct agx_ioto_record record;
-      size_t consumed = 0;
-      if (!agx_ioto_validate_kind(
-             AGX_CHIP_G17P, kinds[i], packed_tail->bytes + offset,
-             packed_tail->length - offset, &record, &consumed) ||
-          consumed != sizes[i])
+      if (!agx_ioto_check_kind(AGX_CHIP_G17P, kinds[i],
+                                packed_tail->bytes + offset, sizes[i]))
          return false;
-      offset += consumed;
+      offset += sizes[i];
    }
 
    return offset == packed_tail->length &&

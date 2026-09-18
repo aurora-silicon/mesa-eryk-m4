@@ -210,6 +210,12 @@ check_form(enum agx_chip chip, const struct expected_form *form)
    uint8_t fixed_mask[AGX_IOTO_MAX_RECORD_SIZE];
    make_canonical(form, canonical, fixed_mask);
    CHECK(agx_ioto_kind_size(chip, form->kind) == form->length);
+   CHECK(agx_ioto_check_kind(chip, form->kind, canonical, form->length));
+   CHECK(!agx_ioto_check_kind(chip, form->kind, NULL, form->length));
+   for (size_t n = 0; n <= AGX_IOTO_MAX_RECORD_SIZE; n++) {
+      if (n != form->length)
+         CHECK(!agx_ioto_check_kind(chip, form->kind, canonical, n));
+   }
 
    uint8_t longer[AGX_IOTO_MAX_RECORD_SIZE + 3];
    memset(longer, 0xa5, sizeof(longer));
@@ -286,6 +292,7 @@ check_form(enum agx_chip chip, const struct expected_form *form)
          const bool valid = agx_ioto_validate_kind(
             chip, form->kind, mutated, form->length, &record, &consumed);
          CHECK(valid == !fixed);
+         CHECK(agx_ioto_check_kind(chip, form->kind, mutated, form->length) == valid);
 
          if (fixed) {
             CHECK(record_clear(&record));

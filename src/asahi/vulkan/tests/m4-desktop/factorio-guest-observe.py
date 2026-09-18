@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 import signal
+import shutil
 import subprocess
 import time
 
@@ -20,10 +21,11 @@ state = Path('/home/e/.local/share/factorio-standalone/demo-2.0.77')
 wall = time.time()
 perf = None
 with (out/'stderr.log').open('w') as log, (out/'cpu-samples.jsonl').open('w') as samples, (out/'perf.log').open('w') as perf_log:
-    p = subprocess.Popen(['/usr/bin/FEXInterpreter', '/home/e/Games/factorio-demo-2.0.77/bin/x64/factorio',
+    p = subprocess.Popen([os.environ.get('FACTORIO_FEX_INTERPRETER', '/usr/bin/FEXInterpreter'), '/home/e/Games/factorio-demo-2.0.77/bin/x64/factorio',
                           '--config', str(state/'config.ini')], stdout=log, stderr=log)
     started = time.monotonic()
     done = set()
+    perf_saved = False
     def stop(signum, frame):
         p.terminate()
     signal.signal(signal.SIGTERM, stop)
@@ -51,11 +53,21 @@ with (out/'stderr.log').open('w') as log, (out/'cpu-samples.jsonl').open('w') as
                     except OSError:
                         pass
             game_log = state/'factorio-current.log'
-            if os.environ.get('FACTORIO_DRIVER_PROFILE') == '1' and perf is None and game_log.exists() and game_log.stat().st_mtime >= wall and 'Factorio initialised' in game_log.read_text(errors='replace'):
+            if os.environ.get('FACTORIO_DRIVER_PROFILE') == '1' and perf is None and elapsed >= float(os.environ.get('FACTORIO_PROFILE_DELAY', '0')) and game_log.exists() and game_log.stat().st_mtime >= wall and 'Factorio initialised' in game_log.read_text(errors='replace'):
                 env = dict(os.environ, LD_LIBRARY_PATH='/opt/m4-profiling/usr/lib', DEBUGINFOD_URLS='')
                 perf = subprocess.Popen(['/opt/m4-profiling/usr/bin/perf', 'record', '-p', str(p.pid),
                     '-e', 'cpu-clock', '-F', '99', '-g', '-o', str(out/'menu.perf.data'), '--',
                     '/usr/bin/sleep', '8'], env=env, stdout=perf_log, stderr=perf_log)
+            if perf is not None and perf.poll() is not None and not perf_saved:
+                jit_map = Path(f'/tmp/perf-{p.pid}.map')
+                if jit_map.exists():
+                    shutil.copyfile(jit_map, out/jit_map.name)
+                env = dict(os.environ, LD_LIBRARY_PATH='/opt/m4-profiling/usr/lib', DEBUGINFOD_URLS='')
+                with (out/'menu.perf.script').open('w') as decoded:
+                    subprocess.run(['/opt/m4-profiling/usr/bin/perf', 'script', '-f',
+                        '-i', str(out/'menu.perf.data'), '-F', 'comm,tid,time,ip,sym,dso'],
+                        env=env, stdout=decoded, stderr=perf_log, timeout=5)
+                perf_saved = True
             time.sleep(.5)
     finally:
         if perf is not None and perf.poll() is None:

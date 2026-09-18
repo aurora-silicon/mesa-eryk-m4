@@ -106,14 +106,10 @@ agx_ioto_preshader_pack_branch(enum agx_chip chip, uint64_t target_va,
                                     (half_target >> source) & 1);
    }
 
-   struct agx_ioto_record record;
-   size_t consumed = 0;
-   if (!agx_ioto_validate_kind(chip, kind, staged, sizeof(staged), &record,
-                               &consumed) ||
-       consumed != sizeof(staged) || record.length != sizeof(staged))
+   if (!agx_ioto_check_kind(chip, kind, staged, sizeof(staged)))
       return false;
 
-   memcpy(out, record.bytes, sizeof(staged));
+   memcpy(out, staged, sizeof(staged));
    return true;
 }
 
@@ -184,12 +180,8 @@ agx_ioto_preshader_emit(enum agx_chip chip,
       staged.bytes[0] = gpu1 ? 0x04 : 0x0c;
       staged.bytes[1] = 0x10;
 
-      struct agx_ioto_record record;
-      size_t consumed = 0;
-      if (!agx_ioto_validate_kind(chip, AGX_IOTO_KIND_LDIMM_EP0, staged.bytes,
-                                  AGX_IOTO_PRESHADER_PRELUDE_SIZE, &record,
-                                  &consumed) ||
-          consumed != AGX_IOTO_PRESHADER_PRELUDE_SIZE)
+      if (!agx_ioto_check_kind(chip, AGX_IOTO_KIND_LDIMM_EP0, staged.bytes,
+                                AGX_IOTO_PRESHADER_PRELUDE_SIZE))
          return false;
 
       staged.length = AGX_IOTO_PRESHADER_PRELUDE_SIZE;

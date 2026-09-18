@@ -335,13 +335,10 @@ agx_ioto_state_pack_record(enum agx_chip chip,
       staged[i * 2 + 1] = (uint8_t)(words[i] >> 8);
    }
 
-   struct agx_ioto_record record;
-   size_t consumed = 0;
-   if (!agx_ioto_validate_kind(chip, kind, staged, size, &record, &consumed) ||
-       consumed != size || record.length != size)
+   if (!agx_ioto_check_kind(chip, kind, staged, size))
       return false;
 
-   memcpy(output, record.bytes, size);
+   memcpy(output, staged, size);
    return true;
 }
 

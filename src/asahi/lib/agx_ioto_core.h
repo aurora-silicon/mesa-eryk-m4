@@ -110,6 +110,10 @@ bool agx_ioto_validate_kind(enum agx_chip chip,
                             size_t available, struct agx_ioto_record *out,
                             size_t *consumed);
 
+/* Validate an exact record without materializing a decoded copy. */
+bool agx_ioto_check_kind(enum agx_chip chip, enum agx_ioto_kind expected,
+                         const void *stream, size_t length);
+
 /*
  * Decode only when exactly one target-valid form matches.  A truncated prefix
  * of any other form is treated as ambiguity and rejected rather than guessed.

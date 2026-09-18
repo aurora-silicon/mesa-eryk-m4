@@ -689,5 +689,27 @@ the existing path.
 
 `tools/gl-query-copy-probe.c` mode 6 writes twelve timestamps in a render pass,
 reuses the queries across rounds and checks GPU query-buffer values against
-CPU reads. It covers the eight-copy capacity and overflow fallback. Hardware
-qualification and Factorio timing are pending.
+CPU reads. It covers the eight-copy capacity and overflow fallback. The guarded check
+`20260918T210254160016Z-factorio-retirement-copy-queries` confirms eight
+retirement copies plus three shader copies, sixteen reused-query rounds all
+passing. `20260918T210805216428Z-factorio-retirement-copies-frame` has zero
+pixel differences. Menu `20260918T210320175462Z-factorio-retirement-copies-menu`
+averages 11.902 FPS (11.51–12.37), peak 62.75 C; no 60 FPS claim.
+
+## Ioto validation-only path
+
+FEX block naming in `20260918T211008616326Z-factorio-driver-block-profile`
+resolves steady-state samples to original Mesa function entries: 19 of 54
+Honeykrisp samples are in record validation/output clearing. Add an exact-size
+validation predicate for callers that only check a generated record, retaining
+the same target and fixed-bit grammar without constructing an unused decoded
+copy. State and preshader packers copy the validated original bytes.
+
+All five existing Ioto encoding/state/load/preshader/program host suites pass.
+The encoding mutation oracle also compares the new predicate, including exact
+length rejection. `20260918T211806963591Z-factorio-ioto-check-frame` matches the
+retained Factorio frame pixel-for-pixel. The uncached menu observation
+`20260918T211610888594Z-factorio-ioto-check-menu` averaged 10.620 FPS, with one
+3.198 FPS sample and otherwise up to 11.98; this does not demonstrate an FPS gain.
+Future performance observations enable a separate cache keyed by library hash
+and the chosen experimental compiler options; replay validation can disable it.

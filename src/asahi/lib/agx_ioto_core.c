@@ -361,6 +361,16 @@ agx_ioto_validate_kind(enum agx_chip chip, enum agx_ioto_kind expected,
 }
 
 bool
+agx_ioto_check_kind(enum agx_chip chip, enum agx_ioto_kind expected,
+                     const void *stream, size_t length)
+{
+   const struct agx_ioto_form *form =
+      agx_ioto_find_form(agx_ioto_target_encoding(chip), expected);
+   return form && stream && length == form->length &&
+          agx_ioto_prefix_matches(form, stream, length);
+}
+
+bool
 agx_ioto_decode_one(enum agx_chip chip, const void *stream, size_t available,
                     struct agx_ioto_record *out, size_t *consumed)
 {
