@@ -384,6 +384,9 @@ struct hk_cs {
    /* GPU timestamp resets must retire before firmware writes query results. */
    bool ends_timestamp_reset;
 
+   /* One no-op dispatch created solely to obtain a firmware timestamp. */
+   bool timestamp_only;
+
    /* M4 aliases need the firmware completion flush at a memory dependency. */
    bool ends_memory_dependency;
 
@@ -418,12 +421,9 @@ struct hk_cs {
       uint32_t calls, cmds, flushes, merged;
    } stats;
 
-   /* Timestamp writes. Currently just compute end / fragment end. We could
-    * flesh this out later if we want finer info. (We will, but it's not
-    * required for conformance.)
-    */
+   /* Native start timestamps can absorb a preceding timestamp-only command. */
    struct {
-      struct agx_timestamp_req end;
+      struct agx_timestamp_req start, end;
    } timestamp;
 
    /* Writable destinations known while recording meta compute dispatches. */
@@ -472,7 +472,7 @@ hk_cs_merge_cdm(struct hk_cs *a, const struct hk_cs *b)
 {
    assert(a->type == HK_CS_CDM && b->type == HK_CS_CDM);
    assert(a->cmd == b->cmd);
-   assert(!a->timestamp.end.handle);
+   assert(!a->timestamp.end.handle && !b->timestamp.start.handle);
 
    void *link_end =
       hk_cmd_buffer_emit_cs_jump(a->cmd, a->current, b->addr, false);
@@ -484,7 +484,8 @@ hk_cs_merge_cdm(struct hk_cs *a, const struct hk_cs *b)
    a->scratch.cs.main |= b->scratch.cs.main;
    a->scratch.cs.preamble |= b->scratch.cs.preamble;
 
-   a->timestamp = b->timestamp;
+   a->timestamp.end = b->timestamp.end;
+   a->timestamp_only = false;
    a->ends_timestamp_reset |= b->ends_timestamp_reset;
    a->ends_memory_dependency |= b->ends_memory_dependency;
 

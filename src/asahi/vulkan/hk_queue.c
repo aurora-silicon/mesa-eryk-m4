@@ -496,6 +496,11 @@ asahi_fill_vdm_command(struct hk_device *dev, struct hk_cs *cs,
       c->fragment_helper.binary = agx_helper_program(&dev->bg_eot);
    }
 
+   if (cs->timestamp.start.handle) {
+      c->ts_vtx.start.handle = cs->timestamp.start.handle;
+      c->ts_vtx.start.offset = cs->timestamp.start.offset_B;
+   }
+
    if (cs->timestamp.end.handle) {
       c->ts_frag.end.handle = cs->timestamp.end.handle;
       c->ts_frag.end.offset = cs->timestamp.end.offset_B;

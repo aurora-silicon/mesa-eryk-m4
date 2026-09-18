@@ -544,8 +544,24 @@ merge_control_streams(struct hk_cmd_buffer *cmd)
    struct hk_cs *last = NULL;
 
    list_for_each_entry_safe(struct hk_cs, cs, &cmd->control_streams, node) {
+      /* A timestamp-only command immediately before a render measures the
+       * same ordered boundary as that render's tiling-start timestamp. The
+       * native runtime completes all preceding commands before starting TA.
+       * Preserve resets and dependency boundaries, and never discard work
+       * that was subsequently appended to the no-op stream. */
+      if (agx_native_graphics(&hk_cmd_buffer_device(cmd)->dev) && last &&
+          last->timestamp_only && last->stats.cmds == 1 &&
+          last->timestamp.end.handle && !last->timestamp.start.handle &&
+          !last->ends_timestamp_reset && !last->ends_memory_dependency &&
+          cs->type == HK_CS_VDM && !cs->timestamp.start.handle) {
+         cs->timestamp.start = last->timestamp.end;
+         list_del(&last->node);
+         hk_cs_destroy(last);
+         last = cs;
+         continue;
+      }
       if (cs->type == HK_CS_CDM && last && last->type == HK_CS_CDM &&
-          !last->timestamp.end.handle &&
+          !last->timestamp.end.handle && !cs->timestamp.start.handle &&
           /* Reset-only successors can share the same completion flush. Keep
            * the boundary before the subsequent timestamp producer/consumer,
            * which runs through a different firmware memory agent. Zink emits

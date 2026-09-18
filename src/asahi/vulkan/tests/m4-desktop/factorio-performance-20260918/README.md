@@ -321,3 +321,29 @@ Evidence: `20260918T133635211344Z-factorio-prefetch-preamble-oracles`,
 `20260918T134335098155Z-factorio-arithmetic-preamble-minlod-capture`.
 Performance attribution remains under investigation; these short dynamic-menu
 observations alone do not establish the cost of each changed instruction.
+
+
+## Reuse a following render start for isolated timestamps
+
+A native timestamp-only compute immediately before a render now uses the
+render's tiling-start hardware timestamp. This preserves the serialized
+ordering while dropping the dummy dispatch. Reset and memory-dependency
+boundaries remain intact, and streams with appended work cannot be removed.
+The optimization does not apply to the non-native submission backend.
+
+934 timestamp cases: 908 Pass, 26 NotSupported, no failures. Retained Factorio
+frame: zero differing pixels. Untouched menu observation: 7.503 FPS; this
+short run does not establish an FPS improvement over the earlier 8.884 sample.
+The current menu scene changes over time. End-to-end 60 FPS remains unresolved.
+
+Evidence: `20260918T140326152890Z-factorio-timestamp-start-cts`,
+`20260918T140648327070Z-factorio-timestamp-start-frame`,
+`20260918T140755367963Z-factorio-timestamp-start-menu`.
+
+The command timing parser now uses every-command SubmitTiming records rather
+than only the last command in each packet. A 15-second baseline contained
+5347 compute commands, median GPU execution 8.79 us but median host-observed
+active duration 629 us. Render fragment work is also substantial. Separately,
+a temporary x86 resource-loader profiler measured only about 12 ms of CPU
+work per second across its two threads. That profiler was removed after use;
+retained guest mappings confirm the intended private ICD was loaded.

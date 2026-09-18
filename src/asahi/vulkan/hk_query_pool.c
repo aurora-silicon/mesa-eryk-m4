@@ -559,6 +559,7 @@ hk_CmdWriteTimestamp2(VkCommandBuffer commandBuffer,
       if (vk_command_buffer_has_error(&cmd->vk))
          return;
       cs = cmd->current_cs.cs;
+      cs->timestamp_only = true;
    }
 
    if (cs->timestamp.end.addr) {
