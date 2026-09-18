@@ -296,3 +296,28 @@ The initial untouched-menu observation with fragment descriptor prefetch
 measured 8.058 FPS, below the previous 9.470 FPS result. Prefetch remains
 opt-in while the wait correction and prefetch cost are measured separately.
 Evidence: `20260918T133129518087Z-factorio-prefetch-wait-menu-fps`.
+
+## Rejected arithmetic-only constant program
+
+The corrected resource wait does not alone qualify arbitrary constant-program
+memory loads: custom-border sampling still fails with either uniform or GPR
+load bases. Prefetched descriptors plus a native constant program pass all six
+focused sampling oracles. Restricting hoisting to arithmetic over prefetched
+uniforms also produces a pixel-identical Factorio frame. A larger preamble
+requires appending directly to the bounded command allocation, rather than the
+resource builder's 6144-byte staging array.
+
+Nevertheless the arithmetic-only prototype fails 32 image-view minimum-LOD
+cases (1897 Pass, 258 NotSupported out of 2187) and does not improve menu FPS
+(initial observation 7.174). It was removed, including the proposed NIR
+capability-filter callback. The experimental patch and compiler captures are
+retained outside the deployed driver. The independent wide-uniform COPY
+encoding fix remains, matched against the existing resource-loader fixture.
+
+Evidence: `20260918T133635211344Z-factorio-prefetch-preamble-oracles`,
+`20260918T134049312781Z-factorio-arithmetic-preamble-frame`,
+`20260918T134129293516Z-factorio-arithmetic-preamble-sampler-cts`,
+`20260918T134234141897Z-factorio-arithmetic-preamble-menu-fps`,
+`20260918T134335098155Z-factorio-arithmetic-preamble-minlod-capture`.
+Performance attribution remains under investigation; these short dynamic-menu
+observations alone do not establish the cost of each changed instruction.
