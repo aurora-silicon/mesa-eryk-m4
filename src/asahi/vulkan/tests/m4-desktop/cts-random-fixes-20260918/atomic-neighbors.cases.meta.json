@@ -1,0 +1,3081 @@
+{
+  "schema": 1,
+  "cases_sha256": "513f101ed2e3061941d153f90ab0db106758aba190224a5d6e5c0638234b3992",
+  "provenance": {
+    "catalog": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-ordered/catalog",
+    "catalog_sha256": "72c1bb9d2f9f0425ab8a4f570d78abdc1d3a34b82173ec76b772dedc477526bf",
+    "cts_revision": "vulkan-cts-1.4.6.2:f6a29701220f34dd1407513bfe80d74ca7b392ce",
+    "seed": 2026091801,
+    "method": "Targeted atomic64 and shared-memory ordering regression in frozen catalog order",
+    "capability_filter": false,
+    "result_filter": false
+  },
+  "cases": [
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.add_signed64bit_compute",
+      "catalog_index": 769268,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.add_signed64bit_compute_reference",
+      "catalog_index": 769269,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.add_signed64bit_compute_shared",
+      "catalog_index": 769270,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.add_signed64bit_fragment",
+      "catalog_index": 769271,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.add_signed64bit_fragment_reference",
+      "catalog_index": 769272,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.add_signed64bit_geometry",
+      "catalog_index": 769273,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.add_signed64bit_geometry_reference",
+      "catalog_index": 769274,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.add_signed64bit_mesh",
+      "catalog_index": 769275,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.add_signed64bit_mesh_reference",
+      "catalog_index": 769276,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.add_signed64bit_mesh_shared",
+      "catalog_index": 769277,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.add_signed64bit_task",
+      "catalog_index": 769278,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.add_signed64bit_task_payload",
+      "catalog_index": 769279,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.add_signed64bit_task_reference",
+      "catalog_index": 769280,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.add_signed64bit_task_shared",
+      "catalog_index": 769281,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.add_signed64bit_tess_ctrl",
+      "catalog_index": 769282,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.add_signed64bit_tess_ctrl_reference",
+      "catalog_index": 769283,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.add_signed64bit_tess_eval",
+      "catalog_index": 769284,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.add_signed64bit_tess_eval_reference",
+      "catalog_index": 769285,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.add_signed64bit_vertex",
+      "catalog_index": 769286,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.add_signed64bit_vertex_reference",
+      "catalog_index": 769287,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.add_unsigned64bit_compute",
+      "catalog_index": 769308,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.add_unsigned64bit_compute_reference",
+      "catalog_index": 769309,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.add_unsigned64bit_compute_shared",
+      "catalog_index": 769310,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.add_unsigned64bit_fragment",
+      "catalog_index": 769311,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.add_unsigned64bit_fragment_reference",
+      "catalog_index": 769312,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.add_unsigned64bit_geometry",
+      "catalog_index": 769313,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.add_unsigned64bit_geometry_reference",
+      "catalog_index": 769314,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.add_unsigned64bit_mesh",
+      "catalog_index": 769315,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.add_unsigned64bit_mesh_reference",
+      "catalog_index": 769316,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.add_unsigned64bit_mesh_shared",
+      "catalog_index": 769317,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.add_unsigned64bit_task",
+      "catalog_index": 769318,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.add_unsigned64bit_task_payload",
+      "catalog_index": 769319,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.add_unsigned64bit_task_reference",
+      "catalog_index": 769320,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.add_unsigned64bit_task_shared",
+      "catalog_index": 769321,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.add_unsigned64bit_tess_ctrl",
+      "catalog_index": 769322,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.add_unsigned64bit_tess_ctrl_reference",
+      "catalog_index": 769323,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.add_unsigned64bit_tess_eval",
+      "catalog_index": 769324,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.add_unsigned64bit_tess_eval_reference",
+      "catalog_index": 769325,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.add_unsigned64bit_vertex",
+      "catalog_index": 769326,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.add_unsigned64bit_vertex_reference",
+      "catalog_index": 769327,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.and_signed64bit_compute",
+      "catalog_index": 769348,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.and_signed64bit_compute_reference",
+      "catalog_index": 769349,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.and_signed64bit_compute_shared",
+      "catalog_index": 769350,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.and_signed64bit_fragment",
+      "catalog_index": 769351,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.and_signed64bit_fragment_reference",
+      "catalog_index": 769352,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.and_signed64bit_geometry",
+      "catalog_index": 769353,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.and_signed64bit_geometry_reference",
+      "catalog_index": 769354,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.and_signed64bit_mesh",
+      "catalog_index": 769355,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.and_signed64bit_mesh_reference",
+      "catalog_index": 769356,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.and_signed64bit_mesh_shared",
+      "catalog_index": 769357,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.and_signed64bit_task",
+      "catalog_index": 769358,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.and_signed64bit_task_payload",
+      "catalog_index": 769359,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.and_signed64bit_task_reference",
+      "catalog_index": 769360,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.and_signed64bit_task_shared",
+      "catalog_index": 769361,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.and_signed64bit_tess_ctrl",
+      "catalog_index": 769362,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.and_signed64bit_tess_ctrl_reference",
+      "catalog_index": 769363,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.and_signed64bit_tess_eval",
+      "catalog_index": 769364,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.and_signed64bit_tess_eval_reference",
+      "catalog_index": 769365,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.and_signed64bit_vertex",
+      "catalog_index": 769366,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.and_signed64bit_vertex_reference",
+      "catalog_index": 769367,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.and_unsigned64bit_compute",
+      "catalog_index": 769388,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.and_unsigned64bit_compute_reference",
+      "catalog_index": 769389,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.and_unsigned64bit_compute_shared",
+      "catalog_index": 769390,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.and_unsigned64bit_fragment",
+      "catalog_index": 769391,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.and_unsigned64bit_fragment_reference",
+      "catalog_index": 769392,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.and_unsigned64bit_geometry",
+      "catalog_index": 769393,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.and_unsigned64bit_geometry_reference",
+      "catalog_index": 769394,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.and_unsigned64bit_mesh",
+      "catalog_index": 769395,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.and_unsigned64bit_mesh_reference",
+      "catalog_index": 769396,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.and_unsigned64bit_mesh_shared",
+      "catalog_index": 769397,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.and_unsigned64bit_task",
+      "catalog_index": 769398,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.and_unsigned64bit_task_payload",
+      "catalog_index": 769399,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.and_unsigned64bit_task_reference",
+      "catalog_index": 769400,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.and_unsigned64bit_task_shared",
+      "catalog_index": 769401,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.and_unsigned64bit_tess_ctrl",
+      "catalog_index": 769402,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.and_unsigned64bit_tess_ctrl_reference",
+      "catalog_index": 769403,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.and_unsigned64bit_tess_eval",
+      "catalog_index": 769404,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.and_unsigned64bit_tess_eval_reference",
+      "catalog_index": 769405,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.and_unsigned64bit_vertex",
+      "catalog_index": 769406,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.and_unsigned64bit_vertex_reference",
+      "catalog_index": 769407,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.comp_swap_signed64bit_compute",
+      "catalog_index": 769428,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.comp_swap_signed64bit_compute_reference",
+      "catalog_index": 769429,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.comp_swap_signed64bit_compute_shared",
+      "catalog_index": 769430,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.comp_swap_signed64bit_fragment",
+      "catalog_index": 769431,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.comp_swap_signed64bit_fragment_reference",
+      "catalog_index": 769432,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.comp_swap_signed64bit_geometry",
+      "catalog_index": 769433,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.comp_swap_signed64bit_geometry_reference",
+      "catalog_index": 769434,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.comp_swap_signed64bit_mesh",
+      "catalog_index": 769435,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.comp_swap_signed64bit_mesh_reference",
+      "catalog_index": 769436,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.comp_swap_signed64bit_mesh_shared",
+      "catalog_index": 769437,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.comp_swap_signed64bit_task",
+      "catalog_index": 769438,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.comp_swap_signed64bit_task_payload",
+      "catalog_index": 769439,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.comp_swap_signed64bit_task_reference",
+      "catalog_index": 769440,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.comp_swap_signed64bit_task_shared",
+      "catalog_index": 769441,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.comp_swap_signed64bit_tess_ctrl",
+      "catalog_index": 769442,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.comp_swap_signed64bit_tess_ctrl_reference",
+      "catalog_index": 769443,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.comp_swap_signed64bit_tess_eval",
+      "catalog_index": 769444,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.comp_swap_signed64bit_tess_eval_reference",
+      "catalog_index": 769445,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.comp_swap_signed64bit_vertex",
+      "catalog_index": 769446,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.comp_swap_signed64bit_vertex_reference",
+      "catalog_index": 769447,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.comp_swap_unsigned64bit_compute",
+      "catalog_index": 769468,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.comp_swap_unsigned64bit_compute_reference",
+      "catalog_index": 769469,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.comp_swap_unsigned64bit_compute_shared",
+      "catalog_index": 769470,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.comp_swap_unsigned64bit_fragment",
+      "catalog_index": 769471,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.comp_swap_unsigned64bit_fragment_reference",
+      "catalog_index": 769472,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.comp_swap_unsigned64bit_geometry",
+      "catalog_index": 769473,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.comp_swap_unsigned64bit_geometry_reference",
+      "catalog_index": 769474,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.comp_swap_unsigned64bit_mesh",
+      "catalog_index": 769475,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.comp_swap_unsigned64bit_mesh_reference",
+      "catalog_index": 769476,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.comp_swap_unsigned64bit_mesh_shared",
+      "catalog_index": 769477,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.comp_swap_unsigned64bit_task",
+      "catalog_index": 769478,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.comp_swap_unsigned64bit_task_payload",
+      "catalog_index": 769479,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.comp_swap_unsigned64bit_task_reference",
+      "catalog_index": 769480,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.comp_swap_unsigned64bit_task_shared",
+      "catalog_index": 769481,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.comp_swap_unsigned64bit_tess_ctrl",
+      "catalog_index": 769482,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.comp_swap_unsigned64bit_tess_ctrl_reference",
+      "catalog_index": 769483,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.comp_swap_unsigned64bit_tess_eval",
+      "catalog_index": 769484,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.comp_swap_unsigned64bit_tess_eval_reference",
+      "catalog_index": 769485,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.comp_swap_unsigned64bit_vertex",
+      "catalog_index": 769486,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.comp_swap_unsigned64bit_vertex_reference",
+      "catalog_index": 769487,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.exchange_signed64bit_compute",
+      "catalog_index": 769608,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.exchange_signed64bit_compute_reference",
+      "catalog_index": 769609,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.exchange_signed64bit_compute_shared",
+      "catalog_index": 769610,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.exchange_signed64bit_fragment",
+      "catalog_index": 769611,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.exchange_signed64bit_fragment_reference",
+      "catalog_index": 769612,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.exchange_signed64bit_geometry",
+      "catalog_index": 769613,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.exchange_signed64bit_geometry_reference",
+      "catalog_index": 769614,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.exchange_signed64bit_mesh",
+      "catalog_index": 769615,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.exchange_signed64bit_mesh_reference",
+      "catalog_index": 769616,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.exchange_signed64bit_mesh_shared",
+      "catalog_index": 769617,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.exchange_signed64bit_task",
+      "catalog_index": 769618,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.exchange_signed64bit_task_payload",
+      "catalog_index": 769619,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.exchange_signed64bit_task_reference",
+      "catalog_index": 769620,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.exchange_signed64bit_task_shared",
+      "catalog_index": 769621,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.exchange_signed64bit_tess_ctrl",
+      "catalog_index": 769622,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.exchange_signed64bit_tess_ctrl_reference",
+      "catalog_index": 769623,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.exchange_signed64bit_tess_eval",
+      "catalog_index": 769624,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.exchange_signed64bit_tess_eval_reference",
+      "catalog_index": 769625,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.exchange_signed64bit_vertex",
+      "catalog_index": 769626,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.exchange_signed64bit_vertex_reference",
+      "catalog_index": 769627,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.exchange_unsigned64bit_compute",
+      "catalog_index": 769648,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.exchange_unsigned64bit_compute_reference",
+      "catalog_index": 769649,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.exchange_unsigned64bit_compute_shared",
+      "catalog_index": 769650,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.exchange_unsigned64bit_fragment",
+      "catalog_index": 769651,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.exchange_unsigned64bit_fragment_reference",
+      "catalog_index": 769652,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.exchange_unsigned64bit_geometry",
+      "catalog_index": 769653,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.exchange_unsigned64bit_geometry_reference",
+      "catalog_index": 769654,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.exchange_unsigned64bit_mesh",
+      "catalog_index": 769655,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.exchange_unsigned64bit_mesh_reference",
+      "catalog_index": 769656,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.exchange_unsigned64bit_mesh_shared",
+      "catalog_index": 769657,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.exchange_unsigned64bit_task",
+      "catalog_index": 769658,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.exchange_unsigned64bit_task_payload",
+      "catalog_index": 769659,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.exchange_unsigned64bit_task_reference",
+      "catalog_index": 769660,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.exchange_unsigned64bit_task_shared",
+      "catalog_index": 769661,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.exchange_unsigned64bit_tess_ctrl",
+      "catalog_index": 769662,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.exchange_unsigned64bit_tess_ctrl_reference",
+      "catalog_index": 769663,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.exchange_unsigned64bit_tess_eval",
+      "catalog_index": 769664,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.exchange_unsigned64bit_tess_eval_reference",
+      "catalog_index": 769665,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.exchange_unsigned64bit_vertex",
+      "catalog_index": 769666,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.exchange_unsigned64bit_vertex_reference",
+      "catalog_index": 769667,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.max_signed64bit_compute",
+      "catalog_index": 769788,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.max_signed64bit_compute_reference",
+      "catalog_index": 769789,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.max_signed64bit_compute_shared",
+      "catalog_index": 769790,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.max_signed64bit_fragment",
+      "catalog_index": 769791,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.max_signed64bit_fragment_reference",
+      "catalog_index": 769792,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.max_signed64bit_geometry",
+      "catalog_index": 769793,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.max_signed64bit_geometry_reference",
+      "catalog_index": 769794,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.max_signed64bit_mesh",
+      "catalog_index": 769795,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.max_signed64bit_mesh_reference",
+      "catalog_index": 769796,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.max_signed64bit_mesh_shared",
+      "catalog_index": 769797,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.max_signed64bit_task",
+      "catalog_index": 769798,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.max_signed64bit_task_payload",
+      "catalog_index": 769799,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.max_signed64bit_task_reference",
+      "catalog_index": 769800,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.max_signed64bit_task_shared",
+      "catalog_index": 769801,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.max_signed64bit_tess_ctrl",
+      "catalog_index": 769802,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.max_signed64bit_tess_ctrl_reference",
+      "catalog_index": 769803,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.max_signed64bit_tess_eval",
+      "catalog_index": 769804,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.max_signed64bit_tess_eval_reference",
+      "catalog_index": 769805,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.max_signed64bit_vertex",
+      "catalog_index": 769806,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.max_signed64bit_vertex_reference",
+      "catalog_index": 769807,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.max_unsigned64bit_compute",
+      "catalog_index": 769828,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.max_unsigned64bit_compute_reference",
+      "catalog_index": 769829,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.max_unsigned64bit_compute_shared",
+      "catalog_index": 769830,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.max_unsigned64bit_fragment",
+      "catalog_index": 769831,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.max_unsigned64bit_fragment_reference",
+      "catalog_index": 769832,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.max_unsigned64bit_geometry",
+      "catalog_index": 769833,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.max_unsigned64bit_geometry_reference",
+      "catalog_index": 769834,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.max_unsigned64bit_mesh",
+      "catalog_index": 769835,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.max_unsigned64bit_mesh_reference",
+      "catalog_index": 769836,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.max_unsigned64bit_mesh_shared",
+      "catalog_index": 769837,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.max_unsigned64bit_task",
+      "catalog_index": 769838,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.max_unsigned64bit_task_payload",
+      "catalog_index": 769839,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.max_unsigned64bit_task_reference",
+      "catalog_index": 769840,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.max_unsigned64bit_task_shared",
+      "catalog_index": 769841,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.max_unsigned64bit_tess_ctrl",
+      "catalog_index": 769842,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.max_unsigned64bit_tess_ctrl_reference",
+      "catalog_index": 769843,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.max_unsigned64bit_tess_eval",
+      "catalog_index": 769844,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.max_unsigned64bit_tess_eval_reference",
+      "catalog_index": 769845,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.max_unsigned64bit_vertex",
+      "catalog_index": 769846,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.max_unsigned64bit_vertex_reference",
+      "catalog_index": 769847,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.min_signed64bit_compute",
+      "catalog_index": 769968,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.min_signed64bit_compute_reference",
+      "catalog_index": 769969,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.min_signed64bit_compute_shared",
+      "catalog_index": 769970,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.min_signed64bit_fragment",
+      "catalog_index": 769971,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.min_signed64bit_fragment_reference",
+      "catalog_index": 769972,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.min_signed64bit_geometry",
+      "catalog_index": 769973,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.min_signed64bit_geometry_reference",
+      "catalog_index": 769974,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.min_signed64bit_mesh",
+      "catalog_index": 769975,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.min_signed64bit_mesh_reference",
+      "catalog_index": 769976,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.min_signed64bit_mesh_shared",
+      "catalog_index": 769977,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.min_signed64bit_task",
+      "catalog_index": 769978,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.min_signed64bit_task_payload",
+      "catalog_index": 769979,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.min_signed64bit_task_reference",
+      "catalog_index": 769980,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.min_signed64bit_task_shared",
+      "catalog_index": 769981,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.min_signed64bit_tess_ctrl",
+      "catalog_index": 769982,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.min_signed64bit_tess_ctrl_reference",
+      "catalog_index": 769983,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.min_signed64bit_tess_eval",
+      "catalog_index": 769984,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.min_signed64bit_tess_eval_reference",
+      "catalog_index": 769985,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.min_signed64bit_vertex",
+      "catalog_index": 769986,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.min_signed64bit_vertex_reference",
+      "catalog_index": 769987,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.min_unsigned64bit_compute",
+      "catalog_index": 770008,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.min_unsigned64bit_compute_reference",
+      "catalog_index": 770009,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.min_unsigned64bit_compute_shared",
+      "catalog_index": 770010,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.min_unsigned64bit_fragment",
+      "catalog_index": 770011,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.min_unsigned64bit_fragment_reference",
+      "catalog_index": 770012,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.min_unsigned64bit_geometry",
+      "catalog_index": 770013,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.min_unsigned64bit_geometry_reference",
+      "catalog_index": 770014,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.min_unsigned64bit_mesh",
+      "catalog_index": 770015,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.min_unsigned64bit_mesh_reference",
+      "catalog_index": 770016,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.min_unsigned64bit_mesh_shared",
+      "catalog_index": 770017,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.min_unsigned64bit_task",
+      "catalog_index": 770018,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.min_unsigned64bit_task_payload",
+      "catalog_index": 770019,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.min_unsigned64bit_task_reference",
+      "catalog_index": 770020,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.min_unsigned64bit_task_shared",
+      "catalog_index": 770021,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.min_unsigned64bit_tess_ctrl",
+      "catalog_index": 770022,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.min_unsigned64bit_tess_ctrl_reference",
+      "catalog_index": 770023,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.min_unsigned64bit_tess_eval",
+      "catalog_index": 770024,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.min_unsigned64bit_tess_eval_reference",
+      "catalog_index": 770025,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.min_unsigned64bit_vertex",
+      "catalog_index": 770026,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.min_unsigned64bit_vertex_reference",
+      "catalog_index": 770027,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.or_signed64bit_compute",
+      "catalog_index": 770048,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.or_signed64bit_compute_reference",
+      "catalog_index": 770049,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.or_signed64bit_compute_shared",
+      "catalog_index": 770050,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.or_signed64bit_fragment",
+      "catalog_index": 770051,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.or_signed64bit_fragment_reference",
+      "catalog_index": 770052,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.or_signed64bit_geometry",
+      "catalog_index": 770053,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.or_signed64bit_geometry_reference",
+      "catalog_index": 770054,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.or_signed64bit_mesh",
+      "catalog_index": 770055,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.or_signed64bit_mesh_reference",
+      "catalog_index": 770056,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.or_signed64bit_mesh_shared",
+      "catalog_index": 770057,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.or_signed64bit_task",
+      "catalog_index": 770058,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.or_signed64bit_task_payload",
+      "catalog_index": 770059,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.or_signed64bit_task_reference",
+      "catalog_index": 770060,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.or_signed64bit_task_shared",
+      "catalog_index": 770061,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.or_signed64bit_tess_ctrl",
+      "catalog_index": 770062,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.or_signed64bit_tess_ctrl_reference",
+      "catalog_index": 770063,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.or_signed64bit_tess_eval",
+      "catalog_index": 770064,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.or_signed64bit_tess_eval_reference",
+      "catalog_index": 770065,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.or_signed64bit_vertex",
+      "catalog_index": 770066,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.or_signed64bit_vertex_reference",
+      "catalog_index": 770067,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.or_unsigned64bit_compute",
+      "catalog_index": 770088,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.or_unsigned64bit_compute_reference",
+      "catalog_index": 770089,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.or_unsigned64bit_compute_shared",
+      "catalog_index": 770090,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.or_unsigned64bit_fragment",
+      "catalog_index": 770091,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.or_unsigned64bit_fragment_reference",
+      "catalog_index": 770092,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.or_unsigned64bit_geometry",
+      "catalog_index": 770093,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.or_unsigned64bit_geometry_reference",
+      "catalog_index": 770094,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.or_unsigned64bit_mesh",
+      "catalog_index": 770095,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.or_unsigned64bit_mesh_reference",
+      "catalog_index": 770096,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.or_unsigned64bit_mesh_shared",
+      "catalog_index": 770097,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.or_unsigned64bit_task",
+      "catalog_index": 770098,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.or_unsigned64bit_task_payload",
+      "catalog_index": 770099,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.or_unsigned64bit_task_reference",
+      "catalog_index": 770100,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.or_unsigned64bit_task_shared",
+      "catalog_index": 770101,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.or_unsigned64bit_tess_ctrl",
+      "catalog_index": 770102,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.or_unsigned64bit_tess_ctrl_reference",
+      "catalog_index": 770103,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.or_unsigned64bit_tess_eval",
+      "catalog_index": 770104,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.or_unsigned64bit_tess_eval_reference",
+      "catalog_index": 770105,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.or_unsigned64bit_vertex",
+      "catalog_index": 770106,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.or_unsigned64bit_vertex_reference",
+      "catalog_index": 770107,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.xor_signed64bit_compute",
+      "catalog_index": 770128,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.xor_signed64bit_compute_reference",
+      "catalog_index": 770129,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.xor_signed64bit_compute_shared",
+      "catalog_index": 770130,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.xor_signed64bit_fragment",
+      "catalog_index": 770131,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.xor_signed64bit_fragment_reference",
+      "catalog_index": 770132,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.xor_signed64bit_geometry",
+      "catalog_index": 770133,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.xor_signed64bit_geometry_reference",
+      "catalog_index": 770134,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.xor_signed64bit_mesh",
+      "catalog_index": 770135,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.xor_signed64bit_mesh_reference",
+      "catalog_index": 770136,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.xor_signed64bit_mesh_shared",
+      "catalog_index": 770137,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.xor_signed64bit_task",
+      "catalog_index": 770138,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.xor_signed64bit_task_payload",
+      "catalog_index": 770139,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.xor_signed64bit_task_reference",
+      "catalog_index": 770140,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.xor_signed64bit_task_shared",
+      "catalog_index": 770141,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.xor_signed64bit_tess_ctrl",
+      "catalog_index": 770142,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.xor_signed64bit_tess_ctrl_reference",
+      "catalog_index": 770143,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.xor_signed64bit_tess_eval",
+      "catalog_index": 770144,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.xor_signed64bit_tess_eval_reference",
+      "catalog_index": 770145,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.xor_signed64bit_vertex",
+      "catalog_index": 770146,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.xor_signed64bit_vertex_reference",
+      "catalog_index": 770147,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.xor_unsigned64bit_compute",
+      "catalog_index": 770168,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.xor_unsigned64bit_compute_reference",
+      "catalog_index": 770169,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.xor_unsigned64bit_compute_shared",
+      "catalog_index": 770170,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.xor_unsigned64bit_fragment",
+      "catalog_index": 770171,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.xor_unsigned64bit_fragment_reference",
+      "catalog_index": 770172,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.xor_unsigned64bit_geometry",
+      "catalog_index": 770173,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.xor_unsigned64bit_geometry_reference",
+      "catalog_index": 770174,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.xor_unsigned64bit_mesh",
+      "catalog_index": 770175,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.xor_unsigned64bit_mesh_reference",
+      "catalog_index": 770176,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.xor_unsigned64bit_mesh_shared",
+      "catalog_index": 770177,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.xor_unsigned64bit_task",
+      "catalog_index": 770178,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.xor_unsigned64bit_task_payload",
+      "catalog_index": 770179,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.xor_unsigned64bit_task_reference",
+      "catalog_index": 770180,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.xor_unsigned64bit_task_shared",
+      "catalog_index": 770181,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.xor_unsigned64bit_tess_ctrl",
+      "catalog_index": 770182,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.xor_unsigned64bit_tess_ctrl_reference",
+      "catalog_index": 770183,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.xor_unsigned64bit_tess_eval",
+      "catalog_index": 770184,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.xor_unsigned64bit_tess_eval_reference",
+      "catalog_index": 770185,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.xor_unsigned64bit_vertex",
+      "catalog_index": 770186,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.glsl.atomic_operations.xor_unsigned64bit_vertex_reference",
+      "catalog_index": 770187,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.core11.u32.coherent.fence_fence.atomicwrite.device.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 938612,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.core11.u32.coherent.fence_fence.atomicwrite.subgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 938669,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.core11.u32.coherent.fence_fence.atomicwrite.workgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 938694,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u32.coherent.atomic_atomic.atomicrmw.device.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 941247,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u32.coherent.atomic_atomic.atomicrmw.queuefamily.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 941368,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u32.coherent.atomic_atomic.atomicrmw.subgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 941489,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u32.coherent.atomic_atomic.atomicrmw.workgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 941538,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u32.coherent.atomic_atomic.atomicwrite.device.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 941659,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u32.coherent.atomic_atomic.atomicwrite.queuefamily.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 941780,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u32.coherent.atomic_atomic.atomicwrite.subgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 941901,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u32.coherent.atomic_atomic.atomicwrite.workgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 941950,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u32.coherent.atomic_fence.atomicwrite.device.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 942071,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u32.coherent.atomic_fence.atomicwrite.queuefamily.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 942192,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u32.coherent.atomic_fence.atomicwrite.subgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 942313,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u32.coherent.atomic_fence.atomicwrite.workgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 942362,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u32.coherent.fence_atomic.atomicwrite.device.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 942511,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u32.coherent.fence_atomic.atomicwrite.queuefamily.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 942632,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u32.coherent.fence_atomic.atomicwrite.subgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 942753,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u32.coherent.fence_atomic.atomicwrite.workgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 942802,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u32.coherent.fence_fence.atomicwrite.device.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 942923,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u32.coherent.fence_fence.atomicwrite.queuefamily.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 943044,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u32.coherent.fence_fence.atomicwrite.subgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 943165,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u32.coherent.fence_fence.atomicwrite.workgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 943214,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u32.noncoherent.atomic_atomic.atomicrmw.device.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 943335,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u32.noncoherent.atomic_atomic.atomicrmw.queuefamily.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 943456,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u32.noncoherent.atomic_atomic.atomicrmw.subgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 943577,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u32.noncoherent.atomic_atomic.atomicrmw.workgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 943626,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u32.noncoherent.atomic_atomic.atomicwrite.device.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 943747,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u32.noncoherent.atomic_atomic.atomicwrite.queuefamily.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 943868,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u32.noncoherent.atomic_atomic.atomicwrite.subgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 943989,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u32.noncoherent.atomic_atomic.atomicwrite.workgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 944038,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u32.noncoherent.atomic_fence.atomicwrite.device.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 944159,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u32.noncoherent.atomic_fence.atomicwrite.queuefamily.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 944280,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u32.noncoherent.atomic_fence.atomicwrite.subgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 944401,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u32.noncoherent.atomic_fence.atomicwrite.workgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 944450,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u32.noncoherent.fence_atomic.atomicwrite.device.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 944599,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u32.noncoherent.fence_atomic.atomicwrite.queuefamily.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 944720,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u32.noncoherent.fence_atomic.atomicwrite.subgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 944841,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u32.noncoherent.fence_atomic.atomicwrite.workgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 944890,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u32.noncoherent.fence_fence.atomicwrite.device.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 945011,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u32.noncoherent.fence_fence.atomicwrite.queuefamily.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 945132,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u32.noncoherent.fence_fence.atomicwrite.subgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 945253,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u32.noncoherent.fence_fence.atomicwrite.workgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 945302,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u64.coherent.atomic_atomic.atomicrmw.device.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 945411,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u64.coherent.atomic_atomic.atomicrmw.queuefamily.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 945520,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u64.coherent.atomic_atomic.atomicrmw.subgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 945629,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u64.coherent.atomic_atomic.atomicrmw.workgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 945674,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u64.coherent.atomic_atomic.atomicwrite.device.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 945783,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u64.coherent.atomic_atomic.atomicwrite.queuefamily.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 945892,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u64.coherent.atomic_atomic.atomicwrite.subgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 946001,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u64.coherent.atomic_atomic.atomicwrite.workgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 946046,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u64.noncoherent.atomic_atomic.atomicrmw.device.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 946155,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u64.noncoherent.atomic_atomic.atomicrmw.queuefamily.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 946264,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u64.noncoherent.atomic_atomic.atomicrmw.subgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 946373,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u64.noncoherent.atomic_atomic.atomicrmw.workgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 946418,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u64.noncoherent.atomic_atomic.atomicwrite.device.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 946527,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u64.noncoherent.atomic_atomic.atomicwrite.queuefamily.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 946636,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u64.noncoherent.atomic_atomic.atomicwrite.subgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 946745,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.message_passing.ext.u64.noncoherent.atomic_atomic.atomicwrite.workgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 946790,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.core11.u32.coherent.fence_fence.atomicwrite.device.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 947657,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.core11.u32.coherent.fence_fence.atomicwrite.subgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 947714,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.core11.u32.coherent.fence_fence.atomicwrite.workgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 947739,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u32.coherent.atomic_atomic.atomicrmw.device.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 950292,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u32.coherent.atomic_atomic.atomicrmw.queuefamily.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 950413,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u32.coherent.atomic_atomic.atomicrmw.subgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 950534,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u32.coherent.atomic_atomic.atomicrmw.workgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 950583,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u32.coherent.atomic_atomic.atomicwrite.device.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 950704,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u32.coherent.atomic_atomic.atomicwrite.queuefamily.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 950825,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u32.coherent.atomic_atomic.atomicwrite.subgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 950946,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u32.coherent.atomic_atomic.atomicwrite.workgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 950995,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u32.coherent.atomic_fence.atomicwrite.device.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 951116,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u32.coherent.atomic_fence.atomicwrite.queuefamily.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 951237,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u32.coherent.atomic_fence.atomicwrite.subgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 951358,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u32.coherent.atomic_fence.atomicwrite.workgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 951407,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u32.coherent.fence_atomic.atomicwrite.device.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 951556,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u32.coherent.fence_atomic.atomicwrite.queuefamily.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 951677,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u32.coherent.fence_atomic.atomicwrite.subgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 951798,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u32.coherent.fence_atomic.atomicwrite.workgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 951847,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u32.coherent.fence_fence.atomicwrite.device.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 951968,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u32.coherent.fence_fence.atomicwrite.queuefamily.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 952089,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u32.coherent.fence_fence.atomicwrite.subgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 952210,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u32.coherent.fence_fence.atomicwrite.workgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 952259,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u32.noncoherent.atomic_atomic.atomicrmw.device.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 952380,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u32.noncoherent.atomic_atomic.atomicrmw.queuefamily.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 952501,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u32.noncoherent.atomic_atomic.atomicrmw.subgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 952622,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u32.noncoherent.atomic_atomic.atomicrmw.workgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 952671,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u32.noncoherent.atomic_atomic.atomicwrite.device.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 952792,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u32.noncoherent.atomic_atomic.atomicwrite.queuefamily.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 952913,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u32.noncoherent.atomic_atomic.atomicwrite.subgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 953034,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u32.noncoherent.atomic_atomic.atomicwrite.workgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 953083,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u32.noncoherent.atomic_fence.atomicwrite.device.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 953204,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u32.noncoherent.atomic_fence.atomicwrite.queuefamily.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 953325,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u32.noncoherent.atomic_fence.atomicwrite.subgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 953446,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u32.noncoherent.atomic_fence.atomicwrite.workgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 953495,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u32.noncoherent.fence_atomic.atomicwrite.device.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 953644,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u32.noncoherent.fence_atomic.atomicwrite.queuefamily.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 953765,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u32.noncoherent.fence_atomic.atomicwrite.subgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 953886,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u32.noncoherent.fence_atomic.atomicwrite.workgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 953935,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u32.noncoherent.fence_fence.atomicwrite.device.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 954056,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u32.noncoherent.fence_fence.atomicwrite.queuefamily.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 954177,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u32.noncoherent.fence_fence.atomicwrite.subgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 954298,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u32.noncoherent.fence_fence.atomicwrite.workgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 954347,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u64.coherent.atomic_atomic.atomicrmw.device.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 954456,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u64.coherent.atomic_atomic.atomicrmw.queuefamily.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 954565,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u64.coherent.atomic_atomic.atomicrmw.subgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 954674,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u64.coherent.atomic_atomic.atomicrmw.workgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 954719,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u64.coherent.atomic_atomic.atomicwrite.device.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 954828,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u64.coherent.atomic_atomic.atomicwrite.queuefamily.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 954937,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u64.coherent.atomic_atomic.atomicwrite.subgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 955046,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u64.coherent.atomic_atomic.atomicwrite.workgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 955091,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u64.noncoherent.atomic_atomic.atomicrmw.device.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 955200,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u64.noncoherent.atomic_atomic.atomicrmw.queuefamily.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 955309,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u64.noncoherent.atomic_atomic.atomicrmw.subgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 955418,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u64.noncoherent.atomic_atomic.atomicrmw.workgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 955463,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u64.noncoherent.atomic_atomic.atomicwrite.device.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 955572,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u64.noncoherent.atomic_atomic.atomicwrite.queuefamily.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 955681,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u64.noncoherent.atomic_atomic.atomicwrite.subgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 955790,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u64.noncoherent.atomic_atomic.atomicwrite.workgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 955835,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Atomic64 and neighboring shared-memory ordering regression"
+    }
+  ]
+}

@@ -33,7 +33,8 @@ pass: `20260918T071255781618Z-cts-fixes-api-neighbors`, peak 61.5 C,
 library identities are retained under `build/cts-fixes-20260918/` and the
 corresponding `_provenance/experiments/` directories.
 
-The memory-model device loss remains outstanding at this checkpoint.
+The memory-model device loss was still outstanding at this checkpoint; its fix
+and final validation are recorded below.
 
 ## Register allocation at phi nodes
 
@@ -57,3 +58,79 @@ and an assertion while printing an intentionally invalid packer operand;
 those tests do not exercise this RA path. Their output is retained in
 `build/cts-fixes-20260918/compiler-unit-tests.log`; no broad-unit-suite pass
 is claimed.
+
+## Shared atomic64 progress and barrier scope
+
+The original device loss was
+`memory_model.write_after_read.ext.u64.noncoherent.atomic_atomic.atomicrmw.subgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp`
+(global catalog index 955418). It timed out a GPU job after two seconds with
+one CTS worker, so this was not the runner's 60-second case bound or parallel
+CTS contention. The shader dispatches 64 workgroups of 31 x 31 invocations.
+
+Shared 64-bit atomics used the device-wide hashed lock table intended for
+buffer/image atomics. Independent workgroups therefore contended on identical
+shared offsets. A reduced two-exchange oracle passed with one workgroup and
+hung with 64. Bounded diagnostics recorded exhausted retries and the owning
+workgroup/invocation; stalled workgroups were waiting on other workgroups.
+The same shader now passes using a lock in its own workgroup's shared storage.
+This removes that unnecessary inter-workgroup progress dependency.
+
+Reserve one private 32-bit shared lock word, initialize it in invocation zero,
+and execute a workgroup barrier before application control flow. Invocations
+that return early still participate in initialization. Acquire/update/release
+remain inside the retry loop so losing lanes never wait for a winner that has
+already left their subgroup's active mask. All shared atomic64 operations use
+this lock, and their fences now name shared memory at workgroup scope.
+Buffer/image atomic64 retain their existing device-wide locks.
+
+Memory-only and subgroup fences also incorrectly selected workgroup execution
+rendezvous for shared/image memory. Use the non-rendezvous device fence for
+shared ordering/retirement and the native texture fence pair for image memory;
+retain full rendezvous for workgroup execution barriers. The compiler unit
+checks distinguish these scopes. `barrier-witnesses/` retains Metal 917 sources,
+M4-target binary sections, and compiler manifests; these are offline encoding
+witnesses, not macOS GPU validation.
+
+The private word does not reduce the public 32-KiB shared-memory limit. Allow
+one additional 64-byte allocation granule in the internal launch record.
+Independent probes fill and verify all 4096 application uint64 words while
+using atomic exchanges, across 64 workgroups at both 256 and 1024 threads.
+The full 32-KiB application allocation and private lock remain disjoint.
+
+Temporary retry limits, owner tracking, alternative unlocks, and register-hint
+experiments are removed. Native atomic wait-field contrasts did not fix the
+hang; that encoder was restored unchanged. Their failed experiments and source
+patches remain in `_provenance/experiments/`.
+
+## Final validation
+
+Native M4 library SHA256 at qualification:
+`413ca42d87c22b3e0ab49558ca3c801c889bd99f74cc19076aa0db83594a4706`.
+All runs use the 60-second watchdog, six thermal sensors at 0.5-second cadence,
+95 C cutoff, and unchanged 60-second CTS case limit.
+
+- All four original failures now Pass, one worker, 3.03 seconds runner time,
+  peak 60.75 C: `20260918T081641181858Z-cts-fixes-original-four`.
+- Atomic and neighboring shared-ordering CTS: 438 completed, 326 Pass /
+  112 NotSupported, no failures, crashes or timeouts; two workers, 68.98 seconds,
+  peak 64.5 C: `20260918T081252536057Z-cts-fixes-atomic-neighbors`.
+- Four retained independent oracles all Pass, peak 59.5 C:
+  `20260918T081510417157Z-cts-atomic64-final-oracles`. These cover partial-subgroup
+  peer progress, Vulkan read-before-write ordering, and full shared capacity at
+  256 and 1024 threads per workgroup.
+- Host `agx3_workgroup`, `agx3_pack`, and `asahi-agx-ioto-state-core` all Pass.
+  ARM64 driver build passes. Earlier RA/API neighbor results remain above.
+
+`shared-atomic64-ordering.py NEW_DIRECTORY` in the parent directory (and workspace
+`tools/`) generates and SPIR-V-validates the four oracles. Build the updated
+`vk-buffer-oracle.c`; the ordering case requests
+`M4_ORACLE_VULKAN_MEMORY_MODEL=1`. Run generated `run.py OUTPUT ORACLE` through
+`gpu-experiment.py` and `run-m4-gl.py`, preserving the mandatory guards.
+The frozen, indexed CTS selections and result summaries are retained here;
+raw QPA and all failed attempts remain in the experiment directories.
+
+This repairs the four failures from the 10k sample; it is not a new complete
+Vulkan conformance run. TODO: extend large-workgroup forward-progress coverage
+to the separate device-wide buffer/image atomic64 locking path. The existing
+buffer atomic64 regression passes, but the shared-memory fix does not qualify
+all possible contention patterns in that path.

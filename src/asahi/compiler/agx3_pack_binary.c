@@ -2290,7 +2290,8 @@ agx3_append_texture_staging_tokens(const agx_instr *I, mesa_shader_stage stage,
       e->dst[e->nr_dsts++] = AGX3_SLOT_IMAGE_WRITE_TOKEN;
    } else {
       if (I->op == AGX_OPCODE_SCOPED_BARRIER_AGX3 &&
-          I->imm == AGX3_BARRIER_SCOPE_TEXTURE)
+          (I->imm == AGX3_BARRIER_SCOPE_TEXTURE ||
+           I->imm == AGX3_BARRIER_SCOPE_TEXTURE_FENCE))
          e->src[e->nr_srcs++] = AGX3_SLOT_IMAGE_WRITE_TOKEN;
       return true;
    }
@@ -2879,7 +2880,7 @@ agx3_emit_scoped_barrier(struct util_dynarray *emission,
 {
    if (wait_mask != 0 || I->op != AGX_OPCODE_SCOPED_BARRIER_AGX3 ||
        I->nr_dests != 0 || I->nr_srcs != 0 ||
-       I->imm > AGX3_BARRIER_SCOPE_INTERLOCK)
+       I->imm > AGX3_BARRIER_SCOPE_TEXTURE_FENCE)
       return false;
 
    struct agx3_encoded_scoped_barrier encoded;

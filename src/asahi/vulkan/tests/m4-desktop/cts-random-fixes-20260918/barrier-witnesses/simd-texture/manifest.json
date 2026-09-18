@@ -1,0 +1,58 @@
+{
+  "ok": true,
+  "target": "applegpu_g16g",
+  "remote_directory": "/var/folders/zz/zyxvpxvq6csfxvn_n0000000000000/T/m4-native-yltxson2",
+  "commands": [
+    {
+      "argv": [
+        "sw_vers"
+      ],
+      "returncode": 0,
+      "output": "ProductName:\t\tmacOS\nProductVersion:\t\t26.6.2\nBuildVersion:\t\t25G83\n"
+    },
+    {
+      "argv": [
+        "/private/var/tmp/buoy-vulkan/apple-toolchain/Metal.xctoolchain/usr/bin/applegpu-nt",
+        "--version"
+      ],
+      "returncode": 0,
+      "output": "AIR-NT 32023.917\n"
+    },
+    {
+      "argv": [
+        "/private/var/tmp/buoy-vulkan/apple-toolchain/Metal.xctoolchain/usr/bin/metal",
+        "source.metal",
+        "-o",
+        "source.metallib"
+      ],
+      "returncode": 0,
+      "output": ""
+    },
+    {
+      "argv": [
+        "/private/var/tmp/buoy-vulkan/apple-toolchain/Metal.xctoolchain/usr/bin/applegpu-nt",
+        "-arch",
+        "applegpu_g16g",
+        "-platform_version",
+        "macos",
+        "26.0",
+        "26.5",
+        "source.metallib",
+        "-N",
+        "pipeline.mtlp-json",
+        "-o",
+        "output.archive"
+      ],
+      "returncode": 0,
+      "output": ""
+    }
+  ],
+  "host": "root@mac-m5",
+  "stage": "compute",
+  "sha256": {
+    "output.archive": "d3d00e75c1bfc128622bbe60d4381e83e4757f1d1d0cf5f264eb0e895c1ee364",
+    "source.metallib": "9493940c7b425ebc718d77e875587b30f2f79d295e73be4e2431313a64910054",
+    "source.metal": "e4c7357103afeabba48841c345c582c8c6e0f58683032ff47f2d8cd9046c1233",
+    "pipeline.mtlp-json": "56085ad7d8c29b4ff2f83139c6ad9ab500bd9f5800f7b1da6b09beba9716d035"
+  }
+}

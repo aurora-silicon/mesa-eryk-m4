@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "cases_sha256": "ed5f2b579545215d7cf5c57741bf55fcee166fdad1ce56e092796782010f3fdf",
+  "provenance": {
+    "catalog": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-ordered/catalog",
+    "catalog_sha256": "72c1bb9d2f9f0425ab8a4f570d78abdc1d3a34b82173ec76b772dedc477526bf",
+    "cts_revision": "vulkan-cts-1.4.6.2:f6a29701220f34dd1407513bfe80d74ca7b392ce",
+    "seed": 2026091801,
+    "method": "Python random.Random.sample of catalog indices without replacement",
+    "capability_filter": false,
+    "result_filter": false
+  },
+  "cases": [
+    {
+      "case": "dEQP-VK.ssbo.phys.layout.random.8bit.vector_types.21",
+      "catalog_index": 2764457,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Original failure from rebooted 10k sample"
+    },
+    {
+      "case": "dEQP-VK.pipeline.monolithic.descriptor_limits.compute_shader.samplers_1024",
+      "catalog_index": 1145288,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Original failure from rebooted 10k sample"
+    },
+    {
+      "case": "dEQP-VK.api.info.image_format_properties.1d.optimal.r8g8b8_srgb",
+      "catalog_index": 321550,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Original failure from rebooted 10k sample"
+    },
+    {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u64.noncoherent.atomic_atomic.atomicrmw.subgroup.payload_nonlocal.workgroup.guard_nonlocal.workgroup.comp",
+      "catalog_index": 955418,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Original failure from rebooted 10k sample"
+    }
+  ]
+}

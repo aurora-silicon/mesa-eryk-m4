@@ -1,0 +1,20 @@
+[
+  {
+    "file": "text-6c0.bin",
+    "macho_offset": 1728,
+    "offset": 2416,
+    "bytes": 134,
+    "section_index": 1,
+    "address": 0,
+    "symbols": [
+      {
+        "name": "_agc.main",
+        "offset": 64
+      },
+      {
+        "name": "_agc.main.constant_program",
+        "offset": 0
+      }
+    ]
+  }
+]

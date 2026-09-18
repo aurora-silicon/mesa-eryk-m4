@@ -1,0 +1,23 @@
+{
+  "selected": 438,
+  "recorded": 438,
+  "completed": 438,
+  "counts": {
+    "Pass": 326,
+    "NotSupported": 112
+  },
+  "classifications": {
+    "unclassified": 438
+  },
+  "elapsed_seconds": 71.98617058596574,
+  "preparation_seconds": 1.60339992295485,
+  "runner_seconds": 68.982823096,
+  "jobs": 2,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "513f101ed2e3061941d153f90ab0db106758aba190224a5d6e5c0638234b3992",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260918T081252536057Z-cts-fixes-atomic-neighbors",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 64.5
+}

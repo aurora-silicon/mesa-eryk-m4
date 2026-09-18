@@ -515,13 +515,27 @@ int main(int argc, char **argv) {
     if (!view_min.minLod) die("view minLod unavailable");
     view_min.pNext=feature_chain;feature_chain=&view_min;
   }
-  const char *extensions[10];
+  VkPhysicalDeviceVulkanMemoryModelFeatures memory_model = {
+    .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES};
+  const bool want_memory_model = getenv("M4_ORACLE_VULKAN_MEMORY_MODEL") != NULL;
+  if (want_memory_model) {
+    if (reduction_option) die("Vulkan memory model oracle feature-chain conflict");
+    VkPhysicalDeviceFeatures2 query = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, .pNext = &memory_model};
+    vkGetPhysicalDeviceFeatures2(physical, &query);
+    if (!memory_model.vulkanMemoryModel || !memory_model.vulkanMemoryModelDeviceScope)
+      die("Vulkan memory model with device scope unavailable");
+    memory_model.pNext = feature_chain;
+    feature_chain = &memory_model;
+  }
+  const char *extensions[11];
   VkPhysicalDeviceTimelineSemaphoreFeatures timeline = {
     .sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES,
     .timelineSemaphore=VK_TRUE,.pNext=feature_chain};
   if (sparse_wait && !reduction_option) feature_chain=&timeline;
   if (sparse_wait && reduction_option) minmax.timelineSemaphore=VK_TRUE;
   unsigned extension_count = 0;
+  if (want_memory_model) extensions[extension_count++] = VK_KHR_VULKAN_MEMORY_MODEL_EXTENSION_NAME;
   if (want_image_atomic64) extensions[extension_count++] = VK_EXT_SHADER_IMAGE_ATOMIC_INT64_EXTENSION_NAME;
   if (want_atomic64) extensions[extension_count++] = VK_KHR_SHADER_ATOMIC_INT64_EXTENSION_NAME;
   if (view_min_option) extensions[extension_count++] = VK_EXT_IMAGE_VIEW_MIN_LOD_EXTENSION_NAME;

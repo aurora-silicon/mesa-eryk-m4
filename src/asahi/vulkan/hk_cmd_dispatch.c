@@ -177,7 +177,7 @@ hk_g17p_compute_shader_supported(struct hk_shader *s,
           linked->b.size <= UINT32_MAX && linked->b.nr_gprs != 0 &&
           !s->b.info.has_preamble && s->b.info.preamble_scratch_size == 0 &&
           s->b.info.agx3_staging_known &&
-          s->b.info.local_size <= 32768 &&
+          s->b.info.local_size <= HK_MAX_INTERNAL_SHARED_SIZE &&
           s->b.info.texture_state_count == 0 &&
           (s->b.info.sampler_state_count == 0 ||
            ((s->info.agx3_txf_texture_valid ||

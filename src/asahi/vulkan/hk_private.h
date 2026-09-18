@@ -36,6 +36,7 @@
 #define HK_SPARSE_ADDR_SPACE_SIZE (1ull << 39)
 #define HK_MAX_BUFFER_SIZE        (1ull << 37)
 #define HK_MAX_SHARED_SIZE        (32 * 1024)
+#define HK_MAX_INTERNAL_SHARED_SIZE (HK_MAX_SHARED_SIZE + 4)
 
 struct hk_addr_range {
    uint64_t addr;

@@ -4,11 +4,12 @@
 #include "hk_shader.h"
 
 static void
-device_fence(nir_builder *b, nir_memory_semantics semantics)
+atomic_fence(nir_builder *b, nir_memory_semantics semantics, bool shared)
 {
-   nir_barrier(b, .execution_scope = SCOPE_NONE, .memory_scope = SCOPE_DEVICE,
+   nir_barrier(b, .execution_scope = SCOPE_NONE,
+               .memory_scope = shared ? SCOPE_WORKGROUP : SCOPE_DEVICE,
                .memory_semantics = semantics,
-               .memory_modes = nir_var_mem_global);
+               .memory_modes = shared ? nir_var_mem_shared : nir_var_mem_global);
 }
 
 static nir_def *
@@ -31,7 +32,7 @@ updated_value(nir_builder *b, nir_intrinsic_instr *intr, nir_def *old)
 }
 
 static bool
-lower_atomic(nir_builder *b, nir_intrinsic_instr *intr, UNUSED void *data)
+lower_atomic(nir_builder *b, nir_intrinsic_instr *intr, void *data)
 {
    if ((intr->intrinsic != nir_intrinsic_global_atomic &&
         intr->intrinsic != nir_intrinsic_global_atomic_swap &&
@@ -69,11 +70,6 @@ lower_atomic(nir_builder *b, nir_intrinsic_instr *intr, UNUSED void *data)
    if (fragment)
       nir_push_if(b, nir_inot(b, nir_load_helper_invocation(b, 1)));
 
-   nir_def *lock = nir_load_global_constant(
-      b, 1, 64,
-      nir_iadd_imm(b, nir_load_root_agx(b),
-                   hk_root_descriptor_offset(atomic64_lock)),
-      .align_mul = 8, .access = ACCESS_CAN_SPECULATE);
    const bool shared = intr->intrinsic == nir_intrinsic_shared_atomic ||
                        intr->intrinsic == nir_intrinsic_shared_atomic_swap;
    nir_def *address = intr->src[0].ssa;
@@ -88,25 +84,41 @@ lower_atomic(nir_builder *b, nir_intrinsic_instr *intr, UNUSED void *data)
    }
    nir_def *high_address = nir_iadd_imm(b, address, 4);
 
-   /* All mappings preserve the offset within a 16-KiB GPU page. Select a
-    * lock by the aligned word's page offset so aliased virtual addresses
-    * still agree, while unrelated texels need not serialize globally.
-    * Shared addresses may collide across workgroups, which is harmless. */
-   nir_def *lock_offset = nir_ushr_imm(
-      b, nir_iand_imm(b, nir_u2u32(b, address), 0x3ff8), 1);
-   lock = nir_iadd(b, lock, nir_u2u64(b, lock_offset));
+   nir_def *lock;
+   if (shared) {
+      /* Shared storage belongs to one workgroup. A device-wide hash would
+       * make independent workgroups wait for each other and can deadlock
+       * when the lock holder cannot make progress alongside the contenders.
+       */
+      assert(*(unsigned *)data != UINT_MAX);
+      lock = nir_imm_int(b, *(unsigned *)data);
+   } else {
+      lock = nir_load_global_constant(
+         b, 1, 64,
+         nir_iadd_imm(b, nir_load_root_agx(b),
+                      hk_root_descriptor_offset(atomic64_lock)),
+         .align_mul = 8, .access = ACCESS_CAN_SPECULATE);
 
-   /* Buffer aliases have already been canonicalized. Keep each 64-bit
-    * operation under its device-wide lock, using native 32-bit atomic
-    * accesses for the halves and device fences around the update.
-    * A winning lane releases before leaving this loop, so lanes still
-    * retrying never wait for a lock held by an inactive lane of their warp. */
+      /* Buffer aliases have already been canonicalized. All mappings
+       * preserve the offset within a 16-KiB GPU page, so aliased virtual
+       * addresses select the same device lock. */
+      nir_def *offset = nir_ushr_imm(
+         b, nir_iand_imm(b, nir_u2u32(b, address), 0x3ff8), 1);
+      lock = nir_iadd(b, lock, nir_u2u64(b, offset));
+   }
+
+   /* A winning lane releases before leaving this loop, so lanes still
+    * retrying never wait for an inactive winner in their own subgroup. */
    nir_push_loop(b);
    nir_def *acquired =
-      nir_global_atomic_swap(b, 32, lock, nir_imm_int(b, 0), nir_imm_int(b, 1),
-                             .atomic_op = nir_atomic_op_cmpxchg);
+      shared ? nir_shared_atomic_swap(b, 32, lock, nir_imm_int(b, 0),
+                                       nir_imm_int(b, 1),
+                                       .atomic_op = nir_atomic_op_cmpxchg)
+             : nir_global_atomic_swap(b, 32, lock, nir_imm_int(b, 0),
+                                       nir_imm_int(b, 1),
+                                       .atomic_op = nir_atomic_op_cmpxchg);
    nir_push_if(b, nir_ieq_imm(b, acquired, 0));
-   device_fence(b, NIR_MEMORY_ACQUIRE);
+   atomic_fence(b, NIR_MEMORY_ACQUIRE, shared);
 
    nir_def *low = shared ? nir_shared_atomic(b, 32, address, nir_imm_int(b, 0),
                                              .atomic_op = nir_atomic_op_ior)
@@ -132,9 +144,13 @@ lower_atomic(nir_builder *b, nir_intrinsic_instr *intr, UNUSED void *data)
                         nir_unpack_64_2x32_split_y(b, value),
                         .atomic_op = nir_atomic_op_xchg);
    }
-   device_fence(b, NIR_MEMORY_RELEASE);
-   nir_global_atomic(b, 32, lock, nir_imm_int(b, 0),
-                     .atomic_op = nir_atomic_op_xchg);
+   atomic_fence(b, NIR_MEMORY_RELEASE, shared);
+   if (shared)
+      nir_shared_atomic(b, 32, lock, nir_imm_int(b, 0),
+                        .atomic_op = nir_atomic_op_xchg);
+   else
+      nir_global_atomic(b, 32, lock, nir_imm_int(b, 0),
+                        .atomic_op = nir_atomic_op_xchg);
    nir_store_var(b, result, old, 1);
    nir_jump(b, nir_jump_break);
    nir_pop_if(b, NULL);
@@ -147,11 +163,53 @@ lower_atomic(nir_builder *b, nir_intrinsic_instr *intr, UNUSED void *data)
    return true;
 }
 
+/* Allocate and initialize the private lock before application control flow.
+ * Even invocations that return early must participate in this initial barrier.
+ * The launch reserves one extra allocation granule, preserving the public
+ * 32-KiB application budget when all of it is used by the shader.
+ */
+static unsigned
+initialize_shared_lock(nir_shader *nir)
+{
+   bool needed = false;
+   nir_foreach_function_impl(impl, nir) {
+      nir_foreach_block(block, impl) {
+         nir_foreach_instr(instr, block) {
+            if (instr->type != nir_instr_type_intrinsic)
+               continue;
+
+            nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+            needed |= (intr->intrinsic == nir_intrinsic_shared_atomic ||
+                       intr->intrinsic == nir_intrinsic_shared_atomic_swap) &&
+                      intr->def.bit_size == 64;
+         }
+      }
+   }
+
+   if (!needed)
+      return UINT_MAX;
+
+   const unsigned offset = ALIGN_POT(nir->info.shared_size, 4);
+   nir->info.shared_size = offset + 4;
+   nir_builder b =
+      nir_builder_at(nir_before_impl(nir_shader_get_entrypoint(nir)));
+   nir_push_if(&b, nir_ieq_imm(&b, nir_load_local_invocation_index(&b), 0));
+   nir_store_shared(&b, nir_imm_int(&b, 0), nir_imm_int(&b, offset),
+                    .align_mul = 4);
+   nir_pop_if(&b, NULL);
+   nir_barrier(&b, .execution_scope = SCOPE_WORKGROUP,
+               .memory_scope = SCOPE_WORKGROUP,
+               .memory_semantics = NIR_MEMORY_ACQ_REL,
+               .memory_modes = nir_var_mem_shared);
+   return offset;
+}
+
 bool
 hk_nir_lower_atomic64(nir_shader *nir)
 {
-   bool progress =
-      nir_shader_intrinsics_pass(nir, lower_atomic, nir_metadata_none, NULL);
+   unsigned shared_lock = initialize_shared_lock(nir);
+   bool progress = nir_shader_intrinsics_pass(
+      nir, lower_atomic, nir_metadata_none, &shared_lock);
    if (progress)
       NIR_PASS(_, nir, nir_lower_vars_to_ssa);
    return progress;

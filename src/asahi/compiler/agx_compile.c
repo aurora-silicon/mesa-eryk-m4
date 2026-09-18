@@ -2301,12 +2301,28 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
             }
 
             if (modes & nir_var_image) {
-               agx_scoped_barrier_agx3(b, AGX3_BARRIER_SCOPE_TEXTURE);
+               const bool fence =
+                  b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+                  nir_intrinsic_execution_scope(instr) < SCOPE_WORKGROUP;
+               agx_scoped_barrier_agx3(
+                  b, fence ? AGX3_BARRIER_SCOPE_TEXTURE_FENCE
+                           : AGX3_BARRIER_SCOPE_TEXTURE);
                emitted = true;
             }
 
             if (modes & nir_var_mem_shared) {
-               agx_scoped_barrier_agx3(b, AGX3_BARRIER_SCOPE_THREADGROUP);
+               /* A shared-memory fence or subgroup barrier must not wait
+                * for the entire workgroup. Other subgroups may have exited
+                * or may be executing a different control-flow path. Use the
+                * non-rendezvous fence, which also drains outstanding local
+                * reads, unless NIR requests a workgroup execution barrier.
+                */
+               const bool fence =
+                  b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+                  nir_intrinsic_execution_scope(instr) < SCOPE_WORKGROUP;
+               agx_scoped_barrier_agx3(
+                  b, fence ? AGX3_BARRIER_SCOPE_DEVICE_FENCE
+                           : AGX3_BARRIER_SCOPE_THREADGROUP);
                emitted = true;
             }
          }

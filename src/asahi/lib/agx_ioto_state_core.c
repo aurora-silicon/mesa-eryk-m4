@@ -524,8 +524,11 @@ agx_ioto_g17p_runtime_compute_tail_build_shared(
    uint32_t threadgroup_memory_size_B,
    struct agx_ioto_state_tail_output *output)
 {
+   /* Keep the 32-KiB application budget plus one 64-byte allocation granule
+    * for compiler-private shared storage (the atomic64 lock word on G16G).
+    * The full-budget atomic oracle qualifies the 32832-byte allocation. */
    if (!output || threadgroup_memory_size_B < 256 ||
-       threadgroup_memory_size_B > 32768 ||
+       threadgroup_memory_size_B > 32832 ||
        (threadgroup_memory_size_B & 63) != 0)
       return false;
 
