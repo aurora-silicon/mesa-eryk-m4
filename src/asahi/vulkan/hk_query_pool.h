@@ -15,15 +15,17 @@ struct agx_bo;
 struct hk_query_pool {
    struct vk_query_pool vk;
 
+   /* Native graphics completion may supply a 64-bit availability token. */
+   bool timestamp_available;
+
    uint32_t query_start;
    uint32_t query_stride;
 
    struct agx_bo *bo;
    void *bo_map;
 
-   /* For timestamp queries, the kernel-assigned timestamp buffer handle. Unused
-    * for all other query types
-    */
+   /* Kernel-assigned timestamp buffer handle, including pools whose
+    * availability token is written by a native completion timestamp. */
    uint32_t handle;
 
    unsigned oq_queries;

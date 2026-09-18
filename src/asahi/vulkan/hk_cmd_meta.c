@@ -496,16 +496,24 @@ hk_native_meta_copy_timestamp(struct hk_cmd_buffer *cmd,
 
 struct hk_meta_query_copy_info {
    uint64_t source, destination, availability;
-   uint32_t flags, pad;
+   uint32_t flags, availability_64;
 };
 
 static nir_def *
-load_query_available(nir_builder *b, nir_def *source, nir_def *availability)
+load_query_available(nir_builder *b, nir_def *source, nir_def *availability,
+                     nir_def *availability_64)
 {
    nir_if *has_available = nir_push_if(b, nir_ine_imm(b, availability, 0));
+   nir_push_if(b, nir_ine_imm(b, availability_64, 0));
+   nir_def *wide = nir_load_global(b, 1, 64, availability, .align_mul = 8,
+                                   .access = ACCESS_COHERENT | ACCESS_VOLATILE);
+   nir_def *wide_available = nir_ine_imm(b, wide, 0);
+   nir_push_else(b, NULL);
    nir_def *status = nir_load_global(b, 1, 32, availability, .align_mul = 4,
                                      .access = ACCESS_COHERENT | ACCESS_VOLATILE);
-   nir_def *with_available = nir_ine_imm(b, status, 0);
+   nir_def *narrow_available = nir_ine_imm(b, status, 0);
+   nir_pop_if(b, NULL);
+   nir_def *with_available = nir_if_phi(b, wide_available, narrow_available);
    nir_push_else(b, has_available);
    nir_def *value = nir_load_global(b, 1, 64, source, .align_mul = 8,
                                     .access = ACCESS_COHERENT | ACCESS_VOLATILE);
@@ -526,13 +534,14 @@ build_query_copy_shader(void)
    nir_def *destination = nir_load_push_constant(&b, 1, 64, nir_imm_int(&b, 8));
    nir_def *availability = nir_load_push_constant(&b, 1, 64, nir_imm_int(&b, 16));
    nir_def *flags = nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 24));
+   nir_def *availability_64 = nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 28));
    nir_def *wait = nir_test_mask(&b, flags, VK_QUERY_RESULT_WAIT_BIT);
    nir_if *waiting = nir_push_if(&b, wait);
    nir_loop *loop = nir_push_loop(&b);
-   nir_break_if(&b, load_query_available(&b, source, availability));
+   nir_break_if(&b, load_query_available(&b, source, availability, availability_64));
    nir_pop_loop(&b, loop);
    nir_pop_if(&b, waiting);
-   nir_def *available = load_query_available(&b, source, availability);
+   nir_def *available = load_query_available(&b, source, availability, availability_64);
    nir_def *wide = nir_test_mask(&b, flags, VK_QUERY_RESULT_64_BIT);
    nir_if *write_result = nir_push_if(&b, nir_ior(&b, available,
       nir_test_mask(&b, flags, VK_QUERY_RESULT_PARTIAL_BIT)));
@@ -560,12 +569,12 @@ build_query_copy_shader(void)
 void
 hk_native_meta_copy_query(struct hk_cmd_buffer *cmd, uint64_t destination,
                            uint64_t source, uint64_t availability,
-                           VkQueryResultFlags flags)
+                           VkQueryResultFlags flags, bool availability_64)
 {
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
    const unsigned word_size = (flags & VK_QUERY_RESULT_64_BIT) ? 8 : 4;
    if (!agx_native_graphics(&dev->dev) || !source || !destination ||
-       (source & 7) || (availability & 3) ||
+       (source & 7) || (availability & (availability_64 ? 7 : 3)) ||
        (destination & (word_size - 1))) {
       vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
       return;
@@ -581,7 +590,7 @@ hk_native_meta_copy_query(struct hk_cmd_buffer *cmd, uint64_t destination,
    VkResult result = get_native_meta_pipeline(dev, HK_META_OBJECT_KEY_QUERY_COPY,
       sizeof(struct hk_meta_query_copy_info), build_query_copy_shader, &layout, &pipeline);
    if (result == VK_SUCCESS) {
-      const struct hk_meta_query_copy_info args = {source, destination, availability, flags, 0};
+      const struct hk_meta_query_copy_info args = {source, destination, availability, flags, availability_64};
       const struct vk_device_dispatch_table *disp = &dev->vk.dispatch_table;
       VkCommandBuffer cb = vk_command_buffer_to_handle(&cmd->vk);
       disp->CmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);

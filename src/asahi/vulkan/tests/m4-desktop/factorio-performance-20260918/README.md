@@ -478,3 +478,29 @@ Evidence: `20260918T150203174312Z-factorio-int-preamble-minlod-cts`,
 `20260918T150522105240Z-factorio-integer-preamble-oracles`,
 `20260918T150600508842Z-factorio-zink-integer-preamble-menu`,
 `20260918T151130315582Z-factorio-zink-integer-large-menu`.
+
+## Native graphics-query availability token (opt-in)
+
+With HK_M4_QUERY_COMPLETION=true, graphics-only pipeline-statistics pools use
+64-bit availability cells registered for firmware timestamp writes. EndQuery
+can use an unoccupied render completion timestamp instead of submitting a
+compute fill for availability. Empty queries, occupied timestamp slots and
+intervening post-graphics work retain the ordered fill path. GPU resets retain
+the timestamp cache-ownership boundary; host reads and GPU result copies test
+all 64 bits so a zero low counter word cannot look unavailable.
+
+The retained original frame is pixel-identical. All 906 supported cases in the
+907-case fragment-statistics/multiple-query selection pass (one NotSupported),
+including reset and secondary-command variants. The GL probe checks exact
+counts/pixels with both statistics-first and timer-first completion ordering.
+Quiet-kernel short untouched-menu means are 11.032 FPS without and 11.314 FPS
+with this optimization. These dynamic-scene observations do not establish a
+large performance gain; 60 FPS remains unresolved. The change stays opt-in.
+
+Evidence: `20260918T152130828801Z-factorio-quiet-stats-ubo-menu`,
+`20260918T152658631699Z-factorio-query-completion-checks`,
+`20260918T152736545885Z-factorio-query-completion-cts`,
+`20260918T152801354056Z-factorio-query-completion-frame`,
+`20260918T152904536029Z-factorio-query-completion-full-cts`,
+`20260918T152936687288Z-factorio-query-completion-order-checks`,
+`20260918T153021694520Z-factorio-query-completion-menu`.

@@ -57,8 +57,13 @@ int main(void) {
             glDrawArrays(GL_TRIANGLES, 0, 3);
             ++draws;
          }
+         /* Exercise both completion-slot orders: a statistics query can
+          * own the render timestamp before an elapsed query requests it. */
+         if (enabled && round == 2)
+            glEndQuery(GL_FRAGMENT_SHADER_INVOCATIONS_ARB);
          glEndQuery(GL_TIME_ELAPSED);
-         if (enabled) glEndQuery(GL_FRAGMENT_SHADER_INVOCATIONS_ARB);
+         if (enabled && round != 2)
+            glEndQuery(GL_FRAGMENT_SHADER_INVOCATIONS_ARB);
          GLuint64 count = 0, ns = 0;
          glGetQueryObjectui64v(timer, GL_QUERY_RESULT, &ns);
          if (enabled && round == 3) {
