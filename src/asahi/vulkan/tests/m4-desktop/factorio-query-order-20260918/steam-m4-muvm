@@ -6,7 +6,7 @@ exec /usr/bin/muvm \
     -f /usr/share/fex-emu/RootFS/default.erofs \
     -f /usr/share/fex-emu/overlays/mesa-i386.erofs \
     -f /usr/share/fex-emu/overlays/mesa-x86_64.erofs \
-    -f /opt/m4-steam/mesa-multilib-r9.erofs \
+    -f /opt/m4-steam/mesa-multilib-r10.erofs \
     -e ASAHI_M4_EXPERIMENTAL=1 \
     -e ASAHI_MESA_DEBUG=nocompress \
     -e VK_DRIVER_FILES=/usr/share/vulkan/icd.d/asahi_icd.x86_64.json:/usr/share/vulkan/icd.d/asahi_icd.i686.json \

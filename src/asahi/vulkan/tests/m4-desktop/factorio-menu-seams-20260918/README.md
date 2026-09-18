@@ -67,7 +67,8 @@ use the existing private Zink environment. For the host software control add
 The probe creates gray mip zero and red higher mips, checks 116,400 interior
 pixels across six quads, and requires a nonzero statistics result. The old driver
 selects red mip levels at 2,544 pixels; fixed M4 and llvmpipe have zero errors
-and both report 121,680 fragment invocations. An initial checker used unflipped
+and both report 121,680 fragment invocations. Their complete 2560x1664 RGBA
+readbacks are also byte-identical. An initial checker used unflipped
 GL readback rows and incorrectly included an empty region; the checker now
 accounts for the lower-left readback convention. The retained failure is a
 checker-coordinate error, not a failed driver fix.
@@ -80,6 +81,12 @@ The self-contained regression above does not use either option.
 Validation: 35 targeted Vulkan CTS cases pass; 13 report NotSupported. This
 covers derivatives, statistics queries and sample-mask configurations; preserve
 the full selected list and original catalog indices in `fixed-validation.json`.
+In the retained CTS 1.4.6.2 sources, `vktQueryPoolStatisticsTests.cpp` uses
+color-output fragment shaders without texture/derivative operations, while
+`vktShaderRenderDerivateTests.cpp` does not begin statistics queries. Passing
+those particular groups separately does not cover their interaction. This is
+not a claim that every case in the full CTS catalog was audited.
+
 The broad offline graphics compiler test has three pre-existing failures
 (half2 vertex and flat-color byte expectations, and a now-supported discard
 case). Rebuilding against the unmodified packer produces the same three failures;
@@ -123,3 +130,29 @@ requires the experiment guard. `M4_PROBE_SOFTWARE=1` permits llvmpipe.
 the captured central-quad geometry. Optional `M4_PROBE_IMPLICIT_ONLY`,
 `M4_PROBE_EXTRA_VARYING`, `M4_PROBE_BLEND_SRC`, `M4_PROBE_UPPER_LEFT`,
 `M4_PROBE_BLEND` and `M4_PROBE_CONSTANT_UV` select the documented source variants.
+
+## Deployment
+
+The native ARM64 library is installed at `/opt/asahi-m4-port/lib`. Steam uses
+`/opt/m4-steam/mesa-multilib-r10.erofs`, with fixed x86_64 and i686 Vulkan
+libraries and the preceding overlay's unchanged GLX/EGL/Zink dependencies.
+Both manifests and the packed image were hash-verified; `fixed-validation.json`
+retains their identities. The launcher selects r10 and the Steam microVM was
+restarted. Replacing the desktop library alone does not update Steam's copy.
+
+Original application validation passed in
+`20260918T061845111730Z-factorio-helper-fix-final-menu-long-load`. Factorio 2.0.77
+Space Age launched through normal Steam, initialized at the existing settings,
+and displayed a clean main menu: the diagonal button seams and damaged borders
+are absent. The running process's mapped Vulkan library hash matches r10.
+The private final screenshot is
+`build/steam-crash-20260918/factorio-helper-fix-menu.png`; its hash is retained.
+The game was closed after validation, preserving the user's preference to leave
+it off. No save was loaded or overwritten during this check.
+
+Startup took 523.663 seconds and used 2699.04 MB of video memory. An earlier
+620-second allowance included about 160 seconds of Steam shader precompilation
+and expired during game asset loading; the observer terminated that attempt.
+The successful retry used a 900-second application allowance inside a 940-second
+watchdog/thermal guard. It peaked at 71 C; CPU thermal throttling remained enabled.
+This validates rendering correctness, not improved startup performance.

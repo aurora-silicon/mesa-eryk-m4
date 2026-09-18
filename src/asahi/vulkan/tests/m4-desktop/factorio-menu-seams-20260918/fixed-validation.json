@@ -1,5 +1,5 @@
 {
-  "status": "fixed native replay and synthetic regression; Steam validation pending",
+  "status": "fixed and installed; original Steam menu verified clean",
   "synthetic": {
     "baseline": {
       "incorrect_pixels": 2544,
@@ -149,6 +149,118 @@
           "Te001m": 58.5,
           "Tp000m": 61.75,
           "Tp001m": 59.75
+        }
+      }
+    },
+    "20260918T060530929684Z-factorio-helper-fix-steam-overlay-pack": {
+      "id": "20260918T060530929684Z-factorio-helper-fix-steam-overlay-pack",
+      "verdict": "pass",
+      "transport_returncode": 0,
+      "evidence_fetched": true,
+      "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260918T060530929684Z-factorio-helper-fix-steam-overlay-pack",
+      "observations": {
+        "pixel_results": [
+          "PASS: verified multilib Mesa image aa78edd07b41b242d2a9d9a203019da4304814dd339b61be8a6c666990190621 /opt/m4-steam/mesa-multilib-r10.erofs"
+        ],
+        "pixel_result_count": 1,
+        "thermal_samples": 13,
+        "malformed_thermal_samples": 0,
+        "peak_temperature_c": 66.75,
+        "channel_peaks_c": {
+          "PMP aggregate die hotspot": 66.75,
+          "Ta000m": 64.75,
+          "Te000m": 61.0,
+          "Te001m": 66.5,
+          "Tp000m": 65.5,
+          "Tp001m": 66.75
+        }
+      }
+    },
+    "20260918T060629250727Z-steam-helper-fix-restart-r10": {
+      "id": "20260918T060629250727Z-steam-helper-fix-restart-r10",
+      "verdict": "pass",
+      "transport_returncode": 0,
+      "evidence_fetched": true,
+      "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260918T060629250727Z-steam-helper-fix-restart-r10",
+      "observations": {
+        "pixel_results": [],
+        "pixel_result_count": 0,
+        "thermal_samples": 58,
+        "malformed_thermal_samples": 0,
+        "peak_temperature_c": 65.0,
+        "channel_peaks_c": {
+          "PMP aggregate die hotspot": 65.0,
+          "Ta000m": 61.25,
+          "Te000m": 59.0,
+          "Te001m": 62.5,
+          "Tp000m": 65.0,
+          "Tp001m": 62.75
+        }
+      }
+    },
+    "20260918T060717080386Z-factorio-original-steam-helper-fix-validation": {
+      "id": "20260918T060717080386Z-factorio-original-steam-helper-fix-validation",
+      "verdict": "process_failure",
+      "transport_returncode": 1,
+      "evidence_fetched": true,
+      "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260918T060717080386Z-factorio-original-steam-helper-fix-validation",
+      "observations": {
+        "pixel_results": [],
+        "pixel_result_count": 0,
+        "thermal_samples": 1259,
+        "malformed_thermal_samples": 0,
+        "peak_temperature_c": 72.0,
+        "channel_peaks_c": {
+          "PMP aggregate die hotspot": 72.0,
+          "Ta000m": 64.75,
+          "Te000m": 64.75,
+          "Te001m": 71.0,
+          "Tp000m": 70.75,
+          "Tp001m": 71.75
+        }
+      }
+    },
+    "20260918T061845111730Z-factorio-helper-fix-final-menu-long-load": {
+      "id": "20260918T061845111730Z-factorio-helper-fix-final-menu-long-load",
+      "verdict": "pass",
+      "transport_returncode": 0,
+      "evidence_fetched": true,
+      "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260918T061845111730Z-factorio-helper-fix-final-menu-long-load",
+      "observations": {
+        "pixel_results": [],
+        "pixel_result_count": 0,
+        "thermal_samples": 1095,
+        "malformed_thermal_samples": 0,
+        "peak_temperature_c": 71.0,
+        "channel_peaks_c": {
+          "PMP aggregate die hotspot": 71.0,
+          "Ta000m": 64.5,
+          "Te000m": 64.75,
+          "Te001m": 70.5,
+          "Tp000m": 69.75,
+          "Tp001m": 71.0
+        }
+      }
+    },
+    "20260918T062943689304Z-factorio-helper-fix-validation-close": {
+      "id": "20260918T062943689304Z-factorio-helper-fix-validation-close",
+      "verdict": "pass",
+      "transport_returncode": 0,
+      "evidence_fetched": true,
+      "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260918T062943689304Z-factorio-helper-fix-validation-close",
+      "observations": {
+        "pixel_results": [],
+        "pixel_result_count": 0,
+        "thermal_samples": 10,
+        "malformed_thermal_samples": 0,
+        "peak_temperature_c": 71.75,
+        "channel_peaks_c": {
+          "PMP aggregate die hotspot": 71.75,
+          "Ta000m": 66.75,
+          "Te000m": 67.0,
+          "Te001m": 71.25,
+          "Tp000m": 71.75,
+          "Tp001m": 70.75
         }
       }
     }
@@ -450,5 +562,45 @@
       }
     ]
   },
-  "native_library_sha256": "2a31ec134e2c41a3712adfb3f414cf7b6965a833fcabb6e28b1c0748340ff59c"
+  "native_library_sha256": "2a31ec134e2c41a3712adfb3f414cf7b6965a833fcabb6e28b1c0748340ff59c",
+  "steam_overlay": {
+    "path": "/opt/m4-steam/mesa-multilib-r10.erofs",
+    "sha256": "aa78edd07b41b242d2a9d9a203019da4304814dd339b61be8a6c666990190621",
+    "libraries": {
+      "x86_64": {
+        "source": "/home/council/dev/dirtyroom_m4/build/mesa-m4-asahi-host/src/asahi/vulkan/libvulkan_asahi.so",
+        "source_sha256": "63f7276d235f483c583fd1fb150c6b03d837ff57060ac593c2b812ff44b88739",
+        "sha256": "1ba0955c9ddd1a20f8bd4eb9c30e7fd59abd7cecff25eb887593221bfd7a6479"
+      },
+      "i686": {
+        "source": "/home/council/dev/dirtyroom_m4/build/mesa-m4-asahi-i686/src/asahi/vulkan/libvulkan_asahi.so",
+        "source_sha256": "138c610d3c66a4f4211273a54c5646179ca7dc85d91e86fa72d3a9069aa705a2",
+        "sha256": "dd9deba7753b10f551a167db19b36882402cdc4d2d7b61ea262c4902e6cd25be"
+      }
+    }
+  },
+  "initial_application_attempt": {
+    "result": "startup bound exceeded; observer terminated the game",
+    "steam_shader_precompile_seconds_approx": 160,
+    "game_elapsed_seconds_at_termination": 460.801,
+    "gpu_timeout": false,
+    "startup_log_stage": "parallel sprite loader, 8398 bitmaps"
+  },
+  "actual_application_libraries": {
+    "2533": {
+      "/run/pressure-vessel/interpreter-root/var/pressure-vessel/gfx/main/usr/lib/libvulkan_asahi.so": "1ba0955c9ddd1a20f8bd4eb9c30e7fd59abd7cecff25eb887593221bfd7a6479"
+    }
+  },
+  "original_application": {
+    "version": "Factorio 2.0.77 Space Age",
+    "launch": "ordinary Steam with original graphics settings and no shader replacement or capture layer",
+    "startup_seconds": 523.663,
+    "video_memory_mb": 2699.04,
+    "screenshot": "build/steam-crash-20260918/factorio-helper-fix-menu.png",
+    "screenshot_sha256": "07c63ad35a56dda9e1805a7ca4aac445730bc9ceb752deba013e929820f6bb61",
+    "log_sha256": "360e1a192c9af65088d1a522ea031fceee5dccca931f7004d446630ed7771c8b",
+    "visual_result": "button diagonals and corrupted borders absent",
+    "process_library_verified": true,
+    "closed_after_validation": true
+  }
 }
