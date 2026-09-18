@@ -532,3 +532,22 @@ Use `gpu-summary-timings.py LOG --tail-seconds 20` to analyze complete intervals
 The currently installed 7.1.9-dirtyroom-asahi2+ kernel's Rust ABI is 1.94.1;
 the old workspace 1.98.0 build recipe failed modpost and was corrected. No
 unresolved symbols were suppressed and no incompatible module was installed.
+
+## Grouped immutable UBO fallbacks
+
+The opt-in UBO prefetch path now makes one direct/sparse choice per descriptor
+and shares its fallback descriptor fetch. Only nonvolatile, reorderable reads
+qualify. Bounds tests and execution-time sparse translation remain intact.
+Host tests cover conditional-block reads and both direct and sparse branches,
+plus rejection of volatile/non-reorderable accesses. The retained frame has
+zero differing pixels and all 80 UBO binding cases pass. Untouched-menu
+`20260918T161142362536Z-factorio-grouped-ubo-menu-x86` measured 11.478 FPS
+(11.260–11.620), peak 64.75 C, versus 11.203 in the preceding same-kernel
+sample. This small difference is within dynamic-scene uncertainty, not a
+60 FPS result. The cloud shader shrinks from 7426 to 7218 instructions but
+uses 12 bytes of scratch (previously none); further tuning remains necessary.
+Evidence: `20260918T160748331245Z-factorio-grouped-ubo-frame`,
+`20260918T160837606844Z-factorio-grouped-ubo-cts`,
+`20260918T161110062641Z-factorio-grouped-ubo-compiler`.
+An earlier live launch used an ARM library in the x86 guest and failed GLX
+visual selection; that deployment error was corrected before this measurement.

@@ -158,7 +158,9 @@ ubo_load(nir_intrinsic_instr *intr, unsigned set_base, unsigned set_count,
 {
    if (intr->intrinsic != nir_intrinsic_load_global ||
        intr->def.bit_size != 32 || intr->def.num_components != 1 ||
-       !(nir_intrinsic_access(intr) & ACCESS_NON_WRITEABLE))
+       (nir_intrinsic_access(intr) & (ACCESS_NON_WRITEABLE | ACCESS_CAN_REORDER)) !=
+          (ACCESS_NON_WRITEABLE | ACCESS_CAN_REORDER) ||
+       (nir_intrinsic_access(intr) & ACCESS_VOLATILE))
       return false;
    nir_scalar address = nir_scalar_resolved(intr->src[0].ssa, 0);
    uint64_t offset = 0;
@@ -257,25 +259,55 @@ hk_nir_prefetch_ubos(nir_shader *nir, unsigned set_base, unsigned set_count,
                                  ((struct candidate){intr, entry}));
          }
       }
-      util_dynarray_foreach(&candidates, struct candidate, c) {
-         nir_intrinsic_instr *intr = c->intr;
-         nir_instr *instr = &intr->instr;
-         unsigned entry = c->entry;
-         nir_builder b = nir_builder_at(nir_before_instr(instr));
-         unsigned half = loads[entry].uniform_half;
-         /* Sparse/capture-replay UBOs retain the ordinary shader path.
-          * The encoder publishes eligibility beside the prefetched value;
-          * it never resolves a mutable sparse mapping while recording. */
+      /* All accepted addresses are immutable descriptors plus a constant,
+       * independently bounds-checked offset. The Ioto path already loads these
+       * values at draw entry. Group the sparse fallback at entry as well, so
+       * one uniform decision and descriptor fetch serve the whole UBO instead
+       * of cloning its alias/residency walk into each scalar's separate else.
+       * Volatile loads and partially bound/update-after-bind sets never enter
+       * this optimization. Sparse resolution still happens on the GPU. */
+      nir_builder b = nir_builder_at(nir_before_impl(impl));
+      nir_def *replacement[HK_UBO_PREFETCH_MAX] = {0};
+      for (unsigned first = 0; first < *load_count; ++first) {
+         if (replacement[first])
+            continue;
+         const struct hk_ubo_prefetch *group = &loads[first];
          nir_def *direct = nir_load_preamble(&b, 1, 32,
-                                            .base = loads[entry].direct_half);
+                                            .base = group->direct_half);
+         nir_def *values[HK_UBO_PREFETCH_MAX] = {0};
+         nir_def *fallback[HK_UBO_PREFETCH_MAX] = {0};
          nir_push_if(&b, nir_ine_imm(&b, direct, 0));
-         nir_def *value = nir_load_preamble(&b, 1, 32, .base = half);
+         for (unsigned i = first; i < *load_count; ++i) {
+            if (loads[i].direct_half == group->direct_half)
+               values[i] = nir_load_preamble(&b, 1, 32,
+                                             .base = loads[i].uniform_half);
+         }
          nir_push_else(&b, NULL);
-         nir_intrinsic_instr *fallback =
-            nir_instr_as_intrinsic(nir_instr_clone(nir, instr));
-         nir_builder_instr_insert(&b, &fallback->instr);
+         nir_def *table = nir_load_preamble(&b, 1, 64,
+                                            .base = set_base + 4 * group->set);
+         nir_def *desc = nir_load_global_constant(&b, 4, 32,
+            nir_iadd_imm(&b, table, group->descriptor_offset_B), .align_mul = 4);
+         nir_def *pointer = nir_pack_64_2x32_split(&b,
+            nir_channel(&b, desc, 0), nir_channel(&b, desc, 1));
+         for (unsigned i = first; i < *load_count; ++i) {
+            if (!values[i])
+               continue;
+            nir_def *valid = nir_ult(&b, nir_imm_int(&b, loads[i].offset_B + 3),
+                                       nir_channel(&b, desc, 2));
+            nir_def *base = nir_bcsel(&b, valid, pointer,
+                                      nir_imm_int64(&b, AGX_ZERO_PAGE_ADDRESS));
+            fallback[i] = nir_load_global(&b, 1, 32,
+               nir_iadd_imm(&b, base, loads[i].offset_B), .align_mul = 4,
+               .access = ACCESS_NON_WRITEABLE | ACCESS_CAN_REORDER);
+         }
          nir_pop_if(&b, NULL);
-         nir_def_replace(&intr->def, nir_if_phi(&b, value, &fallback->def));
+         for (unsigned i = first; i < *load_count; ++i) {
+            if (values[i])
+               replacement[i] = nir_if_phi(&b, values[i], fallback[i]);
+         }
+      }
+      util_dynarray_foreach(&candidates, struct candidate, c) {
+         nir_def_replace(&c->intr->def, replacement[c->entry]);
          changed = true;
       }
       util_dynarray_fini(&candidates);

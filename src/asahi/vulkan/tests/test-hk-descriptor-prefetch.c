@@ -22,7 +22,7 @@ static bool allow_ubo(void *data, unsigned set, unsigned offset)
    return *(bool *)data && set == 0 && offset == 64;
 }
 
-static void test_ubo(bool early, bool direct)
+static void test_ubo(bool early, bool direct, unsigned access, bool eligible)
 {
    nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT, NULL,
                                                  "bounded UBO prefetch");
@@ -35,9 +35,18 @@ static void test_ubo(bool early, bool direct)
    nir_def *valid = nir_ult(&b, nir_imm_int(&b, 43), nir_channel(&b, desc, 2));
    nir_def *base = nir_bcsel(&b, valid, pointer, nir_imm_int64(&b, 1ull << 32));
    nir_def *value = nir_load_global(&b, 1, 32, nir_iadd_imm(&b, base, 40),
-                     .align_mul = 4, .access = ACCESS_NON_WRITEABLE | ACCESS_CAN_REORDER);
+                     .align_mul = 4, .access = access);
    nir_store_global(&b, value, nir_imm_int64(&b, 0x1000), .align_mul = 4);
    nir_intrinsic_instr *store = nir_instr_as_intrinsic(nir_builder_last_instr(&b));
+   /* A second scalar in a conditional block shares the immutable descriptor.
+    * Grouping must produce one entry decision and valid dominating phis. */
+   nir_push_if(&b, nir_ine_imm(&b, nir_load_sample_id(&b), 0));
+   nir_def *valid2 = nir_ult(&b, nir_imm_int(&b, 47), nir_channel(&b, desc, 2));
+   nir_def *base2 = nir_bcsel(&b, valid2, pointer, nir_imm_int64(&b, 1ull << 32));
+   nir_def *value2 = nir_load_global(&b, 1, 32, nir_iadd_imm(&b, base2, 44),
+                     .align_mul = 4, .access = access);
+   nir_store_global(&b, value2, nir_imm_int64(&b, 0x1004), .align_mul = 4);
+   nir_pop_if(&b, NULL);
    struct hk_ubo_prefetch loads[HK_UBO_PREFETCH_MAX] = {0};
    unsigned end = 28, count = 0;
    bool allowed = false;
@@ -45,9 +54,19 @@ static void test_ubo(bool early, bool direct)
                                allow_ubo, &allowed));
    assert(count == 0 && end == 28);
    allowed = true;
+   if (!eligible) {
+      assert(!hk_nir_prefetch_ubos(b.shader, 24, 1, &end, loads, &count,
+                                   allow_ubo, &allowed));
+      assert(count == 0 && end == 28);
+      nir_validate_shader(b.shader, "non-speculatable UBO unchanged");
+      ralloc_free(b.shader);
+      return;
+   }
    assert(hk_nir_prefetch_ubos(b.shader, 24, 1, &end, loads, &count,
                               allow_ubo, &allowed));
-   assert(count == 1 && end == 32 && loads[0].set == 0);
+   assert(count == 2 && end == 36 && loads[0].set == 0);
+   assert(loads[1].direct_half == loads[0].direct_half);
+   assert(loads[1].offset_B == 44 && loads[1].uniform_half == 32);
    assert(loads[0].descriptor_offset_B == 64 && loads[0].offset_B == 40);
    assert(loads[0].size_B == 4 && loads[0].uniform_half == 28);
    assert(nir_def_instr(store->src[0].ssa)->type == nir_instr_type_phi);
@@ -75,15 +94,18 @@ static void test_ubo(bool early, bool direct)
       nir_foreach_instr(instr, block)
          fallback_loads += instr->type == nir_instr_type_intrinsic &&
             nir_instr_as_intrinsic(instr)->intrinsic == nir_intrinsic_load_global;
-   assert(fallback_loads == !direct);
+   assert(fallback_loads == 2 * !direct);
    nir_validate_shader(b.shader, "direct and sparse UBO branches");
    ralloc_free(b.shader);
 }
 
 int main(void)
 {
-   test_ubo(false, false); test_ubo(false, true);
-   test_ubo(true, false); test_ubo(true, true);
+   unsigned access = ACCESS_NON_WRITEABLE | ACCESS_CAN_REORDER;
+   test_ubo(false, false, access, true); test_ubo(false, true, access, true);
+   test_ubo(true, false, access, true); test_ubo(true, true, access, true);
+   test_ubo(true, false, ACCESS_NON_WRITEABLE, false);
+   test_ubo(true, false, access | ACCESS_VOLATILE, false);
    nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT, NULL, "descriptor prefetch");
    nir_intrinsic_instr *ubo = load(&b, 24, nir_imm_int(&b, 4), 2, 4, 32);
    nir_intrinsic_instr *sampler = load(&b, 32, nir_imm_int(&b, 5), 2, 2, 16);
