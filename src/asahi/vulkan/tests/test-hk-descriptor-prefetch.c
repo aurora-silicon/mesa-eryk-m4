@@ -99,8 +99,50 @@ static void test_ubo(bool early, bool direct, unsigned access, bool eligible)
    ralloc_free(b.shader);
 }
 
+static void test_plain_sampler(void)
+{
+   static const nir_shader_compiler_options options = {0};
+   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT, &options,
+                                                 "plain sampler predicates");
+   nir_def *table = nir_load_descriptor_set_agx(&b, .desc_set = 1);
+   nir_def *state = nir_load_global_constant(&b, 2, 32,
+      nir_iadd_imm(&b, table, 128 + 32), .align_mul = 4);
+   nir_def *mode = nir_ubitfield_extract_imm(&b, nir_channel(&b, state, 1), 22, 2);
+   nir_store_global(&b, mode, nir_imm_int64(&b, 0x1000), .align_mul = 4);
+   nir_intrinsic_instr *out = nir_instr_as_intrinsic(nir_builder_last_instr(&b));
+   nir_def *min = nir_load_global_constant(&b, 1, 16,
+      nir_iadd_imm(&b, table, 128 + 46), .align_mul = 2);
+   nir_store_global(&b, min, nir_imm_int64(&b, 0x1004), .align_mul = 2);
+   nir_intrinsic_instr *min_out = nir_instr_as_intrinsic(nir_builder_last_instr(&b));
+   nir_def *border = nir_load_global_constant(&b, 1, 16,
+      nir_iadd_imm(&b, table, 128 + 42), .align_mul = 2);
+   nir_store_global(&b, border, nir_imm_int64(&b, 0x1006), .align_mul = 2);
+   nir_intrinsic_instr *border_out = nir_instr_as_intrinsic(nir_builder_last_instr(&b));
+   struct hk_plain_sampler samplers[HK_PLAIN_SAMPLER_MAX] = {
+      {.set=0,.descriptor_offset_B=128}, {.set=1,.descriptor_offset_B=128}};
+   unsigned count = 2;
+   assert(hk_nir_specialize_plain_samplers(b.shader, 24, 2, samplers, &count));
+   assert(count == 1 && samplers[0].set == 1);
+   nir_validate_shader(b.shader, "plain sampler specialization");
+   /* The predicate must fold without knowing unrelated descriptor fields. */
+   bool progress;
+   do {
+      progress = false;
+      NIR_PASS(progress, b.shader, nir_opt_constant_folding);
+      NIR_PASS(progress, b.shader, nir_opt_copy_prop);
+      NIR_PASS(progress, b.shader, nir_opt_algebraic);
+      NIR_PASS(progress, b.shader, nir_opt_dce);
+   } while (progress);
+   assert(nir_src_is_const(out->src[0]) && nir_src_as_uint(out->src[0]) == 0);
+   assert(nir_src_is_const(min_out->src[0]) && nir_src_as_uint(min_out->src[0]) == 0);
+   assert(nir_src_is_const(border_out->src[0]) && nir_src_as_uint(border_out->src[0]) == 0xffff);
+   nir_validate_shader(b.shader, "plain sampler predicate folding");
+   ralloc_free(b.shader);
+}
+
 int main(void)
 {
+   test_plain_sampler();
    unsigned access = ACCESS_NON_WRITEABLE | ACCESS_CAN_REORDER;
    test_ubo(false, false, access, true); test_ubo(false, true, access, true);
    test_ubo(true, false, access, true); test_ubo(true, true, access, true);

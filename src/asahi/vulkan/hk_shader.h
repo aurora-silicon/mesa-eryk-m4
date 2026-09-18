@@ -117,6 +117,8 @@ struct hk_shader_info {
    struct hk_ubo_prefetch ubo_prefetch[HK_UBO_PREFETCH_MAX];
    unsigned ubo_prefetch_count;
    bool ubo_prefetch_direct;
+   struct hk_plain_sampler plain_samplers[HK_PLAIN_SAMPLER_MAX];
+   unsigned plain_sampler_count;
 
    /* The bounded G17P graphics/compute path lowers one Gen9 combined
     * image/sampler to native texture/sampler state 0. Command recording joins

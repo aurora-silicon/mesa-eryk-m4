@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 #include "hk_descriptor_prefetch.h"
+#include "hk_native_descriptor.h"
+#include "hk_sampler_flags.h"
 #include "asahi/compiler/agx_compiler.h"
 #include "nir_builder.h"
 #include "asahi/lib/agx_abi.h"
@@ -69,7 +71,7 @@ descriptor_load(nir_intrinsic_instr *intr, unsigned set_base,
       return false;
 
    *size = intr->def.num_components * (intr->def.bit_size / 8);
-   if ((byte | *size) & 3 || byte > UINT32_MAX - *size)
+   if ((byte | *size) & 1 || byte > UINT32_MAX - *size)
       return false;
    *set = (half - set_base) / 4;
    *offset = byte;
@@ -89,7 +91,8 @@ hk_nir_prefetch_descriptors(nir_shader *nir, unsigned set_base,
             unsigned set;
             uint32_t offset, size;
             if (!descriptor_load(nir_instr_as_intrinsic(instr), set_base,
-                                 set_count, &set, &offset, &size))
+                                 set_count, &set, &offset, &size) ||
+                ((offset | size) & 3))
                continue;
             struct hk_descriptor_prefetch *span = &spans[set];
             uint32_t first = span->size_B ? MIN2(span->offset_B, offset) : offset;
@@ -126,7 +129,7 @@ hk_nir_prefetch_descriptors(nir_shader *nir, unsigned set_base,
             unsigned set;
             uint32_t offset, size;
             if (!descriptor_load(intr, set_base, set_count, &set, &offset, &size) ||
-                !spans[set].size_B)
+                ((offset | size) & 3) || !spans[set].size_B)
                continue;
             nir_builder b = nir_builder_at(nir_before_instr(instr));
             unsigned half = spans[set].uniform_half +
@@ -314,5 +317,68 @@ hk_nir_prefetch_ubos(nir_shader *nir, unsigned set_base, unsigned set_count,
       nir_progress(changed, impl, nir_metadata_none);
       progress |= changed;
    }
+   return progress;
+}
+
+/* Descriptor predicates are checked by command recording for the alternate
+ * executable. Retain all other sampler fields and native texture operations. */
+bool
+hk_nir_specialize_plain_samplers(nir_shader *nir, unsigned set_base,
+   unsigned set_count, struct hk_plain_sampler *samplers, unsigned *count)
+{
+   const struct hk_sampled_image_descriptor_layout layout =
+      hk_sampled_image_descriptor_layout(9);
+   bool used[HK_PLAIN_SAMPLER_MAX] = {0};
+   bool progress = false;
+   nir_foreach_function_impl(impl, nir) {
+      bool changed = false;
+      nir_foreach_block(block, impl) {
+         nir_foreach_instr_safe(instr, block) {
+            if (instr->type != nir_instr_type_intrinsic)
+               continue;
+            nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+            unsigned set;
+            uint32_t offset, size;
+            if (!descriptor_load(intr, set_base, set_count, &set, &offset, &size))
+               continue;
+            for (unsigned i = 0; i < *count; ++i) {
+               if (set != samplers[i].set || offset < samplers[i].descriptor_offset_B)
+                  continue;
+               unsigned relative = offset - samplers[i].descriptor_offset_B;
+               nir_builder b = nir_builder_at(nir_after_instr(instr));
+               nir_def *replacement = NULL;
+               if (intr->def.bit_size == 16 && intr->def.num_components == 1) {
+                  if (relative == layout.min_lod || relative == layout.min_lod_uint)
+                     replacement = nir_imm_intN_t(&b, 0, 16);
+                  else if (relative == layout.clamp_0_sampler_index)
+                     replacement = nir_imm_intN_t(&b, -1, 16);
+               } else if (intr->def.bit_size == 32 && !(relative & 3) &&
+                          relative <= layout.sampler + 4 &&
+                          relative + size > layout.sampler + 4) {
+                  unsigned component = (layout.sampler + 4 - relative) / 4;
+                  nir_def *parts[NIR_MAX_VEC_COMPONENTS];
+                  for (unsigned c = 0; c < intr->def.num_components; ++c) {
+                     parts[c] = nir_channel(&b, &intr->def, c);
+                     if (c == component)
+                        parts[c] = nir_iand_imm(&b, parts[c],
+                           ~(3u << HK_MINMAX_MODE_SHIFT));
+                  }
+                  replacement = nir_vec(&b, parts, intr->def.num_components);
+               }
+               if (replacement) {
+                  nir_def_rewrite_uses_after(&intr->def, replacement);
+                  changed = used[i] = true;
+                  break;
+               }
+            }
+         }
+      }
+      nir_progress(changed, impl, nir_metadata_control_flow);
+      progress |= changed;
+   }
+   unsigned n = 0;
+   for (unsigned i = 0; i < *count; ++i)
+      if (used[i]) samplers[n++] = samplers[i];
+   *count = n;
    return progress;
 }

@@ -15,6 +15,14 @@ bool hk_nir_prefetch_descriptors(nir_shader *nir, unsigned set_base,
                                 unsigned set_count, unsigned *uniform_end,
                                 struct hk_descriptor_prefetch *spans);
 
+#define HK_PLAIN_SAMPLER_MAX 8
+struct hk_plain_sampler {
+   uint32_t descriptor_offset_B;
+   uint16_t set;
+};
+bool hk_nir_specialize_plain_samplers(nir_shader *nir, unsigned set_base,
+   unsigned set_count, struct hk_plain_sampler *samplers, unsigned *count);
+
 /* A bounded optimization budget, not an admission limit: unmatched loads keep
  * their original shader path. Each entry reserves an aligned uniform quad. */
 #define HK_UBO_PREFETCH_MAX (512u / 4u)

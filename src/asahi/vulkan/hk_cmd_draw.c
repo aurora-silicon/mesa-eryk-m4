@@ -40,6 +40,7 @@
 #include "hk_physical_device.h"
 #include "hk_private.h"
 #include "hk_shader.h"
+#include "hk_sampler.h"
 
 #include "asahi/genxml/agx_pack.h"
 #include "asahi/libagx/compression.h"
@@ -4896,6 +4897,25 @@ hk_fs_can_use_direct_ubos(struct hk_cmd_buffer *cmd)
    const struct hk_shader_info *info = &api->variants[1].info;
    const struct hk_descriptor_state *state = &gfx->descriptors;
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
+   for (unsigned i = 0; i < info->plain_sampler_count; ++i) {
+      const struct hk_plain_sampler *sampler = &info->plain_samplers[i];
+      const struct hk_descriptor_set *set = state->sets[sampler->set];
+      const uint8_t *data = set ? set->mapped_ptr :
+         state->push[sampler->set] ? state->push[sampler->set]->data : NULL;
+      const uint32_t size = set ? state->set_sizes[sampler->set] :
+         state->push[sampler->set] ? sizeof(state->push[sampler->set]->data) : 0;
+      const struct hk_sampled_image_descriptor_layout layout =
+         hk_sampled_image_descriptor_layout(9);
+      if (!data || sampler->descriptor_offset_B > size ||
+          layout.stride > size - sampler->descriptor_offset_B)
+         return false;
+      struct hk_sampled_image_descriptor_sw sw;
+      memcpy(&sw, data + sampler->descriptor_offset_B + layout.sampler, sizeof(sw));
+      if ((sw.sampler.opaque[1] & (3u << HK_MINMAX_MODE_SHIFT)) ||
+          (sw.min_lod_fp16 & 0x7fff) || sw.min_lod_uint16 ||
+          sw.clamp_0_sampler_index_or_negative >= 0)
+         return false;
+   }
    for (unsigned i = 0; i < info->ubo_prefetch_count; ++i) {
       const struct hk_ubo_prefetch *load = &info->ubo_prefetch[i];
       struct hk_descriptor_set *set = state->sets[load->set];

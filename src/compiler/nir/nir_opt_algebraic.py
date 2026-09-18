@@ -2504,6 +2504,12 @@ optimizations.extend([
    # 0u < uint(a) <=> uint(a) != 0u
    (('ult', 0, 'a@64'), ('ine', ('ior', ('unpack_64_2x32_split_x', a), ('unpack_64_2x32_split_y', a)), 0), '(options->lower_int64_options & nir_lower_icmp64) != 0'),
 
+   # Push a constant mask through a constant bitfield extraction. This makes
+   # known-zero descriptor fields visible before control-flow optimization.
+   (('ubitfield_extract', ('iand', 'value@32', '#mask'), '#offset', '#bits'),
+    ('iand', ('ubitfield_extract', 'value', 'offset', 'bits'),
+             ('ubitfield_extract', 'mask', 'offset', 'bits'))),
+
    (('ibitfield_extract', 'value@32', 'offset', 'bits'),
     ('bcsel', ('ult', 31, 'bits'), 'value',
               ('ibfe', 'value', 'offset', 'bits')),

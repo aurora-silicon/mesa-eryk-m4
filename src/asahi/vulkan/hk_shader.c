@@ -2596,6 +2596,27 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
                shader->info.ubo_prefetch, &shader->info.ubo_prefetch_count,
                hk_ubo_prefetch_binding_allowed, (void *)set_layouts);
       if (shader->info.ubo_prefetch_direct) {
+         if (debug_get_bool_option("HK_M4_PLAIN_SAMPLERS", false)) {
+            for (unsigned set = 0; set < set_count; ++set) {
+               if (!set_layouts || !set_layouts[set])
+                  continue;
+               const struct hk_descriptor_set_layout *layout =
+                  vk_to_hk_descriptor_set_layout(set_layouts[set]);
+               if (layout->vk.flags & VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT)
+                  continue;
+               for (unsigned binding = 0; binding < layout->binding_count; ++binding) {
+                  const struct hk_descriptor_set_binding_layout *b = &layout->binding[binding];
+                  if (b->type != VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER ||
+                      b->array_size != 1 || b->flags ||
+                      shader->info.plain_sampler_count == HK_PLAIN_SAMPLER_MAX)
+                     continue;
+                  shader->info.plain_samplers[shader->info.plain_sampler_count++] =
+                     (struct hk_plain_sampler){ .set = set, .descriptor_offset_B = b->offset };
+               }
+            }
+            NIR_PASS(_, nir, hk_nir_specialize_plain_samplers, root + 4, set_count,
+                     shader->info.plain_samplers, &shader->info.plain_sampler_count);
+         }
          NIR_PASS(_, nir, nir_shader_intrinsics_pass, hk_specialize_ubo_direct,
                   nir_metadata_control_flow, &shader->info);
          NIR_PASS(_, nir, nir_opt_constant_folding);
@@ -3100,7 +3121,9 @@ hk_compile_shader(struct hk_device *dev, struct vk_shader_compile_info *info,
       result = hk_compile_nir(dev, pAllocator, nir, info->flags,
                               info->robustness, key, features, shader, sw_stage,
                               true, NULL, info->set_layout_count, info->set_layouts);
-      if (result == VK_SUCCESS && direct_nir && shader->info.ubo_prefetch_count) {
+      if (result == VK_SUCCESS && direct_nir &&
+          (shader->info.ubo_prefetch_count ||
+           debug_get_bool_option("HK_M4_PLAIN_SAMPLERS", false))) {
          struct hk_shader *direct = &obj->variants[1];
          direct->info.ubo_prefetch_direct = true;
          result = hk_compile_nir(dev, pAllocator, direct_nir, info->flags,

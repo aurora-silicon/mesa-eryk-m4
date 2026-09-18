@@ -603,3 +603,42 @@ Evidence: `20260918T164314104861Z-factorio-ubo-variant-frame`,
 `20260918T164537634001Z-factorio-ubo-variant-sparse`,
 `20260918T164612396912Z-factorio-ubo-variant-menu`, and
 `20260918T164937489205Z-factorio-ubo-variant-switch-audit`.
+
+## Ordinary sampler executable and masked-field folding
+
+`HK_M4_PLAIN_SAMPLERS=true` extends the opt-in UBO executable with up to eight
+scalar combined-image-sampler bindings. Only immutable, fully bound descriptors
+are eligible. Command recording checks weighted-average reduction, zero view
+minimum LOD and absent custom border; other descriptors select the general
+executable. The alternate NIR clears only those proven fields, preserving
+native filtering, coordinates, mip bias, texture contents and all other state.
+Descriptor binary metadata changes shader binary version to 13.
+
+NIR previously retained `ubitfield_extract(value & constant, constant, constant)`
+without exposing the known-zero extraction. Distributing the constant mask
+through that extraction allows the branch and its six unreachable filtering
+loops to disappear. Offline retained cloud compilation falls to 229 instructions,
+55 half-registers, no scratch and no loops (general: 7218/191/12 bytes/6 loops).
+The final capture quota excludes shaders below 500 instructions, so this number
+comes from offline recompilation of the retained pre-fold variant.
+
+Validation: original Factorio frame zero differing pixels; 16384 CPU-checked
+pixels across ordinary/custom-border rebinds pass; compiler predicate tests and
+6038 NIR tests pass (9 existing disabled). Pinned combined-sampler CTS: 80 Pass.
+Broader pinned uniform/sampler suite: 1929 Pass, 258 NotSupported, no failures,
+49.68 seconds including setup, peak 65 C. These checks include shaders without
+prefetched UBOs after allowing sampler-only specialized executables.
+
+Untouched menu: 11.1125 FPS (10.780–11.410), peak 63 C, versus preceding
+9.912 with UBO-only variant. Dynamic scenes prevent claiming a precise speedup.
+The last 19.065 seconds recorded 2964 renders, 5.354 seconds of fragment spans,
+1.961 seconds of render preparation, and 2744 compute commands with 3.263 seconds
+of active spans. These are all-client aggregates, not hardware utilization.
+The 60 FPS target remains unmet; production launcher has not been switched.
+
+Evidence: `20260918T165417692361Z-factorio-plain-sampler-frame` (before fold),
+`20260918T165821346087Z-factorio-plain-sampler-fold-frame`,
+`20260918T165859883287Z-factorio-plain-sampler-switch`,
+`20260918T165928629630Z-factorio-plain-sampler-menu`,
+`20260918T170058261250Z-factorio-plain-sampler-cts`,
+`20260918T170145386071Z-factorio-plain-sampler-wide-cts`.
