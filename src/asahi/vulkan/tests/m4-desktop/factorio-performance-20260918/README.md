@@ -642,3 +642,25 @@ Evidence: `20260918T165417692361Z-factorio-plain-sampler-frame` (before fold),
 `20260918T165928629630Z-factorio-plain-sampler-menu`,
 `20260918T170058261250Z-factorio-plain-sampler-cts`,
 `20260918T170145386071Z-factorio-plain-sampler-wide-cts`.
+
+## Compact UBO uniform allocation and loader ranges
+
+Each prefetched scalar now reserves its two uniform halves; only the first
+scalar of a descriptor reserves an additional eligibility word. Adjacent source
+bytes and destination uniform halves merge into one Ioto loader range, after
+independent bounds checks. Noncontiguous offsets and zero-page fallback reads
+remain separate. This is still within the opt-in UBO prefetch path.
+
+Host NIR checks pass. Retained frame: zero differing pixels; 80 pinned UBO CTS
+cases Pass; 16384 CPU-checked pixels across ordinary/sparse UBO rebinds pass.
+Untouched menu 10.8725 FPS (10.580–11.390), peak 63.75 C; no measured FPS gain
+is claimed over the preceding 11.1–11.6 FPS varying-scene observations.
+Evidence: `20260918T171041227691Z-factorio-compact-ubo-frame`,
+`20260918T171134968760Z-factorio-compact-ubo-cts`,
+`20260918T171159132769Z-factorio-compact-ubo-sparse`,
+`20260918T171230299645Z-factorio-compact-ubo-menu`.
+
+The preceding `20260918T170521385580Z-factorio-plain-sampler-profile` retained
+a 14.604-second guest CPU sample: render thread 27.46% of one core, main thread
+10.75%, submission thread 2.33%, with waits in futex/syncobj paths. This does
+not indicate a saturated CPU rendering thread. No input or screenshot was used.

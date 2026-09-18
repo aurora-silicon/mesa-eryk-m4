@@ -64,7 +64,7 @@ static void test_ubo(bool early, bool direct, unsigned access, bool eligible)
    }
    assert(hk_nir_prefetch_ubos(b.shader, 24, 1, &end, loads, &count,
                               allow_ubo, &allowed));
-   assert(count == 2 && end == 36 && loads[0].set == 0);
+   assert(count == 2 && end == 34 && loads[0].set == 0);
    assert(loads[1].direct_half == loads[0].direct_half);
    assert(loads[1].offset_B == 44 && loads[1].uniform_half == 32);
    assert(loads[0].descriptor_offset_B == 64 && loads[0].offset_B == 40);

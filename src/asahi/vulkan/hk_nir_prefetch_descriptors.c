@@ -240,7 +240,7 @@ hk_nir_prefetch_ubos(nir_shader *nir, unsigned set_base, unsigned set_count,
                   break;
             }
             if (entry == *load_count) {
-               unsigned start = align(*uniform_end, 4);
+               unsigned start = align(*uniform_end, 2);
                /* Two load ranges per entry, leaving room for roots, texture
                 * tables, descriptors and constants in the 128-chunk loader. */
                if (entry == 48 || start + 4 > AGX_NUM_UNIFORMS)
@@ -255,7 +255,9 @@ hk_nir_prefetch_ubos(nir_shader *nir, unsigned set_base, unsigned set_count,
                   }
                }
                loads[entry] = load;
-               *uniform_end = start + 4;
+               /* One scalar plus one eligibility word for the first read of
+                * each descriptor. Later scalars need no padding or new flag. */
+               *uniform_end = start + (load.direct_half == start + 2 ? 4 : 2);
                ++*load_count;
             }
             util_dynarray_append(&candidates,

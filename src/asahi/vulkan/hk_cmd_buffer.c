@@ -1453,10 +1453,20 @@ hk_g17p_graphics_uniform_ranges(
                                           AGX_ZERO_PAGE_ADDRESS;
       if (valid && direct && source < address.base_addr)
          return false;
-      ranges[count++] = (struct agx3_ioto_uniform_range){
-         .start_halfs = load->uniform_half, .size_halfs = load->size_B / 2,
-         .address = source,
-      };
+      /* Consecutive scalar uniforms often come from consecutive UBO bytes.
+       * Let Ioto issue one contiguous load instead of a separate resource
+       * round for each scalar. Bounds were checked independently above. Zero
+       * page fallbacks do not combine unless their addresses are contiguous. */
+      struct agx3_ioto_uniform_range *previous = count ? &ranges[count - 1] : NULL;
+      if (previous && previous->start_halfs + previous->size_halfs == load->uniform_half &&
+          previous->address + previous->size_halfs * 2 == source) {
+         previous->size_halfs += load->size_B / 2;
+      } else {
+         ranges[count++] = (struct agx3_ioto_uniform_range){
+            .start_halfs = load->uniform_half, .size_halfs = load->size_B / 2,
+            .address = source,
+         };
+      }
       if (load->direct_half == load->uniform_half + 2) {
          const uint32_t eligible = direct;
          uint64_t eligible_va = hk_pool_upload(cmd, &eligible, sizeof(eligible), 4);
