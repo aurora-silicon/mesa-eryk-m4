@@ -1318,6 +1318,18 @@ queue_submit(struct hk_device *dev, struct hk_queue *queue,
          (struct hk_cmd_buffer *)submit->command_buffers[i];
 
       list_for_each_entry(struct hk_cs, cs, &cmdbuf->control_streams, node) {
+         if (debug_get_bool_option("HK_COMMAND_PROFILE", false))
+            fprintf(stderr,
+                    "HK_COMMAND_PROFILE ns=%" PRId64 " cb=%u engine=%s calls=%u commands=%u merged=%u timestamp_only=%u reset=%u dependency=%u ts_start=%u ts_end=%u fills=%u timestamp_copies=%u query_copies=%u precomp_calls=%u precomp_id=%u\n",
+                    os_time_get_nano(), i, cs->type == HK_CS_CDM ? "compute" : "render",
+                    cs->stats.calls, cs->stats.cmds, cs->stats.merged,
+                    cs->timestamp_only, cs->ends_timestamp_reset,
+                    cs->ends_memory_dependency,
+                    !!cs->timestamp.start.handle, !!cs->timestamp.end.handle,
+                    cs->stats.fills, cs->stats.timestamp_copies,
+                    cs->stats.query_copies, cs->stats.precomp_calls,
+                    cs->stats.precomp_id);
+
          /* Barrier on previous command */
          struct drm_asahi_cmd_header header =
             agx_cmd_header(cs->type == HK_CS_CDM, nr_vdm, nr_cdm);

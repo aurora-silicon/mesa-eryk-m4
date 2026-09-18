@@ -1826,6 +1826,12 @@ hk_dispatch_precomp(struct hk_cmd_buffer *cmd, struct agx_grid grid,
       if (!cs)
          return;
 
+      if (!cs->stats.precomp_calls)
+         cs->stats.precomp_id = idx;
+      else if (cs->stats.precomp_id != idx)
+         cs->stats.precomp_id = UINT32_MAX;
+      cs->stats.precomp_calls++;
+
       /* Internal kernels must not overwrite the application's compute push
        * constants. The native dispatch uploads its root before returning. */
       struct hk_root_descriptor_table saved = cmd->state.cs.descriptors.root;

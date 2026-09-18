@@ -422,6 +422,7 @@ struct hk_cs {
    /* Statistics */
    struct {
       uint32_t calls, cmds, flushes, merged;
+      uint32_t fills, timestamp_copies, query_copies, precomp_calls, precomp_id;
    } stats;
 
    /* Native start timestamps can absorb a preceding timestamp-only command. */
@@ -497,6 +498,16 @@ hk_cs_merge_cdm(struct hk_cs *a, const struct hk_cs *b)
    a->stats.cmds += b->stats.cmds;
    a->stats.flushes += b->stats.flushes;
    a->stats.merged++;
+   a->stats.fills += b->stats.fills;
+   a->stats.timestamp_copies += b->stats.timestamp_copies;
+   a->stats.query_copies += b->stats.query_copies;
+   if (b->stats.precomp_calls) {
+      if (!a->stats.precomp_calls)
+         a->stats.precomp_id = b->stats.precomp_id;
+      else if (a->stats.precomp_id != b->stats.precomp_id)
+         a->stats.precomp_id = UINT32_MAX;
+   }
+   a->stats.precomp_calls += b->stats.precomp_calls;
 }
 
 static inline uint64_t

@@ -235,6 +235,8 @@ hk_g17p_meta_fill_addr(struct hk_cmd_buffer *cmd, struct hk_cs **target,
    struct hk_meta_save save;
    hk_meta_begin(cmd, &save, VK_PIPELINE_BIND_POINT_COMPUTE);
    vk_meta_fill_buffer_addr(&cmd->vk, &dev->meta, address, size, value);
+   if (size && cmd->current_cs.cs)
+      cmd->current_cs.cs->stats.fills++;
    hk_meta_end(cmd, &save, VK_PIPELINE_BIND_POINT_COMPUTE);
    if (size && cmd->current_cs.cs)
       hk_drm_attachment_set_add(&cmd->current_cs.cs->compute_attachments,
@@ -465,6 +467,7 @@ hk_native_meta_copy_timestamp(struct hk_cmd_buffer *cmd,
       cmd, &cmd->current_cs.post_gfx, true);
    if (!post)
       return;
+   post->stats.timestamp_copies++;
    hk_cdm_cache_flush(dev, post);
    struct hk_cs *saved_cs = cmd->current_cs.cs;
    cmd->current_cs.cs = post;
@@ -582,6 +585,7 @@ hk_native_meta_copy_query(struct hk_cmd_buffer *cmd, uint64_t destination,
    struct hk_cs *cs = hk_cmd_buffer_get_cs_general(cmd, &cmd->current_cs.cs, true);
    if (!cs)
       return;
+   cs->stats.query_copies++;
    hk_cdm_cache_flush(dev, cs);
    struct hk_meta_save save;
    hk_meta_begin(cmd, &save, VK_PIPELINE_BIND_POINT_COMPUTE);

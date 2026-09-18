@@ -664,3 +664,16 @@ The preceding `20260918T170521385580Z-factorio-plain-sampler-profile` retained
 a 14.604-second guest CPU sample: render thread 27.46% of one core, main thread
 10.75%, submission thread 2.33%, with waits in futex/syncobj paths. This does
 not indicate a saturated CPU rendering thread. No input or screenshot was used.
+
+## Command-origin profile
+
+`HK_COMMAND_PROFILE=true` logs per-control-stream API/dispatch counts, timestamp
+flags and counts of native fill, timestamp-copy, query-copy and precompiled
+kernels (including their generated enum ID). The counters survive CDM merging;
+logging is opt-in and can affect timing under FEX.
+
+`20260918T205151789387Z-factorio-command-origins` completed the untouched menu,
+peak 64.25 C. A representative frame has five separate CDMs for seven duplicate
+render timestamps, three timestamp-only CDMs and three compressed fast-clear
+kernels (`LIBAGX_FAST_CLEAR_2`). No input or screenshots were used. This
+identifies unnecessary command boundaries, not a 60 FPS result.

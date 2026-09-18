@@ -42,3 +42,10 @@ compression and must not be counted as compression qualification. Live menu
 performance is pending; this is not a 60 FPS claim or a general compression
 support claim. Array/mip/MSAA, format reinterpretation transfers, eMRT,
 host-copy and sparse integration require separate qualification.
+
+Live candidate: `20260918T203940085477Z-factorio-compressed-menu`,
+11.169 FPS (10.69–11.78), peak 62.75 C, actual full-size compressed
+allocations confirmed in guest stderr. No demonstrated FPS gain against the
+12.954 FPS earlier dynamic-menu sample; scenes/pass counts differ. Full-size
+fragment mean was 1.413 ms versus 2.062 ms earlier, but this is not a paired
+fixed-scene comparison. Compression remains experimental, not default.
