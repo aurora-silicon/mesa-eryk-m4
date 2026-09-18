@@ -613,8 +613,14 @@ hk_CreateDescriptorPool(VkDevice _device,
       uint32_t stride, alignment;
       hk_descriptor_stride_align_for_type(pdev, pCreateInfo->pPoolSizes[i].type,
                                           type_list, &stride, &alignment);
-      bo_size +=
-         MAX2(stride, max_align) * pCreateInfo->pPoolSizes[i].descriptorCount;
+      /* Each descriptor may occupy a separate binding, and every binding
+       * starts at its required alignment. In particular, the Gen9 sampled
+       * descriptor is 76 bytes but successive bindings start 80 bytes apart.
+       * Reserve padding for the largest alignment present in the pool so
+       * arbitrary binding order cannot exhaust a valid allocation.
+       */
+      bo_size += align64(stride, MAX2(max_align, 1)) *
+                 pCreateInfo->pPoolSizes[i].descriptorCount;
    }
 
    /* Individual descriptor sets are aligned to the min UBO alignment to

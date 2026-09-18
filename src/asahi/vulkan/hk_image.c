@@ -484,7 +484,8 @@ hk_GetPhysicalDeviceImageFormatProperties2(
        * have residency query support for this interaction and there are no
        * known use cases.
        */
-      if (!util_is_power_of_two_nonzero(
+      if ((pImageFormatInfo->flags & VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT) &&
+          !util_is_power_of_two_nonzero(
              vk_format_get_blocksize(pImageFormatInfo->format))) {
 
          return VK_ERROR_FORMAT_NOT_SUPPORTED;
