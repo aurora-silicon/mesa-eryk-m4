@@ -40,9 +40,9 @@ int main(int argc, char **argv) {
   printf("Renderer: %s\n", glGetString(GL_RENDERER));
   int mode = argc > 1 ? atoi(argv[1]) : 0;
   int rounds = argc > 2 ? atoi(argv[2]) : 16;
-  CHECK(mode >= 0 && mode <= 5 && rounds > 0 && rounds <= 2000);
+  CHECK(mode >= 0 && mode <= 6 && rounds > 0 && rounds <= 2000);
   GLuint tex = 0, fb = 0;
-  if (mode == 4) {
+  if (mode == 4 || mode == 6) {
     glGenTextures(1, &tex);
     glBindTexture(GL_TEXTURE_2D, tex);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 64, 64, 0, GL_RGBA,
@@ -53,7 +53,7 @@ int main(int argc, char **argv) {
                            tex, 0);
     CHECK(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
   }
-  if (mode == 4) {
+  if (mode == 4 || mode == 6) {
     GLuint p = glCreateProgram();
     glAttachShader(
         p, shader(GL_VERTEX_SHADER, "#version 450\nvoid main(){vec2 "
@@ -72,6 +72,37 @@ int main(int argc, char **argv) {
     glBindVertexArray(vao);
     glViewport(0, 0, 64, 64);
   }
+  if (mode == 6) {
+    /* Twelve writes exceed the eight retirement-copy slots, exercising the
+     * shader-copy fallback in the same render pass. Repeat with reused GL
+     * queries and compare GPU query-buffer copies against CPU results. */
+    GLuint q[12], buffer;
+    glGenQueries(12, q);
+    glGenBuffers(1, &buffer);
+    glBindBuffer(GL_QUERY_BUFFER, buffer);
+    glBufferData(GL_QUERY_BUFFER, sizeof(GLuint64) * 12, NULL, GL_STREAM_READ);
+    glBindBuffer(GL_QUERY_BUFFER, 0);
+    GLuint64 previous = 0;
+    for (int round = 0; round < rounds; round++) {
+      glDrawArrays(GL_TRIANGLES, 0, 3);
+      for (unsigned j = 0; j < 12; j++) glQueryCounter(q[j], GL_TIMESTAMP);
+      glBindBuffer(GL_QUERY_BUFFER, buffer);
+      for (unsigned j = 0; j < 12; j++)
+        glGetQueryObjectui64v(q[j], GL_QUERY_RESULT, (GLuint64 *)(uintptr_t)(j * 8));
+      GLuint64 gpu[12];
+      glGetBufferSubData(GL_QUERY_BUFFER, 0, sizeof(gpu), gpu);
+      glBindBuffer(GL_QUERY_BUFFER, 0);
+      for (unsigned j = 0; j < 12; j++) {
+        GLuint64 cpu = 0;
+        glGetQueryObjectui64v(q[j], GL_QUERY_RESULT, &cpu);
+        CHECK(cpu != 0 && cpu != UINT64_MAX && cpu >= previous && cpu == gpu[j]);
+        previous = cpu;
+      }
+      CHECK(glGetError() == GL_NO_ERROR);
+    }
+    puts("PASS: render timestamp copies, overflow fallback, reuse and CPU/GPU agreement");
+    return 0;
+  }
   GLuint q[2], b;
   glGenQueries(2, q);
   glGenBuffers(1, &b);
@@ -80,7 +111,7 @@ int main(int argc, char **argv) {
   glBindBuffer(GL_QUERY_BUFFER, 0);
   for (int i = 0; i < rounds; i++) {
     printf("QUERY mode=%d round=%d\n", mode, i);
-    if (mode == 4) {
+    if (mode == 4 || mode == 6) {
       glClearColor(1, 0, 0, 1);
       glClear(GL_COLOR_BUFFER_BIT);
       glDrawArrays(GL_TRIANGLES, 0, 3);

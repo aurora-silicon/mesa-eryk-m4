@@ -428,6 +428,8 @@ struct hk_cs {
    /* Native start timestamps can absorb a preceding timestamp-only command. */
    struct {
       struct agx_timestamp_req start, end;
+      struct agx_timestamp_req end_copies[8];
+      unsigned end_copy_count;
    } timestamp;
 
    /* Writable destinations known while recording meta compute dispatches. */

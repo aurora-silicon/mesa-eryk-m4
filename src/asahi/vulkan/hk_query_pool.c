@@ -585,7 +585,17 @@ hk_CmdWriteTimestamp2(VkCommandBuffer commandBuffer,
    if (cs->timestamp.end.addr) {
       assert(after_gfx && "compute is handled above");
 
-      if (agx_native_graphics(&dev->dev))
+      if (cs->type == HK_CS_VDM &&
+          (dev->dev.params.features & DRM_ASAHI_FEATURE_RENDER_TIMESTAMP_COPIES) &&
+          debug_get_bool_option("HK_M4_TIMESTAMP_COPIES", false) &&
+          cs->timestamp.end_copy_count < ARRAY_SIZE(cs->timestamp.end_copies)) {
+         /* All timestamps inside this pass already share its completion
+          * timestamp. Let retirement publish additional destinations without
+          * an otherwise empty post-graphics compute command. */
+         cs->timestamp.end_copies[cs->timestamp.end_copy_count++] =
+            (struct agx_timestamp_req){.addr = report_addr, .handle = pool->handle,
+                                      .offset_B = hk_query_offset(pool, query)};
+      } else if (agx_native_graphics(&dev->dev))
          hk_native_meta_copy_timestamp(cmd, report_addr, cs->timestamp.end.addr);
       else
          libagx_copy_timestamp(cmd, agx_1d(1), AGX_BARRIER_ALL | AGX_POSTGFX,

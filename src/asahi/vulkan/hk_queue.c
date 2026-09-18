@@ -504,6 +504,10 @@ asahi_fill_vdm_command(struct hk_device *dev, struct hk_cs *cs,
    if (cs->timestamp.end.handle) {
       c->ts_frag.end.handle = cs->timestamp.end.handle;
       c->ts_frag.end.offset = cs->timestamp.end.offset_B;
+      for (unsigned i = 0; i < cs->timestamp.end_copy_count; i++) {
+         c->ts_frag_end_copies[i].handle = cs->timestamp.end_copies[i].handle;
+         c->ts_frag_end_copies[i].offset = cs->timestamp.end_copies[i].offset_B;
+      }
    }
 
 }
@@ -1320,7 +1324,7 @@ queue_submit(struct hk_device *dev, struct hk_queue *queue,
       list_for_each_entry(struct hk_cs, cs, &cmdbuf->control_streams, node) {
          if (debug_get_bool_option("HK_COMMAND_PROFILE", false))
             fprintf(stderr,
-                    "HK_COMMAND_PROFILE ns=%" PRId64 " cb=%u engine=%s calls=%u commands=%u merged=%u timestamp_only=%u reset=%u dependency=%u ts_start=%u ts_end=%u fills=%u timestamp_copies=%u query_copies=%u precomp_calls=%u precomp_id=%u\n",
+                    "HK_COMMAND_PROFILE ns=%" PRId64 " cb=%u engine=%s calls=%u commands=%u merged=%u timestamp_only=%u reset=%u dependency=%u ts_start=%u ts_end=%u fills=%u timestamp_copies=%u query_copies=%u precomp_calls=%u precomp_id=%u retirement_copies=%u\n",
                     os_time_get_nano(), i, cs->type == HK_CS_CDM ? "compute" : "render",
                     cs->stats.calls, cs->stats.cmds, cs->stats.merged,
                     cs->timestamp_only, cs->ends_timestamp_reset,
@@ -1328,7 +1332,7 @@ queue_submit(struct hk_device *dev, struct hk_queue *queue,
                     !!cs->timestamp.start.handle, !!cs->timestamp.end.handle,
                     cs->stats.fills, cs->stats.timestamp_copies,
                     cs->stats.query_copies, cs->stats.precomp_calls,
-                    cs->stats.precomp_id);
+                    cs->stats.precomp_id, cs->timestamp.end_copy_count);
 
          /* Barrier on previous command */
          struct drm_asahi_cmd_header header =

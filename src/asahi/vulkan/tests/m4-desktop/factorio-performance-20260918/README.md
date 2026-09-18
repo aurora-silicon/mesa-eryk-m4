@@ -677,3 +677,17 @@ peak 64.25 C. A representative frame has five separate CDMs for seven duplicate
 render timestamps, three timestamp-only CDMs and three compressed fast-clear
 kernels (`LIBAGX_FAST_CLEAR_2`). No input or screenshots were used. This
 identifies unnecessary command boundaries, not a 60 FPS result.
+
+## Render-retirement timestamp copies (opt-in)
+
+`HK_M4_TIMESTAMP_COPIES=true` uses the kernel's explicit feature bit 4 to
+publish up to eight duplicates of a render's existing fragment-end timestamp
+at exact retirement. Each duplicate previously needed an internal compute
+shader. Additional copies retain the shader fallback. Query values and timing
+boundaries are unchanged; this does not sample a CPU clock. Older kernels keep
+the existing path.
+
+`tools/gl-query-copy-probe.c` mode 6 writes twelve timestamps in a render pass,
+reuses the queries across rounds and checks GPU query-buffer values against
+CPU reads. It covers the eight-copy capacity and overflow fallback. Hardware
+qualification and Factorio timing are pending.
