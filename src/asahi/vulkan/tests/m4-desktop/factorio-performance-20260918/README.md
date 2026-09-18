@@ -504,3 +504,24 @@ Evidence: `20260918T152130828801Z-factorio-quiet-stats-ubo-menu`,
 `20260918T152904536029Z-factorio-query-completion-full-cts`,
 `20260918T152936687288Z-factorio-query-completion-order-checks`,
 `20260918T153021694520Z-factorio-query-completion-menu`.
+
+## Follow-up cost isolation
+
+After UBO prefetch, disabling code motion still does not improve the short menu
+observation (10.733 FPS). Diagnostic-only suppression of min/max and border
+emulation yields 11.122 FPS; it is not deployed or counted as a correct driver.
+Thus the current evidence does not justify building a new sampler variant
+system to claim a large end-to-end gain. The cloud shader's offline profile is
+7,426 instructions / 187 register halves / no spills with GCM, versus 8,284 /
+111 / no spills without it. Static shader size alone does not identify the
+executed cost of the fallback branches.
+
+The guest observer now retains per-thread CPU deltas and can collect a bounded
+8-second perf sample after initialization, with no screenshots or input. In
+`20260918T153903118494Z-factorio-guest-driver-profile`, the last ten seconds
+show 17.5% of one core in factorio:gdrv0, 6.76% in the main FEX thread and 1.59%
+in factorio:zfq0. The first two are sampled waiting on futexes and the last on
+a DRM sync object. This does not support a saturated CPU thread as the current
+FPS limit. The recorded sampler/clock-isolation experiments are
+`20260918T153346304859Z-factorio-prefetch-no-gcm-menu` and
+`20260918T153649299650Z-factorio-prefetch-sampler-cost-menu`.
