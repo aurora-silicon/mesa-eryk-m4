@@ -525,3 +525,10 @@ a DRM sync object. This does not support a saturated CPU thread as the current
 FPS limit. The recorded sampler/clock-isolation experiments are
 `20260918T153346304859Z-factorio-prefetch-no-gcm-menu` and
 `20260918T153649299650Z-factorio-prefetch-sampler-cost-menu`.
+
+The optional kernel SubmitSummary flag (bit 24, debug_flags=16777216) adds
+one exact-retirement aggregate per second without changing execution policy.
+Use `gpu-summary-timings.py LOG --tail-seconds 20` to analyze complete intervals.
+The currently installed 7.1.9-dirtyroom-asahi2+ kernel's Rust ABI is 1.94.1;
+the old workspace 1.98.0 build recipe failed modpost and was corrected. No
+unresolved symbols were suppressed and no incompatible module was installed.
