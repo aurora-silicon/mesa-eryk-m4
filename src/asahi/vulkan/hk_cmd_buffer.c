@@ -2170,20 +2170,13 @@ hk_optimize_empty_vdm(struct hk_cmd_buffer *cmd)
    struct hk_rendering_state *render = &cmd->state.gfx.render;
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
 
-   /* G17P already has native BG/EOT programs for the supported render-target
-    * clear path, but no precompiled fill_uint4 for the compute replacement
-    * below. Do not discard the working graphics representation and record an
-    * unsupported compute command instead. Once that precompiled shader is
-    * available, the normal optimization becomes eligible again.
-    *
-    * BeginRendering retained the attachments, initialized TA/PPP and selected
-    * the BG clear; EndRendering selected the final EOT. process_empty_tiles
-    * is the existing clear-and-store predicate, not a fabricated draw. The
-    * common finalizer will append the native VDM terminator without uploading
-    * any ordinary vertex or fragment program.
+   /* Native libagx kernels are now compiled through hk_dispatch_precomp,
+    * so an unpopulated AGX2 precompiled cache no longer forbids compute
+    * clears. Keep a real VDM when its firmware timestamp has already been
+    * selected: deleting it would discard that query write.
     */
    if (agx_native_graphics(&dev->dev) && cs->cr.process_empty_tiles &&
-       !agx_get_precompiled(&dev->bg_eot, LIBAGX_FILL_UINT4)) {
+       cs->timestamp.end.addr) {
       /* Normally supplied by the first draw. A clear has no application
        * sample-location state; use the attachment sample count and leave
        * has_sample_locations uncommitted, just like other meta operations.

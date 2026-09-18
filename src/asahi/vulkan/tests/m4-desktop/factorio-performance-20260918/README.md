@@ -249,3 +249,27 @@ so the default compiler policy remains unchanged. Evidence:
 The bounded observer accepts `--fps-log <HUD-directory>/fps` to retain fresh
 samples automatically and summarize the final 12 samples in its result JSON.
 It rejects stale or invalid sample files. No screenshot or input is involved.
+
+## Native compute clears
+
+The empty-render optimization still checked for an AGX2 precompiled kernel,
+even though HAL200 now compiles libagx kernels through the native dispatch
+path. Permit that compute clear, retaining a real VDM if a firmware timestamp
+was already assigned to it. This avoids tiling/fragment setup for clear-only
+passes and allows adjacent compute work to merge normally.
+
+Validation exposed a null RGBA-packer call for D24 attachment views. Those
+views use Z32_FLOAT backing (and a separate stencil plane). Depth/stencil
+clears must pack each physical plane, not the logical attachment format.
+The initial SIGSEGV and backtrace are retained; no GPU fault occurred.
+After fixing this, all 483 selected clear cases completed: 475 Pass,
+8 NotSupported. All 934 timestamp cases retained 908 Pass and 26 NotSupported.
+The retained Factorio frame is pixel-identical. Untouched menu mean over the
+last 12 HUD samples: **9.470 FPS** (9.123–9.691), versus **8.434 FPS** before.
+The goal remains 60 FPS; no graphics settings or quality were reduced.
+
+Evidence: `20260918T130549206801Z-factorio-compute-clear-frame`,
+`20260918T130800406321Z-factorio-compute-clear-cts` (initial CPU crash),
+`20260918T130957757014Z-factorio-compute-clear-depth-cts`,
+`20260918T131132691470Z-factorio-compute-clear-timestamp-cts`,
+`20260918T131239876715Z-factorio-compute-clear-menu-fps` (peak 70.25 C).

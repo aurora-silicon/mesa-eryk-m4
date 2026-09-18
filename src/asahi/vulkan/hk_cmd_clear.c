@@ -59,7 +59,13 @@ hk_clear_image(struct hk_cmd_buffer *cmd, struct hk_image *image,
             layer_count = vk_image_subresource_layer_count(&image->vk, range);
          }
 
-         enum pipe_format format = view_format ? view_format : layout->format;
+         /* Depth/stencil may have a different physical representation from
+          * the attachment view (D24 is stored as Z32_FLOAT, with stencil in
+          * a separate plane). Pack the plane we actually fill, not the API
+          * format: Z24X8 has no RGBA packer and cannot describe that storage.
+          */
+         enum pipe_format format = (z || s || !view_format)
+                                      ? layout->format : view_format;
          bool stencil = format == PIPE_FORMAT_S8_UINT;
 
          if (stencil) {
