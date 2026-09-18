@@ -38,4 +38,11 @@ for engine in ['render','compute']:
         d[name+'_seconds']=ns/1e9
         d[name+'_mean_ms']=ns/1e6/n if n else None
     result['engines'][engine]=d
+if 'render_private_clear_bytes' in sums:
+    n = sums['render_commands']
+    result['render_clears'] = dict(
+        private_bytes=sums['render_private_clear_bytes'],
+        private_mean_bytes=sums['render_private_clear_bytes']/n if n else None,
+        private_seconds=sums['render_private_clear_ns']/1e9,
+        total_seconds=sums['render_clear_ns']/1e9)
 print(json.dumps(result,indent=2))
