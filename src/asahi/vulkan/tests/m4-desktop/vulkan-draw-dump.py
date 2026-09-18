@@ -40,7 +40,10 @@ for line in a.jsonl.open():
    raise ValueError(f'Draw {i}: this dump build supports multi-draw checkpoints only for drawCount=1')
   commands[v['commandBuffer']]['draws'].append(i)
  elif n in ('vkQueueSubmit','vkQueueSubmit2','vkQueueSubmit2KHR'):
-  for submit in v['pSubmits'] or []:
+  submits=v['pSubmits'] or []
+  # Trim-state reconstruction emits a single object instead of an array.
+  if isinstance(submits,dict):submits=[submits]
+  for submit in submits:
    cbs=submit.get('pCommandBuffers') or [x['commandBuffer'] for x in submit.get('pCommandBufferInfos') or []]
    for cb in cbs:
     c=commands[cb]

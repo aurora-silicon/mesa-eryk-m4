@@ -1,0 +1,31 @@
+{
+  "BeginCommandBuffer": [
+    8491
+  ],
+  "Draw": [
+    [
+      10414,
+      10434
+    ]
+  ],
+  "RenderPass": [
+    [
+      [
+        10267,
+        10567
+      ]
+    ]
+  ],
+  "QueueSubmit": [
+    10649
+  ],
+  "DumpResourcesOptions": {
+    "DumpRawImages": true,
+    "DumpAllDescriptors": true,
+    "DumpVertexIndexBuffer": true,
+    "DumpBeforeCommand": true,
+    "DumpAllImageSubresources": false,
+    "BinaryFileCompressionType": "none",
+    "JsonOutputPerCommand": true
+  }
+}

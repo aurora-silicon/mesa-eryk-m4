@@ -1,0 +1,150 @@
+{
+  "status": "diagnosed gradient discontinuities; driver fix not implemented",
+  "capture": "build/steam-crash-20260918/factorio-menu.gfxr",
+  "capture_sha256": "222f44131258092d5302c86951f34b7c3911208fa20152853e19fca249f2484d",
+  "diagnostic_draw": 10434,
+  "region_xyxy": [
+    1086,
+    807,
+    1474,
+    857
+  ],
+  "pixel_count": 19400,
+  "software_rgba_histogram": {
+    "5,39,0,255": 19400
+  },
+  "hardware_rgba_histogram": {
+    "5,39,0,255": 19026,
+    "5,255,0,255": 326,
+    "255,255,0,255": 24,
+    "255,39,0,255": 24
+  },
+  "hardware_mismatched_pixels": 374,
+  "experiments": {
+    "20260918T043615525709Z-factorio-menu-native-draw-dump": {
+      "id": "20260918T043615525709Z-factorio-menu-native-draw-dump",
+      "verdict": "pass",
+      "transport_returncode": 0,
+      "evidence_fetched": true,
+      "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260918T043615525709Z-factorio-menu-native-draw-dump",
+      "observations": {
+        "pixel_results": [
+          "PASS: Vulkan replay process completed; rendering requires separate comparison"
+        ],
+        "pixel_result_count": 1,
+        "thermal_samples": 22,
+        "malformed_thermal_samples": 0,
+        "peak_temperature_c": 68.0,
+        "channel_peaks_c": {
+          "PMP aggregate die hotspot": 68.0,
+          "Ta000m": 63.25,
+          "Te000m": 63.5,
+          "Te001m": 67.0,
+          "Tp000m": 68.0,
+          "Tp001m": 67.0
+        }
+      }
+    },
+    "20260918T045423626534Z-factorio-original-shader-lod0-valid": {
+      "id": "20260918T045423626534Z-factorio-original-shader-lod0-valid",
+      "verdict": "pass",
+      "transport_returncode": 0,
+      "evidence_fetched": true,
+      "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260918T045423626534Z-factorio-original-shader-lod0-valid",
+      "observations": {
+        "pixel_results": [
+          "PASS: Vulkan replay process completed; rendering requires separate comparison"
+        ],
+        "pixel_result_count": 1,
+        "thermal_samples": 17,
+        "malformed_thermal_samples": 0,
+        "peak_temperature_c": 62.75,
+        "channel_peaks_c": {
+          "PMP aggregate die hotspot": 62.75,
+          "Ta000m": 58.75,
+          "Te000m": 58.5,
+          "Te001m": 62.75,
+          "Tp000m": 62.5,
+          "Tp001m": 61.5
+        }
+      }
+    },
+    "20260918T051045538593Z-factorio-explicit-gradient-diagnostic": {
+      "id": "20260918T051045538593Z-factorio-explicit-gradient-diagnostic",
+      "verdict": "pass",
+      "transport_returncode": 0,
+      "evidence_fetched": true,
+      "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260918T051045538593Z-factorio-explicit-gradient-diagnostic",
+      "observations": {
+        "pixel_results": [
+          "PASS: Vulkan replay process completed; rendering requires separate comparison"
+        ],
+        "pixel_result_count": 1,
+        "thermal_samples": 19,
+        "malformed_thermal_samples": 0,
+        "peak_temperature_c": 62.5,
+        "channel_peaks_c": {
+          "PMP aggregate die hotspot": 62.5,
+          "Ta000m": 59.0,
+          "Te000m": 58.75,
+          "Te001m": 61.5,
+          "Tp000m": 62.5,
+          "Tp001m": 61.0
+        }
+      }
+    },
+    "20260918T053918290212Z-factorio-gradient-button-dump": {
+      "id": "20260918T053918290212Z-factorio-gradient-button-dump",
+      "verdict": "pass",
+      "transport_returncode": 0,
+      "evidence_fetched": true,
+      "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260918T053918290212Z-factorio-gradient-button-dump",
+      "observations": {
+        "pixel_results": [
+          "PASS: Vulkan replay process completed; rendering requires separate comparison"
+        ],
+        "pixel_result_count": 1,
+        "thermal_samples": 16,
+        "malformed_thermal_samples": 0,
+        "peak_temperature_c": 63.75,
+        "channel_peaks_c": {
+          "PMP aggregate die hotspot": 63.75,
+          "Ta000m": 59.75,
+          "Te000m": 59.75,
+          "Te001m": 63.25,
+          "Tp000m": 63.75,
+          "Tp001m": 62.0
+        }
+      }
+    },
+    "20260918T053951170394Z-factorio-original-compiler-evidence": {
+      "id": "20260918T053951170394Z-factorio-original-compiler-evidence",
+      "verdict": "pass",
+      "transport_returncode": 0,
+      "evidence_fetched": true,
+      "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260918T053951170394Z-factorio-original-compiler-evidence",
+      "observations": {
+        "pixel_results": [
+          "PASS: Vulkan replay process completed; rendering requires separate comparison"
+        ],
+        "pixel_result_count": 1,
+        "thermal_samples": 30,
+        "malformed_thermal_samples": 0,
+        "peak_temperature_c": 64.75,
+        "channel_peaks_c": {
+          "PMP aggregate die hotspot": 64.75,
+          "Ta000m": 59.5,
+          "Te000m": 59.25,
+          "Te001m": 64.75,
+          "Tp000m": 63.75,
+          "Tp001m": 63.25
+        }
+      }
+    }
+  },
+  "software_replay_result": {
+    "returncode": 0,
+    "timed_out": false,
+    "seconds": 4.372440474980976
+  }
+}

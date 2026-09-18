@@ -12,7 +12,7 @@ parser.add_argument('--ipc',action='store_true')
 parser.add_argument('--observe-only',action='store_true')
 parser.add_argument('--seconds',type=int,default=85)
 args=parser.parse_args()
-assert 1<=args.seconds<=300
+assert 1<=args.seconds<=900
 assert os.getuid()!=0 and os.sysconf('SC_PAGE_SIZE')==4096
 out=Path.home()/'.cache/m4-factorio';out.mkdir(exist_ok=True)
 def games():

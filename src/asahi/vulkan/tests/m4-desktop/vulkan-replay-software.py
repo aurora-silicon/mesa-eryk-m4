@@ -16,6 +16,8 @@ p.add_argument("--output", required=True, type=Path)
 p.add_argument("--frames", required=True, help="GFXReconstruct frame selection")
 p.add_argument("--seconds", type=int, default=60)
 p.add_argument("--dump-config", type=Path)
+p.add_argument("--replace-shaders", type=Path,
+               help="Diagnostic sh<handle> SPIR-V replacements; not application qualification")
 p.add_argument("--remove-unsupported", action="store_true", help="Explicit diagnostic cross-device adaptation; not native qualification")
 p.add_argument("--validation-layer", type=Path, help="Khronos validation JSON; retain layer hash and enable checks")
 a = p.parse_args()
@@ -40,6 +42,20 @@ command = [str(replay), "--swapchain", "offscreen", "--memory-translation",
 if a.remove_unsupported:
     command[-1:-1] = ["--remove-unsupported"]
 validation_files = []
+replacement_files = []
+if a.replace_shaders:
+    import re
+    files = sorted(a.replace_shaders.resolve(strict=True).iterdir())
+    if not files or any(not f.is_file() or not re.fullmatch(r'sh[0-9]+', f.name)
+                        for f in files):
+        p.error("Replacement directory must contain only sh<decimal-handle> files")
+    replacements = out / 'replacements'
+    replacements.mkdir()
+    for f in files:
+        copied = replacements / f.name
+        copied.write_bytes(f.read_bytes())
+        replacement_files.append(copied)
+    command[-1:-1] = ['--replace-shaders', str(replacements)]
 if a.validation_layer:
     layer = a.validation_layer.resolve(strict=True)
     description = json.loads(layer.read_text())
@@ -65,7 +81,8 @@ def sha(path):
         return hashlib.file_digest(stream, "sha256").hexdigest()
 manifest = dict(command=command, renderer="host lavapipe", seconds=a.seconds,
                 environment={k: env[k] for k in ("VK_DRIVER_FILES", "LP_NUM_THREADS", "VK_LAYER_PATH") if k in env},
-                hashes={str(f): sha(f) for f in (trace, replay, icd, library, *validation_files)})
+                hashes={str(f): sha(f) for f in (trace, replay, icd, library, *validation_files,
+                                               *replacement_files)})
 if a.dump_config:
     manifest["hashes"][str(config)] = sha(config)
 (out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
