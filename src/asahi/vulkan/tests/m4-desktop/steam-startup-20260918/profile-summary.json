@@ -1,0 +1,1418 @@
+{
+  "total_samples": 7033,
+  "dsos": {
+    "FEXInterpreter": 4896,
+    "[vdso]": 59,
+    "libgcc_s.so.1": 59,
+    "libstdc++.so.6.0.35": 267,
+    "[JIT] tid 369": 484,
+    "libc.so.6": 163,
+    "[JIT] tid 913": 22,
+    "ld-linux-aarch64.so.1": 23,
+    "[JIT] tid 335": 13,
+    "[JIT] tid 661": 142,
+    "[JIT] tid 762": 501,
+    "[JIT] tid 690": 126,
+    "[JIT] tid 783": 5,
+    "[JIT] tid 475": 27,
+    "[JIT] tid 627": 7,
+    "[JIT] tid 667": 17,
+    "[JIT] tid 782": 4,
+    "FEX": 17,
+    "[JIT] tid 1200": 22,
+    "[JIT] tid 1211": 1,
+    "[JIT] tid 1231": 1,
+    "[JIT] tid 1233": 1,
+    "[JIT] tid 1242": 4,
+    "[JIT] tid 1247": 1,
+    "[JIT] tid 1253": 4,
+    "[JIT] tid 1256": 1,
+    "[JIT] tid 1260": 1,
+    "[JIT] tid 1283": 19,
+    "[JIT] tid 1287": 9,
+    "[JIT] tid 1288": 5,
+    "[JIT] tid 239": 4,
+    "[JIT] tid 253": 1,
+    "[JIT] tid 266": 1,
+    "[JIT] tid 289": 1,
+    "[JIT] tid 293": 1,
+    "[JIT] tid 326": 1,
+    "[JIT] tid 331": 2,
+    "[JIT] tid 370": 8,
+    "[JIT] tid 447": 2,
+    "[JIT] tid 463": 1,
+    "[JIT] tid 500": 1,
+    "[JIT] tid 516": 1,
+    "[JIT] tid 540": 13,
+    "[JIT] tid 548": 1,
+    "[JIT] tid 556": 1,
+    "[JIT] tid 590": 11,
+    "[JIT] tid 593": 1,
+    "[JIT] tid 597": 1,
+    "[JIT] tid 601": 1,
+    "[JIT] tid 604": 2,
+    "[JIT] tid 618": 2,
+    "[JIT] tid 620": 1,
+    "[JIT] tid 628": 2,
+    "[JIT] tid 637": 1,
+    "[JIT] tid 642": 1,
+    "[JIT] tid 666": 9,
+    "[JIT] tid 715": 17,
+    "[JIT] tid 746": 1,
+    "[JIT] tid 756": 1,
+    "[JIT] tid 834": 1,
+    "[JIT] tid 872": 2,
+    "[JIT] tid 940": 22,
+    "[JIT] tid 941": 4,
+    "dbus-daemon": 1,
+    "libfontconfig.so.1.17.0": 1,
+    "libgio-2.0.so.0.8800.3": 1,
+    "libglib-2.0.so.0.8800.3": 1,
+    "libgobject-2.0.so.0.8800.3": 2,
+    "libmount.so.1.1.0": 1,
+    "libpython3.14.so.1.0": 5,
+    "libwireplumber-0.5.so.0.516.0": 1
+  },
+  "functions": [
+    {
+      "symbol": "FEXCore::IR::ConstrainedRAPass::Run(FEXCore::IR::IREmitter*)",
+      "samples": 679,
+      "percent": 9.6544859945969
+    },
+    {
+      "symbol": "FEXCore::CPU::Arm64JITCore::CompileCode(unsigned long, unsigned long, bool, FEXCore::IR::IRListView const*, FEXCore::Core::DebugData*, bool)",
+      "samples": 258,
+      "percent": 3.668420304279824
+    },
+    {
+      "symbol": "FEXCore::IR::DeadFlagCalculationEliminination::ProcessBlock(FEXCore::IR::IREmitter*, FEXCore::IR::IRListView&, FEXCore::IR::OrderedNode*, FEXCore::IR::ControlFlowGraph&)",
+      "samples": 240,
+      "percent": 3.4124840039812314
+    },
+    {
+      "symbol": "FEXCore::Frontend::Decoder::DecodeInstructionImpl(unsigned long)",
+      "samples": 186,
+      "percent": 2.6446751030854543
+    },
+    {
+      "symbol": "FEXCore::Context::ContextImpl::GenerateIR(FEXCore::Core::InternalThreadState*, unsigned long, bool, unsigned long)",
+      "samples": 183,
+      "percent": 2.602019053035689
+    },
+    {
+      "symbol": "FEXCore::Frontend::Decoder::NormalOp(FEXCore::X86Tables::X86InstInfo const*, unsigned short, FEXCore::Frontend::Decoder::DecodedHeader)",
+      "samples": 159,
+      "percent": 2.2607706526375657
+    },
+    {
+      "symbol": "FEXCore::Frontend::Decoder::DecodeInstructionsAtEntry(FEXCore::Core::InternalThreadState*, unsigned char const*, unsigned long, unsigned long)",
+      "samples": 141,
+      "percent": 2.0048343523389733
+    },
+    {
+      "symbol": "FEXCore::IR::ConstrainedRAPass::AssignReg(FEXCore::IR::IROp_Header*, FEXCore::IR::IROp_CodeBlock*, FEXCore::IR::OrderedNode*, FEXCore::IR::IROp_Header*)",
+      "samples": 115,
+      "percent": 1.6351485852410066
+    },
+    {
+      "symbol": "FEXCore::Frontend::Decoder::AddBranchTarget(unsigned long)",
+      "samples": 113,
+      "percent": 1.6067112185411632
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::FlushRegisterCache(bool, bool)",
+      "samples": 108,
+      "percent": 1.535617801791554
+    },
+    {
+      "symbol": "std::pair<std::_Rb_tree_iterator<std::pair<FEXCore::GuestToHostMap::BlockLinkTag const, void (*)(FEXCore::Context::ExitFunctionLinkData*)> >, bool> std::_Rb_tree<FEXCore::GuestToHostMap::BlockLinkTag, std::pair<FEXCore::GuestToHostMap::BlockLinkTag const, void (*)(FEXCore::Context::ExitFunctionLinkData*)>, std::_Select1st<std::pair<FEXCore::GuestToHostMap::BlockLinkTag const, void (*)(FEXCore::Context::ExitFunctionLinkData*)> >, std::less<FEXCore::GuestToHostMap::BlockLinkTag>, std::pmr::polymorphic_allocator<std::pair<FEXCore::GuestToHostMap::BlockLinkTag const, void (*)(FEXCore::Context::ExitFunctionLinkData*)> > >::_M_insert_unique<std::pair<FEXCore::GuestToHostMap::BlockLinkTag const, void (*)(FEXCore::Context::ExitFunctionLinkData*)> >(std::pair<FEXCore::GuestToHostMap::BlockLinkTag const, void (*)(FEXCore::Context::ExitFunctionLinkData*)>&&)",
+      "samples": 85,
+      "percent": 1.2085880847433528
+    },
+    {
+      "symbol": "FEXCore::IR::DeadFlagCalculationEliminination::Run(FEXCore::IR::IREmitter*)",
+      "samples": 83,
+      "percent": 1.1801507180435091
+    },
+    {
+      "symbol": "FEXCore::IR::DeadFlagCalculationEliminination::Classify(FEXCore::IR::IROp_Header*)",
+      "samples": 78,
+      "percent": 1.1090573012939002
+    },
+    {
+      "symbol": "ARMEmitter::Emitter::Bind(ARMEmitter::ForwardLabel::Reference const*)",
+      "samples": 77,
+      "percent": 1.0948386179439784
+    },
+    {
+      "symbol": "std::pair<__gnu_cxx::__normal_iterator<unsigned long const*, std::vector<unsigned long, fextl::FEXAlloc<unsigned long> > >, bool> ankerl::unordered_dense::v4_8_1::detail::table<unsigned long, void, std::hash<unsigned long>, std::equal_to<unsigned long>, fextl::FEXAlloc<unsigned long>, ankerl::unordered_dense::v4_8_1::bucket_type::standard, ankerl::unordered_dense::v4_8_1::detail::default_container_t, false>::emplace<unsigned long&>(unsigned long&)",
+      "samples": 73,
+      "percent": 1.0379638845442911
+    },
+    {
+      "symbol": "FEXCore::Frontend::Decoder::NormalOp(FEXCore::X86Tables::X86InstInfo const*, unsigned short, FEXCore::Frontend::Decoder::DecodedHeader)::$_0::operator()(FEXCore::X86Tables::DecodedOperand&, FEXCore::X86Tables::DecodedOperand&, bool, bool, bool, bool, bool, bool) const",
+      "samples": 68,
+      "percent": 0.9668704677946822
+    },
+    {
+      "symbol": "FEXCore::IR::IREmitter::CreateNewCodeBlockAfter(FEXCore::IR::OrderedNode*)",
+      "samples": 67,
+      "percent": 0.9526517844447604
+    },
+    {
+      "symbol": "FEXCore::LookupCache::AddBlockMapping(FEXCore::Core::InternalThreadState*, unsigned long, std::vector<unsigned long, fextl::FEXAlloc<unsigned long> > const&, void*)",
+      "samples": 66,
+      "percent": 0.9384331010948386
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::CondJUMPOp(FEXCore::X86Tables::DecodedInst const*)",
+      "samples": 66,
+      "percent": 0.9384331010948386
+    },
+    {
+      "symbol": "std::pair<std::_Rb_tree_iterator<unsigned long>, bool> std::_Rb_tree<unsigned long, unsigned long, std::_Identity<unsigned long>, std::less<unsigned long>, fextl::FEXAlloc<unsigned long> >::_M_emplace_unique<unsigned long&>(unsigned long&)",
+      "samples": 65,
+      "percent": 0.9242144177449169
+    },
+    {
+      "symbol": "FEXCore::IR::IREmitter::CreateCodeNode(bool, unsigned int)",
+      "samples": 63,
+      "percent": 0.8957770510450732
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::LoadSource_WithOpSize(FEXCore::IR::RegClass, FEXCore::X86Tables::DecodedInst const* const&, FEXCore::X86Tables::DecodedOperand const&, FEXCore::IR::OpSize, unsigned int, FEXCore::IR::LoadSourceOptions const&)",
+      "samples": 58,
+      "percent": 0.8246836342954642
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::DecodeAddress(FEXCore::X86Tables::DecodedInst const* const&, FEXCore::X86Tables::DecodedOperand const&, FEXCore::IR::MemoryAccessType, bool)",
+      "samples": 57,
+      "percent": 0.8104649509455425
+    },
+    {
+      "symbol": "FEXCore::IR::GetRAArgs(FEXCore::IR::IROps)",
+      "samples": 56,
+      "percent": 0.7962462675956207
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::LoadRegCache(unsigned long, unsigned char, FEXCore::IR::RegClass, FEXCore::IR::OpSize)",
+      "samples": 55,
+      "percent": 0.7820275842456988
+    },
+    {
+      "symbol": "FEXCore::IR::ConstrainedRAPass::TryPostRAMerge(FEXCore::IR::OrderedNode*, FEXCore::IR::OrderedNode*, FEXCore::IR::IROp_Header*)",
+      "samples": 49,
+      "percent": 0.696715484146168
+    },
+    {
+      "symbol": "FEXCore::IR::LoadEffectiveAddress(FEXCore::IR::IREmitter*, FEXCore::IR::AddressMode const&, FEXCore::IR::OpSize, bool, bool)",
+      "samples": 45,
+      "percent": 0.6398407507464808
+    },
+    {
+      "symbol": "rpfree",
+      "samples": 44,
+      "percent": 0.6256220673965591
+    },
+    {
+      "symbol": "FEXCore::IR::IREmitter::Constant(long, FEXCore::IR::ConstPad, int)",
+      "samples": 44,
+      "percent": 0.6256220673965591
+    },
+    {
+      "symbol": "FEXCore::CPU::Arm64Emitter::LoadConstant(ARMEmitter::Size, ARMEmitter::Register, unsigned long, FEXCore::CPU::Arm64Emitter::PadType, int)",
+      "samples": 40,
+      "percent": 0.5687473339968719
+    },
+    {
+      "symbol": "heap_allocate_block_aligned",
+      "samples": 39,
+      "percent": 0.5545286506469501
+    },
+    {
+      "symbol": "FEXCore::IR::HasSideEffects(FEXCore::IR::IROps)",
+      "samples": 38,
+      "percent": 0.5403099672970283
+    },
+    {
+      "symbol": "void std::_Rb_tree<unsigned long, unsigned long, std::_Identity<unsigned long>, std::less<unsigned long>, fextl::FEXAlloc<unsigned long> >::_M_merge_unique<std::less<unsigned long> >(std::_Rb_tree<unsigned long, unsigned long, std::_Identity<unsigned long>, std::less<unsigned long>, fextl::FEXAlloc<unsigned long> >&)",
+      "samples": 37,
+      "percent": 0.5260912839471065
+    },
+    {
+      "symbol": "FEXCore::IR::GetHasDest(FEXCore::IR::IROps)",
+      "samples": 36,
+      "percent": 0.5118726005971846
+    },
+    {
+      "symbol": "std::pair<__gnu_cxx::__normal_iterator<std::pair<unsigned long, FEXCore::GuestToHostMap::BlockEntry>*, std::vector<std::pair<unsigned long, FEXCore::GuestToHostMap::BlockEntry>, fextl::FEXAlloc<std::pair<unsigned long, FEXCore::GuestToHostMap::BlockEntry> > > >, bool> ankerl::unordered_dense::v4_8_1::detail::table<unsigned long, FEXCore::GuestToHostMap::BlockEntry, std::hash<unsigned long>, std::equal_to<unsigned long>, fextl::FEXAlloc<std::pair<unsigned long, FEXCore::GuestToHostMap::BlockEntry> >, ankerl::unordered_dense::v4_8_1::bucket_type::standard, ankerl::unordered_dense::v4_8_1::detail::default_container_t, false>::do_insert_or_assign<unsigned long const&, FEXCore::GuestToHostMap::BlockEntry>(unsigned long const&, FEXCore::GuestToHostMap::BlockEntry&&)",
+      "samples": 36,
+      "percent": 0.5118726005971846
+    },
+    {
+      "symbol": "Alloc::OSAllocator::OSAllocator_64Bit::Mmap(void*, unsigned long, int, int, int, long)",
+      "samples": 35,
+      "percent": 0.4976539172472629
+    },
+    {
+      "symbol": "FEXCore::Frontend::Decoder::NormalOpHeader(FEXCore::X86Tables::X86InstInfo const*, unsigned short)",
+      "samples": 35,
+      "percent": 0.4976539172472629
+    },
+    {
+      "symbol": "std::pair<std::_Rb_tree_iterator<std::pair<unsigned long const, FEXCore::IR::OpDispatchBuilder::JumpTargetInfo> >, bool> std::map<unsigned long, FEXCore::IR::OpDispatchBuilder::JumpTargetInfo, std::less<unsigned long>, fextl::FEXAlloc<std::pair<unsigned long const, FEXCore::IR::OpDispatchBuilder::JumpTargetInfo> > >::try_emplace<FEXCore::IR::OpDispatchBuilder::JumpTargetInfo>(unsigned long const&, FEXCore::IR::OpDispatchBuilder::JumpTargetInfo&&)",
+      "samples": 31,
+      "percent": 0.4407791838475757
+    },
+    {
+      "symbol": "FEXCore::CPU::Arm64JITCore::Op_GuestOpcode(FEXCore::IR::IROp_Header const*, FEXCore::IR::OrderedNode*)",
+      "samples": 30,
+      "percent": 0.4265605004976539
+    },
+    {
+      "symbol": "FEXCore::IR::IREmitter::Remove(FEXCore::IR::OrderedNode*)",
+      "samples": 27,
+      "percent": 0.3839044504478885
+    },
+    {
+      "symbol": "FEXCore::LookupCache::CacheBlockMapping(unsigned long, FEXCore::GuestToHostMap::BlockEntry const&, bool, FEXCore::LookupCacheBaseLockToken const&)",
+      "samples": 24,
+      "percent": 0.34124840039812315
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::StoreResult_WithOpSize(FEXCore::IR::RegClass, FEXCore::X86Tables::DecodedInst const*, FEXCore::X86Tables::DecodedOperand const&, FEXCore::IR::OrderedNode*, FEXCore::IR::OpSize, FEXCore::IR::OpSize, FEXCore::IR::MemoryAccessType)",
+      "samples": 24,
+      "percent": 0.34124840039812315
+    },
+    {
+      "symbol": "FEXCore::IR::SelectAddressMode(FEXCore::IR::IREmitter*, FEXCore::IR::AddressMode const&, FEXCore::IR::OpSize, bool, bool, bool, FEXCore::IR::OpSize)",
+      "samples": 24,
+      "percent": 0.34124840039812315
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::CalculateDeferredFlags()",
+      "samples": 23,
+      "percent": 0.32702971704820133
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::CALLOp(FEXCore::X86Tables::DecodedInst const*)",
+      "samples": 23,
+      "percent": 0.32702971704820133
+    },
+    {
+      "symbol": "std::pair<std::_Rb_tree_iterator<std::pair<FEXCore::IR::NodeID const, ARMEmitter::BiDirectionalLabel> >, bool> std::map<FEXCore::IR::NodeID, ARMEmitter::BiDirectionalLabel, std::less<FEXCore::IR::NodeID>, fextl::FEXAlloc<std::pair<FEXCore::IR::NodeID const, ARMEmitter::BiDirectionalLabel> > >::try_emplace<>(FEXCore::IR::NodeID&&)",
+      "samples": 21,
+      "percent": 0.29859235034835774
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::GetSegment(unsigned int, unsigned int, bool)",
+      "samples": 19,
+      "percent": 0.27015498364851415
+    },
+    {
+      "symbol": "std::pair<__gnu_cxx::__normal_iterator<std::pair<unsigned long, FEXCore::GuestToHostMap::BlockEntry>*, std::vector<std::pair<unsigned long, FEXCore::GuestToHostMap::BlockEntry>, fextl::FEXAlloc<std::pair<unsigned long, FEXCore::GuestToHostMap::BlockEntry> > > >, bool> ankerl::unordered_dense::v4_8_1::detail::table<unsigned long, FEXCore::GuestToHostMap::BlockEntry, std::hash<unsigned long>, std::equal_to<unsigned long>, fextl::FEXAlloc<std::pair<unsigned long, FEXCore::GuestToHostMap::BlockEntry> >, ankerl::unordered_dense::v4_8_1::bucket_type::standard, ankerl::unordered_dense::v4_8_1::detail::default_container_t, false>::do_place_element<std::piecewise_construct_t const&, std::tuple<unsigned long const&>, std::tuple<FEXCore::GuestToHostMap::BlockEntry&&> >(unsigned int, unsigned int, std::piecewise_construct_t const&, std::tuple<unsigned long const&>&&, std::tuple<FEXCore::GuestToHostMap::BlockEntry&&>&&)",
+      "samples": 19,
+      "percent": 0.27015498364851415
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::FinishOp(unsigned long, bool)",
+      "samples": 19,
+      "percent": 0.27015498364851415
+    },
+    {
+      "symbol": "FEXCore::IR::ControlFlowGraph::RecordEdge(unsigned int, FEXCore::IR::NodeWrapperBase<FEXCore::IR::OrderedNode>)",
+      "samples": 19,
+      "percent": 0.27015498364851415
+    },
+    {
+      "symbol": "FEXCore::CPU::Arm64JITCore::ExitFunctionLink(FEXCore::Core::CpuStateFrame*, FEXCore::Context::ExitFunctionLinkData*)",
+      "samples": 18,
+      "percent": 0.2559363002985923
+    },
+    {
+      "symbol": "FEXCore::Frontend::Decoder::ReadData(unsigned char)",
+      "samples": 18,
+      "percent": 0.2559363002985923
+    },
+    {
+      "symbol": "FEXCore::IR::IREmitter::_Add(FEXCore::IR::OpSize, FEXCore::IR::OrderedNode*, FEXCore::IR::OrderedNode*)",
+      "samples": 18,
+      "percent": 0.2559363002985923
+    },
+    {
+      "symbol": "Alloc::OSAllocator::OSAllocator_64Bit::Munmap(void*, unsigned long)",
+      "samples": 17,
+      "percent": 0.24171761694867056
+    },
+    {
+      "symbol": "FEXCore::LookupCache::FindBlock(FEXCore::Core::InternalThreadState*, unsigned long)",
+      "samples": 17,
+      "percent": 0.24171761694867056
+    },
+    {
+      "symbol": "ankerl::unordered_dense::v4_8_1::detail::table<unsigned long, void, std::hash<unsigned long>, std::equal_to<unsigned long>, fextl::FEXAlloc<unsigned long>, ankerl::unordered_dense::v4_8_1::bucket_type::standard, ankerl::unordered_dense::v4_8_1::detail::default_container_t, false>::clear_and_fill_buckets_from_values()",
+      "samples": 17,
+      "percent": 0.24171761694867056
+    },
+    {
+      "symbol": "FEXCore::Utils::WritePriorityMutex::Mutex::lock_shared()",
+      "samples": 16,
+      "percent": 0.22749893359874876
+    },
+    {
+      "symbol": "FEXCore::CPU::Arm64JITCore::IsInlineConstant(FEXCore::IR::NodeWrapperBase<FEXCore::IR::OrderedNode> const&, unsigned long*) const",
+      "samples": 16,
+      "percent": 0.22749893359874876
+    },
+    {
+      "symbol": "std::pair<std::_Rb_tree_iterator<unsigned long>, bool> std::_Rb_tree<unsigned long, unsigned long, std::_Identity<unsigned long>, std::less<unsigned long>, fextl::FEXAlloc<unsigned long> >::_M_emplace_unique<unsigned long const&>(unsigned long const&)",
+      "samples": 15,
+      "percent": 0.21328025024882696
+    },
+    {
+      "symbol": "unsigned long FEX::HLE::SyscallPassthrough2<113>(FEXCore::Core::CpuStateFrame*, unsigned long, unsigned long) requires (113)!=(-(1))",
+      "samples": 14,
+      "percent": 0.19906156689890517
+    },
+    {
+      "symbol": "std::_Rb_tree<unsigned long, unsigned long, std::_Identity<unsigned long>, std::less<unsigned long>, fextl::FEXAlloc<unsigned long> >::_M_erase(std::_Rb_tree_node<unsigned long>*)",
+      "samples": 14,
+      "percent": 0.19906156689890517
+    },
+    {
+      "symbol": "FEXCore::IR::ControlFlowGraph::Init(std::deque<unsigned int, fextl::FEXAlloc<unsigned int> >&, unsigned int)",
+      "samples": 14,
+      "percent": 0.19906156689890517
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::ALUOp(FEXCore::X86Tables::DecodedInst const*, FEXCore::IR::IROps, FEXCore::IR::IROps, unsigned int)",
+      "samples": 14,
+      "percent": 0.19906156689890517
+    },
+    {
+      "symbol": "std::map<unsigned long, std::vector<unsigned long, fextl::FEXAlloc<unsigned long> >, std::less<unsigned long>, fextl::FEXAlloc<std::pair<unsigned long const, std::vector<unsigned long, fextl::FEXAlloc<unsigned long> > > > >::operator[](unsigned long const&)",
+      "samples": 13,
+      "percent": 0.18484288354898337
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::RectifyCarryInvert(bool)",
+      "samples": 13,
+      "percent": 0.18484288354898337
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::JUMPOp(FEXCore::X86Tables::DecodedInst const*)",
+      "samples": 13,
+      "percent": 0.18484288354898337
+    },
+    {
+      "symbol": "FEXCore::CPU::OpHandlers<(FEXCore::IR::IROps)411>::handle(unsigned short, __Uint8x16_t, __Uint8x16_t, FEXCore::Core::CpuStateFrame*)",
+      "samples": 13,
+      "percent": 0.18484288354898337
+    },
+    {
+      "symbol": "FEXCore::CPU::Arm64JITCore::Op_LoadMemTSO(FEXCore::IR::IROp_Header const*, FEXCore::IR::OrderedNode*)",
+      "samples": 13,
+      "percent": 0.18484288354898337
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::BeginFunction(unsigned long, std::vector<FEXCore::Frontend::Decoder::DecodedBlocks, fextl::FEXAlloc<FEXCore::Frontend::Decoder::DecodedBlocks> > const*, unsigned int, bool, bool)",
+      "samples": 12,
+      "percent": 0.17062420019906158
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::_LoadMemAutoTSO(FEXCore::IR::RegClass, FEXCore::IR::OpSize, FEXCore::IR::AddressMode const&, FEXCore::IR::OpSize)",
+      "samples": 12,
+      "percent": 0.17062420019906158
+    },
+    {
+      "symbol": "FEXCore::Frontend::Decoder::ReadByte()",
+      "samples": 12,
+      "percent": 0.17062420019906158
+    },
+    {
+      "symbol": "FEXCore::IR::IREmitter::RemovePostRA(FEXCore::IR::OrderedNode*)",
+      "samples": 11,
+      "percent": 0.15640551684913978
+    },
+    {
+      "symbol": "FEX::HLE::VMATracking::VMATracking::TrackVMARange(FEXCore::Context::Context*, FEX::HLE::VMATracking::MappedResource*, unsigned long, unsigned long, unsigned long, FEX::HLE::VMATracking::VMAFlags, FEX::HLE::VMATracking::VMAProt)",
+      "samples": 11,
+      "percent": 0.15640551684913978
+    },
+    {
+      "symbol": "std::vector<ARMEmitter::BiDirectionalLabel, fextl::FEXAlloc<ARMEmitter::BiDirectionalLabel> >::_M_fill_append(unsigned long, ARMEmitter::BiDirectionalLabel const&)",
+      "samples": 11,
+      "percent": 0.15640551684913978
+    },
+    {
+      "symbol": "std::pair<std::_Rb_tree_iterator<std::pair<unsigned long const, unsigned char*> >, bool> std::_Rb_tree<unsigned long, std::pair<unsigned long const, unsigned char*>, std::_Select1st<std::pair<unsigned long const, unsigned char*> >, std::less<unsigned long>, fextl::FEXAlloc<std::pair<unsigned long const, unsigned char*> > >::_M_emplace_unique<unsigned long&, unsigned char*>(unsigned long&, unsigned char*&&)",
+      "samples": 11,
+      "percent": 0.15640551684913978
+    },
+    {
+      "symbol": "FEXCore::IR::IREmitter::InlineLogical(FEXCore::IR::OpSize, FEXCore::IR::OrderedNode*)",
+      "samples": 11,
+      "percent": 0.15640551684913978
+    },
+    {
+      "symbol": "FEXCore::GuestToHostMap::InvalidateRange(unsigned long, unsigned long)",
+      "samples": 11,
+      "percent": 0.15640551684913978
+    },
+    {
+      "symbol": "void std::vector<unsigned long, fextl::FEXAlloc<unsigned long> >::_M_range_insert<std::_Rb_tree_const_iterator<unsigned long> >(__gnu_cxx::__normal_iterator<unsigned long*, std::vector<unsigned long, fextl::FEXAlloc<unsigned long> > >, std::_Rb_tree_const_iterator<unsigned long>, std::_Rb_tree_const_iterator<unsigned long>, std::forward_iterator_tag)",
+      "samples": 11,
+      "percent": 0.15640551684913978
+    },
+    {
+      "symbol": "FEXCore::IR::IREmitter::_LoadMemTSO(FEXCore::IR::RegClass, FEXCore::IR::OpSize, FEXCore::IR::OrderedNode*, FEXCore::IR::OrderedNode*, FEXCore::IR::OpSize, FEXCore::IR::MemOffsetType, unsigned char)",
+      "samples": 11,
+      "percent": 0.15640551684913978
+    },
+    {
+      "symbol": "std::unique_lock<FEXCore::Utils::WritePriorityMutex::Mutex>::lock()",
+      "samples": 10,
+      "percent": 0.14218683349921798
+    },
+    {
+      "symbol": "_ZN7FEXCore2IR17OpDispatchBuilder4BindITnDaXadL_ZNS1_8MOVGPROpEPKNS_9X86Tables11DecodedInstEjEETpTnDaJLi0EEEEvS6_",
+      "samples": 10,
+      "percent": 0.14218683349921798
+    },
+    {
+      "symbol": "Alloc::OSAllocator::OSAllocator_64Bit::Mmap(void*, unsigned long, int, int, int, long)::$_0::operator()(Alloc::OSAllocator::OSAllocator_64Bit::LiveVMARegion*, unsigned long, int, int, int, long, unsigned long) const",
+      "samples": 10,
+      "percent": 0.14218683349921798
+    },
+    {
+      "symbol": "std::_Rb_tree<FEXCore::IR::NodeID, std::pair<FEXCore::IR::NodeID const, ARMEmitter::BiDirectionalLabel>, std::_Select1st<std::pair<FEXCore::IR::NodeID const, ARMEmitter::BiDirectionalLabel> >, std::less<FEXCore::IR::NodeID>, fextl::FEXAlloc<std::pair<FEXCore::IR::NodeID const, ARMEmitter::BiDirectionalLabel> > >::_M_erase(std::_Rb_tree_node<std::pair<FEXCore::IR::NodeID const, ARMEmitter::BiDirectionalLabel> >*)",
+      "samples": 10,
+      "percent": 0.14218683349921798
+    },
+    {
+      "symbol": "FEXCore::Frontend::Decoder::DecodeModRM_64(FEXCore::X86Tables::DecodedOperand*, FEXCore::X86Tables::ModRMDecoded)",
+      "samples": 10,
+      "percent": 0.14218683349921798
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::Push(FEXCore::IR::OpSize, FEXCore::IR::OrderedNode*)",
+      "samples": 9,
+      "percent": 0.12796815014929616
+    },
+    {
+      "symbol": "FEXCore::CPU::Arm64JITCore::Op_ExitFunction(FEXCore::IR::IROp_Header const*, FEXCore::IR::OrderedNode*)",
+      "samples": 9,
+      "percent": 0.12796815014929616
+    },
+    {
+      "symbol": "std::_Rb_tree_increment(std::_Rb_tree_node_base*)@plt",
+      "samples": 8,
+      "percent": 0.11374946679937438
+    },
+    {
+      "symbol": "FEXCore::IR::GetArgs(FEXCore::IR::IROps)",
+      "samples": 8,
+      "percent": 0.11374946679937438
+    },
+    {
+      "symbol": "FEXCore::LookupCache::InvalidateCacheRange(unsigned long, unsigned long)",
+      "samples": 8,
+      "percent": 0.11374946679937438
+    },
+    {
+      "symbol": "std::pair<std::_Rb_tree_iterator<std::pair<FEXCore::IR::NodeID const, ARMEmitter::BiDirectionalLabel> >, bool> std::map<FEXCore::IR::NodeID, ARMEmitter::BiDirectionalLabel, std::less<FEXCore::IR::NodeID>, fextl::FEXAlloc<std::pair<FEXCore::IR::NodeID const, ARMEmitter::BiDirectionalLabel> > >::try_emplace<>(FEXCore::IR::NodeID const&)",
+      "samples": 8,
+      "percent": 0.11374946679937438
+    },
+    {
+      "symbol": "std::_Rb_tree<unsigned long, std::pair<unsigned long const, FEXCore::IR::OpDispatchBuilder::JumpTargetInfo>, std::_Select1st<std::pair<unsigned long const, FEXCore::IR::OpDispatchBuilder::JumpTargetInfo> >, std::less<unsigned long>, fextl::FEXAlloc<std::pair<unsigned long const, FEXCore::IR::OpDispatchBuilder::JumpTargetInfo> > >::_M_erase(std::_Rb_tree_node<std::pair<unsigned long const, FEXCore::IR::OpDispatchBuilder::JumpTargetInfo> >*)",
+      "samples": 8,
+      "percent": 0.11374946679937438
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::LoadGPRRegister(unsigned int, FEXCore::IR::OpSize, unsigned char, bool)",
+      "samples": 8,
+      "percent": 0.11374946679937438
+    },
+    {
+      "symbol": "FEXCore::IR::DeadFlagCalculationEliminination::OptimizeParity(FEXCore::IR::IREmitter*, FEXCore::IR::IRListView&, FEXCore::IR::ControlFlowGraph&)",
+      "samples": 8,
+      "percent": 0.11374946679937438
+    },
+    {
+      "symbol": "FEXCore::Frontend::Decoder::BranchTargetInMultiblockRange()",
+      "samples": 8,
+      "percent": 0.11374946679937438
+    },
+    {
+      "symbol": "FEXCore::CPU::Arm64JITCore::Op_StoreMemTSO(FEXCore::IR::IROp_Header const*, FEXCore::IR::OrderedNode*)",
+      "samples": 8,
+      "percent": 0.11374946679937438
+    },
+    {
+      "symbol": "std::_Rb_tree_insert_and_rebalance(bool,",
+      "samples": 7,
+      "percent": 0.09953078344945258
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::CalculateAF(FEXCore::IR::OrderedNode*, FEXCore::IR::OrderedNode*)",
+      "samples": 7,
+      "percent": 0.09953078344945258
+    },
+    {
+      "symbol": "FEXCore::IR::IREmitter::_StoreMemTSO(FEXCore::IR::RegClass, FEXCore::IR::OpSize, FEXCore::IR::OrderedNode*, FEXCore::IR::OrderedNode*, FEXCore::IR::OrderedNode*, FEXCore::IR::OpSize, FEXCore::IR::MemOffsetType, unsigned char)",
+      "samples": 7,
+      "percent": 0.09953078344945258
+    },
+    {
+      "symbol": "extF80_eq",
+      "samples": 6,
+      "percent": 0.08531210009953079
+    },
+    {
+      "symbol": "memcpy@plt",
+      "samples": 6,
+      "percent": 0.08531210009953079
+    },
+    {
+      "symbol": "FEXCore::CPU::Arm64JITCore::Op_StoreRegister(FEXCore::IR::IROp_Header const*, FEXCore::IR::OrderedNode*)",
+      "samples": 6,
+      "percent": 0.08531210009953079
+    },
+    {
+      "symbol": "FEXCore::IR::IREmitter::_CondJump(FEXCore::IR::OrderedNode*, FEXCore::IR::OrderedNode*, FEXCore::IR::OrderedNode*, FEXCore::IR::OrderedNode*, FEXCore::IR::CondClass, FEXCore::IR::OpSize, bool)",
+      "samples": 6,
+      "percent": 0.08531210009953079
+    },
+    {
+      "symbol": "heap_allocate_block_small_to_large",
+      "samples": 6,
+      "percent": 0.08531210009953079
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::TESTOp(FEXCore::X86Tables::DecodedInst const*, unsigned int)",
+      "samples": 6,
+      "percent": 0.08531210009953079
+    },
+    {
+      "symbol": "malloc",
+      "samples": 5,
+      "percent": 0.07109341674960899
+    },
+    {
+      "symbol": "FEXCore::IR::GetRegClass(FEXCore::IR::IROps)",
+      "samples": 5,
+      "percent": 0.07109341674960899
+    },
+    {
+      "symbol": "FEXCore::LookupCache::AddBlockExecutableRange(FEXCore::Core::InternalThreadState*, std::set<unsigned long, std::less<unsigned long>, fextl::FEXAlloc<unsigned long> > const&, unsigned long, unsigned long)",
+      "samples": 5,
+      "percent": 0.07109341674960899
+    },
+    {
+      "symbol": "void std::vector<std::pair<unsigned long, FEXCore::GuestToHostMap::BlockEntry>, fextl::FEXAlloc<std::pair<unsigned long, FEXCore::GuestToHostMap::BlockEntry> > >::_M_realloc_append<std::piecewise_construct_t const&, std::tuple<unsigned long const&>, std::tuple<FEXCore::GuestToHostMap::BlockEntry&&> >(std::piecewise_construct_t const&, std::tuple<unsigned long const&>&&, std::tuple<FEXCore::GuestToHostMap::BlockEntry&&>&&)",
+      "samples": 5,
+      "percent": 0.07109341674960899
+    },
+    {
+      "symbol": "ankerl::unordered_dense::v4_8_1::detail::table<unsigned long, FEXCore::GuestToHostMap::BlockEntry, std::hash<unsigned long>, std::equal_to<unsigned long>, fextl::FEXAlloc<std::pair<unsigned long, FEXCore::GuestToHostMap::BlockEntry> >, ankerl::unordered_dense::v4_8_1::bucket_type::standard, ankerl::unordered_dense::v4_8_1::detail::default_container_t, false>::clear_and_fill_buckets_from_values()",
+      "samples": 5,
+      "percent": 0.07109341674960899
+    },
+    {
+      "symbol": "FEXCore::CPU::Arm64JITCore::Op_Sub(FEXCore::IR::IROp_Header const*, FEXCore::IR::OrderedNode*)",
+      "samples": 5,
+      "percent": 0.07109341674960899
+    },
+    {
+      "symbol": "_ZN7FEXCore3CPU12Arm64JITCore11b_OrRestartITkN10ARMEmitter7IsLabelENS3_18BiDirectionalLabelEEEvNS3_9ConditionEPT_",
+      "samples": 5,
+      "percent": 0.07109341674960899
+    },
+    {
+      "symbol": "FEXCore::IR::IREmitter::_ExitFunction(FEXCore::IR::OpSize, FEXCore::IR::OrderedNode*, FEXCore::IR::BranchHint, FEXCore::IR::OrderedNode*, FEXCore::IR::OrderedNode*)",
+      "samples": 5,
+      "percent": 0.07109341674960899
+    },
+    {
+      "symbol": "FEXCore::CPU::Arm64JITCore::Op_SubNZCV(FEXCore::IR::IROp_Header const*, FEXCore::IR::OrderedNode*)",
+      "samples": 5,
+      "percent": 0.07109341674960899
+    },
+    {
+      "symbol": "extF80_lt",
+      "samples": 4,
+      "percent": 0.05687473339968719
+    },
+    {
+      "symbol": "memset@plt",
+      "samples": 4,
+      "percent": 0.05687473339968719
+    },
+    {
+      "symbol": "softfloat_roundPackToExtF80",
+      "samples": 4,
+      "percent": 0.05687473339968719
+    },
+    {
+      "symbol": "void",
+      "samples": 4,
+      "percent": 0.05687473339968719
+    },
+    {
+      "symbol": "fmt::v12::basic_appender<char> fmt::v12::detail::write_int_noinline<char, fmt::v12::basic_appender<char>, unsigned int>(fmt::v12::basic_appender<char>, fmt::v12::detail::write_int_arg<unsigned int>, fmt::v12::format_specs const&)",
+      "samples": 4,
+      "percent": 0.05687473339968719
+    },
+    {
+      "symbol": "FEXCore::Context::ContextImpl::InvalidateThreadCachedCodeRange(FEXCore::Core::InternalThreadState*, unsigned long, unsigned long)",
+      "samples": 4,
+      "percent": 0.05687473339968719
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::SecondaryALUOp(FEXCore::X86Tables::DecodedInst const*)",
+      "samples": 4,
+      "percent": 0.05687473339968719
+    },
+    {
+      "symbol": "std::_Rb_tree<unsigned long, std::pair<unsigned long const, unsigned char*>, std::_Select1st<std::pair<unsigned long const, unsigned char*> >, std::less<unsigned long>, fextl::FEXAlloc<std::pair<unsigned long const, unsigned char*> > >::_M_erase(std::_Rb_tree_node<std::pair<unsigned long const, unsigned char*> >*)",
+      "samples": 4,
+      "percent": 0.05687473339968719
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::LEAOp(FEXCore::X86Tables::DecodedInst const*)",
+      "samples": 4,
+      "percent": 0.05687473339968719
+    },
+    {
+      "symbol": "FEXCore::CPU::Arm64JITCore::EmitEntryPoint(ARMEmitter::BackwardLabel&, bool)",
+      "samples": 4,
+      "percent": 0.05687473339968719
+    },
+    {
+      "symbol": "FEXCore::CPU::Arm64JITCore::Op_Add(FEXCore::IR::IROp_Header const*, FEXCore::IR::OrderedNode*)",
+      "samples": 4,
+      "percent": 0.05687473339968719
+    },
+    {
+      "symbol": "FEXCore::CPU::Arm64JITCore::Op_CondJump(FEXCore::IR::IROp_Header const*, FEXCore::IR::OrderedNode*)",
+      "samples": 4,
+      "percent": 0.05687473339968719
+    },
+    {
+      "symbol": "FEXCore::CPU::Arm64JITCore::PlaceNamedSymbolLiteral(FEXCore::CPU::Arm64JITCore::NamedSymbolLiteralPair)",
+      "samples": 4,
+      "percent": 0.05687473339968719
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::Pop(FEXCore::IR::OpSize)",
+      "samples": 4,
+      "percent": 0.05687473339968719
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::_StoreMemAutoTSO(FEXCore::IR::RegClass, FEXCore::IR::OpSize, FEXCore::IR::AddressMode const&, FEXCore::IR::OrderedNode*, FEXCore::IR::OpSize)",
+      "samples": 4,
+      "percent": 0.05687473339968719
+    },
+    {
+      "symbol": "std::_Rb_tree<unsigned long, std::pair<unsigned long const, FEXCore::IR::OpDispatchBuilder::JumpTargetInfo>, std::_Select1st<std::pair<unsigned long const, FEXCore::IR::OpDispatchBuilder::JumpTargetInfo> >, std::less<unsigned long>, fextl::FEXAlloc<std::pair<unsigned long const, FEXCore::IR::OpDispatchBuilder::JumpTargetInfo> > >::_M_get_insert_hint_unique_pos(std::_Rb_tree_const_iterator<std::pair<unsigned long const, FEXCore::IR::OpDispatchBuilder::JumpTargetInfo> >, unsigned long const&)",
+      "samples": 4,
+      "percent": 0.05687473339968719
+    },
+    {
+      "symbol": "FEXCore::IR::IREmitter::ReplaceAllUsesWithRange(FEXCore::IR::OrderedNode*, FEXCore::IR::OrderedNode*, FEXCore::IR::AllNodesIterator, FEXCore::IR::AllNodesIterator)",
+      "samples": 4,
+      "percent": 0.05687473339968719
+    },
+    {
+      "symbol": "std::_Rb_tree_rebalance_for_erase(std::_Rb_tree_node_base*,",
+      "samples": 3,
+      "percent": 0.042656050049765394
+    },
+    {
+      "symbol": "FEXCore::CPU::Arm64JITCore::Op_InlineConstant(FEXCore::IR::IROp_Header const*, FEXCore::IR::OrderedNode*)",
+      "samples": 3,
+      "percent": 0.042656050049765394
+    },
+    {
+      "symbol": "_ZN7FEXCore2IR17OpDispatchBuilder4BindITnDaXadL_ZNS1_6TESTOpEPKNS_9X86Tables11DecodedInstEjEETpTnDaJLi0EEEEvS6_",
+      "samples": 3,
+      "percent": 0.042656050049765394
+    },
+    {
+      "symbol": "_ZN7FEXCore2IR17OpDispatchBuilder4BindITnDaXadL_ZNS1_8MOVGPROpEPKNS_9X86Tables11DecodedInstEjEETpTnDaJLi1EEEEvS6_",
+      "samples": 3,
+      "percent": 0.042656050049765394
+    },
+    {
+      "symbol": "__aarch64_cas8_rel",
+      "samples": 3,
+      "percent": 0.042656050049765394
+    },
+    {
+      "symbol": "FEX::get_fdpath(int, char*)",
+      "samples": 3,
+      "percent": 0.042656050049765394
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::CalculateFlags_SUB(FEXCore::IR::OpSize, FEXCore::IR::OrderedNode*, FEXCore::IR::OrderedNode*, bool)",
+      "samples": 3,
+      "percent": 0.042656050049765394
+    },
+    {
+      "symbol": "FEXCore::IR::IREmitter::_NZCVSelect01(FEXCore::IR::CondClass)",
+      "samples": 3,
+      "percent": 0.042656050049765394
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::CMPOp(FEXCore::X86Tables::DecodedInst const*, unsigned int)",
+      "samples": 3,
+      "percent": 0.042656050049765394
+    },
+    {
+      "symbol": "FEXCore::IR::IREmitter::SetCurrentCodeBlock(FEXCore::IR::OrderedNode*)",
+      "samples": 3,
+      "percent": 0.042656050049765394
+    },
+    {
+      "symbol": "FEX::HLE::VMATracking::VMATracking::FindVMAEntry(unsigned long) const",
+      "samples": 3,
+      "percent": 0.042656050049765394
+    },
+    {
+      "symbol": "__gnu_cxx::__normal_iterator<FEXCore::Frontend::Decoder::DecodedBlocks*, std::vector<FEXCore::Frontend::Decoder::DecodedBlocks, fextl::FEXAlloc<FEXCore::Frontend::Decoder::DecodedBlocks> > > std::vector<FEXCore::Frontend::Decoder::DecodedBlocks, fextl::FEXAlloc<FEXCore::Frontend::Decoder::DecodedBlocks> >::_M_emplace_aux<>(__gnu_cxx::__normal_iterator<FEXCore::Frontend::Decoder::DecodedBlocks const*, std::vector<FEXCore::Frontend::Decoder::DecodedBlocks, fextl::FEXAlloc<FEXCore::Frontend::Decoder::DecodedBlocks> > >)",
+      "samples": 3,
+      "percent": 0.042656050049765394
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::SetNZ_ZeroCV(FEXCore::IR::OpSize, FEXCore::IR::OrderedNode*, bool)",
+      "samples": 3,
+      "percent": 0.042656050049765394
+    },
+    {
+      "symbol": "FEXCore::CPU::OpHandlers<(FEXCore::IR::IROps)369>::handle(unsigned short, __Uint8x16_t, __Uint8x16_t, FEXCore::Core::CpuStateFrame*)",
+      "samples": 3,
+      "percent": 0.042656050049765394
+    },
+    {
+      "symbol": "ARMEmitter::Emitter::b(ARMEmitter::Condition, ARMEmitter::ForwardLabel*)",
+      "samples": 3,
+      "percent": 0.042656050049765394
+    },
+    {
+      "symbol": "FEXCore::CPU::Arm64JITCore::InsertGuestRIPMove(ARMEmitter::Register, unsigned long)",
+      "samples": 3,
+      "percent": 0.042656050049765394
+    },
+    {
+      "symbol": "page_put_thread_free_block",
+      "samples": 3,
+      "percent": 0.042656050049765394
+    },
+    {
+      "symbol": "page_initialize_blocks",
+      "samples": 3,
+      "percent": 0.042656050049765394
+    },
+    {
+      "symbol": "FEXCore::Telemetry::Shutdown(std::__cxx11::basic_string<char,",
+      "samples": 2,
+      "percent": 0.028437366699843595
+    },
+    {
+      "symbol": "f128_mul",
+      "samples": 2,
+      "percent": 0.028437366699843595
+    },
+    {
+      "symbol": "fmt::v12::basic_appender<char>",
+      "samples": 2,
+      "percent": 0.028437366699843595
+    },
+    {
+      "symbol": "FEXCore::CPU::Arm64JITCore::EmitLinkedBranch(unsigned long, bool)",
+      "samples": 2,
+      "percent": 0.028437366699843595
+    },
+    {
+      "symbol": "FEXCore::CPU::Arm64JITCore::Op_LoadContext(FEXCore::IR::IROp_Header const*, FEXCore::IR::OrderedNode*)",
+      "samples": 2,
+      "percent": 0.028437366699843595
+    },
+    {
+      "symbol": "_ZN7FEXCore2IR17OpDispatchBuilder4BindITnDaXadL_ZNS1_5ALUOpEPKNS_9X86Tables11DecodedInstENS0_5IROpsES7_jEETpTnDaJLS7_107ELS7_85ELi0EEEEvS6_",
+      "samples": 2,
+      "percent": 0.028437366699843595
+    },
+    {
+      "symbol": "_ZN7FEXCore2IR17OpDispatchBuilder4BindITnDaXadL_ZNS1_5CMPOpEPKNS_9X86Tables11DecodedInstEjEETpTnDaJLi1EEEEvS6_",
+      "samples": 2,
+      "percent": 0.028437366699843595
+    },
+    {
+      "symbol": "unsigned long FEX::HLE::SyscallPassthrough0<172>(FEXCore::Core::CpuStateFrame*) requires (172)!=(-(1))",
+      "samples": 2,
+      "percent": 0.028437366699843595
+    },
+    {
+      "symbol": "std::vector<ankerl::unordered_dense::v4_8_1::bucket_type::standard, fextl::FEXAlloc<ankerl::unordered_dense::v4_8_1::bucket_type::standard> >::resize(unsigned long)",
+      "samples": 2,
+      "percent": 0.028437366699843595
+    },
+    {
+      "symbol": "fextl::pmr::named_monotonic_page_buffer_resource::do_allocate(unsigned long, unsigned long)",
+      "samples": 2,
+      "percent": 0.028437366699843595
+    },
+    {
+      "symbol": "FEXCore::JITSymbols::RegisterNamedRegion(FEXCore::JITSymbolBuffer*, void const*, unsigned int, std::basic_string_view<char, std::char_traits<char> >)",
+      "samples": 2,
+      "percent": 0.028437366699843595
+    },
+    {
+      "symbol": "FEXCore::Context::ContextImpl::CompileCode(FEXCore::Core::InternalThreadState*, unsigned long, unsigned long)",
+      "samples": 2,
+      "percent": 0.028437366699843595
+    },
+    {
+      "symbol": "FEXCore::Context::ContextImpl::CompileBlock(FEXCore::Core::CpuStateFrame*, unsigned long, unsigned long)",
+      "samples": 2,
+      "percent": 0.028437366699843595
+    },
+    {
+      "symbol": "std::_Rb_tree_iterator<std::pair<unsigned long const, ankerl::unordered_dense::v4_8_1::detail::table<unsigned long, void, std::hash<unsigned long>, std::equal_to<unsigned long>, fextl::FEXAlloc<unsigned long>, ankerl::unordered_dense::v4_8_1::bucket_type::standard, ankerl::unordered_dense::v4_8_1::detail::default_container_t, false> > > std::_Rb_tree<unsigned long, std::pair<unsigned long const, ankerl::unordered_dense::v4_8_1::detail::table<unsigned long, void, std::hash<unsigned long>, std::equal_to<unsigned long>, fextl::FEXAlloc<unsigned long>, ankerl::unordered_dense::v4_8_1::bucket_type::standard, ankerl::unordered_dense::v4_8_1::detail::default_container_t, false> >, std::_Select1st<std::pair<unsigned long const, ankerl::unordered_dense::v4_8_1::detail::table<unsigned long, void, std::hash<unsigned long>, std::equal_to<unsigned long>, fextl::FEXAlloc<unsigned long>, ankerl::unordered_dense::v4_8_1::bucket_type::standard, ankerl::unordered_dense::v4_8_1::detail::default_container_t, false> > >, std::less<unsigned long>, fextl::FEXAlloc<std::pair<unsigned long const, ankerl::unordered_dense::v4_8_1::detail::table<unsigned long, void, std::hash<unsigned long>, std::equal_to<unsigned long>, fextl::FEXAlloc<unsigned long>, ankerl::unordered_dense::v4_8_1::bucket_type::standard, ankerl::unordered_dense::v4_8_1::detail::default_container_t, false> > > >::_M_emplace_hint_unique<std::piecewise_construct_t const&, std::tuple<unsigned long&&>, std::tuple<> >(std::_Rb_tree_const_iterator<std::pair<unsigned long const, ankerl::unordered_dense::v4_8_1::detail::table<unsigned long, void, std::hash<unsigned long>, std::equal_to<unsigned long>, fextl::FEXAlloc<unsigned long>, ankerl::unordered_dense::v4_8_1::bucket_type::standard, ankerl::unordered_dense::v4_8_1::detail::default_container_t, false> > >, std::piecewise_construct_t const&, std::tuple<unsigned long&&>&&, std::tuple<>&&)",
+      "samples": 2,
+      "percent": 0.028437366699843595
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::CalculateFlags_ShiftRightImmediateCommon(FEXCore::IR::OpSize, FEXCore::IR::OrderedNode*, FEXCore::IR::OrderedNode*, unsigned long)",
+      "samples": 2,
+      "percent": 0.028437366699843595
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::GetRelocatedPC(FEXCore::X86Tables::DecodedInst const* const&, long)",
+      "samples": 2,
+      "percent": 0.028437366699843595
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::PUSHREGOp(FEXCore::X86Tables::DecodedInst const*)",
+      "samples": 2,
+      "percent": 0.028437366699843595
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::CALLAbsoluteOp(FEXCore::X86Tables::DecodedInst const*)",
+      "samples": 2,
+      "percent": 0.028437366699843595
+    },
+    {
+      "symbol": "FEXCore::IR::IREmitter::_StoreMem(FEXCore::IR::RegClass, FEXCore::IR::OpSize, FEXCore::IR::OrderedNode*, FEXCore::IR::OrderedNode*, FEXCore::IR::OrderedNode*, FEXCore::IR::OpSize, FEXCore::IR::MemOffsetType, unsigned char)",
+      "samples": 2,
+      "percent": 0.028437366699843595
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::Finalize()",
+      "samples": 2,
+      "percent": 0.028437366699843595
+    },
+    {
+      "symbol": "FEXCore::CPU::OpHandlers<(FEXCore::IR::IROps)389>::handle8(unsigned short, __Uint8x16_t, FEXCore::Core::CpuStateFrame*)",
+      "samples": 2,
+      "percent": 0.028437366699843595
+    },
+    {
+      "symbol": "FEXCore::CPU::Arm64JITCore::IsInlineEntrypointOffset(FEXCore::IR::NodeWrapperBase<FEXCore::IR::OrderedNode> const&, unsigned long*) const",
+      "samples": 2,
+      "percent": 0.028437366699843595
+    },
+    {
+      "symbol": "FEXCore::CPU::Arm64JITCore::Op_SubWithFlags(FEXCore::IR::IROp_Header const*, FEXCore::IR::OrderedNode*)",
+      "samples": 2,
+      "percent": 0.028437366699843595
+    },
+    {
+      "symbol": "FEXCore::CPU::Arm64JITCore::Op_Bfe(FEXCore::IR::IROp_Header const*, FEXCore::IR::OrderedNode*)",
+      "samples": 2,
+      "percent": 0.028437366699843595
+    },
+    {
+      "symbol": "FEXCore::CPU::Arm64JITCore::Op_NZCVSelect(FEXCore::IR::IROp_Header const*, FEXCore::IR::OrderedNode*)",
+      "samples": 2,
+      "percent": 0.028437366699843595
+    },
+    {
+      "symbol": "ARMEmitter::Emitter::bl(ARMEmitter::ForwardLabel*)",
+      "samples": 2,
+      "percent": 0.028437366699843595
+    },
+    {
+      "symbol": "FEXCore::CPU::Arm64JITCore::Op_StorePF(FEXCore::IR::IROp_Header const*, FEXCore::IR::OrderedNode*)",
+      "samples": 2,
+      "percent": 0.028437366699843595
+    },
+    {
+      "symbol": "FEXCore::CPU::Arm64JITCore::Op_LoadMem(FEXCore::IR::IROp_Header const*, FEXCore::IR::OrderedNode*)",
+      "samples": 2,
+      "percent": 0.028437366699843595
+    },
+    {
+      "symbol": "FEXCore::CPU::Arm64JITCore::Op_Push(FEXCore::IR::IROp_Header const*, FEXCore::IR::OrderedNode*)",
+      "samples": 2,
+      "percent": 0.028437366699843595
+    },
+    {
+      "symbol": "FEXCore::CPU::Arm64JITCore::Op_StoreMem(FEXCore::IR::IROp_Header const*, FEXCore::IR::OrderedNode*)",
+      "samples": 2,
+      "percent": 0.028437366699843595
+    },
+    {
+      "symbol": "FEXCore::IR::DeadFlagCalculationEliminination::FoldBranch(FEXCore::IR::IREmitter*, FEXCore::IR::IRListView&, FEXCore::IR::IROp_CondJump*, FEXCore::IR::OrderedNode*)",
+      "samples": 2,
+      "percent": 0.028437366699843595
+    },
+    {
+      "symbol": "FEX::HLE::SeccompEmulator::ExecuteFilter(FEXCore::Core::CpuStateFrame*, unsigned long, FEXCore::HLE::SyscallArguments*)",
+      "samples": 2,
+      "percent": 0.028437366699843595
+    },
+    {
+      "symbol": "FEX::HLE::ExecveHandler(FEXCore::Core::CpuStateFrame*, char const*, char* const*, char* const*, FEX::HLE::ExecveAtArgs)",
+      "samples": 2,
+      "percent": 0.028437366699843595
+    },
+    {
+      "symbol": "FEX::HLE::SyscallHandler::HandleSyscall(FEXCore::Core::CpuStateFrame*, FEXCore::HLE::SyscallArguments*)",
+      "samples": 2,
+      "percent": 0.028437366699843595
+    },
+    {
+      "symbol": "FEX::HLE::VMATracking::VMATracking::DeleteVMARange(FEXCore::Context::Context*, unsigned long, unsigned long, FEX::HLE::VMATracking::MappedResource*)",
+      "samples": 2,
+      "percent": 0.028437366699843595
+    },
+    {
+      "symbol": "FEXCore::Allocator::aligned_alloc(unsigned",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEXCore::Allocator::aligned_free(void*)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "extF80_add",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "extF80_div",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "extF80_to_f64",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "free",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "rpaligned_alloc",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "snprintf@plt",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "softfloat_roundPackToF64",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "char const* fmt::v12::detail::parse_format_specs<char>(char const*, char const*, fmt::v12::detail::dynamic_format_specs<char>&, fmt::v12::parse_context<char>&, fmt::v12::detail::type)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "fmt::v12::basic_appender<char> fmt::v12::detail::write_padded<char, (fmt::v12::align)2, fmt::v12::basic_appender<char>, fmt::v12::detail::write_ptr<char, fmt::v12::basic_appender<char>, unsigned long>(fmt::v12::basic_appender<char>, unsigned long, fmt::v12::format_specs const*)::{lambda(fmt::v12::basic_appender<char>)#1}&>(fmt::v12::basic_appender<char>, fmt::v12::format_specs const&, unsigned long, unsigned long, fmt::v12::detail::write_ptr<char, fmt::v12::basic_appender<char>, unsigned long>(fmt::v12::basic_appender<char>, unsigned long, fmt::v12::format_specs const*)::{lambda(fmt::v12::basic_appender<char>)#1}&)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEXCore::Context::ContextImpl::InvalidateCodeBuffersCodeRange(unsigned long, unsigned long)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEXCore::Context::ContextImpl::GetCodeInvalidationMutex()",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "std::vector<FEXCore::Frontend::Decoder::DecodedBlocks, fextl::FEXAlloc<FEXCore::Frontend::Decoder::DecodedBlocks> >::insert(__gnu_cxx::__normal_iterator<FEXCore::Frontend::Decoder::DecodedBlocks const*, std::vector<FEXCore::Frontend::Decoder::DecodedBlocks, fextl::FEXAlloc<FEXCore::Frontend::Decoder::DecodedBlocks> > >, FEXCore::Frontend::Decoder::DecodedBlocks const&)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEXCore::Utils::IntrusivePooledAllocator::ClaimBufferImpl(unsigned long)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "std::_Rb_tree_iterator<unsigned long> std::_Rb_tree<unsigned long, unsigned long, std::_Identity<unsigned long>, std::less<unsigned long>, fextl::FEXAlloc<unsigned long> >::_M_insert_unique_<unsigned long const&, std::_Rb_tree<unsigned long, unsigned long, std::_Identity<unsigned long>, std::less<unsigned long>, fextl::FEXAlloc<unsigned long> >::_Reuse_or_alloc_node>(std::_Rb_tree_const_iterator<unsigned long>, unsigned long const&, std::_Rb_tree<unsigned long, unsigned long, std::_Identity<unsigned long>, std::less<unsigned long>, fextl::FEXAlloc<unsigned long> >::_Reuse_or_alloc_node&)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::GetPackedRFLAG(unsigned int)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::CalculateFlags_MUL(FEXCore::IR::OpSize, FEXCore::IR::OrderedNode*, FEXCore::IR::OrderedNode*)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::CalculateFlags_Logical(FEXCore::IR::OpSize, FEXCore::IR::OrderedNode*)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::SetCFDirect(FEXCore::IR::OrderedNode*, unsigned int, bool)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEXCore::IR::IREmitter::_RmifNZCV(FEXCore::IR::OrderedNode*, unsigned char, unsigned char)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEXCore::IR::IREmitter::_Lshr(FEXCore::IR::OpSize, FEXCore::IR::OrderedNode*, FEXCore::IR::OrderedNode*)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEXCore::IR::IREmitter::_AddWithFlags(FEXCore::IR::OpSize, FEXCore::IR::OrderedNode*, FEXCore::IR::OrderedNode*)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::NOPOp(FEXCore::X86Tables::DecodedInst const*)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::RETOp(FEXCore::X86Tables::DecodedInst const*)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::Pop(FEXCore::IR::OpSize, FEXCore::IR::OrderedNode*)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::SBBOp(FEXCore::X86Tables::DecodedInst const*, unsigned int)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::POPOp(FEXCore::X86Tables::DecodedInst const*)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::ExitRelocatedPC(FEXCore::X86Tables::DecodedInst const* const&, long, FEXCore::IR::BranchHint, FEXCore::IR::OrderedNode*, FEXCore::IR::OrderedNode*)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::CMOVOp(FEXCore::X86Tables::DecodedInst const*)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::JUMPAbsoluteOp(FEXCore::X86Tables::DecodedInst const*)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::SHROp(FEXCore::X86Tables::DecodedInst const*)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::ASHROp(FEXCore::X86Tables::DecodedInst const*, bool, bool)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::BTOp(FEXCore::X86Tables::DecodedInst const*, unsigned int, FEXCore::IR::BTAction)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::GetSrcSize(FEXCore::X86Tables::DecodedInst const*) const",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEXCore::IR::IREmitter::_LoadMem(FEXCore::IR::RegClass, FEXCore::IR::OpSize, FEXCore::IR::OrderedNode*, FEXCore::IR::OrderedNode*, FEXCore::IR::OpSize, FEXCore::IR::MemOffsetType, unsigned char)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::CheckLegacySegmentRead(FEXCore::IR::OrderedNode*, unsigned int)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::ArithRef::BfiInto(FEXCore::IR::OrderedNode*, unsigned int, unsigned int)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::ResetWorkingList()",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::MOVGPROp(FEXCore::X86Tables::DecodedInst const*, unsigned int)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::VectorScalarInsertALUOpImpl(FEXCore::X86Tables::DecodedInst const*, FEXCore::IR::IROps, FEXCore::IR::OpSize, FEXCore::IR::OpSize, FEXCore::X86Tables::DecodedOperand const&, FEXCore::X86Tables::DecodedOperand const&, bool)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::CVTFPR_To_GPRImpl(FEXCore::X86Tables::DecodedInst const*, FEXCore::IR::OrderedNode*, FEXCore::IR::OpSize, bool)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::VMOVSHDUPOp(FEXCore::X86Tables::DecodedInst const*)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::MOVQOp(FEXCore::X86Tables::DecodedInst const*, FEXCore::IR::OpDispatchBuilder::VectorOpType)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::MOVMSKOpOne(FEXCore::X86Tables::DecodedInst const*)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEXCore::IR::OpDispatchBuilder::LoadMemPair(FEXCore::IR::RegClass, FEXCore::IR::OpSize, FEXCore::IR::OrderedNode*, unsigned int)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEXCore::CPU::Arm64Emitter::FillStaticRegs(FEXCore::CPU::Arm64Emitter::FillStaticRegOptions)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEXCore::CPU::Arm64JITCore::Op_TestZ(FEXCore::IR::IROp_Header const*, FEXCore::IR::OrderedNode*)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEXCore::CPU::Arm64JITCore::Op_CondSubNZCV(FEXCore::IR::IROp_Header const*, FEXCore::IR::OrderedNode*)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEXCore::CPU::Arm64JITCore::Op_TelemetrySetValue(FEXCore::IR::IROp_Header const*, FEXCore::IR::OrderedNode*)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEXCore::CPU::Arm64JITCore::Op_VLoadTwoGPRs(FEXCore::IR::IROp_Header const*, FEXCore::IR::OrderedNode*)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEXCore::CPU::Arm64JITCore::Op_StoreAF(FEXCore::IR::IROp_Header const*, FEXCore::IR::OrderedNode*)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEXCore::CPU::Arm64JITCore::Op_PushTwo(FEXCore::IR::IROp_Header const*, FEXCore::IR::OrderedNode*)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEXCore::CPU::Arm64JITCore::Op_VFSub(FEXCore::IR::IROp_Header const*, FEXCore::IR::OrderedNode*)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEXCore::CPU::Arm64JITCore::Op_VAddP(FEXCore::IR::IROp_Header const*, FEXCore::IR::OrderedNode*)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEXCore::CPU::Arm64JITCore::InsertNamedSymbolLiteral(FEXCore::CPU::RelocNamedSymbolLiteral::NamedSymbol)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEXCore::CPU::Arm64JITCore::InsertGuestRIPLiteral(unsigned long)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "_ZN7FEXCore2IR17OpDispatchBuilder4BindITnDaXadL_ZNS1_5CMPOpEPKNS_9X86Tables11DecodedInstEjEETpTnDaJLi0EEEEvS6_",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "_ZN7FEXCore2IR17OpDispatchBuilder4BindITnDaXadL_ZNS1_14SHRImmediateOpEPKNS_9X86Tables11DecodedInstEbEETpTnDaJLb1EEEEvS6_",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEXCore::IR::TiedSource(FEXCore::IR::IROps)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEXCore::IR::ConstrainedRAPass::~ConstrainedRAPass()",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "std::vector<bool, fextl::FEXAlloc<bool> >::_M_fill_insert(std::_Bit_iterator, unsigned long, bool)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEXCore::IR::X87StackOptimization::FlushCachedRegs()",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEX::VDSO::LoadFEXGeneratedCode(FEXCore::Core::InternalThreadState*, bool, FEX::VDSO::VDSOMapping*, FEX::HLE::SyscallHandler*)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEX::HLE::SignalHandlerThunk(int, siginfo_t*, void*)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEX::HLE::SignalDelegator::SignalDelegator(FEXCore::Context::Context*, std::basic_string_view<char, std::char_traits<char> >, bool)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "std::_Function_handler<bool (FEXCore::Core::InternalThreadState*, int, void*, void*), FEX::HLE::SignalDelegator::SignalDelegator(FEXCore::Context::Context*, std::basic_string_view<char, std::char_traits<char> >, bool)::$_3>::_M_invoke(std::_Any_data const&, FEXCore::Core::InternalThreadState*&&, int&&, void*&&, void*&&)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEXCore::HLE::SyscallHandler::PreCompile()",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEX::HLE::FileManager::Openat(int, char const*, int, unsigned int)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEX::HLE::FileManager::NewFSStatAt(int, char const*, stat*, int)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEX::HLE::SyscallHandler::MarkGuestExecutableRange(FEXCore::Core::InternalThreadState*, unsigned long, unsigned long)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEX::HLE::SyscallHandler::GuestMprotect(FEXCore::Core::InternalThreadState*, void*, unsigned long, int)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEX::HLE::x32::RegisterThread(FEX::HLE::SyscallHandler*)::$_8::__invoke(FEXCore::Core::CpuStateFrame*, int*, int, int, FEX::HLE::x32::timespec32 const*, int*, unsigned int)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "non-virtual thunk to FEX::HLE::x64::x64SyscallHandler::GuestMmap(FEXCore::Core::InternalThreadState*, void*, unsigned long, int, int, int, long)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "FEX::HLE::x64::RegisterFD(FEX::HLE::SyscallHandler*)::$_6::__invoke(FEXCore::Core::CpuStateFrame*, int, char const*, FEX::HLE::x64::guest_stat*, int)",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "unsigned long FEX::HLE::SyscallPassthrough3<63>(FEXCore::Core::CpuStateFrame*, unsigned long, unsigned long, unsigned long) requires (63)!=(-(1))",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "unsigned long FEX::HLE::SyscallPassthrough0<178>(FEXCore::Core::CpuStateFrame*) requires (178)!=(-(1))",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "unsigned long FEX::HLE::SyscallPassthrough3<131>(FEXCore::Core::CpuStateFrame*, unsigned long, unsigned long, unsigned long) requires (131)!=(-(1))",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "unsigned long FEX::HLE::SyscallPassthrough3<278>(FEXCore::Core::CpuStateFrame*, unsigned long, unsigned long, unsigned long) requires (278)!=(-(1))",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "unsigned long FEX::HLE::SyscallPassthrough3<29>(FEXCore::Core::CpuStateFrame*, unsigned long, unsigned long, unsigned long) requires (29)!=(-(1))",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "span_deallocate_block",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "heap_make_free_page_available",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "glibc_je_arena_cache_bin_fill_small",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "glibc_je_sc_data_init",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    },
+    {
+      "symbol": "glibc_je_edata_cache_init",
+      "samples": 1,
+      "percent": 0.014218683349921797
+    }
+  ]
+}
