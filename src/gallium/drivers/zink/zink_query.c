@@ -670,6 +670,36 @@ check_query_results(struct zink_query *query, union pipe_query_result *result,
    }
 }
 
+/* Timestamp slots remain owned by the query and are never recycled in a
+ * Vulkan pool. CPU consumers can read those slots directly; a GPU copy into
+ * a temporary QBO only adds a render-pass break and a transfer submission. */
+static bool
+get_time_query_result(struct pipe_context *pctx, struct zink_query *query,
+                      bool wait, union pipe_query_result *result)
+{
+   struct zink_context *ctx = zink_context(pctx);
+   struct zink_screen *screen = zink_screen(pctx->screen);
+   VkQueryResultFlags flags = VK_QUERY_RESULT_64_BIT |
+                             (wait ? VK_QUERY_RESULT_WAIT_BIT : 0);
+   uint64_t total = 0, previous = 0;
+   unsigned index = 0;
+   util_dynarray_foreach(&query->starts, struct zink_query_start, start) {
+      struct zink_vk_query *vkq = start->vkq[0];
+      uint64_t value;
+      VkResult status = VKCTX(GetQueryPoolResults)(screen->dev,
+         vkq->pool->query_pool, vkq->query_id, 1, sizeof(value), &value, 0, flags);
+      if (status != VK_SUCCESS)
+         return false;
+      if (query->type == PIPE_QUERY_TIMESTAMP || index)
+         total += value - previous;
+      previous = value;
+      ++index;
+   }
+   timestamp_to_nanoseconds(screen, &total);
+   result->u64 = total;
+   return true;
+}
+
 static bool
 get_query_result(struct pipe_context *pctx,
                       struct pipe_query *q,
@@ -678,6 +708,8 @@ get_query_result(struct pipe_context *pctx,
 {
    struct zink_screen *screen = zink_screen(pctx->screen);
    struct zink_query *query = (struct zink_query *)q;
+   if (is_time_query(query))
+      return get_time_query_result(pctx, query, wait, result);
    unsigned flags = PIPE_MAP_READ;
 
    if (!wait)
@@ -738,6 +770,9 @@ fail:
    return false;
 }
 
+static bool zink_get_query_result(struct pipe_context *pctx, struct pipe_query *q,
+                                  bool wait, union pipe_query_result *result);
+
 static void
 force_cpu_read(struct zink_context *ctx, struct pipe_query *pquery, enum pipe_query_value_type result_type, struct pipe_resource *pres, unsigned offset)
 {
@@ -746,10 +781,12 @@ force_cpu_read(struct zink_context *ctx, struct pipe_query *pquery, enum pipe_qu
    struct zink_query *query = (struct zink_query*)pquery;
    union pipe_query_result result = {0};
 
-   if (query->needs_update)
+   if (query->needs_update && !is_time_query(query))
       update_qbo(ctx, query);
 
-   bool success = get_query_result(pctx, pquery, true, &result);
+   bool success = is_time_query(query)
+      ? zink_get_query_result(pctx, pquery, true, &result)
+      : get_query_result(pctx, pquery, true, &result);
    if (!success) {
       debug_printf("zink: getting query result failed\n");
       return;
@@ -824,7 +861,7 @@ reset_query_range(struct zink_context *ctx, struct zink_query *q)
 static void
 reset_qbos(struct zink_context *ctx, struct zink_query *q)
 {
-   if (q->needs_update)
+   if (q->needs_update && !is_time_query(q))
       update_qbo(ctx, q);
 
    q->needs_reset = false;
@@ -1157,7 +1194,7 @@ zink_get_query_result(struct pipe_context *pctx,
       return true;
    }
 
-   if (query->needs_update) {
+   if (query->needs_update && !is_time_query(query)) {
       assert(!ctx->tc || !threaded_query(q)->flushed);
       update_qbo(ctx, query);
    }
@@ -1197,7 +1234,7 @@ suspend_query(struct zink_context *ctx, struct zink_query *query)
    /* if a query isn't active here then we don't need to reactivate it on the next batch */
    if (query->active && !is_time_query(query))
       end_query(ctx, query);
-   if (query->needs_update && !ctx->in_rp)
+   if (query->needs_update && !is_time_query(query) && !ctx->in_rp)
       update_qbo(ctx, query);
 }
 
@@ -1325,7 +1362,7 @@ zink_set_active_query_state(struct pipe_context *pctx, bool enable)
 void
 zink_query_sync(struct zink_context *ctx, struct zink_query *query)
 {
-   if (query->needs_update)
+   if (query->needs_update && !is_time_query(query))
       update_qbo(ctx, query);
 }
 

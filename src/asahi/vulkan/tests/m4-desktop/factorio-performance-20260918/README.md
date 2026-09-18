@@ -401,3 +401,19 @@ heaviest pass falls from about 15.3 ms to 14 ms; this is not a 60 FPS result.
 All 32 selected sparse-alias CTS cases pass. Evidence:
 `20260918T143742040678Z-factorio-alias-metadata-frame`,
 `20260918T143943993571Z-factorio-alias-metadata-cts`.
+
+## Read CPU timer results without a temporary GPU copy
+
+Zink now keeps timestamp slots as the source for CPU timer results. Pool slots
+remain owned by each query and are not reused. CPU reads flush unsubmitted work
+before calling GetQueryPoolResults; timer results requested in GL buffers use
+the same synchronized result path. Query synchronization no longer eagerly
+copies timestamps to temporary QBOs.
+
+Six GL query modes pass 520 iterations each on lavapipe and M4, crossing the
+500-slot pool boundary: immediate timestamps, elapsed time, empty occlusion,
+timestamp QBOs, render-separated timestamps, and flush between elapsed-time
+endpoints. The M4 fragment-statistics/pixel checks also pass. The untouched
+menu averages 9.812 FPS (9.465–10.060); it is still far short of the target.
+Evidence: `20260918T144831199903Z-factorio-zink-cpu-timer-checks`,
+`20260918T144925992674Z-factorio-zink-cpu-timer-menu`.
