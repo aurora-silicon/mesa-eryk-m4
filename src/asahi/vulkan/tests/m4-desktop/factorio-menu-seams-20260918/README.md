@@ -1,4 +1,4 @@
-# Factorio button seams: diagnosis, not a driver fix
+# Factorio button seams: fragment-statistics prolog fix
 
 The Steam menu has dashed diagonals across button backgrounds and damaged panel
 borders. A retained two-frame Vulkan capture reproduces these on native M4
@@ -24,11 +24,66 @@ The fault is localized to texture-coordinate gradients along triangle edges:
   attachment, not the final whole-frame screenshot.
 
 The original compiler bundle reports needs_coarse_quad_helper_invocations=true.
-The exact faulty interpolation/helper-lane or raster-state instruction remains
-unresolved. Do not claim a missing metadata flag or a completed driver fix.
+This was the initial diagnosis checkpoint; the statistics-query interaction
+below subsequently isolated and fixed the missing helper lifetime contract.
 Generic isolated quad probes pass, including the same narrow atlas coordinates,
 large texture dimensions, source-alpha blending and positive-height viewport.
-They are negative controls, not a reproducer of the application failure.
+Those runs lacked a fragment-statistics query and remain useful negative
+controls. Adding the query turns the generated-quad probe into a reproducer.
+
+
+## Root cause and fix
+
+Factorio enables a fragment-invocation statistics query. Its separately compiled
+prolog reads active-thread SR2 and input-sample-mask SR39, then atomically counts
+covered samples. Neither the prolog NIR nor its derivative metadata describes
+operations in the main shader linked after it. The backend therefore marked
+both input reads as allowing helper termination. Main-shader interpolation then
+received incomplete quads along primitive edges, corrupting derivatives and LOD.
+
+Nonterminal secondary fragment parts now preserve helpers regardless of their
+own derivative metadata. Both SR2 and SR39 reads omit the helper-terminating
+marker while helpers are needed. Statistics, sample masks and application
+shaders remain enabled and unchanged. Fixing only SR2 was insufficient: the
+following SR39 read independently terminated the helper lanes.
+
+The captured 36-vertex draw has exactly the same 374 erroneous gradient pixels
+in a standalone GL program only when the query is enabled. With the fix it has
+zero errors; the query still reports 24,800 invocations before and after. The
+original Factorio Vulkan replay now has clean borders/buttons without shader
+substitution. Its selected 19,400-pixel button interior matches lavapipe exactly.
+
+The self-contained generated-quad regression needs no Factorio data:
+
+```sh
+env M4_PROBE_ATLAS=1 M4_PROBE_EXTRA_VARYING=1 M4_PROBE_BLEND_SRC=1 \
+    M4_PROBE_UPPER_LEFT=1 M4_PROBE_STATS=1 M4_PROBE_CHECK_ATLAS=1 \
+    ./gui-seam-probe output.rgba
+```
+
+On M4 wrap this command in the mandatory watchdog/thermal experiment guard and
+use the existing private Zink environment. For the host software control add
+`M4_PROBE_SOFTWARE=1 LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe`.
+The probe creates gray mip zero and red higher mips, checks 116,400 interior
+pixels across six quads, and requires a nonzero statistics result. The old driver
+selects red mip levels at 2,544 pixels; fixed M4 and llvmpipe have zero errors
+and both report 121,680 fragment invocations. An initial checker used unflipped
+GL readback rows and incorrectly included an empty region; the checker now
+accounts for the lower-left readback convention. The retained failure is a
+checker-coordinate error, not a failed driver fix.
+
+`M4_PROBE_CAPTURE_VERTICES=FILE` optionally loads exactly 36 vertices (864 bytes:
+float2 position, float2 UV, RGBA8 tint, uint flags) for the original nine-slice
+geometry. `M4_PROBE_GRADIENT_OUTPUT=1` then renders its gradients directly.
+The self-contained regression above does not use either option.
+
+Validation: 35 targeted Vulkan CTS cases pass; 13 report NotSupported. This
+covers derivatives, statistics queries and sample-mask configurations; preserve
+the full selected list and original catalog indices in `fixed-validation.json`.
+The broad offline graphics compiler test has three pre-existing failures
+(half2 vertex and flat-color byte expectations, and a now-supported discard
+case). Rebuilding against the unmodified packer produces the same three failures;
+they are not claimed as passing or changed by this fix.
 
 ## Reproduction and limitations
 

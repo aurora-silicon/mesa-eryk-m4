@@ -1,0 +1,454 @@
+{
+  "status": "fixed native replay and synthetic regression; Steam validation pending",
+  "synthetic": {
+    "baseline": {
+      "incorrect_pixels": 2544,
+      "checked_pixels": 116400,
+      "sha256": "b82fc14e34f0a794c4b2b26ff8756508cc032af9abf7bd101e1c0adecc97e220"
+    },
+    "fixed": {
+      "incorrect_pixels": 0,
+      "checked_pixels": 116400,
+      "sha256": "abbf955d11ceb250a6c3e895b0febaf214bfc5255d1562c4e9fb76b3d9895f96"
+    },
+    "software": {
+      "incorrect_pixels": 0,
+      "checked_pixels": 116400,
+      "sha256": "abbf955d11ceb250a6c3e895b0febaf214bfc5255d1562c4e9fb76b3d9895f96"
+    }
+  },
+  "experiments": {
+    "20260918T055424894373Z-factorio-gradient-with-statistics-baseline": {
+      "id": "20260918T055424894373Z-factorio-gradient-with-statistics-baseline",
+      "verdict": "pass",
+      "transport_returncode": 0,
+      "evidence_fetched": true,
+      "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260918T055424894373Z-factorio-gradient-with-statistics-baseline",
+      "observations": {
+        "pixel_results": [],
+        "pixel_result_count": 0,
+        "thermal_samples": 3,
+        "malformed_thermal_samples": 0,
+        "peak_temperature_c": 62.5,
+        "channel_peaks_c": {
+          "PMP aggregate die hotspot": 62.5,
+          "Ta000m": 62.5,
+          "Te000m": 59.5,
+          "Te001m": 57.25,
+          "Tp000m": 61.25,
+          "Tp001m": 57.0
+        }
+      }
+    },
+    "20260918T055604293429Z-factorio-synthetic-statistics-seam-baseline": {
+      "id": "20260918T055604293429Z-factorio-synthetic-statistics-seam-baseline",
+      "verdict": "pass",
+      "transport_returncode": 0,
+      "evidence_fetched": true,
+      "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260918T055604293429Z-factorio-synthetic-statistics-seam-baseline",
+      "observations": {
+        "pixel_results": [],
+        "pixel_result_count": 0,
+        "thermal_samples": 3,
+        "malformed_thermal_samples": 0,
+        "peak_temperature_c": 62.5,
+        "channel_peaks_c": {
+          "PMP aggregate die hotspot": 62.5,
+          "Ta000m": 62.5,
+          "Te000m": 59.0,
+          "Te001m": 57.0,
+          "Tp000m": 61.0,
+          "Tp001m": 56.75
+        }
+      }
+    },
+    "20260918T055832180495Z-factorio-prolog-sr39-helper-probe": {
+      "id": "20260918T055832180495Z-factorio-prolog-sr39-helper-probe",
+      "verdict": "pass",
+      "transport_returncode": 0,
+      "evidence_fetched": true,
+      "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260918T055832180495Z-factorio-prolog-sr39-helper-probe",
+      "observations": {
+        "pixel_results": [],
+        "pixel_result_count": 0,
+        "thermal_samples": 4,
+        "malformed_thermal_samples": 0,
+        "peak_temperature_c": 62.0,
+        "channel_peaks_c": {
+          "PMP aggregate die hotspot": 62.0,
+          "Ta000m": 57.75,
+          "Te000m": 57.5,
+          "Te001m": 60.75,
+          "Tp000m": 62.0,
+          "Tp001m": 60.0
+        }
+      }
+    },
+    "20260918T055855664189Z-factorio-menu-both-input-markers-fixed": {
+      "id": "20260918T055855664189Z-factorio-menu-both-input-markers-fixed",
+      "verdict": "pass",
+      "transport_returncode": 0,
+      "evidence_fetched": true,
+      "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260918T055855664189Z-factorio-menu-both-input-markers-fixed",
+      "observations": {
+        "pixel_results": [
+          "PASS: Vulkan replay process completed; rendering requires separate comparison"
+        ],
+        "pixel_result_count": 1,
+        "thermal_samples": 20,
+        "malformed_thermal_samples": 0,
+        "peak_temperature_c": 65.5,
+        "channel_peaks_c": {
+          "PMP aggregate die hotspot": 65.5,
+          "Ta000m": 65.25,
+          "Te000m": 62.0,
+          "Te001m": 65.5,
+          "Tp000m": 64.75,
+          "Tp001m": 63.75
+        }
+      }
+    },
+    "20260918T060231493807Z-factorio-statistics-mip-regression-check": {
+      "id": "20260918T060231493807Z-factorio-statistics-mip-regression-check",
+      "verdict": "pass",
+      "transport_returncode": 0,
+      "evidence_fetched": true,
+      "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260918T060231493807Z-factorio-statistics-mip-regression-check",
+      "observations": {
+        "pixel_results": [],
+        "pixel_result_count": 0,
+        "thermal_samples": 3,
+        "malformed_thermal_samples": 0,
+        "peak_temperature_c": 63.25,
+        "channel_peaks_c": {
+          "PMP aggregate die hotspot": 63.25,
+          "Ta000m": 63.25,
+          "Te000m": 59.75,
+          "Te001m": 57.5,
+          "Tp000m": 61.25,
+          "Tp001m": 57.25
+        }
+      }
+    },
+    "20260918T060250627806Z-factorio-prolog-helper-regressions": {
+      "id": "20260918T060250627806Z-factorio-prolog-helper-regressions",
+      "verdict": "pass",
+      "transport_returncode": 0,
+      "evidence_fetched": true,
+      "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260918T060250627806Z-factorio-prolog-helper-regressions",
+      "observations": {
+        "pixel_results": [],
+        "pixel_result_count": 0,
+        "thermal_samples": 8,
+        "malformed_thermal_samples": 0,
+        "peak_temperature_c": 62.0,
+        "channel_peaks_c": {
+          "PMP aggregate die hotspot": 62.0,
+          "Ta000m": 58.0,
+          "Te000m": 57.75,
+          "Te001m": 58.5,
+          "Tp000m": 61.75,
+          "Tp001m": 59.75
+        }
+      }
+    }
+  },
+  "cts_selection": {
+    "schema": 1,
+    "cases_sha256": "399921ab7835c895a5962e0dca2db87eb8dffc75be34b01f79dfc068d5b595bd",
+    "provenance": {
+      "catalog_sha256": "72c1bb9d2f9f0425ab8a4f570d78abdc1d3a34b82173ec76b772dedc477526bf"
+    },
+    "cases": [
+      {
+        "case": "dEQP-VK.glsl.derivate.dfdx.linear.float_highp",
+        "catalog_index": 774345,
+        "classification": "targeted-regression",
+        "rule": "derivatives"
+      },
+      {
+        "case": "dEQP-VK.glsl.derivate.dfdx.texture.float.vec2_highp",
+        "catalog_index": 774410,
+        "classification": "targeted-regression",
+        "rule": "derivatives"
+      },
+      {
+        "case": "dEQP-VK.glsl.derivate.dfdxcoarse.linear.vec4_highp",
+        "catalog_index": 774532,
+        "classification": "targeted-regression",
+        "rule": "derivatives"
+      },
+      {
+        "case": "dEQP-VK.glsl.derivate.dfdxcoarse.texture.msaa4.float_highp",
+        "catalog_index": 774597,
+        "classification": "targeted-regression",
+        "rule": "derivatives"
+      },
+      {
+        "case": "dEQP-VK.glsl.derivate.dfdxfine.texture.basic.vec2_highp",
+        "catalog_index": 774757,
+        "classification": "targeted-regression",
+        "rule": "derivatives"
+      },
+      {
+        "case": "dEQP-VK.glsl.derivate.dfdxfine.texture.msaa4.vec4_highp",
+        "catalog_index": 774781,
+        "classification": "targeted-regression",
+        "rule": "derivatives"
+      },
+      {
+        "case": "dEQP-VK.glsl.derivate.dfdy.texture.float.float_highp",
+        "catalog_index": 774977,
+        "classification": "targeted-regression",
+        "rule": "derivatives"
+      },
+      {
+        "case": "dEQP-VK.glsl.derivate.dfdycoarse.linear.vec3_highp",
+        "catalog_index": 775099,
+        "classification": "targeted-regression",
+        "rule": "derivatives"
+      },
+      {
+        "case": "dEQP-VK.glsl.derivate.dfdycoarse.texture.msaa4.float_highp",
+        "catalog_index": 775167,
+        "classification": "targeted-regression",
+        "rule": "derivatives"
+      },
+      {
+        "case": "dEQP-VK.glsl.derivate.dfdyfine.texture.basic.vec2_highp",
+        "catalog_index": 775327,
+        "classification": "targeted-regression",
+        "rule": "derivatives"
+      },
+      {
+        "case": "dEQP-VK.glsl.derivate.dfdyfine.texture.msaa4.vec4_highp",
+        "catalog_index": 775351,
+        "classification": "targeted-regression",
+        "rule": "derivatives"
+      },
+      {
+        "case": "dEQP-VK.glsl.derivate.fwidth.texture.float.float_highp",
+        "catalog_index": 775547,
+        "classification": "targeted-regression",
+        "rule": "derivatives"
+      },
+      {
+        "case": "dEQP-VK.glsl.derivate.fwidthcoarse.linear.vec3_highp",
+        "catalog_index": 775669,
+        "classification": "targeted-regression",
+        "rule": "derivatives"
+      },
+      {
+        "case": "dEQP-VK.glsl.derivate.fwidthcoarse.texture.float.vec4_highp",
+        "catalog_index": 775734,
+        "classification": "targeted-regression",
+        "rule": "derivatives"
+      },
+      {
+        "case": "dEQP-VK.glsl.derivate.fwidthfine.texture.basic.float_highp",
+        "catalog_index": 775895,
+        "classification": "targeted-regression",
+        "rule": "derivatives"
+      },
+      {
+        "case": "dEQP-VK.glsl.derivate.fwidthfine.texture.msaa4.vec4_highp",
+        "catalog_index": 775921,
+        "classification": "targeted-regression",
+        "rule": "derivatives"
+      },
+      {
+        "case": "dEQP-VK.pipeline.monolithic.multisample.conservative_with_full_coverage.overestimate.samples_16_mask_all_off",
+        "catalog_index": 1303788,
+        "classification": "targeted-regression",
+        "rule": "sample masks"
+      },
+      {
+        "case": "dEQP-VK.pipeline.monolithic.multisample.conservative_with_full_coverage.underestimate.samples_16_mask_all_off",
+        "catalog_index": 1303824,
+        "classification": "targeted-regression",
+        "rule": "sample masks"
+      },
+      {
+        "case": "dEQP-VK.pipeline.monolithic.multisample.sample_mask.mask_all_off.samples_16.primitive_line_sparse",
+        "catalog_index": 1312207,
+        "classification": "targeted-regression",
+        "rule": "sample masks"
+      },
+      {
+        "case": "dEQP-VK.pipeline.monolithic.multisample.sample_mask.mask_all_off.samples_2.primitive_point_1px",
+        "catalog_index": 1312217,
+        "classification": "targeted-regression",
+        "rule": "sample masks"
+      },
+      {
+        "case": "dEQP-VK.pipeline.monolithic.multisample.sample_mask.mask_all_off.samples_4.primitive_point_1px_sparse",
+        "catalog_index": 1312234,
+        "classification": "targeted-regression",
+        "rule": "sample masks"
+      },
+      {
+        "case": "dEQP-VK.pipeline.monolithic.multisample.sample_mask.mask_all_on.samples_16.primitive_triangle",
+        "catalog_index": 1312260,
+        "classification": "targeted-regression",
+        "rule": "sample masks"
+      },
+      {
+        "case": "dEQP-VK.pipeline.monolithic.multisample.sample_mask.mask_all_on.samples_4.primitive_line",
+        "catalog_index": 1312278,
+        "classification": "targeted-regression",
+        "rule": "sample masks"
+      },
+      {
+        "case": "dEQP-VK.pipeline.monolithic.multisample.sample_mask.mask_one.samples_16.primitive_point",
+        "catalog_index": 1312304,
+        "classification": "targeted-regression",
+        "rule": "sample masks"
+      },
+      {
+        "case": "dEQP-VK.pipeline.monolithic.multisample.sample_mask.mask_one.samples_2.primitive_point_1px",
+        "catalog_index": 1312313,
+        "classification": "targeted-regression",
+        "rule": "sample masks"
+      },
+      {
+        "case": "dEQP-VK.pipeline.monolithic.multisample.sample_mask.mask_one.samples_4.primitive_point_sparse",
+        "catalog_index": 1312331,
+        "classification": "targeted-regression",
+        "rule": "sample masks"
+      },
+      {
+        "case": "dEQP-VK.pipeline.monolithic.multisample.sample_mask.mask_random.samples_16.primitive_triangle_sparse",
+        "catalog_index": 1312357,
+        "classification": "targeted-regression",
+        "rule": "sample masks"
+      },
+      {
+        "case": "dEQP-VK.pipeline.monolithic.multisample.sample_mask.mask_random.samples_4.primitive_line_sparse",
+        "catalog_index": 1312375,
+        "classification": "targeted-regression",
+        "rule": "sample masks"
+      },
+      {
+        "case": "dEQP-VK.pipeline.monolithic.multisample.sample_mask_with_depth_test.samples_2",
+        "catalog_index": 1312400,
+        "classification": "targeted-regression",
+        "rule": "sample masks"
+      },
+      {
+        "case": "dEQP-VK.pipeline.monolithic.multisample.shader_fragment_mask.samples_16.subpass_input.r32_sint",
+        "catalog_index": 1312516,
+        "classification": "targeted-regression",
+        "rule": "sample masks"
+      },
+      {
+        "case": "dEQP-VK.pipeline.monolithic.multisample.shader_fragment_mask.samples_2.subpass_input.r32_uint",
+        "catalog_index": 1312526,
+        "classification": "targeted-regression",
+        "rule": "sample masks"
+      },
+      {
+        "case": "dEQP-VK.pipeline.monolithic.multisample.shader_fragment_mask.samples_4.subpass_input.r8g8b8a8_unorm",
+        "catalog_index": 1312536,
+        "classification": "targeted-regression",
+        "rule": "sample masks"
+      },
+      {
+        "case": "dEQP-VK.query_pool.statistics_query.fragment_shader_invocations.primary.32bits_cmdcopyquerypoolresults_triangle_list",
+        "catalog_index": 2155299,
+        "classification": "targeted-regression",
+        "rule": "fragment statistics"
+      },
+      {
+        "case": "dEQP-VK.query_pool.statistics_query.fragment_shader_invocations.primary.32bits_cmdcopyquerypoolresults_triangle_list_with_no_color_attachments",
+        "catalog_index": 2155302,
+        "classification": "targeted-regression",
+        "rule": "fragment statistics"
+      },
+      {
+        "case": "dEQP-VK.query_pool.statistics_query.fragment_shader_invocations.primary.32bits_dstoffset_cmdcopyquerypoolresults_triangle_list_with_no_color_attachments",
+        "catalog_index": 2155322,
+        "classification": "targeted-regression",
+        "rule": "fragment statistics"
+      },
+      {
+        "case": "dEQP-VK.query_pool.statistics_query.fragment_shader_invocations.primary.32bits_triangle_list",
+        "catalog_index": 2155339,
+        "classification": "targeted-regression",
+        "rule": "fragment statistics"
+      },
+      {
+        "case": "dEQP-VK.query_pool.statistics_query.fragment_shader_invocations.primary.64bits_cmdcopyquerypoolresults_triangle_list",
+        "catalog_index": 2155359,
+        "classification": "targeted-regression",
+        "rule": "fragment statistics"
+      },
+      {
+        "case": "dEQP-VK.query_pool.statistics_query.fragment_shader_invocations.primary.64bits_cmdcopyquerypoolresults_triangle_list_with_no_color_attachments",
+        "catalog_index": 2155362,
+        "classification": "targeted-regression",
+        "rule": "fragment statistics"
+      },
+      {
+        "case": "dEQP-VK.query_pool.statistics_query.fragment_shader_invocations.primary.64bits_dstoffset_cmdcopyquerypoolresults_triangle_list_with_no_color_attachments",
+        "catalog_index": 2155382,
+        "classification": "targeted-regression",
+        "rule": "fragment statistics"
+      },
+      {
+        "case": "dEQP-VK.query_pool.statistics_query.fragment_shader_invocations.primary.64bits_triangle_list",
+        "catalog_index": 2155399,
+        "classification": "targeted-regression",
+        "rule": "fragment statistics"
+      },
+      {
+        "case": "dEQP-VK.query_pool.statistics_query.fragment_shader_invocations.secondary.32bits_cmdcopyquerypoolresults_triangle_list",
+        "catalog_index": 2155413,
+        "classification": "targeted-regression",
+        "rule": "fragment statistics"
+      },
+      {
+        "case": "dEQP-VK.query_pool.statistics_query.fragment_shader_invocations.secondary.32bits_dstoffset_cmdcopyquerypoolresults_triangle_list",
+        "catalog_index": 2155423,
+        "classification": "targeted-regression",
+        "rule": "fragment statistics"
+      },
+      {
+        "case": "dEQP-VK.query_pool.statistics_query.fragment_shader_invocations.secondary.64bits_cmdcopyquerypoolresults_triangle_list",
+        "catalog_index": 2155443,
+        "classification": "targeted-regression",
+        "rule": "fragment statistics"
+      },
+      {
+        "case": "dEQP-VK.query_pool.statistics_query.fragment_shader_invocations.secondary.64bits_dstoffset_cmdcopyquerypoolresults_triangle_list",
+        "catalog_index": 2155453,
+        "classification": "targeted-regression",
+        "rule": "fragment statistics"
+      },
+      {
+        "case": "dEQP-VK.query_pool.statistics_query.fragment_shader_invocations.secondary_inherited.32bits_cmdcopyquerypoolresults_triangle_list",
+        "catalog_index": 2155473,
+        "classification": "targeted-regression",
+        "rule": "fragment statistics"
+      },
+      {
+        "case": "dEQP-VK.query_pool.statistics_query.fragment_shader_invocations.secondary_inherited.32bits_dstoffset_cmdcopyquerypoolresults_triangle_list",
+        "catalog_index": 2155483,
+        "classification": "targeted-regression",
+        "rule": "fragment statistics"
+      },
+      {
+        "case": "dEQP-VK.query_pool.statistics_query.fragment_shader_invocations.secondary_inherited.64bits_cmdcopyquerypoolresults_triangle_list",
+        "catalog_index": 2155503,
+        "classification": "targeted-regression",
+        "rule": "fragment statistics"
+      },
+      {
+        "case": "dEQP-VK.query_pool.statistics_query.fragment_shader_invocations.secondary_inherited.64bits_triangle_list",
+        "catalog_index": 2155523,
+        "classification": "targeted-regression",
+        "rule": "fragment statistics"
+      }
+    ]
+  },
+  "native_library_sha256": "2a31ec134e2c41a3712adfb3f414cf7b6965a833fcabb6e28b1c0748340ff59c"
+}

@@ -4873,10 +4873,15 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
    /* The native input marker is safe for the plain varying witnesses, but
     * suppresses out-of-primitive helper values on G16G. Keep complete quads
     * through interpolation whenever derivatives or quad operations need them.
+    * A nonterminal secondary part must also preserve helpers for the shader
+    * it precedes: its own NIR cannot describe the next part's derivatives.
+    * In particular, the statistics prolog's active-thread read must not end
+    * helper execution before the main shader interpolates texture coordinates.
     * The colour writeout protocol still handles the end of the shader. */
    const bool needs_quad_helpers = ctx->stage == MESA_SHADER_FRAGMENT &&
       (ctx->nir->info.fs.needs_coarse_quad_helper_invocations ||
-       ctx->nir->info.fs.needs_full_quad_helper_invocations);
+       ctx->nir->info.fs.needs_full_quad_helper_invocations ||
+       (ctx->key->secondary && ctx->key->no_stop));
    if (has_coverage_write && enc == AGX_ISA_ENCODING_AGX3B &&
        ctx->stage == MESA_SHADER_FRAGMENT &&
        !ctx->key->fs.ignore_tib_dependencies) {
@@ -5726,13 +5731,15 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             uint8_t len = 0;
             if (!agx3_translate_sr(I, slot, wait, &d))
                AGX3_REFUSE(I);
-            /* The original-SR2 long form is another input marker that drops
-             * out-of-primitive helper lanes. Apple's dfdx-using
-             * simd_is_helper_thread fragment reads SR2 in the short form
-             * (probes/g16g-early-sample-mask.md, fsdemotehelper); keep quads
-             * complete the same way when derivatives or quad operations need
-             * them. */
-            if (needs_quad_helpers && I->sr == AGX_SR_IS_ACTIVE_THREAD)
+            /* The original-SR2/SR39 forms carry an input marker that drops
+             * out-of-primitive helper lanes. Both reads in a statistics
+             * prolog must leave those lanes alive for the following shader.
+             * Apple's dfdx-using simd_is_helper_thread fragment likewise reads
+             * SR2 without this marker. The SR value and covered-lane query
+             * accounting are unchanged; only helper lifetime differs. */
+            if (needs_quad_helpers &&
+                (I->sr == AGX_SR_IS_ACTIVE_THREAD ||
+                 I->sr == AGX_SR_INPUT_SAMPLE_MASK))
                d.original_coverage = false;
             if (!agx3_sr_encode(enc, &d, bytes, &len))
                AGX3_REFUSE(I);

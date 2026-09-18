@@ -33,6 +33,11 @@ static GLuint shader(GLenum type, const char *src) {
 }
 int main(int argc, char **argv) {
   CHECK(argc == 2);
+  if (getenv("M4_PROBE_CHECK_ATLAS"))
+    CHECK(getenv("M4_PROBE_ATLAS") && getenv("M4_PROBE_UPPER_LEFT") &&
+          (getenv("M4_PROBE_EXTRA_VARYING") ||
+           getenv("M4_PROBE_IMPLICIT_ONLY")) &&
+          !getenv("M4_PROBE_CAPTURE_VERTICES") && !getenv("M4_PROBE_BLEND"));
   EGLDisplay d =
       eglGetPlatformDisplay(EGL_PLATFORM_SURFACELESS_MESA, NULL, NULL);
   CHECK(eglInitialize(d, NULL, NULL) && eglBindAPI(EGL_OPENGL_API));
@@ -133,6 +138,21 @@ int main(int argc, char **argv) {
     fs = "#version 330\nin vec4 vTint;in vec2 coord;uniform sampler2D tex;out "
          "vec4 color;void main(){color=texture(tex,coord)*vTint;}";
   }
+  if (getenv("M4_PROBE_CAPTURE_VERTICES")) {
+    vs = "#version 330\nlayout(location=0) in vec2 pos;layout(location=1) in "
+         "vec2 uv;"
+         "layout(location=2) in vec4 tint;uniform mat4 projection;out vec4 "
+         "vTint;out vec2 coord;"
+         "void "
+         "main(){gl_Position=projection*vec4(pos,0,1);vTint=tint;coord=uv;}";
+    fs = "#version 330\nin vec4 vTint;in vec2 coord;uniform sampler2D tex;out "
+         "vec4 color;"
+         "void main(){color=texture(tex,coord)*vTint;}";
+    if (getenv("M4_PROBE_GRADIENT_OUTPUT"))
+      fs = "#version 330\nin vec4 vTint;in vec2 coord;out vec4 color;"
+           "void main(){color=vec4(clamp(abs(dFdx(coord.x))*8192.*8.,0.,1.),"
+           "clamp(abs(dFdy(coord.y))*3888.*8.,0.,1.),0,1)*vTint;}";
+  }
   GLuint pr = glCreateProgram();
   glAttachShader(pr, shader(GL_VERTEX_SHADER, vs));
   glAttachShader(pr, shader(GL_FRAGMENT_SHADER, fs));
@@ -142,6 +162,12 @@ int main(int argc, char **argv) {
   CHECK(ok);
   glUseProgram(pr);
   glUniform1i(glGetUniformLocation(pr, "tex"), 0);
+  if (getenv("M4_PROBE_CAPTURE_VERTICES")) {
+    float projection[] = {.00078125, 0, 0, 0, 0,  .0012019231, 0, 0,
+                          0,         0, 1, 0, -1, -1,          0, 1};
+    glUniformMatrix4fv(glGetUniformLocation(pr, "projection"), 1, GL_FALSE,
+                       projection);
+  }
   GLuint va, bo, idx;
   glGenVertexArrays(1, &va);
   glBindVertexArray(va);
@@ -171,27 +197,59 @@ int main(int argc, char **argv) {
   glViewport(0, 0, w, h);
   glClearColor(.1, .1, .1, 1);
   glClear(GL_COLOR_BUFFER_BIT);
-  for (int mode = 0; mode < 6; mode++) {
-    float x = 1080, y = 500 + mode * 85, ww = 400, hh = 60;
-    float verts[] = {x, y,      .03125, .03125, x + ww, y,      .09375, .03125,
-                     x, y + hh, .03125, .09375, x + ww, y + hh, .09375, .09375};
-    if (getenv("M4_PROBE_ATLAS")) {
-      float av[] = {1085.01, 806.01, .4189453125, .9794238,
-                    1085.01, 858.01, .4189453125, .979681,
-                    1475.01, 806.01, .4190673828, .9794238,
-                    1475.01, 858.01, .4190673828, .979681};
-      memcpy(verts, av, sizeof(verts));
-      for (int j = 0; j < 4; j++)
-        verts[j * 4 + 1] += (mode - 3) * 85;
-    }
-    if (getenv("M4_PROBE_CONSTANT_UV"))
-      for (int j = 0; j < 4; j++) {
-        verts[j * 4 + 2] = .078125;
-        verts[j * 4 + 3] = .078125;
+  GLuint statistics = 0;
+  if (getenv("M4_PROBE_STATS")) {
+    glGenQueries(1, &statistics);
+    glBeginQuery(GL_FRAGMENT_SHADER_INVOCATIONS_ARB, statistics);
+  }
+  if (getenv("M4_PROBE_CAPTURE_VERTICES")) {
+    unsigned char captured[864];
+    FILE *f = fopen(getenv("M4_PROBE_CAPTURE_VERTICES"), "rb");
+    CHECK(f);
+    CHECK(fread(captured, 1, sizeof(captured), f) == sizeof(captured));
+    fclose(f);
+    glVertexAttribPointer(0, 2, GL_FLOAT, 0, 24, (void *)0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, 0, 24, (void *)8);
+    glVertexAttribPointer(2, 4, GL_UNSIGNED_BYTE, GL_TRUE, 24, (void *)16);
+    glEnableVertexAttribArray(2);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(captured), captured, GL_STATIC_DRAW);
+    unsigned int indices[54];
+    for (int q = 0; q < 9; q++)
+      for (int i = 0; i < 6; i++)
+        indices[q * 6 + i] = q * 4 + (unsigned int[]){0, 1, 2, 2, 1, 3}[i];
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices,
+                 GL_STATIC_DRAW);
+    glDrawElements(GL_TRIANGLES, 54, GL_UNSIGNED_INT, 0);
+  } else
+    for (int mode = 0; mode < 6; mode++) {
+      float x = 1080, y = 500 + mode * 85, ww = 400, hh = 60;
+      float verts[] = {x,      y,      .03125, .03125, x + ww, y,
+                       .09375, .03125, x,      y + hh, .03125, .09375,
+                       x + ww, y + hh, .09375, .09375};
+      if (getenv("M4_PROBE_ATLAS")) {
+        float av[] = {1085.01, 806.01, .4189453125, .9794238,
+                      1085.01, 858.01, .4189453125, .979681,
+                      1475.01, 806.01, .4190673828, .9794238,
+                      1475.01, 858.01, .4190673828, .979681};
+        memcpy(verts, av, sizeof(verts));
+        for (int j = 0; j < 4; j++)
+          verts[j * 4 + 1] += (mode - 3) * 85;
       }
-    glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STREAM_DRAW);
-    glUniform1i(glGetUniformLocation(pr, "mode"), mode);
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
+      if (getenv("M4_PROBE_CONSTANT_UV"))
+        for (int j = 0; j < 4; j++) {
+          verts[j * 4 + 2] = .078125;
+          verts[j * 4 + 3] = .078125;
+        }
+      glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STREAM_DRAW);
+      glUniform1i(glGetUniformLocation(pr, "mode"), mode);
+      glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
+    }
+  if (statistics) {
+    glEndQuery(GL_FRAGMENT_SHADER_INVOCATIONS_ARB);
+    GLuint64 count = 0;
+    glGetQueryObjectui64v(statistics, GL_QUERY_RESULT, &count);
+    printf("Fragment invocations: %llu\n", (unsigned long long)count);
+    CHECK(count > 0);
   }
   glFinish();
   CHECK(glGetError() == GL_NO_ERROR);
@@ -203,6 +261,19 @@ int main(int argc, char **argv) {
   CHECK(f);
   CHECK(fwrite(pixels, 4, w * h, f) == (size_t)w * h);
   CHECK(!fclose(f));
+  if (getenv("M4_PROBE_CHECK_ATLAS")) {
+    unsigned bad = 0, checked = 0;
+    for (int q = 0; q < 6; q++)
+      for (int y = 807 + (q - 3) * 85; y < 857 + (q - 3) * 85; y++)
+        for (int x = 1086; x < 1474; x++) {
+          /* glReadPixels rows retain the lower-left convention. */
+          const unsigned char *p = pixels + 4 * ((h - 1 - y) * w + x);
+          bad += memcmp(p, (unsigned char[]){142, 142, 142, 255}, 4) != 0;
+          checked++;
+        }
+    printf("Atlas interior: %u/%u incorrect pixels\n", bad, checked);
+    CHECK(bad == 0);
+  }
   free(pixels);
   puts("GUI_SEAM_PROBE_COMPLETE");
   return 0;
