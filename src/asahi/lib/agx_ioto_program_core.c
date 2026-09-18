@@ -254,11 +254,11 @@ agx_ioto_straight_line_body_validate(enum agx_chip chip, const void *body,
          continue;
       }
 
-      struct agx_ioto_record record;
+      enum agx_ioto_kind kind;
       size_t consumed;
-      if (!agx_ioto_decode_one(chip, bytes + offset, body_size - offset,
-                               &record, &consumed) ||
-          consumed == 0 || !agx_ioto_straight_line_body_kind(record.kind))
+      if (!agx_ioto_decode_kind(chip, bytes + offset, body_size - offset,
+                               &kind, &consumed) ||
+          consumed == 0 || !agx_ioto_straight_line_body_kind(kind))
          return false;
 
       offset += consumed;
@@ -283,15 +283,15 @@ agx_ioto_program_copy_suffix_offset(enum agx_chip chip, const void *body,
          suffix = cursor;
          continue;
       }
-      struct agx_ioto_record record;
+      enum agx_ioto_kind kind;
       size_t consumed = 0;
-      if (!agx_ioto_decode_one(chip, bytes + cursor, body_size - cursor,
-                                 &record, &consumed) || consumed == 0 ||
-          !agx_ioto_straight_line_body_kind(record.kind))
+      if (!agx_ioto_decode_kind(chip, bytes + cursor, body_size - cursor,
+                                 &kind, &consumed) || consumed == 0 ||
+          !agx_ioto_straight_line_body_kind(kind))
          return false;
       cursor += consumed;
-      if (record.kind != AGX_IOTO_KIND_COPY_EP0 &&
-          record.kind != AGX_IOTO_KIND_COPY_EP1)
+      if (kind != AGX_IOTO_KIND_COPY_EP0 &&
+          kind != AGX_IOTO_KIND_COPY_EP1)
          suffix = cursor;
    }
    *offset = suffix;
@@ -309,12 +309,12 @@ agx_ioto_g17p_copy_body_validate(const void *body, size_t body_size)
    const uint8_t *bytes = body;
    size_t offset = 0;
    while (offset < body_size) {
-      struct agx_ioto_record record;
+      enum agx_ioto_kind kind;
       size_t consumed = 0;
-      if (!agx_ioto_decode_one(AGX_CHIP_G17P, bytes + offset,
-                               body_size - offset, &record, &consumed) ||
-          consumed == 0 || (record.kind != AGX_IOTO_KIND_COPY_EP0 &&
-                            record.kind != AGX_IOTO_KIND_COPY_EP1))
+      if (!agx_ioto_decode_kind(AGX_CHIP_G17P, bytes + offset,
+                               body_size - offset, &kind, &consumed) ||
+          consumed == 0 || (kind != AGX_IOTO_KIND_COPY_EP0 &&
+                            kind != AGX_IOTO_KIND_COPY_EP1))
          return false;
       offset += consumed;
    }

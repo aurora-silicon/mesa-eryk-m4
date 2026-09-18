@@ -370,16 +370,13 @@ agx_ioto_check_kind(enum agx_chip chip, enum agx_ioto_kind expected,
           agx_ioto_prefix_matches(form, stream, length);
 }
 
-bool
-agx_ioto_decode_one(enum agx_chip chip, const void *stream, size_t available,
-                    struct agx_ioto_record *out, size_t *consumed)
+static const struct agx_ioto_form *
+agx_ioto_decode_form(enum agx_chip chip, const void *stream, size_t available)
 {
-   agx_ioto_clear_outputs(out, consumed);
-
    const enum agx_ioto_encoding encoding = agx_ioto_target_encoding(chip);
-   if (encoding == AGX_IOTO_ENCODING_UNSUPPORTED || !stream || !out ||
-       !consumed || available == 0)
-      return false;
+   if (encoding == AGX_IOTO_ENCODING_UNSUPPORTED || !stream ||
+       available == 0)
+      return NULL;
 
    const uint8_t *bytes = stream;
    const struct agx_ioto_form *match = NULL;
@@ -406,14 +403,43 @@ agx_ioto_decode_one(enum agx_chip chip, const void *stream, size_t available,
       }
 
       if (match)
-         return false;
+         return NULL;
       match = form;
    }
 
    if (!match || incomplete_match)
-      return false;
+      return NULL;
 
-   agx_ioto_set_output(match, bytes, out, consumed);
+   return match;
+}
+
+bool
+agx_ioto_decode_kind(enum agx_chip chip, const void *stream, size_t available,
+                      enum agx_ioto_kind *kind, size_t *consumed)
+{
+   if (kind) *kind = AGX_IOTO_KIND_INVALID;
+   if (consumed) *consumed = 0;
+   if (!kind || !consumed)
+      return false;
+   const struct agx_ioto_form *form = agx_ioto_decode_form(chip, stream, available);
+   if (!form)
+      return false;
+   *kind = form->kind;
+   *consumed = form->length;
+   return true;
+}
+
+bool
+agx_ioto_decode_one(enum agx_chip chip, const void *stream, size_t available,
+                    struct agx_ioto_record *out, size_t *consumed)
+{
+   agx_ioto_clear_outputs(out, consumed);
+   if (!out || !consumed)
+      return false;
+   const struct agx_ioto_form *form = agx_ioto_decode_form(chip, stream, available);
+   if (!form)
+      return false;
+   agx_ioto_set_output(form, stream, out, consumed);
    return true;
 }
 

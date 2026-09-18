@@ -732,3 +732,19 @@ counts and edge pixels across query ordering, query-buffer reads and flushes;
 its command log confirms use of the shared completion timestamp.
 `20260918T213802226186Z-factorio-tail-copies-frame` matches the retained Factorio
 frame with zero differing pixels. No broad CTS run or 60 FPS claim.
+
+## Metadata-only decoding while validating generated programs
+
+`20260918T214757636030Z-factorio-tail-copies-cpu-profile` has 107 Honeykrisp
+block-start CPU samples, including 17 in load-round construction, 13 in
+fixed-prefix matching and 10 in decoded-output clearing. The retained exact
+x86 driver and `fex-jit-summary.py` make attribution reproducible. This is CPU
+sampling; the profile run itself averaged 12.522 FPS, not 60 FPS.
+
+The new decode_kind entry point shares the original complete/ambiguous/truncated
+record matcher but returns only kind and length. Program validators and the
+copy-suffix scanner use it, avoiding unused byte copies and output clearing.
+The existing mutation oracle compares both APIs, including failure outputs:
+35,558,556 encoding checks and 857 program checks pass. Both target builds pass.
+`20260918T215749291125Z-factorio-ioto-header-frame` has zero differing pixels
+against the retained Factorio reference, peak 63 C. Broad CTS remains deferred.

@@ -716,6 +716,11 @@ check_indexed_decode(void)
                const bool accepted = agx_ioto_decode_one(chip, bytes, length,
                                                          &actual, &consumed);
                CHECK(accepted == (matches == 1 && !incomplete));
+               enum agx_ioto_kind kind;
+               size_t header_size;
+               CHECK(agx_ioto_decode_kind(chip, bytes, length, &kind, &header_size) == accepted);
+               CHECK(kind == actual.kind);
+               CHECK(header_size == consumed);
                if (accepted) {
                   CHECK(actual.kind == match->kind);
                   CHECK(consumed == match->length);

@@ -119,6 +119,11 @@ bool agx_ioto_check_kind(enum agx_chip chip, enum agx_ioto_kind expected,
  * of any other form is treated as ambiguity and rejected rather than guessed.
  * Both outputs are cleared on failure.
  */
+/* Same complete/ambiguous/truncated grammar, without copying record bytes. */
+bool agx_ioto_decode_kind(enum agx_chip chip, const void *stream,
+                         size_t available, enum agx_ioto_kind *kind,
+                         size_t *consumed);
+
 bool agx_ioto_decode_one(enum agx_chip chip, const void *stream,
                          size_t available, struct agx_ioto_record *out,
                          size_t *consumed);
