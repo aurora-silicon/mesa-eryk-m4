@@ -142,6 +142,13 @@ bool agx_ioto_g17p_fragment_no_resource_program_compose(
  * state. The default profile loader then copies those results into CProg and
  * terminates. pre_copy_body and copies are validated as separate record spans;
  * the latter may contain COPY records only. */
+/* The body and copy_offset MUST come from agx3_ioto_uniform_program_body_generate.
+ * Unlike the generic composers, this does not decode the already checked body. */
+bool agx_ioto_g17p_generated_resource_program_compose(
+   uint64_t program_va, const void *body, size_t body_size, size_t copy_offset,
+   const struct agx_ioto_state_tail_output *tail, bool fragment, bool coverage,
+   void *output, size_t capacity, size_t *written);
+
 bool agx_ioto_g17p_resource_program_compose(
    uint64_t program_va, const void *pre_copy_body, size_t pre_copy_body_size,
    const void *copies, size_t copies_size,

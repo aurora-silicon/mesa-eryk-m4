@@ -6,6 +6,7 @@
 #include "agx3_ioto_uniform_program.h"
 
 #include <limits.h>
+#include <string.h>
 
 #define GPU0_CHUNK_BODY_BOUND 78u
 #define GPU1_CHUNK_BODY_BOUND 64u
@@ -124,11 +125,11 @@ workspace_overlaps(struct agx3_ioto_uniform_program_workspace workspace)
           spans_overlap(workspace.sort, sort_size, workspace.cache, cache_size);
 }
 
-bool
-agx3_ioto_uniform_program_body_generate(
+static bool
+uniform_program_body_generate(
    enum agx_chip chip, const struct agx3_ioto_uniform_program_desc *desc,
    struct agx3_ioto_uniform_program_workspace workspace, size_t *written,
-   size_t *copy_offset)
+   size_t *copy_offset, struct agx3_ioto_uniform_template *cache)
 {
    size_t body_bound, chunk_count;
    if (desc == NULL || written == NULL || copy_offset == NULL ||
@@ -157,6 +158,7 @@ agx3_ioto_uniform_program_body_generate(
       workspace.sort_capacity,
    };
    uint32_t cprog_dest_half = 0;
+   uint16_t base_reloc[256] = {0};
 
    for (size_t i = 0; i < desc->range_count; ++i) {
       const struct agx3_ioto_uniform_range *range = &desc->ranges[i];
@@ -180,6 +182,30 @@ agx3_ioto_uniform_program_body_generate(
          if (!agx3_ioto_load_absolute_native(&core, &load, sort, &allocation))
             return false;
 
+         if (cache) {
+            const struct agx_ioto_inflight_load *queued =
+               &core.loads[core.load_count - 1];
+            const unsigned index = cache->load_count++;
+            struct agx3_ioto_uniform_reloc *reloc = &cache->loads[index];
+            *reloc = (struct agx3_ioto_uniform_reloc){
+               .range = i, .range_offset = dword * 4,
+               .destination = allocation.temp_half,
+               .delta = queued->byte_offset,
+            };
+            if (queued->base.half == allocation.temp_half) {
+               uint8_t tmp[8];
+               if (!agx_ioto_load_pack_ldimm(chip, allocation.temp_half,
+                      load.address, tmp, &reloc->low_length) ||
+                   !agx_ioto_load_pack_ldimm(chip, allocation.temp_half + 2,
+                      load.address >> 32, tmp, &reloc->high_length))
+                  return false;
+               reloc->offset = core.sink.length - reloc->low_length -
+                               reloc->high_length;
+               base_reloc[queued->base.half] = index;
+            }
+            reloc->base = base_reloc[queued->base.half];
+         }
+
          cprog_dest_half += 2u * (2u * count);
          dword += count;
       }
@@ -188,17 +214,95 @@ agx3_ioto_uniform_program_body_generate(
    if (!agx3_ioto_load_finish_round_native(&core, true, sort))
       return false;
 
-   /* finishRound may have already copied earlier rounds before recycling
-    * temporaries, and extended native COPY records are not always four bytes.
-    * Find the actual final suffix by decoding emitted record boundaries. */
-   size_t staged_copy_offset;
-   if (!agx_ioto_program_copy_suffix_offset(chip, workspace.body,
-                                             core.sink.length,
-                                             &staged_copy_offset))
-      return false;
-
+   /* The builder already knows record boundaries, including variable-size
+    * COPYs and allocation rollovers. Do not decode its output on every draw. */
    *written = core.sink.length;
-   *copy_offset = staged_copy_offset;
+   *copy_offset = core.copy_offset;
+   return true;
+}
+
+bool
+agx3_ioto_uniform_program_body_generate(
+   enum agx_chip chip, const struct agx3_ioto_uniform_program_desc *desc,
+   struct agx3_ioto_uniform_program_workspace ws, size_t *written,
+   size_t *copy_offset)
+{
+   return uniform_program_body_generate(chip, desc, ws, written, copy_offset, NULL);
+}
+
+static bool
+uniform_template_apply(enum agx_chip chip,
+   const struct agx3_ioto_uniform_program_desc *desc,
+   struct agx3_ioto_uniform_program_workspace ws, size_t *written,
+   size_t *copy_offset, const struct agx3_ioto_uniform_template *cache)
+{
+   if (!cache->valid || cache->chip != chip ||
+       cache->initial_gprs != desc->initial_gpr_dwords ||
+       cache->fast_path != desc->fast_path_enabled ||
+       cache->range_count != desc->range_count || cache->length > ws.body_capacity)
+      return false;
+   for (unsigned i = 0; i < cache->range_count; ++i) {
+      if (cache->ranges[i].start_halfs != desc->ranges[i].start_halfs ||
+          cache->ranges[i].size_halfs != desc->ranges[i].size_halfs)
+         return false;
+   }
+   memcpy(ws.body, cache->body, cache->length);
+   for (unsigned i = 0; i < cache->load_count; ++i) {
+      const struct agx3_ioto_uniform_reloc *r = &cache->loads[i];
+      const uint64_t address = desc->ranges[r->range].address + r->range_offset;
+      if (!r->low_length) {
+         const struct agx3_ioto_uniform_reloc *b = &cache->loads[r->base];
+         const uint64_t base = desc->ranges[b->range].address + b->range_offset;
+         if (address < base || address - base != (uint64_t)r->delta)
+            return false;
+      } else {
+         uint8_t lo[8], hi[8], low_length, high_length;
+         if (!agx_ioto_load_pack_ldimm(chip, r->destination, address, lo, &low_length) ||
+             !agx_ioto_load_pack_ldimm(chip, r->destination + 2, address >> 32,
+                                       hi, &high_length) ||
+             low_length != r->low_length || high_length != r->high_length)
+            return false;
+         memcpy(ws.body + r->offset, lo, low_length);
+         memcpy(ws.body + r->offset + low_length, hi, high_length);
+      }
+   }
+   *written = cache->length;
+   *copy_offset = cache->copy_offset;
+   return true;
+}
+
+bool
+agx3_ioto_uniform_program_body_generate_cached(
+   enum agx_chip chip, const struct agx3_ioto_uniform_program_desc *desc,
+   struct agx3_ioto_uniform_program_workspace ws, size_t *written,
+   size_t *copy_offset, struct agx3_ioto_uniform_template *cache)
+{
+   size_t bound, chunks;
+   if (!cache)
+      return uniform_program_body_generate(chip, desc, ws, written, copy_offset, NULL);
+   if (!desc || !written || !copy_offset || !ws.body || workspace_overlaps(ws) ||
+       !agx3_ioto_uniform_program_body_bound(chip, desc->ranges, desc->range_count,
+                                             &bound, &chunks))
+      return false;
+   if (uniform_template_apply(chip, desc, ws, written, copy_offset, cache))
+      return true;
+   cache->valid = false;
+   cache->load_count = 0;
+   if (desc->range_count > AGX3_IOTO_TEMPLATE_RANGES ||
+       chunks > AGX3_IOTO_TEMPLATE_LOADS || bound > AGX3_IOTO_TEMPLATE_BYTES)
+      return uniform_program_body_generate(chip, desc, ws, written, copy_offset, NULL);
+   if (!uniform_program_body_generate(chip, desc, ws, written, copy_offset, cache))
+      return false;
+   cache->chip = chip;
+   cache->initial_gprs = desc->initial_gpr_dwords;
+   cache->fast_path = desc->fast_path_enabled;
+   cache->range_count = desc->range_count;
+   if (desc->range_count)
+      memcpy(cache->ranges, desc->ranges, desc->range_count * sizeof(desc->ranges[0]));
+   cache->length = *written;
+   cache->copy_offset = *copy_offset;
+   memcpy(cache->body, ws.body, *written);
+   cache->valid = true;
    return true;
 }
 

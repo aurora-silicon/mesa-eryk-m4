@@ -530,6 +530,7 @@ struct hk_uploader {
 
 struct hk_cmd_buffer {
    struct vk_command_buffer vk;
+   struct agx3_ioto_uniform_template *uniform_templates[2];
 
    struct {
       struct hk_graphics_state gfx;

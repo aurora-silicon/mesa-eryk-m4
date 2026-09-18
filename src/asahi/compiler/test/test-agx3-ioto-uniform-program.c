@@ -305,11 +305,103 @@ test_fail_closed(void)
    return true;
 }
 
+static bool
+test_generated_copy_boundaries(void)
+{
+   /* Large ranges force multiple allocation rounds and extended COPY records.
+    * Compare the builder's saved boundary with the independent byte decoder. */
+   const enum agx_chip chips[] = {AGX_CHIP_G16G, AGX_CHIP_G17G};
+   uint8_t body[8192], reference[8400], generated[8400];
+   struct agx_ioto_inflight_load loads[128], sort[128];
+   struct agx_ioto_load_cache_entry cache[128];
+   struct agx3_ioto_uniform_program_workspace ws = {
+      body, sizeof(body), loads, 128, sort, 128, cache, 128,
+   };
+   for (unsigned c = 0; c < ARRAY_SIZE(chips); ++c) {
+      for (unsigned halves = 0; halves <= 512; halves += 2) {
+         struct agx3_ioto_uniform_range range = {0, halves, 0x10000004000};
+         struct agx3_ioto_uniform_program_desc desc =
+            program_desc(chips[c], &range, halves != 0);
+         size_t written, copy, decoded;
+         CHECK(agx3_ioto_uniform_program_body_generate(chips[c], &desc, ws,
+                                                       &written, &copy));
+         CHECK(agx_ioto_program_copy_suffix_offset(chips[c], body, written,
+                                                    &decoded));
+         CHECK(copy == decoded);
+         if (c != 0)
+            continue;
+         struct agx_ioto_state_tail_output tail;
+         CHECK(agx_ioto_state_tail_pack(chips[c], &desc.tail, &tail));
+         for (unsigned mode = 0; mode < 3; ++mode) {
+            size_t a, b;
+            CHECK(agx_ioto_g17p_generated_resource_program_compose(
+               desc.program_va, body, written, copy, &tail, mode != 0, mode == 2,
+               generated, sizeof(generated), &a));
+            CHECK((mode == 0 ? agx_ioto_g17p_resource_program_compose :
+                   mode == 1 ? agx_ioto_g17p_fragment_resource_program_compose :
+                               agx_ioto_g17p_coverage_fragment_program_compose)(
+               desc.program_va, body, copy, body + copy, written - copy,
+               &tail, reference, sizeof(reference), &b));
+            CHECK(a == b && !memcmp(generated, reference, a));
+         }
+      }
+   }
+   return true;
+}
+
+static bool
+test_uniform_templates(void)
+{
+   uint8_t body[8192], expected[8192];
+   struct agx_ioto_inflight_load loads[128], sort[128];
+   struct agx_ioto_load_cache_entry addresses[128];
+   struct agx3_ioto_uniform_program_workspace ws = {
+      body, sizeof(body), loads, 128, sort, 128, addresses, 128,
+   };
+   struct agx3_ioto_uniform_template cache = {0};
+   const uint64_t bases[] = {0, 0x20, 0x1000, 0xffffffe0, 0x100000000,
+                            0x10000004000, 0x20000008000};
+   const enum agx_chip chips[] = {AGX_CHIP_G16G, AGX_CHIP_G17G};
+   for (unsigned c = 0; c < ARRAY_SIZE(chips); ++c) {
+      for (unsigned halfs = 2; halfs <= 512; halfs += 2) {
+         for (unsigned b = 0; b < ARRAY_SIZE(bases); ++b) {
+            struct agx3_ioto_uniform_range range = {0, halfs, bases[b]};
+            struct agx3_ioto_uniform_program_desc desc = program_desc(chips[c], &range, 1);
+            size_t size, copy, cached_size, cached_copy;
+            CHECK(agx3_ioto_uniform_program_body_generate(chips[c], &desc, ws, &size, &copy));
+            memcpy(expected, body, size);
+            CHECK(agx3_ioto_uniform_program_body_generate_cached(chips[c], &desc, ws,
+               &cached_size, &cached_copy, &cache));
+            CHECK(size == cached_size && copy == cached_copy);
+            CHECK(!memcmp(body, expected, size));
+         }
+      }
+   }
+   /* Range-to-range base reuse: keep relative addresses, then force rebuilding
+    * when one range's relationship to the shared base changes. */
+   for (unsigned iteration = 0; iteration < 200; ++iteration) {
+      uint64_t base = 0x10000004000ull + iteration * 0x1000ull;
+      struct agx3_ioto_uniform_range ranges[] = {
+         {0, 32, base}, {64, 24, base + 0x100 + (iteration % 3) * 4},
+         {128, 64, base + 0x200},
+      };
+      struct agx3_ioto_uniform_program_desc desc = program_desc(AGX_CHIP_G16G, ranges, 3);
+      size_t size, copy, cached_size, cached_copy;
+      CHECK(agx3_ioto_uniform_program_body_generate(AGX_CHIP_G16G, &desc, ws, &size, &copy));
+      memcpy(expected, body, size);
+      CHECK(agx3_ioto_uniform_program_body_generate_cached(AGX_CHIP_G16G, &desc, ws,
+         &cached_size, &cached_copy, &cache));
+      CHECK(size == cached_size && copy == cached_copy && !memcmp(body, expected, size));
+   }
+   return true;
+}
+
 int
 main(void)
 {
    if (!test_exact_uniform_program() || !test_g17p_background_clear_body() ||
-       !test_bounds_and_cohorts() || !test_fail_closed())
+       !test_bounds_and_cohorts() || !test_fail_closed() ||
+       !test_generated_copy_boundaries() || !test_uniform_templates())
       return 1;
 
    printf("agx3_ioto_uniform_program: %u checks passed\n", checks);

@@ -56,6 +56,32 @@ struct agx3_ioto_uniform_program_workspace {
    size_t cache_capacity;
 };
 
+/* CPU-only relocation template. It owns no GPU memory and may be reused
+ * across command-buffer resets. Address relationships and immediate widths
+ * are checked on every reuse; a changed layout rebuilds the template. */
+#define AGX3_IOTO_TEMPLATE_RANGES 144
+#define AGX3_IOTO_TEMPLATE_LOADS 128
+#define AGX3_IOTO_TEMPLATE_BYTES 6144
+struct agx3_ioto_uniform_reloc {
+   uint16_t range, range_offset, base, destination, offset;
+   int16_t delta;
+   uint8_t low_length, high_length;
+};
+struct agx3_ioto_uniform_template {
+   bool valid, fast_path;
+   enum agx_chip chip;
+   uint8_t initial_gprs;
+   uint16_t range_count, load_count, length, copy_offset;
+   struct agx3_ioto_uniform_range ranges[AGX3_IOTO_TEMPLATE_RANGES];
+   struct agx3_ioto_uniform_reloc loads[AGX3_IOTO_TEMPLATE_LOADS];
+   uint8_t body[AGX3_IOTO_TEMPLATE_BYTES];
+};
+
+bool agx3_ioto_uniform_program_body_generate_cached(
+   enum agx_chip chip, const struct agx3_ioto_uniform_program_desc *desc,
+   struct agx3_ioto_uniform_program_workspace workspace, size_t *written,
+   size_t *copy_offset, struct agx3_ioto_uniform_template *cache);
+
 /* Conservative body-scratch bound for the validated ranges.  The returned
  * value includes every address materialization, load, rollover pad and copy,
  * but excludes profile, state tail and terminal suffix. */

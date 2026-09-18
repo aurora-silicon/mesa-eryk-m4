@@ -748,3 +748,40 @@ The existing mutation oracle compares both APIs, including failure outputs:
 35,558,556 encoding checks and 857 program checks pass. Both target builds pass.
 `20260918T215749291125Z-factorio-ioto-header-frame` has zero differing pixels
 against the retained Factorio reference, peak 63 C. Broad CTS remains deferred.
+
+## Reusable uniform binding templates
+
+The generated uniform body now carries its final COPY boundary from the load
+builder. The typed graphics composer uses the already checked body directly;
+generic byte-stream composers retain their decoder checks. Only emitted bytes
+are copied to the output, avoiding full 6 KiB temporary clearing/copying per draw.
+
+`HK_M4_IOTO_TEMPLATES=true` enables two CPU-only templates per command buffer
+(vertex/fragment), retained across resets and freed with the command buffer.
+Templates contain the generic load/copy sequence and address relocations, not
+application shaders. A hit checks uniform layout, target, register policy,
+shared-base address relationships and immediate instruction lengths. It patches
+fresh addresses; misses regenerate normally. It neither caches UBO contents nor
+keeps old GPU allocation ownership. Shader BO retention remains unchanged.
+
+19,267 targeted uniform-builder/template checks pass: independent COPY-boundary
+decoding, validated-vs-typed composition, both instruction families, immediate
+length changes, 32-bit address carry, allocation rollovers, and cross-range base
+reuse/invalidation. Load-core (211) and generic program (857) checks also pass.
+The larger Honeykrisp byte-fixture suite stops on its expected NOP mask 0x08 at
+line 866; the existing packer emits 0x04. Do not count that suite as passing.
+Full CTS is deferred by user request.
+
+`20260918T221244538640Z-factorio-ioto-generated-frame` and
+`20260918T221819314733Z-factorio-ioto-template-frame` both have zero differing
+pixels against the retained Factorio frame. The menu observations average
+12.877 FPS without templates (`20260918T221319618893Z-factorio-ioto-generated-menu`)
+and 15.013 FPS with templates (`20260918T221843718916Z-factorio-ioto-template-menu`,
+14.13–15.43, peak 63.25 C). These are separate animated scenes/cache states,
+not a controlled speedup ratio or 60 FPS result. The warmed CPU profile is
+`20260918T221950369905Z-factorio-ioto-template-profile`.
+
+Kernel f96e39d3e06b additionally wakes completion processing from the RTKit IRQ
+callback. Its 2048-readback probe measures 0.632 ms/command median versus
+0.658 ms previously. Same-submission scheduler handoffs average only 16–17 us;
+`gpu-summary-timings.py` reports them separately from preparation and active time.

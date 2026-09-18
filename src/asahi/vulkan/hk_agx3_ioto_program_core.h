@@ -71,6 +71,7 @@ struct hk_agx3_g17p_graphics_program_desc {
    uint32_t compiler_d;
    bool fragment;
    bool writes_sample_mask;
+   struct agx3_ioto_uniform_template *uniform_template;
 };
 
 #define HK_AGX3_G17P_GRAPHICS_PROGRAM_MAX_SIZE 6144u

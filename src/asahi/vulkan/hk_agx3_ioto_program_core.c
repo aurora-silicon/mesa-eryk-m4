@@ -328,7 +328,7 @@ hk_agx3_g17p_basic_graphics_program_generate(
    if (!hk_agx3_g17p_graphics_state_tail(desc, &tail, true))
       return false;
 
-   struct hk_agx3_g17p_graphics_program staged = {0};
+   struct hk_agx3_g17p_graphics_program staged;
    size_t written = 0;
    if (desc->uniform_range_count == 0) {
       const bool composed =
@@ -374,31 +374,22 @@ hk_agx3_g17p_basic_graphics_program_generate(
       };
 
       size_t body_size, copy_offset;
-      if (!agx3_ioto_uniform_program_body_generate(
-             chip, &load_desc, workspace, &body_size, &copy_offset) ||
+      if (!agx3_ioto_uniform_program_body_generate_cached(
+             chip, &load_desc, workspace, &body_size, &copy_offset,
+             desc->uniform_template) ||
           copy_offset > body_size ||
-          !(desc->fragment && desc->writes_sample_mask
-               ? agx_ioto_g17p_coverage_fragment_program_compose(
-                    desc->program_va, body, copy_offset, body + copy_offset,
-                    body_size - copy_offset, &tail, staged.bytes,
-                    sizeof(staged.bytes), &written)
-               : desc->fragment
-               ? agx_ioto_g17p_fragment_resource_program_compose(
-                    desc->program_va, body, copy_offset, body + copy_offset,
-                    body_size - copy_offset, &tail, staged.bytes,
-                    sizeof(staged.bytes), &written)
-               : agx_ioto_g17p_resource_program_compose(
-                    desc->program_va, body, copy_offset, body + copy_offset,
-                    body_size - copy_offset, &tail, staged.bytes,
-                    sizeof(staged.bytes), &written)))
+          !agx_ioto_g17p_generated_resource_program_compose(
+             desc->program_va, body, body_size, copy_offset, &tail,
+             desc->fragment, desc->writes_sample_mask, staged.bytes,
+             sizeof(staged.bytes), &written))
          return false;
    }
 
    if (written > UINT16_MAX)
       return false;
 
-   staged.length = (uint16_t)written;
-   *program = staged;
+   memcpy(program->bytes, staged.bytes, written);
+   program->length = (uint16_t)written;
    return true;
 }
 

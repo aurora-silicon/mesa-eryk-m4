@@ -548,14 +548,15 @@ g17p_resource_program_compose(
    const void *copies, size_t copies_size,
    const struct agx_ioto_state_tail_output *packed_tail, void *output,
    size_t capacity, size_t *written, const uint8_t *terminal_protocol,
-   size_t terminal_protocol_size)
+   size_t terminal_protocol_size, bool generated)
 {
    if (!output || !written || !g17p_type0_tail_valid(packed_tail) ||
        program_va == 0 || program_va > UINT64_C(0xffffffffffff) ||
        (program_va & (AGX_IOTO_PROGRAM_ALIGNMENT - 1)) != 0 ||
-       !agx_ioto_g17p_pre_copy_body_validate(pre_copy_body,
-                                             pre_copy_body_size) ||
-       !agx_ioto_g17p_copy_body_validate(copies, copies_size) ||
+       (pre_copy_body_size && !pre_copy_body) || (copies_size && !copies) ||
+       (!generated &&
+        (!agx_ioto_g17p_pre_copy_body_validate(pre_copy_body, pre_copy_body_size) ||
+         !agx_ioto_g17p_copy_body_validate(copies, copies_size))) ||
        pre_copy_body_size > SIZE_MAX - packed_tail->length ||
        pre_copy_body_size + packed_tail->length >
           SIZE_MAX - sizeof(g17p_default_profile_prefix) ||
@@ -613,7 +614,7 @@ agx_ioto_g17p_resource_program_compose(
    return g17p_resource_program_compose(
       program_va, pre_copy_body, pre_copy_body_size, copies, copies_size,
       packed_tail, output, capacity, written, g17p_default_profile_suffix,
-      sizeof(g17p_default_profile_suffix));
+      sizeof(g17p_default_profile_suffix), false);
 }
 
 bool
@@ -626,7 +627,7 @@ agx_ioto_g17p_fragment_resource_program_compose(
    return g17p_resource_program_compose(
       program_va, pre_copy_body, pre_copy_body_size, copies, copies_size,
       packed_tail, output, capacity, written, g17p_fragment_pixrel,
-      sizeof(g17p_fragment_pixrel));
+      sizeof(g17p_fragment_pixrel), false);
 }
 
 bool
@@ -643,7 +644,7 @@ agx_ioto_g17p_coverage_fragment_program_compose(
    return g17p_resource_program_compose(
       program_va, pre_copy_body, pre_copy_body_size, copies, copies_size,
       packed_tail, output, capacity, written, coverage_pixrel,
-      sizeof(coverage_pixrel));
+      sizeof(coverage_pixrel), false);
 }
 
 bool
@@ -656,7 +657,29 @@ agx_ioto_g17p_background_resource_program_compose(
    return g17p_resource_program_compose(
       program_va, pre_copy_body, pre_copy_body_size, copies, copies_size,
       packed_tail, output, capacity, written, g17p_background_pixrel,
-      sizeof(g17p_background_pixrel));
+      sizeof(g17p_background_pixrel), false);
+}
+
+/* Only for a body returned by the typed uniform-load builder. Each emitted
+ * record was checked there; generic/captured byte streams use the validating
+ * entry points above. Address, state-tail, size and destination checks remain. */
+bool
+agx_ioto_g17p_generated_resource_program_compose(
+   uint64_t program_va, const void *body, size_t body_size, size_t copy_offset,
+   const struct agx_ioto_state_tail_output *tail, bool fragment, bool coverage,
+   void *output, size_t capacity, size_t *written)
+{
+   static const uint8_t coverage_pixrel[] = {0x07,0x02,0x54,0xf2,0x02,0x00};
+   if (copy_offset > body_size || (body_size && !body) || (coverage && !fragment))
+      return false;
+   const uint8_t *copies = body ? (const uint8_t *)body + copy_offset : NULL;
+   const uint8_t *terminal = coverage ? coverage_pixrel : fragment ?
+      g17p_fragment_pixrel : g17p_default_profile_suffix;
+   const size_t terminal_size = fragment ? sizeof(g17p_fragment_pixrel) :
+      sizeof(g17p_default_profile_suffix);
+   return g17p_resource_program_compose(
+      program_va, body, copy_offset, copies, body_size - copy_offset,
+      tail, output, capacity, written, terminal, terminal_size, true);
 }
 
 static bool

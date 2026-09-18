@@ -71,6 +71,13 @@ if geometry:
     result['render_geometry'] = sorted(geometry.values(), key=lambda g:g['fragment_ns'], reverse=True)
 if waits:
     included = [w for w in waits if w['monotonic_ns'] in selected]
+    if included and 'consecutive_gap_ns' in included[0]:
+        ns = sum(w['consecutive_gap_ns'] for w in included)
+        count = sum(w['consecutive_gap_count'] for w in included)
+        result['consecutive_command_handoff'] = dict(
+            commands=count, seconds=ns/1e9,
+            mean_microseconds=ns/1e3/count if count else None,
+            scope='Consecutive commands of one ioctl; excludes client interleaving')
     prior = [w for w in waits if w['monotonic_ns'] < min(selected)]
     # Cumulative counters require a preceding sample. Without one, omit the
     # first interval from the deltas rather than including the whole boot.

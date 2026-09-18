@@ -119,6 +119,8 @@ struct agx_ioto_load_core {
    enum agx_chip chip;
    enum agx_ioto_load_encoding encoding;
    struct agx_ioto_load_sink sink;
+   /* First COPY in the most recently completed round. */
+   size_t copy_offset;
 
    struct agx_ioto_inflight_load *loads;
    size_t load_count;

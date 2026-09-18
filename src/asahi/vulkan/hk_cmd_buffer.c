@@ -141,6 +141,8 @@ hk_destroy_cmd_buffer(struct vk_command_buffer *vk_cmd_buffer)
    struct hk_cmd_pool *pool = hk_cmd_buffer_pool(cmd);
 
    hk_free_resettable_cmd_buffer(cmd);
+   for (unsigned i = 0; i < 2; ++i)
+      vk_free(&pool->vk.alloc, cmd->uniform_templates[i]);
    util_dynarray_fini(&cmd->large_bos);
    vk_command_buffer_finish(&cmd->vk);
    vk_free(&pool->vk.alloc, cmd);
@@ -1638,7 +1640,18 @@ hk_upload_usc_words(struct hk_cmd_buffer *cmd, struct hk_shader *s,
          return 0;
       }
 
+      struct agx3_ioto_uniform_template *uniform_template = NULL;
+      if (debug_get_bool_option("HK_M4_IOTO_TEMPLATES", false) &&
+          (s->info.stage == MESA_SHADER_VERTEX || s->info.stage == MESA_SHADER_FRAGMENT)) {
+         const unsigned index = s->info.stage == MESA_SHADER_FRAGMENT;
+         if (!cmd->uniform_templates[index])
+            cmd->uniform_templates[index] = vk_zalloc(&hk_cmd_buffer_pool(cmd)->vk.alloc,
+               sizeof(*uniform_template), 8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+         uniform_template = cmd->uniform_templates[index];
+      }
+
       const struct hk_agx3_g17p_graphics_program_desc desc = {
+         .uniform_template = uniform_template,
          .sample_size_B = s->info.stage == MESA_SHADER_FRAGMENT
             ? cmd->state.gfx.render.tilebuffer.sample_size_B : 0,
          .tile_size = cmd->state.gfx.render.tilebuffer.tile_size,

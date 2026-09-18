@@ -442,7 +442,9 @@ agx_ioto_load_finish_round(struct agx_ioto_load_core *core, bool complete_round,
       }
    }
 
+   const size_t copy_offset = core->sink.length;
    if (complete_round) {
+      const bool emitted = core->load_count != 0 || core->gpu0_round_nops;
       for (size_t i = 0; i < core->load_count; ++i) {
          const struct agx_ioto_inflight_load *load = &workspace.loads[i];
          uint8_t mask = load->lane_mask;
@@ -462,6 +464,8 @@ agx_ioto_load_finish_round(struct agx_ioto_load_core *core, bool complete_round,
          }
       }
 
+      if (emitted)
+         core->copy_offset = copy_offset;
       core->current_gpr_dwords = core->initial_gpr_dwords;
       core->load_count = 0;
       core->abi4_load_pending = false;
