@@ -456,3 +456,25 @@ Evidence: `20260918T144332924568Z-factorio-ubo-direct-frame`,
 `20260918T145519391560Z-factorio-ubo-shared-direct-frame`,
 `20260918T145640928251Z-factorio-ubo-shared-sampler-cts`,
 `20260918T145807777922Z-factorio-zink-stats-ubo-menu`.
+
+## Integer-only native constant-program experiment
+
+Restricting the native preamble to integer arithmetic over prefetched uniforms
+fixes the known minimum-LOD failure of the earlier floating-point prototype.
+The retained Factorio frame is pixel-identical; its heaviest pass falls to
+7.45–7.48 ms. All 1,929 supported cases in the 2,187-case sampling selection and
+all six independent implicit sampler oracles pass.
+
+It still regresses live-menu performance: 9.519 FPS with broad descriptor
+prefetch, and 12.581 FPS when restricted to shaders with at least sixteen
+prefetched UBO scalars, versus 13.625 FPS without the preamble. These are short
+dynamic-menu observations, not identical fixed-scene benchmarks. Remove the
+prototype and its NIR capability callback; retain the clean experimental patch
+outside the deployed driver for later setup/constant-program diagnosis.
+
+Evidence: `20260918T150203174312Z-factorio-int-preamble-minlod-cts`,
+`20260918T150242136212Z-factorio-integer-preamble-frame`,
+`20260918T150322355929Z-factorio-integer-preamble-sampler-cts`,
+`20260918T150522105240Z-factorio-integer-preamble-oracles`,
+`20260918T150600508842Z-factorio-zink-integer-preamble-menu`,
+`20260918T151130315582Z-factorio-zink-integer-large-menu`.
