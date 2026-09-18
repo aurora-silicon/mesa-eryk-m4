@@ -4,6 +4,7 @@
 #include "agx_nir.h"
 #include "agx_replay_abi.h"
 #include "nir_serialize.h"
+#include "nir_builder.h"
 #include "glsl_types.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,8 +16,9 @@ int main(int argc, char **argv)
                                   !strcmp(argv[2], "--gcm") ||
                                   !strcmp(argv[2], "--licm") ||
                                   !strcmp(argv[2], "--gcm-no-vn") ||
-                                  !strcmp(argv[2], "--print-nir")))) {
-      fprintf(stderr, "Usage: %s BUNDLE/input.bin [--check-native-resources|--gcm|--licm|--gcm-no-vn]\n       %s FRONTEND.nirbin --print-nir\n", argv[0], argv[0]);
+                                  !strcmp(argv[2], "--print-nir") ||
+                                  !strncmp(argv[2], "--uniform-one=", 14)))) {
+      fprintf(stderr, "Usage: %s BUNDLE/input.bin [--check-native-resources|--gcm|--licm|--gcm-no-vn|--uniform-one=HALF]\n       %s FRONTEND.nirbin --print-nir\n", argv[0], argv[0]);
       return 2;
    }
    FILE *f = fopen(argv[1], "rb");
@@ -55,7 +57,7 @@ int main(int argc, char **argv)
    if (!nir || reader.overrun || reader.current != reader.end) return 2;
    /* Explicit diagnostic transforms replace the driver's default motion
     * pass rather than applying it twice. */
-   if (argc == 3)
+   if (argc == 3 && strncmp(argv[2], "--uniform-one=", 14))
       setenv("AGX_CODE_MOTION", "none", 1);
    if (argc == 3 && (!strcmp(argv[2], "--gcm") || !strcmp(argv[2], "--gcm-no-vn"))) {
       bool progress = nir_opt_gcm(nir, !strcmp(argv[2], "--gcm"));
@@ -68,6 +70,37 @@ int main(int argc, char **argv)
       nir_opt_dce(nir);
       fprintf(stderr, "Loop invariant code motion: %s\n", progress ? "changed" : "unchanged");
       nir_validate_shader(nir, "after replay LICM");
+   }
+   if (argc == 3 && !strncmp(argv[2], "--uniform-one=", 14)) {
+      char *end;
+      unsigned long half = strtoul(argv[2] + 14, &end, 10);
+      if (*end || half >= 512 || (half & 1)) return 2;
+      unsigned count = 0;
+      nir_foreach_function_impl(impl, nir) {
+         nir_foreach_block(block, impl) {
+            nir_foreach_instr_safe(instr, block) {
+               if (instr->type != nir_instr_type_intrinsic) continue;
+               nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+               if (intr->intrinsic != nir_intrinsic_load_preamble ||
+                   nir_intrinsic_base(intr) != half ||
+                   intr->def.bit_size != 32 || intr->def.num_components != 1)
+                  continue;
+               nir_builder b = nir_builder_at(nir_before_instr(instr));
+               nir_def_replace(&intr->def, nir_imm_int(&b, 1));
+               count++;
+            }
+         }
+      }
+      fprintf(stderr, "DIAGNOSTIC: force uniform half %lu to one (%u loads); not an equivalent shader\n", half, count);
+      if (!count) return 2;
+      bool progress;
+      do {
+         progress = false;
+         NIR_PASS(progress, nir, nir_opt_constant_folding);
+         NIR_PASS(progress, nir, nir_opt_dead_cf);
+         NIR_PASS(progress, nir, nir_opt_dce);
+      } while (progress);
+      nir_validate_shader(nir, "diagnostic uniform specialization");
    }
    nir_print_shader(nir, stdout);
    if (argc == 3 && !strcmp(argv[2], "--check-native-resources")) {
