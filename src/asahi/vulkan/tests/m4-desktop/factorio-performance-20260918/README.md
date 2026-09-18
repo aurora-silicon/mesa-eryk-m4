@@ -132,3 +132,28 @@ this bounded, CPU-readback-checked experiment. Do not deploy the rejected build.
 `factorio-ui-step.py` checks that the actual game window exists before input or
 capture. Live guest perf sampling coincided with game exits; causation remains
 unresolved. Avoid it for subsequent FPS qualification.
+
+## Dynamically uniform sampling avoids reduction setup
+
+Implicit texture footprints can remain inside the reduction branch when both
+sampler and texture descriptors are dynamically uniform. Nonuniform descriptors
+retain unconditional derivatives. This preserves all advertised sampling modes.
+The native retained menu frame remains pixel-identical. All 2187 selected
+texture-mipmap and GLSL derivative cases completed: 1929 Pass, 258 NotSupported,
+no failures, 40.444 s runner time. This run does not replace specific min/max
+reduction oracle coverage.
+
+Full-resolution replay passes (same 36 renders, includes restored state) summed
+111.43 ms recorded GPU spans before, 103.87 ms after; this is not live FPS.
+Prior live menu observation after reset batching: 97 downsample passes in
+12.173 s (~7.97 frames/s), workload still far from the 60 FPS target.
+
+Evidence: `20260918T104819717843Z-factorio-reset-menu-timings`,
+`20260918T105006719316Z-factorio-uniform-sampler-frame`,
+`20260918T105817575885Z-factorio-uniform-sampler-cts`.
+
+The user requested no more UI interaction: measure/optimize the main menu only.
+`factorio-replay.py` stops our benchmark service and runs the retained trace
+with optional compiler captures, without mouse/keyboard input.
+`gpu-command-timings.py` summarizes serialized retirement logs by ASID/geometry;
+GPU render spans include the interval between tiling and fragment work.

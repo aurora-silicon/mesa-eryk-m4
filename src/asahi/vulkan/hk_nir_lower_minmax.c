@@ -188,13 +188,15 @@ lower_minmax(nir_builder *b, nir_tex_instr *tex, void *data)
    nir_def *coord = source(tex, nir_tex_src_coord);
    nir_def *needs_reduction =
       nir_ior(b, nir_inot(b, weighted), nir_fgt_imm(b, view_min, 0));
-   /* Explicit LOD/gradient operations do not need quad derivatives. Keep
-    * their footprint queries and arithmetic inside the reduction path: an
-    * ordinary weighted sampler must not pay for software reduction setup.
-    * Implicit derivatives and LOD queries must remain outside this branch,
-    * since a nonuniform sampler can make it divergent within a quad. */
+   /* Explicit LOD/gradient operations do not need quad derivatives. Implicit
+    * derivatives are also safe inside this branch when both descriptors are
+    * dynamically uniform: their sampler mode and view minimum cannot diverge
+    * within a quad. Keep the footprint work off the ordinary sampling path.
+    * Nonuniform descriptors still need unconditional derivative evaluation. */
    const bool explicit_lod = tex->op == nir_texop_txl || tex->op == nir_texop_txd;
-   if (explicit_lod)
+   const bool early_branch = explicit_lod ||
+      (!tex->sampler_non_uniform && !tex->texture_non_uniform);
+   if (early_branch)
       nir_push_if(b, needs_reduction);
    const bool cube = tex->sampler_dim == GLSL_SAMPLER_DIM_CUBE;
    const unsigned dims = tex->sampler_dim == GLSL_SAMPLER_DIM_3D ? 3 : 2;
@@ -251,7 +253,7 @@ lower_minmax(nir_builder *b, nir_tex_instr *tex, void *data)
                       nir_fmul_imm(b, nir_flog2(b, nir_fmax(b, dx2, dy2)), .5),
                       lod);
    }
-   if (!explicit_lod)
+   if (!early_branch)
       nir_push_if(b, needs_reduction);
    nir_def *count = nir_imm_int(b, 1), *major_delta = NULL;
    if (dx) {
