@@ -8,6 +8,10 @@ Source fixes are retained in the workspace's reference repositories:
 - FEX `5c19579`: sparse Linux lookup caches commit writable L2 backing on use.
   The same 32-thread guest under 4 GiB RLIMIT_DATA crashes the previous FEX
   and passes the fixed version; excessive guest allocations still fail.
+- muvm `30ce796`: fix dropped X11 bytes on short writes and wait for complete
+  DRI3 headers before reading their fields. The forced short-write/socketpair
+  test fails before the fix and passes after it; live fragmented QueryVersion
+  passes in `20260918T002648277878Z-x11-final-fragment-probe`.
 - muvm `f3002a4` retains the desktop/CDP/memory-navigation diagnostic helpers.
 
 Installed Steam uses the private guest bridge under
@@ -31,3 +35,17 @@ which previously latched watchdog recovery despite a successful workload.
 The development archive helper seeds verified rsync copies with local evidence
 hardlinks and removes only copied older target experiment files. It must never
 use rsync --inplace, because that could modify original local evidence.
+
+The final bridge is installed and active following
+`20260918T002603515553Z-steam-final-transport-start`. This normal Steam restart
+removes the temporary CEF remote-debugging flag. The shutdown-time D-Bus fatal
+at 00:26:08 is from terminating the prior VM, not a new menu-navigation crash.
+
+Cleanup moved historical driver libraries and completed experiment captures to
+`build/m4-offload-20260918/` on the development workstation. All 1,653 library
+archives passed SHA-256 verification (1,167 unique inodes, zero mismatches).
+Transfers use receiver-verified rsync before removing source files; original
+captures and restore paths remain available. The target changed from 96 GiB
+used / 3.8 GiB available to 50 GiB used / 47 GiB available, including the newly
+installed Factorio and Steam runtime. The Linux filesystem is approximately
+100 GiB; cleanup does not resize partitions or remove user saves.

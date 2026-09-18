@@ -797,6 +797,14 @@ hk_CmdCopyQueryPoolResults(VkCommandBuffer commandBuffer, VkQueryPool queryPool,
    perf_debug(cmd, "Query pool copy");
 
    if (agx_native_graphics(&dev->dev)) {
+      /* EndQuery may queue availability in post_gfx even after rendering has
+       * ended. The ordinary compute stream can precede that write, so a WAIT
+       * copy appended to it would deadlock. Finalize both streams before
+       * creating the consumer, including for an empty graphics query.
+       */
+      hk_cmd_buffer_end_graphics(cmd);
+      hk_cmd_buffer_end_compute(cmd);
+
       if ((pool->vk.query_type != VK_QUERY_TYPE_TIMESTAMP &&
            pool->vk.query_type != VK_QUERY_TYPE_OCCLUSION &&
            pool->vk.query_type != VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT &&
