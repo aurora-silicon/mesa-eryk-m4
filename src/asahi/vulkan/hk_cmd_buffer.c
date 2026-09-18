@@ -1180,7 +1180,8 @@ hk_g17p_basic_graphics_program_supported(struct hk_cmd_buffer *cmd,
           s->b.info.sampler_state_count == 1)) ||
        s->b.info.uses_sampler_heap ||
        (linked->b.uses_txf && !s->info.agx3_indexed_sampler_valid && !native_spills) ||
-       s->data_size != 0 || s->info.set_count > HK_AGX3_G17P_MAX_ROOT_SETS) {
+       (s->data_size != 0 && s->info.stage != MESA_SHADER_FRAGMENT) ||
+       s->info.set_count > HK_AGX3_G17P_MAX_ROOT_SETS) {
       mesa_loge("HAL200 resources: preamble=%u preamble-scratch=%u tex-state=%u "
                 "sampler-state=%u heap=%u txf=%u indexed=%u data=%zu sets=%u",
                 s->b.info.has_preamble, s->b.info.preamble_scratch_size,

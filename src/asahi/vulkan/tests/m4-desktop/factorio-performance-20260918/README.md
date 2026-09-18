@@ -551,3 +551,27 @@ Evidence: `20260918T160748331245Z-factorio-grouped-ubo-frame`,
 `20260918T161110062641Z-factorio-grouped-ubo-compiler`.
 An earlier live launch used an ARM library in the x86 guest and failed GLX
 visual selection; that deployment error was corrected before this measurement.
+
+## Fragment immutable constant tables
+
+Native fragment preprocessing previously lowered large constant arrays to
+per-invocation scratch. Extract them before scratch lowering and upload their
+immutable blob once per shader bind, through a fragment-specific root pointer.
+Lower variable copies first: the initial probe caught the large-constants
+pass's explicit copy_deref prohibition, corrected before qualification.
+
+`gl-fragment-constants-probe.c` passes all 8192 CPU-checked pixels over dynamic
+indices and switching/reusing two 4 KiB tables. The retained Factorio frame is
+pixel-identical; all 53 selected GLSL fragment-array CTS cases pass. The retained
+compression shader's scratch falls from 4096 bytes with 1024 stores to a single
+4-byte spill; code falls from 5749 to 5170 instructions. This is a compiler and
+startup-path improvement, not proof of faster main-menu rendering. The live
+menu sample measured 9.620 FPS (9.248–9.922), below the prior 11.478 sample;
+cloud shader input is unchanged and per-render GPU spans average 2.490 ms versus
+2.481 ms. Initialization was 12.894 s versus 13.403 s. Scene variation remains
+uncontrolled and 60 FPS is still open.
+
+Evidence: `20260918T161858416381Z-fragment-constants-copy-lowering`,
+`20260918T161921650542Z-factorio-fs-constants-frame`,
+`20260918T162002290908Z-factorio-fs-constants-cts`,
+`20260918T162111183275Z-factorio-fs-constants-menu`.

@@ -139,6 +139,8 @@ struct hk_root_descriptor_table {
    uint64_t sparse_va_size;
    uint64_t atomic64_lock;
    uint64_t buffer_alias_table;
+   /* Immutable NIR constant table for the currently bound fragment shader. */
+   uint64_t fragment_constant_data_addr;
 };
 
 /* helper macro for computing root descriptor byte offsets */

@@ -224,24 +224,17 @@ hk_preprocess_nir_internal(struct vk_physical_device *vk_pdev, nir_shader *nir)
    NIR_PASS(_, nir, nir_split_var_copies);
    NIR_PASS(_, nir, nir_split_struct_vars, nir_var_function_temp);
 
-   /* G17P has no legacy USC constant-data upload.  Lower compute constants to
-    * load_constant so the private native path can address the immutable blob
-    * through its root descriptor (hk_nir_lower_descriptors.c
-    * lower_load_constant, and hk_cmd_dispatch.c uploads the blob per
-    * dispatch).
-    *
-    * This MUST run before agx_preprocess_nir.  That helper's first act is
-    * nir_lower_vars_to_scratch with a 256-byte threshold (agx_compile.c:3852),
-    * which claims exactly the large read-only arrays this pass exists to
-    * capture -- and it claims them as scratch, which the AGX3 backend cannot
-    * encode and hk_g17p_compute_shader_supported() refuses anyway.  Running
-    * afterwards silently does nothing: there is no function_temp array left to
-    * move, and nir_opt_large_constants only ever looks at function_temp
-    * (nir_opt_large_constants.c:545-561).
+   /* Native compute and fragment constant blobs are uploaded through their
+    * stage-specific root fields. Extract immutable arrays before preprocessing
+    * lowers large function temporaries to scratch; otherwise every invocation
+    * writes the whole constant table to its private stack before indexing it.
     */
-   if (nir->info.stage == MESA_SHADER_COMPUTE &&
-       agx_chip_uses_hal200_ioto(((struct hk_physical_device *)vk_pdev)->dev.chip))
+   if ((nir->info.stage == MESA_SHADER_COMPUTE ||
+        nir->info.stage == MESA_SHADER_FRAGMENT) &&
+       agx_chip_uses_hal200_ioto(((struct hk_physical_device *)vk_pdev)->dev.chip)) {
+      NIR_PASS(_, nir, nir_lower_var_copies);
       NIR_PASS(_, nir, nir_opt_large_constants, NULL, 32);
+   }
 
    /* Optimize but allow copies because we haven't lowered them yet */
    if (agx_chip_uses_hal200_ioto(((struct hk_physical_device *)vk_pdev)->dev.chip))

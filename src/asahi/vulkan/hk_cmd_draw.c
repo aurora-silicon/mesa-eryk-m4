@@ -4497,6 +4497,18 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
       gfx->descriptors.root_dirty = true;
    }
 
+   if (IS_SHADER_DIRTY(FRAGMENT)) {
+      uint64_t data = 0;
+      if (fs && fs->data_size) {
+         data = hk_pool_upload(cmd, fs->data_ptr, fs->data_size,
+                               HK_MIN_UBO_ALIGNMENT);
+         if (!data)
+            return;
+      }
+      desc->root.fragment_constant_data_addr = data;
+      desc->root_dirty = true;
+   }
+
    /* Root must be uploaded after the above, which touch the root */
    if (gfx->descriptors.root_dirty) {
       gfx->root =
