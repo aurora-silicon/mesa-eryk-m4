@@ -134,3 +134,19 @@ Vulkan conformance run. TODO: extend large-workgroup forward-progress coverage
 to the separate device-wide buffer/image atomic64 locking path. The existing
 buffer atomic64 regression passes, but the shared-memory fix does not qualify
 all possible contention patterns in that path.
+
+## Deployment of committed fix
+
+Commit `95a0f3b7c9d` was rebuilt and installed as native M4 library SHA256
+`d8bb9362854c5b1cea505d34a5bd92a16d86510fcfebdbf70d4e2833762f3ea0`.
+The four original cases pass again on that installed build:
+`20260918T082055751402Z-cts-fixes-original-four-deployed`, peak 61 C.
+
+The normal autologin desktop was restarted to release its diagnostic library
+mapping. Hyprland's mapped library inode matches the final installed library;
+eDP-1 is 2560x1664@60 and the Philips DP-1 is 1920x1080@60:
+`20260918T082043963915Z-cts-fixes-final-desktop-verified`. SDDM is active,
+the watchdog is armed/idle at 60 seconds, and no CTS worker remains.
+The first activation-check script used the wrong hyprctl path and reported a
+process failure; the desktop itself had started correctly. The corrected
+read-only check uses `/usr/bin/hyprctl` and passes without another restart.
