@@ -53,3 +53,35 @@ The first observer's direct SSH child disappeared after collection; the second
 uses a service lifetime. The first minimal config lacked Factorio's version
 marker; the second retains a valid version-13 config with only isolated paths
 and windowed mode selected. Neither change is a rendering optimization.
+
+## Fragment counter contention fixed
+
+The FS statistics prolog issued one global atomic per covered pixel to the same
+address. It now sums covered samples within the non-helper lanes of a subgroup
+and elects the lowest active lane for one atomic. This preserves counts and
+helper lifetimes; statistics remain enabled. The generic `elect` intrinsic was
+not lowered in the secondary-prolog path (one retained compile assertion), so
+selection explicitly uses the already supported subgroup minimum operation.
+
+The CPU-checked GL microbenchmark verifies full 2560x1664 coverage, odd
+2557x1661 edges, 17x13 and 1x1, five iterations each, statistics on/off.
+Median warm fullscreen GPU query time: stats off 3.045 ms, stats on 7.569 ms;
+with reduction off 2.936 ms, on 3.013 ms. Counts match exactly in all cases.
+These timer results include the timestamp stream implementation overhead.
+Original two-frame native Factorio replay has **zero differing pixels** in the
+2560x1664 frame-2 image. Both use identical offscreen/rebinding adaptations.
+The derivative/helper regression retains 121680 invocations and 0/116400 bad
+atlas pixels. Targeted CTS: 35 Pass, 13 NotSupported, no failures, 1.822 s.
+
+Evidence:
+- `20260918T100550535469Z-factorio-statistics-baseline`
+- `20260918T100632913525Z-factorio-statistics-reduce` (compile assertion)
+- `20260918T100742115678Z-factorio-statistics-reduce-explicit`
+- `20260918T100836716656Z-factorio-menu-stats-baseline-replay`
+- `20260918T100908600687Z-factorio-menu-stats-reduce-replay`
+- `20260918T101006395956Z-factorio-stats-reduce-helper-regression`
+- `20260918T101033809360Z-factorio-stats-reduce-cts`
+
+The running-menu baseline sampled 90.70% guest CPU idle. Roughly 12 render
+passes plus 42 computes occurred per menu frame; a heavy render pass reached
+36 ms. End-to-end 60 FPS and improved application startup remain pending.

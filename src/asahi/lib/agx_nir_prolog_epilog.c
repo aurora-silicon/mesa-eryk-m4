@@ -989,9 +989,20 @@ agx_nir_lower_stats_fs(nir_shader *s)
    nir_def *samples = nir_bit_count(b, nir_load_sample_mask_in(b));
    unsigned query = PIPE_STAT_QUERY_PS_INVOCATIONS;
 
+   /* The query address is uniform across the draw. Accumulate covered samples
+    * within each active subgroup before touching the shared counter: one
+    * contended atomic per pixel serializes large fullscreen passes. Keep the
+    * reduction and election inside the helper predicate so edge quads neither
+    * contribute helper samples nor elect a helper to perform the store.
+    */
+   samples = nir_reduce(b, samples, .reduction_op = nir_op_iadd);
+   nir_def *lane = nir_load_subgroup_invocation(b);
+   nir_def *first = nir_reduce(b, lane, .reduction_op = nir_op_umin);
+   nir_push_if(b, nir_ieq(b, lane, first));
    nir_def *addr = nir_load_stat_query_address_poly(b, .base = query);
    nir_global_atomic(b, 32, addr, samples, .atomic_op = nir_atomic_op_iadd);
 
+   nir_pop_if(b, NULL);
    nir_pop_if(b, NULL);
    return nir_progress(true, b->impl, nir_metadata_control_flow);
 }

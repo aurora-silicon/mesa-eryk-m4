@@ -1,0 +1,23 @@
+{
+  "selected": 48,
+  "recorded": 48,
+  "completed": 48,
+  "counts": {
+    "Pass": 35,
+    "NotSupported": 13
+  },
+  "classifications": {
+    "targeted-regression": 48
+  },
+  "elapsed_seconds": 4.906199479009956,
+  "preparation_seconds": 1.4134790030075237,
+  "runner_seconds": 1.8220572979998906,
+  "jobs": 4,
+  "tests_per_group": 8,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "399921ab7835c895a5962e0dca2db87eb8dffc75be34b01f79dfc068d5b595bd",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260918T101033809360Z-factorio-stats-reduce-cts",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 62.0
+}
