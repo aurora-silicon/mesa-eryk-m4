@@ -233,11 +233,23 @@ hk_g17p_meta_fill_addr(struct hk_cmd_buffer *cmd, struct hk_cs **target,
    }
 
    struct hk_meta_save save;
+   struct hk_cs *fill_cs = hk_cmd_buffer_get_cs_general(
+      cmd, &cmd->current_cs.cs, true);
+   if (!fill_cs) {
+      if (redirect)
+         cmd->current_cs.cs = saved;
+      return;
+   }
+   const unsigned previous_dispatches = fill_cs->stats.cmds;
    hk_meta_begin(cmd, &save, VK_PIPELINE_BIND_POINT_COMPUTE);
    vk_meta_fill_buffer_addr(&cmd->vk, &dev->meta, address, size, value);
    if (size && cmd->current_cs.cs)
       cmd->current_cs.cs->stats.fills++;
    hk_meta_end(cmd, &save, VK_PIPELINE_BIND_POINT_COMPUTE);
+   if (size && cmd->current_cs.cs == fill_cs) {
+      fill_cs->fill_dispatches += fill_cs->stats.cmds - previous_dispatches;
+      hk_drm_attachment_set_add(&fill_cs->fill_destinations, address, size);
+   }
    if (size && cmd->current_cs.cs)
       hk_drm_attachment_set_add(&cmd->current_cs.cs->compute_attachments,
                                 address, size);

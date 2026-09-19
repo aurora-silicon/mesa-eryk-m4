@@ -440,6 +440,11 @@ struct hk_cs {
    struct hk_drm_attachment_set clear_destinations;
    unsigned clear_dispatches;
 
+   /* Internal address fills have an exact write footprint, unlike arbitrary
+    * application compute. Finalize only if these account for every dispatch. */
+   struct hk_drm_attachment_set fill_destinations;
+   unsigned fill_dispatches;
+
    /* Remaining state is for graphics only, ignored for compute */
    struct agx_tilebuffer_layout tib;
 
@@ -501,6 +506,11 @@ hk_cs_merge_cdm(struct hk_cs *a, const struct hk_cs *b)
    a->ends_memory_dependency |= b->ends_memory_dependency;
 
    a->clear_dispatches += b->clear_dispatches;
+   a->fill_dispatches += b->fill_dispatches;
+   if (!hk_drm_attachment_set_merge(&a->fill_destinations,
+                                     &b->fill_destinations,
+                                     HK_DRM_MAX_FRAGMENT_ATTACHMENTS))
+      a->fill_destinations.complete = false;
    if (!hk_drm_attachment_set_merge(&a->clear_destinations,
                                      &b->clear_destinations,
                                      HK_DRM_MAX_FRAGMENT_ATTACHMENTS))
@@ -740,6 +750,7 @@ hk_cmd_buffer_get_cs_general(struct hk_cmd_buffer *cmd, struct hk_cs **ptr,
       list_inithead(&cs->node);
       hk_drm_attachment_set_init(&cs->compute_attachments);
       hk_drm_attachment_set_init(&cs->clear_destinations);
+      hk_drm_attachment_set_init(&cs->fill_destinations);
       /* Only known meta destinations are collected so far. */
       cs->compute_attachments.complete = false;
 

@@ -552,11 +552,17 @@ merge_control_streams(struct hk_cmd_buffer *cmd)
    const bool batch_clears =
       hk_cmd_buffer_device(cmd)->dev.chip == AGX_CHIP_G16G &&
       debug_get_bool_option("HK_M4_BATCH_DISJOINT_CLEARS", false);
+   const bool batch_fills =
+      hk_cmd_buffer_device(cmd)->dev.chip == AGX_CHIP_G16G &&
+      debug_get_bool_option("HK_M4_BATCH_META_FILLS", false);
 
    /* Most dispatches have an incomplete destination ledger. Only after all
     * recording is finished can we prove this stream contains clears alone
     * and replace that ledger with their complete whole-plane footprints. */
    list_for_each_entry(struct hk_cs, cs, &cmd->control_streams, node) {
+      if (batch_fills && cs->type == HK_CS_CDM && cs->fill_dispatches &&
+          cs->fill_dispatches == cs->stats.cmds)
+         cs->compute_attachments = cs->fill_destinations;
       if (batch_clears && cs->type == HK_CS_CDM && cs->clear_dispatches &&
           cs->clear_dispatches == cs->stats.cmds)
          cs->compute_attachments = cs->clear_destinations;
