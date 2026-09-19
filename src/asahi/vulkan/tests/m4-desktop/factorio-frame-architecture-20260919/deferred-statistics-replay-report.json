@@ -1,0 +1,24 @@
+{
+  "id": "20260919T115811764139Z-factorio-deferred-statistics",
+  "verdict": "pass",
+  "transport_returncode": 0,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260919T115811764139Z-factorio-deferred-statistics",
+  "observations": {
+    "pixel_results": [
+      "PASS: Vulkan replay process completed; rendering requires separate comparison"
+    ],
+    "pixel_result_count": 1,
+    "thermal_samples": 9,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 70.0,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 70.0,
+      "Ta000m": 70.0,
+      "Te000m": 65.25,
+      "Te001m": 62.5,
+      "Tp000m": 66.25,
+      "Tp001m": 61.75
+    }
+  }
+}

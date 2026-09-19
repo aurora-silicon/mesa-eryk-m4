@@ -662,6 +662,25 @@ hk_EndCommandBuffer(VkCommandBuffer commandBuffer)
    hk_cmd_buffer_end_compute_internal(cmd, &cmd->current_cs.post_gfx);
 
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
+   if (dev->dev.chip == AGX_CHIP_G16G &&
+       debug_get_bool_option("HK_M4_DEFER_STATISTICS_FLUSH", true)) {
+      bool statistics = false;
+      list_for_each_entry(struct hk_cs, cs, &cmd->control_streams, node)
+         statistics |= cs->type == HK_CS_VDM && cs->writes_statistics;
+
+      /* Query counters are private, non-aliased storage accessed by atomics
+       * while active. EndQuery still publishes them before availability.
+       * Also publish at the CB boundary for split queries and diagnostics.
+       * Ordinary shader memory dependencies retain their per-pass flush. */
+      if (statistics) {
+         struct hk_cs *flush = hk_cmd_buffer_get_cs(cmd, true);
+         if (!flush)
+            return vk_command_buffer_get_record_result(&cmd->vk);
+         hk_cdm_cache_flush(dev, flush);
+         hk_cmd_buffer_end_compute(cmd);
+      }
+   }
+
    if (likely(!(dev->dev.debug & AGX_DBG_NOMERGE))) {
       merge_control_streams(cmd);
    }

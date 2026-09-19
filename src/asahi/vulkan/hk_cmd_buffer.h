@@ -472,6 +472,7 @@ struct hk_cs {
     * attachment command must travel with the control stream it describes. */
    struct hk_drm_attachment_set fragment_attachments;
    bool writes_memory;
+   bool writes_statistics;
 
    /* Active restart index if one is set. Zero if there is no restart index set
     * yet, since Vulkan does not allow zero restart indices (unlike OpenGL).
@@ -943,7 +944,9 @@ hk_cmd_buffer_end_graphics(struct hk_cmd_buffer *cmd)
     * graphics shader on G16G. The native strong CDM barrier covers that cache
     * domain; order it after this render and before any subsequent consumer.
     * Framebuffer-only renders retain their normal attachment handling. */
-   if (cs && cs->writes_memory &&
+   if (cs && (cs->writes_memory ||
+              (cs->writes_statistics &&
+               !debug_get_bool_option("HK_M4_DEFER_STATISTICS_FLUSH", true))) &&
        hk_cmd_buffer_device(cmd)->dev.chip == AGX_CHIP_G16G) {
       struct hk_cs *flush = hk_cmd_buffer_get_cs(cmd, true);
       hk_cdm_cache_flush(hk_cmd_buffer_device(cmd), flush);

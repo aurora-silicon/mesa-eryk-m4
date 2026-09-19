@@ -5397,7 +5397,7 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
          count_desc->root.draw.pipeline_stats_flags = saved_flags;
          count_desc->root_dirty = true;
          if (cs) {
-            cs->writes_memory = true;
+            cs->writes_statistics = true;
             struct hk_fragment_count item = {
                .words = counter.cpu,
                .cs = hk_g17p_vdm_low_window_enabled(&dev->dev) ?
@@ -5707,10 +5707,9 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
       struct hk_shader *memory_fs =
          hk_bound_fs(memory_gfx);
       cs->writes_memory |= memory_fs && memory_fs->info.writes_memory;
-      /* The separately linked statistics prolog also writes shader memory.
-       * Preserve its counter across render passes/submissions, even when the
-       * main fragment shader only writes colour attachments. */
-      cs->writes_memory |= hk_stat_enabled(hk_pipeline_stat_addr(
+      /* Private atomic query storage needs publication at EndQuery and
+       * the CB boundary, distinct from arbitrary shader memory writes. */
+      cs->writes_statistics |= hk_stat_enabled(hk_pipeline_stat_addr(
          cmd, VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT));
       cs->stats.cmds++;
    }

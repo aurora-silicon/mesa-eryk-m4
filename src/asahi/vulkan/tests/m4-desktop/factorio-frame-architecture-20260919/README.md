@@ -314,3 +314,18 @@ A bounded normal-menu run without clicks retained the user's settings and
 resolution.118 HUD samples: mean58.648FPS, median59.965, final12 mean59.986;
 peak85.25C. The application and guard completed normally. This confirms
 real-menu operation, not the unmet5ms GPU target or broad CTS compliance.
+
+## Publish private query counters at their visibility boundaries
+
+Track statistics prolog atomics separately from arbitrary shader writes. Query
+storage is private and non-aliased; active counters are accessed atomically,
+and EndQuery already orders a strong cache flush before advertising results.
+Retain an additional flush at every command-buffer boundary for counters that
+span submissions and diagnostic readback. Ordinary shader-memory publication
+remains unchanged. HK_M4_DEFER_STATISTICS_FLUSH=false restores per-pass flushes.
+
+Exact counts, both end orders, query-buffer reads, odd edges and split queries
+pass. The five replay frames preserve every pixel and query total, with spans
+5.775..5.823ms versus6.183..6.247ms before. This removes redundant compute jobs;
+the5ms target remains unmet. Enabled by default after these checks; not yet
+installed in the normal driver at this checkpoint.
