@@ -268,3 +268,25 @@ barrier also covers counters carried across render passes or submissions.
 The exact-count oracle passes; the full replay keeps every pixel and counter
 total identical. The additional required boundaries cost about 0.4 ms: spans
 8.546..8.628 ms. Further optimization must preserve those dependencies.
+
+## Native single-sample statistics counting
+
+G16 native SR34/SR36 are witnessed by Apple's uniform-address fragment atomic
+implementation, including discard. Inside the existing non-helper predicate,
+SR36 counts active lanes and SR34 elects one writer. For a single-sample draw
+this replaces both software reductions and the coverage-mask popcount without
+changing the counter's value. Other devices and multisampling retain the
+weighted reduction. HK_M4_NATIVE_STATISTICS=false restores the old path.
+
+Exact-count oracle passes, including edges, GPU result copies and split
+queries. The generated textured-quad helper regression retains121680 counts,
+zero of116400 incorrect interior pixels, and byte-identical full readback.
+The five original replay frames retain all pixels and49.45million query totals,
+while render spans fall from8.55..8.63 to7.21..7.29ms (fragment sums5.36..5.42ms).
+The5ms frame target remains unmet. This path is now default for G16 single
+sampling; the release library still needs installation/live-menu qualification.
+
+Diagnostic statistics omission gives5.92..6.00ms, but returns deliberately
+invalid zero query results. It is an adapted replay cost bound, never an
+application-support result. That omission flag is not retained in active
+source. It shows further work beyond statistics is needed to reach5ms.

@@ -102,7 +102,9 @@ assert len(candidates) == 1, 'Missing or ambiguous complete five-frame GPU evide
 report = candidates[0]
 reference = Image.open(a.reference).convert('RGBA')
 actual = Image.open(directory / 'remote/vulkan-replay/screenshot_frame_5.png').convert('RGBA')
-report.update(evidence=str(directory), kernel_log='remote/kernel-live.log', expected_render_count=a.render_count, adapted_diagnostic=a.render_count != 10,
+report.update(evidence=str(directory), kernel_log='remote/kernel-live.log', expected_render_count=a.render_count, adapted_diagnostic=a.render_count != 10 or any(
+        env.get(k, "false").lower() in ("true", "1") for k in (
+            "HK_M4_COUNT_FRAGMENTS", "HK_M4_SKIP_FRAGMENT_STATISTICS_DIAGNOSTIC")),
     reference=str(a.reference), pixels_equal=reference.size == actual.size and
         reference.tobytes() == actual.tobytes())
 (directory / 'frame-cost.json').write_text(json.dumps(report, indent=2) + '\n')

@@ -4234,6 +4234,9 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
       struct hk_fast_link_key_fs key = {
          .prolog.statistics = hk_stat_enabled(hk_pipeline_stat_addr(
             cmd, VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT)),
+         .prolog.native_statistics = dev->dev.chip == AGX_CHIP_G16G &&
+            dyn->ms.rasterization_samples == 1 &&
+            debug_get_bool_option("HK_M4_NATIVE_STATISTICS", true),
 
          .prolog.cull_distance_size = hw_vs->info.cull_distance_array_size,
          .prolog.api_sample_mask = has_sample_mask ? api_sample_mask : 0xff,

@@ -117,6 +117,9 @@ struct agx_fs_prolog_key {
    /* Need to count FRAGMENT_SHADER_INVOCATIONS */
    bool statistics;
 
+   /* Native active-lane accounting for single-sample fragment queries. */
+   bool native_statistics;
+
    /* Need to lower desktop OpenGL polygon stipple */
    bool polygon_stipple;
 

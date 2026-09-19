@@ -1,0 +1,24 @@
+{
+  "id": "20260919T113102799435Z-fragment-statistics-native-oracle",
+  "verdict": "pass",
+  "transport_returncode": 0,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260919T113102799435Z-fragment-statistics-native-oracle",
+  "observations": {
+    "pixel_results": [
+      "PASS: fragment statistics exact counts and edge pixels"
+    ],
+    "pixel_result_count": 1,
+    "thermal_samples": 2,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 68.25,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 67.75,
+      "Ta000m": 65.75,
+      "Te000m": 62.0,
+      "Te001m": 67.25,
+      "Tp000m": 65.5,
+      "Tp001m": 68.25
+    }
+  }
+}

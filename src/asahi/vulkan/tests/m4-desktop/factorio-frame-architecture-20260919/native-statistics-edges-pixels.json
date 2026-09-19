@@ -1,0 +1,7 @@
+{
+  "bytes": 17039360,
+  "sha256": "abbf955d11ceb250a6c3e895b0febaf214bfc5255d1562c4e9fb76b3d9895f96",
+  "pixels_equal": true,
+  "reference": "_provenance/experiments/20260918T101006395956Z-factorio-stats-reduce-helper-regression/remote/atlas.rgba",
+  "note": "Reused manifest retained old remote output path; copied result into current evidence. Host reference is unchanged and byte-identical."
+}

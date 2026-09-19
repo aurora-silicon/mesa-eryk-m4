@@ -978,7 +978,7 @@ agx_nir_lower_fs_active_samples_to_register(nir_shader *s)
 }
 
 static bool
-agx_nir_lower_stats_fs(nir_shader *s)
+agx_nir_lower_stats_fs(nir_shader *s, bool native)
 {
    assert(s->info.stage == MESA_SHADER_FRAGMENT);
    nir_builder b_ =
@@ -986,7 +986,13 @@ agx_nir_lower_stats_fs(nir_shader *s)
    nir_builder *b = &b_;
 
    nir_push_if(b, nir_inot(b, nir_load_helper_invocation(b, 1)));
-   nir_def *samples = nir_bit_count(b, nir_load_sample_mask_in(b));
+   /* On single-sample G16 draws, every covered non-helper lane contributes
+    * exactly one sample. SR36 counts those lanes and SR34 elects the first,
+    * including inside this helper predicate (native fs_uniatomic witness).
+    * Multisample queries retain the weighted mask reduction below. */
+   nir_def *samples = native ?
+      nir_load_active_subgroup_count_agx(b, 32) :
+      nir_bit_count(b, nir_load_sample_mask_in(b));
    unsigned query = PIPE_STAT_QUERY_PS_INVOCATIONS;
 
    /* The query address is uniform across the draw. Accumulate covered samples
@@ -995,10 +1001,17 @@ agx_nir_lower_stats_fs(nir_shader *s)
     * reduction and election inside the helper predicate so edge quads neither
     * contribute helper samples nor elect a helper to perform the store.
     */
-   samples = nir_reduce(b, samples, .reduction_op = nir_op_iadd);
-   nir_def *lane = nir_load_subgroup_invocation(b);
-   nir_def *first = nir_reduce(b, lane, .reduction_op = nir_op_umin);
-   nir_push_if(b, nir_ieq(b, lane, first));
+   if (!native)
+      samples = nir_reduce(b, samples, .reduction_op = nir_op_iadd);
+   nir_def *elected;
+   if (native) {
+      elected = nir_ieq_imm(b, nir_load_active_subgroup_invocation_agx(b, 32), 0);
+   } else {
+      nir_def *lane = nir_load_subgroup_invocation(b);
+      nir_def *first = nir_reduce(b, lane, .reduction_op = nir_op_umin);
+      elected = nir_ieq(b, lane, first);
+   }
+   nir_push_if(b, elected);
    nir_def *addr = nir_load_stat_query_address_poly(b, .base = query);
    nir_global_atomic(b, 32, addr, samples, .atomic_op = nir_atomic_op_iadd);
 
@@ -1022,7 +1035,7 @@ agx_nir_fs_prolog(nir_builder *b, const void *key_)
    }
 
    if (key->statistics) {
-      NIR_PASS(_, b->shader, agx_nir_lower_stats_fs);
+      NIR_PASS(_, b->shader, agx_nir_lower_stats_fs, key->native_statistics);
    }
 
    if (key->cull_distance_size) {
