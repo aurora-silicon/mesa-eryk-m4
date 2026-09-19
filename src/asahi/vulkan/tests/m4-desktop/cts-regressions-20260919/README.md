@@ -53,3 +53,8 @@ loads signal completion slot3, so the wait mask is1<<(3-1)=4, not8 derived
 from the register data source. Updating only these two fixture bytes makes
 the full IOTO program suite pass7009 checks; uniform-program suite passes19267.
 No shader/firmware bytecode was changed for this fixture correction.
+
+## Deployment complete
+
+See FINAL.md and outcomes.tsv. Combined903-case validation has no failures or
+crashes; the normal installed driver passes all24 originally broken cases.

@@ -1,0 +1,22 @@
+{
+  "selected": 24,
+  "recorded": 24,
+  "completed": 24,
+  "counts": {
+    "Pass": 24
+  },
+  "classifications": {
+    "unclassified": 24
+  },
+  "elapsed_seconds": 6.666090150014497,
+  "preparation_seconds": 1.3951329379342496,
+  "runner_seconds": 4.2278268770005525,
+  "jobs": 1,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "589bb86b5d2cfdb827b29f10415bf65c51511f77bbd43f633dffa3d6886751a9",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260919T214546589758Z-cts-regression-fixes-installed",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 84.25
+}

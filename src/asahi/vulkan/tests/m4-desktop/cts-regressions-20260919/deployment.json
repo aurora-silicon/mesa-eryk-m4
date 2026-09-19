@@ -1,0 +1,9 @@
+{
+  "time": 1789854344.7839637,
+  "commit": "2bc8abf8297a38ec005851eb919c5ebd37c5d86f",
+  "path": "/opt/asahi-m4-port/lib/libvulkan_asahi.so",
+  "before": "056e21719a11d436d897c59e9b083a59cb849e68703af7c8758b6029e707142a",
+  "after": "b43300b15e16c0aed394d7aa1f31b6df84eee645c0ffc7796b32c8fe0b571baa",
+  "backup": "/root/cts-regression-fixes-20260919/installed-backup/libvulkan_asahi.so",
+  "method": "atomic replacement; existing mappings retained; no desktop restart"
+}
