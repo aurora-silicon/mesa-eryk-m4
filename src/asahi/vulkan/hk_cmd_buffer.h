@@ -506,6 +506,10 @@ hk_cs_merge_cdm(struct hk_cs *a, const struct hk_cs *b)
    a->scratch.cs.preamble |= b->scratch.cs.preamble;
 
    a->timestamp.end = b->timestamp.end;
+   assert(a->timestamp.end_copy_count == 0);
+   a->timestamp.end_copy_count = b->timestamp.end_copy_count;
+   memcpy(a->timestamp.end_copies, b->timestamp.end_copies,
+          sizeof(a->timestamp.end_copies));
    a->timestamp_only = false;
    a->ends_timestamp_reset |= b->ends_timestamp_reset;
    a->ends_memory_dependency |= b->ends_memory_dependency;

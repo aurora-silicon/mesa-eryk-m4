@@ -170,6 +170,12 @@ asahi_fill_cdm_command(struct hk_device *dev, struct hk_cs *cs,
       .ts.end.offset = cs->timestamp.end.offset_B,
    };
 
+   for (unsigned i = 0; i < cs->timestamp.end_copy_count; ++i) {
+      assert(dev->dev.params.features & DRM_ASAHI_FEATURE_COMPUTE_TIMESTAMP_COPIES);
+      cmd->ts_end_copies[i].handle = cs->timestamp.end_copies[i].handle;
+      cmd->ts_end_copies[i].offset = cs->timestamp.end_copies[i].offset_B;
+   }
+
    if (cs->uses_sampler_heap) {
       cmd->sampler_heap = dev->samplers.table.bo->va->addr;
       cmd->sampler_count = dev->samplers.table.alloc;

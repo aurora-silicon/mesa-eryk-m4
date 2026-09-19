@@ -526,9 +526,18 @@ hk_CmdWriteTimestamp2(VkCommandBuffer commandBuffer,
 
    uint64_t report_addr = hk_query_report_addr(dev, pool, query);
    bool after_gfx = cmd->current_cs.gfx != NULL;
+   const bool compute_copies = dev->dev.chip == AGX_CHIP_G16G &&
+      (dev->dev.params.features & DRM_ASAHI_FEATURE_COMPUTE_TIMESTAMP_COPIES) &&
+      debug_get_bool_option("HK_M4_COMPUTE_TIMESTAMP_COPIES", false);
+   const bool coalesce_empty = compute_copies && cmd->current_cs.cs &&
+      cmd->current_cs.cs->timestamp_only && cmd->current_cs.cs->stats.cmds == 1 &&
+      !cmd->current_cs.cs->ends_timestamp_reset &&
+      !cmd->current_cs.cs->ends_memory_dependency &&
+      cmd->current_cs.cs->timestamp.end_copy_count <
+         ARRAY_SIZE(cmd->current_cs.cs->timestamp.end_copies);
 
-   /* When writing timestamps for compute, we split the control stream at each
-    * write. This ensures we never need to copy compute timestamps, which would
+   /* Except for M4's adjacent timestamp-only fanout above, split the compute
+    * control stream at each write. This avoids shader timestamp copies, which would
     * require an extra control stream anyway. Unlike graphics, splitting compute
     * control streams is inexpensive so there's not a strong performance reason
     * to do otherwise. Finally, batching multiple timestamp writes (like we do
@@ -537,7 +546,7 @@ hk_CmdWriteTimestamp2(VkCommandBuffer commandBuffer,
     * apps. So.. don't do that.
     */
    if (!after_gfx && cmd->current_cs.cs &&
-       cmd->current_cs.cs->timestamp.end.addr) {
+       cmd->current_cs.cs->timestamp.end.addr && !coalesce_empty) {
 
       perf_debug(cmd, "Splitting for compute timestamp");
       hk_cmd_buffer_end_compute(cmd);
@@ -573,7 +582,10 @@ hk_CmdWriteTimestamp2(VkCommandBuffer commandBuffer,
       else if (dev->dev.chip == AGX_CHIP_G16G &&
                debug_get_bool_option("HK_M4_COMPUTE_TAIL_TIMESTAMP", false) &&
                tail->type == HK_CS_CDM && tail->stats.cmds > 0 &&
-               !tail->ends_timestamp_reset && !tail->timestamp.end.handle) {
+               !tail->ends_timestamp_reset &&
+               (!tail->timestamp.end.handle ||
+                (compute_copies && tail->timestamp.end_copy_count <
+                                      ARRAY_SIZE(tail->timestamp.end_copies)))) {
          /* A completed nonempty compute tail supplies the same ordered
           * boundary. In particular, a memory barrier may already have closed
           * a fill/clear stream. Preserve its completion flush and attach only
@@ -604,14 +616,14 @@ hk_CmdWriteTimestamp2(VkCommandBuffer commandBuffer,
    }
 
    if (cs->timestamp.end.addr) {
-      assert(cs->type == HK_CS_VDM && "compute is handled above");
+      assert(cs->type == HK_CS_VDM || compute_copies);
 
-      if (cs->type == HK_CS_VDM &&
-          retirement_copies &&
+      if (((cs->type == HK_CS_VDM && retirement_copies) ||
+           (cs->type == HK_CS_CDM && compute_copies)) &&
           cs->timestamp.end_copy_count < ARRAY_SIZE(cs->timestamp.end_copies)) {
-         /* All timestamps inside this pass already share its completion
-          * timestamp. Let retirement publish additional destinations without
-          * an otherwise empty post-graphics compute command. */
+         /* A render pass, a closed compute tail, or adjacent timestamp-only
+          * writes share one ordered completion boundary. Publish every bound
+          * destination there without an extra no-op GPU dispatch. */
          cs->timestamp.end_copies[cs->timestamp.end_copy_count++] =
             (struct agx_timestamp_req){.addr = report_addr, .handle = pool->handle,
                                       .offset_B = hk_query_offset(pool, query)};

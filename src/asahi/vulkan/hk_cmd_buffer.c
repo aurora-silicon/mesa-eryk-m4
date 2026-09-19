@@ -581,17 +581,21 @@ merge_control_streams(struct hk_cmd_buffer *cmd)
        * M4 can optionally use a following compute's start in the same way.
        * Preserve resets and dependency boundaries, and never discard work
        * that was subsequently appended to the no-op stream. A reset successor
-       * must not overwrite a query result just published at its start. */
+       * must not overwrite a query result just published at its start. Query
+       * copies also need the completed producer's visibility boundary: the
+       * firmware start write is not visible to that same CDM's query reads.
+       */
       if (agx_native_graphics(&hk_cmd_buffer_device(cmd)->dev) && last &&
           last->timestamp_only && last->stats.cmds == 1 &&
           last->timestamp.end.handle && !last->timestamp.start.handle &&
+          !last->timestamp.end_copy_count &&
           !last->ends_timestamp_reset && !last->ends_memory_dependency &&
           !cs->timestamp.start.handle &&
           (cs->type == HK_CS_VDM ||
            (hk_cmd_buffer_device(cmd)->dev.chip == AGX_CHIP_G16G &&
             debug_get_bool_option("HK_M4_COMPUTE_START_TIMESTAMP", false) &&
             cs->type == HK_CS_CDM && cs->stats.cmds > 0 &&
-            !cs->ends_timestamp_reset))) {
+            !cs->ends_timestamp_reset && !cs->stats.query_copies))) {
          cs->timestamp.start = last->timestamp.end;
          list_del(&last->node);
          hk_cs_destroy(last);
