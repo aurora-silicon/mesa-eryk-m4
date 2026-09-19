@@ -1,0 +1,47 @@
+{
+  "id": "20260919T152212509252Z-factorio-shared-parameter-off",
+  "hypothesis": "Verify default per-scene pools after separating parameter storage; unchanged shaders, geometry and dependencies",
+  "command": [
+    "env",
+    "HK_ARCHITECTURE_PROFILE=true",
+    "HK_M4_SHADER_PROFILE=true",
+    "MESA_SHADER_CACHE_DISABLE=true",
+    "HK_M4_COMPUTE_TIMESTAMP_COPIES=true",
+    "HK_M4_BATCH_QUERY_COPIES=true",
+    "HK_M4_SPECIALIZE_QUERY_COPY=true",
+    "HK_M4_NATIVE_PREAMBLE=true",
+    "AGX_NATIVE_FLOAT_PREAMBLE=true",
+    "HK_M4_PREFETCH_DESCRIPTORS=true",
+    "HK_M4_BATCH_DISJOINT_CLEARS=true",
+    "HK_M4_COMPRESSED_2D=true",
+    "HK_M4_COMPRESSED_FEEDBACK=true",
+    "HK_M4_COMPUTE_COMPRESSED_COPY=true",
+    "HK_M4_COMPRESSION_AUDIT=true",
+    "HK_M4_COMPUTE_EARLY_TILING=false",
+    "HK_M4_COUNT_FRAGMENTS=true",
+    "python3",
+    "/root/factorio-replay.py",
+    "/root/asahi-evidence/20260919T152212509252Z-factorio-shared-parameter-off",
+    "--compression",
+    "--icd",
+    "/root/asahi-compute-overlap.json",
+    "--trace",
+    "/home/e/.local/share/factorio-driver/frame-architecture-20260919/menu_frames_1500_through_1504.gfxr",
+    "--frames",
+    "5"
+  ],
+  "expected_success": "PASS: Vulkan replay process completed",
+  "seconds": 65,
+  "sources": {
+    "mesa": {
+      "head": "0981fb56b6307b4b24cf9f07ecbe99d22daa61c2",
+      "status": " M src/asahi/vulkan/hk_cmd_buffer.c\n M src/asahi/vulkan/hk_shader.c\n M src/asahi/vulkan/hk_shader.h\n M src/asahi/vulkan/meson.build\n M src/asahi/vulkan/tests/m4-desktop/asahi-session.py\n M src/asahi/vulkan/tests/m4-desktop/desktop-launch.py\n M src/asahi/vulkan/tests/m4-desktop/sparse-metadata-20260917/resolutions.tsv\n M src/asahi/vulkan/tests/m4-desktop/vulkan-trim-host.py\n?? src/asahi/vulkan/hk_m4_native_buoy.c\n?? src/asahi/vulkan/hk_m4_native_buoy.h\n",
+      "patch_sha256": "3bcc2cd52016196f2346da35d468d63fa4a40083c34e1bbbcb71790129a2b973"
+    },
+    "kernel": {
+      "head": "d7b7282e7c7950a991fc55e1f822cbc929113428",
+      "status": "",
+      "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

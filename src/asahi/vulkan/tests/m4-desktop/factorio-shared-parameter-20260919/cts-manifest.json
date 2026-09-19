@@ -1,0 +1,41 @@
+{
+  "id": "20260919T152624464396Z-shared-parameter-sync-cts",
+  "hypothesis": "Check shared parameter storage and explicit stage scope against fragment/vertex consumers after compute/fragment producers",
+  "command": [
+    "python3",
+    "/root/cts-sample.py",
+    "batch",
+    "--guard-output",
+    "/root/asahi-evidence/20260919T152624464396Z-shared-parameter-sync-cts",
+    "--binary",
+    "/root/cts-1.4.6.2/deqp-vk",
+    "--cases",
+    "/root/fragment-dependency-cases.txt",
+    "--jobs",
+    "1",
+    "--count",
+    "8",
+    "--case-timeout",
+    "20",
+    "--env",
+    "VK_DRIVER_FILES=/root/asahi-compute-overlap.json",
+    "--env",
+    "HK_M4_EARLY_TILING=true",
+    "--env",
+    "HK_M4_COMPUTE_EARLY_TILING=true"
+  ],
+  "expected_success": "CTS_BATCH_COMPLETE: 8 recorded outcomes",
+  "seconds": 65,
+  "sources": {
+    "mesa": {
+      "head": "0981fb56b6307b4b24cf9f07ecbe99d22daa61c2",
+      "status": " M src/asahi/vulkan/hk_cmd_buffer.c\n M src/asahi/vulkan/hk_shader.c\n M src/asahi/vulkan/hk_shader.h\n M src/asahi/vulkan/meson.build\n M src/asahi/vulkan/tests/m4-desktop/asahi-session.py\n M src/asahi/vulkan/tests/m4-desktop/desktop-launch.py\n M src/asahi/vulkan/tests/m4-desktop/sparse-metadata-20260917/resolutions.tsv\n M src/asahi/vulkan/tests/m4-desktop/vulkan-trim-host.py\n?? src/asahi/vulkan/hk_m4_native_buoy.c\n?? src/asahi/vulkan/hk_m4_native_buoy.h\n",
+      "patch_sha256": "3bcc2cd52016196f2346da35d468d63fa4a40083c34e1bbbcb71790129a2b973"
+    },
+    "kernel": {
+      "head": "d7b7282e7c7950a991fc55e1f822cbc929113428",
+      "status": "",
+      "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}
