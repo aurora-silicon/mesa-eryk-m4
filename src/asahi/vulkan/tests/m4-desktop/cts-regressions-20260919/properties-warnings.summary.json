@@ -1,0 +1,23 @@
+{
+  "selected": 8,
+  "recorded": 8,
+  "completed": 8,
+  "counts": {
+    "Pass": 4,
+    "QualityWarning": 4
+  },
+  "classifications": {
+    "unclassified": 8
+  },
+  "elapsed_seconds": 2.872781622922048,
+  "preparation_seconds": 1.368496665963903,
+  "runner_seconds": 0.6166161580003973,
+  "jobs": 1,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "4d33ca8ac253b53f462ac3d5a3a40462993c30330743b30fcf311ba891e92db8",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260919T213948273677Z-cts-fix-properties-warnings",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 70.5
+}

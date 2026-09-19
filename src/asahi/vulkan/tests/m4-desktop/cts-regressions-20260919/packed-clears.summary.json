@@ -1,0 +1,23 @@
+{
+  "selected": 588,
+  "recorded": 588,
+  "completed": 588,
+  "counts": {
+    "Pass": 400,
+    "NotSupported": 188
+  },
+  "classifications": {
+    "unclassified": 588
+  },
+  "elapsed_seconds": 9.911201056907885,
+  "preparation_seconds": 1.3382015220122412,
+  "runner_seconds": 7.440310474999933,
+  "jobs": 1,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "097ba4a80f0b3610b966e7c2b4729c6afbaf3ce375bb2d64b0c62700dd03e1e6",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260919T213919636944Z-cts-fix-packed-clears",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 71.75
+}

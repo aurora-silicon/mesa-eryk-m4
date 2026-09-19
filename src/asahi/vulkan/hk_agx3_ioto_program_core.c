@@ -139,9 +139,8 @@ hk_native_single_target_layout_supported(struct agx_tilebuffer_layout *tib)
             tib->logical_format[0] == PIPE_FORMAT_R16G16_UINT ||
             tib->logical_format[0] == PIPE_FORMAT_R16G16_SINT ||
             tib->logical_format[0] == PIPE_FORMAT_R16G16B16A16_UNORM ||
-            (tib->nr_samples == 1 &&
-             (tib->logical_format[0] == PIPE_FORMAT_R11G11B10_FLOAT ||
-              tib->logical_format[0] == PIPE_FORMAT_R9G9B9E5_FLOAT)) ||
+            tib->logical_format[0] == PIPE_FORMAT_R11G11B10_FLOAT ||
+            tib->logical_format[0] == PIPE_FORMAT_R9G9B9E5_FLOAT ||
             scalar_r32f || scalar_r32i || pair_r32f || pair_r32i || pair_r32u ||
             scalar_r8u || scalar_r8i || rgba16u || rgba16i));
 }

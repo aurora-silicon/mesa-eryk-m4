@@ -23,3 +23,25 @@ sampler cases. A copy can span bindings with separately aligned storage; advanci
 by the first binding's stride corrupted descriptors. Walk source and destination
 bindings independently and also select their actual dynamic-buffer indices.
 Evidence: `20260919T213815066818Z-cts-fix-descriptor-copy`, guarded peak 73.25°C.
+
+## Packed-float multisample attachments
+
+Remove the obsolete single-sample restriction for R11G11B10_FLOAT and
+R9G9B9E5_FLOAT in both layout admission and M4 format properties. Existing
+multisample tile addressing handles the packed four-byte texel representation.
+All 588 packed-float clear cases completed:400Pass,188NotSupported; all44
+2x/4x cases pass. Both originally failing format-property tests now pass,
+as do both descriptor cases in the same final candidate. Host tile-layout
+checks cover both formats at1x/2x/4x, including two attachments.
+Full IOTO host unit suite exposed an older golden wait-mask mismatch from
+eef4e004551 (expected08, actual04); tracked separately, not a full-suite pass.
+
+## Allocation callback warnings
+
+The four QualityWarning results remain unchanged. Common Mesa
+vk_descriptor_set_layout_multizalloc and vk_pipeline_layout_zalloc deliberately
+allocate reference-counted layouts using the device allocator and DEVICE scope,
+since their internal lifetimes can exceed the application-visible object.
+The CTS per-create callback injection therefore observes no allocations.
+This is documented common runtime policy, not four rendering failures; do not
+change allocation lifetime or hide these results solely to silence a warning.

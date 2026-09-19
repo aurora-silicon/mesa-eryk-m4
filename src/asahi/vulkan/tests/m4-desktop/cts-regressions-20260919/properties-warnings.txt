@@ -1,0 +1,8 @@
+dEQP-VK.api.info.image_format_properties.2d.optimal.b10g11r11_ufloat_pack32
+dEQP-VK.api.info.image_format_properties.2d.optimal.e5b9g9r9_ufloat_pack32
+dEQP-VK.binding_model.descriptor_copy.misc.copy_immutable_sampler_4_images
+dEQP-VK.binding_model.descriptor_copy.misc.copy_immutable_sampler_4_images_buffer_first
+dEQP-VK.api.object_management.alloc_callback_fail.descriptor_set_layout_empty
+dEQP-VK.api.object_management.alloc_callback_fail.descriptor_set_layout_single
+dEQP-VK.api.object_management.alloc_callback_fail.pipeline_layout_empty
+dEQP-VK.api.object_management.alloc_callback_fail.pipeline_layout_single
