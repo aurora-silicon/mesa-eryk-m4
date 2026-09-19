@@ -77,3 +77,35 @@ specific reproducer/fix is not proof that every cause of that rejection is gone.
 Raw-copy rejection diagnostics now retain format, compression and region details
 for the next occurrence. Full CTS and broader compressed format handling remain
 TODO. 60 FPS is still the performance objective.
+
+## Compressed 2D / 3D slice copies (2026-09-19)
+
+The live run `20260919T020839912114Z-factorio-compute-tail-menu` stalled when
+its animated scene copied sixteen RGBA8 16x16 rectangles from a compressed 2D
+image into consecutive slices of a 3D image. The non-2D selector chose raw
+copying, which rejects compressed storage and returned
+VK_ERROR_FEATURE_NOT_PRESENT at command-buffer end. This is separate from
+query/timestamp execution. The preserved stderr includes the actual formats,
+image types, compression flags and offsets.
+
+Use the same exact native-format render copy for the qualified compressed
+RGBA8/BGRA8 pair on M4, resolving each 3D Z slice independently of 2D array
+layers. Other formats and uncompressed copies retain their existing paths.
+The host slice test covers offsets, depth and signed overflow; all 3672 prior
+layer cases still pass. `vulkan-compressed-volume-copy-probe.c` checks 96
+same/cross-format cases, full and partial rectangles, 2D->3D and 3D->2D,
+all four destination/source compression request combinations, and untouched
+slices. 3D allocations stay uncompressed. Actual eligible 2D compression is
+confirmed by the allocation audit. Run with ASAHI_MESA_DEBUG=,
+HK_M4_COMPRESSED_2D=true, HK_M4_COMPRESSED_FEEDBACK=true and
+HK_M4_COMPRESSION_AUDIT=true under gpu-experiment.py.
+
+`20260919T021326753233Z-compressed-volume-copy-all-formats` passes all 96 cases
+with zero differing bytes, peak 62.5 C. Full CTS remains deferred.
+
+The live menu `20260919T021343773048Z-factorio-volume-copy-menu` completes its
+60-second observation without recording errors or stalled FPS (21.28 FPS tail,
+20.59--21.84, peak 87.75 C). This scene exercises sixteen tiny slice copies per
+frame: 6460 16x16 renders in the final 19.1 seconds. Correctness is restored,
+but one render command per slice has substantial firmware overhead and needs
+batching. This is not a paired comparison with the earlier 39 FPS scene.

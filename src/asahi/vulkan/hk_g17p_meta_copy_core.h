@@ -39,7 +39,8 @@ bool hk_g17p_buffer_to_image_copy_supported(
    const struct hk_g17p_buffer_to_image_copy *copy);
 
 /* HAL200's qualified tile programs are single-layer.  Convert one layer of a
- * valid 2D-array image copy without changing its rectangle or mip levels.
+ * valid 2D-array image copy (or M4 3D slice) without changing its rectangle
+ * or mip levels. A resolved 3D layer count is the copied extent depth.
  * The resolved source/destination layer counts must describe the same copy. */
 bool hk_g17p_image_copy_slice(enum agx_chip chip, VkImageType src_type,
                               VkImageType dst_type, uint32_t src_layers,

@@ -57,19 +57,32 @@ hk_g17p_image_copy_slice(enum agx_chip chip, VkImageType src_type,
    if (out)
       *out = (VkImageCopy2){0};
 
+   const bool src_3d = src_type == VK_IMAGE_TYPE_3D;
+   const bool dst_3d = dst_type == VK_IMAGE_TYPE_3D;
    if (!agx_chip_uses_hal200_ioto(chip) || !region || !out ||
-       src_type != VK_IMAGE_TYPE_2D || dst_type != VK_IMAGE_TYPE_2D ||
+       (src_type != VK_IMAGE_TYPE_2D && !(chip == AGX_CHIP_G16G && src_3d)) ||
+       (dst_type != VK_IMAGE_TYPE_2D && !(chip == AGX_CHIP_G16G && dst_3d)) ||
        src_layers == 0 || src_layers != dst_layers || slice >= src_layers ||
-       region->extent.depth != 1 ||
-       slice > UINT32_MAX - region->srcSubresource.baseArrayLayer ||
-       slice > UINT32_MAX - region->dstSubresource.baseArrayLayer)
+       region->extent.depth != ((src_3d || dst_3d) ? src_layers : 1) ||
+       (src_3d ? (region->srcOffset.z < 0 ||
+                  slice > INT32_MAX - region->srcOffset.z)
+               : slice > UINT32_MAX - region->srcSubresource.baseArrayLayer) ||
+       (dst_3d ? (region->dstOffset.z < 0 ||
+                  slice > INT32_MAX - region->dstOffset.z)
+               : slice > UINT32_MAX - region->dstSubresource.baseArrayLayer))
       return false;
 
    *out = *region;
    out->extent.depth = 1;
-   out->srcSubresource.baseArrayLayer += slice;
+   if (src_3d)
+      out->srcOffset.z += slice;
+   else
+      out->srcSubresource.baseArrayLayer += slice;
    out->srcSubresource.layerCount = 1;
-   out->dstSubresource.baseArrayLayer += slice;
+   if (dst_3d)
+      out->dstOffset.z += slice;
+   else
+      out->dstSubresource.baseArrayLayer += slice;
    out->dstSubresource.layerCount = 1;
    return true;
 }

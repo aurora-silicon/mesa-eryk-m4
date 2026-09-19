@@ -2728,8 +2728,12 @@ hk_CmdCopyImage2(VkCommandBuffer commandBuffer,
    if (agx_native_graphics(&dev->dev) &&
        src_image->vk.samples == VK_SAMPLE_COUNT_1_BIT &&
        dst_image->vk.samples == VK_SAMPLE_COUNT_1_BIT &&
-       (src_image->vk.image_type != VK_IMAGE_TYPE_2D ||
-        dst_image->vk.image_type != VK_IMAGE_TYPE_2D ||
+       (((src_image->vk.image_type != VK_IMAGE_TYPE_2D ||
+          dst_image->vk.image_type != VK_IMAGE_TYPE_2D) &&
+         !(dev->dev.chip == AGX_CHIP_G16G &&
+           src_image->vk.image_type != VK_IMAGE_TYPE_1D &&
+           dst_image->vk.image_type != VK_IMAGE_TYPE_1D &&
+           hk_native_compressed_copy_via_render(src_image, dst_image))) ||
         /* Format reinterpretation copies raw texel bits, including formats
          * without a native render-target export. */
         (src_image->vk.format != dst_image->vk.format &&
@@ -2820,14 +2824,16 @@ hk_CmdCopyImage2(VkCommandBuffer commandBuffer,
 
       if (agx_native_graphics(&dev->dev)) {
          /* The qualified HAL200 BG/EOT contract is single-layer.  Preserve
-          * arbitrary mip and rectangle selection while expanding 2D-array
+          * arbitrary mip and rectangle selection while expanding array/3D
           * regions into the same sequence of per-layer native meta draws. */
          for (uint32_t r = 0; r < pCopyImageInfo->regionCount; ++r) {
             const VkImageCopy2 *region = &pCopyImageInfo->pRegions[r];
-            const uint32_t src_slices = vk_image_subresource_layer_count(
-               &src_image->vk, &region->srcSubresource);
-            const uint32_t dst_slices = vk_image_subresource_layer_count(
-               &dst_image->vk, &region->dstSubresource);
+            const uint32_t src_slices = src_image->vk.image_type == VK_IMAGE_TYPE_3D
+               ? region->extent.depth : vk_image_subresource_layer_count(
+                    &src_image->vk, &region->srcSubresource);
+            const uint32_t dst_slices = dst_image->vk.image_type == VK_IMAGE_TYPE_3D
+               ? region->extent.depth : vk_image_subresource_layer_count(
+                    &dst_image->vk, &region->dstSubresource);
 
             for (uint32_t slice = 0; slice < src_slices; ++slice) {
                VkImageCopy2 one;

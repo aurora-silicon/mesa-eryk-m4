@@ -170,6 +170,31 @@ main(void)
       AGX_CHIP_G17P, VK_IMAGE_TYPE_3D, VK_IMAGE_TYPE_3D, 3, 3,
       &layered, 0, &untouched));
 
+   /* A 3D mip's Z offset is independent of a 2D array's base layer. */
+   VkImageCopy2 volume = layered;
+   volume.extent.depth = 3;
+   volume.dstOffset.z = 7;
+   volume.dstSubresource.baseArrayLayer = 0;
+   volume.dstSubresource.layerCount = 1;
+   for (uint32_t slice = 0; slice < 3; ++slice) {
+      VkImageCopy2 one;
+      CHECK(hk_g17p_image_copy_slice(
+         AGX_CHIP_G16G, VK_IMAGE_TYPE_2D, VK_IMAGE_TYPE_3D, 3, 3,
+         &volume, slice, &one));
+      CHECK(one.srcSubresource.baseArrayLayer == 2 + slice);
+      CHECK(one.dstSubresource.baseArrayLayer == 0);
+      CHECK(one.dstOffset.z == 7 + slice && one.extent.depth == 1);
+      CHECK(one.srcOffset.x == 7 && one.dstOffset.y == 13);
+   }
+   volume.dstOffset.z = INT32_MAX;
+   CHECK(!hk_g17p_image_copy_slice(
+      AGX_CHIP_G16G, VK_IMAGE_TYPE_2D, VK_IMAGE_TYPE_3D, 3, 3,
+      &volume, 1, &untouched));
+   volume.dstOffset.z = -1;
+   CHECK(!hk_g17p_image_copy_slice(
+      AGX_CHIP_G16G, VK_IMAGE_TYPE_2D, VK_IMAGE_TYPE_3D, 3, 3,
+      &volume, 0, &untouched));
+
    const VkImageBlit2 blit = {
       .sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2,
       .srcSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 1, 2, 3},
