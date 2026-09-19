@@ -11,6 +11,7 @@ p=argparse.ArgumentParser(description=__doc__)
 p.add_argument('--base',type=Path,default=Path('/private/var/tmp/factorio-comparison-20260919'))
 p.add_argument('--output',required=True,type=Path)
 p.add_argument('--snapshot',type=int)
+p.add_argument('--predecode-range')
 p.add_argument('--runs',type=int,default=3,choices=range(1,6))
 a=p.parse_args();assert platform.system()=='Darwin'
 a.output.mkdir(parents=True,exist_ok=False)
@@ -26,6 +27,9 @@ env['APITRACE_FACTORIO_COPY_COMPAT']='1'
 cmd=[str(exe),'--headless','--core','--ignore-calls='+ignore]
 if a.snapshot is not None:cmd+=['-s',str(a.output/'frame-'),'-S',str(a.snapshot)]
 else:cmd+=['-b'];env['APITRACE_FRAME_COMPLETION_TIMING']='1'
+if a.predecode_range:
+ assert re.fullmatch(r'\d+-\d+',a.predecode_range)
+ env['APITRACE_PREDECODE_RANGE']=a.predecode_range
 cmd+=[str(trace)]
 manifest=dict(command=cmd,trace_sha256=sha(trace),binary_sha256=sha(exe),adaptations={k:v for k,v in env.items() if k.startswith('APITRACE_')},mode='image validation' if a.snapshot is not None else 'completed-frame CPU+GPU wall time, excludes swap',runs=[])
 (a.output/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')

@@ -1,0 +1,76 @@
+ATTENTION: default value of option vblank_mode overridden by environment.
+warning: process name not yet set
+warning: process name not yet set
+warning: process name not yet set
+warning: process name not yet set
+warning: process name not yet set
+warning: process name not yet set
+warning: process name not yet set
+warning: process name not yet set
+warning: process name not yet set
+warning: process name not yet set
+/home/e/.local/share/factorio-driver/fex-thunks/FEXInterpreter
+Factorio copy adapter: preserved raw 1024x1024 texels, 16 bytes each
+Factorio copy adapter: preserved raw 512x512 texels, 16 bytes each
+Factorio copy adapter: preserved raw 256x256 texels, 16 bytes each
+Factorio copy adapter: preserved raw 1024x848 texels, 16 bytes each
+Factorio copy adapter: preserved raw 512x424 texels, 16 bytes each
+Factorio copy adapter: preserved raw 256x212 texels, 16 bytes each
+Factorio copy adapter: preserved raw 1024x704 texels, 16 bytes each
+Factorio copy adapter: preserved raw 512x352 texels, 16 bytes each
+Factorio copy adapter: preserved raw 512x204 texels, 16 bytes each
+Factorio copy adapter: preserved raw 256x102 texels, 16 bytes each
+Factorio copy adapter: preserved raw 1024x1012 texels, 8 bytes each
+Factorio copy adapter: preserved raw 512x506 texels, 8 bytes each
+Factorio copy adapter: preserved raw 1024x610 texels, 8 bytes each
+Factorio copy adapter: preserved raw 512x305 texels, 8 bytes each
+Factorio copy adapter: preserved raw 512x370 texels, 8 bytes each
+Factorio copy adapter: preserved raw 256x185 texels, 8 bytes each
+Factorio copy adapter: preserved raw 4096x1280 texels, 4 bytes each
+Factorio copy adapter: preserved raw 2048x640 texels, 4 bytes each
+Factorio copy adapter: preserved raw 1024x320 texels, 4 bytes each
+Factorio copy adapter: preserved raw 512x160 texels, 4 bytes each
+Factorio copy adapter: preserved raw 512x164 texels, 8 bytes each
+Factorio copy adapter: preserved raw 256x82 texels, 8 bytes each
+COMPLETED_FRAME call=719447 ns=21652479 replay_ns=14723035 finish_wait_ns=6929444
+COMPLETED_FRAME call=720631 ns=30996748 replay_ns=25136083 finish_wait_ns=5860665
+COMPLETED_FRAME call=721815 ns=30595920 replay_ns=24720569 finish_wait_ns=5875351
+COMPLETED_FRAME call=722999 ns=30816201 replay_ns=24976095 finish_wait_ns=5840106
+COMPLETED_FRAME call=724183 ns=20717084 replay_ns=14879128 finish_wait_ns=5837956
+Rendered 6 frames in 12.6834 secs, average of 0.473059 fps
+CALL_COST name=glActiveTexture count=960 ns=51444 max_ns=1333
+CALL_COST name=glBindBuffer count=720 ns=67947 max_ns=1542
+CALL_COST name=glBindBufferBase count=235 ns=27371 max_ns=1084
+CALL_COST name=glBindFramebuffer count=125 ns=19390 max_ns=1458
+CALL_COST name=glBindSampler count=465 ns=43056 max_ns=1792
+CALL_COST name=glBindTexture count=480 ns=81327 max_ns=1625
+CALL_COST name=glBindVertexArray count=175 ns=44325 max_ns=2084
+CALL_COST name=glBlendEquationSeparate count=170 ns=15021 max_ns=708
+CALL_COST name=glBlendFuncSeparate count=170 ns=20182 max_ns=1041
+CALL_COST name=glBufferData count=55 ns=8919 max_ns=792
+CALL_COST name=glClear count=40 ns=4640 max_ns=750
+CALL_COST name=glClearColor count=40 ns=7789 max_ns=959
+CALL_COST name=glColorMaski count=70 ns=7311 max_ns=958
+CALL_COST name=glDisable count=20 ns=4916 max_ns=750
+CALL_COST name=glDrawArrays count=75 ns=11286 max_ns=625
+CALL_COST name=glDrawElements count=240 ns=27081 max_ns=1208
+CALL_COST name=glEnable count=20 ns=5042 max_ns=1041
+CALL_COST name=glGetError count=5 ns=2502 max_ns=2042
+CALL_COST name=glGetQueryObjecti64v count=150 ns=8251 max_ns=1083
+CALL_COST name=glMapBufferRange count=160 ns=2960428 max_ns=1211953
+CALL_COST name=glScissor count=315 ns=26832 max_ns=1000
+CALL_COST name=glUniform1i count=305 ns=46816 max_ns=2416
+CALL_COST name=glUniformBlockBinding count=235 ns=44948 max_ns=1583
+CALL_COST name=glUnmapBuffer count=160 ns=790463 max_ns=111783
+CALL_COST name=glUseProgram count=170 ns=43431 max_ns=1584
+CALL_COST name=glViewport count=115 ns=13553 max_ns=1208
+CALL_COST name=glXSwapBuffers count=5 ns=30950560 max_ns=7174342
+CALL_COST name=memcpy count=160 ns=5243003 max_ns=75929
+SLOW_CALL call=718271 name=glMapBufferRange ns=1124524
+SLOW_CALL call=718805 name=glUnmapBuffer ns=111783
+SLOW_CALL call=719447 name=glXSwapBuffers ns=7174342
+SLOW_CALL call=719455 name=glMapBufferRange ns=1211953
+SLOW_CALL call=720631 name=glXSwapBuffers ns=5942120
+SLOW_CALL call=721815 name=glXSwapBuffers ns=5960823
+SLOW_CALL call=722999 name=glXSwapBuffers ns=5943805
+SLOW_CALL call=724183 name=glXSwapBuffers ns=5929470

@@ -1,0 +1,240 @@
+{
+  "m4": {
+    "logs": [
+      "_provenance/experiments/20260919T133621935683Z-factorio-gl-predecoded/remote/gl-replay.log",
+      "_provenance/experiments/20260919T134421689610Z-factorio-gl-predecoded-1/remote/gl-replay.log",
+      "_provenance/experiments/20260919T134442657650Z-factorio-gl-predecoded-2/remote/gl-replay.log"
+    ],
+    "samples": [
+      {
+        "call": 719447,
+        "total_ms": 23.217427,
+        "replay_ms": 2.09371,
+        "finish_ms": 21.123717
+      },
+      {
+        "call": 720631,
+        "total_ms": 8.607599,
+        "replay_ms": 2.604229,
+        "finish_ms": 6.00337
+      },
+      {
+        "call": 721815,
+        "total_ms": 7.703941,
+        "replay_ms": 1.677386,
+        "finish_ms": 6.026555
+      },
+      {
+        "call": 722999,
+        "total_ms": 7.798079,
+        "replay_ms": 1.651742,
+        "finish_ms": 6.146337
+      },
+      {
+        "call": 724183,
+        "total_ms": 8.841412,
+        "replay_ms": 2.982759,
+        "finish_ms": 5.858653
+      },
+      {
+        "call": 719447,
+        "total_ms": 33.500365,
+        "replay_ms": 17.248146,
+        "finish_ms": 16.252219
+      },
+      {
+        "call": 720631,
+        "total_ms": 13.50128,
+        "replay_ms": 5.400151,
+        "finish_ms": 8.101129
+      },
+      {
+        "call": 721815,
+        "total_ms": 9.453174,
+        "replay_ms": 3.196018,
+        "finish_ms": 6.257156
+      },
+      {
+        "call": 722999,
+        "total_ms": 10.724413,
+        "replay_ms": 4.254715,
+        "finish_ms": 6.469698
+      },
+      {
+        "call": 724183,
+        "total_ms": 12.443357,
+        "replay_ms": 6.406495,
+        "finish_ms": 6.036862
+      },
+      {
+        "call": 719447,
+        "total_ms": 11.437843,
+        "replay_ms": 2.829593,
+        "finish_ms": 8.60825
+      },
+      {
+        "call": 720631,
+        "total_ms": 10.217936,
+        "replay_ms": 4.617762,
+        "finish_ms": 5.600174
+      },
+      {
+        "call": 721815,
+        "total_ms": 7.830091,
+        "replay_ms": 2.274311,
+        "finish_ms": 5.55578
+      },
+      {
+        "call": 722999,
+        "total_ms": 8.561106,
+        "replay_ms": 2.877212,
+        "finish_ms": 5.683894
+      },
+      {
+        "call": 724183,
+        "total_ms": 8.903888,
+        "replay_ms": 3.196768,
+        "finish_ms": 5.70712
+      }
+    ],
+    "stats": {
+      "total_ms": {
+        "median": 9.453174,
+        "mean": 12.182794066666666,
+        "min": 7.703941,
+        "max": 33.500365
+      },
+      "replay_ms": {
+        "median": 2.982759,
+        "mean": 4.220733133333333,
+        "min": 1.651742,
+        "max": 17.248146
+      },
+      "finish_ms": {
+        "median": 6.036862,
+        "mean": 7.962060933333333,
+        "min": 5.55578,
+        "max": 21.123717
+      }
+    }
+  },
+  "m5": {
+    "logs": [
+      "build/factorio-apple-comparison/mac-predecoded/run-0.log",
+      "build/factorio-apple-comparison/mac-predecoded/run-1.log",
+      "build/factorio-apple-comparison/mac-predecoded/run-2.log"
+    ],
+    "samples": [
+      {
+        "call": 719447,
+        "total_ms": 5.2505,
+        "replay_ms": 1.896542,
+        "finish_ms": 3.353958
+      },
+      {
+        "call": 720631,
+        "total_ms": 5.033583,
+        "replay_ms": 1.631833,
+        "finish_ms": 3.40175
+      },
+      {
+        "call": 721815,
+        "total_ms": 5.148583,
+        "replay_ms": 1.622792,
+        "finish_ms": 3.525791
+      },
+      {
+        "call": 722999,
+        "total_ms": 4.8725,
+        "replay_ms": 1.492208,
+        "finish_ms": 3.380292
+      },
+      {
+        "call": 724183,
+        "total_ms": 4.929875,
+        "replay_ms": 1.559834,
+        "finish_ms": 3.370041
+      },
+      {
+        "call": 719447,
+        "total_ms": 5.285209,
+        "replay_ms": 1.828959,
+        "finish_ms": 3.45625
+      },
+      {
+        "call": 720631,
+        "total_ms": 4.934708,
+        "replay_ms": 1.884792,
+        "finish_ms": 3.049916
+      },
+      {
+        "call": 721815,
+        "total_ms": 4.864291,
+        "replay_ms": 1.675916,
+        "finish_ms": 3.188375
+      },
+      {
+        "call": 722999,
+        "total_ms": 4.813292,
+        "replay_ms": 1.475834,
+        "finish_ms": 3.337458
+      },
+      {
+        "call": 724183,
+        "total_ms": 4.693292,
+        "replay_ms": 1.383208,
+        "finish_ms": 3.310084
+      },
+      {
+        "call": 719447,
+        "total_ms": 5.041291,
+        "replay_ms": 1.691166,
+        "finish_ms": 3.350125
+      },
+      {
+        "call": 720631,
+        "total_ms": 5.262375,
+        "replay_ms": 1.929667,
+        "finish_ms": 3.332708
+      },
+      {
+        "call": 721815,
+        "total_ms": 5.057833,
+        "replay_ms": 1.668083,
+        "finish_ms": 3.38975
+      },
+      {
+        "call": 722999,
+        "total_ms": 4.805667,
+        "replay_ms": 1.423125,
+        "finish_ms": 3.382542
+      },
+      {
+        "call": 724183,
+        "total_ms": 4.372542,
+        "replay_ms": 1.192458,
+        "finish_ms": 3.180084
+      }
+    ],
+    "stats": {
+      "total_ms": {
+        "median": 4.934708,
+        "mean": 4.957702733333333,
+        "min": 4.372542,
+        "max": 5.285209
+      },
+      "replay_ms": {
+        "median": 1.631833,
+        "mean": 1.6237611333333333,
+        "min": 1.192458,
+        "max": 1.929667
+      },
+      "finish_ms": {
+        "median": 3.353958,
+        "mean": 3.3339415999999997,
+        "min": 3.049916,
+        "max": 3.525791
+      }
+    }
+  }
+}

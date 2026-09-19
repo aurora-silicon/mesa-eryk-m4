@@ -1,0 +1,24 @@
+{
+  "id": "20260919T133621935683Z-factorio-gl-predecoded",
+  "verdict": "pass",
+  "transport_returncode": 0,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260919T133621935683Z-factorio-gl-predecoded",
+  "observations": {
+    "pixel_results": [
+      "PASS: bounded OpenGL replay, no API/shader errors"
+    ],
+    "pixel_result_count": 1,
+    "thermal_samples": 33,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 77.5,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 77.5,
+      "Ta000m": 76.0,
+      "Te000m": 73.75,
+      "Te001m": 75.75,
+      "Tp000m": 77.5,
+      "Tp001m": 76.0
+    }
+  }
+}

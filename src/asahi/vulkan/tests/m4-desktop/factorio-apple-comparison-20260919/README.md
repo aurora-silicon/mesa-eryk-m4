@@ -1,28 +1,36 @@
 # Factorio menu: Linux M4 versus Apple M5, 2026-09-19
 
 The same five captured OpenGL frames at **2512x1552**, replayed three times
-per machine, produce median completed-frame times of **29.132ms on Linux M4**
-and **8.903ms on macOS M5** (3.272x). Images are nearly identical: only 298 of
-3,898,624 pixels differ, maximum one 8-bit channel step, 308 differing channels.
-The M4 raw-copy adapter was also checked against its native-copy replay and is
-pixel-exact. No game settings, GLSL, draw calls or atlas content were changed.
+per machine after decoding the selected calls before timing, produce median
+completed-frame times of **9.453ms on Linux M4** and **4.935ms on macOS M5**
+(1.916x). All 15 samples per machine, including startup outliers, are retained.
+Images are nearly identical: only 298 of 3,898,624 pixels differ, maximum one
+8-bit channel step. M4 adapted copies and the predecoded replay were checked
+against the native-copy reference and are pixel-exact. No shaders, draws,
+settings or atlas contents were changed.
 
 | Metric, 15 samples each | Linux M4 | Apple M5 |
 | --- | ---: | ---: |
-| Median completed-frame wall time |29.132ms|8.903ms|
-| Range |19.441–38.704ms|6.371–20.443ms|
-| Mean |28.909ms|9.480ms|
-| Median replay/GL-call interval |23.216ms|5.559ms|
-| Median final glFinish wait |5.844ms|3.345ms|
+| Median completed-frame wall time |9.453ms|4.935ms|
+| Range |7.704–33.500ms|4.373–5.285ms|
+| Mean |12.183ms|4.958ms|
+| Median replay/GL-call interval |2.983ms|1.632ms|
+| Median final glFinish wait |6.037ms|3.354ms|
 
-**Interpretation:** a large gap remains in this full GL replay path. The longer
-replay interval includes CPU decoding, GL/Zink processing and waits inside GL
-calls. It is NOT isolated CPU execution. The final drain is NOT total GPU time;
-work can execute while GL calls are being replayed. Do not add medians, call
-these actual game FPS, or compare directly to earlier 6.4 ms native Vulkan GPU
-submission spans. A serialized glFinish experiment suppresses overlap between
-frames. M4/M5 hardware, OS, EGL/Cocoa and driver implementations all differ.
-These data cannot assign a precise fraction of the gap to our shader compiler.
+The earlier streaming measurements (29.132ms versus 8.903ms) included compressed
+trace parsing during each frame. Callback profiling showed most of that M4
+interval was outside GL callbacks. Those logs remain as evidence, but are not
+the useful driver comparison. `APITRACE_PREDECODE_RANGE=718263-724183` decodes
+all selected calls before executing the initial setup swap, then executes the
+same calls in the same order. It does not prebake GL calls or driver work.
+
+**Interpretation:** the replay interval includes GL/Zink processing and waits
+inside calls, and the final drain is not total GPU time because work overlaps
+CPU submission. These are serialized completed-frame wall times, not game FPS,
+isolated GPU times, or a driver-only comparison: M4/M5 hardware, OS, EGL/Cocoa
+and drivers differ. Do not add medians or compare directly to native Vulkan
+GPU submission spans. A serialized glFinish suppresses inter-frame overlap.
+The remaining difference cannot be assigned wholly to our shader compiler.
 
 ## What was measured
 
@@ -30,7 +38,7 @@ Apple driver identifies as `4.1 Metal - 90.5`, Apple M5, GLSL 4.10. The M5 Air
 has 8 GPU cores. M4 runs normal installed c4304dc7d4f Mesa, kernel c40864f9d5f8
 with early tiling opt-in OFF, and the already installed MCC/cache/fabric fixes.
 Full allowed CPU clocks, watchdog 60 s and six-channel 95 C thermal guard retained;
-final M4 three runs peak 80.75/79.5/80.5 C. Desktop remains active on both machines.
+predecoded M4 runs peak 77.5/81.25/81 C. Desktop remains active on both machines.
 
 Capture 123334 uses ARM glxtrace at FEX's native thunk boundary. Both LD_PRELOAD
 and a private libGL.so.1 search-path wrapper are needed: an earlier path-only
@@ -61,7 +69,7 @@ Local: `build/factorio-basic-vulkan/menu-five.trace` and
    Apple GL lacks CopyImageSubData. Integer texels that contain BC blocks are
    copied as raw blocks; no recompression. There are no such copies in the five
    timed frames. Check `reference/apitrace/retrace/FACTORIO_COMPARISON.md`.
-4. Same apitrace source commit 252a0d6 builds native ARM64 EGL and Cocoa replay
+4. Same apitrace source commit 5d36c65 builds native ARM64 EGL and Cocoa replay
    binaries. Linux uses surfaceless EGL; Mac uses Cocoa OpenGL. The desktop's
    inherited MESA_GL_VERSION_OVERRIDE=3.3 is cleared for this 4.1 capture.
 
@@ -86,8 +94,12 @@ call and includes swap, so its numbers were superseded by the explicit timer.
 - Mac `gl-portable-reference`: near-exact final pixels. Apple logs an incomplete
  startup 3D-texture warning; neither driver reports GL API errors. Compilers warn
  about unused outputs/uninitialized local variables, with matching final image.
-- 125523/125542/125602: final M4 timings, all guarded PASS, logs copied here.
-- Mac `gl-completion-split`: final three timing runs, logs/manifest copied here.
+- 125523/125542/125602 and Mac `gl-completion-split`: earlier streaming timings.
+- 133621/134421/134442: predecoded M4 timings, all guarded PASS, retained here.
+- Mac `mac-predecoded`: three predecoded timing runs, logs/manifest retained.
+- 135108 predecoded M4 pixel check: exact reference match, guarded PASS, 85.5 C.
+  That image check used later query-owner Mesa; timing runs above used c430.
+- `predecoded-results.json`: all 30 observations and summary statistics.
 
 The original Vulkan capture crashes/fails before rendering on both SDK
 MoltenVK 1.4.2 and KosmicKrisp 92ec601a34. Both lack native fragment-statistics and
@@ -104,6 +116,5 @@ Normal launcher/config and drivers were not changed. Other failed experiments
 were replay setup (root Xwayland auth, inherited 3.3 cap, profiler's unwritable
 working directory). They produced no accepted rendering/timing result.
 
-This comparison does not achieve the 5 ms full-frame optimization goal. Next
-investigation should profile native GL/Zink call processing and implicit waits,
-using the preserved trace, while keeping true GPU execution time distinct.
+This comparison does not achieve the 5 ms full-frame optimization goal. Native GPU execution and submission overlap remain the optimization targets;
+compressed-trace decoding is benchmark overhead, not application driver cost.
