@@ -1,0 +1,6 @@
+Device: Apple M4 (G16G B0)
+closed_tail_query0 cpu_status=1 cpu_value=0 cpu_available=0 gpu_value=feed7130feed713 gpu_available=0
+closed_tail_query1 cpu_status=1 cpu_value=0 cpu_available=0 gpu_value=feed7130feed713 gpu_available=0
+closed_tail_query2 cpu_status=1 cpu_value=0 cpu_available=0 gpu_value=feed7130feed713 gpu_available=0
+closed_tail_query3 cpu_status=1 cpu_value=0 cpu_available=0 gpu_value=feed7130feed713 gpu_available=0
+query0 value=feed7130feed713 available=0

@@ -877,6 +877,8 @@ void *hk_cmd_buffer_emit_cdm_terminate(struct hk_cmd_buffer *cmd,
 void *hk_cmd_buffer_emit_vdm_terminate(struct hk_cmd_buffer *cmd,
                                        void *current);
 
+void hk_cdm_cache_flush(struct hk_device *dev, struct hk_cs *cs);
+
 static void
 hk_cmd_buffer_end_compute_internal(struct hk_cmd_buffer *cmd,
                                    struct hk_cs **ptr)
@@ -889,6 +891,12 @@ hk_cmd_buffer_end_compute_internal(struct hk_cmd_buffer *cmd,
        */
       if (cs->imm_writes.size) {
          hk_dispatch_imm_writes(cmd, cs);
+      }
+      if (hk_cmd_buffer_device(cmd)->dev.chip == AGX_CHIP_G16G &&
+          debug_get_bool_option("HK_M4_CDM_END_BARRIER",
+             debug_get_bool_option("HK_M4_CDM_VISIBILITY_BARRIER", false))) {
+         hk_ensure_cs_has_space(cmd, cs, 0x2000);
+         hk_cdm_cache_flush(hk_cmd_buffer_device(cmd), cs);
       }
    }
 
@@ -905,7 +913,6 @@ hk_cmd_buffer_end_compute(struct hk_cmd_buffer *cmd)
  * graphics finalization (for example, a native background clear). */
 bool hk_optimize_empty_vdm(struct hk_cmd_buffer *cmd);
 
-void hk_cdm_cache_flush(struct hk_device *dev, struct hk_cs *cs);
 
 static void
 hk_cmd_buffer_end_graphics(struct hk_cmd_buffer *cmd)

@@ -1,0 +1,22 @@
+{
+  "id": "20260919T161028807606Z-query-wide-visibility-off",
+  "verdict": "process_failure",
+  "transport_returncode": 1,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260919T161028807606Z-query-wide-visibility-off",
+  "observations": {
+    "pixel_results": [],
+    "pixel_result_count": 0,
+    "thermal_samples": 1,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 62.0,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 62.0,
+      "Ta000m": 61.75,
+      "Te000m": 60.0,
+      "Te001m": 58.0,
+      "Tp000m": 62.0,
+      "Tp001m": 57.75
+    }
+  }
+}

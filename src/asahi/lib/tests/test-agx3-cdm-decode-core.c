@@ -561,10 +561,47 @@ test_sequence_and_rejections(void)
    return 0;
 }
 
+static int
+test_g16_visibility_barrier(void)
+{
+   /* Independent expected words from the G16G B0 native emitter, not a
+    * round-trip-only test of our own field definitions. */
+   const uint32_t words[] = {0x600201fe, 0x600215fe};
+   for (unsigned i = 0; i < 2; ++i) {
+      struct agx3_cdm_barrier_info info = {
+         .chip = AGX_CHIP_G16G, .flags = i ? 5 : 0,
+         .wide_visibility = true,
+      };
+      uint8_t bytes[4];
+      CHECK(agx3_cdm_barrier_pack(&info, bytes));
+      CHECK(agx3_cmdstream_load_le32(bytes) == words[i]);
+      struct agx3_cdm_decoded_record decoded;
+      CHECK(agx3_cdm_decode_one(info.chip, bytes, 4, &decoded));
+      CHECK(decoded.kind == AGX3_CDM_RECORD_BARRIER);
+      CHECK(decoded.data.barrier.flags == info.flags);
+      CHECK(decoded.data.barrier.wide_visibility);
+      for (unsigned bit = 0; bit < 18; ++bit) {
+         if (!(0x2009e & (1u << bit)))
+            continue;
+         agx3_cmdstream_store_le32(bytes, words[i] ^ (1u << bit));
+         CHECK(!agx3_cdm_decode_one(info.chip, bytes, 4, &decoded));
+      }
+      for (unsigned t = 0; t < sizeof(launch_targets)/sizeof(launch_targets[0]); ++t) {
+         if (launch_targets[t] == AGX_CHIP_G16G)
+            continue;
+         info.chip = launch_targets[t];
+         CHECK(!agx3_cdm_barrier_pack(&info, bytes));
+         agx3_cmdstream_store_le32(bytes, words[i]);
+         CHECK(!agx3_cdm_decode_one(info.chip, bytes, 4, &decoded));
+      }
+   }
+   return 0;
+}
+
 int
 main(void)
 {
-   if (test_launch_padding_and_terminate() || test_indirect_launch_codec() ||
+   if (test_g16_visibility_barrier() || test_launch_padding_and_terminate() || test_indirect_launch_codec() ||
        test_indirect_launch_36_codec() || test_links_and_barriers() ||
        test_sequence_and_rejections())
       return 1;

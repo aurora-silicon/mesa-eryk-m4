@@ -1,0 +1,10 @@
+Device: Apple M4 (G16G B0)
+closed_tail_query0 cpu_status=0 cpu_value=2196f14e3f cpu_available=1 gpu_value=2196f14e3f gpu_available=1
+closed_tail_query1 cpu_status=0 cpu_value=2196f2188e cpu_available=1 gpu_value=2196f2188e gpu_available=1
+closed_tail_query2 cpu_status=0 cpu_value=2196f2e06d cpu_available=1 gpu_value=2196f2e06d gpu_available=1
+closed_tail_query3 cpu_status=0 cpu_value=2196f3a62e cpu_available=1 gpu_value=2196f3a62e gpu_available=1
+query0 value=2196f14e3f available=1
+query1 value=2196f2188e available=1
+query2 value=2196f2e06d available=1
+query3 value=2196f3a62e available=1
+QUERY_COPY_PASS

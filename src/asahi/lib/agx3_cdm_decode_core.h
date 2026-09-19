@@ -50,6 +50,7 @@ struct agx3_cdm_decoded_record {
       } link_padding;
       struct {
          uint8_t flags;
+         bool wide_visibility;
       } barrier;
       struct {
          uint8_t flags;

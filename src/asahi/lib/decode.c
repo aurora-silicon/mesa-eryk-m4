@@ -764,7 +764,9 @@ agxdecode_cdm_agx3(struct agxdecode_ctx *ctx, const uint8_t *map,
 
    case AGX3_CDM_RECORD_BARRIER:
       fprintf(agxdecode_dump_stream,
-              "AGX3 Barrier\n  Flags = 0x%x\n", record.data.barrier.flags);
+              "AGX3 Barrier\n  Flags = 0x%x\n  Wide visibility = %s\n",
+              record.data.barrier.flags,
+              record.data.barrier.wide_visibility ? "true" : "false");
       return record.length;
 
    case AGX3_CDM_RECORD_SUBSTREAM_BARRIER:

@@ -1,0 +1,17 @@
+{
+  "source": "build/AGXMetalG16G_B0.arm64e",
+  "sha256": "edd46e01416e595b51734428ece82aa0104868b35d585f492b2efa3ceebbce3a",
+  "function": "AGX::ComputeContext<HAL200, CommandEncodingNext>::encodeBarrier",
+  "function_offset": "0x2f00f0",
+  "visibility_branch": "0x2f01f8",
+  "nonzero_visibility_words": [
+    "0x600201fe",
+    "0x600215fe"
+  ],
+  "ordinary_words": [
+    "0x60000160",
+    "0x60001560"
+  ],
+  "word_select": "context byte +0x902",
+  "scope": "G16G B0 only; visibility enum semantics beyond this branch are not inferred"
+}
