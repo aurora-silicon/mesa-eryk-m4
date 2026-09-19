@@ -743,36 +743,13 @@ hk_cmd_begin_end_query(struct hk_cmd_buffer *cmd, struct hk_query_pool *pool,
    /* We need to set available=1 after the graphics work finishes. */
    if (end) {
       perf_debug(cmd, "Query ending, type %u", pool->vk.query_type);
-      struct hk_cs *cs = cmd->current_cs.gfx;
-      if (pool->timestamp_available && !cs && !cmd->current_cs.cs &&
-          !cmd->current_cs.post_gfx && !list_is_empty(&cmd->control_streams)) {
-         struct hk_cs *tail =
-            list_last_entry(&cmd->control_streams, struct hk_cs, node);
-         if (tail->type == HK_CS_VDM)
-            cs = tail;
-      }
-      /* Use all 64 bits: the low word of the hardware counter periodically
-       * wraps to zero. A duplicate of an occupied completion timestamp also
-       * supplies availability, without an extra compute write. Keep empty
-       * queries on their ordered GPU availability-write path. */
-      const bool copy_completion = cs && cs->timestamp.end.addr &&
-         (dev->dev.params.features & DRM_ASAHI_FEATURE_RENDER_TIMESTAMP_COPIES) &&
-         debug_get_bool_option("HK_M4_TIMESTAMP_COPIES", false) &&
-         cs->timestamp.end_copy_count < ARRAY_SIZE(cs->timestamp.end_copies);
-      if (pool->timestamp_available && graphics && cs && cs->stats.cmds &&
-          (!cs->timestamp.end.addr || copy_completion) && !cmd->current_cs.post_gfx) {
-         struct agx_timestamp_req available = {
-            .addr = hk_query_available_addr(pool, query),
-            .handle = pool->handle,
-            .offset_B = query * hk_query_available_stride(pool),
-         };
-         if (copy_completion)
-            cs->timestamp.end_copies[cs->timestamp.end_copy_count++] = available;
-         else
-            cs->timestamp.end = available;
-      } else {
-         hk_queue_write(cmd, hk_query_available_addr(pool, query), 1, graphics);
-      }
+      /* Statistics are shader atomics, not firmware timestamp writes.
+       * Render completion alone does not publish those dirty cache lines to
+       * the CPU. The ordered availability write flushes the shader cache
+       * before advertising a result, including when an end timestamp already
+       * occupies the render's completion slot. Keep the pool's u64 status
+       * layout when requested, but never use a firmware stamp as its fence. */
+      hk_queue_write(cmd, hk_query_available_addr(pool, query), 1, graphics);
    }
 }
 

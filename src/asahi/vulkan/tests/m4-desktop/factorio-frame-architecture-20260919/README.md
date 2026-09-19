@@ -231,3 +231,19 @@ The exact-count GL oracle passes all dimensions, edge pixels, query-buffer
 reads and split submissions with ordered GPU availability. Firmware-completion
 availability produces incomplete CPU-visible counts even with diagnostics off;
 this separately reproduced synchronization failure is being fixed next.
+
+## Statistics availability visibility fix
+
+The completion-timestamp shortcut advertised fragment statistics before their
+shader-atomic result was visible to the CPU: a 2560x1664 fullscreen draw
+returned 1,479,072 instead of 4,259,840 in the retained failure. Disabling only
+that shortcut restores exact counts. Keep ordered shader-cache flushes before
+the GPU availability write, including pools using the optional u64 status
+layout. Ordinary timestamp-query completion fanout is unchanged.
+
+The fixed u64-status path passes exact counts, odd edge sizes, readback-buffer
+results, both query-end orders and queries spanning multiple submissions.
+Five original replay frames remain pixel-identical at 8.155..8.189 ms. This is
+a correctness fix, not a performance gain. Default installed driver has not
+yet been replaced in this checkpoint; candidate asahi-query-visibility.json
+contains the fix. Full CTS remains deferred.
