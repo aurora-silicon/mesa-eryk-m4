@@ -37,3 +37,10 @@ menu 052829801140Z averages 36.495 FPS, range 17.10--45.07, peak 86.75 C.
 This is not a qualified performance improvement; the options stay opt-in.
 The desktop separately has descriptor prefetch enabled after a guarded
 autologin restart (052032630230Z), with unchanged display settings.
+
+Temporary vblank_mode=0 diagnostic 053424631067Z completed at 40.106 FPS,
+35.98--41.59 tail, peak 91 C. It did not remove the bottleneck. The outer
+runner says missing_success_evidence because its requested string was PASS
+but the observer prints FACTORIO_STANDALONE_INITIALISED; process exited zero
+and all 60 seconds were retained. Keep that distinction; do not rewrite the
+verdict. Normal vblank behavior remains the acceptance configuration.
