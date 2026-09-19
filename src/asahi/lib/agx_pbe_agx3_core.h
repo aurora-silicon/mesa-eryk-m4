@@ -64,6 +64,12 @@ bool agx_pbe_agx3_compressed_2d_pack(
    uint32_t generation, const struct agx_pbe_agx3_2d_fields *fields,
    uint64_t acceleration_buffer, struct agx_pbe_agx3_descriptor *out);
 
+/* Gen9 single-layer mip chain, with metadata for the complete chain. */
+bool agx_pbe_agx3_compressed_2d_mip_pack(
+   uint32_t generation, const struct agx_pbe_agx3_2d_fields *fields,
+   uint64_t acceleration_buffer, uint32_t level, uint32_t levels,
+   struct agx_pbe_agx3_descriptor *out);
+
 /* Gen9 native mip extension: the existing descriptor is unchanged for
  * level=0, levels=1. Width/height and buffer describe the complete mip chain. */
 bool agx_pbe_agx3_2d_mip_pack(

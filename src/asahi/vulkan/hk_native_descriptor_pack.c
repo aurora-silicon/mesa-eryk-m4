@@ -221,7 +221,7 @@ hk_pack_native_pbe(unsigned generation,
     */
    const bool compressed = generation == 9 && legacy->compressed &&
       legacy->extended && legacy->dimension == AGX_TEXTURE_DIMENSION_2D &&
-      legacy->level == 0 && legacy->levels == 1 && !legacy->unk_mipmapped;
+      legacy->layers == 1;
    const bool array = generation == 9 &&
       (legacy->dimension == AGX_TEXTURE_DIMENSION_2D_ARRAY ||
        legacy->dimension == AGX_TEXTURE_DIMENSION_2D_ARRAY_MULTISAMPLED);
@@ -276,8 +276,9 @@ hk_pack_native_pbe(unsigned generation,
    };
    struct agx_pbe_agx3_descriptor packed;
    const bool valid = compressed
-      ? agx_pbe_agx3_compressed_2d_pack(generation, &fields,
-                                       legacy->acceleration_buffer, &packed)
+      ? agx_pbe_agx3_compressed_2d_mip_pack(generation, &fields,
+                                          legacy->acceleration_buffer,
+                                          legacy->level, legacy->levels, &packed)
       : array
       ? agx_pbe_agx3_array_pack(generation, &fields, legacy->layers,
                                 legacy->level, legacy->levels, &packed)

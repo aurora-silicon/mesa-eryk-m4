@@ -871,7 +871,9 @@ hk_can_compress_create_info(struct hk_device *dev, unsigned plane,
                             const VkImageCreateInfo *info)
 {
    if (dev->dev.chip == AGX_CHIP_G16G &&
-       (info->imageType != VK_IMAGE_TYPE_2D || info->mipLevels != 1 ||
+       (info->imageType != VK_IMAGE_TYPE_2D ||
+        (info->mipLevels != 1 &&
+         !debug_get_bool_option("HK_M4_COMPRESSED_MIPS", false)) ||
         info->arrayLayers != 1))
       return false;
 

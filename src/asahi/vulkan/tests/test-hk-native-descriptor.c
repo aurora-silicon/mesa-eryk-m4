@@ -944,7 +944,25 @@ main(void)
    compressed.acceleration_buffer = UINT64_C(1) << 48;
    assert(!hk_pack_native_pbe(9, &native_pbe, &compressed));
    compressed.acceleration_buffer = 0x56780000;
-   compressed.levels = 2;
+   compressed.levels = 7;
+   compressed.level = 2;
+   compressed.unk_mipmapped = true;
+   /* Independent 25G83 constructor result: same metadata address plus
+    * entry-SP+68=2 and entry-SP+72=7, not a composition of Mesa output. */
+   const uint8_t compressed_mip_witness[32] = {
+      0x12,0x0a,0xe4,0x3f,0xc0,0x0f,0x00,0x0c,
+      0x00,0x40,0x23,0x01,0x00,0x00,0x00,0x80,
+      0x00,0x80,0x67,0x05,0x00,0x20,0x06,0x00,
+      0,0,0,0,0,0,0,0,
+   };
+   assert(hk_pack_native_pbe(9, &native_pbe, &compressed));
+   assert(!memcmp(native_pbe.opaque, compressed_mip_witness, 32));
+   compressed.level = compressed.levels;
+   assert(!hk_pack_native_pbe(9, &native_pbe, &compressed));
+   compressed.level = 0;
+   compressed.levels = 0;
+   assert(!hk_pack_native_pbe(9, &native_pbe, &compressed));
+   compressed.levels = 17;
    assert(!hk_pack_native_pbe(9, &native_pbe, &compressed));
 
    puts("honeykrisp native descriptor geometry/policy: passed");

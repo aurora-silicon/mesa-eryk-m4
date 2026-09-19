@@ -161,3 +161,30 @@ The common allocator and epilog generator carry the resulting geometry.
 16x16 run090338: fragment11.96..12.37ms, spans15.28..15.69ms. 32x16 run090359:
 fragment11.38..11.89ms, spans14.49..14.98ms. Bothpixel-exact, guardsPASS,
 peak64.75C. No worthwhile gain established; retain32x32 default. NoCTS claim.
+
+## Compressed mip chains, 09:20 UTC
+
+The same capture with compression disabled takes22.69..23.03ms, versus
+14.42..14.95ms with it enabled; both are pixel-exact. This confirms a large
+memory-traffic cost, unlike the older HOST_TRANSFER trace.
+
+The independent pinned 25G83 PBE constructor at0x33620c combines metadata
+address and mip selection in word2. Its level2/7-level byte witness is retained
+and tested in the host descriptor suite. Extend the G16 2D compressed PBE
+codec accordingly. HK_M4_COMPRESSED_MIPS=true opts into compressed mipmapped
+RGBA8/BGRA8 single-layer images; default allocation policy is unchanged.
+
+Host descriptor and300374 core-codec checks PASS. Hardware oracle091628
+checks all output bytes across144 copies:9 mip levels256x256 through1x1,
+RGBA/BGRA directions, compressed/uncompressed source and destination, and
+partial level0 rectangles. It does not qualify untouched other levels or
+cross-level copies. GuardPASS, peak72C.
+
+Current Factorio replay091943 allocates the8192x2560 atlas compressed, keeps
+all final pixels identical, and spans14.26..14.94ms. No meaningful performance
+gain or5ms claim. This is useful opt-in format support, not a default change.
+
+Read-only MCC occupancy probe090935 observed GPU-workload-associated DSID31
+reach16384 cache lines on each aperture while the checked compute workload
+ran. This is occupancy, not a hit-rate or bandwidth measurement. DSID-to-quota
+group mapping remains unqualified. No cache-policy registers were written.

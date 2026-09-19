@@ -159,12 +159,22 @@ agx_pbe_agx3_compressed_2d_pack(
    uint32_t generation, const struct agx_pbe_agx3_2d_fields *fields,
    uint64_t acceleration_buffer, struct agx_pbe_agx3_descriptor *out)
 {
+   return agx_pbe_agx3_compressed_2d_mip_pack(generation, fields,
+                                             acceleration_buffer, 0, 1, out);
+}
+
+bool
+agx_pbe_agx3_compressed_2d_mip_pack(
+   uint32_t generation, const struct agx_pbe_agx3_2d_fields *fields,
+   uint64_t acceleration_buffer, uint32_t level, uint32_t levels,
+   struct agx_pbe_agx3_descriptor *out)
+{
    if (out)
       memset(out, 0, sizeof(*out));
    if (generation != 9 || !fields || fields->samples_log2 ||
        fields->layout == AGX_PBE_LAYOUT_LINEAR || !acceleration_buffer ||
        (acceleration_buffer & 0xf) || (acceleration_buffer >> 48) ||
-       !agx_pbe_agx3_2d_pack(generation, fields, out))
+       !agx_pbe_agx3_2d_mip_pack(generation, fields, level, levels, out))
       return false;
 
    /* 25G83 PBE StateFields 0x33643c..0x336444 and 0x3367dc..0x3367f8:
@@ -173,7 +183,10 @@ agx_pbe_agx3_compressed_2d_pack(
    store_le64(out->bytes, load_le64(out->bytes) | (UINT64_C(1) << 59));
    store_le64(out->bytes + 8,
               load_le64(out->bytes + 8) | (UINT64_C(1) << 63));
-   store_le64(out->bytes + 16, acceleration_buffer >> 4);
+   /* The same constructor's 0x336448..0x336460 places level/count above
+    * the metadata address. Preserve that extension when adding compression. */
+   store_le64(out->bytes + 16,
+              load_le64(out->bytes + 16) | (acceleration_buffer >> 4));
    return true;
 }
 
