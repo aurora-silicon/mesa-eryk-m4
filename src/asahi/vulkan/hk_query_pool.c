@@ -570,6 +570,18 @@ hk_CmdWriteTimestamp2(VkCommandBuffer commandBuffer,
            (retirement_copies && tail->timestamp.end_copy_count <
                                    ARRAY_SIZE(tail->timestamp.end_copies))))
          cs = tail;
+      else if (dev->dev.chip == AGX_CHIP_G16G &&
+               debug_get_bool_option("HK_M4_COMPUTE_TAIL_TIMESTAMP", false) &&
+               tail->type == HK_CS_CDM && tail->stats.cmds > 0 &&
+               !tail->ends_timestamp_reset && !tail->timestamp.end.handle) {
+         /* A completed nonempty compute tail supplies the same ordered
+          * boundary. In particular, a memory barrier may already have closed
+          * a fill/clear stream. Preserve its completion flush and attach only
+          * the timestamp destination; never append work across that barrier.
+          * Reset streams are excluded because their GPU writes must retire
+          * before firmware writes a query result through its own mapping. */
+         cs = tail;
+      }
    }
    if (!cs)
       cs = hk_cmd_buffer_get_cs_general(
