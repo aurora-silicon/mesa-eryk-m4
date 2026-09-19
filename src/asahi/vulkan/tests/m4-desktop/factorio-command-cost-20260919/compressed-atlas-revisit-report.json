@@ -1,0 +1,24 @@
+{
+  "id": "20260919T164549256034Z-factorio-compressed-atlas-revisit",
+  "verdict": "pass",
+  "transport_returncode": 0,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260919T164549256034Z-factorio-compressed-atlas-revisit",
+  "observations": {
+    "pixel_results": [
+      "PASS: Vulkan replay process completed; rendering requires separate comparison"
+    ],
+    "pixel_result_count": 1,
+    "thermal_samples": 10,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 67.0,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 67.0,
+      "Ta000m": 67.0,
+      "Te000m": 64.0,
+      "Te001m": 63.25,
+      "Tp000m": 67.0,
+      "Tp001m": 63.5
+    }
+  }
+}

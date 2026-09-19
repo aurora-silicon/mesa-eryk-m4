@@ -22,3 +22,7 @@ But X-coordinate stripes take 6.462..6.550 ms, and draw-group stripes through
 the existing uniform take 6.167..6.327 ms. Neither improves the baseline.
 The draw-group variant may reuse a stripe when graphics uniforms stay clean;
 that cannot change totals, but it is not a unique counter per API draw.
+
+Compressed mip-chain atlas revisited after cache/memory/query fixes (164549):
+exact pixels/counts, 5.929..6.091 ms; no meaningful gain established.
+Qualified normal kernel868fa406 and full profiling restored at16:43:50 reboot.

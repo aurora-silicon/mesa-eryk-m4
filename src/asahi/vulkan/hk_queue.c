@@ -170,6 +170,11 @@ asahi_fill_cdm_command(struct hk_device *dev, struct hk_cs *cs,
       .ts.end.offset = cs->timestamp.end.offset_B,
    };
 
+   if (dev->dev.chip == AGX_CHIP_G16G && cs->ends_wide_visibility &&
+       (dev->dev.params.features & DRM_ASAHI_FEATURE_COMPUTE_WIDE_VISIBILITY) &&
+       debug_get_bool_option("HK_M4_COALESCE_COMPUTE_STAMPS", false))
+      cmd->flags |= DRM_ASAHI_COMPUTE_WIDE_VISIBILITY;
+
    for (unsigned i = 0; i < cs->timestamp.end_copy_count; ++i) {
       assert(dev->dev.params.features & DRM_ASAHI_FEATURE_COMPUTE_TIMESTAMP_COPIES);
       cmd->ts_end_copies[i].handle = cs->timestamp.end_copies[i].handle;
