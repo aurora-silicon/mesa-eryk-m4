@@ -10,6 +10,7 @@ import json
 import os
 import math
 import statistics
+import shutil
 from pathlib import Path
 import signal
 import subprocess
@@ -59,6 +60,12 @@ unit = 'm4-factorio-standalone.service'
 start = time.monotonic()
 wall = time.time()
 game_log = a.state/'factorio-current.log'
+# Gallium appends across launches. Retain the old evidence, but require this
+# process to produce its own complete, live menu sample window.
+if a.fps_log and a.fps_log.exists():
+    shutil.move(str(a.fps_log), str(a.output/'previous-fps.txt'))
+profile = Path('/home/e/.local/share/factorio-driver/profile')
+
 try:
     with (a.output/'factorio-launch.log').open('w') as log:
         child = subprocess.Popen(['systemd-run', '--collect', '--wait',
@@ -89,6 +96,7 @@ try:
                             stdout=image, check=True, timeout=10)
                 if a.observe_seconds:
                     assert 0 < a.observe_seconds <= 120
+                    fps_offset = a.fps_log.stat().st_size if a.fps_log and a.fps_log.exists() else 0
                     deadline = time.monotonic() + a.observe_seconds
                     while time.monotonic() < deadline:
                         assert child.poll() is None, 'Factorio exited during timing'
@@ -98,10 +106,12 @@ try:
                 result = dict(initialized=True, launcher_elapsed_seconds=time.monotonic()-start,
                               vm_pids=vms(), launcher=a.launcher, state=str(a.state), unit=unit)
                 if a.observe_seconds:
+                    if a.fps_log:
+                        assert time.time() - a.fps_log.stat().st_mtime < 3, 'Rendering stalled: FPS log stopped updating'
                     subprocess.run(['systemctl', 'stop', unit], check=True, timeout=15)
                 if a.fps_log:
                     assert a.fps_log.stat().st_mtime >= wall, 'Stale FPS log'
-                    fps_text = a.fps_log.read_text()
+                    fps_text = a.fps_log.read_bytes()[fps_offset:].decode()
                     (a.output/'menu-fps.txt').write_text(fps_text)
                     samples = [float(line) for line in fps_text.splitlines()]
                     assert len(samples) >= 12 and all(math.isfinite(x) and x >= 0 for x in samples)
@@ -118,6 +128,14 @@ try:
         subprocess.run(['systemctl', 'stop', unit], timeout=10)
         raise RuntimeError('Standalone startup exceeded its bound')
 finally:
+    # Guest stderr is not necessarily forwarded through the microVM console.
+    # Preserve it even on an early stall, together with this launch's profile.
+    for name in ('stderr.log', 'cpu-samples.jsonl', 'menu.perf.script', 'perf.log', 'environment.json'):
+        source = profile/name
+        if source.exists() and source.stat().st_mtime >= wall:
+            dest = a.output/'guest-profile'/name
+            dest.parent.mkdir(exist_ok=True)
+            shutil.copy2(source, dest)
     if not success:
         for pid in vms():
             try:

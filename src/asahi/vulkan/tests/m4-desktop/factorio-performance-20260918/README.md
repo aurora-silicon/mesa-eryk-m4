@@ -818,3 +818,15 @@ not timing runs. The GDB helper's CPU-frame decoding is specific to this FEX
 build. `FACTORIO_PROFILE_STARTUP=1` permits an eight-second profile before menu
 initialization; set `FACTORIO_DRIVER_PROFILE=1` and an appropriate
 `FACTORIO_PROFILE_DELAY`. All launches remain under the host hardware guard.
+
+## Fresh menu samples and submission follow-up (2026-09-19)
+
+The current launcher uses native ARM64 Mesa through FEX GL/Vulkan thunks.
+`factorio-standalone-observe.py` now saves the prior append-only HUD log, samples
+only the current post-initialization observation window, requires live updates,
+and retains guest stderr/CPU/perf data even on failure. The 23:54 profile stalled
+with `vkEndCommandBuffer(VK_ERROR_FEATURE_NOT_PRESENT)`; its old tail-based FPS
+average is invalid. The fresh diagnostic repeat `20260919T000046684262Z-factorio-native-profile-fresh2`
+completed at 14.21 FPS (diagnostic logging enabled), without that error.
+Game and native graphics threads each used approximately 12% of one core;
+submission waits remain the focus. 60 FPS is not achieved.
