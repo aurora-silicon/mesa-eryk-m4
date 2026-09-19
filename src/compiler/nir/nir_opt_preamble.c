@@ -262,6 +262,10 @@ can_move_intrinsic(nir_intrinsic_instr *instr, opt_preamble_ctx *ctx)
 static bool
 can_move_instr(nir_instr *instr, opt_preamble_ctx *ctx)
 {
+   if (ctx->options->can_move_instr_cb &&
+       !ctx->options->can_move_instr_cb(instr, ctx->options->cb_data))
+      return false;
+
    /* If we are only contained within uniform control flow, no speculation is
     * needed since the control flow will be reconstructed in the preamble. But
     * if we are not, we must be able to speculate instructions to move them.

@@ -155,6 +155,7 @@ hk_physical_device_compiler_flags(const struct hk_physical_device *pdev)
       flags |= (uint64_t)debug_get_bool_option("HK_M4_PLAIN_SAMPLERS", false) << 34;
       flags |= (uint64_t)debug_get_bool_option("HK_M4_PREFETCH_DESCRIPTORS", false) << 35;
       flags |= (uint64_t)debug_get_bool_option("HK_M4_VERSION_SAMPLES", true) << 36;
+      flags |= (uint64_t)debug_get_bool_option("HK_M4_NATIVE_PREAMBLE", false) << 37;
    }
    return flags;
 }
@@ -2725,6 +2726,10 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
       robust2_modes |= nir_var_mem_ssbo;
 #endif
 
+   const bool native_preamble = dev->dev.chip == AGX_CHIP_G16G &&
+      nir->info.stage == MESA_SHADER_FRAGMENT &&
+      debug_get_bool_option("HK_M4_NATIVE_PREAMBLE", false);
+
    struct agx_shader_key backend_key = {
       .reserved_preamble = reserved,
       .dev = agx_gather_device_key(&dev->dev),
@@ -2732,15 +2737,16 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
       /* Native Ioto declares TPS for internal kernels too. */
       .has_scratch = !nir->info.internal || agx_native_graphics(&dev->dev),
       .promote_constants = true,
-      .promote_textures = true,
+      .promote_textures = !native_preamble,
       /* G17P's Ioto resource program populates CProg before the main shader;
        * it does not execute AGX2's tex_state_store/sampler_state_store shader
        * preamble.  The bounded G17P descriptor lowerings above convert the
        * admitted static texture cases to immediate state slots before the
-       * backend runs.  Keep this architectural, not environment-selected:
-       * an unhandled descriptor shape must fail closed in the main packer.
+       * backend runs. M4 can opt into integer-only arithmetic appended to
+       * the Ioto constant program; descriptor stores remain unsupported and
+       * unhandled descriptor shapes must fail closed in the main packer.
        */
-      .no_preamble = agx_chip_uses_hal200_ioto(dev->dev.chip),
+      .no_preamble = agx_chip_uses_hal200_ioto(dev->dev.chip) && !native_preamble,
    };
 
    /* For now, sample shading is always dynamic. Indicate that. */

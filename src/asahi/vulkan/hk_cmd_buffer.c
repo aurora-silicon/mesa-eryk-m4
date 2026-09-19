@@ -1185,7 +1185,10 @@ hk_g17p_basic_graphics_program_supported(struct hk_cmd_buffer *cmd,
     * Atomics with returned values use it even without register spilling.
     * The legacy preamble/scratch-helper ABI remains unsupported here. */
    if (!linked || !linked->b.bo || !linked->b.bo->va || linked->b.size == 0 ||
-       linked->b.size > UINT32_MAX || s->b.info.has_preamble ||
+       linked->b.size > UINT32_MAX ||
+       (s->b.info.has_preamble &&
+        (s->info.stage != MESA_SHADER_FRAGMENT ||
+         !debug_get_bool_option("HK_M4_NATIVE_PREAMBLE", false))) ||
        s->b.info.preamble_scratch_size != 0 ||
        s->b.info.texture_state_count != 0 ||
        (s->b.info.sampler_state_count != 0 &&
@@ -1633,6 +1636,20 @@ hk_upload_usc_words(struct hk_cmd_buffer *cmd, struct hk_shader *s,
       hk_cmd_buffer_retain_bo(cmd, linked->b.bo);
       if (s->b.info.rodata.size_16 != 0)
          hk_cmd_buffer_retain_bo(cmd, s->bo);
+      unsigned preamble_size = 0;
+      if (s->b.info.has_preamble) {
+         const unsigned end = s->b.info.main_offset > s->b.info.preamble_offset
+            ? s->b.info.main_offset : s->b.info.binary_size;
+         if (end > s->b.info.binary_size ||
+             s->b.info.preamble_offset >= end ||
+             end - s->b.info.preamble_offset < 4 ||
+             end - s->b.info.preamble_offset > SIZE_MAX - program_capacity) {
+            vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+            return 0;
+         }
+         preamble_size = end - s->b.info.preamble_offset;
+         program_capacity += preamble_size;
+      }
 
       struct agx_bo *program_bo = NULL;
       struct agx_ptr upload = {0};
@@ -1720,15 +1737,29 @@ hk_upload_usc_words(struct hk_cmd_buffer *cmd, struct hk_shader *s,
          return 0;
       }
 
+      size_t program_length = program.length;
       memcpy(program_map, program.bytes, program.length);
+      if (preamble_size) {
+         const uint8_t stop[4] = {0x0e, 0, 0, 0};
+         if (program.length < sizeof(stop) ||
+             memcmp(program.bytes + program.length - sizeof(stop), stop, sizeof(stop)) ||
+             preamble_size > program_capacity - (program.length - sizeof(stop))) {
+            vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+            return 0;
+         }
+         memcpy((uint8_t *)program_map + program.length - sizeof(stop),
+                (const uint8_t *)s->b.binary + s->b.info.preamble_offset,
+                preamble_size);
+         program_length += preamble_size - sizeof(stop);
+      }
       if (hk_g17p_launch_trace_enabled()) {
          const char *label = s->info.stage == MESA_SHADER_FRAGMENT
                                 ? "fragment-ioto"
                                 : "vertex-ioto";
          hk_g17p_trace_line(label, upload.gpu, program_map,
-                            program.length);
+                            program_length);
       }
-      if (!pooled && agx_bo_sync_for_device(program_bo, 0, program.length)) {
+      if (!pooled && agx_bo_sync_for_device(program_bo, 0, program_length)) {
          vk_command_buffer_set_error(&cmd->vk, VK_ERROR_DEVICE_LOST);
          return 0;
       }

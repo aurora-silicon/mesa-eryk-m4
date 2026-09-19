@@ -28,3 +28,29 @@ pixel-identical. The 60-second live run
 29.83 FPS tail (14.84--39.95), peak 90.75 C. It contains more compute passes
 and a different animated scene than the 42.98 FPS preceding run. No isolated
 benefit is established; normal launcher keeps descriptor prefetch disabled.
+
+Short repeated-frame comparisons after recovery both complete:
+20260919T023948434311Z-factorio-fixed-eight-no-prefetch-recovered reports
+1.906 seconds for the measured loop section, versus 1.800 seconds with
+prefetch in 20260919T024104558291Z-factorio-fixed-eight-prefetch. Replayer FPS
+counts the repeated frame only once and must not be read as application FPS.
+Captured game targets are 2560x1664, unlike the current 2512x1552 window.
+Full-size fragment averages are 1.972 versus 1.950 ms in the retained summary
+intervals, with unequal command counts at interval boundaries. This is a small
+difference and does not justify a claimed live-menu speedup.
+
+### Integer-only native preamble revisited
+
+`HK_M4_NATIVE_PREAMBLE=true` moves uniform integer arithmetic into the
+native constant program after Ioto resource loading. Only 32-bit exports
+are allowed; float arithmetic and memory loads stay in the main shader.
+This compiler choice receives its own cache identity bit. Default is false.
+
+The former rejected experiment predates executable BO cache normalization.
+With that correction, `20260919T025718413433Z-factorio-integer-preamble-current-frame`
+reproduces the retained 2560x1664 frame exactly (0 differing components).
+`20260919T025804817644Z-factorio-integer-preamble-current-menu` completes a
+60-second unchanged 2512x1552 menu run: tail mean 37.433 FPS, 37.16–37.75,
+peak sensor 89.25 C. This does not establish a performance win over the
+different scenes in preceding 38–43 FPS runs, so the option stays disabled.
+Broader correctness and floating/native preamble support remain TODO.

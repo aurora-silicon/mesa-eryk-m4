@@ -40,6 +40,36 @@ def_size(nir_def *def, unsigned *size, unsigned *align,
    *class = preamble_class(def);
 }
 
+static void
+def_size_32(nir_def *def, unsigned *size, unsigned *align,
+            nir_preamble_class *class)
+{
+   def_size(def, size, align, class);
+   /* AGX3B currently has grounded uniform writes only for 32-bit values.
+    * Oversized candidates cannot be exported, but may still be calculated
+    * inside the preamble as dependencies of exportable 32-bit values. */
+   if (*class == nir_preamble_class_general && def->bit_size != 32)
+      *size = 512;
+}
+
+static bool
+native_preamble_instr(const nir_instr *instr, const void *data)
+{
+   /* Resource loads run in the qualified Ioto loader. The appended native
+    * constant program currently supports arithmetic over those uniforms;
+    * leave other memory accesses and their dependent expressions per-lane. */
+   if (instr->type == nir_instr_type_alu) {
+      const nir_op_info *info = &nir_op_infos[nir_instr_as_alu(instr)->op];
+      if (nir_alu_type_get_base_type(info->output_type) == nir_type_float)
+         return false;
+      for (unsigned i = 0; i < info->num_inputs; ++i)
+         if (nir_alu_type_get_base_type(info->input_types[i]) == nir_type_float)
+            return false;
+   }
+   return instr->type != nir_instr_type_intrinsic ||
+          nir_instr_as_intrinsic(instr)->intrinsic == nir_intrinsic_load_preamble;
+}
+
 static bool
 all_uses_float(nir_def *def)
 {
@@ -426,10 +456,15 @@ lower_preamble(nir_builder *b, nir_intrinsic_instr *intr, void *data)
 }
 
 bool
-agx_nir_opt_preamble(nir_shader *nir, unsigned *sizes)
+agx_nir_opt_preamble(nir_shader *nir, unsigned *sizes, bool uniform_32bit_only)
 {
    bool progress = false;
-   NIR_PASS(progress, nir, nir_opt_preamble, &preamble_options, sizes);
+   nir_opt_preamble_options options = preamble_options;
+   if (uniform_32bit_only) {
+      options.def_size = def_size_32;
+      options.can_move_instr_cb = native_preamble_instr;
+   }
+   NIR_PASS(progress, nir, nir_opt_preamble, &options, sizes);
 
    int16_t heap[512];
    memset(heap, ~0, sizeof(heap));

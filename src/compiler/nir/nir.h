@@ -7012,6 +7012,10 @@ typedef struct nir_opt_preamble_options {
     */
    nir_instr_filter_cb avoid_instr_cb;
 
+   /* Optional backend capability filter. Returning false keeps the instruction
+    * and every expression depending on it out of the preamble. */
+   nir_instr_filter_cb can_move_instr_cb;
+
    const void *cb_data;
 } nir_opt_preamble_options;
 
