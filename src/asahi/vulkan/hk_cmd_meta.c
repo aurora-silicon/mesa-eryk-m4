@@ -2725,6 +2725,30 @@ hk_CmdCopyImage2(VkCommandBuffer commandBuffer,
    VK_FROM_HANDLE(hk_image, src_image, pCopyImageInfo->srcImage);
    VK_FROM_HANDLE(hk_image, dst_image, pCopyImageInfo->dstImage);
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
+   /* Sample through the native compressed view, then store to ordinary
+    * storage. Consecutive slice copies can share one CDM instead of paying
+    * for a complete render pass per small rectangle. The common meta shader
+    * preserves raw RGBA/BGRA bytes through its format pack/unpack. */
+   if (dev->dev.chip == AGX_CHIP_G16G &&
+       debug_get_bool_option("HK_M4_COMPUTE_COMPRESSED_COPY", true) &&
+       src_image->planes[0].layout.compressed &&
+       !dst_image->planes[0].layout.compressed &&
+       (dst_image->vk.image_type == VK_IMAGE_TYPE_2D ||
+        dst_image->vk.image_type == VK_IMAGE_TYPE_3D) &&
+       src_image->vk.samples == VK_SAMPLE_COUNT_1_BIT &&
+       dst_image->vk.samples == VK_SAMPLE_COUNT_1_BIT &&
+       hk_native_compressed_copy_via_render(src_image, dst_image)) {
+      struct hk_meta_save save;
+      hk_meta_begin(cmd, &save, VK_PIPELINE_BIND_POINT_COMPUTE);
+      struct vk_meta_copy_image_properties src_props =
+         hk_meta_copy_get_image_properties(src_image);
+      struct vk_meta_copy_image_properties dst_props =
+         hk_meta_copy_get_image_properties(dst_image);
+      vk_meta_copy_image(&cmd->vk, &dev->meta, pCopyImageInfo, &src_props,
+                         &dst_props, VK_PIPELINE_BIND_POINT_COMPUTE);
+      hk_meta_end(cmd, &save, VK_PIPELINE_BIND_POINT_COMPUTE);
+      return;
+   }
    if (agx_native_graphics(&dev->dev) &&
        src_image->vk.samples == VK_SAMPLE_COUNT_1_BIT &&
        dst_image->vk.samples == VK_SAMPLE_COUNT_1_BIT &&

@@ -109,3 +109,20 @@ The live menu `20260919T021343773048Z-factorio-volume-copy-menu` completes its
 frame: 6460 16x16 renders in the final 19.1 seconds. Correctness is restored,
 but one render command per slice has substantial firmware overhead and needs
 batching. This is not a paired comparison with the earlier 39 FPS scene.
+
+## Batch compressed-source copies through common compute
+
+A compressed RGBA8/BGRA8 source can be sampled normally while an uncompressed
+2D/3D destination accepts ordinary storage writes. Use the common Vulkan meta
+compute copy for this pair on M4: native source views, exact format pack/unpack,
+and bounded image stores. Consecutive small regions share a CDM instead of
+requiring a tile render for each slice. Compressed destinations retain rendering.
+HK_M4_COMPUTE_COMPRESSED_COPY=false is a diagnostic fallback; true is default.
+
+`20260919T021634455712Z-compressed-volume-compute-all-formats` passes the same
+96 exact-byte cases (including actual compressed sources), peak 63.5 C.
+`20260919T021650522676Z-factorio-compute-copy-menu` completes the untouched
+60-second live menu, tail 41.55 FPS (39.99--43.97), peak 88 C. Scene/pass counts
+vary across runs, so this is not a paired FPS ratio. The final 19.07 seconds
+contain 8109 renders and 6366 computes, with no tiny per-slice renders. Full CTS
+and sustained 60 FPS remain pending.
