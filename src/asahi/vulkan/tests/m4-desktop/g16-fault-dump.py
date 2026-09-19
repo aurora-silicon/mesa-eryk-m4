@@ -134,6 +134,15 @@ def scheduler(raw, report):
                 raise ValueError('queue/ring pointer mismatch')
             entry['ring_cursors_00_30_40'] = [u32(ring, o) for o in (0, 0x30, 0x40)]
         result['queues'][stage] = entry
+    if 'client-notifications' in records:
+        client = blob('client-notifications', 0x1000)
+        result['client_notifications'] = {
+            stage: dict(submitted=u64(client, 0x600 + i*8),
+                        firmware_stamp=hex(u32(client, 0x620 + i*16)),
+                        published_stamp=hex(u32(client, 0x628 + i*16)),
+                        flush_requested=u32(client, i*0x200 + 0x20),
+                        asid=u32(client, i*0x200 + 0x24))
+            for i, stage in enumerate(('ta', 'fragment', 'compute'))}
     if 'compute-command' in records:
         command = blob('compute-command', 0x1000)
         registers = u32(command, 0x728) & 0xffff
@@ -177,6 +186,18 @@ def scheduler(raw, report):
         expected_address_words = [(pages >> 4) & 0xfffffff8,
             (((pages+bias) >> 8) & 0x70000000) | ((pages >> 11) & 0x80000000)]
         slot = u32(manager, 0xc)
+        def selected_buffer(command, base, register):
+            count = struct.unpack_from('<H', command, base+0x708)[0]
+            if count > 0x600//12:
+                raise ValueError('render register list exceeds aperture')
+            values = [u64(command, base+i*12+4) for i in range(count)
+                      if u32(command, base+i*12) & ~1 == register]
+            if len(values) != 1:
+                raise ValueError('missing or duplicated parameter-buffer selector')
+            return values[0]
+        selectors = {'manager_0c':slot, 'command_18':u32(ta, 0x18),
+            'ta_register_1c830':selected_buffer(ta, 0x40, 0x1c830),
+            'fragment_register_1c838':selected_buffer(fragment, 0x80, 0x1c838)}
         descriptor = None
         if 'parameter-table' in records and slot < 64:
             table = blob('parameter-table', 0x4000)
@@ -186,6 +207,8 @@ def scheduler(raw, report):
                 matches_manager_address=(words[0] & 0xfffffff8 == expected_address_words[0]
                     and words[1] & 0xf0000000 == expected_address_words[1]))
         result['parameter_buffer'] = {
+            'owner_selectors':selectors,
+            'owner_selectors_agree':len(set(selectors.values())) == 1,
             'page_list_gpu_va_28': hex(pages),
             'hardware_descriptor': descriptor,
             'init_cursor_0c': u32(scene, 0x30c),
