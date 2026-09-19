@@ -1455,6 +1455,16 @@ hk_g17p_graphics_uniform_ranges(
       };
    }
 
+   const bool statistics_uniform = s->info.stage == MESA_SHADER_FRAGMENT &&
+      linked && linked->prolog_statistics_uniform;
+   const uint64_t statistics_address = statistics_uniform ?
+      hk_pipeline_stat_addr(cmd,
+         VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT) : 0;
+   static_assert(AGX_ABI_FUNI_NATIVE_STAT_QUERY == 8, "native prefix slot");
+   if (statistics_uniform && (!statistics_address || (statistics_address & 7) ||
+                              !hk_stat_enabled(statistics_address)))
+      return false;
+
    const bool native_spills = s->info.stage == MESA_SHADER_FRAGMENT &&
       agx_tilebuffer_spills(&cmd->state.gfx.render.tilebuffer);
    if (native_spills && s->info.agx3_combined_sampler_valid) {
@@ -1476,16 +1486,28 @@ hk_g17p_graphics_uniform_ranges(
       const uint64_t pointers[4] = {
          dev->sampled_images.bo->va->addr,
          dev->samplers.table.bo->va->addr,
-         0,
+         statistics_address,
          0xffff, /* Native image coordinate routing reads the clamp at u12. */
       };
       const unsigned pointer_halfs =
-         (s->info.agx3_indexed_images_valid || native_spills) ? 16 : 8;
+         (s->info.agx3_indexed_images_valid || native_spills) ? 16 :
+         statistics_uniform ? 12 : 8;
       const uint64_t pointers_va = hk_pool_upload(cmd, pointers, pointer_halfs * 2, 8);
       if (!pointers_va)
          return false;
       ranges[count++] = (struct agx3_ioto_uniform_range){
          .start_halfs = 0, .size_halfs = pointer_halfs, .address = pointers_va,
+      };
+   }
+
+   if (statistics_uniform && !s->info.agx3_indexed_sampler_valid && !native_spills) {
+      uint64_t pointer = hk_pool_upload(cmd, &statistics_address,
+                                        sizeof(statistics_address), 8);
+      if (!pointer)
+         return false;
+      ranges[count++] = (struct agx3_ioto_uniform_range){
+         .start_halfs = AGX_ABI_FUNI_NATIVE_STAT_QUERY,
+         .size_halfs = 4, .address = pointer,
       };
    }
 

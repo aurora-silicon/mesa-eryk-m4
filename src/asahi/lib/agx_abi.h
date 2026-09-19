@@ -53,8 +53,10 @@
  * Shift the entire ordinary fragment ABI, including blend constants and root
  * pointers, so textured constant-colour blending cannot alias those heaps.
  */
-/* Texture/sampler pointers plus native image-coordinate clamp at half12. */
+/* Native prefix: texture/sampler pointers at0..7, query address at8..11,
+ * and image-coordinate clamp at12..15. Ordinary fragment data follows. */
 #define AGX_ABI_FUNI_NATIVE_PREFIX 16
+#define AGX_ABI_FUNI_NATIVE_STAT_QUERY 8
 #define AGX_ABI_FUNI_EMRT_HEAP (0)
 #define AGX_ABI_FUNI_BLEND_R   (AGX_ABI_FUNI_EMRT_HEAP + 4)
 #define AGX_ABI_FUNI_BLEND_G   (AGX_ABI_FUNI_BLEND_R + 2)

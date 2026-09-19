@@ -290,3 +290,18 @@ Diagnostic statistics omission gives5.92..6.00ms, but returns deliberately
 invalid zero query results. It is an adapted replay cost bound, never an
 application-support result. That omission flag is not retained in active
 source. It shows further work beyond statistics is needed to reach5ms.
+
+## Per-draw statistics address uniform
+
+The statistics address and its compacted report offset are immutable at draw
+recording. Resolve them on the CPU and upload the pointer through Ioto into
+reserved native prefix halves8..11. Texture/sampler pointers remain0..7 and
+the image clamp remains12..15. The linked prolog consumes that uniform instead
+of loading the root pointer/flags and computing the same address per fragment.
+No query value is cached. The ordinary main/epilog ABI is unchanged.
+
+HK_M4_STATISTICS_UNIFORM=false restores root-table addressing. Default true on
+G16 only. Exact count/copy/edge oracles pass; all121680 textured-quad counts
+and the complete reference readback match. Five Factorio frames remain
+pixel-identical with identical49.45million counts at6.18..6.25ms; fragment sums
+4.34..4.39ms. This remains short of the5ms complete-frame target.

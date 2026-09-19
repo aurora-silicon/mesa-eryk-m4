@@ -2399,22 +2399,54 @@ lower_fs_root(nir_builder *b, nir_intrinsic_instr *intr, UNUSED void *data)
    return true;
 }
 
-static void
-build_fs_prolog(nir_builder *b, const void *key)
+static bool
+lower_fs_statistics_uniform(nir_builder *b, nir_intrinsic_instr *intr,
+                             void *data)
 {
+   if (intr->intrinsic != nir_intrinsic_load_stat_query_address_poly ||
+       nir_intrinsic_base(intr) != PIPE_STAT_QUERY_PS_INVOCATIONS)
+      return false;
+   b->cursor = nir_before_instr(&intr->instr);
+   nir_def *address = nir_load_preamble(b, 1, 64, .base = 0);
+   *(nir_intrinsic_instr **)data = nir_def_as_intrinsic(address);
+   nir_def_replace(&intr->def, address);
+   return true;
+}
+
+static nir_intrinsic_instr *
+build_fs_prolog_body(nir_builder *b, const void *key_)
+{
+   const struct agx_fs_prolog_key *key = key_;
    agx_nir_fs_prolog(b, key);
+
+   nir_intrinsic_instr *statistics = NULL;
+   if (key->statistics_uniform)
+      NIR_PASS(_, b->shader, nir_shader_intrinsics_pass,
+               lower_fs_statistics_uniform, nir_metadata_control_flow,
+               &statistics);
 
    /* Lower load_stat_query_address_agx, needed for FS statistics */
    NIR_PASS(_, b->shader, hk_lower_uvs_index, MESA_SHADER_FRAGMENT, 0);
    NIR_PASS(_, b->shader, nir_shader_intrinsics_pass, lower_fs_root,
             nir_metadata_control_flow, NULL);
+   return statistics;
+}
+
+static void
+build_fs_prolog(nir_builder *b, const void *key)
+{
+   build_fs_prolog_body(b, key);
 }
 
 static void
 build_g17p_fs_prolog(nir_builder *b, const void *key)
 {
-   build_fs_prolog(b, key);
+   nir_intrinsic_instr *statistics = build_fs_prolog_body(b, key);
    agx_nir_reserve_native_fragment_prefix(b->shader);
+   /* This address belongs to the native prefix itself, rather than the
+    * relocated ordinary ABI. Fix its explicit load after the relocation. */
+   if (statistics)
+      nir_intrinsic_set_base(statistics, AGX_ABI_FUNI_NATIVE_STAT_QUERY);
 }
 
 static void
@@ -2475,7 +2507,10 @@ hk_get_fast_linked_locked_fs(struct hk_device *dev, struct hk_shader *shader,
    }
    /* The statistics prolog reads the root table (query address) even when
     * the main shader never does; the native launch must push the root. */
-   linked->prolog_uses_root = key->prolog.statistics;
+   linked->prolog_uses_root = key->prolog.statistics &&
+                              !key->prolog.statistics_uniform;
+   linked->prolog_statistics_uniform = key->prolog.statistics &&
+                                       key->prolog.statistics_uniform;
 
    _mesa_hash_table_insert(shader->linked.ht, key_clone, linked);
    return linked;
@@ -4234,6 +4269,8 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
       struct hk_fast_link_key_fs key = {
          .prolog.statistics = hk_stat_enabled(hk_pipeline_stat_addr(
             cmd, VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT)),
+         .prolog.statistics_uniform = dev->dev.chip == AGX_CHIP_G16G &&
+            debug_get_bool_option("HK_M4_STATISTICS_UNIFORM", true),
          .prolog.native_statistics = dev->dev.chip == AGX_CHIP_G16G &&
             dyn->ms.rasterization_samples == 1 &&
             debug_get_bool_option("HK_M4_NATIVE_STATISTICS", true),

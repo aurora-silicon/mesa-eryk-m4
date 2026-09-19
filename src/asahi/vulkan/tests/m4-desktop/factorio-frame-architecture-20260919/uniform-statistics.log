@@ -1,0 +1,11 @@
+HK_FRAGMENT_QUERY pool=868f814000 query=315 covered=40000 available=1
+HK_FRAGMENT_QUERY pool=868f814000 query=316 covered=49448124 available=1
+HK_FRAGMENT_QUERY pool=868f814000 query=317 covered=40000 available=1
+HK_FRAGMENT_QUERY pool=868f814000 query=318 covered=49451888 available=1
+HK_FRAGMENT_QUERY pool=868f814000 query=319 covered=40000 available=1
+HK_FRAGMENT_QUERY pool=868f814000 query=320 covered=49457522 available=1
+HK_FRAGMENT_QUERY pool=868f814000 query=321 covered=40000 available=1
+HK_FRAGMENT_QUERY pool=868f814000 query=322 covered=49463366 available=1
+HK_FRAGMENT_QUERY pool=868f814000 query=323 covered=40000 available=1
+HK_FRAGMENT_QUERY pool=868f814000 query=324 covered=49470745 available=1
+PASS: Vulkan replay process completed; rendering requires separate comparison

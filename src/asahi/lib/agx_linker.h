@@ -119,6 +119,7 @@ struct agx_fs_prolog_key {
 
    /* Native active-lane accounting for single-sample fragment queries. */
    bool native_statistics;
+   bool statistics_uniform;
 
    /* Need to lower desktop OpenGL polygon stipple */
    bool polygon_stipple;
