@@ -6,7 +6,7 @@ witnessed G16G B0 words, keeping other chips and incomplete bit combinations
 closed. Decoder coverage: 3971 host checks, including independent native words.
 
 HK_M4_CDM_VISIBILITY_BARRIER=true uses that form for explicit cache operations
-and at CDM stream closure. Default false while qualifying. The separate
+and at CDM stream closure. Initially opt-in during qualification; enabled after the checks below. The separate
 HK_M4_CDM_END_BARRIER switch isolates closure placement from encoding.
 
 GPU query reset, fills, timestamps, then NO-WAIT CPU/GPU copies:
@@ -22,3 +22,24 @@ major speedup; 5 ms remains unmet. Full CTS is deferred.
 
 The 13-mode exact query matrix passes, including the previously hanging WAIT
 copy and 64 individually reset queries. Peak63C. Guarded execution only.
+
+## Qualified default and safe batching
+
+The native visibility form is now the default for G16G explicit cache
+operations and stream closure. Track actual trailing visibility, preserve it
+when joining streams, and allow memory-dependency merging only with that
+operation still present and a complete bounded write ledger. Timestamp and
+query-reset ownership boundaries remain. Fill-ledger batching defaults on
+with wide visibility. Diagnostic overrides remain available.
+
+A final compute stream's retained visibility barrier also satisfies the
+command-buffer publication of earlier fragment-statistics atomics. Avoid
+creating another firmware job just to repeat it. The native five-frame replay
+passes exact pixels and all query totals at 5.984..6.108 ms. Its sixteen commands
+replace the earlier eighteen; this is a modest gain, not the 5 ms target.
+The exact statistics oracle passes odd edges, GPU copies and split submissions.
+All 13 query modes and 8 targeted synchronization2 cases pass with batching.
+Final built-default query validation and live qualification are recorded below.
+
+The final built defaults pass all 13 modes without new option overrides
+(162015 query-visible-default-matrix, peak 64.75 C). Live qualification follows.

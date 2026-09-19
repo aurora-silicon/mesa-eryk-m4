@@ -74,7 +74,7 @@ hk_cdm_cache_flush(struct hk_device *dev, struct hk_cs *cs)
          .chip = dev->dev.chip,
          .flags = 0x5,
          .wide_visibility = dev->dev.chip == AGX_CHIP_G16G &&
-            debug_get_bool_option("HK_M4_CDM_VISIBILITY_BARRIER", false),
+            debug_get_bool_option("HK_M4_CDM_VISIBILITY_BARRIER", true),
       };
       uint8_t packed[AGX3_CDM_BARRIER_SIZE];
       if (!agx3_cdm_barrier_pack(&info, packed)) {

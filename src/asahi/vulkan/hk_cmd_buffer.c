@@ -571,7 +571,8 @@ merge_control_streams(struct hk_cmd_buffer *cmd)
       debug_get_bool_option("HK_M4_BATCH_DISJOINT_CLEARS", false);
    const bool batch_fills =
       hk_cmd_buffer_device(cmd)->dev.chip == AGX_CHIP_G16G &&
-      debug_get_bool_option("HK_M4_BATCH_META_FILLS", false);
+      debug_get_bool_option("HK_M4_BATCH_META_FILLS",
+         debug_get_bool_option("HK_M4_CDM_VISIBILITY_BARRIER", true));
    const bool batch_queries =
       hk_cmd_buffer_device(cmd)->dev.chip == AGX_CHIP_G16G &&
       debug_get_bool_option("HK_M4_BATCH_QUERY_COPIES", false);
@@ -628,6 +629,12 @@ merge_control_streams(struct hk_cmd_buffer *cmd)
            */
           (!last->ends_timestamp_reset || cs->ends_timestamp_reset) &&
           (!last->ends_memory_dependency ||
+           /* Keep the actual native visibility operation in the linked
+            * stream. A memory dependency no longer needs a separate firmware
+            * job solely to publish aliased writes. Reset/timestamp ownership
+            * and complete attachment ledgers still gate merging. */
+           (last->ends_wide_visibility &&
+            debug_get_bool_option("HK_M4_BATCH_VISIBLE_COMPUTE", true)) ||
            /* A clear cannot consume another disjoint clear's writes. Keep
             * ordered CDM launches and publish both at the merged completion
             * boundary, before any subsequent reader. Whole-plane canonical
@@ -673,7 +680,14 @@ hk_EndCommandBuffer(VkCommandBuffer commandBuffer)
        * while active. EndQuery still publishes them before availability.
        * Also publish at the CB boundary for split queries and diagnostics.
        * Ordinary shader memory dependencies retain their per-pass flush. */
-      if (statistics) {
+      const struct hk_cs *tail = list_is_empty(&cmd->control_streams) ? NULL :
+         list_last_entry(&cmd->control_streams, struct hk_cs, node);
+      /* A final compute already publishes all preceding fragment atomics
+       * when its exact wide-visibility operation is retained. Do not add a
+       * second firmware job solely to repeat that command-buffer boundary. */
+      const bool published = tail && tail->type == HK_CS_CDM &&
+                             tail->ends_wide_visibility;
+      if (statistics && !published) {
          struct hk_cs *flush = hk_cmd_buffer_get_cs(cmd, true);
          if (!flush)
             return vk_command_buffer_get_record_result(&cmd->vk);

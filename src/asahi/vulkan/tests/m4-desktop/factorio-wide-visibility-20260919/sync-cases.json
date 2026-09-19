@@ -1,0 +1,210 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.synchronization2.op.single_queue.barrier.write_image_fragment_read_image_fragment.image_128x128_r8g8b8a8_unorm",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.synchronization2.op.single_queue.barrier.write_image_fragment_read_image_fragment.image_128x128_r8g8b8a8_unorm",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260919T161623308181Z-visible-batching-sync-cts/cts/000/result.qpa"
+    ],
+    "boot_id": "688fcff8-aaa6-4652-b723-d2b662871b79",
+    "status": "Pass",
+    "started_unix": 1789834584.2837186,
+    "eligibility": {
+      "case": "dEQP-VK.synchronization2.op.single_queue.barrier.write_image_fragment_read_image_fragment.image_128x128_r8g8b8a8_unorm",
+      "catalog_index": 2910662,
+      "classification": "targeted-regression",
+      "rule": "fragment/vertex consumer dependencies; no outcome filtering",
+      "requirements": []
+    },
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.3021292120000112,
+    "finished_unix": 1789834584.5954704,
+    "pid": 3349
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.synchronization2.op.single_queue.barrier.write_image_fragment_read_image_fragment.image_128x128_r32g32b32a32_sfloat",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.synchronization2.op.single_queue.barrier.write_image_fragment_read_image_fragment.image_128x128_r32g32b32a32_sfloat",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260919T161623308181Z-visible-batching-sync-cts/cts/001/result.qpa"
+    ],
+    "boot_id": "688fcff8-aaa6-4652-b723-d2b662871b79",
+    "status": "Pass",
+    "started_unix": 1789834584.605743,
+    "eligibility": {
+      "case": "dEQP-VK.synchronization2.op.single_queue.barrier.write_image_fragment_read_image_fragment.image_128x128_r32g32b32a32_sfloat",
+      "catalog_index": 2910658,
+      "classification": "targeted-regression",
+      "rule": "fragment/vertex consumer dependencies; no outcome filtering",
+      "requirements": []
+    },
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.20124985400002515,
+    "finished_unix": 1789834584.816704,
+    "pid": 3360
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.synchronization2.op.single_queue.barrier.write_image_fragment_read_image_vertex.image_128x128_r8g8b8a8_unorm",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.synchronization2.op.single_queue.barrier.write_image_fragment_read_image_vertex.image_128x128_r8g8b8a8_unorm",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260919T161623308181Z-visible-batching-sync-cts/cts/002/result.qpa"
+    ],
+    "boot_id": "688fcff8-aaa6-4652-b723-d2b662871b79",
+    "status": "Pass",
+    "started_unix": 1789834584.8272731,
+    "eligibility": {
+      "case": "dEQP-VK.synchronization2.op.single_queue.barrier.write_image_fragment_read_image_vertex.image_128x128_r8g8b8a8_unorm",
+      "catalog_index": 2910718,
+      "classification": "targeted-regression",
+      "rule": "fragment/vertex consumer dependencies; no outcome filtering",
+      "requirements": []
+    },
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.20123061299995015,
+    "finished_unix": 1789834585.0377083,
+    "pid": 3366
+  },
+  {
+    "index": 3,
+    "case": "dEQP-VK.synchronization2.op.single_queue.barrier.write_image_fragment_read_image_vertex.image_128x128_r32g32b32a32_sfloat",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.synchronization2.op.single_queue.barrier.write_image_fragment_read_image_vertex.image_128x128_r32g32b32a32_sfloat",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260919T161623308181Z-visible-batching-sync-cts/cts/003/result.qpa"
+    ],
+    "boot_id": "688fcff8-aaa6-4652-b723-d2b662871b79",
+    "status": "Pass",
+    "started_unix": 1789834585.048276,
+    "eligibility": {
+      "case": "dEQP-VK.synchronization2.op.single_queue.barrier.write_image_fragment_read_image_vertex.image_128x128_r32g32b32a32_sfloat",
+      "catalog_index": 2910714,
+      "classification": "targeted-regression",
+      "rule": "fragment/vertex consumer dependencies; no outcome filtering",
+      "requirements": []
+    },
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.20140432200003033,
+    "finished_unix": 1789834585.2592502,
+    "pid": 3372
+  },
+  {
+    "index": 4,
+    "case": "dEQP-VK.synchronization2.op.single_queue.barrier.write_image_compute_read_image_vertex.image_128x128_r8g8b8a8_unorm",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.synchronization2.op.single_queue.barrier.write_image_compute_read_image_vertex.image_128x128_r8g8b8a8_unorm",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260919T161623308181Z-visible-batching-sync-cts/cts/004/result.qpa"
+    ],
+    "boot_id": "688fcff8-aaa6-4652-b723-d2b662871b79",
+    "status": "Pass",
+    "started_unix": 1789834585.2708104,
+    "eligibility": {
+      "case": "dEQP-VK.synchronization2.op.single_queue.barrier.write_image_compute_read_image_vertex.image_128x128_r8g8b8a8_unorm",
+      "catalog_index": 2910578,
+      "classification": "targeted-regression",
+      "rule": "fragment/vertex consumer dependencies; no outcome filtering",
+      "requirements": []
+    },
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.20119924900001251,
+    "finished_unix": 1789834585.482592,
+    "pid": 3378
+  },
+  {
+    "index": 5,
+    "case": "dEQP-VK.synchronization2.op.single_queue.barrier.write_image_compute_read_image_vertex.image_128x128_r32g32b32a32_sfloat",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.synchronization2.op.single_queue.barrier.write_image_compute_read_image_vertex.image_128x128_r32g32b32a32_sfloat",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260919T161623308181Z-visible-batching-sync-cts/cts/005/result.qpa"
+    ],
+    "boot_id": "688fcff8-aaa6-4652-b723-d2b662871b79",
+    "status": "Pass",
+    "started_unix": 1789834585.4937081,
+    "eligibility": {
+      "case": "dEQP-VK.synchronization2.op.single_queue.barrier.write_image_compute_read_image_vertex.image_128x128_r32g32b32a32_sfloat",
+      "catalog_index": 2910574,
+      "classification": "targeted-regression",
+      "rule": "fragment/vertex consumer dependencies; no outcome filtering",
+      "requirements": []
+    },
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.20121239200000218,
+    "finished_unix": 1789834585.7044868,
+    "pid": 3382
+  },
+  {
+    "index": 6,
+    "case": "dEQP-VK.synchronization2.op.single_queue.barrier.write_image_compute_read_image_fragment.image_128x128_r8g8b8a8_unorm",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.synchronization2.op.single_queue.barrier.write_image_compute_read_image_fragment.image_128x128_r8g8b8a8_unorm",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260919T161623308181Z-visible-batching-sync-cts/cts/006/result.qpa"
+    ],
+    "boot_id": "688fcff8-aaa6-4652-b723-d2b662871b79",
+    "status": "Pass",
+    "started_unix": 1789834585.7158048,
+    "eligibility": {
+      "case": "dEQP-VK.synchronization2.op.single_queue.barrier.write_image_compute_read_image_fragment.image_128x128_r8g8b8a8_unorm",
+      "catalog_index": 2910522,
+      "classification": "targeted-regression",
+      "rule": "fragment/vertex consumer dependencies; no outcome filtering",
+      "requirements": []
+    },
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.20112963299999365,
+    "finished_unix": 1789834585.9258544,
+    "pid": 3386
+  },
+  {
+    "index": 7,
+    "case": "dEQP-VK.synchronization2.op.single_queue.barrier.write_image_compute_read_image_fragment.image_128x128_r32g32b32a32_sfloat",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.synchronization2.op.single_queue.barrier.write_image_compute_read_image_fragment.image_128x128_r32g32b32a32_sfloat",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260919T161623308181Z-visible-batching-sync-cts/cts/007/result.qpa"
+    ],
+    "boot_id": "688fcff8-aaa6-4652-b723-d2b662871b79",
+    "status": "Pass",
+    "started_unix": 1789834585.9360178,
+    "eligibility": {
+      "case": "dEQP-VK.synchronization2.op.single_queue.barrier.write_image_compute_read_image_fragment.image_128x128_r32g32b32a32_sfloat",
+      "catalog_index": 2910518,
+      "classification": "targeted-regression",
+      "rule": "fragment/vertex consumer dependencies; no outcome filtering",
+      "requirements": []
+    },
+    "message": "OK",
+    "returncode": 0,
+    "seconds": 0.2011350170000128,
+    "finished_unix": 1789834586.1461983,
+    "pid": 3390
+  }
+]

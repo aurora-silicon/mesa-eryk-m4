@@ -1,0 +1,14 @@
+{"mode": 6, "returncode": 0, "pass": true}
+{"mode": 0, "returncode": 0, "pass": true}
+{"mode": 1, "returncode": 0, "pass": true}
+{"mode": 2, "returncode": 0, "pass": true}
+{"mode": 3, "returncode": 0, "pass": true}
+{"mode": 4, "returncode": 0, "pass": true}
+{"mode": 5, "returncode": 0, "pass": true}
+{"mode": 7, "returncode": 0, "pass": true}
+{"mode": 8, "returncode": 0, "pass": true}
+{"mode": 9, "returncode": 0, "pass": true}
+{"mode": 10, "returncode": 0, "pass": true}
+{"mode": 11, "returncode": 0, "pass": true}
+{"mode": 12, "returncode": 0, "pass": true}
+PASS: 13 query visibility modes

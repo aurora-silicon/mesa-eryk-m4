@@ -390,8 +390,11 @@ struct hk_cs {
    /* One no-op dispatch created solely to obtain a firmware timestamp. */
    bool timestamp_only;
 
-   /* M4 aliases need the firmware completion flush at a memory dependency. */
+   /* Memory dependency: publication is required before merging a reader. */
    bool ends_memory_dependency;
+
+   /* Exact native wide-visibility operation is at the end of this CDM. */
+   bool ends_wide_visibility;
 
    /* Active-context selector consumed by AGX3 VertexProgramVariant. */
    bool agx3_active_context_selector_valid;
@@ -515,6 +518,7 @@ hk_cs_merge_cdm(struct hk_cs *a, const struct hk_cs *b)
    a->timestamp_only = false;
    a->ends_timestamp_reset |= b->ends_timestamp_reset;
    a->ends_memory_dependency |= b->ends_memory_dependency;
+   a->ends_wide_visibility = b->ends_wide_visibility;
 
    a->clear_dispatches += b->clear_dispatches;
    a->fill_dispatches += b->fill_dispatches;
@@ -894,9 +898,11 @@ hk_cmd_buffer_end_compute_internal(struct hk_cmd_buffer *cmd,
       }
       if (hk_cmd_buffer_device(cmd)->dev.chip == AGX_CHIP_G16G &&
           debug_get_bool_option("HK_M4_CDM_END_BARRIER",
-             debug_get_bool_option("HK_M4_CDM_VISIBILITY_BARRIER", false))) {
+             debug_get_bool_option("HK_M4_CDM_VISIBILITY_BARRIER", true))) {
          hk_ensure_cs_has_space(cmd, cs, 0x2000);
          hk_cdm_cache_flush(hk_cmd_buffer_device(cmd), cs);
+         cs->ends_wide_visibility =
+            debug_get_bool_option("HK_M4_CDM_VISIBILITY_BARRIER", true);
       }
    }
 
