@@ -78,3 +78,38 @@ The GL probe adds mode3 compute stores and optional wide-format selector;
 fragment probe adds4096 extents, discard-load and diagnostic-only discardedstore.
 
 Focused sampling oracle075353187879Z: all six PASS, peak63C (ordinary, border, minmax and minimumLOD). Full CTS remains deferred.
+
+## Persistent system cache and throughput checks, 08:41 UTC
+
+Bootloader e38bf64 enables T8132's previously disabled system cache (native
+multicast enable and all four plane status checks). See m1n1 docs/m4-system-cache.md.
+The same current replay remains pixel-exact and takes 14.41..15.06ms from
+first tiling start to final fragment end, with 11.53..12.06ms fragment time.
+This is still above the user's 5ms target.
+
+Normal-menu run 083626135065Z retained unchanged settings, native thunks,
+shader options and invisible Gallium HUD. Initialization 7.820s. 117 samples
+over 60s: mean46.704FPS, median47.47, range17.6..51.48; final12 mean47.638.
+No sample >=59. Peak86.25C, watchdog/thermal guard PASS. Only once-per-second
+SubmitSummary is enabled (debug_flags16777216); per-command SubmitTiming is off.
+An earlier debug_flags0 attempt removed the guard's retirement progress signal
+and caused a watchdog reset. Its incomplete evidence is retained under082939;
+no driver-fault conclusion follows from that reset. Keep Summary for long tests.
+
+The expanded GL probe accepts mode, discard, format, words-per-invocation,
+local-size, arithmetic-count. Mode3 validates every output word; arithmetic
+uses four distinct F32 FMA chains and compares every component against fmaf.
+Build with -lEGL -lGL -lm. An explicit glFlush after the opening timestamp
+prevents timestamp batching from collapsing both endpoints. The measured
+interval includes the submission boundary and is NOT pure shader execution.
+The two earlier unseparated-query runs produced identical endpoints: their
+timings are explicitly unqualified in throughput-matrix.json.
+
+At3840x2160, warm rounds1..5 mean query spans: pure vector store1.472ms;
+64FMA per component1.526ms;256FMA1.911ms (4.247billion F32 operations).
+All values matched the CPU oracle. Workgroups32/256/512 and4/16words per
+invocation remain around1.44..1.47ms for stores. This rules out a large gain
+from those simple dispatch-shape changes in this benchmark. It suggests
+memory traffic as a stronger lead, without proving peak DRAM bandwidth or
+a specific hardware configuration bug. Matrix/report files preserve exact
+results. All six separated-query experiments passed bounded guards.

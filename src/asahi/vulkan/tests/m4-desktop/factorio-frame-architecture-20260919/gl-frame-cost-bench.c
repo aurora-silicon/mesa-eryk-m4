@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: MIT
  * Basic solid/fetch/sample/compute-store scaling with CPU-checked output; use the hardware guard.
- * cc -O2 gl-frame-cost-bench.c -lEGL -lGL -o gl-frame-cost-bench
+ * cc -O2 gl-frame-cost-bench.c -lEGL -lGL -lm -o gl-frame-cost-bench
  */
 #define GL_GLEXT_PROTOTYPES
 #include <EGL/egl.h>
@@ -9,6 +9,7 @@
 #include <GL/glext.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 #include <time.h>
 #define CHECK(x) do { if (!(x)) { fprintf(stderr, "FAIL line %d: %s GL=%x\n", __LINE__, #x, glGetError()); exit(1); } } while (0)
 static GLuint shader(GLenum type, const char *text) {
@@ -34,6 +35,12 @@ int main(int argc, char **argv) {
    unsigned mode = argc > 1 ? atoi(argv[1]) : 0;
    unsigned discard = argc > 2 ? atoi(argv[2]) : 0;
    unsigned wide = argc > 3 ? atoi(argv[3]) : 0;
+   unsigned words = argc > 4 ? atoi(argv[4]) : 1;
+   unsigned local = argc > 5 ? atoi(argv[5]) : 256;
+   unsigned arithmetic = argc > 6 ? atoi(argv[6]) : 0;
+   CHECK(local == 32 || local == 64 || local == 128 || local == 256 || local == 512);
+   CHECK(arithmetic <= 256 && (!arithmetic || (mode == 3 && words == 4)));
+   CHECK(words == 1 || words == 4 || words == 16);
    CHECK(mode <= 3);
    CHECK(discard <= 1);
    CHECK(wide <= 2);
@@ -45,9 +52,27 @@ int main(int argc, char **argv) {
    };
    if (mode == 3) {
       CHECK(wide == 0 && discard == 0);
-      glAttachShader(p, shader(GL_COMPUTE_SHADER,
-         "#version 430 core\nlayout(local_size_x=256)in;layout(std430,binding=0)buffer B{uint data[];};"
-         "uniform uint count;void main(){uint i=gl_GlobalInvocationID.x;if(i<count)data[i]=i^0xa55aa55au;}"));
+      char compute[32768];
+      if (arithmetic) {
+         int len = snprintf(compute, sizeof(compute),
+            "#version 430 core\nlayout(local_size_x=%u)in;layout(std430,binding=0)buffer B{vec4 data[];};"
+            "uniform uint count;void main(){uint i=gl_GlobalInvocationID.x;if(i>=count/4u)return;"
+            "vec4 a=vec4(float(i&255u)/256.0);", local);
+         for (unsigned i=0;i<arithmetic;i++)
+            len += snprintf(compute+len, sizeof(compute)-len,
+               "a=fma(a,vec4(0.999,0.997,0.995,0.993),vec4(0.001));");
+         snprintf(compute+len, sizeof(compute)-len, "data[i]=a;}");
+      } else if (words == 1)
+         snprintf(compute, sizeof(compute),
+            "#version 430 core\nlayout(local_size_x=%u)in;layout(std430,binding=0)buffer B{uint data[];};"
+            "uniform uint count;void main(){uint i=gl_GlobalInvocationID.x;if(i<count)data[i]=i^0xa55aa55au;}",local);
+      else
+         snprintf(compute, sizeof(compute),
+            "#version 430 core\nlayout(local_size_x=%u)in;layout(std430,binding=0)buffer B{uvec4 data[];};"
+            "uniform uint count;void main(){uint i=gl_GlobalInvocationID.x*%uu;"
+            "for(uint j=0u;j<%uu;j++){uint v=i+j;if(v<count/4u)data[v]=(uvec4(v*4u)+uvec4(0,1,2,3))^uvec4(0xa55aa55au);}}",
+            local,words/4,words/4);
+      glAttachShader(p, shader(GL_COMPUTE_SHADER, compute));
    } else {
       glAttachShader(p, vs);
       glAttachShader(p, shader(GL_FRAGMENT_SHADER, fs[mode]));
@@ -68,17 +93,40 @@ int main(int argc, char **argv) {
          glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, buffer);
          glUniform1ui(glGetUniformLocation(p, "count"), w * h);
          for (unsigned round = 0; round < 6; round++) {
+            GLuint queries[2]; glGenQueries(2, queries);
             double start = now();
-            glDispatchCompute((w*h + 255)/256, 1, 1);
+            glQueryCounter(queries[0], GL_TIMESTAMP);
+            /* Separate submission keeps the opening timestamp ahead of the
+             * dispatch even on implementations that batch timestamps. The
+             * interval includes this queue boundary; it is not shader-only. */
+            glFlush();
+            glDispatchCompute((w*h/words + local-1)/local, 1, 1);
             glMemoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT);
+            glQueryCounter(queries[1], GL_TIMESTAMP);
             glFinish();
             double elapsed = (now() - start)*1000;
+            GLuint64 ticks[2];
+            glGetQueryObjectui64v(queries[0], GL_QUERY_RESULT, &ticks[0]);
+            glGetQueryObjectui64v(queries[1], GL_QUERY_RESULT, &ticks[1]);
+            CHECK(ticks[1] > ticks[0]);
+            glDeleteQueries(2, queries);
             const unsigned *data = glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, bytes, GL_MAP_READ_BIT);
             CHECK(data);
-            for (unsigned i = 0; i < w*h; i++) CHECK(data[i] == (i ^ 0xa55aa55au));
+            if (arithmetic) {
+               float expected[256][4];
+               const float coefficients[4]={0.999f,0.997f,0.995f,0.993f};
+               for(unsigned i=0;i<256;i++)for(unsigned c=0;c<4;c++) {
+                  float value=(float)i/256.0f;
+                  for(unsigned j=0;j<arithmetic;j++)value=fmaf(value,coefficients[c],0.001f);
+                  expected[i][c]=value;
+               }
+               const float *values=(const float *)data;
+               for(unsigned i=0;i<w*h;i++)CHECK(fabsf(values[i]-expected[(i/4)&255][i&3])<0.00001f);
+            } else
+               for (unsigned i = 0; i < w*h; i++) CHECK(data[i] == (i ^ 0xa55aa55au));
             CHECK(glUnmapBuffer(GL_SHADER_STORAGE_BUFFER));
             CHECK(glGetError()==GL_NO_ERROR);
-            printf("FRAME_COST mode=%u width=%u height=%u round=%u wall_ms=%.6f\n", mode,w,h,round,elapsed);
+            printf("FRAME_COST mode=%u words=%u local=%u arithmetic=%u width=%u height=%u round=%u wall_ms=%.6f gpu_query_ms=%.6f begin_ns=%llu end_ns=%llu\n", mode,words,local,arithmetic,w,h,round,elapsed,(ticks[1]-ticks[0])/1e6,(unsigned long long)ticks[0],(unsigned long long)ticks[1]);
             fflush(stdout);
          }
          glDeleteBuffers(1, &buffer);

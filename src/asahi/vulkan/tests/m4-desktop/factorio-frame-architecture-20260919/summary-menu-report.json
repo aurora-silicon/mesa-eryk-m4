@@ -1,0 +1,22 @@
+{
+  "id": "20260919T083626135065Z-factorio-mcc-cache-summary-menu",
+  "verdict": "pass",
+  "transport_returncode": 0,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260919T083626135065Z-factorio-mcc-cache-summary-menu",
+  "observations": {
+    "pixel_results": [],
+    "pixel_result_count": 0,
+    "thermal_samples": 154,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 86.25,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 86.25,
+      "Ta000m": 74.5,
+      "Te000m": 73.0,
+      "Te001m": 86.25,
+      "Tp000m": 80.25,
+      "Tp001m": 84.75
+    }
+  }
+}
