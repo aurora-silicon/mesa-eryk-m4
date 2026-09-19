@@ -15,8 +15,12 @@ p.add_argument('output', type=Path)
 p.add_argument('--icd', required=True)
 p.add_argument('--compression', action='store_true', help='Use candidate compression allocation; not the unmodified captured allocation policy')
 p.add_argument('--capture-shaders', action='store_true')
+p.add_argument('--capture-min-instructions', type=int, default=500,
+               help='Successful compiler capture NIR instruction floor; use 0 for small selected shaders')
 p.add_argument('--loop-count', type=int, choices=range(1,1001))
 a = p.parse_args()
+if a.capture_min_instructions < 0:
+    p.error('capture instruction floor must be nonnegative')
 guard = json.loads((a.output / 'start.json').read_text())
 assert guard['watchdog']['armed'] and guard['watchdog']['timeout_seconds'] == 60
 # The replay runner must stop and retain its evidence before the outer guard
@@ -33,7 +37,7 @@ if a.capture_shaders:
     capture = a.output / 'frontend-nir'
     capture.mkdir()
     env.update(AGX_COMPILER_CAPTURE_SUCCESS='fragment',
-               AGX_COMPILER_CAPTURE_MIN_INSTRUCTIONS='500',
+               AGX_COMPILER_CAPTURE_MIN_INSTRUCTIONS=str(a.capture_min_instructions),
                MESA_SHADER_CACHE_DISABLE='true',
                HK_NIR_CAPTURE_DIR=str(capture), HK_G17P_LAUNCH_TRACE='1')
 command = ['python3', '/root/vulkan-trace.py', 'replay',

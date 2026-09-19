@@ -7,7 +7,7 @@ guard=json.loads((out/'start.json').read_text())
 assert guard['watchdog']['armed'] and guard['watchdog']['timeout_seconds']==60
 base=dict(HK_M4_PREFETCH_UBOS='false',HK_M4_PREFETCH_VARIANT='false',
           HK_M4_PLAIN_SAMPLERS='false',HK_M4_PREFETCH_DESCRIPTORS='false',
-          HK_M4_VERSION_SAMPLES='true',HK_M4_NATIVE_PREAMBLE='false')
+          HK_M4_VERSION_SAMPLES='true',HK_M4_NATIVE_PREAMBLE='false',AGX_NATIVE_PRESERVE_BRANCHES='false')
 env=dict(os.environ,ASAHI_M4_EXPERIMENTAL='1',
          VK_DRIVER_FILES='/opt/asahi-m4-port/asahi_icd.json')
 def key(flags):

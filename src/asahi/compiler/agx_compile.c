@@ -5213,8 +5213,18 @@ agx_lower_front_face(struct nir_builder *b, nir_intrinsic_instr *intr,
  * again at shader variant compile time. Unless there was a complex shader key,
  * the latter run should be almost a no-op.
  */
+/* Large flattened branches eagerly execute both arms for every fragment.
+ * Preserve expensive conditional work in the native backend experiment;
+ * small selects still avoid branch overhead. This is shader-independent. */
+static unsigned
+agx_select_limit(const nir_shader *nir, bool native)
+{
+   return native && nir->info.stage == MESA_SHADER_FRAGMENT &&
+          debug_get_bool_option("AGX_NATIVE_PRESERVE_BRANCHES", false) ? 8 : 64;
+}
+
 static void
-agx_optimize_loop_nir(nir_shader *nir)
+agx_optimize_loop_nir(nir_shader *nir, bool native)
 {
    bool progress;
 
@@ -5228,7 +5238,7 @@ agx_optimize_loop_nir(nir_shader *nir)
       NIR_PASS(progress, nir, nir_opt_cse);
 
       nir_opt_peephole_select_options peephole_select_options = {
-         .limit = 64,
+         .limit = agx_select_limit(nir, native),
          .expensive_alu_ok = true,
       };
       NIR_PASS(progress, nir, nir_opt_peephole_select,
@@ -5384,7 +5394,7 @@ agx_optimize_nir(nir_shader *nir, bool soft_fault, bool uniform_atomics,
    /* This runs only once up front since other optimizations don't affect it */
    NIR_PASS(_, nir, nir_opt_shrink_stores, true);
 
-   agx_optimize_loop_nir(nir);
+   agx_optimize_loop_nir(nir, byte_indices);
 
    /* If soft fault is enabled, we can freely speculate everything. That lets us
     * peephole select and form preambles more aggressively.
@@ -5400,7 +5410,7 @@ agx_optimize_nir(nir_shader *nir, bool soft_fault, bool uniform_atomics,
     * XXX: Set indirect_load_ok once we can investigate CTS flakes.
     */
    nir_opt_peephole_select_options peephole_select_options = {
-      .limit = 64,
+      .limit = agx_select_limit(nir, byte_indices),
       .expensive_alu_ok = true,
    };
    NIR_PASS(_, nir, nir_opt_peephole_select, &peephole_select_options);
@@ -6414,7 +6424,7 @@ agx_preprocess_nir_internal(nir_shader *nir, bool g17p)
     * will run through the loop later, once we have the shader key, but if we
     * run now, that run will ideally be almost a no-op.
     */
-   agx_optimize_loop_nir(nir);
+   agx_optimize_loop_nir(nir, g17p);
 
    /* Lower idiv after an optimization loop so we can constant fold more before
     * nir_opt_idiv_const.

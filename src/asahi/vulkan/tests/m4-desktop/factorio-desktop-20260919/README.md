@@ -90,3 +90,23 @@ Factorio FPS or proof that all microVM workloads have the same overhead.
 `20260919T033930293063Z-factorio-compiler-option-cache-identity` verifies seven
 distinct stable cache UUIDs (baseline plus each of the six compiler switches,
 including integer-only native preamble). No full CTS claim is made.
+
+### Native fragment branch preservation experiment
+
+`AGX_NATIVE_PRESERVE_BRANCHES=true` limits native fragment NIR if-to-select
+flattening to eight instructions instead of sixty-four, in both preprocessing
+and variant optimization. It is shader-independent and disabled by default.
+Compiler cache bit 38 separates the option on every HAL200 device affected.
+No float precision or application settings change.
+
+`20260919T041833616812Z-factorio-selected-shader-capture` captures small
+variants by using factorio-replay.py --capture-shaders --capture-min-instructions 0.
+The unchanged default floor is 500 NIR instructions; the bounded 32-bundle
+quota still applies. Three captures match live hashes ead87d9b, 5b194d4d and
+9da53f88. The common sprite variant's 103 instructions include eagerly
+computed conditional colour blending. This motivates the experiment rather
+than a shader-specific replacement.
+
+`20260919T042134339566Z-factorio-preserve-branches-frame` is pixel-identical
+(the PNG SHA256 also matches). Peak sensor 68.25 C. Live FPS qualification
+is pending; broad CTS remains deferred.
