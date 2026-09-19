@@ -305,3 +305,12 @@ G16 only. Exact count/copy/edge oracles pass; all121680 textured-quad counts
 and the complete reference readback match. Five Factorio frames remain
 pixel-identical with identical49.45million counts at6.18..6.25ms; fragment sums
 4.34..4.39ms. This remains short of the5ms complete-frame target.
+
+## Installed statistics path and live qualification
+
+Release c4304dc7d4f is installed as the normal driver (SHA256
+2685c026e04e788bec2a2dbba83a5ac35f0c13f029f5a28a3a8e4af140bb59d6).
+A bounded normal-menu run without clicks retained the user's settings and
+resolution.118 HUD samples: mean58.648FPS, median59.965, final12 mean59.986;
+peak85.25C. The application and guard completed normally. This confirms
+real-menu operation, not the unmet5ms GPU target or broad CTS compliance.
