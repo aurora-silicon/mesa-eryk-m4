@@ -108,5 +108,16 @@ computed conditional colour blending. This motivates the experiment rather
 than a shader-specific replacement.
 
 `20260919T042134339566Z-factorio-preserve-branches-frame` is pixel-identical
-(the PNG SHA256 also matches). Peak sensor 68.25 C. Live FPS qualification
-is pending; broad CTS remains deferred.
+(the PNG SHA256 also matches). Peak sensor 68.25 C. The 60-second live run
+`20260919T042205201153Z-factorio-preserve-branches-menu` completes at 41.444
+FPS (40.81--42.35), peak 84 C. The combined descriptor-prefetch run
+`20260919T043001944742Z-factorio-branches-prefetch-menu` completes at 40.009
+FPS (39.78--40.26), peak 89.5 C. Animated scenes vary; neither establishes
+an isolated gain or sustained 60 FPS, and both options remain off by default.
+`20260919T042750640649Z-factorio-branches-cache-identity` passes all eight
+stable, distinct compiler cache UUIDs. Broad CTS remains deferred.
+
+The earlier eight-loop replay timing must not be treated as steady-state
+throughput: per-iteration durations increase from 90 to 380 ms. Its replay
+state-restoration workload needs separate investigation before it can support
+an optimization comparison. The screenshot replay remains a correctness check.
