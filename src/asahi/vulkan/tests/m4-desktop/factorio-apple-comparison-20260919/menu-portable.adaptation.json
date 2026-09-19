@@ -1,0 +1,7441 @@
+{
+  "source": "build/factorio-basic-vulkan/menu-five.trace",
+  "source_sha256": "ba56759bfc74d0aaa3a7d7ce9230d57e41abe50f73e67997cbd5b83e5fc5914e",
+  "output": "build/factorio-apple-comparison/menu-portable.trace",
+  "output_sha256": "97e6cc3487bb67d32711b16b322cc213d33936fa804e7f3313eb5149c8833ac9",
+  "texture_units": {
+    "0": 33661,
+    "159": 57844,
+    "1": 17873,
+    "2": 2524,
+    "3": 3155,
+    "4": 631
+  },
+  "remap": {
+    "159": 31
+  },
+  "omitted_queries": [
+    {
+      "call": 492,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 681,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 682,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 870,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 871,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 1214,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 1215,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 1361,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 1362,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 1516,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 1517,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 1659,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 1662,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 1816,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 1819,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 1973,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 1976,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 2122,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 2125,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 2279,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 2282,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 2443,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 2446,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 2600,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 2603,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 2749,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 2752,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 2906,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 2909,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 3455,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 3458,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 3641,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 3644,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 3786,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 3789,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 3931,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 3934,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 4076,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 4079,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 4233,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 4236,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 4378,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 4381,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 4535,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 4538,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 4692,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 4695,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 4849,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 4852,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 4994,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 4997,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 5139,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 5142,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 5284,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 5287,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 5429,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 5432,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 5574,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 5577,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 5719,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 5722,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 5864,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 5867,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 6080,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 6083,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 6225,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 6228,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 6370,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 6373,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 6515,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 6518,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 6689,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 6692,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 6834,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 6837,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 6979,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 6982,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 7124,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 7127,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 7269,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 7272,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 7414,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 7417,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 7588,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 7591,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 7733,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 7736,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 7878,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 7881,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 8023,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 8026,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 8168,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 8171,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 8313,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 8316,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 8458,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 8461,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 8603,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 8606,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 8748,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 8751,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 8893,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 8896,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 9038,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 9041,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 9183,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 9186,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 9328,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 9331,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 9473,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 9476,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 9618,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 9621,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 9803,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 9806,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 9948,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 9951,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 10093,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 10096,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 10238,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 10241,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 10383,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 10386,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 10528,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 10531,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 10850,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 10853,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 11135,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 11138,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 11375,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 11378,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 11615,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 11618,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 11865,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 11868,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 12105,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 12108,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 12345,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 12348,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 12535,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 12538,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 12756,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 12759,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 22490,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 22493,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 22648,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 22651,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 23882,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 23885,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 24913,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 24916,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 25944,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 25947,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 26975,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 26978,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 28006,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 28009,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 29037,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 29040,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 30068,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 30071,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 31109,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 31112,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 32148,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 32151,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 33187,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 33190,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 34226,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 34229,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 35265,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 35268,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 36304,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 36307,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 37337,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 37340,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 38448,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 38451,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 39542,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 39545,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 40636,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 40639,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 41730,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 41733,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 42824,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 42827,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 43918,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 43921,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 45012,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 45015,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 46106,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 46109,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 47200,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 47203,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 48294,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 48297,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 49388,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 49391,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 50482,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 50485,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 51576,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 51579,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 52670,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 52673,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 53764,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 53767,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 54858,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 54861,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 55952,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 55955,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 57046,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 57049,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 58140,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 58143,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 59234,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 59237,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 60328,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 60331,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 61422,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 61425,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 62516,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 62519,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 63610,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 63613,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 64704,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 64707,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 65802,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 65805,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 66896,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 66899,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 67990,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 67993,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 69084,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 69087,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 70178,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 70181,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 71272,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 71275,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 72366,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 72369,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 73460,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 73463,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 74554,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 74557,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 75648,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 75651,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 76742,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 76745,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 77836,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 77839,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 78930,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 78933,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 80024,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 80027,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 81118,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 81121,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 82212,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 82215,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 83306,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 83309,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 84400,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 84403,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 85494,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 85497,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 86588,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 86591,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 87682,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 87685,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 88776,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 88779,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 89885,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 89888,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 90994,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 90997,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 92103,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 92106,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 93212,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 93215,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 94321,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 94324,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 95430,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 95433,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 96539,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 96542,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 97648,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 97651,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 98757,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 98760,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 99866,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 99869,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 100977,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 100980,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 102086,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 102089,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 103195,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 103198,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 104304,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 104307,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 105413,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 105416,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 106522,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 106525,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 107631,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 107634,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 108740,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 108743,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 109849,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 109852,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 110958,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 110961,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 112067,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 112070,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 113176,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 113179,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 114285,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 114288,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 115394,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 115397,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 116503,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 116506,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 117612,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 117615,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 118721,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 118724,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 119830,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 119833,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 120939,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 120942,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 122053,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 122056,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 123167,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 123170,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 124281,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 124284,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 125395,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 125398,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 126509,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 126512,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 127623,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 127626,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 128737,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 128740,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 129851,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 129854,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 130965,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 130968,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 132079,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 132082,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 133193,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 133196,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 134307,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 134310,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 135421,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 135424,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 136537,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 136540,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 137651,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 137654,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 138765,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 138768,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 139879,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 139882,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 140993,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 140996,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 142107,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 142110,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 143221,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 143224,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 144335,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 144338,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 145449,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 145452,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 146563,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 146566,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 147677,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 147680,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 148791,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 148794,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 149905,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 149908,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 151019,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 151022,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 152133,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 152136,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 153247,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 153250,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 154361,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 154364,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 155475,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 155478,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 156589,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 156592,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 157703,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 157706,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 158817,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 158820,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 159931,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 159934,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 161045,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 161048,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 162159,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 162162,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 163273,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 163276,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 164387,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 164390,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 165501,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 165504,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 166615,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 166618,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 167729,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 167732,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 168843,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 168846,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 169957,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 169960,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 171071,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 171074,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 172187,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 172190,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 173301,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 173304,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 174415,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 174418,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 175529,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 175532,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 176643,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 176646,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 177757,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 177760,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 178871,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 178874,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 179985,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 179988,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 181099,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 181102,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 182213,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 182216,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 183327,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 183330,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 184441,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 184444,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 185555,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 185558,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 186669,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 186672,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 187783,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 187786,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 188897,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 188900,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 190011,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 190014,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 191125,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 191128,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 192239,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 192242,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 193353,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 193356,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 194467,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 194470,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 195581,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 195584,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 196695,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 196698,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 197809,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 197812,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 198923,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 198926,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 200037,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 200040,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 201151,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 201154,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 202265,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 202268,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 203379,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 203382,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 204493,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 204496,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 205607,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 205610,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 206721,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 206724,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 207837,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 207840,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 208951,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 208954,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 210065,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 210068,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 211179,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 211182,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 212293,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 212296,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 213407,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 213410,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 214521,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 214524,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 215635,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 215638,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 216749,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 216752,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 217863,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 217866,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 218977,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 218980,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 220091,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 220094,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 221205,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 221208,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 222319,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 222322,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 223433,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 223436,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 224547,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 224550,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 225661,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 225664,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 226775,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 226778,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 227889,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 227892,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 229003,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 229006,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 230117,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 230120,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 231231,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 231234,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 232345,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 232348,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 233459,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 233462,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 234573,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 234576,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 235687,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 235690,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 236801,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 236804,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 237915,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 237918,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 239029,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 239032,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 240143,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 240146,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 241257,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 241260,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 242371,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 242374,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 243487,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 243490,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 244601,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 244604,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 245715,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 245718,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 246829,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 246832,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 247943,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 247946,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 249057,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 249060,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 250171,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 250174,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 251285,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 251288,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 252399,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 252402,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 253513,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 253516,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 254627,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 254630,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 255741,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 255744,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 256855,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 256858,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 257969,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 257972,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 259083,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 259086,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 260197,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 260200,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 261311,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 261314,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 262425,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 262428,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 263539,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 263542,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 264653,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 264656,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 265767,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 265770,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 266881,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 266884,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 267995,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 267998,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 269109,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 269112,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 270223,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 270226,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 271337,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 271340,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 272451,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 272454,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 273565,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 273568,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 274679,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 274682,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 275793,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 275796,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 276907,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 276910,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 278021,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 278024,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 279139,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 279142,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 280253,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 280256,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 281367,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 281370,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 282481,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 282484,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 283595,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 283598,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 284709,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 284712,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 285823,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 285826,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 286937,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 286940,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 288051,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 288054,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 289165,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 289168,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 290279,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 290282,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 291393,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 291396,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 292507,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 292510,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 293621,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 293624,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 294735,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 294738,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 295849,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 295852,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 296963,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 296966,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 298077,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 298080,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 299191,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 299194,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 300305,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 300308,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 301419,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 301422,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 302533,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 302536,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 303647,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 303650,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 304761,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 304764,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 305875,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 305878,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 306989,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 306992,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 308103,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 308106,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 309217,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 309220,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 310331,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 310334,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 311445,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 311448,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 312559,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 312562,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 313673,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 313676,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 314789,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 314792,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 315903,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 315906,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 317017,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 317020,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 318131,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 318134,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 319245,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 319248,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 320359,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 320362,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 321473,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 321476,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 322587,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 322590,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 323701,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 323704,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 324815,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 324818,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 325929,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 325932,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 327043,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 327046,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 328157,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 328160,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 329271,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 329274,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 330385,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 330388,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 331499,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 331502,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 332613,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 332616,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 333727,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 333730,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 334841,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 334844,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 335955,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 335958,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 337069,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 337072,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 338183,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 338186,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 339297,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 339300,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 340411,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 340414,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 341525,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 341528,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 342639,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 342642,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 343753,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 343756,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 344867,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 344870,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 345981,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 345984,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 347095,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 347098,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 348209,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 348212,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 349323,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 349326,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 350439,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 350442,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 351553,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 351556,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 352667,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 352670,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 353781,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 353784,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 354895,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 354898,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 356009,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 356012,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 357123,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 357126,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 358237,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 358240,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 359351,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 359354,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 360465,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 360468,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 361579,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 361582,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 362693,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 362696,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 363807,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 363810,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 364921,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 364924,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 366035,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 366038,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 367149,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 367152,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 368263,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 368266,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 369377,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 369380,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 370491,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 370494,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 371605,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 371608,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 372719,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 372722,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 373833,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 373836,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 374947,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 374950,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 376061,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 376064,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 377175,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 377178,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 378289,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 378292,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 379403,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 379406,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 380517,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 380520,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 381631,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 381634,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 382745,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 382748,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 383859,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 383862,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 384973,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 384976,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 386089,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 386092,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 387203,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 387206,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 388317,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 388320,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 389431,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 389434,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 390545,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 390548,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 391659,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 391662,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 392773,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 392776,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 393887,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 393890,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 395001,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 395004,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 396115,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 396118,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 397229,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 397232,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 398343,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 398346,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 399457,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 399460,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 400571,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 400574,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 401685,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 401688,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 402799,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 402802,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 403913,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 403916,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 405027,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 405030,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 406141,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 406144,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 407255,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 407258,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 408369,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 408372,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 409483,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 409486,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 410597,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 410600,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 411711,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 411714,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 412825,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 412828,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 413939,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 413942,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 415053,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 415056,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 416167,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 416170,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 417281,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 417284,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 418395,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 418398,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 419509,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 419512,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 420623,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 420626,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 421739,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 421742,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 422853,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 422856,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 423967,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 423970,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 425081,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 425084,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 426195,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 426198,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 427309,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 427312,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 428423,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 428426,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 429537,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 429540,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 430651,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 430654,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 431765,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 431768,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 432879,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 432882,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 433993,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 433996,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 435107,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 435110,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 436221,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 436224,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 437335,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 437338,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 438449,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 438452,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 439563,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 439566,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 440677,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 440680,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 441791,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 441794,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 442905,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 442908,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 444019,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 444022,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 445133,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 445136,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 446247,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 446250,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 447361,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 447364,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 448475,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 448478,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 449589,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 449592,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 450703,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 450706,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 451817,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 451820,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 452931,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 452934,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 454045,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 454048,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 455159,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 455162,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 456273,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 456276,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 457391,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 457394,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 458505,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 458508,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 459619,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 459622,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 460733,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 460736,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 461847,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 461850,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 462961,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 462964,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 464075,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 464078,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 465189,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 465192,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 466303,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 466306,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 467417,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 467420,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 468531,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 468534,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 469645,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 469648,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 470759,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 470762,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 471873,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 471876,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 472987,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 472990,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 474101,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 474104,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 475215,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 475218,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 476329,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 476332,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 477443,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 477446,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 478557,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 478560,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 479671,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 479674,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 480785,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 480788,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 481899,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 481902,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 483013,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 483016,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 484127,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 484130,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 485241,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 485244,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 486355,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 486358,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 487469,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 487472,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 488583,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 488586,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 489697,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 489700,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 490811,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 490814,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 491925,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 491928,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 493041,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 493044,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 494155,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 494158,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 495269,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 495272,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 496383,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 496386,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 497497,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 497500,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 498611,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 498614,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 499725,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 499728,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 500839,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 500842,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 501953,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 501956,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 503067,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 503070,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 504181,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 504184,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 505295,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 505298,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 506409,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 506412,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 507523,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 507526,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 508637,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 508640,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 509751,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 509754,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 510865,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 510868,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 511979,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 511982,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 513093,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 513096,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 514202,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 514205,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 515311,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 515314,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 516420,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 516423,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 517529,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 517532,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 518638,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 518641,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 519747,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 519750,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 520856,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 520859,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 521965,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 521968,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 523074,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 523077,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 524183,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 524186,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 525292,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 525295,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 526401,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 526404,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 527510,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 527513,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 528621,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 528624,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 529730,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 529733,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 530839,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 530842,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 531948,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 531951,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 533057,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 533060,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 534166,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 534169,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 535275,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 535278,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 536384,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 536387,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 537493,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 537496,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 538602,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 538605,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 539711,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 539714,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 540820,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 540823,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 541929,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 541932,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 543038,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 543041,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 544147,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 544150,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 545256,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 545259,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 546365,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 546368,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 547474,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 547477,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 548583,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 548586,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 549692,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 549695,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 550801,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 550804,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 551910,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 551913,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 553019,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 553022,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 554128,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 554131,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 555237,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 555240,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 556346,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 556349,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 557455,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 557458,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 558564,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 558567,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 559673,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 559676,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 560782,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 560785,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 561891,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 561894,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 563000,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 563003,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 564111,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 564114,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 565220,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 565223,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 566329,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 566332,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 567438,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 567441,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 568547,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 568550,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 569656,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 569659,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 570765,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 570768,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 571874,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 571877,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 572983,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 572986,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 574092,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 574095,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 575201,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 575204,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 576310,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 576313,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 577419,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 577422,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 578528,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 578531,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 579637,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 579640,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 580746,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 580749,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 581855,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 581858,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 582964,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 582967,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 584073,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 584076,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 585182,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 585185,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 586291,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 586294,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 587400,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 587403,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 588509,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 588512,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 589618,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 589621,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 590727,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 590730,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 591836,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 591839,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 592945,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 592948,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 594054,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 594057,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 595153,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 595156,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 596252,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 596255,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 597351,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 597354,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 598450,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 598453,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 599551,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 599554,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 600650,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 600653,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 601759,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 601762,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 602868,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 602871,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 603977,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 603980,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 605086,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 605089,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 606195,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 606198,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 607304,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 607307,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 608413,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 608416,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 609522,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 609525,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 610631,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 610634,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 611740,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 611743,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 612849,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 612852,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 613958,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 613961,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 615067,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 615070,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 616176,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 616179,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 617285,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 617288,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 618394,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 618397,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 619503,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 619506,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 620612,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 620615,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 621721,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 621724,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 622830,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 622833,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 623939,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 623942,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 625048,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 625051,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 626157,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 626160,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 627266,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 627269,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 628375,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 628378,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 629484,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 629487,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 630593,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 630596,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 631702,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 631705,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 632811,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 632814,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 633920,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 633923,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 635033,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 635036,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 636142,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 636145,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 637251,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 637254,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 638360,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 638363,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 639469,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 639472,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 640578,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 640581,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 641687,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 641690,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 642796,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 642799,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 643905,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 643908,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 645014,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 645017,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 646123,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 646126,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 647232,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 647235,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 648341,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 648344,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 649450,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 649453,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 650559,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 650562,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 651673,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 651676,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 652787,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 652790,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 653901,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 653904,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 655015,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 655018,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 656129,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 656132,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 657243,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 657246,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 658357,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 658360,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 659471,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 659474,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 660585,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 660588,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 661699,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 661702,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 662813,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 662816,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 663927,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 663930,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 665041,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 665044,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 666170,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 666173,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 667299,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 667302,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 668428,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 668431,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 669557,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 669560,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 670690,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 670693,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 671819,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 671822,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 672948,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 672951,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 674077,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 674080,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 675216,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 675219,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 676360,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 676363,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 677504,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 677507,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 678643,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 678646,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 679782,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 679785,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 680921,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 680924,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 682060,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 682063,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 683199,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 683202,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 684338,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 684341,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 685477,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 685480,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 686616,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 686619,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 687755,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 687758,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 688894,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 688897,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 690023,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 690026,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 691152,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 691155,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 692281,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 692284,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 693410,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 693413,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 694539,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 694542,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 695668,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 695671,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 696797,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 696800,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 697926,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 697929,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 699055,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 699058,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 700184,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 700187,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 701313,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 701316,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 702442,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 702445,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 703571,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 703574,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 704700,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 704703,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 705829,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 705832,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 706962,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 706965,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 708091,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 708094,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 709220,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 709223,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 710349,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 710352,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 711478,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 711481,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 712607,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 712610,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 713736,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 713739,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 714865,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 714868,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 715994,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 715997,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 717133,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 717136,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 718273,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 718302,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 718305,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 718306,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 718335,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 718453,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 718460,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 718471,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 718492,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 718493,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 718494,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 718671,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 718672,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 718673,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 718709,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 718710,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 719457,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 719486,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 719489,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 719490,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 719519,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 719637,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 719644,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 719655,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 719676,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 719677,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 719678,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 719855,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 719856,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 719857,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 719893,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 719894,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 720641,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 720670,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 720673,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 720674,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 720703,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 720821,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 720828,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 720839,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 720860,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 720861,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 720862,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 721039,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 721040,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 721041,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 721077,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 721078,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 721825,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 721854,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 721857,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 721858,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 721887,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 722005,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 722012,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 722023,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 722044,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 722045,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 722046,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 722223,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 722224,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 722225,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 722261,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 722262,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 723009,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 723038,
+      "function": "glEndQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 723041,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 723042,
+      "function": "glBeginQuery",
+      "reason": "Mac has no fragment-invocation statistics"
+    },
+    {
+      "call": 723071,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 723189,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 723196,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 723207,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 723228,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 723229,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 723230,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 723407,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 723408,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 723409,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 723445,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    },
+    {
+      "call": 723446,
+      "function": "glQueryCounter",
+      "reason": "Mac rejects GL_TIMESTAMP; separate elapsed query measures frames"
+    }
+  ],
+  "frame_end_calls": [
+    718263,
+    719447,
+    720631,
+    721815,
+    722999,
+    724183
+  ],
+  "setup_copy_calls": [
+    10616,
+    10661,
+    10706,
+    10901,
+    10946,
+    10991,
+    11186,
+    11231,
+    11426,
+    11471,
+    11676,
+    11721,
+    11916,
+    11961,
+    12156,
+    12201,
+    12564,
+    12580,
+    12596,
+    12612,
+    12827,
+    12872
+  ],
+  "limitations": [
+    "Diagnostic comparison; application statistics and timestamp queries omitted on both drivers.",
+    "Mac uses explicit raw-byte startup texture-copy adapter.",
+    "No shaders/draws/visual settings changed. Validate output before timing."
+  ]
+}

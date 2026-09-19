@@ -1,0 +1,34 @@
+/home/e/.local/share/factorio-driver/fex-thunks/FEXInterpreter
+GL_RENDERER: Apple M5
+GL_VENDOR: Apple
+GL_RENDERER: Apple M5
+GL_VENDOR: Apple
+UNSUPPORTED (log once): POSSIBLE ISSUE: unit 1 GLD_TEXTURE_INDEX_3D is unloadable and bound to sampler type (Float) - using zero texture because texture unloadable
+Factorio copy adapter: preserved raw 1024x1024 texels, 16 bytes each
+Factorio copy adapter: preserved raw 512x512 texels, 16 bytes each
+Factorio copy adapter: preserved raw 256x256 texels, 16 bytes each
+Factorio copy adapter: preserved raw 1024x848 texels, 16 bytes each
+Factorio copy adapter: preserved raw 512x424 texels, 16 bytes each
+Factorio copy adapter: preserved raw 256x212 texels, 16 bytes each
+Factorio copy adapter: preserved raw 1024x704 texels, 16 bytes each
+Factorio copy adapter: preserved raw 512x352 texels, 16 bytes each
+Factorio copy adapter: preserved raw 512x204 texels, 16 bytes each
+Factorio copy adapter: preserved raw 256x102 texels, 16 bytes each
+Factorio copy adapter: preserved raw 1024x1012 texels, 8 bytes each
+Factorio copy adapter: preserved raw 512x506 texels, 8 bytes each
+Factorio copy adapter: preserved raw 1024x610 texels, 8 bytes each
+Factorio copy adapter: preserved raw 512x305 texels, 8 bytes each
+Factorio copy adapter: preserved raw 512x370 texels, 8 bytes each
+Factorio copy adapter: preserved raw 256x185 texels, 8 bytes each
+Factorio copy adapter: preserved raw 4096x1280 texels, 4 bytes each
+Factorio copy adapter: preserved raw 2048x640 texels, 4 bytes each
+Factorio copy adapter: preserved raw 1024x320 texels, 4 bytes each
+Factorio copy adapter: preserved raw 512x160 texels, 4 bytes each
+Factorio copy adapter: preserved raw 512x164 texels, 8 bytes each
+Factorio copy adapter: preserved raw 256x82 texels, 8 bytes each
+COMPLETED_FRAME call=719447 ns=8032750 replay_ns=4779292 finish_wait_ns=3253458
+COMPLETED_FRAME call=720631 ns=6371000 replay_ns=2951208 finish_wait_ns=3419792
+COMPLETED_FRAME call=721815 ns=6816833 replay_ns=3637458 finish_wait_ns=3179375
+COMPLETED_FRAME call=722999 ns=6647709 replay_ns=3507209 finish_wait_ns=3140500
+COMPLETED_FRAME call=724183 ns=9008125 replay_ns=5628167 finish_wait_ns=3379958
+Rendered 6 frames in 3.06529 secs, average of 1.9574 fps

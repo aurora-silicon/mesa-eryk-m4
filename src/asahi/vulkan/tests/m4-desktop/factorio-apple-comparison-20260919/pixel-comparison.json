@@ -1,0 +1,13 @@
+{
+  "dimensions": [
+    2512,
+    1552
+  ],
+  "maximum_channel_difference": 1,
+  "mean_channel_difference": 2.6334077527524242e-05,
+  "differing_channels": 308,
+  "differing_pixels": 298,
+  "total_pixels": 3898624,
+  "m4_reference": "_provenance/experiments/20260919T124602002561Z-factorio-gl-portable-reference/remote/frame-0000724183.png",
+  "mac_reference": "m5-portable.png"
+}

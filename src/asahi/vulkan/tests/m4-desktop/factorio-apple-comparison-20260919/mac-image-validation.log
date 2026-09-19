@@ -1,0 +1,47 @@
+/home/e/.local/share/factorio-driver/fex-thunks/FEXInterpreter
+GL_RENDERER: Apple M5
+GL_VENDOR: Apple
+GL_RENDERER: Apple M5
+GL_VENDOR: Apple
+UNSUPPORTED (log once): POSSIBLE ISSUE: unit 1 GLD_TEXTURE_INDEX_3D is unloadable and bound to sampler type (Float) - using zero texture because texture unloadable
+884 @0 glLinkProgram(program = 25)
+884: warning: WARNING: Output of vertex shader 'vUV' not read by fragment shader
+
+898 @0 glLinkProgram(program = 27)
+898: warning: WARNING: Output of vertex shader 'vUV' not read by fragment shader
+
+912 @0 glLinkProgram(program = 31)
+912: warning: WARNING: Output of vertex shader 'vUV' not read by fragment shader
+
+926 @0 glLinkProgram(program = 33)
+926: warning: WARNING: Output of vertex shader 'vUV' not read by fragment shader
+
+940 @0 glLinkProgram(program = 35)
+940: warning: WARNING: Output of vertex shader 'vUV' not read by fragment shader
+
+956 @0 glLinkProgram(program = 51)
+956: warning: WARNING: Output of vertex shader 'vExtra' not read by fragment shader
+
+Factorio copy adapter: preserved raw 1024x1024 texels, 16 bytes each
+Factorio copy adapter: preserved raw 512x512 texels, 16 bytes each
+Factorio copy adapter: preserved raw 256x256 texels, 16 bytes each
+Factorio copy adapter: preserved raw 1024x848 texels, 16 bytes each
+Factorio copy adapter: preserved raw 512x424 texels, 16 bytes each
+Factorio copy adapter: preserved raw 256x212 texels, 16 bytes each
+Factorio copy adapter: preserved raw 1024x704 texels, 16 bytes each
+Factorio copy adapter: preserved raw 512x352 texels, 16 bytes each
+Factorio copy adapter: preserved raw 512x204 texels, 16 bytes each
+Factorio copy adapter: preserved raw 256x102 texels, 16 bytes each
+Factorio copy adapter: preserved raw 1024x1012 texels, 8 bytes each
+Factorio copy adapter: preserved raw 512x506 texels, 8 bytes each
+Factorio copy adapter: preserved raw 1024x610 texels, 8 bytes each
+Factorio copy adapter: preserved raw 512x305 texels, 8 bytes each
+Factorio copy adapter: preserved raw 512x370 texels, 8 bytes each
+Factorio copy adapter: preserved raw 256x185 texels, 8 bytes each
+Factorio copy adapter: preserved raw 4096x1280 texels, 4 bytes each
+Factorio copy adapter: preserved raw 2048x640 texels, 4 bytes each
+Factorio copy adapter: preserved raw 1024x320 texels, 4 bytes each
+Factorio copy adapter: preserved raw 512x160 texels, 4 bytes each
+Factorio copy adapter: preserved raw 512x164 texels, 8 bytes each
+Factorio copy adapter: preserved raw 256x82 texels, 8 bytes each
+Wrote /private/var/tmp/factorio-comparison-20260919/gl-portable-reference/frame-0000724183.png

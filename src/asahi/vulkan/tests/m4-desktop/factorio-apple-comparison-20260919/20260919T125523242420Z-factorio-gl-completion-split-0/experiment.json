@@ -1,0 +1,28 @@
+{
+  "id": "20260919T125523242420Z-factorio-gl-completion-split-0",
+  "hypothesis": "Same-source completed-frame timing with CPU/replay interval and final GPU-drain wait separated; identical adapted image and trace as Apple",
+  "command": [
+    "python3",
+    "/root/factorio-gl-replay.py",
+    "/root/asahi-evidence/20260919T125523242420Z-factorio-gl-completion-split-0",
+    "--trace",
+    "/home/e/.local/share/factorio-driver/gl-comparison-20260919/menu-portable.trace",
+    "--ignore-statistics",
+    "/home/e/.local/share/factorio-driver/gl-comparison-20260919/menu-portable.ignore.txt",
+    "--profile"
+  ],
+  "expected_success": "PASS: bounded OpenGL replay",
+  "seconds": 110,
+  "sources": {
+    "mesa": {
+      "head": "d2495ad5ced19609de01e112191383d2826a70c5",
+      "status": " M src/asahi/vulkan/hk_cmd_buffer.c\n M src/asahi/vulkan/hk_shader.c\n M src/asahi/vulkan/hk_shader.h\n M src/asahi/vulkan/meson.build\n M src/asahi/vulkan/tests/m4-desktop/asahi-session.py\n M src/asahi/vulkan/tests/m4-desktop/desktop-launch.py\n M src/asahi/vulkan/tests/m4-desktop/sparse-metadata-20260917/resolutions.tsv\n M src/asahi/vulkan/tests/m4-desktop/vulkan-trim-host.py\n?? src/asahi/vulkan/hk_m4_native_buoy.c\n?? src/asahi/vulkan/hk_m4_native_buoy.h\n",
+      "patch_sha256": "3bcc2cd52016196f2346da35d468d63fa4a40083c34e1bbbcb71790129a2b973"
+    },
+    "kernel": {
+      "head": "c40864f9d5f8cebfe4e38aafa1a0e21d00828cb9",
+      "status": "",
+      "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

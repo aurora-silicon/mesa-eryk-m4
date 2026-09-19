@@ -1,0 +1,261 @@
+{
+  "M4": {
+    "samples": [
+      {
+        "log": "_provenance/experiments/20260919T125523242420Z-factorio-gl-completion-split-0/remote/gl-replay.log",
+        "call": 719447,
+        "total_ms": 26.87297,
+        "replay_ms": 15.053914,
+        "finish_wait_ms": 11.819056
+      },
+      {
+        "log": "_provenance/experiments/20260919T125523242420Z-factorio-gl-completion-split-0/remote/gl-replay.log",
+        "call": 720631,
+        "total_ms": 26.141221,
+        "replay_ms": 20.297386,
+        "finish_wait_ms": 5.843835
+      },
+      {
+        "log": "_provenance/experiments/20260919T125523242420Z-factorio-gl-completion-split-0/remote/gl-replay.log",
+        "call": 721815,
+        "total_ms": 30.537265,
+        "replay_ms": 24.60671,
+        "finish_wait_ms": 5.930555
+      },
+      {
+        "log": "_provenance/experiments/20260919T125523242420Z-factorio-gl-completion-split-0/remote/gl-replay.log",
+        "call": 722999,
+        "total_ms": 29.131947,
+        "replay_ms": 23.365748,
+        "finish_wait_ms": 5.766199
+      },
+      {
+        "log": "_provenance/experiments/20260919T125523242420Z-factorio-gl-completion-split-0/remote/gl-replay.log",
+        "call": 724183,
+        "total_ms": 19.440817,
+        "replay_ms": 13.613748,
+        "finish_wait_ms": 5.827069
+      },
+      {
+        "log": "_provenance/experiments/20260919T125542996274Z-factorio-gl-completion-split-1/remote/gl-replay.log",
+        "call": 719447,
+        "total_ms": 36.210038,
+        "replay_ms": 22.776977,
+        "finish_wait_ms": 13.433061
+      },
+      {
+        "log": "_provenance/experiments/20260919T125542996274Z-factorio-gl-completion-split-1/remote/gl-replay.log",
+        "call": 720631,
+        "total_ms": 28.619211,
+        "replay_ms": 22.828762,
+        "finish_wait_ms": 5.790449
+      },
+      {
+        "log": "_provenance/experiments/20260919T125542996274Z-factorio-gl-completion-split-1/remote/gl-replay.log",
+        "call": 721815,
+        "total_ms": 28.948551,
+        "replay_ms": 23.215618,
+        "finish_wait_ms": 5.732933
+      },
+      {
+        "log": "_provenance/experiments/20260919T125542996274Z-factorio-gl-completion-split-1/remote/gl-replay.log",
+        "call": 722999,
+        "total_ms": 30.425819,
+        "replay_ms": 24.732879,
+        "finish_wait_ms": 5.69294
+      },
+      {
+        "log": "_provenance/experiments/20260919T125542996274Z-factorio-gl-completion-split-1/remote/gl-replay.log",
+        "call": 724183,
+        "total_ms": 20.130923,
+        "replay_ms": 14.409717,
+        "finish_wait_ms": 5.721206
+      },
+      {
+        "log": "_provenance/experiments/20260919T125602806471Z-factorio-gl-completion-split-2/remote/gl-replay.log",
+        "call": 719447,
+        "total_ms": 30.864456,
+        "replay_ms": 24.449207,
+        "finish_wait_ms": 6.415249
+      },
+      {
+        "log": "_provenance/experiments/20260919T125602806471Z-factorio-gl-completion-split-2/remote/gl-replay.log",
+        "call": 720631,
+        "total_ms": 38.704462,
+        "replay_ms": 32.989445,
+        "finish_wait_ms": 5.715017
+      },
+      {
+        "log": "_provenance/experiments/20260919T125602806471Z-factorio-gl-completion-split-2/remote/gl-replay.log",
+        "call": 721815,
+        "total_ms": 33.43319,
+        "replay_ms": 27.440159,
+        "finish_wait_ms": 5.993031
+      },
+      {
+        "log": "_provenance/experiments/20260919T125602806471Z-factorio-gl-completion-split-2/remote/gl-replay.log",
+        "call": 722999,
+        "total_ms": 33.918609,
+        "replay_ms": 28.032341,
+        "finish_wait_ms": 5.886268
+      },
+      {
+        "log": "_provenance/experiments/20260919T125602806471Z-factorio-gl-completion-split-2/remote/gl-replay.log",
+        "call": 724183,
+        "total_ms": 20.2501,
+        "replay_ms": 12.18664,
+        "finish_wait_ms": 8.06346
+      }
+    ],
+    "statistics": {
+      "total_ms": {
+        "median": 29.131947,
+        "mean": 28.9086386,
+        "min": 19.440817,
+        "max": 38.704462
+      },
+      "replay_ms": {
+        "median": 23.215618,
+        "mean": 21.999950066666667,
+        "min": 12.18664,
+        "max": 32.989445
+      },
+      "finish_wait_ms": {
+        "median": 5.843835,
+        "mean": 6.908688533333334,
+        "min": 5.69294,
+        "max": 13.433061
+      }
+    }
+  },
+  "M5": {
+    "samples": [
+      {
+        "log": "build/factorio-apple-comparison/mac-split/run-0.log",
+        "call": 719447,
+        "total_ms": 20.443375,
+        "replay_ms": 17.151041,
+        "finish_wait_ms": 3.292334
+      },
+      {
+        "log": "build/factorio-apple-comparison/mac-split/run-0.log",
+        "call": 720631,
+        "total_ms": 6.789125,
+        "replay_ms": 3.34025,
+        "finish_wait_ms": 3.448875
+      },
+      {
+        "log": "build/factorio-apple-comparison/mac-split/run-0.log",
+        "call": 721815,
+        "total_ms": 6.703042,
+        "replay_ms": 3.354417,
+        "finish_wait_ms": 3.348625
+      },
+      {
+        "log": "build/factorio-apple-comparison/mac-split/run-0.log",
+        "call": 722999,
+        "total_ms": 6.6255,
+        "replay_ms": 3.250875,
+        "finish_wait_ms": 3.374625
+      },
+      {
+        "log": "build/factorio-apple-comparison/mac-split/run-0.log",
+        "call": 724183,
+        "total_ms": 9.134666,
+        "replay_ms": 5.967125,
+        "finish_wait_ms": 3.167541
+      },
+      {
+        "log": "build/factorio-apple-comparison/mac-split/run-1.log",
+        "call": 719447,
+        "total_ms": 12.760875,
+        "replay_ms": 9.458459,
+        "finish_wait_ms": 3.302416
+      },
+      {
+        "log": "build/factorio-apple-comparison/mac-split/run-1.log",
+        "call": 720631,
+        "total_ms": 13.556791,
+        "replay_ms": 10.1605,
+        "finish_wait_ms": 3.396291
+      },
+      {
+        "log": "build/factorio-apple-comparison/mac-split/run-1.log",
+        "call": 721815,
+        "total_ms": 10.609917,
+        "replay_ms": 7.17675,
+        "finish_wait_ms": 3.433167
+      },
+      {
+        "log": "build/factorio-apple-comparison/mac-split/run-1.log",
+        "call": 722999,
+        "total_ms": 8.903334,
+        "replay_ms": 5.55875,
+        "finish_wait_ms": 3.344584
+      },
+      {
+        "log": "build/factorio-apple-comparison/mac-split/run-1.log",
+        "call": 724183,
+        "total_ms": 9.794583,
+        "replay_ms": 6.586041,
+        "finish_wait_ms": 3.208542
+      },
+      {
+        "log": "build/factorio-apple-comparison/mac-split/run-2.log",
+        "call": 719447,
+        "total_ms": 8.03275,
+        "replay_ms": 4.779292,
+        "finish_wait_ms": 3.253458
+      },
+      {
+        "log": "build/factorio-apple-comparison/mac-split/run-2.log",
+        "call": 720631,
+        "total_ms": 6.371,
+        "replay_ms": 2.951208,
+        "finish_wait_ms": 3.419792
+      },
+      {
+        "log": "build/factorio-apple-comparison/mac-split/run-2.log",
+        "call": 721815,
+        "total_ms": 6.816833,
+        "replay_ms": 3.637458,
+        "finish_wait_ms": 3.179375
+      },
+      {
+        "log": "build/factorio-apple-comparison/mac-split/run-2.log",
+        "call": 722999,
+        "total_ms": 6.647709,
+        "replay_ms": 3.507209,
+        "finish_wait_ms": 3.1405
+      },
+      {
+        "log": "build/factorio-apple-comparison/mac-split/run-2.log",
+        "call": 724183,
+        "total_ms": 9.008125,
+        "replay_ms": 5.628167,
+        "finish_wait_ms": 3.379958
+      }
+    ],
+    "statistics": {
+      "total_ms": {
+        "median": 8.903334,
+        "mean": 9.479841666666667,
+        "min": 6.371,
+        "max": 20.443375
+      },
+      "replay_ms": {
+        "median": 5.55875,
+        "mean": 6.1671694666666665,
+        "min": 2.951208,
+        "max": 17.151041
+      },
+      "finish_wait_ms": {
+        "median": 3.344584,
+        "mean": 3.3126722,
+        "min": 3.1405,
+        "max": 3.448875
+      }
+    }
+  },
+  "median_time_ratio": 3.2720267486314683
+}

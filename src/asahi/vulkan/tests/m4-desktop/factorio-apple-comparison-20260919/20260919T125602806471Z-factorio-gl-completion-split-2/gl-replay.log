@@ -1,0 +1,40 @@
+ATTENTION: default value of option vblank_mode overridden by environment.
+warning: process name not yet set
+warning: process name not yet set
+warning: process name not yet set
+warning: process name not yet set
+warning: process name not yet set
+warning: process name not yet set
+warning: process name not yet set
+warning: process name not yet set
+warning: process name not yet set
+warning: process name not yet set
+/home/e/.local/share/factorio-driver/fex-thunks/FEXInterpreter
+Factorio copy adapter: preserved raw 1024x1024 texels, 16 bytes each
+Factorio copy adapter: preserved raw 512x512 texels, 16 bytes each
+Factorio copy adapter: preserved raw 256x256 texels, 16 bytes each
+Factorio copy adapter: preserved raw 1024x848 texels, 16 bytes each
+Factorio copy adapter: preserved raw 512x424 texels, 16 bytes each
+Factorio copy adapter: preserved raw 256x212 texels, 16 bytes each
+Factorio copy adapter: preserved raw 1024x704 texels, 16 bytes each
+Factorio copy adapter: preserved raw 512x352 texels, 16 bytes each
+Factorio copy adapter: preserved raw 512x204 texels, 16 bytes each
+Factorio copy adapter: preserved raw 256x102 texels, 16 bytes each
+Factorio copy adapter: preserved raw 1024x1012 texels, 8 bytes each
+Factorio copy adapter: preserved raw 512x506 texels, 8 bytes each
+Factorio copy adapter: preserved raw 1024x610 texels, 8 bytes each
+Factorio copy adapter: preserved raw 512x305 texels, 8 bytes each
+Factorio copy adapter: preserved raw 512x370 texels, 8 bytes each
+Factorio copy adapter: preserved raw 256x185 texels, 8 bytes each
+Factorio copy adapter: preserved raw 4096x1280 texels, 4 bytes each
+Factorio copy adapter: preserved raw 2048x640 texels, 4 bytes each
+Factorio copy adapter: preserved raw 1024x320 texels, 4 bytes each
+Factorio copy adapter: preserved raw 512x160 texels, 4 bytes each
+Factorio copy adapter: preserved raw 512x164 texels, 8 bytes each
+Factorio copy adapter: preserved raw 256x82 texels, 8 bytes each
+COMPLETED_FRAME call=719447 ns=30864456 replay_ns=24449207 finish_wait_ns=6415249
+COMPLETED_FRAME call=720631 ns=38704462 replay_ns=32989445 finish_wait_ns=5715017
+COMPLETED_FRAME call=721815 ns=33433190 replay_ns=27440159 finish_wait_ns=5993031
+COMPLETED_FRAME call=722999 ns=33918609 replay_ns=28032341 finish_wait_ns=5886268
+COMPLETED_FRAME call=724183 ns=20250100 replay_ns=12186640 finish_wait_ns=8063460
+Rendered 6 frames in 13.1541 secs, average of 0.456131 fps
