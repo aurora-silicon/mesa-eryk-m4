@@ -31,3 +31,8 @@ Guarded J713 evidence (20260919 UTC, watchdog60s, six sensors0.5s, cutoff95C):
 
 Observer now records complete-window FPS alongside the historical tail12
 summary. Raw samples are retained. No game resolution/quality/input changed.
+
+Combined descriptor prefetch and disjoint-clear batching: 063058958412Z
+retained-frame replay has zero differing pixels. 063239194565Z live normal
+menu mean42.355FPS over117 samples, median43.86, tail39.06FPS, peak87C.
+Still no60FPS sample. These varying scenes do not establish independent gains.
