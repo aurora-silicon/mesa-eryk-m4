@@ -268,6 +268,13 @@ enum hk_meta_object_key_type {
    HK_META_OBJECT_KEY_TIMESTAMP_DISPATCH,
 };
 
+struct hk_native_meta_key {
+   enum hk_meta_object_key_type type;
+   uint32_t query_flags;
+   uint32_t availability_kind; /* 0: timestamp sentinel, 1: u32, 2: u64 */
+   uint32_t specialize;
+};
+
 struct hk_meta_event_wait_info {
    uint64_t address;
    uint32_t value;
@@ -275,7 +282,7 @@ struct hk_meta_event_wait_info {
 };
 
 static nir_shader *
-build_event_wait_shader(void)
+build_event_wait_shader(const struct hk_native_meta_key *key)
 {
    nir_builder b = nir_builder_init_simple_shader(
       MESA_SHADER_COMPUTE, NULL, "hk-meta-event-wait");
@@ -314,9 +321,9 @@ build_event_wait_shader(void)
 }
 
 static VkResult
-get_native_meta_pipeline(struct hk_device *dev,
-                          enum hk_meta_object_key_type key, unsigned push_size,
-                          nir_shader *(*build_shader)(void),
+get_native_meta_pipeline_key(struct hk_device *dev,
+                          const struct hk_native_meta_key *key, unsigned push_size,
+                          nir_shader *(*build_shader)(const struct hk_native_meta_key *),
                           VkPipelineLayout *layout_out, VkPipeline *pipeline_out)
 {
    const VkPushConstantRange push_range = {
@@ -327,12 +334,12 @@ get_native_meta_pipeline(struct hk_device *dev,
 
    VkResult result = vk_meta_get_pipeline_layout(
       &dev->vk, &dev->meta, NULL, push_size ? &push_range : NULL,
-      &key, sizeof(key), layout_out);
+      key, sizeof(*key), layout_out);
    if (unlikely(result != VK_SUCCESS))
       return result;
 
    VkPipeline cached =
-      vk_meta_lookup_pipeline(&dev->meta, &key, sizeof(key));
+      vk_meta_lookup_pipeline(&dev->meta, key, sizeof(*key));
    if (cached != VK_NULL_HANDLE) {
       *pipeline_out = cached;
       return VK_SUCCESS;
@@ -340,7 +347,7 @@ get_native_meta_pipeline(struct hk_device *dev,
 
    const VkPipelineShaderStageNirCreateInfoMESA nir_info = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_NIR_CREATE_INFO_MESA,
-      .nir = build_shader(),
+      .nir = build_shader(key),
    };
    const VkComputePipelineCreateInfo info = {
       .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
@@ -354,10 +361,22 @@ get_native_meta_pipeline(struct hk_device *dev,
    };
 
    result = vk_meta_create_compute_pipeline(
-      &dev->vk, &dev->meta, &info, &key, sizeof(key), pipeline_out);
+      &dev->vk, &dev->meta, &info, key, sizeof(*key), pipeline_out);
    ralloc_free(nir_info.nir);
    return result;
 }
+
+static VkResult
+get_native_meta_pipeline(struct hk_device *dev,
+                          enum hk_meta_object_key_type type, unsigned push_size,
+                          nir_shader *(*build_shader)(const struct hk_native_meta_key *),
+                          VkPipelineLayout *layout_out, VkPipeline *pipeline_out)
+{
+   const struct hk_native_meta_key key = {.type = type};
+   return get_native_meta_pipeline_key(dev, &key, push_size, build_shader,
+                                        layout_out, pipeline_out);
+}
+
 
 void
 hk_g17p_meta_wait_addr(struct hk_cmd_buffer *cmd, uint64_t address,
@@ -404,7 +423,7 @@ struct hk_meta_timestamp_copy_info {
 };
 
 static nir_shader *
-build_timestamp_dispatch_shader(void)
+build_timestamp_dispatch_shader(const struct hk_native_meta_key *key)
 {
    nir_builder b = nir_builder_init_simple_shader(
       MESA_SHADER_COMPUTE, NULL, "hk-meta-timestamp-dispatch");
@@ -444,7 +463,7 @@ hk_native_meta_timestamp_dispatch(struct hk_cmd_buffer *cmd)
 }
 
 static nir_shader *
-build_timestamp_copy_shader(void)
+build_timestamp_copy_shader(const struct hk_native_meta_key *key)
 {
    nir_builder b = nir_builder_init_simple_shader(
       MESA_SHADER_COMPUTE, NULL, "hk-meta-timestamp-copy");
@@ -537,8 +556,23 @@ load_query_available(nir_builder *b, nir_def *source, nir_def *availability,
    return nir_if_phi(b, with_available, timestamp_available);
 }
 
+static nir_def *
+load_query_available_variant(nir_builder *b, nir_def *source, nir_def *availability,
+                              nir_def *availability_64,
+                              const struct hk_native_meta_key *key)
+{
+   if (!key->specialize)
+      return load_query_available(b, source, availability, availability_64);
+
+   const unsigned bits = key->availability_kind == 1 ? 32 : 64;
+   nir_def *value = nir_load_global(b, 1, bits,
+      key->availability_kind ? availability : source, .align_mul = bits / 8,
+      .access = ACCESS_COHERENT | ACCESS_VOLATILE);
+   return nir_ine_imm(b, value, key->availability_kind ? 0 : -1);
+}
+
 static nir_shader *
-build_query_copy_shader(void)
+build_query_copy_shader(const struct hk_native_meta_key *key)
 {
    nir_builder b = nir_builder_init_simple_shader(
       MESA_SHADER_COMPUTE, NULL, "hk-meta-query-copy");
@@ -548,15 +582,22 @@ build_query_copy_shader(void)
    nir_def *source = nir_load_push_constant(&b, 1, 64, nir_imm_int(&b, 0));
    nir_def *destination = nir_load_push_constant(&b, 1, 64, nir_imm_int(&b, 8));
    nir_def *availability = nir_load_push_constant(&b, 1, 64, nir_imm_int(&b, 16));
-   nir_def *flags = nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 24));
-   nir_def *availability_64 = nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 28));
+   nir_def *flags = key->specialize ? nir_imm_int(&b, key->query_flags)
+      : nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 24));
+   nir_def *availability_64 = key->specialize
+      ? nir_imm_int(&b, key->availability_kind == 2)
+      : nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 28));
    nir_def *wait = nir_test_mask(&b, flags, VK_QUERY_RESULT_WAIT_BIT);
+   /* Keep native loop nesting explicit. The caller validates destination is
+    * nonzero; use that runtime invariant instead of folding to a bare loop. */
+   if (key->specialize && (key->query_flags & VK_QUERY_RESULT_WAIT_BIT))
+      wait = nir_ine_imm(&b, destination, 0);
    nir_if *waiting = nir_push_if(&b, wait);
    nir_loop *loop = nir_push_loop(&b);
-   nir_break_if(&b, load_query_available(&b, source, availability, availability_64));
+   nir_break_if(&b, load_query_available_variant(&b, source, availability, availability_64, key));
    nir_pop_loop(&b, loop);
    nir_pop_if(&b, waiting);
-   nir_def *available = load_query_available(&b, source, availability, availability_64);
+   nir_def *available = load_query_available_variant(&b, source, availability, availability_64, key);
    nir_def *wide = nir_test_mask(&b, flags, VK_QUERY_RESULT_64_BIT);
    nir_if *write_result = nir_push_if(&b, nir_ior(&b, available,
       nir_test_mask(&b, flags, VK_QUERY_RESULT_PARTIAL_BIT)));
@@ -603,7 +644,15 @@ hk_native_meta_copy_query(struct hk_cmd_buffer *cmd, uint64_t destination,
    hk_meta_begin(cmd, &save, VK_PIPELINE_BIND_POINT_COMPUTE);
    VkPipelineLayout layout;
    VkPipeline pipeline;
-   VkResult result = get_native_meta_pipeline(dev, HK_META_OBJECT_KEY_QUERY_COPY,
+   const bool specialize = dev->dev.chip == AGX_CHIP_G16G &&
+      debug_get_bool_option("HK_M4_SPECIALIZE_QUERY_COPY", false);
+   const struct hk_native_meta_key key = {
+      .type = HK_META_OBJECT_KEY_QUERY_COPY,
+      .query_flags = specialize ? flags : 0,
+      .availability_kind = specialize && availability ? (availability_64 ? 2 : 1) : 0,
+      .specialize = specialize,
+   };
+   VkResult result = get_native_meta_pipeline_key(dev, &key,
       sizeof(struct hk_meta_query_copy_info), build_query_copy_shader, &layout, &pipeline);
    if (result == VK_SUCCESS) {
       const struct hk_meta_query_copy_info args = {source, destination, availability, flags, availability_64};
