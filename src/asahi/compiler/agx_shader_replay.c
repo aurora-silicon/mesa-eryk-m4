@@ -14,12 +14,13 @@
 int main(int argc, char **argv)
 {
    if (argc != 2 && !(argc == 3 && (!strcmp(argv[2], "--check-native-resources") ||
+                                  !strcmp(argv[2], "--native-preamble") ||
                                   !strcmp(argv[2], "--gcm") ||
                                   !strcmp(argv[2], "--licm") ||
                                   !strcmp(argv[2], "--gcm-no-vn") ||
                                   !strcmp(argv[2], "--print-nir") ||
                                   !strncmp(argv[2], "--uniform-one=", 14)))) {
-      fprintf(stderr, "Usage: %s BUNDLE/input.bin [--check-native-resources|--gcm|--licm|--gcm-no-vn|--uniform-one=HALF]\n       %s FRONTEND.nirbin --print-nir\n", argv[0], argv[0]);
+      fprintf(stderr, "Usage: %s BUNDLE/input.bin [--check-native-resources|--native-preamble|--gcm|--licm|--gcm-no-vn|--uniform-one=HALF]\n       %s FRONTEND.nirbin --print-nir\n", argv[0], argv[0]);
       return 2;
    }
    FILE *f = fopen(argv[1], "rb");
@@ -58,7 +59,8 @@ int main(int argc, char **argv)
    if (!nir || reader.overrun || reader.current != reader.end) return 2;
    /* Explicit diagnostic transforms replace the driver's default motion
     * pass rather than applying it twice. */
-   if (argc == 3 && strncmp(argv[2], "--uniform-one=", 14))
+   if (argc == 3 && strncmp(argv[2], "--uniform-one=", 14) &&
+       strcmp(argv[2], "--native-preamble"))
       setenv("AGX_CODE_MOTION", "none", 1);
    if (argc == 3 && (!strcmp(argv[2], "--gcm") || !strcmp(argv[2], "--gcm-no-vn"))) {
       bool progress = nir_opt_gcm(nir, !strcmp(argv[2], "--gcm"));
@@ -102,6 +104,16 @@ int main(int argc, char **argv)
          NIR_PASS(progress, nir, nir_opt_dce);
       } while (progress);
       nir_validate_shader(nir, "diagnostic uniform specialization");
+   }
+   if (argc == 3 && !strcmp(argv[2], "--native-preamble")) {
+      if (key.dev.encoding != AGX_ISA_ENCODING_AGX3B || key.secondary ||
+          nir->info.stage != MESA_SHADER_FRAGMENT) {
+         fprintf(stderr, "Native preamble diagnostic requires a main AGX3b fragment shader\n");
+         return 2;
+      }
+      key.no_preamble = false;
+      key.promote_textures = false;
+      fprintf(stderr, "Diagnostic compiler option: native arithmetic preamble enabled\n");
    }
    nir_print_shader(nir, stdout);
    if (argc == 3 && !strcmp(argv[2], "--check-native-resources")) {

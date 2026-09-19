@@ -6,6 +6,7 @@
 
 #include "compiler/nir/nir_builder.h"
 #include "util/macros.h"
+#include "util/u_debug.h"
 #include "agx_compiler.h"
 #include "nir.h"
 #include "nir_builder_opcodes.h"
@@ -59,7 +60,28 @@ native_preamble_instr(const nir_instr *instr, const void *data)
     * constant program currently supports arithmetic over those uniforms;
     * leave other memory accesses and their dependent expressions per-lane. */
    if (instr->type == nir_instr_type_alu) {
-      const nir_op_info *info = &nir_op_infos[nir_instr_as_alu(instr)->op];
+      const nir_alu_instr *alu = nir_instr_as_alu(instr);
+      const nir_op_info *info = &nir_op_infos[alu->op];
+      /* Qualify basic full-width arithmetic independently from comparisons,
+       * rounding and narrowing, which the native constant program has not
+       * yet passed. Memory accesses still stay in the Ioto resource loader. */
+      if (*(const bool *)data && alu->def.bit_size == 32) {
+         bool full_width = true;
+         for (unsigned i = 0; i < info->num_inputs; ++i)
+            full_width &= alu->src[i].src.ssa->bit_size == 32;
+         if (full_width) {
+            switch (alu->op) {
+            case nir_op_fadd:
+            case nir_op_fmul:
+            case nir_op_ffma:
+            case nir_op_fneg:
+            case nir_op_fabs:
+               return true;
+            default:
+               break;
+            }
+         }
+      }
       if (nir_alu_type_get_base_type(info->output_type) == nir_type_float)
          return false;
       for (unsigned i = 0; i < info->num_inputs; ++i)
@@ -460,9 +482,12 @@ agx_nir_opt_preamble(nir_shader *nir, unsigned *sizes, bool uniform_32bit_only)
 {
    bool progress = false;
    nir_opt_preamble_options options = preamble_options;
+   const bool native_float =
+      debug_get_bool_option("AGX_NATIVE_FLOAT_PREAMBLE", false);
    if (uniform_32bit_only) {
       options.def_size = def_size_32;
       options.can_move_instr_cb = native_preamble_instr;
+      options.cb_data = &native_float;
    }
    NIR_PASS(progress, nir, nir_opt_preamble, &options, sizes);
 
