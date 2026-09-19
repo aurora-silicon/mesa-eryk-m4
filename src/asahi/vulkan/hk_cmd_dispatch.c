@@ -584,17 +584,27 @@ hk_dispatch_g17p_native_linked(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
    if (s->b.info.rodata.size_16 != 0)
       hk_cmd_buffer_retain_bo(cmd, s->bo);
 
-   struct agx_bo *program_bo = agx_bo_create(
-      &dev->dev, HK_AGX3_G17P_COMPUTE_PROGRAM_MAX_SIZE,
-      AGX_IOTO_PROGRAM_ALIGNMENT, AGX_BO_EXEC | AGX_BO_LOW_VA,
-      "G17P compute Ioto program");
-   if (!program_bo) {
-      vk_command_buffer_set_error(&cmd->vk, VK_ERROR_OUT_OF_DEVICE_MEMORY);
-      return;
+   struct agx_bo *program_bo = NULL;
+   struct agx_ptr upload = {0};
+   if (dev->dev.chip == AGX_CHIP_G16G &&
+       HK_AGX3_G17P_COMPUTE_PROGRAM_MAX_SIZE <= HK_CMD_BO_SIZE) {
+      upload = hk_pool_usc_alloc(cmd, HK_AGX3_G17P_COMPUTE_PROGRAM_MAX_SIZE,
+                                 AGX_IOTO_PROGRAM_ALIGNMENT);
+   } else {
+      program_bo = agx_bo_create(
+         &dev->dev, HK_AGX3_G17P_COMPUTE_PROGRAM_MAX_SIZE,
+         AGX_IOTO_PROGRAM_ALIGNMENT, AGX_BO_EXEC | AGX_BO_LOW_VA,
+         "G17P compute Ioto program");
+      if (!program_bo) {
+         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+         return;
+      }
+      util_dynarray_append(&cmd->large_bos, program_bo);
+      upload.gpu = program_bo->va->addr;
+      upload.cpu = agx_bo_map(program_bo);
    }
-   util_dynarray_append(&cmd->large_bos, program_bo);
-
-   void *program_map = agx_bo_map(program_bo);
+   const uint64_t program_va = upload.gpu;
+   void *program_map = upload.cpu;
    if (!program_map) {
       vk_command_buffer_set_error(&cmd->vk, VK_ERROR_MEMORY_MAP_FAILED);
       return;
@@ -610,7 +620,7 @@ hk_dispatch_g17p_native_linked(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
     * microseconds later with no attribution, so refuse the dispatch here,
     * where both numbers are known, instead of letting the GPU discover it.
     */
-   if (!agx_va_in_usc_window(&dev->dev, program_bo->va->addr) ||
+   if (!agx_va_in_usc_window(&dev->dev, program_va) ||
        !agx_va_in_usc_window(&dev->dev,
                              linked->b.bo->va->addr + linked->b.entry_offset)) {
       mesa_loge("G17P dispatch: exec pointer outside the USC window "
@@ -618,14 +628,14 @@ hk_dispatch_g17p_native_linked(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
                 " shader=%" PRIx64 "\n",
                 dev->dev.shader_base,
                 dev->dev.shader_base + AGX_USC_WINDOW_SIZE,
-                program_bo->va->addr,
+                program_va,
                 linked->b.bo->va->addr + linked->b.entry_offset);
       vk_command_buffer_set_error(&cmd->vk, VK_ERROR_UNKNOWN);
       return;
    }
 
    const struct hk_agx3_g17p_compute_program_desc desc = {
-      .program_va = program_bo->va->addr,
+      .program_va = program_va,
       /* The container's entry point, not the allocation base: the
        * shader loader reads the block-size dword at entry - 0x80. */
       .shader_va = linked->b.bo->va->addr + linked->b.entry_offset,
@@ -649,7 +659,7 @@ hk_dispatch_g17p_native_linked(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
    }
 
    memcpy(program_map, program.bytes, program.length);
-   if (agx_bo_sync_for_device(program_bo, 0, program.length)) {
+   if (program_bo && agx_bo_sync_for_device(program_bo, 0, program.length)) {
       vk_command_buffer_set_error(&cmd->vk, VK_ERROR_DEVICE_LOST);
       return;
    }
@@ -691,7 +701,7 @@ hk_dispatch_g17p_native_linked(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
               (uint64_t)cmd->state.cs.descriptors.root.root_desc_addr,
               (uint64_t)cmd->state.cs.descriptors.root.sets[0],
               (uint64_t)cmd->state.cs.descriptors.root.cs.constant_data_addr);
-      hk_g17p_trace_hexdump("ioto-program", program_bo->va->addr,
+      hk_g17p_trace_hexdump("ioto-program", program_va,
                             program.bytes, program.length);
       fprintf(stderr,
               "G17P shader: va=%" PRIx64 " size=%u nr_gprs=%u scratch=%u "
@@ -755,7 +765,7 @@ hk_dispatch_g17p_native_linked(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
               " program=%" PRIx64 " shader=%" PRIx64
               " root=%" PRIx64 " set0=%" PRIx64
               " size=%zu gprs=%u scratch=%u grid=%u,%u,%u local=%u,%u,%u\n",
-              hk_cs_current_addr(cs), program_bo->va->addr,
+              hk_cs_current_addr(cs), program_va,
               linked->b.bo->va->addr + linked->b.entry_offset,
               root_ptr, (uint64_t)cmd->state.cs.descriptors.root.sets[0],
               linked->b.size, linked->b.nr_gprs, linked->b.scratch_size,
@@ -791,9 +801,9 @@ hk_dispatch_g17p_native_linked(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
               " pipeline_or=%" PRIx64 "%s\n",
               dev->dev.shader_base,
               dev->dev.shader_base + AGX_USC_WINDOW_SIZE,
-              program_bo->va->addr, linked->b.bo->va->addr, w[0], w[1], w[2],
+              program_va, linked->b.bo->va->addr, w[0], w[1], w[2],
               w[3], reconstructed, reconstructed_or,
-              reconstructed_or == program_bo->va->addr ? "" : " MISMATCH");
+              reconstructed_or == program_va ? "" : " MISMATCH");
    }
 
    cs->current = (uint32_t *)((uint8_t *)cs->current + sink.length);

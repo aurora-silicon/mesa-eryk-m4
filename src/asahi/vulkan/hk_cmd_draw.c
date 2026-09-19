@@ -441,12 +441,22 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
       program_label = "G17P RT0 reload Ioto program";
    }
 
-   struct agx_bo *program_bo =
-      hk_g17p_alloc_ioto_program(cmd, program_capacity, program_label);
-   if (!program_bo)
-      return (struct hk_bg_eot){0};
-
-   void *program_map = agx_bo_map(program_bo);
+   struct agx_bo *program_bo = NULL;
+   struct agx_ptr upload = {0};
+   if (dev->dev.chip == AGX_CHIP_G16G && program_capacity <= HK_CMD_BO_SIZE) {
+      /* Background/clear/store launch programs have the same immutable
+       * command-buffer lifetime as ordinary draw programs. Suballocate them
+       * in the executable upload pool instead of owning a GEM per pass. */
+      upload = hk_pool_usc_alloc(cmd, program_capacity, AGX_IOTO_PROGRAM_ALIGNMENT);
+   } else {
+      program_bo = hk_g17p_alloc_ioto_program(cmd, program_capacity, program_label);
+      if (!program_bo)
+         return (struct hk_bg_eot){0};
+      upload.gpu = program_bo->va->addr;
+      upload.cpu = agx_bo_map(program_bo);
+   }
+   const uint64_t program_va = upload.gpu;
+   void *program_map = upload.cpu;
    if (!program_map) {
       vk_command_buffer_set_error(&cmd->vk, VK_ERROR_MEMORY_MAP_FAILED);
       return (struct hk_bg_eot){0};
@@ -497,7 +507,7 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
          .sample_size_B = key->tib.sample_size_B,
          .tile_size = key->tib.tile_size,
          .nr_samples = key->tib.nr_samples,
-         .program_va = program_bo->va->addr,
+         .program_va = program_va,
          .shader_va = shader->ptr + shader->info.main_offset,
          .pbe_argument_va = pbe_argument_va,
          .attachment_count = attachment_count,
@@ -524,7 +534,7 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
                  "G17P EOT launch: program=%" PRIx64 " length=%zu "
                  "pbe=%" PRIx64 " attachments=%u offsets=%u,%u "
                  "gprs=%u staging=%u samples=%u tile=%u stride=%u descriptor=",
-                 program_bo->va->addr, program_length, pbe_argument_va,
+                 program_va, program_length, pbe_argument_va,
                  desc.attachment_count, desc.imageblock_offsets_B[0],
                  desc.imageblock_offsets_B[1], desc.nr_gprs,
                  desc.staging_halfs, desc.nr_samples, desc.tile_size,
@@ -538,7 +548,7 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
          .sample_size_B = key->tib.sample_size_B,
          .tile_size = key->tib.tile_size,
          .nr_samples = key->tib.nr_samples,
-         .program_va = program_bo->va->addr,
+         .program_va = program_va,
          .shader_va = shader->ptr + shader->info.main_offset,
          .shader_binary_size = shader->info.binary_size,
          .scratch_size = shader->info.scratch_size,
@@ -584,7 +594,7 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
          .sample_size_B = key->tib.sample_size_B,
          .tile_size = key->tib.tile_size,
          .nr_samples = key->tib.nr_samples,
-         .program_va = program_bo->va->addr,
+         .program_va = program_va,
          .shader_va = shader->ptr + shader->info.main_offset,
          .shader_binary_size = shader->info.binary_size,
          .scratch_size = shader->info.scratch_size,
@@ -657,7 +667,7 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
               " length=%zu staging_known=%u staging_halfs=%u compiler_d=%u\n",
               op == AGX_BG_CLEAR ? "clear" :
               op == AGX_BG_LOAD ? "reload" : "none",
-              program_bo->va->addr, resource_spec, program_length,
+              program_va, resource_spec, program_length,
               shader->info.agx3_staging_known,
               shader->info.agx3_staging_halfs,
               shader->info.agx3_staging_known
@@ -665,13 +675,13 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
                  : shader->info.nr_gprs);
    }
 
-   if (agx_bo_sync_for_device(program_bo, 0, program_length)) {
+   if (program_bo && agx_bo_sync_for_device(program_bo, 0, program_length)) {
       vk_command_buffer_set_error(&cmd->vk, VK_ERROR_DEVICE_LOST);
       return (struct hk_bg_eot){0};
    }
 
    return (struct hk_bg_eot){
-      .usc = program_bo->va->addr,
+      .usc = program_va,
       .rsrc_spec = resource_spec,
    };
 }

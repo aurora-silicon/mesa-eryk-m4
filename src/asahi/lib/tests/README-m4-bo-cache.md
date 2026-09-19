@@ -64,3 +64,22 @@ animated scenes, not an isolated FPS speedup ratio. The latter completes at
 35.85 FPS (25.43--37.65), peak 90.75 C under the 95 C guard; 60 FPS is unmet.
 `20260919T013318065400Z-factorio-executable-cache-frame` is pixel-identical to
 the original retained frame. Full CTS remains deferred.
+
+## Command-buffer tile and compute launch allocations
+
+Small M4 clear/reload/store and compute Ioto programs now use the existing
+executable USC command-buffer upload pool. They retain the command-buffer
+lifetime and alignment of ordinary draw programs, removing one BO ownership
+and mapping operation per pass. Other chips and oversized programs keep the
+standalone allocation path. Pooled uploads use the same coherent publication
+path as existing M4 draw launch programs.
+
+`20260919T013559882015Z-factorio-pooled-tile-compute-frame` matches the original
+reference exactly. `20260919T014154571700Z-factorio-pooled-tile-compute-queries`
+passes timestamp copies and ordering. The 60-second untouched menu run
+`20260919T013627454028Z-factorio-pooled-tile-compute-menu` ends at 35.59 FPS
+(35.16--36.08), peak 90 C under the 95 C guard. Driver-thread CPU is 2.6%
+of one core over guest seconds 40--75. GPU/firmware execution now dominates;
+this small pooling change is not claimed as a measured FPS improvement.
+A separate vblank_mode=0 diagnostic ends at 35.86 FPS, with no improvement.
+Normal game settings remain unchanged. 60 FPS and broad CTS remain pending.
