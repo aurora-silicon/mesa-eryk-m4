@@ -142,3 +142,22 @@ All arithmetic outputs checked (fragment edgepixel, compute everyword). The
 probe adds optional read_each=0 to keep compute output GPU-resident until the
 final readback; this did not improve measured throughput. Fragment256FMA
 output is UNORM-quantized and checked with one-unit tolerance.
+
+## Controlled replay and tile-budget diagnostics, 09:04 UTC
+
+Kernel debug_flags25165824 restores per-pass timestamps while preserving
+watchdog progress. Before-vector085938 and after-vector090012 replay exactly
+the same capture with cache disabled only for shader compilation. Both are
+pixel-identical to the qualified reference. Before fragment sums11.60..12.73ms,
+render spans14.50..15.65ms; after11.56..11.98ms and14.42..14.95ms. No large gain.
+Use experiment-local kernel-live.log for joins: whole-boot journals contain
+previous ASIDs and can reuse exactly the same command-stream addresses. The
+new controlled-replay helper requires one unambiguous complete five-frame
+match, a guarded PASS and pixel-exact final image.
+
+HK_M4_MAX_TILE_SAMPLES diagnostically lowers the single-sample G16G tile
+budget (256/512/1024); default2048 and other sample counts remain unchanged.
+The common allocator and epilog generator carry the resulting geometry.
+16x16 run090338: fragment11.96..12.37ms, spans15.28..15.69ms. 32x16 run090359:
+fragment11.38..11.89ms, spans14.49..14.98ms. Bothpixel-exact, guardsPASS,
+peak64.75C. No worthwhile gain established; retain32x32 default. NoCTS claim.
