@@ -1407,7 +1407,7 @@ queue_submit(struct hk_device *dev, struct hk_queue *queue,
             asahi_fill_vdm_command(dev, cs, &cmd);
             if (dev->dev.chip == AGX_CHIP_G16G &&
                 (dev->dev.params.features & DRM_ASAHI_FEATURE_FRAGMENT_DEPENDENCY) &&
-                debug_get_bool_option("HK_M4_EARLY_TILING", false) &&
+                debug_get_bool_option("HK_M4_EARLY_TILING", true) &&
                 previous_cs && previous_cs->type == HK_CS_VDM &&
                 !previous_cs->writes_memory && cs->fragment_only_dependency &&
                 !cs->timestamp.start.handle) {

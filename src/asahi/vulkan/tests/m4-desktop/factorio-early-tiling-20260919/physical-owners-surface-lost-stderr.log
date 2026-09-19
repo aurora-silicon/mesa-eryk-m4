@@ -1,0 +1,39 @@
+   0.007 2026-09-19 14:28:18; Factorio 2.0.77 (build 84539, linux64, demo)
+   0.178 Operating system: Linux (Arch rolling)
+   0.181 Program arguments: "/home/e/Games/factorio-demo-2.0.77/bin/x64/factorio" "--config" "/home/e/.local/share/factorio-standalone/demo-2.0.77/config.ini" 
+   0.182 Config path: /home/e/.local/share/factorio-standalone/demo-2.0.77/config.ini
+   0.182 Read data path: /home/e/Games/factorio-demo-2.0.77/data
+   0.182 Write data path: /home/e/.local/share/factorio-standalone/demo-2.0.77 [17153/101880MB]
+   0.182 Binaries path: /home/e/Games/factorio-demo-2.0.77/bin
+   0.215 System info: [CPU: Unknown ARM CPU, 4 cores, RAM: 11786 MB]
+   0.215 Environment: DISPLAY=:1 WAYLAND_DISPLAY=<unset> DESKTOP_SESSION=<unset> XDG_SESSION_DESKTOP=<unset> XDG_CURRENT_DESKTOP=<unset> SDL_VIDEODRIVER=<unset> __GL_FSAA_MODE=<unset> __GL_LOG_MAX_ANISO=<unset> __GL_SYNC_TO_VBLANK=<unset> __GL_SORT_FBCONFIGS=<unset> __GL_YIELD=<unset>
+   0.227 Display options: [FullScreen: false] [VSync: true] [UIScale: automatic (100.0%)] [Native DPI: true] [Screen: 255] [Special: lmw] [Lang: en]
+   0.356 Video driver: x11
+   0.356 Available displays: 1
+   0.356  [0]: eDP-1 - {[0,0], 2560x1664, SDL_PIXELFORMAT_RGB888, 60Hz}
+Opening host-side X11 display: 0x55aad16c45e0 -> 0xffff8a882000
+   0.563 Initialised OpenGL:[0] zink Vulkan 1.4(Apple M4 (G16G B0) (MESA_HONEYKRISP)); driver: 4.6 (Core Profile) Mesa 26.1.4 (git-709586be19)
+   0.563   [Extensions] s3tc:yes; KHR_debug:yes; ARB_clear_texture:yes, ARB_copy_image:yes, ARB_pipeline_statistics_query:yes, ARB_gl_spirv:yes, ARB_ES2_compatibility:yes
+   0.563   [Version] 4.6
+Linking address 0x7ffff2841cc0 to host invoker 0x7fffe916b020
+Linking address 0x7ffff2841cc0 to host invoker 0x7fffe916b020
+Linking address 0x7ffff2841f68 to host invoker 0x7fffe916b090
+Linking address 0x7fffe90e74b8 to host invoker 0x7fffe916aaa0
+Linking address 0x7ffff2843000 to host invoker 0x7fffe916ae60
+Linking address 0x7ffff2843280 to host invoker 0x7fffe916ae80
+Linking address 0x7ffff2843670 to host invoker 0x7fffe916af50
+Linking address 0x7ffff284388c to host invoker 0x7fffe916b050
+Linking address 0x7ffff2843520 to host invoker 0x7fffe916aeb0
+Linking address 0x7ffff2843750 to host invoker 0x7fffe916afa0
+   0.586 Graphics settings preset: integrated-gpuhigh
+   0.586   Dedicated video memory size 7569 MB (detected from Apple M4 (G16G B0); VendorID: 0x10005; DeviceID: 0x8132)
+   0.615 Graphics options: [Graphics quality: high] [Video memory usage: all] [DXT: low-quality]
+   0.615                   [Max threads (load/render): 32/4] [Max texture size: 8192] [Tex.Stream.: false] [Rotation quality: low] [Other: sTDCwtl] [B:0,C:0,S:100]
+   0.827 [Audio] Driver:pulseaudio, Device:Default device, Depth:16, Frequency:44100, Channels:2, Interpolation:linear
+MESA: error: zink: failed to update swapchain capabilities: VK_ERROR_SURFACE_LOST_KHR
+MESA: error: zink: swapchain killed 0xffff8a940400
+X Error of failed request:  GLXBadCurrentWindow
+  Major opcode of failed request:  150 (GLX)
+  Minor opcode of failed request:  11 (X_GLXSwapBuffers)
+  Serial number of failed request:  135
+  Current serial number in output stream:  135

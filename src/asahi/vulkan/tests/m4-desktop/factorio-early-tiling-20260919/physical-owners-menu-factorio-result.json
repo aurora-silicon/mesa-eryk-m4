@@ -1,0 +1,25 @@
+{
+  "initialized": true,
+  "launcher_elapsed_seconds": 72.02582604999999,
+  "vm_pids": [
+    2694
+  ],
+  "launcher": "/home/e/.local/bin/factorio-parameter-engines-start",
+  "state": "/home/e/.local/share/factorio-standalone/demo-2.0.77",
+  "unit": "m4-factorio-standalone.service",
+  "menu_fps": {
+    "source": "Gallium invisible HUD",
+    "tail_samples": 12,
+    "mean": 59.99,
+    "minimum": 59.74,
+    "maximum": 60.41,
+    "complete_window": {
+      "samples": 117,
+      "mean": 58.26,
+      "median": 59.92,
+      "minimum": 21.94,
+      "maximum": 63.1,
+      "fraction_at_least_59": 0.7777777777777778
+    }
+  }
+}

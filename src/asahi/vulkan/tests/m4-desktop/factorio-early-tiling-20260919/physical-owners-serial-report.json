@@ -1,0 +1,24 @@
+{
+  "id": "20260919T142349242741Z-factorio-parameter-engines-normal",
+  "verdict": "pass",
+  "transport_returncode": 0,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260919T142349242741Z-factorio-parameter-engines-normal",
+  "observations": {
+    "pixel_results": [
+      "PASS: Vulkan replay process completed; rendering requires separate comparison"
+    ],
+    "pixel_result_count": 1,
+    "thermal_samples": 9,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 72.0,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 72.0,
+      "Ta000m": 72.0,
+      "Te000m": 68.0,
+      "Te001m": 66.5,
+      "Tp000m": 69.75,
+      "Tp001m": 65.75
+    }
+  }
+}

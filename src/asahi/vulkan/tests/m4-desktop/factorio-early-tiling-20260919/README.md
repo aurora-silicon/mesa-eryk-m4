@@ -1,3 +1,34 @@
+# Complete physical ownership, qualified 2026-09-19
+
+Kernel79f480d290c9 completes the parameter-buffer ownership protocol:
+manager+0xc, RunTA+18, TA register1c830 and fragment register1c838 all select
+the same reserved owner. Descriptor-only1c617 FAILED boot; both the failure
+and successful recovery are recorded in the kernel tests note. Native M4
+captures ground both engine selectors. Do not deploy overlap on older kernels.
+
+With complete ownership, replay142127 preserves every pixel and all ten
+fragment query totals; all18 command timestamps are present in each frame.
+Whole GPU spans6.163..6.242ms, versus6.354..6.467ms with overlap disabled on
+the same kernel (142349). Five-frame traces are unchanged2512x1552.
+
+Live menu142153 completes60seconds without clicks or faults:117 samples,
+mean58.26FPS, median59.92, final12mean59.99. All samples retained including
+minimum21.94. Peak86C; watchdog and six thermal channels active. This passes
+the situation that failed before, but is not broad stability or the5ms goal.
+Enable early tiling by default again with this corrected kernel. Installed
+librarya02c681565b0632fc0185deb08fcfcccecd8d41c6b39757a866472977ccb7e08.
+Installed-default replay142944 passes exact pixels and counts at6.166..6.260ms.
+Installed-default menu143011 passes120seconds (peak88.75C); complete HUD
+samples are retained in physical-owners-installed-menu-factorio-result.json.
+
+The first longer attempt142816 FAILED during startup with SURFACE_LOST_KHR,
+GLXBadCurrentWindow and guest processSIGSEGV, without a kernel GPU fault.
+Retain this unresolved window/process failure; do not claim it is explained
+or erased by the subsequent successful run. The142944 hypothesis prematurely
+called it unrelated; only the absence of an accompanying GPU fault is known.
+
+Earlier failed qualification and diagnosis are retained below as history.
+
 # Live validation overrides the replay qualification
 
 134928 normal-menu run TIMED OUT at GPU job12904 after about20s of animation.
