@@ -20,3 +20,11 @@ it does not change texture assets, image dimensions or quality settings.
   in the preceding uncompressed-desktop sample. Scenes differ, so game FPS is
   not a paired comparison. Full-panel fragment cost is lower; 60 FPS remains
   unmet. User autologin and normal graphical boot remain enabled.
+
+Descriptor-prefetch revisit with the current BO cache, variants and compute
+copies: 20260919T023240632287Z-factorio-descriptor-prefetch-current-frame is
+pixel-identical. The 60-second live run
+20260919T023347445835Z-factorio-descriptor-prefetch-current-menu completes at
+29.83 FPS tail (14.84--39.95), peak 90.75 C. It contains more compute passes
+and a different animated scene than the 42.98 FPS preceding run. No isolated
+benefit is established; normal launcher keeps descriptor prefetch disabled.

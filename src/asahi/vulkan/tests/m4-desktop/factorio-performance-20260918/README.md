@@ -870,3 +870,17 @@ before diagnostic changes. No GPU fault was reported. Do not use this run as a
 successful FPS measurement. The earlier pre-change debug repeat
 `20260919T011302621715Z-factorio-recording-rejection-debug` passed at 28.48 FPS;
 scenes vary, and 60 FPS remains unachieved. Full CTS is deferred.
+
+## Nest replay deadlines within the hardware guard (2026-09-19)
+
+The repeated-frame diagnostic 20260919T023553051772Z-factorio-fixed-current-no-prefetch
+exceeded its 65-second outer bound while GPU retirement continued. Its inner
+replay timeout was fixed at 75 seconds, so the outer guard stopped it first,
+retained the streamed evidence and latched watchdog recovery. No successful
+100-frame result or GPU hang is claimed. The immediate follow-up was refused
+by the latched broker before running hardware.
+
+The wrapper now derives the inner timeout from the recorded guard bound,
+leaving 12 seconds for orderly child termination and evidence collection.
+The watchdog, thermal limit and outer deadline are unchanged. Use short loop
+counts for shader-cost comparisons; replay loops are not live-game FPS.
