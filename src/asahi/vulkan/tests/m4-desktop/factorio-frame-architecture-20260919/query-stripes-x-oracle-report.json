@@ -1,0 +1,22 @@
+{
+  "id": "20260919T112702884612Z-fragment-statistics-stripes-x-oracle",
+  "verdict": "process_failure",
+  "transport_returncode": 1,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260919T112702884612Z-fragment-statistics-stripes-x-oracle",
+  "observations": {
+    "pixel_results": [],
+    "pixel_result_count": 0,
+    "thermal_samples": 2,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 65.25,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 65.25,
+      "Ta000m": 65.0,
+      "Te000m": 61.5,
+      "Te001m": 60.25,
+      "Tp000m": 63.5,
+      "Tp001m": 59.75
+    }
+  }
+}

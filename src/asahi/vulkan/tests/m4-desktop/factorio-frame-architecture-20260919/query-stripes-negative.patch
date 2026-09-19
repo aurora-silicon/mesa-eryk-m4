@@ -1,0 +1,338 @@
+diff --git a/src/asahi/lib/agx_linker.h b/src/asahi/lib/agx_linker.h
+index 1edff412e08..8b85b346fb2 100644
+--- a/src/asahi/lib/agx_linker.h
++++ b/src/asahi/lib/agx_linker.h
+@@ -117,6 +117,9 @@ struct agx_fs_prolog_key {
+    /* Need to count FRAGMENT_SHADER_INVOCATIONS */
+    bool statistics;
+ 
++   /* Driver-owned striped statistics counters require pixel coordinates. */
++   uint8_t statistics_stripes;
++
+    /* Need to lower desktop OpenGL polygon stipple */
+    bool polygon_stipple;
+ 
+diff --git a/src/asahi/vulkan/hk_cmd_buffer.h b/src/asahi/vulkan/hk_cmd_buffer.h
+index b3938514d98..c50b0b152ac 100644
+--- a/src/asahi/vulkan/hk_cmd_buffer.h
++++ b/src/asahi/vulkan/hk_cmd_buffer.h
+@@ -84,7 +84,7 @@ struct hk_root_descriptor_table {
+ 
+          float blend_constant[4];
+          uint16_t no_epilog_discard;
+-         uint16_t _pad1;
++         uint16_t fragment_stat_stripe_mask;
+          uint16_t api_sample_mask;
+          uint16_t samples_log2;
+          uint16_t force_never_in_shader;
+@@ -1114,7 +1114,8 @@ void hk_native_meta_copy_timestamp(struct hk_cmd_buffer *cmd,
+ void hk_native_meta_timestamp_dispatch(struct hk_cmd_buffer *cmd);
+ void hk_native_meta_copy_query(struct hk_cmd_buffer *cmd, uint64_t destination,
+                                uint64_t source, uint64_t availability,
+-                               VkQueryResultFlags flags, bool availability_64);
++                               VkQueryResultFlags flags, bool availability_64,
++                           unsigned fragment_stripes);
+ 
+ void agx_fill_velem_keys(const struct vk_vertex_input_state *vi,
+                          uint64_t attribs_read, struct agx_velem_key *keys);
+diff --git a/src/asahi/vulkan/hk_cmd_draw.c b/src/asahi/vulkan/hk_cmd_draw.c
+index cd5a2b3df9e..454ebef0490 100644
+--- a/src/asahi/vulkan/hk_cmd_draw.c
++++ b/src/asahi/vulkan/hk_cmd_draw.c
+@@ -2405,7 +2405,9 @@ build_fs_prolog(nir_builder *b, const void *key)
+    agx_nir_fs_prolog(b, key);
+ 
+    /* Lower load_stat_query_address_agx, needed for FS statistics */
+-   NIR_PASS(_, b->shader, hk_lower_uvs_index, MESA_SHADER_FRAGMENT, 0);
++   const struct agx_fs_prolog_key *prolog_key = key;
++   NIR_PASS(_, b->shader, hk_lower_uvs_index_with_stripes,
++            MESA_SHADER_FRAGMENT, 0, prolog_key->statistics_stripes);
+    NIR_PASS(_, b->shader, nir_shader_intrinsics_pass, lower_fs_root,
+             nir_metadata_control_flow, NULL);
+ }
+@@ -4235,6 +4237,9 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
+          .prolog.statistics = hk_stat_enabled(hk_pipeline_stat_addr(
+             cmd, VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT)),
+ 
++         .prolog.statistics_stripes =
++            desc->root.draw.fragment_stat_stripe_mask ?
++               desc->root.draw.fragment_stat_stripe_mask + 1 : 0,
+          .prolog.cull_distance_size = hw_vs->info.cull_distance_array_size,
+          .prolog.api_sample_mask = has_sample_mask ? api_sample_mask : 0xff,
+          .nr_samples_shaded = samples_shaded,
+diff --git a/src/asahi/vulkan/hk_cmd_meta.c b/src/asahi/vulkan/hk_cmd_meta.c
+index 406c4b3a27c..14602bf470c 100644
+--- a/src/asahi/vulkan/hk_cmd_meta.c
++++ b/src/asahi/vulkan/hk_cmd_meta.c
+@@ -12,6 +12,7 @@
+ #include "agx_pack.h"
+ #include "hk_buffer.h"
+ #include "hk_cmd_buffer.h"
++#include "hk_query_pool.h"
+ #include "hk_device.h"
+ #include "hk_entrypoints.h"
+ #include "hk_g17p_meta_copy_core.h"
+@@ -273,6 +274,7 @@ struct hk_native_meta_key {
+    uint32_t query_flags;
+    uint32_t availability_kind; /* 0: timestamp sentinel, 1: u32, 2: u64 */
+    uint32_t specialize;
++   uint32_t fragment_stripes;
+ };
+ 
+ struct hk_meta_event_wait_info {
+@@ -603,6 +605,12 @@ build_query_copy_shader(const struct hk_native_meta_key *key)
+       nir_test_mask(&b, flags, VK_QUERY_RESULT_PARTIAL_BIT)));
+    nir_def *value = nir_load_global(&b, 1, 64, source, .align_mul = 8,
+                                     .access = ACCESS_COHERENT | ACCESS_VOLATILE);
++   for (unsigned i = 1; i < key->fragment_stripes; ++i) {
++      nir_def *extra = nir_load_global(&b, 1, 64,
++         nir_iadd_imm(&b, source, i * HK_FRAGMENT_COUNTER_STRIDE),
++         .align_mul = 8, .access = ACCESS_COHERENT | ACCESS_VOLATILE);
++      value = nir_iadd(&b, value, extra);
++   }
+    nir_if *wide_result = nir_push_if(&b, wide);
+    nir_store_global(&b, value, destination, .align_mul = 8);
+    nir_push_else(&b, wide_result);
+@@ -625,7 +633,8 @@ build_query_copy_shader(const struct hk_native_meta_key *key)
+ void
+ hk_native_meta_copy_query(struct hk_cmd_buffer *cmd, uint64_t destination,
+                            uint64_t source, uint64_t availability,
+-                           VkQueryResultFlags flags, bool availability_64)
++                           VkQueryResultFlags flags, bool availability_64,
++                           unsigned fragment_stripes)
+ {
+    struct hk_device *dev = hk_cmd_buffer_device(cmd);
+    const unsigned word_size = (flags & VK_QUERY_RESULT_64_BIT) ? 8 : 4;
+@@ -652,6 +661,7 @@ hk_native_meta_copy_query(struct hk_cmd_buffer *cmd, uint64_t destination,
+       .query_flags = specialize ? flags : 0,
+       .availability_kind = specialize && availability ? (availability_64 ? 2 : 1) : 0,
+       .specialize = specialize,
++      .fragment_stripes = fragment_stripes,
+    };
+    VkResult result = get_native_meta_pipeline_key(dev, &key,
+       sizeof(struct hk_meta_query_copy_info), build_query_copy_shader, &layout, &pipeline);
+diff --git a/src/asahi/vulkan/hk_nir_lower_descriptors.c b/src/asahi/vulkan/hk_nir_lower_descriptors.c
+index a51bba6028f..8545af227e2 100644
+--- a/src/asahi/vulkan/hk_nir_lower_descriptors.c
++++ b/src/asahi/vulkan/hk_nir_lower_descriptors.c
+@@ -13,6 +13,7 @@
+ #include "hk_descriptor_set_layout.h"
+ #include "hk_native_descriptor.h"
+ #include "hk_shader.h"
++#include "hk_query_pool.h"
+ 
+ #include "nir.h"
+ #include "nir_builder.h"
+@@ -405,6 +406,7 @@ translate_pipeline_stat_bit(enum pipe_statistics_query_index pipe)
+ struct lower_uvs_args {
+    mesa_shader_stage sw_stage;
+    unsigned nr_vbos;
++   unsigned stripes;
+ };
+ 
+ static bool
+@@ -536,6 +538,15 @@ lower_uvs_index(nir_builder *b, nir_intrinsic_instr *intrin, void *data)
+       nir_def *addr = nir_iadd(
+          b, base, nir_amul_imm(b, nir_u2u64(b, idx), sizeof(uint64_t)));
+ 
++      if (args->stripes && query == PIPE_STAT_QUERY_PS_INVOCATIONS) {
++         assert(args->sw_stage == MESA_SHADER_FRAGMENT);
++         nir_def *x = nir_u2u32(b, nir_channel(b, nir_load_pixel_coord(b), 0));
++         nir_def *stripe = nir_iand_imm(b, nir_ushr_imm(b, x, 5),
++                                       args->stripes - 1);
++         addr = nir_iadd(b, addr, nir_imul_imm(b, nir_u2u64(b, stripe),
++                                             HK_FRAGMENT_COUNTER_STRIDE));
++      }
++
+       /* The above returns garbage if the query isn't actually enabled, handle
+        * that case.
+        *
+@@ -570,16 +581,24 @@ lower_uvs_index(nir_builder *b, nir_intrinsic_instr *intrin, void *data)
+ }
+ 
+ bool
+-hk_lower_uvs_index(nir_shader *s, mesa_shader_stage sw_stage, unsigned nr_vbos)
++hk_lower_uvs_index_with_stripes(nir_shader *s, mesa_shader_stage sw_stage,
++                                unsigned nr_vbos, unsigned stripes)
+ {
+    struct lower_uvs_args args = {
+       .sw_stage = sw_stage,
+       .nr_vbos = nr_vbos,
++      .stripes = stripes,
+    };
+    return nir_shader_intrinsics_pass(s, lower_uvs_index,
+                                      nir_metadata_control_flow, &args);
+ }
+ 
++bool
++hk_lower_uvs_index(nir_shader *s, mesa_shader_stage sw_stage, unsigned nr_vbos)
++{
++   return hk_lower_uvs_index_with_stripes(s, sw_stage, nr_vbos, false);
++}
++
+ static bool
+ try_lower_intrin(nir_builder *b, nir_intrinsic_instr *intrin,
+                  const struct lower_descriptors_ctx *ctx)
+diff --git a/src/asahi/vulkan/hk_query_pool.c b/src/asahi/vulkan/hk_query_pool.c
+index afc4c306afb..847d9c4d297 100644
+--- a/src/asahi/vulkan/hk_query_pool.c
++++ b/src/asahi/vulkan/hk_query_pool.c
+@@ -134,6 +134,23 @@ hk_query_report_map(struct hk_device *dev, struct hk_query_pool *pool,
+    }
+ }
+ 
++static uint64_t
++hk_query_value(struct hk_device *dev, struct hk_query_pool *pool,
++                uint32_t query, uint32_t report)
++{
++   const struct hk_query_report *base = hk_query_report_map(dev, pool, query);
++   if (!pool->fragment_stripes)
++      return base[report].value;
++   assert(report == 0);
++   uint64_t value = 0;
++   for (unsigned i = 0; i < pool->fragment_stripes; ++i) {
++      const struct hk_query_report *stripe = (const void *)
++         ((const uint8_t *)base + i * HK_FRAGMENT_COUNTER_STRIDE);
++      value += stripe->value;
++   }
++   return value;
++}
++
+ void
+ hk_dispatch_imm_writes(struct hk_cmd_buffer *cmd, struct hk_cs *cs)
+ {
+@@ -294,8 +311,9 @@ emit_zero_queries_g17p(struct hk_cmd_buffer *cmd, struct hk_query_pool *pool,
+ 
+    case VK_QUERY_TYPE_PIPELINE_STATISTICS: {
+       /* One ordinary 64-bit counter per requested statistic, in the pool. */
+-      assert(pool->query_stride ==
+-             hk_reports_per_query(pool) * sizeof(uint64_t));
++      assert(pool->query_stride == (pool->fragment_stripes ?
++         pool->fragment_stripes * HK_FRAGMENT_COUNTER_STRIDE :
++         hk_reports_per_query(pool) * sizeof(uint64_t)));
+       hk_g17p_meta_fill_addr(cmd, &cmd->current_cs.cs,
+                              hk_query_available_addr(pool, first_index),
+                              (uint64_t)num_queries * hk_query_available_stride(pool),
+@@ -368,8 +386,12 @@ host_zero_queries(struct hk_device *dev, struct hk_query_pool *pool,
+          value = set_available ? 0 : LIBAGX_QUERY_UNAVAILABLE;
+       }
+ 
+-      for (unsigned j = 0; j < hk_reports_per_query(pool); ++j) {
+-         reports[j].value = value;
++      if (pool->fragment_stripes) {
++         assert(value == 0);
++         memset(reports, 0, pool->query_stride);
++      } else {
++         for (unsigned j = 0; j < hk_reports_per_query(pool); ++j)
++            reports[j].value = value;
+       }
+    }
+ }
+@@ -406,15 +428,25 @@ hk_CreateQueryPool(VkDevice device, const VkQueryPoolCreateInfo *pCreateInfo,
+ 
+    uint32_t reports_per_query = hk_reports_per_query(pool);
+    pool->query_stride = reports_per_query * sizeof(struct hk_query_report);
++   if (dev->dev.chip == AGX_CHIP_G16G &&
++       pool->vk.query_type == VK_QUERY_TYPE_PIPELINE_STATISTICS &&
++       pool->vk.pipeline_statistics ==
++          VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT) {
++      const unsigned stripes = debug_get_num_option("HK_M4_QUERY_STRIPES", 1);
++      if (stripes == 16 || stripes == 64) {
++         pool->fragment_stripes = stripes;
++         pool->query_stride = stripes * HK_FRAGMENT_COUNTER_STRIDE;
++      }
++   }
+ 
+    if (pool->vk.query_count > 0) {
+-      uint32_t bo_size = pool->query_start;
++      uint64_t bo_size = pool->query_start;
+ 
+       /* For occlusion queries, we stick the query index remapping here */
+       if (occlusion_queries)
+-         bo_size += sizeof(uint16_t) * pool->vk.query_count;
++         bo_size += (uint64_t)sizeof(uint16_t) * pool->vk.query_count;
+       else
+-         bo_size += pool->query_stride * pool->vk.query_count;
++         bo_size += (uint64_t)pool->query_stride * pool->vk.query_count;
+ 
+       /* The kernel requires that timestamp buffers are SHARED */
+       enum agx_bo_flags flags = AGX_BO_WRITEBACK;
+@@ -492,7 +524,7 @@ hk_DestroyQueryPool(VkDevice device, VkQueryPool queryPool,
+        debug_get_bool_option("HK_M4_COUNT_FRAGMENTS", false)) {
+       for (unsigned i = 0; i < MIN2(pool->vk.query_count, 4096); ++i) {
+          bool available = hk_query_is_available(dev, pool, i);
+-         uint64_t value = hk_query_report_map(dev, pool, i)->value;
++         uint64_t value = hk_query_value(dev, pool, i, 0);
+          if (available || value)
+             fprintf(stderr, "HK_FRAGMENT_QUERY pool=%" PRIx64
+                     " query=%u covered=%" PRIu64 " available=%u\n",
+@@ -727,6 +759,8 @@ hk_cmd_begin_end_query(struct hk_cmd_buffer *cmd, struct hk_query_pool *pool,
+       root->draw.pipeline_stats =
+          end ? 0 : hk_query_report_addr(dev, pool, query);
+       root->draw.pipeline_stats_flags = end ? 0 : pool->vk.pipeline_statistics;
++      root->draw.fragment_stat_stripe_mask =
++         !end && pool->fragment_stripes ? pool->fragment_stripes - 1 : 0;
+ 
+       /* XXX: I don't think is correct... when does the query become available
+        * exactly?
+@@ -873,14 +907,14 @@ hk_GetQueryPoolResults(VkDevice device, VkQueryPool queryPool,
+ 
+       bool write_results = available || (flags & VK_QUERY_RESULT_PARTIAL_BIT);
+ 
+-      const struct hk_query_report *src = hk_query_report_map(dev, pool, query);
+       assert(i * stride < dataSize);
+       void *dst = (char *)pData + i * stride;
+ 
+       uint32_t reports = hk_reports_per_query(pool);
+       if (write_results) {
+          for (uint32_t j = 0; j < reports; j++) {
+-            cpu_write_query_result(dst, j, flags, src[j].value);
++            cpu_write_query_result(dst, j, flags,
++                                    hk_query_value(dev, pool, query, j));
+          }
+       }
+ 
+@@ -943,7 +977,7 @@ hk_CmdCopyQueryPoolResults(VkCommandBuffer commandBuffer, VkQueryPool queryPool,
+                   dstOffset + (uint64_t)i * stride + report * word_size),
+                hk_query_report_addr(dev, pool, query) + report * sizeof(uint64_t),
+                hk_has_available(pool) ? hk_query_available_addr(pool, query) : 0,
+-               report_flags, pool->timestamp_available);
++               report_flags, pool->timestamp_available, pool->fragment_stripes);
+             if (vk_command_buffer_has_error(&cmd->vk))
+                return;
+          }
+diff --git a/src/asahi/vulkan/hk_query_pool.h b/src/asahi/vulkan/hk_query_pool.h
+index df1f5337dc1..fe9c85d8995 100644
+--- a/src/asahi/vulkan/hk_query_pool.h
++++ b/src/asahi/vulkan/hk_query_pool.h
+@@ -12,6 +12,9 @@
+ 
+ struct agx_bo;
+ 
++/* Keep independently updated counters on distinct Apple cache lines. */
++#define HK_FRAGMENT_COUNTER_STRIDE 128
++
+ struct hk_query_pool {
+    struct vk_query_pool vk;
+ 
+@@ -20,6 +23,7 @@ struct hk_query_pool {
+ 
+    uint32_t query_start;
+    uint32_t query_stride;
++   uint32_t fragment_stripes;
+ 
+    struct agx_bo *bo;
+    void *bo_map;
+diff --git a/src/asahi/vulkan/hk_shader.h b/src/asahi/vulkan/hk_shader.h
+index 6eeb7e0e615..8f879f9c75f 100644
+--- a/src/asahi/vulkan/hk_shader.h
++++ b/src/asahi/vulkan/hk_shader.h
+@@ -396,6 +398,8 @@ hk_buffer_addr_format(VkPipelineRobustnessBufferBehaviorEXT robustness,
+ 
+ bool hk_lower_uvs_index(nir_shader *s, mesa_shader_stage sw_stage,
+                         unsigned nr_vbos);
++bool hk_lower_uvs_index_with_stripes(nir_shader *s, mesa_shader_stage sw_stage,
++                                    unsigned nr_vbos, unsigned stripes);
+ 
+ bool
+ hk_nir_lower_descriptors(nir_shader *nir,

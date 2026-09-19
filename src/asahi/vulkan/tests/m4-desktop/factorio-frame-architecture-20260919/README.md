@@ -247,3 +247,24 @@ Five original replay frames remain pixel-identical at 8.155..8.189 ms. This is
 a correctness fix, not a performance gain. Default installed driver has not
 yet been replaced in this checkpoint; candidate asahi-query-visibility.json
 contains the fix. Full CTS remains deferred.
+
+## Rejected counter striping experiment
+
+Sixteen cache-line-separated counters preserve replay query totals and every
+image pixel, but slow the frame: XY tile hash 8.66..8.76 ms; simplified integer
+X stripe 8.48..8.53 ms versus 8.155..8.189 ms unstriped. The additional prolog
+work outweighs any contention benefit. The patch is archived and removed from
+active source. The X oracle also exposed a split-submission one-pixel query
+returning 1 instead of 2, despite passing larger exact counts; this is not a
+fully qualified query implementation. Investigating the statistics prolog's
+missing writes-memory annotation separately. No default stripe mode was set.
+
+## Track writes from the statistics prolog
+
+A colour-only main shader can still execute the separately linked statistics
+prolog, which atomically writes query memory. Include these writes in the
+render stream's memory-dependency tracking, so the existing G16 publication
+barrier also covers counters carried across render passes or submissions.
+The exact-count oracle passes; the full replay keeps every pixel and counter
+total identical. The additional required boundaries cost about 0.4 ms: spans
+8.546..8.628 ms. Further optimization must preserve those dependencies.
