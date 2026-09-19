@@ -11,7 +11,7 @@
 static bool
 descriptor_load(nir_intrinsic_instr *intr, unsigned set_base,
                 unsigned set_count, unsigned *set, uint32_t *offset,
-                uint32_t *size)
+                uint32_t *size, bool unlowered_image_handles)
 {
    if (intr->def.bit_size != 16 && intr->def.bit_size != 32)
       return false;
@@ -60,7 +60,22 @@ descriptor_load(nir_intrinsic_instr *intr, unsigned set_base,
    if (!base || base->def.bit_size != 64 || base->def.num_components != 1)
       return false;
    unsigned half;
-   if (base->intrinsic == nir_intrinsic_load_descriptor_set_agx)
+   if (unlowered_image_handles &&
+       base->intrinsic == nir_intrinsic_load_from_texture_handle_agx) {
+      /* Plain-image specialization runs before lower_uniforms: desc_set
+       * still names a Vulkan set, and the handle offset is in bytes. Only
+       * constant offsets can be checked against an immutable binding. */
+      nir_intrinsic_instr *handle = nir_src_as_intrinsic(base->src[0]);
+      if (!handle || handle->intrinsic != nir_intrinsic_bindless_image_agx ||
+          !nir_src_is_const(handle->src[0]))
+         return false;
+      uint64_t offset = nir_src_as_uint(handle->src[0]);
+      unsigned set = nir_intrinsic_desc_set(handle);
+      if (set >= set_count || offset > UINT32_MAX - byte)
+         return false;
+      byte += offset;
+      half = set_base + 4 * set;
+   } else if (base->intrinsic == nir_intrinsic_load_descriptor_set_agx)
       half = set_base + 4 * nir_intrinsic_desc_set(base);
    else if (base->intrinsic == nir_intrinsic_load_preamble)
       half = nir_intrinsic_base(base);
@@ -91,7 +106,7 @@ hk_nir_prefetch_descriptors(nir_shader *nir, unsigned set_base,
             unsigned set;
             uint32_t offset, size;
             if (!descriptor_load(nir_instr_as_intrinsic(instr), set_base,
-                                 set_count, &set, &offset, &size) ||
+                                 set_count, &set, &offset, &size, false) ||
                 ((offset | size) & 3))
                continue;
             struct hk_descriptor_prefetch *span = &spans[set];
@@ -128,7 +143,7 @@ hk_nir_prefetch_descriptors(nir_shader *nir, unsigned set_base,
             nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
             unsigned set;
             uint32_t offset, size;
-            if (!descriptor_load(intr, set_base, set_count, &set, &offset, &size) ||
+            if (!descriptor_load(intr, set_base, set_count, &set, &offset, &size, false) ||
                 ((offset | size) & 3) || !spans[set].size_B)
                continue;
             nir_builder b = nir_builder_at(nir_before_instr(instr));
@@ -201,7 +216,7 @@ ubo_load(nir_intrinsic_instr *intr, unsigned set_base, unsigned set_count,
    unsigned set;
    uint32_t descriptor_offset, size;
    if (!descriptor || !descriptor_load(descriptor, set_base, set_count,
-                                      &set, &descriptor_offset, &size) ||
+                                      &set, &descriptor_offset, &size, false) ||
        descriptor->def.bit_size != 32 || size != 16)
       return false;
    *load = (struct hk_ubo_prefetch){
@@ -341,7 +356,7 @@ hk_nir_specialize_plain_samplers(nir_shader *nir, unsigned set_base,
             nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
             unsigned set;
             uint32_t offset, size;
-            if (!descriptor_load(intr, set_base, set_count, &set, &offset, &size))
+            if (!descriptor_load(intr, set_base, set_count, &set, &offset, &size, true))
                continue;
             for (unsigned i = 0; i < *count; ++i) {
                if (set != samplers[i].set || offset < samplers[i].descriptor_offset_B)
@@ -350,7 +365,8 @@ hk_nir_specialize_plain_samplers(nir_shader *nir, unsigned set_base,
                nir_builder b = nir_builder_at(nir_after_instr(instr));
                nir_def *replacement = NULL;
                if (intr->def.bit_size == 16 && intr->def.num_components == 1) {
-                  if (relative == layout.min_lod || relative == layout.min_lod_uint)
+                  if (relative == layout.min_lod || relative == layout.min_lod_uint ||
+                      relative == layout.scaled_conversion)
                      replacement = nir_imm_intN_t(&b, 0, 16);
                   else if (relative == layout.clamp_0_sampler_index)
                      replacement = nir_imm_intN_t(&b, -1, 16);

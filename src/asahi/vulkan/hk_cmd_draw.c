@@ -4918,6 +4918,7 @@ hk_fs_can_use_direct_ubos(struct hk_cmd_buffer *cmd)
       memcpy(&sw, data + sampler->descriptor_offset_B + layout.sampler, sizeof(sw));
       if ((sw.sampler.opaque[1] & (3u << HK_MINMAX_MODE_SHIFT)) ||
           (sw.min_lod_fp16 & 0x7fff) || sw.min_lod_uint16 ||
+          sw.scaled_conversion ||
           sw.clamp_0_sampler_index_or_negative >= 0)
          return false;
    }

@@ -140,9 +140,41 @@ static void test_plain_sampler(void)
    ralloc_free(b.shader);
 }
 
+/* The scaled-format load comes through an image handle, not the sampler
+ * descriptor address. Exercise exact matching and leave dynamic/other views
+ * untouched so their format is still interpreted on the GPU. */
+static void test_plain_image(void)
+{
+   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT, NULL,
+                                                 "plain image predicates");
+   nir_intrinsic_instr *out[4];
+   for (unsigned i = 0; i < 4; ++i) {
+      nir_def *offset = i == 1 ? nir_undef(&b, 1, 32) :
+                                nir_imm_int(&b, i == 2 ? 256 : 128);
+      nir_def *handle = nir_bindless_image_agx(&b, offset,
+                                              .desc_set = i == 3 ? 0 : 1);
+      nir_def *address = nir_load_from_texture_handle_agx(&b, handle);
+      nir_def *kind = nir_load_global_constant(&b, 1, 16,
+                            nir_iadd_imm(&b, address, 50), .align_mul = 2);
+      nir_store_global(&b, kind, nir_imm_int64(&b, 0x1000 + 2 * i), .align_mul = 2);
+      out[i] = nir_instr_as_intrinsic(nir_builder_last_instr(&b));
+   }
+   struct hk_plain_sampler samplers[HK_PLAIN_SAMPLER_MAX] = {
+      {.set = 1, .descriptor_offset_B = 128}};
+   unsigned count = 1;
+   assert(hk_nir_specialize_plain_samplers(b.shader, 24, 2, samplers, &count));
+   assert(count == 1);
+   assert(nir_src_is_const(out[0]->src[0]) && nir_src_as_uint(out[0]->src[0]) == 0);
+   for (unsigned i = 1; i < 4; ++i)
+      assert(!nir_src_is_const(out[i]->src[0]));
+   nir_validate_shader(b.shader, "plain image specialization");
+   ralloc_free(b.shader);
+}
+
 int main(void)
 {
    test_plain_sampler();
+   test_plain_image();
    unsigned access = ACCESS_NON_WRITEABLE | ACCESS_CAN_REORDER;
    test_ubo(false, false, access, true); test_ubo(false, true, access, true);
    test_ubo(true, false, access, true); test_ubo(true, true, access, true);

@@ -847,3 +847,26 @@ run `20260919T004211252445Z-factorio-native-release-menu` initializes in about
 10 seconds and measures 20.54 FPS (19.83--20.96), peak 86 C, with the requested
 80 C passive policy and 95 C experiment cutoff. Animated scene differences
 preclude an isolated throughput comparison. This is not the 60 FPS target.
+
+## Ordinary-image format specialization (2026-09-19)
+
+The descriptor-checked fragment variant now also requires zero scaled-format
+conversion flags and folds those loads, including loads addressed through
+constant bindless image handles. Dynamic handles, other sets/offsets, and
+nonordinary formats retain their general path. This is descriptor specialization,
+not application/shader identification. Host NIR matching/folding tests pass.
+
+`20260919T011531943924Z-factorio-plain-image-frame` has zero differing pixels
+against the original retained frame. Actual selected programs in the live menu
+shrink from 1911/1274/4089 to 1541/792/3659 instructions. Selected-program logging
+is opt-in (`HK_M4_PROGRAM_PROFILE`) and bounded to 128 addresses per thread;
+these samples are not a complete shader lifetime ledger.
+
+The 60-second menu observation `20260919T011551545942Z-factorio-plain-image-menu`
+is **failed**, with stale HUD after the pre-existing intermittent
+`vkEndCommandBuffer(VK_ERROR_FEATURE_NOT_PRESENT)` rejection. Debug logging
+locates it at `hk_CmdCopyImage2`'s raw image-copy rejection, hk_cmd_meta.c:2769
+before diagnostic changes. No GPU fault was reported. Do not use this run as a
+successful FPS measurement. The earlier pre-change debug repeat
+`20260919T011302621715Z-factorio-recording-rejection-debug` passed at 28.48 FPS;
+scenes vary, and 60 FPS remains unachieved. Full CTS is deferred.

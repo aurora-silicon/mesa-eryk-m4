@@ -55,6 +55,7 @@
 
 /* These process options are immutable during command recording. */
 DEBUG_GET_ONCE_BOOL_OPTION(hk_m4_ioto_templates, "HK_M4_IOTO_TEMPLATES", false)
+DEBUG_GET_ONCE_BOOL_OPTION(hk_m4_program_profile, "HK_M4_PROGRAM_PROFILE", false)
 
 static uint64_t
 hk_g17p_vdm_lookup(struct hk_cmd_buffer *cmd, uint64_t primary, bool bind)
@@ -1541,6 +1542,34 @@ hk_g17p_graphics_uniform_ranges(
    return count <= HK_AGX3_G17P_GRAPHICS_MAX_RANGES;
 }
 
+/* Bounded selected-executable diagnostics. Compiler logs contain both ordinary
+ * and fallback variants; report the actual linked program used for recording.
+ * This is an address sample, not a complete lifetime/coverage ledger. */
+static void
+hk_profile_graphics_program(struct hk_cmd_buffer *cmd, struct hk_shader *s,
+                            struct hk_linked_shader *linked)
+{
+   if (!debug_get_option_hk_m4_program_profile())
+      return;
+   static _Thread_local uint64_t reported[128];
+   static _Thread_local unsigned count;
+   uint64_t code = linked->b.bo->va->addr + linked->b.entry_offset;
+   for (unsigned i = 0; i < count; ++i) {
+      if (reported[i] == code)
+         return;
+   }
+   if (count == ARRAY_SIZE(reported))
+      return;
+   reported[count++] = code;
+   fprintf(stderr, "HK_PROGRAM_PROFILE stage=%u code=%" PRIx64
+           " bytes=%zu gprs=%u scratch=%u instrs=%u loops=%u"
+           " ordinary_fs=%u prolog_root=%u\n",
+           s->info.stage, code, linked->b.size, linked->b.nr_gprs,
+           linked->b.scratch_size, s->b.info.stats.instrs, s->b.info.stats.loops,
+           s->info.stage == MESA_SHADER_FRAGMENT && cmd->state.gfx.fs_ubo_direct,
+           linked->prolog_uses_root);
+}
+
 uint64_t
 hk_upload_usc_words(struct hk_cmd_buffer *cmd, struct hk_shader *s,
                     struct hk_linked_shader *linked)
@@ -1568,6 +1597,8 @@ hk_upload_usc_words(struct hk_cmd_buffer *cmd, struct hk_shader *s,
          vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
          return 0;
       }
+
+      hk_profile_graphics_program(cmd, s, linked);
 
       struct agx3_ioto_uniform_range ranges[HK_AGX3_G17P_GRAPHICS_MAX_RANGES];
       size_t range_count;

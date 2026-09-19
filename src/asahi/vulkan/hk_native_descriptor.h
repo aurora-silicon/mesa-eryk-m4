@@ -32,6 +32,7 @@ struct hk_sampled_image_descriptor_layout {
    uint8_t lod_bias;
    uint8_t min_lod;
    uint8_t min_lod_uint;
+   uint8_t scaled_conversion;
    uint8_t border;
    uint8_t stride;
 };
@@ -90,6 +91,7 @@ hk_sampled_image_descriptor_layout(unsigned generation)
       .lod_bias = texture_size + 12,
       .min_lod = texture_size + 14,
       .min_lod_uint = texture_size + 16,
+      .scaled_conversion = texture_size + 18,
       .border = texture_size + 20,
       .stride = texture_size + (generation == 9 ? HK_SAMPLED_IMAGE_GEN9_SW_SIZE
                                                : HK_SAMPLED_IMAGE_SW_SIZE),
