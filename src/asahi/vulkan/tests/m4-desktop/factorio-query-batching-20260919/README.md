@@ -28,3 +28,10 @@ in an explicitly selected ASID; missing counts remain a lifetime union. Capture
 performance. Profiling is disabled during ordinary throughput measurements.
 
 Full CTS remains deferred. Sustained live-menu 60 FPS remains unmet.
+
+Correction after baseline control: 055940493570Z also times out with batching
+OFF. Comparing manifests shows both failed replay invocations omitted eight
+qualified native-path options, including timestamp fanout/completion and
+compute timestamp placement. Therefore neither failure establishes a batching
+regression. The replay helper now defaults those options to the qualified
+Factorio path, preserving explicit caller overrides. Corrected replay pending.
