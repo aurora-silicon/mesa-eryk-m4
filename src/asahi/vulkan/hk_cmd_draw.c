@@ -75,6 +75,11 @@
 #include "vk_standard_sample_locations.h"
 #include "vk_util.h"
 
+/* These process options are immutable during command recording. */
+DEBUG_GET_ONCE_BOOL_OPTION(hk_g17p_launch_trace, "HK_G17P_LAUNCH_TRACE", false)
+DEBUG_GET_ONCE_BOOL_OPTION(hk_m4_prefetch_audit, "HK_M4_PREFETCH_AUDIT", false)
+DEBUG_GET_ONCE_BOOL_OPTION(hk_m4_vdm_draw_barrier, "HK_M4_VDM_DRAW_BARRIER", false)
+
 #define IS_DIRTY(bit) BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_##bit)
 
 #define IS_SHADER_DIRTY(bit)                                                   \
@@ -405,7 +410,7 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
            ? shader->info.push_count == 0 && !shader->info.uses_txf
            : hk_agx3_g17p_rt0_bg_shader_resources_match(
                 bg_op, shader->info.push_count, shader->info.uses_txf)));
-   if (!store && debug_get_bool_option("HK_G17P_LAUNCH_TRACE", false) && shader)
+   if (!store && debug_get_option_hk_g17p_launch_trace() && shader)
       fprintf(stderr,
               "G17P BG metadata: op=%u size=%u gprs=%u push=%u "
               "staging=%u txf=%u supported=%u resources=%u\n",
@@ -514,7 +519,7 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
       memcpy(program_map, program.bytes, program.length);
       program_length = program.length;
       resource_spec = AGX_IOTO_G17P_EOT_RESOURCE_SPEC;
-      if (debug_get_bool_option("HK_G17P_LAUNCH_TRACE", false)) {
+      if (debug_get_option_hk_g17p_launch_trace()) {
          fprintf(stderr,
                  "G17P EOT launch: program=%" PRIx64 " length=%zu "
                  "pbe=%" PRIx64 " attachments=%u offsets=%u,%u "
@@ -646,7 +651,7 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
       }
    }
 
-   if (!store && debug_get_bool_option("HK_G17P_LAUNCH_TRACE", false)) {
+   if (!store && debug_get_option_hk_g17p_launch_trace()) {
       fprintf(stderr,
               "G17P BG launch: op=%s program=%" PRIx64 " resources=%" PRIx64
               " length=%zu staging_known=%u staging_halfs=%u compiler_d=%u\n",
@@ -3297,7 +3302,7 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
       return false;
    }
    secondary_fields.words[0] |= pass_type << 29;
-   if (debug_get_bool_option("HK_G17P_LAUNCH_TRACE", false))
+   if (debug_get_option_hk_g17p_launch_trace())
       mesa_logi("HAL200 depth state: samples=%u test=%u write=%u compare=%u "
                 "pass=%u shader-depth=%u primary=%08x/%08x secondary=%08x",
                 render->tilebuffer.nr_samples, depth_test,
@@ -4952,7 +4957,7 @@ hk_flush_gfx_state(struct hk_cmd_buffer *cmd, uint32_t draw_id,
 
    bool direct_ubos = hk_fs_can_use_direct_ubos(cmd);
    if (direct_ubos != gfx->fs_ubo_direct) {
-      if (debug_get_bool_option("HK_M4_PREFETCH_AUDIT", false))
+      if (debug_get_option_hk_m4_prefetch_audit())
          fprintf(stderr, "M4 fragment UBO variant: %s\n",
                  direct_ubos ? "ordinary" : "general");
       gfx->fs_ubo_direct = direct_ubos;
@@ -5020,7 +5025,7 @@ hk_flush_gfx_state(struct hk_cmd_buffer *cmd, uint32_t draw_id,
     * that every draw needs a barrier or that this packet covers all hazards.
     */
    if (dev->dev.chip == AGX_CHIP_G16G && cs->stats.cmds > 0 &&
-       debug_get_bool_option("HK_M4_VDM_DRAW_BARRIER", false)) {
+       debug_get_option_hk_m4_vdm_draw_barrier()) {
       struct agx_vdm_barrier_core barrier;
       if (!agx_vdm_barrier_core_pack(dev->dev.chip, &barrier)) {
          vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);

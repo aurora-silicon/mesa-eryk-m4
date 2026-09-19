@@ -830,3 +830,20 @@ average is invalid. The fresh diagnostic repeat `20260919T000046684262Z-factorio
 completed at 14.21 FPS (diagnostic logging enabled), without that error.
 Game and native graphics threads each used approximately 12% of one core;
 submission waits remain the focus. 60 FPS is not achieved.
+
+## Native release build and cached draw options (2026-09-19)
+
+The host/thunk build now has an explicit release configuration with native
+GLX, unlike the older GLX-disabled desktop release directory. The mirrored
+`build-mesa-native-release.sh` is intended for workspace-root `tools/`. It
+selects O3/release while retaining debug symbols for profiles. Both native
+Vulkan and Gallium were installed atomically, preserving prior libraries.
+Hot draw paths cache immutable process diagnostic/Ioto options using Mesa's
+standard atomic once-option helpers instead of repeated environment scans.
+
+`20260919T004135949241Z-factorio-native-release-frame` reproduces the original
+2560x1664 reference exactly (zero differing pixels). The bounded normal menu
+run `20260919T004211252445Z-factorio-native-release-menu` initializes in about
+10 seconds and measures 20.54 FPS (19.83--20.96), peak 86 C, with the requested
+80 C passive policy and 95 C experiment cutoff. Animated scene differences
+preclude an isolated throughput comparison. This is not the 60 FPS target.

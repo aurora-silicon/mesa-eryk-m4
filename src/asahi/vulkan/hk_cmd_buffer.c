@@ -53,6 +53,9 @@
 #include "util/u_dynarray.h"
 #include "vulkan/vulkan_core.h"
 
+/* These process options are immutable during command recording. */
+DEBUG_GET_ONCE_BOOL_OPTION(hk_m4_ioto_templates, "HK_M4_IOTO_TEMPLATES", false)
+
 static uint64_t
 hk_g17p_vdm_lookup(struct hk_cmd_buffer *cmd, uint64_t primary, bool bind)
 {
@@ -1641,7 +1644,7 @@ hk_upload_usc_words(struct hk_cmd_buffer *cmd, struct hk_shader *s,
       }
 
       struct agx3_ioto_uniform_template *uniform_template = NULL;
-      if (debug_get_bool_option("HK_M4_IOTO_TEMPLATES", false) &&
+      if (debug_get_option_hk_m4_ioto_templates() &&
           (s->info.stage == MESA_SHADER_VERTEX || s->info.stage == MESA_SHADER_FRAGMENT)) {
          const unsigned index = s->info.stage == MESA_SHADER_FRAGMENT;
          if (!cmd->uniform_templates[index])
