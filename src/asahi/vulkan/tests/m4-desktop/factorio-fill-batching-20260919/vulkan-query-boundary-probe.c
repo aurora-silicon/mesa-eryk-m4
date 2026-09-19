@@ -11,7 +11,9 @@
  * Mode 6: same sequence without WAIT; safely diagnose unavailable results.
  * Mode 7: mode 6 with a host reset instead of a GPU reset.
  * Mode 8: host reset and timestamps BEFORE each fill, checking compute starts.
- * cc -O2 -Wall -Wextra vulkan-query-copy-probe.c -o vulkan-query-copy-probe
+ * Mode 9: mode 6 with GPU reset in a completed separate submission.
+ * Mode 10: mode 9 with timestamp writes also completed before copies.
+ * cc -O2 -Wall -Wextra vulkan-query-boundary-probe.c -o vulkan-query-boundary-probe
  * -lvulkan Run only inside gpu-experiment.py on hardware. No window system
  * required.
  */
