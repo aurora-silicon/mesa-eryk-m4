@@ -143,8 +143,20 @@ shared_var_info(const struct glsl_type *type, unsigned *size, unsigned *align)
 uint64_t
 hk_physical_device_compiler_flags(const struct hk_physical_device *pdev)
 {
-   /* This could be optimized but it doesn't matter */
-   return pdev->dev.debug;
+   /* The low word is the agx_device debug mask. M4 executable variants
+    * also depend on these compiler options; sharing cache entries with the
+    * ordinary configuration can silently reuse a shader without its fast
+    * variant. Include them in both pipeline UUIDs and disk-cache keys. */
+   static_assert(sizeof(pdev->dev.debug) == sizeof(uint32_t));
+   uint64_t flags = pdev->dev.debug;
+   if (pdev->dev.chip == AGX_CHIP_G16G) {
+      flags |= (uint64_t)debug_get_bool_option("HK_M4_PREFETCH_UBOS", false) << 32;
+      flags |= (uint64_t)debug_get_bool_option("HK_M4_PREFETCH_VARIANT", false) << 33;
+      flags |= (uint64_t)debug_get_bool_option("HK_M4_PLAIN_SAMPLERS", false) << 34;
+      flags |= (uint64_t)debug_get_bool_option("HK_M4_PREFETCH_DESCRIPTORS", false) << 35;
+      flags |= (uint64_t)debug_get_bool_option("HK_M4_VERSION_SAMPLES", true) << 36;
+   }
+   return flags;
 }
 
 const nir_shader_compiler_options *
