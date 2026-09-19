@@ -45,3 +45,11 @@ since their internal lifetimes can exceed the application-visible object.
 The CTS per-create callback injection therefore observes no allocations.
 This is documented common runtime policy, not four rendering failures; do not
 change allocation lifetime or hide these results solely to silence a warning.
+
+## Host test expectations
+
+Two byte fixtures missed the earlier eef4e004551 wait-mask correction. Both
+loads signal completion slot3, so the wait mask is1<<(3-1)=4, not8 derived
+from the register data source. Updating only these two fixture bytes makes
+the full IOTO program suite pass7009 checks; uniform-program suite passes19267.
+No shader/firmware bytecode was changed for this fixture correction.
