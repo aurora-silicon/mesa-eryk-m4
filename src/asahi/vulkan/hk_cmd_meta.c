@@ -2702,6 +2702,21 @@ hk_CmdCopyImageToBuffer2(VkCommandBuffer commandBuffer,
    hk_meta_end(cmd, &save, VK_PIPELINE_BIND_POINT_COMPUTE);
 }
 
+/* Byte copies between these UNORM layouts are exact through the common
+ * meta shader's pack/unpack. Keep each image's native view: reinterpreting
+ * compression metadata through an integer/raw view is not valid. */
+static bool
+hk_native_compressed_copy_via_render(const struct hk_image *src,
+                                     const struct hk_image *dst)
+{
+   if (!src->planes[0].layout.compressed && !dst->planes[0].layout.compressed)
+      return false;
+   return (src->vk.format == VK_FORMAT_R8G8B8A8_UNORM ||
+           src->vk.format == VK_FORMAT_B8G8R8A8_UNORM) &&
+          (dst->vk.format == VK_FORMAT_R8G8B8A8_UNORM ||
+           dst->vk.format == VK_FORMAT_B8G8R8A8_UNORM);
+}
+
 VKAPI_ATTR void VKAPI_CALL
 hk_CmdCopyImage2(VkCommandBuffer commandBuffer,
                  const VkCopyImageInfo2 *pCopyImageInfo)
@@ -2718,6 +2733,7 @@ hk_CmdCopyImage2(VkCommandBuffer commandBuffer,
         /* Format reinterpretation copies raw texel bits, including formats
          * without a native render-target export. */
         (src_image->vk.format != dst_image->vk.format &&
+         !hk_native_compressed_copy_via_render(src_image, dst_image) &&
          src_image->vk.aspects == VK_IMAGE_ASPECT_COLOR_BIT &&
          dst_image->vk.aspects == VK_IMAGE_ASPECT_COLOR_BIT &&
          src_image->vk.samples == VK_SAMPLE_COUNT_1_BIT &&
@@ -2766,6 +2782,18 @@ hk_CmdCopyImage2(VkCommandBuffer commandBuffer,
                   vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
             }
          } else if (!hk_native_copy_raw_image(cmd, src_image, dst_image, &info)) {
+            fprintf(stderr, "HK_RAW_COPY_REJECT src=%u dst=%u types=%u,%u compressed=%u,%u "
+                    "extent=%ux%ux%u src_offset=%d,%d,%d dst_offset=%d,%d,%d "
+                    "mips=%u,%u layers=%u,%u counts=%u,%u\n",
+                    src_image->vk.format, dst_image->vk.format,
+                    src_image->vk.image_type, dst_image->vk.image_type,
+                    src_image->planes[0].layout.compressed, dst_image->planes[0].layout.compressed,
+                    region.extent.width, region.extent.height, region.extent.depth,
+                    region.srcOffset.x, region.srcOffset.y, region.srcOffset.z,
+                    region.dstOffset.x, region.dstOffset.y, region.dstOffset.z,
+                    region.srcSubresource.mipLevel, region.dstSubresource.mipLevel,
+                    region.srcSubresource.baseArrayLayer, region.dstSubresource.baseArrayLayer,
+                    region.srcSubresource.layerCount, region.dstSubresource.layerCount);
             vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
          }
          if (vk_command_buffer_has_error(&cmd->vk))

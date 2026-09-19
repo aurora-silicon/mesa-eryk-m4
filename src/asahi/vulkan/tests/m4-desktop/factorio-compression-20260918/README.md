@@ -49,3 +49,31 @@ allocations confirmed in guest stderr. No demonstrated FPS gain against the
 12.954 FPS earlier dynamic-menu sample; scenes/pass counts differ. Full-size
 fragment mean was 1.413 ms versus 2.062 ms earlier, but this is not a paired
 fixed-scene comparison. Compression remains experimental, not default.
+
+## Exact cross-format copies (2026-09-19)
+
+`vkCmdCopyImage` selected the raw block-copy path whenever source/destination
+formats differed. That path cannot decode lossless image compression and
+rejected compressed RGBA8/BGRA8 copies at command-buffer recording. The common
+render-copy shader packs the source format and unpacks the destination format,
+so these UNORM layouts preserve raw bytes through native, compression-aware
+views. Select that path for this supported pair when either image is compressed;
+retain raw copying for the other formats and uncompressed pairs.
+
+The standalone `vulkan-compressed-copy-probe.c` reproduces the original rejection
+(`20260919T012104918240Z-compressed-rgba-bgra-copy-baseline`). With the fix,
+`20260919T012246270537Z-compressed-rgba-bgra-copy-render` passes all 16 cases:
+both channel-layout directions, full/offset partial rectangles, all four
+compressed/uncompressed allocation combinations, and exact preserved surrounding
+bytes. Allocation audit confirms actual compression. No numerical tolerance is
+used. Hardware runs require the usual watchdog60/thermal95 guard.
+
+The Factorio 85-second menu observation
+`20260919T012328880318Z-factorio-compressed-copy-large-shaders` completes without
+recording/GPU errors. It also captures large shaders with disk cache disabled;
+its 15.78 FPS tail is diagnostic, not a production throughput comparison.
+The earlier live raw-copy failure's precise formats were not retained, so this
+specific reproducer/fix is not proof that every cause of that rejection is gone.
+Raw-copy rejection diagnostics now retain format, compression and region details
+for the next occurrence. Full CTS and broader compressed format handling remain
+TODO. 60 FPS is still the performance objective.
