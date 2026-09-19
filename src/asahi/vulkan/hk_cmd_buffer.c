@@ -1616,9 +1616,14 @@ hk_upload_usc_words(struct hk_cmd_buffer *cmd, struct hk_shader *s,
    if (s->info.stage == MESA_SHADER_FRAGMENT &&
        debug_get_bool_option("HK_M4_SHADER_PROFILE", false)) {
       const struct agx2_stats *stats = &s->b.info.stats;
-      fprintf(stderr, "HK_SHADER_PROFILE code=%08x width=%u height=%u direct=%u "
+      fprintf(stderr, "HK_SHADER_PROFILE code=%08x cs=%" PRIx64 " width=%u height=%u direct=%u "
               "instrs=%u regs=%u scratch=%u loops=%u preamble=%u\n",
               _mesa_hash_data(s->b.binary, s->b.info.binary_size),
+              cmd->current_cs.gfx
+                 ? (hk_g17p_vdm_low_window_enabled(&dev->dev)
+                       ? hk_g17p_vdm_alias(cmd, cmd->current_cs.gfx->addr)
+                       : cmd->current_cs.gfx->addr)
+                 : 0,
               cmd->state.gfx.render.area.extent.width,
               cmd->state.gfx.render.area.extent.height,
               s->info.ubo_prefetch_direct, stats->instrs, s->b.info.nr_gprs,
