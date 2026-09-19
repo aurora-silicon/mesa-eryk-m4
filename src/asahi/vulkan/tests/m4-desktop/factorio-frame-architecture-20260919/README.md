@@ -127,3 +127,18 @@ remain~1.46ms; no significant throughput gain is established.
 Hardware40 strict buffer oracles PASS; current five-frame Factorio replay PASS
 and frame5 is pixel-exact against cache-qualified reference12a681... Peak64.25C.
 Normal application qualification follows; no fullCTS claim.
+
+Normal-menu qualification085146495638Z passes, peak88.75C: mean41.95FPS,
+median40.25, final12mean39.637. The animated scene differs from the previous
+46.704FPS run; this is not a controlled before/after comparison. No5ms claim.
+
+Fragment versus compute arithmetic probe: at4K the fragment shader executes
+four times as many invocations as the words4 compute test. For256FMA per
+component this is16.987billion versus4.247billion operations. Fragment wall
+time for warm rounds2..5 averages6.579ms; compute query span1.911ms. These
+include different overheads and cannot be compared directly as shader-only
+time, but do not establish a fragment-specific arithmetic throughput defect.
+All arithmetic outputs checked (fragment edgepixel, compute everyword). The
+probe adds optional read_each=0 to keep compute output GPU-resident until the
+final readback; this did not improve measured throughput. Fragment256FMA
+output is UNORM-quantized and checked with one-unit tolerance.

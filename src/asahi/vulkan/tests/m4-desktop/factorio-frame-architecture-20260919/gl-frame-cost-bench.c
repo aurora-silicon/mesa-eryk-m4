@@ -38,8 +38,10 @@ int main(int argc, char **argv) {
    unsigned words = argc > 4 ? atoi(argv[4]) : 1;
    unsigned local = argc > 5 ? atoi(argv[5]) : 256;
    unsigned arithmetic = argc > 6 ? atoi(argv[6]) : 0;
+   unsigned read_each = argc > 7 ? atoi(argv[7]) : 1;
+   CHECK(read_each <= 1);
    CHECK(local == 32 || local == 64 || local == 128 || local == 256 || local == 512);
-   CHECK(arithmetic <= 256 && (!arithmetic || (mode == 3 && words == 4)));
+   CHECK(arithmetic <= 256 && (!arithmetic || mode == 0 || (mode == 3 && words == 4)));
    CHECK(words == 1 || words == 4 || words == 16);
    CHECK(mode <= 3);
    CHECK(discard <= 1);
@@ -75,7 +77,17 @@ int main(int argc, char **argv) {
       glAttachShader(p, shader(GL_COMPUTE_SHADER, compute));
    } else {
       glAttachShader(p, vs);
-      glAttachShader(p, shader(GL_FRAGMENT_SHADER, fs[mode]));
+      char fragment[32768];
+      if (arithmetic) {
+         int len = snprintf(fragment, sizeof(fragment),
+            "#version 430 core\nout vec4 color;void main(){"
+            "vec4 a=vec4(float(uint(gl_FragCoord.x)&255u)/256.0);");
+         for (unsigned i=0;i<arithmetic;i++)
+            len += snprintf(fragment+len, sizeof(fragment)-len,
+               "a=fma(a,vec4(0.999,0.997,0.995,0.993),vec4(0.001));");
+         snprintf(fragment+len, sizeof(fragment)-len, "color=a;}");
+      }
+      glAttachShader(p, shader(GL_FRAGMENT_SHADER, arithmetic ? fragment : fs[mode]));
    }
    glLinkProgram(p); GLint ok; glGetProgramiv(p, GL_LINK_STATUS, &ok); CHECK(ok); glUseProgram(p);
    GLuint vao, tex, fb, source, source_fb;
@@ -110,6 +122,7 @@ int main(int argc, char **argv) {
             glGetQueryObjectui64v(queries[1], GL_QUERY_RESULT, &ticks[1]);
             CHECK(ticks[1] > ticks[0]);
             glDeleteQueries(2, queries);
+            if (read_each || round == 5) {
             const unsigned *data = glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, bytes, GL_MAP_READ_BIT);
             CHECK(data);
             if (arithmetic) {
@@ -125,8 +138,9 @@ int main(int argc, char **argv) {
             } else
                for (unsigned i = 0; i < w*h; i++) CHECK(data[i] == (i ^ 0xa55aa55au));
             CHECK(glUnmapBuffer(GL_SHADER_STORAGE_BUFFER));
+            }
             CHECK(glGetError()==GL_NO_ERROR);
-            printf("FRAME_COST mode=%u words=%u local=%u arithmetic=%u width=%u height=%u round=%u wall_ms=%.6f gpu_query_ms=%.6f begin_ns=%llu end_ns=%llu\n", mode,words,local,arithmetic,w,h,round,elapsed,(ticks[1]-ticks[0])/1e6,(unsigned long long)ticks[0],(unsigned long long)ticks[1]);
+            printf("FRAME_COST mode=%u words=%u local=%u arithmetic=%u read_each=%u width=%u height=%u round=%u wall_ms=%.6f gpu_query_ms=%.6f begin_ns=%llu end_ns=%llu\n", mode,words,local,arithmetic,read_each,w,h,round,elapsed,(ticks[1]-ticks[0])/1e6,(unsigned long long)ticks[0],(unsigned long long)ticks[1]);
             fflush(stdout);
          }
          glDeleteBuffers(1, &buffer);
@@ -159,8 +173,15 @@ int main(int argc, char **argv) {
          double elapsed=(now()-start)*1000;
          unsigned char pixel[4];glReadPixels(w-1,h-1,1,1,GL_RGBA,GL_UNSIGNED_BYTE,pixel);
          CHECK(glGetError()==GL_NO_ERROR);
-         CHECK(pixel[0]==255&&pixel[1]==0&&pixel[2]==255&&pixel[3]==255);
-         printf("FRAME_COST mode=%u discard=%u wide=%u width=%u height=%u round=%u wall_ms=%.6f\n",mode,discard,wide,w,h,round,elapsed);
+         if (arithmetic) {
+            const float coefficients[4]={0.999f,0.997f,0.995f,0.993f};
+            for (unsigned c=0;c<4;c++) {
+               float expected=(float)((w-1)&255)/256.0f;
+               for(unsigned i=0;i<arithmetic;i++)expected=fmaf(expected,coefficients[c],0.001f);
+               CHECK(abs((int)pixel[c]-(int)lroundf(fminf(fmaxf(expected,0),1)*255))<=1);
+            }
+         } else CHECK(pixel[0]==255&&pixel[1]==0&&pixel[2]==255&&pixel[3]==255);
+         printf("FRAME_COST mode=%u discard=%u wide=%u arithmetic=%u width=%u height=%u round=%u wall_ms=%.6f\n",mode,discard,wide,arithmetic,w,h,round,elapsed);
          fflush(stdout);
       }
    }
