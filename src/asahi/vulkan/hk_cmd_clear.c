@@ -66,6 +66,14 @@ hk_clear_image(struct hk_cmd_buffer *cmd, struct hk_image *image,
           */
          enum pipe_format format = (z || s || !view_format)
                                       ? layout->format : view_format;
+         /* Native RGB images have RGBA storage. Attachment clears carry the
+          * logical view format, unlike transfer clears, but must still fill
+          * complete physical texels. Keep the view's numeric interpretation
+          * for mutable-format images while applying the same padding as image
+          * allocation.
+          */
+         if (agx_native_graphics(&hk_cmd_buffer_device(cmd)->dev))
+            format = hk_padded_image_format(format);
          bool stencil = format == PIPE_FORMAT_S8_UINT;
 
          if (stencil) {
