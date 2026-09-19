@@ -43,3 +43,9 @@ Final built-default query validation and live qualification are recorded below.
 
 The final built defaults pass all 13 modes without new option overrides
 (162015 query-visible-default-matrix, peak 64.75 C). Live qualification follows.
+
+Installed library SHA256 80e0c17d6fd020c625facd209976fcd6fd294280451fb3e8c4ce259439263954.
+Normal menu initialized in 7.102 s game time; 120 s observation, 235 samples,
+median 59.97 FPS, mean 58.799, minimum 33.55, 84.7% at least 59 FPS.
+Peak PMP temperature 85.5 C. Bounded process stopped normally. This is not
+a flat 60 FPS result. Previous installed library a02c6815 is retained for rollback.

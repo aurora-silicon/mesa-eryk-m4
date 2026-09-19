@@ -1,0 +1,9 @@
+   0.335  [0]: eDP-1 - {[0,0], 2560x1664, SDL_PIXELFORMAT_RGB888, 60Hz}
+   0.978 [Audio] Driver:pulseaudio, Device:Default device, Depth:16, Frequency:44100, Channels:2, Interpolation:linear
+   2.244 Checksum of base: 3065466159
+   3.206 Post-data load graphics options: [Light occlusion: no]
+   3.943 Texture processor created (4096). GPU accelerated compression Supported: yes, Enabled: yes/yes. Test passed. YCoCgDXT PSNR: 35.83, BC3 PSNR: 33.82
+   4.954 Parallel sprite loader initialized (threads: 3, bitmaps: 5)
+   6.215 Generated mipmaps (3) for atlas [22] of size 4096x1312   
+   7.102 Factorio initialised
+FACTORIO_STANDALONE_INITIALISED {"initialized": true, "launcher_elapsed_seconds": 132.0343498809999, "vm_pids": [4295], "launcher": "/home/e/.local/bin/factorio-memory-normal-start", "state": "/home/e/.local/share/factorio-standalone/demo-2.0.77", "unit": "m4-factorio-standalone.service", "menu_fps": {"source": "Gallium invisible HUD", "tail_samples": 12, "mean": 58.829166666666666, "minimum": 56.92, "maximum": 60.68, "complete_window": {"samples": 235, "mean": 58.799021276595745, "median": 59.97, "minimum": 33.55, "maximum": 62.72, "fraction_at_least_59": 0.8468085106382979}}}
