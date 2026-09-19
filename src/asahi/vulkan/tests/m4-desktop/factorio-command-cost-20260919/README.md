@@ -26,3 +26,11 @@ that cannot change totals, but it is not a unique counter per API draw.
 Compressed mip-chain atlas revisited after cache/memory/query fixes (164549):
 exact pixels/counts, 5.929..6.091 ms; no meaningful gain established.
 Qualified normal kernel868fa406 and full profiling restored at16:43:50 reboot.
+
+## Tile budget revisited after memory-clock fixes, 17:13 UTC
+
+32x16 (171204) reproduces exact pixels and query totals, complete GPU frames
+5.948..6.014 ms. 16x16 (171320) also matches but regresses to6.689..6.841 ms.
+Default32x32 remains unchanged. Cached-program control on the same boot is
+5.965..6.116 ms; the small32x16 difference is insufficient to change policy.
+No full CTS claim. Both guards exited normally; peaks67.25C.
