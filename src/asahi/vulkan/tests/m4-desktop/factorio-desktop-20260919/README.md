@@ -71,3 +71,22 @@ corpus must not be mistaken for the selected executables in this scene.
 
 After the integer-preamble callback addition, all 6038 enabled host NIR
 tests pass (nine disabled); full Vulkan CTS remains deferred.
+
+### MicroVM round-trip control
+
+`gpu-virtio-turnaround.py host GUARD_OUTPUT` compares 64 checked serial rounds
+of 1 and 16 commands using the identical ARM64 vk-priority-probe and load.spv,
+on the host and through a fresh microVM. It hashes the shared Mesa library in
+both contexts and retains every sample. No FEX, window or application input.
+Use inside gpu-experiment; source for the probe is workspace tools/vk-priority-probe.c.
+
+`20260919T034409251315Z-factorio-native-virtio-turnaround` passes all readbacks:
+median round trip 0.602 ms host versus 0.700 ms guest for one command, and
+5.162 versus 5.316 ms for sixteen. Excludes the first round in each series.
+This isolates a small transport increment on this tiny workload; it is not
+Factorio FPS or proof that all microVM workloads have the same overhead.
+`virtio-turnaround.json` records the medians and p95 values. Peak 72 C.
+
+`20260919T033930293063Z-factorio-compiler-option-cache-identity` verifies seven
+distinct stable cache UUIDs (baseline plus each of the six compiler switches,
+including integer-only native preamble). No full CTS claim is made.

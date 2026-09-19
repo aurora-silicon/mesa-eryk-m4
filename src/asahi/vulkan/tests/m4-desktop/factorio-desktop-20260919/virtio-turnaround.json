@@ -1,0 +1,42 @@
+{
+  "host-1": {
+    "round_trip_ms": {
+      "median": 0.601723,
+      "p95": 0.734064
+    },
+    "submit_ms": {
+      "median": 0.009708,
+      "p95": 0.012292
+    }
+  },
+  "host-16": {
+    "round_trip_ms": {
+      "median": 5.162355,
+      "p95": 5.291887
+    },
+    "submit_ms": {
+      "median": 0.064912,
+      "p95": 0.066887
+    }
+  },
+  "guest-1": {
+    "round_trip_ms": {
+      "median": 0.69957,
+      "p95": 0.804099
+    },
+    "submit_ms": {
+      "median": 0.0041,
+      "p95": 0.00625
+    }
+  },
+  "guest-16": {
+    "round_trip_ms": {
+      "median": 5.316451,
+      "p95": 5.347909
+    },
+    "submit_ms": {
+      "median": 0.009727,
+      "p95": 0.012018
+    }
+  }
+}
