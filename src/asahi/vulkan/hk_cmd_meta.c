@@ -639,6 +639,7 @@ hk_native_meta_copy_query(struct hk_cmd_buffer *cmd, uint64_t destination,
    if (!cs)
       return;
    cs->stats.query_copies++;
+   const unsigned previous_dispatches = cs->stats.cmds;
    hk_cdm_cache_flush(dev, cs);
    struct hk_meta_save save;
    hk_meta_begin(cmd, &save, VK_PIPELINE_BIND_POINT_COMPUTE);
@@ -661,6 +662,11 @@ hk_native_meta_copy_query(struct hk_cmd_buffer *cmd, uint64_t destination,
       disp->CmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
       disp->CmdPushConstants(cb, layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(args), &args);
       disp->CmdDispatch(cb, 1, 1, 1);
+      if (cmd->current_cs.cs == cs) {
+         cs->query_dispatches += cs->stats.cmds - previous_dispatches;
+         hk_drm_attachment_set_add(&cs->query_destinations, destination,
+            word_size * ((flags & VK_QUERY_RESULT_WITH_AVAILABILITY_BIT) ? 2 : 1));
+      }
       if (cmd->current_cs.cs)
          hk_drm_attachment_set_add(&cmd->current_cs.cs->compute_attachments,
             destination, word_size * ((flags & VK_QUERY_RESULT_WITH_AVAILABILITY_BIT) ? 2 : 1));

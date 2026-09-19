@@ -555,11 +555,17 @@ merge_control_streams(struct hk_cmd_buffer *cmd)
    const bool batch_fills =
       hk_cmd_buffer_device(cmd)->dev.chip == AGX_CHIP_G16G &&
       debug_get_bool_option("HK_M4_BATCH_META_FILLS", false);
+   const bool batch_queries =
+      hk_cmd_buffer_device(cmd)->dev.chip == AGX_CHIP_G16G &&
+      debug_get_bool_option("HK_M4_BATCH_QUERY_COPIES", false);
 
    /* Most dispatches have an incomplete destination ledger. Only after all
     * recording is finished can we prove this stream contains clears alone
     * and replace that ledger with their complete whole-plane footprints. */
    list_for_each_entry(struct hk_cs, cs, &cmd->control_streams, node) {
+      if (batch_queries && cs->type == HK_CS_CDM && cs->query_dispatches &&
+          cs->query_dispatches == cs->stats.cmds)
+         cs->compute_attachments = cs->query_destinations;
       if (batch_fills && cs->type == HK_CS_CDM && cs->fill_dispatches &&
           cs->fill_dispatches == cs->stats.cmds)
          cs->compute_attachments = cs->fill_destinations;
@@ -2009,6 +2015,11 @@ hk_cs_init_graphics(struct hk_cmd_buffer *cmd, struct hk_cs *cs)
    if (hk_g17p_vdm_low_window_enabled(&dev->dev) &&
        !hk_g17p_vdm_compact(cmd, cs->addr))
       return;
+
+   if (debug_get_bool_option("HK_M4_SHADER_PROFILE", false))
+      fprintf(stderr, "HK_SHADER_BEGIN cs=%" PRIx64 "\n",
+              hk_g17p_vdm_low_window_enabled(&dev->dev)
+                 ? hk_g17p_vdm_alias(cmd, cs->addr) : cs->addr);
 
    hk_drm_attachment_set_init(&cs->fragment_attachments);
 

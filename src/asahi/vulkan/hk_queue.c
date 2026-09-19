@@ -333,6 +333,10 @@ asahi_fill_vdm_command(struct hk_device *dev, struct hk_cs *cs,
          ? hk_g17p_vdm_alias(cs->cmd, cs->addr)
          : cs->addr;
 
+   if (debug_get_bool_option("HK_M4_SHADER_PROFILE", false))
+      fprintf(stderr, "HK_SHADER_SUBMIT cs=%" PRIx64 "\n",
+              (uint64_t)c->vdm_ctrl_stream_base);
+
    /* Metal's compact direct encoder starts at the 0x4000002e
     * VertexProgramVariant header.  Honeykrisp normally precedes it with a
     * 12-byte barrier/initial-PPP sequence.  Keep this opt-in and validate the
