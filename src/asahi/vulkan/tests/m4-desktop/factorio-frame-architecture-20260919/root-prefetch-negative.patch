@@ -1,0 +1,58 @@
+diff --git a/src/asahi/vulkan/hk_shader.h b/src/asahi/vulkan/hk_shader.h
+index 6eeb7e0e615..219fa057b2a 100644
+--- a/src/asahi/vulkan/hk_shader.h
++++ b/src/asahi/vulkan/hk_shader.h
+@@ -113,6 +115,7 @@ struct hk_shader_info {
+    uint8_t clip_distance_array_size;
+    uint8_t cull_distance_array_size;
+    uint8_t set_count;
++   struct hk_descriptor_prefetch root_prefetch;
+    struct hk_descriptor_prefetch descriptor_prefetch[HK_MAX_SETS];
+    struct hk_ubo_prefetch ubo_prefetch[HK_UBO_PREFETCH_MAX];
+    unsigned ubo_prefetch_count;
+diff --git a/src/asahi/vulkan/hk_shader.c b/src/asahi/vulkan/hk_shader.c
+index 388b3d1d149..37bcc2dc521 100644
+--- a/src/asahi/vulkan/hk_shader.c
++++ b/src/asahi/vulkan/hk_shader.c
+@@ -2684,6 +2685,16 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
+       }
+    }
+ 
++   /* Driver root fields are immutable for this draw, just like descriptor
++    * metadata. Load constant fields once through Ioto instead of issuing a
++    * global memory read per fragment (for example flat-input provoking mode).
++    * Reuse the bounded word-span allocator; dynamic accesses stay in NIR. */
++   if (dev->dev.chip == AGX_CHIP_G16G && sw_stage == MESA_SHADER_FRAGMENT &&
++       debug_get_bool_option("HK_M4_PREFETCH_ROOT", false)) {
++      NIR_PASS(_, nir, hk_nir_prefetch_descriptors, root, 1,
++               &reserved, &shader->info.root_prefetch);
++   }
++
+    /* Report every uniform half this shader actually reads.
+     *
+     * The disassembled G17P binary references uniform halves the declared
+diff --git a/src/asahi/vulkan/hk_cmd_buffer.c b/src/asahi/vulkan/hk_cmd_buffer.c
+index 95a34b3458f..98a738a67f3 100644
+--- a/src/asahi/vulkan/hk_cmd_buffer.c
++++ b/src/asahi/vulkan/hk_cmd_buffer.c
+@@ -1484,6 +1486,20 @@ hk_g17p_graphics_uniform_ranges(
+       count++;
+    }
+ 
++   const struct hk_descriptor_prefetch *root_span = &s->info.root_prefetch;
++   if (root_span->size_B) {
++      const size_t root_size = sizeof(cmd->state.gfx.descriptors.root);
++      if (!root_ptr || root_span->offset_B > root_size ||
++          root_span->size_B > root_size - root_span->offset_B ||
++          count >= HK_AGX3_G17P_GRAPHICS_MAX_RANGES)
++         return false;
++      ranges[count++] = (struct agx3_ioto_uniform_range){
++         .start_halfs = root_span->uniform_half,
++         .size_halfs = root_span->size_B / 2,
++         .address = root_ptr + root_span->offset_B,
++      };
++   }
++
+    static_assert(HK_MAX_SETS == 8, "descriptor prefetch range budget");
+    static_assert(HK_UBO_PREFETCH_MAX == 128, "uniform prefetch range capacity");
+    for (unsigned i = 0; i < s->info.ubo_prefetch_count; ++i) {

@@ -79,6 +79,7 @@
 DEBUG_GET_ONCE_BOOL_OPTION(hk_g17p_launch_trace, "HK_G17P_LAUNCH_TRACE", false)
 DEBUG_GET_ONCE_BOOL_OPTION(hk_m4_prefetch_audit, "HK_M4_PREFETCH_AUDIT", false)
 DEBUG_GET_ONCE_BOOL_OPTION(hk_m4_vdm_draw_barrier, "HK_M4_VDM_DRAW_BARRIER", false)
+DEBUG_GET_ONCE_BOOL_OPTION(hk_m4_profile_each_draw, "HK_M4_PROFILE_EACH_DRAW", false)
 
 #define IS_DIRTY(bit) BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_##bit)
 
@@ -4974,6 +4975,18 @@ hk_flush_gfx_state(struct hk_cmd_buffer *cmd, uint32_t draw_id,
 
    if (!cs)
       return NULL;
+
+   /* Diagnostic attribution only: retained-render transitions preserve
+    * attachments while exposing each draw to existing GPU pass timestamps.
+    * Added load/store traffic makes these timings unsuitable as a frame
+    * performance baseline. Keep the ordinary application path unchanged. */
+   if (dev->dev.chip == AGX_CHIP_G16G && cs->stats.cmds > 0 &&
+       debug_get_option_hk_m4_profile_each_draw()) {
+      hk_cmd_buffer_end_graphics(cmd);
+      cs = hk_cmd_buffer_get_cs(cmd, false /* compute */);
+      if (!cs)
+         return NULL;
+   }
 
    bool direct_ubos = hk_fs_can_use_direct_ubos(cmd);
    if (direct_ubos != gfx->fs_ubo_direct) {

@@ -188,3 +188,27 @@ Read-only MCC occupancy probe090935 observed GPU-workload-associated DSID31
 reach16384 cache lines on each aperture while the checked compute workload
 ran. This is occupancy, not a hit-rate or bandwidth measurement. DSID-to-quota
 group mapping remains unqualified. No cache-policy registers were written.
+
+## Memory floor qualification and per-draw diagnosis, 10:40 UTC
+
+Boot initialization b60940d now enables the AP memory/fabric floors using
+validated stock table indices. See m1n1 docs/m4-memory-performance.md. The
+unchanged five-frame replay spans 8.08..8.11 ms with pixel-identical output.
+A bounded normal main-menu run has median 59.99 FPS, final 12 samples mean
+60.0 FPS. The 5 ms replay target remains unmet.
+
+HK_M4_PROFILE_EACH_DRAW=true splits render work at each draw while retaining
+attachments. It is a diagnostic only: extra stores/reloads change workload
+cost. The 67-pass replay is pixel-identical, but spans about 18 ms. The largest
+draw is the 4,690-quad sprite batch (2.05 ms FS in the split diagnostic); its
+main shader has 106 instructions and no pixel interlock or coverage writes.
+
+A separate experiment prefetched immutable root fields into uniform registers,
+using the existing bounded descriptor allocator. Replay stayed pixel-identical
+at 8.10..8.14 ms: no useful gain. The patch is retained as a negative experiment
+and removed from active source. Neither diagnostic changes default behavior.
+
+The observe helpers now preserve explicit guest exit codes and partial FPS on
+failure. A prior profiled application run exited with swapchain-killed output,
+without a recorded GPU fault; its cause is not established. The successful
+non-profiled repeat does not prove profiling caused that failure.
