@@ -1,0 +1,647 @@
+{
+  "source": "build/factorio-shader-inspection/frame0.jsonl",
+  "sha256": "b74357211d6e4fd07d27fbc60c4217ec34d7dcf56a00006b3b31292eedfdc571",
+  "scope": "Recorded Vulkan API work at submission; restored but unsubmitted buffers excluded. Frame numbers follow present calls, including any capture setup.",
+  "recorded_calls": {
+    "vkCreateInstance": 1,
+    "vkEnumeratePhysicalDevices": 1,
+    "vkGetPhysicalDeviceQueueFamilyProperties": 2,
+    "vkCreateDevice": 1,
+    "vkGetDeviceQueue": 3,
+    "vkCreateFence": 1,
+    "vkCreateSemaphore": 10,
+    "vkSignalSemaphore": 1,
+    "vkCreateXcbSurfaceKHR": 1,
+    "vkGetPhysicalDeviceSurfaceSupportKHR": 1,
+    "vkGetPhysicalDeviceSurfaceCapabilitiesKHR": 2,
+    "vkGetPhysicalDeviceSurfacePresentModesKHR": 2,
+    "vkCreateSwapchainKHR": 1,
+    "vkGetSwapchainImagesKHR": 1,
+    "vkCreateBuffer": 332,
+    "vkCreateImage": 236,
+    "vkAllocateMemory": 146,
+    "vkGetBufferMemoryRequirements": 332,
+    "vkBindBufferMemory": 331,
+    "vkGetImageMemoryRequirements": 236,
+    "vkBindImageMemory": 236,
+    "vkMapMemory": 39,
+    "vkCreateBufferView": 1,
+    "vkCreateSampler": 10,
+    "vkCreateImageView": 58,
+    "vkCreateShaderModule": 32,
+    "vkCreateDescriptorSetLayout": 12,
+    "vkCreatePipelineLayout": 17,
+    "vkCreatePipelineCache": 16,
+    "vkCreateGraphicsPipelines": 22,
+    "vkCreateDescriptorPool": 40,
+    "vkCreateDescriptorUpdateTemplate": 34,
+    "vkAllocateDescriptorSets": 65,
+    "vkUpdateDescriptorSets": 2556,
+    "vkCreateQueryPool": 3,
+    "vkCreateCommandPool": 12,
+    "vkAllocateCommandBuffers": 12,
+    "vkBeginCommandBuffer": 14,
+    "vkCmdResetQueryPool": 51,
+    "vkEndCommandBuffer": 8,
+    "vkQueueSubmit": 4,
+    "vkQueueWaitIdle": 2,
+    "vkDestroyCommandPool": 2,
+    "vkCmdBeginQuery": 677,
+    "vkCmdEndQuery": 677,
+    "vkCmdWriteTimestamp": 432,
+    "vkCmdSetColorWriteEnableEXT": 8,
+    "vkCmdSetDepthWriteEnable": 7,
+    "vkCmdBeginRendering": 51,
+    "vkCmdEndRendering": 51,
+    "vkCmdPipelineBarrier2": 117,
+    "vkCmdBindIndexBuffer": 57,
+    "vkCmdBindPipeline": 129,
+    "vkCmdSetViewportWithCount": 12,
+    "vkCmdSetScissorWithCount": 99,
+    "vkCmdSetStencilReference": 6,
+    "vkCmdSetDepthBoundsTestEnable": 3,
+    "vkCmdSetDepthTestEnable": 3,
+    "vkCmdSetDepthCompareOp": 3,
+    "vkCmdSetStencilTestEnable": 3,
+    "vkCmdSetStencilWriteMask": 3,
+    "vkCmdSetStencilCompareMask": 3,
+    "vkCmdSetStencilOp": 3,
+    "vkCmdSetBlendConstants": 3,
+    "vkCmdSetRasterizerDiscardEnable": 3,
+    "vkCmdSetFrontFace": 30,
+    "vkCmdSetCullMode": 30,
+    "vkCmdSetDepthBias": 3,
+    "vkCmdSetLineWidth": 3,
+    "vkCmdBindVertexBuffers2": 120,
+    "vkCmdSetVertexInputEXT": 114,
+    "vkCmdSetPrimitiveTopology": 3,
+    "vkCmdSetPrimitiveRestartEnable": 3,
+    "vkCmdBindDescriptorSets": 873,
+    "vkCmdDrawMultiIndexedEXT": 717,
+    "vkCmdCopyQueryPoolResults": 48,
+    "vkCmdPushDescriptorSetWithTemplate": 39,
+    "vkCmdDrawMultiEXT": 54,
+    "vkCmdPipelineBarrier": 6,
+    "vkSetDebugUtilsObjectNameEXT": 10,
+    "vkAcquireNextImageKHR": 1,
+    "vkUpdateDescriptorSetWithTemplate": 286,
+    "vkResetCommandPool": 2,
+    "vkDestroyBuffer": 34,
+    "vkWaitSemaphores": 2,
+    "vkResetFences": 1,
+    "vkUnmapMemory": 1,
+    "vkWaitForFences": 1,
+    "vkFreeMemory": 1,
+    "vkQueuePresentKHR": 1
+  },
+  "submissions": [
+    {
+      "frame": 1,
+      "trace_index": 5821,
+      "queue": 18446744073709551614,
+      "command_buffers": [
+        {
+          "handle": 18446744073709551612,
+          "passes": [],
+          "operations": {
+            "vkCmdResetQueryPool": 3
+          }
+        }
+      ]
+    },
+    {
+      "frame": 1,
+      "trace_index": 7561,
+      "queue": 18446744073709551614,
+      "command_buffers": [
+        {
+          "handle": 18446744073709551612,
+          "passes": [],
+          "operations": {
+            "vkCmdBeginQuery": 671,
+            "vkCmdEndQuery": 671,
+            "vkCmdWriteTimestamp": 390
+          }
+        }
+      ]
+    },
+    {
+      "frame": 1,
+      "trace_index": 10649,
+      "queue": 4,
+      "command_buffers": [
+        {
+          "handle": 29,
+          "passes": [],
+          "operations": {
+            "vkCmdSetColorWriteEnableEXT": 1,
+            "vkCmdResetQueryPool": 16,
+            "vkCmdPipelineBarrier2": 9,
+            "vkCmdPipelineBarrier": 1
+          }
+        },
+        {
+          "handle": 28,
+          "passes": [
+            {
+              "trace_index": 9422,
+              "area": {
+                "offset": {
+                  "x": 0,
+                  "y": 0
+                },
+                "extent": {
+                  "width": 2560,
+                  "height": 1664
+                }
+              },
+              "attachments": [
+                {
+                  "view": 135098,
+                  "image": 134442,
+                  "format": "VK_FORMAT_B8G8R8A8_UNORM",
+                  "samples": null,
+                  "load": "VK_ATTACHMENT_LOAD_OP_CLEAR",
+                  "store": "VK_ATTACHMENT_STORE_OP_STORE"
+                }
+              ],
+              "draws": 0,
+              "pipelines": []
+            },
+            {
+              "trace_index": 9426,
+              "area": {
+                "offset": {
+                  "x": 0,
+                  "y": 0
+                },
+                "extent": {
+                  "width": 2560,
+                  "height": 1664
+                }
+              },
+              "attachments": [
+                {
+                  "view": 134495,
+                  "image": 134446,
+                  "format": "VK_FORMAT_R8G8B8A8_UNORM",
+                  "samples": "VK_SAMPLE_COUNT_1_BIT",
+                  "load": "VK_ATTACHMENT_LOAD_OP_CLEAR",
+                  "store": "VK_ATTACHMENT_STORE_OP_STORE"
+                }
+              ],
+              "draws": 0,
+              "pipelines": []
+            },
+            {
+              "trace_index": 9432,
+              "area": {
+                "offset": {
+                  "x": 0,
+                  "y": 0
+                },
+                "extent": {
+                  "width": 2560,
+                  "height": 1664
+                }
+              },
+              "attachments": [
+                {
+                  "view": 134508,
+                  "image": 134448,
+                  "format": "VK_FORMAT_R8G8B8A8_UNORM",
+                  "samples": "VK_SAMPLE_COUNT_1_BIT",
+                  "load": "VK_ATTACHMENT_LOAD_OP_CLEAR",
+                  "store": "VK_ATTACHMENT_STORE_OP_STORE"
+                }
+              ],
+              "draws": 0,
+              "pipelines": []
+            },
+            {
+              "trace_index": 9436,
+              "area": {
+                "offset": {
+                  "x": 0,
+                  "y": 0
+                },
+                "extent": {
+                  "width": 2560,
+                  "height": 1664
+                }
+              },
+              "attachments": [
+                {
+                  "view": 134495,
+                  "image": 134446,
+                  "format": "VK_FORMAT_R8G8B8A8_UNORM",
+                  "samples": "VK_SAMPLE_COUNT_1_BIT",
+                  "load": "VK_ATTACHMENT_LOAD_OP_LOAD",
+                  "store": "VK_ATTACHMENT_STORE_OP_STORE"
+                }
+              ],
+              "draws": 1,
+              "pipelines": [
+                134517
+              ]
+            },
+            {
+              "trace_index": 9476,
+              "area": {
+                "offset": {
+                  "x": 0,
+                  "y": 0
+                },
+                "extent": {
+                  "width": 2560,
+                  "height": 1664
+                }
+              },
+              "attachments": [
+                {
+                  "view": 134540,
+                  "image": 134450,
+                  "format": "VK_FORMAT_R8G8B8A8_UNORM",
+                  "samples": "VK_SAMPLE_COUNT_1_BIT",
+                  "load": "VK_ATTACHMENT_LOAD_OP_CLEAR",
+                  "store": "VK_ATTACHMENT_STORE_OP_STORE"
+                }
+              ],
+              "draws": 1,
+              "pipelines": [
+                134542
+              ]
+            },
+            {
+              "trace_index": 9485,
+              "area": {
+                "offset": {
+                  "x": 0,
+                  "y": 0
+                },
+                "extent": {
+                  "width": 2560,
+                  "height": 1664
+                }
+              },
+              "attachments": [
+                {
+                  "view": 134495,
+                  "image": 134446,
+                  "format": "VK_FORMAT_R8G8B8A8_UNORM",
+                  "samples": "VK_SAMPLE_COUNT_1_BIT",
+                  "load": "VK_ATTACHMENT_LOAD_OP_LOAD",
+                  "store": "VK_ATTACHMENT_STORE_OP_STORE"
+                }
+              ],
+              "draws": 3,
+              "pipelines": [
+                134517
+              ]
+            },
+            {
+              "trace_index": 9505,
+              "area": {
+                "offset": {
+                  "x": 0,
+                  "y": 0
+                },
+                "extent": {
+                  "width": 2560,
+                  "height": 1664
+                }
+              },
+              "attachments": [
+                {
+                  "view": 134544,
+                  "image": 134454,
+                  "format": "VK_FORMAT_R8G8B8A8_UNORM",
+                  "samples": "VK_SAMPLE_COUNT_1_BIT",
+                  "load": "VK_ATTACHMENT_LOAD_OP_CLEAR",
+                  "store": "VK_ATTACHMENT_STORE_OP_STORE"
+                }
+              ],
+              "draws": 2,
+              "pipelines": [
+                134551,
+                146525
+              ]
+            },
+            {
+              "trace_index": 9526,
+              "area": {
+                "offset": {
+                  "x": 0,
+                  "y": 0
+                },
+                "extent": {
+                  "width": 2560,
+                  "height": 1664
+                }
+              },
+              "attachments": [
+                {
+                  "view": 134540,
+                  "image": 134450,
+                  "format": "VK_FORMAT_R8G8B8A8_UNORM",
+                  "samples": "VK_SAMPLE_COUNT_1_BIT",
+                  "load": "VK_ATTACHMENT_LOAD_OP_CLEAR",
+                  "store": "VK_ATTACHMENT_STORE_OP_STORE"
+                }
+              ],
+              "draws": 1,
+              "pipelines": [
+                146935
+              ]
+            },
+            {
+              "trace_index": 9538,
+              "area": {
+                "offset": {
+                  "x": 0,
+                  "y": 0
+                },
+                "extent": {
+                  "width": 2560,
+                  "height": 1664
+                }
+              },
+              "attachments": [
+                {
+                  "view": 134544,
+                  "image": 134454,
+                  "format": "VK_FORMAT_R8G8B8A8_UNORM",
+                  "samples": "VK_SAMPLE_COUNT_1_BIT",
+                  "load": "VK_ATTACHMENT_LOAD_OP_LOAD",
+                  "store": "VK_ATTACHMENT_STORE_OP_STORE"
+                }
+              ],
+              "draws": 35,
+              "pipelines": [
+                146943,
+                134551
+              ]
+            },
+            {
+              "trace_index": 9658,
+              "area": {
+                "offset": {
+                  "x": 0,
+                  "y": 0
+                },
+                "extent": {
+                  "width": 2560,
+                  "height": 1664
+                }
+              },
+              "attachments": [
+                {
+                  "view": 134495,
+                  "image": 134446,
+                  "format": "VK_FORMAT_R8G8B8A8_UNORM",
+                  "samples": "VK_SAMPLE_COUNT_1_BIT",
+                  "load": "VK_ATTACHMENT_LOAD_OP_LOAD",
+                  "store": "VK_ATTACHMENT_STORE_OP_STORE"
+                }
+              ],
+              "draws": 10,
+              "pipelines": [
+                230
+              ]
+            },
+            {
+              "trace_index": 9695,
+              "area": {
+                "offset": {
+                  "x": 0,
+                  "y": 0
+                },
+                "extent": {
+                  "width": 640,
+                  "height": 416
+                }
+              },
+              "attachments": [
+                {
+                  "view": 134644,
+                  "image": 134456,
+                  "format": "VK_FORMAT_R8G8B8A8_UNORM",
+                  "samples": "VK_SAMPLE_COUNT_1_BIT",
+                  "load": "VK_ATTACHMENT_LOAD_OP_CLEAR",
+                  "store": "VK_ATTACHMENT_STORE_OP_STORE"
+                }
+              ],
+              "draws": 0,
+              "pipelines": []
+            },
+            {
+              "trace_index": 9699,
+              "area": {
+                "offset": {
+                  "x": 0,
+                  "y": 0
+                },
+                "extent": {
+                  "width": 2560,
+                  "height": 1664
+                }
+              },
+              "attachments": [
+                {
+                  "view": 134495,
+                  "image": 134446,
+                  "format": "VK_FORMAT_R8G8B8A8_UNORM",
+                  "samples": "VK_SAMPLE_COUNT_1_BIT",
+                  "load": "VK_ATTACHMENT_LOAD_OP_LOAD",
+                  "store": "VK_ATTACHMENT_STORE_OP_STORE"
+                }
+              ],
+              "draws": 157,
+              "pipelines": [
+                230,
+                134741,
+                134855
+              ]
+            },
+            {
+              "trace_index": 10199,
+              "area": {
+                "offset": {
+                  "x": 0,
+                  "y": 0
+                },
+                "extent": {
+                  "width": 1280,
+                  "height": 832
+                }
+              },
+              "attachments": [
+                {
+                  "view": 146607,
+                  "image": 134460,
+                  "format": "VK_FORMAT_R8G8B8A8_UNORM",
+                  "samples": "VK_SAMPLE_COUNT_1_BIT",
+                  "load": "VK_ATTACHMENT_LOAD_OP_CLEAR",
+                  "store": "VK_ATTACHMENT_STORE_OP_STORE"
+                }
+              ],
+              "draws": 1,
+              "pipelines": [
+                230
+              ]
+            },
+            {
+              "trace_index": 10216,
+              "area": {
+                "offset": {
+                  "x": 0,
+                  "y": 0
+                },
+                "extent": {
+                  "width": 2560,
+                  "height": 1664
+                }
+              },
+              "attachments": [
+                {
+                  "view": 134495,
+                  "image": 134446,
+                  "format": "VK_FORMAT_R8G8B8A8_UNORM",
+                  "samples": "VK_SAMPLE_COUNT_1_BIT",
+                  "load": "VK_ATTACHMENT_LOAD_OP_LOAD",
+                  "store": "VK_ATTACHMENT_STORE_OP_STORE"
+                }
+              ],
+              "draws": 2,
+              "pipelines": [
+                146608,
+                230
+              ]
+            },
+            {
+              "trace_index": 10248,
+              "area": {
+                "offset": {
+                  "x": 0,
+                  "y": 0
+                },
+                "extent": {
+                  "width": 2560,
+                  "height": 1664
+                }
+              },
+              "attachments": [
+                {
+                  "view": 134857,
+                  "image": 134444,
+                  "format": "VK_FORMAT_R8G8B8A8_UNORM",
+                  "samples": "VK_SAMPLE_COUNT_1_BIT",
+                  "load": "VK_ATTACHMENT_LOAD_OP_LOAD",
+                  "store": "VK_ATTACHMENT_STORE_OP_STORE"
+                }
+              ],
+              "draws": 1,
+              "pipelines": [
+                134865
+              ]
+            },
+            {
+              "trace_index": 10267,
+              "area": {
+                "offset": {
+                  "x": 0,
+                  "y": 0
+                },
+                "extent": {
+                  "width": 2560,
+                  "height": 1664
+                }
+              },
+              "attachments": [
+                {
+                  "view": 200,
+                  "image": 54,
+                  "format": "VK_FORMAT_R8G8B8A8_UNORM",
+                  "samples": "VK_SAMPLE_COUNT_1_BIT",
+                  "load": "VK_ATTACHMENT_LOAD_OP_CLEAR",
+                  "store": "VK_ATTACHMENT_STORE_OP_STORE"
+                }
+              ],
+              "draws": 42,
+              "pipelines": [
+                134882,
+                230,
+                344
+              ]
+            },
+            {
+              "trace_index": 10570,
+              "area": {
+                "offset": {
+                  "x": 0,
+                  "y": 0
+                },
+                "extent": {
+                  "width": 2560,
+                  "height": 1664
+                }
+              },
+              "attachments": [
+                {
+                  "view": 135098,
+                  "image": 134442,
+                  "format": "VK_FORMAT_B8G8R8A8_UNORM",
+                  "samples": null,
+                  "load": "VK_ATTACHMENT_LOAD_OP_LOAD",
+                  "store": "VK_ATTACHMENT_STORE_OP_STORE"
+                }
+              ],
+              "draws": 1,
+              "pipelines": [
+                263
+              ]
+            }
+          ],
+          "operations": {
+            "vkCmdSetColorWriteEnableEXT": 1,
+            "vkCmdSetDepthWriteEnable": 2,
+            "vkCmdWriteTimestamp": 14,
+            "vkCmdBeginRendering": 17,
+            "vkCmdEndRendering": 17,
+            "vkCmdPipelineBarrier2": 30,
+            "vkCmdBeginQuery": 2,
+            "vkCmdBindIndexBuffer": 19,
+            "vkCmdBindPipeline": 43,
+            "vkCmdSetViewportWithCount": 4,
+            "vkCmdSetScissorWithCount": 33,
+            "vkCmdSetStencilReference": 2,
+            "vkCmdSetDepthBoundsTestEnable": 1,
+            "vkCmdSetDepthTestEnable": 1,
+            "vkCmdSetDepthCompareOp": 1,
+            "vkCmdSetStencilTestEnable": 1,
+            "vkCmdSetStencilWriteMask": 1,
+            "vkCmdSetStencilCompareMask": 1,
+            "vkCmdSetStencilOp": 1,
+            "vkCmdSetBlendConstants": 1,
+            "vkCmdSetRasterizerDiscardEnable": 1,
+            "vkCmdSetFrontFace": 10,
+            "vkCmdSetCullMode": 10,
+            "vkCmdSetDepthBias": 1,
+            "vkCmdSetLineWidth": 1,
+            "vkCmdBindVertexBuffers2": 40,
+            "vkCmdSetVertexInputEXT": 38,
+            "vkCmdSetPrimitiveTopology": 1,
+            "vkCmdSetPrimitiveRestartEnable": 1,
+            "vkCmdBindDescriptorSets": 291,
+            "vkCmdDrawMultiIndexedEXT": 239,
+            "vkCmdEndQuery": 2,
+            "vkCmdCopyQueryPoolResults": 16,
+            "vkCmdPushDescriptorSetWithTemplate": 13,
+            "vkCmdDrawMultiEXT": 18,
+            "vkCmdPipelineBarrier": 1
+          }
+        }
+      ]
+    }
+  ]
+}
