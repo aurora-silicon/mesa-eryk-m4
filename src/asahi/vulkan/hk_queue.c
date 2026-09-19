@@ -1418,6 +1418,10 @@ queue_submit(struct hk_device *dev, struct hk_queue *queue,
 
             struct drm_asahi_cmd_render cmd;
             asahi_fill_vdm_command(dev, cs, &cmd);
+            if (dev->dev.chip == AGX_CHIP_G16G &&
+                (dev->dev.params.features & DRM_ASAHI_FEATURE_CACHED_PROGRAM_PROBE) &&
+                debug_get_bool_option("HK_M4_CACHED_PROGRAM_PROBE", false))
+               cmd.flags |= DRM_ASAHI_RENDER_CACHED_PROGRAM_PROBE;
             const bool across_compute = previous_cs && previous_cs->type == HK_CS_CDM &&
                (dev->dev.params.features & DRM_ASAHI_FEATURE_FRAGMENT_DEPENDENCY_COMPUTE) &&
                debug_get_bool_option("HK_M4_COMPUTE_EARLY_TILING", false);
