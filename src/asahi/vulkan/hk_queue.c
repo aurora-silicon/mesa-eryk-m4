@@ -1405,18 +1405,24 @@ queue_submit(struct hk_device *dev, struct hk_queue *queue,
 
             struct drm_asahi_cmd_render cmd;
             asahi_fill_vdm_command(dev, cs, &cmd);
+            const bool across_compute = previous_cs && previous_cs->type == HK_CS_CDM &&
+               (dev->dev.params.features & DRM_ASAHI_FEATURE_FRAGMENT_DEPENDENCY_COMPUTE) &&
+               debug_get_bool_option("HK_M4_COMPUTE_EARLY_TILING", false);
             if (dev->dev.chip == AGX_CHIP_G16G &&
                 (dev->dev.params.features & DRM_ASAHI_FEATURE_FRAGMENT_DEPENDENCY) &&
                 debug_get_bool_option("HK_M4_EARLY_TILING", true) &&
-                previous_cs && previous_cs->type == HK_CS_VDM &&
+                previous_cs && (previous_cs->type == HK_CS_VDM || across_compute) &&
                 !previous_cs->writes_memory && cs->fragment_only_dependency &&
                 !cs->timestamp.start.handle) {
                /* API dependencies since the last pass target fragment stages
                 * only. Keep the full header dependencies for FS, while TA
                 * may run ahead with explicit TA and FS predecessor chains.
-                * Compute and CB boundaries, start
+                * Crossing a compute boundary additionally requires the new
+                * kernel capability and explicit opt-in. CB boundaries, start
                 * timestamps and arbitrary shader writes remain conservative. */
                cmd.flags |= DRM_ASAHI_RENDER_FRAGMENT_DEPENDENCY;
+               if (across_compute)
+                  cmd.flags |= DRM_ASAHI_RENDER_FRAGMENT_DEPENDENCY_COMPUTE;
                if (architecture_profile)
                   fprintf(stderr, "HK_EARLY_TILING queue=%u timeline=%" PRIu64
                           " cb=%u cs=%" PRIx64 "\n", queue->drm.id,
