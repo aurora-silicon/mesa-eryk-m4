@@ -49,3 +49,21 @@ Both offline replays reproduce the executable hashes. The generic optional
 capture filter does not replace shaders. Peak 89.5 C; no GUI input.
 `factorio-standalone-observe.py --compiler-capture DIR` retains new bundles in
 experiment evidence, with existing watchdog and thermal guards unchanged.
+
+## Reuse legalized application-fragment expressions
+
+Run existing block-local CSE again after native uniform legalization, before
+DCE/scheduling/RA. The normal early CSE cannot see copies introduced by that
+legalization. Preambles and internal meta programs retain their old pipeline.
+Captured composite: 78 -> 72 instructions, 55 register halves unchanged.
+Captured distortion: 146 -> 133 instructions, 47 -> 55 halves, no spills;
+reported maximum thread count remains 1024 in both captures.
+
+061706426827Z original-frame replay: zero differing pixels, peak 71.5 C.
+061745330487Z initial broader candidate, normal menu: 40.179 FPS
+(34.87--43.75), peak 87.75 C. Different animated scenes prevent assigning an
+isolated gain or regression. Still not 60 FPS. The final source excludes
+internal shaders: their byte-exact clear fixture changed register allocation
+under the broader candidate. Final host graphics-suite output is byte-for-byte
+identical to baseline, including its pre-existing stale fixture/unsupported
+cases; do not describe the complete suite as passing. Focused f16-clear passes.

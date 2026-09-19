@@ -6073,6 +6073,17 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
     */
    AGX_PASS(ctx, agx_lower_uniform_sources);
 
+   /* Native ALU legalization creates copies of uniform sources after the
+    * normal CSE pass. Reuse those values within each block of a fragment
+    * application shader; its uniform file is immutable. Constant programs
+    * may write uniforms, so must keep their individual reads ordered. Keep
+    * the separately tuned internal clear/reload programs unchanged.
+    */
+   if (key->dev.encoding != AGX_ISA_ENCODING_AGX2 &&
+       ctx->stage == MESA_SHADER_FRAGMENT && !ctx->is_preamble &&
+       !nir->info.internal)
+      AGX_PASS(ctx, agx_opt_cse);
+
    /* RA correctness depends on DCE */
    AGX_PASS(ctx, agx_dce, true);
    if (agx_optimize_g17p_imul_high_div3(ctx)) {
