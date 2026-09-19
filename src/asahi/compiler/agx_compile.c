@@ -7121,6 +7121,23 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
    }
    bool result = agx_compile_shader_nir_inner(nir, key, out);
    agx_failure_ir = previous;
+   /* Select one executable observed by HK_M4_SHADER_PROFILE without filling
+    * the capture quota with unrelated startup variants. This only filters
+    * successful diagnostics; failures are always retained as before. */
+   const char *capture_hash = getenv("AGX_COMPILER_CAPTURE_BINARY_HASH");
+   if (result && save_success && capture_hash) {
+      char hash[9];
+      snprintf(hash, sizeof(hash), "%08x",
+               _mesa_hash_data(out->binary, out->info.binary_size));
+      save_success = false;
+      for (const char *p = capture_hash; p; ) {
+         if (!strncmp(hash, p, 8) && (p[8] == '\0' || p[8] == ','))
+            save_success = true;
+         p = strchr(p, ',');
+         if (p)
+            ++p;
+      }
+   }
    if ((!result || save_success) && input.size && !input.out_of_memory)
       agx_publish_capture(directory, &input, ir, result);
    if (ir) fclose(ir);

@@ -34,4 +34,18 @@ OFF. Comparing manifests shows both failed replay invocations omitted eight
 qualified native-path options, including timestamp fanout/completion and
 compute timestamp placement. Therefore neither failure establishes a batching
 regression. The replay helper now defaults those options to the qualified
-Factorio path, preserving explicit caller overrides. Corrected replay pending.
+Factorio path, preserving explicit caller overrides. Corrected replay 060122708206Z PASSES with zero differing pixels against the
+retained reference (PNG SHA256 88594c10407e243eb0617860b8f2abc1f06c0844ec67ddba3900875d7e36796e).
+Peak 73.5 C; actual groups include 7/8 query copies. Live normal-size menu
+060155329234Z PASSES bounded observation: last 12 samples average 42.39 FPS,
+range 41.01--43.92, peak 91.25 C. Animated scenes differ across launches, so
+this is not an isolated batching speedup. Current Zink issues only one query
+copy per frame; this optimization is more relevant to the original capture.
+Keep the option default-off pending wider qualification.
+
+Selected compiler capture 060724464673Z retains exact inputs for 49d4b829
+(full-screen composite, 78 instructions) and 67327449 (distortion, 146).
+Both offline replays reproduce the executable hashes. The generic optional
+capture filter does not replace shaders. Peak 89.5 C; no GUI input.
+`factorio-standalone-observe.py --compiler-capture DIR` retains new bundles in
+experiment evidence, with existing watchdog and thermal guards unchanged.

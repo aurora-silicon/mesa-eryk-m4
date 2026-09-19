@@ -3,8 +3,12 @@
 Set `AGX_COMPILER_CAPTURE_DIR` to an existing private writable directory during a
 bounded experiment. On a returned compiler failure, the compiler saves its
 **entry-point** NIR and shader key in `input.bin`, final backend IR when available,
-and a versioned manifest. Successful compilations publish nothing. Normal
-rendering leaves this option unset. Capturing does not change rejection behavior.
+and a versioned manifest. Successful compilations publish nothing by default. Set
+`AGX_COMPILER_CAPTURE_SUCCESS=fragment` to retain successful fragment inputs;
+optionally set `AGX_COMPILER_CAPTURE_BINARY_HASH=12345678,abcdef01` to select
+executables by the eight-digit lowercase hash reported by HK_M4_SHADER_PROFILE.
+This filters diagnostic publication only; failures remain eligible and the
+32-bundle quota still applies. Normal rendering leaves these options unset. Capturing does not change rejection behavior.
 
 Build and replay on the development host (no Vulkan device needed):
 
