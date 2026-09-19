@@ -1421,7 +1421,12 @@ queue_submit(struct hk_device *dev, struct hk_queue *queue,
                 * kernel capability and explicit opt-in. CB boundaries, start
                 * timestamps and arbitrary shader writes remain conservative. */
                cmd.flags |= DRM_ASAHI_RENDER_FRAGMENT_DEPENDENCY;
-               if (across_compute)
+               /* Also permit independent tiling inside ordinary render runs
+                * without requesting early tiling after compute commands. This
+                * isolates scene ownership/TA scheduling from compute overlap. */
+               if (across_compute ||
+                   ((dev->dev.params.features & DRM_ASAHI_FEATURE_FRAGMENT_DEPENDENCY_COMPUTE) &&
+                    debug_get_bool_option("HK_M4_INDEPENDENT_TILING", false)))
                   cmd.flags |= DRM_ASAHI_RENDER_FRAGMENT_DEPENDENCY_COMPUTE;
                if (architecture_profile)
                   fprintf(stderr, "HK_EARLY_TILING queue=%u timeline=%" PRIu64
