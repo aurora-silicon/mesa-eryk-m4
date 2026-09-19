@@ -1,0 +1,399 @@
+{
+  "job": 12904,
+  "dump_sha256": "8c0f99e181ab277beaebe4920ce4f9cea8aa37dd14eee17016fdf97333057f9c",
+  "gate_192900": "0x2",
+  "free_engine_mask_128d60": "0xfffd",
+  "queues": {
+    "ta": {
+      "info_cursors_20_24_28": [
+        255,
+        255,
+        255
+      ],
+      "scheduler_slot_2c": "0x70",
+      "active_nodes": [
+        {
+          "index": 17,
+          "state": 1,
+          "flags_04": "0xdc2018",
+          "command_and_flags_10": "0xfffffc20a9f80008",
+          "sequence_28": "0xfffffc20eb250000",
+          "restart_30": "0xfffffc20eb250000",
+          "engine_44": 255,
+          "flags_45": "0x10",
+          "uma_class_46": 0
+        },
+        {
+          "index": 18,
+          "state": 1,
+          "flags_04": "0xdc2019",
+          "command_and_flags_10": "0xfffffc20a95b0008",
+          "sequence_28": "0xfffffc20a95c0000",
+          "restart_30": "0xfffffc20a95c0000",
+          "engine_44": 255,
+          "flags_45": "0x10",
+          "uma_class_46": 0
+        },
+        {
+          "index": 19,
+          "state": 1,
+          "flags_04": "0xdc201a",
+          "command_and_flags_10": "0xfffffc20a0f04008",
+          "sequence_28": "0xfffffc20a0f14000",
+          "restart_30": "0xfffffc20a0f14000",
+          "engine_44": 255,
+          "flags_45": "0x10",
+          "uma_class_46": 0
+        },
+        {
+          "index": 20,
+          "state": 1,
+          "flags_04": "0xdc200c",
+          "command_and_flags_10": "0xfffffc2084374008",
+          "sequence_28": "0xfffffc20ebb64000",
+          "restart_30": "0xfffffc20ebb64000",
+          "engine_44": 255,
+          "flags_45": "0x0",
+          "uma_class_46": 0
+        },
+        {
+          "index": 21,
+          "state": 1,
+          "flags_04": "0xdc2005",
+          "command_and_flags_10": "0xfffffc204153c008",
+          "sequence_28": "0xfffffc2043550000",
+          "restart_30": "0xfffffc2043550000",
+          "engine_44": 255,
+          "flags_45": "0x0",
+          "uma_class_46": 0
+        },
+        {
+          "index": 22,
+          "state": 1,
+          "flags_04": "0xdc200d",
+          "command_and_flags_10": "0xfffffc2043a38008",
+          "sequence_28": "0xfffffc2045a4c000",
+          "restart_30": "0xfffffc2045a4c000",
+          "engine_44": 255,
+          "flags_45": "0x0",
+          "uma_class_46": 0
+        },
+        {
+          "index": 23,
+          "state": 1,
+          "flags_04": "0xdc200e",
+          "command_and_flags_10": "0xfffffc20620d0008",
+          "sequence_28": "0xfffffc20640e4000",
+          "restart_30": "0xfffffc20640e4000",
+          "engine_44": 255,
+          "flags_45": "0x0",
+          "uma_class_46": 0
+        }
+      ],
+      "context": {
+        "record": "queue-context",
+        "group_00": 0,
+        "slot_01": 0,
+        "priority_03": 2,
+        "queue_weight_04": 4,
+        "weight_share_06": 200,
+        "timeslice_0a": 5880,
+        "process_weight_26": 2
+      },
+      "ring_cursors_00_30_40": [
+        234,
+        255,
+        255
+      ]
+    },
+    "fragment": {
+      "info_cursors_20_24_28": [
+        225,
+        225,
+        225
+      ],
+      "scheduler_slot_2c": "0x71",
+      "active_nodes": [
+        {
+          "index": 14,
+          "state": 2,
+          "flags_04": "0xdc6002",
+          "command_and_flags_10": "0xfffffc209c41c009",
+          "sequence_28": "0xfffffc20d810c000",
+          "restart_30": "0xfffffc20d810c23c",
+          "engine_44": 1,
+          "flags_45": "0x10",
+          "uma_class_46": 0
+        },
+        {
+          "index": 15,
+          "state": 1,
+          "flags_04": "0xdc6004",
+          "command_and_flags_10": "0xfffffc20ec4ac009",
+          "sequence_28": "0xfffffc20ef050000",
+          "restart_30": "0xfffffc20ef050000",
+          "engine_44": 255,
+          "flags_45": "0x10",
+          "uma_class_46": 0
+        },
+        {
+          "index": 16,
+          "state": 1,
+          "flags_04": "0xdc6011",
+          "command_and_flags_10": "0xfffffc20be64c009",
+          "sequence_28": "0xfffffc20c9410000",
+          "restart_30": "0xfffffc20c9410000",
+          "engine_44": 255,
+          "flags_45": "0x10",
+          "uma_class_46": 0
+        },
+        {
+          "index": 17,
+          "state": 1,
+          "flags_04": "0xdc6007",
+          "command_and_flags_10": "0xfffffc20a0de0009",
+          "sequence_28": "0xfffffc20eb258000",
+          "restart_30": "0xfffffc20eb258000",
+          "engine_44": 255,
+          "flags_45": "0x10",
+          "uma_class_46": 0
+        },
+        {
+          "index": 18,
+          "state": 1,
+          "flags_04": "0xdc6009",
+          "command_and_flags_10": "0xfffffc20a95b8009",
+          "sequence_28": "0xfffffc20a95c8000",
+          "restart_30": "0xfffffc20a95c8000",
+          "engine_44": 255,
+          "flags_45": "0x10",
+          "uma_class_46": 0
+        },
+        {
+          "index": 19,
+          "state": 1,
+          "flags_04": "0xdc600b",
+          "command_and_flags_10": "0xfffffc20a0f0c009",
+          "sequence_28": "0xfffffc2084334000",
+          "restart_30": "0xfffffc2084334000",
+          "engine_44": 255,
+          "flags_45": "0x10",
+          "uma_class_46": 0
+        },
+        {
+          "index": 20,
+          "state": 1,
+          "flags_04": "0xdc6012",
+          "command_and_flags_10": "0xfffffc208437c009",
+          "sequence_28": "0xfffffc20ebb6c000",
+          "restart_30": "0xfffffc20ebb6c000",
+          "engine_44": 255,
+          "flags_45": "0x10",
+          "uma_class_46": 0
+        },
+        {
+          "index": 21,
+          "state": 1,
+          "flags_04": "0xdc6001",
+          "command_and_flags_10": "0xfffffc2041544009",
+          "sequence_28": "0xfffffc2043558000",
+          "restart_30": "0xfffffc2043558000",
+          "engine_44": 255,
+          "flags_45": "0x10",
+          "uma_class_46": 0
+        },
+        {
+          "index": 22,
+          "state": 1,
+          "flags_04": "0xdc6003",
+          "command_and_flags_10": "0xfffffc2043a40009",
+          "sequence_28": "0xfffffc2045a54000",
+          "restart_30": "0xfffffc2045a54000",
+          "engine_44": 255,
+          "flags_45": "0x10",
+          "uma_class_46": 0
+        },
+        {
+          "index": 23,
+          "state": 1,
+          "flags_04": "0xdc4011",
+          "command_and_flags_10": "0xfffffc20620d8009",
+          "sequence_28": "0xfffffc20640ec000",
+          "restart_30": "0xfffffc20640ec000",
+          "engine_44": 255,
+          "flags_45": "0x0",
+          "uma_class_46": 0
+        }
+      ],
+      "context": {
+        "record": "queue-context",
+        "group_00": 0,
+        "slot_01": 0,
+        "priority_03": 2,
+        "queue_weight_04": 4,
+        "weight_share_06": 200,
+        "timeslice_0a": 5880,
+        "process_weight_26": 2
+      },
+      "ring_cursors_00_30_40": [
+        200,
+        225,
+        225
+      ]
+    },
+    "compute": {
+      "info_cursors_20_24_28": [
+        185,
+        185,
+        185
+      ],
+      "scheduler_slot_2c": "0xf",
+      "active_nodes": [
+        {
+          "index": 117,
+          "state": 1,
+          "flags_04": "0xc3e017",
+          "command_and_flags_10": "0xfffffc20c943400a",
+          "sequence_28": "0xfffffc20c9434900",
+          "restart_30": "0xfffffc20c9434900",
+          "engine_44": 255,
+          "flags_45": "0x10",
+          "uma_class_46": 0
+        },
+        {
+          "index": 118,
+          "state": 1,
+          "flags_04": "0xc3e013",
+          "command_and_flags_10": "0xfffffc210c65400a",
+          "sequence_28": "0xfffffc210c654900",
+          "restart_30": "0xfffffc210c654900",
+          "engine_44": 255,
+          "flags_45": "0x10",
+          "uma_class_46": 0
+        },
+        {
+          "index": 119,
+          "state": 1,
+          "flags_04": "0xc3e000",
+          "command_and_flags_10": "0xfffffc210c60800a",
+          "sequence_28": "0xfffffc210c608900",
+          "restart_30": "0xfffffc210c608900",
+          "engine_44": 255,
+          "flags_45": "0x10",
+          "uma_class_46": 0
+        }
+      ],
+      "context": {
+        "record": "queue-context",
+        "group_00": 0,
+        "slot_01": 0,
+        "priority_03": 2,
+        "queue_weight_04": 4,
+        "weight_share_06": 200,
+        "timeslice_0a": 5880,
+        "process_weight_26": 2
+      },
+      "ring_cursors_00_30_40": [
+        179,
+        185,
+        185
+      ]
+    }
+  },
+  "note": "Sealed fault-only sequential observations. No atomicity or completion claim.",
+  "firmware_timing": {
+    "reference_clock_khz_193b6c": 24000,
+    "maintenance_period_193b70": 1,
+    "power_sample_period_193b74": 8,
+    "maintenance_ticks_128da0": 49449,
+    "derived_timer_interval_1928e0": 1000
+  },
+  "priority_weight_totals_304": [
+    0,
+    0,
+    200,
+    0
+  ],
+  "priority_shifts_314": [
+    4294967294,
+    4294967295,
+    0,
+    1
+  ],
+  "accounting_dirty_324": 0,
+  "client_notifications": {
+    "ta": {
+      "submitted": 7901,
+      "firmware_stamp": "0x1501000",
+      "published_stamp": "0x1501000",
+      "flush_requested": 0,
+      "asid": 42
+    },
+    "fragment": {
+      "submitted": 7901,
+      "firmware_stamp": "0x1500d00",
+      "published_stamp": "0x1500d00",
+      "flush_requested": 0,
+      "asid": 42
+    },
+    "compute": {
+      "submitted": 11641,
+      "firmware_stamp": "0x17ef400",
+      "published_stamp": "0x17ef400",
+      "flush_requested": 0,
+      "asid": 42
+    }
+  },
+  "parameter_buffer": {
+    "page_list_gpu_va_28": "0x711c85c000",
+    "hardware_descriptor": {
+      "slot": 0,
+      "words": [
+        "0x12f29400",
+        "0x60000080",
+        "0x0",
+        "0x0"
+      ],
+      "expected_address_words": [
+        "0x11c85c00",
+        "0x60000000"
+      ],
+      "matches_manager_address": false
+    },
+    "init_cursor_0c": 0,
+    "init_staged_10": 0,
+    "populated_pages_34": 128,
+    "block_capacity_38": 64,
+    "block_write_3c": 32,
+    "block_read_40": 0,
+    "last_page_54": 127,
+    "limits_7c_80": [
+      128,
+      128
+    ],
+    "ring_00_04": [
+      32,
+      32
+    ],
+    "scene_counts_10_48": [
+      13,
+      0
+    ],
+    "statistics_200": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "ta_fragment_slot_77c": 113,
+    "ta_fragment_stamp_780": "0x1500e00",
+    "fragment_event_slot_bd4": 113,
+    "fragment_event_stamp_bd0": "0x1500e00",
+    "note": "Counts are firmware snapshots, not proof of exact utilization or retirement."
+  }
+}

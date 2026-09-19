@@ -1,0 +1,29 @@
+{
+  "command": [
+    "python3",
+    "/root/factorio-standalone-observe.py",
+    "--output",
+    "/root/asahi-evidence/20260919T134928397320Z-factorio-early-owner-normal-menu",
+    "--state",
+    "/home/e/.local/share/factorio-standalone/demo-2.0.77",
+    "--launcher",
+    "/home/e/.local/bin/factorio-memory-normal-start",
+    "--seconds",
+    "95",
+    "--observe-seconds",
+    "60",
+    "--fps-log",
+    "/home/e/.local/share/factorio-driver/hud/fps"
+  ],
+  "seconds": 140,
+  "boot_id": "976bd270-3a14-44b7-8566-33f31cf00e90",
+  "watchdog": {
+    "device": "/dev/watchdog0",
+    "identity": "Apple SoC Watchdog",
+    "timeout_seconds": 60,
+    "initial_timeleft_seconds": 59,
+    "periodic_keepalive": false,
+    "armed": true,
+    "ssh_broker_lease": true
+  }
+}

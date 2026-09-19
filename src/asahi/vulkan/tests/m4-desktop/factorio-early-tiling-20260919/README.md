@@ -1,3 +1,19 @@
+# Live validation overrides the replay qualification
+
+134928 normal-menu run TIMED OUT at GPU job12904 after about20s of animation.
+Guard retained sealed dump SHA8c0f99e181ab277beaebe4920ce4f9cea8aa37dd14eee17016fdf97333057f9c
+and recovered the desktop. Peak90.5C; not a thermal cutoff. Early tiling is
+DISABLED by default again. b8698ecbe7d's default-enablement qualification is
+withdrawn; below replay results remain real but are insufficient for live use.
+
+Initial fault diagnosis: the active render's requested PB slot is1 but its
+parameter manager's current hardware slot at+0xc is0. Only slot0 in the retained
+hardware parameter table is populated, with another owner's page-list address.
+The encoder writes id at+0x10 while leaving+0xc zero. Firmware full rebuild
+2eb70/2ec90 indexes the table from+0xc, NOT the command's logical PB id. This
+is a strong aliasing lead for overlapped stages; fix/qualification pending.
+Keep stage overlap opt-in until live validation succeeds.
+
 # Fragment dependency overlap and shader-owned queries
 
 Enable capability-gated G16 early tiling by default, using corrected kernel

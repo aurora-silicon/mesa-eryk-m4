@@ -1,0 +1,15 @@
+   0.221 Display options: [FullScreen: false] [VSync: true] [UIScale: automatic (100.0%)] [Native DPI: true] [Screen: 255] [Special: lmw] [Lang: en]
+   0.905 [Audio] Driver:pulseaudio, Device:Default device, Depth:16, Frequency:44100, Channels:2, Interpolation:linear
+   2.216 Loading mod base 2.0.77 (data-updates.lua)
+   2.901 Loading sounds...
+   4.109 Texture processor created (4096). GPU accelerated compression Supported: yes, Enabled: yes/yes. Test passed. YCoCgDXT PSNR: 35.83, BC3 PSNR: 33.82
+   5.213 Parallel sprite loader initialized (threads: 3, bitmaps: 5)
+   6.923 Video memory usage: 1117.04 MB (Atlases: 1105.49 MB, Textures: 11.54 MB)
+   7.747 Factorio initialised
+Traceback (most recent call last):
+  File "/root/factorio-standalone-observe.py", line 105, in <module>
+    time.sleep(.5)
+    ~~~~~~~~~~^^^^
+  File "/root/factorio-standalone-observe.py", line 55, in interrupted
+    raise InterruptedError(f'guard signal {signum}')
+InterruptedError: guard signal 15

@@ -1,0 +1,81 @@
+   0.007 2026-09-19 13:49:30; Factorio 2.0.77 (build 84539, linux64, demo)
+   0.176 Operating system: Linux (Arch rolling)
+   0.179 Program arguments: "/home/e/Games/factorio-demo-2.0.77/bin/x64/factorio" "--config" "/home/e/.local/share/factorio-standalone/demo-2.0.77/config.ini" 
+   0.180 Config path: /home/e/.local/share/factorio-standalone/demo-2.0.77/config.ini
+   0.180 Read data path: /home/e/Games/factorio-demo-2.0.77/data
+   0.180 Write data path: /home/e/.local/share/factorio-standalone/demo-2.0.77 [17375/101880MB]
+   0.180 Binaries path: /home/e/Games/factorio-demo-2.0.77/bin
+   0.210 System info: [CPU: Unknown ARM CPU, 4 cores, RAM: 11786 MB]
+   0.211 Environment: DISPLAY=:1 WAYLAND_DISPLAY=<unset> DESKTOP_SESSION=<unset> XDG_SESSION_DESKTOP=<unset> XDG_CURRENT_DESKTOP=<unset> SDL_VIDEODRIVER=<unset> __GL_FSAA_MODE=<unset> __GL_LOG_MAX_ANISO=<unset> __GL_SYNC_TO_VBLANK=<unset> __GL_SORT_FBCONFIGS=<unset> __GL_YIELD=<unset>
+   0.221 Display options: [FullScreen: false] [VSync: true] [UIScale: automatic (100.0%)] [Native DPI: true] [Screen: 255] [Special: lmw] [Lang: en]
+   0.306 Video driver: x11
+   0.306 Available displays: 1
+   0.306  [0]: eDP-1 - {[0,0], 2560x1664, SDL_PIXELFORMAT_RGB888, 60Hz}
+   0.562 Initialised OpenGL:[0] zink Vulkan 1.4(Apple M4 (G16G B0) (MESA_HONEYKRISP)); driver: 4.6 (Core Profile) Mesa 26.1.4 (git-709586be19)
+   0.562   [Extensions] s3tc:yes; KHR_debug:yes; ARB_clear_texture:yes, ARB_copy_image:yes, ARB_pipeline_statistics_query:yes, ARB_gl_spirv:yes, ARB_ES2_compatibility:yes
+   0.562   [Version] 4.6
+   0.583 Graphics settings preset: integrated-gpuhigh
+   0.583   Dedicated video memory size 7569 MB (detected from Apple M4 (G16G B0); VendorID: 0x10005; DeviceID: 0x8132)
+   0.611 Graphics options: [Graphics quality: high] [Video memory usage: all] [DXT: low-quality]
+   0.612                   [Max threads (load/render): 32/4] [Max texture size: 8192] [Tex.Stream.: false] [Rotation quality: low] [Other: sTDCwtl] [B:0,C:0,S:100]
+   0.905 [Audio] Driver:pulseaudio, Device:Default device, Depth:16, Frequency:44100, Channels:2, Interpolation:linear
+   1.703 Info ModManager.cpp:449: FeatureFlag expansion-shaders = false
+   1.703 Info ModManager.cpp:449: FeatureFlag freezing = false
+   1.703 Info ModManager.cpp:449: FeatureFlag quality = false
+   1.703 Info ModManager.cpp:449: FeatureFlag rail-bridges = false
+   1.703 Info ModManager.cpp:449: FeatureFlag segmented-units = false
+   1.704 Info ModManager.cpp:449: FeatureFlag space-travel = false
+   1.704 Info ModManager.cpp:449: FeatureFlag spoiling = false
+   1.959 Loading mod core 0.0.0 (data.lua)
+   2.011 Loading mod base 2.0.77 (data.lua)
+   2.216 Loading mod base 2.0.77 (data-updates.lua)
+   2.300 Checksum for core: 4187927925
+   2.300 Checksum of base: 3065466159
+   2.873 Prototype list checksum: 911970612
+   2.901 Loading sounds...
+   3.321 Info PlayerData.cpp:66: Local player-data.json unavailable
+   3.321 Info PlayerData.cpp:71: Cloud player-data.json unavailable
+   3.357 Post-data load graphics options: [Light occlusion: no]
+   3.516 Initial atlas bitmap size is 8192
+   3.528 Created an atlas bitmap (size 8192x8176) [none]
+   3.536 Created an atlas bitmap (size 8192x8192) [none]
+   3.548 Created an atlas bitmap (size 8192x8188) [none]
+   3.554 Created an atlas bitmap (size 8192x8184) [none]
+   3.560 Created an atlas bitmap (size 8192x8192) [linear-magnification]
+   3.565 Created an atlas bitmap (size 8192x8192) [none]
+   3.566 Created an atlas bitmap (size 8192x3104) [none]
+   3.574 Created an atlas bitmap (size 8192x8192) [low-object]
+   3.579 Created an atlas bitmap (size 8192x6784) [low-object]
+   3.585 Created an atlas bitmap (size 8192x8136) [corpse-decay]
+   3.591 Created an atlas bitmap (size 8192x8188) [corpse-decay]
+   3.596 Created an atlas bitmap (size 8192x8076) [corpse-decay]
+   3.598 Created an atlas bitmap (size 8192x4352) [decal]
+   3.603 Created an atlas bitmap (size 8192x5632) [mipmap, linear-minification, linear-magnification, linear-mip-level]
+   3.604 Created an atlas bitmap (size 4096x1632) [smoke, mipmap, linear-minification, linear-magnification]
+   3.610 Created an atlas bitmap (size 8192x8096) [terrain, mipmap, linear-minification, linear-mip-level]
+   3.612 Created an atlas bitmap (size 8192x4880) [terrain, mipmap, linear-minification, linear-mip-level]
+   3.613 Created an atlas bitmap (size 4096x2960) [terrain-effect-map, mipmap, linear-minification, linear-mip-level]
+   3.615 Created an atlas bitmap (size 4096x3104) [mipmap]
+   3.623 Created an atlas bitmap (size 8192x2560) [icon, not-compressed, mipmap, linear-minification, linear-magnification, linear-mip-level]
+   3.625 Created an atlas bitmap (size 8192x5168) [alpha-mask]
+   3.629 Created an atlas bitmap (size 8192x7808) [shadow, linear-magnification, alpha-mask]
+   3.630 Created an atlas bitmap (size 4096x1312) [shadow, mipmap, linear-magnification, alpha-mask]
+   3.630 Created an atlas bitmap (size 4096x176) [icon-background, not-compressed, mipmap, linear-minification, linear-magnification, linear-mip-level, ]
+   3.630 Loading 3D bitmaps.
+   4.109 Texture processor created (4096). GPU accelerated compression Supported: yes, Enabled: yes/yes. Test passed. YCoCgDXT PSNR: 35.83, BC3 PSNR: 33.82
+   5.207 Atlases loaded from disk cache in 1.097766 seconds.
+   5.213 Parallel sprite loader initialized (threads: 3, bitmaps: 5)
+   6.321 Sprites loaded
+   6.402 Generated mipmaps (4) for atlas [7] of size 8192x8192   
+   6.443 Generated mipmaps (4) for atlas [8] of size 8192x6784   
+   6.453 Generated mipmaps (3) for atlas [13] of size 8192x5632   
+   6.459 Generated mipmaps (3) for atlas [14] of size 4096x1632   
+   6.469 Generated mipmaps (3) for atlas [15] of size 8192x8096   
+   6.479 Generated mipmaps (3) for atlas [16] of size 8192x4880   
+   6.492 Generated mipmaps (3) for atlas [17] of size 4096x2960   
+   6.583 Generated mipmaps (3) for atlas [18] of size 4096x3104   
+   6.609 Generated mipmaps (5) for atlas [19] of size 8192x2560   
+   6.619 Generated mipmaps (3) for atlas [22] of size 4096x1312   
+   6.897 Custom mipmaps uploaded (2366)
+   6.923 Video memory usage: 1117.04 MB (Atlases: 1105.49 MB, Textures: 11.54 MB)
+   7.747 Factorio initialised
