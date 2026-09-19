@@ -36,4 +36,13 @@ HK_M4_COMPRESSED_2D=true, HK_M4_COMPRESSED_FEEDBACK=true,
 HK_M4_COMPRESSION_AUDIT=true and HK_COMMAND_PROFILE=true. The extra rounds
 bind separate alias images to one allocation and check the last written alias.
 
-Live FPS qualification is pending; full CTS remains deferred.
+`20260919T044616538724Z-clear-batch-real-aliases` passes all six rounds,
+including separate identically created alias images bound at the same offset
+of one allocation (both compressed and uncompressed cases). All readback bytes
+match; actual alias boundaries remain separate. Peak 63 C.
+
+The bounded menu run 20260919T044706548853Z averages 35.00 FPS
+(32.51--36.29), peak 89.25 C. Its final window contains more full-size render
+passes (7525 versus 6688 in the earlier flush run), so it does not establish
+an isolated gain or regression. Batching remains opt-in. Full CTS remains
+deferred; sustained 60 FPS is not achieved.
