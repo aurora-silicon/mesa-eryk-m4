@@ -28,3 +28,9 @@ Mesa libraryec007694a6ae49655161b03ffbd81182d07ccdf9873210b2e5f566c93b3439d2.
 Original complete Factorio frame064957928442Z passes with zero differing
 pixels from retained reference88594c10407e243eb0617860b8f2abc1f06c0844ec67ddba3900875d7e36796e.
 Replay uses the recorded offscreen/rebind adaptation; this is not a live FPS claim.
+
+Final bounded normal menu065049971912Z completed:117 samples over60s,
+mean41.041FPS,median40.7,min21.52,max47.23,zero samples>=59. Tail12
+mean37.526FPS. Peak85.75C. Scenes differ from preceding runs, so no isolated
+speedup/regression is established. User requested pause after this run; all
+workloads exited and graphical login remains active.60FPS remains unmet.
