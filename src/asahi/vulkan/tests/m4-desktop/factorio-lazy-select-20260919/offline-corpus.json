@@ -1,0 +1,162 @@
+[
+  {
+    "bundle": "073e0ba5bf3bf7555821dedd9d0c434522f4bf7db9948be1d7dcee22cf52c852",
+    "returncode": 0,
+    "summary": "ates=3 cost=18/0\nLAZY_SELECT candidates=3 cost=18/0\nLAZY_SELECT candidates=3 cost=18/0\nLAZY_SELECT candidates=3 cost=18/0\nLAZY_SELECT candidates=3 cost=18/0\nLAZY_SELECT candidates=3 cost=18/0\nLAZY_SELECT candidates=3 cost=18/0\nLAZY_SELECT candidates=3 cost=18/0\nLAZY_SELECT candidates=3 cost=18/0\nLAZY_SELECT candidates=3 cost=18/0\nLAZY_SELECT candidates=3 cost=18/0\nCompiler replay: PASS (22358 bytes)\nCompiler binary hash: f89853d9\nreplay shader: 2542 instrs, 2240 alu, 2240 fscib, 498 ic, 21978 code size, 141 gprs, 92 uniforms, 0 scratch, 704 threads, 0 loops, 0:0 spills:fills, 53 preamble inst\n"
+  },
+  {
+    "bundle": "0a22ba6298a8f1df63b6c75adff19a6a1c1b5e86f378dae3b7b891b9afc1f396",
+    "returncode": 0,
+    "summary": "e=8)\n                 @export_agx (%138) (base=10)\n                 @export_agx (%139) (base=12)\n                 @export_agx (%140) (base=14)\n                 @export_agx (%148) (base=16)\n                 @export_agx (%149) (base=18)\n                 @export_agx (%150) (base=20)\n                 @export_agx (%156) (base=22)\n                 // succs: b7\n    block b7:\n}\n\nCompiler replay: PASS (1412 bytes)\nCompiler binary hash: 21162f2c\nreplay shader: 154 instrs, 109 alu, 109 fscib, 4 ic, 1288 code size, 39 gprs, 146 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 1 preamble inst\n"
+  },
+  {
+    "bundle": "10c74e0140aa499b73d61dc9642767be98378bb30817e94689ddb715819c7cb1",
+    "returncode": 0,
+    "summary": " 1\nflrp_lowered: true\nio_lowered: true\ndecl_function main () (entrypoint)\n\nimpl main {\n    block b0:  // preds:\n    32x4  %0 = @load_exported_agx (base=8)\n    16    %1 = load_const (0x0001 = 0.000000)\n    16x2  %2 = undefined\n               @store_local_pixel_agx (%0, %1 (0x1), %2) (base=0, wrmask=xyzw, format=r8_unorm, explicit_coord=0)\n               // succs: b1\n    block b1:\n}\n\nCompiler replay: PASS (94 bytes)\nCompiler binary hash: 6ec2263d\nreplay shader: 10 instrs, 6 alu, 6 fscib, 0 ic, 94 code size, 15 gprs, 0 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 0 preamble inst\n"
+  },
+  {
+    "bundle": "13cc490b24e3cf63426936a9775b6cff3465197ed0c0ecf0eb37fcfbadcc231c",
+    "returncode": 0,
+    "summary": ")\n    32    %918 = fmul %913, %915 (0.250000)\n                 @export_agx (%918) (base=12)\n    32    %919 = fmul %914, %915 (0.250000)\n                 @export_agx (%919) (base=14)\n                 // succs: b37\n    block b37:\n}\n\nLAZY_SELECT candidates=4 cost=24/0\nLAZY_SELECT candidates=4 cost=24/0\nLAZY_SELECT candidates=4 cost=24/0\nLAZY_SELECT candidates=4 cost=24/0\nCompiler replay: PASS (9686 bytes)\nCompiler binary hash: 79d697de\nreplay shader: 979 instrs, 829 alu, 829 fscib, 312 ic, 9262 code size, 63 gprs, 124 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 53 preamble inst\n"
+  },
+  {
+    "bundle": "14054c136ba4f0336b14765529459150bda461769c05d559a073ba21d5b2ff10",
+    "returncode": 0,
+    "summary": "38 = u2f32 %137\n    32    %139 = fmul %138, %134 (0.003922)\n                 @export_agx (%139) (base=8)\n                 @export_agx (%0 (0x0)) (base=10)\n                 @export_agx (%0 (0x0)) (base=12)\n    32    %140 = load_const (0x3f800000 = 1.000000 = 1065353216)\n                 @export_agx (%140 (0x3f800000)) (base=14)\n                 // succs: b4\n    block b4:\n}\n\nCompiler replay: PASS (1238 bytes)\nCompiler binary hash: e6036e9a\nreplay shader: 122 instrs, 99 alu, 99 fscib, 36 ic, 1238 code size, 39 gprs, 40 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 0 preamble inst\n"
+  },
+  {
+    "bundle": "189625aefc0073a820977506532b451a84532fc480968d8688b9d3ff6dc629d5",
+    "returncode": 0,
+    "summary": " %54\n    32    %56 = fmul %45, %52 (0.005102)\n    32    %57 = fadd %56, %54\n    32    %58 = fmul %51, %52 (0.005102)\n    32    %59 = fadd %58, %54\n                @export_agx (%55) (base=8)\n                @export_agx (%57) (base=10)\n                @export_agx (%59) (base=12)\n                @export_agx (%17 (1.000000)) (base=14)\n                // succs: b1\n    block b1:\n}\n\nCompiler replay: PASS (468 bytes)\nCompiler binary hash: 75f0bf7b\nreplay shader: 57 instrs, 47 alu, 47 fscib, 20 ic, 468 code size, 16 gprs, 56 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 0 preamble inst\n"
+  },
+  {
+    "bundle": "2414afb3520731a379d49d62339668f2324cf59ab18a597de955a6790c453807",
+    "returncode": 0,
+    "summary": " (0.250000)\n                 @export_agx (%161) (base=8)\n    32    %162 = fmul %157, %160 (0.250000)\n                 @export_agx (%162) (base=10)\n    32    %163 = fmul %158, %160 (0.250000)\n                 @export_agx (%163) (base=12)\n    32    %164 = fmul %159, %160 (0.250000)\n                 @export_agx (%164) (base=14)\n                 // succs: b1\n    block b1:\n}\n\nCompiler replay: PASS (1156 bytes)\nCompiler binary hash: c4641666\nreplay shader: 120 instrs, 108 alu, 108 fscib, 32 ic, 1058 code size, 47 gprs, 92 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 1 preamble inst\n"
+  },
+  {
+    "bundle": "33ee387759771e271584633038816737e39a73582f4c8e72a79538d07e41f4eb",
+    "returncode": 0,
+    "summary": "ue\nio_lowered: true\ndecl_function main () (entrypoint)\n\nimpl main {\n    block b0:  // preds:\n    32x4  %0 = @load_exported_agx (base=8)\n    16    %1 = load_const (0x0001 = 0.000000)\n    16x2  %2 = undefined\n    32    %3 = mov %0.x\n               @store_local_pixel_agx (%3, %1 (0x1), %2) (base=0, wrmask=x, format=r8_unorm, explicit_coord=0)\n               // succs: b1\n    block b1:\n}\n\nCompiler replay: PASS (84 bytes)\nCompiler binary hash: a521fc3e\nreplay shader: 9 instrs, 6 alu, 6 fscib, 0 ic, 84 code size, 9 gprs, 0 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 0 preamble inst\n"
+  },
+  {
+    "bundle": "3afbb562915a8411032af84e4ecbbc778f492b4e4937aa9b6194bb60e8f86602",
+    "returncode": 0,
+    "summary": "95\n    32    %1899 = load_const (0xaaaaaaaa = -1431655766 = 2863311530)\n    32    %1900 = bcsel %1893, %1899 (0xaaaaaaaa), %1410\n                  @export_agx (%1894) (base=8)\n                  @export_agx (%1896) (base=10)\n                  @export_agx (%1898) (base=12)\n                  @export_agx (%1900) (base=14)\n                  // succs: b1\n    block b1:\n}\n\nCompiler replay: PASS (11652 bytes)\nCompiler binary hash: 69ac5e99\nreplay shader: 1415 instrs, 1374 alu, 1374 fscib, 218 ic, 11598 code size, 139 gprs, 60 uniforms, 0 scratch, 704 threads, 0 loops, 0:0 spills:fills, 1 preamble inst\n"
+  },
+  {
+    "bundle": "592e20d0e633d175e47c359d08743f28b94122098ff8d5a53ffd6d5c6a4a380f",
+    "returncode": 0,
+    "summary": "3393 = bcsel %3391, %3390, %807\n    32    %3394 = bcsel %3391, %5 (0x0), %3387\n    32    %3395 = bcsel %3391, %5 (0x0), %3390\n                  @export_agx (%3392) (base=8)\n                  @export_agx (%3393) (base=10)\n                  @export_agx (%3394) (base=12)\n                  @export_agx (%3395) (base=14)\n                  // succs: b52\n    block b52:\n}\n\nCompiler replay: PASS (30084 bytes)\nCompiler binary hash: d9d356a6\nreplay shader: 3289 instrs, 3090 alu, 3090 fscib, 1184 ic, 29970 code size, 183 gprs, 98 uniforms, 0 scratch, 576 threads, 0 loops, 0:0 spills:fills, 1 preamble inst\n"
+  },
+  {
+    "bundle": "64a600fbcde659f9c2f424cba5389fd1fe2799b9929996a3f05c3e6c10e289c6",
+    "returncode": 0,
+    "summary": "    @export_agx (%8007) (base=14)\n                  // succs: b334\n    block b334:\n}\n\nLAZY_SELECT candidates=1 cost=11/0\nLAZY_SELECT candidates=1 cost=11/0\nLAZY_SELECT candidates=1 cost=11/0\nLAZY_SELECT candidates=1 cost=11/0\nLAZY_SELECT candidates=1 cost=9/0\nLAZY_SELECT candidates=1 cost=11/0\nLAZY_SELECT candidates=1 cost=11/0\nLAZY_SELECT candidates=1 cost=9/0\nCompiler replay: PASS (63472 bytes)\nCompiler binary hash: 6df280d1\nreplay shader: 6736 instrs, 5717 alu, 5717 fscib, 1692 ic, 62480 code size, 187 gprs, 214 uniforms, 0 scratch, 512 threads, 6 loops, 0:0 spills:fills, 109 preamble inst\n"
+  },
+  {
+    "bundle": "670dc8d5ee964262320df64819a86ae68a587c2b5b41acfcbb76c47f4e058914",
+    "returncode": 0,
+    "summary": "shader: MESA_SHADER_FRAGMENT\nname: empty FS\ninternal: true\nmax_subgroup_size: 128\nmin_subgroup_size: 1\nflrp_lowered: true\nio_lowered: true\ndecl_function main () (entrypoint)\n\nimpl main {\n    block b0:  // preds:, succs: b1\n    block b1:\n}\n\nCompiler replay: PASS (0 bytes)\nCompiler binary hash: 02cc5d05\nreplay shader: 0 instrs, 0 alu, 0 fscib, 0 ic, 0 code size, 0 gprs, 32 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 0 preamble inst\n"
+  },
+  {
+    "bundle": "7779fad17e3478090d11eaaae211a01aefba05176177e2d96af8a66590f16302",
+    "returncode": 0,
+    "summary": "ING_SLOT_VAR0 slots=1)\n    32    %17 = fmul %16.x, %15.x\n    32    %18 = fmul %16.y, %15.x\n    32    %19 = fmul %16.z, %15.x\n    32    %20 = fmul %16.w, %15.x\n                @export_agx (%17) (base=8)\n                @export_agx (%18) (base=10)\n                @export_agx (%19) (base=12)\n                @export_agx (%20) (base=14)\n                // succs: b1\n    block b1:\n}\n\nCompiler replay: PASS (260 bytes)\nCompiler binary hash: 90bbd349\nreplay shader: 29 instrs, 10 alu, 10 fscib, 0 ic, 208 code size, 23 gprs, 60 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 1 preamble inst\n"
+  },
+  {
+    "bundle": "7ebf7642120979e953d5475da5dc00ac60a457fa486d9f97172aa7777fc4a7b1",
+    "returncode": 0,
+    "summary": "  32    %166 = fadd %163, %165\n    32    %167 = fmul %163, %166\n    32    %168 = fadd %164, %167\n                 @export_agx (%37 (0x0)) (base=8)\n                 @export_agx (%37 (0x0)) (base=10)\n                 @export_agx (%37 (0x0)) (base=12)\n    32    %169 = fmul %168, %35\n                 @export_agx (%169) (base=14)\n                 // succs: b4\n    block b4:\n}\n\nCompiler replay: PASS (1156 bytes)\nCompiler binary hash: a0389f08\nreplay shader: 134 instrs, 114 alu, 114 fscib, 8 ic, 1058 code size, 47 gprs, 178 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 1 preamble inst\n"
+  },
+  {
+    "bundle": "83c4334ebbad0055a109f364e1f77a12051f930e0f822198ed2d06fc7fa6f2a6",
+    "returncode": 0,
+    "summary": " %2.y\n    32x2  %5 = vec2 %3, %4\n    32x4  %6 = (uint32)txf %1 (0x0) (lod), %5 (backend1), 0 (texture), backend_flags=0x1, 2D\n    32    %7 = load_const (0x00000000 = 0.000000)\n    16    %8 = load_const (0x0001 = 0.000000)\n               @store_local_pixel_agx (%6, %8 (0x1), %0) (base=0, wrmask=xyzw, format=r8_unorm, explicit_coord=0)\n               // succs: b1\n    block b1:\n}\n\nCompiler replay: PASS (152 bytes)\nCompiler binary hash: fb5150a7\nreplay shader: 14 instrs, 12 alu, 12 fscib, 0 ic, 152 code size, 15 gprs, 0 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 0 preamble inst\n"
+  },
+  {
+    "bundle": "83ebcb3c6f31d72b1d346bbb395f87a41b9d6fe5e32f540a6631f099f667f06f",
+    "returncode": 0,
+    "summary": "candidates=4 cost=4/12\nLAZY_SELECT candidates=3 cost=3/9\nLAZY_SELECT candidates=4 cost=8/8\nLAZY_SELECT candidates=4 cost=8/8\nLAZY_SELECT candidates=4 cost=8/8\nLAZY_SELECT candidates=4 cost=4/12\nLAZY_SELECT candidates=3 cost=3/9\nLAZY_SELECT candidates=4 cost=4/12\nLAZY_SELECT candidates=3 cost=3/9\nLAZY_SELECT candidates=1 cost=9/0\nLAZY_SELECT candidates=1 cost=9/0\nCompiler replay: PASS (23894 bytes)\nCompiler binary hash: c6379173\nreplay shader: 2583 instrs, 1970 alu, 1970 fscib, 476 ic, 22588 code size, 139 gprs, 194 uniforms, 0 scratch, 704 threads, 3 loops, 0:0 spills:fills, 152 preamble inst\n"
+  },
+  {
+    "bundle": "94a272a4615bf746d6286f1befe48fbc06892cba2c0b54fbe9f613b4c946f4a9",
+    "returncode": 0,
+    "summary": " = ult %934, %71 (0x2)\n    32    %936 = b2i32 %935\n    32    %937 = ixor %934, %936\n    32    %938 = load_const (0x0000001d = 29)\n    32    %939 = ishl %937, %938 (0x1d)\n    32    %940 = ior %913, %939\n    32    %941 = ior %473, %671\n                 @export_agx (%941) (base=8)\n                 @export_agx (%940) (base=10)\n                 // succs: b1\n    block b1:\n}\n\nCompiler replay: PASS (6660 bytes)\nCompiler binary hash: 11270712\nreplay shader: 700 instrs, 674 alu, 674 fscib, 104 ic, 6604 code size, 87 gprs, 104 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 1 preamble inst\n"
+  },
+  {
+    "bundle": "ac532dfd99c4b2d953a21ee1f18965d7bea704abcc165a045de29e9b5f6eeec6",
+    "returncode": 0,
+    "summary": "2, %569 (0.005102)\n    32    %573 = fadd %572, %543\n    32    %574 = fmul %568, %569 (0.005102)\n    32    %575 = fadd %574, %543\n                 @export_agx (%571) (base=8)\n                 @export_agx (%573) (base=10)\n                 @export_agx (%575) (base=12)\n                 @export_agx (%535 (1.000000)) (base=14)\n                 // succs: b31\n    block b31:\n}\n\nCompiler replay: PASS (7070 bytes)\nCompiler binary hash: 0df075a9\nreplay shader: 718 instrs, 637 alu, 637 fscib, 272 ic, 6864 code size, 63 gprs, 70 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 25 preamble inst\n"
+  },
+  {
+    "bundle": "b87c3daae92dfcd88194fc1d7c02eda41a05c29469bb4272e38dff4c3d73258d",
+    "returncode": 0,
+    "summary": "t), %11 (sampler_handle), 0 (texture), 0 (sampler), 2D\n    32    %16 = mov %15.x\n                @export_agx (%16) (base=8)\n    32    %17 = mov %15.y\n                @export_agx (%17) (base=10)\n    32    %18 = mov %15.z\n                @export_agx (%18) (base=12)\n    32    %19 = mov %15.w\n                @export_agx (%19) (base=14)\n                // succs: b1\n    block b1:\n}\n\nCompiler replay: PASS (260 bytes)\nCompiler binary hash: b181a113\nreplay shader: 22 instrs, 11 alu, 11 fscib, 0 ic, 138 code size, 23 gprs, 60 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 1 preamble inst\n"
+  },
+  {
+    "bundle": "bae95de2cad542cf7c87bfad272dcae2c0002acf972f866bf4fe6c442abe48ec",
+    "returncode": 0,
+    "summary": "LECT candidates=4 cost=4/12\nLAZY_SELECT candidates=3 cost=3/9\nLAZY_SELECT candidates=4 cost=4/12\nLAZY_SELECT candidates=3 cost=3/9\nLAZY_SELECT candidates=4 cost=8/8\nLAZY_SELECT candidates=4 cost=8/8\nLAZY_SELECT candidates=4 cost=8/8\nLAZY_SELECT candidates=4 cost=4/12\nLAZY_SELECT candidates=3 cost=3/9\nLAZY_SELECT candidates=4 cost=4/12\nLAZY_SELECT candidates=3 cost=3/9\nCompiler replay: PASS (9852 bytes)\nCompiler binary hash: 95853735\nreplay shader: 1135 instrs, 829 alu, 829 fscib, 120 ic, 9244 code size, 131 gprs, 80 uniforms, 0 scratch, 768 threads, 1 loops, 0:0 spills:fills, 67 preamble inst\n"
+  },
+  {
+    "bundle": "bd68b5773b5713e7f3fcde125e5c8fc553d997e7d4cac5b89d5c85e988bd1dfc",
+    "returncode": 0,
+    "summary": "tes=4 cost=24/0\nLAZY_SELECT candidates=4 cost=24/0\nLAZY_SELECT candidates=4 cost=24/0\nLAZY_SELECT candidates=4 cost=24/0\nLAZY_SELECT candidates=4 cost=24/0\nLAZY_SELECT candidates=4 cost=24/0\nLAZY_SELECT candidates=4 cost=24/0\nLAZY_SELECT candidates=4 cost=24/0\nLAZY_SELECT candidates=4 cost=24/0\nLAZY_SELECT candidates=4 cost=24/0\nLAZY_SELECT candidates=4 cost=24/0\nCompiler replay: PASS (21486 bytes)\nCompiler binary hash: 54ffde60\nreplay shader: 2245 instrs, 1878 alu, 1878 fscib, 524 ic, 21102 code size, 89 gprs, 136 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 53 preamble inst\n"
+  },
+  {
+    "bundle": "c02e1df9f8f2c0a523e029d07db99601ef6e1f5675ac08d7eaf8a7cf7cd70626",
+    "returncode": 0,
+    "summary": "es=4 cost=24/0\nLAZY_SELECT candidates=4 cost=24/0\nLAZY_SELECT candidates=4 cost=24/0\nLAZY_SELECT candidates=4 cost=24/0\nLAZY_SELECT candidates=4 cost=24/0\nLAZY_SELECT candidates=4 cost=24/0\nLAZY_SELECT candidates=4 cost=24/0\nLAZY_SELECT candidates=4 cost=24/0\nLAZY_SELECT candidates=4 cost=24/0\nLAZY_SELECT candidates=4 cost=24/0\nLAZY_SELECT candidates=4 cost=24/0\nCompiler replay: PASS (41942 bytes)\nCompiler binary hash: 9af4f812\nreplay shader: 4585 instrs, 4067 alu, 4067 fscib, 1492 ic, 41514 code size, 183 gprs, 130 uniforms, 0 scratch, 576 threads, 0 loops, 0:0 spills:fills, 53 preamble inst\n"
+  },
+  {
+    "bundle": "c1623c8d7926be6364843cc5a4b3475ef5609665739852f892fd204a78509e23",
+    "returncode": 0,
+    "summary": "    %129 = bcsel %128, %125, %117\n    32    %130 = bcsel %128, %125, %116\n    32    %131 = bcsel %128, %125, %115\n                 @export_agx (%129) (base=8)\n                 @export_agx (%130) (base=10)\n                 @export_agx (%131) (base=12)\n                 @export_agx (%37) (base=14)\n                 // succs: b4\n    block b4:\n}\n\nLAZY_SELECT candidates=3 cost=3/16\nCompiler replay: PASS (900 bytes)\nCompiler binary hash: 7681243d\nreplay shader: 108 instrs, 79 alu, 79 fscib, 0 ic, 796 code size, 35 gprs, 100 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 1 preamble inst\n"
+  },
+  {
+    "bundle": "dee29335c539855b4c3e97c3e44f8eda853236ab49d1009ca09756a3aa49ec00",
+    "returncode": 0,
+    "summary": "                @export_agx (%149) (base=12)\n    32    %150 = load_const (0x2f808081 = 0.000000)\n    32    %151 = load_const (0xff000000 = -16777216 = 4278190080)\n    32    %152 = iand %134, %151 (0xff000000)\n    32    %153 = u2f32 %152\n    32    %154 = fmul %153, %150 (0.000000)\n                 @export_agx (%154) (base=14)\n                 // succs: b4\n    block b4:\n}\n\nCompiler replay: PASS (1186 bytes)\nCompiler binary hash: ae0f611b\nreplay shader: 131 instrs, 105 alu, 105 fscib, 36 ic, 1186 code size, 39 gprs, 36 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 0 preamble inst\n"
+  },
+  {
+    "bundle": "e0ab59f4a176407f5a3533ab6a7c4700005db6842aec069e3eb5533b1154193c",
+    "returncode": 0,
+    "summary": "shader: MESA_SHADER_FRAGMENT\nname: agx_background\ninternal: true\nmax_subgroup_size: 128\nmin_subgroup_size: 1\nflrp_lowered: true\nio_lowered: true\nuntyped_color_outputs: true\ndecl_function main () (entrypoint)\n\nimpl main {\n    block b0:  // preds:, succs: b1\n    block b1:\n}\n\nCompiler replay: PASS (4 bytes)\nCompiler binary hash: df7490b7\nreplay shader: 1 instrs, 0 alu, 0 fscib, 0 ic, 4 code size, 0 gprs, 0 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 0 preamble inst\n"
+  },
+  {
+    "bundle": "e7f2cd59c00407c1074899d1e002ab6aef7a52bf9800f9b6301797eb41b9eb76",
+    "returncode": 0,
+    "summary": " fmul %1187, %238\n                  @export_agx (%1 (0x0)) (base=8)\n                  @export_agx (%1 (0x0)) (base=10)\n                  @export_agx (%1 (0x0)) (base=12)\n                  @export_agx (%1188) (base=14)\n                  // succs: b51\n    block b51:\n}\n\nLAZY_SELECT candidates=1 cost=9/0\nLAZY_SELECT candidates=1 cost=11/0\nLAZY_SELECT candidates=1 cost=9/0\nCompiler replay: PASS (8364 bytes)\nCompiler binary hash: 918a18d9\nreplay shader: 840 instrs, 676 alu, 676 fscib, 232 ic, 7854 code size, 103 gprs, 94 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 61 preamble inst\n"
+  },
+  {
+    "bundle": "e8bee860c129191eed7f43b662bd5c1355ef2351b8fafc487d150f453a061e67",
+    "returncode": 0,
+    "summary": "_agx (%5384) (base=12)\n                  @export_agx (%5385) (base=14)\n                  // succs: b212\n    block b212:\n}\n\nLAZY_SELECT candidates=1 cost=9/0\nLAZY_SELECT candidates=1 cost=11/0\nLAZY_SELECT candidates=1 cost=11/0\nLAZY_SELECT candidates=1 cost=11/0\nLAZY_SELECT candidates=1 cost=11/0\nLAZY_SELECT candidates=1 cost=11/0\nLAZY_SELECT candidates=1 cost=9/0\nCompiler replay: PASS (29834 bytes)\nCompiler binary hash: ebb17c5d\nreplay shader: 3124 instrs, 2461 alu, 2461 fscib, 764 ic, 29086 code size, 159 gprs, 120 uniforms, 0 scratch, 640 threads, 5 loops, 0:0 spills:fills, 94 preamble inst\n"
+  },
+  {
+    "bundle": "eb5e6bdd9c8f09fd31fa51ddd85d1e5ce72bc32b0454761f148d0d615e0cd80a",
+    "returncode": 0,
+    "summary": "\n    32    %954 = fmul %950.w, %949\n                 @export_agx (%951) (base=8)\n                 @export_agx (%952) (base=10)\n                 @export_agx (%953) (base=12)\n                 @export_agx (%954) (base=14)\n                 // succs: b36\n    block b36:\n}\n\nLAZY_SELECT candidates=1 cost=9/0\nLAZY_SELECT candidates=1 cost=11/0\nLAZY_SELECT candidates=1 cost=9/0\nCompiler replay: PASS (5394 bytes)\nCompiler binary hash: afb1c644\nreplay shader: 554 instrs, 414 alu, 414 fscib, 120 ic, 5000 code size, 103 gprs, 72 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 37 preamble inst\n"
+  },
+  {
+    "bundle": "ee285c4399472dd33d14ce2d60315ce9560e1664358ed1665dba894cbb75d8c7",
+    "returncode": 0,
+    "summary": "dates=3 cost=3/9\nLAZY_SELECT candidates=3 cost=15/0\nLAZY_SELECT candidates=2 cost=10/0\nLAZY_SELECT candidates=3 cost=15/0\nLAZY_SELECT candidates=2 cost=10/0\nLAZY_SELECT candidates=3 cost=3/9\nLAZY_SELECT candidates=3 cost=15/0\nLAZY_SELECT candidates=2 cost=10/0\nLAZY_SELECT candidates=3 cost=3/9\nLAZY_SELECT candidates=3 cost=15/0\nLAZY_SELECT candidates=2 cost=10/0\nCompiler replay: PASS (41792 bytes)\nCompiler binary hash: c0efbd50\nreplay shader: 4668 instrs, 3989 alu, 3989 fscib, 296 ic, 40882 code size, 143 gprs, 128 uniforms, 0 scratch, 704 threads, 1 loops, 0:0 spills:fills, 109 preamble inst\n"
+  },
+  {
+    "bundle": "f63107680356fc95bd26ec05a458be37257348058f20d5388936b371784a7a57",
+    "returncode": 0,
+    "summary": "  %16 = (float32)tex %14 (backend1), %15 (texture_offset), %12 (sampler_handle), 0 (texture), 0 (sampler), 2D\n                @export_agx (%13 (0x0)) (base=8)\n                @export_agx (%13 (0x0)) (base=10)\n                @export_agx (%13 (0x0)) (base=12)\n    32    %17 = fmul %16.w, %0\n                @export_agx (%17) (base=14)\n                // succs: b1\n    block b1:\n}\n\nCompiler replay: PASS (388 bytes)\nCompiler binary hash: 55313b90\nreplay shader: 23 instrs, 12 alu, 12 fscib, 0 ic, 272 code size, 23 gprs, 66 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 1 preamble inst\n"
+  },
+  {
+    "bundle": "fa2ef306f0e560f765d36f5f9f55e8d9404813b557e3131d1e206108576bd27d",
+    "returncode": 0,
+    "summary": "0.500000), %127\n    32    %150 = fmul %145, %149\n    32    %151 = fmul %146, %149\n    32    %152 = fmul %147, %149\n    32    %153 = fmul %148, %149\n                 @export_agx (%150) (base=8)\n                 @export_agx (%151) (base=10)\n                 @export_agx (%152) (base=12)\n                 @export_agx (%153) (base=14)\n                 // succs: b1\n    block b1:\n}\n\nCompiler replay: PASS (900 bytes)\nCompiler binary hash: c69f532b\nreplay shader: 115 instrs, 87 alu, 87 fscib, 12 ic, 892 code size, 79 gprs, 72 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 1 preamble inst\n"
+  },
+  {
+    "bundle": "fa82714d36e8cec84b46750007347b93a7be714ec00db9eb49b4c7892b7009d4",
+    "returncode": 0,
+    "summary": "3, %4\n    32x4   %6 = (uint32)txf %1 (0x0) (lod), %5 (backend1), 0 (texture), backend_flags=0x1, 2D\n    32     %7 = load_const (0x00000000 = 0.000000)\n    32     %8 = mov %6.x\n    16     %9 = load_const (0x0001 = 0.000000)\n                @store_local_pixel_agx (%8, %9 (0x1), %0) (base=0, wrmask=x, format=r8_unorm, explicit_coord=0)\n                // succs: b1\n    block b1:\n}\n\nCompiler replay: PASS (142 bytes)\nCompiler binary hash: ca087933\nreplay shader: 13 instrs, 12 alu, 12 fscib, 0 ic, 142 code size, 15 gprs, 0 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 0 preamble inst\n"
+  }
+]

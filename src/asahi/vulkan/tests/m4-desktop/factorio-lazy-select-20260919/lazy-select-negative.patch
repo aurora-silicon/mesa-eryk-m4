@@ -1,0 +1,311 @@
+diff --git a/src/asahi/compiler/agx_compile.c b/src/asahi/compiler/agx_compile.c
+index 813b470e1b3..72bbae0ae3b 100644
+--- a/src/asahi/compiler/agx_compile.c
++++ b/src/asahi/compiler/agx_compile.c
+@@ -5567,6 +5567,10 @@ agx_optimize_nir(nir_shader *nir, bool soft_fault, bool uniform_atomics,
+    if (byte_indices)
+       NIR_PASS(_, nir, agx_nir_lower_imul64, true);
+ 
++   if (byte_indices && nir->info.stage == MESA_SHADER_FRAGMENT &&
++       debug_get_bool_option("AGX_NATIVE_LAZY_SELECT", false))
++      NIR_PASS(_, nir, agx_nir_lazy_select);
++
+    /* Fuse add/sub/multiplies/shifts after running opt_algebraic_late to fuse
+     * isub but before shifts are lowered.
+     */
+diff --git a/src/asahi/compiler/agx_nir.h b/src/asahi/compiler/agx_nir.h
+index bd027e9b2a9..0a1b82f97d5 100644
+--- a/src/asahi/compiler/agx_nir.h
++++ b/src/asahi/compiler/agx_nir.h
+@@ -16,6 +16,7 @@ struct nir_instr;
+ /* BASE bits4..6 carry the native packed element count (1..4). */
+ #define AGX_NIR_MEMORY_PACKED_COUNT_SHIFT 4u
+ #define AGX_NIR_MEMORY_PACKED_COUNT_MASK (7u << AGX_NIR_MEMORY_PACKED_COUNT_SHIFT)
++bool agx_nir_lazy_select(struct nir_shader *shader);
+ bool agx_nir_lower_address(struct nir_shader *shader, bool byte_indices);
+ bool agx_nir_lower_algebraic_late(struct nir_shader *shader);
+ bool agx_nir_cleanup_amul(struct nir_shader *shader);
+diff --git a/src/asahi/compiler/meson.build b/src/asahi/compiler/meson.build
+index 5b430829b3f..fefe8703de2 100644
+--- a/src/asahi/compiler/meson.build
++++ b/src/asahi/compiler/meson.build
+@@ -8,6 +8,7 @@ libasahi_agx_files = files(
+   'agx_liveness.c',
+   'agx_insert_waits.c',
+   'agx_nir_lower_address.c',
++  'agx_nir_lazy_select.c',
+   'agx_nir_lower_cull_distance.c',
+   'agx_nir_lower_fminmax.c',
+   'agx_nir_lower_frag_sidefx.c',
+@@ -146,6 +147,11 @@ libasahi_compiler = static_library(
+ )
+ 
+ if with_tests
++  test('agx_lazy_select', executable('agx_lazy_select_test',
++    'test/test-lazy-select.c',
++    dependencies : [idep_nir, idep_mesautil],
++    link_with : [libasahi_compiler],
++  ), suite : ['asahi'])
+   executable('agx_shader_replay', ['agx_shader_replay.c', agx_replay_abi],
+     dependencies : [idep_nir, idep_mesautil],
+     link_with : [libasahi_compiler],
+diff --git a/src/asahi/compiler/agx_nir_lazy_select.c b/src/asahi/compiler/agx_nir_lazy_select.c
+new file mode 100644
+index 00000000000..ccf33306f8c
+--- /dev/null
++++ b/src/asahi/compiler/agx_nir_lazy_select.c
+@@ -0,0 +1,191 @@
++/* SPDX-License-Identifier: MIT */
++#include "agx_nir.h"
++#include "compiler/nir/nir_builder.h"
++
++/* Reconstruct conditional evaluation for costly, pure ALU select arms.
++ * Frontends can flatten material branches before the backend sees them.
++ * Never move memory operations, derivatives, subgroup operations or shared
++ * expressions. Keeping the original operations also preserves FP rounding.
++ * The bounded graph makes compile cost independent of shader DAG depth.
++ */
++#define MAX_NODES 128
++#define MAX_SELECTS 4
++struct graph {
++   nir_instr *nodes[MAX_NODES];
++   unsigned arms[MAX_NODES];
++   unsigned count;
++   nir_block *block;
++   unsigned before;
++   bool overflow;
++};
++
++static int
++find_node(const struct graph *g, const nir_instr *instr)
++{
++   for (unsigned i = 0; i < g->count; ++i)
++      if (g->nodes[i] == instr)
++         return i;
++   return -1;
++}
++
++static void
++gather(struct graph *g, nir_def *def, unsigned arm)
++{
++   nir_instr *instr = nir_def_instr(def);
++   if (g->overflow || instr->type != nir_instr_type_alu ||
++       instr->block != g->block || instr->index >= g->before)
++      return;
++   int found = find_node(g, instr);
++   if (found >= 0 && (g->arms[found] & arm))
++      return;
++   if (found < 0) {
++      if (g->count == MAX_NODES) {
++         g->overflow = true;
++         return;
++      }
++      found = g->count++;
++      g->nodes[found] = instr;
++   }
++   g->arms[found] |= arm;
++   nir_alu_instr *alu = nir_instr_as_alu(instr);
++   for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; ++i)
++      gather(g, alu->src[i].src.ssa, arm);
++}
++
++static bool
++rewrite(nir_alu_instr **selects, unsigned count)
++{
++   struct graph g = {.block = selects[0]->instr.block,
++                     .before = selects[0]->instr.index};
++   for (unsigned i = 0; i < count; ++i) {
++      for (unsigned arm = 1; arm <= 2; ++arm) {
++         nir_def *source = selects[i]->src[arm].src.ssa;
++         if (nir_def_block(source) == g.block &&
++             nir_def_instr(source)->index >= g.before)
++            return false;
++         gather(&g, source, arm);
++      }
++   }
++   if (g.overflow)
++      return false;
++
++   /* Exclude anything used outside its arm, propagating exclusions back
++    * through the graph until every surviving expression can move intact. */
++   bool changed;
++   do {
++      changed = false;
++      for (unsigned i = 0; i < g.count; ++i) {
++         if (g.arms[i] != 1 && g.arms[i] != 2)
++            continue;
++         nir_foreach_use(use, &nir_instr_as_alu(g.nodes[i])->def) {
++            bool allowed = false;
++            if (!nir_src_is_if(use)) {
++               nir_instr *parent = nir_src_parent_instr(use);
++               for (unsigned j = 0; j < count; ++j)
++                  allowed |= use == &selects[j]->src[g.arms[i]].src;
++               int j = find_node(&g, parent);
++               allowed |= j >= 0 && g.arms[j] == g.arms[i];
++            }
++            if (!allowed) {
++               g.arms[i] = 0;
++               changed = true;
++               break;
++            }
++         }
++      }
++   } while (changed);
++
++   unsigned cost[3] = {0};
++   for (unsigned i = 0; i < g.count; ++i) {
++      if (g.arms[i] == 1 || g.arms[i] == 2) {
++         nir_op op = nir_instr_as_alu(g.nodes[i])->op;
++         cost[g.arms[i]] += !nir_op_is_vec_or_mov(op) && op != nir_op_fneg;
++      }
++   }
++   if (MAX2(cost[1], cost[2]) >= 8)
++      fprintf(stderr, "LAZY_SELECT candidates=%u cost=%u/%u\n", count, cost[1], cost[2]);
++   if (MAX2(cost[1], cost[2]) < 16)
++      return false;
++
++   /* Original instruction order is a topological order, including sharing
++    * between selected components. Preserve it while moving each arm. */
++   nir_instr *ordered[MAX_NODES];
++   unsigned arms[MAX_NODES], n = 0;
++   nir_foreach_instr(instr, g.block) {
++      int i = find_node(&g, instr);
++      if (i >= 0 && (g.arms[i] == 1 || g.arms[i] == 2)) {
++         ordered[n] = instr;
++         arms[n++] = g.arms[i];
++      }
++   }
++
++   nir_builder b = nir_builder_at(nir_before_instr(&selects[0]->instr));
++   nir_def *condition = nir_ssa_for_alu_src(&b, selects[0], 0);
++   nir_if *branch = nir_push_if(&b, condition);
++   branch->control = nir_selection_control_dont_flatten;
++   nir_def *values[2][MAX_SELECTS];
++   for (unsigned arm = 1; arm <= 2; ++arm) {
++      if (arm == 2)
++         nir_push_else(&b, branch);
++      for (unsigned i = 0; i < n; ++i) {
++         if (arms[i] == arm) {
++            nir_instr_move(b.cursor, ordered[i]);
++            b.cursor = nir_after_instr(ordered[i]);
++         }
++      }
++      for (unsigned i = 0; i < count; ++i)
++         values[arm-1][i] = nir_ssa_for_alu_src(&b, selects[i], arm);
++   }
++   nir_pop_if(&b, branch);
++   for (unsigned i = 0; i < count; ++i) {
++      nir_def *value = nir_if_phi(&b, values[0][i], values[1][i]);
++      nir_def_rewrite_uses(&selects[i]->def, value);
++      nir_instr_remove(&selects[i]->instr);
++   }
++   nir_progress(true, b.impl, nir_metadata_none);
++   return true;
++}
++
++static bool
++rewrite_one(nir_function_impl *impl)
++{
++   nir_index_instrs(impl);
++   nir_foreach_block(block, impl) {
++      nir_foreach_instr(instr, block) {
++         if (instr->type != nir_instr_type_alu)
++            continue;
++         nir_alu_instr *first = nir_instr_as_alu(instr);
++         if (first->op != nir_op_bcsel ||
++             first->src[0].src.ssa->num_components != 1)
++            continue;
++         nir_alu_instr *selects[MAX_SELECTS];
++         unsigned count = 0;
++         for (nir_instr *next = instr; next && count < MAX_SELECTS;
++              next = nir_instr_next(next)) {
++            if (next->type != nir_instr_type_alu)
++               break;
++            nir_alu_instr *alu = nir_instr_as_alu(next);
++            if (alu->op != nir_op_bcsel ||
++                !nir_alu_srcs_equal(first, alu, 0, 0))
++               break;
++            selects[count++] = alu;
++         }
++         if (rewrite(selects, count))
++            return true;
++      }
++   }
++   return false;
++}
++
++bool
++agx_nir_lazy_select(nir_shader *shader)
++{
++   bool progress = false;
++   nir_foreach_function_impl(impl, shader) {
++      bool changed = false;
++      for (unsigned i = 0; i < 32 && rewrite_one(impl); ++i)
++         changed = true;
++      progress |= nir_progress(changed, impl, nir_metadata_none);
++   }
++   return progress;
++}
+diff --git a/src/asahi/compiler/test/test-lazy-select.c b/src/asahi/compiler/test/test-lazy-select.c
+new file mode 100644
+index 00000000000..31b031d3a51
+--- /dev/null
++++ b/src/asahi/compiler/test/test-lazy-select.c
+@@ -0,0 +1,57 @@
++/* SPDX-License-Identifier: MIT */
++#include "agx_compile.h"
++#include "agx_nir.h"
++#include "compiler/nir/nir_builder.h"
++#include <stdio.h>
++
++#define CHECK(x) do { if (!(x)) { fprintf(stderr, "%s:%d: %s\n", __FILE__, __LINE__, #x); return false; } } while (0)
++
++static bool
++exercise(unsigned length, bool external, bool condition_use, bool dependent)
++{
++   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT,
++      &agx_nir_options, "lazy select ownership");
++   nir_def *address = nir_imm_int64(&b, 0x1000);
++   nir_def *input = nir_load_global(&b, 1, 32, address, .align_mul = 4);
++   nir_instr *load = nir_def_instr(input);
++   nir_def *condition = nir_ine_imm(&b, input, 0);
++   nir_def *value = input;
++   for (unsigned i = 0; i < length; ++i) {
++      value = nir_fadd(&b, value, nir_imm_float(&b, .125f));
++      value = nir_fmul(&b, value, nir_imm_float(&b, .75f));
++   }
++   nir_instr *last = nir_def_instr(value);
++   if (condition_use)
++      condition = nir_flt(&b, value, nir_imm_float(&b, 1.0f));
++   nir_def *a = nir_bcsel(&b, condition, value, input);
++   nir_def *c = nir_bcsel(&b, condition, dependent ? a : value, input);
++   nir_store_global(&b, nir_vec2(&b, a, c), address, .write_mask = 3, .align_mul = 4);
++   if (external)
++      nir_store_global(&b, value, address, .write_mask = 1, .align_mul = 4);
++   nir_validate_shader(b.shader, "before lazy select");
++   bool changed = agx_nir_lazy_select(b.shader);
++   nir_validate_shader(b.shader, "after lazy select");
++   CHECK(changed == (length >= 8 && !external && !condition_use && !dependent));
++   CHECK(load->block == nir_start_block(b.impl));
++   CHECK((last->block != load->block) == changed);
++   if (changed) {
++      CHECK(!agx_nir_lazy_select(b.shader));
++      nir_validate_shader(b.shader, "idempotent lazy select");
++   }
++   ralloc_free(b.shader);
++   return true;
++}
++
++int main(void)
++{
++   /* Preserve externally consumed arithmetic and predicate producers, and
++    * reject dependent grouped selects without losing a later valid group. */
++   if (!exercise(12, false, false, false) ||
++       !exercise(12, true, false, false) ||
++       !exercise(12, false, true, false) ||
++       !exercise(3, false, false, false) ||
++       !exercise(12, false, false, true))
++      return 1;
++   puts("PASS: lazy select ownership and dominance");
++   return 0;
++}

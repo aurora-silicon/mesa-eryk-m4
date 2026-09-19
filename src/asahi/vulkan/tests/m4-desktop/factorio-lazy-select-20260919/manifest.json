@@ -1,0 +1,47 @@
+{
+  "id": "20260919T144017203218Z-factorio-lazy-select",
+  "hypothesis": "Skip exclusive costly pure ALU select arms without moving texture operations or changing arithmetic",
+  "command": [
+    "env",
+    "HK_ARCHITECTURE_PROFILE=true",
+    "HK_M4_SHADER_PROFILE=true",
+    "MESA_SHADER_CACHE_DISABLE=true",
+    "HK_M4_COMPUTE_TIMESTAMP_COPIES=true",
+    "HK_M4_BATCH_QUERY_COPIES=true",
+    "HK_M4_SPECIALIZE_QUERY_COPY=true",
+    "HK_M4_NATIVE_PREAMBLE=true",
+    "AGX_NATIVE_FLOAT_PREAMBLE=true",
+    "HK_M4_PREFETCH_DESCRIPTORS=true",
+    "HK_M4_BATCH_DISJOINT_CLEARS=true",
+    "HK_M4_COMPRESSED_2D=true",
+    "HK_M4_COMPRESSED_FEEDBACK=true",
+    "HK_M4_COMPUTE_COMPRESSED_COPY=true",
+    "HK_M4_COMPRESSION_AUDIT=true",
+    "AGX_NATIVE_LAZY_SELECT=true",
+    "HK_M4_COUNT_FRAGMENTS=true",
+    "python3",
+    "/root/factorio-replay.py",
+    "/root/asahi-evidence/20260919T144017203218Z-factorio-lazy-select",
+    "--compression",
+    "--icd",
+    "/root/asahi-lazy-select.json",
+    "--trace",
+    "/home/e/.local/share/factorio-driver/frame-architecture-20260919/menu_frames_1500_through_1504.gfxr",
+    "--frames",
+    "5"
+  ],
+  "expected_success": "PASS: Vulkan replay process completed",
+  "seconds": 65,
+  "sources": {
+    "mesa": {
+      "head": "3580dd0e8adc46fbb88788dcece001d59960573d",
+      "status": " M src/asahi/compiler/agx_compile.c\n M src/asahi/compiler/agx_nir.h\n M src/asahi/compiler/meson.build\n M src/asahi/vulkan/hk_cmd_buffer.c\n M src/asahi/vulkan/hk_shader.c\n M src/asahi/vulkan/hk_shader.h\n M src/asahi/vulkan/meson.build\n M src/asahi/vulkan/tests/m4-desktop/asahi-session.py\n M src/asahi/vulkan/tests/m4-desktop/desktop-launch.py\n M src/asahi/vulkan/tests/m4-desktop/sparse-metadata-20260917/resolutions.tsv\n M src/asahi/vulkan/tests/m4-desktop/vulkan-trim-host.py\n?? src/asahi/compiler/agx_nir_lazy_select.c\n?? src/asahi/compiler/test/test-lazy-select.c\n?? src/asahi/vulkan/hk_m4_native_buoy.c\n?? src/asahi/vulkan/hk_m4_native_buoy.h\n",
+      "patch_sha256": "8fbba2025799569f1acb4127ea6e6038a2e155e37b492be87fc0b53aa1543b54"
+    },
+    "kernel": {
+      "head": "e33e8fd7ba2402ceda485f2e2b1fb53a044ceda9",
+      "status": "",
+      "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}
