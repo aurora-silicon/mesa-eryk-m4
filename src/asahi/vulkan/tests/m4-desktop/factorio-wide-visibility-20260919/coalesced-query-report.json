@@ -1,0 +1,24 @@
+{
+  "id": "20260919T165411748365Z-query-coalesced-stamps-matrix",
+  "verdict": "pass",
+  "transport_returncode": 0,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260919T165411748365Z-query-coalesced-stamps-matrix",
+  "observations": {
+    "pixel_results": [
+      "PASS: 13 query visibility modes"
+    ],
+    "pixel_result_count": 1,
+    "thermal_samples": 5,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 72.0,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 72.0,
+      "Ta000m": 64.5,
+      "Te000m": 61.25,
+      "Te001m": 71.25,
+      "Tp000m": 69.0,
+      "Tp001m": 72.0
+    }
+  }
+}

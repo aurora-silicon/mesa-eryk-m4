@@ -49,3 +49,13 @@ Normal menu initialized in 7.102 s game time; 120 s observation, 235 samples,
 median 59.97 FPS, mean 58.799, minimum 33.55, 84.7% at least 59 FPS.
 Peak PMP temperature 85.5 C. Bounded process stopped normally. This is not
 a flat 60 FPS result. Previous installed library a02c6815 is retained for rollback.
+
+## Optional host stamp coalescing
+
+Kernel capability8/compute flag2 permits native wide-visibility streams to
+defer intermediate host stamp flushes until the bounded packet's last compute.
+FW execution dependencies and all query endpoints remain. GPU publication
+precedes firmware timestamp writes, so streams with any API timestamp keep
+their own flush. HK_M4_COALESCE_COMPUTE_STAMPS remains off by default.
+165411 all13querymodes pass. 165434 pixels and counts exact,5.949..6.111ms;
+no meaningful performance gain. Keep opt-in, not a normal-driver speedup.
