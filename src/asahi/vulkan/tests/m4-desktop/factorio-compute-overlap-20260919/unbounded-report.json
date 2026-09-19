@@ -1,0 +1,24 @@
+{
+  "id": "20260919T144916033443Z-factorio-compute-overlap",
+  "verdict": "pass",
+  "transport_returncode": 0,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260919T144916033443Z-factorio-compute-overlap",
+  "observations": {
+    "pixel_results": [
+      "PASS: Vulkan replay process completed; rendering requires separate comparison"
+    ],
+    "pixel_result_count": 1,
+    "thermal_samples": 9,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 72.5,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 72.5,
+      "Ta000m": 68.25,
+      "Te000m": 65.0,
+      "Te001m": 72.5,
+      "Tp000m": 70.25,
+      "Tp001m": 71.75
+    }
+  }
+}
