@@ -29,6 +29,7 @@
 #include "nir_builder.h"
 
 #include "util/log.h"
+#include "util/hash_table.h"
 #include "util/u_debug.h"
 
 #include <inttypes.h>
@@ -1585,6 +1586,18 @@ hk_upload_usc_words(struct hk_cmd_buffer *cmd, struct hk_shader *s,
                     struct hk_linked_shader *linked)
 {
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
+   if (s->info.stage == MESA_SHADER_FRAGMENT &&
+       debug_get_bool_option("HK_M4_SHADER_PROFILE", false)) {
+      const struct agx2_stats *stats = &s->b.info.stats;
+      fprintf(stderr, "HK_SHADER_PROFILE code=%08x width=%u height=%u direct=%u "
+              "instrs=%u regs=%u scratch=%u loops=%u preamble=%u\n",
+              _mesa_hash_data(s->b.binary, s->b.info.binary_size),
+              cmd->state.gfx.render.area.extent.width,
+              cmd->state.gfx.render.area.extent.height,
+              s->info.ubo_prefetch_direct, stats->instrs, s->b.info.nr_gprs,
+              s->b.info.scratch_size, stats->loops, stats->preamble_inst);
+   }
+
 
    if (agx_chip_command_stream_generation(dev->dev.chip) ==
        AGX_CS_GENERATION_HAL200) {

@@ -1,3 +1,4 @@
+#include "util/hash_table.h"
 /* SPDX-License-Identifier: MIT
  * Replay trusted development compiler captures, without opening a GPU. */
 #include "agx_compile.h"
@@ -118,6 +119,11 @@ int main(int argc, char **argv)
    struct agx_shader_part out = {0};
    bool ok = agx_compile_shader_nir(nir, &key, &out);
    fprintf(stderr, "Compiler replay: %s (%u bytes)\n", ok ? "PASS" : "REJECT", out.info.binary_size);
+   if (ok) {
+      fprintf(stderr, "Compiler binary hash: %08x\n",
+              _mesa_hash_data(out.binary, out.info.binary_size));
+      agx2_stats_fprintf(stderr, "replay", &out.info.stats);
+   }
    free(out.binary);
    ralloc_free(nir);
    glsl_type_singleton_decref();

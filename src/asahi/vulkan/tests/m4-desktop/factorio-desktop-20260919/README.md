@@ -54,3 +54,20 @@ reproduces the retained 2560x1664 frame exactly (0 differing components).
 peak sensor 89.25 C. This does not establish a performance win over the
 different scenes in preceding 38–43 FPS runs, so the option stays disabled.
 Broader correctness and floating/native preamble support remain TODO.
+
+### Actual selected shaders
+
+`HK_M4_SHADER_PROFILE=true` reports each fragment executable upload's code
+hash, render area, direct-variant selection, instructions/registers/scratch
+and loops. `gpu-shader-profile.py LOG` groups these. Uploads are not draw
+counts, the hash is not a cryptographic identity, and logging perturbs FPS.
+`agx_shader_replay` prints matching code hashes and compiler statistics.
+
+`20260919T030833441913Z-factorio-selected-fragment-profile` records a bounded
+20-second live menu. Frequent 2512x1552 shaders use the direct variant,
+17–156 instructions, no scratch and no loops (`selected-shaders.json`). The
+multi-thousand-instruction fallbacks in the separately captured compiler
+corpus must not be mistaken for the selected executables in this scene.
+
+After the integer-preamble callback addition, all 6038 enabled host NIR
+tests pass (nine disabled); full Vulkan CTS remains deferred.
