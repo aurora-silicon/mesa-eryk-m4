@@ -563,6 +563,14 @@ struct hk_uploader {
    uint32_t offset;
 };
 
+/* Opt-in covered-fragment counts, accumulated over all executions before reset.
+ * The command pool owns the mapped counters until the CB may legally reset. */
+struct hk_fragment_count {
+   uint64_t *words;
+   uint64_t cs;
+   unsigned width, height;
+};
+
 struct hk_cmd_buffer {
    struct vk_command_buffer vk;
    struct agx3_ioto_uniform_template *uniform_templates[2];
@@ -616,6 +624,7 @@ struct hk_cmd_buffer {
 
    /* Owned BOs and retained references needed by recorded commands. */
    struct util_dynarray large_bos;
+   struct util_dynarray fragment_counts;
 };
 
 VK_DEFINE_HANDLE_CASTS(hk_cmd_buffer, vk.base, VkCommandBuffer,

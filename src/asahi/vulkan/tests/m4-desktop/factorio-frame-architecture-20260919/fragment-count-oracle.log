@@ -1,0 +1,61 @@
+{"width":2560,"height":1664,"stats":0,"round":0,"count":0,"gpu_ms":0.347000,"wall_ms":9.877331}
+HK_FRAGMENT_COUNT cb=0xaaaafde8b000 draw=1 cs=1000820000 width=2560 height=1664 covered=4259840 guard=PASS
+{"width":2560,"height":1664,"stats":0,"round":1,"count":0,"gpu_ms":0.346125,"wall_ms":3.165620}
+HK_FRAGMENT_COUNT cb=0xffff9801a4f0 draw=1 cs=1000860000 width=2560 height=1664 covered=4259840 guard=PASS
+{"width":2560,"height":1664,"stats":0,"round":2,"count":0,"gpu_ms":0.345875,"wall_ms":0.749194}
+HK_FRAGMENT_COUNT cb=0xaaaafdee7c90 draw=1 cs=10008a0000 width=2560 height=1664 covered=4259840 guard=PASS
+{"width":2560,"height":1664,"stats":0,"round":3,"count":0,"gpu_ms":0.345750,"wall_ms":0.702282}
+HK_FRAGMENT_COUNT cb=0xaaaafdfadd20 draw=1 cs=1000800000 width=2560 height=1664 covered=4259840 guard=PASS
+{"width":2560,"height":1664,"stats":0,"round":4,"count":0,"gpu_ms":0.345750,"wall_ms":0.683807}
+HK_FRAGMENT_COUNT cb=0xaaaafdf93b50 draw=1 cs=1000840000 width=2560 height=1664 covered=4259840 guard=PASS
+{"width":2560,"height":1664,"stats":1,"round":0,"count":4259840,"gpu_ms":0.345500,"wall_ms":2.320849}
+{"width":2560,"height":1664,"stats":1,"round":1,"count":4259840,"gpu_ms":0.345417,"wall_ms":0.831104}
+{"width":2560,"height":1664,"stats":1,"round":2,"count":4259840,"gpu_ms":0.479459,"wall_ms":2.835568}
+{"width":2560,"height":1664,"stats":1,"round":3,"count":4259840,"gpu_ms":0.345416,"wall_ms":6.507112}
+{"width":2560,"height":1664,"stats":1,"round":4,"count":8519680,"gpu_ms":5.590834,"wall_ms":6.094298}
+{"width":2557,"height":1661,"stats":0,"round":0,"count":0,"gpu_ms":0.344917,"wall_ms":0.729676}
+HK_FRAGMENT_COUNT cb=0xaaaafdf93b50 draw=1 cs=1000920000 width=2560 height=1664 covered=4247177 guard=PASS
+{"width":2557,"height":1661,"stats":0,"round":1,"count":0,"gpu_ms":0.344042,"wall_ms":0.625790}
+HK_FRAGMENT_COUNT cb=0xaaaafde8b000 draw=1 cs=1000940000 width=2560 height=1664 covered=4247177 guard=PASS
+{"width":2557,"height":1661,"stats":0,"round":2,"count":0,"gpu_ms":0.344417,"wall_ms":0.629039}
+HK_FRAGMENT_COUNT cb=0xffff9801a4f0 draw=1 cs=1000860000 width=2560 height=1664 covered=4247177 guard=PASS
+{"width":2557,"height":1661,"stats":0,"round":3,"count":0,"gpu_ms":0.343666,"wall_ms":0.642664}
+HK_FRAGMENT_COUNT cb=0xaaaafdee7c90 draw=1 cs=10008e0000 width=2560 height=1664 covered=4247177 guard=PASS
+{"width":2557,"height":1661,"stats":0,"round":4,"count":0,"gpu_ms":0.343334,"wall_ms":0.611772}
+HK_FRAGMENT_COUNT cb=0xaaaafdfadd20 draw=1 cs=1000900000 width=2560 height=1664 covered=4247177 guard=PASS
+{"width":2557,"height":1661,"stats":1,"round":0,"count":4247177,"gpu_ms":0.344958,"wall_ms":0.819478}
+{"width":2557,"height":1661,"stats":1,"round":1,"count":4247177,"gpu_ms":0.343709,"wall_ms":0.780878}
+{"width":2557,"height":1661,"stats":1,"round":2,"count":4247177,"gpu_ms":0.479000,"wall_ms":3.908188}
+{"width":2557,"height":1661,"stats":1,"round":3,"count":4247177,"gpu_ms":0.343875,"wall_ms":0.959884}
+{"width":2557,"height":1661,"stats":1,"round":4,"count":8494354,"gpu_ms":4.664042,"wall_ms":5.103922}
+{"width":17,"height":13,"stats":0,"round":0,"count":0,"gpu_ms":0.035542,"wall_ms":0.312010}
+HK_FRAGMENT_COUNT cb=0xaaaafdfadd20 draw=1 cs=1000900000 width=2560 height=1664 covered=221 guard=PASS
+{"width":17,"height":13,"stats":0,"round":1,"count":0,"gpu_ms":0.035375,"wall_ms":0.336903}
+HK_FRAGMENT_COUNT cb=0xaaaafdf93b50 draw=1 cs=1000960000 width=2560 height=1664 covered=221 guard=PASS
+{"width":17,"height":13,"stats":0,"round":2,"count":0,"gpu_ms":0.036417,"wall_ms":0.385065}
+HK_FRAGMENT_COUNT cb=0xaaaafde8b000 draw=1 cs=1000880000 width=2560 height=1664 covered=221 guard=PASS
+{"width":17,"height":13,"stats":0,"round":3,"count":0,"gpu_ms":0.035250,"wall_ms":0.385647}
+HK_FRAGMENT_COUNT cb=0xffff9801a4f0 draw=1 cs=10009c0000 width=2560 height=1664 covered=221 guard=PASS
+{"width":17,"height":13,"stats":0,"round":4,"count":0,"gpu_ms":0.035334,"wall_ms":0.319113}
+HK_FRAGMENT_COUNT cb=0xaaaafdee7c90 draw=1 cs=10008a0000 width=2560 height=1664 covered=221 guard=PASS
+{"width":17,"height":13,"stats":1,"round":0,"count":221,"gpu_ms":0.035250,"wall_ms":0.456225}
+{"width":17,"height":13,"stats":1,"round":1,"count":221,"gpu_ms":0.035250,"wall_ms":0.444308}
+{"width":17,"height":13,"stats":1,"round":2,"count":221,"gpu_ms":0.177041,"wall_ms":0.568295}
+{"width":17,"height":13,"stats":1,"round":3,"count":221,"gpu_ms":0.035084,"wall_ms":0.764693}
+{"width":17,"height":13,"stats":1,"round":4,"count":442,"gpu_ms":0.287750,"wall_ms":0.835537}
+{"width":1,"height":1,"stats":0,"round":0,"count":0,"gpu_ms":0.035417,"wall_ms":0.342988}
+HK_FRAGMENT_COUNT cb=0xaaaafdee7c90 draw=1 cs=10009e0000 width=2560 height=1664 covered=1 guard=PASS
+{"width":1,"height":1,"stats":0,"round":1,"count":0,"gpu_ms":0.054250,"wall_ms":0.289635}
+HK_FRAGMENT_COUNT cb=0xaaaafdfadd20 draw=1 cs=10009a0000 width=2560 height=1664 covered=1 guard=PASS
+{"width":1,"height":1,"stats":0,"round":2,"count":0,"gpu_ms":0.035083,"wall_ms":0.308761}
+HK_FRAGMENT_COUNT cb=0xaaaafdf93b50 draw=1 cs=1000920000 width=2560 height=1664 covered=1 guard=PASS
+{"width":1,"height":1,"stats":0,"round":3,"count":0,"gpu_ms":0.035500,"wall_ms":0.337946}
+HK_FRAGMENT_COUNT cb=0xaaaafde8b000 draw=1 cs=1000820000 width=2560 height=1664 covered=1 guard=PASS
+{"width":1,"height":1,"stats":0,"round":4,"count":0,"gpu_ms":0.035625,"wall_ms":0.335862}
+HK_FRAGMENT_COUNT cb=0xffff9801a4f0 draw=1 cs=10008c0000 width=2560 height=1664 covered=1 guard=PASS
+{"width":1,"height":1,"stats":1,"round":0,"count":1,"gpu_ms":0.035500,"wall_ms":0.442373}
+{"width":1,"height":1,"stats":1,"round":1,"count":1,"gpu_ms":0.036083,"wall_ms":0.494367}
+{"width":1,"height":1,"stats":1,"round":2,"count":1,"gpu_ms":0.176042,"wall_ms":0.544486}
+{"width":1,"height":1,"stats":1,"round":3,"count":1,"gpu_ms":0.035000,"wall_ms":0.694807}
+{"width":1,"height":1,"stats":1,"round":4,"count":2,"gpu_ms":0.285583,"wall_ms":0.844145}
+PASS: fragment statistics exact counts and edge pixels

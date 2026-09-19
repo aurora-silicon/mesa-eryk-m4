@@ -469,6 +469,10 @@ hk_CreateQueryPool(VkDevice device, const VkQueryPoolCreateInfo *pCreateInfo,
    return VK_SUCCESS;
 }
 
+static bool
+hk_query_is_available(struct hk_device *dev, struct hk_query_pool *pool,
+                      uint32_t query);
+
 VKAPI_ATTR void VKAPI_CALL
 hk_DestroyQueryPool(VkDevice device, VkQueryPool queryPool,
                     const VkAllocationCallbacks *pAllocator)
@@ -478,6 +482,23 @@ hk_DestroyQueryPool(VkDevice device, VkQueryPool queryPool,
 
    if (!pool)
       return;
+
+   /* Read-only diagnostic after API-mandated retirement. Existing API
+    * statistics already cover draws, so do not replace or double-count them.
+    * Availability is reported separately; unavailable values are not results. */
+   if (pool->bo && pool->vk.query_type == VK_QUERY_TYPE_PIPELINE_STATISTICS &&
+       pool->vk.pipeline_statistics ==
+          VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT &&
+       debug_get_bool_option("HK_M4_COUNT_FRAGMENTS", false)) {
+      for (unsigned i = 0; i < MIN2(pool->vk.query_count, 4096); ++i) {
+         bool available = hk_query_is_available(dev, pool, i);
+         uint64_t value = hk_query_report_map(dev, pool, i)->value;
+         if (available || value)
+            fprintf(stderr, "HK_FRAGMENT_QUERY pool=%" PRIx64
+                    " query=%u covered=%" PRIu64 " available=%u\n",
+                    pool->bo->va->addr, i, value, available);
+      }
+   }
 
    uint16_t *oq_index = hk_pool_oq_index_ptr(pool);
 

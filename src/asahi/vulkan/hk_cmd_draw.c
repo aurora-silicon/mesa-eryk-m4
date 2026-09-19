@@ -80,6 +80,7 @@ DEBUG_GET_ONCE_BOOL_OPTION(hk_g17p_launch_trace, "HK_G17P_LAUNCH_TRACE", false)
 DEBUG_GET_ONCE_BOOL_OPTION(hk_m4_prefetch_audit, "HK_M4_PREFETCH_AUDIT", false)
 DEBUG_GET_ONCE_BOOL_OPTION(hk_m4_vdm_draw_barrier, "HK_M4_VDM_DRAW_BARRIER", false)
 DEBUG_GET_ONCE_BOOL_OPTION(hk_m4_profile_each_draw, "HK_M4_PROFILE_EACH_DRAW", false)
+DEBUG_GET_ONCE_BOOL_OPTION(hk_m4_count_fragments, "HK_M4_COUNT_FRAGMENTS", false)
 
 #define IS_DIRTY(bit) BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_##bit)
 
@@ -5325,9 +5326,48 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
       struct agx_draw draw = draw_;
       bool needs_idx_robust = false;
       bool g17p_native_bind_tail_emitted = false;
+      struct hk_descriptor_state *count_desc = &cmd->state.gfx.descriptors;
+      const uint64_t saved_stats = count_desc->root.draw.pipeline_stats;
+      const VkQueryPipelineStatisticFlags saved_flags =
+         count_desc->root.draw.pipeline_stats_flags;
+      struct agx_ptr counter = {0};
+      /* Use the existing qualified statistics prolog. Never replace an API
+       * query or instrument meta work. Bound diagnostic allocations per CB.
+       * These atomics materially change timing: measure coverage, not speed. */
+      if (dev->dev.chip == AGX_CHIP_G16G && !cmd->in_meta && !saved_flags &&
+          debug_get_option_hk_m4_count_fragments() &&
+          util_dynarray_num_elements(&cmd->fragment_counts,
+                                     struct hk_fragment_count) < 4096) {
+         counter = hk_pool_alloc(cmd, 32, 16);
+         if (!counter.cpu)
+            return;
+         uint64_t *words = counter.cpu;
+         words[0] = words[2] = words[3] = UINT64_C(0xc017c017c017c017);
+         words[1] = 0;
+         count_desc->root.draw.pipeline_stats = counter.gpu + 8;
+         count_desc->root.draw.pipeline_stats_flags =
+            VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT;
+         count_desc->root_dirty = true;
+      }
       struct hk_cs *cs =
          hk_flush_gfx_state(cmd, draw_id, &draw, &needs_idx_robust,
                             &g17p_native_bind_tail_emitted);
+      if (counter.cpu) {
+         count_desc->root.draw.pipeline_stats = saved_stats;
+         count_desc->root.draw.pipeline_stats_flags = saved_flags;
+         count_desc->root_dirty = true;
+         if (cs) {
+            cs->writes_memory = true;
+            struct hk_fragment_count item = {
+               .words = counter.cpu,
+               .cs = hk_g17p_vdm_low_window_enabled(&dev->dev) ?
+                  hk_g17p_vdm_alias(cmd, cs->addr) : cs->addr,
+               .width = cmd->state.gfx.render.area.extent.width,
+               .height = cmd->state.gfx.render.area.extent.height,
+            };
+            util_dynarray_append(&cmd->fragment_counts, item);
+         }
+      }
       /* If we failed to allocate a control stream, we've already lost the
        * device. Just drop the draw so we don't crash.
        */

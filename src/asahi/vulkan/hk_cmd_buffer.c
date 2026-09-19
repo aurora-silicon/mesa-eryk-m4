@@ -124,6 +124,20 @@ hk_free_resettable_cmd_buffer(struct hk_cmd_buffer *cmd)
    struct hk_cmd_pool *pool = hk_cmd_buffer_pool(cmd);
    struct hk_device *dev = hk_cmd_pool_device(pool);
 
+   /* Vulkan requires these commands to have retired before reset/destruction.
+    * Counts are cumulative, including repeated submissions; zero does not
+    * distinguish unsubmitted commands from draws with no covered fragments. */
+   unsigned draw = 0;
+   util_dynarray_foreach(&cmd->fragment_counts, struct hk_fragment_count, item) {
+      const uint64_t guard = UINT64_C(0xc017c017c017c017);
+      fprintf(stderr, "HK_FRAGMENT_COUNT cb=%p draw=%u cs=%" PRIx64
+              " width=%u height=%u covered=%" PRIu64 " guard=%s\n",
+              (void *)cmd, ++draw, item->cs, item->width, item->height,
+              item->words[1], item->words[0] == guard &&
+              item->words[2] == guard && item->words[3] == guard ? "PASS" : "FAIL");
+   }
+   util_dynarray_clear(&cmd->fragment_counts);
+
    hk_descriptor_state_fini(cmd, &cmd->state.gfx.descriptors);
    hk_descriptor_state_fini(cmd, &cmd->state.cs.descriptors);
 
@@ -149,6 +163,7 @@ hk_destroy_cmd_buffer(struct vk_command_buffer *vk_cmd_buffer)
    for (unsigned i = 0; i < 2; ++i)
       vk_free(&pool->vk.alloc, cmd->uniform_templates[i]);
    util_dynarray_fini(&cmd->large_bos);
+   util_dynarray_fini(&cmd->fragment_counts);
    vk_command_buffer_finish(&cmd->vk);
    vk_free(&pool->vk.alloc, cmd);
 }
@@ -181,6 +196,7 @@ hk_create_cmd_buffer(struct vk_command_pool *vk_pool,
    }
 
    cmd->large_bos = UTIL_DYNARRAY_INIT;
+   cmd->fragment_counts = UTIL_DYNARRAY_INIT;
 
    cmd->vk.dynamic_graphics_state.vi = &cmd->state.gfx._dynamic_vi;
    cmd->vk.dynamic_graphics_state.ms.sample_locations =

@@ -212,3 +212,22 @@ The observe helpers now preserve explicit guest exit codes and partial FPS on
 failure. A prior profiled application run exited with swapchain-killed output,
 without a recorded GPU fault; its cause is not established. The successful
 non-profiled repeat does not prove profiling caused that failure.
+
+## Covered fragment counters
+
+HK_M4_COUNT_FRAGMENTS=true reads completed fragment-only API query pools at
+destruction. With no API statistics query active, it adds a separate guarded
+counter per non-meta draw through the existing statistics prolog, capped at
+4096 records per command buffer. Counts accumulate across repeated executions
+until reset. Zero cannot distinguish unsubmitted from fully uncovered work.
+New diagnostic atomics and barriers change timing; never use that path as a
+performance baseline. Existing API queries are preserved.
+
+The current replay already has fragment statistics enabled for all draws.
+Retired API counters report 49,448,124..49,470,745 covered samples per main
+frame, plus a separate 40,000-sample query. The 2512x1552 window has 3,898,624
+pixels. Final replay pixels remain identical; the 5 ms target is not reached.
+The exact-count GL oracle passes all dimensions, edge pixels, query-buffer
+reads and split submissions with ordered GPU availability. Firmware-completion
+availability produces incomplete CPU-visible counts even with diagnostics off;
+this separately reproduced synchronization failure is being fixed next.
