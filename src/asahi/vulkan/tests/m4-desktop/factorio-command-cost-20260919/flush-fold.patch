@@ -1,0 +1,29 @@
+--- a/src/asahi/vulkan/hk_cmd_buffer.c
++++ b/src/asahi/vulkan/hk_cmd_buffer.c
+@@ -566,6 +566,9 @@
+ merge_control_streams(struct hk_cmd_buffer *cmd)
+ {
+    struct hk_cs *last = NULL;
++   const bool fold_flushes =
++      hk_cmd_buffer_device(cmd)->dev.chip == AGX_CHIP_G16G &&
++      debug_get_bool_option("HK_M4_FOLD_FLUSH_ONLY", false);
+    const bool batch_clears =
+       hk_cmd_buffer_device(cmd)->dev.chip == AGX_CHIP_G16G &&
+       debug_get_bool_option("HK_M4_BATCH_DISJOINT_CLEARS", false);
+@@ -626,8 +629,15 @@
+            * which runs through a different firmware memory agent. Zink emits
+            * many adjacent single-query resets in its reordered command buffer.
+            */
+-          (!last->ends_timestamp_reset || cs->ends_timestamp_reset) &&
++          (!last->ends_timestamp_reset || cs->ends_timestamp_reset ||
++           (fold_flushes && cs->stats.cmds == 0 && cs->stats.flushes > 0)) &&
+           (!last->ends_memory_dependency ||
++           /* A flush-only successor cannot consume writes through another
++            * VA or publish availability. Concatenate its cache operation
++            * while retaining the final firmware visibility boundary. This
++            * also folds the command-buffer statistics flush into the last
++            * query publication job. Timestamps retain their checks above. */
++           (fold_flushes && cs->stats.cmds == 0 && cs->stats.flushes > 0) ||
+            /* A clear cannot consume another disjoint clear's writes. Keep
+             * ordered CDM launches and publish both at the merged completion
+             * boundary, before any subsequent reader. Whole-plane canonical
