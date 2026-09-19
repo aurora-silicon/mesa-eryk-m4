@@ -435,6 +435,11 @@ struct hk_cs {
    /* Writable destinations known while recording meta compute dispatches. */
    struct hk_drm_attachment_set compute_attachments;
 
+   /* Whole private image-plane ranges, including compression metadata.
+    * The count must cover every dispatch before clear-only merging is safe. */
+   struct hk_drm_attachment_set clear_destinations;
+   unsigned clear_dispatches;
+
    /* Remaining state is for graphics only, ignored for compute */
    struct agx_tilebuffer_layout tib;
 
@@ -494,6 +499,12 @@ hk_cs_merge_cdm(struct hk_cs *a, const struct hk_cs *b)
    a->timestamp_only = false;
    a->ends_timestamp_reset |= b->ends_timestamp_reset;
    a->ends_memory_dependency |= b->ends_memory_dependency;
+
+   a->clear_dispatches += b->clear_dispatches;
+   if (!hk_drm_attachment_set_merge(&a->clear_destinations,
+                                     &b->clear_destinations,
+                                     HK_DRM_MAX_FRAGMENT_ATTACHMENTS))
+      a->clear_destinations.complete = false;
 
 
    a->stats.calls += b->stats.calls;
@@ -728,6 +739,7 @@ hk_cmd_buffer_get_cs_general(struct hk_cmd_buffer *cmd, struct hk_cs **ptr,
 
       list_inithead(&cs->node);
       hk_drm_attachment_set_init(&cs->compute_attachments);
+      hk_drm_attachment_set_init(&cs->clear_destinations);
       /* Only known meta destinations are collected so far. */
       cs->compute_attachments.complete = false;
 

@@ -54,6 +54,10 @@ struct hk_image_plane {
    uint64_t addr;
    struct agx_va *va;
 
+   /* Canonical VA of private, nonsparse storage. Distinct byte ranges cannot
+    * alias through separate sparse/import mappings. */
+   bool private_binding;
+
    /* For host image copy */
    void *map;
    uint32_t rem;

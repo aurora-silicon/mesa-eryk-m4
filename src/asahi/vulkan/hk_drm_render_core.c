@@ -113,6 +113,24 @@ hk_drm_attachment_set_init(struct hk_drm_attachment_set *set)
 }
 
 bool
+hk_drm_attachment_sets_disjoint(const struct hk_drm_attachment_set *a,
+                                 const struct hk_drm_attachment_set *b)
+{
+   if (!a->complete || !b->complete || !a->count || !b->count)
+      return false;
+
+   for (unsigned i = 0; i < a->count; ++i) {
+      for (unsigned j = 0; j < b->count; ++j) {
+         const struct drm_asahi_attachment *x = &a->list[i], *y = &b->list[j];
+         if (x->pointer < y->pointer + y->size &&
+             y->pointer < x->pointer + x->size)
+            return false;
+      }
+   }
+   return true;
+}
+
+bool
 hk_drm_attachment_set_add(struct hk_drm_attachment_set *set,
                           uint64_t pointer, uint64_t size)
 {

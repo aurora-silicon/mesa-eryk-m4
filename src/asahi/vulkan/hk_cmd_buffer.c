@@ -549,6 +549,18 @@ static void
 merge_control_streams(struct hk_cmd_buffer *cmd)
 {
    struct hk_cs *last = NULL;
+   const bool batch_clears =
+      hk_cmd_buffer_device(cmd)->dev.chip == AGX_CHIP_G16G &&
+      debug_get_bool_option("HK_M4_BATCH_DISJOINT_CLEARS", false);
+
+   /* Most dispatches have an incomplete destination ledger. Only after all
+    * recording is finished can we prove this stream contains clears alone
+    * and replace that ledger with their complete whole-plane footprints. */
+   list_for_each_entry(struct hk_cs, cs, &cmd->control_streams, node) {
+      if (batch_clears && cs->type == HK_CS_CDM && cs->clear_dispatches &&
+          cs->clear_dispatches == cs->stats.cmds)
+         cs->compute_attachments = cs->clear_destinations;
+   }
 
    list_for_each_entry_safe(struct hk_cs, cs, &cmd->control_streams, node) {
       /* A timestamp-only command immediately before a render measures the
@@ -582,7 +594,16 @@ merge_control_streams(struct hk_cmd_buffer *cmd)
            * many adjacent single-query resets in its reordered command buffer.
            */
           (!last->ends_timestamp_reset || cs->ends_timestamp_reset) &&
-          !last->ends_memory_dependency &&
+          (!last->ends_memory_dependency ||
+           /* A clear cannot consume another disjoint clear's writes. Keep
+            * ordered CDM launches and publish both at the merged completion
+            * boundary, before any subsequent reader. Whole-plane canonical
+            * ranges exclude aliases, imports and sparse mappings. */
+           (batch_clears && last->clear_dispatches == last->stats.cmds &&
+            cs->clear_dispatches == cs->stats.cmds &&
+            !last->ends_timestamp_reset && !cs->ends_timestamp_reset &&
+            hk_drm_attachment_sets_disjoint(&last->clear_destinations,
+                                             &cs->clear_destinations))) &&
           hk_drm_attachment_set_merge(&last->compute_attachments,
                                        &cs->compute_attachments,
                                        hk_cmd_buffer_device(cmd)->dev.params.max_attachments)) {

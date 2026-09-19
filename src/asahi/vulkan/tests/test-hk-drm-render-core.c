@@ -26,7 +26,9 @@ test_uapi_extension_layout(void)
    static_assert(offsetof(struct drm_asahi_cmd_render,
                           bg_partial_rsrc_spec_hi) == 252,
                  "append-only render command ABI");
-   static_assert(sizeof(struct drm_asahi_cmd_render) == 256,
+   static_assert(offsetof(struct drm_asahi_cmd_render, ts_frag_end_copies) == 256,
+                 "append-only timestamp copy ABI");
+   static_assert(sizeof(struct drm_asahi_cmd_render) == 320,
                  "extended render command ABI");
 }
 
@@ -256,6 +258,27 @@ test_hardware_command_spans_skip_attachment_commands(void)
 int
 main(void)
 {
+   /* Clear-only merging must reject every overlap and unknown footprint,
+    * including a collision in a later member of an already merged batch. */
+   struct hk_drm_attachment_set a, b;
+   hk_drm_attachment_set_init(&a);
+   hk_drm_attachment_set_init(&b);
+   assert(!hk_drm_attachment_sets_disjoint(&a, &b));
+   assert(hk_drm_attachment_set_add(&a, 0x1000, 0x1000));
+   assert(hk_drm_attachment_set_add(&b, 0x2000, 0x1000));
+   assert(hk_drm_attachment_sets_disjoint(&a, &b));
+   assert(hk_drm_attachment_sets_disjoint(&b, &a));
+   assert(hk_drm_attachment_set_add(&a, 0x8000, 0x1000));
+   assert(hk_drm_attachment_sets_disjoint(&a, &b));
+   assert(hk_drm_attachment_set_add(&b, 0x8fff, 1));
+   assert(!hk_drm_attachment_sets_disjoint(&a, &b));
+   assert(!hk_drm_attachment_sets_disjoint(&b, &a));
+   hk_drm_attachment_set_init(&b);
+   assert(hk_drm_attachment_set_add(&b, 0x9000, 0x1000));
+   assert(hk_drm_attachment_sets_disjoint(&a, &b));
+   b.complete = false;
+   assert(!hk_drm_attachment_sets_disjoint(&a, &b));
+
    test_uapi_extension_layout();
    test_exact_g17p_specs();
    test_field_order_and_flag_clear();

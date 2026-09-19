@@ -97,6 +97,11 @@ hk_clear_image(struct hk_cmd_buffer *cmd, struct hk_image *image,
          assert((layout->layer_stride_B % 16) == 0 && "aligned");
          uint32_t layer_stride_uint4 = layout->layer_stride_B / 16;
 
+         struct hk_cs *clear_cs = hk_cmd_buffer_get_cs(cmd, true);
+         if (!clear_cs)
+            return;
+         unsigned before = clear_cs->stats.cmds;
+
          if (ail_is_level_logically_compressed(layout, level)) {
             assert((layout->compression_layer_stride_B % 16) == 0 && "aligned");
             uint32_t meta_layer_stride_tl =
@@ -126,6 +131,13 @@ hk_clear_image(struct hk_cmd_buffer *cmd, struct hk_image *image,
                               AGX_BARRIER_ALL, address, layer_stride_uint4,
                               c[0], c[1], c[2], c[3]);
          }
+
+         clear_cs->clear_dispatches += clear_cs->stats.cmds - before;
+         if (!image->planes[plane].private_binding ||
+             !hk_drm_attachment_set_add(&clear_cs->clear_destinations,
+                                         image->planes[plane].addr,
+                                         layout->size_B))
+            clear_cs->clear_destinations.complete = false;
       }
    }
 }

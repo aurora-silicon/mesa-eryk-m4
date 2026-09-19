@@ -1515,6 +1515,8 @@ hk_image_plane_bind(struct hk_device *dev, struct hk_image_plane *plane,
       plane->addr = mem->bo->va->addr + *offset_B;
       plane->map = agx_bo_map(mem->bo) + *offset_B;
       plane->rem = mem->bo->size - (*offset_B);
+      plane->private_binding =
+         !(mem->bo->flags & (AGX_BO_SHARED | AGX_BO_SHAREABLE));
    }
 
    *offset_B += plane->layout.size_B;
