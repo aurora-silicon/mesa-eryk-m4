@@ -12,6 +12,7 @@
  * Mode 7: mode 6 with a host reset instead of a GPU reset.
  * Mode 8: host reset and timestamps BEFORE each fill, checking compute starts.
  * Mode 9: mode 6 with GPU reset in a completed separate submission.
+ * Mode 11: GPU reset in a separate command buffer within the same submit.
  * Mode 10: mode 9 with timestamp writes also completed before copies.
  * cc -O2 -Wall -Wextra vulkan-query-boundary-probe.c -o vulkan-query-boundary-probe
  * -lvulkan Run only inside gpu-experiment.py on hardware. No window system
@@ -42,7 +43,7 @@ static uint32_t memtype(uint32_t bits, VkMemoryPropertyFlags flags) {
 int main(int argc, char **argv) {
   const unsigned queue_count = 1;
   int mode = argc > 1 ? atoi(argv[1]) : 0;
-  if (mode < 0 || mode > 10)
+  if (mode < 0 || mode > 12)
     return 2;
   unsigned queries = mode == 3 ? 64 : mode == 4 ? 12 : 4;
   VkInstance instance;
@@ -124,7 +125,7 @@ int main(int argc, char **argv) {
                                     VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
                                 .queueFamilyIndex = family};
   CHECK(vkCreateCommandPool(dev, &pi, NULL, &pool));
-  VkCommandBuffer cmds[1];
+  VkCommandBuffer cmds[1], reset_cb = VK_NULL_HANDLE;
   VkCommandBufferAllocateInfo ca = {
       .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
       .commandPool = pool,
@@ -169,6 +170,17 @@ int main(int argc, char **argv) {
   if (mode == 7 || mode == 8) vkResetQueryPool(dev, query, 0, queries);
   else vkCmdResetQueryPool(cmds[0], query, 0, queries);
 
+  if (mode == 11 || mode == 12) {
+    CHECK(vkEndCommandBuffer(cmds[0]));
+    reset_cb = cmds[0];
+    if (mode == 12) {
+      VkSubmitInfo reset_submit = {.sType=VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .commandBufferCount=1, .pCommandBuffers=&reset_cb};
+      CHECK(vkQueueSubmit(queue[0],1,&reset_submit,VK_NULL_HANDLE));
+    }
+    CHECK(vkAllocateCommandBuffers(dev, &ca, cmds));
+    CHECK(vkBeginCommandBuffer(cmds[0], &begin));
+  }
   if (mode == 9 || mode == 10) {
     CHECK(vkEndCommandBuffer(cmds[0]));
     VkSubmitInfo boundary = {.sType=VK_STRUCTURE_TYPE_SUBMIT_INFO,
@@ -209,7 +221,7 @@ int main(int argc, char **argv) {
     for (unsigned i = 1; i < queries; i++)
       vkCmdWriteTimestamp(cmds[0], VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, query, i);
   }
-  if (mode == 5 || mode == 6 || mode == 7 || mode == 8 || mode == 9 || mode == 10) {
+  if (mode == 5 || mode == 6 || mode == 7 || mode == 8 || mode == 9 || mode == 10 || mode == 11 || mode == 12) {
     for (unsigned i = 0; i < queries; i++) {
       if (mode == 8) {
         vkCmdWriteTimestamp(cmds[0], VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, query, i);
@@ -264,13 +276,14 @@ int main(int argc, char **argv) {
   VkFence f;
   VkFenceCreateInfo fc = {.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
   CHECK(vkCreateFence(dev, &fc, NULL, &f));
+  VkCommandBuffer submit_cbs[2] = {reset_cb, cmds[0]};
   VkSubmitInfo si = {.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-                     .commandBufferCount = 1,
-                     .pCommandBuffers = cmds};
+                     .commandBufferCount = mode == 11 ? 2 : 1,
+                     .pCommandBuffers = mode == 11 ? submit_cbs : cmds};
   CHECK(vkQueueSubmit(queue[0], 1, &si, f));
   CHECK(vkWaitForFences(dev, 1, &f, VK_TRUE, 5000000000ull));
   uint64_t *v = (void *)data;
-  if (mode == 6 || mode == 7 || mode == 8 || mode == 9 || mode == 10) {
+  if (mode == 6 || mode == 7 || mode == 8 || mode == 9 || mode == 10 || mode == 11 || mode == 12) {
     for (unsigned i = 0; i < queries; i++) {
       uint64_t cpu[2] = {0,0};
       VkResult result = vkGetQueryPoolResults(dev, query, i, 1, sizeof(cpu), cpu, 16,
@@ -284,7 +297,7 @@ int main(int argc, char **argv) {
   for (unsigned i = 0; i < (mode == 2 ? 1 : queries); i++) {
     printf("query%u value=%llx available=%llu\n", i,
            (unsigned long long)v[2 * i], (unsigned long long)v[2 * i + 1]);
-    if (mode == 4 || mode == 5 || mode == 6 || mode == 7 || mode == 8 || mode == 9 || mode == 10) {
+    if (mode == 4 || mode == 5 || mode == 6 || mode == 7 || mode == 8 || mode == 9 || mode == 10 || mode == 11 || mode == 12) {
       if (!v[2*i+1] || !v[2*i] || (i && v[2*i] < v[2*(i-1)])) return 1;
       uint64_t cpu;
       CHECK(vkGetQueryPoolResults(dev, query, i, 1, sizeof(cpu), &cpu, 8, VK_QUERY_RESULT_64_BIT));
@@ -298,7 +311,7 @@ int main(int argc, char **argv) {
     } else if (i >= write && v[2 * i + 1] != 0)
       return 1;
   }
-  if (mode == 5 || mode == 6 || mode == 7 || mode == 8 || mode == 9 || mode == 10) {
+  if (mode == 5 || mode == 6 || mode == 7 || mode == 8 || mode == 9 || mode == 10 || mode == 11 || mode == 12) {
     for (unsigned i = 0; i < queries; i++)
       for (unsigned j = 0; j < 16; j++)
         if (data[256 + i * 16 + j] != 0x12345670u + i) return 1;

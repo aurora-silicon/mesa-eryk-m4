@@ -26,3 +26,12 @@ Do not run WAIT modes 3 or 5 until safe mode 6 passes.
 Discard preliminary controls 050116 (accidental host reset) and 050140
 (individual command reset without pool flag). Their successors correct those
 probe errors; they are not supporting qualification evidence.
+
+The candidate kernel dependency on flushed user stamps did NOT fix mode 6
+(20260919T050529480923Z). It is rejected and the original module/initramfs
+restored in 051040806334Z. Two command buffers in one submission also fail
+(mode 11, 050739615955Z), while two submissions without a host wait pass
+(mode 12, 050809128406Z). Thus separate CPU waiting and recording-state reset
+are unnecessary; handling within a submission remains suspect. This is not
+a proved cache-flush diagnosis. The candidate kernel diff is retained as
+workspace build/compute-visible-dependency-rejected.patch. No WAIT retests.
