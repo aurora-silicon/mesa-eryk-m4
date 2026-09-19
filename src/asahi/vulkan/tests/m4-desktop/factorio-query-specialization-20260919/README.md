@@ -30,3 +30,10 @@ The unchanged 60-second live menu 20260919T052541131310Z completes at
 40.925 FPS (40.24--41.48 tail), peak 89.75 C.
 Different animated scenes prevent a paired speedup claim. Sustained 60 FPS
 remains unmet; query specialization stays optional pending further work.
+
+Combined with branch preservation, integer-only preambles and descriptor
+prefetch, the original replay also matches exactly (052724946075Z). The live
+menu 052829801140Z averages 36.495 FPS, range 17.10--45.07, peak 86.75 C.
+This is not a qualified performance improvement; the options stay opt-in.
+The desktop separately has descriptor prefetch enabled after a guarded
+autologin restart (052032630230Z), with unchanged display settings.
