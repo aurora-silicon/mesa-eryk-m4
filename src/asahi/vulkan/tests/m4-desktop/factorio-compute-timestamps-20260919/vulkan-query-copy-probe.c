@@ -10,6 +10,7 @@
  * results and preserved fill data after the closed compute tail (WAIT copy).
  * Mode 6: same sequence without WAIT; safely diagnose unavailable results.
  * Mode 7: mode 6 with a host reset instead of a GPU reset.
+ * Mode 8: host reset and timestamps BEFORE each fill, checking compute starts.
  * cc -O2 -Wall -Wextra vulkan-query-copy-probe.c -o vulkan-query-copy-probe
  * -lvulkan Run only inside gpu-experiment.py on hardware. No window system
  * required.
@@ -39,7 +40,7 @@ static uint32_t memtype(uint32_t bits, VkMemoryPropertyFlags flags) {
 int main(int argc, char **argv) {
   const unsigned queue_count = 1;
   int mode = argc > 1 ? atoi(argv[1]) : 0;
-  if (mode < 0 || mode > 7)
+  if (mode < 0 || mode > 8)
     return 2;
   unsigned queries = mode == 3 ? 64 : mode == 4 ? 12 : 4;
   VkInstance instance;
@@ -81,7 +82,7 @@ int main(int argc, char **argv) {
       .dynamicRendering = mode == 4};
   VkPhysicalDeviceHostQueryResetFeatures hq = {
     .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES,
-    .hostQueryReset = mode == 7};
+    .hostQueryReset = mode >= 7};
   df.pNext = &hq;
   tf.pNext = &df;
   VkPhysicalDeviceFeatures features = {.pipelineStatisticsQuery = mode == 2};
@@ -163,7 +164,7 @@ int main(int argc, char **argv) {
   VkCommandBufferBeginInfo begin = {
       .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
   CHECK(vkBeginCommandBuffer(cmds[0], &begin));
-  if (mode == 7) vkResetQueryPool(dev, query, 0, queries);
+  if (mode >= 7) vkResetQueryPool(dev, query, 0, queries);
   else vkCmdResetQueryPool(cmds[0], query, 0, queries);
   if (mode == 3) {
     for (unsigned i = 0; i < queries; i++)
@@ -196,15 +197,20 @@ int main(int argc, char **argv) {
     for (unsigned i = 1; i < queries; i++)
       vkCmdWriteTimestamp(cmds[0], VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, query, i);
   }
-  if (mode == 5 || mode == 6 || mode == 7) {
+  if (mode == 5 || mode == 6 || mode == 7 || mode == 8) {
     for (unsigned i = 0; i < queries; i++) {
+      if (mode == 8) {
+        vkCmdWriteTimestamp(cmds[0], VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, query, i);
+        vkCmdPipelineBarrier(cmds[0], VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+          VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, NULL, 0, NULL, 0, NULL);
+      }
       vkCmdFillBuffer(cmds[0], buffer, 1024 + i * 64, 64, 0x12345670u + i);
       VkMemoryBarrier mb = {.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
         .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
         .dstAccessMask = VK_ACCESS_MEMORY_READ_BIT};
       vkCmdPipelineBarrier(cmds[0], VK_PIPELINE_STAGE_TRANSFER_BIT,
         VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 1, &mb, 0, NULL, 0, NULL);
-      vkCmdWriteTimestamp(cmds[0], VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, query, i);
+      if (mode != 8) vkCmdWriteTimestamp(cmds[0], VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, query, i);
     }
   }
   unsigned write = mode == 1;
@@ -242,7 +248,7 @@ int main(int argc, char **argv) {
   CHECK(vkQueueSubmit(queue[0], 1, &si, f));
   CHECK(vkWaitForFences(dev, 1, &f, VK_TRUE, 5000000000ull));
   uint64_t *v = (void *)data;
-  if (mode == 6 || mode == 7) {
+  if (mode == 6 || mode == 7 || mode == 8) {
     for (unsigned i = 0; i < queries; i++) {
       uint64_t cpu[2] = {0,0};
       VkResult result = vkGetQueryPoolResults(dev, query, i, 1, sizeof(cpu), cpu, 16,
@@ -256,7 +262,7 @@ int main(int argc, char **argv) {
   for (unsigned i = 0; i < (mode == 2 ? 1 : queries); i++) {
     printf("query%u value=%llx available=%llu\n", i,
            (unsigned long long)v[2 * i], (unsigned long long)v[2 * i + 1]);
-    if (mode == 4 || mode == 5 || mode == 6 || mode == 7) {
+    if (mode == 4 || mode == 5 || mode == 6 || mode == 7 || mode == 8) {
       if (!v[2*i+1] || !v[2*i] || (i && v[2*i] < v[2*(i-1)])) return 1;
       uint64_t cpu;
       CHECK(vkGetQueryPoolResults(dev, query, i, 1, sizeof(cpu), &cpu, 8, VK_QUERY_RESULT_64_BIT));
@@ -270,7 +276,7 @@ int main(int argc, char **argv) {
     } else if (i >= write && v[2 * i + 1] != 0)
       return 1;
   }
-  if (mode == 5 || mode == 6 || mode == 7) {
+  if (mode == 5 || mode == 6 || mode == 7 || mode == 8) {
     for (unsigned i = 0; i < queries; i++)
       for (unsigned j = 0; j < 16; j++)
         if (data[256 + i * 16 + j] != 0x12345670u + i) return 1;

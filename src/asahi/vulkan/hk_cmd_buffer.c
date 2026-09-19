@@ -553,13 +553,20 @@ merge_control_streams(struct hk_cmd_buffer *cmd)
       /* A timestamp-only command immediately before a render measures the
        * same ordered boundary as that render's tiling-start timestamp. The
        * native runtime completes all preceding commands before starting TA.
+       * M4 can optionally use a following compute's start in the same way.
        * Preserve resets and dependency boundaries, and never discard work
-       * that was subsequently appended to the no-op stream. */
+       * that was subsequently appended to the no-op stream. A reset successor
+       * must not overwrite a query result just published at its start. */
       if (agx_native_graphics(&hk_cmd_buffer_device(cmd)->dev) && last &&
           last->timestamp_only && last->stats.cmds == 1 &&
           last->timestamp.end.handle && !last->timestamp.start.handle &&
           !last->ends_timestamp_reset && !last->ends_memory_dependency &&
-          cs->type == HK_CS_VDM && !cs->timestamp.start.handle) {
+          !cs->timestamp.start.handle &&
+          (cs->type == HK_CS_VDM ||
+           (hk_cmd_buffer_device(cmd)->dev.chip == AGX_CHIP_G16G &&
+            debug_get_bool_option("HK_M4_COMPUTE_START_TIMESTAMP", false) &&
+            cs->type == HK_CS_CDM && cs->stats.cmds > 0 &&
+            !cs->ends_timestamp_reset))) {
          cs->timestamp.start = last->timestamp.end;
          list_del(&last->node);
          hk_cs_destroy(last);

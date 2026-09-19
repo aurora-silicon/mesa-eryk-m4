@@ -164,6 +164,8 @@ asahi_fill_cdm_command(struct hk_device *dev, struct hk_cs *cs,
       .cdm_ctrl_stream_base = cs->addr,
       .cdm_ctrl_stream_end = cs->addr + len,
 
+      .ts.start.handle = cs->timestamp.start.handle,
+      .ts.start.offset = cs->timestamp.start.offset_B,
       .ts.end.handle = cs->timestamp.end.handle,
       .ts.end.offset = cs->timestamp.end.offset_B,
    };
