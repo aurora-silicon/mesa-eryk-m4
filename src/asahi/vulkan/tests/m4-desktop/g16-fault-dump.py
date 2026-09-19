@@ -134,9 +134,12 @@ def scheduler(raw, report):
                 raise ValueError('queue/ring pointer mismatch')
             entry['ring_cursors_00_30_40'] = [u32(ring, o) for o in (0, 0x30, 0x40)]
         result['queues'][stage] = entry
-    if 'client-notifications' in records:
-        client = blob('client-notifications', 0x1000)
-        result['client_notifications'] = {
+    for name, key in [('client-notifications', 'client_notifications'),
+                      ('render-client-notifications', 'render_client_notifications')]:
+        if name not in records:
+            continue
+        client = blob(name, 0x1000)
+        result[key] = {
             stage: dict(submitted=u64(client, 0x600 + i*8),
                         firmware_stamp=hex(u32(client, 0x620 + i*16)),
                         published_stamp=hex(u32(client, 0x628 + i*16)),
