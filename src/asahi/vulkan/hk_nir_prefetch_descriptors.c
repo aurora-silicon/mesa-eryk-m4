@@ -107,11 +107,18 @@ hk_nir_prefetch_descriptors(nir_shader *nir, unsigned set_base,
             uint32_t offset, size;
             if (!descriptor_load(nir_instr_as_intrinsic(instr), set_base,
                                  set_count, &set, &offset, &size, false) ||
-                ((offset | size) & 3))
+                offset + size > UINT32_MAX - 3)
                continue;
             struct hk_descriptor_prefetch *span = &spans[set];
-            uint32_t first = span->size_B ? MIN2(span->offset_B, offset) : offset;
-            uint32_t last = MAX2(span->offset_B + span->size_B, offset + size);
+            /* The native loader transfers words, but descriptor fields also
+             * include scalar halfwords (notably sampler indices). Fetch the
+             * containing words and retain the original halfword offset below.
+             * Descriptor storage is word-aligned; command encoding still
+             * checks the complete expanded span against the bound set size. */
+            uint32_t begin = offset & ~3u;
+            uint32_t end = align(offset + size, 4);
+            uint32_t first = span->size_B ? MIN2(span->offset_B, begin) : begin;
+            uint32_t last = MAX2(span->offset_B + span->size_B, end);
             span->offset_B = first;
             span->size_B = last - first;
          }
@@ -144,7 +151,7 @@ hk_nir_prefetch_descriptors(nir_shader *nir, unsigned set_base,
             unsigned set;
             uint32_t offset, size;
             if (!descriptor_load(intr, set_base, set_count, &set, &offset, &size, false) ||
-                ((offset | size) & 3) || !spans[set].size_B)
+                offset + size > UINT32_MAX - 3 || !spans[set].size_B)
                continue;
             nir_builder b = nir_builder_at(nir_before_instr(instr));
             unsigned half = spans[set].uniform_half +

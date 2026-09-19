@@ -1,0 +1,541 @@
+{
+  "scope": "Whole-pass timings grouped by observed shader sets; unpaired CS lifetimes are unions",
+  "exact_matches_before_tail": 73,
+  "address_spaces": [
+    20
+  ],
+  "groups": [
+    {
+      "asid": 20,
+      "width": 2512,
+      "height": 1552,
+      "shaders": [
+        "0b2b1787",
+        "3fba7151",
+        "e84c97d8"
+      ],
+      "passes": 5,
+      "ta_ns": 439706,
+      "gap_ns": 456249,
+      "fs_ns": 26375581,
+      "max_fs_ns": 5508791,
+      "control_streams": 5,
+      "attribution": "recorded submission",
+      "mean_fs_ms": 5.2751162
+    },
+    {
+      "asid": 20,
+      "width": 2512,
+      "height": 1552,
+      "shaders": [
+        "c23b3f45"
+      ],
+      "passes": 10,
+      "ta_ns": 89372,
+      "gap_ns": 1196871,
+      "fs_ns": 15533621,
+      "max_fs_ns": 1797500,
+      "control_streams": 10,
+      "attribution": "recorded submission",
+      "mean_fs_ms": 1.5533621000000002
+    },
+    {
+      "asid": 20,
+      "width": 2512,
+      "height": 1552,
+      "shaders": [
+        "537e81e5"
+      ],
+      "passes": 15,
+      "ta_ns": 365828,
+      "gap_ns": 1365869,
+      "fs_ns": 10955371,
+      "max_fs_ns": 1359458,
+      "control_streams": 15,
+      "attribution": "recorded submission",
+      "mean_fs_ms": 0.7303580666666667
+    },
+    {
+      "asid": 20,
+      "width": 2512,
+      "height": 1552,
+      "shaders": [
+        "5975e5a8"
+      ],
+      "passes": 5,
+      "ta_ns": 44916,
+      "gap_ns": 499832,
+      "fs_ns": 10071833,
+      "max_fs_ns": 2136875,
+      "control_streams": 5,
+      "attribution": "recorded submission",
+      "mean_fs_ms": 2.0143666000000002
+    },
+    {
+      "asid": 20,
+      "width": 8192,
+      "height": 2560,
+      "shaders": [
+        "52dce1e5"
+      ],
+      "passes": 1,
+      "ta_ns": 18208,
+      "gap_ns": 82708,
+      "fs_ns": 9253208,
+      "max_fs_ns": 9253208,
+      "control_streams": 1,
+      "attribution": "recorded submission",
+      "mean_fs_ms": 9.253208
+    },
+    {
+      "asid": 20,
+      "width": 2512,
+      "height": 1552,
+      "shaders": [
+        "0b2b1787",
+        "1bd518b5",
+        "95e9887e"
+      ],
+      "passes": 5,
+      "ta_ns": 169289,
+      "gap_ns": 421081,
+      "fs_ns": 6521748,
+      "max_fs_ns": 1360166,
+      "control_streams": 5,
+      "attribution": "recorded submission",
+      "mean_fs_ms": 1.3043496
+    },
+    {
+      "asid": 20,
+      "width": 4096,
+      "height": 1280,
+      "shaders": [
+        "52dce1e5"
+      ],
+      "passes": 1,
+      "ta_ns": 8791,
+      "gap_ns": 94333,
+      "fs_ns": 2522708,
+      "max_fs_ns": 2522708,
+      "control_streams": 1,
+      "attribution": "recorded submission",
+      "mean_fs_ms": 2.522708
+    },
+    {
+      "asid": 20,
+      "width": 2512,
+      "height": 1552,
+      "shaders": [
+        "52dce1e5"
+      ],
+      "passes": 1,
+      "ta_ns": 7416,
+      "gap_ns": 90333,
+      "fs_ns": 1393125,
+      "max_fs_ns": 1393125,
+      "control_streams": 1,
+      "attribution": "recorded submission",
+      "mean_fs_ms": 1.393125
+    },
+    {
+      "asid": 20,
+      "width": 1256,
+      "height": 776,
+      "shaders": [
+        "0b2b1787"
+      ],
+      "passes": 5,
+      "ta_ns": 142581,
+      "gap_ns": 620666,
+      "fs_ns": 808498,
+      "max_fs_ns": 168666,
+      "control_streams": 5,
+      "attribution": "recorded submission",
+      "mean_fs_ms": 0.1616996
+    },
+    {
+      "asid": 20,
+      "width": 2048,
+      "height": 640,
+      "shaders": [
+        "52dce1e5"
+      ],
+      "passes": 1,
+      "ta_ns": 5791,
+      "gap_ns": 99041,
+      "fs_ns": 664666,
+      "max_fs_ns": 664666,
+      "control_streams": 1,
+      "attribution": "recorded submission",
+      "mean_fs_ms": 0.664666
+    },
+    {
+      "asid": 20,
+      "width": 2512,
+      "height": 1552,
+      "shaders": [
+        "36b2e6e3"
+      ],
+      "passes": 5,
+      "ta_ns": 97123,
+      "gap_ns": 493623,
+      "fs_ns": 660998,
+      "max_fs_ns": 139583,
+      "control_streams": 5,
+      "attribution": "recorded submission",
+      "mean_fs_ms": 0.1321996
+    },
+    {
+      "asid": 20,
+      "width": 1024,
+      "height": 320,
+      "shaders": [
+        "52dce1e5"
+      ],
+      "passes": 1,
+      "ta_ns": 5291,
+      "gap_ns": 92458,
+      "fs_ns": 133291,
+      "max_fs_ns": 133291,
+      "control_streams": 1,
+      "attribution": "recorded submission",
+      "mean_fs_ms": 0.133291
+    },
+    {
+      "asid": 20,
+      "width": 4096,
+      "height": 176,
+      "shaders": [
+        "031b7022"
+      ],
+      "passes": 1,
+      "ta_ns": 5041,
+      "gap_ns": 98250,
+      "fs_ns": 100416,
+      "max_fs_ns": 100416,
+      "control_streams": 1,
+      "attribution": "recorded submission",
+      "mean_fs_ms": 0.100416
+    },
+    {
+      "asid": 20,
+      "width": 300,
+      "height": 300,
+      "shaders": [
+        "031b7022"
+      ],
+      "passes": 5,
+      "ta_ns": 24123,
+      "gap_ns": 465457,
+      "fs_ns": 82248,
+      "max_fs_ns": 17416,
+      "control_streams": 4,
+      "attribution": "recorded submission",
+      "mean_fs_ms": 0.016449599999999998
+    },
+    {
+      "asid": 20,
+      "width": 512,
+      "height": 160,
+      "shaders": [
+        "52dce1e5"
+      ],
+      "passes": 1,
+      "ta_ns": 4708,
+      "gap_ns": 89958,
+      "fs_ns": 36041,
+      "max_fs_ns": 36041,
+      "control_streams": 1,
+      "attribution": "recorded submission",
+      "mean_fs_ms": 0.036041
+    },
+    {
+      "asid": 20,
+      "width": 300,
+      "height": 600,
+      "shaders": [
+        "031b7022"
+      ],
+      "passes": 1,
+      "ta_ns": 4750,
+      "gap_ns": 96916,
+      "fs_ns": 25375,
+      "max_fs_ns": 25375,
+      "control_streams": 1,
+      "attribution": "recorded submission",
+      "mean_fs_ms": 0.025375
+    },
+    {
+      "asid": 20,
+      "width": 256,
+      "height": 80,
+      "shaders": [
+        "52dce1e5"
+      ],
+      "passes": 1,
+      "ta_ns": 4750,
+      "gap_ns": 93583,
+      "fs_ns": 10916,
+      "max_fs_ns": 10916,
+      "control_streams": 1,
+      "attribution": "recorded submission",
+      "mean_fs_ms": 0.010916
+    },
+    {
+      "asid": 20,
+      "width": 128,
+      "height": 256,
+      "shaders": [
+        "031b7022"
+      ],
+      "passes": 1,
+      "ta_ns": 7375,
+      "gap_ns": 101666,
+      "fs_ns": 10833,
+      "max_fs_ns": 10833,
+      "control_streams": 1,
+      "attribution": "recorded submission",
+      "mean_fs_ms": 0.010833
+    },
+    {
+      "asid": 20,
+      "width": 128,
+      "height": 40,
+      "shaders": [
+        "52dce1e5"
+      ],
+      "passes": 1,
+      "ta_ns": 4791,
+      "gap_ns": 93125,
+      "fs_ns": 8166,
+      "max_fs_ns": 8166,
+      "control_streams": 1,
+      "attribution": "recorded submission",
+      "mean_fs_ms": 0.008166
+    },
+    {
+      "asid": 20,
+      "width": 32,
+      "height": 10,
+      "shaders": [
+        "52dce1e5"
+      ],
+      "passes": 1,
+      "ta_ns": 4625,
+      "gap_ns": 91833,
+      "fs_ns": 7541,
+      "max_fs_ns": 7541,
+      "control_streams": 1,
+      "attribution": "recorded submission",
+      "mean_fs_ms": 0.007541
+    },
+    {
+      "asid": 20,
+      "width": 64,
+      "height": 20,
+      "shaders": [
+        "52dce1e5"
+      ],
+      "passes": 1,
+      "ta_ns": 4708,
+      "gap_ns": 93458,
+      "fs_ns": 7458,
+      "max_fs_ns": 7458,
+      "control_streams": 1,
+      "attribution": "recorded submission",
+      "mean_fs_ms": 0.007458
+    },
+    {
+      "asid": 20,
+      "width": 2,
+      "height": 1,
+      "shaders": [
+        "52dce1e5"
+      ],
+      "passes": 1,
+      "ta_ns": 4916,
+      "gap_ns": 92708,
+      "fs_ns": 7375,
+      "max_fs_ns": 7375,
+      "control_streams": 1,
+      "attribution": "recorded submission",
+      "mean_fs_ms": 0.007375
+    },
+    {
+      "asid": 20,
+      "width": 16,
+      "height": 5,
+      "shaders": [
+        "52dce1e5"
+      ],
+      "passes": 1,
+      "ta_ns": 4708,
+      "gap_ns": 98291,
+      "fs_ns": 7250,
+      "max_fs_ns": 7250,
+      "control_streams": 1,
+      "attribution": "recorded submission",
+      "mean_fs_ms": 0.00725
+    },
+    {
+      "asid": 20,
+      "width": 8,
+      "height": 2,
+      "shaders": [
+        "52dce1e5"
+      ],
+      "passes": 1,
+      "ta_ns": 4916,
+      "gap_ns": 91916,
+      "fs_ns": 7250,
+      "max_fs_ns": 7250,
+      "control_streams": 1,
+      "attribution": "recorded submission",
+      "mean_fs_ms": 0.00725
+    },
+    {
+      "asid": 20,
+      "width": 4,
+      "height": 1,
+      "shaders": [
+        "52dce1e5"
+      ],
+      "passes": 1,
+      "ta_ns": 4791,
+      "gap_ns": 90125,
+      "fs_ns": 7250,
+      "max_fs_ns": 7250,
+      "control_streams": 1,
+      "attribution": "recorded submission",
+      "mean_fs_ms": 0.00725
+    },
+    {
+      "asid": 20,
+      "width": 1,
+      "height": 1,
+      "shaders": [
+        "52dce1e5"
+      ],
+      "passes": 1,
+      "ta_ns": 5000,
+      "gap_ns": 90666,
+      "fs_ns": 7208,
+      "max_fs_ns": 7208,
+      "control_streams": 1,
+      "attribution": "recorded submission",
+      "mean_fs_ms": 0.007208
+    }
+  ],
+  "shaders": {
+    "031b7022": {
+      "width": 300,
+      "height": 600,
+      "direct": 1,
+      "instrs": 122,
+      "regs": 40,
+      "scratch": 0,
+      "loops": 0,
+      "preamble": 0
+    },
+    "52dce1e5": {
+      "width": 1,
+      "height": 1,
+      "direct": 1,
+      "instrs": 131,
+      "regs": 40,
+      "scratch": 0,
+      "loops": 0,
+      "preamble": 0
+    },
+    "537e81e5": {
+      "width": 2512,
+      "height": 1552,
+      "direct": 1,
+      "instrs": 154,
+      "regs": 40,
+      "scratch": 0,
+      "loops": 0,
+      "preamble": 1
+    },
+    "36b2e6e3": {
+      "width": 2512,
+      "height": 1552,
+      "direct": 1,
+      "instrs": 29,
+      "regs": 24,
+      "scratch": 0,
+      "loops": 0,
+      "preamble": 1
+    },
+    "0b2b1787": {
+      "width": 2512,
+      "height": 1552,
+      "direct": 1,
+      "instrs": 106,
+      "regs": 32,
+      "scratch": 0,
+      "loops": 0,
+      "preamble": 1
+    },
+    "e84c97d8": {
+      "width": 2512,
+      "height": 1552,
+      "direct": 1,
+      "instrs": 23,
+      "regs": 24,
+      "scratch": 0,
+      "loops": 0,
+      "preamble": 1
+    },
+    "3fba7151": {
+      "width": 2512,
+      "height": 1552,
+      "direct": 1,
+      "instrs": 103,
+      "regs": 48,
+      "scratch": 0,
+      "loops": 0,
+      "preamble": 84
+    },
+    "c23b3f45": {
+      "width": 2512,
+      "height": 1552,
+      "direct": 1,
+      "instrs": 22,
+      "regs": 24,
+      "scratch": 0,
+      "loops": 0,
+      "preamble": 1
+    },
+    "5975e5a8": {
+      "width": 2512,
+      "height": 1552,
+      "direct": 1,
+      "instrs": 72,
+      "regs": 56,
+      "scratch": 0,
+      "loops": 0,
+      "preamble": 1
+    },
+    "1bd518b5": {
+      "width": 2512,
+      "height": 1552,
+      "direct": 1,
+      "instrs": 25,
+      "regs": 17,
+      "scratch": 0,
+      "loops": 0,
+      "preamble": 0
+    },
+    "95e9887e": {
+      "width": 2512,
+      "height": 1552,
+      "direct": 1,
+      "instrs": 107,
+      "regs": 88,
+      "scratch": 0,
+      "loops": 0,
+      "preamble": 27
+    }
+  }
+}

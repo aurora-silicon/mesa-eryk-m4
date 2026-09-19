@@ -1,0 +1,13 @@
+{
+  "reference": "_provenance/experiments/20260919T072903948794Z-factorio-architecture-current-replay/remote/vulkan-replay/screenshot_frame_5.png",
+  "actual": "_provenance/experiments/20260919T075304344092Z-factorio-halfword-descriptors-replay/remote/vulkan-replay/screenshot_frame_5.png",
+  "reference_sha256": "12a681058bb24f962dbb8bed2a69a00e0858924cc138577884561ee27f8b2ba2",
+  "actual_sha256": "12a681058bb24f962dbb8bed2a69a00e0858924cc138577884561ee27f8b2ba2",
+  "width": 2512,
+  "height": 1552,
+  "maximum_channel_error": 0,
+  "mean_channel_error": 0.0,
+  "different_pixels": 0,
+  "threshold": 0,
+  "pixels_over_threshold": 0
+}

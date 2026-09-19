@@ -171,8 +171,44 @@ static void test_plain_image(void)
    ralloc_free(b.shader);
 }
 
+/* Isolated low/high halfwords, including a vector crossing a word boundary.
+ * Verify the exact uniform half used, not just that a load disappeared. */
+static void test_halfword_descriptors(bool generic, unsigned offset,
+                                      unsigned components)
+{
+   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT, NULL,
+                                                 "halfword descriptor span");
+   nir_intrinsic_instr *out;
+   if (generic) {
+      nir_def *address = nir_iadd_imm(&b,
+         nir_load_preamble(&b, 1, 64, .base = 24), offset);
+      nir_def *v = nir_load_global_constant(&b, components, 16, address,
+                                             .align_mul = 2);
+      nir_store_global(&b, v, nir_imm_int64(&b, 0x1000), .align_mul = 2);
+      out = nir_instr_as_intrinsic(nir_builder_last_instr(&b));
+   } else {
+      out = load(&b, 24, nir_imm_int(&b, offset / 2), 0, components, 16);
+   }
+   struct hk_descriptor_prefetch span[1] = {0};
+   unsigned end = 28;
+   assert(hk_nir_prefetch_descriptors(b.shader, 24, 1, &end, span));
+   assert(span[0].offset_B == (offset & ~3u));
+   assert(span[0].size_B == align(offset + 2 * components, 4) - (offset & ~3u));
+   nir_intrinsic_instr *value = nir_src_as_intrinsic(out->src[0]);
+   assert(value->intrinsic == nir_intrinsic_load_preamble);
+   assert(value->def.bit_size == 16 && value->def.num_components == components);
+   assert(nir_intrinsic_base(value) == 28 + (offset & 3) / 2);
+   assert(end == 28 + span[0].size_B / 2);
+   nir_validate_shader(b.shader, "halfword descriptor prefetch");
+   ralloc_free(b.shader);
+}
+
 int main(void)
 {
+   for (unsigned generic = 0; generic < 2; generic++)
+      for (unsigned offset = 40; offset <= 42; offset += 2)
+         for (unsigned components = 1; components <= 3; components++)
+            test_halfword_descriptors(generic, offset, components);
    test_plain_sampler();
    test_plain_image();
    unsigned access = ACCESS_NON_WRITEABLE | ACCESS_CAN_REORDER;
