@@ -113,3 +113,17 @@ from those simple dispatch-shape changes in this benchmark. It suggests
 memory traffic as a stronger lead, without proving peak DRAM bandwidth or
 a specific hardware configuration bug. Matrix/report files preserve exact
 results. All six separated-query experiments passed bounded guards.
+
+## Preserve page-contained vectors in alias lowering
+
+The alias pass split aligned vector loads/stores into separate scalar address
+translations, even when alignment proves every byte stays in one16KiB page.
+Keep the original vector and write mask in that case, translating its base
+once. Unproved/page-crossing accesses keep the old piecewise path.
+Host sparse suite passes, including384 new vector cases across widths, masks,
+ordinary/aliased addresses and absent/present leaves, plus previous crossing
+and sparse-mask cases. ARM64 release build passes. Candidate checked4K stores
+remain~1.46ms; no significant throughput gain is established.
+Hardware40 strict buffer oracles PASS; current five-frame Factorio replay PASS
+and frame5 is pixel-exact against cache-qualified reference12a681... Peak64.25C.
+Normal application qualification follows; no fullCTS claim.

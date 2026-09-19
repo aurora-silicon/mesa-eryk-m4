@@ -1,0 +1,26 @@
+Renderer: zink Vulkan 1.4(Apple M4 (G16G B0) (MESA_HONEYKRISP))
+FRAME_COST mode=3 words=4 local=256 arithmetic=0 width=512 height=512 round=0 wall_ms=9.612433 gpu_query_ms=5.122708 begin_ns=717259337208 end_ns=717264459916
+FRAME_COST mode=3 words=4 local=256 arithmetic=0 width=512 height=512 round=1 wall_ms=7.490583 gpu_query_ms=2.513250 begin_ns=717265240291 end_ns=717267753541
+FRAME_COST mode=3 words=4 local=256 arithmetic=0 width=512 height=512 round=2 wall_ms=4.596128 gpu_query_ms=4.003709 begin_ns=717272891791 end_ns=717276895500
+FRAME_COST mode=3 words=4 local=256 arithmetic=0 width=512 height=512 round=3 wall_ms=0.701071 gpu_query_ms=0.120916 begin_ns=717277620875 end_ns=717277741791
+FRAME_COST mode=3 words=4 local=256 arithmetic=0 width=512 height=512 round=4 wall_ms=0.687426 gpu_query_ms=0.118041 begin_ns=717278470500 end_ns=717278588541
+FRAME_COST mode=3 words=4 local=256 arithmetic=0 width=512 height=512 round=5 wall_ms=0.623057 gpu_query_ms=0.117500 begin_ns=717279254666 end_ns=717279372166
+FRAME_COST mode=3 words=4 local=256 arithmetic=0 width=1920 height=1080 round=0 wall_ms=0.955459 gpu_query_ms=0.352458 begin_ns=717280880583 end_ns=717281233041
+FRAME_COST mode=3 words=4 local=256 arithmetic=0 width=1920 height=1080 round=1 wall_ms=0.992435 gpu_query_ms=0.393500 begin_ns=717283523833 end_ns=717283917333
+FRAME_COST mode=3 words=4 local=256 arithmetic=0 width=1920 height=1080 round=2 wall_ms=0.960793 gpu_query_ms=0.369709 begin_ns=717285708166 end_ns=717286077875
+FRAME_COST mode=3 words=4 local=256 arithmetic=0 width=1920 height=1080 round=3 wall_ms=0.953251 gpu_query_ms=0.370083 begin_ns=717287838750 end_ns=717288208833
+FRAME_COST mode=3 words=4 local=256 arithmetic=0 width=1920 height=1080 round=4 wall_ms=0.961251 gpu_query_ms=0.359084 begin_ns=717289986916 end_ns=717290346000
+FRAME_COST mode=3 words=4 local=256 arithmetic=0 width=1920 height=1080 round=5 wall_ms=0.951752 gpu_query_ms=0.366167 begin_ns=717292117666 end_ns=717292483833
+FRAME_COST mode=3 words=4 local=256 arithmetic=0 width=2560 height=1664 round=0 wall_ms=1.793075 gpu_query_ms=0.887500 begin_ns=717295721458 end_ns=717296608958
+FRAME_COST mode=3 words=4 local=256 arithmetic=0 width=2560 height=1664 round=1 wall_ms=1.593179 gpu_query_ms=0.774750 begin_ns=717300782250 end_ns=717301557000
+FRAME_COST mode=3 words=4 local=256 arithmetic=0 width=2560 height=1664 round=2 wall_ms=1.551601 gpu_query_ms=0.757291 begin_ns=717305098000 end_ns=717305855291
+FRAME_COST mode=3 words=4 local=256 arithmetic=0 width=2560 height=1664 round=3 wall_ms=1.541186 gpu_query_ms=0.734791 begin_ns=717309378000 end_ns=717310112791
+FRAME_COST mode=3 words=4 local=256 arithmetic=0 width=2560 height=1664 round=4 wall_ms=1.472400 gpu_query_ms=0.692083 begin_ns=717313654875 end_ns=717314346958
+FRAME_COST mode=3 words=4 local=256 arithmetic=0 width=2560 height=1664 round=5 wall_ms=1.499167 gpu_query_ms=0.703833 begin_ns=717317936833 end_ns=717318640666
+FRAME_COST mode=3 words=4 local=256 arithmetic=0 width=3840 height=2160 round=0 wall_ms=2.285296 gpu_query_ms=1.523417 begin_ns=717324496791 end_ns=717326020208
+FRAME_COST mode=3 words=4 local=256 arithmetic=0 width=3840 height=2160 round=1 wall_ms=2.218111 gpu_query_ms=1.455000 begin_ns=717333904375 end_ns=717335359375
+FRAME_COST mode=3 words=4 local=256 arithmetic=0 width=3840 height=2160 round=2 wall_ms=2.248255 gpu_query_ms=1.469750 begin_ns=717341441041 end_ns=717342910791
+FRAME_COST mode=3 words=4 local=256 arithmetic=0 width=3840 height=2160 round=3 wall_ms=2.231695 gpu_query_ms=1.466875 begin_ns=717349063833 end_ns=717350530708
+FRAME_COST mode=3 words=4 local=256 arithmetic=0 width=3840 height=2160 round=4 wall_ms=2.234445 gpu_query_ms=1.463625 begin_ns=717356210125 end_ns=717357673750
+FRAME_COST mode=3 words=4 local=256 arithmetic=0 width=3840 height=2160 round=5 wall_ms=2.208195 gpu_query_ms=1.459417 begin_ns=717363427708 end_ns=717364887125
+PASS: basic frame cost and checked readback

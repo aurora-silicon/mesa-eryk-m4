@@ -1,0 +1,24 @@
+{
+  "id": "20260919T084640971564Z-factorio-alias-vector-store",
+  "verdict": "pass",
+  "transport_returncode": 0,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260919T084640971564Z-factorio-alias-vector-store",
+  "observations": {
+    "pixel_results": [
+      "PASS: basic frame cost and checked readback"
+    ],
+    "pixel_result_count": 1,
+    "thermal_samples": 1,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 61.75,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 61.75,
+      "Ta000m": 61.75,
+      "Te000m": 58.5,
+      "Te001m": 57.5,
+      "Tp000m": 61.25,
+      "Tp001m": 57.5
+    }
+  }
+}

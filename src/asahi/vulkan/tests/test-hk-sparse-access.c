@@ -182,6 +182,52 @@ check_descriptor_pointer(bool dereference)
 }
 
 static void
+check_alias_vector(bool store, uint64_t address, bool leaf_present,
+                   unsigned bits, unsigned components, unsigned alignment,
+                   unsigned write_mask)
+{
+   alias_leaf_present = leaf_present;
+   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, &options,
+                                                  "page-contained alias vector");
+   if (store) {
+      nir_store_global(&b, nir_imm_zero(&b, components, bits),
+                       nir_imm_int64(&b, address), .align_mul = alignment,
+                       .write_mask = write_mask);
+   } else {
+      nir_def *value = nir_load_global(&b, components, bits,
+                                       nir_imm_int64(&b, address),
+                                       .align_mul = alignment);
+      nir_store_shared(&b, value, nir_imm_int(&b, 0), .align_mul = alignment);
+   }
+   CHECK(hk_nir_lower_memory_aliases(b.shader));
+   nir_validate_shader(b.shader, "page-contained alias vector");
+   fold(b.shader);
+   const uint64_t primary = address & ~size;
+   const bool inside = primary >= base && primary < base + size;
+   const uint64_t expected = inside && leaf_present ?
+      0x60000000 + ((primary - base) & ((1u << 26) - 1)) :
+      inside ? primary : address;
+   unsigned accesses = 0;
+   nir_foreach_block(block, b.impl) {
+      nir_foreach_instr(instr, block) {
+         if (instr->type != nir_instr_type_intrinsic) continue;
+         nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+         if (intr->intrinsic != (store ? nir_intrinsic_store_global :
+                                         nir_intrinsic_load_global)) continue;
+         CHECK(nir_src_as_uint(intr->src[store ? 1 : 0]) == expected);
+         CHECK((store ? intr->src[0].ssa->num_components :
+                        intr->def.num_components) == components);
+         CHECK((store ? intr->src[0].ssa->bit_size : intr->def.bit_size) == bits);
+         if (store) CHECK(nir_intrinsic_write_mask(intr) == write_mask);
+         ++accesses;
+      }
+   }
+   CHECK(accesses == 1);
+   ralloc_free(b.shader);
+   alias_leaf_present = false;
+}
+
+static void
 check_texture_descriptor(void)
 {
    nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, &options, "texture metadata");
@@ -241,6 +287,25 @@ int main(void)
          check_alias_cross_page(true, bits, components);
       }
    check_descriptor_pointer(false); check_descriptor_pointer(true);
+   const uint64_t vector_addresses[] = {
+      base, base + 16352, base + size + 16352, 0x4000,
+   };
+   for (unsigned bits = 8; bits <= 64; bits *= 2) {
+      for (unsigned components = 1; components <= 4; ++components) {
+         for (unsigned i = 0; i < ARRAY_SIZE(vector_addresses); ++i) {
+            for (unsigned present = 0; present < 2; ++present) {
+               check_alias_vector(false, vector_addresses[i], present,
+                                  bits, components, 32, 0);
+               check_alias_vector(true, vector_addresses[i], present,
+                                  bits, components, 32,
+                                  BITFIELD_MASK(components));
+               check_alias_vector(true, vector_addresses[i], present,
+                                  bits, components, 32,
+                                  BITFIELD_MASK(components) & 5);
+            }
+         }
+      }
+   }
    check_texture_descriptor();
    for (unsigned depth = 0; depth <= 4; ++depth) {
       check_alias_metadata(depth, false);

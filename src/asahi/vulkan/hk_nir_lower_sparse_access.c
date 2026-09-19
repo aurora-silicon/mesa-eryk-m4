@@ -227,6 +227,17 @@ lower_memory_alias(nir_builder *b, nir_intrinsic_instr *intr, UNUSED void *data)
    unsigned components =
       store ? intr->src[0].ssa->num_components : intr->def.num_components;
    unsigned bytes = bits / 8;
+   /* A naturally aligned access contained in one mapping page has a single
+    * translation. Preserve its vector shape and write mask: splitting it
+    * into scalar components repeats the alias lookup and prevents ordinary
+    * vector memory operations from reaching the backend. An access whose
+    * alignment cannot prove page containment still needs the piecewise path.
+    */
+   if (components * bytes <= MIN2(nir_intrinsic_align(intr), 16384)) {
+      nir_src_rewrite(&intr->src[store ? 1 : 0],
+                      canonical_address(b, &map, address));
+      return true;
+   }
    /* A vector or misaligned scalar may span independently mapped pages.
     * Resolve each naturally aligned piece rather than mapping only its
     * first byte and accidentally continuing in the backing allocation. */
