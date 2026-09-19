@@ -445,33 +445,62 @@ hk_UpdateDescriptorSets(VkDevice device, uint32_t descriptorWriteCount,
       VK_FROM_HANDLE(hk_descriptor_set, src, copy->srcSet);
       VK_FROM_HANDLE(hk_descriptor_set, dst, copy->dstSet);
 
-      const struct hk_descriptor_set_binding_layout *src_binding_layout =
-         &src->layout->binding[copy->srcBinding];
-      const struct hk_descriptor_set_binding_layout *dst_binding_layout =
-         &dst->layout->binding[copy->dstBinding];
+      uint32_t src_binding = copy->srcBinding;
+      uint32_t dst_binding = copy->dstBinding;
+      uint32_t src_elem = copy->srcArrayElement;
+      uint32_t dst_elem = copy->dstArrayElement;
 
-      if (dst_binding_layout->stride > 0 && src_binding_layout->stride > 0) {
-         for (uint32_t j = 0; j < copy->descriptorCount; j++) {
-            ASSERTED uint32_t dst_max_size, src_max_size;
-            void *dst_map = desc_ubo_data(
-               dst, copy->dstBinding, copy->dstArrayElement + j, &dst_max_size);
-            const void *src_map = desc_ubo_data(
-               src, copy->srcBinding, copy->srcArrayElement + j, &src_max_size);
-            const uint32_t copy_size =
-               MIN2(dst_binding_layout->stride, src_binding_layout->stride);
-            assert(copy_size <= dst_max_size && copy_size <= src_max_size);
-            memcpy(dst_map, src_map, copy_size);
+      /* A copy may span consecutive compatible bindings. Their descriptor
+       * arrays need not be contiguous: each binding has its own alignment and
+       * dynamic-buffer index. Walk both layouts independently, including empty
+       * bindings, instead of treating everything as one large array.
+       */
+      for (uint32_t remaining = copy->descriptorCount; remaining;) {
+         while (src_elem >= src->layout->binding[src_binding].array_size) {
+            src_elem -= src->layout->binding[src_binding].array_size;
+            src_binding++;
+            assert(src_binding < src->layout->binding_count);
          }
-      }
+         while (dst_elem >= dst->layout->binding[dst_binding].array_size) {
+            dst_elem -= dst->layout->binding[dst_binding].array_size;
+            dst_binding++;
+            assert(dst_binding < dst->layout->binding_count);
+         }
 
-      if (vk_descriptor_type_is_dynamic(src_binding_layout->type)) {
-         const uint32_t dst_dyn_start =
-            dst_binding_layout->dynamic_buffer_index + copy->dstArrayElement;
-         const uint32_t src_dyn_start =
-            src_binding_layout->dynamic_buffer_index + copy->srcArrayElement;
-         typed_memcpy(&dst->dynamic_buffers[dst_dyn_start],
-                      &src->dynamic_buffers[src_dyn_start],
-                      copy->descriptorCount);
+         const struct hk_descriptor_set_binding_layout *src_binding_layout =
+            &src->layout->binding[src_binding];
+         const struct hk_descriptor_set_binding_layout *dst_binding_layout =
+            &dst->layout->binding[dst_binding];
+         const uint32_t count = MIN3(remaining,
+            src_binding_layout->array_size - src_elem,
+            dst_binding_layout->array_size - dst_elem);
+
+         if (dst_binding_layout->stride > 0 && src_binding_layout->stride > 0) {
+            for (uint32_t j = 0; j < count; j++) {
+               ASSERTED uint32_t dst_max_size, src_max_size;
+               void *dst_map = desc_ubo_data(
+                  dst, dst_binding, dst_elem + j, &dst_max_size);
+               const void *src_map = desc_ubo_data(
+                  src, src_binding, src_elem + j, &src_max_size);
+               const uint32_t copy_size =
+                  MIN2(dst_binding_layout->stride, src_binding_layout->stride);
+               assert(copy_size <= dst_max_size && copy_size <= src_max_size);
+               memcpy(dst_map, src_map, copy_size);
+            }
+         }
+
+         if (vk_descriptor_type_is_dynamic(src_binding_layout->type)) {
+            const uint32_t dst_dyn_start =
+               dst_binding_layout->dynamic_buffer_index + dst_elem;
+            const uint32_t src_dyn_start =
+               src_binding_layout->dynamic_buffer_index + src_elem;
+            typed_memcpy(&dst->dynamic_buffers[dst_dyn_start],
+                         &src->dynamic_buffers[src_dyn_start],
+                         count);
+         }
+         remaining -= count;
+         src_elem += count;
+         dst_elem += count;
       }
    }
 }
