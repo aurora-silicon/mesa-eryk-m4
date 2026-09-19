@@ -1,0 +1,34 @@
+{
+  "command": [
+    "python3",
+    "/root/cts-sample.py",
+    "batch",
+    "--guard-output",
+    "/root/asahi-evidence/20260919T133958741913Z-fragment-dependency-cts",
+    "--binary",
+    "/root/cts-1.4.6.2/deqp-vk",
+    "--cases",
+    "/root/fragment-dependency-cases.txt",
+    "--jobs",
+    "1",
+    "--count",
+    "8",
+    "--case-timeout",
+    "20",
+    "--env",
+    "VK_DRIVER_FILES=/root/asahi-query-owner.json",
+    "--env",
+    "HK_M4_EARLY_TILING=true"
+  ],
+  "seconds": 65,
+  "boot_id": "976bd270-3a14-44b7-8566-33f31cf00e90",
+  "watchdog": {
+    "device": "/dev/watchdog0",
+    "identity": "Apple SoC Watchdog",
+    "timeout_seconds": 60,
+    "initial_timeleft_seconds": 59,
+    "periodic_keepalive": false,
+    "armed": true,
+    "ssh_broker_lease": true
+  }
+}

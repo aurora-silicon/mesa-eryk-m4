@@ -1,0 +1,62 @@
+Renderer: zink Vulkan 1.4(Apple M4 (G16G B0) (MESA_HONEYKRISP))
+{"width":2560,"height":1664,"stats":0,"round":0,"count":0,"gpu_ms":0.230917,"wall_ms":9.029783}
+HK_FRAGMENT_COUNT cb=0xaaaacce8d310 draw=1 cs=1000820000 width=2560 height=1664 covered=4259840 guard=PASS
+{"width":2560,"height":1664,"stats":0,"round":1,"count":0,"gpu_ms":0.229833,"wall_ms":4.195421}
+HK_FRAGMENT_COUNT cb=0xffff9c01a4f0 draw=1 cs=1000860000 width=2560 height=1664 covered=4259840 guard=PASS
+{"width":2560,"height":1664,"stats":0,"round":2,"count":0,"gpu_ms":0.229333,"wall_ms":0.598615}
+HK_FRAGMENT_COUNT cb=0xaaaaccdf94f0 draw=1 cs=10008a0000 width=2560 height=1664 covered=4259840 guard=PASS
+{"width":2560,"height":1664,"stats":0,"round":3,"count":0,"gpu_ms":0.231000,"wall_ms":0.562038}
+HK_FRAGMENT_COUNT cb=0xaaaaccf15d30 draw=1 cs=1000800000 width=2560 height=1664 covered=4259840 guard=PASS
+{"width":2560,"height":1664,"stats":0,"round":4,"count":0,"gpu_ms":0.229500,"wall_ms":0.548579}
+HK_FRAGMENT_COUNT cb=0xaaaaccefbb30 draw=1 cs=1000840000 width=2560 height=1664 covered=4259840 guard=PASS
+{"width":2560,"height":1664,"stats":1,"round":0,"count":4259840,"gpu_ms":0.230583,"wall_ms":4.659463}
+{"width":2560,"height":1664,"stats":1,"round":1,"count":4259840,"gpu_ms":0.229708,"wall_ms":4.057055}
+{"width":2560,"height":1664,"stats":1,"round":2,"count":4259840,"gpu_ms":0.342667,"wall_ms":2.899111}
+{"width":2560,"height":1664,"stats":1,"round":3,"count":4259840,"gpu_ms":0.229750,"wall_ms":5.908735}
+{"width":2560,"height":1664,"stats":1,"round":4,"count":8519680,"gpu_ms":8.452334,"wall_ms":9.010475}
+{"width":2557,"height":1661,"stats":0,"round":0,"count":0,"gpu_ms":0.228125,"wall_ms":0.521395}
+HK_FRAGMENT_COUNT cb=0xaaaaccefbb30 draw=1 cs=1000920000 width=2560 height=1664 covered=4247177 guard=PASS
+{"width":2557,"height":1661,"stats":0,"round":1,"count":0,"gpu_ms":0.229333,"wall_ms":0.477375}
+HK_FRAGMENT_COUNT cb=0xaaaacce8d310 draw=1 cs=1000820000 width=2560 height=1664 covered=4247177 guard=PASS
+{"width":2557,"height":1661,"stats":0,"round":2,"count":0,"gpu_ms":0.227708,"wall_ms":0.486792}
+HK_FRAGMENT_COUNT cb=0xffff9c01a4f0 draw=1 cs=10008c0000 width=2560 height=1664 covered=4247177 guard=PASS
+{"width":2557,"height":1661,"stats":0,"round":3,"count":0,"gpu_ms":0.227292,"wall_ms":0.491792}
+HK_FRAGMENT_COUNT cb=0xaaaaccdf94f0 draw=1 cs=10008e0000 width=2560 height=1664 covered=4247177 guard=PASS
+{"width":2557,"height":1661,"stats":0,"round":4,"count":0,"gpu_ms":0.227334,"wall_ms":0.483126}
+HK_FRAGMENT_COUNT cb=0xaaaaccf15d30 draw=1 cs=10009c0000 width=2560 height=1664 covered=4247177 guard=PASS
+{"width":2557,"height":1661,"stats":1,"round":0,"count":4247177,"gpu_ms":0.228833,"wall_ms":0.760331}
+{"width":2557,"height":1661,"stats":1,"round":1,"count":4247177,"gpu_ms":0.228333,"wall_ms":0.777123}
+{"width":2557,"height":1661,"stats":1,"round":2,"count":4247177,"gpu_ms":0.342459,"wall_ms":3.994810}
+{"width":2557,"height":1661,"stats":1,"round":3,"count":4247177,"gpu_ms":0.227542,"wall_ms":0.984210}
+{"width":2557,"height":1661,"stats":1,"round":4,"count":8494354,"gpu_ms":8.739084,"wall_ms":9.241954}
+{"width":17,"height":13,"stats":0,"round":0,"count":0,"gpu_ms":0.035542,"wall_ms":0.312265}
+HK_FRAGMENT_COUNT cb=0xaaaaccf15d30 draw=1 cs=1000800000 width=2560 height=1664 covered=221 guard=PASS
+{"width":17,"height":13,"stats":0,"round":1,"count":0,"gpu_ms":0.035125,"wall_ms":0.313326}
+HK_FRAGMENT_COUNT cb=0xaaaaccefbb30 draw=1 cs=1000840000 width=2560 height=1664 covered=221 guard=PASS
+{"width":17,"height":13,"stats":0,"round":2,"count":0,"gpu_ms":0.035042,"wall_ms":0.312267}
+HK_FRAGMENT_COUNT cb=0xaaaacce8d310 draw=1 cs=1000880000 width=2560 height=1664 covered=221 guard=PASS
+{"width":17,"height":13,"stats":0,"round":3,"count":0,"gpu_ms":0.035666,"wall_ms":0.352494}
+HK_FRAGMENT_COUNT cb=0xffff9c01a4f0 draw=1 cs=10008c0000 width=2560 height=1664 covered=221 guard=PASS
+{"width":17,"height":13,"stats":0,"round":4,"count":0,"gpu_ms":0.035292,"wall_ms":0.329641}
+HK_FRAGMENT_COUNT cb=0xaaaaccdf94f0 draw=1 cs=1000a20000 width=2560 height=1664 covered=221 guard=PASS
+{"width":17,"height":13,"stats":1,"round":0,"count":221,"gpu_ms":0.035083,"wall_ms":0.564264}
+{"width":17,"height":13,"stats":1,"round":1,"count":221,"gpu_ms":0.035209,"wall_ms":0.525061}
+{"width":17,"height":13,"stats":1,"round":2,"count":221,"gpu_ms":0.181250,"wall_ms":0.639550}
+{"width":17,"height":13,"stats":1,"round":3,"count":221,"gpu_ms":0.035417,"wall_ms":0.869653}
+{"width":17,"height":13,"stats":1,"round":4,"count":442,"gpu_ms":0.332208,"wall_ms":1.016395}
+{"width":1,"height":1,"stats":0,"round":0,"count":0,"gpu_ms":0.035583,"wall_ms":0.343909}
+HK_FRAGMENT_COUNT cb=0xaaaaccdf94f0 draw=1 cs=10008a0000 width=2560 height=1664 covered=1 guard=PASS
+{"width":1,"height":1,"stats":0,"round":1,"count":0,"gpu_ms":0.035334,"wall_ms":0.325349}
+HK_FRAGMENT_COUNT cb=0xaaaaccf15d30 draw=1 cs=1000800000 width=2560 height=1664 covered=1 guard=PASS
+{"width":1,"height":1,"stats":0,"round":2,"count":0,"gpu_ms":0.035250,"wall_ms":0.367553}
+HK_FRAGMENT_COUNT cb=0xaaaaccefbb30 draw=1 cs=1000a60000 width=2560 height=1664 covered=1 guard=PASS
+{"width":1,"height":1,"stats":0,"round":3,"count":0,"gpu_ms":0.035250,"wall_ms":0.326576}
+HK_FRAGMENT_COUNT cb=0xaaaacce8d310 draw=1 cs=1000880000 width=2560 height=1664 covered=1 guard=PASS
+{"width":1,"height":1,"stats":0,"round":4,"count":0,"gpu_ms":0.035292,"wall_ms":0.322140}
+HK_FRAGMENT_COUNT cb=0xffff9c01a4f0 draw=1 cs=1000940000 width=2560 height=1664 covered=1 guard=PASS
+{"width":1,"height":1,"stats":1,"round":0,"count":1,"gpu_ms":0.036250,"wall_ms":0.604074}
+{"width":1,"height":1,"stats":1,"round":1,"count":1,"gpu_ms":0.035416,"wall_ms":0.524310}
+{"width":1,"height":1,"stats":1,"round":2,"count":1,"gpu_ms":0.176667,"wall_ms":0.602531}
+{"width":1,"height":1,"stats":1,"round":3,"count":1,"gpu_ms":0.034958,"wall_ms":0.805033}
+{"width":1,"height":1,"stats":1,"round":4,"count":2,"gpu_ms":0.349042,"wall_ms":1.003811}
+PASS: fragment statistics exact counts and edge pixels

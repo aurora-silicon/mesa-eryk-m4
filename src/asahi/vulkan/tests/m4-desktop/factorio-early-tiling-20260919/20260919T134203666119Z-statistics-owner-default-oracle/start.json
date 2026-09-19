@@ -1,0 +1,40 @@
+{
+  "command": [
+    "env",
+    "HK_M4_DEFER_STATISTICS_FLUSH=true",
+    "LD_LIBRARY_PATH=/root/factorio-zink-query:/opt/asahi-m4-port/lib",
+    "LIBGL_DRIVERS_PATH=/root/factorio-zink-query/dri",
+    "__EGL_VENDOR_LIBRARY_FILENAMES=/root/factorio-zink-query/egl.json",
+    "GALLIUM_DRIVER=zink",
+    "MESA_LOADER_DRIVER_OVERRIDE=zink",
+    "VK_DRIVER_FILES=/root/asahi-query-owner.json",
+    "ASAHI_M4_EXPERIMENTAL=1",
+    "HK_M4_PREFETCH_UBOS=true",
+    "HK_M4_PREFETCH_VARIANT=true",
+    "HK_M4_PLAIN_SAMPLERS=true",
+    "HK_M4_PREFETCH_DESCRIPTORS=true",
+    "HK_M4_IOTO_TEMPLATES=true",
+    "MESA_SHADER_CACHE_DISABLE=true",
+    "HK_M4_COMPUTE_TIMESTAMP_COPIES=true",
+    "HK_M4_COMPUTE_TAIL_TIMESTAMP=true",
+    "HK_M4_COMPUTE_START_TIMESTAMP=true",
+    "HK_M4_BATCH_QUERY_COPIES=true",
+    "HK_M4_SPECIALIZE_QUERY_COPY=true",
+    "HK_M4_TIMESTAMP_COPIES=true",
+    "HK_M4_COUNT_FRAGMENTS=true",
+    "HK_M4_NATIVE_STATISTICS=true",
+    "HK_M4_STATISTICS_UNIFORM=true",
+    "/root/gl-fragment-statistics-bench"
+  ],
+  "seconds": 45,
+  "boot_id": "976bd270-3a14-44b7-8566-33f31cf00e90",
+  "watchdog": {
+    "device": "/dev/watchdog0",
+    "identity": "Apple SoC Watchdog",
+    "timeout_seconds": 60,
+    "initial_timeleft_seconds": 59,
+    "periodic_keepalive": false,
+    "armed": true,
+    "ssh_broker_lease": true
+  }
+}

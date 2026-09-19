@@ -1,0 +1,22 @@
+{
+  "id": "20260919T133958741913Z-fragment-dependency-cts",
+  "verdict": "missing_success_evidence",
+  "transport_returncode": 0,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260919T133958741913Z-fragment-dependency-cts",
+  "observations": {
+    "pixel_results": [],
+    "pixel_result_count": 0,
+    "thermal_samples": 7,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 69.5,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 69.5,
+      "Ta000m": 69.5,
+      "Te000m": 64.5,
+      "Te001m": 63.25,
+      "Tp000m": 66.75,
+      "Tp001m": 62.75
+    }
+  }
+}

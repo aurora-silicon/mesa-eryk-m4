@@ -1,0 +1,1009 @@
+M4 compressed image: 256x16 format=37 usage=0x80097
+M4 compressed image: 2512x1552 format=37 usage=0x80097
+M4 compressed image: 2512x1552 format=37 usage=0x80097
+M4 compressed image: 2512x1552 format=37 usage=0x80097
+M4 compressed image: 2512x1552 format=37 usage=0x80097
+M4 compressed image: 2512x1552 format=37 usage=0x80097
+M4 compressed image: 628x388 format=37 usage=0x80097
+M4 compressed image: 1256x776 format=37 usage=0x80097
+M4 compressed image: 1256x776 format=37 usage=0x80097
+M4 compressed image: 1256x776 format=37 usage=0x80097
+M4 compressed image: 157x97 format=37 usage=0x80097
+M4 compressed image: 2512x1552 format=37 usage=0x80097
+M4 compressed image: 2512x1552 format=37 usage=0x80097
+M4 compressed image: 2512x1552 format=37 usage=0x80097
+M4 compressed image: 2512x1552 format=37 usage=0x80097
+M4 compressed image: 2512x1552 format=37 usage=0x80097
+M4 compressed image: 2512x1552 format=37 usage=0x80097
+M4 compressed image: 2512x1552 format=37 usage=0x80097
+M4 compressed image: 628x388 format=37 usage=0x80097
+M4 compressed image: 1256x776 format=37 usage=0x80097
+M4 compressed image: 1256x776 format=37 usage=0x80097
+M4 compressed image: 1256x776 format=37 usage=0x80097
+M4 compressed image: 157x97 format=37 usage=0x80097
+HK_SHADER_BEGIN cs=1000800400
+HK_SHADER_PROFILE code=031b7022 cs=1000800400 width=128 height=256 direct=1 instrs=122 regs=40 scratch=0 loops=0 preamble=0
+HK_SHADER_BEGIN cs=1000820000
+HK_SHADER_PROFILE code=52dce1e5 cs=1000820000 width=2512 height=1552 direct=1 instrs=131 regs=40 scratch=0 loops=0 preamble=0
+HK_SHADER_BEGIN cs=1000840000
+HK_SHADER_PROFILE code=031b7022 cs=1000840000 width=300 height=300 direct=1 instrs=122 regs=40 scratch=0 loops=0 preamble=0
+HK_ARCH_SUBMIT queue=1 timeline=2 ns=4725963285595 cbs=1 commands=8 waits=0 signals=1
+HK_ARCH_CS queue=1 timeline=2 cb=0 cs=868fee0400 engine=render draws=1 flushes=0 width=128 height=256 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_SHADER_SUBMIT cs=1000800400
+HK_ARCH_CS queue=1 timeline=2 cb=0 cs=868febc000 engine=compute draws=1 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=2 cb=0 cs=868fe98000 engine=compute draws=16 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=2 cb=0 cs=868fe74000 engine=compute draws=16 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=2 cb=0 cs=868fe50000 engine=compute draws=1 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=2 cb=0 cs=868fe2c000 engine=render draws=1 flushes=0 width=2512 height=1552 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_SHADER_SUBMIT cs=1000820000
+HK_ARCH_CS queue=1 timeline=2 cb=0 cs=868fe08000 engine=render draws=1 flushes=0 width=300 height=300 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_SHADER_SUBMIT cs=1000840000
+HK_ARCH_CS queue=1 timeline=2 cb=0 cs=868fde4000 engine=compute draws=1 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_RETURN queue=1 timeline=2 ns=4725963384068 elapsed_ns=98473 result=0
+HK_ARCH_SUBMIT queue=1 timeline=3 ns=4726038781892 cbs=1 commands=2 waits=0 signals=1
+HK_ARCH_CS queue=1 timeline=3 cb=0 cs=868fee0400 engine=compute draws=1 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=3 cb=0 cs=868febc000 engine=compute draws=1 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_RETURN queue=1 timeline=3 ns=4726038830262 elapsed_ns=48370 result=0
+HK_ARCH_SUBMIT queue=1 timeline=4 ns=4726092405711 cbs=1 commands=2 waits=0 signals=1
+HK_ARCH_CS queue=1 timeline=4 cb=0 cs=868fe98400 engine=compute draws=1 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=4 cb=0 cs=868fe74000 engine=compute draws=1 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_RETURN queue=1 timeline=4 ns=4726092456873 elapsed_ns=51162 result=0
+HK_ARCH_SUBMIT queue=1 timeline=5 ns=4726133683688 cbs=1 commands=2 waits=0 signals=1
+HK_ARCH_CS queue=1 timeline=5 cb=0 cs=868fe50400 engine=compute draws=1 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=5 cb=0 cs=868fe2c000 engine=compute draws=1 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_RETURN queue=1 timeline=5 ns=4726133727708 elapsed_ns=44061 result=0
+HK_ARCH_SUBMIT queue=1 timeline=6 ns=4726173564978 cbs=1 commands=1 waits=0 signals=1
+HK_ARCH_CS queue=1 timeline=6 cb=0 cs=868fe08400 engine=compute draws=14 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_RETURN queue=1 timeline=6 ns=4726173600829 elapsed_ns=35893 result=0
+HK_ARCH_SUBMIT queue=1 timeline=7 ns=4726197500256 cbs=1 commands=1 waits=0 signals=1
+HK_ARCH_CS queue=1 timeline=7 cb=0 cs=868fde4400 engine=compute draws=14 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_RETURN queue=1 timeline=7 ns=4726197533692 elapsed_ns=33436 result=0
+HK_ARCH_SUBMIT queue=1 timeline=8 ns=4726244848872 cbs=1 commands=2 waits=0 signals=1
+HK_ARCH_CS queue=1 timeline=8 cb=0 cs=868fee0400 engine=compute draws=1 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=8 cb=0 cs=868febc000 engine=compute draws=1 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_RETURN queue=1 timeline=8 ns=4726244896367 elapsed_ns=47495 result=0
+HK_ARCH_SUBMIT queue=1 timeline=9 ns=4726273877104 cbs=1 commands=2 waits=0 signals=1
+HK_ARCH_CS queue=1 timeline=9 cb=0 cs=868fe98400 engine=compute draws=1 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=9 cb=0 cs=868fe74000 engine=compute draws=1 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_RETURN queue=1 timeline=9 ns=4726273921208 elapsed_ns=44104 result=0
+HK_ARCH_SUBMIT queue=1 timeline=10 ns=4726330017781 cbs=1 commands=3 waits=0 signals=1
+HK_ARCH_CS queue=1 timeline=10 cb=0 cs=868fe50400 engine=compute draws=14 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=10 cb=0 cs=868fe2c000 engine=compute draws=13 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=10 cb=0 cs=868fe08000 engine=compute draws=14 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_RETURN queue=1 timeline=10 ns=4726330064109 elapsed_ns=46328 result=0
+HK_ARCH_SUBMIT queue=1 timeline=11 ns=4726369492370 cbs=1 commands=3 waits=0 signals=1
+HK_ARCH_CS queue=1 timeline=11 cb=0 cs=868fde4400 engine=compute draws=14 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=11 cb=0 cs=868fee0000 engine=compute draws=13 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=11 cb=0 cs=868febc000 engine=compute draws=13 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_RETURN queue=1 timeline=11 ns=4726369538472 elapsed_ns=46102 result=0
+HK_SHADER_BEGIN cs=1000860400
+HK_SHADER_PROFILE code=52dce1e5 cs=1000860400 width=8192 height=2560 direct=1 instrs=131 regs=40 scratch=0 loops=0 preamble=0
+HK_SHADER_BEGIN cs=1000880000
+HK_SHADER_PROFILE code=52dce1e5 cs=1000880000 width=4096 height=1280 direct=1 instrs=131 regs=40 scratch=0 loops=0 preamble=0
+HK_SHADER_BEGIN cs=10008a0000
+HK_SHADER_PROFILE code=52dce1e5 cs=10008a0000 width=2048 height=640 direct=1 instrs=131 regs=40 scratch=0 loops=0 preamble=0
+HK_SHADER_BEGIN cs=1000820000
+HK_SHADER_PROFILE code=52dce1e5 cs=1000820000 width=1024 height=320 direct=1 instrs=131 regs=40 scratch=0 loops=0 preamble=0
+HK_SHADER_BEGIN cs=1000840000
+HK_SHADER_PROFILE code=52dce1e5 cs=1000840000 width=512 height=160 direct=1 instrs=131 regs=40 scratch=0 loops=0 preamble=0
+HK_SHADER_BEGIN cs=10008c0000
+HK_SHADER_PROFILE code=52dce1e5 cs=10008c0000 width=256 height=80 direct=1 instrs=131 regs=40 scratch=0 loops=0 preamble=0
+HK_SHADER_BEGIN cs=1000800000
+HK_SHADER_PROFILE code=52dce1e5 cs=1000800000 width=128 height=40 direct=1 instrs=131 regs=40 scratch=0 loops=0 preamble=0
+HK_SHADER_BEGIN cs=10008e0000
+HK_SHADER_PROFILE code=52dce1e5 cs=10008e0000 width=64 height=20 direct=1 instrs=131 regs=40 scratch=0 loops=0 preamble=0
+HK_SHADER_BEGIN cs=1000900000
+HK_SHADER_PROFILE code=52dce1e5 cs=1000900000 width=32 height=10 direct=1 instrs=131 regs=40 scratch=0 loops=0 preamble=0
+HK_SHADER_BEGIN cs=1000920000
+HK_SHADER_PROFILE code=52dce1e5 cs=1000920000 width=16 height=5 direct=1 instrs=131 regs=40 scratch=0 loops=0 preamble=0
+HK_SHADER_BEGIN cs=1000940000
+HK_SHADER_PROFILE code=52dce1e5 cs=1000940000 width=8 height=2 direct=1 instrs=131 regs=40 scratch=0 loops=0 preamble=0
+HK_SHADER_BEGIN cs=1000960000
+HK_SHADER_PROFILE code=52dce1e5 cs=1000960000 width=4 height=1 direct=1 instrs=131 regs=40 scratch=0 loops=0 preamble=0
+HK_SHADER_BEGIN cs=1000980000
+HK_SHADER_PROFILE code=52dce1e5 cs=1000980000 width=2 height=1 direct=1 instrs=131 regs=40 scratch=0 loops=0 preamble=0
+HK_SHADER_BEGIN cs=10009a0000
+HK_SHADER_PROFILE code=52dce1e5 cs=10009a0000 width=1 height=1 direct=1 instrs=131 regs=40 scratch=0 loops=0 preamble=0
+HK_ARCH_SUBMIT queue=1 timeline=12 ns=4726393365570 cbs=1 commands=15 waits=0 signals=1
+HK_ARCH_CS queue=1 timeline=12 cb=0 cs=868fe98400 engine=render draws=1 flushes=0 width=8192 height=2560 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_SHADER_SUBMIT cs=1000860400
+HK_ARCH_CS queue=1 timeline=12 cb=0 cs=868fe74000 engine=render draws=1 flushes=0 width=4096 height=1280 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_SHADER_SUBMIT cs=1000880000
+HK_ARCH_CS queue=1 timeline=12 cb=0 cs=868fe50000 engine=render draws=1 flushes=0 width=2048 height=640 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_SHADER_SUBMIT cs=10008a0000
+HK_ARCH_CS queue=1 timeline=12 cb=0 cs=868fe2c000 engine=render draws=1 flushes=0 width=1024 height=320 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_SHADER_SUBMIT cs=1000820000
+HK_ARCH_CS queue=1 timeline=12 cb=0 cs=868fe08000 engine=render draws=1 flushes=0 width=512 height=160 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_SHADER_SUBMIT cs=1000840000
+HK_ARCH_CS queue=1 timeline=12 cb=0 cs=868fde4000 engine=render draws=1 flushes=0 width=256 height=80 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_SHADER_SUBMIT cs=10008c0000
+HK_ARCH_CS queue=1 timeline=12 cb=0 cs=868fee0000 engine=render draws=1 flushes=0 width=128 height=40 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_SHADER_SUBMIT cs=1000800000
+HK_ARCH_CS queue=1 timeline=12 cb=0 cs=868febc000 engine=render draws=1 flushes=0 width=64 height=20 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_SHADER_SUBMIT cs=10008e0000
+HK_ARCH_CS queue=1 timeline=12 cb=0 cs=868fdc0000 engine=render draws=1 flushes=0 width=32 height=10 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_SHADER_SUBMIT cs=1000900000
+HK_ARCH_CS queue=1 timeline=12 cb=0 cs=868fd9c000 engine=render draws=1 flushes=0 width=16 height=5 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_SHADER_SUBMIT cs=1000920000
+HK_ARCH_CS queue=1 timeline=12 cb=0 cs=868fd78000 engine=render draws=1 flushes=0 width=8 height=2 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_SHADER_SUBMIT cs=1000940000
+HK_ARCH_CS queue=1 timeline=12 cb=0 cs=868fd54000 engine=render draws=1 flushes=0 width=4 height=1 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_SHADER_SUBMIT cs=1000960000
+HK_ARCH_CS queue=1 timeline=12 cb=0 cs=868fd30000 engine=render draws=1 flushes=0 width=2 height=1 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_SHADER_SUBMIT cs=1000980000
+HK_ARCH_CS queue=1 timeline=12 cb=0 cs=868fd0c000 engine=render draws=1 flushes=0 width=1 height=1 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_SHADER_SUBMIT cs=10009a0000
+HK_ARCH_CS queue=1 timeline=12 cb=0 cs=868fce8000 engine=compute draws=1 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_RETURN queue=1 timeline=12 ns=4726394025769 elapsed_ns=660199 result=0
+HK_SHADER_BEGIN cs=10008a0000
+HK_SHADER_PROFILE code=031b7022 cs=10008a0000 width=4096 height=176 direct=1 instrs=122 regs=40 scratch=0 loops=0 preamble=0
+HK_SHADER_BEGIN cs=1000820000
+HK_SHADER_PROFILE code=031b7022 cs=1000820000 width=300 height=300 direct=1 instrs=122 regs=40 scratch=0 loops=0 preamble=0
+HK_SHADER_BEGIN cs=1000840000
+HK_SHADER_PROFILE code=031b7022 cs=1000840000 width=300 height=300 direct=1 instrs=122 regs=40 scratch=0 loops=0 preamble=0
+HK_SHADER_BEGIN cs=10008c0000
+HK_SHADER_PROFILE code=031b7022 cs=10008c0000 width=300 height=300 direct=1 instrs=122 regs=40 scratch=0 loops=0 preamble=0
+HK_SHADER_BEGIN cs=1000800000
+HK_SHADER_PROFILE code=031b7022 cs=1000800000 width=300 height=300 direct=1 instrs=122 regs=40 scratch=0 loops=0 preamble=0
+HK_SHADER_BEGIN cs=10008e0000
+HK_SHADER_PROFILE code=031b7022 cs=10008e0000 width=300 height=600 direct=1 instrs=122 regs=40 scratch=0 loops=0 preamble=0
+HK_ARCH_SUBMIT queue=1 timeline=13 ns=4726457252674 cbs=1 commands=9 waits=0 signals=1
+HK_ARCH_CS queue=1 timeline=13 cb=0 cs=868fe98400 engine=compute draws=1 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=13 cb=0 cs=868fe74000 engine=compute draws=13 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=13 cb=0 cs=868fe50000 engine=render draws=1 flushes=0 width=4096 height=176 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_SHADER_SUBMIT cs=10008a0000
+HK_ARCH_CS queue=1 timeline=13 cb=0 cs=868fe2c000 engine=render draws=1 flushes=0 width=300 height=300 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_SHADER_SUBMIT cs=1000820000
+HK_ARCH_CS queue=1 timeline=13 cb=0 cs=868fe08000 engine=render draws=1 flushes=0 width=300 height=300 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_SHADER_SUBMIT cs=1000840000
+HK_ARCH_CS queue=1 timeline=13 cb=0 cs=868fde4000 engine=render draws=1 flushes=0 width=300 height=300 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_SHADER_SUBMIT cs=10008c0000
+HK_ARCH_CS queue=1 timeline=13 cb=0 cs=868fee0000 engine=render draws=1 flushes=0 width=300 height=300 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_SHADER_SUBMIT cs=1000800000
+HK_ARCH_CS queue=1 timeline=13 cb=0 cs=868febc000 engine=render draws=1 flushes=0 width=300 height=600 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_SHADER_SUBMIT cs=10008e0000
+HK_ARCH_CS queue=1 timeline=13 cb=0 cs=868fdc0000 engine=compute draws=1 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_RETURN queue=1 timeline=13 ns=4726457376833 elapsed_ns=124201 result=0
+HK_ARCH_SUBMIT queue=1 timeline=14 ns=4727992741289 cbs=1 commands=4 waits=0 signals=0
+HK_ARCH_CS queue=1 timeline=14 cb=0 cs=868fd9c000 engine=compute draws=2 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=14 cb=0 cs=868fd78000 engine=compute draws=2 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=14 cb=0 cs=868fd54000 engine=compute draws=1 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=14 cb=0 cs=868fd30000 engine=compute draws=1 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_RETURN queue=1 timeline=14 ns=4727992788601 elapsed_ns=47353 result=0
+HK_SHADER_BEGIN cs=1000800000
+HK_SHADER_BEGIN cs=1000820000
+HK_SHADER_BEGIN cs=1000840000
+HK_SHADER_BEGIN cs=1000860000
+HK_SHADER_PROFILE code=21162f2c cs=1000860000 width=2512 height=1552 direct=1 instrs=154 regs=40 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=1000880000
+HK_SHADER_PROFILE code=21162f2c cs=1000880000 width=2512 height=1552 direct=1 instrs=154 regs=40 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=10008a0000
+HK_SHADER_PROFILE code=21162f2c cs=10008a0000 width=2512 height=1552 direct=1 instrs=154 regs=40 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=21162f2c cs=10008a0000 width=2512 height=1552 direct=1 instrs=154 regs=40 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=10008c0000
+HK_SHADER_PROFILE code=90bbd349 cs=10008c0000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=90bbd349 cs=10008c0000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=90bbd349 cs=10008c0000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=90bbd349 cs=10008c0000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=90bbd349 cs=10008c0000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=90bbd349 cs=10008c0000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=90bbd349 cs=10008c0000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=90bbd349 cs=10008c0000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=10008e0000
+HK_SHADER_BEGIN cs=1000900000
+HK_SHADER_PROFILE code=187485c5 cs=1000900000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000900000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000900000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=55313b90 cs=1000900000 width=2512 height=1552 direct=1 instrs=23 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000900000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000900000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000900000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000900000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000900000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000900000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000900000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000900000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000900000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000900000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=50321a4f cs=1000900000 width=2512 height=1552 direct=1 instrs=103 regs=48 scratch=0 loops=0 preamble=84
+HK_SHADER_BEGIN cs=1000920000
+HK_SHADER_PROFILE code=187485c5 cs=1000920000 width=1256 height=776 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=1000940000
+HK_SHADER_PROFILE code=b181a113 cs=1000940000 width=2512 height=1552 direct=1 instrs=22 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=1000960000
+HK_SHADER_PROFILE code=56d319e4 cs=1000960000 width=2512 height=1552 direct=1 instrs=72 regs=56 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=1000980000
+HK_SHADER_PROFILE code=1bd518b5 cs=1000980000 width=2512 height=1552 direct=1 instrs=25 regs=17 scratch=0 loops=0 preamble=0
+HK_SHADER_PROFILE code=187485c5 cs=1000980000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000980000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000980000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000980000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000980000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000980000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000980000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000980000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000980000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000980000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000980000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000980000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000980000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000980000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000980000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000980000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000980000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000980000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000980000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000980000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000980000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000980000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000980000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000980000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000980000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000980000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000980000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000980000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000980000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000980000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000980000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000980000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000980000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000980000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=10009aa800
+HK_SHADER_PROFILE code=b181a113 cs=10009aa800 width=2512 height=1552 direct=1 instrs=22 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=10009c0000
+HK_SHADER_BEGIN cs=10009e0000
+HK_SHADER_BEGIN cs=1000a00000
+HK_SHADER_BEGIN cs=1000a20000
+HK_SHADER_PROFILE code=21162f2c cs=1000a20000 width=2512 height=1552 direct=1 instrs=154 regs=40 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=1000a40000
+HK_SHADER_PROFILE code=21162f2c cs=1000a40000 width=2512 height=1552 direct=1 instrs=154 regs=40 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=1000a60000
+HK_SHADER_PROFILE code=21162f2c cs=1000a60000 width=2512 height=1552 direct=1 instrs=154 regs=40 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=21162f2c cs=1000a60000 width=2512 height=1552 direct=1 instrs=154 regs=40 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=1000a80000
+HK_SHADER_PROFILE code=90bbd349 cs=1000a80000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=90bbd349 cs=1000a80000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=90bbd349 cs=1000a80000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=90bbd349 cs=1000a80000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=90bbd349 cs=1000a80000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=90bbd349 cs=1000a80000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=90bbd349 cs=1000a80000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=90bbd349 cs=1000a80000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=1000aa0000
+HK_SHADER_BEGIN cs=1000ac0000
+HK_SHADER_PROFILE code=187485c5 cs=1000ac0000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000ac0000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000ac0000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=55313b90 cs=1000ac0000 width=2512 height=1552 direct=1 instrs=23 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000ac0000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000ac0000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000ac0000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000ac0000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000ac0000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000ac0000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000ac0000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000ac0000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000ac0000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000ac0000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=50321a4f cs=1000ac0000 width=2512 height=1552 direct=1 instrs=103 regs=48 scratch=0 loops=0 preamble=84
+HK_SHADER_BEGIN cs=1000ae0000
+HK_SHADER_PROFILE code=187485c5 cs=1000ae0000 width=1256 height=776 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=1000b00000
+HK_SHADER_PROFILE code=b181a113 cs=1000b00000 width=2512 height=1552 direct=1 instrs=22 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=1000b20000
+HK_SHADER_PROFILE code=56d319e4 cs=1000b20000 width=2512 height=1552 direct=1 instrs=72 regs=56 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=1000b40000
+HK_SHADER_PROFILE code=1bd518b5 cs=1000b40000 width=2512 height=1552 direct=1 instrs=25 regs=17 scratch=0 loops=0 preamble=0
+HK_SHADER_PROFILE code=187485c5 cs=1000b40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000b40000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000b40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000b40000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000b40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000b40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000b40000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000b40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000b40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000b40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000b40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000b40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000b40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000b40000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000b40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000b40000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000b40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000b40000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000b40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000b40000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000b40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000b40000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000b40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000b40000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000b40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000b40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000b40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000b40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000b40000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000b40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000b40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000b40000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000b40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000b40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=1000b6a800
+HK_SHADER_PROFILE code=b181a113 cs=1000b6a800 width=2512 height=1552 direct=1 instrs=22 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=1000b80000
+HK_SHADER_BEGIN cs=1000ba0000
+HK_SHADER_BEGIN cs=1000bc0000
+HK_SHADER_BEGIN cs=1000be0000
+HK_SHADER_PROFILE code=21162f2c cs=1000be0000 width=2512 height=1552 direct=1 instrs=154 regs=40 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=1000c00000
+HK_SHADER_PROFILE code=21162f2c cs=1000c00000 width=2512 height=1552 direct=1 instrs=154 regs=40 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=1000c20000
+HK_SHADER_PROFILE code=21162f2c cs=1000c20000 width=2512 height=1552 direct=1 instrs=154 regs=40 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=21162f2c cs=1000c20000 width=2512 height=1552 direct=1 instrs=154 regs=40 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=1000c40000
+HK_SHADER_PROFILE code=90bbd349 cs=1000c40000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=90bbd349 cs=1000c40000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=90bbd349 cs=1000c40000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=90bbd349 cs=1000c40000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=90bbd349 cs=1000c40000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=90bbd349 cs=1000c40000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=90bbd349 cs=1000c40000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=90bbd349 cs=1000c40000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=1000c60000
+HK_SHADER_BEGIN cs=1000c80000
+HK_SHADER_PROFILE code=187485c5 cs=1000c80000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000c80000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000c80000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=55313b90 cs=1000c80000 width=2512 height=1552 direct=1 instrs=23 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000c80000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000c80000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000c80000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000c80000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000c80000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000c80000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000c80000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000c80000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000c80000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000c80000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=50321a4f cs=1000c80000 width=2512 height=1552 direct=1 instrs=103 regs=48 scratch=0 loops=0 preamble=84
+HK_SHADER_BEGIN cs=1000ca0000
+HK_SHADER_PROFILE code=187485c5 cs=1000ca0000 width=1256 height=776 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=1000cc0000
+HK_SHADER_PROFILE code=b181a113 cs=1000cc0000 width=2512 height=1552 direct=1 instrs=22 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=1000ce0000
+HK_SHADER_PROFILE code=56d319e4 cs=1000ce0000 width=2512 height=1552 direct=1 instrs=72 regs=56 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=1000d00000
+HK_SHADER_PROFILE code=1bd518b5 cs=1000d00000 width=2512 height=1552 direct=1 instrs=25 regs=17 scratch=0 loops=0 preamble=0
+HK_SHADER_PROFILE code=187485c5 cs=1000d00000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000d00000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000d00000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000d00000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000d00000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000d00000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000d00000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000d00000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000d00000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000d00000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000d00000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000d00000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000d00000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000d00000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000d00000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000d00000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000d00000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000d00000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000d00000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000d00000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000d00000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000d00000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000d00000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000d00000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000d00000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000d00000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000d00000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000d00000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000d00000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000d00000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000d00000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000d00000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000d00000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000d00000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=1000d2a800
+HK_SHADER_PROFILE code=b181a113 cs=1000d2a800 width=2512 height=1552 direct=1 instrs=22 regs=24 scratch=0 loops=0 preamble=1
+HK_ARCH_SUBMIT queue=1 timeline=15 ns=4728030814670 cbs=2 commands=18 waits=1 signals=2
+HK_ARCH_CS queue=1 timeline=15 cb=1 cs=868f384000 engine=compute draws=1 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=1 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=15 cb=1 cs=868f33c000 engine=compute draws=2 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=1 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=15 cb=1 cs=868f2ac000 engine=compute draws=1 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=15 cb=1 cs=868f288000 engine=render draws=1 flushes=0 width=2512 height=1552 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=1000be0000
+HK_ARCH_CS queue=1 timeline=15 cb=1 cs=868f264000 engine=compute draws=1 flushes=1 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=15 cb=1 cs=868f240000 engine=compute draws=1 flushes=1 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=1 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=15 cb=1 cs=868f21c000 engine=render draws=1 flushes=0 width=2512 height=1552 sample_bytes=8 samples=1 empty_tiles=1 ts_start=0 ts_end=0 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=1000c00000
+HK_ARCH_CS queue=1 timeline=15 cb=1 cs=868f1f8000 engine=render draws=2 flushes=0 width=2512 height=1552 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=1 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=1000c20000
+HK_EARLY_TILING queue=1 timeline=15 cb=1 cs=868f1f8000
+HK_ARCH_CS queue=1 timeline=15 cb=1 cs=868f1d4000 engine=render draws=8 flushes=0 width=2512 height=1552 sample_bytes=8 samples=1 empty_tiles=1 ts_start=0 ts_end=1 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=1000c40000
+HK_EARLY_TILING queue=1 timeline=15 cb=1 cs=868f1d4000
+HK_ARCH_CS queue=1 timeline=15 cb=1 cs=868f18c000 engine=compute draws=1 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=15 cb=1 cs=868f168000 engine=render draws=15 flushes=0 width=2512 height=1552 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=1000c80000
+HK_ARCH_CS queue=1 timeline=15 cb=1 cs=868f144000 engine=render draws=1 flushes=0 width=1256 height=776 sample_bytes=8 samples=1 empty_tiles=1 ts_start=0 ts_end=0 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=1000ca0000
+HK_EARLY_TILING queue=1 timeline=15 cb=1 cs=868f144000
+HK_ARCH_CS queue=1 timeline=15 cb=1 cs=868f120000 engine=render draws=1 flushes=0 width=2512 height=1552 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=1 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=1000cc0000
+HK_EARLY_TILING queue=1 timeline=15 cb=1 cs=868f120000
+HK_ARCH_CS queue=1 timeline=15 cb=1 cs=868f0fc000 engine=render draws=1 flushes=0 width=2512 height=1552 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=1 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=1000ce0000
+HK_EARLY_TILING queue=1 timeline=15 cb=1 cs=868f0fc000
+HK_ARCH_CS queue=1 timeline=15 cb=1 cs=868f0d8000 engine=render draws=36 flushes=0 width=2512 height=1552 sample_bytes=8 samples=1 empty_tiles=1 ts_start=0 ts_end=0 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=1000d00000
+HK_EARLY_TILING queue=1 timeline=15 cb=1 cs=868f0d8000
+HK_ARCH_CS queue=1 timeline=15 cb=1 cs=868f0be800 engine=render draws=1 flushes=0 width=2512 height=1552 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=1000d2a800
+HK_EARLY_TILING queue=1 timeline=15 cb=1 cs=868f0be800
+HK_ARCH_CS queue=1 timeline=15 cb=1 cs=868f090000 engine=compute draws=1 flushes=1 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=15 cb=1 cs=868f06c000 engine=compute draws=0 flushes=1 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_RETURN queue=1 timeline=15 ns=4728031128066 elapsed_ns=313437 result=0
+HK_SHADER_BEGIN cs=1000d40000
+HK_SHADER_BEGIN cs=1000d60000
+HK_SHADER_BEGIN cs=1000d80000
+HK_SHADER_BEGIN cs=1000da0000
+HK_SHADER_PROFILE code=21162f2c cs=1000da0000 width=2512 height=1552 direct=1 instrs=154 regs=40 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=1000dc0000
+HK_SHADER_PROFILE code=21162f2c cs=1000dc0000 width=2512 height=1552 direct=1 instrs=154 regs=40 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=1000de0000
+HK_SHADER_PROFILE code=21162f2c cs=1000de0000 width=2512 height=1552 direct=1 instrs=154 regs=40 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=21162f2c cs=1000de0000 width=2512 height=1552 direct=1 instrs=154 regs=40 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=1000e00000
+HK_SHADER_PROFILE code=90bbd349 cs=1000e00000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=90bbd349 cs=1000e00000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=90bbd349 cs=1000e00000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=90bbd349 cs=1000e00000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=90bbd349 cs=1000e00000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=90bbd349 cs=1000e00000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=90bbd349 cs=1000e00000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=90bbd349 cs=1000e00000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=1000e20000
+HK_SHADER_BEGIN cs=1000e40000
+HK_SHADER_PROFILE code=187485c5 cs=1000e40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000e40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000e40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=55313b90 cs=1000e40000 width=2512 height=1552 direct=1 instrs=23 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000e40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000e40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000e40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000e40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000e40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000e40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000e40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000e40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000e40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000e40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=50321a4f cs=1000e40000 width=2512 height=1552 direct=1 instrs=103 regs=48 scratch=0 loops=0 preamble=84
+HK_SHADER_BEGIN cs=1000e60000
+HK_SHADER_PROFILE code=187485c5 cs=1000e60000 width=1256 height=776 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=1000e80000
+HK_SHADER_PROFILE code=b181a113 cs=1000e80000 width=2512 height=1552 direct=1 instrs=22 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=1000ea0000
+HK_SHADER_PROFILE code=56d319e4 cs=1000ea0000 width=2512 height=1552 direct=1 instrs=72 regs=56 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=1000ec0000
+HK_SHADER_PROFILE code=1bd518b5 cs=1000ec0000 width=2512 height=1552 direct=1 instrs=25 regs=17 scratch=0 loops=0 preamble=0
+HK_SHADER_PROFILE code=187485c5 cs=1000ec0000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000ec0000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000ec0000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000ec0000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000ec0000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000ec0000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000ec0000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000ec0000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000ec0000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000ec0000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000ec0000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000ec0000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000ec0000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000ec0000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000ec0000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000ec0000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000ec0000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000ec0000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000ec0000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000ec0000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000ec0000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000ec0000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000ec0000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000ec0000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000ec0000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000ec0000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000ec0000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000ec0000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000ec0000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000ec0000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000ec0000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000ec0000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000ec0000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000ec0000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=1000eea800
+HK_SHADER_PROFILE code=b181a113 cs=1000eea800 width=2512 height=1552 direct=1 instrs=22 regs=24 scratch=0 loops=0 preamble=1
+HK_ARCH_SUBMIT queue=1 timeline=17 ns=4728072747701 cbs=2 commands=18 waits=1 signals=2
+HK_ARCH_CS queue=1 timeline=17 cb=1 cs=868f048000 engine=compute draws=1 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=1 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=17 cb=1 cs=868f000000 engine=compute draws=2 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=1 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=17 cb=1 cs=868ef70000 engine=compute draws=1 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=17 cb=1 cs=868ef4c000 engine=render draws=1 flushes=0 width=2512 height=1552 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=1000da0000
+HK_ARCH_CS queue=1 timeline=17 cb=1 cs=868ef28000 engine=compute draws=1 flushes=1 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=17 cb=1 cs=868ef04000 engine=compute draws=1 flushes=1 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=1 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=17 cb=1 cs=868eee0000 engine=render draws=1 flushes=0 width=2512 height=1552 sample_bytes=8 samples=1 empty_tiles=1 ts_start=0 ts_end=0 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=1000dc0000
+HK_ARCH_CS queue=1 timeline=17 cb=1 cs=868eebc000 engine=render draws=2 flushes=0 width=2512 height=1552 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=1 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=1000de0000
+HK_EARLY_TILING queue=1 timeline=17 cb=1 cs=868eebc000
+HK_ARCH_CS queue=1 timeline=17 cb=1 cs=868ee98000 engine=render draws=8 flushes=0 width=2512 height=1552 sample_bytes=8 samples=1 empty_tiles=1 ts_start=0 ts_end=1 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=1000e00000
+HK_EARLY_TILING queue=1 timeline=17 cb=1 cs=868ee98000
+HK_ARCH_CS queue=1 timeline=17 cb=1 cs=868ee50000 engine=compute draws=1 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=17 cb=1 cs=868ee2c000 engine=render draws=15 flushes=0 width=2512 height=1552 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=1000e40000
+HK_ARCH_CS queue=1 timeline=17 cb=1 cs=868ee08000 engine=render draws=1 flushes=0 width=1256 height=776 sample_bytes=8 samples=1 empty_tiles=1 ts_start=0 ts_end=0 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=1000e60000
+HK_EARLY_TILING queue=1 timeline=17 cb=1 cs=868ee08000
+HK_ARCH_CS queue=1 timeline=17 cb=1 cs=868ede4000 engine=render draws=1 flushes=0 width=2512 height=1552 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=1 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=1000e80000
+HK_EARLY_TILING queue=1 timeline=17 cb=1 cs=868ede4000
+HK_ARCH_CS queue=1 timeline=17 cb=1 cs=868edc0000 engine=render draws=1 flushes=0 width=2512 height=1552 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=1 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=1000ea0000
+HK_EARLY_TILING queue=1 timeline=17 cb=1 cs=868edc0000
+HK_ARCH_CS queue=1 timeline=17 cb=1 cs=868ed9c000 engine=render draws=36 flushes=0 width=2512 height=1552 sample_bytes=8 samples=1 empty_tiles=1 ts_start=0 ts_end=0 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=1000ec0000
+HK_EARLY_TILING queue=1 timeline=17 cb=1 cs=868ed9c000
+HK_ARCH_CS queue=1 timeline=17 cb=1 cs=868ed82800 engine=render draws=1 flushes=0 width=2512 height=1552 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=1000eea800
+HK_EARLY_TILING queue=1 timeline=17 cb=1 cs=868ed82800
+HK_ARCH_CS queue=1 timeline=17 cb=1 cs=868ed54000 engine=compute draws=1 flushes=1 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=17 cb=1 cs=868ed30000 engine=compute draws=0 flushes=1 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_RETURN queue=1 timeline=17 ns=4728073031869 elapsed_ns=284168 result=0
+================== Start timer (Frame: 1) ==================
+[gfxrecon] INFO - Loading state for captured frame 1500
+[gfxrecon] INFO - Enabling the VK_KHR_get_surface_capabilities2 extension
+[gfxrecon] INFO - Replay has removed the following layers from VkInstanceCreateInfo when calling vkCreateInstance:
+[gfxrecon] INFO - 	VK_LAYER_MESA_device_select
+[gfxrecon] WARNING - Failed to map handle for object id 316
+[gfxrecon] INFO - Finished loading state for captured frame 1500
+[gfxrecon] WARNING - Image subresource layout info is not available for mapped memory write; capture/replay memory alignment differences will not be handled properly
+[gfxrecon] WARNING - API call at index: 5661 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 5662 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 5663 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 5664 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 5665 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 5666 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 5667 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 5668 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 5669 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 5670 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 5671 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 5672 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 5673 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 5674 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 5675 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+================== Start timer (Frame: 2) ==================
+[gfxrecon] WARNING - API call at index: 6363 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 6364 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 6365 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 6366 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API calHK_SHADER_BEGIN cs=1000f00000
+HK_SHADER_BEGIN cs=1000f20000
+HK_SHADER_BEGIN cs=1000f40000
+HK_SHADER_BEGIN cs=1000f60000
+HK_SHADER_PROFILE code=21162f2c cs=1000f60000 width=2512 height=1552 direct=1 instrs=154 regs=40 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=1000f80000
+HK_SHADER_PROFILE code=21162f2c cs=1000f80000 width=2512 height=1552 direct=1 instrs=154 regs=40 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=1000fa0000
+HK_SHADER_PROFILE code=21162f2c cs=1000fa0000 width=2512 height=1552 direct=1 instrs=154 regs=40 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=21162f2c cs=1000fa0000 width=2512 height=1552 direct=1 instrs=154 regs=40 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=1000fc0000
+HK_SHADER_PROFILE code=90bbd349 cs=1000fc0000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=90bbd349 cs=1000fc0000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=90bbd349 cs=1000fc0000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=90bbd349 cs=1000fc0000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=90bbd349 cs=1000fc0000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=90bbd349 cs=1000fc0000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=90bbd349 cs=1000fc0000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=90bbd349 cs=1000fc0000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=1000fe0000
+HK_SHADER_BEGIN cs=1001000000
+HK_SHADER_PROFILE code=187485c5 cs=1001000000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1001000000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1001000000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=55313b90 cs=1001000000 width=2512 height=1552 direct=1 instrs=23 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1001000000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1001000000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1001000000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1001000000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1001000000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1001000000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1001000000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1001000000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1001000000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1001000000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=50321a4f cs=1001000000 width=2512 height=1552 direct=1 instrs=103 regs=48 scratch=0 loops=0 preamble=84
+HK_SHADER_BEGIN cs=1001020000
+HK_SHADER_PROFILE code=187485c5 cs=1001020000 width=1256 height=776 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=1001040000
+HK_SHADER_PROFILE code=b181a113 cs=1001040000 width=2512 height=1552 direct=1 instrs=22 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=1001060000
+HK_SHADER_PROFILE code=56d319e4 cs=1001060000 width=2512 height=1552 direct=1 instrs=72 regs=56 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=1001080000
+HK_SHADER_PROFILE code=1bd518b5 cs=1001080000 width=2512 height=1552 direct=1 instrs=25 regs=17 scratch=0 loops=0 preamble=0
+HK_SHADER_PROFILE code=187485c5 cs=1001080000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1001080000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1001080000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1001080000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1001080000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1001080000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1001080000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1001080000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1001080000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1001080000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1001080000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1001080000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1001080000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1001080000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1001080000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1001080000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1001080000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1001080000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1001080000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1001080000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1001080000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1001080000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1001080000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1001080000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1001080000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1001080000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1001080000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1001080000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1001080000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1001080000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1001080000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1001080000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1001080000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1001080000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=10010aa800
+HK_SHADER_PROFILE code=b181a113 cs=10010aa800 width=2512 height=1552 direct=1 instrs=22 regs=24 scratch=0 loops=0 preamble=1
+HK_ARCH_SUBMIT queue=1 timeline=19 ns=4728110175232 cbs=2 commands=18 waits=1 signals=2
+HK_ARCH_CS queue=1 timeline=19 cb=1 cs=868ed0c000 engine=compute draws=1 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=1 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=19 cb=1 cs=868ecc4000 engine=compute draws=2 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=1 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=19 cb=1 cs=868ec34000 engine=compute draws=1 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=19 cb=1 cs=868ec10000 engine=render draws=1 flushes=0 width=2512 height=1552 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=1000f60000
+HK_ARCH_CS queue=1 timeline=19 cb=1 cs=868ebec000 engine=compute draws=1 flushes=1 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=19 cb=1 cs=868ebc8000 engine=compute draws=1 flushes=1 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=1 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=19 cb=1 cs=868eba4000 engine=render draws=1 flushes=0 width=2512 height=1552 sample_bytes=8 samples=1 empty_tiles=1 ts_start=0 ts_end=0 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=1000f80000
+HK_ARCH_CS queue=1 timeline=19 cb=1 cs=868eb80000 engine=render draws=2 flushes=0 width=2512 height=1552 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=1 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=1000fa0000
+HK_EARLY_TILING queue=1 timeline=19 cb=1 cs=868eb80000
+HK_ARCH_CS queue=1 timeline=19 cb=1 cs=868eb5c000 engine=render draws=8 flushes=0 width=2512 height=1552 sample_bytes=8 samples=1 empty_tiles=1 ts_start=0 ts_end=1 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=1000fc0000
+HK_EARLY_TILING queue=1 timeline=19 cb=1 cs=868eb5c000
+HK_ARCH_CS queue=1 timeline=19 cb=1 cs=868eb14000 engine=compute draws=1 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=19 cb=1 cs=868eaf0000 engine=render draws=15 flushes=0 width=2512 height=1552 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=1001000000
+HK_ARCH_CS queue=1 timeline=19 cb=1 cs=868eacc000 engine=render draws=1 flushes=0 width=1256 height=776 sample_bytes=8 samples=1 empty_tiles=1 ts_start=0 ts_end=0 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=1001020000
+HK_EARLY_TILING queue=1 timeline=19 cb=1 cs=868eacc000
+HK_ARCH_CS queue=1 timeline=19 cb=1 cs=868eaa8000 engine=render draws=1 flushes=0 width=2512 height=1552 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=1 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=1001040000
+HK_EARLY_TILING queue=1 timeline=19 cb=1 cs=868eaa8000
+HK_ARCH_CS queue=1 timeline=19 cb=1 cs=868ea84000 engine=render draws=1 flushes=0 width=2512 height=1552 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=1 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=1001060000
+HK_EARLY_TILING queue=1 timeline=19 cb=1 cs=868ea84000
+HK_ARCH_CS queue=1 timeline=19 cb=1 cs=868ea60000 engine=render draws=36 flushes=0 width=2512 height=1552 sample_bytes=8 samples=1 empty_tiles=1 ts_start=0 ts_end=0 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=1001080000
+HK_EARLY_TILING queue=1 timeline=19 cb=1 cs=868ea60000
+HK_ARCH_CS queue=1 timeline=19 cb=1 cs=868ea46800 engine=render draws=1 flushes=0 width=2512 height=1552 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=10010aa800
+HK_EARLY_TILING queue=1 timeline=19 cb=1 cs=868ea46800
+HK_ARCH_CS queue=1 timeline=19 cb=1 cs=868ea18000 engine=compute draws=1 flushes=1 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=19 cb=1 cs=868e9f4000 engine=compute draws=0 flushes=1 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_RETURN queue=1 timeline=19 ns=4728110459959 elapsed_ns=284769 result=0
+l at index: 6367 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 6368 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 6369 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 6370 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 6371 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 6372 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 6373 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 6374 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 6375 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 6376 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 6377 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 7049 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 7050 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 7051 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 7052 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 7053 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 7054 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 7055 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 7056 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 7057 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 7058 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 7059 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 7060 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 7061 thread: HK_SHADER_BEGIN cs=1000800000
+HK_SHADER_BEGIN cs=1000820000
+HK_SHADER_BEGIN cs=1000840000
+HK_SHADER_BEGIN cs=1000860000
+HK_SHADER_PROFILE code=21162f2c cs=1000860000 width=2512 height=1552 direct=1 instrs=154 regs=40 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=1000880000
+HK_SHADER_PROFILE code=21162f2c cs=1000880000 width=2512 height=1552 direct=1 instrs=154 regs=40 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=10008a0000
+HK_SHADER_PROFILE code=21162f2c cs=10008a0000 width=2512 height=1552 direct=1 instrs=154 regs=40 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=21162f2c cs=10008a0000 width=2512 height=1552 direct=1 instrs=154 regs=40 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=10008c0000
+HK_SHADER_PROFILE code=90bbd349 cs=10008c0000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=90bbd349 cs=10008c0000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=90bbd349 cs=10008c0000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=90bbd349 cs=10008c0000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=90bbd349 cs=10008c0000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=90bbd349 cs=10008c0000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=90bbd349 cs=10008c0000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=90bbd349 cs=10008c0000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=10008e0000
+HK_SHADER_BEGIN cs=1000900000
+HK_SHADER_PROFILE code=187485c5 cs=1000900000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000900000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000900000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=55313b90 cs=1000900000 width=2512 height=1552 direct=1 instrs=23 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000900000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000900000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000900000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000900000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000900000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000900000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000900000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000900000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000900000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000900000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=50321a4f cs=1000900000 width=2512 height=1552 direct=1 instrs=103 regs=48 scratch=0 loops=0 preamble=84
+HK_SHADER_BEGIN cs=1000920000
+HK_SHADER_PROFILE code=187485c5 cs=1000920000 width=1256 height=776 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=1000940000
+HK_SHADER_PROFILE code=b181a113 cs=1000940000 width=2512 height=1552 direct=1 instrs=22 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=1000960000
+HK_SHADER_PROFILE code=56d319e4 cs=1000960000 width=2512 height=1552 direct=1 instrs=72 regs=56 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=1000980000
+HK_SHADER_PROFILE code=1bd518b5 cs=1000980000 width=2512 height=1552 direct=1 instrs=25 regs=17 scratch=0 loops=0 preamble=0
+HK_SHADER_PROFILE code=187485c5 cs=1000980000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000980000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000980000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000980000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000980000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000980000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000980000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000980000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000980000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000980000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000980000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000980000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000980000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000980000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000980000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000980000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000980000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000980000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000980000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000980000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000980000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000980000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000980000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000980000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000980000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000980000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000980000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000980000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000980000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000980000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000980000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000980000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000980000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000980000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=10009aa800
+HK_SHADER_PROFILE code=b181a113 cs=10009aa800 width=2512 height=1552 direct=1 instrs=22 regs=24 scratch=0 loops=0 preamble=1
+HK_ARCH_SUBMIT queue=1 timeline=21 ns=4728146727409 cbs=2 commands=18 waits=1 signals=2
+HK_ARCH_CS queue=1 timeline=21 cb=1 cs=868fd0c000 engine=compute draws=1 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=1 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=21 cb=1 cs=868fe98000 engine=compute draws=2 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=1 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=21 cb=1 cs=868fe08000 engine=compute draws=1 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=21 cb=1 cs=868fde4000 engine=render draws=1 flushes=0 width=2512 height=1552 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=1000860000
+HK_ARCH_CS queue=1 timeline=21 cb=1 cs=868fee0000 engine=compute draws=1 flushes=1 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=21 cb=1 cs=868febc000 engine=compute draws=1 flushes=1 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=1 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=21 cb=1 cs=868fdc0000 engine=render draws=1 flushes=0 width=2512 height=1552 sample_bytes=8 samples=1 empty_tiles=1 ts_start=0 ts_end=0 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=1000880000
+HK_ARCH_CS queue=1 timeline=21 cb=1 cs=868fd9c000 engine=render draws=2 flushes=0 width=2512 height=1552 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=1 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=10008a0000
+HK_EARLY_TILING queue=1 timeline=21 cb=1 cs=868fd9c000
+HK_ARCH_CS queue=1 timeline=21 cb=1 cs=868fd78000 engine=render draws=8 flushes=0 width=2512 height=1552 sample_bytes=8 samples=1 empty_tiles=1 ts_start=0 ts_end=1 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=10008c0000
+HK_EARLY_TILING queue=1 timeline=21 cb=1 cs=868fd78000
+HK_ARCH_CS queue=1 timeline=21 cb=1 cs=868fd30000 engine=compute draws=1 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=21 cb=1 cs=868f7e0000 engine=render draws=15 flushes=0 width=2512 height=1552 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=1000900000
+HK_ARCH_CS queue=1 timeline=21 cb=1 cs=868f7bc000 engine=render draws=1 flushes=0 width=1256 height=776 sample_bytes=8 samples=1 empty_tiles=1 ts_start=0 ts_end=0 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=1000920000
+HK_EARLY_TILING queue=1 timeline=21 cb=1 cs=868f7bc000
+HK_ARCH_CS queue=1 timeline=21 cb=1 cs=868f798000 engine=render draws=1 flushes=0 width=2512 height=1552 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=1 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=1000940000
+HK_EARLY_TILING queue=1 timeline=21 cb=1 cs=868f798000
+HK_ARCH_CS queue=1 timeline=21 cb=1 cs=868f774000 engine=render draws=1 flushes=0 width=2512 height=1552 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=1 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=1000960000
+HK_EARLY_TILING queue=1 timeline=21 cb=1 cs=868f774000
+HK_ARCH_CS queue=1 timeline=21 cb=1 cs=868f750000 engine=render draws=36 flushes=0 width=2512 height=1552 sample_bytes=8 samples=1 empty_tiles=1 ts_start=0 ts_end=0 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=1000980000
+HK_EARLY_TILING queue=1 timeline=21 cb=1 cs=868f750000
+HK_ARCH_CS queue=1 timeline=21 cb=1 cs=868f736800 engine=render draws=1 flushes=0 width=2512 height=1552 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=10009aa800
+HK_EARLY_TILING queue=1 timeline=21 cb=1 cs=868f736800
+HK_ARCH_CS queue=1 timeline=21 cb=1 cs=868f708000 engine=compute draws=1 flushes=1 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=21 cb=1 cs=868f6e4000 engine=compute draws=0 flushes=1 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_RETURN queue=1 timeline=21 ns=4728147021302 elapsed_ns=293893 result=0
+HK_SHADER_BEGIN cs=10009c0000
+HK_SHADER_BEGIN cs=10009e0000
+HK_SHADER_BEGIN cs=1000a00000
+HK_SHADER_BEGIN cs=1000a20000
+HK_SHADER_PROFILE code=21162f2c cs=1000a20000 width=2512 height=1552 direct=1 instrs=154 regs=40 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=1000a40000
+HK_SHADER_PROFILE code=21162f2c cs=1000a40000 width=2512 height=1552 direct=1 instrs=154 regs=40 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=1000a60000
+HK_SHADER_PROFILE code=21162f2c cs=1000a60000 width=2512 height=1552 direct=1 instrs=154 regs=40 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=21162f2c cs=1000a60000 width=2512 height=1552 direct=1 instrs=154 regs=40 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=1000a80000
+HK_SHADER_PROFILE code=90bbd349 cs=1000a80000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=90bbd349 cs=1000a80000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=90bbd349 cs=1000a80000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=90bbd349 cs=1000a80000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=90bbd349 cs=1000a80000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=90bbd349 cs=1000a80000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=90bbd349 cs=1000a80000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=90bbd349 cs=1000a80000 width=2512 height=1552 direct=1 instrs=29 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=1000aa0000
+HK_SHADER_BEGIN cs=1000ac0000
+HK_SHADER_PROFILE code=187485c5 cs=1000ac0000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000ac0000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000ac0000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=55313b90 cs=1000ac0000 width=2512 height=1552 direct=1 instrs=23 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000ac0000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000ac0000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000ac0000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000ac0000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000ac0000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000ac0000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000ac0000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000ac0000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000ac0000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000ac0000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=50321a4f cs=1000ac0000 width=2512 height=1552 direct=1 instrs=103 regs=48 scratch=0 loops=0 preamble=84
+HK_SHADER_BEGIN cs=1000ae0000
+HK_SHADER_PROFILE code=187485c5 cs=1000ae0000 width=1256 height=776 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=1000b00000
+HK_SHADER_PROFILE code=b181a113 cs=1000b00000 width=2512 height=1552 direct=1 instrs=22 regs=24 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=1000b20000
+HK_SHADER_PROFILE code=56d319e4 cs=1000b20000 width=2512 height=1552 direct=1 instrs=72 regs=56 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=1000b40000
+HK_SHADER_PROFILE code=1bd518b5 cs=1000b40000 width=2512 height=1552 direct=1 instrs=25 regs=17 scratch=0 loops=0 preamble=0
+HK_SHADER_PROFILE code=187485c5 cs=1000b40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000b40000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000b40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000b40000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000b40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000b40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000b40000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000b40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000b40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000b40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000b40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000b40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000b40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000b40000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000b40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000b40000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000b40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000b40000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000b40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000b40000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000b40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000b40000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000b40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000b40000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000b40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000b40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000b40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000b40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000b40000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000b40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000b40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=c0c145be cs=1000b40000 width=2512 height=1552 direct=1 instrs=107 regs=80 scratch=0 loops=0 preamble=27
+HK_SHADER_PROFILE code=187485c5 cs=1000b40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_PROFILE code=187485c5 cs=1000b40000 width=2512 height=1552 direct=1 instrs=106 regs=32 scratch=0 loops=0 preamble=1
+HK_SHADER_BEGIN cs=1000b6a800
+HK_SHADER_PROFILE code=b181a113 cs=1000b6a800 width=2512 height=1552 direct=1 instrs=22 regs=24 scratch=0 loops=0 preamble=1
+HK_ARCH_SUBMIT queue=1 timeline=23 ns=4728183484257 cbs=2 commands=18 waits=1 signals=2
+HK_ARCH_CS queue=1 timeline=23 cb=1 cs=868f6c0000 engine=compute draws=1 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=1 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=23 cb=1 cs=868f678000 engine=compute draws=2 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=1 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=23 cb=1 cs=868f5e8000 engine=compute draws=1 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=23 cb=1 cs=868f5c4000 engine=render draws=1 flushes=0 width=2512 height=1552 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=1000a20000
+HK_ARCH_CS queue=1 timeline=23 cb=1 cs=868f5a0000 engine=compute draws=1 flushes=1 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=23 cb=1 cs=868f57c000 engine=compute draws=1 flushes=1 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=1 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=23 cb=1 cs=868f558000 engine=render draws=1 flushes=0 width=2512 height=1552 sample_bytes=8 samples=1 empty_tiles=1 ts_start=0 ts_end=0 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=1000a40000
+HK_ARCH_CS queue=1 timeline=23 cb=1 cs=868f534000 engine=render draws=2 flushes=0 width=2512 height=1552 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=1 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=1000a60000
+HK_EARLY_TILING queue=1 timeline=23 cb=1 cs=868f534000
+HK_ARCH_CS queue=1 timeline=23 cb=1 cs=868f510000 engine=render draws=8 flushes=0 width=2512 height=1552 sample_bytes=8 samples=1 empty_tiles=1 ts_start=0 ts_end=1 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=1000a80000
+HK_EARLY_TILING queue=1 timeline=23 cb=1 cs=868f510000
+HK_ARCH_CS queue=1 timeline=23 cb=1 cs=868f4c8000 engine=compute draws=1 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=23 cb=1 cs=868f4a4000 engine=render draws=15 flushes=0 width=2512 height=1552 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=1000ac0000
+HK_ARCH_CS queue=1 timeline=23 cb=1 cs=868f480000 engine=render draws=1 flushes=0 width=1256 height=776 sample_bytes=8 samples=1 empty_tiles=1 ts_start=0 ts_end=0 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=1000ae0000
+HK_EARLY_TILING queue=1 timeline=23 cb=1 cs=868f480000
+HK_ARCH_CS queue=1 timeline=23 cb=1 cs=868f45c000 engine=render draws=1 flushes=0 width=2512 height=1552 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=1 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=1000b00000
+HK_EARLY_TILING queue=1 timeline=23 cb=1 cs=868f45c000
+HK_ARCH_CS queue=1 timeline=23 cb=1 cs=868f438000 engine=render draws=1 flushes=0 width=2512 height=1552 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=1 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=1000b20000
+HK_EARLY_TILING queue=1 timeline=23 cb=1 cs=868f438000
+HK_ARCH_CS queue=1 timeline=23 cb=1 cs=868f414000 engine=render draws=36 flushes=0 width=2512 height=1552 sample_bytes=8 samples=1 empty_tiles=1 ts_start=0 ts_end=0 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=1000b40000
+HK_EARLY_TILING queue=1 timeline=23 cb=1 cs=868f414000
+HK_ARCH_CS queue=1 timeline=23 cb=1 cs=868f3fa800 engine=render draws=1 flushes=0 width=2512 height=1552 sample_bytes=8 samples=1 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=1 writes_memory=0
+HK_SHADER_SUBMIT cs=1000b6a800
+HK_EARLY_TILING queue=1 timeline=23 cb=1 cs=868f3fa800
+HK_ARCH_CS queue=1 timeline=23 cb=1 cs=868f3cc000 engine=compute draws=1 flushes=1 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_CS queue=1 timeline=23 cb=1 cs=868f3a8000 engine=compute draws=0 flushes=1 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_RETURN queue=1 timeline=23 ns=4728183773216 elapsed_ns=288959 result=0
+1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 7062 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 7063 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 7736 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 7737 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 7738 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 7739 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 7740 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 7741 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 7742 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 7743 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 7744 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 7745 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 7746 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 7747 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 7748 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 7749 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 7750 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 8432 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 8434 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 8435 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 8436 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 8437 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 8438 thread: 1 vkGetQueryPoolResults rHK_ARCH_SUBMIT queue=1 timeline=25 ns=4728206290136 cbs=1 commands=1 waits=0 signals=1
+HK_ARCH_CS queue=1 timeline=25 cb=0 cs=868daec400 engine=compute draws=1 flushes=0 width=0 height=0 sample_bytes=0 samples=0 empty_tiles=0 ts_start=0 ts_end=0 queries=0 fragment_dependency=0 writes_memory=0
+HK_ARCH_RETURN queue=1 timeline=25 ns=4728206316822 elapsed_ns=26686 result=0
+eturned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 8439 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 8440 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 8441 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 8442 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 8443 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 8444 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 8445 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] WARNING - API call at index: 8446 thread: 1 vkGetQueryPoolResults returned error value VK_NOT_READY that does not match the result from the capture file: VK_SUCCESS.
+[gfxrecon] INFO - WritePngImage(): Writing file "/root/asahi-evidence/20260919T133357800539Z-factorio-early-tiling-chained/vulkan-replay/screenshot_frame_5.png"
+================== End timer (Frame: 5) ==================
+Load time:  2.238091 seconds (frame 1500)
+Total time: 2.850236 seconds
+Measured FPS: 8.811847 fps, 0.567418 seconds, 5 frames, 1 loop, framerange [1-6)
+PASS: Vulkan replay process completed; rendering requires separate comparison

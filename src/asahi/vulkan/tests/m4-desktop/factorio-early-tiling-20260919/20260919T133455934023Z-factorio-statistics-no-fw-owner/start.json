@@ -1,0 +1,43 @@
+{
+  "command": [
+    "env",
+    "HK_ARCHITECTURE_PROFILE=true",
+    "HK_M4_SHADER_PROFILE=true",
+    "MESA_SHADER_CACHE_DISABLE=true",
+    "HK_M4_COMPUTE_TIMESTAMP_COPIES=true",
+    "HK_M4_BATCH_QUERY_COPIES=true",
+    "HK_M4_SPECIALIZE_QUERY_COPY=true",
+    "HK_M4_NATIVE_PREAMBLE=true",
+    "AGX_NATIVE_FLOAT_PREAMBLE=true",
+    "HK_M4_PREFETCH_DESCRIPTORS=true",
+    "HK_M4_BATCH_DISJOINT_CLEARS=true",
+    "HK_M4_COMPRESSED_2D=true",
+    "HK_M4_COMPRESSED_FEEDBACK=true",
+    "HK_M4_COMPUTE_COMPRESSED_COPY=true",
+    "HK_M4_COMPRESSION_AUDIT=true",
+    "HK_M4_QUERY_COMPLETION=false",
+    "HK_M4_EARLY_TILING=true",
+    "HK_M4_COUNT_FRAGMENTS=true",
+    "python3",
+    "/root/factorio-replay.py",
+    "/root/asahi-evidence/20260919T133455934023Z-factorio-statistics-no-fw-owner",
+    "--compression",
+    "--icd",
+    "/root/asahi-early-tiling.json",
+    "--trace",
+    "/home/e/.local/share/factorio-driver/frame-architecture-20260919/menu_frames_1500_through_1504.gfxr",
+    "--frames",
+    "5"
+  ],
+  "seconds": 65,
+  "boot_id": "976bd270-3a14-44b7-8566-33f31cf00e90",
+  "watchdog": {
+    "device": "/dev/watchdog0",
+    "identity": "Apple SoC Watchdog",
+    "timeout_seconds": 60,
+    "initial_timeleft_seconds": 59,
+    "periodic_keepalive": false,
+    "armed": true,
+    "ssh_broker_lease": true
+  }
+}

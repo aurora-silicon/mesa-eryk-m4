@@ -1,0 +1,65 @@
+{
+  "schema": 1,
+  "cases_sha256": "37ec1a6222ee70f511af7cbc4df423b261e2e6eb66ae85d11d5aeccdbb53c939",
+  "provenance": {
+    "catalog_sha256": "72c1bb9d2f9f0425ab8a4f570d78abdc1d3a34b82173ec76b772dedc477526bf"
+  },
+  "cases": [
+    {
+      "case": "dEQP-VK.synchronization2.op.single_queue.barrier.write_image_fragment_read_image_fragment.image_128x128_r8g8b8a8_unorm",
+      "catalog_index": 2910662,
+      "classification": "targeted-regression",
+      "rule": "fragment/vertex consumer dependencies; no outcome filtering",
+      "requirements": []
+    },
+    {
+      "case": "dEQP-VK.synchronization2.op.single_queue.barrier.write_image_fragment_read_image_fragment.image_128x128_r32g32b32a32_sfloat",
+      "catalog_index": 2910658,
+      "classification": "targeted-regression",
+      "rule": "fragment/vertex consumer dependencies; no outcome filtering",
+      "requirements": []
+    },
+    {
+      "case": "dEQP-VK.synchronization2.op.single_queue.barrier.write_image_fragment_read_image_vertex.image_128x128_r8g8b8a8_unorm",
+      "catalog_index": 2910718,
+      "classification": "targeted-regression",
+      "rule": "fragment/vertex consumer dependencies; no outcome filtering",
+      "requirements": []
+    },
+    {
+      "case": "dEQP-VK.synchronization2.op.single_queue.barrier.write_image_fragment_read_image_vertex.image_128x128_r32g32b32a32_sfloat",
+      "catalog_index": 2910714,
+      "classification": "targeted-regression",
+      "rule": "fragment/vertex consumer dependencies; no outcome filtering",
+      "requirements": []
+    },
+    {
+      "case": "dEQP-VK.synchronization2.op.single_queue.barrier.write_image_compute_read_image_vertex.image_128x128_r8g8b8a8_unorm",
+      "catalog_index": 2910578,
+      "classification": "targeted-regression",
+      "rule": "fragment/vertex consumer dependencies; no outcome filtering",
+      "requirements": []
+    },
+    {
+      "case": "dEQP-VK.synchronization2.op.single_queue.barrier.write_image_compute_read_image_vertex.image_128x128_r32g32b32a32_sfloat",
+      "catalog_index": 2910574,
+      "classification": "targeted-regression",
+      "rule": "fragment/vertex consumer dependencies; no outcome filtering",
+      "requirements": []
+    },
+    {
+      "case": "dEQP-VK.synchronization2.op.single_queue.barrier.write_image_compute_read_image_fragment.image_128x128_r8g8b8a8_unorm",
+      "catalog_index": 2910522,
+      "classification": "targeted-regression",
+      "rule": "fragment/vertex consumer dependencies; no outcome filtering",
+      "requirements": []
+    },
+    {
+      "case": "dEQP-VK.synchronization2.op.single_queue.barrier.write_image_compute_read_image_fragment.image_128x128_r32g32b32a32_sfloat",
+      "catalog_index": 2910518,
+      "classification": "targeted-regression",
+      "rule": "fragment/vertex consumer dependencies; no outcome filtering",
+      "requirements": []
+    }
+  ]
+}
