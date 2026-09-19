@@ -1342,13 +1342,14 @@ queue_submit(struct hk_device *dev, struct hk_queue *queue,
    for (unsigned i = 0; i < submit->command_buffer_count; ++i) {
       struct hk_cmd_buffer *cmdbuf =
          (struct hk_cmd_buffer *)submit->command_buffers[i];
+      const struct hk_cs *previous_cs = NULL;
 
       list_for_each_entry(struct hk_cs, cs, &cmdbuf->control_streams, node) {
          if (architecture_profile)
             fprintf(stderr, "HK_ARCH_CS queue=%u timeline=%" PRIu64
                     " cb=%u cs=%" PRIx64 " engine=%s draws=%u flushes=%u"
                     " width=%u height=%u sample_bytes=%u samples=%u"
-                    " empty_tiles=%u ts_start=%u ts_end=%u queries=%u\n",
+                    " empty_tiles=%u ts_start=%u ts_end=%u queries=%u fragment_dependency=%u writes_memory=%u\n",
                     queue->drm.id, queue->drm.timeline_value, i, cs->addr,
                     cs->type == HK_CS_CDM ? "compute" : "render",
                     cs->stats.cmds, cs->stats.flushes,
@@ -1358,7 +1359,8 @@ queue_submit(struct hk_device *dev, struct hk_queue *queue,
                     cs->type == HK_CS_VDM ? MAX2(cs->tib.nr_samples, 1) : 0,
                     cs->type == HK_CS_VDM && cs->cr.process_empty_tiles,
                     !!cs->timestamp.start.handle, !!cs->timestamp.end.handle,
-                    cs->stats.query_copies);
+                    cs->stats.query_copies,
+                    cs->fragment_only_dependency, cs->writes_memory);
          if (debug_get_bool_option("HK_COMMAND_PROFILE", false))
             fprintf(stderr,
                     "HK_COMMAND_PROFILE ns=%" PRId64 " cb=%u engine=%s calls=%u commands=%u merged=%u timestamp_only=%u reset=%u dependency=%u ts_start=%u ts_end=%u fills=%u timestamp_copies=%u query_copies=%u precomp_calls=%u precomp_id=%u retirement_copies=%u\n",
@@ -1403,9 +1405,26 @@ queue_submit(struct hk_device *dev, struct hk_queue *queue,
 
             struct drm_asahi_cmd_render cmd;
             asahi_fill_vdm_command(dev, cs, &cmd);
+            if (dev->dev.chip == AGX_CHIP_G16G &&
+                (dev->dev.params.features & DRM_ASAHI_FEATURE_FRAGMENT_DEPENDENCY) &&
+                debug_get_bool_option("HK_M4_EARLY_TILING", false) &&
+                previous_cs && previous_cs->type == HK_CS_VDM &&
+                !previous_cs->writes_memory && cs->fragment_only_dependency &&
+                !cs->timestamp.start.handle) {
+               /* API dependencies since the last pass target fragment stages
+                * only. Keep the full header dependencies for FS, while TA
+                * may run ahead in its FIFO. Compute and CB boundaries, start
+                * timestamps and arbitrary shader writes remain conservative. */
+               cmd.flags |= DRM_ASAHI_RENDER_FRAGMENT_DEPENDENCY;
+               if (architecture_profile)
+                  fprintf(stderr, "HK_EARLY_TILING queue=%u timeline=%" PRIu64
+                          " cb=%u cs=%" PRIx64 "\n", queue->drm.id,
+                          queue->drm.timeline_value, i, cs->addr);
+            }
             util_dynarray_append(&payload, cmd);
             nr_vdm++;
          }
+         previous_cs = cs;
       }
    }
 

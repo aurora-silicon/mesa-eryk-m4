@@ -238,6 +238,7 @@ hk_reset_cmd_buffer(struct vk_command_buffer *vk_cmd_buffer,
    cmd->geom_index_count = 0;
    cmd->geom_instance_count = 0;
    cmd->uses_heap = false;
+   cmd->graphics_dependency_stages = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
 
    memset(&cmd->state, 0, sizeof(cmd->state));
 }
@@ -719,6 +720,14 @@ hk_CmdPipelineBarrier2(VkCommandBuffer commandBuffer,
 
    perf_debug(cmd, "Pipeline barrier");
 
+   VkPipelineStageFlags2 destinations = 0;
+   for (unsigned i = 0; i < pDependencyInfo->memoryBarrierCount; i++)
+      destinations |= pDependencyInfo->pMemoryBarriers[i].dstStageMask;
+   for (unsigned i = 0; i < pDependencyInfo->bufferMemoryBarrierCount; i++)
+      destinations |= pDependencyInfo->pBufferMemoryBarriers[i].dstStageMask;
+   for (unsigned i = 0; i < pDependencyInfo->imageMemoryBarrierCount; i++)
+      destinations |= pDependencyInfo->pImageMemoryBarriers[i].dstStageMask;
+
    if (dev->dev.chip == AGX_CHIP_G16G) {
       VkAccessFlags2 writes = 0;
       for (unsigned i = 0; i < pDependencyInfo->memoryBarrierCount; i++) {
@@ -753,6 +762,7 @@ hk_CmdPipelineBarrier2(VkCommandBuffer commandBuffer,
     * XXX: perf. */
    hk_cmd_buffer_end_compute(cmd);
    hk_cmd_buffer_end_graphics(cmd);
+   cmd->graphics_dependency_stages |= destinations;
 }
 
 void

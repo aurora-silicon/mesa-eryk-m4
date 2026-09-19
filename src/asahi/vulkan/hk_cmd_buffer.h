@@ -473,6 +473,7 @@ struct hk_cs {
    struct hk_drm_attachment_set fragment_attachments;
    bool writes_memory;
    bool writes_statistics;
+   bool fragment_only_dependency;
 
    /* Active restart index if one is set. Zero if there is no restart index set
     * yet, since Vulkan does not allow zero restart indices (unlike OpenGL).
@@ -622,6 +623,9 @@ struct hk_cmd_buffer {
 
    /* Does the command buffer use the geometry heap? */
    bool uses_heap;
+
+   /* Execution destinations accumulated since the preceding graphics CS. */
+   VkPipelineStageFlags2 graphics_dependency_stages;
 
    /* Owned BOs and retained references needed by recorded commands. */
    struct util_dynarray large_bos;
@@ -795,8 +799,17 @@ hk_cmd_buffer_get_cs_general(struct hk_cmd_buffer *cmd, struct hk_cs **ptr,
 
       *ptr = cs;
 
-      if (!compute)
+      if (!compute) {
+         const VkPipelineStageFlags2 fragment_stages =
+            VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT |
+            VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT |
+            VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT |
+            VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+         cs->fragment_only_dependency = cmd->graphics_dependency_stages &&
+            !(cmd->graphics_dependency_stages & ~fragment_stages);
+         cmd->graphics_dependency_stages = 0;
          hk_cs_init_graphics(cmd, cs);
+      }
    }
 
    assert(*ptr != NULL);

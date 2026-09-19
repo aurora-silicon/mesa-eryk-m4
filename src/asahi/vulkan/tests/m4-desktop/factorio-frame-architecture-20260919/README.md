@@ -329,3 +329,16 @@ pass. The five replay frames preserve every pixel and query total, with spans
 5.775..5.823ms versus6.183..6.247ms before. This removes redundant compute jobs;
 the5ms target remains unmet. Enabled by default after these checks; not yet
 installed in the normal driver at this checkpoint.
+
+## Stage-aware tiling overlap (opt-in qualification)
+
+Accumulate destination stages across API barriers, conservatively starting
+each command buffer at ALL_COMMANDS. Only an explicit nonempty set of
+fragment-only destinations can request early tiling. Compute predecessors,
+command-buffer boundaries, arbitrary preceding shader writes, start timestamps
+and event waits retain full ordering. Requires the kernel capability bit;
+HK_M4_EARLY_TILING remains false pending hardware qualification. This avoids
+waiting for fragment results before unrelated vertex/tiling work.
+
+With scheduling unchanged, the captured frame has seven eligible adjacent
+render transitions and spans5.75..5.84ms. No performance claim yet.

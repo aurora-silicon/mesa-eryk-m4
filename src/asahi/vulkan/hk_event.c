@@ -118,6 +118,7 @@ hk_CmdWaitEvents2(VkCommandBuffer commandBuffer, uint32_t eventCount,
    VK_FROM_HANDLE(hk_cmd_buffer, cmd, commandBuffer);
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
    perf_debug(cmd, "Wait events");
+   cmd->graphics_dependency_stages |= VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
 
    /* The big hammer. Need to check if this is actually needed.
     *

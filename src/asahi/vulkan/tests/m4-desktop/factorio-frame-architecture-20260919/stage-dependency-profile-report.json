@@ -1,0 +1,24 @@
+{
+  "id": "20260919T120258921338Z-factorio-stage-dependency-profile",
+  "verdict": "pass",
+  "transport_returncode": 0,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260919T120258921338Z-factorio-stage-dependency-profile",
+  "observations": {
+    "pixel_results": [
+      "PASS: Vulkan replay process completed; rendering requires separate comparison"
+    ],
+    "pixel_result_count": 1,
+    "thermal_samples": 9,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 67.5,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 67.5,
+      "Ta000m": 67.5,
+      "Te000m": 64.5,
+      "Te001m": 61.5,
+      "Tp000m": 65.75,
+      "Tp001m": 61.0
+    }
+  }
+}
