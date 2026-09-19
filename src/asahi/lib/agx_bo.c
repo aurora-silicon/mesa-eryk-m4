@@ -67,6 +67,12 @@ struct agx_bo *
 agx_bo_cache_fetch(struct agx_device *dev, size_t size, size_t align,
                    uint32_t flags, const bool dontwait)
 {
+   /* Both M4 allocation backends add read-only GPU permission to executable
+    * BOs. Match that effective identity before looking in flag buckets;
+    * otherwise every executable allocation misses its own cached objects. */
+   if (dev->chip == AGX_CHIP_G16G && (flags & AGX_BO_EXEC))
+      flags |= AGX_BO_READONLY;
+
    simple_mtx_lock(&dev->bo_cache.lock);
    struct list_head *bucket = agx_bucket(dev, size, flags);
    struct agx_bo *bo = NULL;

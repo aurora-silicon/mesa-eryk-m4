@@ -13,6 +13,10 @@
 #include "vdrm.h"
 
 #include "asahi_proto.h"
+#include "util/os_time.h"
+#include "util/u_debug.h"
+
+DEBUG_GET_ONCE_BOOL_OPTION(agx_virtio_map_profile, "AGX_VIRTIO_MAP_PROFILE", false)
 
 /**
  * Helper for simple pass-thru ioctls
@@ -198,7 +202,41 @@ agx_virtio_bo_unbind_object(struct agx_device *dev, uint32_t object_handle)
 static void
 agx_virtio_bo_mmap(struct agx_device *dev, struct agx_bo *bo, void *fixed_addr)
 {
+   const bool profile = debug_get_option_agx_virtio_map_profile();
+   int64_t start = profile ? os_time_get_nano() : 0;
    bo->_map = vdrm_bo_map(dev->vdrm, bo->handle, bo->size, fixed_addr);
+   if (profile) {
+      static _Thread_local int64_t since;
+      static _Thread_local struct {
+         char label[64];
+         uint64_t calls, bytes, ns, max_ns;
+      } stats[16];
+      const int64_t now = os_time_get_nano();
+      if (!since)
+         since = start;
+      unsigned i;
+      for (i = 0; i < ARRAY_SIZE(stats) - 1; ++i)
+         if (!stats[i].calls || !strcmp(stats[i].label, bo->label))
+            break;
+      snprintf(stats[i].label, sizeof(stats[i].label), "%s",
+               i == ARRAY_SIZE(stats) - 1 ? "overflow" : bo->label);
+      stats[i].calls++;
+      stats[i].bytes += bo->size;
+      stats[i].ns += now - start;
+      stats[i].max_ns = MAX2(stats[i].max_ns, now - start);
+      if (now - since >= INT64_C(1000000000)) {
+         for (unsigned j = 0; j < ARRAY_SIZE(stats); ++j) {
+            if (stats[j].calls)
+               fprintf(stderr, "AGX_VIRTIO_MAP_PROFILE ns=%" PRId64
+                       " span_ns=%" PRId64 " calls=%" PRIu64 " bytes=%" PRIu64
+                       " map_ns=%" PRIu64 " max_ns=%" PRIu64 " label=%s\n",
+                       now, now - since, stats[j].calls, stats[j].bytes,
+                       stats[j].ns, stats[j].max_ns, stats[j].label);
+         }
+         memset(stats, 0, sizeof(stats));
+         since = now;
+      }
+   }
    if (bo->_map == MAP_FAILED) {
       bo->_map = NULL;
       fprintf(stderr, "mmap failed: result=%p size=0x%llx fd=%i\n", bo->_map,

@@ -43,3 +43,24 @@ stale cached objects until its next insertion or explicit trim, as before.
 workspace `tools/bo-cache-test.py`)
 compiles it with assertions and tests precise age boundaries, bounded cleanup,
 pressure and byte-budget behavior without a DRM device.
+
+## M4 executable permission normalization (2026-09-19)
+
+Both native and virtio M4 allocators add READONLY to EXEC BOs. Cache lookup
+previously searched with the caller's original EXEC|LOW_VA flags, so it never
+found those cached BOs. Normalize the effective flag identity before selecting
+the cache bucket. Exact equality, read/write separation and other chips remain
+unchanged. The real cache test now covers this round trip and rejects using
+read-only data as writable data.
+
+`AGX_VIRTIO_MAP_PROFILE=true` optionally reports per-thread, per-label mapping
+counts/bytes/wall time at one-second intervals (16 bounded buckets). It measures
+mapping, not allocation/VM binding or GPU time. In the menu baseline
+`20260919T013035656631Z-factorio-native-virtio-map-profile`, guest time 40.44--75.69 s
+contains 66,467 new tile/compute program mappings and 4.383 s mapping wall time.
+With normalization, `20260919T013344481872Z-factorio-executable-cache-menu` has
+only three tile-program mappings after guest time 40 s. Both are different
+animated scenes, not an isolated FPS speedup ratio. The latter completes at
+35.85 FPS (25.43--37.65), peak 90.75 C under the 95 C guard; 60 FPS is unmet.
+`20260919T013318065400Z-factorio-executable-cache-frame` is pixel-identical to
+the original retained frame. Full CTS remains deferred.

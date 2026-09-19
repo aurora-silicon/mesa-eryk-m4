@@ -101,6 +101,20 @@ main(void)
    assert(!agx_bo_cache_put(dev, &mixed[0]));
    assert(dev->bo_cache.size == AGX_BO_CACHE_MAX_SIZE);
    agx_bo_cache_evict_all(dev);
+   /* M4 backends add READONLY to executable BOs. A caller using the original
+    * EXEC|LOW_VA flags must find that same cached allocation. Writable data
+    * must still not match an unrelated read-only BO. */
+   dev->chip = AGX_CHIP_G16G;
+   struct agx_bo code = make_bo(0x4000,
+      AGX_BO_EXEC | AGX_BO_LOW_VA | AGX_BO_READONLY, 0x4000);
+   struct agx_bo data = make_bo(0x4000, AGX_BO_READONLY, 0x4000);
+   assert(agx_bo_cache_put(dev, &code));
+   assert(agx_bo_cache_put(dev, &data));
+   assert(agx_bo_cache_fetch(dev, 0x4000, 0x4000,
+                            AGX_BO_EXEC | AGX_BO_LOW_VA, true) == &code);
+   assert(!agx_bo_cache_fetch(dev, 0x4000, 0x4000, 0, true));
+   assert(agx_bo_cache_fetch(dev, 0x4000, 0x4000, AGX_BO_READONLY, true) == &data);
+   assert(dev->bo_cache.size == 0);
    simple_mtx_destroy(&dev->bo_cache.lock);
    free(dev);
    puts("PASS: real BO cache flags, collisions, size, alignment, LRU and eviction");
