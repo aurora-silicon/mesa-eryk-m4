@@ -23,3 +23,10 @@ workspace tools/. Run only under gpu-experiment.py with its 60-second watchdog,
 six-channel temperature monitor and 95 C cutoff. Modes 16/17 deliberately use
 host reset; the separate GPU-reset visibility failure remains unresolved.
 This change does not enable the rejected HK_M4_BATCH_META_FILLS option.
+
+The retained frame 20260919T052503467708Z is pixel-identical (zero differing
+pixels, identical PNG SHA256 88594c10407e243eb0617860b8f2abc1f06c0844ec67ddba3900875d7e36796e).
+The unchanged 60-second live menu 20260919T052541131310Z completes at
+40.925 FPS (40.24--41.48 tail), peak 89.75 C.
+Different animated scenes prevent a paired speedup claim. Sustained 60 FPS
+remains unmet; query specialization stays optional pending further work.

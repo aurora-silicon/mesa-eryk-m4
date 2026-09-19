@@ -35,3 +35,8 @@ restored in 051040806334Z. Two command buffers in one submission also fail
 are unnecessary; handling within a submission remains suspect. This is not
 a proved cache-flush diagnosis. The candidate kernel diff is retained as
 workspace build/compute-visible-dependency-rejected.patch. No WAIT retests.
+
+Retained Factorio replay with fill batching enabled also times out
+(20260919T051257516055Z). Do not enable this option for the game. The default
+path with it disabled passes a 60-second menu in 051416303497Z at 42.739 FPS.
+The qualified kernel, original replayer and graphical autologin are restored.
