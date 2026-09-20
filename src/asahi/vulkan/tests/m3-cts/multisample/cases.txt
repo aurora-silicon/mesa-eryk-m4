@@ -1,0 +1,5 @@
+dEQP-VK.api.info.image_format_properties.2d.optimal.r8g8b8_unorm
+dEQP-VK.api.image_clearing.core.clear_color_attachment.multiple_layers.r8g8b8_unorm_200x180_clamp_input_sample_count_2
+dEQP-VK.api.image_clearing.core.clear_color_attachment.multiple_layers.r8g8b8_unorm_200x180_clamp_input_sample_count_4
+dEQP-VK.api.image_clearing.core.clear_color_attachment.multiple_layers.r8g8b8_unorm_200x180_sample_count_2
+dEQP-VK.api.image_clearing.core.clear_color_attachment.multiple_layers.r8g8b8_unorm_200x180_sample_count_4

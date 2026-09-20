@@ -593,7 +593,8 @@ hk_GetPhysicalDeviceImageFormatProperties2(
       sampleCounts =
          VK_SAMPLE_COUNT_1_BIT | VK_SAMPLE_COUNT_2_BIT | VK_SAMPLE_COUNT_4_BIT;
 
-      if (agx_native_graphics(&pdev->dev) && pdev->dev.chip != AGX_CHIP_G16G) {
+      if (agx_native_graphics(&pdev->dev) &&
+          !agx_chip_uses_g15_g16_shader_abi(pdev->dev.chip)) {
          const enum pipe_format pipe =
             hk_format_to_pipe_format(pImageFormatInfo->format);
          const enum pipe_format physical = ail_pixel_format[pipe].renderable;

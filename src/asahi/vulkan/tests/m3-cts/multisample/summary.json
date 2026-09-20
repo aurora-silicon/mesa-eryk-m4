@@ -1,0 +1,27 @@
+{
+  "selected": 5,
+  "completed": 5,
+  "missing_indices": [],
+  "counts": {
+    "Pass": 5
+  },
+  "coverage_complete": true,
+  "all_guards_complete": true,
+  "complete": true,
+  "boot_ids": [
+    "004ea507-7c86-4dcc-aea2-89e0bf814227"
+  ],
+  "peak_temperature_c": 50.75,
+  "selection": {
+    "purpose": "RGB8 multisample property and real 2x/4x clears",
+    "cases": 5
+  },
+  "guards": [
+    {
+      "segment": "segment-0000",
+      "phase": "complete",
+      "elapsed_seconds": 1.0010132789999915,
+      "watchdog_seconds": 60
+    }
+  ]
+}
