@@ -66,6 +66,18 @@ encode_retained_iadd(enum agx_isa_encoding enc, unsigned dest, unsigned a,
                            wait, bytes, length);
 }
 
+/* AGX3B has a non-destructive scoreboard NOP; AGX3C's existing
+ * fallback remains the single-slot identity instruction. */
+static bool
+encode_wait(enum agx_isa_encoding enc, unsigned wait, uint8_t *bytes,
+            uint8_t *length)
+{
+   if (enc == AGX_ISA_ENCODING_AGX3B)
+      return agx3_alu_wait_nop(enc, wait, bytes, length);
+   return agx3_alu_compose(enc, AGX3_ALU_BAND, 0, 0, 0, 0, 0,
+                           wait, bytes, length);
+}
+
 TEST(AGXPrint, MalformedOperandDiagnostics)
 {
    testing::internal::CaptureStderr();
@@ -1813,6 +1825,7 @@ TEST_F(AGX3PackBinary, SimdBroadcastImmediateWitnesses)
                .dest = 4,
                .src = 0,
                .lane = lane,
+               .src_live = true,
             };
             ASSERT_TRUE(agx3_subgroup_encode_shuffle(
                enc, &desc, broadcast, &broadcast_length));
@@ -1834,13 +1847,26 @@ TEST_F(AGX3PackBinary, SimdBroadcastImmediateWitnesses)
    }
 }
 
-TEST_F(AGX3PackBinary, SimdBroadcastRefusesUnwitnessedLane)
+TEST_F(AGX3PackBinary, SimdBroadcastAllImmediateLanes)
 {
-   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
-   agx_shuffle_to(b, agx_register(4, AGX_SIZE_32),
-                  agx_register(0, AGX_SIZE_32), agx_immediate(1));
-   agx_stop(b);
-   pack(b, /*expect_ok=*/false);
+   for (unsigned lane = 0; lane < 32; ++lane) {
+      SCOPED_TRACE(lane);
+      agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+      agx_shuffle_to(b, agx_register(4, AGX_SIZE_32),
+                     agx_register(0, AGX_SIZE_32), agx_immediate(lane));
+      agx_stop(b);
+      const struct agx3_subgroup_shuffle_desc d = {
+         .op = AGX3_SUBGROUP_SHUFFLE_BROADCAST,
+         .lane_kind = AGX3_SUBGROUP_LANE_IMMEDIATE,
+         .dest = 4, .src = 0, .lane = (uint16_t)lane, .src_live = true,
+      };
+      uint8_t bytes[AGX3_SUBGROUP_MAX_LENGTH], len;
+      ASSERT_TRUE(agx3_subgroup_encode_shuffle(AGX_ISA_ENCODING_AGX3B,
+                                               &d, bytes, &len));
+      std::vector<uint8_t> want(bytes, bytes + len);
+      want.insert(want.end(), {0x0e, 0, 0, 0});
+      EXPECT_EQ(pack(b), want);
+   }
 }
 
 TEST_F(AGX3PackBinary, SimdBroadcastWaitsForDeviceLoad)
@@ -1864,6 +1890,7 @@ TEST_F(AGX3PackBinary, SimdBroadcastWaitsForDeviceLoad)
       .lane = 3,
       /* G17P device loads use the native preferred slot 6. */
       .wait_mask = 1u << 5,
+      .src_live = true,
    };
    ASSERT_TRUE(agx3_subgroup_encode_shuffle(AGX_ISA_ENCODING_AGX3B, &shuffle,
                                              bytes, &length));
@@ -1919,8 +1946,7 @@ TEST_F(AGX3PackBinary, QuadImmediateXorRetiresDeviceLoad)
 
    std::vector<uint8_t> want;
    uint8_t bytes[AGX3_ALU_MAX_LENGTH], length = 0;
-   ASSERT_TRUE(agx3_alu_compose(AGX_ISA_ENCODING_AGX3B, AGX3_ALU_BAND, 0, 0,
-                                0, 0, 0, 1u << 5, bytes, &length));
+   ASSERT_TRUE(encode_wait(AGX_ISA_ENCODING_AGX3B, 1u << 5, bytes, &length));
    append(want, bytes, length);
    const struct agx3_subgroup_shuffle_desc shuffle = {
       .quad = true,
@@ -1966,6 +1992,7 @@ TEST_F(AGX3PackBinary, SignedReduceWaitsForDeviceLoad)
          .src = 4,
          /* G17P device loads use the native preferred slot 6. */
          .wait_mask = 1u << 5,
+         .src_live = true,
       };
       ASSERT_TRUE(agx3_subgroup_encode_reduce(AGX_ISA_ENCODING_AGX3B,
                                                &reduce, bytes, &length));
@@ -2000,6 +2027,7 @@ TEST_F(AGX3PackBinary, SignedAddPrefixWaitsForDeviceLoad)
       .src = 4,
       /* G17P device loads use the native preferred slot 6. */
       .wait_mask = 1u << 5,
+      .src_live = true,
    };
    ASSERT_TRUE(agx3_subgroup_encode_reduce(AGX_ISA_ENCODING_AGX3B, &prefix,
                                              bytes, &length));
@@ -2078,6 +2106,8 @@ TEST_F(AGX3PackBinary, RegisterAndUniformSubgroupShuffles)
                   .dest = 4,
                   .src = 2,
                   .lane = 8,
+                  .src_live = true,
+                  .lane_live = true,
                };
                uint8_t subgroup[AGX3_SUBGROUP_MAX_LENGTH], subgroup_len = 0;
                ASSERT_TRUE(agx3_subgroup_encode_shuffle(enc, &d, subgroup,
@@ -2115,7 +2145,7 @@ TEST_F(AGX3PackBinary, RegisterSubgroupShufflesWaitForDeviceLoad)
           * graph and slot1 for the corresponding AGX3c graph. */
          const uint16_t wait =
             enc == AGX_ISA_ENCODING_AGX3B ? 1u << 5 : 1u;
-         ASSERT_TRUE(agx3_alu_compose(enc, AGX3_ALU_BAND, 0, 0, 0, 0, 0,
+         ASSERT_TRUE(encode_wait(enc,
                                       wait, bytes, &length));
          append(want, bytes, length);
 
@@ -2125,6 +2155,8 @@ TEST_F(AGX3PackBinary, RegisterSubgroupShufflesWaitForDeviceLoad)
             .dest = 6,
             .src = 4,
             .lane = 8,
+            .src_live = true,
+                  .lane_live = true,
          };
          ASSERT_TRUE(agx3_subgroup_encode_shuffle(enc, &shuffle, bytes,
                                                    &length));
@@ -2212,11 +2244,11 @@ TEST_F(AGX3PackBinary, BallotWaitsForDeviceLoad)
    uint8_t bytes[AGX3_ALU_MAX_LENGTH], length = 0;
    /* Device loads use slot6. Retire it through the byte-grounded identity
     * prelude because the native ballot has no scoreboard field. */
-   ASSERT_TRUE(agx3_alu_compose(AGX_ISA_ENCODING_AGX3B, AGX3_ALU_BAND,
-                                0, 0, 0, 0, 0, 1u << 5, bytes, &length));
+   ASSERT_TRUE(encode_wait(AGX_ISA_ENCODING_AGX3B, 1u << 5, bytes, &length));
    append(want, bytes, length);
 
    const struct agx3_subgroup_ballot_desc ballot = {
+      .src_live = true,
       .type = AGX3_SUBGROUP_BALLOT_INTEGER,
       .dest = 6,
       .src = 4,
@@ -3049,10 +3081,14 @@ TEST_F(AGX3PackBinary, DeviceLoadExportsRetireEveryOutstandingSlot)
          ASSERT_TRUE(agx3_mem_encode_load(enc, &ld, bytes, &len));
          append(want, bytes, len);
       }
-      for (unsigned i = 0; i < 2; ++i) {
-         ASSERT_TRUE(agx3_alu_compose(enc, AGX3_ALU_BAND, 0, 0, 0, 0, 0,
-                                     1u << i, bytes, &len));
+      if (enc == AGX_ISA_ENCODING_AGX3B) {
+         ASSERT_TRUE(encode_wait(enc, 3, bytes, &len));
          append(want, bytes, len);
+      } else {
+         for (unsigned i = 0; i < 2; ++i) {
+            ASSERT_TRUE(encode_wait(enc, 1u << i, bytes, &len));
+            append(want, bytes, len);
+         }
       }
       EXPECT_EQ(pack(b), want);
    }
