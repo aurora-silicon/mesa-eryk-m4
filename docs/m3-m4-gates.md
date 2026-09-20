@@ -65,3 +65,13 @@ Workspace evidence: `_provenance/m3-firefox-20260920`.
   and visibly renders its browser UI/private page in a desktop screenshot.
 
 These are focused regressions, not conformance or full M4 feature parity.
+
+## CTS repair checkpoint
+
+The original 42 failing random cases were rerun on 2026-09-20. Native scratch
+allocation, single-slice 3D blits, native 1D blits and matching subgroup stage
+capabilities produce 24 Pass, 4 NotSupported and 14 comparison failures when
+combined with kernel MRT admission. No device loss or process crash remains
+in this subset. Evidence: build/m3-cts-fixes-02 in the M4 workspace and the M3
+kernel lab validation/cts-fixes-20260920 checkpoint. Image correctness remains
+under investigation.
