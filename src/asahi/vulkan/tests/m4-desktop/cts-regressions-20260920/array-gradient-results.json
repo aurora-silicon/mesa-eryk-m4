@@ -1,0 +1,2162 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.isampler1darray_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.11356555,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.isampler1darray_fragment",
+      "catalog_index": 787038,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.isampler1darray_fragment.c8.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.isampler1darray_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.11660147,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.isampler1darray_vertex",
+      "catalog_index": 787039,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.isampler1darray_vertex.c28.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.isampler2darray_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.020501355,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.isampler2darray_fragment",
+      "catalog_index": 787042,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.isampler2darray_fragment.c70.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 3,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.isampler2darray_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.14389555,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.isampler2darray_vertex",
+      "catalog_index": 787043,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.isampler2darray_vertex.c1.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 4,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.sampler1darray_fixed_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.023942264,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.sampler1darray_fixed_fragment",
+      "catalog_index": 787050,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c61.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 5,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.sampler1darray_fixed_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.022052096,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.sampler1darray_fixed_vertex",
+      "catalog_index": 787051,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c69.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 6,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.sampler1darray_float_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.020914933,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.sampler1darray_float_fragment",
+      "catalog_index": 787052,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c33.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 7,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.sampler1darray_float_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.020652378,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.sampler1darray_float_vertex",
+      "catalog_index": 787053,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c35.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 8,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.sampler2darray_fixed_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.08007437,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.sampler2darray_fixed_fragment",
+      "catalog_index": 787062,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c110.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 9,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.sampler2darray_fixed_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.20802294,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.sampler2darray_fixed_vertex",
+      "catalog_index": 787063,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c37.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 10,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.sampler2darray_float_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.015445055,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.sampler2darray_float_fragment",
+      "catalog_index": 787064,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c55.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 11,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.sampler2darray_float_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.023084717,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.sampler2darray_float_vertex",
+      "catalog_index": 787065,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c52.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 12,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.sparse_isampler2darray_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.11436005,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.sparse_isampler2darray_fragment",
+      "catalog_index": 787076,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c24.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 13,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.sparse_isampler2darray_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.022247912,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.sparse_isampler2darray_vertex",
+      "catalog_index": 787077,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c11.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 14,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.sparse_sampler2darray_fixed_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.09961364,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.sparse_sampler2darray_fixed_fragment",
+      "catalog_index": 787084,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c95.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 15,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.sparse_sampler2darray_fixed_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.085302465,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.sparse_sampler2darray_fixed_vertex",
+      "catalog_index": 787085,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c15.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 16,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.sparse_sampler2darray_float_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.022647304,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.sparse_sampler2darray_float_fragment",
+      "catalog_index": 787086,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c63.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 17,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.sparse_sampler2darray_float_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.018297847,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.sparse_sampler2darray_float_vertex",
+      "catalog_index": 787087,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c47.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 18,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.sparse_usampler2darray_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.021248292,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.sparse_usampler2darray_fragment",
+      "catalog_index": 787098,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c41.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 19,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.sparse_usampler2darray_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.12101665,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.sparse_usampler2darray_vertex",
+      "catalog_index": 787099,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c17.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 20,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.usampler1darray_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.023889437,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.usampler1darray_fragment",
+      "catalog_index": 787104,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.usampler1darray_fragment.c92.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 21,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.usampler1darray_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.115564935,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.usampler1darray_vertex",
+      "catalog_index": 787105,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.usampler1darray_vertex.c31.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 22,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.usampler2darray_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.022625389,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.usampler2darray_fragment",
+      "catalog_index": 787108,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.usampler2darray_fragment.c86.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 23,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.usampler2darray_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.03603669,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.usampler2darray_vertex",
+      "catalog_index": 787109,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.usampler2darray_vertex.c99.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 24,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.isampler1darray_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.013704908,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.isampler1darray_fragment",
+      "catalog_index": 787114,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.isampler1darray_fragment.c16.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 25,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.isampler1darray_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.020570908,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.isampler1darray_vertex",
+      "catalog_index": 787115,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.isampler1darray_vertex.c36.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 26,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.isampler2darray_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.02510697,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.isampler2darray_fragment",
+      "catalog_index": 787118,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.isampler2darray_fragment.c19.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 27,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.isampler2darray_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.025456872,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.isampler2darray_vertex",
+      "catalog_index": 787119,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.isampler2darray_vertex.c82.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 28,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.sampler1darray_fixed_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.16705611,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.sampler1darray_fixed_fragment",
+      "catalog_index": 787126,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 29,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.sampler1darray_fixed_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.15681562,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.sampler1darray_fixed_vertex",
+      "catalog_index": 787127,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.sampler1darray_fixed_vertex.c2.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 30,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.sampler1darray_float_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.017673496,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.sampler1darray_float_fragment",
+      "catalog_index": 787128,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c22.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 31,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.sampler1darray_float_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.01955058,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.sampler1darray_float_vertex",
+      "catalog_index": 787129,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.sampler1darray_float_vertex.c71.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 32,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.sampler2darray_fixed_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.08022717,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.sampler2darray_fixed_fragment",
+      "catalog_index": 787138,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c58.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 33,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.sampler2darray_fixed_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.08757758,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.sampler2darray_fixed_vertex",
+      "catalog_index": 787139,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.sampler2darray_fixed_vertex.c87.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 34,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.sampler2darray_float_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.022991303,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.sampler2darray_float_fragment",
+      "catalog_index": 787140,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c114.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 35,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.sampler2darray_float_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.022506423,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.sampler2darray_float_vertex",
+      "catalog_index": 787141,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.sampler2darray_float_vertex.c67.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 36,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.sparse_isampler2darray_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.023201576,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.sparse_isampler2darray_fragment",
+      "catalog_index": 787152,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c48.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 37,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.sparse_isampler2darray_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.117758006,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.sparse_isampler2darray_vertex",
+      "catalog_index": 787153,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c10.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 38,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.sparse_sampler2darray_fixed_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.08846184,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.sparse_sampler2darray_fixed_fragment",
+      "catalog_index": 787160,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c103.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 39,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.sparse_sampler2darray_fixed_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.08995045,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.sparse_sampler2darray_fixed_vertex",
+      "catalog_index": 787161,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c59.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 40,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.sparse_sampler2darray_float_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.023853544,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.sparse_sampler2darray_float_fragment",
+      "catalog_index": 787162,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c68.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 41,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.sparse_sampler2darray_float_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.014110368,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.sparse_sampler2darray_float_vertex",
+      "catalog_index": 787163,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c60.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 42,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.sparse_usampler2darray_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.024025174,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.sparse_usampler2darray_fragment",
+      "catalog_index": 787174,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c119.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 43,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.sparse_usampler2darray_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.024677252,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.sparse_usampler2darray_vertex",
+      "catalog_index": 787175,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c27.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 44,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.usampler1darray_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.02338664,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.usampler1darray_fragment",
+      "catalog_index": 787180,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.usampler1darray_fragment.c94.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 45,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.usampler1darray_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.012795035,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.usampler1darray_vertex",
+      "catalog_index": 787181,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.usampler1darray_vertex.c96.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 46,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.usampler2darray_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.015201956,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.usampler2darray_fragment",
+      "catalog_index": 787184,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.usampler2darray_fragment.c73.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 47,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.usampler2darray_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.114176735,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.usampler2darray_vertex",
+      "catalog_index": 787185,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_edge.usampler2darray_vertex.c81.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 48,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.isampler1darray_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.014514112,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.isampler1darray_fragment",
+      "catalog_index": 787190,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.isampler1darray_fragment.c104.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 49,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.isampler1darray_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.017069273,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.isampler1darray_vertex",
+      "catalog_index": 787191,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.isampler1darray_vertex.c93.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 50,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.isampler2darray_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.019527856,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.isampler2darray_fragment",
+      "catalog_index": 787194,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.isampler2darray_fragment.c66.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 51,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.isampler2darray_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.020248467,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.isampler2darray_vertex",
+      "catalog_index": 787195,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.isampler2darray_vertex.c7.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 52,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.sampler1darray_fixed_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.020337185,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.sampler1darray_fixed_fragment",
+      "catalog_index": 787202,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.sampler1darray_fixed_fragment.c12.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 53,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.sampler1darray_fixed_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.022657948,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.sampler1darray_fixed_vertex",
+      "catalog_index": 787203,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.sampler1darray_fixed_vertex.c84.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 54,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.sampler1darray_float_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.018294135,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.sampler1darray_float_fragment",
+      "catalog_index": 787204,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.sampler1darray_float_fragment.c85.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 55,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.sampler1darray_float_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.023767184,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.sampler1darray_float_vertex",
+      "catalog_index": 787205,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.sampler1darray_float_vertex.c25.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 56,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.sampler2darray_fixed_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.08681378,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.sampler2darray_fixed_fragment",
+      "catalog_index": 787214,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.sampler2darray_fixed_fragment.c54.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 57,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.sampler2darray_fixed_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.08150134,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.sampler2darray_fixed_vertex",
+      "catalog_index": 787215,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.sampler2darray_fixed_vertex.c90.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 58,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.sampler2darray_float_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.032585464,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.sampler2darray_float_fragment",
+      "catalog_index": 787216,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.sampler2darray_float_fragment.c5.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 59,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.sampler2darray_float_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.025001818,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.sampler2darray_float_vertex",
+      "catalog_index": 787217,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.sampler2darray_float_vertex.c115.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 60,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.sparse_isampler2darray_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.023430968,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.sparse_isampler2darray_fragment",
+      "catalog_index": 787228,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.sparse_isampler2darray_fragment.c50.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 61,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.sparse_isampler2darray_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.017605295,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.sparse_isampler2darray_vertex",
+      "catalog_index": 787229,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.sparse_isampler2darray_vertex.c49.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 62,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.sparse_sampler2darray_fixed_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.08804322,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.sparse_sampler2darray_fixed_fragment",
+      "catalog_index": 787236,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c77.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 63,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.sparse_sampler2darray_fixed_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.09129425,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.sparse_sampler2darray_fixed_vertex",
+      "catalog_index": 787237,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c65.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 64,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.sparse_sampler2darray_float_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.023756117,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.sparse_sampler2darray_float_fragment",
+      "catalog_index": 787238,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c64.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 65,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.sparse_sampler2darray_float_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.022692949,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.sparse_sampler2darray_float_vertex",
+      "catalog_index": 787239,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c32.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 66,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.sparse_usampler2darray_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.022493675,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.sparse_usampler2darray_fragment",
+      "catalog_index": 787250,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.sparse_usampler2darray_fragment.c30.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 67,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.sparse_usampler2darray_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.025587916,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.sparse_usampler2darray_vertex",
+      "catalog_index": 787251,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.sparse_usampler2darray_vertex.c56.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 68,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.usampler1darray_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.017288268,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.usampler1darray_fragment",
+      "catalog_index": 787256,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.usampler1darray_fragment.c53.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 69,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.usampler1darray_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.015370584,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.usampler1darray_vertex",
+      "catalog_index": 787257,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.usampler1darray_vertex.c118.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 70,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.usampler2darray_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.023325397,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.usampler2darray_fragment",
+      "catalog_index": 787260,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.usampler2darray_fragment.c109.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 71,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.usampler2darray_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.017639104,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.usampler2darray_vertex",
+      "catalog_index": 787261,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored.usampler2darray_vertex.c88.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 72,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.isampler1darray_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.014587982,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.isampler1darray_fragment",
+      "catalog_index": 787266,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.isampler1darray_fragment.c91.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 73,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.isampler1darray_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.021213524,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.isampler1darray_vertex",
+      "catalog_index": 787267,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.isampler1darray_vertex.c113.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 74,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.isampler2darray_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.12402355,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.isampler2darray_fragment",
+      "catalog_index": 787270,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.isampler2darray_fragment.c6.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 75,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.isampler2darray_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.022474175,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.isampler2darray_vertex",
+      "catalog_index": 787271,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.isampler2darray_vertex.c76.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 76,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.sampler1darray_fixed_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.02032131,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.sampler1darray_fixed_fragment",
+      "catalog_index": 787278,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c34.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 77,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.sampler1darray_fixed_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.015547316,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.sampler1darray_fixed_vertex",
+      "catalog_index": 787279,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c75.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 78,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.sampler1darray_float_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.023156978,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.sampler1darray_float_fragment",
+      "catalog_index": 787280,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c13.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 79,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.sampler1darray_float_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.0220862,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.sampler1darray_float_vertex",
+      "catalog_index": 787281,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c89.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 80,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.sampler2darray_fixed_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.08634525,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.sampler2darray_fixed_fragment",
+      "catalog_index": 787290,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c72.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 81,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.sampler2darray_fixed_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.089930415,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.sampler2darray_fixed_vertex",
+      "catalog_index": 787291,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c74.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 82,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.sampler2darray_float_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.15068161,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.sampler2darray_float_fragment",
+      "catalog_index": 787292,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c4.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 83,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.sampler2darray_float_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.019750437,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.sampler2darray_float_vertex",
+      "catalog_index": 787293,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c106.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 84,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.sparse_isampler2darray_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.020102104,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.sparse_isampler2darray_fragment",
+      "catalog_index": 787304,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c40.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 85,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.sparse_isampler2darray_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.018789478,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.sparse_isampler2darray_vertex",
+      "catalog_index": 787305,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c26.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 86,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.sparse_sampler2darray_fixed_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.08892498,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.sparse_sampler2darray_fixed_fragment",
+      "catalog_index": 787312,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c57.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 87,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.sparse_sampler2darray_fixed_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.077048,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.sparse_sampler2darray_fixed_vertex",
+      "catalog_index": 787313,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c14.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 88,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.sparse_sampler2darray_float_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.025604375,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.sparse_sampler2darray_float_fragment",
+      "catalog_index": 787314,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c107.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 89,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.sparse_sampler2darray_float_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.15376633,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.sparse_sampler2darray_float_vertex",
+      "catalog_index": 787315,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c9.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 90,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.sparse_usampler2darray_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.12191254,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.sparse_usampler2darray_fragment",
+      "catalog_index": 787326,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c3.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 91,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.sparse_usampler2darray_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.023582764,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.sparse_usampler2darray_vertex",
+      "catalog_index": 787327,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c101.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 92,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.usampler1darray_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.015324401,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.usampler1darray_fragment",
+      "catalog_index": 787332,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.usampler1darray_fragment.c111.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 93,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.usampler1darray_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.020276316,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.usampler1darray_vertex",
+      "catalog_index": 787333,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.usampler1darray_vertex.c80.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 94,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.usampler2darray_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.024106937,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.usampler2darray_fragment",
+      "catalog_index": 787336,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.usampler2darray_fragment.c97.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 95,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.usampler2darray_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.024942823,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.usampler2darray_vertex",
+      "catalog_index": 787337,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.mirrored_repeat.usampler2darray_vertex.c105.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 96,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.isampler1darray_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.017777216,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.isampler1darray_fragment",
+      "catalog_index": 787342,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.isampler1darray_fragment.c108.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 97,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.isampler1darray_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.023404785,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.isampler1darray_vertex",
+      "catalog_index": 787343,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.isampler1darray_vertex.c46.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 98,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.isampler2darray_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.018160667,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.isampler2darray_fragment",
+      "catalog_index": 787346,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.isampler2darray_fragment.c45.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 99,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.isampler2darray_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.01841431,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.isampler2darray_vertex",
+      "catalog_index": 787347,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.isampler2darray_vertex.c116.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 100,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.sampler1darray_fixed_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.023955973,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.sampler1darray_fixed_fragment",
+      "catalog_index": 787354,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.sampler1darray_fixed_fragment.c39.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 101,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.sampler1darray_fixed_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.02207199,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.sampler1darray_fixed_vertex",
+      "catalog_index": 787355,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.sampler1darray_fixed_vertex.c62.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 102,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.sampler1darray_float_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.020884348,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.sampler1darray_float_fragment",
+      "catalog_index": 787356,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.sampler1darray_float_fragment.c102.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 103,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.sampler1darray_float_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.018534252,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.sampler1darray_float_vertex",
+      "catalog_index": 787357,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.sampler1darray_float_vertex.c51.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 104,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.sampler2darray_fixed_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.098455936,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.sampler2darray_fixed_fragment",
+      "catalog_index": 787366,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.sampler2darray_fixed_fragment.c112.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 105,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.sampler2darray_fixed_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.088342234,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.sampler2darray_fixed_vertex",
+      "catalog_index": 787367,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.sampler2darray_fixed_vertex.c42.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 106,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.sampler2darray_float_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.014408543,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.sampler2darray_float_fragment",
+      "catalog_index": 787368,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.sampler2darray_float_fragment.c43.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 107,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.sampler2darray_float_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.03652076,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.sampler2darray_float_vertex",
+      "catalog_index": 787369,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.sampler2darray_float_vertex.c100.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 108,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.sparse_isampler2darray_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.024942992,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.sparse_isampler2darray_fragment",
+      "catalog_index": 787380,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.sparse_isampler2darray_fragment.c44.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 109,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.sparse_isampler2darray_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.01836388,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.sparse_isampler2darray_vertex",
+      "catalog_index": 787381,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.sparse_isampler2darray_vertex.c18.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 110,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.sparse_sampler2darray_fixed_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.19637883,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.sparse_sampler2darray_fixed_fragment",
+      "catalog_index": 787388,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c23.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 111,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.sparse_sampler2darray_fixed_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.08683527,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.sparse_sampler2darray_fixed_vertex",
+      "catalog_index": 787389,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.sparse_sampler2darray_fixed_vertex.c117.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 112,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.sparse_sampler2darray_float_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.019409869,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.sparse_sampler2darray_float_fragment",
+      "catalog_index": 787390,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c79.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 113,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.sparse_sampler2darray_float_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.016475815,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.sparse_sampler2darray_float_vertex",
+      "catalog_index": 787391,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.sparse_sampler2darray_float_vertex.c38.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 114,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.sparse_usampler2darray_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.021870743,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.sparse_usampler2darray_fragment",
+      "catalog_index": 787402,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.sparse_usampler2darray_fragment.c29.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 115,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.sparse_usampler2darray_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.018208876,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.sparse_usampler2darray_vertex",
+      "catalog_index": 787403,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.sparse_usampler2darray_vertex.c83.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 116,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.usampler1darray_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.11445374,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.usampler1darray_fragment",
+      "catalog_index": 787408,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.usampler1darray_fragment.c21.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 117,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.usampler1darray_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.012852627,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.usampler1darray_vertex",
+      "catalog_index": 787409,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.usampler1darray_vertex.c78.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 118,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.usampler2darray_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.11411089,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.usampler2darray_fragment",
+      "catalog_index": 787412,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.usampler2darray_fragment.c20.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 119,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.usampler2darray_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.018766608,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.usampler2darray_vertex",
+      "catalog_index": 787413,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.repeat.usampler2darray_vertex.c98.r1.qpa",
+    "worker_exit": "exit status: 0"
+  }
+]

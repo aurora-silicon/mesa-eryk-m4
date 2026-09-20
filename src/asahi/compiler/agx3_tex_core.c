@@ -227,10 +227,10 @@ sample_ok(enum agx_isa_encoding enc, const struct agx3_tex_sample_desc *d)
       return false;
 
    /* The offset bank shares its word with a packed LOD/bias and array
-    * layer. Non-array gradients occupy their separate coordinate banks. */
+    * layer. Array gradients also use this packed bank, with derivatives
+    * at half8, as witnessed by array-grad-offset.metal on applegpu_g16g. */
    if (d->dynamic_offset &&
        (d->sample_offset || d->gather || d->query_lod ||
-        (d->array && d->lod == AGX3_TEX_LOD_GRAD && !d->shadow && !d->min_lod) ||
         (d->lod != AGX3_TEX_LOD_REGISTER &&
          d->lod != AGX3_TEX_LOD_BIAS_REGISTER &&
          d->lod != AGX3_TEX_LOD_GRAD)))

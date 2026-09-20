@@ -40,3 +40,17 @@ An unrestricted packer unit run also exposed an existing diagnostic assertion
 on intentionally malformed unaligned registers; this is recorded separately
 and does not constitute a full compiler unit-suite pass.
 Installed Vulkan SHA256: d39022a3e1f1327b6f0e2418590e751d5b6d6667d96059c585fd818c5903a7d8.
+
+## Array gradients with register offsets
+
+The encoder rejected ordinary colour array samples with gradients and dynamic
+offsets despite already supporting their staging layout for depth comparisons.
+An independent Metal compute probe, compiled offline by AIR-NT 32023.917 for
+applegpu_g16g, confirms the colour instruction uses the same layer/offset bank
+and separate gradient bank. Retain its source, native bytes and field decode.
+Remove the obsolete exclusion; add a byte-exact native encoding check.
+
+All 120 original texturegradoffset_pcoffset failures pass on hardware, 11.951
+runner seconds, peak 68.25 C. Evidence 20260920T110253129201Z-cts-fix-array-gradient-offset.
+Host/ARM64 builds pass; texture core passes 6417 checks. Installed Vulkan SHA256:
+e66ca61c01866ade7378106a71b5573927a16598e9301f69e79bab64d1389532.

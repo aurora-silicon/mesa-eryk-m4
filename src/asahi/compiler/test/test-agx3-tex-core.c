@@ -1208,6 +1208,11 @@ test_m4_shadow_witnesses(void)
     * instructions cover fixed, uniform and varying heap indices, 2D/array,
     * and implicit/level-zero comparison. No AGX3C hardware claim. */
    const struct {struct agx3_tex_sample_desc desc; uint8_t bytes[22]; uint8_t size;} cases[] = {
+      /* AIR-NT 32023.917 applegpu_g16g, array-grad-offset.metal main+152:
+       * ordinary colour array gradients with a register offset. */
+      { {.width=AGX3_TEX_W32, .mask=15, .slot=1, .wait_mask=1,
+         .coord_kill=true, .final=true, .array=true, .lod=AGX3_TEX_LOD_GRAD, .dynamic_offset=true},
+        {0x05,0x80,0x0c,0xb8,0xb0,0x00,0x4c,0x01,0,0,0x10,0,0x01,0}, 14 },
       /* Native offset-grad-array.metal: array shadow LOD and 2D gradients
        * consume register offsets from their own coordinate bank + 6. */
       { {.dest=8, .coord=16, .width=AGX3_TEX_W32, .mask=1, .slot=1, .wait_mask=1, .coord_kill=true, .shadow=true, .array=true, .lod=AGX3_TEX_LOD_REGISTER, .dynamic_offset=true}, {0x25,0x80,0x0c,0x21,0x90,0x00,0x68,0x01,0x01,0x00,0x00,0x00,0x01,0x00}, 14 },
