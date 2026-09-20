@@ -120,12 +120,15 @@ agx_optimizer_fmov(agx_context *ctx, agx_instr **defs, agx_instr *ins)
       if (src.size == AGX_SIZE_16 && def->src[0].size == AGX_SIZE_32)
          continue;
 
-      /* G17P does not have a corpus-grounded direct f32+f16 ADD. Preserve
-       * the explicit exact widening before a full-width add, matching the
-       * native compiler sequence used for half-backed blend attachments. */
+      /* AGX3b ADD and transcendental/rounding encodings require full-width
+       * sources. Keep the exact widening instead of creating an unencodable
+       * mixed-width operation. */
       if (ctx->key && ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
-          ins->op == AGX_OPCODE_FADD && src.size == AGX_SIZE_32 &&
-          def->src[0].size == AGX_SIZE_16)
+          (ins->op == AGX_OPCODE_FADD || ins->op == AGX_OPCODE_EXP2 ||
+           ins->op == AGX_OPCODE_LOG2 || ins->op == AGX_OPCODE_FLOOR ||
+           ins->op == AGX_OPCODE_CEIL || ins->op == AGX_OPCODE_TRUNC ||
+           ins->op == AGX_OPCODE_ROUNDEVEN) &&
+          src.size == AGX_SIZE_32 && def->src[0].size == AGX_SIZE_16)
          continue;
 
       ins->src[s] = agx_compose_float_src(src, def->src[0]);

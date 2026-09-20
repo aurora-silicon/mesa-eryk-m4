@@ -1,0 +1,155 @@
+{
+  "cases_sha256": "8155ab9321be8d84d45b5935b1ba45824256029335c84e66c4642047dffd88c6",
+  "cases": [
+    {
+      "case": "dEQP-VK.shader_object.rendering.color_attachment_count_4.extra_attachment_between_2.none.none.random_color_formats.before.none.r16g16b16a16_sint",
+      "catalog_index": 2524971,
+      "original_index": 1482
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset.mirrored_repeat.isampler2darray_fragment",
+      "catalog_index": 786820,
+      "original_index": 1490
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.isampler2darray_fragment",
+      "catalog_index": 787042,
+      "original_index": 1623
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.textureprojgradoffset.mirrored_repeat.sampler2d_vec3_fixed_vertex",
+      "catalog_index": 790877,
+      "original_index": 1632
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.dedicated_allocation.formats.r32g32_sint.load.draw",
+      "catalog_index": 2283010,
+      "original_index": 1767
+    },
+    {
+      "case": "dEQP-VK.shader_object.rendering.color_attachment_count_4.extra_attachment_after_1.none.none.random_color_formats.before.none.r16g16b16_sint_d16_unorm_s8_uint",
+      "catalog_index": 2490044,
+      "original_index": 2290
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler3d_fixednon_zero_base_level_fragment",
+      "catalog_index": 784897,
+      "original_index": 2817
+    },
+    {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r16g16b16a16_sint.r32g32_sint.optimal_optimal_nearest",
+      "catalog_index": 127838,
+      "original_index": 3068
+    },
+    {
+      "case": "dEQP-VK.shader_object.rendering.color_attachment_count_4.extra_attachment_before_2.none.dynamic.same_color_formats.before.none.r16g16b16a16_sint_d16_unorm_s8_uint",
+      "catalog_index": 2509277,
+      "original_index": 3072
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset.clamp_to_edge.sampler1darray_float_vertex",
+      "catalog_index": 786610,
+      "original_index": 3075
+    },
+    {
+      "case": "dEQP-VK.shader_object.rendering.color_attachment_count_4.extra_attachment_before_2.none.none.same_color_formats.before.none.r16g16b16a16_sint",
+      "catalog_index": 2512763,
+      "original_index": 3841
+    },
+    {
+      "case": "dEQP-VK.shader_object.rendering.color_attachment_count_1.none.extra_output_before_1.none.same_color_formats.before.none.r32g32_uint_d16_unorm",
+      "catalog_index": 2471857,
+      "original_index": 4184
+    },
+    {
+      "case": "dEQP-VK.api.copy_and_blit.dedicated_allocation.blit_image.all_formats.generate_mipmaps.from_previous_level.layercount_6.r32g32_sint.optimal_optimal_nearest",
+      "catalog_index": 252689,
+      "original_index": 4824
+    },
+    {
+      "case": "dEQP-VK.shader_object.rendering.color_attachment_count_1.none.extra_output_after_1.dynamic.same_color_formats.before.none.r32g32_sint_d16_unorm",
+      "catalog_index": 2463130,
+      "original_index": 5036
+    },
+    {
+      "case": "dEQP-VK.robustness.image_robustness.bind.notemplate.rg32ui.dontunroll.nonvolatile.sampled_image.no_fmt_qual.img.samples_1.cube_array.comp",
+      "catalog_index": 2334835,
+      "original_index": 5156
+    },
+    {
+      "case": "dEQP-VK.shader_object.rendering.color_attachment_count_4.extra_attachment_between_1.none.none.random_color_formats.before.gl_frag_write.r16g16b16_sint",
+      "catalog_index": 2517525,
+      "original_index": 5378
+    },
+    {
+      "case": "dEQP-VK.shader_object.rendering.color_attachment_count_1.none.extra_output_before_2.static.same_color_formats.before.none.r32g32_sint_x8_d24_unorm_pack32",
+      "catalog_index": 2476215,
+      "original_index": 5481
+    },
+    {
+      "case": "dEQP-VK.shader_object.rendering.color_attachment_count_1.extra_attachment_after_1.none.dynamic.same_color_formats.before.none.r16g16b16_sint_d16_unorm_s8_uint",
+      "catalog_index": 2452548,
+      "original_index": 5786
+    },
+    {
+      "case": "dEQP-VK.shader_object.rendering.color_attachment_count_4.extra_attachment_between_1.none.static.random_color_formats.before.none.r16g16b16_sint_d16_unorm",
+      "catalog_index": 2520563,
+      "original_index": 6461
+    },
+    {
+      "case": "dEQP-VK.robustness.robustness2.bind.template.rg32ui.unroll.nonvolatile.sampled_image.no_fmt_qual.null_descriptor.samples_1.cube.comp",
+      "catalog_index": 2388464,
+      "original_index": 6817
+    },
+    {
+      "case": "dEQP-VK.shader_object.rendering.color_attachment_count_1.none.none.dynamic.same_color_formats.before.none.r32g32_uint_x8_d24_unorm_pack32",
+      "catalog_index": 2484070,
+      "original_index": 7052
+    },
+    {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r8g8_uint.r32g32_uint.optimal_optimal_nearest",
+      "catalog_index": 154176,
+      "original_index": 7270
+    },
+    {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.generate_mipmaps.from_base_level.layercount_6.r32g32_sint.general_optimal_nearest",
+      "catalog_index": 20388,
+      "original_index": 7317
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2d_fixed_nomipmap_clamp_min",
+      "catalog_index": 784847,
+      "original_index": 7614
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.formats.r32g32_uint.input.dont_care.store.self_dep_draw_use_input_aspect",
+      "catalog_index": 2291347,
+      "original_index": 7875
+    },
+    {
+      "case": "dEQP-VK.robustness.robustness2.push.template.rg32ui.dontunroll.nonvolatile.sampled_image.no_fmt_qual.null_descriptor.samples_1.1d_array.comp",
+      "catalog_index": 2423273,
+      "original_index": 7935
+    },
+    {
+      "case": "dEQP-VK.shader_object.rendering.color_attachment_count_4.extra_attachment_before_1.none.dynamic.same_color_formats.before.none.r16g16b16a16_sint_d16_unorm_s8_uint",
+      "catalog_index": 2502301,
+      "original_index": 7988
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.textureprojgradoffset_pcoffset.mirrored.usampler1d_vec2_fragment",
+      "catalog_index": 791099,
+      "original_index": 8509
+    },
+    {
+      "case": "dEQP-VK.robustness.robustness2.bind.notemplate.rgba32f.unroll.nonvolatile.sampled_image.no_fmt_qual.null_descriptor.samples_1.cube_array.comp",
+      "catalog_index": 2374941,
+      "original_index": 9200
+    },
+    {
+      "case": "dEQP-VK.robustness.robustness2.bind.notemplate.rg32i.dontunroll.nonvolatile.sampled_image.no_fmt_qual.img.samples_1.2d.comp",
+      "catalog_index": 2366443,
+      "original_index": 9521
+    }
+  ]
+}
