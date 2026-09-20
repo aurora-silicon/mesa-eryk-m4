@@ -6112,7 +6112,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                no_addend || addend_imm ||
                (agx3_src_is_register(c) && !c.memory &&
                 agx_channels(c) == 1 && !(c.abs && c.neg) &&
-                (c.size == AGX_SIZE_32 ||
+                ((c.size == AGX_SIZE_32 && !c.neg) ||
                  (c.size == AGX_SIZE_16 && (c.abs || c.neg))));
 
             if (agx3_src_is_register(a) && !a.memory && !a.abs && !a.neg &&

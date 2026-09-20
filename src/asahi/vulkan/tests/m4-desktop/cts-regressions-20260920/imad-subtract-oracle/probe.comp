@@ -1,0 +1,4 @@
+#version 450
+layout(local_size_x=64) in;
+layout(set=0,binding=0,std430) buffer Out { uint v[]; };
+void main(){uint i=gl_GlobalInvocationID.x*4;uint a=v[i],b=v[i+1],c=v[i+2];v[i+3]=a*b-c;}

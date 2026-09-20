@@ -292,7 +292,8 @@ build_vs_g16_imad_negative_byte(void)
       nir_i2f32(&b, nir_iadd_imm(&b, product, -1)),
       nir_i2f32(&b, nir_iadd_imm(&b,
          nir_imul(&b, a, nir_iadd_imm(&b, c, 1)), -255)),
-      nir_imm_float(&b, 0.0f), nir_imm_float(&b, 1.0f),
+      nir_i2f32(&b, nir_isub(&b, nir_imul_imm(&b, a, 31), c)),
+      nir_i2f32(&b, nir_isub(&b, product, nir_iadd_imm(&b, a, 1))),
    };
    for (unsigned i = 0; i < 4; ++i)
       nir_store_uvs_agx(&b, pos[i], nir_imm_intN_t(&b, i, 16));

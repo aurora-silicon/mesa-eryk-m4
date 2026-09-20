@@ -136,3 +136,26 @@ processes, one worker, 1.023 runner seconds, peak68C. Evidence
 20260920T113139945858Z-cts-fix-pipeline-isolated. The full-suite runner already
 classifies this family for serialized execution; no driver fix is attributed
 to those original resource-exhaustion outcomes. Original OOM records retained.
+
+## Multiply-minus-register semantics
+
+The six remaining memory-model failures used a * 31 - c to address the partner's
+shared 64-bit guard. The encoder mapped full-width addend negation to the native
+narrow-addend sign-extension selector, silently calculating addition instead.
+Legalize full-width negated addends into existing multiply/subtract instructions
+before register allocation; refuse the unlowered negative form in the packer.
+No special handling of atomics, memory-model cases or shader identifiers.
+
+An independent 2048-row arithmetic oracle includes small coordinate values and
+seeded full-width operands. Before the fix 1986 results are wrong; all 2048
+results exactly match a*b+c instead of a*b-c. After the fix every output and
+unchanged input passes. Evidence: 20260920T114817044909Z-imad-subtract-before and
+20260920T114948677739Z-imad-subtract-after. Source, SPIR-V, input and reference
+bytes retained here. Extended the existing multiply-minus compiler check with
+both register and constant multipliers and full-width register subtrahends.
+
+All22 original memory-model abnormal cases now Pass with shader cache disabled,
+21.298 runner seconds, peak69.25C. Evidence
+20260920T114908486288Z-cts-fix-mm-imad-subtract. Host and ARM64 builds pass.
+Installed Vulkan SHA256 acec9662d96a007e0990aa6c8db56992e1311107a9ddfeb594cb69293cd46e14.
+The installed build also has the diagnostic-printer fix committed separately.

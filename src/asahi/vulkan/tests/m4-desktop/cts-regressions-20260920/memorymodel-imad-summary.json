@@ -1,0 +1,22 @@
+{
+  "selected": 22,
+  "recorded": 22,
+  "completed": 22,
+  "counts": {
+    "Pass": 22
+  },
+  "classifications": {
+    "bug": 22
+  },
+  "elapsed_seconds": 23.531728877918795,
+  "preparation_seconds": 1.5002986759645864,
+  "runner_seconds": 21.2976597830002,
+  "jobs": 1,
+  "tests_per_group": 1,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "f68b93062e0d04ac0d9213c03da9846ad99d895a7264ed24024f4685b059853f",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260920T114908486288Z-cts-fix-mm-imad-subtract",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 69.25
+}
