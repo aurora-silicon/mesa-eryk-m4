@@ -58,9 +58,10 @@ main(void)
    uint8_t b[AGX3_PIXEL_MAX_LENGTH];
    uint8_t len;
 
-   expect("AGX3b colour entry",
-          agx3_pixel_colour_entry(AGX_ISA_ENCODING_AGX3B, b, &len), b, len,
-          "870254000600");
+   /* Complete the encoder before reading its output length. C does not
+    * specify the evaluation order of function arguments. */
+   bool ok = agx3_pixel_colour_entry(AGX_ISA_ENCODING_AGX3B, b, &len);
+   expect("AGX3b colour entry", ok, b, len, "870254000600");
    expect_refused("AGX3c colour entry",
                   agx3_pixel_colour_entry(AGX_ISA_ENCODING_AGX3C, b, &len));
    expect_refused("AGX2 colour entry",
@@ -85,9 +86,8 @@ main(void)
    }
 
    /* AGX3b pixwait carrying scoreboard waits on slots 1 and 2. */
-   expect("AGX3b pixwait wait{1,2}",
-          agx3_pixel_wait(AGX_ISA_ENCODING_AGX3B, 1, 0x3, b, &len), b, len,
-          "873254010000");
+   ok = agx3_pixel_wait(AGX_ISA_ENCODING_AGX3B, 1, 0x3, b, &len);
+   expect("AGX3b pixwait wait{1,2}", ok, b, len, "873254010000");
 
    /* AGX3b pixrel: descriptor = (last ? 0x200 : 0) | writeout. */
    static const struct {
