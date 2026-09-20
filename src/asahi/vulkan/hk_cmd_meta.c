@@ -65,9 +65,7 @@ hk_device_init_meta(struct hk_device *dev)
       return result;
 
    dev->meta.use_gs_for_layer = false;
-   /* M3 submits one render layer at a time. The common meta path
-    * preserves the volume transform while binding each 3D slice at layer 0. */
-   dev->meta.use_layer_output = dev->dev.chip != AGX_CHIP_G15S;
+   dev->meta.use_layer_output = true;
    dev->meta.use_stencil_export = true;
    dev->meta.use_masked_rgba8_buffer_unpack =
       agx_native_graphics(&dev->dev);
