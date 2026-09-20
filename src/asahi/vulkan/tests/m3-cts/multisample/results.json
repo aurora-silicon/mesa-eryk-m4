@@ -1,0 +1,97 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.r8g8b8_unorm",
+    "catalog_index": 321999,
+    "boot_id": "004ea507-7c86-4dcc-aea2-89e0bf814227",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+      "--deqp-case=dEQP-VK.api.info.image_format_properties.2d.optimal.r8g8b8_unorm",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-all-images=enable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-cts-multisample-01/segment-0000/case-0000/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.06384730099999558
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.api.image_clearing.core.clear_color_attachment.multiple_layers.r8g8b8_unorm_200x180_clamp_input_sample_count_2",
+    "catalog_index": 274663,
+    "boot_id": "004ea507-7c86-4dcc-aea2-89e0bf814227",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+      "--deqp-case=dEQP-VK.api.image_clearing.core.clear_color_attachment.multiple_layers.r8g8b8_unorm_200x180_clamp_input_sample_count_2",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-all-images=enable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-cts-multisample-01/segment-0000/case-0001/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "cmdClearAttachments passed",
+    "returncode": 0,
+    "seconds": 0.11384710400000131
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.api.image_clearing.core.clear_color_attachment.multiple_layers.r8g8b8_unorm_200x180_clamp_input_sample_count_4",
+    "catalog_index": 274665,
+    "boot_id": "004ea507-7c86-4dcc-aea2-89e0bf814227",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+      "--deqp-case=dEQP-VK.api.image_clearing.core.clear_color_attachment.multiple_layers.r8g8b8_unorm_200x180_clamp_input_sample_count_4",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-all-images=enable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-cts-multisample-01/segment-0000/case-0002/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "cmdClearAttachments passed",
+    "returncode": 0,
+    "seconds": 0.11384778699999742
+  },
+  {
+    "index": 3,
+    "case": "dEQP-VK.api.image_clearing.core.clear_color_attachment.multiple_layers.r8g8b8_unorm_200x180_sample_count_2",
+    "catalog_index": 274669,
+    "boot_id": "004ea507-7c86-4dcc-aea2-89e0bf814227",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+      "--deqp-case=dEQP-VK.api.image_clearing.core.clear_color_attachment.multiple_layers.r8g8b8_unorm_200x180_sample_count_2",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-all-images=enable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-cts-multisample-01/segment-0000/case-0003/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "cmdClearAttachments passed",
+    "returncode": 0,
+    "seconds": 0.11369808899999612
+  },
+  {
+    "index": 4,
+    "case": "dEQP-VK.api.image_clearing.core.clear_color_attachment.multiple_layers.r8g8b8_unorm_200x180_sample_count_4",
+    "catalog_index": 274671,
+    "boot_id": "004ea507-7c86-4dcc-aea2-89e0bf814227",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+      "--deqp-case=dEQP-VK.api.image_clearing.core.clear_color_attachment.multiple_layers.r8g8b8_unorm_200x180_sample_count_4",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-all-images=enable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-cts-multisample-01/segment-0000/case-0004/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "cmdClearAttachments passed",
+    "returncode": 0,
+    "seconds": 0.11395510900000261
+  }
+]

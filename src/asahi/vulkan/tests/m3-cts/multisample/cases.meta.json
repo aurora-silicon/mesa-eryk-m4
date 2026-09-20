@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "cases_sha256": "10ac193618b540f3efa80ad5c00efb8d109a258c9895890731ca3290b54eea92",
+  "provenance": {
+    "catalog": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-ordered/catalog",
+    "catalog_sha256": "72c1bb9d2f9f0425ab8a4f570d78abdc1d3a34b82173ec76b772dedc477526bf",
+    "cts_revision": "vulkan-cts-1.4.6.2:f6a29701220f34dd1407513bfe80d74ca7b392ce",
+    "method": "Existing targeted selection; catalog identities attached without reordering"
+  },
+  "cases": [
+    {
+      "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.r8g8b8_unorm",
+      "catalog_index": 321999,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.api.image_clearing.core.clear_color_attachment.multiple_layers.r8g8b8_unorm_200x180_clamp_input_sample_count_2",
+      "catalog_index": 274663,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.api.image_clearing.core.clear_color_attachment.multiple_layers.r8g8b8_unorm_200x180_clamp_input_sample_count_4",
+      "catalog_index": 274665,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.api.image_clearing.core.clear_color_attachment.multiple_layers.r8g8b8_unorm_200x180_sample_count_2",
+      "catalog_index": 274669,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.api.image_clearing.core.clear_color_attachment.multiple_layers.r8g8b8_unorm_200x180_sample_count_4",
+      "catalog_index": 274671,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    }
+  ]
+}

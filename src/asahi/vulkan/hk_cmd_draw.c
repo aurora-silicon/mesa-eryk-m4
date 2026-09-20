@@ -1064,7 +1064,8 @@ hk_CmdBeginRendering(VkCommandBuffer commandBuffer,
     * 32x32 solely because 32 KiB fits stalls even a constant-color draw.
     * A 2048-sample budget is independent of the strict 32 KiB storage limit.
     * Carry both budgets into deferred sample counts and fragment epilogs. */
-   unsigned max_tile_samples = dev->dev.chip == AGX_CHIP_G16G ? 2048 : 0;
+   unsigned max_tile_samples =
+      agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) ? 2048 : 0;
    if (dev->dev.chip == AGX_CHIP_G16G && render->tilebuffer.nr_samples == 1) {
       /* Diagnostic occupancy control: only reduce the qualified sample
        * budget. Geometry, storage and epilog selection still use the common
