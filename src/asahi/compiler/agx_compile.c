@@ -2388,7 +2388,13 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
 
    case nir_intrinsic_fence_pbe_to_tex_agx: {
       if (b->shader->key->dev.encoding != AGX_ISA_ENCODING_AGX2) {
-         agx_scoped_barrier_agx3(b, AGX3_BARRIER_SCOPE_TEXTURE);
+         /* Compiler-inserted fences order one invocation's accesses. They
+          * may occur after a predicated store, so must not rendezvous with
+          * other invocations which never execute the store. */
+         agx_scoped_barrier_agx3(
+            b, b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B
+                  ? AGX3_BARRIER_SCOPE_TEXTURE_FENCE
+                  : AGX3_BARRIER_SCOPE_TEXTURE);
          return NULL;
       }
 
@@ -2401,8 +2407,12 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
 
    case nir_intrinsic_fence_mem_to_tex_agx: {
       if (b->shader->key->dev.encoding != AGX_ISA_ENCODING_AGX2) {
-         agx_scoped_barrier_agx3(b, AGX3_BARRIER_SCOPE_DEVICE);
-         agx_scoped_barrier_agx3(b, AGX3_BARRIER_SCOPE_TEXTURE);
+         const bool fence =
+            b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B;
+         agx_scoped_barrier_agx3(b, fence ? AGX3_BARRIER_SCOPE_DEVICE_FENCE
+                                        : AGX3_BARRIER_SCOPE_DEVICE);
+         agx_scoped_barrier_agx3(b, fence ? AGX3_BARRIER_SCOPE_TEXTURE_FENCE
+                                        : AGX3_BARRIER_SCOPE_TEXTURE);
          return NULL;
       }
 
@@ -2423,7 +2433,10 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
 
    case nir_intrinsic_fence_pbe_to_tex_pixel_agx: {
       if (b->shader->key->dev.encoding != AGX_ISA_ENCODING_AGX2) {
-         agx_scoped_barrier_agx3(b, AGX3_BARRIER_SCOPE_TEXTURE);
+         agx_scoped_barrier_agx3(
+            b, b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B
+                  ? AGX3_BARRIER_SCOPE_TEXTURE_FENCE
+                  : AGX3_BARRIER_SCOPE_TEXTURE);
          return NULL;
       }
 

@@ -84,6 +84,46 @@ check_barrier(mesa_scope execution_scope, nir_variable_mode modes)
    return valid;
 }
 
+static bool
+check_conditional_image_fence(nir_intrinsic_op op)
+{
+   const uint8_t device_barrier[] = {0x07, 0x04, 0x54, 0x85, 0x08, 0x00};
+   const uint8_t texture_barrier[] = {0x07, 0x04, 0x54, 0x51, 0x0e, 0x00};
+   const uint8_t device_fence[] = {0x07, 0x04, 0x54, 0x84, 0x0a, 0x00};
+   const uint8_t texture_fence[] = {0x07, 0x04, 0x54, 0x50, 0x06, 0x00};
+   nir_builder b = nir_builder_init_simple_shader(
+      MESA_SHADER_COMPUTE, &agx_nir_options, "conditional image ordering");
+   b.shader->info.workgroup_size[0] = 64;
+   b.shader->info.workgroup_size[1] = b.shader->info.workgroup_size[2] = 1;
+   nir_def *lane = nir_load_local_invocation_index(&b);
+   nir_push_if(&b, nir_ieq_imm(&b, nir_iand_imm(&b, lane, 1), 0));
+   nir_intrinsic_instr *fence = nir_intrinsic_instr_create(b.shader, op);
+   nir_builder_instr_insert(&b, &fence->instr);
+   nir_pop_if(&b, NULL);
+   agx_preprocess_nir(b.shader);
+
+   struct agx_shader_key key = {
+      .dev.encoding = AGX_ISA_ENCODING_AGX3B,
+      .no_preamble = true,
+   };
+   struct agx_shader_part part = {0};
+   bool valid = agx_compile_shader_nir(b.shader, &key, &part) && part.binary &&
+      !count_pattern(part.binary, part.info.binary_size, device_barrier,
+                     sizeof(device_barrier)) &&
+      !count_pattern(part.binary, part.info.binary_size, texture_barrier,
+                     sizeof(texture_barrier)) &&
+      count_pattern(part.binary, part.info.binary_size, texture_fence,
+                    sizeof(texture_fence)) == 1 &&
+      count_pattern(part.binary, part.info.binary_size, device_fence,
+                    sizeof(device_fence)) ==
+         (op == nir_intrinsic_fence_mem_to_tex_agx);
+   if (!valid)
+      fprintf(stderr, "AGX3B conditional image fence oracle failed: %u\n", op);
+   free(part.binary);
+   ralloc_free(b.shader);
+   return valid;
+}
+
 int
 main(void)
 {
@@ -91,6 +131,11 @@ main(void)
        !check_barrier(SCOPE_SUBGROUP, nir_var_mem_shared) ||
        !check_barrier(SCOPE_NONE, nir_var_mem_shared) ||
        !check_barrier(SCOPE_SUBGROUP, nir_var_mem_shared | nir_var_image))
+      return 1;
+
+   if (!check_conditional_image_fence(nir_intrinsic_fence_pbe_to_tex_agx) ||
+       !check_conditional_image_fence(nir_intrinsic_fence_mem_to_tex_agx) ||
+       !check_conditional_image_fence(nir_intrinsic_fence_pbe_to_tex_pixel_agx))
       return 1;
 
    puts("agx3_workgroup: workgroup rendezvous and non-rendezvous fences verified");

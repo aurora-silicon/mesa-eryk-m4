@@ -1,0 +1,398 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.memory_model.write_after_read.ext.u64.coherent.atomic_atomic.atomicrmw.device.payload_local.image.guard_local.buffer.comp",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.3119364,
+    "eligibility": {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u64.coherent.atomic_atomic.atomicrmw.device.payload_local.image.guard_local.buffer.comp",
+      "catalog_index": 954367,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retetest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c12.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.memory_model.write_after_read.ext.u64.coherent.atomic_atomic.atomicrmw.device.payload_local.image.guard_local.physbuffer.comp",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.34293216,
+    "eligibility": {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u64.coherent.atomic_atomic.atomicrmw.device.payload_local.image.guard_local.physbuffer.comp",
+      "catalog_index": 954370,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retetest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c18.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.memory_model.write_after_read.ext.u64.coherent.atomic_atomic.atomicrmw.device.payload_local.image.guard_nonlocal.workgroup.comp",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Fail",
+    "seconds": 2.0761745,
+    "eligibility": {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u64.coherent.atomic_atomic.atomicrmw.device.payload_local.image.guard_nonlocal.workgroup.comp",
+      "catalog_index": 954379,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retetest abnormal result"
+    },
+    "status": "Fail",
+    "message": "Fail",
+    "qpa": "deqp-runner/c9.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 3,
+    "case": "dEQP-VK.memory_model.write_after_read.ext.u64.coherent.atomic_atomic.atomicrmw.queuefamily.payload_local.image.guard_local.buffer.comp",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.33773977,
+    "eligibility": {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u64.coherent.atomic_atomic.atomicrmw.queuefamily.payload_local.image.guard_local.buffer.comp",
+      "catalog_index": 954476,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retetest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c7.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 4,
+    "case": "dEQP-VK.memory_model.write_after_read.ext.u64.coherent.atomic_atomic.atomicrmw.queuefamily.payload_local.image.guard_local.physbuffer.comp",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.25573206,
+    "eligibility": {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u64.coherent.atomic_atomic.atomicrmw.queuefamily.payload_local.image.guard_local.physbuffer.comp",
+      "catalog_index": 954479,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retetest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c8.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 5,
+    "case": "dEQP-VK.memory_model.write_after_read.ext.u64.coherent.atomic_atomic.atomicrmw.queuefamily.payload_local.image.guard_nonlocal.workgroup.comp",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Fail",
+    "seconds": 2.0763211,
+    "eligibility": {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u64.coherent.atomic_atomic.atomicrmw.queuefamily.payload_local.image.guard_nonlocal.workgroup.comp",
+      "catalog_index": 954488,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retetest abnormal result"
+    },
+    "status": "Fail",
+    "message": "Fail",
+    "qpa": "deqp-runner/c13.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 6,
+    "case": "dEQP-VK.memory_model.write_after_read.ext.u64.coherent.atomic_atomic.atomicrmw.subgroup.payload_local.image.guard_local.buffer.comp",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.33216107,
+    "eligibility": {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u64.coherent.atomic_atomic.atomicrmw.subgroup.payload_local.image.guard_local.buffer.comp",
+      "catalog_index": 954585,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retetest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c20.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 7,
+    "case": "dEQP-VK.memory_model.write_after_read.ext.u64.coherent.atomic_atomic.atomicrmw.subgroup.payload_local.image.guard_local.physbuffer.comp",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.36516148,
+    "eligibility": {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u64.coherent.atomic_atomic.atomicrmw.subgroup.payload_local.image.guard_local.physbuffer.comp",
+      "catalog_index": 954588,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retetest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c5.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 8,
+    "case": "dEQP-VK.memory_model.write_after_read.ext.u64.coherent.atomic_atomic.atomicrmw.workgroup.payload_local.image.guard_local.buffer.comp",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.38001302,
+    "eligibility": {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u64.coherent.atomic_atomic.atomicrmw.workgroup.payload_local.image.guard_local.buffer.comp",
+      "catalog_index": 954682,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retetest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c1.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 9,
+    "case": "dEQP-VK.memory_model.write_after_read.ext.u64.coherent.atomic_atomic.atomicrmw.workgroup.payload_local.image.guard_local.physbuffer.comp",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.31204358,
+    "eligibility": {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u64.coherent.atomic_atomic.atomicrmw.workgroup.payload_local.image.guard_local.physbuffer.comp",
+      "catalog_index": 954683,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retetest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c10.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 10,
+    "case": "dEQP-VK.memory_model.write_after_read.ext.u64.coherent.atomic_atomic.atomicrmw.workgroup.payload_local.image.guard_nonlocal.workgroup.comp",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Fail",
+    "seconds": 2.0669947,
+    "eligibility": {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u64.coherent.atomic_atomic.atomicrmw.workgroup.payload_local.image.guard_nonlocal.workgroup.comp",
+      "catalog_index": 954686,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retetest abnormal result"
+    },
+    "status": "Fail",
+    "message": "Fail",
+    "qpa": "deqp-runner/c11.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 11,
+    "case": "dEQP-VK.memory_model.write_after_read.ext.u64.noncoherent.atomic_atomic.atomicrmw.device.payload_local.image.guard_local.buffer.comp",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.3145217,
+    "eligibility": {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u64.noncoherent.atomic_atomic.atomicrmw.device.payload_local.image.guard_local.buffer.comp",
+      "catalog_index": 955111,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retetest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c21.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 12,
+    "case": "dEQP-VK.memory_model.write_after_read.ext.u64.noncoherent.atomic_atomic.atomicrmw.device.payload_local.image.guard_local.physbuffer.comp",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.36949554,
+    "eligibility": {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u64.noncoherent.atomic_atomic.atomicrmw.device.payload_local.image.guard_local.physbuffer.comp",
+      "catalog_index": 955114,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retetest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 13,
+    "case": "dEQP-VK.memory_model.write_after_read.ext.u64.noncoherent.atomic_atomic.atomicrmw.device.payload_local.image.guard_nonlocal.workgroup.comp",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Fail",
+    "seconds": 2.0670094,
+    "eligibility": {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u64.noncoherent.atomic_atomic.atomicrmw.device.payload_local.image.guard_nonlocal.workgroup.comp",
+      "catalog_index": 955123,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retetest abnormal result"
+    },
+    "status": "Fail",
+    "message": "Fail",
+    "qpa": "deqp-runner/c16.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 14,
+    "case": "dEQP-VK.memory_model.write_after_read.ext.u64.noncoherent.atomic_atomic.atomicrmw.queuefamily.payload_local.image.guard_local.buffer.comp",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.296306,
+    "eligibility": {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u64.noncoherent.atomic_atomic.atomicrmw.queuefamily.payload_local.image.guard_local.buffer.comp",
+      "catalog_index": 955220,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retetest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c15.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 15,
+    "case": "dEQP-VK.memory_model.write_after_read.ext.u64.noncoherent.atomic_atomic.atomicrmw.queuefamily.payload_local.image.guard_local.physbuffer.comp",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.33985114,
+    "eligibility": {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u64.noncoherent.atomic_atomic.atomicrmw.queuefamily.payload_local.image.guard_local.physbuffer.comp",
+      "catalog_index": 955223,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retetest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c4.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 16,
+    "case": "dEQP-VK.memory_model.write_after_read.ext.u64.noncoherent.atomic_atomic.atomicrmw.queuefamily.payload_local.image.guard_nonlocal.workgroup.comp",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Fail",
+    "seconds": 2.0710838,
+    "eligibility": {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u64.noncoherent.atomic_atomic.atomicrmw.queuefamily.payload_local.image.guard_nonlocal.workgroup.comp",
+      "catalog_index": 955232,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retetest abnormal result"
+    },
+    "status": "Fail",
+    "message": "Fail",
+    "qpa": "deqp-runner/c3.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 17,
+    "case": "dEQP-VK.memory_model.write_after_read.ext.u64.noncoherent.atomic_atomic.atomicrmw.subgroup.payload_local.image.guard_local.buffer.comp",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.28314644,
+    "eligibility": {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u64.noncoherent.atomic_atomic.atomicrmw.subgroup.payload_local.image.guard_local.buffer.comp",
+      "catalog_index": 955329,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retetest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c2.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 18,
+    "case": "dEQP-VK.memory_model.write_after_read.ext.u64.noncoherent.atomic_atomic.atomicrmw.subgroup.payload_local.image.guard_local.physbuffer.comp",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.3960181,
+    "eligibility": {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u64.noncoherent.atomic_atomic.atomicrmw.subgroup.payload_local.image.guard_local.physbuffer.comp",
+      "catalog_index": 955332,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retetest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c19.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 19,
+    "case": "dEQP-VK.memory_model.write_after_read.ext.u64.noncoherent.atomic_atomic.atomicrmw.workgroup.payload_local.image.guard_local.buffer.comp",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.31945938,
+    "eligibility": {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u64.noncoherent.atomic_atomic.atomicrmw.workgroup.payload_local.image.guard_local.buffer.comp",
+      "catalog_index": 955426,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retetest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c6.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 20,
+    "case": "dEQP-VK.memory_model.write_after_read.ext.u64.noncoherent.atomic_atomic.atomicrmw.workgroup.payload_local.image.guard_local.physbuffer.comp",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.4021465,
+    "eligibility": {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u64.noncoherent.atomic_atomic.atomicrmw.workgroup.payload_local.image.guard_local.physbuffer.comp",
+      "catalog_index": 955427,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retetest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c14.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 21,
+    "case": "dEQP-VK.memory_model.write_after_read.ext.u64.noncoherent.atomic_atomic.atomicrmw.workgroup.payload_local.image.guard_nonlocal.workgroup.comp",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Fail",
+    "seconds": 2.0880985,
+    "eligibility": {
+      "case": "dEQP-VK.memory_model.write_after_read.ext.u64.noncoherent.atomic_atomic.atomicrmw.workgroup.payload_local.image.guard_nonlocal.workgroup.comp",
+      "catalog_index": 955430,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retetest abnormal result"
+    },
+    "status": "Fail",
+    "message": "Fail",
+    "qpa": "deqp-runner/c17.r1.qpa",
+    "worker_exit": "exit status: 1"
+  }
+]

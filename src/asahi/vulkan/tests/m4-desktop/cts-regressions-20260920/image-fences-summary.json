@@ -1,0 +1,23 @@
+{
+  "selected": 22,
+  "recorded": 22,
+  "completed": 22,
+  "counts": {
+    "Pass": 16,
+    "Fail": 6
+  },
+  "classifications": {
+    "bug": 22
+  },
+  "elapsed_seconds": 22.601764438091777,
+  "preparation_seconds": 1.3283547430764884,
+  "runner_seconds": 20.28345156100022,
+  "jobs": 1,
+  "tests_per_group": 1,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "f68b93062e0d04ac0d9213c03da9846ad99d895a7264ed24024f4685b059853f",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260920T105052985877Z-cts-fix-mm-conditional-fence-all",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 80.0
+}
