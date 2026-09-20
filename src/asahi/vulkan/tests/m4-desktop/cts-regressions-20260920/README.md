@@ -171,6 +171,13 @@ these have not all been reviewed and are not represented as a compiler-suite pas
 Logs: build/cts-regression-fixes-20260920/compiler-all-tests2.txt. These are separate
 from the 216 original CTS abnormal outcomes.
 
+Follow-up completed on September 20: all 47 compiler-unit failures were audited
+and repaired. The rebuilt suite passes 291/291, including the printer test; all
+13 selected encoder/producer suites pass. These were test-contract/setup repairs,
+with no further production driver changes. See
+`src/asahi/compiler/test/unit-repairs-20260920.md` and the canonical kernel's
+`reference/cts/compiler-unit-fixes-20260920/` for the audit and preserved results.
+
 ## Content-based pipeline binary keys
 
 Compilation-input hashes can differ for byte-identical optimized binaries,

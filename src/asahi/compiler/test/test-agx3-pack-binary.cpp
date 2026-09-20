@@ -2152,7 +2152,7 @@ TEST_F(AGX3PackBinary, RegisterAndUniformSubgroupShuffles)
                   .src = 2,
                   .lane = 8,
                   .src_live = true,
-                  .lane_live = true,
+            .lane_live = true,
                };
                uint8_t subgroup[AGX3_SUBGROUP_MAX_LENGTH], subgroup_len = 0;
                ASSERT_TRUE(agx3_subgroup_encode_shuffle(enc, &d, subgroup,
@@ -2190,8 +2190,7 @@ TEST_F(AGX3PackBinary, RegisterSubgroupShufflesWaitForDeviceLoad)
           * graph and slot1 for the corresponding AGX3c graph. */
          const uint16_t wait =
             enc == AGX_ISA_ENCODING_AGX3B ? 1u << 5 : 1u;
-         ASSERT_TRUE(encode_wait(enc,
-                                      wait, bytes, &length));
+         ASSERT_TRUE(encode_wait(enc, wait, bytes, &length));
          append(want, bytes, length);
 
          const struct agx3_subgroup_shuffle_desc shuffle = {
@@ -2201,7 +2200,7 @@ TEST_F(AGX3PackBinary, RegisterSubgroupShufflesWaitForDeviceLoad)
             .src = 4,
             .lane = 8,
             .src_live = true,
-                  .lane_live = true,
+            .lane_live = true,
          };
          ASSERT_TRUE(agx3_subgroup_encode_shuffle(enc, &shuffle, bytes,
                                                    &length));
@@ -2954,7 +2953,20 @@ TEST_F(AGX3PackBinary, RefusesUnmappedOp)
    agx_instr *I = agx_ffs_to(b, w0, w0);
    I->op = AGX_OPCODE_SIN_PT_1;
    agx_stop(b);
-   pack(b, /*expect_ok=*/false);
+   EXPECT_TRUE(pack(b, false).empty());
+
+   /* BITREV used to be the refusal case. Keep coverage of its now-supported
+    * route as well as the transactional rejection above. */
+   b = builder(AGX_ISA_ENCODING_AGX3B);
+   I = agx_ffs_to(b, w0, w0);
+   I->op = AGX_OPCODE_BITREV;
+   agx_stop(b);
+   uint8_t bytes[AGX3_ALU_MAX_LENGTH], len;
+   ASSERT_TRUE(agx3_alu_bitrev(AGX_ISA_ENCODING_AGX3B, 0, 0,
+                               AGX3_ALU_HINT_NONE, false, 0, bytes, &len));
+   std::vector<uint8_t> want(bytes, bytes + len);
+   want.insert(want.end(), {0x0e, 0, 0, 0});
+   EXPECT_EQ(pack(b), want);
 }
 
 TEST_F(AGX3PackBinary, TextureFetch2DLod0Immediate)
@@ -3195,8 +3207,8 @@ TEST_F(AGX3PackBinary, TextureFetchWaitSurvivesFallthroughBlock)
       struct agx3_tex_fetch_desc d = {};
       d.dest = 0;
       d.coord = 0;
-         d.wait_mask = 1;
-         d.coord_kill = true;
+      d.wait_mask = 1;
+      d.coord_kill = true;
       d.width = AGX3_TEX_W32;
       d.mask = 15;
       d.slot = 1;
@@ -3214,12 +3226,12 @@ TEST_F(AGX3PackBinary, TextureFetchWaitSurvivesFallthroughBlock)
 
       std::vector<uint8_t> want;
       uint8_t copy[AGX3_TEX_MAX_LENGTH], len;
-         for (unsigned c = 0; c < 2; ++c) {
-            ASSERT_TRUE(agx3_tex_stage_copy_hints(enc, 2*c, 12 + 2*c, 1, 0,
-               false, enc != AGX_ISA_ENCODING_AGX3B, copy, &len));
-            append(want, copy, len);
-         }
-         append(want, tb, tl);
+      for (unsigned c = 0; c < 2; ++c) {
+         ASSERT_TRUE(agx3_tex_stage_copy_hints(enc, 2*c, 12 + 2*c, 1, 0,
+            false, enc != AGX_ISA_ENCODING_AGX3B, copy, &len));
+         append(want, copy, len);
+      }
+      append(want, tb, tl);
       append(want, ab, al);
       append(want, end.bytes, end.length);
       EXPECT_EQ(pack(b), want);
