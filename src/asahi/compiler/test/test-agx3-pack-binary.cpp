@@ -50,6 +50,22 @@ append(std::vector<uint8_t> &v, const uint8_t *b, unsigned n)
    v.insert(v.end(), b, b + n);
 }
 
+/* Plain IR registers have no post-RA cache/discard hints. The older
+ * convenience encoder embeds the discard hints of its native witness. */
+static bool
+encode_retained_iadd(enum agx_isa_encoding enc, unsigned dest, unsigned a,
+                     unsigned b, unsigned wait, uint8_t *bytes, uint8_t *length)
+{
+   if (enc == AGX_ISA_ENCODING_AGX3B) {
+      const uint16_t src[] = {(uint16_t)a, (uint16_t)b};
+      const enum agx3_alu_hint hints[] = {AGX3_ALU_HINT_NONE, AGX3_ALU_HINT_NONE};
+      return agx3_alu_integer_reg(enc, AGX3_ALU_IADD, dest, src, hints,
+                                  wait, bytes, length);
+   }
+   return agx3_alu_compose(enc, AGX3_ALU_IADD, dest, a, b, 0, 0,
+                           wait, bytes, length);
+}
+
 TEST(AGXPrint, MalformedOperandDiagnostics)
 {
    testing::internal::CaptureStderr();
@@ -299,7 +315,7 @@ TEST_F(AGX3PackBinary, StraightLineALU)
       else
          append(want, fm.bytes, fm.length);
       struct agx3_encoded_iadd_u32_reg_reg ia;
-      ASSERT_TRUE(agx3_pack_iadd_u32_reg_reg(enc, 4, 0, 2, &ia));
+      ASSERT_TRUE(encode_retained_iadd(enc, 4, 0, 2, 0, ia.bytes, &ia.length));
       append(want, ia.bytes, ia.length);
       struct agx3_encoded_end en;
       ASSERT_TRUE(agx3_pack_end(enc, &en));
@@ -2769,6 +2785,7 @@ TEST_F(AGX3PackBinary, StaticSpillCopyReloadDependency)
       const struct agx3_static_spill_load_desc load = {
          .dest = 2,
          .tps_half = 16,
+         .retain_tps = true,
          .width = AGX3_MEM_W32,
          .slot = 2,
          .slot_mirror = 2,
@@ -2777,7 +2794,7 @@ TEST_F(AGX3PackBinary, StaticSpillCopyReloadDependency)
       ASSERT_TRUE(agx3_static_spill_encode_load(enc, &load, bytes, &length));
       append(want, bytes, length);
 
-      ASSERT_TRUE(agx3_alu_compose(enc, AGX3_ALU_IADD, 4, 2, 2, 0, 0,
+      ASSERT_TRUE(encode_retained_iadd(enc, 4, 2, 2,
                                    /* wait reload slot 2 */ 2, bytes, &length));
       append(want, bytes, length);
       struct agx3_encoded_end end;
@@ -2827,8 +2844,8 @@ TEST_F(AGX3PackBinary, StaticSpillRefusesNonScalarOrUnalignedShapes)
 
 TEST_F(AGX3PackBinary, FloatModifierRouting)
 {
-   /* A negated source must route to the long modifier form, not the compact
-    * packer, and match the modifier encoder byte for byte. */
+   /* A negated source uses the native compact modifier form with the
+    * actual register lifetime hints. */
    agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
    agx_index w0 = agx_register(0, AGX_SIZE_32);
    agx_index w2 = agx_register(2, AGX_SIZE_32);
@@ -2840,8 +2857,9 @@ TEST_F(AGX3PackBinary, FloatModifierRouting)
    m.src0_neg = true;
    uint8_t mod[AGX3_FALU_MOD_MAX_LENGTH];
    uint8_t mlen = 0;
-   ASSERT_TRUE(
-      agx3_falu_add_mod(AGX_ISA_ENCODING_AGX3B, 4, 0, 2, &m, mod, &mlen));
+   const struct agx3_falu_runtime runtime = {};
+   ASSERT_TRUE(agx3_falu_add_mod_runtime(AGX_ISA_ENCODING_AGX3B, 4, 0, 2,
+                                         &m, &runtime, mod, &mlen));
    struct agx3_encoded_end en;
    agx3_pack_end(AGX_ISA_ENCODING_AGX3B, &en);
 
@@ -2994,7 +3012,7 @@ TEST_F(AGX3PackBinary, ExportDoesNotConsumeRealReadWait)
       uint8_t bytes[AGX3_ALU_MAX_LENGTH], len = 0;
       ASSERT_TRUE(agx3_sr_encode(enc, &sr, bytes, &len));
       append(want, bytes, len);
-      ASSERT_TRUE(agx3_alu_compose(enc, AGX3_ALU_IADD, 6, 4, 4, 0, 0,
+      ASSERT_TRUE(encode_retained_iadd(enc, 6, 4, 4,
                                   1, bytes, &len));
       append(want, bytes, len);
       /* The real consumer already waited: no extra tail instruction. */
@@ -3097,7 +3115,7 @@ TEST_F(AGX3PackBinary, TextureFetchWaitSurvivesFallthroughBlock)
 
       uint8_t ab[AGX3_ALU_MAX_LENGTH];
       uint8_t al = 0;
-      ASSERT_TRUE(agx3_alu_compose(enc, AGX3_ALU_IADD, 8, 0, 0, 0, 0,
+      ASSERT_TRUE(encode_retained_iadd(enc, 8, 0, 0,
                                    /*wait*/ 0x1, ab, &al));
       struct agx3_encoded_end end;
       ASSERT_TRUE(agx3_pack_end(enc, &end));
@@ -3350,7 +3368,7 @@ TEST_F(AGX3PackBinary, GetSrIndexedLoadAddStoreCarriesWait)
 
       uint8_t ab[AGX3_ALU_MAX_LENGTH];
       uint8_t al = 0;
-      ASSERT_TRUE(agx3_alu_compose(enc, AGX3_ALU_IADD, 8, 6, 6, 0, 0,
+      ASSERT_TRUE(encode_retained_iadd(enc, 8, 6, 6,
                                    /*wait*/ 0x2, ab, &al));
 
       struct agx3_mem_desc st = ld;
@@ -3424,7 +3442,7 @@ TEST_F(AGX3PackBinary, LoadAddStoreCarriesWait)
 
       uint8_t ab[AGX3_ALU_MAX_LENGTH];
       uint8_t al = 0;
-      ASSERT_TRUE(agx3_alu_compose(enc, AGX3_ALU_IADD, 8, 6, 6, 0, 0,
+      ASSERT_TRUE(encode_retained_iadd(enc, 8, 6, 6,
                                    /*wait*/ 0x1, ab, &al));
 
       struct agx3_mem_desc st = ld;
@@ -3480,7 +3498,7 @@ TEST_F(AGX3PackBinary, LocalLoadAddStoreCarriesWait)
 
       uint8_t ab[AGX3_ALU_MAX_LENGTH];
       uint8_t al = 0;
-      ASSERT_TRUE(agx3_alu_compose(enc, AGX3_ALU_IADD, 2, 0, 0, 0, 0,
+      ASSERT_TRUE(encode_retained_iadd(enc, 2, 0, 0,
                                    /*wait*/ 1, ab, &al));
 
       struct agx3_local_desc st = ld;
