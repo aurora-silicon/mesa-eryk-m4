@@ -1162,6 +1162,17 @@ agx_open_device(void *memctx, struct agx_device *dev)
       return false;
    }
 
+   /* The M3 owned parameter pool and render graph occupy the first 128 MiB.
+    * Reserve the portion above the common 8 MiB alias start before allocating
+    * command streams, matching m3_runtime::new_vm. */
+   if (dev->chip == AGX_CHIP_G15S &&
+       !util_vma_heap_alloc_addr(&dev->g17p_vdm_alias_heap,
+                                AGX_G17P_VDM_ALIAS_BASE,
+                                UINT64_C(0x08000000) - AGX_G17P_VDM_ALIAS_OFFSET_START)) {
+      fprintf(stderr, "Failed to reserve M3 render graph aperture\n");
+      return false;
+   }
+
    /* Experimental M3 owns a fixed parameter-page list in this aperture. */
    if (dev->chip == AGX_CHIP_G15S &&
        !util_vma_heap_alloc_addr(&dev->g17p_vdm_alias_heap,
