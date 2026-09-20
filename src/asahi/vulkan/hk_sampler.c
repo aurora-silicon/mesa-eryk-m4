@@ -265,9 +265,9 @@ hk_CreateSampler(VkDevice device,
     * the descriptor set, and use centre/nearest hardware taps for reduction. */
    VkSamplerCreateInfo nearest;
    VkSamplerReductionMode native_reduction = sampler->vk.reduction_mode;
-   sampler->shader_reduction = pdev->dev.chip == AGX_CHIP_G16G &&
+   sampler->shader_reduction = agx_chip_uses_g15_g16_shader_abi(pdev->dev.chip) &&
       native_reduction != VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE;
-   sampler->shader_view_min = pdev->dev.chip == AGX_CHIP_G16G &&
+   sampler->shader_view_min = agx_chip_uses_g15_g16_shader_abi(pdev->dev.chip) &&
       dev->vk.enabled_features.minLod && !sampler->vk.ycbcr_conversion;
    if (sampler->shader_reduction || sampler->shader_view_min) {
       sampler->reduction_state.opaque[0] = _mesa_float_to_half(info->minLod) |

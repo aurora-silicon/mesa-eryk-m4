@@ -153,6 +153,15 @@ agx_chip_uses_hal200_ioto(enum agx_chip chip)
    return chip == AGX_CHIP_G15S || chip == AGX_CHIP_G16G || chip == AGX_CHIP_G17P;
 }
 
+/* G15S and G16G share AGX3b shader encodings, native sample-loop ABI and
+ * Gen9 texture operations. This selects shader lowerings, not firmware
+ * packets, VM permissions, sparse support or layered render admission. */
+static inline bool
+agx_chip_uses_g15_g16_shader_abi(enum agx_chip chip)
+{
+   return chip == AGX_CHIP_G15S || chip == AGX_CHIP_G16G;
+}
+
 #ifdef __cplusplus
 extern "C" {
 #endif

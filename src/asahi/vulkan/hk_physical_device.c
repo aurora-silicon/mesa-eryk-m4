@@ -370,7 +370,7 @@ hk_get_device_features(
       .descriptorBindingVariableDescriptorCount = true,
       .runtimeDescriptorArray = true,
       .samplerFilterMinmax = instance->fake_minmax ||
-         dev->chip == AGX_CHIP_G16G,
+         agx_chip_uses_g15_g16_shader_abi(dev->chip),
       .scalarBlockLayout = true,
       .imagelessFramebuffer = true,
       .uniformBufferStandardLayout = true,
@@ -599,7 +599,7 @@ hk_get_device_features(
 #endif
 
       /* VK_EXT_image_view_min_lod */
-      .minLod = dev->chip == AGX_CHIP_G16G || instance->image_view_min_lod,
+      .minLod = agx_chip_uses_g15_g16_shader_abi(dev->chip) || instance->image_view_min_lod,
 
       /* VK_EXT_map_memory_placed */
       .memoryMapPlaced = true,
@@ -700,7 +700,7 @@ hk_get_device_features(
       const bool graphics_storage = dev->chip == AGX_CHIP_G16G;
       features->geometryShader = graphics_storage;
       features->tessellationShader = graphics_storage;
-      features->sampleRateShading = dev->chip == AGX_CHIP_G16G;
+      features->sampleRateShading = agx_chip_uses_g15_g16_shader_abi(dev->chip);
       /* G16G runs the upstream counter path; the native query reset/copy
        * and the statistics prolog's root push are qualified (CTS
        * query_pool.statistics_query, 2026-09-16). */
@@ -730,8 +730,8 @@ hk_get_device_features(
        * explicit view bounds for robust image operations in NIR, and the
        * out-of-bounds alpha of a format-less load or texel fetch follows the
        * bound view's alpha swizzle (robustImageAccess2, CTS robustness2). */
-      features->robustImageAccess = dev->chip == AGX_CHIP_G16G;
-      features->robustImageAccess2 = dev->chip == AGX_CHIP_G16G;
+      features->robustImageAccess = agx_chip_uses_g15_g16_shader_abi(dev->chip);
+      features->robustImageAccess2 = agx_chip_uses_g15_g16_shader_abi(dev->chip);
    }
 }
 
@@ -999,8 +999,8 @@ hk_get_device_properties(const struct agx_device *dev,
       .maxDescriptorSetUpdateAfterBindStorageImages = HK_MAX_DESCRIPTORS,
       .maxDescriptorSetUpdateAfterBindInputAttachments = HK_MAX_DESCRIPTORS,
       .filterMinmaxSingleComponentFormats = instance->fake_minmax ||
-         dev->chip == AGX_CHIP_G16G,
-      .filterMinmaxImageComponentMapping = dev->chip == AGX_CHIP_G16G,
+         agx_chip_uses_g15_g16_shader_abi(dev->chip),
+      .filterMinmaxImageComponentMapping = agx_chip_uses_g15_g16_shader_abi(dev->chip),
       .maxTimelineSemaphoreValueDifference = UINT64_MAX,
       .framebufferIntegerColorSampleCounts = other_sample_counts,
 
@@ -1401,8 +1401,8 @@ hk_create_drm_physical_device(struct vk_instance *_instance,
    hk_get_device_extensions(instance, &supported_extensions);
    supported_extensions.EXT_depth_clip_control = pdev->dev.chip == AGX_CHIP_G16G;
    supported_extensions.EXT_post_depth_coverage = pdev->dev.chip == AGX_CHIP_G16G;
-   supported_extensions.EXT_sampler_filter_minmax |= pdev->dev.chip == AGX_CHIP_G16G;
-   supported_extensions.EXT_image_view_min_lod |= pdev->dev.chip == AGX_CHIP_G16G;
+   supported_extensions.EXT_sampler_filter_minmax |= agx_chip_uses_g15_g16_shader_abi(pdev->dev.chip);
+   supported_extensions.EXT_image_view_min_lod |= agx_chip_uses_g15_g16_shader_abi(pdev->dev.chip);
    supported_extensions.KHR_shader_atomic_int64 |= pdev->dev.chip == AGX_CHIP_G16G;
    supported_extensions.EXT_shader_image_atomic_int64 |=
       pdev->dev.chip == AGX_CHIP_G16G;
