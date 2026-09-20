@@ -75,3 +75,29 @@ combined with kernel MRT admission. No device loss or process crash remains
 in this subset. Evidence: build/m3-cts-fixes-02 in the M4 workspace and the M3
 kernel lab validation/cts-fixes-20260920 checkpoint. Image correctness remains
 under investigation.
+
+## M3 sampler bias and complete sample rerun (2026-09-20)
+
+M3 uses generation-9 texture descriptors with generation-4 samplers. Unlike
+M4 HAL200 samplers, these require software API mip LOD bias. Select the
+hardware-bias shortcut by sampler generation rather than texture descriptor
+generation. Internal reduction footprint queries and centre taps already
+account for this bias; exclude them from generic bias lowering to avoid
+applying it twice or producing an unsupported query shape.
+
+The original EAC negative-bias sampler failure now passes. An additional
+32-case positive/negative-bias sweep completed with 16 Pass and 16
+NotSupported. No unsupported case was replaced. The unchanged original
+1,000-case sample now reports 386 Pass, 601 NotSupported and 13 Fail, with
+zero device loss, process crash or timeout. All original passing cases still
+pass. Four unsupported tessellation cases now report NotSupported instead of
+asserting. Peak package temperature was 64.75 C across 16 guarded segments.
+
+Evidence: workspace build/m3-cts-random-1000-fixed-01 and
+build/m3-bias-validation-01; frozen cases SHA256
+cc3f5792d040ee05fb4a280c518eae9276b03db979e2ac2a159fa27358f8c8bf.
+Remaining failures concern scaled-format CTS reference/shader typing and
+line-depth coverage comparisons; they are retained as Fail, not waived or
+counted as passes. The line controls pass 12 supported non-strict/Bresenham,
+wide and 4x-MSAA cases (24 unsupported). Experimental line-width and MSAA
+changes were discarded. This is bring-up validation, not conformance.

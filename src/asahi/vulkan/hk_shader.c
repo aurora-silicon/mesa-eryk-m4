@@ -1941,7 +1941,8 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
                hk_lower_native_sample_barycentric, nir_metadata_control_flow, NULL);
 
    NIR_PASS(_, nir, hk_nir_lower_descriptors, rs, set_layout_count,
-            set_layouts);
+            set_layouts, agx_chip_sampler_generation(dev->dev.chip) !=
+                           AGX_SAMPLER_GENERATION_GEN4);
    NIR_PASS(_, nir, nir_lower_explicit_io, nir_var_mem_global,
             nir_address_format_64bit_global);
    NIR_PASS(_, nir, nir_lower_explicit_io, nir_var_mem_ssbo,

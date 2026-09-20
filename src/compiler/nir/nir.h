@@ -6270,6 +6270,8 @@ typedef struct nir_lower_tex_options {
     * LOD bias to every texture instruction's LOD.
     */
    bool lower_sampler_lod_bias;
+   /* Optional filter for operations whose sampler bias is already handled. */
+   nir_instr_filter_cb lower_sampler_lod_bias_filter;
 
    /* Turns nir_op_tex and other ops with an implicit derivative, in stages
     * without implicit derivatives (like the vertex shader) to have an explicit

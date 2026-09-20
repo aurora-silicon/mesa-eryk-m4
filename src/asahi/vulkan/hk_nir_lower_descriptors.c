@@ -29,6 +29,7 @@ struct lower_descriptors_ctx {
    nir_address_format ubo_addr_format;
    nir_address_format ssbo_addr_format;
    unsigned descriptor_generation;
+   bool hardware_sampler_lod_bias;
    mesa_shader_stage stage;
 };
 
@@ -689,9 +690,11 @@ lower_tex(nir_builder *b, nir_tex_instr *tex,
     * plus this saves on precious sampler heap spots.
     */
    if (tex->op == nir_texop_lod_bias) {
-      /* G17P carries API LOD bias in its native sampler word. Avoid a
+      /* HAL200/Gen5 samplers carry API LOD bias in hardware. M3 has
+       * Gen9 texture descriptors but Gen4 samplers, so descriptor generation
+       * alone cannot select this shortcut. Avoid a
        * redundant software load, including for dynamically indexed sets. */
-      if (ctx->descriptor_generation == 9) {
+      if (ctx->hardware_sampler_lod_bias) {
          nir_def_replace(&tex->def, nir_imm_float16(b, 0.0));
          return true;
       }
@@ -1024,10 +1027,12 @@ bool
 hk_nir_lower_descriptors(nir_shader *nir,
                          const struct vk_pipeline_robustness_state *rs,
                          uint32_t set_layout_count,
-                         struct vk_descriptor_set_layout *const *set_layouts)
+                         struct vk_descriptor_set_layout *const *set_layouts,
+                         bool hardware_sampler_lod_bias)
 {
    struct lower_descriptors_ctx ctx = {
       .stage = nir->info.stage,
+      .hardware_sampler_lod_bias = hardware_sampler_lod_bias,
       .clamp_desc_array_bounds =
          rs->storage_buffers !=
             VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_DISABLED_EXT ||
