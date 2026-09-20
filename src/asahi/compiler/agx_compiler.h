@@ -26,9 +26,9 @@ extern "C" {
 /* u0-u255 inclusive, as pairs of 16-bits */
 #define AGX_NUM_UNIFORMS (512)
 
-/* Model the signed 16-bit byte range of the native stack adjustment.
+/* Model the unsigned 16-bit byte offsets used by stack load/store IR.
  * Physical GPR bounds remain separate. Each spill slot holds two bytes. */
-#define AGX_NUM_MODELED_REGS_LOG2 (14)
+#define AGX_NUM_MODELED_REGS_LOG2 (15)
 #define AGX_NUM_MODELED_REGS      (1 << AGX_NUM_MODELED_REGS_LOG2)
 
 /* Limit on number of sources for non-phi instructions */

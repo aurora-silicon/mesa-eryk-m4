@@ -1,0 +1,22 @@
+{
+  "selected": 1,
+  "recorded": 1,
+  "completed": 1,
+  "counts": {
+    "Pass": 1
+  },
+  "classifications": {
+    "bug": 1
+  },
+  "elapsed_seconds": 44.55659537098836,
+  "preparation_seconds": 1.3738127580145374,
+  "runner_seconds": 42.33281172900024,
+  "jobs": 1,
+  "tests_per_group": 1,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "d7c7e2752101672387b3c9797b970c651d693178dbc66eef5ddc2e967db12501",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260920T113251593634Z-cts-fix-ssbo-wide-tps",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 72.0
+}

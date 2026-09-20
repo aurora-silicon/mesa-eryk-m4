@@ -111,3 +111,28 @@ refusal in nested_structs_arrays.17 (35.85 seconds), still explicitly open.
 Evidence 20260920T112415250760Z-cts-fix-ssbo-ra, 171.608 runner seconds, peak81.25C,
 no guard failure. Shader cache disabled; one process per case.
 Installed Vulkan SHA256 0e4300a53c30a3001ec72543f04bd0b6a06995048917da3b938ae38b6b177f45.
+
+## Full unsigned scratch-offset range
+
+The last SSBO shader requires 33,540 scratch bytes. Register allocation still
+imposed the signed 16-bit stack-adjustment limit, although AGX3 no longer emits
+that AGX2 instruction: its TPS frame is allocated at launch. Model all 32,768
+halfword spill slots and cap AGX3 spill allocation at the actual unsigned
+16-bit IR byte-offset boundary, accounting for existing scratch. Keep the
+signed adjustment assertion on AGX2. A unit check covers assigned slots at
+32 KiB and the final 32-bit word below 64 KiB without truncation.
+
+23 spill/parallel-copy/SSA tests pass; both builds pass. Original
+nested_structs_arrays.17 passes uncached on M4 in 42.33 runner seconds with the
+unchanged 60-second deadline, peak72C. Evidence
+20260920T113251593634Z-cts-fix-ssbo-wide-tps. All 12 original SSBO abnormal
+outcomes now have Pass validation. Installed Vulkan SHA256:
+d44a6d3cd5605f576935c5760743d62a3661db55c718cb8dfda1d0055daa78f0.
+
+## Original pipeline OOM cohort
+
+The three original render_to_image OOM/canceled outcomes pass in isolated
+processes, one worker, 1.023 runner seconds, peak68C. Evidence
+20260920T113139945858Z-cts-fix-pipeline-isolated. The full-suite runner already
+classifies this family for serialized execution; no driver fix is attributed
+to those original resource-exhaustion outcomes. Original OOM records retained.

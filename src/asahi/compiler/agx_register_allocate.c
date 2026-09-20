@@ -1836,8 +1836,10 @@ agx_ra(agx_context *ctx)
    bool success = true;
    memory_bound = ALIGN_POT(memory_bound, 16);
    if (ctx->key->dev.encoding != AGX_ISA_ENCODING_AGX2) {
-      unsigned available = ctx->scratch_size_B < INT16_MAX ?
-         ROUND_DOWN_TO((INT16_MAX - ctx->scratch_size_B) / 2, 16) : 0;
+      /* AGX3 uses launch-allocated TPS, not a signed stack adjustment. The
+       * limiting representation is the unsigned byte offset in our IR. */
+      unsigned available = ctx->scratch_size_B < (1u << 16) ?
+         ROUND_DOWN_TO(((1u << 16) - ctx->scratch_size_B) / 2, 16) : 0;
       memory_bound = MIN2(memory_bound, available);
    }
 

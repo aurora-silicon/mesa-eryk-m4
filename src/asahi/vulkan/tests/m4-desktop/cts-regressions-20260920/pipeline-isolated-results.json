@@ -1,0 +1,56 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.pipeline.shader_object_linked_binary.render_to_image.core.2d_array.small.r32g32b32a32_sfloat_d32_sfloat_s8_uint",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.17126158,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.shader_object_linked_binary.render_to_image.core.2d_array.small.r32g32b32a32_sfloat_d32_sfloat_s8_uint",
+      "catalog_index": 1713535,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.pipeline.shader_object_linked_binary.render_to_image.core.3d.mipmap.a2b10g10r10_unorm_pack32_d32_sfloat_s8_uint",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.16694365,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.shader_object_linked_binary.render_to_image.core.3d.mipmap.a2b10g10r10_unorm_pack32_d32_sfloat_s8_uint",
+      "catalog_index": 1713595,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c2.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.pipeline.shader_object_linked_binary.render_to_image.core.cube_array.mipmap.r32g32b32a32_sfloat_d16_unorm",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.37620062,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.shader_object_linked_binary.render_to_image.core.cube_array.mipmap.r32g32b32a32_sfloat_d16_unorm",
+      "catalog_index": 1713828,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c1.r1.qpa",
+    "worker_exit": "exit status: 0"
+  }
+]

@@ -1,0 +1,20 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.ssbo.layout.random.nested_structs_arrays.17",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 42.11806,
+    "eligibility": {
+      "case": "dEQP-VK.ssbo.layout.random.nested_structs_arrays.17",
+      "catalog_index": 2759477,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result comparison and counter values are OK",
+    "qpa": "deqp-runner/dEQP-VK.ssbo.layout.random.nested_structs_arrays.17.c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  }
+]

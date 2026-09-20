@@ -83,6 +83,29 @@ TEST_F(LowerSpill, ScalarFills)
         agx_stack_load_to(b, wx, agx_immediate(36), i32, scalar));
 }
 
+TEST_F(LowerSpill, UnsignedStackOffsetRange)
+{
+   /* Exercise the assigned-register field as well as spill lowering. The
+    * old 14-bit register field silently truncated slots above 32 KiB. */
+   agx_builder *a = agx_test_builder(mem_ctx);
+   agx_builder *b = agx_test_builder(mem_ctx);
+   a->shader->scratch_size_B = 65536;
+   for (unsigned slot : {16384u, 32766u}) {
+      agx_index assigned = agx_get_index(1, AGX_SIZE_32);
+      assigned.memory = true;
+      assigned.has_reg = true;
+      assigned.reg = slot;
+      agx_index mem = agx_as_register(assigned);
+      ASSERT_EQ(mem.value, slot);
+      agx_mov_to(a, mem, wx);
+      agx_mov_to(a, wx, mem);
+      agx_stack_store(b, wx, agx_immediate(slot * 2), i32, scalar);
+      agx_stack_load_to(b, wx, agx_immediate(slot * 2), i32, scalar);
+   }
+   agx_lower_spill(a->shader);
+   ASSERT_SHADER_EQUAL(a->shader, b->shader);
+}
+
 TEST_F(LowerSpill, VectorSpills)
 {
    CASE(agx_mov_to(b, mh4, hy4),

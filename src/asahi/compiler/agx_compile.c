@@ -6132,9 +6132,8 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
          ? align(DIV_ROUND_UP(ctx->scratch_size_B, 4) + 10, 4)
          : ctx->scratch_size_B;
 
-      assert(stack_size < INT16_MAX);
-
       if (ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX2) {
+         assert(stack_size < INT16_MAX);
          agx_block *start_block = agx_start_block(ctx);
          agx_builder _b =
             agx_init_builder(ctx, agx_before_block(start_block));
