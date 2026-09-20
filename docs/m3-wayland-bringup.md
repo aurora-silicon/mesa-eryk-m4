@@ -46,3 +46,26 @@ retirement and fault checks passed. Diagnostic controls are recorded in
 render20 (native capture), render21 (generated six-slot 64 KiB image, failed),
 and render22 (generated ten-slot 64 KiB image, passed). These controls are
 not the production implementation. GPU Wayland remains the next objective.
+
+## Mixed compute/render and two-dimensional compute
+
+2026-09-20: M3 direct CDM dispatch now accepts 2D/3D grids while retaining
+RTKit 2419 pointer control 0x40 and its older split address layout. Hardware
+qualification currently covers 1D compute and 2D image readback. The standalone
+compute-program codec suite passes 464 checks, including the G15S 2D pointer
+layout and rejection of a contradictory one-dimensional grid.
+
+Kernel 1cf405b82f2f separates compute and graphics GPU/firmware allocations,
+event slots and UMA IDs, and serializes mixed packets through full retirement.
+Guarded mixed04 and mixed05 each verify four draws followed by GPU image copies
+in each command buffer; mixed05 covers 512-square and 32-square targets plus
+two independent compute clients. Each output is poisoned before execution and
+checked pixel by pixel afterwards. Full raw evidence is under workspace
+_provenance/m3-compute-reuse-20260920; this is not conformance qualification.
+
+Build with -Dlmsensors=disabled on the current cross sysroot: its libsensors.so.5
+is unavailable on Fedora, which supplies .4. This affects the optional Mesa
+HUD only; the M3 watchdog and PMP thermal monitor are separate and mandatory.
+
+Weston 15 loads Zink and identifies Apple M3 Pro. Initial headless launch then
+hits ENOTSUPP in kernel admission; GPU Wayland is not yet qualified.

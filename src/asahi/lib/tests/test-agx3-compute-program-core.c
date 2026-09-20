@@ -940,10 +940,44 @@ test_m4_indirect_geometry(void)
    return true;
 }
 
+/* M3 RTKit 2419 uses a different pointer control from M4. A 2D meta-copy
+ * must preserve that control while carrying both grid axes. */
+static bool
+test_m3_two_dimensional_copy_launch(void)
+{
+   struct agx3_cdm_direct_template_sources sources;
+   CHECK(agx3_cdm_direct_template_sources_compute(false, false, false, &sources));
+   const struct agx3_g17p_native_compute_program_desc desc = {
+      .program_va = UINT64_C(0x10000010000),
+      .shader_va = UINT64_C(0x10000020000),
+      .launch_sources = sources,
+   };
+   struct agx3_compute_program program;
+   CHECK(agx3_g17p_native_compute_program_bind(&desc, &program));
+   program.chip = AGX_CHIP_G15S;
+   struct agx3_compute_direct_grid grid = {
+      .source = AGX3_CDM_DIRECT_GRID_GLOBAL_THREADS,
+      .size = {512, 512, 1}, .local_size = {32, 1, 1}, .dimensions = 2,
+   };
+   uint8_t bytes[AGX3_G17P_NATIVE_COMPUTE_DISPATCH_SIZE];
+   struct agx3_compute_dispatch_sink sink = {.data = bytes, .capacity = sizeof(bytes)};
+   CHECK(agx3_g17p_native_compute_dispatch_append(&program, &grid, &sink));
+   CHECK(load_le32(bytes + 4) == 0x01000000);
+   CHECK(load_le32(bytes + 8) == 0x400);
+   CHECK(load_le32(bytes + 12) == 0x40);
+   CHECK(load_le32(bytes + 16) == 512 && load_le32(bytes + 20) == 512);
+   CHECK(load_le32(bytes + 24) == 1 && load_le32(bytes + 28) == 32);
+   sink.length = 0;
+   grid.dimensions = 1;
+   CHECK(!agx3_g17p_native_compute_dispatch_append(&program, &grid, &sink));
+   CHECK(sink.length == 0);
+   return true;
+}
+
 int
 main(void)
 {
-   if (!test_m4_indirect_geometry() || !test_prepare_and_launch() || !test_a18_pro_one_dimensional_launch() ||
+   if (!test_m3_two_dimensional_copy_launch() || !test_m4_indirect_geometry() || !test_prepare_and_launch() || !test_a18_pro_one_dimensional_launch() ||
        !test_g17p_native_compute_join() ||
        !test_g17p_usc_window_va_is_encoded_without_constants() ||
        !test_g17p_direct_add3_program_join() ||
