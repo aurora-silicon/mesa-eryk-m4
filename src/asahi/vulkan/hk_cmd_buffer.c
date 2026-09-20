@@ -1121,9 +1121,9 @@ hk_reserve_scratch(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
    /* Not scratch but this is the most convenient place for this... */
    cs->uses_sampler_heap |= s->b.info.uses_sampler_heap;
 
-   /* M4's firmware owns the USC private-memory pool. AGX2 scratch helper
-    * programs are not part of its native compute/render submission ABI. */
-   if (dev->dev.chip == AGX_CHIP_G16G)
+   /* G15S/G16G firmware owns the USC private-memory pool. Native IOTO
+    * declares scratch size; AGX2 helper programs are not part of this ABI. */
+   if (agx_chip_uses_g15_g16_shader_abi(dev->dev.chip))
       return;
 
    if (max_scratch_size == 0)

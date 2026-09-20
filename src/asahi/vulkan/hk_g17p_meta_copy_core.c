@@ -98,9 +98,9 @@ hk_g17p_image_blit_slice(enum agx_chip chip, VkImageType src_type,
 
    if (!agx_chip_uses_hal200_ioto(chip) || !region || !out ||
        (src_type != VK_IMAGE_TYPE_2D &&
-        !(chip == AGX_CHIP_G16G && src_type == VK_IMAGE_TYPE_1D)) ||
+        !(agx_chip_uses_g15_g16_shader_abi(chip) && src_type == VK_IMAGE_TYPE_1D)) ||
        (dst_type != VK_IMAGE_TYPE_2D &&
-        !(chip == AGX_CHIP_G16G && dst_type == VK_IMAGE_TYPE_1D)) ||
+        !(agx_chip_uses_g15_g16_shader_abi(chip) && dst_type == VK_IMAGE_TYPE_1D)) ||
        (src_type == VK_IMAGE_TYPE_1D &&
         (region->srcOffsets[0].y != 0 || region->srcOffsets[1].y != 1)) ||
        (dst_type == VK_IMAGE_TYPE_1D &&
