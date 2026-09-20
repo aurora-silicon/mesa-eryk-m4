@@ -78,6 +78,32 @@ encode_wait(enum agx_isa_encoding enc, unsigned wait, uint8_t *bytes,
                            wait, bytes, length);
 }
 
+/* Returning AGX3B atomics use the native CLR -> ATOMIC -> RLD TPS
+ * protocol. The result GPR is independent of the update operand. */
+static void
+append_atomic_return(std::vector<uint8_t> &want, enum agx_isa_encoding enc,
+                     struct agx3_device_atomic_desc d)
+{
+   const bool tps = enc == AGX_ISA_ENCODING_AGX3B;
+   if (tps) {
+      /* Native CLR of TPS word 0, signalling slot 1. */
+      want.insert(want.end(), {0x0b, 0x00, 0x00, 0x02});
+      d.wait_mask = 1;
+   }
+   uint8_t bytes[AGX3_ATOMIC_MAX_LENGTH], len;
+   ASSERT_TRUE(agx3_atomic_encode_device(enc, &d, bytes, &len));
+   append(want, bytes, len);
+   if (tps) {
+      const struct agx3_static_spill_load_desc reload = {
+         .dest = d.result, .tps_half = 0, .width = AGX3_MEM_W32,
+         .slot = 1, .slot_mirror = 0, .wait_mask = 1,
+      };
+      ASSERT_TRUE(agx3_static_spill_encode_load(enc, &reload, bytes, &len));
+      append(want, bytes, len);
+   }
+   want.insert(want.end(), {0x0e, 0, 0, 0});
+}
+
 TEST(AGXPrint, MalformedOperandDiagnostics)
 {
    testing::internal::CaptureStderr();
@@ -1018,7 +1044,7 @@ TEST_F(AGX3PackBinary, HalfUVPreservesSharedHalfAndOperandOrder)
    }
 }
 
-TEST_F(AGX3PackBinary, HalfUVRefusesUngroundedModes)
+TEST_F(AGX3PackBinary, HalfUVSaturatesAndRejectsInvalidOperands)
 {
    for (unsigned mode = 0; mode < 9; ++mode) {
       agx_builder *b = builder(mode == 0 ? AGX_ISA_ENCODING_AGX3C : AGX_ISA_ENCODING_AGX3B);
@@ -1033,7 +1059,17 @@ TEST_F(AGX3PackBinary, HalfUVRefusesUngroundedModes)
       if (mode == 7) wide.size = AGX_SIZE_16;
       agx_instr *mul = agx_fmul_to(b, agx_register(2, AGX_SIZE_32), wide, half);
       mul->saturate = mode == 8;
-      EXPECT_TRUE(pack(b, false).empty());
+      if (mode == 8) {
+         uint8_t bytes[AGX3_ALU_MAX_LENGTH], len;
+         ASSERT_TRUE(agx3_alu_fmul_mixed_mod(AGX_ISA_ENCODING_AGX3B,
+               2, 0, 10, AGX3_ALU_HINT_NONE, AGX3_ALU_HINT_NONE,
+               false, true, 0, bytes, &len));
+         std::vector<uint8_t> want(bytes, bytes + len);
+         want.insert(want.end(), {0x0e, 0, 0, 0});
+         EXPECT_EQ(pack(b), want);
+      } else {
+         EXPECT_TRUE(pack(b, false).empty());
+      }
    }
 }
 
@@ -1070,7 +1106,7 @@ TEST_F(AGX3PackBinary, U16ToF32PreservesHalfLivenessAndLoadWait)
    EXPECT_EQ(pack(b), want);
 }
 
-TEST_F(AGX3PackBinary, U16ToF32RejectsUnwitnessedDomains)
+TEST_F(AGX3PackBinary, HalfIntegerToF32AcceptsSignedAndRejectsInvalidDomains)
 {
    for (unsigned variant = 0; variant < 6; ++variant) {
       agx_builder *b = builder(variant == 0 ? AGX_ISA_ENCODING_AGX3C
@@ -1083,7 +1119,16 @@ TEST_F(AGX3PackBinary, U16ToF32RejectsUnwitnessedDomains)
       agx_convert_to(b, dest,
          agx_immediate(variant == 4 ? AGX_CONVERT_S16_TO_F : AGX_CONVERT_U16_TO_F),
          src, variant == 5 ? AGX_ROUND_RTZ : AGX_ROUND_RTE);
-      EXPECT_TRUE(pack(b, false).empty());
+      if (variant == 4) {
+         uint8_t bytes[AGX3_ALU_MAX_LENGTH], len;
+         ASSERT_TRUE(agx3_alu_s16_to_f32(AGX_ISA_ENCODING_AGX3B,
+               4, 0, AGX3_ALU_HINT_NONE, 0, bytes, &len));
+         std::vector<uint8_t> want(bytes, bytes + len);
+         want.insert(want.end(), {0x0e, 0, 0, 0});
+         EXPECT_EQ(pack(b), want);
+      } else {
+         EXPECT_TRUE(pack(b, false).empty());
+      }
    }
 }
 
@@ -1126,7 +1171,7 @@ TEST_F(AGX3PackBinary, FaddMinifloatPreservesWaitLivenessAndCommutativity)
    }
 }
 
-TEST_F(AGX3PackBinary, FaddMinifloatRefusesUngroundedModes)
+TEST_F(AGX3PackBinary, FaddMinifloatModifiersAndInvalidDomains)
 {
    for (unsigned variant = 0; variant < 10; ++variant) {
       agx_builder *b = builder(variant == 0 ? AGX_ISA_ENCODING_AGX3C
@@ -1147,7 +1192,17 @@ TEST_F(AGX3PackBinary, FaddMinifloatRefusesUngroundedModes)
          src.size = AGX_SIZE_16;
       agx_instr *add = agx_fadd_to(b, dest, src, imm);
       add->saturate = variant == 9;
-      EXPECT_TRUE(pack(b, false).empty());
+      if (variant == 4 || variant == 9) {
+         uint8_t bytes[AGX3_ALU_MAX_LENGTH], len;
+         ASSERT_TRUE(agx3_alu_fadd_minifloat_mod(AGX_ISA_ENCODING_AGX3B,
+               4, 0, 0x20, variant == 4, variant == 9,
+               AGX3_ALU_HINT_NONE, 0, bytes, &len));
+         std::vector<uint8_t> want(bytes, bytes + len);
+         want.insert(want.end(), {0x0e, 0, 0, 0});
+         EXPECT_EQ(pack(b), want);
+      } else {
+         EXPECT_TRUE(pack(b, false).empty());
+      }
    }
 }
 
@@ -1445,7 +1500,7 @@ TEST_F(AGX3PackBinary, DeviceAtomicsUseGenerationSpecificReturnRegisters)
       agx_builder *b = builder(enc);
       const agx_index value = agx_register(6, AGX_SIZE_32);
       const agx_index result =
-         agx_register(e ? 4 : 6, AGX_SIZE_32); /* b is physically in-place */
+         agx_register(e ? 4 : 6, AGX_SIZE_32); /* Coincident GPRs are legal, but not required. */
       agx_atomic_to(b, result, value, agx_uniform(0, AGX_SIZE_64),
                     agx_immediate(0), AGX_ATOMIC_OPC_XOR);
       agx_stop(b);
@@ -1459,14 +1514,8 @@ TEST_F(AGX3PackBinary, DeviceAtomicsUseGenerationSpecificReturnRegisters)
          .base_kind = AGX3_ATOMIC_BASE_UNIFORM,
          .index_kind = AGX3_ATOMIC_INDEX_IMMEDIATE,
       };
-      uint8_t atomic[AGX3_ATOMIC_MAX_LENGTH], atomic_len = 0;
-      ASSERT_TRUE(agx3_atomic_encode_device(enc, &d, atomic, &atomic_len));
-      struct agx3_encoded_end end;
-      ASSERT_TRUE(agx3_pack_end(enc, &end));
-
       std::vector<uint8_t> want;
-      append(want, atomic, atomic_len);
-      append(want, end.bytes, end.length);
+      append_atomic_return(want, enc, d);
       EXPECT_EQ(pack(b), want);
    }
 }
@@ -1491,18 +1540,11 @@ TEST_F(AGX3PackBinary, DeviceAtomicUsesNativeMaskedExecutionMode)
       .base_kind = AGX3_ATOMIC_BASE_UNIFORM,
       .index_kind = AGX3_ATOMIC_INDEX_IMMEDIATE,
    };
-   uint8_t bytes[AGX3_ATOMIC_MAX_LENGTH], atomic_len;
-   ASSERT_TRUE(agx3_atomic_encode_device(AGX_ISA_ENCODING_AGX3B, &atomic,
-                                         bytes, &atomic_len));
-   struct agx3_encoded_end end;
-   ASSERT_TRUE(agx3_pack_end(AGX_ISA_ENCODING_AGX3B, &end));
-
    std::vector<uint8_t> want;
-   append(want, bytes, atomic_len);
-   append(want, end.bytes, end.length);
+   append_atomic_return(want, AGX_ISA_ENCODING_AGX3B, atomic);
    EXPECT_EQ(pack(b), want);
    ASSERT_GE(want.size(), 2u);
-   EXPECT_EQ(want[1], 0x11);
+   EXPECT_EQ(want[5], 0x11); /* ATOMIC follows the four-byte CLR. */
 }
 
 TEST_F(AGX3PackBinary, DeviceAtomicInPlaceReturnDiscardsConsumedValue)
@@ -1519,6 +1561,8 @@ TEST_F(AGX3PackBinary, DeviceAtomicInPlaceReturnDiscardsConsumedValue)
    agx_stop(b);
 
    agx_ra(b->shader);
+   agx_lower_pseudo(b->shader);
+   agx_opt_register_cache(b->shader);
 
    unsigned atomics = 0;
    agx_foreach_instr_global(b->shader, I) {
@@ -1654,14 +1698,8 @@ TEST_F(AGX3PackBinary, DeviceAtomicMapsPostRaDiscardHints)
          .index_kill = true,
          .index_shift = 2,
       };
-      uint8_t atomic[AGX3_ATOMIC_MAX_LENGTH], atomic_len = 0;
-      ASSERT_TRUE(agx3_atomic_encode_device(enc, &d, atomic, &atomic_len));
-      struct agx3_encoded_end end;
-      ASSERT_TRUE(agx3_pack_end(enc, &end));
-
       std::vector<uint8_t> want;
-      append(want, atomic, atomic_len);
-      append(want, end.bytes, end.length);
+      append_atomic_return(want, enc, d);
       EXPECT_EQ(pack(b), want);
    }
 }
@@ -1754,7 +1792,7 @@ TEST_F(AGX3PackBinary, NarrowingMoveUsesLowHalfCopy)
    EXPECT_EQ(pack(b), want);
 }
 
-TEST_F(AGX3PackBinary, AtomicsRefuseUngroundedStructuralAxes)
+TEST_F(AGX3PackBinary, AtomicReturnAllowsIndependentDestinationAndRejectsInvalidLocalAddress)
 {
    agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
    agx_atomic_to(b, agx_register(4, AGX_SIZE_32),
@@ -1762,7 +1800,14 @@ TEST_F(AGX3PackBinary, AtomicsRefuseUngroundedStructuralAxes)
                  agx_uniform(0, AGX_SIZE_64), agx_immediate(0),
                  AGX_ATOMIC_OPC_ADD);
    agx_stop(b);
-   pack(b, /*expect_ok=*/false); /* AGX3b return was not RA-coalesced */
+   const struct agx3_device_atomic_desc d = {
+      .op = AGX3_ATOMIC_ADD, .value = 6, .returns_value = true,
+      .result = 4, .slot = 1, .base_kind = AGX3_ATOMIC_BASE_UNIFORM,
+      .index_kind = AGX3_ATOMIC_INDEX_IMMEDIATE,
+   };
+   std::vector<uint8_t> want;
+   append_atomic_return(want, AGX_ISA_ENCODING_AGX3B, d);
+   EXPECT_EQ(pack(b), want);
 
    b = builder(AGX_ISA_ENCODING_AGX3C);
    agx_local_atomic_to(b, agx_register(6, AGX_SIZE_32),
@@ -2903,12 +2948,11 @@ TEST_F(AGX3PackBinary, FloatModifierRouting)
 
 TEST_F(AGX3PackBinary, RefusesUnmappedOp)
 {
-   /* BITREV remains unmapped; the backend must fail the shader rather than
-    * treating it like the now-grounded tied-register FT1 operation. */
+   /* SIN_PT_1 is an AGX2-specific quadrant fixup with no AGX3 equivalent. */
    agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
    agx_index w0 = agx_register(0, AGX_SIZE_32);
    agx_instr *I = agx_ffs_to(b, w0, w0);
-   I->op = AGX_OPCODE_BITREV;
+   I->op = AGX_OPCODE_SIN_PT_1;
    agx_stop(b);
    pack(b, /*expect_ok=*/false);
 }
