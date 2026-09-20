@@ -1,0 +1,1424 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.pipeline.fast_linked_library.pipeline_binary.creation_feedback.graphics_tests.vertex_stage_fragment_stage",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.11041184,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.fast_linked_library.pipeline_binary.creation_feedback.graphics_tests.vertex_stage_fragment_stage",
+      "catalog_index": 1038811,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c2.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.pipeline.fast_linked_library.pipeline_binary.creation_feedback.graphics_tests.vertex_stage_fragment_stage_delayed_destroy",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.001206403,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.fast_linked_library.pipeline_binary.creation_feedback.graphics_tests.vertex_stage_fragment_stage_delayed_destroy",
+      "catalog_index": 1038812,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c35.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.pipeline.fast_linked_library.pipeline_binary.creation_feedback.graphics_tests.vertex_stage_fragment_stage_zero_out_feedback_cout",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.001207087,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.fast_linked_library.pipeline_binary.creation_feedback.graphics_tests.vertex_stage_fragment_stage_zero_out_feedback_cout",
+      "catalog_index": 1038813,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c30.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 3,
+    "case": "dEQP-VK.pipeline.fast_linked_library.pipeline_binary.creation_feedback.graphics_tests.vertex_stage_geometry_stage_fragment_stage",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.009818594,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.fast_linked_library.pipeline_binary.creation_feedback.graphics_tests.vertex_stage_geometry_stage_fragment_stage",
+      "catalog_index": 1038814,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c16.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 4,
+    "case": "dEQP-VK.pipeline.fast_linked_library.pipeline_binary.creation_feedback.graphics_tests.vertex_stage_geometry_stage_fragment_stage_delayed_destroy",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.00986448,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.fast_linked_library.pipeline_binary.creation_feedback.graphics_tests.vertex_stage_geometry_stage_fragment_stage_delayed_destroy",
+      "catalog_index": 1038815,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c23.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 5,
+    "case": "dEQP-VK.pipeline.fast_linked_library.pipeline_binary.creation_feedback.graphics_tests.vertex_stage_tessellation_control_stage_tessellation_evaluation_stage_fragment_stage",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.17546327,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.fast_linked_library.pipeline_binary.creation_feedback.graphics_tests.vertex_stage_tessellation_control_stage_tessellation_evaluation_stage_fragment_stage",
+      "catalog_index": 1038816,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c4.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 6,
+    "case": "dEQP-VK.pipeline.fast_linked_library.pipeline_binary.creation_feedback.graphics_tests.vertex_stage_tessellation_control_stage_tessellation_evaluation_stage_fragment_stage_delayed_destroy",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.010130147,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.fast_linked_library.pipeline_binary.creation_feedback.graphics_tests.vertex_stage_tessellation_control_stage_tessellation_evaluation_stage_fragment_stage_delayed_destroy",
+      "catalog_index": 1038817,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c14.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 7,
+    "case": "dEQP-VK.pipeline.fast_linked_library.pipeline_binary.dedicated.graphics_pipeline_from_internal_cache",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.25108117,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.fast_linked_library.pipeline_binary.dedicated.graphics_pipeline_from_internal_cache",
+      "catalog_index": 1038818,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c5.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 8,
+    "case": "dEQP-VK.pipeline.fast_linked_library.pipeline_binary.dedicated.unique_key_pairs",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.003578666,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.fast_linked_library.pipeline_binary.dedicated.unique_key_pairs",
+      "catalog_index": 1038819,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.fast_linked_library.pipeline_binary.dedicated.unique_key_pairs.c38.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 9,
+    "case": "dEQP-VK.pipeline.fast_linked_library.pipeline_binary.dedicated.valid_key",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.121848464,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.fast_linked_library.pipeline_binary.dedicated.valid_key",
+      "catalog_index": 1038820,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Passed",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.fast_linked_library.pipeline_binary.dedicated.valid_key.c1.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 10,
+    "case": "dEQP-VK.pipeline.fast_linked_library.pipeline_binary.graphics_tests.vertex_stage_fragment_stage",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.02892522,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.fast_linked_library.pipeline_binary.graphics_tests.vertex_stage_fragment_stage",
+      "catalog_index": 1038821,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Render images w/o cached pipeline match.",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.fast_linked_library.pipeline_binary.graphics_tests.vertex_stage_fragment_stage.c25.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 11,
+    "case": "dEQP-VK.pipeline.fast_linked_library.pipeline_binary.graphics_tests.vertex_stage_geometry_stage_fragment_stage",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.039793767,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.fast_linked_library.pipeline_binary.graphics_tests.vertex_stage_geometry_stage_fragment_stage",
+      "catalog_index": 1038822,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Render images w/o cached pipeline match.",
+    "qpa": "deqp-runner/c42.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 12,
+    "case": "dEQP-VK.pipeline.fast_linked_library.pipeline_binary.graphics_tests.vertex_stage_tessellation_control_stage_tessellation_evaluation_stage_fragment_stage",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.26579058,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.fast_linked_library.pipeline_binary.graphics_tests.vertex_stage_tessellation_control_stage_tessellation_evaluation_stage_fragment_stage",
+      "catalog_index": 1038823,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Render images w/o cached pipeline match.",
+    "qpa": "deqp-runner/c9.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 13,
+    "case": "dEQP-VK.pipeline.fast_linked_library.pipeline_binary.pipeline_from_get_data.vertex_stage_fragment_stage",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.02214666,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.fast_linked_library.pipeline_binary.pipeline_from_get_data.vertex_stage_fragment_stage",
+      "catalog_index": 1038824,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Render images w/o cached pipeline match.",
+    "qpa": "deqp-runner/c51.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 14,
+    "case": "dEQP-VK.pipeline.fast_linked_library.pipeline_binary.pipeline_from_get_data.vertex_stage_geometry_stage_fragment_stage",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.034096725,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.fast_linked_library.pipeline_binary.pipeline_from_get_data.vertex_stage_geometry_stage_fragment_stage",
+      "catalog_index": 1038825,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Render images w/o cached pipeline match.",
+    "qpa": "deqp-runner/c63.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 15,
+    "case": "dEQP-VK.pipeline.fast_linked_library.pipeline_binary.pipeline_from_get_data.vertex_stage_tessellation_control_stage_tessellation_evaluation_stage_fragment_stage",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.19605249,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.fast_linked_library.pipeline_binary.pipeline_from_get_data.vertex_stage_tessellation_control_stage_tessellation_evaluation_stage_fragment_stage",
+      "catalog_index": 1038826,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Render images w/o cached pipeline match.",
+    "qpa": "deqp-runner/c49.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 16,
+    "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.compute_tests.compute_stage",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.010517976,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.compute_tests.compute_stage",
+      "catalog_index": 1318456,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Output buffers w/o pipeline blobs match.",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.monolithic.pipeline_binary.compute_tests.compute_stage.c68.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 17,
+    "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.compute_tests.compute_stage_use_binary_data",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.05713406,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.compute_tests.compute_stage_use_binary_data",
+      "catalog_index": 1318457,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Output buffers w/o pipeline blobs match.",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.monolithic.pipeline_binary.compute_tests.compute_stage_use_binary_data.c11.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 18,
+    "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.creation_feedback.compute_tests.compute_stage",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.005534141,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.creation_feedback.compute_tests.compute_stage",
+      "catalog_index": 1318458,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.monolithic.pipeline_binary.creation_feedback.compute_tests.compute_stage.c34.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 19,
+    "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.creation_feedback.compute_tests.compute_stage_delayed_destroy",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.051855892,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.creation_feedback.compute_tests.compute_stage_delayed_destroy",
+      "catalog_index": 1318459,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c17.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 20,
+    "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.creation_feedback.graphics_tests.vertex_stage_fragment_stage",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.001000629,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.creation_feedback.graphics_tests.vertex_stage_fragment_stage",
+      "catalog_index": 1318460,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c29.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 21,
+    "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.creation_feedback.graphics_tests.vertex_stage_fragment_stage_delayed_destroy",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.000995962,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.creation_feedback.graphics_tests.vertex_stage_fragment_stage_delayed_destroy",
+      "catalog_index": 1318461,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c56.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 22,
+    "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.creation_feedback.graphics_tests.vertex_stage_fragment_stage_zero_out_feedback_cout",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.001005588,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.creation_feedback.graphics_tests.vertex_stage_fragment_stage_zero_out_feedback_cout",
+      "catalog_index": 1318462,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c8.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 23,
+    "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.creation_feedback.graphics_tests.vertex_stage_geometry_stage_fragment_stage",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.009831153,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.creation_feedback.graphics_tests.vertex_stage_geometry_stage_fragment_stage",
+      "catalog_index": 1318463,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c20.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 24,
+    "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.creation_feedback.graphics_tests.vertex_stage_geometry_stage_fragment_stage_delayed_destroy",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.1826526,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.creation_feedback.graphics_tests.vertex_stage_geometry_stage_fragment_stage_delayed_destroy",
+      "catalog_index": 1318464,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c3.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 25,
+    "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.creation_feedback.graphics_tests.vertex_stage_tessellation_control_stage_tessellation_evaluation_stage_fragment_stage",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.010287001,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.creation_feedback.graphics_tests.vertex_stage_tessellation_control_stage_tessellation_evaluation_stage_fragment_stage",
+      "catalog_index": 1318465,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c65.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 26,
+    "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.creation_feedback.graphics_tests.vertex_stage_tessellation_control_stage_tessellation_evaluation_stage_fragment_stage_delayed_destroy",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.010258565,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.creation_feedback.graphics_tests.vertex_stage_tessellation_control_stage_tessellation_evaluation_stage_fragment_stage_delayed_destroy",
+      "catalog_index": 1318466,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c70.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 27,
+    "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.dedicated.compute_pipeline_from_internal_cache",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.006728752,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.dedicated.compute_pipeline_from_internal_cache",
+      "catalog_index": 1318467,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.monolithic.pipeline_binary.dedicated.compute_pipeline_from_internal_cache.c44.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 28,
+    "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.dedicated.compute_pipeline_with_zero_binary_count",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.001540849,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.dedicated.compute_pipeline_with_zero_binary_count",
+      "catalog_index": 1318468,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.monolithic.pipeline_binary.dedicated.compute_pipeline_with_zero_binary_count.c47.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 29,
+    "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.dedicated.create_incomplete",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.047734823,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.dedicated.create_incomplete",
+      "catalog_index": 1318469,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Binary count too small",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.monolithic.pipeline_binary.dedicated.create_incomplete.c7.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 30,
+    "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.dedicated.destroy_null_binary",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.001549618,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.dedicated.destroy_null_binary",
+      "catalog_index": 1318470,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.monolithic.pipeline_binary.dedicated.destroy_null_binary.c64.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 31,
+    "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.dedicated.graphics_pipeline_from_internal_cache",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.014351785,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.dedicated.graphics_pipeline_from_internal_cache",
+      "catalog_index": 1318471,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.monolithic.pipeline_binary.dedicated.graphics_pipeline_from_internal_cache.c66.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 32,
+    "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.dedicated.graphics_pipeline_with_zero_binary_count",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.00098711,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.dedicated.graphics_pipeline_with_zero_binary_count",
+      "catalog_index": 1318472,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.monolithic.pipeline_binary.dedicated.graphics_pipeline_with_zero_binary_count.c50.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 33,
+    "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.dedicated.not_enough_space",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.001562783,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.dedicated.not_enough_space",
+      "catalog_index": 1318473,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.monolithic.pipeline_binary.dedicated.not_enough_space.c41.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 34,
+    "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.dedicated.ray_tracing_pipeline_from_binary_data",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Skip",
+    "seconds": 5.812e-05,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.dedicated.ray_tracing_pipeline_from_binary_data",
+      "catalog_index": 1318474,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "NotSupported",
+    "message": "VK_KHR_acceleration_structure is not supported at vktTestCase.cpp:1394",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.monolithic.pipeline_binary.dedicated.ray_tracing_pipeline_from_binary_data.c53.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 35,
+    "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.dedicated.ray_tracing_pipeline_from_internal_cache",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Skip",
+    "seconds": 4.3744e-05,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.dedicated.ray_tracing_pipeline_from_internal_cache",
+      "catalog_index": 1318475,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "NotSupported",
+    "message": "VK_KHR_acceleration_structure is not supported at vktTestCase.cpp:1394",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.monolithic.pipeline_binary.dedicated.ray_tracing_pipeline_from_internal_cache.c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 36,
+    "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.dedicated.ray_tracing_pipeline_from_pipeline",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Skip",
+    "seconds": 6.3036e-05,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.dedicated.ray_tracing_pipeline_from_pipeline",
+      "catalog_index": 1318476,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "NotSupported",
+    "message": "VK_KHR_acceleration_structure is not supported at vktTestCase.cpp:1394",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.monolithic.pipeline_binary.dedicated.ray_tracing_pipeline_from_pipeline.c10.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 37,
+    "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.dedicated.ray_tracing_pipeline_library_from_binary_data",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Skip",
+    "seconds": 5.9185e-05,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.dedicated.ray_tracing_pipeline_library_from_binary_data",
+      "catalog_index": 1318477,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "NotSupported",
+    "message": "VK_KHR_acceleration_structure is not supported at vktTestCase.cpp:1394",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.monolithic.pipeline_binary.dedicated.ray_tracing_pipeline_library_from_binary_data.c52.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 38,
+    "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.dedicated.ray_tracing_pipeline_library_from_internal_cache",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Skip",
+    "seconds": 5.8619e-05,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.dedicated.ray_tracing_pipeline_library_from_internal_cache",
+      "catalog_index": 1318478,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "NotSupported",
+    "message": "VK_KHR_acceleration_structure is not supported at vktTestCase.cpp:1394",
+    "qpa": "deqp-runner/c61.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 39,
+    "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.dedicated.ray_tracing_pipeline_library_from_pipeline",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Skip",
+    "seconds": 5.8619e-05,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.dedicated.ray_tracing_pipeline_library_from_pipeline",
+      "catalog_index": 1318479,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "NotSupported",
+    "message": "VK_KHR_acceleration_structure is not supported at vktTestCase.cpp:1394",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.monolithic.pipeline_binary.dedicated.ray_tracing_pipeline_library_from_pipeline.c76.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 40,
+    "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.dedicated.ray_tracing_pipeline_with_zero_binary_count",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Skip",
+    "seconds": 5.5035e-05,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.dedicated.ray_tracing_pipeline_with_zero_binary_count",
+      "catalog_index": 1318480,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "NotSupported",
+    "message": "VK_KHR_acceleration_structure is not supported at vktTestCase.cpp:1394",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.monolithic.pipeline_binary.dedicated.ray_tracing_pipeline_with_zero_binary_count.c40.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 41,
+    "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.dedicated.unique_key_pairs",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.002522271,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.dedicated.unique_key_pairs",
+      "catalog_index": 1318481,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.monolithic.pipeline_binary.dedicated.unique_key_pairs.c31.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 42,
+    "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.dedicated.valid_key",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.000951719,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.dedicated.valid_key",
+      "catalog_index": 1318482,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Passed",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.monolithic.pipeline_binary.dedicated.valid_key.c12.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 43,
+    "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.graphics_tests.vertex_stage_fragment_stage",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.022072045,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.graphics_tests.vertex_stage_fragment_stage",
+      "catalog_index": 1318483,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Render images w/o cached pipeline match.",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.monolithic.pipeline_binary.graphics_tests.vertex_stage_fragment_stage.c24.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 44,
+    "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.graphics_tests.vertex_stage_geometry_stage_fragment_stage",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.035396077,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.graphics_tests.vertex_stage_geometry_stage_fragment_stage",
+      "catalog_index": 1318484,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Render images w/o cached pipeline match.",
+    "qpa": "deqp-runner/c54.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 45,
+    "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.graphics_tests.vertex_stage_tessellation_control_stage_tessellation_evaluation_stage_fragment_stage",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.19691303,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.graphics_tests.vertex_stage_tessellation_control_stage_tessellation_evaluation_stage_fragment_stage",
+      "catalog_index": 1318485,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Render images w/o cached pipeline match.",
+    "qpa": "deqp-runner/c43.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 46,
+    "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.pipeline_from_get_data.vertex_stage_fragment_stage",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.021119112,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.pipeline_from_get_data.vertex_stage_fragment_stage",
+      "catalog_index": 1318486,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Render images w/o cached pipeline match.",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.monolithic.pipeline_binary.pipeline_from_get_data.vertex_stage_fragment_stage.c78.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 47,
+    "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.pipeline_from_get_data.vertex_stage_geometry_stage_fragment_stage",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.03833028,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.pipeline_from_get_data.vertex_stage_geometry_stage_fragment_stage",
+      "catalog_index": 1318487,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Render images w/o cached pipeline match.",
+    "qpa": "deqp-runner/c73.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 48,
+    "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.pipeline_from_get_data.vertex_stage_tessellation_control_stage_tessellation_evaluation_stage_fragment_stage",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.20361365,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.pipeline_from_get_data.vertex_stage_tessellation_control_stage_tessellation_evaluation_stage_fragment_stage",
+      "catalog_index": 1318488,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Render images w/o cached pipeline match.",
+    "qpa": "deqp-runner/c22.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 49,
+    "case": "dEQP-VK.pipeline.no_queues.pipeline_binary.ahit",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Skip",
+    "seconds": 5.7578e-05,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.no_queues.pipeline_binary.ahit",
+      "catalog_index": 1574467,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "NotSupported",
+    "message": "VK_KHR_acceleration_structure is not supported at vktTestCase.cpp:1394",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.no_queues.pipeline_binary.ahit.c75.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 50,
+    "case": "dEQP-VK.pipeline.no_queues.pipeline_binary.callable",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Skip",
+    "seconds": 5.6994e-05,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.no_queues.pipeline_binary.callable",
+      "catalog_index": 1574468,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "NotSupported",
+    "message": "VK_KHR_acceleration_structure is not supported at vktTestCase.cpp:1394",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.no_queues.pipeline_binary.callable.c36.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 51,
+    "case": "dEQP-VK.pipeline.no_queues.pipeline_binary.chit",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Skip",
+    "seconds": 5.8452e-05,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.no_queues.pipeline_binary.chit",
+      "catalog_index": 1574469,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "NotSupported",
+    "message": "VK_KHR_acceleration_structure is not supported at vktTestCase.cpp:1394",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.no_queues.pipeline_binary.chit.c13.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 52,
+    "case": "dEQP-VK.pipeline.no_queues.pipeline_binary.compute",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.13004456,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.no_queues.pipeline_binary.compute",
+      "catalog_index": 1574470,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.no_queues.pipeline_binary.compute.c21.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 53,
+    "case": "dEQP-VK.pipeline.no_queues.pipeline_binary.fragment",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.2031341,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.no_queues.pipeline_binary.fragment",
+      "catalog_index": 1574471,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.no_queues.pipeline_binary.fragment.c59.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 54,
+    "case": "dEQP-VK.pipeline.no_queues.pipeline_binary.geometry",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.26722214,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.no_queues.pipeline_binary.geometry",
+      "catalog_index": 1574472,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.no_queues.pipeline_binary.geometry.c18.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 55,
+    "case": "dEQP-VK.pipeline.no_queues.pipeline_binary.isect",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Skip",
+    "seconds": 5.7369e-05,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.no_queues.pipeline_binary.isect",
+      "catalog_index": 1574473,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "NotSupported",
+    "message": "VK_KHR_acceleration_structure is not supported at vktTestCase.cpp:1394",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.no_queues.pipeline_binary.isect.c15.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 56,
+    "case": "dEQP-VK.pipeline.no_queues.pipeline_binary.mesh",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Skip",
+    "seconds": 6.3077e-05,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.no_queues.pipeline_binary.mesh",
+      "catalog_index": 1574474,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "NotSupported",
+    "message": "Mesh shaders not supported at vktPipelineNoQueuesTests.cpp:249",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.no_queues.pipeline_binary.mesh.c71.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 57,
+    "case": "dEQP-VK.pipeline.no_queues.pipeline_binary.miss",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Skip",
+    "seconds": 5.9118e-05,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.no_queues.pipeline_binary.miss",
+      "catalog_index": 1574475,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "NotSupported",
+    "message": "VK_KHR_acceleration_structure is not supported at vktTestCase.cpp:1394",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.no_queues.pipeline_binary.miss.c26.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 58,
+    "case": "dEQP-VK.pipeline.no_queues.pipeline_binary.raygen",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Skip",
+    "seconds": 6.9721e-05,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.no_queues.pipeline_binary.raygen",
+      "catalog_index": 1574476,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "NotSupported",
+    "message": "VK_KHR_acceleration_structure is not supported at vktTestCase.cpp:1394",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.no_queues.pipeline_binary.raygen.c57.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 59,
+    "case": "dEQP-VK.pipeline.no_queues.pipeline_binary.task",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Skip",
+    "seconds": 5.3935e-05,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.no_queues.pipeline_binary.task",
+      "catalog_index": 1574477,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "NotSupported",
+    "message": "Mesh shaders not supported at vktPipelineNoQueuesTests.cpp:249",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.no_queues.pipeline_binary.task.c27.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 60,
+    "case": "dEQP-VK.pipeline.no_queues.pipeline_binary.tessctrl",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.36300662,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.no_queues.pipeline_binary.tessctrl",
+      "catalog_index": 1574478,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.no_queues.pipeline_binary.tessctrl.c32.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 61,
+    "case": "dEQP-VK.pipeline.no_queues.pipeline_binary.tesseval",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.46610242,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.no_queues.pipeline_binary.tesseval",
+      "catalog_index": 1574479,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.no_queues.pipeline_binary.tesseval.c69.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 62,
+    "case": "dEQP-VK.pipeline.no_queues.pipeline_binary.vertex",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.13912074,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.no_queues.pipeline_binary.vertex",
+      "catalog_index": 1574480,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.no_queues.pipeline_binary.vertex.c46.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 63,
+    "case": "dEQP-VK.pipeline.pipeline_library.pipeline_binary.creation_feedback.graphics_tests.vertex_stage_fragment_stage",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.002666841,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.pipeline_library.pipeline_binary.creation_feedback.graphics_tests.vertex_stage_fragment_stage",
+      "catalog_index": 1620958,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c28.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 64,
+    "case": "dEQP-VK.pipeline.pipeline_library.pipeline_binary.creation_feedback.graphics_tests.vertex_stage_fragment_stage_delayed_destroy",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.002686442,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.pipeline_library.pipeline_binary.creation_feedback.graphics_tests.vertex_stage_fragment_stage_delayed_destroy",
+      "catalog_index": 1620959,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c72.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 65,
+    "case": "dEQP-VK.pipeline.pipeline_library.pipeline_binary.creation_feedback.graphics_tests.vertex_stage_fragment_stage_zero_out_feedback_cout",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.002686275,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.pipeline_library.pipeline_binary.creation_feedback.graphics_tests.vertex_stage_fragment_stage_zero_out_feedback_cout",
+      "catalog_index": 1620960,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c67.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 66,
+    "case": "dEQP-VK.pipeline.pipeline_library.pipeline_binary.creation_feedback.graphics_tests.vertex_stage_geometry_stage_fragment_stage",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.036435947,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.pipeline_library.pipeline_binary.creation_feedback.graphics_tests.vertex_stage_geometry_stage_fragment_stage",
+      "catalog_index": 1620961,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c77.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 67,
+    "case": "dEQP-VK.pipeline.pipeline_library.pipeline_binary.creation_feedback.graphics_tests.vertex_stage_geometry_stage_fragment_stage_delayed_destroy",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.036460225,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.pipeline_library.pipeline_binary.creation_feedback.graphics_tests.vertex_stage_geometry_stage_fragment_stage_delayed_destroy",
+      "catalog_index": 1620962,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c39.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 68,
+    "case": "dEQP-VK.pipeline.pipeline_library.pipeline_binary.creation_feedback.graphics_tests.vertex_stage_tessellation_control_stage_tessellation_evaluation_stage_fragment_stage",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.037233856,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.pipeline_library.pipeline_binary.creation_feedback.graphics_tests.vertex_stage_tessellation_control_stage_tessellation_evaluation_stage_fragment_stage",
+      "catalog_index": 1620963,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c37.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 69,
+    "case": "dEQP-VK.pipeline.pipeline_library.pipeline_binary.creation_feedback.graphics_tests.vertex_stage_tessellation_control_stage_tessellation_evaluation_stage_fragment_stage_delayed_destroy",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.037268866,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.pipeline_library.pipeline_binary.creation_feedback.graphics_tests.vertex_stage_tessellation_control_stage_tessellation_evaluation_stage_fragment_stage_delayed_destroy",
+      "catalog_index": 1620964,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c74.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 70,
+    "case": "dEQP-VK.pipeline.pipeline_library.pipeline_binary.dedicated.graphics_pipeline_from_internal_cache",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.018225858,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.pipeline_library.pipeline_binary.dedicated.graphics_pipeline_from_internal_cache",
+      "catalog_index": 1620965,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.pipeline_library.pipeline_binary.dedicated.graphics_pipeline_from_internal_cache.c45.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 71,
+    "case": "dEQP-VK.pipeline.pipeline_library.pipeline_binary.dedicated.unique_key_pairs",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.005282457,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.pipeline_library.pipeline_binary.dedicated.unique_key_pairs",
+      "catalog_index": 1620966,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.pipeline_library.pipeline_binary.dedicated.unique_key_pairs.c19.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 72,
+    "case": "dEQP-VK.pipeline.pipeline_library.pipeline_binary.dedicated.valid_key",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.001744348,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.pipeline_library.pipeline_binary.dedicated.valid_key",
+      "catalog_index": 1620967,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Passed",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.pipeline_library.pipeline_binary.dedicated.valid_key.c48.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 73,
+    "case": "dEQP-VK.pipeline.pipeline_library.pipeline_binary.graphics_tests.vertex_stage_fragment_stage",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.025165232,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.pipeline_library.pipeline_binary.graphics_tests.vertex_stage_fragment_stage",
+      "catalog_index": 1620968,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Render images w/o cached pipeline match.",
+    "qpa": "deqp-runner/dEQP-VK.pipeline.pipeline_library.pipeline_binary.graphics_tests.vertex_stage_fragment_stage.c55.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 74,
+    "case": "dEQP-VK.pipeline.pipeline_library.pipeline_binary.graphics_tests.vertex_stage_geometry_stage_fragment_stage",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.05418127,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.pipeline_library.pipeline_binary.graphics_tests.vertex_stage_geometry_stage_fragment_stage",
+      "catalog_index": 1620969,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Render images w/o cached pipeline match.",
+    "qpa": "deqp-runner/c60.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 75,
+    "case": "dEQP-VK.pipeline.pipeline_library.pipeline_binary.graphics_tests.vertex_stage_tessellation_control_stage_tessellation_evaluation_stage_fragment_stage",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.21049802,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.pipeline_library.pipeline_binary.graphics_tests.vertex_stage_tessellation_control_stage_tessellation_evaluation_stage_fragment_stage",
+      "catalog_index": 1620970,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Render images w/o cached pipeline match.",
+    "qpa": "deqp-runner/c62.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 76,
+    "case": "dEQP-VK.pipeline.pipeline_library.pipeline_binary.pipeline_from_get_data.vertex_stage_fragment_stage",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.028972529,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.pipeline_library.pipeline_binary.pipeline_from_get_data.vertex_stage_fragment_stage",
+      "catalog_index": 1620971,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Render images w/o cached pipeline match.",
+    "qpa": "deqp-runner/c33.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 77,
+    "case": "dEQP-VK.pipeline.pipeline_library.pipeline_binary.pipeline_from_get_data.vertex_stage_geometry_stage_fragment_stage",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.25138977,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.pipeline_library.pipeline_binary.pipeline_from_get_data.vertex_stage_geometry_stage_fragment_stage",
+      "catalog_index": 1620972,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Render images w/o cached pipeline match.",
+    "qpa": "deqp-runner/c6.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 78,
+    "case": "dEQP-VK.pipeline.pipeline_library.pipeline_binary.pipeline_from_get_data.vertex_stage_tessellation_control_stage_tessellation_evaluation_stage_fragment_stage",
+    "boot_id": "bd11ed66-cb39-4d73-8abc-8964975c357a",
+    "runner_status": "Pass",
+    "seconds": 0.2147752,
+    "eligibility": {
+      "case": "dEQP-VK.pipeline.pipeline_library.pipeline_binary.pipeline_from_get_data.vertex_stage_tessellation_control_stage_tessellation_evaluation_stage_fragment_stage",
+      "catalog_index": 1620973,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Pipeline binary regression coverage"
+    },
+    "status": "Pass",
+    "message": "Render images w/o cached pipeline match.",
+    "qpa": "deqp-runner/c58.r1.qpa",
+    "worker_exit": "exit status: 0"
+  }
+]

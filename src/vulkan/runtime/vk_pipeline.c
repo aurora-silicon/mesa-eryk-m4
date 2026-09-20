@@ -4118,9 +4118,14 @@ vk_create_pipeline_binary_from_precomp(struct vk_device *device,
       result = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    if (result == VK_SUCCESS) {
-      result = vk_create_pipeline_binary(device,
-                                         precomp->cache_key,
-                                         sizeof(precomp->cache_key),
+      /* Compilation-input keys can differ even when optimization produces
+       * identical binaries. The public binary key identifies the serialized
+       * result so applications can deduplicate it across pipelines. Keep the
+       * compilation cache's input key unchanged on the source object.
+       */
+      blake3_hash binary_key;
+      _mesa_blake3_compute(blob.data, blob.size, binary_key);
+      result = vk_create_pipeline_binary(device, binary_key, sizeof(binary_key),
                                          blob.data, blob.size,
                                          alloc, out_binary_h);
    }
@@ -4145,9 +4150,14 @@ vk_create_pipeline_binary_from_shader(struct vk_device *device,
       result = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    if (result == VK_SUCCESS) {
-      result = vk_create_pipeline_binary(device,
-                                         shader->pipeline.cache_key,
-                                         sizeof(shader->pipeline.cache_key),
+      /* Compilation-input keys can differ even when optimization produces
+       * identical binaries. The public binary key identifies the serialized
+       * result so applications can deduplicate it across pipelines. Keep the
+       * compilation cache's input key unchanged on the source object.
+       */
+      blake3_hash binary_key;
+      _mesa_blake3_compute(blob.data, blob.size, binary_key);
+      result = vk_create_pipeline_binary(device, binary_key, sizeof(binary_key),
                                          blob.data, blob.size,
                                          alloc, out_binary_h);
    }

@@ -170,3 +170,29 @@ aborting, but reports 47 failures, largely stale packer byte/refusal expectation
 these have not all been reviewed and are not represented as a compiler-suite pass.
 Logs: build/cts-regression-fixes-20260920/compiler-all-tests2.txt. These are separate
 from the 216 original CTS abnormal outcomes.
+
+## Content-based pipeline binary keys
+
+Compilation-input hashes can differ for byte-identical optimized binaries,
+preventing application deduplication. Generate public binary keys from the
+serialized output while leaving the source shader/precomp compilation-cache
+key unchanged. Imported binaries retain the application's supplied keys;
+binary loading uses those keys in the shader/precomp cache namespaces.
+
+The complete79-case frozen pipeline_binary group gives64Pass15NotSupported,
+zeroFailure/Crash/Timeout/QualityWarning; the original unique_key_pairs warning
+nowPass. Includes serialized key/data import, graphics/compute recreation,
+pipeline libraries and internal-cache operations. Unsupported cases remain
+recorded as such; no capability masking. Host/ARM64 builds pass.
+Evidence20260920T121344444900Z-cts-binary-content-key,15.191runnerseconds,
+peak74.5C,shadercachingdisabled. InstalledVulkan SHA256:
+0cf7bc13faae54d4fbb72c5ef6a5fab386b158693723dba3c2c10178b73c6c17.
+
+Combined original216-case run before this final binary-only change:
+211Pass5QualityWarning in242.211s,peak87C,noFail/Crash/Timeout/Unrun.
+Evidence20260920T120905367486Z-cts-fixes-final-original. All211 former
+Fail/Crash/Timeout cases passed together with shader cache disabled and
+unchanged60sdeadline. WSI environment fixes are tracked in kernelreference/cts/
+regression-fixes-20260920. Applying the subsequent pipeline-binary validation
+leaves212Pass and4reviewed allocation-policyQualityWarning; seeQUALITY_WARNINGS.md.
+This is targeted regression validation, not another full3.2million-case run.
