@@ -3435,13 +3435,14 @@ TEST_F(AGX3PackBinary, GetSrIndexedLoadAddStoreCarriesWait)
       ld.data = 6;
       ld.width = AGX3_MEM_W32;
       ld.mask = 1;
-      ld.shift = 2;
+      ld.shift = 4; /* IR shift plus log2(I32 bytes). */
       ld.base_is_uniform = false;
       ld.base = 0;
       ld.idx_kind = AGX3_MEM_IDX_REG;
       ld.idx_reg = 4;
-      ld.slot = 2;
+      ld.slot = enc == AGX_ISA_ENCODING_AGX3B ? 6 : 2;
       ld.wait_mask = 0x1;
+      ld.agx3b_last_load = enc == AGX_ISA_ENCODING_AGX3B;
       uint8_t lb[AGX3_MEM_MAX_LENGTH];
       uint8_t ll = 0;
       ASSERT_TRUE(agx3_mem_encode_load(enc, &ld, lb, &ll));
@@ -3449,11 +3450,12 @@ TEST_F(AGX3PackBinary, GetSrIndexedLoadAddStoreCarriesWait)
       uint8_t ab[AGX3_ALU_MAX_LENGTH];
       uint8_t al = 0;
       ASSERT_TRUE(encode_retained_iadd(enc, 8, 6, 6,
-                                   /*wait*/ 0x2, ab, &al));
+                                   /*wait*/ enc == AGX_ISA_ENCODING_AGX3B ? 32 : 2, ab, &al));
 
       struct agx3_mem_desc st = ld;
       st.data = 8;
       st.slot = 0;
+      st.agx3b_last_load = false;
       st.wait_mask = 0;
       uint8_t sb[AGX3_MEM_MAX_LENGTH];
       uint8_t sl = 0;
@@ -3509,13 +3511,14 @@ TEST_F(AGX3PackBinary, LoadAddStoreCarriesWait)
       ld.data = 6;
       ld.width = AGX3_MEM_W32;
       ld.mask = 1;
-      ld.shift = 2;
+      ld.shift = 4; /* IR shift plus log2(I32 bytes). */
       ld.base_is_uniform = false;
       ld.base = 0;
       ld.idx_kind = AGX3_MEM_IDX_REG;
       ld.idx_reg = 4;
-      ld.slot = 1;
+      ld.slot = enc == AGX_ISA_ENCODING_AGX3B ? 6 : 1;
       ld.wait_mask = 0;
+      ld.agx3b_last_load = enc == AGX_ISA_ENCODING_AGX3B;
       uint8_t lb[AGX3_MEM_MAX_LENGTH];
       uint8_t ll = 0;
       ASSERT_TRUE(agx3_mem_encode_load(enc, &ld, lb, &ll));
@@ -3523,11 +3526,12 @@ TEST_F(AGX3PackBinary, LoadAddStoreCarriesWait)
       uint8_t ab[AGX3_ALU_MAX_LENGTH];
       uint8_t al = 0;
       ASSERT_TRUE(encode_retained_iadd(enc, 8, 6, 6,
-                                   /*wait*/ 0x1, ab, &al));
+                                   /*wait*/ enc == AGX_ISA_ENCODING_AGX3B ? 32 : 1, ab, &al));
 
       struct agx3_mem_desc st = ld;
       st.data = 8;
       st.slot = 0;
+      st.agx3b_last_load = false;
       st.wait_mask = 0;
       uint8_t sb[AGX3_MEM_MAX_LENGTH];
       uint8_t sl = 0;
@@ -3610,7 +3614,8 @@ TEST_F(AGX3PackBinary, VaryingInterpolationCoefficientAndUvs)
       agx_interp_agx3_to(b, agx_register(0, AGX_SIZE_32), agx_immediate(3),
                          agx_zero(), AGX_INTERPOLATION_CENTER, false);
       agx_interp_agx3_to(b, agx_register(2, AGX_SIZE_32), agx_immediate(4),
-                         agx_zero(), AGX_INTERPOLATION_CENTROID, true);
+                         e ? agx_zero() : agx_register(6, AGX_SIZE_32),
+                         AGX_INTERPOLATION_CENTROID, true);
       agx_ldcf_to(b, agx_register(4, AGX_SIZE_32), agx_immediate(5), 1);
       agx_instr *store =
          agx_st_vary(b, agx_immediate(7), agx_register(4, AGX_SIZE_32));
@@ -4111,7 +4116,7 @@ TEST_F(AGX3PackBinary, G17PAlphaProtocolAcquiresBeforeLoadReleasesAfterStore)
    const uint8_t prefix[] = {
       0x87,0x02,0x54,0x00,0x06,0x00, /* class12 entry */
       0x87,0x02,0x54,0x08,0x08,0x00, /* read wait */
-      0x67,0x0e,0x54,0x00,0x00,0x00,0x01,0x4e,0x00,0x00,0x00,0x00,
+      0x67,0x0e,0x54,0x00,0x00,0x00,0xff,0x4e,0x00,0x00,0x00,0x00,
       0x87,0x02,0x54,0x04,0x08,0x00, /* write wait */
    };
    const uint8_t suffix[] = {
@@ -4123,13 +4128,13 @@ TEST_F(AGX3PackBinary, G17PAlphaProtocolAcquiresBeforeLoadReleasesAfterStore)
    EXPECT_TRUE(std::equal(std::begin(suffix), std::end(suffix), bin.end()-sizeof(suffix)));
    /* The intervening store consumes the actual outstanding tile-load slot. */
    uint8_t store[AGX3_TILE_MAX_LENGTH], len = 0;
-   ASSERT_TRUE(agx3_tile_store(AGX_ISA_ENCODING_AGX3B, 0, AGX3_TILE_W8,
-                               15, 0, AGX3_TILE_COV_1X, 1, store, &len));
+   ASSERT_TRUE(agx3_tile_store_mask(AGX_ISA_ENCODING_AGX3B, 0, AGX3_TILE_W8,
+                               15, 0, AGX_ALL_SAMPLES, 1, store, &len));
    ASSERT_EQ(len, 12u);
    EXPECT_TRUE(std::equal(store, store+len, bin.begin()+sizeof(prefix)));
 }
 
-TEST_F(AGX3PackBinary, G17PAlphaProtocolDoesNotBroadenFormatOffsetOrControlFlow)
+TEST_F(AGX3PackBinary, AlphaProtocolSupportsSnormButKeepsOffsetAndControlFlowBoundaries)
 {
    for (unsigned axis = 0; axis < 3; ++axis) {
       agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
@@ -4155,9 +4160,9 @@ TEST_F(AGX3PackBinary, G17PAlphaProtocolDoesNotBroadenFormatOffsetOrControlFlow)
       const auto bin = pack(b);
       const uint8_t entry[] = {0x87,0x02,0x54,0x00,0x06,0x00};
       const uint8_t release[] = {0x07,0x02,0x54,0x0c,0x02,0x00};
-      EXPECT_EQ(bin.size(), 40u) << axis;
-      EXPECT_EQ(std::search(bin.begin(),bin.end(),std::begin(entry),std::end(entry)),bin.end()) << axis;
-      EXPECT_EQ(std::search(bin.begin(),bin.end(),std::begin(release),std::end(release)),bin.end()) << axis;
+      EXPECT_EQ(bin.size(), axis == 0 ? 52u : 40u) << axis;
+      EXPECT_EQ(std::search(bin.begin(),bin.end(),std::begin(entry),std::end(entry)) != bin.end(), axis == 0) << axis;
+      EXPECT_EQ(std::search(bin.begin(),bin.end(),std::begin(release),std::end(release)) != bin.end(), axis == 0) << axis;
    }
 }
 
@@ -4174,7 +4179,7 @@ TEST_F(AGX3PackBinary, G17PAlphaProtocolPreservesConstantColourBracket)
    const uint8_t exact[] = {
       0x87,0x02,0x54,0x00,0x06,0x00,
       0x87,0x02,0x54,0x0c,0x08,0x00,
-      0xe7,0x06,0x54,0x00,0x00,0x00,0x01,0x4e,0x00,0x00,0x00,0x00,
+      0xe7,0x06,0x54,0x00,0x00,0x00,0xff,0x4e,0x00,0x00,0x00,0x00,
       0x07,0x02,0x54,0x0c,0x02,0x00,
       0x0e,0x00,0x00,0x00,
    };
@@ -4343,12 +4348,12 @@ TEST_F(AGX3PackBinary, ProjectiveReciprocalMatchesNativeOperandForm)
       want.insert(want.end(), {0x0e, 0, 0, 0});
       EXPECT_EQ(pack(b), want);
    }
-   /* Ordinary reciprocal keeps its previously qualified encoding. */
+   /* Ordinary reciprocal retains its unhinted source and destination. */
    agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
    agx_rcp_to(b, agx_register(0, AGX_SIZE_32), agx_register(0, AGX_SIZE_32));
    agx_stop(b);
    const std::vector<uint8_t> ordinary = {
-      0xaf,0,0x56,0,2,0,0x10,0x48,0x20,0, 0x0e,0,0,0,
+      0xaf,0,0x54,0,2,0,0,0x48,0x20,0, 0x0e,0,0,0,
    };
    EXPECT_EQ(pack(b), ordinary);
 }
@@ -4527,8 +4532,8 @@ TEST_F(AGX3PackBinary, G17PWriteWaitFollowsPackingAndPreservesScoreboard)
             loaded.channels_m1 = 1;
             agx_ld_tile_to(b, loaded, agx_immediate(AGX_ALL_SAMPLES),
                           agx_null(), AGX_FORMAT_U8NORM, 15, 0, false);
-            ASSERT_TRUE(agx3_tile_load(enc, 12, AGX3_TILE_W8, async ? 2 : 1, 15, 0,
-               AGX3_TILE_COV_1X, 0, true, true, bytes, &len));
+            ASSERT_TRUE(agx3_tile_load_mask(enc, 12, AGX3_TILE_W8, async ? 2 : 1, 15, 0,
+               AGX_ALL_SAMPLES, 0, true, true, bytes, &len));
             append(want, bytes, len);
             agx_index unpacked = agx_register(8, AGX_SIZE_32);
             unpacked.channels_m1 = 1;
@@ -4560,8 +4565,8 @@ TEST_F(AGX3PackBinary, G17PWriteWaitFollowsPackingAndPreservesScoreboard)
          append(want, write, sizeof(write));
          agx_st_tile(b, packed, agx_immediate(AGX_ALL_SAMPLES), agx_null(),
                      AGX_FORMAT_U8NORM, 15, 0, false);
-         ASSERT_TRUE(agx3_tile_store(enc, 0, AGX3_TILE_W8, 15, 0,
-                                    AGX3_TILE_COV_1X, 0, bytes, &len));
+         ASSERT_TRUE(agx3_tile_store_mask(enc, 0, AGX3_TILE_W8, 15, 0,
+                                    AGX_ALL_SAMPLES, 0, bytes, &len));
          append(want, bytes, len);
          append(want, release_end, sizeof(release_end));
          agx_stop(b);
@@ -4603,8 +4608,14 @@ TEST_F(AGX3PackBinary, G17PWriteWaitDoesNotCrossUnprovenOperations)
          0x87,2,0x54,0,6,0, 0x87,2,0x54,12,8,0,
       };
       ASSERT_GE(bin.size(), sizeof(original_prefix));
-      EXPECT_TRUE(std::equal(std::begin(original_prefix),
-                             std::end(original_prefix), bin.begin())) << axis;
+      if (axis == 0) {
+         /* SNORM packing is qualified: defer the write wait past FLTNORM. */
+         EXPECT_EQ(std::search(bin.begin(), bin.end(), std::begin(original_prefix),
+                               std::end(original_prefix)), bin.begin() + 10);
+      } else {
+         EXPECT_TRUE(std::equal(std::begin(original_prefix),
+                                std::end(original_prefix), bin.begin())) << axis;
+      }
    }
 }
 
@@ -4723,7 +4734,7 @@ TEST_F(AGX3PackBinary, G17PFltnormStartMatchesNativeF32Uniforms)
       0x97,0x0c,0x54,0,2,8,0x18,0xd0,5,0xc8,
       0x97,4,0x54,1,2,0x10,0x28,0xd0,5,0xc8,
       0x87,2,0x54,0,6,0, 0x87,2,0x54,12,8,0,
-      0xe7,6,0x54,0,0,0,1,0x4e,0,0,0,0,
+      0xe7,6,0x54,0,0,0,0xff,0x4e,0,0,0,0,
       7,2,0x54,12,2,0, 14,0,0,0,
    };
    EXPECT_EQ(pack(b), native);
@@ -5776,7 +5787,8 @@ TEST_F(AGX3PackBinary, HalfCompareSelectMatchesNativeAndRefusesModifier)
       agx_stop(b);
       const auto code = pack(b);
       const uint8_t retained[] = {
-         0x0a,0x82,0x25,0x82,0x02,0x84,0x13,0xc0,0x80,0x05,
+         /* Destination is low half 0: bit 3 is not a cache hint. */
+         0x02,0x82,0x25,0x82,0x02,0x84,0x13,0xc0,0x80,0x05,
       };
       const uint8_t dead[] = {
          0x02,0x00,0x1d,0x00,0x82,0x02,0x13,0xc0,0x80,0x03,
@@ -6005,7 +6017,7 @@ TEST_F(AGX3PackBinary, CachedHalfIdentityUnconditionalLoopBreak)
                                   AGX3_CF_ICOND_EQ, 1, src, live, 0,
                                   bytes, &len));
    append(want, bytes, len);
-   ASSERT_TRUE(agx3_cf_cndlt(AGX_ISA_ENCODING_AGX3B, 1, true, bytes, &len));
+   ASSERT_TRUE(agx3_cf_cndcf(AGX_ISA_ENCODING_AGX3B, 1, false, 3, bytes, &len));
    append(want, bytes, len);
    const size_t branch_offset = want.size();
    ASSERT_TRUE(agx3_cf_branch(AGX_ISA_ENCODING_AGX3B, false, bytes, &len));
