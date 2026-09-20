@@ -165,7 +165,12 @@ agx3_container_size(size_t code_size)
 void
 agx3_build_container_lead_for_chip(uint8_t *image, enum agx_chip chip)
 {
-   const unsigned positions = chip == AGX_CHIP_G16G ? 10 : 6;
+   /* G15S, like G16G, can enter ten helper slots under fragment pressure.
+    * Six-slot tables leave the later entry points in padding; larger M3
+    * renders then run past the lead block into the USC guard page.
+    */
+   const unsigned positions =
+      (chip == AGX_CHIP_G15S || chip == AGX_CHIP_G16G) ? 10 : 6;
    memset(image, 0, AGX3_CONTAINER_LEAD);
    agx3_put_le32(image, AGX3_CONTAINER_LEAD);
    for (size_t offset = 0x40; offset < AGX3_CONTAINER_LEAD; offset += 2) {
