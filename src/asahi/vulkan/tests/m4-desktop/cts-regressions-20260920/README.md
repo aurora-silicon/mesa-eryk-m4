@@ -92,3 +92,22 @@ including the four vertex cases already helped by the streamed-export fix.
 Evidence 20260920T111202326946Z-cts-fix-ubo-exports, peak 66 C, 1.832 runner seconds.
 Host/ARM64 builds and the new conditional/repeated-export compiler check pass.
 Installed Vulkan SHA256: f6c9710940d64adb310d58daef222c9861d1c76fd53612493e03827a8e7a8a76.
+
+## Bounded compilation of large spilled shaders
+
+Register allocation scanned the entire register/spill address space for each
+live-in SSA value. Retain a compact sorted live-out SSA-to-register map and
+binary-search it. Spill coupling similarly binary-searches its existing sorted
+spill sets and avoids rescanning successor phis for already-spilled values.
+The captured scalar-8bit shader compiles offline in 29.0 seconds instead of
+48.5 seconds, with identical binary hash 2f06599e, 1,015,974-byte code and stats.
+Host and ARM64 builds pass; 22 lower-spill/parallel-copy/SSA tests pass. Broader
+filter also hit the existing StaticSpillCopyReloadDependency packer byte
+expectations (packer-only test, does not invoke the modified passes).
+
+All five original 60-second timeouts now finish under the unchanged deadline.
+The 12-case original SSBO overlay gives 11 Pass and one newly exposed compiler
+refusal in nested_structs_arrays.17 (35.85 seconds), still explicitly open.
+Evidence 20260920T112415250760Z-cts-fix-ssbo-ra, 171.608 runner seconds, peak81.25C,
+no guard failure. Shader cache disabled; one process per case.
+Installed Vulkan SHA256 0e4300a53c30a3001ec72543f04bd0b6a06995048917da3b938ae38b6b177f45.

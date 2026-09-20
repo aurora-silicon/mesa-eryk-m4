@@ -1,0 +1,12 @@
+{
+  "before": {
+    "seconds": 48.51890204206575,
+    "returncode": 0,
+    "compiler_result": "Compiler replay: PASS (1015974 bytes)\nCompiler binary hash: 2f06599e\nreplay shader: 106806 instrs, 80788 alu, 80788 fscib, 23552 ic, 1015974 code size, 191 gprs, 8 uniforms, 27232 scratch, 512 threads, 0 loops, 10523:7166 spills:fills, 0 preamble inst\n"
+  },
+  "after": {
+    "seconds": 29.004305076086894,
+    "returncode": 0,
+    "compiler_result": "Compiler replay: PASS (1015974 bytes)\nCompiler binary hash: 2f06599e\nreplay shader: 106806 instrs, 80788 alu, 80788 fscib, 23552 ic, 1015974 code size, 191 gprs, 8 uniforms, 27232 scratch, 512 threads, 0 loops, 10523:7166 spills:fills, 0 preamble inst\n"
+  }
+}

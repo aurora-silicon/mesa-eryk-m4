@@ -1,0 +1,218 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.ssbo.layout.3_level_array.scalar.column_major_mat4",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 7.4699135,
+    "eligibility": {
+      "case": "dEQP-VK.ssbo.layout.3_level_array.scalar.column_major_mat4",
+      "catalog_index": 2756436,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result comparison and counter values are OK",
+    "qpa": "deqp-runner/dEQP-VK.ssbo.layout.3_level_array.scalar.column_major_mat4.c1.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.ssbo.layout.3_level_array.std430.row_major_mat4x2_store_cols",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 1.9923437,
+    "eligibility": {
+      "case": "dEQP-VK.ssbo.layout.3_level_array.std430.row_major_mat4x2_store_cols",
+      "catalog_index": 2756739,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result comparison and counter values are OK",
+    "qpa": "deqp-runner/dEQP-VK.ssbo.layout.3_level_array.std430.row_major_mat4x2_store_cols.c5.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.ssbo.layout.random.16bit.all_per_block_buffers.47",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 11.198015,
+    "eligibility": {
+      "case": "dEQP-VK.ssbo.layout.random.16bit.all_per_block_buffers.47",
+      "catalog_index": 2757981,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result comparison and counter values are OK",
+    "qpa": "deqp-runner/dEQP-VK.ssbo.layout.random.16bit.all_per_block_buffers.47.c2.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 3,
+    "case": "dEQP-VK.ssbo.layout.random.8bit.scalar.78",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 27.412554,
+    "eligibility": {
+      "case": "dEQP-VK.ssbo.layout.random.8bit.scalar.78",
+      "catalog_index": 2759092,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result comparison and counter values are OK",
+    "qpa": "deqp-runner/dEQP-VK.ssbo.layout.random.8bit.scalar.78.c3.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 4,
+    "case": "dEQP-VK.ssbo.layout.random.nested_structs_arrays.17",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Fail",
+    "seconds": 35.8485,
+    "eligibility": {
+      "case": "dEQP-VK.ssbo.layout.random.nested_structs_arrays.17",
+      "catalog_index": 2759477,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Fail",
+    "message": "vk.createComputePipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:46",
+    "qpa": "deqp-runner/dEQP-VK.ssbo.layout.random.nested_structs_arrays.17.c11.r1.qpa",
+    "worker_exit": "exit status: 1"
+  },
+  {
+    "index": 5,
+    "case": "dEQP-VK.ssbo.layout.random.scalar.75",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 29.291714,
+    "eligibility": {
+      "case": "dEQP-VK.ssbo.layout.random.scalar.75",
+      "catalog_index": 2759716,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result comparison and counter values are OK",
+    "qpa": "deqp-runner/dEQP-VK.ssbo.layout.random.scalar.75.c7.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 6,
+    "case": "dEQP-VK.ssbo.layout.single_nested_struct.single_buffer.std140_instance_array_comp_access_store_cols",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.49809662,
+    "eligibility": {
+      "case": "dEQP-VK.ssbo.layout.single_nested_struct.single_buffer.std140_instance_array_comp_access_store_cols",
+      "catalog_index": 2761110,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result comparison and counter values are OK",
+    "qpa": "deqp-runner/dEQP-VK.ssbo.layout.single_nested_struct.single_buffer.std140_instance_array_comp_access_store_cols.c10.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 7,
+    "case": "dEQP-VK.ssbo.phys.layout.3_level_array.std140.row_major_mat2x4_store_cols",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 1.9906642,
+    "eligibility": {
+      "case": "dEQP-VK.ssbo.phys.layout.3_level_array.std140.row_major_mat2x4_store_cols",
+      "catalog_index": 2761877,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result comparison and counter values are OK",
+    "qpa": "deqp-runner/dEQP-VK.ssbo.phys.layout.3_level_array.std140.row_major_mat2x4_store_cols.c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 8,
+    "case": "dEQP-VK.ssbo.phys.layout.3_level_unsized_array.std430.row_major_mat2x4_comp_access_store_cols",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 1.9884732,
+    "eligibility": {
+      "case": "dEQP-VK.ssbo.phys.layout.3_level_unsized_array.std430.row_major_mat2x4_comp_access_store_cols",
+      "catalog_index": 2762344,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result comparison and counter values are OK",
+    "qpa": "deqp-runner/dEQP-VK.ssbo.phys.layout.3_level_unsized_array.std430.row_major_mat2x4_comp_access_store_cols.c8.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 9,
+    "case": "dEQP-VK.ssbo.phys.layout.random.8bit.scalar.78",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 27.552406,
+    "eligibility": {
+      "case": "dEQP-VK.ssbo.phys.layout.random.8bit.scalar.78",
+      "catalog_index": 2764367,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result comparison and counter values are OK",
+    "qpa": "deqp-runner/dEQP-VK.ssbo.phys.layout.random.8bit.scalar.78.c9.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 10,
+    "case": "dEQP-VK.ssbo.phys.layout.random.8bit.scalar.96",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 17.734245,
+    "eligibility": {
+      "case": "dEQP-VK.ssbo.phys.layout.random.8bit.scalar.96",
+      "catalog_index": 2764387,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result comparison and counter values are OK",
+    "qpa": "deqp-runner/dEQP-VK.ssbo.phys.layout.random.8bit.scalar.96.c6.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 11,
+    "case": "dEQP-VK.ssbo.phys.layout.single_struct_array.single_buffer.scalar_instance_array_comp_access",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 7.9610195,
+    "eligibility": {
+      "case": "dEQP-VK.ssbo.phys.layout.single_struct_array.single_buffer.scalar_instance_array_comp_access",
+      "catalog_index": 2766488,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Result comparison and counter values are OK",
+    "qpa": "deqp-runner/dEQP-VK.ssbo.phys.layout.single_struct_array.single_buffer.scalar_instance_array_comp_access.c4.r1.qpa",
+    "worker_exit": "exit status: 0"
+  }
+]

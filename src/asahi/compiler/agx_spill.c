@@ -468,6 +468,24 @@ limit(struct spill_ctx *ctx, agx_instr *I, unsigned m)
  *
  * The latter two requirements ensure correct pressure calculations for phis.
  */
+/* S_entry and S_exit are built by ascending bitset iteration. These sets may
+ * contain thousands of spilled values, unlike the bounded resident set W.
+ */
+static bool
+spill_set_contains(const unsigned *set, unsigned count, unsigned value)
+{
+   unsigned lo = 0, hi = count;
+   while (lo < hi) {
+      unsigned mid = lo + (hi - lo) / 2;
+      if (set[mid] < value)
+         lo = mid + 1;
+      else
+         hi = mid;
+   }
+
+   return lo < count && set[lo] == value;
+}
+
 static ATTRIBUTE_NOINLINE void
 insert_coupling_code(struct spill_ctx *ctx, agx_block *pred, agx_block *succ)
 {
@@ -506,13 +524,7 @@ insert_coupling_code(struct spill_ctx *ctx, agx_block *pred, agx_block *succ)
          continue;
       }
 
-      bool spilled = false;
-      for (unsigned i = 0; i < sp->nS_exit; ++i) {
-         if (sp->S_exit[i] == I->src[s].value) {
-            spilled = true;
-            break;
-         }
-      }
+      bool spilled = spill_set_contains(sp->S_exit, sp->nS_exit, I->src[s].value);
 
       if (!spilled) {
          /* Spill the phi source. TODO: avoid redundant spills here */
@@ -541,15 +553,11 @@ insert_coupling_code(struct spill_ctx *ctx, agx_block *pred, agx_block *succ)
    for (unsigned i = 0; i < ss->nS_entry; ++i) {
       unsigned v = ss->S_entry[i];
 
-      bool spilled = false;
-      for (unsigned j = 0; j < sp->nS_exit; ++j) {
-         if (sp->S_exit[j] == v) {
-            spilled = true;
-            break;
-         }
-      }
+      if (spill_set_contains(sp->S_exit, sp->nS_exit, v))
+         continue;
 
       /* We handle spilling phi destinations separately */
+      bool spilled = false;
       agx_foreach_phi_in_block(succ, phi) {
          if (chase_mem_index(phi->dest[0], ctx->spill_base) == v) {
             spilled = true;
