@@ -369,31 +369,27 @@ agx_bo_alloc(struct agx_device *dev, size_t size, size_t align,
    return bo;
 }
 
+static void *
+agx_bo_mmap_user(struct agx_device *dev, struct agx_bo *bo, size_t size,
+                  void *fixed_addr)
+{
+   struct drm_asahi_gem_mmap_offset gem_mmap_offset = {
+      .handle = bo->uapi_handle,
+   };
+   if (drmIoctl(dev->fd, DRM_IOCTL_ASAHI_GEM_MMAP_OFFSET, &gem_mmap_offset))
+      return NULL;
+
+   void *map = os_mmap(fixed_addr, size, PROT_READ | PROT_WRITE,
+                       MAP_SHARED | (fixed_addr ? MAP_FIXED : 0),
+                       dev->fd, gem_mmap_offset.offset);
+   return map == MAP_FAILED ? NULL : map;
+}
+
 static void
 agx_bo_mmap(struct agx_device *dev, struct agx_bo *bo, void *fixed_addr)
 {
    assert(bo->_map == NULL && "not double mapped");
-
-   struct drm_asahi_gem_mmap_offset gem_mmap_offset = {.handle =
-                                                          bo->uapi_handle};
-   int ret, flags;
-
-   ret = drmIoctl(dev->fd, DRM_IOCTL_ASAHI_GEM_MMAP_OFFSET, &gem_mmap_offset);
-   if (ret) {
-      fprintf(stderr, "DRM_IOCTL_ASAHI_MMAP_BO failed: %m\n");
-      assert(0);
-   }
-
-   flags = MAP_SHARED | (fixed_addr ? MAP_FIXED : 0);
-   bo->_map = os_mmap(fixed_addr, bo->size, PROT_READ | PROT_WRITE, flags,
-                      dev->fd, gem_mmap_offset.offset);
-   if (bo->_map == MAP_FAILED) {
-      bo->_map = NULL;
-      fprintf(stderr,
-              "mmap failed: result=%p size=0x%llx fd=%i offset=0x%llx %m\n",
-              bo->_map, (long long)bo->size, dev->fd,
-              (long long)gem_mmap_offset.offset);
-   }
+   bo->_map = agx_bo_mmap_user(dev, bo, bo->size, fixed_addr);
 }
 
 struct agx_bo *
@@ -611,6 +607,7 @@ const agx_device_ops_t agx_device_drm_ops = {
    .bo_alloc = agx_bo_alloc,
    .bo_bind = agx_drm_bo_bind,
    .bo_mmap = agx_bo_mmap,
+   .bo_mmap_user = agx_bo_mmap_user,
    .get_params = agx_get_params,
    .submit = agx_submit,
    .bo_bind_object = agx_bo_bind_object,

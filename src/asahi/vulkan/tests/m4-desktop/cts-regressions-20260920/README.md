@@ -54,3 +54,24 @@ All 120 original texturegradoffset_pcoffset failures pass on hardware, 11.951
 runner seconds, peak 68.25 C. Evidence 20260920T110253129201Z-cts-fix-array-gradient-offset.
 Host/ARM64 builds pass; texture core passes 6417 checks. Installed Vulkan SHA256:
 e66ca61c01866ade7378106a71b5573927a16598e9301f69e79bab64d1389532.
+
+## Independent application memory mappings
+
+Cached BOs may retain an internal mapping and may be up to twice the requested
+size. Mapping VkDeviceMemory through bo->_map could ignore a placed address;
+mapping or reserving bo->size could replace neighboring virtual memory. Give
+DRM/virtio application allocations independent mappings of VkDeviceMemory's
+size, preserve internal mappings/imported aliases, and release application
+mappings on vkFreeMemory. Keep the Windows Lock2 backend on its native mapping
+operations; that backend does not advertise placed maps. Reject a backend that
+fails to honor the requested address instead of reporting a false success.
+
+All 13 placed-mapping cases plus the two originally canceled memory tests pass
+in one process (cache reuse retained), including all three original mapping
+failures and the original unmap_reserve.size_1048576 SIGSEGV case. Evidence:
+20260920T110746501362Z-cts-fix-memory-maps-final; 15 Pass, peak 68 C, 5.881 runner
+seconds. Host and ARM64 builds pass. Installed Vulkan SHA256:
+d6028797c6b2fca204d10079af501ca0c026d23959622c00897853d25fdbb596.
+The original core and ledger remain retained. A subsequent independent UBO
+capture hit a compiler IR-validation exit (exports before branches), recorded
+at 20260920T110620505599Z-cts-fix-remaining-small; no GPU fault or thermal stop.

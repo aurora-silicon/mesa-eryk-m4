@@ -199,6 +199,14 @@ agx_virtio_bo_unbind_object(struct agx_device *dev, uint32_t object_handle)
    return 0;
 }
 
+static void *
+agx_virtio_bo_mmap_user(struct agx_device *dev, struct agx_bo *bo,
+                        size_t size, void *fixed_addr)
+{
+   void *map = vdrm_bo_map(dev->vdrm, bo->handle, size, fixed_addr);
+   return map == MAP_FAILED ? NULL : map;
+}
+
 static void
 agx_virtio_bo_mmap(struct agx_device *dev, struct agx_bo *bo, void *fixed_addr)
 {
@@ -332,6 +340,7 @@ const agx_device_ops_t agx_virtio_device_ops = {
    .bo_alloc = agx_virtio_bo_alloc,
    .bo_bind = agx_virtio_bo_bind,
    .bo_mmap = agx_virtio_bo_mmap,
+   .bo_mmap_user = agx_virtio_bo_mmap_user,
    .get_params = agx_virtio_get_params,
    .submit = agx_virtio_submit,
    .bo_bind_object = agx_virtio_bo_bind_object,

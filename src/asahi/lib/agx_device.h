@@ -118,6 +118,11 @@ typedef struct {
                            struct drm_asahi_gem_bind_op *ops,
                            uint32_t count);
    void (*bo_mmap)(struct agx_device *dev, struct agx_bo *bo, void *fixed_addr);
+   /* Independent application mapping, without changing bo->_map. The size
+    * can be smaller than a cached BO; return NULL on failure. The caller
+    * owns this mapping and releases it with munmap(). */
+   void *(*bo_mmap_user)(struct agx_device *dev, struct agx_bo *bo,
+                         size_t size, void *fixed_addr);
    ssize_t (*get_params)(struct agx_device *dev, void *buf, size_t size);
    int (*submit)(struct agx_device *dev, struct drm_asahi_submit *submit,
                  struct agx_submit_virt *virt);

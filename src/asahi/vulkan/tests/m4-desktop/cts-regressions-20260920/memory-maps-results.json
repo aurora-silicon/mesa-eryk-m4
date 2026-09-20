@@ -1,0 +1,272 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.memory.map_placed.exact_size.size_1048576",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.000757393,
+    "eligibility": {
+      "case": "dEQP-VK.memory.map_placed.exact_size.size_1048576",
+      "catalog_index": 933178,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Placed-map group and original memory abnormal results"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.memory.map_placed.exact_size.size_4096",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.000118404,
+    "eligibility": {
+      "case": "dEQP-VK.memory.map_placed.exact_size.size_4096",
+      "catalog_index": 933179,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Placed-map group and original memory abnormal results"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.memory.map_placed.exact_size.size_65536",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.000124695,
+    "eligibility": {
+      "case": "dEQP-VK.memory.map_placed.exact_size.size_65536",
+      "catalog_index": 933180,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Placed-map group and original memory abnormal results"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 3,
+    "case": "dEQP-VK.memory.map_placed.exact_size.size_8192",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 8.2343e-05,
+    "eligibility": {
+      "case": "dEQP-VK.memory.map_placed.exact_size.size_8192",
+      "catalog_index": 933181,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Placed-map group and original memory abnormal results"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 4,
+    "case": "dEQP-VK.memory.map_placed.gpu_access.read_write",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.003330192,
+    "eligibility": {
+      "case": "dEQP-VK.memory.map_placed.gpu_access.read_write",
+      "catalog_index": 933182,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Placed-map group and original memory abnormal results"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 5,
+    "case": "dEQP-VK.memory.map_placed.normal_unmap_reserve.size_1048576",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.000245222,
+    "eligibility": {
+      "case": "dEQP-VK.memory.map_placed.normal_unmap_reserve.size_1048576",
+      "catalog_index": 933183,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Placed-map group and original memory abnormal results"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 6,
+    "case": "dEQP-VK.memory.map_placed.normal_unmap_reserve.size_4096",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.000191354,
+    "eligibility": {
+      "case": "dEQP-VK.memory.map_placed.normal_unmap_reserve.size_4096",
+      "catalog_index": 933184,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Placed-map group and original memory abnormal results"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 7,
+    "case": "dEQP-VK.memory.map_placed.normal_unmap_reserve.size_65536",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 6.491e-05,
+    "eligibility": {
+      "case": "dEQP-VK.memory.map_placed.normal_unmap_reserve.size_65536",
+      "catalog_index": 933185,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Placed-map group and original memory abnormal results"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 8,
+    "case": "dEQP-VK.memory.map_placed.normal_unmap_reserve.size_8192",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.000156171,
+    "eligibility": {
+      "case": "dEQP-VK.memory.map_placed.normal_unmap_reserve.size_8192",
+      "catalog_index": 933186,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Placed-map group and original memory abnormal results"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 9,
+    "case": "dEQP-VK.memory.map_placed.unmap_reserve.size_1048576",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.000327233,
+    "eligibility": {
+      "case": "dEQP-VK.memory.map_placed.unmap_reserve.size_1048576",
+      "catalog_index": 933187,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Placed-map group and original memory abnormal results"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 10,
+    "case": "dEQP-VK.memory.map_placed.unmap_reserve.size_4096",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.000118737,
+    "eligibility": {
+      "case": "dEQP-VK.memory.map_placed.unmap_reserve.size_4096",
+      "catalog_index": 933188,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Placed-map group and original memory abnormal results"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 11,
+    "case": "dEQP-VK.memory.map_placed.unmap_reserve.size_65536",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.000100803,
+    "eligibility": {
+      "case": "dEQP-VK.memory.map_placed.unmap_reserve.size_65536",
+      "catalog_index": 933189,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Placed-map group and original memory abnormal results"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 12,
+    "case": "dEQP-VK.memory.map_placed.unmap_reserve.size_8192",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 9.8152e-05,
+    "eligibility": {
+      "case": "dEQP-VK.memory.map_placed.unmap_reserve.size_8192",
+      "catalog_index": 933190,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Placed-map group and original memory abnormal results"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 13,
+    "case": "dEQP-VK.memory.mapping.dedicated_alloc.image.full.variable.implicit_unmap",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 5.4220724,
+    "eligibility": {
+      "case": "dEQP-VK.memory.mapping.dedicated_alloc.image.full.variable.implicit_unmap",
+      "catalog_index": 934713,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Placed-map group and original memory abnormal results"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 14,
+    "case": "dEQP-VK.memory.pipeline_barrier.all.65536_vertex_buffer_stride_2",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.21476506,
+    "eligibility": {
+      "case": "dEQP-VK.memory.pipeline_barrier.all.65536_vertex_buffer_stride_2",
+      "catalog_index": 937863,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Placed-map group and original memory abnormal results"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  }
+]

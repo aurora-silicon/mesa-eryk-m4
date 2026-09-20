@@ -1,0 +1,22 @@
+{
+  "selected": 15,
+  "recorded": 15,
+  "completed": 15,
+  "counts": {
+    "Pass": 15
+  },
+  "classifications": {
+    "bug": 15
+  },
+  "elapsed_seconds": 8.113850724999793,
+  "preparation_seconds": 1.3853286339435726,
+  "runner_seconds": 5.880746559999807,
+  "jobs": 1,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "266779c5a95065866068842e15a4dc0e2968150033b8a615fd8b048d589f69bf",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260920T110746501362Z-cts-fix-memory-maps-final",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 68.0
+}

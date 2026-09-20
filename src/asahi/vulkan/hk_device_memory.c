@@ -277,6 +277,14 @@ hk_FreeMemory(VkDevice device, VkDeviceMemory _mem,
    if (mem->bo->flags & (AGX_BO_SHAREABLE | AGX_BO_SHARED))
       hk_remove_ext_bo(dev, mem->bo);
 
+   if (mem->map) {
+      const VkMemoryUnmapInfo unmap = {
+         .sType = VK_STRUCTURE_TYPE_MEMORY_UNMAP_INFO,
+         .memory = _mem,
+      };
+      hk_UnmapMemory2KHR(device, &unmap);
+   }
+
    agx_bo_unreference(&dev->dev, mem->bo);
 
    vk_device_memory_destroy(&dev->vk, pAllocator, &mem->vk);
@@ -315,10 +323,10 @@ hk_MapMemory2KHR(VkDevice device, const VkMemoryMapInfoKHR *pMemoryMapInfo,
    assert(size > 0);
    assert(offset + size <= mem->bo->size);
 
-   if (size != (size_t)size) {
+   if (mem->vk.size != (size_t)mem->vk.size) {
       return vk_errorf(dev, VK_ERROR_MEMORY_MAP_FAILED,
                        "requested size 0x%" PRIx64 " does not fit in %u bits",
-                       size, (unsigned)(sizeof(size_t) * 8));
+                       mem->vk.size, (unsigned)(sizeof(size_t) * 8));
    }
 
    /* From the Vulkan 1.2.194 spec:
@@ -330,7 +338,22 @@ hk_MapMemory2KHR(VkDevice device, const VkMemoryMapInfoKHR *pMemoryMapInfo,
                        "Memory object already mapped.");
    }
 
-   mem->map = agx_bo_map_placed(mem->bo, fixed_addr);
+   /* A BO from the cache may already have an internal CPU mapping and may
+    * be larger than this VkDeviceMemory. Application mappings must not reuse
+    * that address or overwrite/unmap virtual pages outside the allocation.
+    * Independent maps also preserve internal/imported aliases of the BO.
+    */
+   if (dev->dev.ops.bo_mmap_user) {
+      mem->map = dev->dev.ops.bo_mmap_user(&dev->dev, mem->bo,
+                                          mem->vk.size, fixed_addr);
+      if (mem->map && fixed_addr && mem->map != fixed_addr) {
+         munmap(mem->map, mem->vk.size);
+         mem->map = NULL;
+      }
+   } else {
+      assert(!fixed_addr); /* Placed mapping is not exposed on this backend. */
+      mem->map = agx_bo_map(mem->bo);
+   }
    if (mem->map == NULL) {
       *ppData = NULL;
       return vk_errorf(dev, VK_ERROR_MEMORY_MAP_FAILED,
@@ -353,21 +376,21 @@ hk_UnmapMemory2KHR(VkDevice device,
    if (mem == NULL)
       return VK_SUCCESS;
 
-   if (pMemoryUnmapInfo->flags & VK_MEMORY_UNMAP_RESERVE_BIT_EXT) {
-      VK_FROM_HANDLE(hk_device, dev, device);
+   if (!mem->map)
+      return VK_SUCCESS;
 
-      void *err = mmap(mem->bo->_map, mem->bo->size, PROT_NONE,
+   VK_FROM_HANDLE(hk_device, dev, device);
+   if (pMemoryUnmapInfo->flags & VK_MEMORY_UNMAP_RESERVE_BIT_EXT) {
+      void *err = mmap(mem->map, mem->vk.size, PROT_NONE,
                        MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
       if (err == MAP_FAILED) {
          return vk_errorf(dev, VK_ERROR_MEMORY_MAP_FAILED,
                           "Failed to map over original mapping");
       }
-      mem->bo->_map = NULL;
+   } else if (dev->dev.ops.bo_mmap_user) {
+      munmap(mem->map, mem->vk.size);
    } else {
-      if (mem->bo->_map) {
-         munmap(mem->bo->_map, mem->bo->size);
-         mem->bo->_map = NULL;
-      }
+      dev->dev.ops.bo_munmap(&dev->dev, mem->bo);
    }
 
    mem->map = NULL;
