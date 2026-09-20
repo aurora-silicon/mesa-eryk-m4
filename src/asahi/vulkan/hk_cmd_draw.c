@@ -3113,7 +3113,7 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
        * Preserve point size, layer/viewport and user clip-plane selectors.
        * The clip values follow the other outputs in the same f32 UVS stream. */
       .words = {(vs->info.uvs.osel.opaque[0] &
-                   (dev->dev.chip == AGX_CHIP_G16G ? UINT32_C(0x1c00ff) :
+                   (agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) ? UINT32_C(0x1c00ff) :
                                                           UINT32_C(0x1c0000))) |
                    (linked_fs->b.cf.nr_bindings ? UINT32_C(0x10000) : 0) |
                    (linked_fs->b.cf.reads_z ? UINT32_C(0x200000) : 0),
@@ -4309,7 +4309,7 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
          .max_bytes_per_sample = cmd->state.gfx.render.tilebuffer.max_bytes_per_sample,
          .max_samples_per_tile = cmd->state.gfx.render.tilebuffer.max_samples_per_tile,
          .lower_srgb = agx_native_graphics(&dev->dev),
-         .native_spills = dev->dev.chip == AGX_CHIP_G16G,
+         .native_spills = agx_chip_uses_g15_g16_shader_abi(dev->dev.chip),
          .blend.alpha_to_coverage = alpha_to_coverage,
          .blend.alpha_to_one = dyn->ms.alpha_to_one_enable,
          .blend.logicop_enable = dyn->cb.logic_op_enable,

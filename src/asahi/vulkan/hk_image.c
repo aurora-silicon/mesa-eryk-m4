@@ -223,7 +223,7 @@ hk_get_image_format_features(struct hk_physical_device *pdev,
       vk_format_get_ycbcr_info(vk_format);
    if (ycbcr_info == NULL) {
       VkFormatFeatureFlags2 features = hk_get_image_plane_format_features(pdev, vk_format, tiling);
-      if (pdev->dev.chip == AGX_CHIP_G16G &&
+      if (agx_chip_uses_g15_g16_shader_abi(pdev->dev.chip) &&
           (features & VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_LINEAR_BIT))
          features |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_MINMAX_BIT;
       return features;

@@ -149,7 +149,7 @@ hk_physical_device_compiler_flags(const struct hk_physical_device *pdev)
     * variant. Include them in both pipeline UUIDs and disk-cache keys. */
    static_assert(sizeof(pdev->dev.debug) == sizeof(uint32_t));
    uint64_t flags = pdev->dev.debug;
-   if (pdev->dev.chip == AGX_CHIP_G16G) {
+   if (agx_chip_uses_g15_g16_shader_abi(pdev->dev.chip)) {
       flags |= (uint64_t)debug_get_bool_option("HK_M4_PREFETCH_UBOS", false) << 32;
       flags |= (uint64_t)debug_get_bool_option("HK_M4_PREFETCH_VARIANT", false) << 33;
       flags |= (uint64_t)debug_get_bool_option("HK_M4_PLAIN_SAMPLERS", false) << 34;
@@ -198,7 +198,7 @@ hk_preprocess_nir_internal(struct vk_physical_device *vk_pdev, nir_shader *nir)
    }
 
    hk_capture_lowering(nir, "preprocess-input", 0);
-   if (((struct hk_physical_device *)vk_pdev)->dev.chip == AGX_CHIP_G16G)
+   if (agx_chip_uses_g15_g16_shader_abi(((struct hk_physical_device *)vk_pdev)->dev.chip))
       NIR_PASS(_, nir, hk_nir_preserve_sample_loops);
 
    /* Unroll loops before lowering indirects via
@@ -1848,7 +1848,7 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
    /* Turn cache flushes into image coherency bits while we still have derefs */
    NIR_PASS(_, nir, nir_lower_memory_model);
 
-   const bool native_robust_images = dev->dev.chip == AGX_CHIP_G16G &&
+   const bool native_robust_images = agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) &&
       rs->images != VK_PIPELINE_ROBUSTNESS_IMAGE_BEHAVIOR_DISABLED_EXT;
    NIR_PASS(_, nir, nir_lower_robust_access_cb, should_lower_robust,
             hk_native_robust_oob_alpha, &native_robust_images);
@@ -1859,7 +1859,7 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
                nir_metadata_control_flow, NULL);
    }
 
-   if (dev->dev.chip == AGX_CHIP_G16G &&
+   if (agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) &&
        debug_get_bool_option("HK_M4_VERSION_SAMPLES", true)) {
       nir_variable *sampler = hk_nir_sample_version_candidate(nir);
       if (sampler && sampler->data.descriptor_set < set_layout_count &&
@@ -1878,7 +1878,7 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
       }
    }
    hk_capture_lowering(nir, "before-minmax", features);
-   if (dev->dev.chip == AGX_CHIP_G16G &&
+   if (agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) &&
        (features & (HK_FEAT_SAMPLER_MINMAX | HK_FEAT_IMAGE_VIEW_MIN_LOD)) &&
        !HK_PERF(dev, NOMINMAX)) {
       /* Keep cube gradients until reduction has selected its anisotropic
@@ -1897,7 +1897,7 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
    /* We must do early lowering before hk_nir_lower_descriptors, since this will
     * create lod_bias instructions.
     */
-   if (dev->dev.chip == AGX_CHIP_G16G) {
+   if (agx_chip_uses_g15_g16_shader_abi(dev->dev.chip)) {
       /* Preprocessing scalarizes constants. Recover constant vectors before
        * deciding whether their texel offsets need coordinate lowering. */
       NIR_PASS(_, nir, nir_opt_constant_folding);
@@ -1912,7 +1912,7 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
    }
    NIR_PASS(_, nir, agx_nir_lower_texture_early_with_2d_robustness,
             true /* support_lod_bias */, agx_chip_uses_hal200_ioto(dev->dev.chip));
-   if (dev->dev.chip == AGX_CHIP_G16G) {
+   if (agx_chip_uses_g15_g16_shader_abi(dev->dev.chip)) {
       /* Early lowering expands textureGatherOffsets into individual gathers.
        * Lower offsets on those new shadow gathers after projection, before
        * descriptor lowering consumes the texture-size queries we create. */
@@ -1936,7 +1936,7 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
       NIR_PASS(_, nir, agx_nir_lower_custom_border);
    }
 
-   if (dev->dev.chip == AGX_CHIP_G16G)
+   if (agx_chip_uses_g15_g16_shader_abi(dev->dev.chip))
       NIR_PASS(_, nir, nir_shader_intrinsics_pass,
                hk_lower_native_sample_barycentric, nir_metadata_control_flow, NULL);
 
@@ -2363,7 +2363,7 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
         nir->info.stage == MESA_SHADER_GEOMETRY ||
         sw_stage == MESA_SHADER_TESS_CTRL)) {
       NIR_PASS(_, nir, agx_nir_lower_g17p_cube_samples,
-               dev->dev.params.chip_id == 0x8132);
+               agx_chip_uses_g15_g16_shader_abi(dev->dev.chip));
       nir_shader *candidate = nir_shader_clone(NULL, nir);
       if (candidate && agx_nir_lower_g17p_indexed_samplers(candidate)) {
          const bool direct_storage =
@@ -2380,7 +2380,7 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
    if (agx_chip_uses_hal200_ioto(dev->dev.chip) &&
        nir->info.stage == MESA_SHADER_FRAGMENT) {
       NIR_PASS(_, nir, agx_nir_lower_g17p_cube_samples,
-               dev->dev.params.chip_id == 0x8132);
+               agx_chip_uses_g15_g16_shader_abi(dev->dev.chip));
       nir_shader *candidate = nir_shader_clone(NULL, nir);
       struct agx_g17p_combined_sampler_binding binding;
       if (candidate &&
@@ -2414,7 +2414,7 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
               nir->info.stage == MESA_SHADER_COMPUTE &&
               sw_stage == MESA_SHADER_COMPUTE) {
       NIR_PASS(_, nir, agx_nir_lower_g17p_cube_samples,
-               dev->dev.params.chip_id == 0x8132);
+               agx_chip_uses_g15_g16_shader_abi(dev->dev.chip));
       nir_shader *candidate = nir_shader_clone(NULL, nir);
       struct agx_g17p_sampled_storage_binding sampled_storage;
       if (candidate &&
@@ -2543,7 +2543,7 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
       }
 
       NIR_PASS(_, nir, agx_nir_lower_fs_active_samples_to_register);
-      if (dev->dev.chip == AGX_CHIP_G16G)
+      if (agx_chip_uses_g15_g16_shader_abi(dev->dev.chip))
          NIR_PASS(_, nir, nir_shader_intrinsics_pass,
                   hk_lower_native_sample_barycentric,
                   nir_metadata_control_flow, NULL);
@@ -2574,7 +2574,8 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
    uint64_t outputs = nir->info.outputs_written;
    if (sw_stage == MESA_SHADER_VERTEX || sw_stage == MESA_SHADER_TESS_EVAL) {
       if (hw) {
-         hk_lower_hw_vs(nir, shader, kill_psiz, dev->dev.chip == AGX_CHIP_G16G);
+         hk_lower_hw_vs(nir, shader, kill_psiz,
+                        agx_chip_uses_g15_g16_shader_abi(dev->dev.chip));
          outputs = nir->info.outputs_written;
       } else {
          NIR_PASS(_, nir, poly_nir_lower_vs_before_gs);
@@ -2975,7 +2976,8 @@ hk_compile_shader(struct hk_device *dev, struct vk_shader_compile_info *info,
       agx_preprocess_nir(pre_gs);
 
       struct hk_shader *shader = &obj->variants[HK_GS_VARIANT_RAST];
-      hk_lower_hw_vs(rast, shader, false, dev->dev.chip == AGX_CHIP_G16G);
+      hk_lower_hw_vs(rast, shader, false,
+                     agx_chip_uses_g15_g16_shader_abi(dev->dev.chip));
       shader->info.gs = count_variant->info.gs;
       main_variant->info.gs = count_variant->info.gs;
 

@@ -170,7 +170,7 @@ agx3_build_container_lead_for_chip(uint8_t *image, enum agx_chip chip)
     * renders then run past the lead block into the USC guard page.
     */
    const unsigned positions =
-      (chip == AGX_CHIP_G15S || chip == AGX_CHIP_G16G) ? 10 : 6;
+      agx_chip_uses_g15_g16_shader_abi(chip) ? 10 : 6;
    memset(image, 0, AGX3_CONTAINER_LEAD);
    agx3_put_le32(image, AGX3_CONTAINER_LEAD);
    for (size_t offset = 0x40; offset < AGX3_CONTAINER_LEAD; offset += 2) {
@@ -224,8 +224,7 @@ agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
    uint8_t sample_wait[AGX3_PIXEL_MAX_LENGTH], sample_wait_size = 0;
    uint8_t sample_zs_wait[AGX3_PIXEL_MAX_LENGTH], sample_zs_wait_size = 0;
    if (native_samples) {
-      if (!fragment || (dev->chip != AGX_CHIP_G16G &&
-                        dev->chip != AGX_CHIP_G15S) ||
+      if (!fragment || !agx_chip_uses_g15_g16_shader_abi(dev->chip) ||
           (nr_samples_shaded != 1 && nr_samples_shaded != 2 &&
            nr_samples_shaded != 4)) {
          fprintf(stderr, "agx_fast_link: native sample loop rejected chip=%u samples=%u fragment=%u\n",

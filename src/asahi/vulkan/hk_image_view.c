@@ -220,7 +220,7 @@ pack_texture(struct hk_device *dev, struct hk_image_view *view,
     * The older cube-to-array path needs six explicit layers instead. */
    VkImageViewType texture_type = view->vk.view_type;
    if (agx_native_graphics(&dev->dev) &&
-       !(dev->dev.params.chip_id == 0x8132 &&
+       !(agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) &&
          (texture_type == VK_IMAGE_VIEW_TYPE_CUBE ||
           texture_type == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY)) &&
        (texture_type == VK_IMAGE_VIEW_TYPE_CUBE ||
