@@ -224,10 +224,14 @@ agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
    uint8_t sample_wait[AGX3_PIXEL_MAX_LENGTH], sample_wait_size = 0;
    uint8_t sample_zs_wait[AGX3_PIXEL_MAX_LENGTH], sample_zs_wait_size = 0;
    if (native_samples) {
-      if (!fragment || dev->chip != AGX_CHIP_G16G ||
+      if (!fragment || (dev->chip != AGX_CHIP_G16G &&
+                        dev->chip != AGX_CHIP_G15S) ||
           (nr_samples_shaded != 1 && nr_samples_shaded != 2 &&
-           nr_samples_shaded != 4))
+           nr_samples_shaded != 4)) {
+         fprintf(stderr, "agx_fast_link: native sample loop rejected chip=%u samples=%u fragment=%u\n",
+                 dev->chip, nr_samples_shaded, fragment);
          return false;
+      }
       if (!agx3_pixel_release(AGX_ISA_ENCODING_AGX3B, 0, true, 0,
                              sample_release, &sample_release_size))
          return false;

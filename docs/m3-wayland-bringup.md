@@ -77,3 +77,13 @@ committed evidence: kernel m3_lab/validation/wayland-zink-20260920.
 
 This milestone does not establish full M4 feature parity or Vulkan conformance.
 The normal login manager is restored after the bounded panel experiment.
+
+## Firefox native sample loop
+
+2026-09-20: Firefox 155 WebRender requested a one-sample native fragment
+loop, rejected solely because the linker admitted G16G but not G15S.
+Admit G15S using the shared AGX3b release/wait sequence. With M3 kernel
+compute attachment translation and 16-byte color samples, firefox04 remains
+running for a guarded 12-second real Plasma session test without graphics
+errors. Evidence: kernel m3_lab/validation/firefox-20260920 and workspace
+_provenance/m3-firefox-20260920. Multisample loops need separate CTS coverage.
