@@ -101,3 +101,14 @@ line-depth coverage comparisons; they are retained as Fail, not waived or
 counted as passes. The line controls pass 12 supported non-strict/Bresenham,
 wide and 4x-MSAA cases (24 unsupported). Experimental line-width and MSAA
 changes were discarded. This is bring-up validation, not conformance.
+
+Final diagnostics are retained in the M3 kernel lab's
+`validation/cts-fixes-final-20260920`. An isolated CTS correction for scaled
+shader types, blit classes and conversion references passes all ten remaining
+scaled cases. It does not change the original CTS binary/results. For the three
+line-depth cases, 36 isolated line masks satisfy the checked non-strict coverage
+bounds; offline replay of the original depth operations over those masks
+reproduces all three final images within one depth-format LSB. The raw cases
+remain Fail pending a verifier correction/waiver. Final real Plasma restart
+and post-recovery KWin query both confirm Zink on Apple M3 Pro. No rasterizer
+workaround or capability reduction was used to hide these 13 image failures.
