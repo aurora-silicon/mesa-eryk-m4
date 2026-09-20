@@ -1,0 +1,15 @@
+{
+  "binary": "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+  "sha256": {
+    "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit": "36bcc144d4b3c0edc5b638f20331fbc4e1be388d89da652890af870b8e5697dc",
+    "/opt/asahi-m3-wayland/lib/libvulkan_asahi.so": "bdc51c83737e3f02a2a1bf0634bebab0be0eee894b7635b55c4e1e1fb2a9bee1",
+    "/root/m3-gpu-tools/asahi.ko": "c108f717f0fa0e2bea3a6a1f02184a88365f02eae8adf28f859679134bb9cf67"
+  },
+  "case_count": 6,
+  "per_case_seconds": 10,
+  "launch_window_seconds": 10,
+  "guard_limit_seconds": 30,
+  "watchdog_seconds": 60,
+  "log_images": true,
+  "remote_base": "/root/m3-cts-repair-02"
+}

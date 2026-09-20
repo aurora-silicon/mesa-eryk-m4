@@ -1,0 +1,13 @@
+{
+  "source": "build/m3-cts-m4-random-10000-20260920",
+  "purpose": "Native query bias, gradient offset and robust vertex fetch",
+  "original_indices": [
+    1553,
+    1623,
+    2297,
+    2817,
+    7614,
+    9590
+  ],
+  "baseline_results_sha256": "c1ea7d23998ece7fd52772e06d97d73ff9802b194228b312d6fab2a27c5947c0"
+}

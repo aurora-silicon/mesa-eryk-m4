@@ -230,7 +230,6 @@ sample_ok(enum agx_isa_encoding enc, const struct agx3_tex_sample_desc *d)
     * layer. Non-array gradients occupy their separate coordinate banks. */
    if (d->dynamic_offset &&
        (d->sample_offset || d->gather || d->query_lod ||
-        (d->array && d->lod == AGX3_TEX_LOD_GRAD && !d->shadow && !d->min_lod) ||
         (d->lod != AGX3_TEX_LOD_REGISTER &&
          d->lod != AGX3_TEX_LOD_BIAS_REGISTER &&
          d->lod != AGX3_TEX_LOD_GRAD)))

@@ -107,8 +107,8 @@ g17p_sample_shape(const nir_tex_instr *tex)
 
    if (query && has_bias) {
       int bias = nir_tex_instr_src_index(tex, nir_tex_src_bias);
-      if (!nir_src_is_const(tex->src[bias].src) ||
-          nir_src_as_float(tex->src[bias].src) != 0.0f)
+      if (nir_src_num_components(tex->src[bias].src) != 1 ||
+          nir_src_bit_size(tex->src[bias].src) != 16)
          return false;
    }
 
@@ -547,10 +547,13 @@ agx_nir_lower_g17p_indexed_samplers(nir_shader *shader)
                   nir_iand_imm(&b, nir_ushr_imm(&b, offset, 8), 0xf) : nir_imm_int(&b, 0);
                nir_src_rewrite(&tex->src[offset_index].src, nir_ior(&b, nir_ior(&b, x, y), z));
             }
-            /* The native sampler supplies its own bias. Query lowering adds
-             * a zero software bias; remove only that validated no-op source. */
-            if (tex->op == nir_texop_lod &&
-                nir_tex_instr_src_index(tex, nir_tex_src_bias) >= 0)
+            /* M3 needs the software sampler bias in native LOD queries.
+             * HAL200 samplers already supply it, so their software bias is
+             * zero. Remove only the constant no-op, preserving dynamic bias. */
+            const int bias_index = nir_tex_instr_src_index(tex, nir_tex_src_bias);
+            if (tex->op == nir_texop_lod && bias_index >= 0 &&
+                nir_src_is_const(tex->src[bias_index].src) &&
+                nir_src_as_float(tex->src[bias_index].src) == 0.0f)
                nir_steal_tex_src(tex, nir_tex_src_bias);
             /* A query on a depth texture has no comparator: it is the
              * ordinary two-component LOD calculation. */

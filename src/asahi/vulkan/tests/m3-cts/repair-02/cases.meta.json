@@ -1,0 +1,35 @@
+{
+  "cases_sha256": "4bd7bba6f1a736684badd834535e3fd3ad8703a0172616fac7496b545fa6ed3e",
+  "cases": [
+    {
+      "case": "dEQP-VK.pipeline.shader_object_linked_spirv.bind_buffers_2.maintenance5.robustness2.triangle_list.buffers5.stride_offset_rnd543.whole_size.beyond_buffer",
+      "catalog_index": 1719354,
+      "original_index": 1553
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.isampler2darray_fragment",
+      "catalog_index": 787042,
+      "original_index": 1623
+    },
+    {
+      "case": "dEQP-VK.robustness.bind_index_buffer2.offset_100.draw_indexed.oo_index",
+      "catalog_index": 2329170,
+      "original_index": 2297
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler3d_fixednon_zero_base_level_fragment",
+      "catalog_index": 784897,
+      "original_index": 2817
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2d_fixed_nomipmap_clamp_min",
+      "catalog_index": 784847,
+      "original_index": 7614
+    },
+    {
+      "case": "dEQP-VK.pipeline.pipeline_library.extended_dynamic_state.after_pipelines.prim_restart_enable",
+      "catalog_index": 1607200,
+      "original_index": 9590
+    }
+  ]
+}
