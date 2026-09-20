@@ -2755,9 +2755,60 @@ test_g17p_half2_varying(void)
    return run_case(&c, AGX_ISA_ENCODING_AGX3B);
 }
 
+static bool
+test_exports_across_control_flow(void)
+{
+   nir_builder b = nir_builder_init_simple_shader(
+      MESA_SHADER_FRAGMENT, &agx_nir_options, "exports across late control flow");
+   nir_def *value = nir_load_preamble(&b, 1, 32, .base = 0);
+   nir_def *condition = nir_ine_imm(&b, value, 0);
+   nir_export_agx(&b, value, .base = 8);
+   nir_push_if(&b, condition);
+   nir_export_agx(&b, nir_iadd_imm(&b, value, 7), .base = 8);
+   nir_push_else(&b, NULL);
+   nir_export_agx(&b, nir_iadd_imm(&b, value, 11), .base = 10);
+   nir_pop_if(&b, NULL);
+   nir_export_agx(&b, nir_iadd_imm(&b, value, 13), .base = 12);
+   agx_preprocess_nir_g17p(b.shader);
+   struct agx_shader_key key = {
+      .dev.encoding = AGX_ISA_ENCODING_AGX3B,
+      .no_preamble = true,
+      .no_stop = true,
+      .reserved_preamble = 2,
+   };
+   struct agx_shader_part part = {0};
+   bool ok = agx_compile_shader_nir(b.shader, &key, &part) && part.binary;
+   /* The conditional updates require SSA merging. ABI copies must be made
+    * only at the actual exit, with exactly one value per destination. */
+   unsigned exports = 0, phis = 0;
+   nir_foreach_block(block, b.impl) {
+      nir_foreach_instr(instr, block) {
+         phis += instr->type == nir_instr_type_phi;
+         if (instr->type == nir_instr_type_intrinsic &&
+             nir_instr_as_intrinsic(instr)->intrinsic == nir_intrinsic_export_agx) {
+            ok &= block == nir_impl_last_block(b.impl);
+            ++exports;
+         }
+      }
+   }
+   ok &= exports == 3 && phis >= 1;
+   free(part.binary);
+   ralloc_free(b.shader);
+   return ok;
+}
+
 int
 main(int argc, char **argv)
 {
+   if (!test_exports_across_control_flow()) {
+      fprintf(stderr, "fragment exports across control flow: FAIL\n");
+      return 1;
+   }
+   if (argc == 2 && !strcmp(argv[1], "--exports-only")) {
+      printf("fragment exports across control flow: PASS\n");
+      return 0;
+   }
+
    if (argc == 2 && !strcmp(argv[1], "--imad-negative-only")) {
       const struct agx3_graphics_case c = {
          "vs-register-multiply-minus-byte", build_vs_g16_imad_negative_byte, true,

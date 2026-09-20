@@ -1,0 +1,146 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.glsl.opaque_type_indexing.ubo.const_expression_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.14948173,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.opaque_type_indexing.ubo.const_expression_fragment",
+      "catalog_index": 779831,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/dEQP-VK.glsl.opaque_type_indexing.ubo.const_expression_fragment.c3.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.glsl.opaque_type_indexing.ubo.const_expression_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.2401341,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.opaque_type_indexing.ubo.const_expression_vertex",
+      "catalog_index": 779835,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/dEQP-VK.glsl.opaque_type_indexing.ubo.const_expression_vertex.c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.glsl.opaque_type_indexing.ubo.const_literal_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.13643844,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.opaque_type_indexing.ubo.const_literal_fragment",
+      "catalog_index": 779837,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/dEQP-VK.glsl.opaque_type_indexing.ubo.const_literal_fragment.c6.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 3,
+    "case": "dEQP-VK.glsl.opaque_type_indexing.ubo.const_literal_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.1622539,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.opaque_type_indexing.ubo.const_literal_vertex",
+      "catalog_index": 779841,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/dEQP-VK.glsl.opaque_type_indexing.ubo.const_literal_vertex.c1.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 4,
+    "case": "dEQP-VK.glsl.opaque_type_indexing.ubo.dynamically_uniform_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.15344758,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.opaque_type_indexing.ubo.dynamically_uniform_fragment",
+      "catalog_index": 779843,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/dEQP-VK.glsl.opaque_type_indexing.ubo.dynamically_uniform_fragment.c7.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 5,
+    "case": "dEQP-VK.glsl.opaque_type_indexing.ubo.dynamically_uniform_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.15521263,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.opaque_type_indexing.ubo.dynamically_uniform_vertex",
+      "catalog_index": 779847,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/dEQP-VK.glsl.opaque_type_indexing.ubo.dynamically_uniform_vertex.c5.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 6,
+    "case": "dEQP-VK.glsl.opaque_type_indexing.ubo.uniform_fragment",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.1421907,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.opaque_type_indexing.ubo.uniform_fragment",
+      "catalog_index": 779849,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/dEQP-VK.glsl.opaque_type_indexing.ubo.uniform_fragment.c2.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 7,
+    "case": "dEQP-VK.glsl.opaque_type_indexing.ubo.uniform_vertex",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.16143586,
+    "eligibility": {
+      "case": "dEQP-VK.glsl.opaque_type_indexing.ubo.uniform_vertex",
+      "catalog_index": 779853,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/dEQP-VK.glsl.opaque_type_indexing.ubo.uniform_vertex.c4.r1.qpa",
+    "worker_exit": "exit status: 0"
+  }
+]

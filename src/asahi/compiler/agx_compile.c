@@ -6726,6 +6726,67 @@ agx_nir_lower_interleave(nir_shader *nir)
                               nir_metadata_control_flow, NULL);
 }
 
+/* Exported ABI registers are consumed by the next shader part at exit, not
+ * at the source-level store. Late address lowering may split an originally
+ * terminal output sequence with control flow. Materialize the final values
+ * through SSA so conditional/repeated writes also keep their execution masks.
+ */
+static bool
+agx_nir_export_at_exit(nir_shader *nir)
+{
+   bool progress = false;
+   nir_foreach_function_impl(impl, nir) {
+      nir_block *exit = nir_impl_last_block(impl);
+      bool needs_lowering = false;
+      nir_foreach_block(block, impl) {
+         nir_foreach_instr(instr, block) {
+            if (instr->type == nir_instr_type_intrinsic &&
+                nir_instr_as_intrinsic(instr)->intrinsic == nir_intrinsic_export_agx)
+               needs_lowering |= block != exit;
+         }
+      }
+      if (!needs_lowering)
+         continue;
+
+      nir_variable *values[AGX_NUM_REGS] = {0};
+      nir_builder b = nir_builder_create(impl);
+      nir_foreach_block(block, impl) {
+         nir_foreach_instr_safe(instr, block) {
+            if (instr->type != nir_instr_type_intrinsic)
+               continue;
+            nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+            if (intr->intrinsic != nir_intrinsic_export_agx)
+               continue;
+            b.cursor = nir_before_instr(instr);
+            nir_def *src = intr->src[0].ssa;
+            for (unsigned c = 0; c < src->num_components; ++c) {
+               unsigned reg = nir_intrinsic_base(intr) + c * (src->bit_size / 16);
+               assert(reg < ARRAY_SIZE(values));
+               if (!values[reg])
+                  values[reg] = nir_local_variable_create(
+                     impl, glsl_uintN_t_type(src->bit_size), "export_value");
+               assert(glsl_get_bit_size(values[reg]->type) == src->bit_size);
+               nir_store_var(&b, values[reg], nir_channel(&b, src, c), 1);
+            }
+            nir_instr_remove(instr);
+         }
+      }
+      b.cursor = nir_after_impl(impl);
+      for (unsigned reg = 0; reg < ARRAY_SIZE(values); ++reg) {
+         if (values[reg])
+            nir_export_agx(&b, nir_load_var(&b, values[reg]), .base = reg);
+      }
+      nir_progress(true, impl, nir_metadata_control_flow);
+      progress = true;
+   }
+   if (progress) {
+      nir_lower_vars_to_ssa(nir);
+      nir_opt_dce(nir);
+      nir_remove_dead_variables(nir, nir_var_function_temp, NULL);
+   }
+   return progress;
+}
+
 static bool
 agx_compile_shader_nir_inner(nir_shader *nir, struct agx_shader_key *key,
                        struct agx_shader_part *out)
@@ -6891,6 +6952,8 @@ agx_compile_shader_nir_inner(nir_shader *nir, struct agx_shader_key *key,
 
    if (is_g17p)
       nir->options = original_options;
+
+   NIR_PASS(_, nir, agx_nir_export_at_exit);
 
    if (nir->info.stage == MESA_SHADER_FRAGMENT) {
       info->varyings.fs.nr_cf = key->fs.cf_base;

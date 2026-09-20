@@ -75,3 +75,20 @@ d6028797c6b2fca204d10079af501ca0c026d23959622c00897853d25fdbb596.
 The original core and ledger remain retained. A subsequent independent UBO
 capture hit a compiler IR-validation exit (exports before branches), recorded
 at 20260920T110620505599Z-cts-fix-remaining-small; no GPU fault or thermal stop.
+
+## Shader-part exports after late control flow
+
+Late robust/sparse address lowering splits a formerly terminal fragment output
+sequence into multiple blocks. The backend emitter sees only blocks created so
+far, so agx_exit_block() cannot yet identify the final exit. Earlier exports
+were left in intermediate blocks and omitted by register allocation's final
+parallel copies. They produced wrong pixels or an IR-validation exit on an
+uncached compilation. Normalize nonterminal exports through function variables
+and SSA merges after late lowering, keeping conditional and repeated writes,
+then export each final value from the actual exit.
+
+All eight original UBO indexing failures pass with shader caching disabled,
+including the four vertex cases already helped by the streamed-export fix.
+Evidence 20260920T111202326946Z-cts-fix-ubo-exports, peak 66 C, 1.832 runner seconds.
+Host/ARM64 builds and the new conditional/repeated-export compiler check pass.
+Installed Vulkan SHA256: f6c9710940d64adb310d58daef222c9861d1c76fd53612493e03827a8e7a8a76.
