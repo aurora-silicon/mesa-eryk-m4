@@ -1,0 +1,4 @@
+index	catalog_index	status	case	message	diagnosis
+2	787042	Fail	dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.isampler2darray_fragment	vk.createGraphicsPipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:37	
+6	784897	Fail	dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler3d_fixednon_zero_base_level_fragment	vk.createGraphicsPipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:37	
+23	784847	Fail	dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2d_fixed_nomipmap_clamp_min	vk.createGraphicsPipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:37	

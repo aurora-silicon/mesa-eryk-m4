@@ -1,0 +1,572 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.shader_object.rendering.color_attachment_count_4.extra_attachment_between_2.none.none.random_color_formats.before.none.r16g16b16a16_sint",
+    "catalog_index": 2524971,
+    "boot_id": "c3114780-fdb9-4518-99a2-ccbfd45a86fc",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+      "--deqp-case=dEQP-VK.shader_object.rendering.color_attachment_count_4.extra_attachment_between_2.none.none.random_color_formats.before.none.r16g16b16a16_sint",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-all-images=enable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-cts-repair-01/segment-0000/case-0000/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.11399193600027502
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset.mirrored_repeat.isampler2darray_fragment",
+    "catalog_index": 786820,
+    "boot_id": "c3114780-fdb9-4518-99a2-ccbfd45a86fc",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+      "--deqp-case=dEQP-VK.glsl.texture_functions.texturegradoffset.mirrored_repeat.isampler2darray_fragment",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-all-images=enable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-cts-repair-01/segment-0000/case-0001/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.16444520999993983
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.isampler2darray_fragment",
+    "catalog_index": 787042,
+    "boot_id": "c3114780-fdb9-4518-99a2-ccbfd45a86fc",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+      "--deqp-case=dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.isampler2darray_fragment",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-all-images=enable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-cts-repair-01/segment-0000/case-0002/result.qpa"
+    ],
+    "status": "Fail",
+    "message": "vk.createGraphicsPipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:37",
+    "returncode": 1,
+    "seconds": 0.11438166499965519
+  },
+  {
+    "index": 3,
+    "case": "dEQP-VK.glsl.texture_functions.textureprojgradoffset.mirrored_repeat.sampler2d_vec3_fixed_vertex",
+    "catalog_index": 790877,
+    "boot_id": "c3114780-fdb9-4518-99a2-ccbfd45a86fc",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+      "--deqp-case=dEQP-VK.glsl.texture_functions.textureprojgradoffset.mirrored_repeat.sampler2d_vec3_fixed_vertex",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-all-images=enable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-cts-repair-01/segment-0000/case-0003/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.16433155499998975
+  },
+  {
+    "index": 4,
+    "case": "dEQP-VK.renderpasses.renderpass1.dedicated_allocation.formats.r32g32_sint.load.draw",
+    "catalog_index": 2283010,
+    "boot_id": "c3114780-fdb9-4518-99a2-ccbfd45a86fc",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+      "--deqp-case=dEQP-VK.renderpasses.renderpass1.dedicated_allocation.formats.r32g32_sint.load.draw",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-all-images=enable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-cts-repair-01/segment-0000/case-0004/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.1646040069999799
+  },
+  {
+    "index": 5,
+    "case": "dEQP-VK.shader_object.rendering.color_attachment_count_4.extra_attachment_after_1.none.none.random_color_formats.before.none.r16g16b16_sint_d16_unorm_s8_uint",
+    "catalog_index": 2490044,
+    "boot_id": "c3114780-fdb9-4518-99a2-ccbfd45a86fc",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+      "--deqp-case=dEQP-VK.shader_object.rendering.color_attachment_count_4.extra_attachment_after_1.none.none.random_color_formats.before.none.r16g16b16_sint_d16_unorm_s8_uint",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-all-images=enable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-cts-repair-01/segment-0000/case-0005/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.11450527699980739
+  },
+  {
+    "index": 6,
+    "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler3d_fixednon_zero_base_level_fragment",
+    "catalog_index": 784897,
+    "boot_id": "c3114780-fdb9-4518-99a2-ccbfd45a86fc",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+      "--deqp-case=dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler3d_fixednon_zero_base_level_fragment",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-all-images=enable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-cts-repair-01/segment-0000/case-0006/result.qpa"
+    ],
+    "status": "Fail",
+    "message": "vk.createGraphicsPipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:37",
+    "returncode": 1,
+    "seconds": 0.11444015699999
+  },
+  {
+    "index": 7,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r16g16b16a16_sint.r32g32_sint.optimal_optimal_nearest",
+    "catalog_index": 127838,
+    "boot_id": "c3114780-fdb9-4518-99a2-ccbfd45a86fc",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r16g16b16a16_sint.r32g32_sint.optimal_optimal_nearest",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-all-images=enable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-cts-repair-01/segment-0000/case-0007/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.11417750000009619
+  },
+  {
+    "index": 8,
+    "case": "dEQP-VK.shader_object.rendering.color_attachment_count_4.extra_attachment_before_2.none.dynamic.same_color_formats.before.none.r16g16b16a16_sint_d16_unorm_s8_uint",
+    "catalog_index": 2509277,
+    "boot_id": "c3114780-fdb9-4518-99a2-ccbfd45a86fc",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+      "--deqp-case=dEQP-VK.shader_object.rendering.color_attachment_count_4.extra_attachment_before_2.none.dynamic.same_color_formats.before.none.r16g16b16a16_sint_d16_unorm_s8_uint",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-all-images=enable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-cts-repair-01/segment-0000/case-0008/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.1144805910003015
+  },
+  {
+    "index": 9,
+    "case": "dEQP-VK.glsl.texture_functions.texturegradoffset.clamp_to_edge.sampler1darray_float_vertex",
+    "catalog_index": 786610,
+    "boot_id": "c3114780-fdb9-4518-99a2-ccbfd45a86fc",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+      "--deqp-case=dEQP-VK.glsl.texture_functions.texturegradoffset.clamp_to_edge.sampler1darray_float_vertex",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-all-images=enable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-cts-repair-01/segment-0000/case-0009/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.1645568210001329
+  },
+  {
+    "index": 10,
+    "case": "dEQP-VK.shader_object.rendering.color_attachment_count_4.extra_attachment_before_2.none.none.same_color_formats.before.none.r16g16b16a16_sint",
+    "catalog_index": 2512763,
+    "boot_id": "c3114780-fdb9-4518-99a2-ccbfd45a86fc",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+      "--deqp-case=dEQP-VK.shader_object.rendering.color_attachment_count_4.extra_attachment_before_2.none.none.same_color_formats.before.none.r16g16b16a16_sint",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-all-images=enable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-cts-repair-01/segment-0000/case-0010/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.11447359300018434
+  },
+  {
+    "index": 11,
+    "case": "dEQP-VK.shader_object.rendering.color_attachment_count_1.none.extra_output_before_1.none.same_color_formats.before.none.r32g32_uint_d16_unorm",
+    "catalog_index": 2471857,
+    "boot_id": "c3114780-fdb9-4518-99a2-ccbfd45a86fc",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+      "--deqp-case=dEQP-VK.shader_object.rendering.color_attachment_count_1.none.extra_output_before_1.none.same_color_formats.before.none.r32g32_uint_d16_unorm",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-all-images=enable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-cts-repair-01/segment-0000/case-0011/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.1143497309999475
+  },
+  {
+    "index": 12,
+    "case": "dEQP-VK.api.copy_and_blit.dedicated_allocation.blit_image.all_formats.generate_mipmaps.from_previous_level.layercount_6.r32g32_sint.optimal_optimal_nearest",
+    "catalog_index": 252689,
+    "boot_id": "c3114780-fdb9-4518-99a2-ccbfd45a86fc",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.dedicated_allocation.blit_image.all_formats.generate_mipmaps.from_previous_level.layercount_6.r32g32_sint.optimal_optimal_nearest",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-all-images=enable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-cts-repair-01/segment-0000/case-0012/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.1645751129999553
+  },
+  {
+    "index": 13,
+    "case": "dEQP-VK.shader_object.rendering.color_attachment_count_1.none.extra_output_after_1.dynamic.same_color_formats.before.none.r32g32_sint_d16_unorm",
+    "catalog_index": 2463130,
+    "boot_id": "c3114780-fdb9-4518-99a2-ccbfd45a86fc",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+      "--deqp-case=dEQP-VK.shader_object.rendering.color_attachment_count_1.none.extra_output_after_1.dynamic.same_color_formats.before.none.r32g32_sint_d16_unorm",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-all-images=enable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-cts-repair-01/segment-0000/case-0013/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.11434935699980997
+  },
+  {
+    "index": 14,
+    "case": "dEQP-VK.robustness.image_robustness.bind.notemplate.rg32ui.dontunroll.nonvolatile.sampled_image.no_fmt_qual.img.samples_1.cube_array.comp",
+    "catalog_index": 2334835,
+    "boot_id": "c3114780-fdb9-4518-99a2-ccbfd45a86fc",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+      "--deqp-case=dEQP-VK.robustness.image_robustness.bind.notemplate.rg32ui.dontunroll.nonvolatile.sampled_image.no_fmt_qual.img.samples_1.cube_array.comp",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-all-images=enable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-cts-repair-01/segment-0000/case-0014/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.1645550949997414
+  },
+  {
+    "index": 15,
+    "case": "dEQP-VK.shader_object.rendering.color_attachment_count_4.extra_attachment_between_1.none.none.random_color_formats.before.gl_frag_write.r16g16b16_sint",
+    "catalog_index": 2517525,
+    "boot_id": "c3114780-fdb9-4518-99a2-ccbfd45a86fc",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+      "--deqp-case=dEQP-VK.shader_object.rendering.color_attachment_count_4.extra_attachment_between_1.none.none.random_color_formats.before.gl_frag_write.r16g16b16_sint",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-all-images=enable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-cts-repair-01/segment-0000/case-0015/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.1144326399999045
+  },
+  {
+    "index": 16,
+    "case": "dEQP-VK.shader_object.rendering.color_attachment_count_1.none.extra_output_before_2.static.same_color_formats.before.none.r32g32_sint_x8_d24_unorm_pack32",
+    "catalog_index": 2476215,
+    "boot_id": "c3114780-fdb9-4518-99a2-ccbfd45a86fc",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+      "--deqp-case=dEQP-VK.shader_object.rendering.color_attachment_count_1.none.extra_output_before_2.static.same_color_formats.before.none.r32g32_sint_x8_d24_unorm_pack32",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-all-images=enable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-cts-repair-01/segment-0000/case-0016/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.11444428300001164
+  },
+  {
+    "index": 17,
+    "case": "dEQP-VK.shader_object.rendering.color_attachment_count_1.extra_attachment_after_1.none.dynamic.same_color_formats.before.none.r16g16b16_sint_d16_unorm_s8_uint",
+    "catalog_index": 2452548,
+    "boot_id": "c3114780-fdb9-4518-99a2-ccbfd45a86fc",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+      "--deqp-case=dEQP-VK.shader_object.rendering.color_attachment_count_1.extra_attachment_after_1.none.dynamic.same_color_formats.before.none.r16g16b16_sint_d16_unorm_s8_uint",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-all-images=enable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-cts-repair-01/segment-0000/case-0017/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.11432879699987097
+  },
+  {
+    "index": 18,
+    "case": "dEQP-VK.shader_object.rendering.color_attachment_count_4.extra_attachment_between_1.none.static.random_color_formats.before.none.r16g16b16_sint_d16_unorm",
+    "catalog_index": 2520563,
+    "boot_id": "c3114780-fdb9-4518-99a2-ccbfd45a86fc",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+      "--deqp-case=dEQP-VK.shader_object.rendering.color_attachment_count_4.extra_attachment_between_1.none.static.random_color_formats.before.none.r16g16b16_sint_d16_unorm",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-all-images=enable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-cts-repair-01/segment-0000/case-0018/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.11416341700032717
+  },
+  {
+    "index": 19,
+    "case": "dEQP-VK.robustness.robustness2.bind.template.rg32ui.unroll.nonvolatile.sampled_image.no_fmt_qual.null_descriptor.samples_1.cube.comp",
+    "catalog_index": 2388464,
+    "boot_id": "c3114780-fdb9-4518-99a2-ccbfd45a86fc",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+      "--deqp-case=dEQP-VK.robustness.robustness2.bind.template.rg32ui.unroll.nonvolatile.sampled_image.no_fmt_qual.null_descriptor.samples_1.cube.comp",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-all-images=enable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-cts-repair-01/segment-0000/case-0019/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.11434839699995791
+  },
+  {
+    "index": 20,
+    "case": "dEQP-VK.shader_object.rendering.color_attachment_count_1.none.none.dynamic.same_color_formats.before.none.r32g32_uint_x8_d24_unorm_pack32",
+    "catalog_index": 2484070,
+    "boot_id": "c3114780-fdb9-4518-99a2-ccbfd45a86fc",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+      "--deqp-case=dEQP-VK.shader_object.rendering.color_attachment_count_1.none.none.dynamic.same_color_formats.before.none.r32g32_uint_x8_d24_unorm_pack32",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-all-images=enable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-cts-repair-01/segment-0000/case-0020/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.11445388500033005
+  },
+  {
+    "index": 21,
+    "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r8g8_uint.r32g32_uint.optimal_optimal_nearest",
+    "catalog_index": 154176,
+    "boot_id": "c3114780-fdb9-4518-99a2-ccbfd45a86fc",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r8g8_uint.r32g32_uint.optimal_optimal_nearest",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-all-images=enable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-cts-repair-01/segment-0000/case-0021/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.11446671800013064
+  },
+  {
+    "index": 22,
+    "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.generate_mipmaps.from_base_level.layercount_6.r32g32_sint.general_optimal_nearest",
+    "catalog_index": 20388,
+    "boot_id": "c3114780-fdb9-4518-99a2-ccbfd45a86fc",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+      "--deqp-case=dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.generate_mipmaps.from_base_level.layercount_6.r32g32_sint.general_optimal_nearest",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-all-images=enable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-cts-repair-01/segment-0000/case-0022/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.1641682010003933
+  },
+  {
+    "index": 23,
+    "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2d_fixed_nomipmap_clamp_min",
+    "catalog_index": 784847,
+    "boot_id": "c3114780-fdb9-4518-99a2-ccbfd45a86fc",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+      "--deqp-case=dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2d_fixed_nomipmap_clamp_min",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-all-images=enable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-cts-repair-01/segment-0000/case-0023/result.qpa"
+    ],
+    "status": "Fail",
+    "message": "vk.createGraphicsPipelines(device, pipelineCache, 1u, pCreateInfo, pAllocator, &amp;object): VK_ERROR_FEATURE_NOT_PRESENT at vkRefUtil.cpp:37",
+    "returncode": 1,
+    "seconds": 0.11439970600031302
+  },
+  {
+    "index": 24,
+    "case": "dEQP-VK.renderpasses.renderpass1.suballocation.formats.r32g32_uint.input.dont_care.store.self_dep_draw_use_input_aspect",
+    "catalog_index": 2291347,
+    "boot_id": "c3114780-fdb9-4518-99a2-ccbfd45a86fc",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+      "--deqp-case=dEQP-VK.renderpasses.renderpass1.suballocation.formats.r32g32_uint.input.dont_care.store.self_dep_draw_use_input_aspect",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-all-images=enable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-cts-repair-01/segment-0000/case-0024/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.16434338899989598
+  },
+  {
+    "index": 25,
+    "case": "dEQP-VK.robustness.robustness2.push.template.rg32ui.dontunroll.nonvolatile.sampled_image.no_fmt_qual.null_descriptor.samples_1.1d_array.comp",
+    "catalog_index": 2423273,
+    "boot_id": "c3114780-fdb9-4518-99a2-ccbfd45a86fc",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+      "--deqp-case=dEQP-VK.robustness.robustness2.push.template.rg32ui.dontunroll.nonvolatile.sampled_image.no_fmt_qual.null_descriptor.samples_1.1d_array.comp",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-all-images=enable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-cts-repair-01/segment-0000/case-0025/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.16464577400029157
+  },
+  {
+    "index": 26,
+    "case": "dEQP-VK.shader_object.rendering.color_attachment_count_4.extra_attachment_before_1.none.dynamic.same_color_formats.before.none.r16g16b16a16_sint_d16_unorm_s8_uint",
+    "catalog_index": 2502301,
+    "boot_id": "c3114780-fdb9-4518-99a2-ccbfd45a86fc",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+      "--deqp-case=dEQP-VK.shader_object.rendering.color_attachment_count_4.extra_attachment_before_1.none.dynamic.same_color_formats.before.none.r16g16b16a16_sint_d16_unorm_s8_uint",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-all-images=enable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-cts-repair-01/segment-0000/case-0026/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.11444919999985359
+  },
+  {
+    "index": 27,
+    "case": "dEQP-VK.glsl.texture_functions.textureprojgradoffset_pcoffset.mirrored.usampler1d_vec2_fragment",
+    "catalog_index": 791099,
+    "boot_id": "c3114780-fdb9-4518-99a2-ccbfd45a86fc",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+      "--deqp-case=dEQP-VK.glsl.texture_functions.textureprojgradoffset_pcoffset.mirrored.usampler1d_vec2_fragment",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-all-images=enable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-cts-repair-01/segment-0000/case-0027/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "returncode": 0,
+    "seconds": 0.11411952399976144
+  },
+  {
+    "index": 28,
+    "case": "dEQP-VK.robustness.robustness2.bind.notemplate.rgba32f.unroll.nonvolatile.sampled_image.no_fmt_qual.null_descriptor.samples_1.cube_array.comp",
+    "catalog_index": 2374941,
+    "boot_id": "c3114780-fdb9-4518-99a2-ccbfd45a86fc",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+      "--deqp-case=dEQP-VK.robustness.robustness2.bind.notemplate.rgba32f.unroll.nonvolatile.sampled_image.no_fmt_qual.null_descriptor.samples_1.cube_array.comp",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-all-images=enable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-cts-repair-01/segment-0000/case-0028/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.16420231800020701
+  },
+  {
+    "index": 29,
+    "case": "dEQP-VK.robustness.robustness2.bind.notemplate.rg32i.dontunroll.nonvolatile.sampled_image.no_fmt_qual.img.samples_1.2d.comp",
+    "catalog_index": 2366443,
+    "boot_id": "c3114780-fdb9-4518-99a2-ccbfd45a86fc",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+      "--deqp-case=dEQP-VK.robustness.robustness2.bind.notemplate.rg32i.dontunroll.nonvolatile.sampled_image.no_fmt_qual.img.samples_1.2d.comp",
+      "--deqp-log-images=enable",
+      "--deqp-log-shader-sources=enable",
+      "--deqp-log-all-images=enable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-cts-repair-01/segment-0000/case-0029/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.1645434709998881
+  }
+]

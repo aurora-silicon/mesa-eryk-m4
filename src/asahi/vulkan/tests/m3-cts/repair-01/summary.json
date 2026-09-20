@@ -1,0 +1,60 @@
+{
+  "selected": 30,
+  "completed": 30,
+  "missing_indices": [],
+  "counts": {
+    "Pass": 27,
+    "Fail": 3
+  },
+  "coverage_complete": true,
+  "all_guards_complete": true,
+  "complete": true,
+  "boot_ids": [
+    "c3114780-fdb9-4518-99a2-ccbfd45a86fc"
+  ],
+  "peak_temperature_c": 50.5,
+  "selection": {
+    "source": "build/m3-cts-m4-random-10000-20260920",
+    "purpose": "Integer EOT exports and mixed-width funop repair",
+    "original_indices": [
+      1482,
+      1490,
+      1623,
+      1632,
+      1767,
+      2290,
+      2817,
+      3068,
+      3072,
+      3075,
+      3841,
+      4184,
+      4824,
+      5036,
+      5156,
+      5378,
+      5481,
+      5786,
+      6461,
+      6817,
+      7052,
+      7270,
+      7317,
+      7614,
+      7875,
+      7935,
+      7988,
+      8509,
+      9200,
+      9521
+    ]
+  },
+  "guards": [
+    {
+      "segment": "segment-0000",
+      "phase": "complete",
+      "elapsed_seconds": 5.003681949000111,
+      "watchdog_seconds": 60
+    }
+  ]
+}
