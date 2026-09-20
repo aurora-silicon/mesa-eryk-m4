@@ -12,16 +12,19 @@
 static void
 agx_print_sized(char prefix, unsigned value, enum agx_size size, FILE *fp)
 {
+   /* Refusal diagnostics must also be able to print malformed operands. */
+   if ((value & 1) && (size == AGX_SIZE_32 || size == AGX_SIZE_64)) {
+      fprintf(fp, "%c%uh:%u", prefix, value >> 1, size == AGX_SIZE_32 ? 32 : 64);
+      return;
+   }
    switch (size) {
    case AGX_SIZE_16:
       fprintf(fp, "%c%u%c", prefix, value >> 1, (value & 1) ? 'h' : 'l');
       return;
    case AGX_SIZE_32:
-      assert((value & 1) == 0);
       fprintf(fp, "%c%u", prefix, value >> 1);
       return;
    case AGX_SIZE_64:
-      assert((value & 1) == 0);
       fprintf(fp, "%c%u:%c%u", prefix, value >> 1, prefix, (value >> 1) + 1);
       return;
    }
@@ -65,8 +68,7 @@ agx_print_index(agx_index index, bool is_float, FILE *fp)
       break;
 
    case AGX_INDEX_IMMEDIATE:
-      if (is_float) {
-         assert(index.value < 0x100);
+      if (is_float && index.value < 0x100) {
          fprintf(fp, "#%f", agx_minifloat_decode(index.value));
       } else {
          fprintf(fp, "#%u", index.value);

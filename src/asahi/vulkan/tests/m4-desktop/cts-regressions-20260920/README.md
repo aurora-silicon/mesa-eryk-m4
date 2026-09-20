@@ -159,3 +159,14 @@ All22 original memory-model abnormal cases now Pass with shader cache disabled,
 20260920T114908486288Z-cts-fix-mm-imad-subtract. Host and ARM64 builds pass.
 Installed Vulkan SHA256 acec9662d96a007e0990aa6c8db56992e1311107a9ddfeb594cb69293cd46e14.
 The installed build also has the diagnostic-printer fix committed separately.
+
+## Refusal diagnostics must not crash
+
+Compiler error printing asserted on unaligned 32/64-bit registers and oversized
+floating immediates, obscuring the actual rejection. Print the exact malformed
+half-register offset and width, or raw immediate, without asserting. A focused
+printer test passes. A full agx_tests run now reaches completion rather than
+aborting, but reports 47 failures, largely stale packer byte/refusal expectations;
+these have not all been reviewed and are not represented as a compiler-suite pass.
+Logs: build/cts-regression-fixes-20260920/compiler-all-tests2.txt. These are separate
+from the 216 original CTS abnormal outcomes.

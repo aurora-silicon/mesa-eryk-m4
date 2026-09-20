@@ -50,6 +50,20 @@ append(std::vector<uint8_t> &v, const uint8_t *b, unsigned n)
    v.insert(v.end(), b, b + n);
 }
 
+TEST(AGXPrint, MalformedOperandDiagnostics)
+{
+   testing::internal::CaptureStderr();
+   agx_index unaligned = agx_register(0, AGX_SIZE_32);
+   unaligned.value = 1;
+   agx_print_index(unaligned, false, stderr);
+   fputc(' ', stderr);
+   unaligned.size = AGX_SIZE_64;
+   agx_print_index(unaligned, false, stderr);
+   fputc(' ', stderr);
+   agx_print_index(agx_immediate(256), true, stderr);
+   EXPECT_EQ(testing::internal::GetCapturedStderr(), "r0h:32 r0h:64 #256");
+}
+
 class AGX3PackBinary : public testing::Test {
  protected:
    void *mem_ctx;
