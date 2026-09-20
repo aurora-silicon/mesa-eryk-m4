@@ -726,6 +726,14 @@ lower_robustness(nir_builder *b, nir_intrinsic_instr *intr, UNUSED void *data)
    return true;
 }
 
+static bool
+needs_sampler_lod_bias(const nir_instr *instr, const void *unused)
+{
+   const nir_tex_instr *tex = nir_instr_as_tex(instr);
+   return !(tex->backend_flags & (AGX_TEXTURE_FLAG_UNBIASED_QUERY |
+                                 AGX_TEXTURE_FLAG_CENTRE_SAMPLER));
+}
+
 /*
  * Early texture lowering passes, called by the driver before lowering
  * descriptor bindings. That means these passes operate on texture derefs. The
@@ -756,6 +764,7 @@ agx_nir_lower_texture_early_with_2d_robustness(nir_shader *s,
       .lower_tg4_offsets = true,
       .lower_index_to_offset = true,
       .lower_sampler_lod_bias = support_lod_bias,
+      .lower_sampler_lod_bias_filter = needs_sampler_lod_bias,
 
       /* Unclear if/how mipmapped 1D textures work in the hardware. */
       .lower_1d = true,
@@ -767,6 +776,19 @@ agx_nir_lower_texture_early_with_2d_robustness(nir_shader *s,
    };
 
    NIR_PASS(progress, s, nir_lower_tex, &lower_tex_options);
+   nir_foreach_function_impl(impl, s) {
+      nir_foreach_block(block, impl) {
+         nir_foreach_instr(instr, block) {
+            if (instr->type != nir_instr_type_tex)
+               continue;
+            nir_tex_instr *tex = nir_instr_as_tex(instr);
+            if (!(tex->backend_flags & AGX_TEXTURE_FLAG_UNBIASED_QUERY))
+               continue;
+            tex->backend_flags &= ~AGX_TEXTURE_FLAG_UNBIASED_QUERY;
+            progress = true;
+         }
+      }
+   }
    return progress;
 }
 

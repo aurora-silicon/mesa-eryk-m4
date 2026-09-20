@@ -32,6 +32,7 @@ struct lower_descriptors_ctx {
    nir_address_format ssbo_addr_format;
    unsigned descriptor_generation;
    bool software_native_bias;
+   bool reconstruct_lod_query;
    bool software_sampler_state;
    mesa_shader_stage stage;
 };
@@ -801,7 +802,7 @@ lower_tex(nir_builder *b, nir_tex_instr *tex,
    nir_def *query_bias = NULL;
    nir_def *query_sampler = NULL;
    nir_def *query_view_min = NULL;
-   if (ctx->software_native_bias && tex->op == nir_texop_lod) {
+   if (ctx->reconstruct_lod_query && tex->op == nir_texop_lod) {
       query_bias = nir_steal_tex_src(tex, nir_tex_src_bias);
       if (query_bias) {
          query_sampler = load_resource_deref_desc(
@@ -1087,8 +1088,17 @@ hk_nir_lower_descriptors(nir_shader *nir, enum agx_chip chip, bool view_min,
 {
    struct lower_descriptors_ctx ctx = {
       .stage = nir->info.stage,
+      /* Gen4 has no sampler bias field. HAL200 deliberately leaves its field
+       * zero to combine biases before quantization. Gen5 retains hardware bias.
+       */
       .software_native_bias = agx_chip_sampler_generation(chip) ==
-                              AGX_SAMPLER_GENERATION_GEN4_HAL200,
+                                 AGX_SAMPLER_GENERATION_GEN4 ||
+                              agx_chip_sampler_generation(chip) ==
+                                 AGX_SAMPLER_GENERATION_GEN4_HAL200,
+      /* Preserve the qualified Gen4 query instruction-bias path. HAL200
+       * reconstructs clamping/mip selection from its raw footprint instead. */
+      .reconstruct_lod_query = agx_chip_sampler_generation(chip) ==
+                                 AGX_SAMPLER_GENERATION_GEN4_HAL200,
       .software_sampler_state = chip == AGX_CHIP_G16G && view_min,
       .clamp_desc_array_bounds =
          rs->storage_buffers !=

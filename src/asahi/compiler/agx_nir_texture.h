@@ -21,6 +21,9 @@
 /* Guarded ordinary-sampler shader arm; consumed before backend lowering. */
 #define AGX_TEXTURE_FLAG_PLAIN_SAMPLER (1 << 5)
 
+/* Reduction computes API bias itself; its footprint query must stay unbiased. */
+#define AGX_TEXTURE_FLAG_UNBIASED_QUERY (1 << 6)
+
 /* Texel buffers lowered to (at most) 16384x16384 2D textures */
 #define AGX_TEXTURE_BUFFER_WIDTH      16384
 #define AGX_TEXTURE_BUFFER_MAX_HEIGHT 16384

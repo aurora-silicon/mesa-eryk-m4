@@ -57,7 +57,7 @@ main(void)
       .vertex_inputs = VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_DISABLED_EXT,
       .images = VK_PIPELINE_ROBUSTNESS_IMAGE_BEHAVIOR_DISABLED_EXT,
    };
-   assert(hk_nir_lower_descriptors(b.shader, &robustness, 0, NULL));
+   assert(hk_nir_lower_descriptors(b.shader, &robustness, 0, NULL, false));
 
    /* Reproduce an assertion inserted by texture lowering after the first
     * descriptor pass. The late driver-sysval pass must resolve it too. */

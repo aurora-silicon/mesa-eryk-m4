@@ -235,6 +235,7 @@ lower_minmax(nir_builder *b, nir_tex_instr *tex, void *data)
       nir_tex_instr *q = nir_instr_as_tex(nir_def_instr(query));
       /* A LOD query on a depth image does not perform comparison. */
       q->is_shadow = q->is_new_style_shadow = false;
+      q->backend_flags |= AGX_TEXTURE_FLAG_UNBIASED_QUERY;
       if (tex->is_array) {
          unsigned n = cube ? 3 : dims;
          b->cursor = nir_before_instr(&q->instr);

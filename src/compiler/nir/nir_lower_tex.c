@@ -1758,6 +1758,8 @@ nir_lower_tex_block(nir_block *block, nir_builder *b,
        * may also need a sampler, but adding a bias source to them is invalid.
        * Gathers likewise ignore the bias. */
       if (options->lower_sampler_lod_bias &&
+          (!options->lower_sampler_lod_bias_filter ||
+           options->lower_sampler_lod_bias_filter(&tex->instr, options->callback_data)) &&
           (tex->op == nir_texop_tex || tex->op == nir_texop_txb ||
            tex->op == nir_texop_txd || tex->op == nir_texop_txl ||
            tex->op == nir_texop_lod)) {
