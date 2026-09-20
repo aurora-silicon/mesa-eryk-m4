@@ -781,6 +781,8 @@ agx3_emit_uvsw(struct util_dynarray *emission, enum agx_isa_encoding enc,
       return false;
    const agx_index index = I->src[0];
    const bool indirect = index.type != AGX_INDEX_IMMEDIATE;
+   if (!indirect && index.value >= AGX3_MAX_VERTEX_OUTPUTS)
+      return false;
    if ((indirect && (enc != AGX_ISA_ENCODING_AGX3B || defer_writeout ||
         (index.type != AGX_INDEX_REGISTER && index.type != AGX_INDEX_UNIFORM) ||
         index.size != AGX_SIZE_16 || agx_channels(index) != 1 ||
@@ -4729,25 +4731,19 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
    const bool g17p_user_output_protocol = g17p_sparse_outputs ||
       g17p_output_count >= 5;
    unsigned g17p_outputs_staged = 0;
-   bool g17p_indexed_outputs = false;
+   /* A terminal bundle is only an optimization. Exports separated by control
+    * flow, memory effects, or repeated destinations must retain their original
+    * order and execution mask. Use the scalar COPY/UVSW protocol for them and
+    * retire each write before reusing its staging address or scoreboard slot.
+    * The same serialization already protects dynamically indexed exports.
+    */
+   bool g17p_streamed_outputs = false;
    if (enc == AGX_ISA_ENCODING_AGX3B && ctx->stage == MESA_SHADER_VERTEX) {
       agx_foreach_instr_global(ctx, I) {
          if (I->op == AGX_OPCODE_ST_VARY && I->nr_srcs == 2 &&
-             I->src[0].type != AGX_INDEX_IMMEDIATE)
-            g17p_indexed_outputs = true;
-      }
-   }
-   /* User-output graphs outside the qualified scalar shapes must not
-    * silently fall back to immediate, potentially out-of-order writeout. */
-   if (enc == AGX_ISA_ENCODING_AGX3B && ctx->stage == MESA_SHADER_VERTEX) {
-      agx_foreach_block(ctx, block) {
-         agx_foreach_instr_in_block(block, I) {
-            if (I->op == AGX_OPCODE_ST_VARY && I->nr_srcs >= 1 &&
-                I->src[0].type == AGX_INDEX_IMMEDIATE &&
-                I->src[0].value >= 4 && !g17p_user_output_protocol &&
-                !g17p_indexed_outputs)
-               AGX3_REFUSE(I);
-         }
+             (I->src[0].type != AGX_INDEX_IMMEDIATE ||
+              (I->src[0].value >= 4 && !g17p_user_output_protocol)))
+            g17p_streamed_outputs = true;
       }
    }
    /* Across 71 fully decoded own-shader AGX3b vertex programs, f79 marks the
@@ -5156,7 +5152,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                stage_wait = g17p_outputs_staged == 0 ? wait | outstanding_here :
                   g17p_outputs_staged % nslots == 0 ? (1u << nslots) - 1 : 0;
             } else {
-               stage_wait = wait | (g17p_user_output_protocol ? outstanding_here :
+               stage_wait = wait | ((g17p_user_output_protocol || g17p_streamed_outputs) ? outstanding_here :
                                      outstanding_here & staging_bit);
             }
             if (!agx3_emit_uvsw(emission, enc, I, staging_half, stage_slot,
@@ -5208,9 +5204,9 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                      AGX3_REFUSE(I);
                }
             }
-            if (g17p_indexed_outputs) {
-               /* A dynamic destination may alias a previous export. Retire
-                * the write before reusing its index GPR or staging bank. */
+            if (g17p_streamed_outputs) {
+               /* Retire before another instruction or branch can reuse the
+                * source/index GPR, staging bank, or scoreboard slot. */
                if (!agx3_retire_slots_noop(emission, enc, staging_bit))
                   AGX3_REFUSE(I);
                outstanding &= (uint16_t)~staging_bit;

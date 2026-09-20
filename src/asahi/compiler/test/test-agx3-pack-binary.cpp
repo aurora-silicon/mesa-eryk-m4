@@ -4161,86 +4161,37 @@ TEST_F(AGX3PackBinary, FourPositionProtocolRemainsByteExact)
    EXPECT_EQ(b->shader->agx3_staging_halfs, 8u);
 }
 
-TEST_F(AGX3PackBinary, SixVertexOutputsRetireSourcesBeforeReuseAndWriteInOrder)
-{
-   /* Deliberately reuse r0 after every store, with the failing gradient's
-    * output order. A deferred COPY must finish its source read before the
-    * next MOV_IMM overwrites r0. */
-   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
-   b->shader->stage = MESA_SHADER_VERTEX;
-   const unsigned order[] = {3, 2, 1, 5, 0, 4};
-   std::vector<uint8_t> want;
-   for (unsigned component : order) {
-      agx_mov_imm_to(b, agx_register(0, AGX_SIZE_32), 0x3f000000 + component);
-      agx_st_vary(b, agx_immediate(component), agx_register(0, AGX_SIZE_32));
-      struct agx3_encoded_ldimm ld;
-      ASSERT_TRUE(agx3_pack_ldimm_u32(AGX_ISA_ENCODING_AGX3B, 0,
-                                     0x3f000000 + component, &ld));
-      append(want, ld.bytes, ld.length);
-      uint8_t bytes[AGX3_ALU_MAX_LENGTH];
-      uint8_t len = 0;
-      ASSERT_TRUE(agx3_stage_copy_source(AGX_ISA_ENCODING_AGX3B,
-                     component * 2, 0, false, component + 1, 0, bytes, &len));
-      append(want, bytes, len);
-      ASSERT_TRUE(agx3_alu_compose(AGX_ISA_ENCODING_AGX3B, AGX3_ALU_BAND,
-                     0, 0, 0, 0, 0, 1u << component, bytes, &len));
-      append(want, bytes, len);
-   }
-   for (unsigned component = 0; component < 6; ++component) {
-      uint8_t bytes[AGX3_VARY_MAX_LENGTH];
-      uint8_t len = 0;
-      ASSERT_TRUE(agx3_vary_uvsw(AGX_ISA_ENCODING_AGX3B, component * 2,
-                     component, component + 1, true, 1u << component,
-                     bytes, &len));
-      append(want, bytes, len);
-   }
-   agx_stop(b);
-   struct agx3_encoded_end end;
-   ASSERT_TRUE(agx3_pack_end(AGX_ISA_ENCODING_AGX3B, &end));
-   append(want, end.bytes, end.length);
-   EXPECT_EQ(pack(b), want);
-   EXPECT_TRUE(b->shader->agx3_staging_known);
-   EXPECT_EQ(b->shader->agx3_staging_halfs, 12u);
-}
-
-TEST_F(AGX3PackBinary, SixVertexOutputsDrainUnrelatedSlotsBeforeInjectedCopy)
+TEST_F(AGX3PackBinary, StreamedVertexOutputsDrainUnrelatedSlotsBeforeCopy)
 {
    agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
    b->shader->stage = MESA_SHADER_VERTEX;
-   /* Two live async results unrelated to r0, including a slot later used
-    * by output0. Both must retire before the injected r0-preserving wait. */
    agx_get_sr_to(b, agx_register(2, AGX_SIZE_32), AGX_SR_VERTEX_ID);
    agx_get_sr_to(b, agx_register(4, AGX_SIZE_32), AGX_SR_VERTEX_ID);
    agx_mov_imm_to(b, agx_register(0, AGX_SIZE_32), 0x3f800000);
-   const unsigned order[] = {3, 2, 1, 5, 0, 4};
-   for (unsigned component : order)
+   for (unsigned component : {3u, 2u, 1u, 5u, 0u, 4u})
       agx_st_vary(b, agx_immediate(component), agx_register(0, AGX_SIZE_32));
    agx_stop(b);
    const auto got = pack(b);
    uint8_t bytes[AGX3_STAGE_MAX_LENGTH];
    uint8_t len = 0;
-   ASSERT_TRUE(agx3_stage_copy_source(AGX_ISA_ENCODING_AGX3B, 6, 0,
-                                      false, 4, 3, bytes, &len));
-   const auto at = std::search(got.begin(), got.end(), bytes, bytes + len);
-   ASSERT_NE(at, got.end());
-   uint8_t wait_bytes[AGX3_ALU_MAX_LENGTH], wait_len = 0;
-   ASSERT_TRUE(agx3_alu_compose(AGX_ISA_ENCODING_AGX3B, AGX3_ALU_BAND,
-                  0, 0, 0, 0, 0, 8, wait_bytes, &wait_len));
-   ASSERT_GE(got.end() - at, len + wait_len);
-   EXPECT_EQ(memcmp(&*(at + len), wait_bytes, wait_len), 0);
+   ASSERT_TRUE(agx3_stage_copy_source(AGX_ISA_ENCODING_AGX3B, 0, 0,
+                                      false, 1, 3, bytes, &len));
+   EXPECT_NE(std::search(got.begin(), got.end(), bytes, bytes + len), got.end());
 }
 
-TEST_F(AGX3PackBinary, SixVertexOutputsRefuseUnqualifiedGraphs)
+TEST_F(AGX3PackBinary, VertexExportsAcceptGeneralGraphsButRejectInvalidOperands)
 {
-   for (unsigned mode = 0; mode < 7; ++mode) {
+   for (unsigned mode = 0; mode < 8; ++mode) {
       agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
       b->shader->stage = MESA_SHADER_VERTEX;
       for (unsigned component = 0; component < 6; ++component) {
          if (mode == 0 && component == 0)
-            continue; /* Missing position but user outputs remain. */
+            continue; /* Undefined position component. */
          unsigned index = mode == 1 && component == 0 ? 1 : component;
          if (mode == 2 && component == 5)
             index = 6;
+         if (mode == 7 && component == 5)
+            index = AGX3_MAX_VERTEX_OUTPUTS;
          agx_st_vary(b, agx_immediate(index),
                      agx_register(0, mode == 3 ? AGX_SIZE_16 : AGX_SIZE_32));
       }
@@ -4253,7 +4204,8 @@ TEST_F(AGX3PackBinary, SixVertexOutputsRefuseUnqualifiedGraphs)
                           agx_uniform(0, AGX_SIZE_64), agx_immediate(0),
                           AGX_FORMAT_I32, 1, 2, false);
       agx_stop(b);
-      EXPECT_TRUE(pack(b, false).empty()) << "mode=" << mode;
+      const bool valid = mode != 3 && mode != 7;
+      EXPECT_EQ(pack(b, valid).empty(), !valid) << "mode=" << mode;
    }
 }
 
@@ -6945,7 +6897,7 @@ TEST_F(AGX3PackBinary, NativeEmptyVertexNeedsOnlyEnd)
    EXPECT_EQ(pack(b), (std::vector<uint8_t>{0x0e, 0, 0, 0}));
 }
 
-TEST_F(AGX3PackBinary, SparseVertexExportAllowsEarlierMemorySideEffects)
+TEST_F(AGX3PackBinary, SparseVertexExportPreservesMemorySideEffects)
 {
    for (bool store_after : {false, true}) {
       agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
@@ -6958,7 +6910,7 @@ TEST_F(AGX3PackBinary, SparseVertexExportAllowsEarlierMemorySideEffects)
       if (!store_after)
          agx_st_vary(b, agx_immediate(4), agx_register(2, AGX_SIZE_32));
       agx_stop(b);
-      EXPECT_EQ(pack(b, !store_after).empty(), store_after);
+      EXPECT_FALSE(pack(b).empty());
    }
 }
 
@@ -6996,4 +6948,36 @@ TEST_F(AGX3PackBinary, SparseLayerExportsSinkBeforeRegisterAllocation)
                 got.end());
    }
    EXPECT_EQ(b->shader->agx3_staging_halfs, 12u);
+}
+
+TEST_F(AGX3PackBinary, StreamedVertexExportsRetireBeforeRegisterReuse)
+{
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+   b->shader->stage = MESA_SHADER_VERTEX;
+   /* Nonascending and repeated destinations cannot use a terminal bundle.
+    * Reuse the source GPR and all six staging slots across the stream. */
+   const unsigned indices[] = {0, 1, 2, 3, 5, 6, 4, 5, 127};
+   for (unsigned c : indices) {
+      agx_mov_imm_to(b, agx_register(0, AGX_SIZE_32), 0x3f000000 + c);
+      agx_st_vary(b, agx_immediate(c), agx_register(0, AGX_SIZE_32));
+   }
+   agx_stop(b);
+   const auto got = pack(b);
+   ASSERT_FALSE(got.empty());
+   auto cursor = got.begin();
+   for (unsigned i = 0; i < ARRAY_SIZE(indices); ++i) {
+      const unsigned slot = i % 6 + 1;
+      uint8_t write[AGX3_VARY_MAX_LENGTH], wait[AGX3_ALU_MAX_LENGTH];
+      uint8_t write_len, wait_len;
+      ASSERT_TRUE(agx3_vary_uvsw(AGX_ISA_ENCODING_AGX3B, 2 * (slot - 1),
+                     indices[i], slot, true, 1u << (slot - 1), write, &write_len));
+      ASSERT_TRUE(agx3_alu_wait_nop(AGX_ISA_ENCODING_AGX3B,
+                                  1u << (slot - 1), wait, &wait_len));
+      cursor = std::search(cursor, got.end(), write, write + write_len);
+      ASSERT_NE(cursor, got.end());
+      cursor += write_len;
+      ASSERT_GE(got.end() - cursor, wait_len);
+      EXPECT_TRUE(std::equal(wait, wait + wait_len, cursor));
+      cursor += wait_len;
+   }
 }

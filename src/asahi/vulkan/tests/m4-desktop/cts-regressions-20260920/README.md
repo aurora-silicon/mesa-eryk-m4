@@ -21,3 +21,22 @@ the six original validation failures remain open and are not claimed fixed.
 Evidence:20260920T105052985877Z-cts-fix-mm-conditional-fence-all. First isolated
 formerhang passed in0.616runner seconds (20260920T105024488822Z-cts-fix-mm-conditional-fence-one).
 Installed Vulkan SHA256:3f913bafcff9f9e75885aa4e124568ce85a4bd8b65612a8504dc5beaf9c6704d.
+
+## Vertex exports across control flow
+
+Point-size shaders can export position before a robust buffer load introduces
+control flow, then export point size and layer after the merge. The terminal
+batch optimizer cannot own these stores, but the packer incorrectly rejected
+their valid scalar output indices. Use the existing scalar COPY/UVSW protocol,
+retiring each write before further instructions can reuse GPRs, staging storage,
+or scoreboard slots. Keep the terminal batch optimization where applicable.
+
+All 13 original rasterization failures pass (1.223 runner seconds, peak 65.25 C),
+evidence 20260920T110022289933Z-cts-fix-point-streamed-final. Host/ARM64 builds and
+20 vertex compiler tests pass, including repeated/unordered indices, source/slot
+reuse, sparse outputs and invalid operands. Updated obsolete tests that assumed
+these general output shapes must be rejected or used the retired BAND wait.
+An unrestricted packer unit run also exposed an existing diagnostic assertion
+on intentionally malformed unaligned registers; this is recorded separately
+and does not constitute a full compiler unit-suite pass.
+Installed Vulkan SHA256: d39022a3e1f1327b6f0e2418590e751d5b6d6667d96059c585fd818c5903a7d8.

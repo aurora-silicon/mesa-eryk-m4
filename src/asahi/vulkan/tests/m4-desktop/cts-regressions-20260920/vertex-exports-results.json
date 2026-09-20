@@ -1,0 +1,236 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.rasterization.discard.point_list.query_pipeline_false",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.014259056,
+    "eligibility": {
+      "case": "dEQP-VK.rasterization.discard.point_list.query_pipeline_false",
+      "catalog_index": 2179387,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/dEQP-VK.rasterization.discard.point_list.query_pipeline_false.c1.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.rasterization.discard.point_list.query_pipeline_true",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.030105747,
+    "eligibility": {
+      "case": "dEQP-VK.rasterization.discard.point_list.query_pipeline_true",
+      "catalog_index": 2179388,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/dEQP-VK.rasterization.discard.point_list.query_pipeline_true.c5.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.rasterization.primitive_size.points.point_size_10000",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.09464958,
+    "eligibility": {
+      "case": "dEQP-VK.rasterization.primitive_size.points.point_size_10000",
+      "catalog_index": 2179571,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Pass, pointSize clamped to pointSizeRange[1]",
+    "qpa": "deqp-runner/dEQP-VK.rasterization.primitive_size.points.point_size_10000.c2.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 3,
+    "case": "dEQP-VK.rasterization.primitive_size.points.point_size_1024",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.02704156,
+    "eligibility": {
+      "case": "dEQP-VK.rasterization.primitive_size.points.point_size_1024",
+      "catalog_index": 2179572,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Pass, pointSize clamped to pointSizeRange[1]",
+    "qpa": "deqp-runner/dEQP-VK.rasterization.primitive_size.points.point_size_1024.c3.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 4,
+    "case": "dEQP-VK.rasterization.primitive_size.points.point_size_128",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.01732374,
+    "eligibility": {
+      "case": "dEQP-VK.rasterization.primitive_size.points.point_size_128",
+      "catalog_index": 2179573,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/dEQP-VK.rasterization.primitive_size.points.point_size_128.c12.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 5,
+    "case": "dEQP-VK.rasterization.primitive_size.points.point_size_2048",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.030495333,
+    "eligibility": {
+      "case": "dEQP-VK.rasterization.primitive_size.points.point_size_2048",
+      "catalog_index": 2179574,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Pass, pointSize clamped to pointSizeRange[1]",
+    "qpa": "deqp-runner/dEQP-VK.rasterization.primitive_size.points.point_size_2048.c7.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 6,
+    "case": "dEQP-VK.rasterization.primitive_size.points.point_size_256",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.015946912,
+    "eligibility": {
+      "case": "dEQP-VK.rasterization.primitive_size.points.point_size_256",
+      "catalog_index": 2179575,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/dEQP-VK.rasterization.primitive_size.points.point_size_256.c6.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 7,
+    "case": "dEQP-VK.rasterization.primitive_size.points.point_size_4096",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.05889951,
+    "eligibility": {
+      "case": "dEQP-VK.rasterization.primitive_size.points.point_size_4096",
+      "catalog_index": 2179576,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Pass, pointSize clamped to pointSizeRange[1]",
+    "qpa": "deqp-runner/dEQP-VK.rasterization.primitive_size.points.point_size_4096.c11.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 8,
+    "case": "dEQP-VK.rasterization.primitive_size.points.point_size_512",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.019829387,
+    "eligibility": {
+      "case": "dEQP-VK.rasterization.primitive_size.points.point_size_512",
+      "catalog_index": 2179577,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Pass, pointSize clamped to pointSizeRange[1]",
+    "qpa": "deqp-runner/dEQP-VK.rasterization.primitive_size.points.point_size_512.c9.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 9,
+    "case": "dEQP-VK.rasterization.primitive_size.points.point_size_8192",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.06538466,
+    "eligibility": {
+      "case": "dEQP-VK.rasterization.primitive_size.points.point_size_8192",
+      "catalog_index": 2179578,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Pass, pointSize clamped to pointSizeRange[1]",
+    "qpa": "deqp-runner/dEQP-VK.rasterization.primitive_size.points.point_size_8192.c8.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 10,
+    "case": "dEQP-VK.rasterization.primitives.no_stipple.points",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.055278305,
+    "eligibility": {
+      "case": "dEQP-VK.rasterization.primitives.no_stipple.points",
+      "catalog_index": 2179699,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/dEQP-VK.rasterization.primitives.no_stipple.points.c10.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 11,
+    "case": "dEQP-VK.rasterization.primitives_multisample_2_bit.no_stipple.points",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.11311956,
+    "eligibility": {
+      "case": "dEQP-VK.rasterization.primitives_multisample_2_bit.no_stipple.points",
+      "catalog_index": 2179878,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/dEQP-VK.rasterization.primitives_multisample_2_bit.no_stipple.points.c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 12,
+    "case": "dEQP-VK.rasterization.primitives_multisample_4_bit.no_stipple.points",
+    "boot_id": "c1891c11-ee48-42c4-ab16-99187818a8e9",
+    "runner_status": "Pass",
+    "seconds": 0.072333075,
+    "eligibility": {
+      "case": "dEQP-VK.rasterization.primitives_multisample_4_bit.no_stipple.points",
+      "catalog_index": 2179986,
+      "classification": "bug",
+      "requirements": [],
+      "rule": "Recorded full-retest abnormal result"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/dEQP-VK.rasterization.primitives_multisample_4_bit.no_stipple.points.c4.r1.qpa",
+    "worker_exit": "exit status: 0"
+  }
+]

@@ -1,0 +1,22 @@
+{
+  "selected": 13,
+  "recorded": 13,
+  "completed": 13,
+  "counts": {
+    "Pass": 13
+  },
+  "classifications": {
+    "bug": 13
+  },
+  "elapsed_seconds": 3.304875253001228,
+  "preparation_seconds": 1.523592359968461,
+  "runner_seconds": 1.2233861910003725,
+  "jobs": 1,
+  "tests_per_group": 1,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "bfaa30b4108131e5e937679499a4e39b581bd4f48d984983c8fa820a236aea2a",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260920T110022289933Z-cts-fix-point-streamed-final",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 65.25
+}
