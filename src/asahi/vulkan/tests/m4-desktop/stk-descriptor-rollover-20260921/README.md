@@ -56,3 +56,21 @@ Release ARM64 Vulkan library builds successfully. The existing host native
 texture descriptor geometry/policy test passes. All hardware runs use the
 60-second watchdog, bounded guard, 0.5-second temperature logging and 95 C
 stop. Normal SDDM autologin and both displays are restored after live runs.
+
+## Zink validation and installed build
+
+`20260921T053610009230Z-stk-zink-rollover-fixed-race` completed 766 race frames
+in 69.375 s = **11.0414 FPS**. The 65-second screenshot shows the full race
+(track, kart, sky, effects); the 30-second image is still loading. Minimum
+available RAM 4774.4 MiB, peak temperature 87.25 C. No GPU fault or OOM was
+reported by either completed live run. These two samples measure different
+application rendering backends and are not a controlled API-overhead comparison.
+
+The exact tested Vulkan library was atomically installed in the normal
+`/opt/asahi-m4-port/lib/libvulkan_asahi.so` location. SHA256:
+`2a960c5ea294e4709de6502abe3c5ada7b73071211e6f45d23e17c133cd36ad1`.
+The previous library is retained beside it with `.before-<sha256>` suffix.
+The binary was built from the code in commit 012214ce783 before that commit
+was created; its embedded version string therefore predates the commit.
+
+Production desktop restart 20260921T053954175065Z-stk-fixed-production-desktop passed: normal autologin Hyprland maps the installed fix, eDP-1 and DP-1 are active with DPMS on, and no benchmark is left running.

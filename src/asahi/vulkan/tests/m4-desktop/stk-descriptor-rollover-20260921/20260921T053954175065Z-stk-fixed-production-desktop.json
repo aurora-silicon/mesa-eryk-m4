@@ -1,0 +1,217 @@
+{
+  "manifest.json": {
+    "id": "20260921T053954175065Z-stk-fixed-production-desktop",
+    "hypothesis": "Normal autologin compositor loads the tested descriptor fix and restores both connected displays",
+    "command": [
+      "python3",
+      "/root/restart-graphics-desktop.py",
+      "/root/asahi-evidence/20260921T053954175065Z-stk-fixed-production-desktop",
+      "2a960c5ea294e4709de6502abe3c5ada7b73071211e6f45d23e17c133cd36ad1"
+    ],
+    "expected_success": "PASS: normal desktop restarted with verified Mesa and prior displays",
+    "seconds": 50,
+    "sources": {
+      "mesa": {
+        "head": "012214ce783d5158989351a1b57279590442351c",
+        "status": "",
+        "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "kernel": {
+        "head": "db8763db51c85b225e2e9dff30ae604f0a1f5a40",
+        "status": "",
+        "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    }
+  },
+  "report.json": {
+    "id": "20260921T053954175065Z-stk-fixed-production-desktop",
+    "verdict": "pass",
+    "transport_returncode": 0,
+    "evidence_fetched": true,
+    "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260921T053954175065Z-stk-fixed-production-desktop",
+    "observations": {
+      "pixel_results": [
+        "PASS: normal desktop restarted with verified Mesa and prior displays"
+      ],
+      "pixel_result_count": 1,
+      "thermal_samples": 11,
+      "malformed_thermal_samples": 0,
+      "peak_temperature_c": 83.75,
+      "channel_peaks_c": {
+        "PMP aggregate die hotspot": 83.75,
+        "Ta000m": 73.5,
+        "Te000m": 68.25,
+        "Te001m": 83.75,
+        "Tp000m": 74.0,
+        "Tp001m": 79.5
+      }
+    }
+  },
+  "remote/desktop.json": {
+    "pid": 39281,
+    "library": "/opt/asahi-m4-port/lib/libvulkan_asahi.so",
+    "sha256": "2a960c5ea294e4709de6502abe3c5ada7b73071211e6f45d23e17c133cd36ad1",
+    "outputs": [
+      "DP-1",
+      "eDP-1"
+    ]
+  },
+  "remote/monitors-after.json": [
+    {
+      "id": 0,
+      "name": "eDP-1",
+      "description": "",
+      "make": "",
+      "model": "",
+      "serial": "",
+      "width": 2560,
+      "height": 1664,
+      "physicalWidth": 0,
+      "physicalHeight": 0,
+      "refreshRate": 60.0,
+      "x": 0,
+      "y": 0,
+      "activeWorkspace": {
+        "id": 1,
+        "name": "1"
+      },
+      "specialWorkspace": {
+        "id": 0,
+        "name": ""
+      },
+      "reserved": [
+        0,
+        32,
+        0,
+        0
+      ],
+      "scale": 2.0,
+      "transform": 0,
+      "focused": true,
+      "dpmsStatus": true,
+      "vrr": false,
+      "solitary": "0",
+      "solitaryBlockedBy": [
+        "WINDOWED",
+        "CANDIDATE"
+      ],
+      "activelyTearing": false,
+      "tearingBlockedBy": [
+        "NOT_TORN",
+        "USER",
+        "CANDIDATE"
+      ],
+      "directScanoutTo": "0",
+      "directScanoutBlockedBy": [
+        "USER",
+        "SW",
+        "CANDIDATE"
+      ],
+      "disabled": false,
+      "currentFormat": "XRGB8888",
+      "mirrorOf": "none",
+      "availableModes": [
+        "2560x1664@60.00Hz"
+      ],
+      "colorManagementPreset": "srgb",
+      "sdrBrightness": 1.0,
+      "sdrSaturation": 1.0,
+      "sdrMinLuminance": 0.2,
+      "sdrMaxLuminance": 80,
+      "hardwareCursorsInUse": true
+    },
+    {
+      "id": 1,
+      "name": "DP-1",
+      "description": "Philips Consumer Electronics Company PHL 237E7 UHB1707006721",
+      "make": "Philips Consumer Electronics Company",
+      "model": "PHL 237E7",
+      "serial": "UHB1707006721",
+      "width": 1920,
+      "height": 1080,
+      "physicalWidth": 510,
+      "physicalHeight": 290,
+      "refreshRate": 60.0,
+      "x": 1280,
+      "y": 0,
+      "activeWorkspace": {
+        "id": 2,
+        "name": "2"
+      },
+      "specialWorkspace": {
+        "id": 0,
+        "name": ""
+      },
+      "reserved": [
+        0,
+        32,
+        0,
+        0
+      ],
+      "scale": 1.0,
+      "transform": 0,
+      "focused": false,
+      "dpmsStatus": true,
+      "vrr": false,
+      "solitary": "0",
+      "solitaryBlockedBy": [
+        "WINDOWED",
+        "CANDIDATE"
+      ],
+      "activelyTearing": false,
+      "tearingBlockedBy": [
+        "NOT_TORN",
+        "USER",
+        "CANDIDATE"
+      ],
+      "directScanoutTo": "0",
+      "directScanoutBlockedBy": [
+        "USER",
+        "SW",
+        "CANDIDATE"
+      ],
+      "disabled": false,
+      "currentFormat": "XRGB8888",
+      "mirrorOf": "none",
+      "availableModes": [
+        "1920x1080@60.00Hz",
+        "1920x1080@60.00Hz",
+        "1920x1080@59.94Hz",
+        "1920x1080@50.00Hz",
+        "1680x1050@59.88Hz",
+        "1280x1024@75.03Hz",
+        "1280x1024@60.02Hz",
+        "1440x900@74.98Hz",
+        "1440x900@59.90Hz",
+        "1280x960@60.00Hz",
+        "1280x720@60.00Hz",
+        "1280x720@60.00Hz",
+        "1280x720@59.94Hz",
+        "1280x720@50.00Hz",
+        "1024x768@75.03Hz",
+        "1024x768@60.00Hz",
+        "800x600@75.00Hz",
+        "800x600@60.32Hz",
+        "720x576@50.00Hz",
+        "720x576@50.00Hz",
+        "720x576@50.00Hz",
+        "720x480@60.00Hz",
+        "720x480@60.00Hz",
+        "720x480@59.94Hz",
+        "720x480@59.94Hz",
+        "720x480@59.94Hz",
+        "640x480@75.00Hz",
+        "640x480@72.81Hz",
+        "640x480@60.00Hz",
+        "640x480@59.94Hz",
+        "640x480@59.94Hz"
+      ],
+      "colorManagementPreset": "srgb",
+      "sdrBrightness": 1.0,
+      "sdrSaturation": 1.0,
+      "sdrMinLuminance": 0.2,
+      "sdrMaxLuminance": 80,
+      "hardwareCursorsInUse": true
+    }
+  ]
+}
