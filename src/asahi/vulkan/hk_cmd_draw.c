@@ -5339,7 +5339,6 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
       if ((draw_.index_size != AGX_INDEX_SIZE_U8 &&
            draw_.index_size != AGX_INDEX_SIZE_U16 &&
            draw_.index_size != AGX_INDEX_SIZE_U32) ||
-          ia_stats ||
           (agx_is_indirect(draw_.b)
               ? (!draw_.b.ptr ||
                  (draw_.index_buffer_range_B && !draw_.index_buffer))
@@ -5348,8 +5347,8 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
                    draw_.index_buffer, draw_.index_buffer_range_B, draw_.start,
                    draw_.b.count[0], agx_index_size_to_B(draw_.index_size),
                    &address, &size_word))) {
-         mesa_loge("native G17P indexed draw requires an in-bounds "
-                   "uint8/uint16/uint32 span without queries");
+         mesa_loge("native indexed draw requires an in-bounds "
+                   "uint8/uint16/uint32 span");
          vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
          return;
       }
