@@ -1368,11 +1368,17 @@ zink_query_update_gs_states(struct zink_context *ctx)
       query = ctx->vertices_query;
       struct zink_query_start *last_start = util_dynarray_top_ptr(&query->starts, struct zink_query_start);
       assert(query->active);
-      if (last_start->was_line_loop != ctx->was_line_loop) {
+      if (query->has_draws && last_start->was_line_loop != ctx->was_line_loop) {
          suspendall = true;
       }
    }
    if (suspendall) {
+     /* A query resumed before the render pass must also end outside it.
+      * Finish the pass (suspending queries begun inside it) before splitting
+      * the remaining queries for a geometry/stream-output state change.
+      * The draw path will start the next pass after updating query state.
+      */
+     zink_batch_no_rp(ctx);
      zink_suspend_queries(ctx);
      zink_resume_queries(ctx);
    }
@@ -1568,6 +1574,18 @@ zink_get_query_result_resource(struct pipe_context *pctx,
     * - Chapter 18. Queries
     */
    size_flags |= VK_QUERY_RESULT_WAIT_BIT;
+   /* Line loops are lowered to lines, doubling the Vulkan IA vertex count.
+    * Buffer results need the same normalization as CPU query results.
+    */
+   if (query->type == PIPE_QUERY_PIPELINE_STATISTICS_SINGLE &&
+       query->index == PIPE_STAT_QUERY_IA_VERTICES) {
+      util_dynarray_foreach(&query->starts, struct zink_query_start, start) {
+         if (start->was_line_loop) {
+            force_cpu_read(ctx, pquery, result_type, pres, offset);
+            return;
+         }
+      }
+   }
    if (!is_time_query(query) && !is_bool_query(query)) {
       if (num_queries == 1 && !is_emulated_primgen(query) &&
                               query->type != PIPE_QUERY_PRIMITIVES_EMITTED &&
