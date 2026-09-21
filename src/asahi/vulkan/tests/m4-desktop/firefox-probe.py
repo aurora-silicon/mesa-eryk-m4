@@ -67,6 +67,7 @@ def main():
     p.add_argument('--cpu-profile', action='store_true', help='Sample system CPU time during observation only')
     p.add_argument('--no-screenshots', action='store_true', help='Skip image captures during performance iterations')
     p.add_argument('--env', action='append', default=[], metavar='KEY=VALUE', help='Explicit diagnostic browser environment override')
+    p.add_argument('--window', nargs=4, type=int, metavar=('WIDTH', 'HEIGHT', 'X', 'Y'), help='Place only the probe window at a fixed logical size and desktop position')
     p.add_argument('--force-gpu', action='store_true')
     p.add_argument('--renderer', choices=['asahi', 'lavapipe'], default='asahi')
     p.add_argument('--capture', action='store_true')
@@ -208,6 +209,25 @@ def main():
                         raise TimeoutError('Firefox automation did not start')
                     time.sleep(.2)
             remote.call('WebDriver:NewSession', {'capabilities': {'alwaysMatch': {'acceptInsecureCerts': False}}})
+            hc = ['runuser', '-u', 'e', '--', 'env', 'XDG_RUNTIME_DIR='+env['XDG_RUNTIME_DIR'], 'hyprctl', '-i', '0']
+            clients = json.loads(subprocess.check_output(hc+['-j', 'clients'], timeout=3))
+            owned = []
+            for client in clients:
+                try:
+                    if os.fsencode(str(profile)) in Path('/proc', str(client['pid']), 'cmdline').read_bytes().split(b'\0'):
+                        owned.append(client)
+                except OSError:
+                    pass
+            if a.window:
+                assert len(owned) == 1, 'Expected one probe-owned window'
+                w,h,x,y = a.window
+                assert w > 0 and h > 0
+                selector = json.dumps('address:'+owned[0]['address'])
+                for action in [f'hl.dsp.window.float({{action="set",window={selector}}})',
+                               f'hl.dsp.window.resize({{x={w},y={h},window={selector}}})',
+                               f'hl.dsp.window.move({{x={x},y={y},window={selector}}})']:
+                    subprocess.run(hc+['dispatch', action], check=True, capture_output=True, timeout=3)
+            (out/'monitors.json').write_bytes(subprocess.check_output(hc+['-j', 'monitors'], timeout=3))
             remote.call('WebDriver:SetTimeouts', {'script': 6000, 'pageLoad': 12000, 'implicit': 0})
             remote.call('Marionette:SetContext', {'value': 'chrome'})
             gfx = remote.script('const done=arguments[arguments.length-1]; ChromeUtils.importESModule("resource://gre/modules/Troubleshoot.sys.mjs").Troubleshoot.snapshot().then(s=>done(s.graphics));', True)
@@ -230,7 +250,8 @@ def main():
             while time.monotonic() < until:
                 check(); time.sleep(.25)
             stop_profiler()
-            if a.cpu_profile and result['perf_returncode'] != 0:
+            if a.cpu_profile and (result['perf_returncode'] not in (0, 130, -signal.SIGINT) or
+                                  result.get('perf_error') or not (out / 'perf.data').is_file()):
                 raise RuntimeError('CPU profiling failed; see perf-record.log')
             if a.freeze_animation:
                 remote.script('window.requestAnimationFrame = () => 0; return true;')
@@ -238,6 +259,7 @@ def main():
             # Do not call getContext here: that can create a new context after
             # failed website startup and incorrectly suggest a working page.
             page = remote.script('return {url:location.href,title:document.title,ready:document.readyState,probe:JSON.parse(document.documentElement.dataset.m4Probe||"null"),canvases:Array.from(document.querySelectorAll("canvas")).map(c=>({width:c.width,height:c.height,clientWidth:c.clientWidth,clientHeight:c.clientHeight}))};')
+            page['viewport'] = remote.script('return {width:innerWidth,height:innerHeight,dpr:devicePixelRatio,screenWidth:screen.width,screenHeight:screen.height};')
             if a.page_script:
                 script = a.page_script.read_text()
                 (out / 'page-diagnostics.js').write_text(script)

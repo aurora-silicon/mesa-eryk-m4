@@ -18,3 +18,9 @@ retains video quality counters, callback distributions and decoded dimensions.
 Processing duration is browser-dependent and may be unavailable. These are
 browser measurements, not a physical scanout or GPU timestamp claim. Retain
 monitor mode and window dimensions when comparing results.
+
+`--window WIDTH HEIGHT X Y` floats and positions only the profile-owned probe
+window using Hyprland's Lua dispatchers. The helper records monitor modes and
+page viewport/DPR; compare the same output and size across kernel reboots.
+The profiler is stopped with SIGINT; exit 130 or -SIGINT is normal when a
+profile file was retained, while forced-kill/other failures remain errors.
