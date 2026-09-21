@@ -171,7 +171,7 @@ hk_get_device_extensions(const struct hk_instance *instance,
       .EXT_border_color_swizzle = true,
       .EXT_buffer_device_address = true,
       .EXT_calibrated_timestamps = true,
-      .EXT_conditional_rendering = false,
+      .EXT_conditional_rendering = true,
       .EXT_color_write_enable = true,
       .EXT_custom_border_color = true,
       .EXT_depth_bias_control = true,
@@ -511,7 +511,7 @@ hk_get_device_features(
       .colorWriteEnable = true,
 
       /* VK_EXT_conditional_rendering */
-      .conditionalRendering = false,
+      .conditionalRendering = true,
       .inheritedConditionalRendering = false,
 
       /* VK_EXT_custom_border_color */

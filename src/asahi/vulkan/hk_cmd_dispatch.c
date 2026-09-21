@@ -819,6 +819,16 @@ dispatch(struct hk_cmd_buffer *cmd, struct agx_grid grid)
    if (agx_is_shader_empty(&s->b))
       return;
 
+   if (cmd->state.conditional && !cmd->in_meta) {
+      struct hk_descriptor_state *desc = &cmd->state.cs.descriptors;
+      uint64_t output = hk_pool_alloc(cmd, 3 * sizeof(uint32_t), 4).gpu;
+      libagx_conditional_args(cmd, agx_1d(1), AGX_BARRIER_ALL, output,
+         desc->root.cs.group_count_addr, cmd->state.conditional, 3);
+      desc->root.cs.group_count_addr = output;
+      desc->root_dirty = true;
+      grid = agx_grid_indirect(output);
+   }
+
    struct hk_cs *cs = hk_cmd_buffer_get_cs(cmd, true /* compute */);
    if (!cs)
       return;

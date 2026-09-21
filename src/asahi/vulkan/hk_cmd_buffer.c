@@ -263,8 +263,13 @@ hk_CmdExecuteCommands(VkCommandBuffer commandBuffer,
     * application is required to bind it again.  Invalidate here so binding
     * the same object used by the secondary cannot be incorrectly elided.
     */
+   /* Inherited conditional rendering is not advertised. A secondary can
+    * establish its own condition, but does not inherit the primary's. */
+   uint64_t conditional = cmd->state.conditional;
+   cmd->state.conditional = 0;
    vk_common_CmdExecuteCommands(commandBuffer, commandBufferCount,
                                 pCommandBuffers);
+   cmd->state.conditional = conditional;
    hk_cmd_invalidate_graphics_state(cmd);
    hk_cmd_invalidate_compute_state(cmd);
 }

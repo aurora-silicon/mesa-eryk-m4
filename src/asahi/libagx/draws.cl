@@ -9,6 +9,24 @@
 #include "d3d12_sparse.h"
 #include "libagx_dgc.h"
 
+/* Latch an execution-time predicate, including the inverted form. */
+KERNEL(1)
+libagx_load_conditional(global uint32_t *out, constant uint32_t *predicate,
+                       uint32_t inverted)
+{
+   *out = (*predicate != 0) != (inverted != 0);
+}
+
+/* Draw and dispatch arguments share the same zero-work representation. */
+KERNEL(1)
+libagx_conditional_args(global uint32_t *out, constant uint32_t *in,
+                       constant uint32_t *predicate, uint words__6)
+{
+   bool enabled = *predicate != 0;
+   for (uint i = 0; i < words__6; ++i)
+      out[i] = enabled ? in[i] : 0;
+}
+
 /*
  * To implement drawIndirectCount generically, we dispatch a kernel to
  * clone-and-patch the indirect buffer, predicating out draws as appropriate.

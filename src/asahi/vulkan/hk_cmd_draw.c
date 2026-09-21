@@ -1408,8 +1408,12 @@ hk_CmdBeginRendering(VkCommandBuffer commandBuffer,
          .layerCount = render->view_mask ? 1 : render->layer_count,
       };
 
+      /* Load-op clears are unconditional, unlike API ClearAttachments. */
+      uint64_t conditional = cmd->state.conditional;
+      cmd->state.conditional = 0;
       hk_CmdClearAttachments(hk_cmd_buffer_to_handle(cmd), clear_count,
                              clear_att, 1, &clear_rect);
+      cmd->state.conditional = conditional;
    } else {
       /* If a tile is empty, we do not want to process it, as the redundant
        * roundtrip of memory-->tilebuffer-->memory wastes a tremendous amount of
@@ -5354,6 +5358,24 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
       }
    }
 
+   if (cmd->state.conditional && (!cmd->in_meta || cmd->conditional_meta_clear)) {
+      unsigned words = draw_.indexed ? 5 : 4;
+      uint64_t input = draw_.b.ptr;
+      if (!agx_is_indirect(draw_.b)) {
+         uint32_t args[5] = {draw_.b.count[0], draw_.b.count[1], draw_.start,
+                            draw_.indexed ? draw_.index_bias : draw_.start_instance,
+                            draw_.start_instance};
+         input = hk_pool_upload(cmd, args, words * 4, 4);
+      }
+      uint64_t output = hk_pool_alloc(cmd, words * 4, 4).gpu;
+      libagx_conditional_args(cmd, agx_1d(1), AGX_BARRIER_ALL | AGX_PREGFX,
+                              output, input, cmd->state.conditional, words);
+      draw_ = draw_.indexed
+         ? agx_draw_indexed_indirect(output, draw_.index_buffer,
+              draw_.index_buffer_range_B, draw_.index_size, draw_.restart)
+         : agx_draw_indirect(output);
+   }
+
    hk_foreach_view(cmd) {
       struct agx_draw draw = draw_;
       bool needs_idx_robust = false;
@@ -6057,11 +6079,21 @@ hk_CmdBeginConditionalRenderingEXT(
    VkCommandBuffer commandBuffer,
    const VkConditionalRenderingBeginInfoEXT *pConditionalRenderingBegin)
 {
-   UNREACHABLE("stub");
+   VK_FROM_HANDLE(hk_cmd_buffer, cmd, commandBuffer);
+   VK_FROM_HANDLE(hk_buffer, buffer, pConditionalRenderingBegin->buffer);
+   hk_cmd_buffer_end_graphics(cmd);
+   hk_cmd_buffer_end_compute(cmd);
+   uint64_t predicate = hk_pool_alloc(cmd, sizeof(uint32_t), 4).gpu;
+   libagx_load_conditional(cmd, agx_1d(1), AGX_BARRIER_ALL, predicate,
+      hk_buffer_address_ro(buffer, pConditionalRenderingBegin->offset),
+      !!(pConditionalRenderingBegin->flags & VK_CONDITIONAL_RENDERING_INVERTED_BIT_EXT));
+   hk_cmd_buffer_end_compute(cmd);
+   cmd->state.conditional = predicate;
 }
 
 VKAPI_ATTR void VKAPI_CALL
 hk_CmdEndConditionalRenderingEXT(VkCommandBuffer commandBuffer)
 {
-   UNREACHABLE("stub");
+   VK_FROM_HANDLE(hk_cmd_buffer, cmd, commandBuffer);
+   cmd->state.conditional = 0;
 }

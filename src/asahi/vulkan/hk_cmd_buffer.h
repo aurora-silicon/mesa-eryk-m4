@@ -608,7 +608,10 @@ struct hk_cmd_buffer {
    struct {
       struct hk_graphics_state gfx;
       struct hk_compute_state cs;
+      uint64_t conditional;
    } state;
+
+   bool conditional_meta_clear;
 
    struct {
       struct hk_uploader main, usc;
