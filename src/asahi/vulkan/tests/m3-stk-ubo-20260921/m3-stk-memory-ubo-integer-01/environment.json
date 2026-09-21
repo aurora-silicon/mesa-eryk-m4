@@ -1,0 +1,16 @@
+{
+  "LD_LIBRARY_PATH": "/opt/asahi-m3-wayland/lib",
+  "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+  "GALLIUM_DRIVER": "zink",
+  "VK_DRIVER_FILES": "/opt/asahi-m3-wayland/share/vulkan/icd.d/asahi_icd.armv8-a.json",
+  "ASAHI_M3_EXPERIMENTAL": "1",
+  "AGX_MESA_DEBUG": "nopromote",
+  "HK_DEBUG_LOG": "0",
+  "SDL_VIDEODRIVER": "x11",
+  "SUPERTUXKART_SAVEDIR": "/home/eryk/.cache/m3-stk-benchmark/stk-memory-ubo-integer-01",
+  "LD_PRELOAD": "/home/eryk/.local/lib/sdl2-swap-timing.so",
+  "HK_M4_NATIVE_PREAMBLE": "true",
+  "HK_M4_PREFETCH_UBOS": "true",
+  "HK_M4_PREFETCH_VARIANT": "true",
+  "HK_M4_PLAIN_SAMPLERS": "true"
+}

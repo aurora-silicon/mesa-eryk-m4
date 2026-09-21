@@ -1,0 +1,13 @@
+{
+  "reference": "build/m3-stk-replay-adapted/screenshot_frame_10.bmp",
+  "actual": "build/m3-stk-replay-ubo-integer/screenshot_frame_10.bmp",
+  "reference_sha256": "f4b24cad8c61d1ede8c16043f6bc51ad4d0a57abdb1bdacb3677d57ff04f7e31",
+  "actual_sha256": "fb04248a87579888fb7b90ccdc965b1f6fd02cb4201ddfb11542066524805dd0",
+  "width": 1261,
+  "height": 1544,
+  "maximum_channel_error": 1,
+  "mean_channel_error": 6.805397476301809e-06,
+  "different_pixels": 52,
+  "threshold": 0,
+  "pixels_over_threshold": 52
+}

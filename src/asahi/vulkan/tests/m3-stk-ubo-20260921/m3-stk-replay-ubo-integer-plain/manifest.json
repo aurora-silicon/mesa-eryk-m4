@@ -1,0 +1,43 @@
+{
+  "stock_memory_request": true,
+  "command": [
+    "/opt/gfxreconstruct/bin/gfxrecon-replay",
+    "--wsi",
+    "wayland",
+    "--swapchain",
+    "offscreen",
+    "--memory-translation",
+    "rebind",
+    "--omit-pipeline-cache-data",
+    "--remove-unsupported",
+    "--screenshots",
+    "10",
+    "--screenshot-dir",
+    "/root/m3-gpu-evidence/stk-replay-ubo-integer-plain",
+    "/root/m3-stk-reference.gfxr"
+  ],
+  "environment": {
+    "LD_LIBRARY_PATH": "/opt/asahi-m3-wayland/lib",
+    "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+    "VK_DRIVER_FILES": "/opt/asahi-m3-wayland/share/vulkan/icd.d/asahi_icd.armv8-a.json",
+    "AGX_MESA_DEBUG": "nopromote",
+    "HK_DEBUG_LOG": "0",
+    "MESA_SHADER_CACHE_DISABLE": "true",
+    "HK_M4_NATIVE_PREAMBLE": "true",
+    "HK_M4_PREFETCH_UBOS": "true",
+    "HK_M4_PREFETCH_VARIANT": "true",
+    "HK_M4_PLAIN_SAMPLERS": "true"
+  },
+  "adaptations": [
+    "retained x86 lavapipe trace replayed on M3",
+    "Wayland offscreen swapchain",
+    "memory rebind",
+    "omitted pipeline cache",
+    "remove unsupported capture features (initial probe reports maintenance10); adapted replay comparison only, not unmodified application proof"
+  ],
+  "hashes": {
+    "/root/m3-stk-reference.gfxr": "6a57071488296bf0dad0cac1cace3c7ac56bb5084f4318b7821e811f720e0837",
+    "/opt/gfxreconstruct/bin/gfxrecon-replay": "fe93683a857ae08af25631dd652c6986243c17055744101b1e19d3dc15e44d98",
+    "/opt/asahi-m3-wayland/lib/libvulkan_asahi.so": "958568e69ea8d43dfd86b1e00cb5b3d5ef9c89381de297eb38d3b7933c3fa765"
+  }
+}

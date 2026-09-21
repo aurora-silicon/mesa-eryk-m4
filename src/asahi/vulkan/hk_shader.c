@@ -2158,7 +2158,7 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
    hk_capture_lowering(nir, "after-texture", features);
    NIR_PASS(_, nir, agx_nir_lower_multisampled_image_store);
 
-   const bool defer_ubo_aliases = dev->dev.chip == AGX_CHIP_G16G &&
+   const bool defer_ubo_aliases = agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) &&
       nir->info.stage == MESA_SHADER_FRAGMENT &&
       debug_get_bool_option("HK_M4_PREFETCH_UBOS", false);
    if (dev->dev.chip == AGX_CHIP_G16G && !defer_ubo_aliases)
@@ -2842,7 +2842,7 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
    NIR_PASS(_, nir, hk_lower_uvs_index, sw_stage, nr_vbos);
    unsigned reserved = root + (4 * (1 + set_count));
    shader->info.agx3_root_uniform = root;
-   if (dev->dev.chip == AGX_CHIP_G16G && sw_stage == MESA_SHADER_FRAGMENT &&
+   if (agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) && sw_stage == MESA_SHADER_FRAGMENT &&
        debug_get_bool_option("HK_M4_PREFETCH_UBOS", false)) {
       const struct hk_ubo_prefetch_layouts prefetch_layouts = {
          .sets = set_layouts, .count = set_count,
@@ -3364,7 +3364,7 @@ hk_compile_shader(struct hk_device *dev, struct vk_shader_compile_info *info,
    } else {
       struct hk_shader *shader = hk_only_variant(obj);
       const bool direct_variant = sw_stage == MESA_SHADER_FRAGMENT &&
-         dev->dev.chip == AGX_CHIP_G16G &&
+         agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) &&
          debug_get_bool_option("HK_M4_PREFETCH_UBOS", false) &&
          debug_get_bool_option("HK_M4_PREFETCH_VARIANT", false);
       nir_shader *direct_nir = direct_variant ? nir_shader_clone(NULL, nir) : NULL;
