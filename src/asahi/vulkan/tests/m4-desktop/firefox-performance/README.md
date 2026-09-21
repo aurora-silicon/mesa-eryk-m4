@@ -29,3 +29,12 @@ The helper also retains the owned Hyprland client's actual rectangle and output
 in window.json. Its socket timeout exceeds the 12-second navigation timeout;
 a previous 8-second transport timeout could fail before Firefox returned the
 navigation result. The outer watchdog/thermal guard remains the run's bound.
+
+`--window` now requires its rectangle to fit a connected output and requires
+page visibility at completion. A disconnected TV otherwise let a probe run
+hidden (zero callbacks and zero dropped-frame counter) while appearing healthy;
+that is explicitly not valid playback evidence. The retained run
+20260921T163556478563Z-firefox-fixed-tv-cache-lru is such an invalid measurement.
+Use firefox-perf-summary.py RUN [...] to summarize callback timing, submitted
+geometry/preparation costs and cache counters from retained evidence. It reports
+visibility; do not interpret hidden-page counters as display performance.

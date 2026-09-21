@@ -222,6 +222,10 @@ def main():
                 assert len(owned) == 1, 'Expected one probe-owned window'
                 w,h,x,y = a.window
                 assert w > 0 and h > 0
+                monitors = json.loads(subprocess.check_output(hc+['-j', 'monitors'], timeout=3))
+                assert any(x >= m['x'] and y >= m['y'] and
+                           x+w <= m['x']+m['width']/m['scale'] and
+                           y+h <= m['y']+m['height']/m['scale'] for m in monitors), 'Probe rectangle must fit a connected output'
                 selector = json.dumps('address:'+owned[0]['address'])
                 for action in [f'hl.dsp.window.float({{action="set",window={selector}}})',
                                f'hl.dsp.window.resize({{x={w},y={h},window={selector}}})',
@@ -273,6 +277,8 @@ def main():
                     diagnostics['pixels_file'] = 'pixels.rgba'
                     diagnostics['pixels_bytes'] = len(pixels)
             result['page'] = page
+            if a.window:
+                assert remote.script('return document.visibilityState;') == 'visible', 'Performance window became hidden'
             print('Firefox page:', json.dumps(page), flush=True)
             for proc in Path('/proc').glob('[0-9]*'):
                 try:
