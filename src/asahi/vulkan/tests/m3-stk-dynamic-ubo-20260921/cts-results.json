@@ -1,0 +1,1332 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.binding_model.descriptor_copy.graphics.uniform_buffer_dynamic_0",
+    "catalog_index": 337976,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.descriptor_copy.graphics.uniform_buffer_dynamic_0",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0000/case-0000/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.21451817399997708
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.binding_model.descriptor_copy.graphics.uniform_buffer_dynamic_1",
+    "catalog_index": 337977,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.descriptor_copy.graphics.uniform_buffer_dynamic_1",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0000/case-0001/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.16403547300001264
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.binding_model.descriptor_copy.graphics.uniform_buffer_dynamic_2",
+    "catalog_index": 337978,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.descriptor_copy.graphics.uniform_buffer_dynamic_2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0000/case-0002/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.16428148699992562
+  },
+  {
+    "index": 3,
+    "case": "dEQP-VK.binding_model.descriptor_copy.graphics.uniform_buffer_dynamic_3",
+    "catalog_index": 337979,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.descriptor_copy.graphics.uniform_buffer_dynamic_3",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0000/case-0003/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.1642890460000217
+  },
+  {
+    "index": 4,
+    "case": "dEQP-VK.binding_model.descriptor_copy.graphics.uniform_buffer_dynamic_4",
+    "catalog_index": 337980,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.descriptor_copy.graphics.uniform_buffer_dynamic_4",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0000/case-0004/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.1642644690000452
+  },
+  {
+    "index": 5,
+    "case": "dEQP-VK.binding_model.descriptor_copy.graphics.uniform_buffer_dynamic_5",
+    "catalog_index": 337981,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.descriptor_copy.graphics.uniform_buffer_dynamic_5",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0000/case-0005/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.16429253000001154
+  },
+  {
+    "index": 6,
+    "case": "dEQP-VK.binding_model.descriptor_copy.graphics.uniform_buffer_dynamic_6",
+    "catalog_index": 337982,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.descriptor_copy.graphics.uniform_buffer_dynamic_6",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0000/case-0006/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.16427394599998024
+  },
+  {
+    "index": 7,
+    "case": "dEQP-VK.binding_model.descriptor_copy.graphics.uniform_buffer_dynamic_array0",
+    "catalog_index": 337983,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.descriptor_copy.graphics.uniform_buffer_dynamic_array0",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0000/case-0007/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.1642366780000657
+  },
+  {
+    "index": 8,
+    "case": "dEQP-VK.binding_model.descriptor_copy.graphics.uniform_buffer_dynamic_array1",
+    "catalog_index": 337984,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.descriptor_copy.graphics.uniform_buffer_dynamic_array1",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0000/case-0008/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.16423566100002063
+  },
+  {
+    "index": 9,
+    "case": "dEQP-VK.binding_model.descriptor_copy.graphics.uniform_buffer_dynamic_array2",
+    "catalog_index": 337985,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.descriptor_copy.graphics.uniform_buffer_dynamic_array2",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0000/case-0009/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.1642779869999913
+  },
+  {
+    "index": 10,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.descriptor_array.offset_view_nonzero_dynamic_nonzero",
+    "catalog_index": 395744,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.descriptor_array.offset_view_nonzero_dynamic_nonzero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0000/case-0010/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.16418968499999664
+  },
+  {
+    "index": 11,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.descriptor_array.offset_view_nonzero_dynamic_zero",
+    "catalog_index": 395745,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.descriptor_array.offset_view_nonzero_dynamic_zero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0000/case-0011/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.1643017129999862
+  },
+  {
+    "index": 12,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.descriptor_array.offset_view_zero_dynamic_nonzero",
+    "catalog_index": 395746,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.descriptor_array.offset_view_zero_dynamic_nonzero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0000/case-0012/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.1643070060000582
+  },
+  {
+    "index": 13,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.descriptor_array.offset_view_zero_dynamic_zero",
+    "catalog_index": 395747,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.descriptor_array.offset_view_zero_dynamic_zero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0000/case-0013/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.16427307000003566
+  },
+  {
+    "index": 14,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_arbitrary_descriptors.offset_view_nonzero_dynamic_nonzero",
+    "catalog_index": 395748,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_arbitrary_descriptors.offset_view_nonzero_dynamic_nonzero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0000/case-0014/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.16427761299996746
+  },
+  {
+    "index": 15,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_arbitrary_descriptors.offset_view_nonzero_dynamic_zero",
+    "catalog_index": 395749,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_arbitrary_descriptors.offset_view_nonzero_dynamic_zero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0000/case-0015/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.16429140399998232
+  },
+  {
+    "index": 16,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_arbitrary_descriptors.offset_view_zero_dynamic_nonzero",
+    "catalog_index": 395750,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_arbitrary_descriptors.offset_view_zero_dynamic_nonzero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0000/case-0016/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.1642587190000313
+  },
+  {
+    "index": 17,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_arbitrary_descriptors.offset_view_zero_dynamic_zero",
+    "catalog_index": 395751,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_arbitrary_descriptors.offset_view_zero_dynamic_zero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0000/case-0017/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.16432606300008956
+  },
+  {
+    "index": 18,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_contiguous_descriptors.offset_view_nonzero_dynamic_nonzero",
+    "catalog_index": 395752,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_contiguous_descriptors.offset_view_nonzero_dynamic_nonzero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0000/case-0018/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.16429029700009323
+  },
+  {
+    "index": 19,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_contiguous_descriptors.offset_view_nonzero_dynamic_zero",
+    "catalog_index": 395753,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_contiguous_descriptors.offset_view_nonzero_dynamic_zero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0000/case-0019/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.16424313699997128
+  },
+  {
+    "index": 20,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_contiguous_descriptors.offset_view_zero_dynamic_nonzero",
+    "catalog_index": 395754,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_contiguous_descriptors.offset_view_zero_dynamic_nonzero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0000/case-0020/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.1642305520000491
+  },
+  {
+    "index": 21,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_contiguous_descriptors.offset_view_zero_dynamic_zero",
+    "catalog_index": 395755,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_contiguous_descriptors.offset_view_zero_dynamic_zero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0000/case-0021/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.16424680199997965
+  },
+  {
+    "index": 22,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.descriptor_array.offset_view_nonzero_dynamic_nonzero",
+    "catalog_index": 395756,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.descriptor_array.offset_view_nonzero_dynamic_nonzero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0000/case-0022/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.16406823900001655
+  },
+  {
+    "index": 23,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.descriptor_array.offset_view_nonzero_dynamic_zero",
+    "catalog_index": 395757,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.descriptor_array.offset_view_nonzero_dynamic_zero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0000/case-0023/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.16441359999998895
+  },
+  {
+    "index": 24,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.descriptor_array.offset_view_zero_dynamic_nonzero",
+    "catalog_index": 395758,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.descriptor_array.offset_view_zero_dynamic_nonzero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0000/case-0024/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.1643071289998943
+  },
+  {
+    "index": 25,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.descriptor_array.offset_view_zero_dynamic_zero",
+    "catalog_index": 395759,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.descriptor_array.offset_view_zero_dynamic_zero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0000/case-0025/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.16402851400005147
+  },
+  {
+    "index": 26,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.multiple_arbitrary_descriptors.offset_view_nonzero_dynamic_nonzero",
+    "catalog_index": 395760,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.multiple_arbitrary_descriptors.offset_view_nonzero_dynamic_nonzero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0000/case-0026/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.16432885599999736
+  },
+  {
+    "index": 27,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.multiple_arbitrary_descriptors.offset_view_nonzero_dynamic_zero",
+    "catalog_index": 395761,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.multiple_arbitrary_descriptors.offset_view_nonzero_dynamic_zero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0000/case-0027/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.16433185599998978
+  },
+  {
+    "index": 28,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.multiple_arbitrary_descriptors.offset_view_zero_dynamic_nonzero",
+    "catalog_index": 395762,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.multiple_arbitrary_descriptors.offset_view_zero_dynamic_nonzero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0000/case-0028/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.16429171400000087
+  },
+  {
+    "index": 29,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.multiple_arbitrary_descriptors.offset_view_zero_dynamic_zero",
+    "catalog_index": 395763,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.multiple_arbitrary_descriptors.offset_view_zero_dynamic_zero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0000/case-0029/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.16426948699995592
+  },
+  {
+    "index": 30,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.multiple_contiguous_descriptors.offset_view_nonzero_dynamic_nonzero",
+    "catalog_index": 395764,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.multiple_contiguous_descriptors.offset_view_nonzero_dynamic_nonzero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0000/case-0030/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.16380262399991352
+  },
+  {
+    "index": 31,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.multiple_contiguous_descriptors.offset_view_nonzero_dynamic_zero",
+    "catalog_index": 395765,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.multiple_contiguous_descriptors.offset_view_nonzero_dynamic_zero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0000/case-0031/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.16452939499993136
+  },
+  {
+    "index": 32,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.multiple_contiguous_descriptors.offset_view_zero_dynamic_nonzero",
+    "catalog_index": 395766,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.multiple_contiguous_descriptors.offset_view_zero_dynamic_nonzero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0000/case-0032/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.16425180199996703
+  },
+  {
+    "index": 33,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.multiple_contiguous_descriptors.offset_view_zero_dynamic_zero",
+    "catalog_index": 395767,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.multiple_contiguous_descriptors.offset_view_zero_dynamic_zero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0000/case-0033/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.16428394499996557
+  },
+  {
+    "index": 34,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.multiple_discontiguous_descriptors.offset_view_nonzero_dynamic_nonzero",
+    "catalog_index": 395768,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.multiple_discontiguous_descriptors.offset_view_nonzero_dynamic_nonzero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0000/case-0034/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.16406307300007938
+  },
+  {
+    "index": 35,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.multiple_discontiguous_descriptors.offset_view_nonzero_dynamic_zero",
+    "catalog_index": 395769,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.multiple_discontiguous_descriptors.offset_view_nonzero_dynamic_zero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0000/case-0035/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.1643505639999603
+  },
+  {
+    "index": 36,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.multiple_discontiguous_descriptors.offset_view_zero_dynamic_nonzero",
+    "catalog_index": 395770,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.multiple_discontiguous_descriptors.offset_view_zero_dynamic_nonzero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0000/case-0036/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.16428107100000489
+  },
+  {
+    "index": 37,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.multiple_discontiguous_descriptors.offset_view_zero_dynamic_zero",
+    "catalog_index": 395771,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.multiple_discontiguous_descriptors.offset_view_zero_dynamic_zero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0000/case-0037/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.16403651400003127
+  },
+  {
+    "index": 38,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.single_descriptor.offset_view_nonzero_dynamic_nonzero",
+    "catalog_index": 395772,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.single_descriptor.offset_view_nonzero_dynamic_nonzero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0000/case-0038/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.16433252299998458
+  },
+  {
+    "index": 39,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.single_descriptor.offset_view_nonzero_dynamic_zero",
+    "catalog_index": 395773,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.single_descriptor.offset_view_nonzero_dynamic_zero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0000/case-0039/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.16398057899994
+  },
+  {
+    "index": 40,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.single_descriptor.offset_view_zero_dynamic_nonzero",
+    "catalog_index": 395774,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.single_descriptor.offset_view_zero_dynamic_nonzero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0000/case-0040/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.1643637070000068
+  },
+  {
+    "index": 41,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.single_descriptor.offset_view_zero_dynamic_zero",
+    "catalog_index": 395775,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.single_descriptor.offset_view_zero_dynamic_zero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0000/case-0041/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.16457677099992907
+  },
+  {
+    "index": 42,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.descriptor_array.offset_view_nonzero_dynamic_nonzero",
+    "catalog_index": 395776,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.descriptor_array.offset_view_nonzero_dynamic_nonzero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0000/case-0042/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.16444274200000564
+  },
+  {
+    "index": 43,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.descriptor_array.offset_view_nonzero_dynamic_zero",
+    "catalog_index": 395777,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.descriptor_array.offset_view_nonzero_dynamic_zero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0000/case-0043/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.16433531399991352
+  },
+  {
+    "index": 44,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.descriptor_array.offset_view_zero_dynamic_nonzero",
+    "catalog_index": 395778,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.descriptor_array.offset_view_zero_dynamic_nonzero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0000/case-0044/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.1643194210000729
+  },
+  {
+    "index": 45,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.descriptor_array.offset_view_zero_dynamic_zero",
+    "catalog_index": 395779,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.descriptor_array.offset_view_zero_dynamic_zero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0000/case-0045/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.16405436399998052
+  },
+  {
+    "index": 46,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.multiple_arbitrary_descriptors.offset_view_nonzero_dynamic_nonzero",
+    "catalog_index": 395780,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.multiple_arbitrary_descriptors.offset_view_nonzero_dynamic_nonzero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0000/case-0046/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.16434089699998822
+  },
+  {
+    "index": 47,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.multiple_arbitrary_descriptors.offset_view_nonzero_dynamic_zero",
+    "catalog_index": 395781,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.multiple_arbitrary_descriptors.offset_view_nonzero_dynamic_zero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0000/case-0047/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.1642649689999871
+  },
+  {
+    "index": 48,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.multiple_arbitrary_descriptors.offset_view_zero_dynamic_nonzero",
+    "catalog_index": 395782,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.multiple_arbitrary_descriptors.offset_view_zero_dynamic_nonzero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0000/case-0048/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.16374933800000235
+  },
+  {
+    "index": 49,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.multiple_arbitrary_descriptors.offset_view_zero_dynamic_zero",
+    "catalog_index": 395783,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.multiple_arbitrary_descriptors.offset_view_zero_dynamic_zero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0049/case-0049/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.16398160400001416
+  },
+  {
+    "index": 50,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.multiple_contiguous_descriptors.offset_view_nonzero_dynamic_nonzero",
+    "catalog_index": 395784,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.multiple_contiguous_descriptors.offset_view_nonzero_dynamic_nonzero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0049/case-0050/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.11402796699996998
+  },
+  {
+    "index": 51,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.multiple_contiguous_descriptors.offset_view_nonzero_dynamic_zero",
+    "catalog_index": 395785,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.multiple_contiguous_descriptors.offset_view_nonzero_dynamic_zero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0049/case-0051/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.11392306300001565
+  },
+  {
+    "index": 52,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.multiple_contiguous_descriptors.offset_view_zero_dynamic_nonzero",
+    "catalog_index": 395786,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.multiple_contiguous_descriptors.offset_view_zero_dynamic_nonzero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0049/case-0052/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.11416440999994393
+  },
+  {
+    "index": 53,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.multiple_contiguous_descriptors.offset_view_zero_dynamic_zero",
+    "catalog_index": 395787,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.multiple_contiguous_descriptors.offset_view_zero_dynamic_zero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0049/case-0053/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.1141219359999468
+  },
+  {
+    "index": 54,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.multiple_discontiguous_descriptors.offset_view_nonzero_dynamic_nonzero",
+    "catalog_index": 395788,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.multiple_discontiguous_descriptors.offset_view_nonzero_dynamic_nonzero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0049/case-0054/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.16420587000004616
+  },
+  {
+    "index": 55,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.multiple_discontiguous_descriptors.offset_view_nonzero_dynamic_zero",
+    "catalog_index": 395789,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.multiple_discontiguous_descriptors.offset_view_nonzero_dynamic_zero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0049/case-0055/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.11423936299991055
+  },
+  {
+    "index": 56,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.multiple_discontiguous_descriptors.offset_view_zero_dynamic_nonzero",
+    "catalog_index": 395790,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.multiple_discontiguous_descriptors.offset_view_zero_dynamic_nonzero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0049/case-0056/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.16432472999997572
+  },
+  {
+    "index": 57,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.multiple_discontiguous_descriptors.offset_view_zero_dynamic_zero",
+    "catalog_index": 395791,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.multiple_discontiguous_descriptors.offset_view_zero_dynamic_zero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0049/case-0057/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.1141963449999821
+  },
+  {
+    "index": 58,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.single_descriptor.offset_view_nonzero_dynamic_nonzero",
+    "catalog_index": 395792,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.single_descriptor.offset_view_nonzero_dynamic_nonzero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0049/case-0058/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.11424553000006199
+  },
+  {
+    "index": 59,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.single_descriptor.offset_view_nonzero_dynamic_zero",
+    "catalog_index": 395793,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.single_descriptor.offset_view_nonzero_dynamic_zero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0049/case-0059/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.11418522099995698
+  },
+  {
+    "index": 60,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.single_descriptor.offset_view_zero_dynamic_nonzero",
+    "catalog_index": 395794,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.single_descriptor.offset_view_zero_dynamic_nonzero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0049/case-0060/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.11423286399997323
+  },
+  {
+    "index": 61,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.single_descriptor.offset_view_zero_dynamic_zero",
+    "catalog_index": 395795,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.single_descriptor.offset_view_zero_dynamic_zero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0049/case-0061/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.11420263600007274
+  },
+  {
+    "index": 62,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptors.offset_view_nonzero_dynamic_nonzero",
+    "catalog_index": 395796,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptors.offset_view_nonzero_dynamic_nonzero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0049/case-0062/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.11423844700004793
+  },
+  {
+    "index": 63,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptors.offset_view_nonzero_dynamic_zero",
+    "catalog_index": 395797,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptors.offset_view_nonzero_dynamic_zero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0049/case-0063/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.11418972100000246
+  },
+  {
+    "index": 64,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptors.offset_view_zero_dynamic_nonzero",
+    "catalog_index": 395798,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptors.offset_view_zero_dynamic_nonzero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0049/case-0064/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.11421698899994226
+  },
+  {
+    "index": 65,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptors.offset_view_zero_dynamic_zero",
+    "catalog_index": 395799,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptors.offset_view_zero_dynamic_zero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0049/case-0065/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.11430283200002123
+  },
+  {
+    "index": 66,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.single_descriptor.offset_view_nonzero_dynamic_nonzero",
+    "catalog_index": 395800,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.single_descriptor.offset_view_nonzero_dynamic_nonzero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0049/case-0066/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.11420942799998102
+  },
+  {
+    "index": 67,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.single_descriptor.offset_view_nonzero_dynamic_zero",
+    "catalog_index": 395801,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.single_descriptor.offset_view_nonzero_dynamic_zero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0049/case-0067/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.11424421399999574
+  },
+  {
+    "index": 68,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.single_descriptor.offset_view_zero_dynamic_nonzero",
+    "catalog_index": 395802,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.single_descriptor.offset_view_zero_dynamic_nonzero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0049/case-0068/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.11421273899998141
+  },
+  {
+    "index": 69,
+    "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.single_descriptor.offset_view_zero_dynamic_zero",
+    "catalog_index": 395803,
+    "boot_id": "f6fa58ed-cb82-48e1-b555-58e4fee3171f",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.single_descriptor.offset_view_zero_dynamic_zero",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-all-images=disable",
+      "--deqp-visibility=hidden",
+      "--deqp-log-filename=/root/m3-dynamic-ubo-cts/segment-0049/case-0069/result.qpa"
+    ],
+    "status": "Pass",
+    "message": "Pass",
+    "returncode": 0,
+    "seconds": 0.11416357900009189
+  }
+]

@@ -1570,15 +1570,9 @@ hk_g17p_graphics_uniform_ranges(
    for (unsigned i = 0; i < s->info.ubo_prefetch_count; ++i) {
       const struct hk_ubo_prefetch *load = &s->info.ubo_prefetch[i];
       const struct hk_descriptor_state *state = &cmd->state.gfx.descriptors;
-      struct hk_descriptor_set *set = state->sets[load->set];
-      const uint8_t *data = set ? set->mapped_ptr :
-         state->push[load->set] ? state->push[load->set]->data : NULL;
-      uint32_t size = state->set_sizes[load->set];
-      if (!data || load->descriptor_offset_B > size ||
-          sizeof(struct hk_buffer_address) > size - load->descriptor_offset_B)
-         return false;
       struct hk_buffer_address address;
-      memcpy(&address, data + load->descriptor_offset_B, sizeof(address));
+      if (!hk_prefetch_buffer_address(state, load, &address))
+         return false;
       const bool valid = load->offset_B <= address.size &&
                          load->size_B <= address.size - load->offset_B;
       /* UBO contents are loaded by the GPU at execution. The CPU only reads

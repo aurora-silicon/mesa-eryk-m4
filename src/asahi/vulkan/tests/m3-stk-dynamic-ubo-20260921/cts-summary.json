@@ -1,0 +1,34 @@
+{
+  "selected": 70,
+  "completed": 70,
+  "missing_indices": [],
+  "counts": {
+    "Pass": 70
+  },
+  "coverage_complete": true,
+  "all_guards_complete": true,
+  "complete": true,
+  "boot_ids": [
+    "f6fa58ed-cb82-48e1-b555-58e4fee3171f"
+  ],
+  "peak_temperature_c": 66.0,
+  "selection": {
+    "catalog": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-ordered/catalog",
+    "catalog_sha256": "72c1bb9d2f9f0425ab8a4f570d78abdc1d3a34b82173ec76b772dedc477526bf",
+    "selection": "dynamic UBO fragment access plus graphics descriptor copies"
+  },
+  "guards": [
+    {
+      "segment": "segment-0000",
+      "phase": "complete",
+      "elapsed_seconds": 10.50507859000004,
+      "watchdog_seconds": 60
+    },
+    {
+      "segment": "segment-0049",
+      "phase": "complete",
+      "elapsed_seconds": 4.002387223000028,
+      "watchdog_seconds": 60
+    }
+  ]
+}

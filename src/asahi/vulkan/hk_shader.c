@@ -2276,11 +2276,45 @@ hk_lower_hw_vs(nir_shader *nir, struct hk_shader *shader, bool kill_psiz,
    NIR_PASS(_, nir, agx_nir_lower_uvs, &shader->info.uvs);
 }
 
+struct hk_ubo_prefetch_layouts {
+   struct vk_descriptor_set_layout *const *sets;
+   unsigned count;
+};
+
 static bool
 hk_ubo_prefetch_binding_allowed(void *data, unsigned set, unsigned offset)
 {
-   struct vk_descriptor_set_layout *const *layouts = data;
-   if (!layouts || !layouts[set])
+   const struct hk_ubo_prefetch_layouts *info = data;
+   struct vk_descriptor_set_layout *const *layouts = info->sets;
+   if (set == HK_UBO_PREFETCH_ROOT_SET) {
+      const unsigned base = hk_root_descriptor_offset(dynamic_buffers);
+      if (!layouts || offset < base || (offset - base) % sizeof(struct hk_buffer_address))
+         return false;
+      unsigned index = (offset - base) / sizeof(struct hk_buffer_address);
+      if (index >= HK_MAX_DYNAMIC_BUFFERS)
+         return false;
+      for (unsigned s = 0; s < info->count; ++s) {
+         if (!layouts[s])
+            return false;
+         const struct hk_descriptor_set_layout *layout =
+            vk_to_hk_descriptor_set_layout(layouts[s]);
+         if (index >= layout->vk.dynamic_descriptor_count) {
+            index -= layout->vk.dynamic_descriptor_count;
+            continue;
+         }
+         for (unsigned b = 0; b < layout->binding_count; ++b) {
+            const struct hk_descriptor_set_binding_layout *binding = &layout->binding[b];
+            if (binding->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC &&
+                !binding->flags && index >= binding->dynamic_buffer_index &&
+                index - binding->dynamic_buffer_index < binding->array_size)
+               return true;
+         }
+         return false;
+      }
+      return false;
+   }
+
+   if (!layouts || set >= info->count || !layouts[set])
       return false;
    const struct hk_descriptor_set_layout *layout =
       vk_to_hk_descriptor_set_layout(layouts[set]);
@@ -2610,9 +2644,12 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
    shader->info.agx3_root_uniform = root;
    if (agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) && sw_stage == MESA_SHADER_FRAGMENT &&
        debug_get_bool_option("HK_M4_PREFETCH_UBOS", false)) {
+      const struct hk_ubo_prefetch_layouts prefetch_layouts = {
+         .sets = set_layouts, .count = set_count,
+      };
       NIR_PASS(_, nir, hk_nir_prefetch_ubos, root + 4, set_count, &reserved,
                shader->info.ubo_prefetch, &shader->info.ubo_prefetch_count,
-               hk_ubo_prefetch_binding_allowed, (void *)set_layouts);
+               hk_ubo_prefetch_binding_allowed, (void *)&prefetch_layouts);
       if (shader->info.ubo_prefetch_direct) {
          if (debug_get_bool_option("HK_M4_PLAIN_SAMPLERS", false)) {
             for (unsigned set = 0; set < set_count; ++set) {

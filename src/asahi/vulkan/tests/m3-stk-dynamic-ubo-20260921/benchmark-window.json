@@ -1,0 +1,16 @@
+{
+  "completed_sample": true,
+  "stock_memory_request": false,
+  "performance_cpus": false,
+  "start_ns": 877634886195,
+  "end_ns": 887635778747,
+  "seconds": 10.000892552,
+  "requires_visual_validation": true,
+  "track": "Black Forest built-in benchmark",
+  "resolution": [
+    3840,
+    2160
+  ],
+  "renderer": "vulkan",
+  "presentation": "private Weston 4K, 1000 Hz headless output"
+}

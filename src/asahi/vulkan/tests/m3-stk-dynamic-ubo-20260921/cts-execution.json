@@ -1,0 +1,21 @@
+{
+  "binary": "/root/cts-1.4.6.2/deqp-vk",
+  "sha256": {
+    "/root/cts-1.4.6.2/deqp-vk": "542459f13f3378f0af79ac9062d7e7fce6cd4853ab76adda69ae50889483b7e8",
+    "/opt/asahi-m3-wayland/lib/libvulkan_asahi.so": "43806e436a344b03cdd5522f1a26c2978d56150ab1f9ba25f6d26bc897cd5ca1",
+    "/root/m3-gpu-tools/asahi.ko": "db69e2f430ab1a621f9bd7bf56846061a8e1dbf595a13e7b369a54a6a0fa0b05"
+  },
+  "case_count": 70,
+  "per_case_seconds": 10,
+  "launch_window_seconds": 10,
+  "guard_limit_seconds": 30,
+  "watchdog_seconds": 60,
+  "log_images": false,
+  "remote_base": "/root/m3-dynamic-ubo-cts",
+  "extra_environment": {
+    "HK_M4_NATIVE_PREAMBLE": "true",
+    "HK_M4_PREFETCH_UBOS": "true",
+    "HK_M4_PREFETCH_VARIANT": "true",
+    "HK_M4_PLAIN_SAMPLERS": "true"
+  }
+}

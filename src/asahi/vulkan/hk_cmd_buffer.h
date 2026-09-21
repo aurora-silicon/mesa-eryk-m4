@@ -159,6 +159,30 @@ struct hk_descriptor_state {
    uint32_t push_dirty;
 };
 
+static inline bool
+hk_prefetch_buffer_address(const struct hk_descriptor_state *state,
+                           const struct hk_ubo_prefetch *load,
+                           struct hk_buffer_address *address)
+{
+   const uint8_t *data;
+   uint32_t size;
+   if (load->set == HK_UBO_PREFETCH_ROOT_SET) {
+      data = (const uint8_t *)&state->root;
+      size = sizeof(state->root);
+   } else {
+      assert(load->set < HK_MAX_SETS);
+      const struct hk_descriptor_set *set = state->sets[load->set];
+      data = set ? set->mapped_ptr :
+         state->push[load->set] ? state->push[load->set]->data : NULL;
+      size = state->set_sizes[load->set];
+   }
+   if (!data || load->descriptor_offset_B > size ||
+       sizeof(*address) > size - load->descriptor_offset_B)
+      return false;
+   memcpy(address, data + load->descriptor_offset_B, sizeof(*address));
+   return true;
+}
+
 struct hk_attachment {
    VkFormat vk_format;
    struct hk_image_view *iview;

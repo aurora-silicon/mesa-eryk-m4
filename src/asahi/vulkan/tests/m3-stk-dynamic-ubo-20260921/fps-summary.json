@@ -1,0 +1,17 @@
+{
+  "scope": "Sample of built-in Black Forest benchmark; not a complete benchmark run",
+  "resolution": [
+    3840,
+    2160
+  ],
+  "seconds": 10.000892552,
+  "swap_returns": 670,
+  "average_fps": 66.99402043530725,
+  "interval_fps": 66.97749914183252,
+  "median_frame_ms": 14.958577,
+  "p95_frame_ms": 16.972482,
+  "peak_pmp_c": 74.5,
+  "method": "Vulkan present-return cadence; not physical scanout timing",
+  "requires_visual_validation": true,
+  "renderer": "native Vulkan"
+}

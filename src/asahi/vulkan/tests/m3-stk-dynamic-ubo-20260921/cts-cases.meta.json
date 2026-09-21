@@ -1,0 +1,501 @@
+{
+  "schema": 1,
+  "cases_sha256": "462bd3d5353311eec75ea4aebd95767382fcc27e0c2a6b6428afe90ee0863b12",
+  "provenance": {
+    "catalog": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-ordered/catalog",
+    "catalog_sha256": "72c1bb9d2f9f0425ab8a4f570d78abdc1d3a34b82173ec76b772dedc477526bf",
+    "selection": "dynamic UBO fragment access plus graphics descriptor copies"
+  },
+  "cases": [
+    {
+      "case": "dEQP-VK.binding_model.descriptor_copy.graphics.uniform_buffer_dynamic_0",
+      "catalog_index": 337976,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.descriptor_copy.graphics.uniform_buffer_dynamic_1",
+      "catalog_index": 337977,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.descriptor_copy.graphics.uniform_buffer_dynamic_2",
+      "catalog_index": 337978,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.descriptor_copy.graphics.uniform_buffer_dynamic_3",
+      "catalog_index": 337979,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.descriptor_copy.graphics.uniform_buffer_dynamic_4",
+      "catalog_index": 337980,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.descriptor_copy.graphics.uniform_buffer_dynamic_5",
+      "catalog_index": 337981,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.descriptor_copy.graphics.uniform_buffer_dynamic_6",
+      "catalog_index": 337982,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.descriptor_copy.graphics.uniform_buffer_dynamic_array0",
+      "catalog_index": 337983,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.descriptor_copy.graphics.uniform_buffer_dynamic_array1",
+      "catalog_index": 337984,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.descriptor_copy.graphics.uniform_buffer_dynamic_array2",
+      "catalog_index": 337985,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.descriptor_array.offset_view_nonzero_dynamic_nonzero",
+      "catalog_index": 395744,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.descriptor_array.offset_view_nonzero_dynamic_zero",
+      "catalog_index": 395745,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.descriptor_array.offset_view_zero_dynamic_nonzero",
+      "catalog_index": 395746,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.descriptor_array.offset_view_zero_dynamic_zero",
+      "catalog_index": 395747,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_arbitrary_descriptors.offset_view_nonzero_dynamic_nonzero",
+      "catalog_index": 395748,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_arbitrary_descriptors.offset_view_nonzero_dynamic_zero",
+      "catalog_index": 395749,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_arbitrary_descriptors.offset_view_zero_dynamic_nonzero",
+      "catalog_index": 395750,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_arbitrary_descriptors.offset_view_zero_dynamic_zero",
+      "catalog_index": 395751,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_contiguous_descriptors.offset_view_nonzero_dynamic_nonzero",
+      "catalog_index": 395752,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_contiguous_descriptors.offset_view_nonzero_dynamic_zero",
+      "catalog_index": 395753,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_contiguous_descriptors.offset_view_zero_dynamic_nonzero",
+      "catalog_index": 395754,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_contiguous_descriptors.offset_view_zero_dynamic_zero",
+      "catalog_index": 395755,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.descriptor_array.offset_view_nonzero_dynamic_nonzero",
+      "catalog_index": 395756,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.descriptor_array.offset_view_nonzero_dynamic_zero",
+      "catalog_index": 395757,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.descriptor_array.offset_view_zero_dynamic_nonzero",
+      "catalog_index": 395758,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.descriptor_array.offset_view_zero_dynamic_zero",
+      "catalog_index": 395759,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.multiple_arbitrary_descriptors.offset_view_nonzero_dynamic_nonzero",
+      "catalog_index": 395760,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.multiple_arbitrary_descriptors.offset_view_nonzero_dynamic_zero",
+      "catalog_index": 395761,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.multiple_arbitrary_descriptors.offset_view_zero_dynamic_nonzero",
+      "catalog_index": 395762,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.multiple_arbitrary_descriptors.offset_view_zero_dynamic_zero",
+      "catalog_index": 395763,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.multiple_contiguous_descriptors.offset_view_nonzero_dynamic_nonzero",
+      "catalog_index": 395764,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.multiple_contiguous_descriptors.offset_view_nonzero_dynamic_zero",
+      "catalog_index": 395765,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.multiple_contiguous_descriptors.offset_view_zero_dynamic_nonzero",
+      "catalog_index": 395766,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.multiple_contiguous_descriptors.offset_view_zero_dynamic_zero",
+      "catalog_index": 395767,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.multiple_discontiguous_descriptors.offset_view_nonzero_dynamic_nonzero",
+      "catalog_index": 395768,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.multiple_discontiguous_descriptors.offset_view_nonzero_dynamic_zero",
+      "catalog_index": 395769,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.multiple_discontiguous_descriptors.offset_view_zero_dynamic_nonzero",
+      "catalog_index": 395770,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.multiple_discontiguous_descriptors.offset_view_zero_dynamic_zero",
+      "catalog_index": 395771,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.single_descriptor.offset_view_nonzero_dynamic_nonzero",
+      "catalog_index": 395772,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.single_descriptor.offset_view_nonzero_dynamic_zero",
+      "catalog_index": 395773,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.single_descriptor.offset_view_zero_dynamic_nonzero",
+      "catalog_index": 395774,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_descriptor_sets.single_descriptor.offset_view_zero_dynamic_zero",
+      "catalog_index": 395775,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.descriptor_array.offset_view_nonzero_dynamic_nonzero",
+      "catalog_index": 395776,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.descriptor_array.offset_view_nonzero_dynamic_zero",
+      "catalog_index": 395777,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.descriptor_array.offset_view_zero_dynamic_nonzero",
+      "catalog_index": 395778,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.descriptor_array.offset_view_zero_dynamic_zero",
+      "catalog_index": 395779,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.multiple_arbitrary_descriptors.offset_view_nonzero_dynamic_nonzero",
+      "catalog_index": 395780,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.multiple_arbitrary_descriptors.offset_view_nonzero_dynamic_zero",
+      "catalog_index": 395781,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.multiple_arbitrary_descriptors.offset_view_zero_dynamic_nonzero",
+      "catalog_index": 395782,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.multiple_arbitrary_descriptors.offset_view_zero_dynamic_zero",
+      "catalog_index": 395783,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.multiple_contiguous_descriptors.offset_view_nonzero_dynamic_nonzero",
+      "catalog_index": 395784,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.multiple_contiguous_descriptors.offset_view_nonzero_dynamic_zero",
+      "catalog_index": 395785,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.multiple_contiguous_descriptors.offset_view_zero_dynamic_nonzero",
+      "catalog_index": 395786,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.multiple_contiguous_descriptors.offset_view_zero_dynamic_zero",
+      "catalog_index": 395787,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.multiple_discontiguous_descriptors.offset_view_nonzero_dynamic_nonzero",
+      "catalog_index": 395788,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.multiple_discontiguous_descriptors.offset_view_nonzero_dynamic_zero",
+      "catalog_index": 395789,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.multiple_discontiguous_descriptors.offset_view_zero_dynamic_nonzero",
+      "catalog_index": 395790,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.multiple_discontiguous_descriptors.offset_view_zero_dynamic_zero",
+      "catalog_index": 395791,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.single_descriptor.offset_view_nonzero_dynamic_nonzero",
+      "catalog_index": 395792,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.single_descriptor.offset_view_nonzero_dynamic_zero",
+      "catalog_index": 395793,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.single_descriptor.offset_view_zero_dynamic_nonzero",
+      "catalog_index": 395794,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptor_sets.single_descriptor.offset_view_zero_dynamic_zero",
+      "catalog_index": 395795,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptors.offset_view_nonzero_dynamic_nonzero",
+      "catalog_index": 395796,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptors.offset_view_nonzero_dynamic_zero",
+      "catalog_index": 395797,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptors.offset_view_zero_dynamic_nonzero",
+      "catalog_index": 395798,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.multiple_discontiguous_descriptors.offset_view_zero_dynamic_zero",
+      "catalog_index": 395799,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.single_descriptor.offset_view_nonzero_dynamic_nonzero",
+      "catalog_index": 395800,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.single_descriptor.offset_view_nonzero_dynamic_zero",
+      "catalog_index": 395801,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.single_descriptor.offset_view_zero_dynamic_nonzero",
+      "catalog_index": 395802,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.uniform_buffer_dynamic.fragment.single_descriptor.offset_view_zero_dynamic_zero",
+      "catalog_index": 395803,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted dynamic UBO optimization validation"
+    }
+  ]
+}

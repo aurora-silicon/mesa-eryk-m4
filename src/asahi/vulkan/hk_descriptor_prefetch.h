@@ -26,6 +26,8 @@ bool hk_nir_specialize_plain_samplers(nir_shader *nir, unsigned set_base,
 /* A bounded optimization budget, not an admission limit: unmatched loads keep
  * their original shader path. Each entry reserves an aligned uniform quad. */
 #define HK_UBO_PREFETCH_MAX (512u / 4u)
+/* Dynamic buffer descriptors live in the immutable per-draw root table. */
+#define HK_UBO_PREFETCH_ROOT_SET UINT16_MAX
 struct hk_ubo_prefetch {
    uint32_t descriptor_offset_B;
    uint32_t offset_B;
