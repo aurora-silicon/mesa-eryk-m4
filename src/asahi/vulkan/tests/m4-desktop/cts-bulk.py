@@ -19,10 +19,18 @@ p.add_argument('--binary', default='/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit
 p.add_argument('--output', type=Path, required=True)
 p.add_argument('--name', required=True)
 p.add_argument('--renderer', choices=('m4', 'lavapipe'), default='m4', help='Guarded renderer for hardware/reference comparisons')
-p.add_argument('--jobs', type=int, default=20)
+p.add_argument('--jobs', type=int, default=1,
+               help='Workers (default 1); qualify memory usage before increasing concurrency')
 p.add_argument('--cpu-max-khz', type=int, default=1860000, choices=[1860000, 4104000],
                help='CPU ceiling the guard applies during the run')
 p.add_argument('--tests-per-group', type=int, default=50)
+p.add_argument('--legacy-shader-cache', action='store_true',
+               help='Omit shader-cache options only for old CTS binaries lacking them')
+p.add_argument('--shader-cache-dir', type=Path,
+               help='Exclusive target-side cache directory, reusable between bounded segments')
+p.add_argument('--memory-floor-mib', type=int, default=1536,
+               help='Stop and retain partial evidence before available target RAM falls below this bound')
+p.add_argument('--cpu-affinity', help='Target CPU list for CTS workers (for example 0,7-9)')
 p.add_argument('--runner-seconds', type=int, default=90)
 p.add_argument('--case-timeout', type=int, default=60, choices=range(1, 121),
                metavar='SECONDS', help='Explicit per-case wall-time bound; default 60s for contended and long CTS cases')
@@ -33,6 +41,7 @@ p.add_argument('--log-sources', action='store_true', help='Retain CTS shader sou
 p.add_argument('--headless', action='store_true', help='Private 1000 Hz compositor for one WSI worker')
 p.add_argument('--headless-env', action='append', metavar='KEY=VALUE', default=[],
                help='Recorded environment override for the private compositor')
+p.add_argument('--deqp-arg', action='append', default=[], help='Extra CTS argument, e.g. --deqp-arg=--deqp-gl-context-type=egl')
 p.add_argument('--env', action='append', metavar='KEY=VALUE', default=[],
                help='Recorded driver environment override passed to the remote runner')
 a = p.parse_args()
@@ -69,6 +78,7 @@ with (a.output/'stage.log').open('w') as log:
         # A previous labeled staging directory must not relabel a bare list.
         subprocess.run(['ssh', host, 'rm -f '+shlex.quote(remote+'/cases.meta.json')], check=True, stdout=log, stderr=subprocess.STDOUT)
     subprocess.run(['scp', str(ROOT/'tools/cts-sample.py'), str(ROOT/'tools/cts_deqp_backend.py'),
+                    str(ROOT/'tools/cts_memory_policy.py'),
                     host+':'+remote+'/'], check=True, stdout=log, stderr=subprocess.STDOUT)
     if a.headless:
         subprocess.run(['scp', str(ROOT/'tools/cts-headless.py'), host+':'+remote+'/'],
@@ -86,6 +96,15 @@ command = [sys.executable, str(ROOT/'tools/gpu-experiment.py'), '--name', a.name
 for option in ('log_images', 'log_sources', 'capture_success', 'capture_before'):
     if getattr(a, option):
         command.append('--' + option.replace('_', '-'))
+if a.legacy_shader_cache:
+    command.append('--legacy-shader-cache')
+if a.shader_cache_dir:
+    command += ['--shader-cache-dir', str(a.shader_cache_dir)]
+command += ['--memory-floor-mib', str(a.memory_floor_mib)]
+if a.cpu_affinity:
+    command += ['--cpu-affinity', a.cpu_affinity]
+for item in a.deqp_arg:
+    command += ['--deqp-arg=' + item]
 for item in a.env:
     command += ['--env', item]
 if a.headless:

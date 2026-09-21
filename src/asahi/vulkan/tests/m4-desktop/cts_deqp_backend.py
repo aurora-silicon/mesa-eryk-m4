@@ -1,6 +1,7 @@
 """Bounded deqp-runner backend; invoked only by guarded cts-sample.py batch."""
 import collections
 import csv
+import fcntl
 import hashlib
 import json
 import os
@@ -9,6 +10,7 @@ import re
 import signal
 import subprocess
 import time
+from cts_memory_policy import active_qpa_cases
 
 
 def memory_sample(diagnostic=False):
@@ -85,6 +87,8 @@ def kill_tree(proc):
 
 
 def run(args, check, boot, out, env, metadata, save):
+    if args.memory_floor_mib < 512:
+        raise ValueError('Memory floor must leave at least 512 MiB for guards and recovery')
     frozen = args.cases.read_text().splitlines()
     cases = frozen[args.start:args.start + args.count]
     if len(cases) != args.count or len(set(cases)) != len(cases):
@@ -95,19 +99,34 @@ def run(args, check, boot, out, env, metadata, save):
     argv = [str(args.deqp_runner), 'run', '--deqp', str(args.binary),
             '--caselist', str(selected), '--output', str(result_dir),
             '--jobs', str(args.jobs), '--tests-per-group', str(args.tests_per_group),
-            '--timeout', str(args.case_timeout), '--first-attempt', '--no-deqp-shadercache',
+            '--timeout', str(args.case_timeout), '--first-attempt',
             '--renderer-check', 'Apple M4' if args.renderer == 'm4' else 'llvmpipe|lavapipe',
             '--', '--deqp-log-images=' + ('enable' if args.log_images else 'disable'),
             '--deqp-log-shader-sources=' + ('enable' if args.log_sources else 'disable')]
+    argv += getattr(args, 'deqp_arg', [])
+    if args.legacy_shader_cache:
+        argv.insert(argv.index('--'), '--no-deqp-shadercache')
+    cache_lock = None
+    if args.shader_cache_dir:
+        args.shader_cache_dir.mkdir(parents=True, exist_ok=True)
+        cache_lock = (args.shader_cache_dir / 'runner.lock').open('a')
+        fcntl.flock(cache_lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        pos = argv.index('--')
+        argv[pos:pos] = ['--shader-cache-dir', str(args.shader_cache_dir)]
+    if args.cpu_affinity:
+        argv = ['taskset', '--cpu-list', args.cpu_affinity] + argv
     save(out / 'runner.json', dict(argv=argv, path=str(args.deqp_runner),
         sha256=hashlib.sha256(args.deqp_runner.read_bytes()).hexdigest(),
         tests_per_group=args.tests_per_group, deadline_seconds=args.runner_seconds,
         case_timeout_seconds=args.case_timeout,
         no_retries=True, no_baseline=True, no_skips=True,
-        compatibility='Omit unsupported CTS 1.0 shadercache CLI flags; Mesa cache remains unchanged'))
+        memory_floor_mib=args.memory_floor_mib,
+        compatibility=('Legacy CTS: cache arguments omitted' if args.legacy_shader_cache else
+                       'Private per-worker CTS shader caches; truncation disabled; Mesa cache unchanged')))
     begin = time.monotonic()
     started = time.time()
     error = None
+    pressure = None
     with (out / 'runner.log').open('w') as log, \
          (out / 'memory.jsonl').open('w') as memory:
         proc = subprocess.Popen(argv, cwd=args.binary.parent, env=env,
@@ -117,10 +136,17 @@ def run(args, check, boot, out, env, metadata, save):
             while proc.poll() is None:
                 check()
                 if time.monotonic() >= next_memory:
-                    memory.write(json.dumps(memory_sample(env.get('M4_CTS_MEMORY_DIAGNOSTIC') == '1')) + '\n')
+                    sample = memory_sample(env.get('M4_CTS_MEMORY_DIAGNOSTIC') == '1')
+                    memory.write(json.dumps(sample) + '\n')
                     memory.flush()
                     os.fsync(memory.fileno())
-                    next_memory = time.monotonic() + 5
+                    available = sample.get('meminfo_kib', {}).get('MemAvailable')
+                    if available is None or available < args.memory_floor_mib * 1024:
+                        pressure = dict(sample=sample, floor_mib=args.memory_floor_mib,
+                                        active_cases=active_qpa_cases(result_dir))
+                        raise RuntimeError(f'CTS memory floor reached: available_kib={available}, '
+                                           f'floor_mib={args.memory_floor_mib}; inspect partial evidence')
+                    next_memory = time.monotonic() + 0.5
                 if time.monotonic() - begin > args.runner_seconds:
                     raise TimeoutError('deqp-runner workload deadline reached')
                 time.sleep(0.2)
@@ -133,6 +159,8 @@ def run(args, check, boot, out, env, metadata, save):
         memory.flush()
         os.fsync(memory.fileno())
     elapsed = time.monotonic() - begin
+    if pressure is not None:
+        save(out / 'memory-pressure.json', pressure)
     results = collect(out, cases, metadata, args.start, boot)
     save(out / 'results.json', results)
     save(out / 'timing.json', dict(backend='deqp-runner', jobs=args.jobs,
@@ -206,10 +234,13 @@ def collect(out, cases, metadata, start, boot):
         termination = group_cases.get(case)
         if termination:
             record['worker_exit'] = termination
-        if runner_status == 'Crash' and coordinated_stop and termination == 'signal: 9 (SIGKILL)':
-            record.update(status='Interrupted', message='Worker killed during coordinated runner stop; not an independent crash')
-        elif runner_status in ('Crash', 'Timeout'):
+        if runner_status in ('Crash', 'Timeout'):
             record.update(status=runner_status, message='Runner detected abnormal execution; inspect QPA/log')
+            if runner_status == 'Crash' and coordinated_stop and termination == 'signal: 9 (SIGKILL)':
+                # A global stop marker cannot distinguish the triggering OOM
+                # kill from canceled peers. Keep the raw crash, with context;
+                # otherwise the first crash is silently retried as unfinished.
+                record['message'] += '; SIGKILL during coordinated stop (OOM or canceled peer; attribution unresolved)'
         elif runner_status == 'Fail' and record['status'] == 'Pass':
             record.update(status='HarnessError', message='QPA Pass disagrees with runner failure')
         elif runner_status == 'Missing' and coordinated_stop and record['status'] == 'Unrun':

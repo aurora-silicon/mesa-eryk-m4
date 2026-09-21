@@ -160,7 +160,14 @@ def batch(args):
                VK_ICD_FILENAMES='/opt/asahi-m4-port/asahi_icd.json',
                ASAHI_M4_EXPERIMENTAL='1', LD_LIBRARY_PATH='/opt/asahi-m4-port/lib',
                ASAHI_MESA_DEBUG='nocompress', HK_DEBUG_LOG='1',
-               XDG_RUNTIME_DIR='/run/user/1000')
+               XDG_RUNTIME_DIR='/run/user/1000',
+               # CTS runs without Vulkan layers. The target has seven layer
+               # manifests installed (validation, extra, profiles, Mesa
+               # implicit); the loader parses all of them on every
+               # vkCreateInstance, and the intentional-allocation-failure
+               # device_init case retries instance creation once per loader
+               # allocation, which exceeded the case bound (2026-09-15).
+               VK_LAYER_PATH='/var/empty', VK_IMPLICIT_LAYER_PATH='/var/empty')
     if args.renderer == 'lavapipe':
         env.update(VK_DRIVER_FILES='/usr/share/vulkan/icd.d/lvp_icd.json',
                    VK_ICD_FILENAMES='/usr/share/vulkan/icd.d/lvp_icd.json',
@@ -177,8 +184,15 @@ def batch(args):
     if args.capture_success:
         env['AGX_COMPILER_CAPTURE_SUCCESS'] = 'all'
         env['MESA_SHADER_CACHE_DISABLE'] = 'true'
+    # Explicit driver environment overrides for bounded experiments. They are
+    # recorded with the run's environment; the batch defaults above stay fixed.
+    for item in args.env or []:
+        key, _, value = item.partition('=')
+        if not key or not key.replace('_', '').isalnum():
+            raise SystemExit('invalid --env entry: ' + item)
+        env[key] = value
     save(out / 'environment.json', {k: v for k, v in env.items() if k.startswith(
-         ('VK_', 'ASAHI_', 'AGX_', 'HK_', 'MESA_', 'LD_LIBRARY', 'WAYLAND_', 'XDG_RUNTIME', 'DISPLAY', 'XAUTHORITY'))})
+         ('VK_', 'ASAHI_', 'AGX_', 'HK_', 'MESA_', 'LD_LIBRARY', 'WAYLAND_', 'XDG_RUNTIME', 'DISPLAY', 'XAUTHORITY', 'GALLIUM_', 'LIBGL_', '__EGL_'))})
     save(out / 'binary.json', dict(path=str(args.binary), sha256=hashlib.sha256(args.binary.read_bytes()).hexdigest()))
     if args.backend == 'deqp-runner':
         from cts_deqp_backend import run
@@ -214,7 +228,7 @@ def run_cases(args, check, boot, out, env):
                 argv = [str(args.binary), '--deqp-case=' + cases[index],
                         '--deqp-log-images=' + ('enable' if args.log_images else 'disable'),
                         '--deqp-log-shader-sources=' + ('enable' if args.log_sources else 'disable'),
-                        '--deqp-log-filename=' + str(qpa)]
+                        '--deqp-log-filename=' + str(qpa)] + args.deqp_arg
                 record = dict(index=index, case=cases[index], argv=argv,
                               boot_id=boot, status='Started', started_unix=time.time())
                 record['eligibility'] = (metadata['cases'][index] if metadata else
@@ -318,6 +332,10 @@ def main():
     b.add_argument('--backend', choices=('isolated', 'deqp-runner'), default='isolated')
     b.add_argument('--deqp-runner', type=Path, default=Path('/root/deqp-runner'))
     b.add_argument('--tests-per-group', type=int, default=50)
+    b.add_argument('--legacy-shader-cache', action='store_true')
+    b.add_argument('--shader-cache-dir', type=Path)
+    b.add_argument('--memory-floor-mib', type=int, default=1536)
+    b.add_argument('--cpu-affinity')
     b.add_argument('--runner-seconds', type=int, default=90,
                    help='Bulk workload bound; outer guard must allow additional evidence time')
     b.add_argument('--renderer', choices=('m4', 'lavapipe'), default='m4')
@@ -325,6 +343,9 @@ def main():
     b.add_argument('--log-images', action='store_true')
     b.add_argument('--capture-success', action='store_true')
     b.add_argument('--capture-before', action='store_true')
+    b.add_argument('--deqp-arg', action='append', default=[], help='Extra CTS argument (use --deqp-arg=--option=value)')
+    b.add_argument('--env', action='append', metavar='KEY=VALUE',
+                   help='Recorded driver environment override for this bounded run')
     args = p.parse_args()
     if args.mode == 'profile':
         from cts_requirements import make_profile
