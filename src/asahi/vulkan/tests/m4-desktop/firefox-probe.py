@@ -64,6 +64,9 @@ def main():
     p.add_argument('--guard-output', required=True, type=Path)
     p.add_argument('--url', default='https://mdn.github.io/dom-examples/webgl-examples/tutorial/sample6/')
     p.add_argument('--observe-seconds', type=int, default=6, choices=range(1, 21))
+    p.add_argument('--cpu-profile', action='store_true', help='Sample system CPU time during observation only')
+    p.add_argument('--no-screenshots', action='store_true', help='Skip image captures during performance iterations')
+    p.add_argument('--env', action='append', default=[], metavar='KEY=VALUE', help='Explicit diagnostic browser environment override')
     p.add_argument('--force-gpu', action='store_true')
     p.add_argument('--renderer', choices=['asahi', 'lavapipe'], default='asahi')
     p.add_argument('--capture', action='store_true')
@@ -134,6 +137,9 @@ def main():
         env['ASAHI_MESA_DEBUG'] = env.get('ASAHI_MESA_DEBUG', '') + ',sync'
     if a.diagnostic_no_merge:
         env['ASAHI_MESA_DEBUG'] = env.get('ASAHI_MESA_DEBUG', '') + ',nomerge'
+    for item in a.env:
+        key, value = item.split('=', 1)
+        env[key] = value
     traces = profile / 'vulkan-capture'
     traces.mkdir(); os.chown(traces, user.pw_uid, user.pw_gid)
     if a.capture:
@@ -168,6 +174,20 @@ def main():
     (out / 'start.json').write_text(json.dumps(result, indent=2)+'\n')
     child = None
     remote = None
+    profiler = None
+    def stop_profiler():
+        nonlocal profiler
+        if profiler is not None:
+            if profiler.poll() is None:
+                profiler.send_signal(signal.SIGINT)
+            try:
+                result['perf_returncode'] = profiler.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                profiler.kill(); profiler.wait()
+                result['perf_returncode'] = profiler.returncode
+                result['perf_error'] = 'CPU profiler did not stop'
+            finally:
+                profiler = None
     def interrupted(signum, frame):
         raise InterruptedError(f'Firefox interrupted by signal {signum}')
     signal.signal(signal.SIGTERM, interrupted)
@@ -199,9 +219,19 @@ def main():
                 script = a.start_script.read_text()
                 (out / 'page-start.js').write_text(script)
                 result['page_start'] = remote.script(script)
+            if a.cpu_profile:
+                with (out / 'perf-record.log').open('w') as perf_log:
+                    profiler = subprocess.Popen(
+                        ['/opt/m4-profiling/usr/bin/perf', 'record', '-a', '-e', 'cpu-clock',
+                         '-F', '99', '--call-graph', 'fp', '-o', str(out / 'perf.data')],
+                        env={**os.environ, 'LD_LIBRARY_PATH': '/opt/m4-profiling/usr/lib', 'DEBUGINFOD_URLS': ''},
+                        stdout=perf_log, stderr=subprocess.STDOUT)
             until = time.monotonic()+a.observe_seconds
             while time.monotonic() < until:
                 check(); time.sleep(.25)
+            stop_profiler()
+            if a.cpu_profile and result['perf_returncode'] != 0:
+                raise RuntimeError('CPU profiling failed; see perf-record.log')
             if a.freeze_animation:
                 remote.script('window.requestAnimationFrame = () => 0; return true;')
                 check(); time.sleep(.25)
@@ -228,6 +258,10 @@ def main():
                 except (FileNotFoundError, ProcessLookupError):
                     pass
             check()
+            if a.no_screenshots:
+                result['completed'] = True
+                print('PASS: Firefox probe completed; check graphics and WebGL evidence', flush=True)
+                return
             # Preserve the page even when DPMS disables the hardware scanout.
             # This is separate from the compositor screenshot below.
             import base64
@@ -259,6 +293,7 @@ def main():
         result['error'] = repr(error)
         raise
     finally:
+        stop_profiler()
         if remote:
             remote.socket.close()
         if child and child.poll() is None:
