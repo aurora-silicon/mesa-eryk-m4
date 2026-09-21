@@ -2492,7 +2492,7 @@ build_fs_meta_rgba_upload(void)
  * friends) plus the fragment-only gradient dfdx.
  */
 static nir_shader *
-build_fs_funops(void)
+build_fs_funops_width(bool half_inputs)
 {
    nir_builder b = nir_builder_init_simple_shader(
       MESA_SHADER_FRAGMENT, &agx_nir_options, "AGX3 funop FS");
@@ -2506,11 +2506,31 @@ build_fs_funops(void)
    nir_def *x = nir_channel(&b, v, 0);
    nir_def *y = nir_channel(&b, v, 1);
 
+   if (half_inputs) {
+      /* Descriptor-backed half values may be copy-propagated through the
+       * widening conversion into a unary instruction with an F32 result. */
+      nir_def *halves = nir_load_global_constant(
+         &b, 2, 16, nir_imm_int64(&b, 0x100000), .align_mul = 4);
+      x = nir_f2f32(&b, nir_channel(&b, halves, 0));
+      y = nir_f2f32(&b, nir_channel(&b, halves, 1));
+   }
    fs_store_colour(&b, nir_vec4(&b, nir_ffloor(&b, x), nir_fexp2(&b, y),
                                 nir_flog2(&b, nir_fabs(&b, x)),
                                 nir_ddx(&b, y)));
    b.shader->info.inputs_read = BITFIELD64_BIT(VARYING_SLOT_VAR0);
    return fs_finish(&b);
+}
+
+static nir_shader *
+build_fs_funops(void)
+{
+   return build_fs_funops_width(false);
+}
+
+static nir_shader *
+build_fs_funops_half_inputs(void)
+{
+   return build_fs_funops_width(true);
 }
 
 struct agx3_graphics_case {
@@ -2565,6 +2585,8 @@ static const struct agx3_graphics_case cases[] = {
    {"fs-meta-rgba-upload", build_fs_meta_rgba_upload, true, false,
     AGX_ABI_FUNI_ROOT + 4},
    {"fs-transcendentals", build_fs_funops, true},
+   {"fs-transcendentals-half-inputs", build_fs_funops_half_inputs, true,
+    .g17p_only = true},
 
    {"fs-depth-write", build_fs_depth, true, .g17p_only = true},
 
@@ -2810,6 +2832,12 @@ main(int argc, char **argv)
       return 0;
    }
 
+   if (argc == 2 && !strcmp(argv[1], "--unary-half-inputs-only")) {
+      const struct agx3_graphics_case c = {
+         "fs-transcendentals-half-inputs", build_fs_funops_half_inputs, true,
+      };
+      return run_case(&c, AGX_ISA_ENCODING_AGX3B) ? 0 : 1;
+   }
    if (argc == 2 && !strcmp(argv[1], "--imad-negative-only")) {
       const struct agx3_graphics_case c = {
          "vs-register-multiply-minus-byte", build_vs_g16_imad_negative_byte, true,

@@ -3104,14 +3104,18 @@ agx_lower_agx3_fma_sources(agx_context *ctx)
          agx_fmov_to(&after, half, I->dest[0]);
          continue;
       }
-      if ((I->op == AGX_OPCODE_RCP || I->op == AGX_OPCODE_RSQRT ||
-           I->op == AGX_OPCODE_SRSQRT) &&
+      if ((I->op == AGX_OPCODE_ROUNDEVEN || I->op == AGX_OPCODE_FLOOR ||
+           I->op == AGX_OPCODE_CEIL || I->op == AGX_OPCODE_TRUNC ||
+           I->op == AGX_OPCODE_RCP || I->op == AGX_OPCODE_RSQRT ||
+           I->op == AGX_OPCODE_SRSQRT || I->op == AGX_OPCODE_LOG2 ||
+           I->op == AGX_OPCODE_EXP2) &&
           I->dest[0].size == AGX_SIZE_32 &&
           I->src[0].size == AGX_SIZE_16 &&
           I->src[0].type != AGX_INDEX_IMMEDIATE &&
           I->src[0].type != AGX_INDEX_NULL) {
-         /* Copyprop may fold an exact F16 widening into a F32 reciprocal.
-          * Materialize it before RA so the reciprocal retains F32 precision. */
+         /* Copyprop may fold an exact F16 widening into a F32 unary op.
+          * Materialize it before RA: these native forms require F32 inputs
+          * and must retain the F32 result's precision and range. */
          agx_builder b = agx_init_builder(ctx, agx_before_instr(I));
          agx_index wide = agx_temp(ctx, AGX_SIZE_32);
          agx_fmov_to(&b, wide, I->src[0]);
