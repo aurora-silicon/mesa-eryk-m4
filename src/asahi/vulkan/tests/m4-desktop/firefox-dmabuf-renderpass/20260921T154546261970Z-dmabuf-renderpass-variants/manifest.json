@@ -1,0 +1,33 @@
+{
+  "id": "20260921T154546261970Z-dmabuf-renderpass-variants",
+  "hypothesis": "Check imported samplers retained or unbound between batches in fragment and vertex stages with synchronization validation",
+  "command": [
+    "env",
+    "VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation",
+    "VK_LAYER_VALIDATE_SYNC=1",
+    "ZINK_DEBUG=",
+    "ASAHI_MESA_DEBUG=",
+    "AGX_MESA_DEBUG=",
+    "HK_G17P_LAUNCH_TRACE=0",
+    "python3",
+    "/root/run-m4-gl.py",
+    "sh",
+    "-ec",
+    "/root/gl-dmabuf-renderpass-probe; /root/gl-dmabuf-renderpass-probe --unbind-before-flush; /root/gl-dmabuf-renderpass-probe --vertex-sampler; /root/gl-dmabuf-renderpass-probe --unbind-before-flush --vertex-sampler"
+  ],
+  "expected_success": "PASS: imported sampler",
+  "seconds": 40,
+  "thermal_stop_mc": 120000,
+  "sources": {
+    "mesa": {
+      "head": "15bfe849f8c4821bbd212c6f0d2d0aa66bcba1be",
+      "status": " M src/gallium/drivers/zink/zink_context.c\n",
+      "patch_sha256": "21f3a2022abfd3023c0c2718ea08226ff049a2119ac44870610050926c97378c"
+    },
+    "kernel": {
+      "head": "7746799d8083b0a43f1501afbda6652015693610",
+      "status": "",
+      "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

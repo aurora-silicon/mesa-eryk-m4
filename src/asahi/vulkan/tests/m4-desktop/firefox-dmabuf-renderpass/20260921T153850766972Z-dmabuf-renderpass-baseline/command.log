@@ -1,0 +1,7 @@
+Probe environment: {'AGX_MESA_DEBUG': '', 'ASAHI_M4_EXPERIMENTAL': '1', 'ASAHI_MESA_DEBUG': '', 'HK_G17P_LAUNCH_TRACE': '0', 'M4_TEST_CPU_MAX_KHZ': '1860000', 'ZINK_DEBUG': ''}
+M4 probe start monotonic=1205.019453823
+Renderer: zink Vulkan 1.4(Apple M4 (G16G B0) (MESA_HONEYKRISP))
+M4 barrier res=0xaaaad0221b00 layout=8->5 queue=4294967293 access=0->20 stages=0->80 unordered=1/1 usage=1 imported=1
+M4 barrier res=0xaaaad0221b00 layout=5->5 queue=4294967293 access=20->20 stages=80->80 unordered=0/0 usage=1 imported=1
+gl-dmabuf-renderpass-probe: ../../mesa/m4-asahi/src/gallium/drivers/zink/zink_context.c:6170: void zink_update_barriers(struct zink_context *, _Bool, struct pipe_resource *, struct pipe_resource *, struct pipe_resource *): Assertion `!check_rp || check_rp == ctx->in_rp' failed.
+M4 probe end monotonic=1205.283466724

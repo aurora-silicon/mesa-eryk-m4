@@ -1,0 +1,122 @@
+Probe environment: {'AGX_MESA_DEBUG': '', 'ASAHI_M4_EXPERIMENTAL': '1', 'ASAHI_MESA_DEBUG': '', 'HK_G17P_LAUNCH_TRACE': '0', 'M4_TEST_CPU_MAX_KHZ': '1860000', 'ZINK_DEBUG': ''}
+M4 probe start monotonic=1679.553658023
+Renderer: zink Vulkan 1.4(Apple M4 (G16G B0) (MESA_HONEYKRISP))
+round=0 custom_border=0 bad=0
+round=1 custom_border=0 bad=0
+round=2 custom_border=1 bad=0
+round=3 custom_border=1 bad=0
+round=4 custom_border=0 bad=0
+round=5 custom_border=0 bad=0
+round=6 custom_border=1 bad=0
+round=7 custom_border=1 bad=0
+round=8 custom_border=0 bad=0
+round=9 custom_border=0 bad=0
+round=10 custom_border=1 bad=0
+round=11 custom_border=1 bad=0
+round=12 custom_border=0 bad=0
+round=13 custom_border=0 bad=0
+round=14 custom_border=1 bad=0
+round=15 custom_border=1 bad=0
+PASS: ordinary and custom-border sampler executable switching
+Renderer: zink Vulkan 1.4(Apple M4 (G16G B0) (MESA_HONEYKRISP))
+Depth format: 0x8cac
+Depth attachment: bits=32 type=0x1406
+Reference storage: requested format
+wide=0 filter=0 compare=0 ref=0.125 wrong=0
+wide=0 filter=0 compare=0 ref=0.5 wrong=0
+wide=0 filter=0 compare=0 ref=0.875 wrong=0
+wide=0 filter=0 compare=1 ref=0.125 wrong=0
+wide=0 filter=0 compare=1 ref=0.5 wrong=0
+wide=0 filter=0 compare=1 ref=0.875 wrong=0
+wide=0 filter=0 compare=2 ref=0.125 wrong=0
+wide=0 filter=0 compare=2 ref=0.5 wrong=0
+wide=0 filter=0 compare=2 ref=0.875 wrong=0
+wide=0 filter=0 compare=3 ref=0.125 wrong=0
+wide=0 filter=0 compare=3 ref=0.5 wrong=0
+wide=0 filter=0 compare=3 ref=0.875 wrong=0
+wide=0 filter=0 compare=4 ref=0.125 wrong=0
+wide=0 filter=0 compare=4 ref=0.5 wrong=0
+wide=0 filter=0 compare=4 ref=0.875 wrong=0
+wide=0 filter=0 compare=5 ref=0.125 wrong=0
+wide=0 filter=0 compare=5 ref=0.5 wrong=0
+wide=0 filter=0 compare=5 ref=0.875 wrong=0
+wide=0 filter=0 compare=6 ref=0.125 wrong=0
+wide=0 filter=0 compare=6 ref=0.5 wrong=0
+wide=0 filter=0 compare=6 ref=0.875 wrong=0
+wide=0 filter=0 compare=7 ref=0.125 wrong=0
+wide=0 filter=0 compare=7 ref=0.5 wrong=0
+wide=0 filter=0 compare=7 ref=0.875 wrong=0
+wide=0 filter=1 compare=0 ref=0.125 wrong=0
+wide=0 filter=1 compare=0 ref=0.5 wrong=0
+wide=0 filter=1 compare=0 ref=0.875 wrong=0
+wide=0 filter=1 compare=1 ref=0.125 wrong=0
+wide=0 filter=1 compare=1 ref=0.5 wrong=0
+wide=0 filter=1 compare=1 ref=0.875 wrong=0
+wide=0 filter=1 compare=2 ref=0.125 wrong=0
+wide=0 filter=1 compare=2 ref=0.5 wrong=0
+wide=0 filter=1 compare=2 ref=0.875 wrong=0
+wide=0 filter=1 compare=3 ref=0.125 wrong=0
+wide=0 filter=1 compare=3 ref=0.5 wrong=0
+wide=0 filter=1 compare=3 ref=0.875 wrong=0
+wide=0 filter=1 compare=4 ref=0.125 wrong=0
+wide=0 filter=1 compare=4 ref=0.5 wrong=0
+wide=0 filter=1 compare=4 ref=0.875 wrong=0
+wide=0 filter=1 compare=5 ref=0.125 wrong=0
+wide=0 filter=1 compare=5 ref=0.5 wrong=0
+wide=0 filter=1 compare=5 ref=0.875 wrong=0
+wide=0 filter=1 compare=6 ref=0.125 wrong=0
+wide=0 filter=1 compare=6 ref=0.5 wrong=0
+wide=0 filter=1 compare=6 ref=0.875 wrong=0
+wide=0 filter=1 compare=7 ref=0.125 wrong=0
+wide=0 filter=1 compare=7 ref=0.5 wrong=0
+wide=0 filter=1 compare=7 ref=0.875 wrong=0
+wide=1 filter=0 compare=0 ref=0.125 wrong=0
+wide=1 filter=0 compare=0 ref=0.5 wrong=0
+wide=1 filter=0 compare=0 ref=0.875 wrong=0
+wide=1 filter=0 compare=1 ref=0.125 wrong=0
+wide=1 filter=0 compare=1 ref=0.5 wrong=0
+wide=1 filter=0 compare=1 ref=0.875 wrong=0
+wide=1 filter=0 compare=2 ref=0.125 wrong=0
+wide=1 filter=0 compare=2 ref=0.5 wrong=0
+wide=1 filter=0 compare=2 ref=0.875 wrong=0
+wide=1 filter=0 compare=3 ref=0.125 wrong=0
+wide=1 filter=0 compare=3 ref=0.5 wrong=0
+wide=1 filter=0 compare=3 ref=0.875 wrong=0
+wide=1 filter=0 compare=4 ref=0.125 wrong=0
+wide=1 filter=0 compare=4 ref=0.5 wrong=0
+wide=1 filter=0 compare=4 ref=0.875 wrong=0
+wide=1 filter=0 compare=5 ref=0.125 wrong=0
+wide=1 filter=0 compare=5 ref=0.5 wrong=0
+wide=1 filter=0 compare=5 ref=0.875 wrong=0
+wide=1 filter=0 compare=6 ref=0.125 wrong=0
+wide=1 filter=0 compare=6 ref=0.5 wrong=0
+wide=1 filter=0 compare=6 ref=0.875 wrong=0
+wide=1 filter=0 compare=7 ref=0.125 wrong=0
+wide=1 filter=0 compare=7 ref=0.5 wrong=0
+wide=1 filter=0 compare=7 ref=0.875 wrong=0
+wide=1 filter=1 compare=0 ref=0.125 wrong=0
+wide=1 filter=1 compare=0 ref=0.5 wrong=0
+wide=1 filter=1 compare=0 ref=0.875 wrong=0
+wide=1 filter=1 compare=1 ref=0.125 wrong=0
+wide=1 filter=1 compare=1 ref=0.5 wrong=0
+wide=1 filter=1 compare=1 ref=0.875 wrong=0
+wide=1 filter=1 compare=2 ref=0.125 wrong=0
+wide=1 filter=1 compare=2 ref=0.5 wrong=0
+wide=1 filter=1 compare=2 ref=0.875 wrong=0
+wide=1 filter=1 compare=3 ref=0.125 wrong=0
+wide=1 filter=1 compare=3 ref=0.5 wrong=0
+wide=1 filter=1 compare=3 ref=0.875 wrong=0
+wide=1 filter=1 compare=4 ref=0.125 wrong=0
+wide=1 filter=1 compare=4 ref=0.5 wrong=0
+wide=1 filter=1 compare=4 ref=0.875 wrong=0
+wide=1 filter=1 compare=5 ref=0.125 wrong=0
+wide=1 filter=1 compare=5 ref=0.5 wrong=0
+wide=1 filter=1 compare=5 ref=0.875 wrong=0
+wide=1 filter=1 compare=6 ref=0.125 wrong=0
+wide=1 filter=1 compare=6 ref=0.5 wrong=0
+wide=1 filter=1 compare=6 ref=0.875 wrong=0
+wide=1 filter=1 compare=7 ref=0.125 wrong=0
+wide=1 filter=1 compare=7 ref=0.5 wrong=0
+wide=1 filter=1 compare=7 ref=0.875 wrong=0
+pixels=24576 incorrect=0 max_error=1
+M4 probe end monotonic=1679.867742481

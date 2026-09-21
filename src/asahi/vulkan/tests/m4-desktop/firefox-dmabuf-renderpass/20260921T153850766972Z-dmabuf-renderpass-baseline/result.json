@@ -1,0 +1,69 @@
+{
+  "command": [
+    "env",
+    "ZINK_DEBUG=",
+    "ASAHI_MESA_DEBUG=",
+    "AGX_MESA_DEBUG=",
+    "HK_G17P_LAUNCH_TRACE=0",
+    "python3",
+    "/root/run-m4-gl.py",
+    "/root/gl-dmabuf-renderpass-probe"
+  ],
+  "seconds": 40,
+  "boot_id": "b130d68f-1d51-49b3-9671-d6ccc4232b4b",
+  "watchdog": {
+    "device": "/dev/watchdog0",
+    "identity": "Apple SoC Watchdog",
+    "timeout_seconds": 60,
+    "initial_timeleft_seconds": 59,
+    "periodic_keepalive": false,
+    "armed": true,
+    "ssh_broker_lease": true
+  },
+  "returncode": 250,
+  "thermal": {
+    "startup_limit_mc": 95000,
+    "stop_limit_mc": 120000,
+    "interval_seconds": 0.5,
+    "samples": 1,
+    "sync_interval_seconds": 5,
+    "peak_temperatures_mc": {
+      "PMP aggregate die hotspot": 63750,
+      "Ta000m": 62000,
+      "Te000m": 60750,
+      "Te001m": 59500,
+      "Tp000m": 63750,
+      "Tp001m": 59250
+    },
+    "failure": null,
+    "all_peak_temperatures_mc": {
+      "class/hwmon/hwmon0/temp1_input": 63750,
+      "class/hwmon/hwmon0/temp2_input": 62000,
+      "class/hwmon/hwmon0/temp3_input": 60750,
+      "class/hwmon/hwmon0/temp4_input": 59500,
+      "class/hwmon/hwmon0/temp5_input": 63750,
+      "class/hwmon/hwmon0/temp6_input": 59250,
+      "class/hwmon/hwmon5/temp1_input": 31899,
+      "class/hwmon/hwmon5/temp2_input": 41195,
+      "class/hwmon/hwmon5/temp3_input": 41461,
+      "class/hwmon/hwmon5/temp4_input": 43190,
+      "class/thermal/thermal_zone0/temp": 63750
+    },
+    "dedicated_gpu_sensor_verified": false,
+    "log": "temperatures.jsonl",
+    "cpu_frequency_caps": [
+      {
+        "policy": "policy0",
+        "old_min_khz": 912000,
+        "old_max_khz": 1800000,
+        "max_khz": 1800000
+      },
+      {
+        "policy": "policy1",
+        "old_min_khz": 900000,
+        "old_max_khz": 1860000,
+        "max_khz": 1860000
+      }
+    ]
+  }
+}

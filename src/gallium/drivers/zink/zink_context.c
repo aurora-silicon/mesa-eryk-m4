@@ -100,9 +100,17 @@ check_resource_for_batch_ref(struct zink_context *ctx, struct zink_resource *res
        * - if tracking will be added here, also reapply usage to avoid dangling usage once tracking is removed
        * TODO: somehow fix this for perf because it's an extra hash lookup
        */
-      if (!res->obj->dt && zink_resource_has_usage(res))
+      if (!res->obj->dt && zink_resource_has_usage(res)) {
+         /* Moving lifetime tracking into this batch is not a GPU access.
+          * Accesses from an older batch must not prevent its first real
+          * barrier from being reordered ahead of this batch's render pass.
+          */
+         if (!zink_resource_usage_matches(res, ctx->bs)) {
+            res->obj->unordered_read = true;
+            res->obj->unordered_write = true;
+         }
          zink_batch_reference_resource_rw(ctx, res, !!res->obj->bo->writes.u);
-      else
+      } else
          zink_batch_reference_resource(ctx, res);
    }
 }
@@ -2417,20 +2425,30 @@ zink_set_sampler_views(struct pipe_context *pctx,
                }
 
                res->seen_sampler_bind_stages |= res->gfx_barrier;
+               bool barrier_pending = false;
                if (general_layout) {
                   if (!ctx->blitting)
                      zink_screen(ctx->base.screen)->image_barrier(ctx, res, VK_IMAGE_LAYOUT_GENERAL, VK_ACCESS_SHADER_READ_BIT, res->gfx_barrier);
                   if (!ctx->unordered_blitting)
                      /* no deferred barrier: unset unordered usage immediately */
                      res->obj->unordered_read = false;
-               } else if (!check_for_layout_update(ctx, res, shader_type == MESA_SHADER_COMPUTE) && !ctx->unordered_blitting) {
-                  /* no deferred barrier: unset unordered usage immediately */
-                  res->obj->unordered_read = false;
-                  res->obj->unordered_write = false;
+               } else {
+                  barrier_pending = check_for_layout_update(ctx, res, shader_type == MESA_SHADER_COMPUTE);
+                  if (!barrier_pending && !ctx->unordered_blitting) {
+                     /* no deferred barrier: unset unordered usage immediately */
+                     res->obj->unordered_read = false;
+                     res->obj->unordered_write = false;
+                  }
                }
                if (!a)
                   update = true;
-               zink_batch_resource_usage_set(ctx->bs, res, false, false);
+               /* Preserve the previous batch's usage until the deferred barrier
+                * chooses its command buffer. In particular, reacquiring an
+                * imported image must not turn old ordered accesses into a
+                * current-batch dependency and split an unrelated render pass.
+                */
+               if (!barrier_pending)
+                  zink_batch_resource_usage_set(ctx->bs, res, false, false);
                if (b->zs_view) {
                   assert(start_slot + i < 32); //bitfield size
                   ctx->di.zs_swizzle[shader_type].mask |= BITFIELD_BIT(start_slot + i);
@@ -6165,6 +6183,12 @@ zink_update_barriers(struct zink_context *ctx, bool is_compute,
             if (!general_layout && is_feedback)
                update_res_sampler_layouts(ctx, res);
          }
+         /* Sampler binding defers usage along with its image barrier. Record
+          * the access only after synchronization has examined the old usage.
+          */
+         if (res->base.b.target != PIPE_BUFFER)
+            zink_batch_resource_usage_set(ctx->bs, res,
+                                         zink_resource_access_is_write(res->barrier_access[is_compute]), false);
          if (zink_resource_access_is_write(res->barrier_access[is_compute]) ||
              (res->base.b.target != PIPE_BUFFER && !general_layout))
             res->obj->unordered_write = false;

@@ -1,0 +1,75 @@
+{
+  "command": [
+    "runuser",
+    "-u",
+    "e",
+    "--",
+    "/usr/bin/firefox",
+    "--no-remote",
+    "--new-instance",
+    "--marionette",
+    "--remote-allow-system-access",
+    "--profile",
+    "/home/e/.cache/m4-firefox-probes/20260921T154438742493Z-firefox-youtube-fixed-playback",
+    "about:blank"
+  ],
+  "url": "https://www.youtube.com/watch?v=aqz-KE-bpKQ",
+  "profile": "/home/e/.cache/m4-firefox-probes/20260921T154438742493Z-firefox-youtube-fixed-playback",
+  "boot_id": "b130d68f-1d51-49b3-9671-d6ccc4232b4b",
+  "started": 1553.011329074,
+  "force_gpu": false,
+  "environment": {
+    "MOZ_ENABLE_WAYLAND": "1",
+    "MESA_SHADER_CACHE_DIR": "/home/e/.cache/m4-firefox-probes/20260921T154438742493Z-firefox-youtube-fixed-playback/mesa-cache",
+    "VK_DRIVER_FILES": "/opt/asahi-m4-port/asahi_icd.json",
+    "LD_LIBRARY_PATH": "/opt/asahi-m4-port/lib",
+    "LIBGL_DRIVERS_PATH": "/opt/asahi-m4-port/lib/dri",
+    "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+    "GALLIUM_DRIVER": "zink",
+    "LIBGL_ALWAYS_SOFTWARE": "0",
+    "MESA_GL_VERSION_OVERRIDE": "3.3",
+    "MESA_GLES_VERSION_OVERRIDE": "3.0"
+  },
+  "page_start": true,
+  "page": {
+    "url": "https://www.youtube.com/watch?v=aqz-KE-bpKQ",
+    "title": "Big Buck Bunny 60fps 4K - Official Blender Foundation Short Film - YouTube",
+    "ready": "complete",
+    "probe": null,
+    "canvases": [
+      {
+        "width": 110,
+        "height": 75,
+        "clientWidth": 1330,
+        "clientHeight": 748
+      },
+      {
+        "width": 110,
+        "height": 75,
+        "clientWidth": 1330,
+        "clientHeight": 748
+      }
+    ],
+    "diagnostics": {
+      "videos": [
+        {
+          "time": 20.016738,
+          "paused": false,
+          "ready": 4,
+          "error": null,
+          "quality": {
+            "creationTime": 22872,
+            "totalVideoFrames": 1201,
+            "droppedVideoFrames": 1079
+          },
+          "width": 1280,
+          "height": 720
+        }
+      ],
+      "playError": null
+    }
+  },
+  "compositor_screenshot_error": "Command '['runuser', '-u', 'e', '--', 'grim', '-']' timed out after 5 seconds",
+  "completed": true,
+  "ended": 1588.18006076
+}

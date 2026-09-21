@@ -1,0 +1,35 @@
+{
+  "id": "20260921T154438742493Z-firefox-youtube-fixed-playback",
+  "hypothesis": "Verify normal accelerated WebRender and sustained YouTube playback with corrected imported-image synchronization",
+  "command": [
+    "python3",
+    "/root/firefox-probe.py",
+    "--guard-output",
+    "/root/asahi-evidence/20260921T154438742493Z-firefox-youtube-fixed-playback",
+    "--url",
+    "https://www.youtube.com/watch?v=aqz-KE-bpKQ",
+    "--observe-seconds",
+    "20",
+    "--start-script",
+    "/root/play.js",
+    "--page-script",
+    "/root/media.js",
+    "--seed-profile",
+    "/home/e/.config/mozilla/firefox/igi6dhu0.default-release"
+  ],
+  "expected_success": "PASS: Firefox probe completed",
+  "seconds": 80,
+  "thermal_stop_mc": 120000,
+  "sources": {
+    "mesa": {
+      "head": "15bfe849f8c4821bbd212c6f0d2d0aa66bcba1be",
+      "status": " M src/gallium/drivers/zink/zink_context.c\n",
+      "patch_sha256": "21f3a2022abfd3023c0c2718ea08226ff049a2119ac44870610050926c97378c"
+    },
+    "kernel": {
+      "head": "7746799d8083b0a43f1501afbda6652015693610",
+      "status": "",
+      "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

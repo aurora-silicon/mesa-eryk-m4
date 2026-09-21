@@ -1,0 +1,73 @@
+{
+  "command": [
+    "env",
+    "VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation",
+    "VK_LAYER_VALIDATE_SYNC=1",
+    "ZINK_DEBUG=",
+    "ASAHI_MESA_DEBUG=",
+    "AGX_MESA_DEBUG=",
+    "HK_G17P_LAUNCH_TRACE=0",
+    "python3",
+    "/root/run-m4-gl.py",
+    "sh",
+    "-ec",
+    "/root/gl-dmabuf-renderpass-probe; /root/gl-dmabuf-renderpass-probe --unbind-before-flush; /root/gl-dmabuf-renderpass-probe --vertex-sampler; /root/gl-dmabuf-renderpass-probe --unbind-before-flush --vertex-sampler"
+  ],
+  "seconds": 40,
+  "boot_id": "b130d68f-1d51-49b3-9671-d6ccc4232b4b",
+  "watchdog": {
+    "device": "/dev/watchdog0",
+    "identity": "Apple SoC Watchdog",
+    "timeout_seconds": 60,
+    "initial_timeleft_seconds": 59,
+    "periodic_keepalive": false,
+    "armed": true,
+    "ssh_broker_lease": true
+  },
+  "returncode": 0,
+  "thermal": {
+    "startup_limit_mc": 95000,
+    "stop_limit_mc": 120000,
+    "interval_seconds": 0.5,
+    "samples": 2,
+    "sync_interval_seconds": 5,
+    "peak_temperatures_mc": {
+      "PMP aggregate die hotspot": 64500,
+      "Ta000m": 62500,
+      "Te000m": 62250,
+      "Te001m": 60250,
+      "Tp000m": 64500,
+      "Tp001m": 60000
+    },
+    "failure": null,
+    "all_peak_temperatures_mc": {
+      "class/hwmon/hwmon0/temp1_input": 64500,
+      "class/hwmon/hwmon0/temp2_input": 62500,
+      "class/hwmon/hwmon0/temp3_input": 62250,
+      "class/hwmon/hwmon0/temp4_input": 60250,
+      "class/hwmon/hwmon0/temp5_input": 64500,
+      "class/hwmon/hwmon0/temp6_input": 60000,
+      "class/hwmon/hwmon5/temp1_input": 31899,
+      "class/hwmon/hwmon5/temp2_input": 41940,
+      "class/hwmon/hwmon5/temp3_input": 41538,
+      "class/hwmon/hwmon5/temp4_input": 43413,
+      "class/thermal/thermal_zone0/temp": 64500
+    },
+    "dedicated_gpu_sensor_verified": false,
+    "log": "temperatures.jsonl",
+    "cpu_frequency_caps": [
+      {
+        "policy": "policy0",
+        "old_min_khz": 912000,
+        "old_max_khz": 1800000,
+        "max_khz": 1800000
+      },
+      {
+        "policy": "policy1",
+        "old_min_khz": 900000,
+        "old_max_khz": 1860000,
+        "max_khz": 1860000
+      }
+    ]
+  }
+}

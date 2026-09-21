@@ -1,0 +1,85 @@
+Firefox graphics: {"windowLayerManagerType": "WebRender", "adapterDescription": "zink Vulkan 1.4(Apple M4 (G16G B0) (MESA_HONEYKRISP))", "numAcceleratedWindows": 1, "numTotalWindows": 1}
+Firefox page: {"url": "https://www.youtube.com/watch?v=aqz-KE-bpKQ", "title": "Big Buck Bunny 60fps 4K - Official Blender Foundation Short Film - YouTube", "ready": "complete", "probe": null, "canvases": [{"width": 110, "height": 75, "clientWidth": 1330, "clientHeight": 748}, {"width": 110, "height": 75, "clientWidth": 1330, "clientHeight": 748}], "diagnostics": {"videos": [{"time": 20.016738, "paused": false, "ready": 4, "error": null, "quality": {"creationTime": 22872, "totalVideoFrames": 1201, "droppedVideoFrames": 1079}, "width": 1280, "height": 720}], "playError": null}}
+0x80097
+M4 compressed image: 2048x2048 format=37 usage=0x80097
+M4 compressed image: 2048x2048 format=37 usage=0x80097
+M4 compressed image: 1910x2108 format=44 usage=0x80097
+M4 compressed image: 1910x2108 format=44 usage=0x80097
+M4 compressed image: 1910x2108 format=44 usage=0x80097
+M4 compressed image: 1910x2108 format=44 usage=0x80097
+M4 compressed image: 1024x512 format=37 usage=0x80097
+M4 compressed image: 1024x512 format=37 usage=0x80097
+M4 compressed image: 2048x2048 format=37 usage=0x80097
+M4 compressed image: 2048x2048 format=37 usage=0x80097
+M4 compressed image: 1901x2104 format=44 usage=0x80097
+M4 compressed image: 1901x2104 format=44 usage=0x80097
+M4 compressed image: 1901x2104 format=44 usage=0x80097
+M4 compressed image: 1901x2104 format=44 usage=0x80097
+M4 compressed image: 1024x512 format=37 usage=0x80097
+M4 compressed image: 1024x512 format=37 usage=0x80097
+GetShaderInfoLog() ->
+0:2(12): error: extension `GL_EXT_shader_texture_lod' unsupported in fragment shader
+
+GetShaderSource() ->
+
+#extension GL_EXT_shader_texture_lod: require
+void main() {}
+
+M4 compressed image: 1024x512 format=37 usage=0x80097
+M4 compressed image: 1024x512 format=37 usage=0x80097
+M4 compressed image: 1024x512 format=37 usage=0x80097
+M4 compressed image: 1024x512 format=37 usage=0x80097
+M4 compressed image: 1024x512 format=37 usage=0x80097
+M4 compressed image: 1024x512 format=37 usage=0x80097
+M4 compressed image: 1024x512 format=37 usage=0x80097
+M4 compressed image: 1024x512 format=37 usage=0x80097
+M4 compressed image: 1024x512 format=37 usage=0x80097
+M4 compressed image: 1024x512 format=37 usage=0x80097
+M4 compressed image: 1024x512 format=37 usage=0x80097
+M4 compressed image: 1024x512 format=37 usage=0x80097
+M4 compressed image: 1024x512 format=37 usage=0x80097
+M4 compressed image: 1024x512 format=37 usage=0x80097
+M4 compressed image: 1024x512 format=37 usage=0x80097
+M4 compressed image: 1024x512 format=37 usage=0x80097
+M4 compressed image: 1024x512 format=37 usage=0x80097
+M4 compressed image: 1024x512 format=37 usage=0x80097
+M4 compressed image: 1024x512 format=37 usage=0x80097
+M4 compressed image: 1024x512 format=37 usage=0x80097
+M4 compressed image: 1024x512 format=37 usage=0x80097
+M4 compressed image: 1024x512 format=37 usage=0x80097
+M4 compressed image: 1024x512 format=37 usage=0x80097
+M4 compressed image: 1024x512 format=37 usage=0x80097
+M4 compressed image: 1024x512 format=37 usage=0x80097
+M4 compressed image: 2048x2048 format=37 usage=0x80097
+M4 compressed image: 2048x2048 format=37 usage=0x80097
+M4 compressed image: 2048x2048 format=37 usage=0x80097
+M4 compressed image: 1278x720 format=44 usage=0x80097
+GetShaderInfoLog() ->
+0:2(12): error: extension `GL_EXT_shader_texture_lod' unsupported in fragment shader
+
+GetShaderSource() ->
+
+#extension GL_EXT_shader_texture_lod: require
+void main() {}
+
+Crash Annotation GraphicsCriticalError: |[C0][GFX1-]: Couldn't sanitize GL_RENDERER "zink Vulkan 1.4(Apple M4 (G16G B0) (MESA_HONEYKRISP))" (t=6.79772) [GFX1-]: Couldn't sanitize GL_RENDERER "zink Vulkan 1.4(Apple M4 (G16G B0) (MESA_HONEYKRISP))"
+M4 compressed image: 1330x748 format=44 usage=0x80097
+M4 compressed image: 1901x2019 format=44 usage=0x80097
+M4 compressed image: 1330x748 format=44 usage=0x80097
+M4 compressed image: 1330x157 format=44 usage=0x80097
+M4 compressed image: 123x649 format=44 usage=0x80097
+M4 compressed image: 1901x2019 format=44 usage=0x80097
+M4 compressed image: 2048x2048 format=37 usage=0x80097
+M4 compressed image: 2048x2048 format=37 usage=0x80097
+M4 compressed image: 2048x2048 format=37 usage=0x80097
+M4 compressed image: 1330x194 format=44 usage=0x80097
+M4 compressed image: 242x943 format=44 usage=0x80097
+M4 compressed image: 2048x2048 format=44 usage=0x80097
+M4 compressed image: 2048x2048 format=37 usage=0x80097
+M4 compressed image: 523x1300 format=44 usage=0x80097
+M4 compressed image: 32x1024 format=37 usage=0x80097
+M4 compressed image: 32x1024 format=37 usage=0x80097
+
+Session terminated, killing shell... ...killed.
+
+PASS: Firefox probe completed; check graphics and WebGL evidence

@@ -243,12 +243,17 @@ def main():
                         raise
                     result['scanout_unavailable'] = str(error)
             check()
-            screenshot = subprocess.run(['runuser', '-u', 'e', '--', 'grim', '-'],
-                                        env=env, capture_output=True, timeout=5)
-            if screenshot.returncode == 0:
-                (out / 'compositor.png').write_bytes(screenshot.stdout)
-            else:
-                result['compositor_screenshot_error'] = screenshot.stderr.decode(errors='replace')
+            try:
+                screenshot = subprocess.run(['runuser', '-u', 'e', '--', 'grim', '-'],
+                                            env=env, capture_output=True, timeout=5)
+                if screenshot.returncode == 0:
+                    (out / 'compositor.png').write_bytes(screenshot.stdout)
+                else:
+                    result['compositor_screenshot_error'] = screenshot.stderr.decode(errors='replace')
+            except subprocess.TimeoutExpired as error:
+                # DPMS may stop compositor capture. The browser's own page
+                # screenshot and health checks above are still available.
+                result['compositor_screenshot_error'] = str(error)
             result['completed'] = True
     except BaseException as error:
         result['error'] = repr(error)
