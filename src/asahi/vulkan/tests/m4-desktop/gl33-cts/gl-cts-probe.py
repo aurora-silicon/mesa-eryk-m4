@@ -35,6 +35,14 @@ record={k:v for k,v in env.items() if k.startswith(('GALLIUM','MESA','VK_','__EG
 args=[str(root/'glcts'),'--deqp-case=KHR-GL33.info.*','--deqp-gl-context-type=egl','--deqp-egl-display-type=Wayland','--deqp-surface-width=64','--deqp-surface-height=64','--deqp-log-filename='+str(out/'info.qpa')]
 subprocess.run(args,cwd=root,env=env,check=True,timeout=20)
 fw.check_guard(out,boot)
+if len(sys.argv)>2:
+ case=sys.argv[2]
+ assert case.startswith('KHR-NoContext.')
+ direct=[a if not a.startswith('--deqp-case=') else '--deqp-case='+case for a in args]
+ direct=[a if not a.startswith('--deqp-log-filename=') else '--deqp-log-filename='+str(out/'no-context.qpa') for a in direct]
+ subprocess.run(direct,cwd=root,env=env,check=True,timeout=20)
+ print('PASS: identified Zink and completed no-default-context case')
+ raise SystemExit(0)
 (out/'plan').mkdir()
 result=subprocess.run([str(root/'cts-runner'),'--type=gl33','--summary','--logdir='+str(out/'plan')],cwd=root,env=env,check=False,timeout=20)
 # --summary compares against absent result files and normally exits 1.

@@ -1,0 +1,16 @@
+status	case
+Fail	KHR-GL33.transform_feedback.draw_xfb_test
+Fail	KHR-GL33.transform_feedback.draw_xfb_feedbackk_test
+Fail	KHR-GL33.transform_feedback.draw_xfb_instanced_test
+Fail	KHR-GL33.transform_feedback.draw_xfb_stream_instanced_test
+Fail	KHR-GL33.texture_lod_bias.texture_lod_bias_all
+Crash	KHR-GL33.transform_feedback2.transform_feedback2_states
+Timeout	KHR-GL33.CommonBugs.CommonBug_SparseBuffersWithCopyOps
+Fail	KHR-GL33.transform_feedback_overflow_query_ARB.basic-single-stream-interleaved-attribs
+Fail	KHR-GL33.transform_feedback_overflow_query_ARB.basic-single-stream-separate-attribs
+Fail	KHR-GL33.transform_feedback_overflow_query_ARB.advanced-single-stream-interleaved-attribs
+Fail	KHR-GL33.transform_feedback_overflow_query_ARB.advanced-single-stream-separate-attribs
+Fail	KHR-GL33.transform_feedback_overflow_query_ARB.multiple-streams-one-buffer-per-stream
+Fail	KHR-GL33.transform_feedback_overflow_query_ARB.multiple-streams-multiple-buffers-per-stream
+Timeout	KHR-GL33.pipeline_statistics_query_tests_ARB.functional_primitives_vertices_submitted_and_clipping_input_output_primitives
+Timeout	KHR-GL33.pipeline_statistics_query_tests_ARB.functional_vertex_shader_invocations

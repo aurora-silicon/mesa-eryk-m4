@@ -54,3 +54,39 @@ Supply `gl-cts-report.py --catalog catalog.json ...` when combining segments of
 the same configuration. It adds each case's original global index and writes
 `coverage.json`, resolving unfinished records only with a subsequent completed
 attempt. Repeated terminal attempts remain explicitly MultipleAttempts.
+
+
+### Completed first configuration
+
+The frozen 9,886-case main list finished with 9,554 Pass, 317 NotSupported,
+11 Fail, three Timeout, and one genuine SIGABRT. The separate no-default-context
+case also passed. About 1,013 seconds of test execution across bounded segments;
+peak observed package-channel temperature 108.25 C. No kernel or driver changes
+were made during this task. Afterward only the normal desktop compositor remained.
+
+The SIGABRT is `KHR-GL33.transform_feedback2.transform_feedback2_states`,
+Zink `zink_query.c:1118` asserting `q->started_in_rp == ctx->in_rp`. Two timeouts
+are pipeline-statistics tests; the first logged an unsupported indexed-draw
+command before waiting on the query. The other timeout is the sparse-buffer
+copy test. Most ordinary failures are transform-feedback state/query tests;
+texture LOD bias also failed. See failures-20260921.tsv for exact case names.
+
+Six other raw Crash records were SIGKILL peers from coordinated cancellation.
+Both affected segments kept oom_kill at zero. Their original records and the
+explicit cancellation review remain retained; all six passed an isolated
+follow-up. They are not counted as six independent driver crashes.
+The earlier 100-case smoke test additionally failed
+`KHR-GL33.transform_feedback.draw_xfb_stream_test`, which passed in the main
+list: retain this as an extra order-dependent observation, not a fix or waiver.
+
+This completes the main list at seed 1 and 64x64 using headless EGL Wayland.
+The other size/seed/FBO configurations in the Khronos plan remain untested.
+This result is not a passing full conformance submission.
+
+Local full evidence and every original outcome are under
+`build/gl33-zink-20260921/report/`; `resolved-results.json` maps the frozen case
+indices to the final classification while preserving earlier attempts.
+`results-20260921.json` records segment paths, hashes and cancellation review.
+The no-default-context case uses gl-cts-probe.py GUARD_OUTPUT CASE after a
+separate Zink info probe, since deqp-runner cannot perform its usual renderer
+check for the KHR-NoContext package. Its direct QPA records Pass.

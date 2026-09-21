@@ -1,0 +1,243 @@
+{
+  "summary": {
+    "counts": {
+      "Pass": 9554,
+      "Fail": 11,
+      "NotSupported": 317,
+      "Crash": 1,
+      "Timeout": 3
+    },
+    "total": 9886,
+    "canceled_peers": 6,
+    "canceled_recheck": {
+      "Pass": 6
+    },
+    "scope": "KHR-GL33 main, EGL Wayland headless, seed 1, 64x64; other required size/seed/FBO configurations not run",
+    "cancellation_review": "build/gl33-zink-20260921/cancellation-review.json",
+    "manifest": "build/gl33-zink-20260921/manifest.json",
+    "test_execution_seconds": 1012.9060792900054,
+    "thermal_peak_c": 108.25,
+    "extra_smoke_only_failure": "KHR-GL33.transform_feedback.draw_xfb_stream_test",
+    "no_default_context": {
+      "case": "KHR-NoContext.gl30.no_error.create_context",
+      "status": "Pass",
+      "evidence": "20260921T213703776784Z-gl33-zink-direct-no-context"
+    }
+  },
+  "manifest": {
+    "scope": "GL33 main must-pass, seed 1, 64x64 headless EGL Wayland",
+    "catalog_sha256": "0ad9a8264f6df7413adc966ccf3ecebefad5c29efeb6ddfc2f2559fa9ebebeec",
+    "catalog_cases": 9886,
+    "initial_renderer_probe": "20260921T205639051156Z-gl33-zink-qualified-display",
+    "plan_evidence": "20260921T205805859430Z-gl33-zink-run-plan",
+    "binary_hashes": {
+      "glcts": "b1b9630265dca8269fc34a3a062f801c259022055a56641bcf4d3fbbbc2a5070",
+      "cts-runner": "fdea3a38bb6b33dff8e02c94b747f996c7bf716938fd9b2749342cbf970b701a"
+    },
+    "notes": [
+      "Summary generation originally returned 1 because result files were absent; not a new driver failure.",
+      "Headless private compositor at 1024x1024@1000; one worker initially, four after memory qualification.",
+      "No changes to Mesa driver or kernel during this CTS task.",
+      "Smoke run kept separately: 96 Pass and four transform-feedback Fail; current full-list attempts may differ.",
+      "Additional official size/seed/FBO configurations have not run."
+    ]
+  },
+  "segments": [
+    {
+      "selected": 9886,
+      "recorded": 9886,
+      "completed": 3792,
+      "counts": {
+        "Pass": 3666,
+        "Unrun": 6093,
+        "Fail": 1,
+        "NotSupported": 124,
+        "Interrupted": 1,
+        "Timeout": 1
+      },
+      "classifications": {
+        "unclassified": 9886
+      },
+      "elapsed_seconds": 473.6584866930025,
+      "preparation_seconds": 1.604860503000964,
+      "runner_seconds": 470.82347499500065,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "0ad9a8264f6df7413adc966ccf3ecebefad5c29efeb6ddfc2f2559fa9ebebeec",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260921T210215682902Z-gl33-zink-main64",
+      "guard_verdict": "process_failure",
+      "command_returncode": 1,
+      "peak_temperature_c": 72.75
+    },
+    {
+      "selected": 6094,
+      "recorded": 6094,
+      "completed": 589,
+      "counts": {
+        "Pass": 567,
+        "Unrun": 5490,
+        "Interrupted": 15,
+        "Timeout": 1,
+        "Fail": 1,
+        "Crash": 3,
+        "NotSupported": 17
+      },
+      "classifications": {
+        "unclassified": 6094
+      },
+      "elapsed_seconds": 82.86006517299757,
+      "preparation_seconds": 1.6635739039993496,
+      "runner_seconds": 79.47957547100123,
+      "jobs": 4,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "315551f8cdf6706c3b449706ff029838b347e59f766244495925af7c7c823025",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260921T211419546519Z-gl33-zink-main64-rest",
+      "guard_verdict": "process_failure",
+      "command_returncode": 1,
+      "peak_temperature_c": 87.0
+    },
+    {
+      "selected": 5505,
+      "recorded": 5505,
+      "completed": 3014,
+      "counts": {
+        "Pass": 2913,
+        "Unrun": 2481,
+        "Interrupted": 10,
+        "NotSupported": 94,
+        "Crash": 4,
+        "Fail": 3
+      },
+      "classifications": {
+        "unclassified": 5505
+      },
+      "elapsed_seconds": 245.2524545209999,
+      "preparation_seconds": 1.6154323170012503,
+      "runner_seconds": 242.30461613700027,
+      "jobs": 4,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "b798857a92a8fb0d08a9811c2e415c30836cfe994b259153ceb36ad6ec051c2b",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260921T211854112962Z-gl33-zink-main64-rest2",
+      "guard_verdict": "process_failure",
+      "command_returncode": 1,
+      "peak_temperature_c": 86.25
+    },
+    {
+      "selected": 2491,
+      "recorded": 2491,
+      "completed": 2478,
+      "counts": {
+        "Pass": 2389,
+        "Fail": 6,
+        "NotSupported": 82,
+        "Timeout": 1,
+        "Unrun": 13
+      },
+      "classifications": {
+        "unclassified": 2491
+      },
+      "elapsed_seconds": 186.61005502699845,
+      "preparation_seconds": 1.7134280649988796,
+      "runner_seconds": 183.7292544510019,
+      "jobs": 4,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "d5bcf0be5d6098fd5f20ef46b26c86804d7df6aaac8b957c86bfb2df9e6316d4",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260921T212600964068Z-gl33-zink-main64-rest3",
+      "guard_verdict": "process_failure",
+      "command_returncode": 1,
+      "peak_temperature_c": 108.25
+    },
+    {
+      "selected": 13,
+      "recorded": 13,
+      "completed": 13,
+      "counts": {
+        "Pass": 13
+      },
+      "classifications": {
+        "unclassified": 13
+      },
+      "elapsed_seconds": 5.049357008996594,
+      "preparation_seconds": 1.5565937029969064,
+      "runner_seconds": 2.447128371000872,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "e0f72862723a4b25b72cd46dea27c7640324bc9bb2ff58ca763fb58ecc3a07e0",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260921T213200722302Z-gl33-zink-main64-tail",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 67.0
+    },
+    {
+      "selected": 6,
+      "recorded": 6,
+      "completed": 6,
+      "counts": {
+        "Pass": 6
+      },
+      "classifications": {
+        "unclassified": 6
+      },
+      "elapsed_seconds": 36.575491354000405,
+      "preparation_seconds": 1.5430276810002397,
+      "runner_seconds": 34.12202986500051,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "63bf3f8bc34bebcf503b04a4d4dd5bf9c5c10f4f8ef617cb5a090ef2520cdf60",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260921T213321844390Z-gl33-zink-canceled-recheck",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 66.75
+    }
+  ],
+  "cancellations": [
+    {
+      "run": "build/gl33-zink-20260921/main-64-rest",
+      "case": "KHR-GL33.packed_pixels.varied_rectangle.rgb12_format_rgb",
+      "raw_status": "Crash",
+      "review": "Canceled peer after another worker timed out or aborted; oom_kill stayed zero. Retest separately; original outcome retained.",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260921T211419546519Z-gl33-zink-main64-rest"
+    },
+    {
+      "run": "build/gl33-zink-20260921/main-64-rest",
+      "case": "KHR-GL33.packed_pixels.varied_rectangle.compressed_srgb_alpha_format_rg",
+      "raw_status": "Crash",
+      "review": "Canceled peer after another worker timed out or aborted; oom_kill stayed zero. Retest separately; original outcome retained.",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260921T211419546519Z-gl33-zink-main64-rest"
+    },
+    {
+      "run": "build/gl33-zink-20260921/main-64-rest",
+      "case": "KHR-GL33.texture_swizzle.smoke_access_idx_11_channel_idx_2",
+      "raw_status": "Crash",
+      "review": "Canceled peer after another worker timed out or aborted; oom_kill stayed zero. Retest separately; original outcome retained.",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260921T211419546519Z-gl33-zink-main64-rest"
+    },
+    {
+      "run": "build/gl33-zink-20260921/main-64-rest2",
+      "case": "KHR-GL33.shaders.uniform_block.single_basic_type.std140.column_major_highp_mat4x2",
+      "raw_status": "Crash",
+      "review": "Canceled peer after another worker timed out or aborted; oom_kill stayed zero. Retest separately; original outcome retained.",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260921T211854112962Z-gl33-zink-main64-rest2"
+    },
+    {
+      "run": "build/gl33-zink-20260921/main-64-rest2",
+      "case": "KHR-GL33.texture_swizzle.smoke_access_idx_0_channel_idx_1",
+      "raw_status": "Crash",
+      "review": "Canceled peer after another worker timed out or aborted; oom_kill stayed zero. Retest separately; original outcome retained.",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260921T211854112962Z-gl33-zink-main64-rest2"
+    },
+    {
+      "run": "build/gl33-zink-20260921/main-64-rest2",
+      "case": "KHR-GL33.texture_swizzle.smoke_access_idx_5_channel_idx_3",
+      "raw_status": "Crash",
+      "review": "Canceled peer after another worker timed out or aborted; oom_kill stayed zero. Retest separately; original outcome retained.",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260921T211854112962Z-gl33-zink-main64-rest2"
+    }
+  ]
+}
