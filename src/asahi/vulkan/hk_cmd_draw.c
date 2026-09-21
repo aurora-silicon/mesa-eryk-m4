@@ -4985,16 +4985,9 @@ hk_fs_can_use_direct_ubos(struct hk_cmd_buffer *cmd)
    }
    for (unsigned i = 0; i < info->ubo_prefetch_count; ++i) {
       const struct hk_ubo_prefetch *load = &info->ubo_prefetch[i];
-      struct hk_descriptor_set *set = state->sets[load->set];
-      const uint8_t *data = set ? set->mapped_ptr :
-         state->push[load->set] ? state->push[load->set]->data : NULL;
-      const uint32_t size = set ? state->set_sizes[load->set] :
-         state->push[load->set] ? sizeof(state->push[load->set]->data) : 0;
-      if (!data || load->descriptor_offset_B > size ||
-          sizeof(struct hk_buffer_address) > size - load->descriptor_offset_B)
-         return false;
       struct hk_buffer_address address;
-      memcpy(&address, data + load->descriptor_offset_B, sizeof(address));
+      if (!hk_prefetch_buffer_address(state, load, &address))
+         return false;
       if (agx_addr_is_ro(&dev->dev, address.base_addr))
          return false;
    }

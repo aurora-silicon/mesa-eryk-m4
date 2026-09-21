@@ -1,0 +1,22 @@
+{
+  "selected": 70,
+  "recorded": 70,
+  "completed": 70,
+  "counts": {
+    "Pass": 70
+  },
+  "classifications": {
+    "unclassified": 70
+  },
+  "elapsed_seconds": 3.5515271020121872,
+  "preparation_seconds": 1.3945494389627129,
+  "runner_seconds": 1.222522625000238,
+  "jobs": 1,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "462bd3d5353311eec75ea4aebd95767382fcc27e0c2a6b6428afe90ee0863b12",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260921T060418813504Z-stk-dynamic-ubo-cts",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 65.25
+}

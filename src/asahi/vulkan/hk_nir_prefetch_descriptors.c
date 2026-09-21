@@ -168,9 +168,10 @@ hk_nir_prefetch_descriptors(nir_shader *nir, unsigned set_base,
    return progress;
 }
 
-/* Match the exact bounded-global load emitted by hk_shader.c. No bounds check
- * is discarded: the command encoder selects the same buffer or zero page.
- * Only immutable UBO descriptors approved by the pipeline layout qualify. */
+/* Match descriptor-relative UBO reads, including the bounded-global form
+ * emitted by hk_shader.c. No bounds check is discarded: the command encoder
+ * selects the same buffer or zero page. Ordinary non-robust reads may also
+ * return zero out of range. Only immutable UBO bindings qualify. */
 static nir_scalar
 ubo_src(nir_scalar s, unsigned index)
 {
@@ -181,15 +182,18 @@ static bool
 ubo_load(nir_intrinsic_instr *intr, unsigned set_base, unsigned set_count,
          struct hk_ubo_prefetch *load)
 {
-   if (intr->intrinsic != nir_intrinsic_load_global ||
-       intr->def.bit_size != 32 || intr->def.num_components != 1 ||
-       (nir_intrinsic_access(intr) & (ACCESS_NON_WRITEABLE | ACCESS_CAN_REORDER)) !=
-          (ACCESS_NON_WRITEABLE | ACCESS_CAN_REORDER) ||
+   const bool constant = intr->intrinsic == nir_intrinsic_load_global_constant;
+   if ((!constant && intr->intrinsic != nir_intrinsic_load_global) ||
+       intr->def.bit_size != 32 ||
+       (!constant && intr->def.num_components != 1) ||
+       (!constant &&
+        (nir_intrinsic_access(intr) & (ACCESS_NON_WRITEABLE | ACCESS_CAN_REORDER)) !=
+           (ACCESS_NON_WRITEABLE | ACCESS_CAN_REORDER)) ||
        (nir_intrinsic_access(intr) & ACCESS_VOLATILE))
       return false;
    nir_scalar address = nir_scalar_resolved(intr->src[0].ssa, 0);
    uint64_t offset = 0;
-   if (nir_scalar_is_alu(address) && nir_scalar_alu_op(address) == nir_op_iadd) {
+   while (nir_scalar_is_alu(address) && nir_scalar_alu_op(address) == nir_op_iadd) {
       nir_scalar a = ubo_src(address, 0);
       nir_scalar b = ubo_src(address, 1);
       if (!nir_scalar_is_const(b)) {
@@ -197,35 +201,65 @@ ubo_load(nir_intrinsic_instr *intr, unsigned set_base, unsigned set_count,
       }
       if (!nir_scalar_is_const(b))
          return false;
-      offset = nir_scalar_as_uint(b);
+      uint64_t add = nir_scalar_as_uint(b);
+      if (add > UINT32_MAX || offset > UINT32_MAX - add)
+         return false;
+      offset += add;
       address = a;
    }
-   if (offset > UINT32_MAX - 4 || (offset & 3) ||
-       !nir_scalar_is_alu(address) || nir_scalar_alu_op(address) != nir_op_bcsel)
+   if (offset > UINT32_MAX - 4 * intr->def.num_components || (offset & 3))
       return false;
-   nir_scalar valid = ubo_src(address, 0);
-   nir_scalar pointer = ubo_src(address, 1);
-   nir_scalar zero = ubo_src(address, 2);
-   if (!nir_scalar_is_const(zero) || nir_scalar_as_uint(zero) != AGX_ZERO_PAGE_ADDRESS ||
-       !nir_scalar_is_alu(valid) || nir_scalar_alu_op(valid) != nir_op_ult ||
-       !nir_scalar_is_alu(pointer) ||
+   nir_scalar pointer = address;
+   nir_scalar bound = {0};
+   if (!constant) {
+      if (!nir_scalar_is_alu(address) || nir_scalar_alu_op(address) != nir_op_bcsel)
+         return false;
+      nir_scalar valid = ubo_src(address, 0);
+      pointer = ubo_src(address, 1);
+      nir_scalar zero = ubo_src(address, 2);
+      if (!nir_scalar_is_const(zero) || nir_scalar_as_uint(zero) != AGX_ZERO_PAGE_ADDRESS ||
+          !nir_scalar_is_alu(valid) || nir_scalar_alu_op(valid) != nir_op_ult)
+         return false;
+      nir_scalar last = ubo_src(valid, 0);
+      bound = ubo_src(valid, 1);
+      if (!nir_scalar_is_const(last) || nir_scalar_as_uint(last) != offset + 3)
+         return false;
+   }
+   if (!nir_scalar_is_alu(pointer) ||
        nir_scalar_alu_op(pointer) != nir_op_pack_64_2x32_split)
       return false;
-   nir_scalar last = ubo_src(valid, 0);
-   nir_scalar bound = ubo_src(valid, 1);
    nir_scalar lo = ubo_src(pointer, 0);
    nir_scalar hi = ubo_src(pointer, 1);
-   if (!nir_scalar_is_const(last) || nir_scalar_as_uint(last) != offset + 3 ||
-       lo.def != hi.def || lo.def != bound.def ||
-       lo.comp != 0 || hi.comp != 1 || bound.comp != 2)
+   if (lo.def != hi.def || lo.comp != 0 || hi.comp != 1 ||
+       (!constant && (lo.def != bound.def || bound.comp != 2)))
       return false;
    nir_intrinsic_instr *descriptor = nir_scalar_as_intrinsic(lo);
    unsigned set;
    uint32_t descriptor_offset, size;
-   if (!descriptor || !descriptor_load(descriptor, set_base, set_count,
-                                      &set, &descriptor_offset, &size, false) ||
-       descriptor->def.bit_size != 32 || size != 16)
+   if (!descriptor || descriptor->def.bit_size != 32 ||
+       descriptor->def.num_components != 4)
       return false;
+   if (!descriptor_load(descriptor, set_base, set_count,
+                        &set, &descriptor_offset, &size, false)) {
+      /* A statically selected dynamic UBO is copied into the draw root when
+       * binding, including its dynamic offset. Unknown shader-object layout
+       * prefixes or dynamically indexed descriptors retain their GPU loads. */
+      if (descriptor->intrinsic != nir_intrinsic_load_global_constant)
+         return false;
+      nir_scalar addr = nir_scalar_resolved(descriptor->src[0].ssa, 0);
+      if (!nir_scalar_is_alu(addr) || nir_scalar_alu_op(addr) != nir_op_iadd)
+         return false;
+      nir_scalar base = ubo_src(addr, 0), byte = ubo_src(addr, 1);
+      if (!nir_scalar_is_const(byte)) {
+         nir_scalar tmp = base; base = byte; byte = tmp;
+      }
+      nir_intrinsic_instr *root = nir_scalar_as_intrinsic(base);
+      if (!nir_scalar_is_const(byte) || nir_scalar_as_uint(byte) > UINT32_MAX ||
+          !root || root->intrinsic != nir_intrinsic_load_root_agx)
+         return false;
+      set = HK_UBO_PREFETCH_ROOT_SET;
+      descriptor_offset = nir_scalar_as_uint(byte);
+   }
    *load = (struct hk_ubo_prefetch){
       .set = set, .descriptor_offset_B = descriptor_offset,
       .offset_B = offset, .size_B = 4,
@@ -240,6 +274,36 @@ hk_nir_prefetch_ubos(nir_shader *nir, unsigned set_base, unsigned set_count,
                     void *data)
 {
    bool progress = false;
+   /* Ordinary UBO loads can remain vectors when robustness is disabled.
+    * Scalarize only eligible, constant-offset UBO reads so each word retains
+    * an independent range check in the loader and sparse fallback. */
+   nir_foreach_function_impl(impl, nir) {
+      nir_builder b = nir_builder_create(impl);
+      bool changed = false;
+      nir_foreach_block(block, impl) {
+         nir_foreach_instr_safe(instr, block) {
+            if (instr->type != nir_instr_type_intrinsic)
+               continue;
+            nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+            struct hk_ubo_prefetch load;
+            if (intr->def.num_components <= 1 ||
+                !ubo_load(intr, set_base, set_count, &load) ||
+                !allowed(data, load.set, load.descriptor_offset_B))
+               continue;
+            b.cursor = nir_before_instr(instr);
+            nir_def *words[NIR_MAX_VEC_COMPONENTS];
+            for (unsigned c = 0; c < intr->def.num_components; ++c) {
+               words[c] = nir_load_global_constant(&b, 1, 32,
+                  nir_iadd_imm(&b, intr->src[0].ssa, 4 * c), .align_mul = 4,
+                  .access = nir_intrinsic_access(intr));
+            }
+            nir_def_replace(&intr->def, nir_vec(&b, words, intr->def.num_components));
+            changed = true;
+         }
+      }
+      nir_progress(changed, impl, nir_metadata_control_flow);
+      progress |= changed;
+   }
    nir_foreach_function_impl(impl, nir) {
       bool changed = false;
       struct candidate { nir_intrinsic_instr *intr; unsigned entry; };
@@ -311,7 +375,8 @@ hk_nir_prefetch_ubos(nir_shader *nir, unsigned set_base, unsigned set_count,
          }
          nir_push_else(&b, NULL);
          nir_def *table = nir_load_preamble(&b, 1, 64,
-                                            .base = set_base + 4 * group->set);
+                                            .base = group->set == HK_UBO_PREFETCH_ROOT_SET ?
+                                               set_base - 4 : set_base + 4 * group->set);
          nir_def *desc = nir_load_global_constant(&b, 4, 32,
             nir_iadd_imm(&b, table, group->descriptor_offset_B), .align_mul = 4);
          nir_def *pointer = nir_pack_64_2x32_split(&b,
