@@ -20,7 +20,7 @@ import time
 class Marionette:
     def __init__(self):
         self.socket = socket.create_connection(('127.0.0.1', 2828), timeout=2)
-        self.socket.settimeout(8)
+        self.socket.settimeout(15)
         self.sequence = 0
         self.read()
 
@@ -228,6 +228,7 @@ def main():
                                f'hl.dsp.window.move({{x={x},y={y},window={selector}}})']:
                     subprocess.run(hc+['dispatch', action], check=True, capture_output=True, timeout=3)
             (out/'monitors.json').write_bytes(subprocess.check_output(hc+['-j', 'monitors'], timeout=3))
+            (out/'window.json').write_text(json.dumps([c for c in json.loads(subprocess.check_output(hc+['-j', 'clients'], timeout=3)) if c['address'] in [o['address'] for o in owned]], indent=2)+'\n')
             remote.call('WebDriver:SetTimeouts', {'script': 6000, 'pageLoad': 12000, 'implicit': 0})
             remote.call('Marionette:SetContext', {'value': 'chrome'})
             gfx = remote.script('const done=arguments[arguments.length-1]; ChromeUtils.importESModule("resource://gre/modules/Troubleshoot.sys.mjs").Troubleshoot.snapshot().then(s=>done(s.graphics));', True)

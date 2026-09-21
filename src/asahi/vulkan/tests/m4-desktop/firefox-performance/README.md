@@ -24,3 +24,8 @@ window using Hyprland's Lua dispatchers. The helper records monitor modes and
 page viewport/DPR; compare the same output and size across kernel reboots.
 The profiler is stopped with SIGINT; exit 130 or -SIGINT is normal when a
 profile file was retained, while forced-kill/other failures remain errors.
+
+The helper also retains the owned Hyprland client's actual rectangle and output
+in window.json. Its socket timeout exceeds the 12-second navigation timeout;
+a previous 8-second transport timeout could fail before Firefox returned the
+navigation result. The outer watchdog/thermal guard remains the run's bound.
