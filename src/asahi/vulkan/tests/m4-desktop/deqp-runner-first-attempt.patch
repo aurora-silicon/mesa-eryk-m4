@@ -1,8 +1,13 @@
 diff --git a/src/deqp_command.rs b/src/deqp_command.rs
-index 978a5d0..02ab01b 100644
+index 978a5d0..8761488 100644
 --- a/src/deqp_command.rs
 +++ b/src/deqp_command.rs
-@@ -393,3 +393,5 @@ impl TestCommand for DeqpCommand {
+@@ -386 +386,3 @@ impl TestCommand for DeqpCommand {
+-        args.push("--deqp-log-flush=disable".to_string());
++        if !args.iter().any(|arg| arg.starts_with("--deqp-log-flush=")) {
++            args.push("--deqp-log-flush=disable".to_string());
++        }
+@@ -393,3 +395,5 @@ impl TestCommand for DeqpCommand {
 -        add_filename_arg(&mut args, "--deqp-shadercache-filename", &cache_path)
 -            .context("adding cache to args")?;
 -        args.push("--deqp-shadercache-truncate=disable".to_string());
@@ -11,7 +16,7 @@ index 978a5d0..02ab01b 100644
 +                .context("adding cache to args")?;
 +            args.push("--deqp-shadercache-truncate=disable".to_string());
 +        }
-@@ -418,0 +421,3 @@ impl TestCommand for DeqpCommand {
+@@ -418,0 +423,3 @@ impl TestCommand for DeqpCommand {
 +        if self.config.first_attempt {
 +            return Ok(());
 +        }

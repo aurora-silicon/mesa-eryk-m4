@@ -90,3 +90,17 @@ indices to the final classification while preserving earlier attempts.
 The no-default-context case uses gl-cts-probe.py GUARD_OUTPUT CASE after a
 separate Zink info probe, since deqp-runner cannot perform its usual renderer
 check for the KHR-NoContext package. Its direct QPA records Pass.
+
+### Fix investigation tooling (2026-09-22)
+
+`gl33-cts-run.py --renderer lavapipe` retains the same Zink build while
+selecting the packaged software Vulkan ICD, to distinguish frontend query
+bookkeeping from M4 execution bugs. Record that renderer separately.
+`AGX_*` diagnostic variables are forwarded to the private test compositor too,
+so startup shader compilation failures retain their reason.
+
+The GL runner now explicitly enables QPA log flushing. The retained
+`../deqp-runner-first-attempt.patch` honors an explicit log-flush option instead
+of appending a conflicting disable option. This preserves the current case
+when a GPU hang interrupts a process. It does not change the 60-second case
+bound, shader/test code, skip lists or first-attempt cancellation behavior.
