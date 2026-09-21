@@ -445,7 +445,8 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
 
    struct agx_bo *program_bo = NULL;
    struct agx_ptr upload = {0};
-   if (dev->dev.chip == AGX_CHIP_G16G && program_capacity <= HK_CMD_BO_SIZE) {
+   if (agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) &&
+       program_capacity <= HK_CMD_BO_SIZE) {
       /* Background/clear/store launch programs have the same immutable
        * command-buffer lifetime as ordinary draw programs. Suballocate them
        * in the executable upload pool instead of owning a GEM per pass. */
