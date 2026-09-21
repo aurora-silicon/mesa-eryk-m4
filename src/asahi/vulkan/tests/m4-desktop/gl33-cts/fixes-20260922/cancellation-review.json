@@ -1,0 +1,47 @@
+{
+  "segment": "20260921T224333685198Z-gl33-main-final",
+  "trigger": "KHR-GL33.texture_lod_bias.texture_lod_bias_all",
+  "trigger_status": "Timeout",
+  "case_bound_seconds": 60,
+  "workers": 4,
+  "oom_kill_before": 0,
+  "oom_kill_after": 0,
+  "min_mem_available_kib": 4808704,
+  "kernel_fault_matches": [],
+  "peer_crashes": [
+    {
+      "case": "KHR-GL33.packed_pixels.varied_rectangle.rg8_snorm_format_bgra",
+      "signal": "signal: 9 (SIGKILL)"
+    },
+    {
+      "case": "KHR-GL33.packed_pixels.varied_rectangle.rgb10_format_bgra",
+      "signal": "signal: 9 (SIGKILL)"
+    },
+    {
+      "case": "KHR-GL33.packed_pixels.varied_rectangle.srgb8_format_rgba",
+      "signal": "signal: 9 (SIGKILL)"
+    }
+  ],
+  "interpretation": "SIGKILL peers from first-attempt coordinated cancellation; retain raw Crash records and check their completion in the next segment. LOD duration under concurrent load requires isolated final-build recheck.",
+  "kernel_fault_pattern": "GPU fault|firmware fault|timed out|\\btimeout\\b|Out of memory|Killed process|oom-kill|BUG:|Oops:",
+  "note": "Periodic completion wait totals contain a cumulative timeouts= poll counter; these are not firmware job timeout reports.",
+  "peer_rechecks": [
+    {
+      "case": "KHR-GL33.packed_pixels.varied_rectangle.rg8_snorm_format_bgra",
+      "status": "Pass"
+    },
+    {
+      "case": "KHR-GL33.packed_pixels.varied_rectangle.rgb10_format_bgra",
+      "status": "Pass"
+    },
+    {
+      "case": "KHR-GL33.packed_pixels.varied_rectangle.srgb8_format_rgba",
+      "status": "Pass"
+    }
+  ],
+  "isolated_lod_recheck": {
+    "status": "Pass",
+    "seconds": 40.02384030100029,
+    "evidence": "20260921T225335026163Z-gl33-final-lod-isolated"
+  }
+}

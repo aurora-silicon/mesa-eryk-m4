@@ -1,0 +1,36 @@
+{
+  "bundle": "/home/council/dev/dirtyroom_m4/mesa/m4-asahi/src/asahi/vulkan/tests/m4-desktop/gl33-cts/fixes-20260922/unary-compiler-capture",
+  "capture": {
+    "version": 1,
+    "serialization_abi": "8377900c2025165e2528b9a66fdb57d48667e07b502967ffa2d582e36ef50980",
+    "input_blake3": "6f9bd647a570e70ed03db563f534958b440c3a2851ad0b722093f4d5beed6702",
+    "input_bytes": 35704,
+    "entrypoint": "agx_compile_shader_nir",
+    "success": false
+  },
+  "input_sha256": "f5d1090947b08fd76d9fa720305850c8801d3af49b1373d83fe7d365f78ca1be",
+  "replayer_sha256": "9a476ee4747b745d0b7d51e6e22ccdb137dfd12622b3f52b47b8e6cc8b946768",
+  "mesa_commit": "c367ecc63b127ebc761f3e869c1a4406b5048a65",
+  "untracked_sha256": {
+    "src/asahi/vulkan/tests/m4-desktop/gl33-cts/fixes-20260922/gl33-unary-after-test.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "src/asahi/vulkan/tests/m4-desktop/gl33-cts/fixes-20260922/gl33-unary-before-test.log": "f7373bcf3efb045a07f56d57d729a950957c96f378abbc0be8206fa410efd8be",
+    "src/asahi/vulkan/tests/m4-desktop/gl33-cts/fixes-20260922/investigation-summaries.json.gz": "d0c756294791b3bef696c56cf4259f0a35c6f9f82bbe2ecc4554fc7eca7d9c2c",
+    "src/asahi/vulkan/tests/m4-desktop/gl33-cts/fixes-20260922/lod.txt": "e960b8405357cc741ab6a62b2ff40f3fa8f95ea8f680fc843c6c38b7d99ac09c",
+    "src/asahi/vulkan/tests/m4-desktop/gl33-cts/fixes-20260922/pipeline-queries.txt": "77d6adde9937ff53e69b2dd81b9d5351fe66db3707966faaab03073c0bf51a5d",
+    "src/asahi/vulkan/tests/m4-desktop/gl33-cts/fixes-20260922/sparse.txt": "d29ac73c62dd712bb72091d2e9f7f5dc79b74f5b906e7eee41ca4a7402475a54",
+    "src/asahi/vulkan/tests/m4-desktop/gl33-cts/fixes-20260922/tf-failures.txt": "2c24e49378827671389135dac7bbdf2113e480c49db9a93c9ea85cc687f4080d",
+    "src/asahi/vulkan/tests/m4-desktop/gl33-cts/fixes-20260922/unary-compiler-capture/backend-ir.txt": "fc4d468a7c8a1d76e0652e30f2db405560424568f424edd34e9cffdacb598981",
+    "src/asahi/vulkan/tests/m4-desktop/gl33-cts/fixes-20260922/unary-compiler-capture/input.bin": "f5d1090947b08fd76d9fa720305850c8801d3af49b1373d83fe7d365f78ca1be",
+    "src/asahi/vulkan/tests/m4-desktop/gl33-cts/fixes-20260922/unary-compiler-capture/manifest.json": "77f788f70959fa54a7bbddd0c76006d7b87ee1f359b9f76d7d3f5e4aee50213c",
+    "src/asahi/vulkan/tests/m4-desktop/gl33-cts/fixes-20260922/vk-buffer-copies-indices.json.gz": "78ccec0152c1d2637ffb835b62c44d052b3964bbf795abf2fc7c9f08926e121c",
+    "src/asahi/vulkan/tests/m4-desktop/gl33-cts/fixes-20260922/vk-buffer-copies-results.json.gz": "8c97d1b9331d5e11f287eaa0e23a7144f71025a7183024b9777751b32918a221",
+    "src/asahi/vulkan/tests/m4-desktop/gl33-cts/fixes-20260922/vk-byte-count-indices.json.gz": "de86b897b0aaea6b8ad867507f59b021e8d1a8535a29df8b0e17fdc1f29ce907",
+    "src/asahi/vulkan/tests/m4-desktop/gl33-cts/fixes-20260922/vk-byte-count1-results.json.gz": "34800ac5221bd6936c1289d8d7203b30e32c1ffa4d986151472325e4ed5c9614",
+    "src/asahi/vulkan/tests/m4-desktop/gl33-cts/fixes-20260922/vk-conditional-indices.json.gz": "12e9df37e404700ae999a074ca6d101ab83b3370342cc6cfd4e08b3c94a207d2",
+    "src/asahi/vulkan/tests/m4-desktop/gl33-cts/fixes-20260922/vk-conditional1-results.json.gz": "df9f09b0401b7e2ca03022273fa22052ec0cf35e9fc8047a4565415f5b5671eb",
+    "src/asahi/vulkan/tests/m4-desktop/gl33-cts/fixes-20260922/vk-lod-final-results.json.gz": "f16d07ecd4d8cc75e83b8e1bcefbb93187b896ee81efae6536dfdcb3ca140e21",
+    "src/asahi/vulkan/tests/m4-desktop/gl33-cts/fixes-20260922/vk-lod-indices.json.gz": "97b0d760ebd570bef34847cec763dac099c3be153f903169f082431aa6b83729"
+  },
+  "source_patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "returncode": 0
+}

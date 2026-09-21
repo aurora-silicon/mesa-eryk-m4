@@ -1,0 +1,14 @@
+{
+  "command": "build/mesa-m4-asahi-host/src/asahi/compiler/agx3_graphics_compile_test --unary-half-inputs-only",
+  "before": {
+    "compiler_commit": "e5a35fceb50",
+    "test_source": "new descriptor-backed half-input regression",
+    "returncode": 1,
+    "log": "gl33-unary-before-test.log"
+  },
+  "after": {
+    "compiler_fix": "dab4eed852d",
+    "returncode": 0,
+    "log": "gl33-unary-after-test.log"
+  }
+}

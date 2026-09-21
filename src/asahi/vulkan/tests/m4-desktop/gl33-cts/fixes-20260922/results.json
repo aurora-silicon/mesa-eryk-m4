@@ -1,0 +1,127 @@
+{
+  "scope": "Khronos GL33 main, seed 1, 64x64, private headless EGL Wayland; not all required conformance configurations",
+  "catalog_cases": 9886,
+  "catalog_sha256": "0ad9a8264f6df7413adc966ccf3ecebefad5c29efeb6ddfc2f2559fa9ebebeec",
+  "baseline_counts": {
+    "Pass": 9554,
+    "Fail": 11,
+    "NotSupported": 317,
+    "Crash": 1,
+    "Timeout": 3
+  },
+  "resolved_counts": {
+    "Pass": 9569,
+    "NotSupported": 317
+  },
+  "classifications": {
+    "Pass": 9565,
+    "NotSupported": 317,
+    "PassAfterIsolatedTimeoutRecheck": 1,
+    "PassAfterCanceledPeerRecheck": 3
+  },
+  "fixed_baseline_cases": 15,
+  "changed_support_status": 0,
+  "test_execution_seconds": 762.5333587929999,
+  "peak_temperature_c": 103.75,
+  "segments": [
+    {
+      "run": "main-final",
+      "selected": 9886,
+      "recorded": 9886,
+      "completed": 7082,
+      "counts": {
+        "Pass": 6856,
+        "Unrun": 2802,
+        "NotSupported": 222,
+        "Timeout": 1,
+        "Crash": 3,
+        "Interrupted": 2
+      },
+      "classifications": {
+        "unclassified": 9886
+      },
+      "elapsed_seconds": 509.67339484499826,
+      "preparation_seconds": 1.5656185339976219,
+      "runner_seconds": 506.92547399399973,
+      "jobs": 4,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "0ad9a8264f6df7413adc966ccf3ecebefad5c29efeb6ddfc2f2559fa9ebebeec",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260921T224333685198Z-gl33-main-final",
+      "guard_verdict": "process_failure",
+      "command_returncode": 1,
+      "peak_temperature_c": 103.75
+    },
+    {
+      "run": "main-final-lod-isolated",
+      "selected": 1,
+      "recorded": 1,
+      "completed": 1,
+      "counts": {
+        "Pass": 1
+      },
+      "classifications": {
+        "unclassified": 1
+      },
+      "elapsed_seconds": 42.28378028300358,
+      "preparation_seconds": 1.5713346359989373,
+      "runner_seconds": 40.02384030100029,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "e960b8405357cc741ab6a62b2ff40f3fa8f95ea8f680fc843c6c38b7d99ac09c",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260921T225335026163Z-gl33-final-lod-isolated",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 66.5
+    },
+    {
+      "run": "main-final-rest",
+      "selected": 2807,
+      "recorded": 2807,
+      "completed": 2807,
+      "counts": {
+        "Pass": 2712,
+        "NotSupported": 95
+      },
+      "classifications": {
+        "unclassified": 2807
+      },
+      "elapsed_seconds": 218.13129225700686,
+      "preparation_seconds": 1.6243568019999657,
+      "runner_seconds": 215.5840444979999,
+      "jobs": 4,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "7877f4d8bc09bb88fff4de7d07d7829ab3e3d157b45efb94574b7fe04f96188e",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260921T225419004730Z-gl33-final-rest",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 86.5
+    }
+  ],
+  "libraries": {
+    "/opt/asahi-m4-port/lib/libvulkan_asahi.so": "7f4c04b26b399c5df24809c68750f511333cea0d715ec1fb01d9cdb3be930799",
+    "/root/guarded-command.py": "86a4a3610ea901ca1ed87bc75d2f23a4ddc970bdcd106614af34375feea9b0d6",
+    "/opt/asahi-m4-port/lib/libgallium-26.1.4.so": "2ef5d0349de65a7b6bdb3159db3ef749124194d7a166486f4954e5816b0e1795",
+    "/root/run-m4-gl.py": "6842d9bb244b52e7b358b63af9548c1a08d6c6a3244da61efe1b157006df8471",
+    "/root/firmware-snapshot.py": "37fb9b9de46fddab7e71703dafdbef5e9ab9ada6bddea7409632d4e8aae69d0f",
+    "/root/g16-fault-dump.py": "c3988ddf0ad9e10e2b9736582c9ab7c59c90a62090d0e34a32db1ba46c917bf3",
+    "/lib/modules/7.1.9-dirtyroom-asahi2+/kernel/drivers/gpu/drm/asahi/asahi.ko": "4713d6fd423b20d2135cb72461aaa08f984d842b1de5c32415245009c4ac1816",
+    "/root/g16-submit-test/experiment_watchdog.py": "28600768bceb930a3528471fd7982db9247ec86c00f4a522456b70e38001e18d",
+    "/root/g16-submit-test/experiment_thermals.py": "ec637ec7ab390d0831a96e967f4f483833a06cfc1d3b2e2bdd5622e65e323d3d",
+    "/root/cts-bulk/gl33-main-final-0ad9a8264f6d/cts-headless.py": "71457d1dd206aed43a3270d4eeaee45a883ecdbccb6971d38be6c69aa74762be",
+    "/root/cts-bulk/gl33-main-final-0ad9a8264f6d/cts-sample.py": "f19a108b82984c2e8518a33d72410ab2610591ad98061ea1cf858f669129da9d",
+    "/root/gl-cts-1.4.6.2/glcts": "b1b9630265dca8269fc34a3a062f801c259022055a56641bcf4d3fbbbc2a5070",
+    "/root/cts-bulk/gl33-main-final-0ad9a8264f6d/cases.txt": "0ad9a8264f6df7413adc966ccf3ecebefad5c29efeb6ddfc2f2559fa9ebebeec",
+    "/root/cts-bulk/gl33-main-final-0ad9a8264f6d/deqp-runner": "060aad45bbfbc9f1d5156cfbe950584fe86d1ec77e81b609a568bb519f4b6b85"
+  },
+  "kernel": "7.1.9-dirtyroom-asahi2+",
+  "boot_id": "72bd73c9-4ad2-452a-9035-bdf790cb0315",
+  "notes": [
+    "Raw parallel run retains 1 LOD Timeout and 3 canceled-peer Crash records.",
+    "LOD passes alone on the same final build; canceled peers pass in continuation. No kernel fault or OOM reported in cancellation review.",
+    "No CTS case modifications, removals, skip list, timeout increase or feature hiding.",
+    "317 NotSupported cases are unchanged from baseline. Other size/seed/FBO configurations were not run."
+  ]
+}

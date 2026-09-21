@@ -1,0 +1,2129 @@
+block0 {
+   $r4...r7 = device_load u16:u17, #0, xyzw, shift=0, #0x0, slot 0
+   $r8...r11 = device_load u14:u15, #112, xyzw, shift=2, #0x0, slot 0
+   $r3 = mov_imm #0x0
+   $r1 = iadd r3, ^r9.neg, shift=0
+   $r2 = icmpsel $r8, #0, #0, #1, #0x0
+   $r6 = iadd ^r1, ^r2.neg, shift=0
+   $r1 = iadd $r4, #44, shift=0
+   $r2 = icmpsel $r1, r4, #1, #0, #0x0
+   $r2 = iadd ^r2, r5, shift=0
+   $r7 = not1 $r10, #0
+   $r9 = not1 $r11, #0
+   $r12 = and $r1, r7
+   $r13 = and $r2, r9
+   $r14 = iadd $r12, r8.neg, shift=0
+   $r15 = iadd $r13, r6, shift=0
+   $r16 = icmpsel $r14, $r12, #1, #0, #0x0
+   $r15 = iadd ^r16, ^r15, shift=0
+   $r0h = icmpsel $r14, r10, #1, #0, #0x0
+   $r0h = icmpsel $r15, $r11, ^r0h, #0, #0x0
+   $r0h = icmpsel $r15, r11, #1, ^r0h, #0x0
+   $r15 = icmpsel $r0h, #0, #0, ^r15, #0x0
+   $r14 = icmpsel $r0h, #0, #0, ^r14, #0x0
+   $r16 = mov_imm #0x1a
+   $r17 = bfeil #0, $r15, ^r16, #0x0
+   $r18...r19 = device_load u14:u15, #227, xy, shift=1, #0x0, slot 0
+   $r16 = extr r14, r15, #26, #0x0
+   $r17 = extr $r16, ^r17, #29, #0x0
+   $r20 = iadd $r18, ^r16, shift=3
+   $r16 = iadd r19, ^r17, shift=0
+   $r17 = icmpsel r20, r18, #1, #0, #0x0
+   r21 = iadd ^r17, ^r16, shift=0
+   $r16...r17 = device_load ^r20:r21, #0, xy, shift=0, #0x0, slot 0
+   $r20 = or r16, r17
+   $r20l = icmpsel ^r20, #0, #0, #1, #0x0
+   r20l = icmpsel $r0h, #0, #0, ^r20l, #0x0
+   begin_cf 
+   r23 = icmpsel $r0h, #0, ^r2, r13, #0x0
+   r22 = icmpsel ^r0h, #0, r1, r12, #0x0
+   r2 = mov_imm #0x7ff8
+   r21 = mov_imm #0x3fff
+   if_icmp ^r20l, #0, #0xaaab1c4ac0f0, n=1, inv
+} -> block1 block2 
+
+block1 {
+   $r14 = extr r14, r15, #11, #0x0
+   $r15 = and r14, r2
+   $r14 = iadd $r16, r15, shift=0
+   $r15 = icmpsel r14, r16, #1, #0, #0x0
+   r15 = iadd r15, r17, shift=0
+   $r14...r15 = device_load r14:r15, #0, xy, shift=0, #0x0, slot 0
+   $r16 = or $r14, $r15
+   $r17 = and r1, r21
+   $r1 = iadd $r14, r17, shift=0
+   $r14 = icmpsel $r1, r14, #1, #0, #0x0
+   $r14 = iadd r14, r15, shift=0
+   r22 = icmpsel $r16, #0, r12, r1, #0x0
+   r23 = icmpsel r16, #0, r13, r14, #0x0
+} -> block3  from block0
+
+block2 {
+   pop_exec #0x0, n=1
+} -> block3  from block0
+
+block3 {
+   $r1 = mov1 r22, #0
+   $r12 = mov1 r23, #0
+   $r13 = and r1, $r7
+   $r1 = and r12, $r9
+   $r12 = iadd $r13, $r8.neg, shift=0
+   $r1 = iadd r1, $r6, shift=0
+   $r13 = icmpsel $r12, r13, #1, #0, #0x0
+   $r1 = iadd r13, r1, shift=0
+   $r13 = extr $r12, $r1, #14, #0x0
+   $r0h = icmpsel r12, $r10, #1, #0, #0x0
+   $r0h = icmpsel $r1, $r11, r0h, #0, #0x0
+   $r0h = icmpsel r1, $r11, #1, r0h, #0x0
+   $r1 = icmpsel $r0h, #0, #0, r13, #0x0
+   $r12 = mov_imm #0x1f
+   $r13 = and $r1, r12
+   r14...r15 = device_load u14:u15, #223, xy, shift=1, #0x0, slot 0
+   $r12 = mov_imm #0xfffffffc
+   $r16 = mov_imm #0x3
+   $r17 = bfeil #0, r1, r16, #0x0
+   r1 = and r17, r12
+   $r1 = device_load r14:r15, r1.abs, x, shift=0, #0x0, slot 0
+   $r16 = bfeil #0, r1, r13, #0x0
+   $r1 = mov_imm #0x1
+   $r13 = and r16, r1
+   $r1 = device_load r22:r23, #0, x, shift=0, #0x0, slot 0
+   $r13 = icmpsel r13, #0, #0, $r1, #0x0
+   r13 = icmpsel r0h, #0, r1, r13, #0x0
+   $r1 = iadd $r4, #32, shift=0
+   $r4 = icmpsel $r1, r4, #1, #0, #0x0
+   $r4 = iadd r4, r5, shift=0
+   $r5 = and $r1, r7
+   $r16 = and $r4, r9
+   $r17 = iadd $r5, r8.neg, shift=0
+   $r20 = iadd $r16, r6, shift=0
+   $r22 = icmpsel $r17, $r5, #1, #0, #0x0
+   $r20 = iadd r22, r20, shift=0
+   $r0h = icmpsel $r17, r10, #1, #0, #0x0
+   $r0h = icmpsel $r20, $r11, r0h, #0, #0x0
+   $r0h = icmpsel $r20, r11, #1, r0h, #0x0
+   $r17 = icmpsel $r0h, #0, #0, r17, #0x0
+   $r20 = icmpsel $r0h, #0, #0, r20, #0x0
+   $r22 = extr r17, $r20, #26, #0x0
+   $r23 = mov_imm #0x1a
+   $r24 = bfeil #0, r20, r23, #0x0
+   $r23 = extr $r22, r24, #29, #0x0
+   $r24 = iadd $r18, r22, shift=3
+   $r19 = iadd r19, r23, shift=0
+   $r18 = icmpsel r24, r18, #1, #0, #0x0
+   r25 = iadd r18, r19, shift=0
+   r18 = icmpsel $r0h, #0, r1, r5, #0x0
+   r19 = icmpsel $r0h, #0, r4, r16, #0x0
+   $r22...r23 = device_load r24:r25, #0, xy, shift=0, #0x0, slot 0
+   $r4 = or r22, r23
+   $r4l = icmpsel r4, #0, #0, #1, #0x0
+   r0h = icmpsel r0h, #0, #0, r4l, #0x0
+   if_icmp r0h, #0, #0xaaab1c4aaab0, n=1, inv
+} -> block4 block5  from block1 block2
+
+block4 {
+   $r4 = extr r17, r20, #11, #0x0
+   $r17 = and r4, r2
+   $r18 = iadd $r22, r17, shift=0
+   $r2 = icmpsel r18, r22, #1, #0, #0x0
+   r19 = iadd r2, r23, shift=0
+   $r18...r19 = device_load r18:r19, #0, xy, shift=0, #0x0, slot 0
+   $r2 = or $r18, $r19
+   $r4 = and r1, r21
+   $r1 = iadd $r18, r4, shift=0
+   $r4 = icmpsel $r1, r18, #1, #0, #0x0
+   $r4 = iadd r4, r19, shift=0
+   r18 = icmpsel $r2, #0, r5, r1, #0x0
+   r19 = icmpsel r2, #0, r16, r4, #0x0
+} -> block6  from block3
+
+block5 {
+   pop_exec #0x0, n=1
+} -> block6  from block3
+
+block6 {
+   $r1 = mov1 r18, #0
+   $r2 = mov1 r19, #0
+   $r4 = and $r1, $r7
+   $r5 = and $r2, $r9
+   $r16 = iadd $r4, $r8.neg, shift=0
+   $r5 = iadd r5, $r6, shift=0
+   $r4 = icmpsel $r16, r4, #1, #0, #0x0
+   $r4 = iadd r4, r5, shift=0
+   $r5 = extr $r16, $r4, #14, #0x0
+   $r0h = icmpsel r16, $r10, #1, #0, #0x0
+   $r0h = icmpsel $r4, $r11, r0h, #0, #0x0
+   $r0h = icmpsel r4, $r11, #1, r0h, #0x0
+   $r4 = icmpsel $r0h, #0, #0, r5, #0x0
+   $r5 = mov_imm #0x1f
+   $r16 = and $r4, $r5
+   $r17 = mov_imm #0x3
+   $r4 = bfeil #0, r4, $r17, #0x0
+   r20 = and r4, $r12
+   $r4 = device_load r14:r15, r20.abs, x, shift=0, #0x0, slot 0
+   $r20 = bfeil #0, r4, r16, #0x0
+   $r4 = mov_imm #0x1
+   $r16 = and r20, $r4
+   $r24...r27 = device_load r18:r19, #0, xyzw, shift=0, #0x0, slot 0
+   $r16 = icmpsel r16, #0, #0, $r24, #0x0
+   $r16 = icmpsel r0h, #0, r24, r16, #0x0
+   $r18 = mov_imm #0x4
+   $r19 = iadd $r1, #4, shift=0
+   $r20 = icmpsel $r19, $r1, #1, #0, #0x0
+   $r20 = iadd r20, $r2, shift=0
+   $r22 = and r19, $r7
+   $r19 = and r20, $r9
+   $r20 = iadd $r22, $r8.neg, shift=0
+   $r19 = iadd r19, $r6, shift=0
+   $r22 = icmpsel $r20, r22, #1, #0, #0x0
+   $r19 = iadd r22, r19, shift=0
+   $r22 = extr $r20, $r19, #14, #0x0
+   $r0h = icmpsel r20, $r10, #1, #0, #0x0
+   $r0h = icmpsel $r19, $r11, r0h, #0, #0x0
+   $r0h = icmpsel r19, $r11, #1, r0h, #0x0
+   $r19 = icmpsel $r0h, #0, #0, r22, #0x0
+   $r20 = and $r19, $r5
+   $r19 = bfeil #0, r19, $r17, #0x0
+   r22 = and r19, $r12
+   $r19 = device_load r14:r15, r22.abs, x, shift=0, #0x0, slot 0
+   $r22 = bfeil #0, r19, r20, #0x0
+   $r19 = and r22, $r4
+   $r19 = icmpsel r19, #0, #0, $r25, #0x0
+   $r19 = icmpsel r0h, #0, r25, r19, #0x0
+   $r20 = iadd $r1, #8, shift=0
+   $r1 = icmpsel $r20, r1, #1, #0, #0x0
+   $r1 = iadd r1, r2, shift=0
+   $r2 = and r20, r7
+   $r7 = and r1, r9
+   $r1 = iadd $r2, r8.neg, shift=0
+   $r6 = iadd r7, r6, shift=0
+   $r2 = icmpsel $r1, r2, #1, #0, #0x0
+   $r2 = iadd r2, r6, shift=0
+   $r6 = extr $r1, $r2, #14, #0x0
+   $r0h = icmpsel r1, r10, #1, #0, #0x0
+   $r0h = icmpsel $r2, $r11, r0h, #0, #0x0
+   $r0h = icmpsel r2, r11, #1, r0h, #0x0
+   $r1 = icmpsel $r0h, #0, #0, r6, #0x0
+   $r2 = and $r1, $r5
+   $r6 = bfeil #0, r1, r17, #0x0
+   r1 = and r6, r12
+   $r1 = device_load r14:r15, r1.abs, x, shift=0, #0x0, slot 0
+   $r6 = bfeil #0, r1, r2, #0x0
+   $r1 = and r6, r4
+   $r1 = icmpsel r1, #0, #0, $r26, #0x0
+   $r1 = icmpsel r0h, #0, r26, r1, #0x0
+   $r2 = mov_imm #0x3f800000 /* 1.000000 */
+   $r4 = fadd #1.000000, $r13.neg
+   r6 = fmul $r16, $r4
+   r7 = fmul $r19, $r4
+   r4 = fmul $r1, r4
+   r8 = fmul r16, $r13
+   r9 = fmul r19, $r13
+   r1 = fmul r1, r13
+   $r10 = mov_imm #0x16
+   r12...r13 = device_load u18:u19, #2, xy, shift=2, #0x0, slot 0
+   $r11 = bfeil #0, r13, r10, #0x2
+   $r14l...r15l = device_load u18:u19, #21, xyz, shift=0, #0x0, slot 0
+   $r10 = fadd r15l, #-0.000000
+   $r10 = fadd r10, #-0.000000
+   $r0h = fcmpsel #0, r10, #1, #0, #0x0
+   r0h = icmpsel r11, #0, r0h, #1, #0x0
+   $r24...r27 = device_load u18:u19, #0, xyzw, shift=0, #0x0, slot 0
+   $r15 = extr r24, r25, #28, #0x0
+   $r16 = mov_imm #0xc
+   $r17 = device_load u18:u19, #5, x, shift=0, #0x0, slot 0
+   $r19 = bfeil #0, r17, r16, #0x4
+   $r16 = and r19, r5
+   $r5 = and r15, r21
+   $r5 = iadd r5, #1, shift=0
+   $r15 = bfeil #0, r5, r16, #0x0
+   $r5 = mov_imm #0xfff
+   $r16 = and r27, r5
+   $r5 = extr $r26, r16, #28, #0x0
+   $r16 = bfi #0, r26, r18, #0x0
+   $r16l = icmpsel r16, #0, #0, #1, #0x0
+   $r5l = icmpsel r5, #1, r16l, #1, #0x0
+   $r15 = icmpsel r15, #1, r15, #1, #0x0
+   r15 = icmpsel r5l, #0, #0, r15, #0x0
+   $r5h = device_load u18:u19, #25, x, shift=0, #0x0, slot 0
+   $r16l = mov_imm #0x80
+   $r16h = and $r5h, $r16l
+   $r18 = mov_imm #0x447fc000 /* 1023.000000 */
+   $r20l = mov_imm #0x4
+   $r21 = mov_imm #0x477fff00 /* 65535.000000 */
+   $r22 = mov_imm #0x437f0000 /* 255.000000 */
+   $r20h = and $r5h, $r20l
+   $r21 = icmpsel r20h, #0, r22, r21, #0x0
+   $r18 = icmpsel r16h, #0, r21, r18, #0x0
+   $r16h = mov_imm #0x100
+   $r20h = and $r5h, $r16h
+   $r21 = mov_imm #0x40400000 /* 3.000000 */
+   $r22 = icmpsel r20h, #0, $r18, $r21, #0x0
+   $r20h = mov_imm #0x8
+   $r23l = and $r5h, $r20h
+   r22 = icmpsel r23l, #0, $r2, r22, #0x0
+   $r23l = mov_imm #0x200
+   $r23h = and $r5h, $r23l
+   $r24 = icmpsel r23h, #0, $r18, $r21, #0x0
+   $r23h = mov_imm #0x10
+   $r25l = and $r5h, $r23h
+   r24 = icmpsel r25l, #0, $r2, r24, #0x0
+   $r25l = mov_imm #0x400
+   $r25h = and $r5h, $r25l
+   $r26 = icmpsel r25h, #0, $r18, $r21, #0x0
+   $r25h = mov_imm #0x20
+   $r27l = and $r5h, $r25h
+   r26 = icmpsel r27l, #0, $r2, r26, #0x0
+   $r27l = mov_imm #0x800
+   $r27h = and $r5h, $r27l
+   $r18 = icmpsel r27h, #0, r18, r21, #0x0
+   $r21l = mov_imm #0x40
+   $r21h = and $r5h, $r21l
+   r18 = icmpsel r21h, #0, $r2, r18, #0x0
+   $r28...r31 = device_load u18:u19, #13, xyzw, shift=0, #0x0, slot 0
+   $r32 = convert #11, $r28, #0x1
+   $r21h = mov_imm #0x3
+   $r27h = device_load u18:u19, #25, x, shift=0, #0x0, slot 0
+   $r33 = convert #10, $r28, #0x1
+   $r34l = and $r27h, $r21h
+   $r32 = icmpsel $r34l, #1, r32, r33, #0x0
+   $r33 = convert #10, $r29, #0x1
+   $r35 = convert #11, $r29, #0x1
+   $r33 = icmpsel $r34l, #1, r35, r33, #0x0
+   $r35 = convert #10, $r30, #0x1
+   $r36 = convert #11, $r30, #0x1
+   $r35 = icmpsel $r34l, #1, r36, r35, #0x0
+   $r36 = convert #10, $r31, #0x1
+   $r37 = convert #11, $r31, #0x1
+   $r36 = icmpsel $r34l, #1, r37, r36, #0x0
+   $r34h = mov_imm #0x4000
+   $r37l = and r14l, r34h
+   $r28 = icmpsel $r37l, #0, r28, r32, #0x0
+   $r29 = icmpsel $r37l, #0, r29, r33, #0x0
+   $r30 = icmpsel $r37l, #0, r30, r35, #0x0
+   $r31 = icmpsel r37l, #0, r31, r36, #0x0
+   $r32l = and $r27h, r16l
+   $r33 = mov_imm #0x3a802008 /* 0.000978 */
+   $r35 = mov_imm #0x37800080 /* 0.000015 */
+   $r36 = mov_imm #0x3b808081 /* 0.003922 */
+   $r16l = and $r27h, r20l
+   $r35 = icmpsel r16l, #0, r36, r35, #0x0
+   $r33 = icmpsel r32l, #0, r35, r33, #0x0
+   $r16l = and $r27h, r16h
+   $r32 = mov_imm #0x3eaaaaab /* 0.333333 */
+   $r35 = icmpsel r16l, #0, $r33, $r32, #0x0
+   $r16l = and $r27h, r20h
+   $r20 = icmpsel r16l, #0, $r2, r35, #0x0
+   $r16 = icmpsel $r34l, #3, r20, $r2, #0x0
+   r16 = fmul r28, r16
+   $r20l = and $r27h, r23l
+   $r28 = icmpsel r20l, #0, $r33, $r32, #0x0
+   $r20l = and $r27h, r23h
+   $r23 = icmpsel r20l, #0, $r2, r28, #0x0
+   $r20 = icmpsel $r34l, #3, r23, $r2, #0x0
+   r20 = fmul r29, r20
+   $r23l = and $r27h, r25l
+   $r28 = icmpsel r23l, #0, $r33, $r32, #0x0
+   $r23l = and $r27h, r25h
+   $r25 = icmpsel r23l, #0, $r2, r28, #0x0
+   $r23 = icmpsel $r34l, #3, r25, $r2, #0x0
+   r23 = fmul r30, r23
+   $r25l = and $r27h, r27l
+   $r28 = icmpsel r25l, #0, r33, r32, #0x0
+   $r25l = and r27h, r21l
+   $r27 = icmpsel r25l, #0, $r2, r28, #0x0
+   $r25 = icmpsel r34l, #3, r27, r2, #0x0
+   r25 = fmul r31, r25
+   r27 = rhw_interp_agx3 #0, #0, #0x0
+   r27 = persp_rcp_agx3 r27, #0x0
+   r28 = interp_agx3 #1, #0, #0x0
+   $r28 = persp_mul_agx3 r28, r27, #0x1
+   r29 = interp_agx3 #2, #0, #0x0
+   $r29 = persp_mul_agx3 r29, r27, #0x2
+   r30 = interp_agx3 #3, #0, #0x0
+   $r30 = persp_mul_agx3 r30, r27, #0x3
+   r27 = mov_imm #0x3f000000 /* 0.500000 */
+   r31 = mov_imm #0xbf800000 /* -1.000000 */
+   r21l = mov_imm #0x3fff
+   $r32 = mov_imm #0x80000000 /* -0.000000 */
+   r33 = fadd r30.abs, $r32
+   r34 = fadd r29.abs, $r32
+   r32 = fadd r28.abs, r32
+   r36 = device_load u18:u19, #17, x, shift=0, #0x0, slot 0
+   r37 = mov1 r3, #0
+   r35l = and r5h, r21h
+   if_icmp r0h, #0, #0xaaab1c72a620, n=1, inv
+   jmp_exec_none #0xaaab1c72a620
+} -> block7 block37  from block4 block5
+
+block7 {
+   $r33 = fcmpsel r34, r33, r34, r33, #0x0
+   $r34 = fadd $r30.neg, #-0.000000
+   $r38 = fcmpsel $r28, #0, $r34, $r30, #0x0
+   $r39 = fadd $r28.neg, #-0.000000
+   $r39 = fcmpsel $r30, #0, $r28, r39, #0x0
+   $r40 = fadd $r29.abs, #-0.000000
+   $r41 = fadd $r30.abs, #-0.000000
+   $r39 = fcmpsel $r40, $r41, $r28, r39, #0x0
+   $r42 = fadd $r28.abs, #-0.000000
+   $r38 = fcmpsel $r42, $r33, r38, r39, #0x0
+   $r34 = fcmpsel $r29, #0, $r30, r34, #0x0
+   $r39 = fadd $r29.neg, #-0.000000
+   $r34 = fcmpsel $r40, $r41, r34, $r39, #0x0
+   $r34 = fcmpsel $r42, $r33, r39, r34, #0x0
+   $r32 = fcmpsel r32, $r33, r32, $r33, #0x0
+   $r29 = fcmpsel r29, #0, #2, #3, #0x0
+   $r30 = fcmpsel r30, #0, #4, #5, #0x0
+   $r29 = fcmpsel r40, r41, r29, r30, #0x0
+   $r28 = fcmpsel r28, #0, #0, #1, #0x0
+   $r28 = fcmpsel r42, r33, r28, r29, #0x0
+   $r29 = fadd $r4.neg, #-0.000000
+   $r30 = icmpsel $r28, #4, $r4, $r29, #0x0
+   $r33 = fadd $r7.neg, #-0.000000
+   $r0h = icmpsel $r28, #3, #1, #0, #0x0
+   $r39 = icmpsel $r28, #3, $r29, $r33, #0x0
+   $r30 = icmpsel $r28, #3, $r33, r30, #0x0
+   $r0h = icmpsel $r28, #4, #1, r0h, #0x0
+   $r0h = icmpsel $r28, #2, #1, r0h, #0x0
+   $r40 = fadd $r6.neg, #-0.000000
+   $r41 = icmpsel $r0h, #0, $r40, $r6, #0x0
+   $r39 = icmpsel $r28, #2, $r4, r39, #0x0
+   $r7 = icmpsel $r28, #2, r7, r30, #0x0
+   $r4 = icmpsel $r28, #1, r4, r41, #0x0
+   $r7 = icmpsel $r28, #1, r40, r7, #0x0
+   $r4 = icmpsel $r28, #0, r29, r4, #0x0
+   $r29 = icmpsel #1, $r28, r39, r33, #0x0
+   $r6 = icmpsel $r28, #0, r6, r7, #0x0
+   $r7 = rcp $r32
+   $r7 = fmul #0.500000, r7
+   $r30 = ffma r38, $r7, #0.500000
+   $r7 = ffma r34, r7, #0.500000
+   $r33 = ffma r30, #2.000000, #-1.000000
+   $r4 = ffma $r33.neg, $r6, r4
+   $r34 = ffma r7, #2.000000, #-1.000000
+   $r6 = ffma $r34.neg, r6, r29
+   $r29 = fmul r32, #2.000000
+   $r29 = rcp r29
+   $r4 = fmul r4, $r29
+   $r6 = fmul r6, $r29
+   $r32 = fadd $r1.neg, #-0.000000
+   $r38 = icmpsel $r28, #4, $r1, $r32, #0x0
+   $r39 = fadd $r9.neg, #-0.000000
+   $r40 = icmpsel $r28, #3, $r32, $r39, #0x0
+   $r38 = icmpsel $r28, #3, $r39, r38, #0x0
+   $r41 = fadd $r8.neg, #-0.000000
+   $r42 = icmpsel r0h, #0, $r41, $r8, #0x0
+   $r40 = icmpsel $r28, #2, $r1, r40, #0x0
+   $r9 = icmpsel $r28, #2, r9, r38, #0x0
+   $r1 = icmpsel $r28, #1, r1, r42, #0x0
+   $r9 = icmpsel $r28, #1, r41, r9, #0x0
+   $r1 = icmpsel $r28, #0, r32, r1, #0x0
+   $r32 = icmpsel #1, $r28, r40, r39, #0x0
+   $r8 = icmpsel r28, #0, r8, r9, #0x0
+   $r1 = ffma r33.neg, $r8, r1
+   $r8 = ffma r34.neg, r8, r32
+   $r1 = fmul r1, $r29
+   $r8 = fmul r8, r29
+   $r9 = convert #10, r15, #0x1
+   $r29 = fmul $r9, $r4
+   $r32 = fmul $r9, $r6
+   $r33 = fmul $r9, $r1
+   $r9 = fmul r9, $r8
+   $r32 = fmul r32, r32
+   $r29 = ffma r29, r29, r32
+   $r9 = fmul r9, r9
+   $r9 = ffma r33, r33, r9
+   $r32 = fcmpsel $r29, $r9, $r29, $r9, #0x0
+   $r33 = fcmpsel $r29, $r9, $r29, $r9, #0x0
+   $r34 = mov_imm #0x1e3ce508
+   $r33 = fcmpsel r33, r34, r33, r34, #0x0
+   $r33 = rcp r33
+   $r33 = fmul $r32, r33
+   $r34 = mov_imm #0x18
+   r38 = bfeil #0, $r13, r34, #0x5
+   $r34 = convert #10, r38, #0x1
+   $r38 = srsqrt $r33
+   $r33 = fmul r33, r38
+   $r33 = fcmpsel r34, r33, r34, r33, #0x0
+   r1 = fcmpsel $r29, $r9, r4, r1, #0x0
+   r4 = fcmpsel r29, r9, r6, r8, #0x0
+   $r6l = mov1 $r13l, #0
+   $r8 = mov_imm #0xc1700000 /* -15.000000 */
+   $r9 = fadd r6l, #-0.000000
+   $r6 = fadd r9, #-0.000000
+   $r6 = fcmpsel r6, r8, r6, r8, #0x0
+   $r8 = mov_imm #0x41700000 /* 15.000000 */
+   $r6 = fcmpsel r6, r8, r6, r8, #0x0
+   r8 = fcmpsel r2, r33, r2, r33, #0x0
+   $r8 = ceil r8
+   $r9 = log2 r8
+   $r6 = fadd r6, r9.neg
+   $r9 = log2 r32
+   $r6 = ffma r9, #0.500000, r6
+   $r9 = fadd r12l, #-0.000000
+   $r9 = fadd r9, #-0.000000
+   $r6 = fcmpsel r6, r9, r6, r9, #0x0
+   $r9 = fadd r12h, #-0.000000
+   $r9 = fadd r9, #-0.000000
+   $r6 = fcmpsel r6, r9, r6, r9, #0x0
+   $r9 = mov_imm #0x10000 /* 0.000000 */
+   $r12 = and $r13, r9
+   $r9l = icmpsel r12, #0, #0, #1, #0x0
+   $r12 = mov_imm #0x20000 /* 0.000000 */
+   $r29 = and $r13, r12
+   $r9h = icmpsel r29, #0, #0, #1, #0x0
+   r9l = fcmpsel #0, $r6, r9l, r9h, #0x0
+   $r12 = mov1 r17h, #0
+   $r17 = mov_imm #0xf
+   $r29 = and r12, r17
+   $r12 = iadd r29, #1, shift=0
+   $r17 = iadd r12, r19.neg, shift=0
+   $r12 = icmpsel r5l, #0, #0, r17, #0x0
+   $r6 = fcmpsel r6, r3, r6, r3, #0x0
+   r12 = iadd r12, #1.neg, shift=0
+   $r12 = convert #10, r12, #0x1
+   $r6 = fcmpsel r6, r12, r6, r12, #0x0
+   $r6 = fcmpsel r6, r10, r6, r10, #0x0
+   $r10 = mov_imm #0x40000 /* 0.000000 */
+   $r17 = and $r13, r10
+   $r10 = icmpsel r17, #0, r27, #0, #0x0
+   $r10 = fadd r6, r10
+   $r19 = mov_imm #0x80000 /* 0.000000 */
+   r27 = and r13, r19
+   r8 = convert #8, r8, #0x0
+   r10 = floor r10
+   r19 = mov_imm #0xbf000000 /* -0.500000 */
+   r29 = mov_imm #0x80000000 /* -0.000000 */
+   r5l = mov_imm #0x1c00
+   r9h = mov_imm #0x5c00
+   r32 = mov_imm #0x100000 /* 0.000000 */
+   r33 = mov_imm #0x0
+   r34 = mov_imm #0x0
+   r38 = mov_imm #0x0
+   r39 = mov_imm #0x0
+   r40 = mov_imm #0x0
+   if_fcmp #0.000000, #0.000000, #0x0, n=1
+} -> block8  from block6
+
+block8 {
+   $r41 = convert #10, r8, #0x1
+   r41 = rcp r41
+} -> block9 block10  from block7 block35
+
+block9 {
+} -> block36  from block8
+
+block10 {
+} -> block11  from block8
+
+block11 {
+   break_if_icmp r33, r8, #0xaaab1c871a70, n=1, inv
+   jmp_exec_none_after #0xaaab1c723a80
+   $r42 = fcmpsel r10, r12, r10, r12, #0x0
+   $r43 = mov_imm #0x1f
+   $r44 = convert #8, $r42, #0x0
+   $r45 = and r44, r43
+   $r43 = convert #10, r33, #0x1
+   $r43 = fadd r43, #0.500000
+   $r41 = ffma r43, r41, #-0.500000
+   $r43 = bfeil #0, r15, r45, #0x0
+   r43 = icmpsel r43, #1, r43, #1, #0x0
+   $r43 = convert #10, r43, #0x1
+   $r44 = ffma r4, $r41, r7
+   $r41 = ffma r1, r41, r30
+   $r45 = fmul $r44, $r43
+   $r45 = icmpsel $r27, #0, r45, r44, #0x0
+   $r46 = fmul $r41, $r43
+   $r46 = icmpsel $r27, #0, r46, r41, #0x0
+   $r47 = icmpsel $r9l, #0, r29, r19, #0x0
+   $r45 = fadd r45, $r47
+   $r46 = fadd r46, r47
+   $r48 = fadd r9h, #-0.000000
+   r45 = fmul r45, $r48
+   r46 = fmul r46, r48
+   $r45 = roundeven r45
+   $r46 = roundeven r46
+   $r48 = fadd r5l, #-0.000000
+   $r45 = fmul r45, $r48
+   $r46 = fmul r46, r48
+   $r43 = rcp r43
+   $r48 = floor $r45
+   $r49 = fadd $r48, #0.500000
+   $r50 = fmul $r49, $r43
+   $r49 = icmpsel $r27, #0, r50, r49, #0x0
+   $r50 = floor $r46
+   $r51 = fadd $r50, #0.500000
+   $r52 = fmul $r51, $r43
+   $r51 = icmpsel r27, #0, r52, r51, #0x0
+   $r52 = and r13, r32
+   $r21h = icmpsel r52, #0, #0, #1, #0x0
+   $r52 = fmul #0.500000, r43
+   $r53 = fcmpsel $r49, $r52, $r49, $r52, #0x0
+   $r53 = fadd r53, #-0.000000
+   $r54 = fadd #1.000000, $r52.neg
+   $r53 = fcmpsel r53, $r54, r53, $r54, #0x0
+   $r21h = icmpsel $r9l, #0, #1, r21h, #0x0
+   $r49 = icmpsel $r21h, #0, r49, r53, #0x0
+   $r53 = fcmpsel $r51, r52, $r51, r52, #0x0
+   $r53 = fadd r53, #-0.000000
+   $r53 = fcmpsel r53, r54, r53, r54, #0x0
+   $r51 = icmpsel r21h, #0, r51, r53, #0x0
+   $r49 = ffma r49, #2.000000, #-1.000000
+   $r53 = icmpsel $r28, #4, $r2, $r31, #0x0
+   $r55 = fadd $r49.neg, #-0.000000
+   $r56 = icmpsel $r28, #3, $r55, r53, #0x0
+   $r49 = icmpsel $r28, #2, r49, r56, #0x0
+   $r56 = icmpsel $r28, #3, $r31, $r55, #0x0
+   $r56 = icmpsel $r28, #2, $r2, r56, #0x0
+   $r55 = icmpsel #1, $r28, r56, r55, #0x0
+   $r51 = ffma r51, #2.000000, #-1.000000
+   $r56 = fadd $r51.neg, #-0.000000
+   $r57 = icmpsel r0h, #0, $r56, $r51, #0x0
+   $r57 = icmpsel $r28, #1, r31, r57, #0x0
+   $r57 = icmpsel $r28, #0, r2, r57, #0x0
+   $r58 = icmpsel $r28, #1, r51, r49, #0x0
+   $r58 = icmpsel r28, #0, r56, r58, #0x0
+   $r59 = fadd $r57.neg, #-0.000000
+   $r60 = fcmpsel $r58, #0, $r57, r59, #0x0
+   $r61 = fadd $r58.abs, #-0.000000
+   $r62 = fadd $r55.abs, #-0.000000
+   $r60 = fcmpsel $r62, $r61, $r57, r60, #0x0
+   $r63 = fadd $r58.neg, #-0.000000
+   $r64 = fadd $r55.neg, #-0.000000
+   $r65 = fcmpsel $r55, #0, $r58, $r63, #0x0
+   $r65 = fcmpsel $r62, $r61, r65, $r64, #0x0
+   $r66 = fcmpsel $r58, #0, #4, #5, #0x0
+   $r67 = fcmpsel $r55, #0, #2, #3, #0x0
+   $r61 = fcmpsel r62, r61, r67, r66, #0x0
+   $r62 = fcmpsel $r57, #0, r63, $r58, #0x0
+   $r63 = mov_imm #0x80000000 /* -0.000000 */
+   $r58 = fadd r58.abs, $r63
+   $r66 = fadd r55.abs, $r63
+   $r58 = fcmpsel r66, r58, r66, r58, #0x0
+   $r68 = fadd $r57.abs, #-0.000000
+   $r60 = fcmpsel $r68, $r58, r62, r60, #0x0
+   $r62 = fcmpsel $r68, $r58, r64, r65, #0x0
+   $r65 = fcmpsel $r57, #0, #0, #1, #0x0
+   $r70 = fcmpsel r68, $r58, r65, r61, #0x0
+   $r61 = fadd r57.abs, r63
+   $r58 = fcmpsel $r61, r58, $r61, r58, #0x0
+   $r58 = rcp r58
+   $r58 = fmul r58, #0.500000
+   $r69 = ffma r62, $r58, #0.500000
+   $r68 = ffma r60, r58, #0.500000
+   $r35h = fadd r42, #-0.000000
+   $r42l...r42h = device_load u18:u19, #9, xy, shift=2, #0x0, slot 0
+   $r58 = mov1 r42l, #0
+   $r62 = iadd r58, #28.neg, shift=0
+   r35h = hadd r14h, r35h
+   r58 = mov1 r61, #0
+   $r71 = mov1 r62, #0
+   r60 = mov1 r68, #0
+   r61 = mov1 r69, #0
+   r62 = mov1 r70, #0
+   r68 = mov1 r71, #0
+   r69 = mov1 $r3, #0
+   r70 = mov1 r36, #0
+   r71 = mov1 r37, #0
+   r72 = mov1 r39, #0
+   r73 = mov1 r38, #0
+   $r36...r39 = texture_sample r60...r62, r35h, #0, r70:r71, r68:r69, _, xyzw, #0x6, cube, slot 0
+   $r74 = convert #10, $r39, #0x1
+   $r75 = convert #11, $r39, #0x1
+   $r74 = icmpsel $r5h, #1, r75, r74, #0x0
+   $r75 = convert #10, $r38, #0x1
+   $r76 = convert #11, $r38, #0x1
+   $r75 = icmpsel $r5h, #1, r76, r75, #0x0
+   $r76 = convert #10, $r37, #0x1
+   $r77 = convert #11, $r37, #0x1
+   $r76 = icmpsel $r5h, #1, r77, r76, #0x0
+   $r77 = convert #10, $r36, #0x1
+   $r78 = convert #11, $r36, #0x1
+   $r77 = icmpsel $r5h, #1, r78, r77, #0x0
+   $r78 = fmul $r39, r18
+   $r74 = icmpsel $r35l, #3, r78, r74, #0x0
+   $r78 = fmul $r38, r26
+   $r75 = icmpsel $r35l, #3, r78, r75, #0x0
+   $r78 = fmul $r37, r24
+   $r76 = icmpsel $r35l, #3, r78, r76, #0x0
+   $r78 = fmul $r36, r22
+   $r77 = icmpsel r35l, #3, r78, r77, #0x0
+   r39 = icmpsel $r5h, #0, r39, r74, #0x0
+   r38 = icmpsel $r5h, #0, r38, r75, #0x0
+   r37 = icmpsel $r5h, #0, r37, r76, #0x0
+   r36 = icmpsel r5h, #0, r36, r77, #0x0
+   $r42l = and r42h, r21l
+   $r45 = fadd r45, r48.neg
+   $r46 = fadd r46, r50.neg
+   $r74 = mov1 r42l, #0
+   $r74 = iadd r74, #28.neg, shift=0
+   $r42 = icmpsel $r9l, #0, #0, r45, #0x0
+   $r75 = icmpsel r9l, #0, #0, r46, #0x0
+   $r76 = fadd #1.000000, r42.neg
+   $r77 = fadd #1.000000, r75.neg
+   r78 = mov1 r74, #0
+   r79 = mov1 r3, #0
+   r74 = fmul r77, r76
+   if_icmp r14l, #0, #0xaaab1c8ab610, n=1, inv
+   jmp_exec_none #0xaaab1c8ab610
+} -> block12 block13  from block10
+
+block12 {
+   $r60...r63 = texture_sample r60...r62, r35h, #0, r70:r71, r78:r79, _, xyzw, #0x6, cube, slot 0
+   $r80 = convert #10, $r63, #0x1
+   $r81 = convert #11, $r63, #0x1
+   $r80 = icmpsel $r5h, #1, r81, r80, #0x0
+   $r81 = convert #10, $r62, #0x1
+   $r82 = convert #11, $r62, #0x1
+   $r81 = icmpsel $r5h, #1, r82, r81, #0x0
+   $r82 = convert #10, $r61, #0x1
+   $r83 = convert #11, $r61, #0x1
+   $r82 = icmpsel $r5h, #1, r83, r82, #0x0
+   $r83 = convert #10, $r60, #0x1
+   $r84 = convert #11, $r60, #0x1
+   $r83 = icmpsel $r5h, #1, r84, r83, #0x0
+   $r84 = fmul $r63, r18
+   $r80 = icmpsel $r35l, #3, r84, r80, #0x0
+   $r84 = fmul $r62, r26
+   $r81 = icmpsel $r35l, #3, r84, r81, #0x0
+   $r84 = fmul $r61, r24
+   $r82 = icmpsel $r35l, #3, r84, r82, #0x0
+   $r84 = fmul $r60, r22
+   $r83 = icmpsel r35l, #3, r84, r83, #0x0
+   $r63 = icmpsel $r5h, #0, r63, r80, #0x0
+   $r62 = icmpsel $r5h, #0, r62, r81, #0x0
+   $r61 = icmpsel $r5h, #0, r61, r82, #0x0
+   $r60 = icmpsel r5h, #0, r60, r83, #0x0
+   $r39 = fadd r39, $r63.neg
+   r39 = ffma r25, r39, r63
+   $r38 = fadd r38, $r62.neg
+   r38 = ffma r23, r38, r62
+   $r37 = fadd r37, $r61.neg
+   r37 = ffma r20, r37, r61
+   $r36 = fadd r36, $r60.neg
+   r36 = ffma r16, r36, r60
+} -> block14  from block11
+
+block13 {
+   pop_exec #0x0, n=1
+} -> block14  from block11
+
+block14 {
+   $r60 = fmul $r36, $r74
+   $r61 = fmul $r37, $r74
+   $r62 = fmul $r38, $r74
+   $r63 = fmul $r39, $r74
+   $r60 = fcmpsel #0, $r74, r60, #0, #0x0
+   $r61 = fcmpsel #0, $r74, r61, #0, #0x0
+   $r62 = fcmpsel #0, $r74, r62, #0, #0x0
+   $r63 = fcmpsel #0, r74, r63, #0, #0x0
+   r36 = icmpsel $r11, #0, r60, r36, #0x0
+   r37 = icmpsel $r11, #0, r61, r37, #0x0
+   r38 = icmpsel $r11, #0, r62, r38, #0x0
+   r39 = icmpsel r11, #0, r63, r39, #0x0
+   $r46l = fcmpsel #0, r46, #1, #0, #0x0
+   r46l = icmpsel r9l, #0, #0, r46l, #0x0
+   r60 = fmul r75, r76
+   $r50 = fadd r50, #1.500000
+   $r61 = fmul $r50, r43
+   $r50 = icmpsel r27, #0, r61, r50, #0x0
+   $r61 = fcmpsel $r50, r52, $r50, r52, #0x0
+   $r61 = fadd r61, #-0.000000
+   $r61 = fcmpsel r61, r54, r61, r54, #0x0
+   $r50 = icmpsel r21h, #0, r50, r61, #0x0
+   $r50 = ffma r50, #2.000000, #-1.000000
+   $r61 = fadd $r50.neg, #-0.000000
+   $r62 = icmpsel r0h, #0, $r61, $r50, #0x0
+   $r62 = icmpsel $r28, #1, r31, r62, #0x0
+   $r49 = icmpsel $r28, #1, $r50, r49, #0x0
+   $r62 = icmpsel $r28, #0, r2, r62, #0x0
+   $r49 = icmpsel r28, #0, r61, r49, #0x0
+   $r63 = mov_imm #0x80000000 /* -0.000000 */
+   $r74 = fadd $r49.abs, $r63
+   $r66 = fcmpsel r66, r74, r66, r74, #0x0
+   $r74 = fadd $r49.neg, #-0.000000
+   $r76 = fcmpsel $r62, #0, $r74, $r49, #0x0
+   $r74 = fcmpsel $r55, #0, $r49, r74, #0x0
+   $r80 = fadd $r62.neg, #-0.000000
+   $r81 = fcmpsel $r49, #0, $r62, r80, #0x0
+   $r55 = fadd r55.abs, #-0.000000
+   $r82 = fadd $r49.abs, #-0.000000
+   $r81 = fcmpsel $r55, $r82, $r62, r81, #0x0
+   $r63 = fadd $r62.abs, r63
+   $r83 = fadd $r62.abs, #-0.000000
+   $r76 = fcmpsel $r83, $r66, r76, r81, #0x0
+   $r74 = fcmpsel $r55, $r82, r74, $r64, #0x0
+   $r64 = fcmpsel $r83, $r66, r64, r74, #0x0
+   $r74 = fcmpsel r63, $r66, r63, $r66, #0x0
+   $r49 = fcmpsel r49, #0, #4, #5, #0x0
+   $r49 = fcmpsel r55, r82, r67, r49, #0x0
+   $r55 = fcmpsel r62, #0, #0, #1, #0x0
+   $r86 = fcmpsel r83, r66, r55, r49, #0x0
+   $r49 = rcp r74
+   $r49 = fmul r49, #0.500000
+   $r84 = ffma r76, $r49, #0.500000
+   $r85 = ffma r64, r49, #0.500000
+   r64 = mov1 r48, #0
+   r66 = mov1 r51, #0
+   r67 = mov1 r50, #0
+   r48 = mov1 r84, #0
+   r49 = mov1 r85, #0
+   r50 = mov1 r86, #0
+   r74 = mov1 r16, #0
+   r76 = mov1 r19, #0
+   $r81 = mov1 r18, #0
+   r82 = mov1 r17, #0
+   $r16...r19 = texture_sample r48...r50, r35h, #0, r70:r71, r68:r69, _, xyzw, #0x6, cube, slot 0
+   $r83 = convert #11, $r16, #0x1
+   $r84 = convert #10, $r16, #0x1
+   $r83 = icmpsel $r5h, #1, r83, r84, #0x0
+   $r84 = convert #10, $r17, #0x1
+   $r85 = convert #11, $r17, #0x1
+   $r84 = icmpsel $r5h, #1, r85, r84, #0x0
+   $r85 = convert #10, $r18, #0x1
+   $r86 = convert #11, $r18, #0x1
+   $r85 = icmpsel $r5h, #1, r86, r85, #0x0
+   $r86 = convert #10, $r19, #0x1
+   $r87 = convert #11, $r19, #0x1
+   $r86 = icmpsel $r5h, #1, r87, r86, #0x0
+   $r87 = fmul $r16, r22
+   $r88 = fmul $r17, r24
+   $r89 = fmul $r18, r26
+   $r90 = fmul $r19, r81
+   $r83 = icmpsel $r35l, #3, r87, r83, #0x0
+   $r84 = icmpsel $r35l, #3, r88, r84, #0x0
+   $r85 = icmpsel $r35l, #3, r89, r85, #0x0
+   $r86 = icmpsel r35l, #3, r90, r86, #0x0
+   r16 = icmpsel $r5h, #0, r16, r83, #0x0
+   r17 = icmpsel $r5h, #0, r17, r84, #0x0
+   r18 = icmpsel $r5h, #0, r18, r85, #0x0
+   r19 = icmpsel r5h, #0, r19, r86, #0x0
+   if_icmp r14l, #0, #0xaaab1c8b0c90, n=1, inv
+   jmp_exec_none #0xaaab1c8b0c90
+} -> block15 block16  from block12 block13
+
+block15 {
+   $r48...r51 = texture_sample r48...r50, r35h, #0, r70:r71, r78:r79, _, xyzw, #0x6, cube, slot 0
+   $r83 = convert #10, $r51, #0x1
+   $r84 = convert #11, $r51, #0x1
+   $r83 = icmpsel $r5h, #1, r84, r83, #0x0
+   $r84 = convert #10, $r50, #0x1
+   $r85 = convert #11, $r50, #0x1
+   $r84 = icmpsel $r5h, #1, r85, r84, #0x0
+   $r85 = convert #10, $r49, #0x1
+   $r86 = convert #11, $r49, #0x1
+   $r85 = icmpsel $r5h, #1, r86, r85, #0x0
+   $r86 = convert #10, $r48, #0x1
+   $r87 = convert #11, $r48, #0x1
+   $r86 = icmpsel $r5h, #1, r87, r86, #0x0
+   $r87 = fmul $r51, r81
+   $r83 = icmpsel $r35l, #3, r87, r83, #0x0
+   $r87 = fmul $r50, r26
+   $r84 = icmpsel $r35l, #3, r87, r84, #0x0
+   $r87 = fmul $r49, r24
+   $r85 = icmpsel $r35l, #3, r87, r85, #0x0
+   $r87 = fmul $r48, r22
+   $r86 = icmpsel r35l, #3, r87, r86, #0x0
+   $r51 = icmpsel $r5h, #0, r51, r83, #0x0
+   $r50 = icmpsel $r5h, #0, r50, r84, #0x0
+   $r49 = icmpsel $r5h, #0, r49, r85, #0x0
+   $r48 = icmpsel r5h, #0, r48, r86, #0x0
+   $r19 = fadd r19, $r51.neg
+   r19 = ffma r25, r19, r51
+   $r18 = fadd r18, $r50.neg
+   r18 = ffma r23, r18, r50
+   $r17 = fadd r17, $r49.neg
+   r17 = ffma r20, r17, r49
+   $r16 = fadd r16, $r48.neg
+   r16 = ffma r74, r16, r48
+} -> block17  from block14
+
+block16 {
+   pop_exec #0x0, n=1
+} -> block17  from block14
+
+block17 {
+   $r48 = fmul $r16, $r60
+   $r49 = fmul $r17, $r60
+   $r50 = fmul $r18, $r60
+   $r51 = fmul $r19, $r60
+   $r48 = fcmpsel #0, $r60, r48, #0, #0x0
+   $r49 = fcmpsel #0, $r60, r49, #0, #0x0
+   $r50 = fcmpsel #0, $r60, r50, #0, #0x0
+   $r51 = fcmpsel #0, r60, r51, #0, #0x0
+   $r16 = icmpsel $r11, #0, r48, r16, #0x0
+   $r17 = icmpsel $r11, #0, r49, r17, #0x0
+   $r18 = icmpsel $r11, #0, r50, r18, #0x0
+   $r19 = icmpsel $r11, #0, r51, r19, #0x0
+   $r48 = fcmpsel $r36, $r16, $r36, $r16, #0x0
+   $r49 = fcmpsel $r37, $r17, $r37, $r17, #0x0
+   $r50 = fcmpsel $r38, $r18, $r38, $r18, #0x0
+   $r51 = fcmpsel $r39, $r19, $r39, $r19, #0x0
+   $r60 = fcmpsel $r36, $r16, $r36, $r16, #0x0
+   $r83 = fcmpsel $r37, $r17, $r37, $r17, #0x0
+   $r84 = fcmpsel $r38, $r18, $r38, $r18, #0x0
+   $r85 = fcmpsel $r39, $r19, $r39, $r19, #0x0
+   $r48 = fadd r48, #-0.000000
+   $r60 = fadd r60, #-0.000000
+   $r48 = icmpsel $r11, #2, r48, r60, #0x0
+   $r49 = fadd r49, #-0.000000
+   $r60 = fadd r83, #-0.000000
+   $r49 = icmpsel $r11, #2, r49, r60, #0x0
+   $r50 = fadd r50, #-0.000000
+   $r60 = fadd r84, #-0.000000
+   $r50 = icmpsel $r11, #2, r50, r60, #0x0
+   $r51 = fadd r51, #-0.000000
+   $r60 = fadd r85, #-0.000000
+   $r51 = icmpsel $r11, #2, r51, r60, #0x0
+   $r16 = fadd $r36, r16
+   $r17 = fadd $r37, r17
+   $r18 = fadd $r38, r18
+   $r19 = fadd $r39, r19
+   $r16 = icmpsel $r11, #0, r16, r48, #0x0
+   $r17 = icmpsel $r11, #0, r17, r49, #0x0
+   $r18 = icmpsel $r11, #0, r18, r50, #0x0
+   $r19 = icmpsel r11, #0, r19, r51, #0x0
+   r16 = icmpsel $r46l, #0, r36, r16, #0x0
+   r17 = icmpsel $r46l, #0, r37, r17, #0x0
+   r18 = icmpsel $r46l, #0, r38, r18, #0x0
+   r19 = icmpsel r46l, #0, r39, r19, #0x0
+   r36 = fmul r77, r42
+   $r37l = fcmpsel #0, r45, #1, #0, #0x0
+   r37h = icmpsel r9l, #0, #0, r37l, #0x0
+   $r38 = fadd r64, #1.500000
+   $r39 = fmul $r38, r43
+   $r38 = icmpsel r27, #0, r39, r38, #0x0
+   $r39 = fcmpsel $r38, r52, $r38, r52, #0x0
+   $r39 = fadd r39, #-0.000000
+   $r39 = fcmpsel r39, r54, r39, r54, #0x0
+   $r38 = icmpsel r21h, #0, r38, r39, #0x0
+   $r38 = ffma r38, #2.000000, #-1.000000
+   $r39 = fadd $r38.neg, #-0.000000
+   $r43 = icmpsel $r28, #3, r31, $r39, #0x0
+   $r45 = icmpsel $r28, #3, $r39, r53, #0x0
+   $r43 = icmpsel $r28, #2, r2, r43, #0x0
+   $r38 = icmpsel $r28, #2, r38, r45, #0x0
+   $r45 = icmpsel $r28, #1, r66, r38, #0x0
+   $r39 = icmpsel #1, $r28, r43, r39, #0x0
+   $r43 = icmpsel r28, #0, r56, r45, #0x0
+   $r45 = mov_imm #0x80000000 /* -0.000000 */
+   $r48 = fadd $r43.abs, $r45
+   $r45 = fadd $r39.abs, r45
+   $r48 = fcmpsel r45, r48, r45, r48, #0x0
+   $r49 = fadd $r43.neg, #-0.000000
+   $r50 = fcmpsel $r57, #0, $r49, $r43, #0x0
+   $r49 = fcmpsel $r39, #0, $r43, r49, #0x0
+   $r51 = fcmpsel $r43, #0, $r57, r59, #0x0
+   $r52 = fadd $r39.abs, #-0.000000
+   $r54 = fadd $r43.abs, #-0.000000
+   $r51 = fcmpsel $r52, $r54, $r57, r51, #0x0
+   $r56 = fadd r57.abs, #-0.000000
+   $r50 = fcmpsel $r56, $r48, r50, r51, #0x0
+   $r51 = fadd $r39.neg, #-0.000000
+   $r49 = fcmpsel $r52, $r54, r49, $r51, #0x0
+   $r49 = fcmpsel $r56, $r48, $r51, r49, #0x0
+   $r57 = fcmpsel r58, $r48, r58, $r48, #0x0
+   $r43 = fcmpsel r43, #0, #4, #5, #0x0
+   $r58 = fcmpsel r39, #0, #2, #3, #0x0
+   $r43 = fcmpsel r52, r54, $r58, r43, #0x0
+   $r66 = fcmpsel r56, r48, r65, r43, #0x0
+   $r43 = rcp r57
+   $r43 = fmul r43, #0.500000
+   $r64 = ffma r50, $r43, #0.500000
+   $r65 = ffma r49, r43, #0.500000
+   r43 = mov1 r51, #0
+   r48 = mov1 r64, #0
+   r49 = mov1 r65, #0
+   r50 = mov1 r66, #0
+   r52 = mov1 r58, #0
+   $r56...r59 = texture_sample r48...r50, r35h, #0, r70:r71, r68:r69, _, xyzw, #0x6, cube, slot 0
+   $r54 = convert #11, $r56, #0x1
+   $r60 = convert #10, $r56, #0x1
+   $r54 = icmpsel $r5h, #1, r54, r60, #0x0
+   $r60 = convert #10, $r57, #0x1
+   $r64 = convert #11, $r57, #0x1
+   $r60 = icmpsel $r5h, #1, r64, r60, #0x0
+   $r64 = convert #10, $r58, #0x1
+   $r65 = convert #11, $r58, #0x1
+   $r64 = icmpsel $r5h, #1, r65, r64, #0x0
+   $r65 = convert #10, $r59, #0x1
+   $r66 = convert #11, $r59, #0x1
+   $r65 = icmpsel $r5h, #1, r66, r65, #0x0
+   $r66 = fmul $r56, r22
+   $r77 = fmul $r57, r24
+   $r83 = fmul $r58, r26
+   $r84 = fmul $r59, r81
+   $r54 = icmpsel $r35l, #3, r66, r54, #0x0
+   $r60 = icmpsel $r35l, #3, r77, r60, #0x0
+   $r64 = icmpsel $r35l, #3, r83, r64, #0x0
+   $r65 = icmpsel r35l, #3, r84, r65, #0x0
+   r54 = icmpsel $r5h, #0, r56, r54, #0x0
+   r56 = icmpsel $r5h, #0, r57, r60, #0x0
+   r57 = icmpsel $r5h, #0, r58, r64, #0x0
+   r58 = icmpsel r5h, #0, r59, r65, #0x0
+   if_icmp r14l, #0, #0xaaab1c6b4f40, n=1, inv
+   jmp_exec_none #0xaaab1c6b4f40
+} -> block18 block19  from block15 block16
+
+block18 {
+   $r48...r51 = texture_sample r48...r50, r35h, #0, r70:r71, r78:r79, _, xyzw, #0x6, cube, slot 0
+   $r59 = convert #10, $r51, #0x1
+   $r60 = convert #11, $r51, #0x1
+   $r59 = icmpsel $r5h, #1, r60, r59, #0x0
+   $r60 = convert #10, $r50, #0x1
+   $r64 = convert #11, $r50, #0x1
+   $r60 = icmpsel $r5h, #1, r64, r60, #0x0
+   $r64 = convert #10, $r49, #0x1
+   $r65 = convert #11, $r49, #0x1
+   $r64 = icmpsel $r5h, #1, r65, r64, #0x0
+   $r65 = convert #10, $r48, #0x1
+   $r66 = convert #11, $r48, #0x1
+   $r65 = icmpsel $r5h, #1, r66, r65, #0x0
+   $r66 = fmul $r51, r81
+   $r59 = icmpsel $r35l, #3, r66, r59, #0x0
+   $r66 = fmul $r50, r26
+   $r60 = icmpsel $r35l, #3, r66, r60, #0x0
+   $r66 = fmul $r49, r24
+   $r64 = icmpsel $r35l, #3, r66, r64, #0x0
+   $r66 = fmul $r48, r22
+   $r65 = icmpsel r35l, #3, r66, r65, #0x0
+   $r51 = icmpsel $r5h, #0, r51, r59, #0x0
+   $r50 = icmpsel $r5h, #0, r50, r60, #0x0
+   $r49 = icmpsel $r5h, #0, r49, r64, #0x0
+   $r48 = icmpsel r5h, #0, r48, r65, #0x0
+   $r58 = fadd r58, $r51.neg
+   r58 = ffma r25, r58, r51
+   $r51 = fadd r57, $r50.neg
+   r57 = ffma r23, r51, r50
+   $r50 = fadd r56, $r49.neg
+   r56 = ffma r20, r50, r49
+   $r49 = fadd r54, $r48.neg
+   r54 = ffma r74, r49, r48
+} -> block20  from block17
+
+block19 {
+   pop_exec #0x0, n=1
+} -> block20  from block17
+
+block20 {
+   $r38 = icmpsel $r28, #1, r67, r38, #0x0
+   $r38 = icmpsel r28, #0, r61, r38, #0x0
+   $r48 = fcmpsel $r38, #0, #4, #5, #0x0
+   $r49 = fadd $r38.abs, #-0.000000
+   $r50 = fadd $r39.abs, #-0.000000
+   $r48 = fcmpsel $r50, $r49, r52, r48, #0x0
+   $r51 = fadd $r38.neg, #-0.000000
+   $r39 = fcmpsel r39, #0, $r38, $r51, #0x0
+   $r52 = fcmpsel $r38, #0, $r62, r80, #0x0
+   $r39 = fcmpsel $r50, $r49, r39, $r43, #0x0
+   $r49 = fcmpsel r50, r49, $r62, r52, #0x0
+   $r50 = mov_imm #0x80000000 /* -0.000000 */
+   $r50 = fadd $r38.abs, r50
+   $r45 = fcmpsel r45, r50, r45, r50, #0x0
+   $r38 = fcmpsel $r62, #0, r51, r38, #0x0
+   $r50 = fadd r62.abs, #-0.000000
+   $r39 = fcmpsel $r50, $r45, r43, r39, #0x0
+   $r38 = fcmpsel $r50, $r45, r38, r49, #0x0
+   r50 = fcmpsel r50, $r45, r55, r48, #0x0
+   $r43 = fmul $r58, $r36
+   $r43 = fcmpsel #0, $r36, r43, #0, #0x0
+   $r48 = fmul $r57, $r36
+   $r48 = fcmpsel #0, $r36, r48, #0, #0x0
+   $r49 = fmul $r56, $r36
+   $r49 = fcmpsel #0, $r36, r49, #0, #0x0
+   $r51 = fmul $r54, $r36
+   $r36 = fcmpsel #0, r36, r51, #0, #0x0
+   $r43 = icmpsel $r11, #0, r43, r58, #0x0
+   $r48 = icmpsel $r11, #0, r48, r57, #0x0
+   $r49 = icmpsel $r11, #0, r49, r56, #0x0
+   $r36 = icmpsel $r11, #0, r36, r54, #0x0
+   $r51 = fcmpsel $r19, $r43, $r19, $r43, #0x0
+   $r51 = fadd r51, #-0.000000
+   $r52 = fcmpsel $r19, $r43, $r19, $r43, #0x0
+   $r52 = fadd r52, #-0.000000
+   $r51 = icmpsel $r11, #2, r52, r51, #0x0
+   $r52 = fcmpsel $r18, $r48, $r18, $r48, #0x0
+   $r52 = fadd r52, #-0.000000
+   $r54 = fcmpsel $r18, $r48, $r18, $r48, #0x0
+   $r54 = fadd r54, #-0.000000
+   $r52 = icmpsel $r11, #2, r54, r52, #0x0
+   $r54 = fcmpsel $r17, $r49, $r17, $r49, #0x0
+   $r54 = fadd r54, #-0.000000
+   $r55 = fcmpsel $r17, $r49, $r17, $r49, #0x0
+   $r55 = fadd r55, #-0.000000
+   $r54 = icmpsel $r11, #2, r55, r54, #0x0
+   $r55 = fcmpsel $r16, $r36, $r16, $r36, #0x0
+   $r55 = fadd r55, #-0.000000
+   $r56 = fcmpsel $r16, $r36, $r16, $r36, #0x0
+   $r56 = fadd r56, #-0.000000
+   $r55 = icmpsel $r11, #2, r56, r55, #0x0
+   $r43 = fadd $r19, r43
+   $r43 = icmpsel $r11, #0, r43, r51, #0x0
+   $r48 = fadd $r18, r48
+   $r48 = icmpsel $r11, #0, r48, r52, #0x0
+   $r49 = fadd $r17, r49
+   $r49 = icmpsel $r11, #0, r49, r54, #0x0
+   $r36 = fadd $r16, r36
+   $r36 = icmpsel r11, #0, r36, r55, #0x0
+   r19 = icmpsel $r37h, #0, r19, r43, #0x0
+   r18 = icmpsel $r37h, #0, r18, r48, #0x0
+   r17 = icmpsel $r37h, #0, r17, r49, #0x0
+   r16 = icmpsel r37h, #0, r16, r36, #0x0
+   $r36 = fcmpsel r63, r45, r63, r45, #0x0
+   $r36 = rcp r36
+   $r36 = fmul r36, #0.500000
+   r49 = ffma r39, $r36, #0.500000
+   r48 = ffma r38, r36, #0.500000
+   $r56...r59 = texture_sample r48...r50, r35h, #0, r70:r71, r68:r69, _, xyzw, #0x6, cube, slot 0
+   $r36 = convert #10, $r59, #0x1
+   $r38 = convert #11, $r59, #0x1
+   $r36 = icmpsel $r5h, #1, r38, r36, #0x0
+   $r38 = convert #10, $r58, #0x1
+   $r39 = convert #11, $r58, #0x1
+   $r38 = icmpsel $r5h, #1, r39, r38, #0x0
+   $r39 = convert #10, $r57, #0x1
+   $r43 = convert #11, $r57, #0x1
+   $r39 = icmpsel $r5h, #1, r43, r39, #0x0
+   $r43 = convert #10, $r56, #0x1
+   $r45 = convert #11, $r56, #0x1
+   $r43 = icmpsel $r5h, #1, r45, r43, #0x0
+   $r45 = fmul $r59, r81
+   $r36 = icmpsel $r35l, #3, r45, r36, #0x0
+   $r45 = fmul $r58, r26
+   $r38 = icmpsel $r35l, #3, r45, r38, #0x0
+   $r45 = fmul $r57, r24
+   $r39 = icmpsel $r35l, #3, r45, r39, #0x0
+   $r45 = fmul $r56, r22
+   $r43 = icmpsel r35l, #3, r45, r43, #0x0
+   r36 = icmpsel $r5h, #0, r59, r36, #0x0
+   r38 = icmpsel $r5h, #0, r58, r38, #0x0
+   r39 = icmpsel $r5h, #0, r57, r39, #0x0
+   r43 = icmpsel r5h, #0, r56, r43, #0x0
+   r42 = fmul r75, r42
+   r37l = icmpsel r46l, #0, #0, r37l, #0x0
+   if_icmp r14l, #0, #0xaaab1c851890, n=1, inv
+   jmp_exec_none #0xaaab1c851890
+} -> block21 block22  from block18 block19
+
+block21 {
+   $r48...r51 = texture_sample r48...r50, r35h, #0, r70:r71, r78:r79, _, xyzw, #0x6, cube, slot 0
+   $r45 = convert #10, $r51, #0x1
+   $r46 = convert #11, $r51, #0x1
+   $r45 = icmpsel $r5h, #1, r46, r45, #0x0
+   $r46 = convert #10, $r50, #0x1
+   $r52 = convert #11, $r50, #0x1
+   $r46 = icmpsel $r5h, #1, r52, r46, #0x0
+   $r52 = convert #10, $r49, #0x1
+   $r54 = convert #11, $r49, #0x1
+   $r52 = icmpsel $r5h, #1, r54, r52, #0x0
+   $r54 = convert #10, $r48, #0x1
+   $r55 = convert #11, $r48, #0x1
+   $r54 = icmpsel $r5h, #1, r55, r54, #0x0
+   $r55 = fmul $r51, r81
+   $r45 = icmpsel $r35l, #3, r55, r45, #0x0
+   $r55 = fmul $r50, r26
+   $r46 = icmpsel $r35l, #3, r55, r46, #0x0
+   $r55 = fmul $r49, r24
+   $r52 = icmpsel $r35l, #3, r55, r52, #0x0
+   $r55 = fmul $r48, r22
+   $r54 = icmpsel r35l, #3, r55, r54, #0x0
+   $r45 = icmpsel $r5h, #0, r51, r45, #0x0
+   $r46 = icmpsel $r5h, #0, r50, r46, #0x0
+   $r49 = icmpsel $r5h, #0, r49, r52, #0x0
+   $r48 = icmpsel r5h, #0, r48, r54, #0x0
+   $r36 = fadd r36, $r45.neg
+   r36 = ffma r25, r36, r45
+   $r38 = fadd r38, $r46.neg
+   r38 = ffma r23, r38, r46
+   $r39 = fadd r39, $r49.neg
+   r39 = ffma r20, r39, r49
+   $r43 = fadd r43, $r48.neg
+   r43 = ffma r74, r43, r48
+} -> block23  from block20
+
+block22 {
+   pop_exec #0x0, n=1
+} -> block23  from block20
+
+block23 {
+   $r45 = fadd r10, #1.000000
+   $r45 = fcmpsel r45, r12, r45, r12, #0x0
+   $r46 = mov_imm #0x1f
+   $r48 = convert #8, $r45, #0x0
+   $r49 = and r48, r46
+   $r46 = bfeil #0, r15, r49, #0x0
+   r46 = icmpsel r46, #1, r46, #1, #0x0
+   $r46 = convert #10, r46, #0x1
+   $r48 = fmul $r44, $r46
+   $r44 = icmpsel $r27, #0, r48, r44, #0x0
+   $r48 = fmul $r41, $r46
+   $r41 = icmpsel $r27, #0, r48, r41, #0x0
+   $r44 = fadd r44, $r47
+   $r41 = fadd r41, r47
+   $r47 = fadd r9h, #-0.000000
+   r44 = fmul r44, $r47
+   r41 = fmul r41, r47
+   $r44 = roundeven r44
+   $r41 = roundeven r41
+   $r47 = fadd r5l, #-0.000000
+   $r44 = fmul r44, $r47
+   $r41 = fmul r41, r47
+   $r46 = rcp r46
+   $r47 = floor $r44
+   $r48 = fadd $r47, #0.500000
+   $r49 = fmul $r48, $r46
+   $r48 = icmpsel $r27, #0, r49, r48, #0x0
+   $r49 = floor $r41
+   $r50 = fadd $r49, #0.500000
+   $r51 = fmul $r50, $r46
+   $r50 = icmpsel r27, #0, r51, r50, #0x0
+   $r51 = fmul #0.500000, r46
+   $r52 = fcmpsel $r48, $r51, $r48, $r51, #0x0
+   $r52 = fadd r52, #-0.000000
+   $r54 = fadd #1.000000, $r51.neg
+   $r52 = fcmpsel r52, $r54, r52, $r54, #0x0
+   $r48 = icmpsel $r21h, #0, r48, r52, #0x0
+   $r52 = fcmpsel $r50, r51, $r50, r51, #0x0
+   $r52 = fadd r52, #-0.000000
+   $r52 = fcmpsel r52, r54, r52, r54, #0x0
+   $r50 = icmpsel r21h, #0, r50, r52, #0x0
+   $r48 = ffma r48, #2.000000, #-1.000000
+   $r52 = fadd $r48.neg, #-0.000000
+   $r55 = icmpsel $r28, #3, $r52, r53, #0x0
+   $r48 = icmpsel $r28, #2, r48, r55, #0x0
+   $r55 = icmpsel $r28, #3, $r31, $r52, #0x0
+   $r55 = icmpsel $r28, #2, $r2, r55, #0x0
+   $r52 = icmpsel #1, $r28, r55, r52, #0x0
+   $r50 = ffma r50, #2.000000, #-1.000000
+   $r55 = fadd $r50.neg, #-0.000000
+   $r56 = icmpsel r0h, #0, $r55, $r50, #0x0
+   $r56 = icmpsel $r28, #1, r31, r56, #0x0
+   $r56 = icmpsel $r28, #0, r2, r56, #0x0
+   $r57 = icmpsel $r28, #1, r50, r48, #0x0
+   $r57 = icmpsel r28, #0, r55, r57, #0x0
+   $r58 = fadd $r56.neg, #-0.000000
+   $r59 = fcmpsel $r57, #0, $r56, r58, #0x0
+   $r60 = fadd $r57.abs, #-0.000000
+   $r61 = fadd $r52.abs, #-0.000000
+   $r59 = fcmpsel $r61, $r60, $r56, r59, #0x0
+   $r62 = fadd $r57.neg, #-0.000000
+   $r63 = fadd $r52.neg, #-0.000000
+   $r64 = fcmpsel $r52, #0, $r57, $r62, #0x0
+   $r64 = fcmpsel $r61, $r60, r64, $r63, #0x0
+   $r65 = fcmpsel $r57, #0, #4, #5, #0x0
+   $r66 = fcmpsel $r52, #0, #2, #3, #0x0
+   $r60 = fcmpsel r61, r60, r66, r65, #0x0
+   $r61 = fmul $r36, $r42
+   $r61 = fcmpsel #0, $r42, r61, #0, #0x0
+   $r65 = fmul $r38, $r42
+   $r65 = fcmpsel #0, $r42, r65, #0, #0x0
+   $r67 = fmul $r39, $r42
+   $r67 = fcmpsel #0, $r42, r67, #0, #0x0
+   $r75 = fmul $r43, $r42
+   $r42 = fcmpsel #0, r42, r75, #0, #0x0
+   $r36 = icmpsel $r11, #0, r61, r36, #0x0
+   $r38 = icmpsel $r11, #0, r65, r38, #0x0
+   $r39 = icmpsel $r11, #0, r67, r39, #0x0
+   $r42 = icmpsel $r11, #0, r42, r43, #0x0
+   $r43 = fcmpsel $r19, $r36, $r19, $r36, #0x0
+   $r43 = fadd r43, #-0.000000
+   $r61 = fcmpsel $r19, $r36, $r19, $r36, #0x0
+   $r61 = fadd r61, #-0.000000
+   $r43 = icmpsel $r11, #2, r61, r43, #0x0
+   $r61 = fcmpsel $r18, $r38, $r18, $r38, #0x0
+   $r61 = fadd r61, #-0.000000
+   $r65 = fcmpsel $r18, $r38, $r18, $r38, #0x0
+   $r65 = fadd r65, #-0.000000
+   $r61 = icmpsel $r11, #2, r65, r61, #0x0
+   $r65 = fcmpsel $r17, $r39, $r17, $r39, #0x0
+   $r65 = fadd r65, #-0.000000
+   $r67 = fcmpsel $r17, $r39, $r17, $r39, #0x0
+   $r67 = fadd r67, #-0.000000
+   $r65 = icmpsel $r11, #2, r67, r65, #0x0
+   $r67 = fcmpsel $r16, $r42, $r16, $r42, #0x0
+   $r67 = fadd r67, #-0.000000
+   $r75 = fcmpsel $r16, $r42, $r16, $r42, #0x0
+   $r75 = fadd r75, #-0.000000
+   $r67 = icmpsel $r11, #2, r75, r67, #0x0
+   $r36 = fadd $r19, r36
+   $r36 = icmpsel $r11, #0, r36, r43, #0x0
+   $r38 = fadd $r18, r38
+   $r38 = icmpsel $r11, #0, r38, r61, #0x0
+   $r39 = fadd $r17, r39
+   $r39 = icmpsel $r11, #0, r39, r65, #0x0
+   $r42 = fadd $r16, r42
+   $r42 = icmpsel r11, #0, r42, r67, #0x0
+   r19 = icmpsel $r37l, #0, r19, r36, #0x0
+   r18 = icmpsel $r37l, #0, r18, r38, #0x0
+   r17 = icmpsel $r37l, #0, r17, r39, #0x0
+   r16 = icmpsel r37l, #0, r16, r42, #0x0
+   $r36 = fcmpsel $r56, #0, r62, $r57, #0x0
+   $r37 = mov_imm #0x80000000 /* -0.000000 */
+   $r38 = fadd r57.abs, $r37
+   $r39 = fadd r52.abs, $r37
+   $r38 = fcmpsel $r39, r38, $r39, r38, #0x0
+   $r42 = fadd $r56.abs, #-0.000000
+   $r36 = fcmpsel $r42, $r38, r36, r59, #0x0
+   $r43 = fcmpsel $r42, $r38, $r63, r64, #0x0
+   $r57 = fcmpsel $r56, #0, #0, #1, #0x0
+   $r62 = fcmpsel r42, $r38, r57, r60, #0x0
+   $r37 = fadd r56.abs, r37
+   $r38 = fcmpsel $r37, r38, $r37, r38, #0x0
+   $r38 = rcp r38
+   $r38 = fmul r38, #0.500000
+   $r61 = ffma r43, $r38, #0.500000
+   $r60 = ffma r36, r38, #0.500000
+   $r35h = fadd r45, #-0.000000
+   r35h = hadd r14h, r35h
+   r42 = mov1 r37, #0
+   r43 = mov1 r39, #0
+   r36 = mov1 r60, #0
+   r37 = mov1 r61, #0
+   r38 = mov1 r62, #0
+   r45 = mov1 r63, #0
+   $r60...r63 = texture_sample r36...r38, r35h, #0, r70:r71, r68:r69, _, xyzw, #0x6, cube, slot 0
+   $r59 = convert #10, $r63, #0x1
+   $r64 = convert #11, $r63, #0x1
+   $r59 = icmpsel $r5h, #1, r64, r59, #0x0
+   $r64 = convert #10, $r62, #0x1
+   $r65 = convert #11, $r62, #0x1
+   $r64 = icmpsel $r5h, #1, r65, r64, #0x0
+   $r65 = convert #10, $r61, #0x1
+   $r67 = convert #11, $r61, #0x1
+   $r65 = icmpsel $r5h, #1, r67, r65, #0x0
+   $r67 = convert #10, $r60, #0x1
+   $r75 = convert #11, $r60, #0x1
+   $r67 = icmpsel $r5h, #1, r75, r67, #0x0
+   $r75 = fmul $r63, r81
+   $r59 = icmpsel $r35l, #3, r75, r59, #0x0
+   $r75 = fmul $r62, r26
+   $r64 = icmpsel $r35l, #3, r75, r64, #0x0
+   $r75 = fmul $r61, r24
+   $r65 = icmpsel $r35l, #3, r75, r65, #0x0
+   $r75 = fmul $r60, r22
+   $r67 = icmpsel r35l, #3, r75, r67, #0x0
+   r59 = icmpsel $r5h, #0, r63, r59, #0x0
+   r62 = icmpsel $r5h, #0, r62, r64, #0x0
+   r61 = icmpsel $r5h, #0, r61, r65, #0x0
+   r60 = icmpsel r5h, #0, r60, r67, #0x0
+   $r44 = fadd r44, r47.neg
+   $r41 = fadd r41, r49.neg
+   $r63 = icmpsel $r9l, #0, #0, r44, #0x0
+   $r64 = icmpsel r9l, #0, #0, r41, #0x0
+   $r65 = fadd #1.000000, r63.neg
+   $r67 = fadd #1.000000, r64.neg
+   r75 = fmul r67, r65
+   if_icmp r14l, #0, #0xaaab1c85a890, n=1, inv
+   jmp_exec_none #0xaaab1c85a890
+} -> block24 block25  from block21 block22
+
+block24 {
+   $r36...r39 = texture_sample r36...r38, r35h, #0, r70:r71, r78:r79, _, xyzw, #0x6, cube, slot 0
+   $r77 = convert #10, $r39, #0x1
+   $r80 = convert #11, $r39, #0x1
+   $r77 = icmpsel $r5h, #1, r80, r77, #0x0
+   $r80 = convert #10, $r38, #0x1
+   $r83 = convert #11, $r38, #0x1
+   $r80 = icmpsel $r5h, #1, r83, r80, #0x0
+   $r83 = convert #10, $r37, #0x1
+   $r84 = convert #11, $r37, #0x1
+   $r83 = icmpsel $r5h, #1, r84, r83, #0x0
+   $r84 = convert #10, $r36, #0x1
+   $r85 = convert #11, $r36, #0x1
+   $r84 = icmpsel $r5h, #1, r85, r84, #0x0
+   $r85 = fmul $r39, r81
+   $r77 = icmpsel $r35l, #3, r85, r77, #0x0
+   $r85 = fmul $r38, r26
+   $r80 = icmpsel $r35l, #3, r85, r80, #0x0
+   $r85 = fmul $r37, r24
+   $r83 = icmpsel $r35l, #3, r85, r83, #0x0
+   $r85 = fmul $r36, r22
+   $r84 = icmpsel r35l, #3, r85, r84, #0x0
+   $r39 = icmpsel $r5h, #0, r39, r77, #0x0
+   $r38 = icmpsel $r5h, #0, r38, r80, #0x0
+   $r37 = icmpsel $r5h, #0, r37, r83, #0x0
+   $r36 = icmpsel r5h, #0, r36, r84, #0x0
+   $r59 = fadd r59, $r39.neg
+   r59 = ffma r25, r59, r39
+   $r39 = fadd r62, $r38.neg
+   r62 = ffma r23, r39, r38
+   $r38 = fadd r61, $r37.neg
+   r61 = ffma r20, r38, r37
+   $r37 = fadd r60, $r36.neg
+   r60 = ffma r74, r37, r36
+} -> block26  from block23
+
+block25 {
+   pop_exec #0x0, n=1
+} -> block26  from block23
+
+block26 {
+   $r36 = fmul $r60, $r75
+   $r37 = fmul $r61, $r75
+   $r38 = fmul $r62, $r75
+   $r39 = fmul $r59, $r75
+   $r36 = fcmpsel #0, $r75, r36, #0, #0x0
+   $r37 = fcmpsel #0, $r75, r37, #0, #0x0
+   $r38 = fcmpsel #0, $r75, r38, #0, #0x0
+   $r39 = fcmpsel #0, r75, r39, #0, #0x0
+   r36 = icmpsel $r11, #0, r36, r60, #0x0
+   r37 = icmpsel $r11, #0, r37, r61, #0x0
+   r38 = icmpsel $r11, #0, r38, r62, #0x0
+   r39 = icmpsel r11, #0, r39, r59, #0x0
+   $r41l = fcmpsel #0, r41, #1, #0, #0x0
+   $r41l = icmpsel r9l, #0, #0, r41l, #0x0
+   r59 = fmul r64, r65
+   $r49 = fadd r49, #1.500000
+   $r60 = fmul $r49, r46
+   $r49 = icmpsel r27, #0, r60, r49, #0x0
+   $r60 = fcmpsel $r49, r51, $r49, r51, #0x0
+   $r60 = fadd r60, #-0.000000
+   $r60 = fcmpsel r60, r54, r60, r54, #0x0
+   $r49 = icmpsel r21h, #0, r49, r60, #0x0
+   $r49 = ffma r49, #2.000000, #-1.000000
+   $r60 = fadd $r49.neg, #-0.000000
+   $r61 = icmpsel r0h, #0, $r60, $r49, #0x0
+   $r61 = icmpsel $r28, #1, r31, r61, #0x0
+   $r48 = icmpsel $r28, #1, r49, r48, #0x0
+   $r61 = icmpsel $r28, #0, r2, r61, #0x0
+   $r48 = icmpsel r28, #0, r60, r48, #0x0
+   $r62 = mov_imm #0x80000000 /* -0.000000 */
+   $r65 = fadd $r48.abs, $r62
+   $r43 = fcmpsel r43, r65, r43, r65, #0x0
+   $r65 = fadd $r48.neg, #-0.000000
+   $r75 = fcmpsel $r61, #0, $r65, $r48, #0x0
+   $r65 = fcmpsel $r52, #0, $r48, r65, #0x0
+   $r77 = fadd $r61.neg, #-0.000000
+   $r80 = fcmpsel $r48, #0, $r61, r77, #0x0
+   $r52 = fadd r52.abs, #-0.000000
+   $r83 = fadd $r48.abs, #-0.000000
+   $r80 = fcmpsel $r52, $r83, $r61, r80, #0x0
+   $r62 = fadd $r61.abs, r62
+   $r84 = fadd $r61.abs, #-0.000000
+   $r75 = fcmpsel $r84, $r43, r75, r80, #0x0
+   $r65 = fcmpsel $r52, $r83, r65, $r45, #0x0
+   $r45 = fcmpsel $r84, $r43, r45, r65, #0x0
+   $r65 = fcmpsel r62, $r43, r62, $r43, #0x0
+   $r48 = fcmpsel r48, #0, #4, #5, #0x0
+   $r48 = fcmpsel r52, r83, r66, r48, #0x0
+   $r52 = fcmpsel r61, #0, #0, #1, #0x0
+   $r86 = fcmpsel r84, r43, r52, r48, #0x0
+   $r43 = rcp r65
+   $r43 = fmul r43, #0.500000
+   $r84 = ffma r75, $r43, #0.500000
+   $r85 = ffma r45, r43, #0.500000
+   r45 = mov1 r40, #0
+   r48 = mov1 r42, #0
+   r65l = mov1 r41l, #0
+   r40 = mov1 r84, #0
+   r41 = mov1 r85, #0
+   r42 = mov1 r86, #0
+   r66 = mov1 r16, #0
+   r75 = mov1 r19, #0
+   r80 = mov1 r18, #0
+   r83 = mov1 r17, #0
+   $r16...r19 = texture_sample r40...r42, r35h, #0, r70:r71, r68:r69, _, xyzw, #0x6, cube, slot 0
+   $r84 = convert #11, $r16, #0x1
+   $r85 = convert #10, $r16, #0x1
+   $r84 = icmpsel $r5h, #1, r84, r85, #0x0
+   $r85 = convert #10, $r17, #0x1
+   $r86 = convert #11, $r17, #0x1
+   $r85 = icmpsel $r5h, #1, r86, r85, #0x0
+   $r86 = convert #10, $r18, #0x1
+   $r87 = convert #11, $r18, #0x1
+   $r86 = icmpsel $r5h, #1, r87, r86, #0x0
+   $r87 = convert #10, $r19, #0x1
+   $r88 = convert #11, $r19, #0x1
+   $r87 = icmpsel $r5h, #1, r88, r87, #0x0
+   $r88 = fmul $r16, r22
+   $r89 = fmul $r17, r24
+   $r90 = fmul $r18, r26
+   $r91 = fmul $r19, r81
+   $r84 = icmpsel $r35l, #3, r88, r84, #0x0
+   $r85 = icmpsel $r35l, #3, r89, r85, #0x0
+   $r86 = icmpsel $r35l, #3, r90, r86, #0x0
+   $r87 = icmpsel r35l, #3, r91, r87, #0x0
+   r16 = icmpsel $r5h, #0, r16, r84, #0x0
+   r17 = icmpsel $r5h, #0, r17, r85, #0x0
+   r18 = icmpsel $r5h, #0, r18, r86, #0x0
+   r19 = icmpsel r5h, #0, r19, r87, #0x0
+   if_icmp r14l, #0, #0xaaab1c8601e0, n=1, inv
+   jmp_exec_none #0xaaab1c8601e0
+} -> block27 block28  from block24 block25
+
+block27 {
+   $r40...r43 = texture_sample r40...r42, r35h, #0, r70:r71, r78:r79, _, xyzw, #0x6, cube, slot 0
+   $r84 = convert #10, $r43, #0x1
+   $r85 = convert #11, $r43, #0x1
+   $r84 = icmpsel $r5h, #1, r85, r84, #0x0
+   $r85 = convert #10, $r42, #0x1
+   $r86 = convert #11, $r42, #0x1
+   $r85 = icmpsel $r5h, #1, r86, r85, #0x0
+   $r86 = convert #10, $r41, #0x1
+   $r87 = convert #11, $r41, #0x1
+   $r86 = icmpsel $r5h, #1, r87, r86, #0x0
+   $r87 = convert #10, $r40, #0x1
+   $r88 = convert #11, $r40, #0x1
+   $r87 = icmpsel $r5h, #1, r88, r87, #0x0
+   $r88 = fmul $r43, r81
+   $r84 = icmpsel $r35l, #3, r88, r84, #0x0
+   $r88 = fmul $r42, r26
+   $r85 = icmpsel $r35l, #3, r88, r85, #0x0
+   $r88 = fmul $r41, r24
+   $r86 = icmpsel $r35l, #3, r88, r86, #0x0
+   $r88 = fmul $r40, r22
+   $r87 = icmpsel r35l, #3, r88, r87, #0x0
+   $r43 = icmpsel $r5h, #0, r43, r84, #0x0
+   $r42 = icmpsel $r5h, #0, r42, r85, #0x0
+   $r41 = icmpsel $r5h, #0, r41, r86, #0x0
+   $r40 = icmpsel r5h, #0, r40, r87, #0x0
+   $r19 = fadd r19, $r43.neg
+   r19 = ffma r25, r19, r43
+   $r18 = fadd r18, $r42.neg
+   r18 = ffma r23, r18, r42
+   $r17 = fadd r17, $r41.neg
+   r17 = ffma r20, r17, r41
+   $r16 = fadd r16, $r40.neg
+   r16 = ffma r74, r16, r40
+} -> block29  from block26
+
+block28 {
+   pop_exec #0x0, n=1
+} -> block29  from block26
+
+block29 {
+   $r40 = fmul $r16, $r59
+   $r41 = fmul $r17, $r59
+   $r42 = fmul $r18, $r59
+   $r43 = fmul $r19, $r59
+   $r40 = fcmpsel #0, $r59, r40, #0, #0x0
+   $r41 = fcmpsel #0, $r59, r41, #0, #0x0
+   $r42 = fcmpsel #0, $r59, r42, #0, #0x0
+   $r43 = fcmpsel #0, r59, r43, #0, #0x0
+   $r16 = icmpsel $r11, #0, r40, r16, #0x0
+   $r17 = icmpsel $r11, #0, r41, r17, #0x0
+   $r18 = icmpsel $r11, #0, r42, r18, #0x0
+   $r19 = icmpsel $r11, #0, r43, r19, #0x0
+   $r40 = fcmpsel $r36, $r16, $r36, $r16, #0x0
+   $r41 = fcmpsel $r37, $r17, $r37, $r17, #0x0
+   $r42 = fcmpsel $r38, $r18, $r38, $r18, #0x0
+   $r43 = fcmpsel $r39, $r19, $r39, $r19, #0x0
+   $r59 = fcmpsel $r36, $r16, $r36, $r16, #0x0
+   $r84 = fcmpsel $r37, $r17, $r37, $r17, #0x0
+   $r85 = fcmpsel $r38, $r18, $r38, $r18, #0x0
+   $r86 = fcmpsel $r39, $r19, $r39, $r19, #0x0
+   $r40 = fadd r40, #-0.000000
+   $r59 = fadd r59, #-0.000000
+   $r40 = icmpsel $r11, #2, r40, r59, #0x0
+   $r41 = fadd r41, #-0.000000
+   $r59 = fadd r84, #-0.000000
+   $r41 = icmpsel $r11, #2, r41, r59, #0x0
+   $r42 = fadd r42, #-0.000000
+   $r59 = fadd r85, #-0.000000
+   $r42 = icmpsel $r11, #2, r42, r59, #0x0
+   $r43 = fadd r43, #-0.000000
+   $r59 = fadd r86, #-0.000000
+   $r43 = icmpsel $r11, #2, r43, r59, #0x0
+   $r16 = fadd $r36, r16
+   $r17 = fadd $r37, r17
+   $r18 = fadd $r38, r18
+   $r19 = fadd $r39, r19
+   $r16 = icmpsel $r11, #0, r16, r40, #0x0
+   $r17 = icmpsel $r11, #0, r17, r41, #0x0
+   $r18 = icmpsel $r11, #0, r18, r42, #0x0
+   $r19 = icmpsel r11, #0, r19, r43, #0x0
+   r16 = icmpsel $r65l, #0, r36, r16, #0x0
+   r17 = icmpsel $r65l, #0, r37, r17, #0x0
+   r18 = icmpsel $r65l, #0, r38, r18, #0x0
+   r19 = icmpsel r65l, #0, r39, r19, #0x0
+   r36 = fmul r67, r63
+   $r37l = fcmpsel #0, r44, #1, #0, #0x0
+   r37h = icmpsel r9l, #0, #0, r37l, #0x0
+   $r38 = fadd r47, #1.500000
+   $r39 = fmul $r38, r46
+   $r38 = icmpsel r27, #0, r39, r38, #0x0
+   $r39 = fcmpsel $r38, r51, $r38, r51, #0x0
+   $r39 = fadd r39, #-0.000000
+   $r39 = fcmpsel r39, r54, r39, r54, #0x0
+   $r38 = icmpsel r21h, #0, r38, r39, #0x0
+   $r38 = ffma r38, #2.000000, #-1.000000
+   $r39 = fadd $r38.neg, #-0.000000
+   $r40 = icmpsel $r28, #3, r31, $r39, #0x0
+   $r41 = icmpsel $r28, #3, $r39, r53, #0x0
+   $r40 = icmpsel $r28, #2, r2, r40, #0x0
+   $r38 = icmpsel $r28, #2, r38, r41, #0x0
+   $r41 = icmpsel $r28, #1, r50, r38, #0x0
+   $r39 = icmpsel #1, $r28, r40, r39, #0x0
+   $r40 = icmpsel r28, #0, r55, r41, #0x0
+   $r41 = mov_imm #0x80000000 /* -0.000000 */
+   $r42 = fadd $r40.abs, $r41
+   $r41 = fadd $r39.abs, r41
+   $r42 = fcmpsel $r41, r42, $r41, r42, #0x0
+   $r43 = fadd $r40.neg, #-0.000000
+   $r44 = fcmpsel $r56, #0, $r43, $r40, #0x0
+   $r43 = fcmpsel $r39, #0, $r40, r43, #0x0
+   $r46 = fcmpsel $r40, #0, $r56, r58, #0x0
+   $r47 = fadd $r39.abs, #-0.000000
+   $r50 = fadd $r40.abs, #-0.000000
+   $r46 = fcmpsel $r47, $r50, $r56, r46, #0x0
+   $r51 = fadd r56.abs, #-0.000000
+   $r44 = fcmpsel $r51, $r42, r44, r46, #0x0
+   $r46 = fadd $r39.neg, #-0.000000
+   $r43 = fcmpsel $r47, $r50, r43, $r46, #0x0
+   $r43 = fcmpsel $r51, $r42, r46, r43, #0x0
+   $r48 = fcmpsel r48, $r42, r48, $r42, #0x0
+   $r40 = fcmpsel r40, #0, #4, #5, #0x0
+   $r53 = fcmpsel r39, #0, #2, #3, #0x0
+   $r40 = fcmpsel r47, r50, r53, r40, #0x0
+   $r58 = fcmpsel r51, r42, r57, r40, #0x0
+   $r40 = rcp r48
+   $r40 = fmul r40, #0.500000
+   $r56 = ffma r44, $r40, #0.500000
+   $r57 = ffma r43, r40, #0.500000
+   r44 = mov1 r41, #0
+   r40 = mov1 r56, #0
+   r41 = mov1 r57, #0
+   r42 = mov1 r58, #0
+   $r56...r59 = texture_sample r40...r42, r35h, #0, r70:r71, r68:r69, _, xyzw, #0x6, cube, slot 0
+   $r47 = convert #11, $r56, #0x1
+   $r48 = convert #10, $r56, #0x1
+   $r47 = icmpsel $r5h, #1, r47, r48, #0x0
+   $r48 = convert #10, $r57, #0x1
+   $r50 = convert #11, $r57, #0x1
+   $r48 = icmpsel $r5h, #1, r50, r48, #0x0
+   $r50 = convert #10, $r58, #0x1
+   $r51 = convert #11, $r58, #0x1
+   $r50 = icmpsel $r5h, #1, r51, r50, #0x0
+   $r51 = convert #10, $r59, #0x1
+   $r54 = convert #11, $r59, #0x1
+   $r51 = icmpsel $r5h, #1, r54, r51, #0x0
+   $r54 = fmul $r56, r22
+   $r55 = fmul $r57, r24
+   $r67 = fmul $r58, r26
+   $r84 = fmul $r59, r81
+   $r47 = icmpsel $r35l, #3, r54, r47, #0x0
+   $r48 = icmpsel $r35l, #3, r55, r48, #0x0
+   $r50 = icmpsel $r35l, #3, r67, r50, #0x0
+   $r51 = icmpsel r35l, #3, r84, r51, #0x0
+   r47 = icmpsel $r5h, #0, r56, r47, #0x0
+   r48 = icmpsel $r5h, #0, r57, r48, #0x0
+   r50 = icmpsel $r5h, #0, r58, r50, #0x0
+   r51 = icmpsel r5h, #0, r59, r51, #0x0
+   if_icmp r14l, #0, #0xaaab1c71d580, n=1, inv
+   jmp_exec_none #0xaaab1c71d580
+} -> block30 block31  from block27 block28
+
+block30 {
+   $r40...r43 = texture_sample r40...r42, r35h, #0, r70:r71, r78:r79, _, xyzw, #0x6, cube, slot 0
+   $r54 = convert #10, $r43, #0x1
+   $r55 = convert #11, $r43, #0x1
+   $r54 = icmpsel $r5h, #1, r55, r54, #0x0
+   $r55 = convert #10, $r42, #0x1
+   $r56 = convert #11, $r42, #0x1
+   $r55 = icmpsel $r5h, #1, r56, r55, #0x0
+   $r56 = convert #10, $r41, #0x1
+   $r57 = convert #11, $r41, #0x1
+   $r56 = icmpsel $r5h, #1, r57, r56, #0x0
+   $r57 = convert #10, $r40, #0x1
+   $r58 = convert #11, $r40, #0x1
+   $r57 = icmpsel $r5h, #1, r58, r57, #0x0
+   $r58 = fmul $r43, r81
+   $r54 = icmpsel $r35l, #3, r58, r54, #0x0
+   $r58 = fmul $r42, r26
+   $r55 = icmpsel $r35l, #3, r58, r55, #0x0
+   $r58 = fmul $r41, r24
+   $r56 = icmpsel $r35l, #3, r58, r56, #0x0
+   $r58 = fmul $r40, r22
+   $r57 = icmpsel r35l, #3, r58, r57, #0x0
+   $r43 = icmpsel $r5h, #0, r43, r54, #0x0
+   $r42 = icmpsel $r5h, #0, r42, r55, #0x0
+   $r41 = icmpsel $r5h, #0, r41, r56, #0x0
+   $r40 = icmpsel r5h, #0, r40, r57, #0x0
+   $r51 = fadd r51, $r43.neg
+   r51 = ffma r25, r51, r43
+   $r43 = fadd r50, $r42.neg
+   r50 = ffma r23, r43, r42
+   $r42 = fadd r48, $r41.neg
+   r48 = ffma r20, r42, r41
+   $r41 = fadd r47, $r40.neg
+   r47 = ffma r74, r41, r40
+} -> block32  from block29
+
+block31 {
+   pop_exec #0x0, n=1
+} -> block32  from block29
+
+block32 {
+   $r38 = icmpsel $r28, #1, r49, r38, #0x0
+   $r38 = icmpsel r28, #0, r60, r38, #0x0
+   $r40 = fcmpsel $r38, #0, #4, #5, #0x0
+   $r41 = fadd $r38.abs, #-0.000000
+   $r42 = fadd $r39.abs, #-0.000000
+   $r40 = fcmpsel $r42, $r41, r53, r40, #0x0
+   $r43 = fadd $r38.neg, #-0.000000
+   $r39 = fcmpsel r39, #0, $r38, $r43, #0x0
+   $r49 = fcmpsel $r38, #0, $r61, r77, #0x0
+   $r39 = fcmpsel $r42, $r41, r39, $r46, #0x0
+   $r41 = fcmpsel r42, r41, $r61, r49, #0x0
+   $r42 = mov_imm #0x80000000 /* -0.000000 */
+   $r42 = fadd $r38.abs, r42
+   $r42 = fcmpsel r44, r42, r44, r42, #0x0
+   $r38 = fcmpsel $r61, #0, r43, r38, #0x0
+   $r43 = fadd r61.abs, #-0.000000
+   $r39 = fcmpsel $r43, $r42, r46, r39, #0x0
+   $r38 = fcmpsel $r43, $r42, r38, r41, #0x0
+   $r54 = fcmpsel r43, $r42, r52, r40, #0x0
+   $r40 = fmul $r51, $r36
+   $r40 = fcmpsel #0, $r36, r40, #0, #0x0
+   $r41 = fmul $r50, $r36
+   $r41 = fcmpsel #0, $r36, r41, #0, #0x0
+   $r43 = fmul $r48, $r36
+   $r43 = fcmpsel #0, $r36, r43, #0, #0x0
+   $r44 = fmul $r47, $r36
+   $r36 = fcmpsel #0, r36, r44, #0, #0x0
+   $r40 = icmpsel $r11, #0, r40, r51, #0x0
+   $r41 = icmpsel $r11, #0, r41, r50, #0x0
+   $r43 = icmpsel $r11, #0, r43, r48, #0x0
+   $r36 = icmpsel $r11, #0, r36, r47, #0x0
+   $r44 = fcmpsel $r19, $r40, $r19, $r40, #0x0
+   $r44 = fadd r44, #-0.000000
+   $r46 = fcmpsel $r19, $r40, $r19, $r40, #0x0
+   $r46 = fadd r46, #-0.000000
+   $r44 = icmpsel $r11, #2, r46, r44, #0x0
+   $r46 = fcmpsel $r18, $r41, $r18, $r41, #0x0
+   $r46 = fadd r46, #-0.000000
+   $r47 = fcmpsel $r18, $r41, $r18, $r41, #0x0
+   $r47 = fadd r47, #-0.000000
+   $r46 = icmpsel $r11, #2, r47, r46, #0x0
+   $r47 = fcmpsel $r17, $r43, $r17, $r43, #0x0
+   $r47 = fadd r47, #-0.000000
+   $r48 = fcmpsel $r17, $r43, $r17, $r43, #0x0
+   $r48 = fadd r48, #-0.000000
+   $r47 = icmpsel $r11, #2, r48, r47, #0x0
+   $r48 = fcmpsel $r16, $r36, $r16, $r36, #0x0
+   $r48 = fadd r48, #-0.000000
+   $r49 = fcmpsel $r16, $r36, $r16, $r36, #0x0
+   $r49 = fadd r49, #-0.000000
+   $r48 = icmpsel $r11, #2, r49, r48, #0x0
+   $r40 = fadd $r19, r40
+   $r40 = icmpsel $r11, #0, r40, r44, #0x0
+   $r41 = fadd $r18, r41
+   $r41 = icmpsel $r11, #0, r41, r46, #0x0
+   $r43 = fadd $r17, r43
+   $r43 = icmpsel $r11, #0, r43, r47, #0x0
+   $r36 = fadd $r16, r36
+   $r36 = icmpsel r11, #0, r36, r48, #0x0
+   r19 = icmpsel $r37h, #0, r19, r40, #0x0
+   r18 = icmpsel $r37h, #0, r18, r41, #0x0
+   r17 = icmpsel $r37h, #0, r17, r43, #0x0
+   r16 = icmpsel r37h, #0, r16, r36, #0x0
+   $r36 = fcmpsel r62, r42, r62, r42, #0x0
+   $r36 = rcp r36
+   $r36 = fmul r36, #0.500000
+   $r53 = ffma r39, $r36, #0.500000
+   $r52 = ffma r38, r36, #0.500000
+   r40 = mov1 r52, #0
+   r41 = mov1 r53, #0
+   r42 = mov1 r54, #0
+   $r48...r51 = texture_sample r40...r42, r35h, #0, r70:r71, r68:r69, _, xyzw, #0x6, cube, slot 0
+   $r36 = convert #10, $r51, #0x1
+   $r38 = convert #11, $r51, #0x1
+   $r36 = icmpsel $r5h, #1, r38, r36, #0x0
+   $r38 = convert #10, $r50, #0x1
+   $r39 = convert #11, $r50, #0x1
+   $r38 = icmpsel $r5h, #1, r39, r38, #0x0
+   $r39 = convert #10, $r49, #0x1
+   $r44 = convert #11, $r49, #0x1
+   $r39 = icmpsel $r5h, #1, r44, r39, #0x0
+   $r44 = convert #10, $r48, #0x1
+   $r46 = convert #11, $r48, #0x1
+   $r44 = icmpsel $r5h, #1, r46, r44, #0x0
+   $r46 = fmul $r51, r81
+   $r36 = icmpsel $r35l, #3, r46, r36, #0x0
+   $r46 = fmul $r50, r26
+   $r38 = icmpsel $r35l, #3, r46, r38, #0x0
+   $r46 = fmul $r49, r24
+   $r39 = icmpsel $r35l, #3, r46, r39, #0x0
+   $r46 = fmul $r48, r22
+   $r44 = icmpsel r35l, #3, r46, r44, #0x0
+   r36 = icmpsel $r5h, #0, r51, r36, #0x0
+   r38 = icmpsel $r5h, #0, r50, r38, #0x0
+   r39 = icmpsel $r5h, #0, r49, r39, #0x0
+   r44 = icmpsel r5h, #0, r48, r44, #0x0
+   r46 = fmul r64, r63
+   r21h = icmpsel r65l, #0, #0, r37l, #0x0
+   if_icmp r14l, #0, #0xaaab1c7238b0, n=1, inv
+   jmp_exec_none #0xaaab1c7238b0
+} -> block33 block34  from block30 block31
+
+block33 {
+   $r40...r43 = texture_sample r40...r42, r35h, #0, r70:r71, r78:r79, _, xyzw, #0x6, cube, slot 0
+   $r37 = convert #10, $r43, #0x1
+   $r47 = convert #11, $r43, #0x1
+   $r37 = icmpsel $r5h, #1, r47, r37, #0x0
+   $r47 = convert #10, $r42, #0x1
+   $r48 = convert #11, $r42, #0x1
+   $r47 = icmpsel $r5h, #1, r48, r47, #0x0
+   $r48 = convert #10, $r41, #0x1
+   $r49 = convert #11, $r41, #0x1
+   $r48 = icmpsel $r5h, #1, r49, r48, #0x0
+   $r49 = convert #10, $r40, #0x1
+   $r50 = convert #11, $r40, #0x1
+   $r49 = icmpsel $r5h, #1, r50, r49, #0x0
+   $r50 = fmul $r43, r81
+   $r37 = icmpsel $r35l, #3, r50, r37, #0x0
+   $r50 = fmul $r42, r26
+   $r47 = icmpsel $r35l, #3, r50, r47, #0x0
+   $r50 = fmul $r41, r24
+   $r48 = icmpsel $r35l, #3, r50, r48, #0x0
+   $r50 = fmul $r40, r22
+   $r49 = icmpsel r35l, #3, r50, r49, #0x0
+   $r37 = icmpsel $r5h, #0, r43, r37, #0x0
+   $r42 = icmpsel $r5h, #0, r42, r47, #0x0
+   $r41 = icmpsel $r5h, #0, r41, r48, #0x0
+   $r40 = icmpsel r5h, #0, r40, r49, #0x0
+   $r36 = fadd r36, $r37.neg
+   r36 = ffma r25, r36, r37
+   $r37 = fadd r38, $r42.neg
+   r38 = ffma r23, r37, r42
+   $r37 = fadd r39, $r41.neg
+   r39 = ffma r20, r37, r41
+   $r37 = fadd r44, $r40.neg
+   r44 = ffma r74, r37, r40
+} -> block35  from block32
+
+block34 {
+   pop_exec #0x0, n=1
+} -> block35  from block32
+
+block35 {
+   $r37 = fmul $r36, $r46
+   $r37 = fcmpsel #0, $r46, r37, #0, #0x0
+   $r40 = fmul $r38, $r46
+   $r40 = fcmpsel #0, $r46, r40, #0, #0x0
+   $r41 = fmul $r39, $r46
+   $r41 = fcmpsel #0, $r46, r41, #0, #0x0
+   $r42 = fmul $r44, $r46
+   $r42 = fcmpsel #0, r46, r42, #0, #0x0
+   $r36 = icmpsel $r11, #0, r37, r36, #0x0
+   $r37 = icmpsel $r11, #0, r40, r38, #0x0
+   $r38 = icmpsel $r11, #0, r41, r39, #0x0
+   $r39 = icmpsel $r11, #0, r42, r44, #0x0
+   $r40 = fcmpsel $r19, $r36, $r19, $r36, #0x0
+   $r40 = fadd r40, #-0.000000
+   $r41 = fcmpsel $r19, $r36, $r19, $r36, #0x0
+   $r41 = fadd r41, #-0.000000
+   $r40 = icmpsel $r11, #2, r41, r40, #0x0
+   $r41 = fcmpsel $r18, $r37, $r18, $r37, #0x0
+   $r41 = fadd r41, #-0.000000
+   $r42 = fcmpsel $r18, $r37, $r18, $r37, #0x0
+   $r42 = fadd r42, #-0.000000
+   $r41 = icmpsel $r11, #2, r42, r41, #0x0
+   $r42 = fcmpsel $r17, $r38, $r17, $r38, #0x0
+   $r42 = fadd r42, #-0.000000
+   $r43 = fcmpsel $r17, $r38, $r17, $r38, #0x0
+   $r43 = fadd r43, #-0.000000
+   $r42 = icmpsel $r11, #2, r43, r42, #0x0
+   $r43 = fcmpsel $r16, $r39, $r16, $r39, #0x0
+   $r43 = fadd r43, #-0.000000
+   $r44 = fcmpsel $r16, $r39, $r16, $r39, #0x0
+   $r44 = fadd r44, #-0.000000
+   $r43 = icmpsel $r11, #2, r44, r43, #0x0
+   $r36 = fadd $r19, r36
+   $r36 = icmpsel $r11, #0, r36, r40, #0x0
+   $r37 = fadd $r18, r37
+   $r37 = icmpsel $r11, #0, r37, r41, #0x0
+   $r38 = fadd $r17, r38
+   $r38 = icmpsel $r11, #0, r38, r42, #0x0
+   $r39 = fadd $r16, r39
+   $r39 = icmpsel $r11, #0, r39, r43, #0x0
+   $r19 = icmpsel $r21h, #0, r19, r36, #0x0
+   $r18 = icmpsel $r21h, #0, r18, r37, #0x0
+   $r17 = icmpsel $r21h, #0, r17, r38, #0x0
+   $r16 = icmpsel r21h, #0, r16, r39, #0x0
+   $r36 = floor $r6
+   $r36 = fadd r6, r36.neg
+   $r21h = fcmpsel #0, $r36, #1, #0, #0x0
+   $r21h = icmpsel $r82, #0, #0, r21h, #0x0
+   $r36 = icmpsel $r21h, #0, #0, r36, #0x0
+   $r37 = fmul $r19, $r36
+   $r37 = fcmpsel #0, $r36, r37, #0, #0x0
+   $r19 = icmpsel $r11, #0, r37, r19, #0x0
+   $r37 = fmul $r18, $r36
+   $r37 = fcmpsel #0, $r36, r37, #0, #0x0
+   $r38 = fmul $r17, $r36
+   $r38 = fcmpsel #0, $r36, r38, #0, #0x0
+   $r39 = fmul $r16, $r36
+   $r39 = fcmpsel #0, $r36, r39, #0, #0x0
+   $r36 = fadd #1.000000, r36.neg
+   $r40 = fmul $r75, $r36
+   $r40 = icmpsel $r11, #0, r40, r75, #0x0
+   $r18 = icmpsel $r11, #0, r37, r18, #0x0
+   $r37 = fmul $r80, $r36
+   $r37 = icmpsel $r11, #0, r37, r80, #0x0
+   $r17 = icmpsel $r11, #0, r38, r17, #0x0
+   $r38 = fmul $r83, $r36
+   $r38 = icmpsel $r11, #0, r38, r83, #0x0
+   $r16 = icmpsel $r11, #0, r39, r16, #0x0
+   $r36 = fmul $r66, r36
+   $r36 = icmpsel $r11, #0, r36, r66, #0x0
+   $r39 = fcmpsel $r40, $r19, $r40, $r19, #0x0
+   $r39 = fadd r39, #-0.000000
+   $r41 = fcmpsel $r40, $r19, $r40, $r19, #0x0
+   $r41 = fadd r41, #-0.000000
+   $r39 = icmpsel $r11, #2, r41, r39, #0x0
+   $r41 = fcmpsel $r37, $r18, $r37, $r18, #0x0
+   $r41 = fadd r41, #-0.000000
+   $r42 = fcmpsel $r37, $r18, $r37, $r18, #0x0
+   $r42 = fadd r42, #-0.000000
+   $r41 = icmpsel $r11, #2, r42, r41, #0x0
+   $r42 = fcmpsel $r38, $r17, $r38, $r17, #0x0
+   $r42 = fadd r42, #-0.000000
+   $r43 = fcmpsel $r38, $r17, $r38, $r17, #0x0
+   $r43 = fadd r43, #-0.000000
+   $r42 = icmpsel $r11, #2, r43, r42, #0x0
+   $r43 = fcmpsel $r36, $r16, $r36, $r16, #0x0
+   $r43 = fadd r43, #-0.000000
+   $r44 = fcmpsel $r36, $r16, $r36, $r16, #0x0
+   $r44 = fadd r44, #-0.000000
+   $r43 = icmpsel $r11, #2, r44, r43, #0x0
+   $r19 = fadd $r40, r19
+   $r19 = icmpsel $r11, #0, r19, r39, #0x0
+   $r18 = fadd $r37, r18
+   $r18 = icmpsel $r11, #0, r18, r41, #0x0
+   $r17 = fadd $r38, r17
+   $r17 = icmpsel $r11, #0, r17, r42, #0x0
+   $r16 = fadd $r36, r16
+   $r16 = icmpsel $r11, #0, r16, r43, #0x0
+   $r19 = icmpsel $r21h, #0, r40, r19, #0x0
+   $r18 = icmpsel $r21h, #0, r37, r18, #0x0
+   $r17 = icmpsel $r21h, #0, r38, r17, #0x0
+   $r16 = icmpsel r21h, #0, r36, r16, #0x0
+   $r36 = fcmpsel $r45, $r19, $r45, $r19, #0x0
+   $r36 = fadd r36, #-0.000000
+   $r37 = fcmpsel $r45, $r19, $r45, $r19, #0x0
+   $r37 = fadd r37, #-0.000000
+   $r36 = icmpsel $r11, #2, r37, r36, #0x0
+   $r37 = fcmpsel $r72, $r18, $r72, $r18, #0x0
+   $r37 = fadd r37, #-0.000000
+   $r38 = fcmpsel $r72, $r18, $r72, $r18, #0x0
+   $r38 = fadd r38, #-0.000000
+   $r37 = icmpsel $r11, #2, r38, r37, #0x0
+   $r38 = fcmpsel $r73, $r17, $r73, $r17, #0x0
+   $r38 = fadd r38, #-0.000000
+   $r39 = fcmpsel $r73, $r17, $r73, $r17, #0x0
+   $r39 = fadd r39, #-0.000000
+   $r38 = icmpsel $r11, #2, r39, r38, #0x0
+   $r39 = fcmpsel $r34, $r16, $r34, $r16, #0x0
+   $r39 = fadd r39, #-0.000000
+   $r40 = fcmpsel $r34, $r16, $r34, $r16, #0x0
+   $r40 = fadd r40, #-0.000000
+   $r39 = icmpsel $r11, #2, r40, r39, #0x0
+   $r40 = fadd r45, $r19
+   $r36 = icmpsel $r11, #0, r40, r36, #0x0
+   $r40 = fadd r72, $r18
+   $r37 = icmpsel $r11, #0, r40, r37, #0x0
+   $r40 = fadd r73, $r17
+   $r38 = icmpsel $r11, #0, r40, r38, #0x0
+   $r34 = fadd r34, $r16
+   $r34 = icmpsel r11, #0, r34, r39, #0x0
+   r40 = icmpsel $r33, #0, r19, r36, #0x0
+   r39 = icmpsel $r33, #0, r18, r37, #0x0
+   r38 = icmpsel $r33, #0, r17, r38, #0x0
+   r34 = icmpsel $r33, #0, r16, r34, #0x0
+   r33 = iadd r33, #1, shift=0
+   r18 = mov1 r81, #0
+   r16 = mov1 r74, #0
+   r36 = mov1 r70, #0
+   r37 = mov1 r71, #0
+   r17 = mov1 r82, #0
+   r19 = mov1 r76, #0
+   jmp_exec_any #0xaaab1c871ba0
+   pop_exec #0x0, n=1
+} -> block8  from block33 block34
+
+block36 {
+   $r1 = fmul $r34, $r41
+   $r2 = fmul $r38, $r41
+   $r3 = fmul $r39, $r41
+   $r4 = fmul $r40, $r41
+   $r1 = fcmpsel #0, $r41, r1, #0, #0x0
+   $r2 = fcmpsel #0, $r41, r2, #0, #0x0
+   $r3 = fcmpsel #0, $r41, r3, #0, #0x0
+   $r4 = fcmpsel #0, r41, r4, #0, #0x0
+   r1 = icmpsel $r11, #0, r1, r34, #0x0
+   r2 = icmpsel $r11, #0, r2, r38, #0x0
+   r3 = icmpsel $r11, #0, r3, r39, #0x0
+   r4 = icmpsel r11, #0, r4, r40, #0x0
+} -> block41  from block9
+
+block37 {
+   else_fcmp #0.000000, #0.000000, #0xaaab1c731680, n=1
+   jmp_exec_none_after #0xaaab1c731680
+   $r2 = exp2 r14h
+   $r6 = fmul r6, $r2
+   $r7 = fmul r7, $r2
+   $r4 = fmul r4, $r2
+   $r8 = fmul r8, $r2
+   $r9 = fmul r9, $r2
+   $r1 = fmul r1, r2
+   $r2 = fcmpsel $r32, $r34, $r32, $r34, #0x0
+   $r10 = fcmpsel $r32, $r33, $r32, $r33, #0x0
+   $r11 = fadd $r29.abs, #-0.000000
+   $r0h = fcmpsel $r11, $r10, #1, #0, #0x0
+   $r12 = fcmpsel $r11, $r10, $r29, $r28, #0x0
+   $r13 = fadd $r30.abs, #-0.000000
+   $r5l = mov_imm #0x1
+   $r0h = fcmpsel $r13, $r2, r5l, r0h, #0x0
+   $r17 = icmpsel $r0h, #0, $r29, $r28, #0x0
+   $r19 = fcmpsel $r13, $r2, $r29, $r30, #0x0
+   $r12 = fcmpsel $r13, $r2, $r30, r12, #0x0
+   $r27 = fcmpsel $r11, $r10, $r7, $r6, #0x0
+   $r6 = icmpsel $r0h, #0, $r7, r6, #0x0
+   $r7 = fcmpsel $r13, $r2, r7, $r4, #0x0
+   $r4 = fcmpsel $r13, $r2, r4, r27, #0x0
+   $r10 = fcmpsel $r11, r10, $r9, $r8, #0x0
+   $r8 = icmpsel r0h, #0, $r9, r8, #0x0
+   $r9 = fcmpsel $r13, $r2, r9, $r1, #0x0
+   $r1 = fcmpsel $r13, r2, r1, r10, #0x0
+   $r2 = rcp r12
+   $r10 = fmul r17, $r2
+   $r12 = fmul r19, $r2
+   $r6 = ffma $r10.neg, $r4, r6
+   $r4 = ffma $r12.neg, r4, r7
+   $r6 = fmul $r2, r6
+   $r4 = fmul $r2, r4
+   $r7 = ffma r10.neg, $r1, r8
+   $r1 = ffma r12.neg, r1, r9
+   $r7 = fmul $r2, r7
+   $r1 = fmul r2, r1
+   $r2 = fmul r4, r4
+   $r2 = ffma r6, r6, r2
+   $r1 = fmul r1, r1
+   $r1 = ffma r7, r7, r1
+   $r1 = fcmpsel r2, r1, r2, r1, #0x0
+   $r2 = convert #11, r15, #0x1
+   $r2 = fmul r2, r2
+   $r1 = fmul r1, r2
+   $r1 = log2 r1
+   $r1 = ffma #0.500000, r1, #-1.000000
+   r0h = fadd r1, #-0.000000
+   $r1 = fcmpsel r34, r33, r34, r33, #0x0
+   $r2 = fadd $r30.neg, #-0.000000
+   $r4 = fcmpsel $r28, #0, $r2, $r30, #0x0
+   $r2 = fcmpsel $r29, #0, $r30, r2, #0x0
+   $r6 = fadd $r28.neg, #-0.000000
+   $r6 = fcmpsel $r30, #0, $r28, r6, #0x0
+   $r6 = fcmpsel $r11, $r13, $r28, r6, #0x0
+   $r7 = fadd $r28.abs, #-0.000000
+   $r4 = fcmpsel $r7, $r1, r4, r6, #0x0
+   $r6 = fadd $r29.neg, #-0.000000
+   $r2 = fcmpsel $r11, $r13, r2, $r6, #0x0
+   $r2 = fcmpsel $r7, $r1, r6, r2, #0x0
+   $r6 = fcmpsel r32, $r1, r32, $r1, #0x0
+   $r8 = fcmpsel r30, #0, #4, #5, #0x0
+   $r9 = fcmpsel r29, #0, #2, #3, #0x0
+   $r8 = fcmpsel r11, r13, r9, r8, #0x0
+   $r9 = fcmpsel r28, #0, #0, #1, #0x0
+   r10 = fcmpsel r7, r1, r9, r8, #0x0
+   $r1 = rcp r6
+   $r1 = fmul r1, #0.500000
+   r8 = ffma r4, $r1, #0.500000
+   r9 = ffma r2, r1, #0.500000
+   $r1l = device_load u18:u19, #5, x, shift=2, #0x0, slot 0
+   $r1 = mov1 r1l, #0
+   $r2 = iadd r1, #28.neg, shift=0
+   r6 = mov1 r2, #0
+   r7 = mov1 r3, #0
+   $r28...r31 = texture_sample r8...r10, r0h, #0, r36:r37, r6:r7, _, xyzw, #0x6, cube, slot 0
+   $r1 = convert #11, $r28, #0x1
+   $r2 = convert #10, $r28, #0x1
+   $r1 = icmpsel $r5h, #1, r1, r2, #0x0
+   $r2 = convert #10, $r29, #0x1
+   $r4 = convert #11, $r29, #0x1
+   $r2 = icmpsel $r5h, #1, r4, r2, #0x0
+   $r4 = convert #10, $r30, #0x1
+   $r6 = convert #11, $r30, #0x1
+   $r4 = icmpsel $r5h, #1, r6, r4, #0x0
+   $r6 = convert #10, $r31, #0x1
+   $r7 = convert #11, $r31, #0x1
+   $r6 = icmpsel $r5h, #1, r7, r6, #0x0
+   $r7 = fmul $r28, r22
+   $r12 = fmul $r29, r24
+   $r13 = fmul $r30, r26
+   $r15 = fmul $r31, r18
+   $r1 = icmpsel $r35l, #3, r7, r1, #0x0
+   $r2 = icmpsel $r35l, #3, r12, r2, #0x0
+   $r4 = icmpsel $r35l, #3, r13, r4, #0x0
+   $r6 = icmpsel r35l, #3, r15, r6, #0x0
+   r1 = icmpsel $r5h, #0, r28, r1, #0x0
+   r2 = icmpsel $r5h, #0, r29, r2, #0x0
+   r4 = icmpsel $r5h, #0, r30, r4, #0x0
+   r6 = icmpsel r5h, #0, r31, r6, #0x0
+   if_icmp r14l, #0, #0xaaab1c7314b0, n=1, inv
+   jmp_exec_none #0xaaab1c7314b0
+} -> block38 block39  from block6
+
+block38 {
+   $r5l = and r14l, r21l
+   $r7 = mov1 r5l, #0
+   r12 = iadd r7, #28.neg, shift=0
+   r13 = mov1 r3, #0
+   $r8...r11 = texture_sample r8...r10, r0h, #0, r36:r37, r12:r13, _, xyzw, #0x6, cube, slot 0
+   $r3 = convert #10, $r11, #0x1
+   $r7 = convert #11, $r11, #0x1
+   $r3 = icmpsel $r5h, #1, r7, r3, #0x0
+   $r7 = fmul $r11, r18
+   $r3 = icmpsel $r35l, #3, r7, r3, #0x0
+   $r3 = icmpsel $r5h, #0, r11, r3, #0x0
+   $r6 = fadd r6, $r3.neg
+   $r6 = ffma r25, r6, r3
+   $r3 = convert #10, $r10, #0x1
+   $r7 = convert #11, $r10, #0x1
+   $r3 = icmpsel $r5h, #1, r7, r3, #0x0
+   $r7 = fmul $r10, r26
+   $r3 = icmpsel $r35l, #3, r7, r3, #0x0
+   $r3 = icmpsel $r5h, #0, r10, r3, #0x0
+   $r4 = fadd r4, $r3.neg
+   r3 = ffma r23, r4, r3
+   $r4 = convert #10, $r9, #0x1
+   $r7 = convert #11, $r9, #0x1
+   $r4 = icmpsel $r5h, #1, r7, r4, #0x0
+   $r7 = fmul $r9, r24
+   $r4 = icmpsel $r35l, #3, r7, r4, #0x0
+   $r4 = icmpsel $r5h, #0, r9, r4, #0x0
+   $r2 = fadd r2, $r4.neg
+   r2 = ffma r20, r2, r4
+   $r4 = convert #10, $r8, #0x1
+   $r7 = convert #11, $r8, #0x1
+   $r4 = icmpsel $r5h, #1, r7, r4, #0x0
+   $r7 = fmul $r8, r22
+   $r4 = icmpsel r35l, #3, r7, r4, #0x0
+   $r4 = icmpsel r5h, #0, r8, r4, #0x0
+   $r1 = fadd r1, $r4.neg
+   r1 = ffma r16, r1, r4
+   r4 = mov1 r6, #0
+} -> block40  from block37
+
+block39 {
+   else_fcmp #0.000000, #0.000000, #0xaaab1c7314b0, n=1
+   r3 = mov1 r4, #0
+   r4 = mov1 r6, #0
+   pop_exec #0x0, n=1
+} -> block40  from block37
+
+block40 {
+   pop_exec #0x0, n=1
+} -> block41  from block38 block39
+
+block41 {
+   r5 = mov1 r2, #0
+   r6 = mov1 r3, #0
+   r7 = mov1 r4, #0
+   r4 = mov1 r1, #0
+   export r4, #0x8
+   export r5, #0xa
+   export r6, #0xc
+   export r7, #0xe
+} from block36 block40
+

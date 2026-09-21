@@ -1,0 +1,3 @@
+agx3_pack_binary.c:6041: no grounded AGX3 encoding for exp2
+   r1 = exp2 ^r0h
+AGX3b fs-transcendentals-half-inputs: REJECTED by agx3_pack_binary

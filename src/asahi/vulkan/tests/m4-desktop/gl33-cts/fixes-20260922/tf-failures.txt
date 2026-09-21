@@ -1,0 +1,11 @@
+KHR-GL33.transform_feedback.draw_xfb_test
+KHR-GL33.transform_feedback.draw_xfb_feedbackk_test
+KHR-GL33.transform_feedback.draw_xfb_instanced_test
+KHR-GL33.transform_feedback.draw_xfb_stream_instanced_test
+KHR-GL33.transform_feedback2.transform_feedback2_states
+KHR-GL33.transform_feedback_overflow_query_ARB.basic-single-stream-interleaved-attribs
+KHR-GL33.transform_feedback_overflow_query_ARB.basic-single-stream-separate-attribs
+KHR-GL33.transform_feedback_overflow_query_ARB.advanced-single-stream-interleaved-attribs
+KHR-GL33.transform_feedback_overflow_query_ARB.advanced-single-stream-separate-attribs
+KHR-GL33.transform_feedback_overflow_query_ARB.multiple-streams-one-buffer-per-stream
+KHR-GL33.transform_feedback_overflow_query_ARB.multiple-streams-multiple-buffers-per-stream

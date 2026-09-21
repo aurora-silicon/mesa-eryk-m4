@@ -104,3 +104,13 @@ The GL runner now explicitly enables QPA log flushing. The retained
 of appending a conflicting disable option. This preserves the current case
 when a GPU hang interrupts a process. It does not change the 60-second case
 bound, shader/test code, skip lists or first-attempt cancellation behavior.
+
+### Completed failure-fix recheck (2026-09-22)
+
+See [fixes-20260922/README.md](fixes-20260922/README.md) for driver and genuine
+Zink query fixes, commits and retained evidence. The same 9,886-case main list
+now resolves to 9,569 Pass / 317 NotSupported, including all 15 previously
+failing/crashing/timing-out cases. A parallel LOD duration timeout and three
+canceled peers are retained explicitly; LOD passes alone and the peers pass
+in continuation. No support status changed. This remains one conformance
+configuration, not a full certification claim.
