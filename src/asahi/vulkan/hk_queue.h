@@ -14,6 +14,8 @@ struct hk_device;
 
 struct hk_queue {
    struct vk_queue vk;
+   uint64_t diagnostic_present_frame;
+   uint64_t diagnostic_present_ns;
 
    struct {
       /* Asahi kernel queue ID */
