@@ -172,7 +172,12 @@ pack_sampler(const struct hk_physical_device *pdev,
    const struct hk_native_sampler_state state = {
       .minimum_lod = info->minLod,
       .maximum_lod = info->maxLod,
-      .lod_bias = info->mipLodBias,
+      /* HAL200 quantizes sampler and instruction biases independently.
+       * Combine them in the shader, as on Gen4, to preserve precision.
+       */
+      .lod_bias = agx_chip_sampler_generation(pdev->dev.chip) ==
+                        AGX_SAMPLER_GENERATION_GEN4_HAL200
+                     ? 0.0f : info->mipLodBias,
       .maximum_anisotropy =
          info->anisotropyEnable
             ? util_next_power_of_two(MAX2(info->maxAnisotropy, 1))
@@ -296,12 +301,11 @@ hk_CreateSampler(VkDevice device,
       return vk_error(dev, VK_ERROR_FEATURE_NOT_PRESENT);
    }
 
-   /* Gen4 has no bias field, so shaders fetch it from the descriptor set.
-    * HAL200/Gen5 carry it in the hardware sampler and must see a zero software
-    * bias or the API bias would be applied twice. */
+   /* HAL200 also uses the software bias so sampler and instruction biases
+    * are combined before the hardware quantizes the resulting LOD.
+    */
    sampler->lod_bias_fp16 =
-      agx_chip_sampler_generation(pdev->dev.chip) ==
-            AGX_SAMPLER_GENERATION_GEN4
+      agx_chip_sampler_generation(pdev->dev.chip) != AGX_SAMPLER_GENERATION_GEN5
          ? _mesa_float_to_half(info->mipLodBias)
          : _mesa_float_to_half(0.0f);
 

@@ -13,9 +13,11 @@
 #include "hk_descriptor_set_layout.h"
 #include "hk_native_descriptor.h"
 #include "hk_shader.h"
+#include "hk_sampler_flags.h"
 
 #include "nir.h"
 #include "nir_builder.h"
+#include "nir_builtin_builder.h"
 #include "nir_builder_opcodes.h"
 #include "nir_intrinsics.h"
 #include "nir_intrinsics_indices.h"
@@ -29,6 +31,8 @@ struct lower_descriptors_ctx {
    nir_address_format ubo_addr_format;
    nir_address_format ssbo_addr_format;
    unsigned descriptor_generation;
+   bool software_native_bias;
+   bool software_sampler_state;
    mesa_shader_stage stage;
 };
 
@@ -689,9 +693,7 @@ lower_tex(nir_builder *b, nir_tex_instr *tex,
     * plus this saves on precious sampler heap spots.
     */
    if (tex->op == nir_texop_lod_bias) {
-      /* G17P carries API LOD bias in its native sampler word. Avoid a
-       * redundant software load, including for dynamically indexed sets. */
-      if (ctx->descriptor_generation == 9) {
+      if (ctx->descriptor_generation == 9 && !ctx->software_native_bias) {
          nir_def_replace(&tex->def, nir_imm_float16(b, 0.0));
          return true;
       }
@@ -788,6 +790,21 @@ lower_tex(nir_builder *b, nir_tex_instr *tex,
       return true;
    }
 
+   nir_def *query_bias = NULL;
+   nir_def *query_sampler = NULL;
+   nir_def *query_view_min = NULL;
+   if (ctx->software_native_bias && tex->op == nir_texop_lod) {
+      query_bias = nir_steal_tex_src(tex, nir_tex_src_bias);
+      if (query_bias) {
+         query_sampler = load_resource_deref_desc(
+            b, 2, 32, nir_src_as_deref(nir_src_for_ssa(sampler)),
+            plane_offset_B + native.sampler, ctx);
+         query_view_min = load_resource_deref_desc(
+            b, 1, 16, nir_src_as_deref(nir_src_for_ssa(texture)),
+            plane_offset_B + native.min_lod, ctx);
+      }
+   }
+
    {
       unsigned offset_B = plane_offset_B + native.texture;
 
@@ -843,6 +860,40 @@ lower_tex(nir_builder *b, nir_tex_instr *tex,
       }
 
       nir_tex_instr_add_src(tex, nir_tex_src_sampler_handle, index);
+   }
+
+   if (query_bias) {
+      /* The native query has no instruction-bias operand. Its second result
+       * is the unclamped footprint, so apply the API bias before reconstructing
+       * the sampler and image-view clamps for the first result.
+       */
+      b->cursor = nir_after_instr(&tex->instr);
+      nir_def *raw = nir_fadd(b, nir_channel(b, &tex->def, 1),
+                            nir_f2f32(b, query_bias));
+      nir_def *lo = nir_channel(b, query_sampler, 0);
+      nir_def *hi = nir_channel(b, query_sampler, 1);
+      nir_def *minimum, *maximum, *linear;
+      if (ctx->software_sampler_state) {
+         minimum = nir_f2f32(b, nir_unpack_32_2x16_split_x(b, lo));
+         maximum = nir_f2f32(b, nir_unpack_32_2x16_split_y(b, lo));
+         linear = nir_ine_imm(b, nir_iand_imm(b, hi, HK_MINMAX_MIP_LINEAR), 0);
+      } else {
+         minimum = nir_fmul_imm(b, nir_u2f32(b,
+            nir_ubitfield_extract_imm(b, lo, 0, 10)), 1.0 / 64.0);
+         maximum = nir_fmul_imm(b, nir_u2f32(b,
+            nir_ubitfield_extract_imm(b, lo, 10, 10)), 1.0 / 64.0);
+         linear = nir_ieq_imm(b, nir_ubitfield_extract_imm(b, lo, 27, 2),
+                              AGX_MIP_FILTER_LINEAR);
+      }
+      nir_def *lod = nir_fmin(b, nir_fmax(b, raw, minimum), maximum);
+      nir_def *levels = nir_build_texture_query(b, tex, nir_texop_query_levels,
+                                                1, nir_type_int32, false, false);
+      lod = nir_fmin(b, nir_fmax(b, lod, nir_imm_float(b, 0)),
+                     nir_u2f32(b, nir_iadd_imm(b, levels, -1)));
+      lod = nir_fmax(b, lod, nir_f2f32(b, query_view_min));
+      lod = nir_bcsel(b, linear, lod, nir_ffloor(b, nir_fadd_imm(b, lod, .5)));
+      nir_def *result = nir_vec2(b, lod, raw);
+      nir_def_rewrite_uses_after(&tex->def, result);
    }
 
    return true;
@@ -1021,13 +1072,16 @@ lower_ssbo_descriptor(nir_builder *b, nir_intrinsic_instr *intr, void *_data)
 }
 
 bool
-hk_nir_lower_descriptors(nir_shader *nir,
+hk_nir_lower_descriptors(nir_shader *nir, enum agx_chip chip, bool view_min,
                          const struct vk_pipeline_robustness_state *rs,
                          uint32_t set_layout_count,
                          struct vk_descriptor_set_layout *const *set_layouts)
 {
    struct lower_descriptors_ctx ctx = {
       .stage = nir->info.stage,
+      .software_native_bias = agx_chip_sampler_generation(chip) ==
+                              AGX_SAMPLER_GENERATION_GEN4_HAL200,
+      .software_sampler_state = chip == AGX_CHIP_G16G && view_min,
       .clamp_desc_array_bounds =
          rs->storage_buffers !=
             VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_DISABLED_EXT ||

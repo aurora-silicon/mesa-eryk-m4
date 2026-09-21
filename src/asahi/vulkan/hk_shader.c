@@ -1940,8 +1940,8 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
       NIR_PASS(_, nir, nir_shader_intrinsics_pass,
                hk_lower_native_sample_barycentric, nir_metadata_control_flow, NULL);
 
-   NIR_PASS(_, nir, hk_nir_lower_descriptors, rs, set_layout_count,
-            set_layouts);
+   NIR_PASS(_, nir, hk_nir_lower_descriptors, dev->dev.chip,
+            features & HK_FEAT_IMAGE_VIEW_MIN_LOD, rs, set_layout_count, set_layouts);
    NIR_PASS(_, nir, nir_lower_explicit_io, nir_var_mem_global,
             nir_address_format_64bit_global);
    NIR_PASS(_, nir, nir_lower_explicit_io, nir_var_mem_ssbo,
