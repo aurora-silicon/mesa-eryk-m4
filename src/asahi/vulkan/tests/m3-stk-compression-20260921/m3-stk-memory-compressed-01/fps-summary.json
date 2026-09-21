@@ -1,0 +1,16 @@
+{
+  "scope": "Sample of built-in Black Forest benchmark; not a complete benchmark run",
+  "resolution": [
+    3024,
+    1964
+  ],
+  "seconds": 10.000708032,
+  "swap_returns": 331,
+  "average_fps": 33.09765658000163,
+  "interval_fps": 33.103844668562296,
+  "median_frame_ms": 30.772677,
+  "p95_frame_ms": 37.425608,
+  "peak_pmp_c": 70.25,
+  "method": "SDL2 swap-return cadence; not physical scanout timing",
+  "requires_visual_validation": true
+}
