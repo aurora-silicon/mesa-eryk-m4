@@ -38,3 +38,23 @@ that is explicitly not valid playback evidence. The retained run
 Use firefox-perf-summary.py RUN [...] to summarize callback timing, submitted
 geometry/preparation costs and cache counters from retained evidence. It reports
 visibility; do not interpret hidden-page counters as display performance.
+
+start-1080.js requests YouTube hd1080 through the page's wrapped player object
+and samples playback quality every 250 ms. report-steady.js retains both the
+cold-start totals and a separate interval beginning eight seconds after start.
+Verify the reported dimensions; requesting a quality alone is not proof of it.
+The final 20260921T165256936203Z-firefox-panel-1080-visible run observed only
+1920x1080 during the steady interval: 720 total frames, seven drops, 12.002 media
+seconds (59.41 non-dropped frames/s). The browser and compositor captures look
+correct. The kernel changes and installed eight-command configuration are
+recorded under the kernel's reference/firefox/. This is a short playback result,
+not a claim of perfect startup or full-browser/CTS coverage.
+
+The probe retains HK/AGX/ASAHI/Zink and GTK scaling environment overrides as well
+as the generic graphics variables, so performance variants remain auditable.
+
+After fetching evidence, firefox-probe-cleanup.py --apply ID [...] on the target
+removes only closed profiles named by retained probe results, checks that no
+process uses them, and records configuration hashes and removed bytes. Without
+--apply it previews the cleanup. Keep any profile still needed for reproduction;
+the original user profile is never a cleanup target.

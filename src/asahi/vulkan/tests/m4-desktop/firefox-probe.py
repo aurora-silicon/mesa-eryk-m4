@@ -171,7 +171,7 @@ def main():
                '--marionette', '--remote-allow-system-access', '--profile', str(profile), 'about:blank']
     result = dict(command=command, url=a.url, profile=str(profile), boot_id=boot,
                   started=time.monotonic(), force_gpu=a.force_gpu,
-                  environment={k:v for k,v in env.items() if k.startswith(('VK_', 'MESA_', 'GALLIUM_', 'LIBGL_', 'LD_LIBRARY', 'MOZ_', 'GFXRECON_'))})
+                  environment={k:v for k,v in env.items() if k.startswith(('VK_', 'MESA_', 'GALLIUM_', 'LIBGL_', 'LD_LIBRARY', 'MOZ_', 'GFXRECON_', 'ASAHI_', 'AGX_', 'ZINK_', 'HK_', 'GDK_', 'GTK_'))})
     (out / 'start.json').write_text(json.dumps(result, indent=2)+'\n')
     child = None
     remote = None
