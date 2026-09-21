@@ -474,6 +474,16 @@ hk_DestroyQueryPool(VkDevice device, VkQueryPool queryPool,
    if (!pool)
       return;
 
+   if (pool->bo && pool->vk.query_type == VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT &&
+       debug_get_bool_option("HK_M4_TRACE_XFB_QUERIES", false)) {
+      for (unsigned i = 0; i < MIN2(pool->vk.query_count, 64); ++i) {
+         struct hk_query_report *r = hk_query_report_map(dev, pool, i);
+         if (hk_query_is_available(dev, pool, i))
+            fprintf(stderr, "HK_XFB_QUERY pool=%" PRIx64 " query=%u written=%" PRIu64 " needed=%" PRIu64 "\n",
+                    pool->bo->va->addr, i, r[0].value, r[1].value);
+      }
+   }
+
    /* Read-only diagnostic after API-mandated retirement. Existing API
     * statistics already cover draws, so do not replace or double-count them.
     * Availability is reported separately; unavailable values are not results. */
