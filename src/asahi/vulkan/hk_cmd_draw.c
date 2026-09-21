@@ -5246,7 +5246,7 @@ hk_ia_update(struct hk_cmd_buffer *cmd, struct agx_draw draw,
    if (agx_is_indirect(draw.b)) {
       draw_ptr = draw.b.ptr;
    } else {
-      uint32_t desc[] = {draw.b.count[0], draw.b.count[1], 0};
+      uint32_t desc[] = {draw.b.count[0], draw.b.count[1], draw.start};
       draw_ptr = hk_pool_upload(cmd, &desc, sizeof(desc), 4);
    }
 
