@@ -1978,6 +1978,11 @@ hk_CmdCopyBuffer2(VkCommandBuffer commandBuffer, const VkCopyBufferInfo2 *info)
             fprintf(stderr, "asahi buffer-copy: src=%#" PRIx64
                     " dst=%#" PRIx64 " bytes=%" PRIu64 "\n",
                     src, dst, (uint64_t)region.size);
+         struct hk_cs *copy_cs = hk_cmd_buffer_get_cs_general(
+            cmd, &cmd->current_cs.cs, true);
+         if (!copy_cs)
+            break;
+         const unsigned previous_dispatches = copy_cs->stats.cmds;
          if (region.size > 16 && ((src | dst) & 15) == 0 &&
              (region.size & 15) != 0) {
             const VkDeviceSize tail = region.size & 15;
@@ -1988,6 +1993,11 @@ hk_CmdCopyBuffer2(VkCommandBuffer commandBuffer, const VkCopyBufferInfo2 *info)
             region.size = tail;
          }
          vk_meta_copy_buffer(&cmd->vk, &dev->meta, &copy);
+         if (cmd->current_cs.cs == copy_cs) {
+            copy_cs->copy_dispatches += copy_cs->stats.cmds - previous_dispatches;
+            hk_drm_attachment_set_add(&copy_cs->copy_destinations,
+                                      dst, info->pRegions[i].size);
+         }
          if (cmd->current_cs.cs)
             hk_drm_attachment_set_add(&cmd->current_cs.cs->compute_attachments,
                                       dst, info->pRegions[i].size);

@@ -578,6 +578,9 @@ merge_control_streams(struct hk_cmd_buffer *cmd)
       hk_cmd_buffer_device(cmd)->dev.chip == AGX_CHIP_G16G &&
       debug_get_bool_option("HK_M4_BATCH_META_FILLS",
          debug_get_bool_option("HK_M4_CDM_VISIBILITY_BARRIER", true));
+   const bool batch_copies =
+      hk_cmd_buffer_device(cmd)->dev.chip == AGX_CHIP_G16G &&
+      debug_get_bool_option("HK_M4_BATCH_META_COPIES", true);
    const bool batch_queries =
       hk_cmd_buffer_device(cmd)->dev.chip == AGX_CHIP_G16G &&
       debug_get_bool_option("HK_M4_BATCH_QUERY_COPIES", false);
@@ -589,6 +592,9 @@ merge_control_streams(struct hk_cmd_buffer *cmd)
       if (batch_queries && cs->type == HK_CS_CDM && cs->query_dispatches &&
           cs->query_dispatches == cs->stats.cmds)
          cs->compute_attachments = cs->query_destinations;
+      if (batch_copies && cs->type == HK_CS_CDM && cs->copy_dispatches &&
+          cs->copy_dispatches == cs->stats.cmds)
+         cs->compute_attachments = cs->copy_destinations;
       if (batch_fills && cs->type == HK_CS_CDM && cs->fill_dispatches &&
           cs->fill_dispatches == cs->stats.cmds)
          cs->compute_attachments = cs->fill_destinations;

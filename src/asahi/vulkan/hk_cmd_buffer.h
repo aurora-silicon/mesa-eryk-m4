@@ -472,6 +472,11 @@ struct hk_cs {
    struct hk_drm_attachment_set fill_destinations;
    unsigned fill_dispatches;
 
+   /* Buffer copies have exact destination ranges, including sparse VAs.
+    * Dependency barriers remain in the linked native stream. */
+   struct hk_drm_attachment_set copy_destinations;
+   unsigned copy_dispatches;
+
    /* Query copies read private query-pool storage and write these ranges.
     * Only a stream consisting entirely of these dispatches is covered. */
    struct hk_drm_attachment_set query_destinations;
@@ -546,6 +551,11 @@ hk_cs_merge_cdm(struct hk_cs *a, const struct hk_cs *b)
 
    a->clear_dispatches += b->clear_dispatches;
    a->fill_dispatches += b->fill_dispatches;
+   a->copy_dispatches += b->copy_dispatches;
+   if (!hk_drm_attachment_set_merge(&a->copy_destinations,
+                                    &b->copy_destinations,
+                                    HK_DRM_MAX_FRAGMENT_ATTACHMENTS))
+      a->copy_destinations.complete = false;
    a->query_dispatches += b->query_dispatches;
    if (!hk_drm_attachment_set_merge(&a->query_destinations,
                                     &b->query_destinations,
@@ -810,6 +820,7 @@ hk_cmd_buffer_get_cs_general(struct hk_cmd_buffer *cmd, struct hk_cs **ptr,
       hk_drm_attachment_set_init(&cs->compute_attachments);
       hk_drm_attachment_set_init(&cs->clear_destinations);
       hk_drm_attachment_set_init(&cs->fill_destinations);
+      hk_drm_attachment_set_init(&cs->copy_destinations);
       hk_drm_attachment_set_init(&cs->query_destinations);
       /* Only known meta destinations are collected so far. */
       cs->compute_attachments.complete = false;
