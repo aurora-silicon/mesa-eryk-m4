@@ -938,7 +938,7 @@ update_qbo(struct zink_context *ctx, struct zink_query *q)
    bool is_timestamp = q->type == PIPE_QUERY_TIMESTAMP;
    /* timestamp queries just write to offset 0 always */
    int num_queries = get_num_queries(q);
-   unsigned num_results = qbo->num_results;
+   unsigned first_start = q->start_offset;
    for (unsigned i = 0; i < num_queries; i++) {
       unsigned start_offset = q->start_offset;
       while (start_offset < num_starts) {
@@ -967,16 +967,15 @@ update_qbo(struct zink_context *ctx, struct zink_query *q)
                                     * - Chapter 18. Queries
                                     */
                                     VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT);
-         if (!is_timestamp)
-            q->curr_qbo->num_results += num_merged_copies;
          start_offset += num_merged_copies;
       }
    }
-   q->start_offset += q->curr_qbo->num_results - num_results;
-
-
-   if (is_timestamp)
-      q->curr_qbo->num_results = 1;
+   /* Every pool writes a parallel buffer for the same query starts. Count
+    * starts once, not once per pool: emulated primitive queries have two
+    * pools and overflow-any queries have one per stream.
+    */
+   qbo->num_results = is_timestamp ? 1 : qbo->num_results + num_starts - first_start;
+   q->start_offset = num_starts;
 
    q->needs_update = false;
 }
