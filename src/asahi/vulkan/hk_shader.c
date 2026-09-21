@@ -2669,7 +2669,7 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
       shader->info.agx3_root_uniform = root;
    }
 
-   if (dev->dev.chip == AGX_CHIP_G16G &&
+   if (agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) &&
        debug_get_bool_option("HK_M4_PREFETCH_DESCRIPTORS", false) &&
        (sw_stage == MESA_SHADER_FRAGMENT || (sw_stage == MESA_SHADER_VERTEX && hw))) {
       NIR_PASS(_, nir, hk_nir_prefetch_descriptors, root + 4, set_count,
@@ -2731,7 +2731,7 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
       robust2_modes |= nir_var_mem_ssbo;
 #endif
 
-   const bool native_preamble = dev->dev.chip == AGX_CHIP_G16G &&
+   const bool native_preamble = agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) &&
       nir->info.stage == MESA_SHADER_FRAGMENT &&
       debug_get_bool_option("HK_M4_NATIVE_PREAMBLE", false);
 

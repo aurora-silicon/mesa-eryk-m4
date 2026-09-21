@@ -1,0 +1,13 @@
+{
+  "completed_sample": true,
+  "stock_memory_request": true,
+  "start_ns": 374218019162,
+  "end_ns": 384218878809,
+  "seconds": 10.000859647,
+  "requires_visual_validation": true,
+  "track": "Black Forest built-in benchmark",
+  "resolution": [
+    3024,
+    1964
+  ]
+}

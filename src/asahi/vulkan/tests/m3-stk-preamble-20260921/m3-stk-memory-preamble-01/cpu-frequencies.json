@@ -1,0 +1,14 @@
+{
+  "policy0": {
+    "scaling_max_freq": "4056000",
+    "cpuinfo_max_freq": "4056000",
+    "scaling_governor": "schedutil",
+    "scaling_cur_freq": "1092000"
+  },
+  "policy1": {
+    "scaling_max_freq": "2748000",
+    "cpuinfo_max_freq": "2748000",
+    "scaling_governor": "schedutil",
+    "scaling_cur_freq": "744000"
+  }
+}

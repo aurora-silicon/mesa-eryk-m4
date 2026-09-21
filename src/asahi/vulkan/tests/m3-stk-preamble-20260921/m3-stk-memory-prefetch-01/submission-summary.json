@@ -1,0 +1,25 @@
+{
+  "render": {
+    "seconds": 9.516160000000013,
+    "commands": 3200,
+    "preparation_ms_per_command": 0.144170539375,
+    "active_ms_per_command": 1.4829347078125,
+    "gpu_ms_per_command": 1.13458938375,
+    "preparation_seconds": 0.461345726,
+    "active_seconds": 4.745391065,
+    "gpu_seconds": 3.630686028,
+    "geometry_ms_per_command": 0.04886923000000001,
+    "fragment_ms_per_command": 1.05396948375,
+    "interstage_gap_ms_per_command": 0.0317500240625
+  },
+  "compute": {
+    "seconds": 5.142641999999967,
+    "commands": 128,
+    "preparation_ms_per_command": 0.1455178515625,
+    "active_ms_per_command": 0.157305328125,
+    "gpu_ms_per_command": 0.0024850078125,
+    "preparation_seconds": 0.018626285,
+    "active_seconds": 0.020135082,
+    "gpu_seconds": 0.000318081
+  }
+}
