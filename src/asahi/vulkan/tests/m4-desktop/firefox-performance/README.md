@@ -58,3 +58,12 @@ removes only closed profiles named by retained probe results, checks that no
 process uses them, and records configuration hashes and removed bytes. Without
 --apply it previews the cleanup. Keep any profile still needed for reproduction;
 the original user profile is never a cleanup target.
+
+firefox-youtube-demo.py GUARD_OUTPUT opens the retained final-test profile for
+an attended demonstration. Run its setup under gpu-experiment.py. It requests
+1080p, resumes muted playback after asynchronous quality switching, verifies
+visible/advancing video, then hands the systemd user browser unit to the user.
+Failed setup stops that unit. It does not change the normal user's Firefox
+profile. This user-requested playback is not an unattended benchmark loop.
+Validated in 20260921T192359316985Z-firefox-youtube-user-playback; the preceding
+attempt paused during the quality change and was cleaned up, not called a pass.
