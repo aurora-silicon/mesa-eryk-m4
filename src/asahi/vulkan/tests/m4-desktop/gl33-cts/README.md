@@ -39,3 +39,18 @@ or automatic retry masks the first attempt.
 failure JSON and case list, and non-pass TSV. NotSupported and warnings stay
 visible and are never converted to passes. Original QPAs remain in each run's
 guarded evidence directory.
+
+
+After qualifying the single-worker run, `--jobs 4` shares the private compositor
+for KHR-GL/KHR-NoContext tests only. Vulkan WSI retains its one-worker restriction.
+The existing 1.5 GiB available-memory floor still stops the whole segment.
+A crash or timeout still stops first-attempt scheduling; save its original
+result and start a new guarded segment containing only Unrun/Interrupted cases.
+Do not silently retry a timeout or relabel SIGKILL peer crashes as driver bugs:
+the runner kills its other workers during coordinated cancellation, and its
+raw crash classification must retain that context.
+
+Supply `gl-cts-report.py --catalog catalog.json ...` when combining segments of
+the same configuration. It adds each case's original global index and writes
+`coverage.json`, resolving unfinished records only with a subsequent completed
+attempt. Repeated terminal attempts remain explicitly MultipleAttempts.

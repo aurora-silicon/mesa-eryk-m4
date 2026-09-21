@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Run a guarded CTS batch on one private 1024x1024@1000 Hyprland output.
 
-Use one CTS worker per compositor. The outer experiment guard owns all child
+Use one Vulkan WSI worker per compositor; qualified GL groups may share it.
+The outer experiment guard owns all child
 processes; this wrapper does not renew the watchdog or relax case deadlines.
 """
 import argparse
@@ -20,8 +21,10 @@ p.add_argument('--env', action='append', default=[], metavar='KEY=VALUE')
 p.add_argument('command', nargs=argparse.REMAINDER)
 a = p.parse_args()
 command = a.command[1:] if a.command[:1] == ['--'] else a.command
-assert command and '--jobs' in command and command[command.index('--jobs')+1] == '1'
+assert command and '--jobs' in command
 cases = Path(command[command.index('--cases')+1]).read_text()
+if command[command.index('--jobs')+1] != '1':
+    assert all(c.startswith(('KHR-GL', 'KHR-NoContext.')) for c in cases.splitlines()), 'WSI needs one worker per compositor'
 needs_x11 = '.wsi.xlib.' in cases or '.wsi.xcb.' in cases
 spec = importlib.util.spec_from_file_location('fw', '/root/firmware-snapshot.py')
 fw = importlib.util.module_from_spec(spec)
@@ -32,7 +35,7 @@ def check():
 check()
 out = a.guard_output/'headless'
 out.mkdir()
-runtime = Path('/run')/f'm4-cts-headless-{os.getpid()}'
+runtime = Path('/run')/f'ct{os.getpid()}'
 runtime.mkdir(mode=0o700)
 env = None
 for proc in Path('/proc').glob('[0-9]*'):
@@ -43,17 +46,33 @@ for proc in Path('/proc').glob('[0-9]*'):
             break
     except OSError:
         pass
+if env is None:
+    # A dedicated CTS run can release the panel desktop's GPU allocations.
+    # cts-desktop-control.py retains its renderer settings in root-owned /run;
+    # only accept the same boot, and record this environment source explicitly.
+    saved = Path('/run/m4-cts-renderer-environment.json')
+    assert saved.stat().st_uid == 0 and saved.stat().st_mode & 0o077 == 0
+    snapshot = json.loads(saved.read_text())
+    assert snapshot['boot_id'] == boot, 'Saved renderer environment is from another boot'
+    env = snapshot['environment']
+    (out/'saved-renderer-environment.json').write_text(json.dumps(snapshot, indent=2)+'\n')
 assert env is not None, 'Need the qualified desktop renderer environment'
 for k in list(env):
     if k.startswith(('HYPRLAND_', 'XDG_', 'DBUS_', 'INVOCATION', 'JOURNAL', 'LISTEN', 'NOTIFY', 'AQ_DRM')) or k in ('WAYLAND_DISPLAY','DISPLAY','HOME','USER','LOGNAME','PWD','SHLVL','_'):
         env.pop(k)
 env.update(XDG_RUNTIME_DIR=str(runtime), HOME='/root', USER='root',
-           AQ_HEADLESS_RENDER_NODE='/dev/dri/renderD128', HYPRLAND_NO_SD_NOTIFY='1', AQ_USE_RENDER_NODE='1')
+           AQ_HEADLESS_RENDER_NODE='/dev/dri/renderD128', HYPRLAND_NO_SD_NOTIFY='1', AQ_USE_RENDER_NODE='1',
+           # Desktop drirc requests high priority for Hyprland. At 1000 Hz that
+           # can permanently starve the normal-priority CTS client's first job.
+           # Match the client priority for this synthetic pacing environment.
+           zink_queue_priority='1')
 overrides = dict(item.split('=', 1) for item in a.env)
 env.update(overrides)
-(out/'renderer-overrides.json').write_text(json.dumps(overrides, indent=2)+'\n')
+(out/'renderer-overrides.json').write_text(json.dumps({'zink_queue_priority': env['zink_queue_priority'], **overrides}, indent=2)+'\n')
 config = out/'headless.lua'
-config.write_text('''hl.monitor({ output = "HEADLESS-1", mode = "1024x1024@1000", position = "0x0", scale = 1 })
+config.write_text('''-- CTS windows must be able to choose and change their pixel dimensions.
+hl.window_rule({ match = { class = ".*" }, float = true })
+hl.monitor({ output = "HEADLESS-1", mode = "1024x1024@1000", position = "0x0", scale = 1 })
 hl.config({
   misc = { disable_hyprland_logo = true, disable_splash_rendering = true, force_default_wallpaper = 0 },
   general = { gaps_in = 0, gaps_out = 0, border_size = 0 },
@@ -108,9 +127,30 @@ try:
         for k,v in selected.items():
             command += ['--env',k+'='+v]
         child = subprocess.Popen(command)
+        single_case = cases.strip().splitlines()
+        binary = Path(command[command.index('--binary')+1]).resolve()
+        started_record = False
         while child.poll() is None:
             check()
             assert hypr.poll() is None, 'Headless compositor died during CTS'
+            if len(single_case) == 1 and not started_record:
+                for proc in Path('/proc').glob('[0-9]*'):
+                    try:
+                        pid = int(proc.name)
+                        if os.getpgid(pid) != os.getpgrp() or (proc/'exe').resolve() != binary:
+                            continue
+                        record = dict(case=single_case[0], pid=pid, boot_id=boot,
+                                      monotonic_seconds=time.monotonic(),
+                                      argv=(proc/'cmdline').read_bytes().decode().split('\0'))
+                        with (out/'single-case-process.json').open('w') as stream:
+                            json.dump(record, stream); stream.flush(); os.fsync(stream.fileno())
+                        fd = os.open(out, os.O_RDONLY | os.O_DIRECTORY)
+                        try: os.fsync(fd)
+                        finally: os.close(fd)
+                        started_record = True
+                        break
+                    except (OSError, ValueError):
+                        pass
             time.sleep(.2)
         rc = child.returncode
 finally:
