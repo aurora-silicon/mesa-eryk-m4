@@ -588,7 +588,7 @@ hk_dispatch_g17p_native_linked(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
 
    struct agx_bo *program_bo = NULL;
    struct agx_ptr upload = {0};
-   if (dev->dev.chip == AGX_CHIP_G16G &&
+   if (agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) &&
        HK_AGX3_G17P_COMPUTE_PROGRAM_MAX_SIZE <= HK_CMD_BO_SIZE) {
       upload = hk_pool_usc_alloc(cmd, HK_AGX3_G17P_COMPUTE_PROGRAM_MAX_SIZE,
                                  AGX_IOTO_PROGRAM_ALIGNMENT);

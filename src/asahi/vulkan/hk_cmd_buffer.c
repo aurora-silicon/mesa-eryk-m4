@@ -1788,7 +1788,7 @@ hk_upload_usc_words(struct hk_cmd_buffer *cmd, struct hk_shader *s,
 
       struct agx_bo *program_bo = NULL;
       struct agx_ptr upload = {0};
-      const bool pooled = dev->dev.chip == AGX_CHIP_G16G &&
+      const bool pooled = agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) &&
                           program_capacity <= HK_CMD_BO_SIZE;
       if (pooled) {
          /* The command buffer owns these immutable bytes until reset, just
