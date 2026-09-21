@@ -337,7 +337,7 @@ hk_can_compress(const struct agx_device *dev, VkFormat format, unsigned plane,
     * and metadata layout have been qualified. */
    if (hk_descriptor_generation_is_agx3(
           agx_chip_descriptor_generation(dev->chip)) &&
-       !(dev->chip == AGX_CHIP_G16G &&
+       !(agx_chip_uses_g15_g16_shader_abi(dev->chip) &&
          debug_get_bool_option("HK_M4_COMPRESSED_2D", false) && samples == 1 &&
          (format == VK_FORMAT_R8G8B8A8_UNORM ||
           format == VK_FORMAT_B8G8R8A8_UNORM)))
@@ -364,7 +364,7 @@ hk_can_compress(const struct agx_device *dev, VkFormat format, unsigned plane,
     */
    if ((usage & (VK_IMAGE_USAGE_HOST_TRANSFER_BIT_EXT | VK_IMAGE_USAGE_STORAGE_BIT)) ||
        ((usage & VK_IMAGE_USAGE_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT) &&
-        !(dev->chip == AGX_CHIP_G16G &&
+        !(agx_chip_uses_g15_g16_shader_abi(dev->chip) &&
           debug_get_bool_option("HK_M4_COMPRESSED_FEEDBACK", false)))) {
 
       perf_debug_dev(
@@ -876,7 +876,7 @@ static bool
 hk_can_compress_create_info(struct hk_device *dev, unsigned plane,
                             const VkImageCreateInfo *info)
 {
-   if (dev->dev.chip == AGX_CHIP_G16G &&
+   if (agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) &&
        (info->imageType != VK_IMAGE_TYPE_2D ||
         (info->mipLevels != 1 &&
          !debug_get_bool_option("HK_M4_COMPRESSED_MIPS", false)) ||

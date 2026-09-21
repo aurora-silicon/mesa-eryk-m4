@@ -2840,7 +2840,7 @@ hk_CmdCopyImage2(VkCommandBuffer commandBuffer,
     * storage. Consecutive slice copies can share one CDM instead of paying
     * for a complete render pass per small rectangle. The common meta shader
     * preserves raw RGBA/BGRA bytes through its format pack/unpack. */
-   if (dev->dev.chip == AGX_CHIP_G16G &&
+   if (agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) &&
        debug_get_bool_option("HK_M4_COMPUTE_COMPRESSED_COPY", true) &&
        src_image->planes[0].layout.compressed &&
        !dst_image->planes[0].layout.compressed &&
@@ -2863,7 +2863,10 @@ hk_CmdCopyImage2(VkCommandBuffer commandBuffer,
        dst_image->vk.samples == VK_SAMPLE_COUNT_1_BIT &&
        (((src_image->vk.image_type != VK_IMAGE_TYPE_2D ||
           dst_image->vk.image_type != VK_IMAGE_TYPE_2D) &&
-         !(dev->dev.chip == AGX_CHIP_G16G &&
+         !(agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) &&
+           (dev->dev.chip == AGX_CHIP_G16G ||
+            (src_image->vk.image_type != VK_IMAGE_TYPE_1D &&
+             dst_image->vk.image_type != VK_IMAGE_TYPE_1D)) &&
            hk_native_compressed_copy_via_render(src_image, dst_image))) ||
         /* Format reinterpretation copies raw texel bits, including formats
          * without a native render-target export. */
