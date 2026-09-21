@@ -1,0 +1,146 @@
+{
+  "manifest.json": {
+    "id": "20260921T053306580783Z-stk-native-descriptor-rollover-fixed",
+    "hypothesis": "Resolve descriptor writes across padded consecutive bindings before selecting the texture binding",
+    "command": [
+      "env",
+      "HK_M4_PREFETCH_UBOS=true",
+      "HK_M4_PREFETCH_VARIANT=true",
+      "HK_M4_PLAIN_SAMPLERS=true",
+      "HK_M4_IOTO_TEMPLATES=true",
+      "HK_M4_PREFETCH_DESCRIPTORS=true",
+      "HK_M4_COMPRESSED_2D=true",
+      "HK_M4_COMPRESSED_FEEDBACK=true",
+      "python3",
+      "/root/vulkan-trace.py",
+      "replay",
+      "--guard-output",
+      "/root/asahi-evidence/20260921T053306580783Z-stk-native-descriptor-rollover-fixed",
+      "--renderer",
+      "asahi",
+      "--seconds",
+      "35",
+      "--trace",
+      "/root/asahi-evidence/20260921T050340561262Z-stk-vulkan-startup-capture/race_frames_1_through_220.gfxr",
+      "--frames",
+      "30",
+      "--end-frame",
+      "30",
+      "--memory-translation",
+      "rebind",
+      "--omit-pipeline-cache",
+      "--asahi-debug",
+      "",
+      "--icd",
+      "/opt/m4-stk-descriptor-fix/asahi_icd.json"
+    ],
+    "expected_success": "PASS: Vulkan replay process completed",
+    "seconds": 55,
+    "sources": {
+      "mesa": {
+        "head": "65e3d6ef318bc0feb9213a9abc7df543a4b48a92",
+        "status": " M src/asahi/vulkan/hk_descriptor_set.c\n",
+        "patch_sha256": "fe2299fb38499d0b88f5a04f65ef5540f39de21a92a05faa0e1eff8be4fedb34"
+      },
+      "kernel": {
+        "head": "db8763db51c85b225e2e9dff30ae604f0a1f5a40",
+        "status": "",
+        "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    }
+  },
+  "report.json": {
+    "id": "20260921T053306580783Z-stk-native-descriptor-rollover-fixed",
+    "verdict": "pass",
+    "transport_returncode": 0,
+    "evidence_fetched": true,
+    "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260921T053306580783Z-stk-native-descriptor-rollover-fixed",
+    "observations": {
+      "pixel_results": [
+        "PASS: Vulkan replay process completed; rendering requires separate comparison"
+      ],
+      "pixel_result_count": 1,
+      "thermal_samples": 23,
+      "malformed_thermal_samples": 0,
+      "peak_temperature_c": 69.75,
+      "channel_peaks_c": {
+        "PMP aggregate die hotspot": 69.75,
+        "Ta000m": 69.75,
+        "Te000m": 65.25,
+        "Te001m": 63.5,
+        "Tp000m": 67.25,
+        "Tp001m": 63.75
+      }
+    }
+  },
+  "remote/vulkan-replay/manifest.json": {
+    "mode": "replay",
+    "renderer": "asahi",
+    "command": [
+      "/opt/gfxreconstruct/bin/gfxrecon-replay",
+      "--swapchain",
+      "offscreen",
+      "--memory-translation",
+      "rebind",
+      "--screenshot-dir",
+      "/root/asahi-evidence/20260921T053306580783Z-stk-native-descriptor-rollover-fixed/vulkan-replay",
+      "--screenshot-format",
+      "png",
+      "--screenshots",
+      "30",
+      "--omit-pipeline-cache-data",
+      "--measurement-frame-range",
+      "1-31",
+      "--quit-after-measurement-range",
+      "--measurement-file",
+      "/root/asahi-evidence/20260921T053306580783Z-stk-native-descriptor-rollover-fixed/vulkan-replay/measurements.json",
+      "/root/asahi-evidence/20260921T050340561262Z-stk-vulkan-startup-capture/race_frames_1_through_220.gfxr"
+    ],
+    "environment": {
+      "AGX_COMPILER_CAPTURE_DIR": "/root/asahi-evidence/20260921T053306580783Z-stk-native-descriptor-rollover-fixed/vulkan-replay/compiler-capture",
+      "ASAHI_M4_EXPERIMENTAL": "1",
+      "ASAHI_MESA_DEBUG": "",
+      "GALLIUM_DRIVER": "zink",
+      "GBM_BACKENDS_PATH": "/opt/asahi-m4-port/lib/gbm",
+      "HK_DEBUG_LOG": "1",
+      "HK_M4_COMPRESSED_2D": "true",
+      "HK_M4_COMPRESSED_FEEDBACK": "true",
+      "HK_M4_IOTO_TEMPLATES": "true",
+      "HK_M4_PLAIN_SAMPLERS": "true",
+      "HK_M4_PREFETCH_DESCRIPTORS": "true",
+      "HK_M4_PREFETCH_UBOS": "true",
+      "HK_M4_PREFETCH_VARIANT": "true",
+      "LD_LIBRARY_PATH": "/opt/asahi-m4-port/lib",
+      "LIBGL_ALWAYS_SOFTWARE": "0",
+      "LIBGL_DRIVERS_PATH": "/opt/asahi-m4-port/lib/dri",
+      "MESA_GLES_VERSION_OVERRIDE": "3.0",
+      "MESA_GL_VERSION_OVERRIDE": "3.3",
+      "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+      "MESA_LOG_LEVEL": "debug",
+      "VK_DRIVER_FILES": "/opt/m4-stk-descriptor-fix/asahi_icd.json",
+      "__EGL_VENDOR_LIBRARY_FILENAMES": "/opt/asahi-m4-port/egl.json"
+    },
+    "hashes": {
+      "/opt/m4-stk-descriptor-fix/asahi_icd.json": "a3b9d07d827e25dfda6672f190805c9d3b70556be7c3eee33e8967f2e01aaa86",
+      "/opt/m4-stk-descriptor-fix/libvulkan_asahi.so": "2a960c5ea294e4709de6502abe3c5ada7b73071211e6f45d23e17c133cd36ad1",
+      "/opt/gfxreconstruct/lib/libVkLayer_gfxreconstruct.so": "a7a3a43c87d297d053a22f414e80a84f36f61ed6147d5c0a256d89f12e346f38",
+      "/opt/gfxreconstruct/bin/gfxrecon-replay": "2762b7ea8611fa68d79ed666253b6c2fff878b056ae162554331e623d34c7113",
+      "/root/vulkan-trace.py": "0ecdfaac5849b621dafb8873f7acb2a8c9a796973390cd3231da972a0d64b24a",
+      "/root/firmware-snapshot.py": "37fb9b9de46fddab7e71703dafdbef5e9ab9ada6bddea7409632d4e8aae69d0f",
+      "/opt/gfxreconstruct/build-manifest.json": "21ed86cd437d1e6ddba71620f0e29843cbecdb62a8a981f13a41560d1595feb6",
+      "/opt/asahi-m4-port/lib/libgallium-26.1.4.so": "542d0649cffd81a2e9396c7455ca4e05a95ef22bd2068d026a30cde51fe573fe",
+      "/root/asahi-evidence/20260921T050340561262Z-stk-vulkan-startup-capture/race_frames_1_through_220.gfxr": "243140451289e5832b3d1cc639396208b901172287744fc0ce3b0854fc56fdb7"
+    },
+    "adaptations": {
+      "memory_translation": "rebind",
+      "omit_pipeline_cache": true,
+      "remove_unsupported": false,
+      "loop_frame": null,
+      "loop_count": null,
+      "shader_replacements": [],
+      "swapchain": "offscreen"
+    },
+    "seconds": 35,
+    "guard": "/root/asahi-evidence/20260921T053306580783Z-stk-native-descriptor-rollover-fixed"
+  }
+}

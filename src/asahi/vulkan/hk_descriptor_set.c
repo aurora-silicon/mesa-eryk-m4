@@ -32,6 +32,24 @@ align_u32(uint32_t v, uint32_t a)
    return (v + a - 1) & ~(a - 1);
 }
 
+/* Vulkan updates may roll over consecutive compatible bindings, including
+ * empty bindings. Arrays use the descriptor stride; the next binding uses its
+ * own aligned offset. In particular, Gen9 sampled descriptors are 76 bytes but
+ * successive bindings start 80 bytes apart. Resolve before selecting immutable
+ * samplers or dynamic-buffer indices as well as before writing descriptor data.
+ */
+static void
+resolve_descriptor_element(const struct hk_descriptor_set *set,
+                           uint32_t *binding, uint32_t *elem)
+{
+   assert(*binding < set->layout->binding_count);
+   while (*elem >= set->layout->binding[*binding].array_size) {
+      *elem -= set->layout->binding[*binding].array_size;
+      ++*binding;
+      assert(*binding < set->layout->binding_count);
+   }
+}
+
 static inline void *
 desc_ubo_data(struct hk_descriptor_set *set, uint32_t binding, uint32_t elem,
               uint32_t *size_out)
@@ -52,6 +70,7 @@ static void
 write_desc(struct hk_descriptor_set *set, uint32_t binding, uint32_t elem,
            const void *desc_data, size_t desc_size)
 {
+   resolve_descriptor_element(set, &binding, &elem);
    ASSERTED uint32_t dst_size;
    void *dst = desc_ubo_data(set, binding, elem, &dst_size);
    assert(desc_size <= dst_size);
@@ -64,6 +83,7 @@ write_sampled_image_view_desc(struct hk_descriptor_set *set,
                               uint32_t binding, uint32_t elem,
                               VkDescriptorType descriptor_type)
 {
+   resolve_descriptor_element(set, &binding, &elem);
    struct hk_sampled_image_descriptor desc[3] = {};
    const unsigned generation = set->layout->descriptor_generation;
    const struct hk_sampled_image_descriptor_layout native =
@@ -191,6 +211,7 @@ write_storage_image_view_desc(struct hk_descriptor_set *set,
                               const VkDescriptorImageInfo *const info,
                               uint32_t binding, uint32_t elem)
 {
+   resolve_descriptor_element(set, &binding, &elem);
    struct hk_storage_image_descriptor desc = {};
    const unsigned generation = set->layout->descriptor_generation;
    const struct hk_storage_image_descriptor_layout native =
@@ -296,6 +317,7 @@ write_dynamic_buffer_desc(struct hk_descriptor_set *set,
                           const VkDescriptorBufferInfo *const info,
                           uint32_t binding, uint32_t elem, bool read_only)
 {
+   resolve_descriptor_element(set, &binding, &elem);
    const struct hk_descriptor_set_binding_layout *binding_layout =
       &set->layout->binding[binding];
 
@@ -360,8 +382,18 @@ write_inline_uniform_data(struct hk_descriptor_set *set,
                           const VkWriteDescriptorSetInlineUniformBlock *info,
                           uint32_t binding, uint32_t offset)
 {
-   assert(set->layout->binding[binding].stride == 1);
-   write_desc(set, binding, offset, info->pData, info->dataSize);
+   const uint8_t *data = info->pData;
+   for (uint32_t remaining = info->dataSize; remaining;) {
+      resolve_descriptor_element(set, &binding, &offset);
+      const struct hk_descriptor_set_binding_layout *layout =
+         &set->layout->binding[binding];
+      assert(layout->stride == 1);
+      uint32_t count = MIN2(remaining, layout->array_size - offset);
+      write_desc(set, binding, offset, data, count);
+      remaining -= count;
+      data += count;
+      offset += count;
+   }
 }
 
 VKAPI_ATTR void VKAPI_CALL

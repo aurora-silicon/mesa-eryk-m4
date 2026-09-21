@@ -1,0 +1,108 @@
+{
+  "manifest.json": {
+    "id": "20260921T053412757962Z-stk-vulkan-rollover-fixed-race",
+    "hypothesis": "Validate native SuperTuxKart race rendering and profiler after fixing descriptor update rollover",
+    "command": [
+      "python3",
+      "/root/stk-live-benchmark.py",
+      "/root/asahi-evidence/20260921T053412757962Z-stk-vulkan-rollover-fixed-race",
+      "vulkan",
+      "--env=VK_DRIVER_FILES=/opt/m4-stk-descriptor-fix/asahi_icd.json"
+    ],
+    "expected_success": "PASS: completed 3840x2160 internal race benchmark",
+    "seconds": 290,
+    "sources": {
+      "mesa": {
+        "head": "65e3d6ef318bc0feb9213a9abc7df543a4b48a92",
+        "status": " M src/asahi/vulkan/hk_descriptor_set.c\n",
+        "patch_sha256": "fe2299fb38499d0b88f5a04f65ef5540f39de21a92a05faa0e1eff8be4fedb34"
+      },
+      "kernel": {
+        "head": "db8763db51c85b225e2e9dff30ae604f0a1f5a40",
+        "status": "",
+        "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    }
+  },
+  "report.json": {
+    "id": "20260921T053412757962Z-stk-vulkan-rollover-fixed-race",
+    "verdict": "missing_success_evidence",
+    "transport_returncode": 0,
+    "evidence_fetched": true,
+    "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260921T053412757962Z-stk-vulkan-rollover-fixed-race",
+    "observations": {
+      "pixel_results": [
+        "PASS: race benchmark complete {\"frames\": 891, \"seconds\": 46.925, \"average_fps\": 18.98774640383591, \"renderer\": \"vulkan\", \"internal_resolution\": [3840, 2160], \"fullscreen_output\": [1920, 1080], \"race\": \"Black Forest built-in benchmark\", \"game_metrics\": \"3, 9, 16,\", \"menus_excluded\": true}"
+      ],
+      "pixel_result_count": 1,
+      "thermal_samples": 158,
+      "malformed_thermal_samples": 0,
+      "peak_temperature_c": 87.5,
+      "channel_peaks_c": {
+        "PMP aggregate die hotspot": 87.5,
+        "Ta000m": 81.5,
+        "Te000m": 78.5,
+        "Te001m": 86.75,
+        "Tp000m": 84.75,
+        "Tp001m": 87.5
+      }
+    }
+  },
+  "remote/benchmark-summary.json": {
+    "frames": 891,
+    "seconds": 46.925,
+    "average_fps": 18.98774640383591,
+    "renderer": "vulkan",
+    "internal_resolution": [
+      3840,
+      2160
+    ],
+    "fullscreen_output": [
+      1920,
+      1080
+    ],
+    "race": "Black Forest built-in benchmark",
+    "game_metrics": "3, 9, 16,",
+    "menus_excluded": true
+  },
+  "remote/launch.json": {
+    "argv": [
+      "/usr/bin/supertuxkart",
+      "--benchmark",
+      "--fullscreen",
+      "--screensize=1920x1080",
+      "--render-driver=vulkan"
+    ],
+    "internal_resolution": [
+      3840,
+      2160
+    ],
+    "display_resolution": [
+      1920,
+      1080
+    ],
+    "environment": {
+      "HK_M4_COMPRESSED_2D": "true",
+      "ASAHI_M4_EXPERIMENTAL": "1",
+      "MESA_GL_VERSION_OVERRIDE": "3.3",
+      "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+      "GALLIUM_DRIVER": "zink",
+      "MESA_GLES_VERSION_OVERRIDE": "3.0",
+      "ASAHI_MESA_DEBUG": "",
+      "HK_M4_PREFETCH_VARIANT": "true",
+      "HK_M4_PREFETCH_UBOS": "true",
+      "HK_M4_COMPRESSION_AUDIT": "true",
+      "VK_DRIVER_FILES": "/opt/m4-stk-descriptor-fix/asahi_icd.json",
+      "HK_M4_IOTO_TEMPLATES": "true",
+      "HK_M4_PREFETCH_DESCRIPTORS": "true",
+      "HK_M4_COMPRESSED_FEEDBACK": "true",
+      "HK_M4_PLAIN_SAMPLERS": "true",
+      "LD_LIBRARY_PATH": "/opt/asahi-m4-port/lib",
+      "SUPERTUXKART_SAVEDIR": "/home/e/.cache/m4-stk-benchmark/20260921T053412757962Z-stk-vulkan-rollover-fixed-race",
+      "SDL_VIDEODRIVER": "x11",
+      "SDL_VIDEO_HIGHDPI_DISABLED": "1",
+      "SDL_VIDEO_FULLSCREEN_DISPLAY": "1",
+      "SDL_VIDEO_WINDOW_POS": "1280,0"
+    }
+  }
+}

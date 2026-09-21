@@ -1,0 +1,10 @@
+{
+  "mean_absolute_channel_error": 0.54779497813786,
+  "pixels_channel_error_gt_8": 16248,
+  "pixels": 2073600,
+  "center": [
+    27,
+    22,
+    21
+  ]
+}

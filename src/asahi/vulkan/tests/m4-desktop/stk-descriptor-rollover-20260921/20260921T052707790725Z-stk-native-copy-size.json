@@ -1,0 +1,151 @@
+{
+  "manifest.json": {
+    "id": "20260921T052707790725Z-stk-native-copy-size",
+    "hypothesis": "Check software descriptor metadata for the source of the failing native texel fetch",
+    "command": [
+      "env",
+      "HK_M4_PREFETCH_UBOS=true",
+      "HK_M4_PREFETCH_VARIANT=true",
+      "HK_M4_PLAIN_SAMPLERS=true",
+      "HK_M4_IOTO_TEMPLATES=true",
+      "HK_M4_PREFETCH_DESCRIPTORS=true",
+      "HK_M4_COMPRESSED_2D=true",
+      "HK_M4_COMPRESSED_FEEDBACK=true",
+      "python3",
+      "/root/vulkan-trace.py",
+      "replay",
+      "--guard-output",
+      "/root/asahi-evidence/20260921T052707790725Z-stk-native-copy-size",
+      "--renderer",
+      "asahi",
+      "--seconds",
+      "35",
+      "--trace",
+      "/root/asahi-evidence/20260921T050340561262Z-stk-vulkan-startup-capture/race_frames_1_through_220.gfxr",
+      "--frames",
+      "30",
+      "--end-frame",
+      "30",
+      "--memory-translation",
+      "rebind",
+      "--omit-pipeline-cache",
+      "--asahi-debug",
+      "",
+      "--replace-shaders",
+      "/root/stk-size-probe"
+    ],
+    "expected_success": "PASS: Vulkan replay process completed",
+    "seconds": 55,
+    "sources": {
+      "mesa": {
+        "head": "65e3d6ef318bc0feb9213a9abc7df543a4b48a92",
+        "status": "",
+        "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "kernel": {
+        "head": "db8763db51c85b225e2e9dff30ae604f0a1f5a40",
+        "status": "",
+        "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    }
+  },
+  "report.json": {
+    "id": "20260921T052707790725Z-stk-native-copy-size",
+    "verdict": "pass",
+    "transport_returncode": 0,
+    "evidence_fetched": true,
+    "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260921T052707790725Z-stk-native-copy-size",
+    "observations": {
+      "pixel_results": [
+        "PASS: Vulkan replay process completed; rendering requires separate comparison"
+      ],
+      "pixel_result_count": 1,
+      "thermal_samples": 20,
+      "malformed_thermal_samples": 0,
+      "peak_temperature_c": 72.25,
+      "channel_peaks_c": {
+        "PMP aggregate die hotspot": 72.25,
+        "Ta000m": 69.0,
+        "Te000m": 65.5,
+        "Te001m": 69.0,
+        "Tp000m": 72.25,
+        "Tp001m": 69.5
+      }
+    }
+  },
+  "remote/vulkan-replay/manifest.json": {
+    "mode": "replay",
+    "renderer": "asahi",
+    "command": [
+      "/opt/gfxreconstruct/bin/gfxrecon-replay",
+      "--swapchain",
+      "offscreen",
+      "--memory-translation",
+      "rebind",
+      "--screenshot-dir",
+      "/root/asahi-evidence/20260921T052707790725Z-stk-native-copy-size/vulkan-replay",
+      "--screenshot-format",
+      "png",
+      "--screenshots",
+      "30",
+      "--omit-pipeline-cache-data",
+      "--measurement-frame-range",
+      "1-31",
+      "--quit-after-measurement-range",
+      "--measurement-file",
+      "/root/asahi-evidence/20260921T052707790725Z-stk-native-copy-size/vulkan-replay/measurements.json",
+      "--replace-shaders",
+      "/root/stk-size-probe",
+      "/root/asahi-evidence/20260921T050340561262Z-stk-vulkan-startup-capture/race_frames_1_through_220.gfxr"
+    ],
+    "environment": {
+      "AGX_COMPILER_CAPTURE_DIR": "/root/asahi-evidence/20260921T052707790725Z-stk-native-copy-size/vulkan-replay/compiler-capture",
+      "ASAHI_M4_EXPERIMENTAL": "1",
+      "ASAHI_MESA_DEBUG": "",
+      "GALLIUM_DRIVER": "zink",
+      "GBM_BACKENDS_PATH": "/opt/asahi-m4-port/lib/gbm",
+      "HK_DEBUG_LOG": "1",
+      "HK_M4_COMPRESSED_2D": "true",
+      "HK_M4_COMPRESSED_FEEDBACK": "true",
+      "HK_M4_IOTO_TEMPLATES": "true",
+      "HK_M4_PLAIN_SAMPLERS": "true",
+      "HK_M4_PREFETCH_DESCRIPTORS": "true",
+      "HK_M4_PREFETCH_UBOS": "true",
+      "HK_M4_PREFETCH_VARIANT": "true",
+      "LD_LIBRARY_PATH": "/opt/asahi-m4-port/lib",
+      "LIBGL_ALWAYS_SOFTWARE": "0",
+      "LIBGL_DRIVERS_PATH": "/opt/asahi-m4-port/lib/dri",
+      "MESA_GLES_VERSION_OVERRIDE": "3.0",
+      "MESA_GL_VERSION_OVERRIDE": "3.3",
+      "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+      "MESA_LOG_LEVEL": "debug",
+      "VK_DRIVER_FILES": "/opt/asahi-m4-port/asahi_icd.json",
+      "__EGL_VENDOR_LIBRARY_FILENAMES": "/opt/asahi-m4-port/egl.json"
+    },
+    "hashes": {
+      "/opt/asahi-m4-port/asahi_icd.json": "1b3d7c3ae21dde0d8daa3aba7d3110e94da5f568f250e8fb21d61a06f8a8defc",
+      "/opt/asahi-m4-port/lib/libvulkan_asahi.so": "0cf7bc13faae54d4fbb72c5ef6a5fab386b158693723dba3c2c10178b73c6c17",
+      "/opt/gfxreconstruct/lib/libVkLayer_gfxreconstruct.so": "a7a3a43c87d297d053a22f414e80a84f36f61ed6147d5c0a256d89f12e346f38",
+      "/opt/gfxreconstruct/bin/gfxrecon-replay": "2762b7ea8611fa68d79ed666253b6c2fff878b056ae162554331e623d34c7113",
+      "/root/vulkan-trace.py": "0ecdfaac5849b621dafb8873f7acb2a8c9a796973390cd3231da972a0d64b24a",
+      "/root/firmware-snapshot.py": "37fb9b9de46fddab7e71703dafdbef5e9ab9ada6bddea7409632d4e8aae69d0f",
+      "/opt/gfxreconstruct/build-manifest.json": "21ed86cd437d1e6ddba71620f0e29843cbecdb62a8a981f13a41560d1595feb6",
+      "/opt/asahi-m4-port/lib/libgallium-26.1.4.so": "542d0649cffd81a2e9396c7455ca4e05a95ef22bd2068d026a30cde51fe573fe",
+      "/root/stk-size-probe/sh107": "f0f91f448c6b1da8a59e88729ff799ef539f8faf71b5054de49ea323e7ad9c8e",
+      "/root/asahi-evidence/20260921T050340561262Z-stk-vulkan-startup-capture/race_frames_1_through_220.gfxr": "243140451289e5832b3d1cc639396208b901172287744fc0ce3b0854fc56fdb7"
+    },
+    "adaptations": {
+      "memory_translation": "rebind",
+      "omit_pipeline_cache": true,
+      "remove_unsupported": false,
+      "loop_frame": null,
+      "loop_count": null,
+      "shader_replacements": [
+        "sh107"
+      ],
+      "swapchain": "offscreen"
+    },
+    "seconds": 35,
+    "guard": "/root/asahi-evidence/20260921T052707790725Z-stk-native-copy-size"
+  }
+}
