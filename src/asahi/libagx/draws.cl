@@ -27,6 +27,17 @@ libagx_conditional_args(global uint32_t *out, constant uint32_t *in,
       out[i] = enabled ? in[i] : 0;
 }
 
+KERNEL(1)
+libagx_draw_byte_count(global uint32_t *out, constant uint32_t *counter,
+                      uint32_t counter_offset, uint32_t stride,
+                      uint32_t instances, uint32_t first_instance)
+{
+   out[0] = sub_sat(*counter, counter_offset) / stride;
+   out[1] = instances;
+   out[2] = 0;
+   out[3] = first_instance;
+}
+
 /*
  * To implement drawIndirectCount generically, we dispatch a kernel to
  * clone-and-patch the indirect buffer, predicating out draws as appropriate.
