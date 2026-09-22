@@ -122,3 +122,24 @@ stage, including with a summing FS. Retained failures:
 recovered by reboot. It exceeds the proposed Vulkan output limit once position
 is included, but Zink accepts this GL shader. Do not call the entire enlarged
 GL interface qualified on the strength of limit-query tests alone.
+
+The M4 Vulkan interface limits now expose 128 components with corresponding
+UVS/coefficient guard bounds. Guarded validation: all 149 GL46 shader-limit
+cases Pass in 7.01 s (peak 67.75 C), including the formerly failing limit
+queries and formerly timed-out geometry max-output case. Direct Vulkan
+interface-boundary checks: 7 Pass / 8 NotSupported; the latter exceed the
+limit after built-in outputs are counted. Evidence:
+`20260922T024659615465Z-gl46-gl-io-limits-fixed`,
+`20260922T024856920494Z-gl46-vk-io-limit-fixed`.
+
+OpenGL 4.6 section 11.1.2.1 also counts all written outputs against
+MAX_VERTEX_OUTPUT_COMPONENTS, including position. Its separate
+MAX_VARYING_COMPONENTS limit excludes position. The diagnostic 32-vec4 plus
+position shader exceeds the former limit (132 > 128), so it is not a required
+128-component transport test. Its acceptance followed by a hang remains
+recorded; it must not be reported as a newly fixed case.
+Source: https://registry.khronos.org/OpenGL/specs/gl/glspec46.core.pdf
+
+The retained later main-list results include the remaining copy timeout,
+compressed-1D fix/recheck, final-range failures, and continuation. These are
+separate attempts across builds, not one conformance run.

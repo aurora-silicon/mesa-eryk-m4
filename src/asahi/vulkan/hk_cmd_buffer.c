@@ -1178,7 +1178,7 @@ hk_g17p_basic_fragment_layout(struct hk_cmd_buffer *cmd)
 }
 
 /* Keep native interpolation bounded to the f32 UVS layout already supported
- * by hk_agx3_g17p_vertex_program_info: position plus up to 116 user words.
+ * by hk_agx3_g17p_vertex_program_info, including M4's larger UVS footprint.
  * HAL200 updateVaryingTable (0x3efa58) uses the same CF entry encoding for
  * smooth, linear and flat inputs, including their mixture in one shader.
  * Flat inputs support points, lines and non-fan triangles. The compiler
@@ -1198,12 +1198,15 @@ hk_g17p_smooth_varyings_supported(struct hk_cmd_buffer *cmd,
    const struct hk_graphics_state *gfx = &cmd->state.gfx;
    const struct hk_shader *vs = gfx->shaders[MESA_SHADER_VERTEX]
       ? hk_bound_hw_vs(&cmd->state.gfx) : NULL;
+   const unsigned max_user_words =
+      hk_cmd_buffer_device(cmd)->dev.chip == AGX_CHIP_G16G ?
+         HK_AGX3_G16G_MAX_USER_WORDS : HK_AGX3_G17P_MAX_USER_WORDS;
    if (!vs ||
-       cf->nr_bindings > HK_AGX3_G17P_MAX_USER_WORDS + 2 ||
-       cf->nr_cf > HK_AGX3_G17P_MAX_USER_WORDS + 2 ||
+       cf->nr_bindings > max_user_words + 2 ||
+       cf->nr_cf > max_user_words + 2 ||
        vs->agx3_vdm_state_update.source_layout !=
           AGX_VDM_STATE_UPDATE_SOURCE_LAYOUT_AGX3_VERTEX_PROGRAM_VARIANT ||
-       vs->info.uvs.user_size > HK_AGX3_G17P_MAX_USER_WORDS)
+       vs->info.uvs.user_size > max_user_words)
       return false;
 
    unsigned next_cf = 0;

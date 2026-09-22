@@ -757,13 +757,14 @@ hk_get_device_properties(const struct agx_device *dev,
    uint64_t os_page_size = 16384;
    os_get_page_size(&os_page_size);
 
-   /* The hardware limit is 128. However, we need to set a lower limit to
+   /* The legacy hardware limit is 128. We need to set a lower limit to
     * account for duplicated system values: clip/cull and viewport targets.
     * There are up to 8 combined clip/cull planes and only 1 viewport target,
     * giving a theoretical limit of 119. We round down to 116 to give a sensible
-    * limit in vec4s.
+    * limit in vec4s. M4's extended UVS export path accommodates the duplicated
+    * system values while exposing 128 API components, including built-ins.
     */
-   unsigned max_vgt_output_components = 116;
+   unsigned max_vgt_output_components = dev->chip == AGX_CHIP_G16G ? 128 : 116;
 
    *properties = (struct vk_properties){
       .apiVersion = hk_get_vk_version(),

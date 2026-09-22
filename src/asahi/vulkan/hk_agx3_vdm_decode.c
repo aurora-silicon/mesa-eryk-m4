@@ -134,7 +134,8 @@ hk_agx3_g17p_vertex_program_info(
        compiler_info->position_only !=
           (compiler_info->uvs_written == 0 &&
            compiler_info->uvs_size == compiler_info->psiz_off) ||
-       compiler_info->user_size > HK_AGX3_G17P_MAX_USER_WORDS ||
+       compiler_info->user_size > (chip == AGX_CHIP_G16G ? HK_AGX3_G16G_MAX_USER_WORDS :
+                                  HK_AGX3_G17P_MAX_USER_WORDS) ||
        util_bitcount64(compiler_info->uvs_written) > compiler_info->user_size)
       return false;
 

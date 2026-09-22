@@ -1,0 +1,24 @@
+{
+  "selected": 149,
+  "recorded": 149,
+  "completed": 101,
+  "counts": {
+    "Pass": 100,
+    "Timeout": 1,
+    "Unrun": 48
+  },
+  "classifications": {
+    "unclassified": 149
+  },
+  "elapsed_seconds": 65.82692042100098,
+  "preparation_seconds": 1.652719049998268,
+  "runner_seconds": 63.34686141900056,
+  "jobs": 1,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "cd4d3268e7179662af179adaaeab8c55050aeda592f4d03ae102be90eb6b0bd3",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T013340541617Z-gl46-gl-io-limits",
+  "guard_verdict": "process_failure",
+  "command_returncode": 1,
+  "peak_temperature_c": 76.75
+}

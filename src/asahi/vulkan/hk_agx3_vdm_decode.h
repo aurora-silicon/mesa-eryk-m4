@@ -30,6 +30,9 @@ extern "C" {
  * matches the component limit advertised by hk_get_device_properties(). */
 #define HK_AGX3_G17P_MAX_USER_WORDS 116u
 
+/* 128 interface components plus duplicated clip/cull and viewport values. */
+#define HK_AGX3_G16G_MAX_USER_WORDS 137u
+
 bool hk_agx3_shader_binary_version_supported(uint32_t version);
 
 bool hk_agx3_vdm_program_cache_serialize(
