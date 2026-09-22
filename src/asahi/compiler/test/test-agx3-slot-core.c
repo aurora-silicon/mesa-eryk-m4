@@ -267,6 +267,30 @@ int main(void)
       CHECK(r[3].slot == 2 && r[4].wait_mask == 2);
    }
 
+   /* Retired aliases in every token domain must disappear on slot reuse.
+    * In particular, skipping unused TPS must still cover both ends of its
+    * written prefix and the separate staging/special-token range. */
+   {
+      const uint16_t tokens[] = {
+         0, AGX3_SLOT_GPR_TOKENS - 1, AGX3_SLOT_TPS_TOKEN_BASE,
+         AGX3_SLOT_TPS_TOKEN_BASE + 19, AGX3_SLOT_STAGING_TOKEN_BASE - 1,
+         AGX3_SLOT_STAGING_TOKEN_BASE, AGX3_SLOT_IMAGE_WRITE_TOKEN - 1,
+         AGX3_SLOT_IMAGE_WRITE_TOKEN, AGX3_SLOT_DYNAMIC_TPS_TOKEN,
+      };
+      for (unsigned i = 0; i < sizeof(tokens) / sizeof(tokens[0]); ++i) {
+         struct agx3_slot_instr preferred = ld(4);
+         preferred.preferred_slot = 1;
+         struct agx3_slot_instr p[] = {
+            ld(tokens[i]), st(tokens[i]), preferred, st(tokens[i]), st(4),
+         };
+         CHECK(agx3_slot_assign(p, 5, 6, r));
+         CHECK(r[1].wait_mask == 1);
+         CHECK(r[2].slot == 1 && r[2].wait_mask == 0);
+         CHECK(r[3].wait_mask == 0);
+         CHECK(r[4].wait_mask == 1);
+      }
+   }
+
    /* Malformed inputs. */
    CHECK(!agx3_slot_assign(NULL, 1, 6, r));
    { struct agx3_slot_instr p=ld(0); CHECK(!agx3_slot_assign(&p,1,0,r)); CHECK(!agx3_slot_assign(&p,1,9,r)); }

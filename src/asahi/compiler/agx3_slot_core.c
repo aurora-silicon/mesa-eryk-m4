@@ -24,6 +24,11 @@ agx3_slot_assign(const struct agx3_slot_instr *instrs, unsigned n,
     * allocated, so later consumers need not wait it again. */
    bool slot_waited[9] = {false};
 
+   /* Most shaders never touch static TPS. Track its written prefix so slot
+    * reuse need not scan all 32768 possible stack halves. The GPR and
+    * staging/special-token ranges remain small and are always visited. */
+   unsigned tps_end = AGX3_SLOT_TPS_TOKEN_BASE;
+
    unsigned next = 0; /* round-robin cursor into 0..nslots-1 */
    uint16_t pending = 0;
 
@@ -90,7 +95,12 @@ agx3_slot_assign(const struct agx3_slot_instr *instrs, unsigned n,
           * publishing the new result, otherwise an unrelated later write can
           * consume the new generation's wait and hide it from its consumer. */
          if (slot_waited[slot]) {
-            for (unsigned r = 0; r < AGX3_SLOT_NUM_TOKENS; ++r) {
+            for (unsigned r = 0; r < tps_end; ++r) {
+               if (reg_slot[r] == slot)
+                  reg_slot[r] = 0;
+            }
+            for (unsigned r = AGX3_SLOT_STAGING_TOKEN_BASE;
+                 r < AGX3_SLOT_NUM_TOKENS; ++r) {
                if (reg_slot[r] == slot)
                   reg_slot[r] = 0;
             }
@@ -101,6 +111,9 @@ agx3_slot_assign(const struct agx3_slot_instr *instrs, unsigned n,
             if (I->dst[d] >= AGX3_SLOT_NUM_TOKENS)
                return false;
             reg_slot[I->dst[d]] = slot;
+            if (I->dst[d] >= tps_end &&
+                I->dst[d] < AGX3_SLOT_STAGING_TOKEN_BASE)
+               tps_end = I->dst[d] + 1;
          }
       } else {
          out[i].slot = 0;
