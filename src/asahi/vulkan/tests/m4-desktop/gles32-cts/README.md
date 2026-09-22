@@ -104,3 +104,15 @@ setup evidence is preserved under `run-setup-renderer-check` and
 20260922T085356254676Z-gles32-plan-0051-r0. The 6,053 KHR-Single-GLES32
 subgroup cases are actual NotSupported outcomes because ES subgroup operations
 are not advertised; these are retained as such, not counted as passes.
+
+Segment 0054 produced one real 60.059-second timeout in
+`KHR-GLES3.texture_lod_bias.texture_lod_bias_all`; its three SIGKILL peers were
+canceled by the runner, not independent crashes. Evidence:
+20260922T085939828724Z-gles32-plan-0054-r0. Guard found process-only failure,
+peak 107 C, minimum available RAM 6,038 MiB and unchanged zero OOM count;
+no glcts processes remained and the desktop was active.
+`--continue-lod-bias-timeouts` recognizes only this exact timeout case with
+the original 60-second bound, no other fatal status, no guard/memory fault,
+and explicitly coordinated SIGKILL peers. The timeout is terminal and retained;
+only canceled/interrupted/unrun cases continue after renderer preflight.
+This is a recorded time-bound failure, not evidence of a GPU hang.

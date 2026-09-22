@@ -40,6 +40,8 @@ p.add_argument('--continue-compiler-aborts', action='store_true',
     help='After the reviewed AGX compile/pipeline assertion only, retain crashes and continue unrun/canceled peers under a fresh guard')
 p.add_argument('--continue-batch-deadlines', action='store_true',
     help='Resume only unfinished cases after a verified workload deadline, preserving all completed outcomes and the original bounds')
+p.add_argument('--continue-lod-bias-timeouts', action='store_true',
+    help='Retain reviewed KHR-GLES3 texture_lod_bias_all timeouts and resume only canceled/unrun peers')
 a = p.parse_args()
 if a.mode == 'freeze':
     assert a.plan and a.data and a.environment and a.segment_size > 0
@@ -164,7 +166,7 @@ def reviewed_pending(run):
     if summary['guard_verdict'] == 'pass':
         assert all(r['status'] not in ('Unrun','Interrupted','Crash','Timeout','HarnessError') for r in rows)
         return []
-    assert (a.continue_compiler_aborts or a.continue_batch_deadlines) and summary['guard_verdict'] == 'process_failure', 'Needs explicit review'
+    assert (a.continue_compiler_aborts or a.continue_batch_deadlines or a.continue_lod_bias_timeouts) and summary['guard_verdict'] == 'process_failure', 'Needs explicit review'
     evidence = Path(summary['evidence'])/'remote'
     memory = [json.loads(line) for line in (evidence/'cts/memory.jsonl').read_text().splitlines()]
     assert memory and all(m['meminfo_kib']['MemAvailable'] > 1536*1024 for m in memory)
@@ -183,7 +185,21 @@ def reviewed_pending(run):
         save(run/'continuation-review.json', dict(reason='Verified workload deadline with completed test progress, no per-case timeout/crash, GPU/display/thermal fault, OOM or memory-floor crossing. Preserve completed results and resume only unrun/interrupted cases under unchanged bounds.',
             terminal_crashes=[], pending=[r['case'] for r in pending], timing=timing))
         return pending
-    assert a.continue_compiler_aborts, 'Not a reviewed batch deadline'
+    timeouts = [r for r in rows if r['status'] == 'Timeout']
+    if a.continue_lod_bias_timeouts and timeouts:
+        assert timing.get('error') is None and timing.get('returncode') == 1
+        assert all(r['case'] == 'KHR-GLES3.texture_lod_bias.texture_lod_bias_all' and
+                   summary['case_timeout_seconds'] <= r['seconds'] < summary['case_timeout_seconds'] + 5
+                   for r in timeouts), 'Unreviewed timeout'
+        assert all(r['status'] not in ('HarnessError','InternalError','ResourceError') for r in rows)
+        crash = [r for r in rows if r['status'] == 'Crash']
+        assert all('SIGKILL' in r.get('worker_exit','') and 'coordinated stop' in r.get('message','') for r in crash)
+        pending = [r for r in rows if r['status'] in ('Unrun','Interrupted','Crash')]
+        save(run/'continuation-review.json', dict(reason='Reviewed texture_lod_bias_all exceeded the unchanged per-case time limit. No GPU/display/thermal fault, OOM or memory-floor crossing. Retain timeout; resume only unfinished and SIGKILL-canceled peers. A fresh guarded renderer preflight precedes continuation.',
+            terminal_crashes=[], terminal_timeouts=[r['case'] for r in timeouts],
+            pending=[r['case'] for r in pending]))
+        return pending
+    assert a.continue_compiler_aborts, 'Not a reviewed batch deadline or LOD-bias timeout'
     crash = [r for r in rows if r['status'] == 'Crash']
     assert crash and any('SIGABRT' in r.get('worker_exit','') for r in crash)
     for r in rows:
@@ -211,7 +227,7 @@ for segment in catalog['segments'][a.first:a.last]:
     assert digest((base/'cases.txt').read_bytes()) == segment['sha256']
     paths = attempt_paths(base)
     if paths:
-        assert a.continue_compiler_aborts or a.continue_batch_deadlines, 'Refusing to overwrite an attempt'
+        assert a.continue_compiler_aborts or a.continue_batch_deadlines or a.continue_lod_bias_timeouts, 'Refusing to overwrite an attempt'
         pending = reviewed_pending(paths[-1])
         if not pending:
             continue
