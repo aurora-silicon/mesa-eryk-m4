@@ -1,0 +1,78 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-GLES3.functional.fbo.blit.conversion.r16i_to_rg8i",
+    "boot_id": "84d6165b-76e2-4a35-8ab5-e93c7b9e705f",
+    "runner_status": "Pass",
+    "seconds": 0.039965957,
+    "eligibility": {
+      "case": "dEQP-GLES3.functional.fbo.blit.conversion.r16i_to_rg8i",
+      "catalog_index": 53621,
+      "session": 2,
+      "session_index": 32667,
+      "classification": "selected",
+      "rule": "Frozen Khronos ES32 runner plan"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 1,
+    "case": "dEQP-GLES3.functional.fbo.invalidate.whole.unbind_read_color_stencil",
+    "boot_id": "84d6165b-76e2-4a35-8ab5-e93c7b9e705f",
+    "runner_status": "Pass",
+    "seconds": 0.03627993,
+    "eligibility": {
+      "case": "dEQP-GLES3.functional.fbo.invalidate.whole.unbind_read_color_stencil",
+      "catalog_index": 54024,
+      "session": 2,
+      "session_index": 33070,
+      "classification": "selected",
+      "rule": "Frozen Khronos ES32 runner plan"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 2,
+    "case": "dEQP-GLES3.functional.vertex_arrays.single_attribute.strides.fixed.buffer_stride32_components2_quads1",
+    "boot_id": "84d6165b-76e2-4a35-8ab5-e93c7b9e705f",
+    "runner_status": "Pass",
+    "seconds": 0.18242031,
+    "eligibility": {
+      "case": "dEQP-GLES3.functional.vertex_arrays.single_attribute.strides.fixed.buffer_stride32_components2_quads1",
+      "catalog_index": 54235,
+      "session": 2,
+      "session_index": 33281,
+      "classification": "selected",
+      "rule": "Frozen Khronos ES32 runner plan"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 3,
+    "case": "dEQP-GLES3.functional.vertex_arrays.single_attribute.normalize.unsigned_int.components2_quads1",
+    "boot_id": "84d6165b-76e2-4a35-8ab5-e93c7b9e705f",
+    "runner_status": "Pass",
+    "seconds": 0.015357293,
+    "eligibility": {
+      "case": "dEQP-GLES3.functional.vertex_arrays.single_attribute.normalize.unsigned_int.components2_quads1",
+      "catalog_index": 54292,
+      "session": 2,
+      "session_index": 33338,
+      "classification": "selected",
+      "rule": "Frozen Khronos ES32 runner plan"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  }
+]

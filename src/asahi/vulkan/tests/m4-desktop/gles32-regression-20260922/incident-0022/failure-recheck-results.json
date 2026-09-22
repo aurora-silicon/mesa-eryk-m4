@@ -1,0 +1,135 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-GLES3.functional.fbo.blit.conversion.rgba4_to_rgba16f",
+    "boot_id": "84d6165b-76e2-4a35-8ab5-e93c7b9e705f",
+    "runner_status": "Pass",
+    "seconds": 0.029736685,
+    "eligibility": {
+      "case": "dEQP-GLES3.functional.fbo.blit.conversion.rgba4_to_rgba16f",
+      "catalog_index": 53470,
+      "session": 2,
+      "session_index": 32516,
+      "classification": "selected",
+      "rule": "Frozen Khronos ES32 runner plan"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 1,
+    "case": "dEQP-GLES3.functional.fbo.blit.conversion.rgb565_to_rgba32f",
+    "boot_id": "84d6165b-76e2-4a35-8ab5-e93c7b9e705f",
+    "runner_status": "Pass",
+    "seconds": 0.015272702,
+    "eligibility": {
+      "case": "dEQP-GLES3.functional.fbo.blit.conversion.rgb565_to_rgba32f",
+      "catalog_index": 53517,
+      "session": 2,
+      "session_index": 32563,
+      "classification": "selected",
+      "rule": "Frozen Khronos ES32 runner plan"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 2,
+    "case": "dEQP-GLES3.functional.fbo.blit.conversion.rg8_to_r11f_g11f_b10f",
+    "boot_id": "84d6165b-76e2-4a35-8ab5-e93c7b9e705f",
+    "runner_status": "Pass",
+    "seconds": 0.01471219,
+    "eligibility": {
+      "case": "dEQP-GLES3.functional.fbo.blit.conversion.rg8_to_r11f_g11f_b10f",
+      "catalog_index": 53573,
+      "session": 2,
+      "session_index": 32619,
+      "classification": "selected",
+      "rule": "Frozen Khronos ES32 runner plan"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 3,
+    "case": "dEQP-GLES3.functional.fbo.msaa.2_samples.depth_component24",
+    "boot_id": "84d6165b-76e2-4a35-8ab5-e93c7b9e705f",
+    "runner_status": "Pass",
+    "seconds": 0.19363903,
+    "eligibility": {
+      "case": "dEQP-GLES3.functional.fbo.msaa.2_samples.depth_component24",
+      "catalog_index": 53933,
+      "session": 2,
+      "session_index": 32979,
+      "classification": "selected",
+      "rule": "Frozen Khronos ES32 runner plan"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 4,
+    "case": "dEQP-GLES3.functional.fbo.msaa.4_samples.depth_component24",
+    "boot_id": "84d6165b-76e2-4a35-8ab5-e93c7b9e705f",
+    "runner_status": "Pass",
+    "seconds": 0.028449152,
+    "eligibility": {
+      "case": "dEQP-GLES3.functional.fbo.msaa.4_samples.depth_component24",
+      "catalog_index": 53955,
+      "session": 2,
+      "session_index": 33001,
+      "classification": "selected",
+      "rule": "Frozen Khronos ES32 runner plan"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 5,
+    "case": "dEQP-GLES3.functional.vertex_arrays.single_attribute.strides.short.buffer_stride32_components4_quads1",
+    "boot_id": "84d6165b-76e2-4a35-8ab5-e93c7b9e705f",
+    "runner_status": "Pass",
+    "seconds": 0.09303018,
+    "eligibility": {
+      "case": "dEQP-GLES3.functional.vertex_arrays.single_attribute.strides.short.buffer_stride32_components4_quads1",
+      "catalog_index": 54177,
+      "session": 2,
+      "session_index": 33223,
+      "classification": "selected",
+      "rule": "Frozen Khronos ES32 runner plan"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 6,
+    "case": "dEQP-GLES3.functional.vertex_arrays.single_attribute.normalize.byte.components4_quads256",
+    "boot_id": "84d6165b-76e2-4a35-8ab5-e93c7b9e705f",
+    "runner_status": "Pass",
+    "seconds": 0.11721919,
+    "eligibility": {
+      "case": "dEQP-GLES3.functional.vertex_arrays.single_attribute.normalize.byte.components4_quads256",
+      "catalog_index": 54273,
+      "session": 2,
+      "session_index": 33319,
+      "classification": "selected",
+      "rule": "Frozen Khronos ES32 runner plan"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  }
+]

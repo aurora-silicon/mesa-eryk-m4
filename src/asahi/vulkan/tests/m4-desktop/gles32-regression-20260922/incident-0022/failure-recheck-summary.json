@@ -1,0 +1,22 @@
+{
+  "selected": 7,
+  "recorded": 7,
+  "completed": 7,
+  "counts": {
+    "Pass": 7
+  },
+  "classifications": {
+    "selected": 7
+  },
+  "elapsed_seconds": 3.1431599389907205,
+  "preparation_seconds": 1.7060704850009643,
+  "runner_seconds": 0.8224527800000203,
+  "jobs": 1,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "cb329872b12768b8b1e4e7cb2dd6f6d39c55775742eed8997d2b40ac4d56fb02",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T161422103067Z-gles-fix-failure-probe-2-0",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 70.0
+}
