@@ -35,3 +35,20 @@ M4-matched `deqp-vk-seed30-scaled-blit` binary, both options enabled, under the
 M3 watchdog and five-channel 95 C thermal guard. See `evidence.json` for exact
 case indices, catalog, binaries and retained experiment paths. No general
 Vulkan compliance or OpenGL performance claim follows from this sample.
+
+## Zink presentation serialization
+
+Honeykrisp was missing from Zink's Mesa-driver synchronization list. The
+fallback issued an empty submission, then waited for its fence while holding
+the queue mutex before every presentation. Add Honeykrisp to the existing
+Mesa path: `vkQueuePresentKHR` receives the original wait semaphore and the
+common Vulkan WSI implementation provides display synchronization. No wait
+semaphore, rendering fence or kernel retirement check is discarded.
+
+Matched EGL/GBM/Gallium builds differing by this switch measure48.85FPS before
+and78.61FPS after on the unchanged3024x1964 Acropolis Bay scene. Actual mapped
+library hashes are retained in `zink-presentation.json`. Both bounded probes
+complete without GPU faults; the optimized screenshot shows terrain, buildings,
+foliage and shadows. This is a short starting-scene comparison, not a120FPS
+result or broad presentation-compliance claim. The normal desktop installation
+remains separate from these candidate libraries during the investigation.

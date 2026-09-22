@@ -1,0 +1,84 @@
+[
+  {
+    "name": "0ad-120-gl-zink-matched-base",
+    "target_path": "/root/m3-apps/0ad-120-gl-zink-matched-base",
+    "boot_id": "3fb0ffe1-1002-44c4-9b59-b6fb800d3a67",
+    "frames": {
+      "frames": 488,
+      "seconds": 9.989499865,
+      "fps": 48.85129451873715,
+      "median_frame_ms": 18.428775000000286,
+      "maximum_frame_ms": 43.11646999999752,
+      "scope": "Complete frame intervals in the last ten seconds; screenshot captured afterwards"
+    },
+    "peak_temperature_c": 77.75,
+    "mapped_libraries": {
+      "/opt/asahi-m3-wayland/lib/libvulkan_asahi.so": "43806e436a344b03cdd5522f1a26c2978d56150ab1f9ba25f6d26bc897cd5ca1",
+      "/opt/asahi-m3-experiments/0ad-zink-present-baseline/lib/libgallium-26.1.4.so": "7e21463042e73bcef924f8dae70fb2f6b91a3c77649ec93409df2acdb2076779",
+      "/opt/asahi-m3-experiments/0ad-zink-present/lib/libgbm.so.1.0.0": "b6e2b3b05bb6ef990c31fa864c8a9f8ead0f0e4ce7a7b48ae46b8458cfdd91dd",
+      "/opt/asahi-m3-experiments/0ad-zink-present/lib/libEGL_mesa.so.0.0.0": "adbd28011381a17e653654493fdfce755fd0615d9af1c5c63a1b476e2adde32f"
+    },
+    "cpu_during": {
+      "policy0": {
+        "scaling_governor": "performance",
+        "scaling_cur_freq": "4056000",
+        "scaling_max_freq": "4056000"
+      },
+      "policy1": {
+        "scaling_governor": "performance",
+        "scaling_cur_freq": "2748000",
+        "scaling_max_freq": "2748000"
+      }
+    },
+    "raw_sha256": {
+      "result.json": "f4ce716352bd6b8e995f41910a092c047f103c207b8d4004d5936ad63abc425e",
+      "frame-summary.json": "0e6e92846984ce9c7e0c4fe6adc2fd187fb6010ad6c65ccaf6f46130e28a3cad",
+      "settings.json": "f0b2f017e5defb6b97be9e78b4d95aaa21287a9f032bdd9860d5ec90599a6a03",
+      "screen.png": "234815b7a9c0d7715338c9c1fdb058fd1eb7a0dda4db916250bcb0ca14fd0d4e",
+      "main.json": "a3bf1fbbc064329db002c1502768e4d95f5a901f66a7c4881fe5bb8d6e6f43b8",
+      "temperatures.jsonl": "60323d3492cae1889365d4d12a3dbea83cc290754261d31bebdd76099db3e343",
+      "kernel-live.log": "320e1d08a754e85e0438b3c52b9192d3d12a16b6bec828c505d5ef7aad4979bb"
+    }
+  },
+  {
+    "name": "0ad-120-gl-zink-matched-fixed",
+    "target_path": "/root/m3-apps/0ad-120-gl-zink-matched-fixed",
+    "boot_id": "3fb0ffe1-1002-44c4-9b59-b6fb800d3a67",
+    "frames": {
+      "frames": 786,
+      "seconds": 9.999060669999999,
+      "fps": 78.60738382738506,
+      "median_frame_ms": 12.934730500001379,
+      "maximum_frame_ms": 15.254987999998804,
+      "scope": "Complete frame intervals in the last ten seconds; screenshot captured afterwards"
+    },
+    "peak_temperature_c": 78.0,
+    "mapped_libraries": {
+      "/opt/asahi-m3-wayland/lib/libvulkan_asahi.so": "43806e436a344b03cdd5522f1a26c2978d56150ab1f9ba25f6d26bc897cd5ca1",
+      "/opt/asahi-m3-experiments/0ad-zink-present/lib/libgallium-26.1.4.so": "6aab0f3a098a834cc01885ab4329e43657c78131818ea71e6b1aa6f2fc7c8ed2",
+      "/opt/asahi-m3-experiments/0ad-zink-present/lib/libEGL_mesa.so.0.0.0": "adbd28011381a17e653654493fdfce755fd0615d9af1c5c63a1b476e2adde32f",
+      "/opt/asahi-m3-experiments/0ad-zink-present/lib/libgbm.so.1.0.0": "b6e2b3b05bb6ef990c31fa864c8a9f8ead0f0e4ce7a7b48ae46b8458cfdd91dd"
+    },
+    "cpu_during": {
+      "policy0": {
+        "scaling_governor": "performance",
+        "scaling_cur_freq": "4056000",
+        "scaling_max_freq": "4056000"
+      },
+      "policy1": {
+        "scaling_governor": "performance",
+        "scaling_cur_freq": "2748000",
+        "scaling_max_freq": "2748000"
+      }
+    },
+    "raw_sha256": {
+      "result.json": "910b21b5f1f8a3a0a0b38047cdb7cca9149330d57b39f251b30268286b336c5d",
+      "frame-summary.json": "b4a631d5be58a7e45d90c7c2830218cc1f9ebca264c5a1f49a7b928e80276873",
+      "settings.json": "2ebb24d35d760871472bb8338284624489a74dbbb0585db28cd930d0674bd8f0",
+      "screen.png": "20e10e92d38f3865bfa4c9903c203954d9dfda44d911116a488e40eb1de2fd4b",
+      "main.json": "403e32b8b530f0b7bdda56f7873e0da823493a37d22311007fb81cd118c04435",
+      "temperatures.jsonl": "252c6032767df3d160c6945ffb4d097870c940c71c29d3906f5868853135525c",
+      "kernel-live.log": "16d17d4fecdf5203fbe2a57b3b8eae2e5c954b3a17222e16cc690c6f0ab25606"
+    }
+  }
+]
