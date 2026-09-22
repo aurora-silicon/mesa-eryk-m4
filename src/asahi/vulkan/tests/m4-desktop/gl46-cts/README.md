@@ -37,3 +37,10 @@ sampler selection, and therefore contains the old fallback descriptor form.
 A backend-only replay still refuses that form; it cannot validate the earlier
 selection fix. The CTS group re-enters the complete compilation path and
 passes. Do not describe this original backend bundle as a passing replay.
+
+## Main-list progress
+
+Range [0,5000), excluding the separately scheduled LOD case at index 866,
+completed 4,984 Pass / 15 NotSupported in 440.95 s, peak 92.0 C.
+All three inherited Mesa version override keys are absent from its recorded
+CTS environment. Remaining ranges and the isolated LOD case are pending.
