@@ -38,6 +38,8 @@ p.add_argument('--live', action='store_true', help='Read the latest target runne
 p.add_argument('--seconds', type=int, default=900)
 p.add_argument('--continue-compiler-aborts', action='store_true',
     help='After the reviewed AGX compile/pipeline assertion only, retain crashes and continue unrun/canceled peers under a fresh guard')
+p.add_argument('--continue-batch-deadlines', action='store_true',
+    help='Resume only unfinished cases after a verified workload deadline, preserving all completed outcomes and the original bounds')
 a = p.parse_args()
 if a.mode == 'freeze':
     assert a.plan and a.data and a.environment and a.segment_size > 0
@@ -162,12 +164,26 @@ def reviewed_pending(run):
     if summary['guard_verdict'] == 'pass':
         assert all(r['status'] not in ('Unrun','Interrupted','Crash','Timeout','HarnessError') for r in rows)
         return []
-    assert a.continue_compiler_aborts and summary['guard_verdict'] == 'process_failure', 'Needs explicit review'
+    assert (a.continue_compiler_aborts or a.continue_batch_deadlines) and summary['guard_verdict'] == 'process_failure', 'Needs explicit review'
     evidence = Path(summary['evidence'])/'remote'
     memory = [json.loads(line) for line in (evidence/'cts/memory.jsonl').read_text().splitlines()]
     assert memory and all(m['meminfo_kib']['MemAvailable'] > 1536*1024 for m in memory)
     assert len({m['vmstat']['oom_kill'] for m in memory}) == 1
     assert not (evidence/'cts/memory-pressure.json').exists()
+    timing_file = evidence/'cts/timing.json'
+    timing = json.loads(timing_file.read_text()) if timing_file.exists() else {}
+    if a.continue_batch_deadlines and timing.get('error') == "TimeoutError('deqp-runner workload deadline reached')":
+        runner = json.loads((evidence/'cts/runner.json').read_text())
+        assert timing['returncode'] == -9
+        assert runner['deadline_seconds'] <= timing['elapsed_seconds'] < runner['deadline_seconds'] + 5
+        assert all(r['status'] in ('Pass','Fail','NotSupported','QualityWarning','CompatibilityWarning','Unrun','Interrupted') for r in rows)
+        assert any(r['status'] == 'Pass' for r in rows), 'No demonstrated progress'
+        assert sum(r['status'] == 'Interrupted' for r in rows) <= summary['jobs']
+        pending = [r for r in rows if r['status'] in ('Unrun','Interrupted')]
+        save(run/'continuation-review.json', dict(reason='Verified workload deadline with completed test progress, no per-case timeout/crash, GPU/display/thermal fault, OOM or memory-floor crossing. Preserve completed results and resume only unrun/interrupted cases under unchanged bounds.',
+            terminal_crashes=[], pending=[r['case'] for r in pending], timing=timing))
+        return pending
+    assert a.continue_compiler_aborts, 'Not a reviewed batch deadline'
     crash = [r for r in rows if r['status'] == 'Crash']
     assert crash and any('SIGABRT' in r.get('worker_exit','') for r in crash)
     for r in rows:
@@ -195,7 +211,7 @@ for segment in catalog['segments'][a.first:a.last]:
     assert digest((base/'cases.txt').read_bytes()) == segment['sha256']
     paths = attempt_paths(base)
     if paths:
-        assert a.continue_compiler_aborts, 'Refusing to overwrite an attempt'
+        assert a.continue_compiler_aborts or a.continue_batch_deadlines, 'Refusing to overwrite an attempt'
         pending = reviewed_pending(paths[-1])
         if not pending:
             continue

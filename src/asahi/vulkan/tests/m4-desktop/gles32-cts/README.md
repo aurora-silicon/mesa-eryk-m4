@@ -79,3 +79,13 @@ Updated partial checkpoint: 100,357/326,602 configuration/case pairs completed;
 97,686 Pass, 2,348 NotSupported, 70 Fail, 220 compiler Crash,
 15 QualityWarning and 18 CompatibilityWarning. The last two 2,500-case
 image-copy segments passed in full. Full suite execution remains in progress.
+
+Segment 0042 reached its 900-second workload bound after 1,675 Pass, with
+821 Unrun and 4 Interrupted. No per-case timeout/crash occurred; guard verdict
+was process-only failure, peak 101.5 C, minimum available RAM 7,653 MiB, OOM
+counter unchanged at zero. Evidence: 20260922T080335164169Z-gles32-plan-0042-r0.
+After this review, `--continue-batch-deadlines` permits only the exact workload
+deadline error with demonstrated progress, no fatal case results, no GPU/
+display/thermal fault or memory-floor crossing. Original completed results
+and attempts remain; only Unrun/Interrupted cases resume under fresh guards
+with the unchanged 900-second segment and 60-second case limits.
