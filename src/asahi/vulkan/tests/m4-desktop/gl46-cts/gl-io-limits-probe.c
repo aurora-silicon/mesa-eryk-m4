@@ -26,7 +26,9 @@ int main(int argc, char **argv) {
  glGenTextures(1,&tex);glBindTexture(GL_TEXTURE_2D,tex);glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA32F,1,1,0,GL_RGBA,GL_FLOAT,NULL);
  glGenFramebuffers(1,&fb);glBindFramebuffer(GL_FRAMEBUFFER,fb);glFramebufferTexture2D(GL_FRAMEBUFFER,GL_COLOR_ATTACHMENT0,GL_TEXTURE_2D,tex,0);CHECK(glCheckFramebufferStatus(GL_FRAMEBUFFER)==GL_FRAMEBUFFER_COMPLETE);glViewport(0,0,1,1);
  glGenBuffers(1,&ubo);glBindBuffer(GL_UNIFORM_BUFFER,ubo);glBufferData(GL_UNIFORM_BUFFER,33*16,NULL,GL_DYNAMIC_DRAW);glBindBufferBase(GL_UNIFORM_BUFFER,0,ubo);
- unsigned configs[][2]={{29,0},{31,0},{32,0},{29,8},{30,8}};
+ /* Position consumes four of the 128 output components. Larger explicit
+  * arguments are retained for guarded negative diagnostics only. */
+ unsigned configs[][2]={{29,0},{31,0},{29,8}};
  unsigned num_configs=sizeof(configs)/sizeof(configs[0]);
  if(argc>1){configs[0][0]=atoi(argv[1]);configs[0][1]=argc>2?atoi(argv[2]):0;num_configs=1;CHECK(configs[0][0]>0&&configs[0][0]<=32);}
  unsigned draws=0;

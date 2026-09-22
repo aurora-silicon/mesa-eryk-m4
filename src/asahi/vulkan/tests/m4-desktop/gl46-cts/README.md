@@ -1,5 +1,42 @@
 # OpenGL 4.6 on Zink / M4
 
+## Latest recorded results (2026-09-22)
+
+All **19,714** frozen main-list cases have completed records. Latest outcomes
+across the recorded builds/configurations: **16,279 Pass, 3,434 NotSupported,
+1 CompatibilityWarning; zero unresolved Fail/Crash/Timeout and zero unrun**.
+All 32 catalog cases with an earlier failing/crashing/timed-out attempt have
+a passing recheck. Historical failures and canceled workers remain preserved.
+This is development coverage, not a single final-build conformance run or a
+Khronos certification claim.
+
+Twenty-two initially skipped cases now pass: 18 with a depth-buffer test
+configuration, three with the required 256x256 viewport, and one after the
+shader-interface, transform-feedback capacity and depth-control fixes.
+
+Remaining NotSupported classifications (`skip-audit.tsv` has every case and
+its original index; `skip-audit.json.gz` also records source explanations):
+
+| Classification | Cases | Meaning |
+| --- | ---: | --- |
+| Optional extensions | 3,134 | Sparse texture2/clamp (needs sparse MSAA), fragment shading rate, EXT DSA, shadow LOD, coherent advanced blending, post-depth coverage |
+| Inapplicable combinations | 211 | ES-only cases or access/primitive combinations explicitly excluded by CTS |
+| Permitted sample-count limits | 76 | Requests for 8 samples above supported 4; lower sample counts execute |
+| Test extension-name gates | 12 | Obsolete ARB_depth_texture name is not exposed in a core profile; depth textures themselves are supported |
+| Test GLSL-version gate | 1 | Inherited GLSL330 integer-mix prototype test; the shaders45 counterpart passes |
+
+The compatibility warning is DSA framebuffer completeness: CTS accepts the
+implementation returning COMPLETE for the tested multisample/layer mixtures.
+It is retained as a warning, not relabeled Pass. The original test comments
+in gl4cDirectStateAccessFramebuffersAndRenderbuffersTests.cpp:3182 explain
+this classification.
+
+`final-summary.json`, `latest-coverage.json.gz`, `coverage.json.gz`, and
+`results.json.gz` retain counts, latest outcomes and all supplied attempts.
+`failures.json.gz` deliberately retains historical failures, including rejected
+intermediate fixes. The oversized diagnostic shader hang described below is
+outside the advertised output limit and is not claimed fixed by this report.
+
 The existing guard and CTS tooling also accepts `--api gl46` on
 `tools/gl33-cts-run.py` and `tools/gl-cts-probe.py`. GL46 test processes remove
 inherited GL/GLES/GLSL version overrides; they do not force unsupported
@@ -44,7 +81,8 @@ Range [0,5000), excluding the separately scheduled LOD case at index 866,
 completed 4,984 Pass / 15 NotSupported in 440.95 s, peak 92.0 C.
 All three inherited Mesa version override keys are absent from its recorded
 CTS environment. Range [5000,10000) completed 4,760 Pass / 240 NotSupported in 305.87 s,
-peak 108.25 C. The two later ranges and isolated LOD case remain pending.
+peak 108.25 C. This was the initial checkpoint; subsequent ranges and the
+isolated LOD case are included in the final recorded coverage above.
 
 
 ## Additional failures and fixes
@@ -245,3 +283,7 @@ Final conversion build: 422 GL clipping/cull-distance, tessellation,
 transform-feedback and fragment-depth cases complete 406 Pass /
 16 inapplicable NotSupported in 65.57 s, peak 102.75 C
 (`20260922T033631999754Z-gl46-clip-regressions`).
+
+The raw float/SNORM copy fix also completes its 566-case Vulkan regression
+selection: **566 Pass**, 1.02 s runner time, peak 69 C
+(`20260922T033946817892Z-gl46-vk-raw-copy-fixed`).

@@ -56,6 +56,31 @@ so this is deterministic selection/coverage, not a promise of identical scheduli
 The collector uses a set for expected-case membership to avoid quadratic lookup
 cost when reconciling large batches. All existing evidence and timeout rules apply.
 
+## Full retest controller
+
+`cts-retest.py --output build/cts-vulkan14-retest-YYYYMMDD --binary
+/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit --jobs 1 --run` pins the installed kernel, module,
+Mesa, runner and CTS hashes before executing any cases. A new campaign uses
+a new output directory; it never imports another campaign's outcomes.
+
+The controller selects consecutive 10k bounded segments (100 cases per WSI
+segment). It writes `progress.json`, all outcomes to `results.sqlite3`, and
+non-Pass/non-NotSupported results to `failures.tsv`. `milestones.json` records
+completed 100k ranges and cumulative raw status counts, requiring every index
+in each range; the final partial range is retained too. Fatal/incomplete
+segments require evidence review via `--review RUN_DIRECTORY=REASON`; only
+unfinished indices resume. No terminal failure is silently retried.
+
+`--jobs` records worker count per segment. The Sept19 run needed serial execution:
+20 and 4 workers exhausted RAM and interrupted kernel-log/thermal collection.
+The campaign therefore continues with one worker.
+This changes scheduling, not coverage or timeout bounds. WSI always uses
+one worker with `--headless` regardless of this option. Watchdog, thermal and
+evidence guards remain mandatory. See `VULKAN_14_RETEST.md` for campaign state.
+`cts-retest-status.py CAMPAIGN [--live]` reads counters and completed 100k
+reports without locking the controller. `--live` additionally reads current
+runner, memory and temperature logs over SSH; it never runs GPU work.
+
 ## Random samples from the same frozen catalog
 
 For an explicitly requested random retest, sample catalog indices uniformly
@@ -640,3 +665,215 @@ The bulk runner default now matches the documented corrected Vulkan 1.4 build,
 for the unmodified reference. The latter still has known scaled-format and
 YCbCr reference errors and scaled-swizzle crashes. Always retain the selected
 binary hash and distinguish these attempts from a driver regression.
+
+## Reviewed RGB-clear assertion continuation (2026-09-19)
+
+`cts-reviewed-clear-assert.py CAMPAIGN` validates pending evidence offline;
+`--run` resumes only reviewed `hk_cmd_clear.c:83` SIGABRTs in three-component
+RGB `api.copy_and_blit.core.use_after_copy` tests. RGB8_UNORM and RGB32_SFLOAT
+were observed with the same power-of-two block-size assertion. The rule pins
+the current Mesa/CTS hashes, exact worker log and case family, finalized guard,
+healthy thermals, sufficient RAM, no OOM increase, same boot and idle watchdog.
+It records a review for each run and calls the ordinary serial controller.
+Crashes remain terminal, cases are not skipped, and other failures stop for
+inspection. This is not GPU/kernel recovery. The reviewer has a64-review
+bound; inspect before extending. A changed driver invalidates this policy.
+
+
+## Memory-safe default for the M4 (2026-09-19)
+
+cts-bulk.py and cts-retest.py default to one worker. Full-catalog runs exhausted
+RAM at20 and4 workers; serial execution completed393459cases without new OOMs.
+Higher --jobs values require measuring the selected cases' aggregate memory
+use. This is a harness default, not evidence of a fixed driver memory leak.
+The September19 full run was stopped at user request; targeted fixes and
+installed verification are in VULKAN_14_REGRESSION_FIXES.md.
+
+## Timed prefix runs
+
+`cts-retest.py --end-index 100000` selects exactly `[0,100000)` while retaining
+the full frozen catalog hash and global indices. `selection.json` pins the
+scope; omitting the bound on resume uses that saved scope, and changing it
+requires a new campaign. The report distinguishes selected total from catalog
+total. Offline checks cover scope accounting and rejection of invalid/resized
+ranges. Bounded segments, first-attempt outcomes and evidence requirements are
+unchanged.
+
+`--tests-per-group`, `--cpu-affinity` and `--shader-cache-dir` pass through to the
+bulk runner. The Sept20 first-100k run uses two workers on CPUs0,7-9, groups of
+500, and an exclusive target-side cache directory. The backend samples memory
+every0.5s and stops before MemAvailable drops below1536MiB (configurable, minimum
+512MiB). This is a guard, not permission to launch arbitrary worker counts.
+Modern CTS uses per-worker shader caches without truncating them between groups;
+`--legacy-shader-cache` is only for old binaries lacking that interface.
+
+Record both the sum of segment runner times and total campaign elapsed time,
+including staging, guards and evidence transfer. Cache history and worker count
+are part of the run configuration; do not attribute a change to one factor
+when multiple factors changed. Kernel thermal management remains enabled.
+
+## RAM-heavy candidates and a dedicated test session
+
+`cts-retest.py --adaptive-memory` retains memory-pressure candidates in
+`ram-heavy.tsv` and `memory-events.json`. Proven healthy parallel memory-floor
+stops can resume with only unfinished candidates isolated to one worker;
+ordinary cases retain `--jobs`. Actual OOM/crashes, thermal/driver faults,
+serial pressure and missing evidence still require review. First terminal
+outcomes never change. Test with `python3 tools/test_cts_memory_policy.py`.
+
+Run `cts-desktop-control.py OUTPUT stop|start` on the target only under
+`gpu-experiment.py` to release desktop GPU memory for a dedicated run and
+restore the desktop afterward. It preserves renderer settings in a root-only,
+same-boot `/run` snapshot for the existing private headless WSI wrapper.
+Details: `linux/linux-asahi/reference/cts/ram-isolation-20260920/README.md`.
+
+`cts-retest.py --defer-prefix PREFIX` temporarily leaves unfinished matching
+cases pending without inserting outcomes, changing global IDs, or counting
+them as skipped. It writes `deferred-cases.tsv`; after other cases finish it
+returns4/`awaiting-deferred`, never `complete`. Intended for explicitly recorded
+repeated GPU-fault review. `cts-retest-resume.py CAMPAIGN REVIEW_JSON` resumes
+the exact saved invocation with recorded review(s), preserves timing history,
+and restores desktop only at complete/awaiting-deferred. It does not review
+faults automatically or retry terminal outcomes.
+
+## Headless priority isolation (September 20)
+
+The 1000 Hz private Hyprland must use normal GPU priority, matching CTS.
+The desktop drirc selects high priority for Hyprland; inheriting that setting
+starved the normal client while thousands of compositor jobs completed. A
+read-only sync-file snapshot showed the client's first fence still pending.
+The same isolated Wayland case passed in 1.02 s with normal priority instead
+of failing in 15 s. All six original Wayland abnormalities pass (3.86 s total).
+`cts-headless.py` sets `zink_queue_priority=1` only for the private compositor
+and records it; `--headless-env` can override it for explicit diagnostics.
+Desktop priority, pacing, protocol support and CTS deadlines are unchanged.
+Original failures remain in the ledger. This is a test-environment correction,
+not evidence that high-priority GPU starvation has been fixed in the driver.
+
+The private compositor also floats every test window. XCB's setDimensions
+waits until GetGeometry returns the requested size; a tiled window pinned to
+1024x1024 cannot satisfy that operation. A live syscall trace confirmed the
+resize loop queried the unchanged 1024x1024 dimensions indefinitely. Floating
+windows permits ordinary application resize behavior without changing CTS.
+All27 original WSI failures/timeouts pass under both corrections in18.457 s,
+with the unchanged60 s per-case bound, peak87C.
+Evidence:20260920T120713578805Z-cts-wsi-float-normal.
+
+
+## OpenGL 3.3 on Zink (2026-09-21)
+
+`gl-cts-probe.py GUARD_OUTPUT` runs on the target under `gpu-experiment.py`.
+It records the installed desktop renderer environment, hashes the ARM64 GL CTS
+binaries, runs `KHR-GL33.info.*`, and saves `cts-runner --type=gl33 --summary`.
+The summary command normally exits 1 when there are no saved conformance
+results; that is a plan-generation result, not six new driver failures.
+
+The ARM64 `glcts` and `cts-runner` targets are built from the existing pinned
+`reference/vk-gl-cts-1.4.6.2` checkout (`f6a29701220f34dd1407513bfe80d74ca7b392ce`).
+Stage their `gl_cts`, `gles2`, `gles3`, and `gles31` data directories alongside
+the binaries in `/root/gl-cts-1.4.6.2/`. The main GL33 must-pass list has 9,886
+cases. Freeze its original order and hash before execution; this campaign uses
+`build/gl33-zink-20260921/{cases.txt,catalog.json}`.
+
+`gl33-cts-run.py --cases CASES --output RUN --name NAME --environment JSON`
+uses the existing `cts-bulk.py` watchdog/thermal/memory guard and a private
+1000 Hz headless Wayland compositor. The JSON is the probe's
+`renderer-environment.json`: retain the production Zink/Honeykrisp settings,
+including the desktop's existing GL 3.3 version limit. Renderer checks must
+identify Apple M4, and the info QPA must identify Zink. This is headless EGL
+Wayland coverage, not GLX/window-system certification.
+
+The default is seed 1, 64x64 window surfaces. `--config 113` selects seed 2,
+113x47. `--config fbo-width` and `--config fbo-height` select the seed-3
+rgba8888d24s8 FBO configurations with one unspecified dimension. The plan also
+contains the one-case GL30 no-default-context list. Keep results for each
+configuration separate. A single configuration is not a full conformance
+submission; a passing process guard is not proof that every CTS case passed.
+
+`cts-bulk.py` and `cts-sample.py` accept repeatable
+`--deqp-arg=--option=value` for these GL surface/context settings, forwarding
+them unchanged and recording them in the runner manifest. Existing Vulkan
+commands with no such arguments are unchanged. No skip list, failure baseline,
+or automatic retry masks the first attempt.
+
+`gl-cts-report.py --output REPORT RUN...` writes every outcome, separate
+failure JSON and case list, and non-pass TSV. NotSupported and warnings stay
+visible and are never converted to passes. Original QPAs remain in each run's
+guarded evidence directory.
+
+
+After qualifying the single-worker run, `--jobs 4` shares the private compositor
+for KHR-GL/KHR-NoContext tests only. Vulkan WSI retains its one-worker restriction.
+The existing 1.5 GiB available-memory floor still stops the whole segment.
+A crash or timeout still stops first-attempt scheduling; save its original
+result and start a new guarded segment containing only Unrun/Interrupted cases.
+Do not silently retry a timeout or relabel SIGKILL peer crashes as driver bugs:
+the runner kills its other workers during coordinated cancellation, and its
+raw crash classification must retain that context.
+
+Supply `gl-cts-report.py --catalog catalog.json ...` when combining segments of
+the same configuration. It adds each case's original global index and writes
+`coverage.json`, resolving unfinished records only with a subsequent completed
+attempt. Repeated terminal attempts remain explicitly MultipleAttempts.
+
+
+### Completed first configuration
+
+The frozen 9,886-case main list finished with 9,554 Pass, 317 NotSupported,
+11 Fail, three Timeout, and one genuine SIGABRT. The separate no-default-context
+case also passed. About 1,013 seconds of test execution across bounded segments;
+peak observed package-channel temperature 108.25 C. No kernel or driver changes
+were made during this task. Afterward only the normal desktop compositor remained.
+
+The SIGABRT is `KHR-GL33.transform_feedback2.transform_feedback2_states`,
+Zink `zink_query.c:1118` asserting `q->started_in_rp == ctx->in_rp`. Two timeouts
+are pipeline-statistics tests; the first logged an unsupported indexed-draw
+command before waiting on the query. The other timeout is the sparse-buffer
+copy test. Most ordinary failures are transform-feedback state/query tests;
+texture LOD bias also failed. See failures-20260921.tsv for exact case names.
+
+Six other raw Crash records were SIGKILL peers from coordinated cancellation.
+Both affected segments kept oom_kill at zero. Their original records and the
+explicit cancellation review remain retained; all six passed an isolated
+follow-up. They are not counted as six independent driver crashes.
+The earlier 100-case smoke test additionally failed
+`KHR-GL33.transform_feedback.draw_xfb_stream_test`, which passed in the main
+list: retain this as an extra order-dependent observation, not a fix or waiver.
+
+This completes the main list at seed 1 and 64x64 using headless EGL Wayland.
+The other size/seed/FBO configurations in the Khronos plan remain untested.
+This result is not a passing full conformance submission.
+
+Local full evidence and every original outcome are under
+`build/gl33-zink-20260921/report/`; `resolved-results.json` maps the frozen case
+indices to the final classification while preserving earlier attempts.
+`results-20260921.json` records segment paths, hashes and cancellation review.
+The no-default-context case uses gl-cts-probe.py GUARD_OUTPUT CASE after a
+separate Zink info probe, since deqp-runner cannot perform its usual renderer
+check for the KHR-NoContext package. Its direct QPA records Pass.
+
+
+### OpenGL 4.6 main-list rechecks (2026-09-22)
+
+`gl33-cts-run.py --api gl46` removes inherited version overrides in CTS only.
+It accepts `--config 256` for the three texture-query-LOD cases requiring a
+256x256 target; `--config fbo-width` supplies D24S8 for fragment-depth tests.
+Use the frozen catalog and normal guarded/headless runner. Preserve the
+original skip records and label alternate-configuration rechecks explicitly.
+
+`gl-cts-report.py --catalog CATALOG --latest-summary --output REPORT RUN...`
+also emits `latest-coverage.json`; supply runs chronologically, oldest first.
+Every original attempt still appears in coverage/results/failures. Latest
+outcomes across configurations/builds are development tracking, not a single
+final-build conformance run. Exclude software-reference and Vulkan runs from
+the M4 GL report.
+
+Current evidence and complete per-case skip audit are retained in Mesa at
+`src/asahi/vulkan/tests/m4-desktop/gl46-cts/`. Small GL diagnostics in `tools/`
+(`gl-layer-readback-probe.c`, `gl-sample-mask-probe.c`, `gl-io-limits-probe.c`)
+must run through `gpu-experiment.py`; each source records its build command.
+The layer probe defaults to supported depths; PROBE_OVER_LIMIT explicitly
+allows oversized diagnostics. PROBE_SAMPLE/PROBE_FLOAT choose sampling or
+float readback, PROBE_TAGS identifies actual slices, and PROBE_DSA selects
+named framebuffer resolves in the sample-mask probe. The IO probe's default
+list stays within the advertised 128-component vertex output limit.

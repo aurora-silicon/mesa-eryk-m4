@@ -1,0 +1,875 @@
+{
+  "counts": {
+    "Pass": 18479,
+    "Unrun": 8096,
+    "NotSupported": 3679,
+    "Crash": 15,
+    "Fail": 23,
+    "Interrupted": 6,
+    "Timeout": 4,
+    "CompatibilityWarning": 2
+  },
+  "runs": [
+    {
+      "run": "build/gl46-zink-20260922/smoke",
+      "selected": 105,
+      "recorded": 105,
+      "completed": 77,
+      "counts": {
+        "Pass": 67,
+        "Unrun": 28,
+        "NotSupported": 9,
+        "Crash": 1
+      },
+      "classifications": {
+        "unclassified": 105
+      },
+      "elapsed_seconds": 29.540653465002833,
+      "preparation_seconds": 2.539837712996814,
+      "runner_seconds": 27.17938259500079,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "d3f191ca681f443467b7e84671613c46f9c54274142e5442da758618b67884f9",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T003643631507Z-gl46-smoke",
+      "guard_verdict": "process_failure",
+      "command_returncode": 1,
+      "peak_temperature_c": 64.5
+    },
+    {
+      "run": "build/gl46-zink-20260922/texture-gather",
+      "selected": 75,
+      "recorded": 75,
+      "completed": 75,
+      "counts": {
+        "Pass": 75
+      },
+      "classifications": {
+        "unclassified": 75
+      },
+      "elapsed_seconds": 10.366603656002553,
+      "preparation_seconds": 1.609003292003763,
+      "runner_seconds": 7.512187868000183,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "61afc33d1f205ff8d18ae2f67a84f1d42c24b7947068bd4f15363ec2ebdd06cf",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T003955669520Z-gl46-texture-gather",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 73.75
+    },
+    {
+      "run": "build/gl46-zink-20260922/smoke-rest",
+      "selected": 28,
+      "recorded": 28,
+      "completed": 28,
+      "counts": {
+        "Pass": 18,
+        "NotSupported": 10
+      },
+      "classifications": {
+        "unclassified": 28
+      },
+      "elapsed_seconds": 6.794734011004039,
+      "preparation_seconds": 1.660158988997864,
+      "runner_seconds": 4.066053210999598,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "a4647ee91618b4b905872b9678f4f954565a5d6cfc40c2d8962ef35178686765",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T004007784661Z-gl46-smoke-rest",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 64.75
+    },
+    {
+      "run": "build/gl46-zink-20260922/range-0-5000",
+      "selected": 4999,
+      "recorded": 4999,
+      "completed": 4999,
+      "counts": {
+        "Pass": 4984,
+        "NotSupported": 15
+      },
+      "classifications": {
+        "unclassified": 4999
+      },
+      "elapsed_seconds": 443.84636579400103,
+      "preparation_seconds": 1.6384375409979839,
+      "runner_seconds": 440.9479617300003,
+      "jobs": 4,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "97e1655d3a011c2126f77646b99e29327aa85a4cbda09ea55277bb67600cbe67",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T004038499125Z-gl46-main-0-5000",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 92.0
+    },
+    {
+      "run": "build/gl46-zink-20260922/range-5000-10000",
+      "selected": 5000,
+      "recorded": 5000,
+      "completed": 5000,
+      "counts": {
+        "Pass": 4760,
+        "NotSupported": 240
+      },
+      "classifications": {
+        "unclassified": 5000
+      },
+      "elapsed_seconds": 308.8360923680011,
+      "preparation_seconds": 1.6034526810035459,
+      "runner_seconds": 305.87203432000024,
+      "jobs": 4,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "ec0b1842d81d8e96bf2830bf9a04a6f37a0b251813e7f2b089e30afe522ef8e2",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T004823506151Z-gl46-main-5000-10000",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 108.25
+    },
+    {
+      "run": "build/gl46-zink-20260922/range-10000-15000",
+      "selected": 5000,
+      "recorded": 5000,
+      "completed": 412,
+      "counts": {
+        "Unrun": 4586,
+        "Pass": 272,
+        "NotSupported": 130,
+        "Fail": 6,
+        "Crash": 3,
+        "Interrupted": 2,
+        "Timeout": 1
+      },
+      "classifications": {
+        "unclassified": 5000
+      },
+      "elapsed_seconds": 183.04505135100044,
+      "preparation_seconds": 1.5740508050002973,
+      "runner_seconds": 180.27885420999883,
+      "jobs": 4,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "2d625344a8c31f7fac51484f0b714670f45a9815e5863e8a35954482f1335eda",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T005343441499Z-gl46-main-10000-15000",
+      "guard_verdict": "process_failure",
+      "command_returncode": 1,
+      "peak_temperature_c": 101.25
+    },
+    {
+      "run": "build/gl46-zink-20260922/sparse3d-fix-probe",
+      "selected": 6,
+      "recorded": 6,
+      "completed": 1,
+      "counts": {
+        "Crash": 1,
+        "Unrun": 5
+      },
+      "classifications": {
+        "unclassified": 6
+      },
+      "elapsed_seconds": 5.209982143998786,
+      "preparation_seconds": 1.5692139249949832,
+      "runner_seconds": 2.438560079999661,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "ee5b524435166f8b75f0dc65d45e38a995ecbef4505a41876dbcf2f84fb8a5eb",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T010048357374Z-gl46-sparse3d-fix-probe",
+      "guard_verdict": "process_failure",
+      "command_returncode": 1,
+      "peak_temperature_c": 67.25
+    },
+    {
+      "run": "build/gl46-zink-20260922/sparse3d-fix",
+      "selected": 5,
+      "recorded": 5,
+      "completed": 5,
+      "counts": {
+        "Fail": 5
+      },
+      "classifications": {
+        "unclassified": 5
+      },
+      "elapsed_seconds": 2.8584192890048143,
+      "preparation_seconds": 1.6791962229981436,
+      "runner_seconds": 0.2158199780005816,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "29c0b1019a3ae8dcc708fc681f1aa7b0747e5b137c72feb24a7581a5cdf37fe8",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T010126891026Z-gl46-sparse3d-fix",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 69.0
+    },
+    {
+      "run": "build/gl46-zink-20260922/view-xfb-fix",
+      "selected": 1,
+      "recorded": 1,
+      "completed": 1,
+      "counts": {
+        "Fail": 1
+      },
+      "classifications": {
+        "unclassified": 1
+      },
+      "elapsed_seconds": 8.083904878003523,
+      "preparation_seconds": 1.6189805410031113,
+      "runner_seconds": 5.080834255999434,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "6f5d1d1da86d2af45a1cf7170b1cae38e5b14a1e5ecb4e41e17627e091b58023",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T010302668139Z-gl46-view-xfb-fix",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 67.0
+    },
+    {
+      "run": "build/gl46-zink-20260922/view-raw-fix",
+      "selected": 1,
+      "recorded": 1,
+      "completed": 1,
+      "counts": {
+        "Fail": 1
+      },
+      "classifications": {
+        "unclassified": 1
+      },
+      "elapsed_seconds": 7.620543605000421,
+      "preparation_seconds": 1.51869369999622,
+      "runner_seconds": 4.8701273030001175,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "6f5d1d1da86d2af45a1cf7170b1cae38e5b14a1e5ecb4e41e17627e091b58023",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T010540380434Z-gl46-view-raw-fix",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 81.0
+    },
+    {
+      "run": "build/gl46-zink-20260922/sparse3d-enabled-probe",
+      "selected": 5,
+      "recorded": 5,
+      "completed": 5,
+      "counts": {
+        "Pass": 5
+      },
+      "classifications": {
+        "unclassified": 5
+      },
+      "elapsed_seconds": 3.325164866997511,
+      "preparation_seconds": 1.6331969879975077,
+      "runner_seconds": 0.6171335950002685,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "29c0b1019a3ae8dcc708fc681f1aa7b0747e5b137c72feb24a7581a5cdf37fe8",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T010632953206Z-gl46-sparse3d-enabled-probe",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 72.0
+    },
+    {
+      "run": "build/gl46-zink-20260922/view-sparse3d-fixed",
+      "selected": 161,
+      "recorded": 161,
+      "completed": 161,
+      "counts": {
+        "Pass": 121,
+        "NotSupported": 40
+      },
+      "classifications": {
+        "unclassified": 161
+      },
+      "elapsed_seconds": 9.829082733005635,
+      "preparation_seconds": 1.5891743040047004,
+      "runner_seconds": 6.7114844619991345,
+      "jobs": 4,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "31bec874eefe7a435225f26926584f189fd6e939efc865947e787de9c162b065",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T010718398173Z-gl46-view-sparse3d-fixed",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 68.25
+    },
+    {
+      "run": "build/gl46-zink-20260922/range3-rest",
+      "selected": 4286,
+      "recorded": 4286,
+      "completed": 2818,
+      "counts": {
+        "Unrun": 1466,
+        "Pass": 2038,
+        "Crash": 4,
+        "Interrupted": 2,
+        "NotSupported": 776
+      },
+      "classifications": {
+        "unclassified": 4286
+      },
+      "elapsed_seconds": 116.70465307199629,
+      "preparation_seconds": 1.653610535999178,
+      "runner_seconds": 113.37707287000012,
+      "jobs": 4,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "1e7ddee8e5da10cc29571aec8d06d42c5441dac70be7e6883f83c38b483a899d",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T010756928973Z-gl46-main-range3-rest",
+      "guard_verdict": "process_failure",
+      "command_returncode": 1,
+      "peak_temperature_c": 107.75
+    },
+    {
+      "run": "build/gl46-zink-20260922/subroutines-fixed",
+      "selected": 28,
+      "recorded": 28,
+      "completed": 28,
+      "counts": {
+        "Pass": 28
+      },
+      "classifications": {
+        "unclassified": 28
+      },
+      "elapsed_seconds": 12.367672045998916,
+      "preparation_seconds": 1.5920400920003885,
+      "runner_seconds": 9.532376088000092,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "555c452ebd0f35eb36b21241718567586eefc559e10ea9d8a222821158f91cce",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T011239243156Z-gl46-subroutines-fixed",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 83.0
+    },
+    {
+      "run": "build/gl46-zink-20260922/range3-rest2",
+      "selected": 1463,
+      "recorded": 1463,
+      "completed": 1463,
+      "counts": {
+        "Pass": 1061,
+        "NotSupported": 402
+      },
+      "classifications": {
+        "unclassified": 1463
+      },
+      "elapsed_seconds": 59.04588807300024,
+      "preparation_seconds": 1.5417649119990529,
+      "runner_seconds": 56.25855021999996,
+      "jobs": 4,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "f7c17cf6735a7ecc69f506256b8f1af65b4920357ccc29e4c095bc1de57210b2",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T011315255856Z-gl46-main-range3-rest2",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 104.0
+    },
+    {
+      "run": "build/gl46-zink-20260922/duration-recheck",
+      "selected": 2,
+      "recorded": 2,
+      "completed": 2,
+      "counts": {
+        "Pass": 2
+      },
+      "classifications": {
+        "unclassified": 2
+      },
+      "elapsed_seconds": 49.521752796994406,
+      "preparation_seconds": 1.6932281640038127,
+      "runner_seconds": 46.72569681300047,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "8f168ef2b1d98df8f6decb63e22322ea49d76804bcd7bfb64f6d1cf42e6b7575",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T011443181526Z-gl46-duration-recheck",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 71.25
+    },
+    {
+      "run": "build/gl46-zink-20260922/range3-copy",
+      "selected": 306,
+      "recorded": 306,
+      "completed": 127,
+      "counts": {
+        "Pass": 125,
+        "Unrun": 178,
+        "Crash": 1,
+        "Interrupted": 1,
+        "Timeout": 1
+      },
+      "classifications": {
+        "unclassified": 306
+      },
+      "elapsed_seconds": 491.96951598000305,
+      "preparation_seconds": 1.5840605830017012,
+      "runner_seconds": 489.26242877000004,
+      "jobs": 2,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "1cb6c0db8f8fb5f180f113c3461d18c8d134ede6d8add1863b7bc63b1a52c08c",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T011546166202Z-gl46-main-range3-copy",
+      "guard_verdict": "process_failure",
+      "command_returncode": 1,
+      "peak_temperature_c": 98.5
+    },
+    {
+      "run": "build/gl46-zink-20260922/range-15000-19714",
+      "selected": 4714,
+      "recorded": 4714,
+      "completed": 3531,
+      "counts": {
+        "Unrun": 1182,
+        "Pass": 2120,
+        "Crash": 3,
+        "NotSupported": 1400,
+        "Fail": 6,
+        "Timeout": 1,
+        "CompatibilityWarning": 1,
+        "Interrupted": 1
+      },
+      "classifications": {
+        "unclassified": 4714
+      },
+      "elapsed_seconds": 124.94812088899926,
+      "preparation_seconds": 1.6826095029973658,
+      "runner_seconds": 121.93324138199932,
+      "jobs": 4,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "b33d637e530233511af497005f75e8e8bdb11f58169bdb5fa7a7633780d14c95",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T012504177354Z-gl46-main-15000-19714",
+      "guard_verdict": "process_failure",
+      "command_returncode": 1,
+      "peak_temperature_c": 108.25
+    },
+    {
+      "run": "build/gl46-zink-20260922/copy-1d-fixed",
+      "selected": 1,
+      "recorded": 1,
+      "completed": 1,
+      "counts": {
+        "Pass": 1
+      },
+      "classifications": {
+        "unclassified": 1
+      },
+      "elapsed_seconds": 12.123610041002394,
+      "preparation_seconds": 1.596874721995846,
+      "runner_seconds": 9.342933267000262,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "9041fd0c8c938c9e56a751766aba0d826b325a868887577ab4b13c20b3d89662",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T012759994674Z-gl46-copy-1d-fixed",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 77.0
+    },
+    {
+      "run": "build/gl46-zink-20260922/range4-rest",
+      "selected": 1186,
+      "recorded": 1186,
+      "completed": 1186,
+      "counts": {
+        "Pass": 691,
+        "NotSupported": 493,
+        "Fail": 2
+      },
+      "classifications": {
+        "unclassified": 1186
+      },
+      "elapsed_seconds": 55.38814692100277,
+      "preparation_seconds": 1.5657039649959188,
+      "runner_seconds": 52.57448775100056,
+      "jobs": 4,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "2f825b95ce038bdbe7d2b478aafda8ef559b376f6a3573ade61f224cc6cf7261",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T012926915543Z-gl46-main-range4-rest",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 97.75
+    },
+    {
+      "run": "build/gl46-zink-20260922/gl-io-limits",
+      "selected": 149,
+      "recorded": 149,
+      "completed": 101,
+      "counts": {
+        "Pass": 100,
+        "Timeout": 1,
+        "Unrun": 48
+      },
+      "classifications": {
+        "unclassified": 149
+      },
+      "elapsed_seconds": 65.82692042100098,
+      "preparation_seconds": 1.652719049998268,
+      "runner_seconds": 63.34686141900056,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "cd4d3268e7179662af179adaaeab8c55050aeda592f4d03ae102be90eb6b0bd3",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T013340541617Z-gl46-gl-io-limits",
+      "guard_verdict": "process_failure",
+      "command_returncode": 1,
+      "peak_temperature_c": 76.75
+    },
+    {
+      "run": "build/gl46-zink-20260922/gl-io-limits-fixed",
+      "selected": 149,
+      "recorded": 149,
+      "completed": 149,
+      "counts": {
+        "Pass": 149
+      },
+      "classifications": {
+        "unclassified": 149
+      },
+      "elapsed_seconds": 7.008415871001489,
+      "preparation_seconds": 1.5764548209990608,
+      "runner_seconds": 4.673845085000011,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "cd4d3268e7179662af179adaaeab8c55050aeda592f4d03ae102be90eb6b0bd3",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T024659615465Z-gl46-gl-io-limits-fixed",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 67.75
+    },
+    {
+      "run": "build/gl46-zink-20260922/dsa-layer-isolated",
+      "selected": 1,
+      "recorded": 1,
+      "completed": 1,
+      "counts": {
+        "Fail": 1
+      },
+      "classifications": {
+        "unclassified": 1
+      },
+      "elapsed_seconds": 30.66929407400312,
+      "preparation_seconds": 1.6402522540010978,
+      "runner_seconds": 28.80096178299999,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "fc59f9cb9b2d09e644bb7708a8a13a255e54414be40b1a907d4cc95b46dec3cd",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T025014983596Z-gl46-dsa-layer-isolated",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 64.5
+    },
+    {
+      "run": "build/gl46-zink-20260922/tess-ordering-isolated",
+      "selected": 1,
+      "recorded": 1,
+      "completed": 1,
+      "counts": {
+        "Pass": 1
+      },
+      "classifications": {
+        "unclassified": 1
+      },
+      "elapsed_seconds": 23.483497090004676,
+      "preparation_seconds": 1.5403593570008525,
+      "runner_seconds": 21.515576108999994,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "08aceb8d11273a6fca7fe448dfd180f6fac06d3c25a361b99e0885e0dcbce941",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T025347600490Z-gl46-tess-ordering-isolated",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 65.25
+    },
+    {
+      "run": "build/gl46-zink-20260922/cull-mask-fixed",
+      "selected": 417,
+      "recorded": 417,
+      "completed": 417,
+      "counts": {
+        "Pass": 363,
+        "NotSupported": 54
+      },
+      "classifications": {
+        "unclassified": 417
+      },
+      "elapsed_seconds": 11.105521867000789,
+      "preparation_seconds": 1.6146551950005232,
+      "runner_seconds": 8.726024713000015,
+      "jobs": 2,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "a6b849f4d574bd9ccbbc60266f37ef37c93300158472f80721784eebf824ff87",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T030138884663Z-gl46-cull-mask-fixed",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 72.5
+    },
+    {
+      "run": "build/gl46-zink-20260922/range3-copy-rest",
+      "selected": 181,
+      "recorded": 181,
+      "completed": 181,
+      "counts": {
+        "Pass": 181
+      },
+      "classifications": {
+        "unclassified": 181
+      },
+      "elapsed_seconds": 756.5124363930008,
+      "preparation_seconds": 1.7449447870021686,
+      "runner_seconds": 754.330461086,
+      "jobs": 2,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "a8aa80ee209132ca1311ac35b3f2fb5deb106f102bf87f4e0fdff0e22d9f15d4",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T030347838553Z-gl46-copy-rest",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 93.0
+    },
+    {
+      "run": "build/gl46-zink-20260922/dsa-layer-fixed",
+      "selected": 1,
+      "recorded": 1,
+      "completed": 1,
+      "counts": {
+        "Pass": 1
+      },
+      "classifications": {
+        "unclassified": 1
+      },
+      "elapsed_seconds": 30.157375861999753,
+      "preparation_seconds": 1.6105494090006687,
+      "runner_seconds": 28.00637793299984,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "fc59f9cb9b2d09e644bb7708a8a13a255e54414be40b1a907d4cc95b46dec3cd",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T031810639318Z-gl46-dsa-layer-fixed",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 67.5
+    },
+    {
+      "run": "build/gl46-zink-20260922/skips-limits-viewport",
+      "selected": 4,
+      "recorded": 4,
+      "completed": 4,
+      "counts": {
+        "Pass": 3,
+        "NotSupported": 1
+      },
+      "classifications": {
+        "unclassified": 4
+      },
+      "elapsed_seconds": 3.308451190998312,
+      "preparation_seconds": 1.7180956230004085,
+      "runner_seconds": 1.0231159159998242,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "657596702140795db0adb6d00389a5c6ffff689078b721f2bb1e52d65907ff5c",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T031939408867Z-gl46-skips-limits-viewport",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 65.5
+    },
+    {
+      "run": "build/gl46-zink-20260922/depth-config-fixed",
+      "selected": 18,
+      "recorded": 18,
+      "completed": 18,
+      "counts": {
+        "Pass": 18
+      },
+      "classifications": {
+        "unclassified": 18
+      },
+      "elapsed_seconds": 2.7160741180050536,
+      "preparation_seconds": 1.8156993909942685,
+      "runner_seconds": 0.4151168039998083,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "a09a38d2164cee35eb784057b6d4fee1a5505b762f4db5c6f66a09548405de66",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T032000308972Z-gl46-depth-config-fixed",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 66.75
+    },
+    {
+      "run": "build/gl46-zink-20260922/resolve-regressions",
+      "selected": 755,
+      "recorded": 755,
+      "completed": 152,
+      "counts": {
+        "Crash": 2,
+        "Unrun": 603,
+        "Pass": 133,
+        "NotSupported": 17
+      },
+      "classifications": {
+        "unclassified": 755
+      },
+      "elapsed_seconds": 18.82119668800442,
+      "preparation_seconds": 1.5688918140003807,
+      "runner_seconds": 16.44255093599986,
+      "jobs": 2,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "69116e024ec9b7dcbd89e5c60555c02d735f4abb5cba26cd9c98ad0a8152c371",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T032119068255Z-gl46-resolve-regressions",
+      "guard_verdict": "process_failure",
+      "command_returncode": 1,
+      "peak_temperature_c": 65.25
+    },
+    {
+      "run": "build/gl46-zink-20260922/scissor-baseline",
+      "selected": 1,
+      "recorded": 1,
+      "completed": 1,
+      "counts": {
+        "Pass": 1
+      },
+      "classifications": {
+        "unclassified": 1
+      },
+      "elapsed_seconds": 8.084434257005341,
+      "preparation_seconds": 1.5296585420001065,
+      "runner_seconds": 5.884667261999766,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "6f14ae6799965c2b19e2c659f6f13f1d9f7e8948b7511570f95c106a8cd1a10b",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T032239651742Z-gl46-scissor-baseline",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 66.25
+    },
+    {
+      "run": "build/gl46-zink-20260922/resolve-regressions-fixed",
+      "selected": 755,
+      "recorded": 755,
+      "completed": 755,
+      "counts": {
+        "Pass": 678,
+        "NotSupported": 76,
+        "CompatibilityWarning": 1
+      },
+      "classifications": {
+        "unclassified": 755
+      },
+      "elapsed_seconds": 37.45594565899955,
+      "preparation_seconds": 1.7503475619960227,
+      "runner_seconds": 35.30125303400018,
+      "jobs": 2,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "69116e024ec9b7dcbd89e5c60555c02d735f4abb5cba26cd9c98ad0a8152c371",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T032405722078Z-gl46-resolve-regressions-fixed",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 69.75
+    },
+    {
+      "run": "build/gl46-zink-20260922/xfb-limits-fixed",
+      "selected": 39,
+      "recorded": 39,
+      "completed": 39,
+      "counts": {
+        "Pass": 38,
+        "Fail": 1
+      },
+      "classifications": {
+        "unclassified": 39
+      },
+      "elapsed_seconds": 10.263544421002734,
+      "preparation_seconds": 1.6055624040018301,
+      "runner_seconds": 7.713644366000153,
+      "jobs": 2,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "e1cc124ca0430edf0d5b18e2a1c11b48cb16bd9178f4674311a464f6ce21df31",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T032536928590Z-gl46-xfb-limits-fixed",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 73.75
+    },
+    {
+      "run": "build/gl46-zink-20260922/xfb-clip-fixed",
+      "selected": 39,
+      "recorded": 39,
+      "completed": 39,
+      "counts": {
+        "Pass": 39
+      },
+      "classifications": {
+        "unclassified": 39
+      },
+      "elapsed_seconds": 8.916835233998427,
+      "preparation_seconds": 1.6355568549988675,
+      "runner_seconds": 6.296112740999888,
+      "jobs": 2,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "e1cc124ca0430edf0d5b18e2a1c11b48cb16bd9178f4674311a464f6ce21df31",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T033141816684Z-gl46-xfb-clip-fixed",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 87.25
+    },
+    {
+      "run": "build/gl46-zink-20260922/clip-regressions",
+      "selected": 422,
+      "recorded": 422,
+      "completed": 422,
+      "counts": {
+        "Pass": 406,
+        "NotSupported": 16
+      },
+      "classifications": {
+        "unclassified": 422
+      },
+      "elapsed_seconds": 67.90783314400323,
+      "preparation_seconds": 1.6088249520034879,
+      "runner_seconds": 65.57439338899985,
+      "jobs": 2,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "f76d3f04f14f5edeb8d40d3091eae9a866b3cdaa4b282f2be87c999da25f1023",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T033631999754Z-gl46-clip-regressions",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 102.75
+    }
+  ],
+  "failing_cases": 32,
+  "limitation": "Development CTS results; configurations and repeated attempts remain separate, not certification.",
+  "coverage_counts": {
+    "MultipleAttempts": 1702,
+    "Pass": 14728,
+    "NotSupported": 3284
+  },
+  "latest_coverage_counts": {
+    "Pass": 16279,
+    "NotSupported": 3434,
+    "CompatibilityWarning": 1
+  },
+  "latest_coverage_limitation": "Latest recorded outcomes across supplied runs/builds/configurations, not one complete final-build conformance run. Earlier failures are retained."
+}

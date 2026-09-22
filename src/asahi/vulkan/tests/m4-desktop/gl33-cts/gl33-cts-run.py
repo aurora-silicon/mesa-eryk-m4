@@ -15,7 +15,7 @@ p.add_argument('--name',required=True)
 p.add_argument('--seconds',type=int,default=1500)
 p.add_argument('--renderer',choices=['m4','lavapipe'],default='m4')
 p.add_argument('--jobs',type=int,default=1)
-p.add_argument('--config',choices=['64','113','fbo-width','fbo-height'],default='64')
+p.add_argument('--config',choices=['64','113','256','fbo-width','fbo-height'],default='64')
 p.add_argument('--environment',type=Path,required=True)
 a=p.parse_args()
 if any(not c.startswith('KHR-'+a.api.upper()+'.') for c in a.cases.read_text().splitlines()):
@@ -33,7 +33,7 @@ args=[sys.executable,str(root/'tools/cts-bulk.py'),'--cases',str(a.cases),'--out
 if a.api=='gl46':
  for k in ('MESA_GL_VERSION_OVERRIDE','MESA_GLES_VERSION_OVERRIDE','MESA_GLSL_VERSION_OVERRIDE'):
   args+=['--unset-env',k]
-config={'64':(64,64,1,'window'),'113':(113,47,2,'window'),'fbo-width':(64,-1,3,'fbo'),'fbo-height':(-1,64,3,'fbo')}[a.config]
+config={'64':(64,64,1,'window'),'113':(113,47,2,'window'),'256':(256,256,1,'window'),'fbo-width':(64,-1,3,'fbo'),'fbo-height':(-1,64,3,'fbo')}[a.config]
 w,h,seed,surface=config
 options=['--deqp-log-flush=enable','--deqp-gl-context-type=egl','--deqp-egl-display-type=Wayland',f'--deqp-surface-type={surface}',f'--deqp-surface-width={w}',f'--deqp-surface-height={h}',f'--deqp-base-seed={seed}']
 if surface=='fbo': options += ['--deqp-gl-config-name=rgba8888d24s8']

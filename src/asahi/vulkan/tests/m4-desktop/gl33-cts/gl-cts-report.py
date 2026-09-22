@@ -9,6 +9,7 @@ from pathlib import Path
 p=argparse.ArgumentParser(description=__doc__)
 p.add_argument('--output',type=Path,required=True)
 p.add_argument('--catalog',type=Path,help='Frozen ordered catalog for cross-segment case indices')
+p.add_argument('--latest-summary',action='store_true',help='Also summarize the latest completed record per catalog case; supply runs oldest first. All attempts remain retained.')
 p.add_argument('runs',type=Path,nargs='+')
 a=p.parse_args(); a.output.mkdir(parents=True,exist_ok=True)
 records=[]; runs=[]; attempts_by_case=defaultdict(list)
@@ -32,6 +33,15 @@ if indices:
   coverage.append(dict(index=index,case=case,status=attempts[0]['status'] if len(attempts)==1 else ('Unrun' if not attempts else 'MultipleAttempts'),attempts=attempts))
  summary['coverage_counts']=dict(Counter(r['status'] for r in coverage))
  (a.output/'coverage.json').write_text(json.dumps(coverage,indent=2)+'\n')
+ if a.latest_summary:
+  latest=[]
+  for case,index in indices.items():
+   attempts=attempts_by_case[case]
+   latest.append(dict(attempts[-1],catalog_index=index) if attempts else
+                 dict(case=case,catalog_index=index,status='Unrun'))
+  summary['latest_coverage_counts']=dict(Counter(r['status'] for r in latest))
+  summary['latest_coverage_limitation']='Latest recorded outcomes across supplied runs/builds/configurations, not one complete final-build conformance run. Earlier failures are retained.'
+  (a.output/'latest-coverage.json').write_text(json.dumps(latest,indent=2)+'\n')
 (a.output/'summary.json').write_text(json.dumps(summary,indent=2)+'\n')
 (a.output/'results.json').write_text(json.dumps(records,indent=2)+'\n')
 (a.output/'failures.json').write_text(json.dumps(failures,indent=2)+'\n')
