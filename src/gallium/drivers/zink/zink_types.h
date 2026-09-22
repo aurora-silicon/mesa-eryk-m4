@@ -1428,8 +1428,10 @@ struct zink_screen {
    struct set mesh_pipeline_libs[2];
    simple_mtx_t mesh_pipeline_libs_lock[2];
 
+   void *desc_set_layouts_ctx;
    simple_mtx_t desc_set_layouts_lock;
    struct hash_table desc_set_layouts[ZINK_DESCRIPTOR_BASE_TYPES];
+   void *desc_pool_keys_ctx;
    simple_mtx_t desc_pool_keys_lock;
    struct set desc_pool_keys[ZINK_DESCRIPTOR_BASE_TYPES];
    struct util_live_shader_cache shaders;

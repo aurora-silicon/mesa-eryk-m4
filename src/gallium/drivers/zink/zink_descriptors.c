@@ -99,7 +99,7 @@ equals_descriptor_layout(const void *a, const void *b)
 }
 
 static struct zink_descriptor_layout *
-create_layout(struct zink_screen *screen, enum zink_descriptor_type type,
+create_layout_locked(struct zink_screen *screen, enum zink_descriptor_type type,
               VkDescriptorSetLayoutBinding *bindings, unsigned num_bindings,
               struct zink_descriptor_layout_key **layout_key)
 {
@@ -108,16 +108,29 @@ create_layout(struct zink_screen *screen, enum zink_descriptor_type type,
       return NULL;
 
    size_t bindings_size = num_bindings * sizeof(VkDescriptorSetLayoutBinding);
-   struct zink_descriptor_layout_key *k = ralloc_size(screen, sizeof(struct zink_descriptor_layout_key) + bindings_size);
+   struct zink_descriptor_layout_key *k = ralloc_size(screen->desc_set_layouts_ctx, sizeof(struct zink_descriptor_layout_key) + bindings_size);
    k->num_bindings = num_bindings;
    if (num_bindings) {
       k->bindings = (void *)(k + 1);
       memcpy(k->bindings, bindings, bindings_size);
    }
 
-   struct zink_descriptor_layout *layout = rzalloc(screen, struct zink_descriptor_layout);
+   struct zink_descriptor_layout *layout = rzalloc(screen->desc_set_layouts_ctx, struct zink_descriptor_layout);
    layout->layout = dsl;
    *layout_key = k;
+   return layout;
+}
+
+/* Push layouts bypass the cache but use the same allocator tree. */
+static struct zink_descriptor_layout *
+create_layout(struct zink_screen *screen, enum zink_descriptor_type type,
+              VkDescriptorSetLayoutBinding *bindings, unsigned num_bindings,
+              struct zink_descriptor_layout_key **layout_key)
+{
+   simple_mtx_lock(&screen->desc_set_layouts_lock);
+   struct zink_descriptor_layout *layout =
+      create_layout_locked(screen, type, bindings, num_bindings, layout_key);
+   simple_mtx_unlock(&screen->desc_set_layouts_lock);
    return layout;
 }
 
@@ -132,33 +145,24 @@ descriptor_util_layout_get(struct zink_screen *screen, enum zink_descriptor_type
       .bindings = bindings,
    };
 
+   /* Both cached and push layouts share an ralloc tree. Its ownership links
+    * must be protected during allocation as well as cache insertion. */
+   simple_mtx_lock(&screen->desc_set_layouts_lock);
    /* push descriptor layouts are unique and can't be reused */
    if (type != ZINK_DESCRIPTOR_TYPE_UNIFORMS) {
       hash = hash_descriptor_layout(&key);
-      simple_mtx_lock(&screen->desc_set_layouts_lock);
       struct hash_entry *he = _mesa_hash_table_search_pre_hashed(&screen->desc_set_layouts[type], hash, &key);
-      simple_mtx_unlock(&screen->desc_set_layouts_lock);
       if (he) {
          *layout_key = (void*)he->key;
+         simple_mtx_unlock(&screen->desc_set_layouts_lock);
          return he->data;
       }
    }
 
-   struct zink_descriptor_layout *layout = create_layout(screen, type, bindings, num_bindings, layout_key);
-   if (layout && type != ZINK_DESCRIPTOR_TYPE_UNIFORMS) {
-      simple_mtx_lock(&screen->desc_set_layouts_lock);
-      struct hash_entry *he = _mesa_hash_table_search_pre_hashed(&screen->desc_set_layouts[type], hash, &key);
-      if (he) {
-         VKSCR(DestroyDescriptorSetLayout)(screen->dev, layout->layout, NULL);
-         ralloc_free(layout);
-         *layout_key = (void*)he->key;
-         simple_mtx_unlock(&screen->desc_set_layouts_lock);
-         return he->data;
-      } else {
-         _mesa_hash_table_insert_pre_hashed(&screen->desc_set_layouts[type], hash, *layout_key, layout);
-      }
-      simple_mtx_unlock(&screen->desc_set_layouts_lock);
-   }
+   struct zink_descriptor_layout *layout = create_layout_locked(screen, type, bindings, num_bindings, layout_key);
+   if (layout && type != ZINK_DESCRIPTOR_TYPE_UNIFORMS)
+      _mesa_hash_table_insert_pre_hashed(&screen->desc_set_layouts[type], hash, *layout_key, layout);
+   simple_mtx_unlock(&screen->desc_set_layouts_lock);
    return layout;
 }
 
@@ -195,12 +199,12 @@ descriptor_util_pool_key_get(struct zink_screen *screen, enum zink_descriptor_ty
    uint32_t hash = 0;
    struct zink_descriptor_pool_key key;
    key.num_type_sizes = num_type_sizes;
+   simple_mtx_lock(&screen->desc_pool_keys_lock);
    /* push descriptor pools can't be shared/reused by other types */
    if (type != ZINK_DESCRIPTOR_TYPE_UNIFORMS) {
       key.layout = layout_key;
       memcpy(key.sizes, sizes, num_type_sizes * sizeof(VkDescriptorPoolSize));
       hash = hash_descriptor_pool_key(&key);
-      simple_mtx_lock(&screen->desc_pool_keys_lock);
       struct set_entry *he = _mesa_set_search_pre_hashed(&screen->desc_pool_keys[type], hash, &key);
       if (he) {
          simple_mtx_unlock(&screen->desc_pool_keys_lock);
@@ -208,7 +212,7 @@ descriptor_util_pool_key_get(struct zink_screen *screen, enum zink_descriptor_ty
       }
    }
 
-   struct zink_descriptor_pool_key *pool_key = rzalloc(screen, struct zink_descriptor_pool_key);
+   struct zink_descriptor_pool_key *pool_key = rzalloc(screen->desc_pool_keys_ctx, struct zink_descriptor_pool_key);
    pool_key->layout = layout_key;
    pool_key->num_type_sizes = num_type_sizes;
    assert(pool_key->num_type_sizes);
@@ -216,8 +220,8 @@ descriptor_util_pool_key_get(struct zink_screen *screen, enum zink_descriptor_ty
    if (type != ZINK_DESCRIPTOR_TYPE_UNIFORMS) {
       _mesa_set_add_pre_hashed(&screen->desc_pool_keys[type], hash, pool_key);
       pool_key->id = screen->desc_pool_keys[type].entries - 1;
-      simple_mtx_unlock(&screen->desc_pool_keys_lock);
    }
+   simple_mtx_unlock(&screen->desc_pool_keys_lock);
    return pool_key;
 }
 
@@ -1739,13 +1743,17 @@ zink_descriptors_deinit(struct zink_context *ctx)
 bool
 zink_descriptor_layouts_init(struct zink_screen *screen)
 {
+   /* Each lock owns a distinct allocator tree. Sharing the screen's ralloc
+    * parent would still race between layouts, pool keys, and display targets. */
+   screen->desc_set_layouts_ctx = ralloc_context(screen);
+   screen->desc_pool_keys_ctx = ralloc_context(screen);
    for (unsigned i = 0; i < ZINK_DESCRIPTOR_BASE_TYPES; i++) {
-      _mesa_hash_table_init(&screen->desc_set_layouts[i], screen, hash_descriptor_layout, equals_descriptor_layout);
-      _mesa_set_init(&screen->desc_pool_keys[i], screen, hash_descriptor_pool_key, equals_descriptor_pool_key);
+      _mesa_hash_table_init(&screen->desc_set_layouts[i], screen->desc_set_layouts_ctx, hash_descriptor_layout, equals_descriptor_layout);
+      _mesa_set_init(&screen->desc_pool_keys[i], screen->desc_pool_keys_ctx, hash_descriptor_pool_key, equals_descriptor_pool_key);
    }
    simple_mtx_init(&screen->desc_set_layouts_lock, mtx_plain);
    simple_mtx_init(&screen->desc_pool_keys_lock, mtx_plain);
-   return true;
+   return screen->desc_set_layouts_ctx && screen->desc_pool_keys_ctx;
 }
 
 /* called on screen destroy */
