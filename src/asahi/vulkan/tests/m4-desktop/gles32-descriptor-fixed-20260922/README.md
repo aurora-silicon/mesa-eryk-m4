@@ -1,5 +1,10 @@
 # Fixed descriptor build: initial EGL/GLES2 validation
 
+Later September 22 update: the user switched to a fresh GL46 rerun and the
+new compiler build was installed. This GLES campaign is now historical; do
+not execute its continuation command on the current installed libraries.
+See `../gl46-regression-20260922/` for the newer campaign.
+
 On September 22 the unchanged final descriptor-fixed release build completed
 segments [0,9), global configuration/case indices [0,20954): complete EGL and
 first GLES2 session. 19,287 Pass, 1,662 NotSupported, four QualityWarning and

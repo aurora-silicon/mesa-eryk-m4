@@ -1,5 +1,9 @@
 # AGX3 slot allocator CPU cost, September 22
 
+Later deployment update: the user requested a new GL46 rerun, so the
+optimization was subsequently installed for `../gl46-regression-20260922/`.
+The build-only status below describes the original measurement checkpoint.
+
 Source fix `6a6f211bc51`, replay output helper `14ff3904b9e`.
 Reuse of a retired scoreboard slot previously scanned all 33,282 dependency
 tokens, including 32,768 static TPS halves. Track the written TPS prefix;
