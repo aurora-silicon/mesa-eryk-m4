@@ -517,6 +517,14 @@ hk_GetPhysicalDeviceImageFormatProperties2(
         pImageFormatInfo->tiling == VK_IMAGE_TILING_LINEAR))
       return VK_ERROR_FORMAT_NOT_SUPPORTED;
 
+   /* Keep format queries consistent with sparseResidencyImage3D on chips
+    * where the slice-based sparse path has not been enabled.
+    */
+   if ((pImageFormatInfo->flags & VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT) &&
+       pImageFormatInfo->type == VK_IMAGE_TYPE_3D &&
+       !pdev->vk.supported_features.sparseResidencyImage3D)
+      return VK_ERROR_FORMAT_NOT_SUPPORTED;
+
    /* From the Vulkan 1.3.279 spec:
     *
     *    VUID-VkImageCreateInfo-flags-09403
@@ -775,7 +783,7 @@ hk_GetPhysicalDeviceImageFormatProperties2(
 
 static VkSparseImageFormatProperties
 hk_fill_sparse_image_fmt_props(enum pipe_format format, unsigned samples,
-                               VkImageAspectFlags aspects)
+                               VkImageAspectFlags aspects, bool is_3d)
 {
    /* Apple tile sizes are exactly 16KiB. The Vulkan standard block sizes are
     * sized to be exactly 64KiB. Fortunately, they correspond directly to the
@@ -794,7 +802,8 @@ hk_fill_sparse_image_fmt_props(enum pipe_format format, unsigned samples,
 
    return (VkSparseImageFormatProperties){
       .aspectMask = aspects,
-      .flags = VK_SPARSE_IMAGE_FORMAT_SINGLE_MIPTAIL_BIT,
+      .flags = VK_SPARSE_IMAGE_FORMAT_SINGLE_MIPTAIL_BIT |
+               (is_3d ? VK_SPARSE_IMAGE_FORMAT_NONSTANDARD_BLOCK_SIZE_BIT : 0),
       .imageGranularity = granularity,
    };
 }
@@ -848,7 +857,7 @@ hk_GetPhysicalDeviceSparseImageFormatProperties2(
    {
       props->properties = hk_fill_sparse_image_fmt_props(
          vk_format_to_pipe_format(pFormatInfo->format), pFormatInfo->samples,
-         aspects);
+         aspects, pFormatInfo->type == VK_IMAGE_TYPE_3D);
    }
 }
 
@@ -1297,11 +1306,11 @@ hk_GetDeviceImageMemoryRequirements(VkDevice device,
 
 static VkSparseImageMemoryRequirements
 hk_fill_sparse_image_memory_reqs(const struct ail_layout *layout,
-                                 VkImageAspectFlags aspects)
+                                 VkImageAspectFlags aspects, bool is_3d)
 {
    VkSparseImageFormatProperties sparse_format_props =
       hk_fill_sparse_image_fmt_props(layout->format, layout->sample_count_sa,
-                                     aspects);
+                                     aspects, is_3d);
 
    unsigned tail_level = layout->mip_tail_first_lod;
    assert(tail_level <= layout->levels);
@@ -1361,7 +1370,8 @@ hk_get_image_sparse_memory_requirements(
    vk_outarray_append_typed(VkSparseImageMemoryRequirements2, &out, reqs)
    {
       reqs->memoryRequirements =
-         hk_fill_sparse_image_memory_reqs(&image->planes[0].layout, aspects);
+         hk_fill_sparse_image_memory_reqs(&image->planes[0].layout, aspects,
+                                         image->vk.image_type == VK_IMAGE_TYPE_3D);
    };
 }
 

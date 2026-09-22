@@ -317,8 +317,9 @@ hk_get_device_features(
       .sparseResidencyImage2D = true,
       .sparseResidencyBuffer = true,
 
-      /* This needs investigation. */
-      .sparseResidencyImage3D = false,
+      /* M4 uses independently tiled depth slices and nonstandard 2D-shaped
+       * sparse blocks, matching the image layout and sparse bind path. */
+      .sparseResidencyImage3D = dev->chip == AGX_CHIP_G16G,
       .variableMultisampleRate = false,
       .inheritedQueries = true,
 
