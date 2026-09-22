@@ -116,3 +116,12 @@ the original 60-second bound, no other fatal status, no guard/memory fault,
 and explicitly coordinated SIGKILL peers. The timeout is terminal and retained;
 only canceled/interrupted/unrun cases continue after renderer preflight.
 This is a recorded time-bound failure, not evidence of a GPU hang.
+
+A second reviewed per-case timeout is
+`KHR-GLES31.core.tessellation_shader.vertex.vertex_ordering` (60.059 s),
+evidence 20260922T091109840068Z-gles32-plan-0056-r0. Guard: process-only
+failure, peak 96 C, minimum available RAM 7,283 MiB, unchanged zero OOM.
+Three coordinated SIGKILL peers are interruptions, not independent crashes.
+`--continue-reviewed-timeout EXACT_CASE` now takes explicitly inspected case
+names, retaining each timeout and applying all the same guard/memory checks;
+unknown cases still stop. The LOD-bias flag remains an alias for its exact case.
