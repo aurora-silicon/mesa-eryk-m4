@@ -125,3 +125,10 @@ Three coordinated SIGKILL peers are interruptions, not independent crashes.
 `--continue-reviewed-timeout EXACT_CASE` now takes explicitly inspected case
 names, retaining each timeout and applying all the same guard/memory checks;
 unknown cases still stop. The LOD-bias flag remains an alias for its exact case.
+
+The ES3.2 name of the same vertex-ordering test is separately reviewed:
+`KHR-GLES32.core.tessellation_shader.vertex.vertex_ordering`, 60.057 s in
+20260922T091826411006Z-gles32-plan-0058-r3. Process-only guard failure, peak
+93.5 C, minimum available RAM 7,019 MiB, OOM unchanged zero. Its two canceled
+SIGKILL peers remain interruptions. This exact case is explicitly listed in
+the continuation command; no wildcard or blanket timeout retry is enabled.
