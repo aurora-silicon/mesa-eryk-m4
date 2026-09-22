@@ -776,7 +776,11 @@ hk_get_device_properties(const struct agx_device *dev,
       /* Vulkan 1.0 limits */
       .maxImageDimension1D = 16384,
       .maxImageDimension2D = 16384,
-      .maxImageDimension3D = 16384,
+      /* G16G normalizes 3D coordinates against at most 2048 slices, even
+       * when the descriptor encodes a larger depth. Raw slice copies can
+       * address more, but advertising them as sampled volumes is invalid.
+       */
+      .maxImageDimension3D = dev->chip == AGX_CHIP_G16G ? 2048 : 16384,
       .maxImageDimensionCube = 16384,
       .maxImageArrayLayers = 2048,
       /* Reserve room for the largest software tail (15 one-byte texels) so

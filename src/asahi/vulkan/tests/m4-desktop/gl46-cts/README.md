@@ -164,3 +164,31 @@ The original tessellation vertex-ordering timeout passes alone in 21.52 s
 with the unchanged 60 s bound (`20260922T025347600490Z-gl46-tess-ordering-isolated`).
 The 3D framebuffer-layer failure still reproduces in isolation and remains
 open; byte readback passes while float-converting readback fails.
+
+## Native 3D sampler extent
+
+The final framebuffer-layer failure is a real advertised-capability error.
+A distinct-color-per-slice probe at depth 8192 samples slice floor(z/4), and
+at depth 16384 samples floor(z/8), while byte copies return the requested
+slice. Depths 192 and 2048 match exactly. G16G normalizes sampled coordinates
+against at most 2048 slices. Evidence:
+`20260922T031646213685Z-gl46-3d-depth-tags` (24 diagnostic mismatches).
+Apple also documents a maximum 3D dimension of 2048:
+https://developer.apple.com/metal/capabilities/
+
+Report 2048 for M4 maxImageDimension3D and use that same property for 3D
+image-format maximum extents and mip levels. 1D/2D and other chips retain
+their previous values. This corrects an unsupported claim; it does not
+remove the test or hide an execution failure. The original DSA case passes
+in 28.01 s (`20260922T031810639318Z-gl46-dsa-layer-fixed`). The diagnostic
+probe defaults to advertised limits; PROBE_OVER_LIMIT=1 explicitly enables
+negative oversized allocation experiments.
+
+All 181 remaining copy cases pass in 754.33 s, peak 93 C:
+`20260922T030347838553Z-gl46-copy-rest`. This completes recorded coverage of
+the frozen 19,714-case main list. Prior failures and peer cancellations
+remain in the retained attempts; these rechecks span multiple builds.
+
+Vulkan 3D image-format queries and RGBA8 3D striped blits: 394 Pass /
+30 NotSupported, no failures, 0.82 s runner time, peak 67.25 C
+(`20260922T031854579985Z-gl46-vk-3d-format-fixed`).
