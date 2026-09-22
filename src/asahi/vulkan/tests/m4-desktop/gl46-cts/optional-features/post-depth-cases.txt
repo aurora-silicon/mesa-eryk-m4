@@ -1,0 +1,2 @@
+KHR-GL46.post_depth_coverage_tests.PostDepthShader
+KHR-GL46.post_depth_coverage_tests.PostDepthSampleMask

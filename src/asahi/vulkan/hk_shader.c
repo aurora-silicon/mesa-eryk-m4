@@ -2609,6 +2609,7 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
       kill_psiz = key->vs.kill_psiz;
    } else if (sw_stage == MESA_SHADER_FRAGMENT) {
       shader->info.fs.writes_memory = nir->info.writes_memory;
+      shader->info.fs.post_depth_coverage = nir->info.fs.post_depth_coverage;
       shader->info.fs.interp.linear = nir->info.linear_varyings;
       shader->info.fs.interp.flat =
          ~(nir->info.linear_varyings | nir->info.perspective_varyings);

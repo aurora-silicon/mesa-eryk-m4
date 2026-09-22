@@ -1,0 +1,22 @@
+{
+  "selected": 2,
+  "recorded": 2,
+  "completed": 2,
+  "counts": {
+    "Pass": 2
+  },
+  "classifications": {
+    "unclassified": 2
+  },
+  "elapsed_seconds": 2.9127858049978386,
+  "preparation_seconds": 1.622136257996317,
+  "runner_seconds": 0.41626618200007215,
+  "jobs": 1,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "a3b7e378fe64fb667fdcc5e17dea050528d13adf9bbc717bf145104fde9d3ec0",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T044358633698Z-gl46-post-depth-first",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 72.25
+}

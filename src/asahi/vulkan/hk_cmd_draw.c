@@ -4128,7 +4128,8 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
    /* The main shader must not run tests if the epilog will. */
    bool nontrivial_force_early =
       fs && (fs->b.info.early_fragment_tests &&
-             (fs->b.info.writes_sample_mask || fs->info.fs.writes_memory));
+             (fs->b.info.writes_sample_mask || fs->info.fs.writes_memory ||
+              fs->info.fs.post_depth_coverage));
 
    /* A fragment shader that writes gl_SampleMask determines coverage itself;
     * alpha-to-coverage is then skipped, which Vulkan leaves to the

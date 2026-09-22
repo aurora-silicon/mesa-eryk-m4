@@ -184,6 +184,27 @@ run_tests_at_start(nir_shader *shader)
 
    nir_sample_mask_agx(&b, nir_imm_intN_t(&b, ALL_SAMPLES, 16),
                        nir_imm_intN_t(&b, ALL_SAMPLES, 16));
+
+   if (shader->info.fs.post_depth_coverage) {
+      /* Snapshot after the early tests, before any shader discard or sample
+       * mask output. Later reads must not observe those coverage changes.
+       * load_sample_mask is ordered against the coverage update, unlike the
+       * immutable rasterizer input returned by load_sample_mask_in.
+       */
+      nir_def *mask = nir_load_sample_mask(&b);
+      nir_foreach_block(block, impl) {
+         nir_foreach_instr_safe(instr, block) {
+            if (instr->type != nir_instr_type_intrinsic)
+               continue;
+            nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+            if (intr->intrinsic != nir_intrinsic_load_sample_mask_in)
+               continue;
+            b.cursor = nir_before_instr(instr);
+            nir_def_replace(&intr->def,
+                            nir_u2uN(&b, mask, intr->def.bit_size));
+         }
+      }
+   }
 }
 
 bool
@@ -198,7 +219,7 @@ agx_nir_lower_sample_mask(nir_shader *shader)
    if (shader->info.fs.early_fragment_tests) {
       /* run tests early, if we need testing */
       if (shader->info.fs.uses_discard || writes_zs ||
-          shader->info.writes_memory) {
+          shader->info.writes_memory || shader->info.fs.post_depth_coverage) {
 
          run_tests_at_start(shader);
       }
@@ -279,7 +300,7 @@ agx_nir_lower_sample_mask_deferred(nir_shader *shader)
    const bool early = shader->info.fs.early_fragment_tests;
    if (early) {
       if (shader->info.fs.uses_discard || writes_zs ||
-          shader->info.writes_memory)
+          shader->info.writes_memory || shader->info.fs.post_depth_coverage)
          run_tests_at_start(shader);
    }
 
