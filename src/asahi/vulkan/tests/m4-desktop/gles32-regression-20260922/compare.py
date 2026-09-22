@@ -49,7 +49,7 @@ for row in rows:
     if old['status'] != row['status']:
         changes.append(dict(before=old, after=row))
 report = dict(transitions=dict(transitions), new_coverage=dict(new_coverage),
-              changes=changes, current_completed=len(rows),
+              changes=changes, current_completed=sum(r['status'] not in ('Unrun', 'Interrupted') for r in rows),
               limitation='Historical baseline combines partial campaigns and explicitly selected hardware retests; it is not a complete single-build run. Unrun/Interrupted outcomes never replace completed outcomes.')
 (p / 'comparison.json').write_text(json.dumps(report, indent=2) + '\n')
 print(json.dumps(dict(transitions=report['transitions'], changes=len(changes), new_coverage=report['new_coverage']), indent=2))
