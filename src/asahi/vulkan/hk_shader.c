@@ -1773,19 +1773,18 @@ hk_native_robust_oob_alpha(nir_builder *b, nir_intrinsic_instr *load,
    return nir_bcsel(b, nir_ieq_imm(b, swizzle_a, AGX_CHANNEL_1), one, zero);
 }
 
-/* G16's qualified native offset forms cover immediate XYZ offsets and
- * non-array explicit/bias LOD. Lower other shapes with NIR's coordinate
- * arithmetic, preserving their LOD and array-layer semantics. */
+/* Preserve gradient offsets for native sampling. Coordinate arithmetic using
+ * the base-level size cannot express a texel offset at the mip selected by
+ * the gradients (or at both levels of a trilinear sample).
+ */
 static bool
-hk_lower_native_texture_offset(const nir_instr *instr, const void *data)
+hk_lower_native_texture_offset(const nir_instr *instr, UNUSED const void *data)
 {
    const nir_tex_instr *tex = nir_instr_as_tex(instr);
    const int offset = nir_tex_instr_src_index(tex, nir_tex_src_offset);
    if (offset < 0)
       return false;
    return tex->op == nir_texop_txf ||
-          (tex->is_array && tex->op == nir_texop_txd && !data &&
-           nir_tex_instr_src_index(tex, nir_tex_src_min_lod) < 0) ||
           (tex->op == nir_texop_tg4 &&
            (tex->is_shadow || !nir_src_is_const(tex->src[offset].src)));
 }
@@ -1935,9 +1934,6 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
       const nir_lower_tex_options options = {
          .lower_txf_offset = true,
          .lower_offset_filter = hk_lower_native_texture_offset,
-         /* View minima are added below; preserve native gradient offsets
-          * whenever that pass will supply a minimum. */
-         .callback_data = (features & HK_FEAT_IMAGE_VIEW_MIN_LOD) ? &features : NULL,
       };
       NIR_PASS(_, nir, nir_lower_tex, &options);
    }
@@ -1949,9 +1945,6 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
        * descriptor lowering consumes the texture-size queries we create. */
       const nir_lower_tex_options offsets = {
          .lower_offset_filter = hk_lower_native_texture_offset,
-         /* View minima are added below; preserve native gradient offsets
-          * whenever that pass will supply a minimum. */
-         .callback_data = (features & HK_FEAT_IMAGE_VIEW_MIN_LOD) ? &features : NULL,
       };
       NIR_PASS(_, nir, nir_lower_tex, &offsets);
    }
