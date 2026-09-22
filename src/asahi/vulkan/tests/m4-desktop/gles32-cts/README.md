@@ -132,3 +132,16 @@ The ES3.2 name of the same vertex-ordering test is separately reviewed:
 93.5 C, minimum available RAM 7,019 MiB, OOM unchanged zero. Its two canceled
 SIGKILL peers remain interruptions. This exact case is explicitly listed in
 the continuation command; no wildcard or blanket timeout retry is enabled.
+
+A genuine GPU timeout occurred in 20260922T093255497822Z-gles32-plan-0065-r1
+(job 4302223, retirement unproven). Guard peak was 102.75 C; evidence was
+retrieved and the watchdog rebooted the M4. New boot:
+1dcceb0f-e07c-4207-85fa-4f57a732c371; normal desktop restored. All four
+interrupted cases passed serially in guarded recovery probe
+20260922T093650172372Z-gles32-gpu-recovery-0065 (4 Pass, 9.74 s runner time).
+Kernel and common binary hashes match. This does not identify the cause or
+erase the original GPU incident. `incidents.json` preserves non-process guard
+faults even if interrupted cases later finish. An exact `--recovery-review`
+permits this one reviewed incident to resume; no general GPU-fault bypass.
+Remaining cases in segment 0065 use one worker; subsequent segments retain
+the original worker counts. Review/probe paths are in gpu-recovery-0065.json.

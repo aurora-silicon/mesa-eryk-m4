@@ -44,7 +44,9 @@ p.add_argument('--continue-lod-bias-timeouts', action='store_true',
     help='Retain reviewed KHR-GLES3 texture_lod_bias_all timeouts and resume only canceled/unrun peers')
 p.add_argument('--continue-reviewed-timeout', action='append', default=[], metavar='EXACT_CASE',
     help='Explicitly reviewed per-case timeouts to retain while resuming canceled/unrun peers')
+p.add_argument('--recovery-review', type=Path, help='Exact manually reviewed GPU incident with successful guarded post-reboot probe')
 a = p.parse_args()
+recovery_review = json.loads(a.recovery_review.read_text()) if a.recovery_review else None
 if a.continue_lod_bias_timeouts:
     a.continue_reviewed_timeout.append('KHR-GLES3.texture_lod_bias.texture_lod_bias_all')
 if a.mode == 'freeze':
@@ -127,6 +129,7 @@ if a.mode in ('report', 'status'):
         save(a.campaign/'results.json', records)
         save(a.campaign/'attempts.json', attempts)
         save(a.campaign/'summary.json', dict(**summary, runs=runs))
+        save(a.campaign/'incidents.json', [r for r in runs if r['guard_verdict'] not in ('pass','process_failure')])
         bad = [r for r in records if r['status'] not in ('Pass','NotSupported','CompatibilityWarning','QualityWarning','Unrun','Interrupted')]
         save(a.campaign/'failures.json', bad)
         grouped = []
@@ -170,6 +173,23 @@ def reviewed_pending(run):
     if summary['guard_verdict'] == 'pass':
         assert all(r['status'] not in ('Unrun','Interrupted','Crash','Timeout','HarnessError') for r in rows)
         return []
+    if recovery_review and summary['guard_verdict'] == 'gpu_timeout' and summary['evidence'] == recovery_review['incident_evidence']:
+        probe_run = Path(recovery_review['recovery_run'])
+        probe = json.loads((probe_run/'summary.json').read_text())
+        probe_rows = json.loads((probe_run/'results.json').read_text())
+        old = json.loads((Path(summary['evidence'])/'target-before.json').read_text())
+        new = json.loads((Path(probe['evidence'])/'target-before.json').read_text())
+        assert probe['guard_verdict'] == 'pass' and probe['jobs'] == 1
+        assert old['boot_id'] != new['boot_id'] == recovery_review['new_boot']
+        assert old['kernel'] == new['kernel']
+        assert all(old['files'][k] == new['files'][k] for k in old['files'].keys() & new['files'].keys())
+        assert {r['case'] for r in probe_rows} == {r['case'] for r in rows if r['status'] == 'Interrupted'}
+        assert all(r['status'] == 'Pass' for r in probe_rows)
+        assert all(r['status'] in ('Pass','Fail','NotSupported','QualityWarning','CompatibilityWarning','Unrun','Interrupted') for r in rows)
+        pending = [r for r in rows if r['status'] in ('Unrun','Interrupted')]
+        save(run/'continuation-review.json', dict(reason=recovery_review['reason'],
+            recovery_review=recovery_review, terminal_crashes=[], pending=[r['case'] for r in pending]))
+        return pending
     assert (a.continue_compiler_aborts or a.continue_batch_deadlines or a.continue_reviewed_timeout) and summary['guard_verdict'] == 'process_failure', 'Needs explicit review'
     evidence = Path(summary['evidence'])/'remote'
     memory = [json.loads(line) for line in (evidence/'cts/memory.jsonl').read_text().splitlines()]
@@ -254,7 +274,7 @@ for segment in catalog['segments'][a.first:a.last]:
         cmd = [sys.executable, str(ROOT/'tools/cts-bulk.py'), '--cases', str(folder/'cases.txt'),
             '--output', str(folder/'run'), '--name', f"gles32-plan-{segment['index']:04d}-r{ordinal}",
             '--binary', catalog['binary'], '--runner', str(ROOT/'reference/deqp-runner/target/aarch64-unknown-linux-gnu/release/deqp-runner'),
-            '--jobs', str(segment['jobs']), '--runner-seconds', str(a.seconds),
+            '--jobs', str(1 if recovery_review and segment['index'] == recovery_review['segment'] else segment['jobs']), '--runner-seconds', str(a.seconds),
             '--case-timeout', '60', '--cpu-max-khz', '4104000', '--headless']
         for opt in options + ['--deqp-egl-display-type=x11', '--deqp-log-flush=enable']:
             cmd += ['--deqp-arg='+opt]

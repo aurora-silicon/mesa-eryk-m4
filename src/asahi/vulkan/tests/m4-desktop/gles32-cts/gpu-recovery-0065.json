@@ -1,0 +1,9 @@
+{
+  "segment": 65,
+  "incident_evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T093255497822Z-gles32-plan-0065-r1",
+  "recovery_evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T093650172372Z-gles32-gpu-recovery-0065",
+  "recovery_run": "build/gles32-zink-20260922/full/gpu-recovery-0065/run",
+  "old_boot": "4955efa3-462c-40e7-b5a4-00c411f36b60",
+  "new_boot": "1dcceb0f-e07c-4207-85fa-4f57a732c371",
+  "reason": "Watchdog reboot restored normal desktop. All four interrupted cases pass serially under guard on unchanged kernel and common binary hashes. Cause remains ambiguous; preserve original GPU incident and use one worker for remaining segment only."
+}
