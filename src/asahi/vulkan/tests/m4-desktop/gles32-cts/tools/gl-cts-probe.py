@@ -51,11 +51,11 @@ subprocess.run(args,cwd=root,env=env,check=True,timeout=20)
 fw.check_guard(out,boot)
 if a.case:
  case=a.case
- assert case.startswith('KHR-NoContext.')
+ assert case.startswith(('KHR-NoContext.', 'CTS-Configs.'))
  direct=[a if not a.startswith('--deqp-case=') else '--deqp-case='+case for a in args]
  direct=[a if not a.startswith('--deqp-log-filename=') else '--deqp-log-filename='+str(out/'no-context.qpa') for a in direct]
  subprocess.run(direct,cwd=root,env=env,check=True,timeout=20)
- print('PASS: identified Zink and completed no-default-context case')
+ print('PASS: identified Zink and completed explicit auxiliary case selection')
  raise SystemExit(0)
 (out/'plan').mkdir()
 result=subprocess.run([str(root/'cts-runner'),'--type='+a.api,'--summary','--logdir='+str(out/'plan')],cwd=root,env=env,check=False,timeout=20)

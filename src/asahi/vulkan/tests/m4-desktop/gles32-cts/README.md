@@ -41,3 +41,20 @@ The result collector now records Unrun when setup never created runner.json.
 Working evidence: `build/gles32-zink-20260922/full`. These are development
 results, not a Khronos certification claim. Running state and final results
 will be recorded here once the selected sessions complete.
+
+
+All 15 CTS-Configs inventory checks pass. Their complete QPA and binary
+hashes are retained here. The first two EGL partial-update failures and shader
+failures are preserved; this task runs tests without changing the driver.
+
+After inspecting the first AGX compiler-rejection/Zink `pipeline` assertion,
+`--continue-compiler-aborts` may recognize that exact userspace failure again.
+Each fatal attempt still stops all scheduling and saves its evidence. The
+controller requires a process-only failure verdict, no GPU/display/thermal
+fault, no OOM or memory-floor crossing, and the known assertion plus compiler
+rejection in every aborting worker log. It records a per-attempt review before
+starting a fresh guarded continuation. Only unrun/interrupted cases and
+identified SIGKILL-canceled peers are resumed; the SIGABRT test remains Crash.
+Unknown assertions, timeouts, GPU faults, sensor failures, memory pressure and
+setup errors stop the controller for inspection. No failed test is retried.
+Raw attempts and interpreted latest coverage are separate report files.
