@@ -4331,7 +4331,8 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
 
       for (unsigned rt = 0; rt < ARRAY_SIZE(dyn->cal.color_map); ++rt) {
          int map = dyn->cal.color_map[rt];
-         key.epilog.remap[rt] = map == MESA_VK_ATTACHMENT_UNUSED ? -1 : map;
+         key.epilog.remap[rt] = map == MESA_VK_ATTACHMENT_UNUSED ? -1 :
+                               key.epilog.link.broadcast_rt0 ? 0 : map;
       }
 
       if (dyn->ms.alpha_to_one_enable || dyn->ms.alpha_to_coverage_enable ||

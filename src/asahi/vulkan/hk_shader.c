@@ -162,6 +162,7 @@ hk_physical_device_compiler_flags(const struct hk_physical_device *pdev)
       flags |= (uint64_t)debug_get_bool_option("AGX_NATIVE_PRESERVE_BRANCHES", false) << 38;
       flags |= (uint64_t)debug_get_bool_option("AGX_NATIVE_MEMORY_PREAMBLE", false) << 40;
       flags |= (uint64_t)debug_get_bool_option("HK_NATIVE_BRANCH_SCALED", false) << 41;
+      flags |= (uint64_t)debug_get_bool_option("HK_NATIVE_COALESCE_BROADCAST", false) << 42;
    }
    return flags;
 }
@@ -2782,6 +2783,8 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
       }
 
       if (agx_chip_uses_hal200_ioto(dev->dev.chip)) {
+         if (debug_get_bool_option("HK_NATIVE_COALESCE_BROADCAST", false))
+            NIR_PASS(_, nir, agx_nir_coalesce_fragcolor);
          NIR_PASS(_, nir, agx_nir_lower_fs_output_to_epilog_g17p,
                   &shader->info.fs.epilog_key);
       } else {

@@ -1,0 +1,30 @@
+{
+  "target": "J514S T6030 M3 Pro",
+  "evidence": "/root/m3-apps/0ad-120-broadcast-mrt",
+  "result": {
+    "returncode": 0,
+    "seconds": 0.1136320399999704
+  },
+  "identity": {
+    "environment": {
+      "__EGL_VENDOR_LIBRARY_FILENAMES": "/opt/asahi-m3-experiments/0ad-zink-present/egl.json",
+      "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+      "GALLIUM_DRIVER": "zink",
+      "HK_DEBUG_LOG": "0",
+      "VK_DRIVER_FILES": "/opt/asahi-m3-experiments/0ad-broadcast/asahi.json",
+      "AGX_MESA_DEBUG": "nopromote",
+      "LIBGL_DRIVERS_PATH": "/opt/asahi-m3-experiments/0ad-zink-present/lib/dri",
+      "LD_LIBRARY_PATH": "/opt/asahi-m3-experiments/0ad-zink-present/lib:/opt/asahi-m3-wayland/lib",
+      "HK_NATIVE_COALESCE_BROADCAST": "true",
+      "MESA_SHADER_CACHE_DISABLE": "true"
+    },
+    "sha256": {
+      "/root/m3-gpu-tools/desktop/gl-broadcast-probe": "665229b196ebcf762dd4a65d318bea64b6045e19e0bade1c291298caef1fe7c8",
+      "/opt/asahi-m3-experiments/0ad-broadcast/libvulkan_asahi.so": "cfa616db57a4b344f81fb81995893ebd82eebac33885ab458104ac2e8a5ddd47",
+      "/opt/asahi-m3-experiments/0ad-broadcast/asahi.json": "4b39cbd1a9a0e0a24f2a4ecfab5dd000e2135b32fdfd3c7bec0b1655a5140ac9",
+      "/root/m3-gpu-tools/desktop/gl-broadcast-probe.py": "108203d20935ce5b009b6e4d416e6bddcb0cc727278991eb257720a8c63a43cd"
+    }
+  },
+  "guard_phase": "complete",
+  "output": "Renderer: zink Vulkan 1.4(Apple M3 Pro (G15S B1) (MESA_HONEYKRISP))\nvariant=0 mapping=0 bad=0\nvariant=0 mapping=1 bad=0\nvariant=0 mapping=2 bad=0\nvariant=1 mapping=0 bad=0\nvariant=1 mapping=1 bad=0\nvariant=1 mapping=2 bad=0\nvariant=2 mapping=0 bad=0\nvariant=2 mapping=1 bad=0\nvariant=2 mapping=2 bad=0\nPASS: eight colour targets, distinct-output rejection, reversed/sparse mapping and discard\n"
+}

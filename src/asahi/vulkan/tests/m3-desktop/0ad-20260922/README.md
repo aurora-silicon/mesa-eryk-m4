@@ -45,10 +45,35 @@ Mesa path: `vkQueuePresentKHR` receives the original wait semaphore and the
 common Vulkan WSI implementation provides display synchronization. No wait
 semaphore, rendering fence or kernel retirement check is discarded.
 
-Matched EGL/GBM/Gallium builds differing by this switch measure48.85FPS before
-and78.61FPS after on the unchanged3024x1964 Acropolis Bay scene. Actual mapped
+Matched EGL/GBM/Gallium builds differing by this switch measure 48.85 FPS before
+and 78.61 FPS after on the unchanged 3024x1964 Acropolis Bay scene. Actual mapped
 library hashes are retained in `zink-presentation.json`. Both bounded probes
 complete without GPU faults; the optimized screenshot shows terrain, buildings,
-foliage and shadows. This is a short starting-scene comparison, not a120FPS
+foliage and shadows. This is a short starting-scene comparison, not a 120 FPS
 result or broad presentation-compliance claim. The normal desktop installation
 remains separate from these candidate libraries during the investigation.
+
+## Identical colour export coalescing
+
+`HK_NATIVE_COALESCE_BROADCAST=true` recovers the broadcast ABI when all eight
+colour locations store the same full vector, once each in the same block,
+without an intervening side effect. Partial, differing, dual-source and
+control-flow-split outputs remain untouched. Honeykrisp remaps each active
+attachment to the shared export; unused attachments remain disabled. Cache
+bit 42 separates the option, which remains off by default.
+
+The host `asahi-fragcolor` test covers acceptance and six rejection cases.
+The J514S surfaceless Zink oracle passes nine full-image comparisons: equal
+and distinct outputs plus discard, with identity, reversed and sparse output
+mappings. Probe source and the bounded wrapper are retained beside this file.
+All guards retain the M3 watchdog and five-channel thermal policy. Raw evidence
+is `/root/m3-apps/0ad-120-broadcast-mrt`; `broadcast-oracle.json` identifies
+the binaries and retains the output.
+
+Selected simple game shaders fall from at least 73 to 24–40 half-registers.
+The more complex material shaders still use up to 104. Live uncapped samples
+measure 80.59 FPS with coalescing and 85.57 FPS with additional lossless
+framebuffer compression. The latter 3024x1964 screenshot was inspected: terrain,
+structures, foliage and shadows remain present. These short samples are not
+120 FPS or a broad compatibility claim. The normal desktop libraries are still
+separate from the experimental prefix.
