@@ -275,7 +275,9 @@ hk_CreateSampler(VkDevice device,
          (info->flags & VK_SAMPLER_CREATE_NON_SEAMLESS_CUBE_MAP_BIT_EXT ? HK_MINMAX_SEAMFUL : 0) |
          (native_reduction << HK_MINMAX_MODE_SHIFT) |
          ((info->anisotropyEnable ? util_next_power_of_two(MAX2(info->maxAnisotropy, 1)) : 1)
-          << HK_MINMAX_ANISOTROPY_SHIFT);
+          << HK_MINMAX_ANISOTROPY_SHIFT) |
+         ((uint32_t)translate_texsamp_compare_op(info->compareOp)
+          << HK_MINMAX_COMPARE_SHIFT);
       nearest = *info;
       nearest.magFilter = nearest.minFilter = VK_FILTER_NEAREST;
       nearest.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;

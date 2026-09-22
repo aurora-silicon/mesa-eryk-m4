@@ -1142,7 +1142,77 @@ has_custom_border(nir_builder *b, nir_tex_instr *tex)
 }
 
 static bool
-lower(nir_builder *b, nir_tex_instr *tex, UNUSED void *_data)
+lower_shadow_gather_border(nir_builder *b, nir_tex_instr *tex,
+                           bool software_sampler)
+{
+   if (tex->op != nir_texop_tg4)
+      return false;
+
+   b->cursor = nir_after_instr(&tex->instr);
+   nir_def *has_custom = has_custom_border(b, tex);
+   nir_tex_instr *shadow =
+      nir_instr_as_tex(nir_instr_clone(b->shader, &tex->instr));
+   nir_builder_instr_insert(b, &shadow->instr);
+
+   nir_push_if(b, has_custom);
+   nir_def *raw[2];
+   for (unsigned i = 0; i < 2; ++i) {
+      nir_tex_instr *tap =
+         nir_instr_as_tex(nir_instr_clone(b->shader, &tex->instr));
+      nir_builder_instr_insert(b, &tap->instr);
+      tap->is_shadow = tap->is_new_style_shadow = false;
+      nir_tex_instr_remove_src(tap,
+         nir_tex_instr_src_index(tap, nir_tex_src_comparator));
+      if (i == 0)
+         tap->backend_flags |= AGX_TEXTURE_FLAG_CLAMP_TO_0;
+      raw[i] = nir_trim_vector(b, &tap->def, 4);
+   }
+
+   /* Compare operations lose the information needed to distinguish border
+    * taps from interior taps. Probe the unfiltered depth values with both
+    * hardware borders, then replace only border comparisons.
+    */
+   nir_def *border = nir_channel(b, query_custom_border(b, tex), 0);
+   nir_def *ref =
+      tex->src[nir_tex_instr_src_index(tex, nir_tex_src_comparator)].src.ssa;
+   ref = nir_f2fN(b, ref, border->bit_size);
+   nir_def *texture =
+      tex->src[nir_tex_instr_src_index(tex, nir_tex_src_texture_deref)].src.ssa;
+   nir_def *word = nir_load_texture_descriptor_word_agx(b, texture);
+   nir_def *normalized = nir_ieq_imm(
+      b, nir_ubitfield_extract_imm(b, word, 13, 3), AGX_TEXTURE_TYPE_UNORM);
+   ref = nir_bcsel(b, normalized, nir_fsat(b, ref), ref);
+   border = nir_bcsel(b, normalized, nir_fsat(b, border), border);
+
+   nir_def *sampler =
+      tex->src[nir_tex_instr_src_index(tex, nir_tex_src_sampler_deref)].src.ssa;
+   nir_def *state = nir_load_sampler_descriptor_agx(b, sampler);
+   /* Gen4, HAL200 and Gen5 all store the comparison function at bits 39:41. */
+   nir_def *func = nir_ubitfield_extract_imm(
+      b, nir_channel(b, state, 1),
+      software_sampler ? HK_MINMAX_COMPARE_SHIFT : 7, 3);
+   nir_def *comparisons[] = {
+      nir_fge(b, border, ref), nir_fge(b, ref, border),
+      nir_flt(b, ref, border), nir_flt(b, border, ref),
+      nir_feq(b, ref, border), nir_fneu(b, ref, border),
+      nir_imm_true(b), nir_imm_false(b),
+   };
+   nir_def *pass = comparisons[AGX_COMPARE_FUNC_NEVER];
+   for (int i = AGX_COMPARE_FUNC_ALWAYS; i >= 0; --i)
+      pass = nir_bcsel(b, nir_ieq_imm(b, func, i), comparisons[i], pass);
+   nir_def *result = nir_bcsel(b, nir_ieq(b, raw[0], raw[1]),
+      nir_trim_vector(b, &shadow->def, 4), nir_b2fN(b, pass, tex->def.bit_size));
+   if (tex->is_sparse)
+      result = nir_vec5(b, nir_channel(b, result, 0), nir_channel(b, result, 1),
+                       nir_channel(b, result, 2), nir_channel(b, result, 3),
+                       nir_channel(b, &shadow->def, 4));
+   nir_pop_if(b, NULL);
+   nir_def_replace(&tex->def, nir_if_phi(b, result, &shadow->def));
+   return true;
+}
+
+static bool
+lower(nir_builder *b, nir_tex_instr *tex, void *data)
 {
    if (tex->backend_flags & AGX_TEXTURE_FLAG_PLAIN_SAMPLER) {
       tex->backend_flags &= ~AGX_TEXTURE_FLAG_PLAIN_SAMPLER;
@@ -1151,9 +1221,8 @@ lower(nir_builder *b, nir_tex_instr *tex, UNUSED void *_data)
    if (!nir_tex_instr_need_sampler(tex) || nir_tex_instr_is_query(tex))
       return false;
 
-   /* XXX: this is a really weird edge case, is this even well-defined? */
    if (tex->is_shadow)
-      return false;
+      return lower_shadow_gather_border(b, tex, *(bool *)data);
 
    b->cursor = nir_after_instr(&tex->instr);
    nir_def *has_custom = has_custom_border(b, tex);
@@ -1225,9 +1294,9 @@ lower(nir_builder *b, nir_tex_instr *tex, UNUSED void *_data)
 }
 
 static bool
-agx_nir_lower_custom_border(nir_shader *nir)
+agx_nir_lower_custom_border(nir_shader *nir, bool software_sampler)
 {
-   return nir_shader_tex_pass(nir, lower, nir_metadata_none, NULL);
+   return nir_shader_tex_pass(nir, lower, nir_metadata_none, &software_sampler);
 }
 
 /* R64 integer storage views use native RG32 descriptors. Keep atomics in
@@ -1957,7 +2026,9 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
 
    if (((features & HK_FEAT_CUSTOM_BORDER) || agx_native_graphics(&dev->dev)) &&
        !HK_PERF(dev, NOBORDER)) {
-      NIR_PASS(_, nir, agx_nir_lower_custom_border);
+      NIR_PASS(_, nir, agx_nir_lower_custom_border,
+               agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) &&
+                  (features & HK_FEAT_IMAGE_VIEW_MIN_LOD));
    }
 
    if (agx_chip_uses_g15_g16_shader_abi(dev->dev.chip))
