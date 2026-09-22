@@ -21,3 +21,10 @@ Further retests and any continuation must preserve this incident and failures.
 The seven image failures also all Pass in the serial post-reboot recheck on
 unchanged drivers. This does not erase their original Fail outcomes or explain
 the GPU timeout. A separate repeat of the exact2500-case parallel batch follows.
+
+Exact2500-case four-worker repeat after reboot:2466Pass/34NS, guardPass,
+peak91C,27.34s. Evidence20260922T161530848091Z-gles32-plan-0022-r0.
+Coverage continuation PID1887131 runs original unrun/interrupted peers only;
+segment22 uses one worker under explicit recovery-review-0022.json. Subsequent
+segments retain the original plan. Original seven Fail outcomes remain in the
+main campaign; passing diagnostic rechecks are separate. GPU incident OPEN.
