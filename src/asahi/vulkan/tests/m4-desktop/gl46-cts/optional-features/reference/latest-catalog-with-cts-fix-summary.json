@@ -1,0 +1,9 @@
+{
+  "counts": {
+    "Pass": 18106,
+    "NotSupported": 1607,
+    "CompatibilityWarning": 1
+  },
+  "catalog_cases": 19714,
+  "note": "Latest outcomes across builds/configurations and original/corrected CTS variants; not a full final-build conformance run. Original upstream-CTS snapshot retained separately."
+}

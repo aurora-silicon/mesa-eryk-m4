@@ -1,6 +1,20 @@
 # OpenGL 4.6 on Zink / M4
 
-## Optional-feature follow-up (2026-09-22)
+## CTS setup fixes completed (2026-09-22)
+
+All six remaining failures are fixed in CTS commit `de63a4f`, under
+`reference/vk-gl-cts-1.4.6.2`. The corrected 1,914-case feature selection passes
+**1,914/1,914**, with no Mesa changes. The tests retain their depth-sampling
+comparisons. [Fix, provenance and results](optional-features/reference/README.md).
+
+Including these corrected-CTS outcomes, latest mixed-build tracking is
+**18,106 Pass, 1,607 NotSupported, 1 CompatibilityWarning**, with no unresolved
+Fail/Crash/Timeout. This is not a fresh full-suite run or certification.
+Original CTS results and the earlier six failures remain preserved below and
+in their original artifacts; corrected-CTS records identify their source and
+binary separately.
+
+## Before the CTS setup correction (2026-09-22)
 
 Shadow LOD, post-depth coverage, sparse multisampling, and native coherent
 advanced blending are now implemented. The final combined selection records

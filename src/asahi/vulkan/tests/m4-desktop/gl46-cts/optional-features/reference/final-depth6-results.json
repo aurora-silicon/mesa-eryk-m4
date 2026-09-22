@@ -1,0 +1,98 @@
+[
+  {
+    "index": 0,
+    "case": "KHR-GL46.sparse_texture_clamp_tests.SparseTextureClampLookupColor_texture_2d_depth_component16",
+    "boot_id": "4955efa3-462c-40e7-b5a4-00c411f36b60",
+    "runner_status": "Pass",
+    "seconds": 0.17085937,
+    "eligibility": {
+      "case": "KHR-GL46.sparse_texture_clamp_tests.SparseTextureClampLookupColor_texture_2d_depth_component16",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 1,
+    "case": "KHR-GL46.sparse_texture_clamp_tests.SparseTextureClampLookupColor_texture_2d_array_depth_component16",
+    "boot_id": "4955efa3-462c-40e7-b5a4-00c411f36b60",
+    "runner_status": "Pass",
+    "seconds": 0.6035141,
+    "eligibility": {
+      "case": "KHR-GL46.sparse_texture_clamp_tests.SparseTextureClampLookupColor_texture_2d_array_depth_component16",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 2,
+    "case": "KHR-GL46.sparse_texture_clamp_tests.SparseTextureClampLookupColor_texture_cube_map_depth_component16",
+    "boot_id": "4955efa3-462c-40e7-b5a4-00c411f36b60",
+    "runner_status": "Pass",
+    "seconds": 0.418582,
+    "eligibility": {
+      "case": "KHR-GL46.sparse_texture_clamp_tests.SparseTextureClampLookupColor_texture_cube_map_depth_component16",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c1.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 3,
+    "case": "KHR-GL46.sparse_texture_clamp_tests.SparseTextureClampLookupColor_texture_cube_map_array_depth_component16",
+    "boot_id": "4955efa3-462c-40e7-b5a4-00c411f36b60",
+    "runner_status": "Pass",
+    "seconds": 0.867152,
+    "eligibility": {
+      "case": "KHR-GL46.sparse_texture_clamp_tests.SparseTextureClampLookupColor_texture_cube_map_array_depth_component16",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 4,
+    "case": "KHR-GL46.sparse_texture_clamp_tests.SparseTextureClampLookupColor_texture_1d_depth_component16",
+    "boot_id": "4955efa3-462c-40e7-b5a4-00c411f36b60",
+    "runner_status": "Pass",
+    "seconds": 0.12461799,
+    "eligibility": {
+      "case": "KHR-GL46.sparse_texture_clamp_tests.SparseTextureClampLookupColor_texture_1d_depth_component16",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c1.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 5,
+    "case": "KHR-GL46.sparse_texture_clamp_tests.SparseTextureClampLookupColor_texture_1d_array_depth_component16",
+    "boot_id": "4955efa3-462c-40e7-b5a4-00c411f36b60",
+    "runner_status": "Pass",
+    "seconds": 0.7445617,
+    "eligibility": {
+      "case": "KHR-GL46.sparse_texture_clamp_tests.SparseTextureClampLookupColor_texture_1d_array_depth_component16",
+      "classification": "unclassified",
+      "rule": "bare case list"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c1.r1.qpa",
+    "worker_exit": "exit status: 0"
+  }
+]

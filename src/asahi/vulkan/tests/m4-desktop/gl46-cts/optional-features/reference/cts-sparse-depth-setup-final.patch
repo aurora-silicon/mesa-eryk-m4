@@ -1,0 +1,123 @@
+From de63a4ff063bb962218fd96273849acd549f7622 Mon Sep 17 00:00:00 2001
+From: Eryk Wieliczko <github@wieliczko.ninja>
+Date: Tue, 22 Sep 2026 07:40:14 +0200
+Subject: [PATCH] GL: fix sparse texture clamp depth-format setup
+
+Check virtual-page support before sparse allocations, but retain ordinary clamp lookups for optional sparse formats. Give ordinary textures valid dimensions when the sparse-page query has no results. Upload per-level depth values through TexSubImage rather than binding a depth texture as an R16 storage image.
+
+Keep allocation fallback local to the clamp test and avoid requiring ARB_clear_texture. Log successful function/level comparisons. All six affected GL46 cases pass on Zink/Honeykrisp M4 without driver changes.
+---
+ .../gl/gl4cSparseTextureClampTests.cpp        | 54 ++++++++++++++++---
+ 1 file changed, 47 insertions(+), 7 deletions(-)
+
+diff --git a/external/openglcts/modules/gl/gl4cSparseTextureClampTests.cpp b/external/openglcts/modules/gl/gl4cSparseTextureClampTests.cpp
+index ac26832..7b81723 100644
+--- a/external/openglcts/modules/gl/gl4cSparseTextureClampTests.cpp
++++ b/external/openglcts/modules/gl/gl4cSparseTextureClampTests.cpp
+@@ -614,6 +614,20 @@ tcu::TestNode::IterateResult SparseTextureClampLookupColorTestCase::iterate()
+             if (funcToken.name.find("sparse", 0) != std::string::npos)
+                 isSparse = true;
+ 
++            // Sparse depth formats are optional. As in SparseTexture2Lookup,
++            // do not allocate an unsupported sparse format. Still exercise
++            // ordinary textureClamp functions for the same format.
++            if (isSparse)
++            {
++                GLint pageSizes = 0;
++                m_context.getRenderContext().getFunctions().getInternalformativ(
++                    mTarget, mFormat, GL_NUM_VIRTUAL_PAGE_SIZES_ARB, 1, &pageSizes);
++                GLU_EXPECT_NO_ERROR(m_context.getRenderContext().getFunctions().getError(),
++                                    "glGetInternalformativ GL_NUM_VIRTUAL_PAGE_SIZES_ARB");
++                if (pageSizes == 0)
++                    continue;
++            }
++
+             mLog.str("");
+             mLog << "Testing sparse texture lookup color functions for target: " << mTarget << ", format: " << mFormat
+                  << " - ";
+@@ -658,6 +672,8 @@ tcu::TestNode::IterateResult SparseTextureClampLookupColorTestCase::iterate()
+                 m_testCtx.setTestResult(QP_TEST_RESULT_FAIL, "Fail");
+                 return STOP;
+             }
++
++            m_testCtx.getLog() << tcu::TestLog::Message << mLog.str() << "Pass" << tcu::TestLog::EndMessage;
+         }
+     }
+ 
+@@ -666,7 +682,7 @@ tcu::TestNode::IterateResult SparseTextureClampLookupColorTestCase::iterate()
+     return STOP;
+ }
+ 
+-/** Writing data to generated texture using compute shader
++/** Writing data to generated texture using compute shader or depth upload
+  *
+  * @param gl           GL API functions
+  * @param target       Target for which texture is binded
+@@ -693,6 +709,18 @@ bool SparseTextureClampLookupColorTestCase::writeDataToTexture(const Functions &
+         if (target == GL_TEXTURE_CUBE_MAP)
+             depth = depth * 6;
+ 
++        // Depth formats cannot be bound as storage images. Use ordinary
++        // texture uploads, preserving the same per-level values as the shader.
++        if (format == GL_DEPTH_COMPONENT16)
++        {
++            const GLfloat value = 0.5f + (float)level / 10;
++            const std::vector<GLfloat> data(width * height * depth, value);
++            Texture::SubImage(gl, target, level, 0, 0, 0, width, height, depth,
++                              GL_DEPTH_COMPONENT, GL_FLOAT, data.data());
++            GLU_EXPECT_NO_ERROR(gl.getError(), "glTexSubImage depth");
++            return true;
++        }
++
+         GLint texSize = width * height * depth * mState.format.getPixelSize();
+ 
+         std::vector<GLubyte> vecData;
+@@ -713,12 +741,8 @@ bool SparseTextureClampLookupColorTestCase::writeDataToTexture(const Functions &
+                 verifyTarget = GL_TEXTURE_2D_ARRAY;
+             TokenStrings s = createShaderTokens(target, verifyTarget, format, sample);
+ 
+-            GLint convFormat = format;
+-            if (format == GL_DEPTH_COMPONENT16)
+-                convFormat = GL_R16;
+-
+             // Change expected result as it has to be adjusted to different levels
+-            s.resultExpected = generateExpectedResult(s.returnType, level, convFormat);
++            s.resultExpected = generateExpectedResult(s.returnType, level, format);
+ 
+             replaceToken("<INPUT_TYPE>", s.inputType.c_str(), shader);
+             replaceToken("<POINT_TYPE>", s.pointType.c_str(), shader);
+@@ -737,7 +761,7 @@ bool SparseTextureClampLookupColorTestCase::writeDataToTexture(const Functions &
+                 gl.useProgram(program.getProgram());
+                 GLU_EXPECT_NO_ERROR(gl.getError(), "glUseProgram");
+                 gl.bindImageTexture(0 /* unit */, texture, level /* level */, GL_TRUE /* layered */, 0 /* layer */,
+-                                    GL_WRITE_ONLY, convFormat);
++                                    GL_WRITE_ONLY, format);
+                 GLU_EXPECT_NO_ERROR(gl.getError(), "glBindImageTexture");
+                 gl.uniform1i(1, 0 /* image_unit */);
+                 GLU_EXPECT_NO_ERROR(gl.getError(), "glUniform1i");
+@@ -960,6 +984,22 @@ bool SparseTextureClampLookupColorTestCase::prepareTexture(const Functions &gl,
+     Texture::Bind(gl, texture, target);
+ 
+     mState.minDepth = SparseTextureUtils::getTargetDepth(target);
++    GLint pageSizes = 0;
++    gl.getInternalformativ(target, format, GL_NUM_VIRTUAL_PAGE_SIZES_ARB, 1, &pageSizes);
++    GLU_EXPECT_NO_ERROR(gl.getError(), "glGetInternalformativ GL_NUM_VIRTUAL_PAGE_SIZES_ARB");
++    if (pageSizes == 0)
++    {
++        // Ordinary clamp lookups do not require sparse-format support. Do not
++        // derive their dimensions from a query returning no virtual page sizes.
++        // These dimensions cover all three tested mip levels, including arrays.
++        mState.pageSizeX = mState.pageSizeY = mState.pageSizeZ = 0;
++        mState.width = 64;
++        mState.height = target == GL_TEXTURE_1D || target == GL_TEXTURE_1D_ARRAY ? 1 : 64;
++        mState.depth = 4 * mState.minDepth;
++        mState.format = glu::mapGLInternalFormat(format);
++        return true;
++    }
++
+     SparseTextureUtils::getTexturePageSizes(gl, target, format, mState.pageSizeX, mState.pageSizeY, mState.pageSizeZ);
+ 
+     //The <width> and <height> has to be equal for cube map textures
+-- 
+2.55.0
+

@@ -1,0 +1,87 @@
+[
+  {
+    "case": "KHR-GL46.sparse_texture_clamp_tests.SparseTextureClampLookupColor_texture_2d_depth_component16",
+    "checks": 12,
+    "functions": [
+      "textureClampARB",
+      "textureGradClampARB",
+      "textureGradOffsetClampARB",
+      "textureOffsetClampARB"
+    ],
+    "levels": [
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "case": "KHR-GL46.sparse_texture_clamp_tests.SparseTextureClampLookupColor_texture_2d_array_depth_component16",
+    "checks": 12,
+    "functions": [
+      "textureClampARB",
+      "textureGradClampARB",
+      "textureGradOffsetClampARB",
+      "textureOffsetClampARB"
+    ],
+    "levels": [
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "case": "KHR-GL46.sparse_texture_clamp_tests.SparseTextureClampLookupColor_texture_cube_map_array_depth_component16",
+    "checks": 3,
+    "functions": [
+      "textureClampARB"
+    ],
+    "levels": [
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "case": "KHR-GL46.sparse_texture_clamp_tests.SparseTextureClampLookupColor_texture_cube_map_depth_component16",
+    "checks": 6,
+    "functions": [
+      "textureClampARB",
+      "textureGradClampARB"
+    ],
+    "levels": [
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "case": "KHR-GL46.sparse_texture_clamp_tests.SparseTextureClampLookupColor_texture_1d_depth_component16",
+    "checks": 12,
+    "functions": [
+      "textureClampARB",
+      "textureGradClampARB",
+      "textureGradOffsetClampARB",
+      "textureOffsetClampARB"
+    ],
+    "levels": [
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "case": "KHR-GL46.sparse_texture_clamp_tests.SparseTextureClampLookupColor_texture_1d_array_depth_component16",
+    "checks": 12,
+    "functions": [
+      "textureClampARB",
+      "textureGradClampARB",
+      "textureGradOffsetClampARB",
+      "textureOffsetClampARB"
+    ],
+    "levels": [
+      0,
+      1,
+      2
+    ]
+  }
+]

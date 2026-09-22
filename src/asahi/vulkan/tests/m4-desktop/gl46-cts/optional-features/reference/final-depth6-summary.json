@@ -1,0 +1,22 @@
+{
+  "selected": 6,
+  "recorded": 6,
+  "completed": 6,
+  "counts": {
+    "Pass": 6
+  },
+  "classifications": {
+    "unclassified": 6
+  },
+  "elapsed_seconds": 4.5814081669959705,
+  "preparation_seconds": 1.6768466799985617,
+  "runner_seconds": 1.832865757000036,
+  "jobs": 2,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "7e8f67cea2f6a76603bb23c862f55913fbaa50fcce3d8c46c647bd5b2a84cc38",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T053924212171Z-gl46-clamp-depth-upload",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 78.75
+}

@@ -1,5 +1,10 @@
 # Optional OpenGL features on M4 (2026-09-22)
 
+The six CTS setup failures recorded below are now fixed in committed CTS
+source. The corrected binary passes all 1,914 selected cases; see
+[final CTS fix and validation](reference/README.md). Historical unmodified
+CTS results below remain intact.
+
 ## Shadow LOD
 
 Zink now exposes the existing SPIR-V depth-reference sampling support for
