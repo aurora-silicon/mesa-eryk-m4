@@ -107,7 +107,9 @@ if a.mode in ('report', 'status'):
             runs.append(dict(segment=segment['index'], directory=str(run), **summary))
             elapsed += summary['elapsed_seconds']
             review_file = run/'continuation-review.json'
-            canceled = set(json.loads(review_file.read_text())['pending']) if review_file.exists() else set()
+            review = json.loads(review_file.read_text()) if review_file.exists() else {}
+            canceled = set(review.get('pending', []))
+            gpu_timeouts = set(review.get('terminal_gpu_timeouts', []))
             for item in json.loads((run/'results.json').read_text()):
                 record = dict(**item, segment=segment['index'], session=segment['session'],
                     global_index=item['eligibility']['catalog_index'], run=str(run))
@@ -115,7 +117,10 @@ if a.mode in ('report', 'status'):
                     attempts.append(record)
                 if record['case'] in canceled and record['status'] == 'Crash' and 'SIGKILL' in record.get('worker_exit',''):
                     record = dict(record, status='Interrupted', original_status='Crash',
-                        disposition='Peer canceled after reviewed userspace abort; original attempt retained')
+                        disposition='Peer canceled after reviewed runner stop; original attempt retained')
+                if record['case'] in gpu_timeouts:
+                    record = dict(record, status='GPUTimeout', original_status=record['status'],
+                        disposition='Sole CTS case active during recorded kernel GPU timeout; raw attempt and incident retained')
                 idx = record['global_index']
                 if idx not in latest or record['status'] not in ('Unrun','Interrupted'):
                     latest[idx] = record
@@ -184,12 +189,20 @@ def reviewed_pending(run):
         assert old['boot_id'] != new['boot_id'] == recovery_review['new_boot']
         assert old['kernel'] == new['kernel']
         assert all(old['files'][k] == new['files'][k] for k in old['files'].keys() & new['files'].keys())
-        assert {r['case'] for r in probe_rows} == {r['case'] for r in rows if r['status'] == 'Interrupted'}
+        active = {r['case'] for r in rows if r['status'] == 'Interrupted'}
+        terminal_gpu = set(recovery_review.get('terminal_gpu_timeouts', []))
+        if terminal_gpu:
+            assert summary['jobs'] == 1 and len(active) == 1 and terminal_gpu == active
+            expected_probe = set(recovery_review['verification_cases'])
+            assert expected_probe and expected_probe <= {r['case'] for r in rows if r['status'] == 'Pass'}
+        else:
+            expected_probe = active
+        assert {r['case'] for r in probe_rows} == expected_probe
         assert all(r['status'] == 'Pass' for r in probe_rows)
         assert all(r['status'] in ('Pass','Fail','NotSupported','QualityWarning','CompatibilityWarning','Unrun','Interrupted') for r in rows)
-        pending = [r for r in rows if r['status'] in ('Unrun','Interrupted')]
+        pending = [r for r in rows if r['status'] in ('Unrun','Interrupted') and r['case'] not in terminal_gpu]
         save(run/'continuation-review.json', dict(reason=recovery_review['reason'],
-            recovery_review=recovery_review, terminal_crashes=[], pending=[r['case'] for r in pending]))
+            recovery_review=recovery_review, terminal_crashes=[], terminal_gpu_timeouts=sorted(terminal_gpu), pending=[r['case'] for r in pending]))
         return pending
     assert (a.continue_compiler_aborts or a.continue_batch_deadlines or a.continue_reviewed_timeout) and summary['guard_verdict'] == 'process_failure', 'Needs explicit review'
     evidence = Path(summary['evidence'])/'remote'

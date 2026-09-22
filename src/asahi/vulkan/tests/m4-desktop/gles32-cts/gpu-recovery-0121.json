@@ -1,0 +1,15 @@
+{
+  "segment": 121,
+  "incident_evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T110645274422Z-gles32-plan-0121-r0",
+  "recovery_evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T111054925609Z-gles32-gpu-recovery-0121",
+  "recovery_run": "build/gles32-zink-20260922/full/gpu-recovery-0121/run",
+  "old_boot": "1dcceb0f-e07c-4207-85fa-4f57a732c371",
+  "new_boot": "f9d383d2-2573-417e-b6ee-b0164801ea5e",
+  "terminal_gpu_timeouts": [
+    "KHR-GLES3.packed_pixels.pbo_rectangle.rgba32ui_format_rgba_integer"
+  ],
+  "verification_cases": [
+    "KHR-GLES3.packed_pixels.pbo_rectangle.rg16i_format_rgba_integer"
+  ],
+  "reason": "Watchdog reboot restored the desktop. A previously passing PBO rendering case passed under guard with unchanged kernel/common binary hashes. Retain the sole active case as GPUTimeout (interrupted by a kernel GPU timeout, not a root-cause claim); resume only unstarted cases. Original raw results and fault incident remain."
+}

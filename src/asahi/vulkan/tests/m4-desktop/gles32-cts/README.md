@@ -165,3 +165,17 @@ not erased by the successful serial recovery. Full campaign still running.
 
 Latest partial checkpoint: 200368/326,602 pairs; outcomes {"CompatibilityWarning": 18, "Crash": 279, "Fail": 102, "NotSupported": 9903, "Pass": 190046, "QualityWarning": 15, "Timeout": 5, "Unrun": 126234}.
 Original GPU-hang incident remains separately recorded. Full suite continues.
+
+Second GPU timeout: 20260922T110645274422Z-gles32-plan-0121-r0, job
+2262609, peak 79.25 C. This occurred with one worker, so serial execution
+does not eliminate the driver fault. The sole active case was
+`KHR-GLES3.packed_pixels.pbo_rectangle.rgba32ui_format_rgba_integer`
+(global index 235096, session 53). Its raw outcome remains Interrupted;
+the campaign records GPUTimeout as a terminal harness outcome, with no
+claim that the active case identifies the root cause. Fault bytes and
+metadata are retained here. The watchdog restored the normal desktop.
+A previously passing PBO case passed under guard after reboot, using the
+same kernel and common binary hashes. Exact review: gpu-recovery-0121.json.
+Only unstarted cases resume; this timeout and both GPU incidents remain
+in the results. The recovery path requires one active worker and one
+interrupted case before assigning this outcome; unknown faults still stop.
