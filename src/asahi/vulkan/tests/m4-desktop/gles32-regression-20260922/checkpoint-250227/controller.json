@@ -1,0 +1,32 @@
+{
+  "pid": 2150440,
+  "state": "running",
+  "completed_segments": 206,
+  "started_utc": "2026-09-22T20:06:18.760231+00:00",
+  "segment": 206,
+  "command": [
+    "/usr/bin/python3",
+    "/home/council/dev/dirtyroom_m4/tools/gl-cts-plan.py",
+    "run",
+    "--campaign",
+    "/home/council/dev/dirtyroom_m4/build/gles32-regression-20260922",
+    "--first",
+    "206",
+    "--last",
+    "207",
+    "--continue-batch-deadlines",
+    "--seconds",
+    "900"
+  ],
+  "report_returncode": 0,
+  "completed_pairs": 250227,
+  "counts": {
+    "Pass": 240023,
+    "NotSupported": 10162,
+    "QualityWarning": 15,
+    "CompatibilityWarning": 18,
+    "Fail": 8,
+    "Timeout": 1,
+    "Unrun": 76375
+  }
+}
