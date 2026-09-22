@@ -71,7 +71,10 @@ sparseResidencyImage3D feature. Rejecting the format query alone does not
 satisfy GL_ARB_sparse_texture. Enabling M4's existing slice-based sparse
 mapping with explicit nonstandard 3D block sizes passes all 120 supported
 GL46 sparse 3D cases (40 further cases are NotSupported). Direct Vulkan
-sparse validation is still pending; no other chip was enabled.
+sparse validation also passes: `257d111219d` is validated by all 2,642 frozen
+Vulkan sparse_resources cases containing `.3d.`: 2,022 Pass / 620 NotSupported,
+28.92 s, peak 104.25 C. Evidence: 20260922T011124390097Z-gl46-vk-sparse3d-all.
+No other chip was enabled.
 
 Combined guarded validation: 20260922T010718398173Z-gl46-view-sparse3d-fixed,
 121 Pass / 40 NotSupported, 9.83 s, peak 68.25 C. The six failing first-attempt

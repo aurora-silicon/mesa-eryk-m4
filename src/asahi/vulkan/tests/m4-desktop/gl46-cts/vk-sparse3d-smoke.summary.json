@@ -1,0 +1,23 @@
+{
+  "selected": 55,
+  "recorded": 55,
+  "completed": 55,
+  "counts": {
+    "Pass": 33,
+    "NotSupported": 22
+  },
+  "classifications": {
+    "unclassified": 55
+  },
+  "elapsed_seconds": 3.9665892189950682,
+  "preparation_seconds": 1.4135926059971098,
+  "runner_seconds": 1.6318155649987602,
+  "jobs": 1,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "345198735082cb8fb27045545f9fe7a214e461d6182ee944c84b784039832c06",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T011038903414Z-gl46-vk-sparse3d-smoke",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 71.75
+}
