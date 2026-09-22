@@ -564,7 +564,7 @@ hk_get_device_features(
       .extendedDynamicState3ExtraPrimitiveOverestimationSize = false,
       .extendedDynamicState3DepthClipEnable = true,
       .extendedDynamicState3SampleLocationsEnable = true,
-      .extendedDynamicState3ColorBlendAdvanced = false,
+      .extendedDynamicState3ColorBlendAdvanced = dev->chip == AGX_CHIP_G16G,
       .extendedDynamicState3ProvokingVertexMode = true,
       .extendedDynamicState3LineRasterizationMode = true,
       .extendedDynamicState3LineStippleEnable = false,
@@ -713,7 +713,7 @@ hk_get_device_features(
       /* Native SMP residency plus live sparse texel-buffer bind metadata. */
       features->shaderResourceResidency = sparse;
       features->shaderResourceMinLod = sparse;
-      features->advancedBlendCoherentOperations = false;
+      features->advancedBlendCoherentOperations = dev->chip == AGX_CHIP_G16G;
       features->sparseBinding = sparse;
       /* Memory dependencies retain firmware cache publication for aliases. */
       features->sparseResidencyAliased = sparse;
@@ -1154,7 +1154,7 @@ hk_get_device_properties(const struct agx_device *dev,
       .advancedBlendAllOperations = true,
    };
 
-   if (agx_native_graphics(dev)) {
+   if (agx_native_graphics(dev) && dev->chip != AGX_CHIP_G16G) {
       properties->advancedBlendMaxColorAttachments = 0;
       properties->advancedBlendIndependentBlend = false;
       properties->advancedBlendNonPremultipliedSrcColor = false;
@@ -1410,11 +1410,10 @@ hk_create_drm_physical_device(struct vk_instance *_instance,
    supported_extensions.EXT_fragment_shader_interlock =
       pdev->dev.chip == AGX_CHIP_G16G;
 
-   /* HAL200 advanced blend epilogs currently complete without a fault but
-    * write zero instead of the blended colour.  Keep the extension private to
-    * the compiler until its fragment tile protocol is hardware-qualified. */
+   /* Native tile blend epilogs are enabled on the qualified G16G path. */
    if (agx_native_graphics(&pdev->dev))
-      supported_extensions.EXT_blend_operation_advanced = false;
+      supported_extensions.EXT_blend_operation_advanced =
+         pdev->dev.chip == AGX_CHIP_G16G;
 
    /* The extension promises both features even to pre-1.2 applications. */
    if (agx_native_graphics(&pdev->dev) &&
