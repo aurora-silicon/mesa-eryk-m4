@@ -942,6 +942,10 @@ zink_init_screen_caps(struct zink_screen *screen)
       1 + util_logbase2(screen->info.props.limits.maxImageDimensionCube);
 
    caps->fragment_shader_texture_lod = true;
+   /* SPIR-V depth-reference sampling supports explicit LOD and bias for
+    * array and cube shadow samplers as well as ordinary 2D samplers.
+    */
+   caps->texture_shadow_lod = true;
    caps->fragment_shader_derivatives = true;
 
    caps->blend_equation_separate =

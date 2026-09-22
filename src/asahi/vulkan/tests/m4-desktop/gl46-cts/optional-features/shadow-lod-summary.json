@@ -1,0 +1,22 @@
+{
+  "selected": 18,
+  "recorded": 18,
+  "completed": 18,
+  "counts": {
+    "Pass": 18
+  },
+  "classifications": {
+    "unclassified": 18
+  },
+  "elapsed_seconds": 3.470309078002174,
+  "preparation_seconds": 1.6418686460019671,
+  "runner_seconds": 1.0242830349998258,
+  "jobs": 1,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "d80867d2b088e835c0d0ac09eb5f12e3546b77539f34bcab5a16344356470d23",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T043749462400Z-gl46-shadow-lod-enable",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 65.25
+}
