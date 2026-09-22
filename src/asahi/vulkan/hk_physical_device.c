@@ -870,7 +870,9 @@ hk_get_device_properties(const struct agx_device *dev,
       .maxFramebufferLayers = 2048,
       .framebufferColorSampleCounts = color_sample_counts,
       .framebufferDepthSampleCounts = sample_counts,
-      .framebufferNoAttachmentsSampleCounts = other_sample_counts,
+      .framebufferNoAttachmentsSampleCounts =
+         agx_chip_uses_g15_g16_shader_abi(dev->chip) ? sample_counts
+                                                  : other_sample_counts,
       .framebufferStencilSampleCounts = sample_counts,
       .maxColorAttachments = HK_MAX_RTS,
       .sampledImageColorSampleCounts = color_sample_counts,
