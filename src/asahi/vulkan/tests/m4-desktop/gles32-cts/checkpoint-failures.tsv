@@ -335,3 +335,16 @@ global_index	session	status	case
 134215	18	Crash	KHR-GLES3.shaders.struct.uniform.sampler_array_fragment
 138828	18	Fail	KHR-GLES3.cull_distance.functional_test_item_1_primitive_mode_points_max_culldist_4
 139171	18	Timeout	KHR-GLES3.texture_lod_bias.texture_lod_bias_all
+142312	19	Timeout	KHR-GLES31.core.tessellation_shader.vertex.vertex_ordering
+143413	20	Fail	KHR-GLES32.shaders.struct.uniform.nested_struct_array_vertex
+143417	20	Fail	KHR-GLES32.shaders.struct.uniform.loop_struct_array_vertex
+143426	20	Crash	KHR-GLES32.shaders.struct.uniform.sampler_fragment
+143428	20	Crash	KHR-GLES32.shaders.struct.uniform.sampler_nested_fragment
+143430	20	Crash	KHR-GLES32.shaders.struct.uniform.sampler_array_fragment
+144831	21	Crash	KHR-GLES32.shaders.struct.uniform.sampler_fragment
+144833	21	Crash	KHR-GLES32.shaders.struct.uniform.sampler_nested_fragment
+144835	21	Crash	KHR-GLES32.shaders.struct.uniform.sampler_array_fragment
+146855	23	Fail	KHR-GLES3.shaders.indexing.matrix_subscript.mat2x4_static_write_dynamic_read_fragment
+148093	23	Crash	KHR-GLES3.shaders.struct.uniform.sampler_fragment
+148095	23	Crash	KHR-GLES3.shaders.struct.uniform.sampler_nested_fragment
+148097	23	Crash	KHR-GLES3.shaders.struct.uniform.sampler_array_fragment

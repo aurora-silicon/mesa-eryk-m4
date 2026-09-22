@@ -157,3 +157,8 @@ contention in the remaining Khronos sessions. From segment 0068 continuation
 0003 onward, `--run-jobs 1` is explicit; frozen selections, configuration
 arguments and indices stay unchanged, and each attempt records its worker
 count. Earlier failures/timeouts and the GPU incident are not erased.
+
+Updated partial checkpoint: 151,609/326,602 pairs, with 141,599 Pass,
+9,628 NotSupported, 97 Fail, 247 compiler Crash, 5 Timeout, 15 QualityWarning
+and 18 CompatibilityWarning. The GPU incident is tracked separately; it is
+not erased by the successful serial recovery. Full campaign still running.
