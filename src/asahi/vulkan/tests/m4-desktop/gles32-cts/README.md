@@ -58,3 +58,12 @@ identified SIGKILL-canceled peers are resumed; the SIGABRT test remains Crash.
 Unknown assertions, timeouts, GPU faults, sensor failures, memory pressure and
 setup errors stop the controller for inspection. No failed test is retried.
 Raw attempts and interpreted latest coverage are separate report files.
+
+Checkpoint: 50,954/326,602 pairs completed; 49,021 Pass, 1,662 NotSupported,
+67 Fail, 194 compiler Crash, 8 QualityWarning, 2 CompatibilityWarning.
+These compressed checkpoint files are partial results, not the final campaign.
+The controller was briefly paused after segment 0020 to archive old
+`/root/cts-bulk` staging files off the nearly full target filesystem using
+checksum-verified rsync before removing source copies. The active staging
+directory was excluded; driver/kernel/test evidence was preserved. Archive
+and transfer log: `_provenance/target-staging-archive-20260922`.
