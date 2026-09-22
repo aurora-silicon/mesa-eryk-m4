@@ -10,7 +10,7 @@ The Vulkan driver, Zink, EGL and GBM cross-build together with:
 ```
 -Dvulkan-drivers=asahi -Dgallium-drivers=zink -Dglx=disabled
 -Degl=enabled -Dgbm=enabled -Dplatforms=x11,wayland
--Dgles1=disabled -Dgles2=enabled -Dllvm=disabled
+-Dgles1=enabled -Dgles2=enabled -Dllvm=disabled
 -Dmesa-clc=system -Dprecomp-compiler=system -Dbuild-tests=false
 ```
 
@@ -87,3 +87,24 @@ compute attachment translation and 16-byte color samples, firefox04 remains
 running for a guarded 12-second real Plasma session test without graphics
 errors. Evidence: kernel m3_lab/validation/firefox-20260920 and workspace
 _provenance/m3-firefox-20260920. Multisample loops need separate CTS coverage.
+
+## EGL context consistency (2026-09-22)
+
+Build the M3 Zink stack with `-Dgles1=enabled`. EGL already exposes ES1 in
+its configuration renderable-type mask, so disabling Mesa's existing ES1
+implementation made seven create_context tests fail and six surfaceless
+context tests report ResourceError. This is a build configuration repair;
+it does not enable ES3.2 GPU features or override API version reporting.
+
+After rebuilding the Vulkan, Gallium, EGL and GBM libraries, the 46 related
+Khronos EGL cases completed with 16 Pass and 30 NotSupported (unavailable
+configurations), with no failures. The original seven ES31 campaign failures
+all pass in this focused retest. Evidence:
+`build/m3-gles31-20260922/triage-egl-contexts/es1-enabled`.
+The 45-second M3 guard completed with synchronous final kernel-log checks,
+60-second watchdog and unchanged five-channel thermal monitoring.
+
+The all-target cross-build also encountered obsolete UAPI size assertions
+in the standalone G17P submit utilities. Required M3 driver library targets
+built successfully; that unrelated build failure is retained in
+`build/m3-gles31-20260922/mesa-es1-build.log`.
