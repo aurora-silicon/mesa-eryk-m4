@@ -1425,9 +1425,12 @@ queue_submit(struct hk_device *dev, struct hk_queue *queue,
             const bool across_compute = previous_cs && previous_cs->type == HK_CS_CDM &&
                (dev->dev.params.features & DRM_ASAHI_FEATURE_FRAGMENT_DEPENDENCY_COMPUTE) &&
                debug_get_bool_option("HK_M4_COMPUTE_EARLY_TILING", false);
-            if (dev->dev.chip == AGX_CHIP_G16G &&
+            const bool early_tiling = dev->dev.chip == AGX_CHIP_G16G ?
+               debug_get_bool_option("HK_M4_EARLY_TILING", true) :
+               (dev->dev.chip == AGX_CHIP_G15S &&
+                debug_get_bool_option("HK_M3_EARLY_TILING", false));
+            if (early_tiling &&
                 (dev->dev.params.features & DRM_ASAHI_FEATURE_FRAGMENT_DEPENDENCY) &&
-                debug_get_bool_option("HK_M4_EARLY_TILING", true) &&
                 previous_cs && (previous_cs->type == HK_CS_VDM || across_compute) &&
                 !previous_cs->writes_memory && cs->fragment_only_dependency &&
                 !cs->timestamp.start.handle) {
