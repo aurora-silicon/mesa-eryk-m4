@@ -851,8 +851,15 @@ hk_cmd_buffer_get_cs_general(struct hk_cmd_buffer *cmd, struct hk_cs **ptr,
             VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT |
             VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT |
             VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-         cs->fragment_only_dependency = cmd->graphics_dependency_stages &&
-            !(cmd->graphics_dependency_stages & ~fragment_stages);
+         /* A graphics stream has no compute stage. A barrier targeting both
+          * fragment and compute must still order compute work, but does not
+          * introduce a vertex/tiling dependency. Compute streams retain their
+          * separate dependencies; queue submission checks the predecessor
+          * engine and kernel capability before requesting any overlap. */
+         const VkPipelineStageFlags2 graphics_stages =
+            cmd->graphics_dependency_stages & ~VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+         cs->fragment_only_dependency = graphics_stages &&
+            !(graphics_stages & ~fragment_stages);
          cmd->graphics_dependency_stages = 0;
          hk_cs_init_graphics(cmd, cs);
       }
