@@ -17,6 +17,7 @@ p.add_argument('--renderer',choices=['m4','lavapipe'],default='m4')
 p.add_argument('--jobs',type=int,default=1)
 p.add_argument('--config',choices=['64','113','256','fbo-width','fbo-height'],default='64')
 p.add_argument('--environment',type=Path,required=True)
+p.add_argument('--binary',default='/root/gl-cts-1.4.6.2/glcts',help='Explicitly named diagnostic CTS build; the default remains pinned upstream')
 a=p.parse_args()
 if any(not c.startswith('KHR-'+a.api.upper()+'.') for c in a.cases.read_text().splitlines()):
  p.error('case package does not match --api')
@@ -28,7 +29,7 @@ if a.renderer=='lavapipe':
  env.update(LIBGL_ALWAYS_SOFTWARE='1',VK_DRIVER_FILES='/usr/share/vulkan/icd.d/lvp_icd.json',VK_ICD_FILENAMES='/usr/share/vulkan/icd.d/lvp_icd.json')
 args=[sys.executable,str(root/'tools/cts-bulk.py'),'--cases',str(a.cases),'--output',str(a.output),'--name',a.name,
  '--renderer',a.renderer,'--runner',str(root/'reference/deqp-runner/target/aarch64-unknown-linux-gnu/release/deqp-runner'),
- '--binary','/root/gl-cts-1.4.6.2/glcts','--jobs',str(a.jobs),'--headless','--tests-per-group','50',
+ '--binary',a.binary,'--jobs',str(a.jobs),'--headless','--tests-per-group','50',
  '--runner-seconds',str(a.seconds),'--case-timeout','60','--cpu-max-khz','4104000']
 if a.api=='gl46':
  for k in ('MESA_GL_VERSION_OVERRIDE','MESA_GLES_VERSION_OVERRIDE','MESA_GLSL_VERSION_OVERRIDE'):

@@ -14,3 +14,9 @@ unchanged. Patched-binary results must be reported separately.
 
 Spec: https://registry.khronos.org/OpenGL/extensions/ARB/ARB_sparse_texture.txt
 Only the listed color formats require sparse allocation; D16 is optional.
+
+All six affected cases pass on M4 with the diagnostic binary, including the
+ordinary shadow LOD-clamp comparisons. Evidence:
+`20260922T050841594484Z-gl46-clamp-depth-diagnostic`.
+The driver is unchanged from the unmodified six-failure run. This validates
+the test correction; it is not six passes on the original CTS binary.
