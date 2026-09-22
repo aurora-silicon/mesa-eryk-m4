@@ -32,3 +32,11 @@ Evidence under `build/m3-gles31-20260922`:
 All experiments retain the 45s guard, 60s watchdog, 0.5s five-channel PMP
 telemetry and 95°C cutoff. This is focused M3 qualification, not a claim of
 complete ES 3.1 conformance or vertex-stage storage support.
+
+The four regression groups completed **620 Pass, 144 NotSupported**, with no
+failures/crashes and a maximum recorded temperature of **52.75°C**. Every guard
+and batch completed. Previously skipped cases yielded 56 Pass and 67 still
+NotSupported; their separate `campaign/capability-followups.json` preserves
+all original statuses and configuration indices. The six original failures
+link to exact passing image-size evidence. The production Vulkan library
+SHA256 is `d0f225944c3a507d4a4577cb9cf29422e99b3348a6dd3685547ff2ab06b435ca`.
