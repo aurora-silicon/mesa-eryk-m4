@@ -1,0 +1,2 @@
+agx3_pack_binary.c:5308: no grounded AGX3 encoding for texture_sample
+   r0...r3 = texture_sample ^r4...r6, #0, u2:u3, ^r3, ^r0l, #31, xyzw, #0x0, 2d_array, slot 0

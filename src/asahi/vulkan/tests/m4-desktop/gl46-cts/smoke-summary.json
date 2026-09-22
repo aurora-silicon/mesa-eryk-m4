@@ -1,0 +1,25 @@
+{
+  "selected": 105,
+  "recorded": 105,
+  "completed": 77,
+  "counts": {
+    "Pass": 67,
+    "Unrun": 28,
+    "NotSupported": 9,
+    "Crash": 1
+  },
+  "classifications": {
+    "unclassified": 105
+  },
+  "elapsed_seconds": 29.540653465002833,
+  "preparation_seconds": 2.539837712996814,
+  "runner_seconds": 27.17938259500079,
+  "jobs": 1,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "d3f191ca681f443467b7e84671613c46f9c54274142e5442da758618b67884f9",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T003643631507Z-gl46-smoke",
+  "guard_verdict": "process_failure",
+  "command_returncode": 1,
+  "peak_temperature_c": 64.5
+}

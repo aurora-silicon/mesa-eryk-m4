@@ -1,0 +1,179 @@
+block0 {
+   $r4...r7 = device_load u24:u25, #0, xyzw, shift=0, #0x0, slot 0
+   $r2...r3 = device_load u24:u25, #1, xy, shift=2, #0x0, slot 0
+   $r1 = mov_imm #0x7ff
+   $r12 = and ^r2, ^r1
+   $r1 = mov_imm #0xe
+   $r2 = bfeil #0, $r7, ^r1, #0xe
+   $r1 = mov_imm #0x30
+   $r13 = and $r4, ^r1
+   $r1 = icmpsel ^r13, #0, ^r12, ^r2, #0x0
+   $r2 = mov_imm #0xfff
+   $r12 = and ^r7, ^r2
+   $r2 = mov_imm #0xc
+   $r7 = bfeil #0, ^r3, ^r2, #0x4
+   $r2 = mov_imm #0x4
+   $r3 = mov1 $r6, #0
+   $r2 = bfi #0, ^r3, ^r2, #0x0
+   $r3 = extr ^r6, ^r12, #28, #0x0
+   $r4 = extr ^r4, $r5, #28, #0x0
+   $r6 = mov_imm #0xa
+   $r12 = bfeil #0, ^r5, ^r6, #0xe
+   $r5 = mov_imm #0x3fff
+   $r6 = and ^r4, ^r5
+   $r4 = mov_imm #0x1f
+   $r5 = and ^r7, ^r4
+   $r0h = icmpsel ^r2, #0, #0, #1, #0x0
+   $r0h = icmpsel ^r3, #1, ^r0h, #1, #0x0
+   $r2 = iadd ^r12, #1, shift=0
+   $r3 = iadd ^r6, #1, shift=0
+   $r2 = bfeil #0, ^r2, $r5, #0x0
+   $r4 = bfeil #0, ^r3, ^r5, #0x0
+   $r2 = icmpsel ^r2, #1, ^r2, #1, #0x0
+   r2 = icmpsel $r0h, #0, #0, ^r2, #0x0
+   $r2 = convert #11, ^r2, #0x1
+   $r2 = rcp ^r2
+   $r3 = trunc ^r11
+   r13 = ffma $r3, ^r2, ^r9
+   $r2 = icmpsel ^r4, #1, ^r4, #1, #0x0
+   r2 = icmpsel $r0h, #0, #0, ^r2, #0x0
+   $r2 = convert #11, ^r2, #0x1
+   $r2 = rcp ^r2
+   r12 = ffma ^r3, ^r2, ^r8
+   $r2l = mov_imm #0x4
+   $r2h = device_load u24:u25, #25, x, shift=0, #0x0, slot 0
+   $r3l = and $r2h, ^r2l
+   $r4 = mov_imm #0x477fff00 /* 65535.000000 */
+   $r5 = mov_imm #0x437f0000 /* 255.000000 */
+   $r4 = icmpsel ^r3l, #0, ^r5, ^r4, #0x0
+   $r2l = mov_imm #0x80
+   $r3l = and $r2h, ^r2l
+   $r5 = mov_imm #0x447fc000 /* 1023.000000 */
+   $r4 = icmpsel ^r3l, #0, ^r4, ^r5, #0x0
+   $r2l = mov_imm #0x100
+   $r3l = and $r2h, ^r2l
+   $r5 = mov_imm #0x40400000 /* 3.000000 */
+   $r4 = icmpsel ^r3l, #0, ^r4, ^r5, #0x0
+   $r1 = iadd #1, ^r1, shift=0
+   $r3 = icmpsel ^r0h, #0, #0, ^r1, #0x0
+   $r1 = roundeven ^r10
+   $r5 = mov_imm #0x0
+   r1 = fcmpsel ^r1, r5, ^r1, r5, #0x0
+   $r3 = iadd ^r3, #1.neg, shift=0
+   $r1 = convert #8, ^r1, #0x0
+   $r1 = icmpsel ^r1, ^r3, ^r1, ^r3, #0x0
+   r3 = mov1 u26, #0
+   r14 = mov1 ^r1l, #0
+   $r8...r11 = texture_sample r12...r14, #0, u24:u25, r5, ^r3l, _, xyzw, #0x0, 2d_array, slot 0
+   $r1 = convert #10, $r11, #0x1
+   $r3 = convert #11, $r11, #0x1
+   $r1 = icmpsel $r2h, #1, ^r3, ^r1, #0x0
+   $r3 = convert #10, $r10, #0x1
+   $r6 = convert #11, $r10, #0x1
+   $r3 = icmpsel $r2h, #1, ^r6, ^r3, #0x0
+   $r6 = convert #10, $r9, #0x1
+   $r7 = convert #11, $r9, #0x1
+   $r6 = icmpsel $r2h, #1, ^r7, ^r6, #0x0
+   $r7 = convert #10, $r8, #0x1
+   $r16 = convert #11, $r8, #0x1
+   $r7 = icmpsel $r2h, #1, ^r16, ^r7, #0x0
+   $r0h = mov_imm #0x8
+   $r2l = and $r2h, ^r0h
+   $r16 = mov_imm #0x3f800000 /* 1.000000 */
+   $r4 = icmpsel ^r2l, #0, r16, ^r4, #0x0
+   r17 = fmul $r11, $r4
+   $r17 = roundeven ^r17
+   $r0h = mov_imm #0x3
+   $r2l = and $r2h, ^r0h
+   $r1 = icmpsel $r2l, #3, ^r17, ^r1, #0x0
+   r17 = fmul $r10, $r4
+   $r17 = roundeven ^r17
+   $r3 = icmpsel $r2l, #3, ^r17, ^r3, #0x0
+   r17 = fmul $r9, $r4
+   $r17 = roundeven ^r17
+   $r6 = icmpsel $r2l, #3, ^r17, ^r6, #0x0
+   r17 = fmul $r8, r4
+   $r17 = roundeven ^r17
+   $r7 = icmpsel r2l, #3, ^r17, ^r7, #0x0
+   r17 = mov1 u26, #0
+   r1 = icmpsel $r2h, #0, ^r11, ^r1, #0x0
+   r3 = icmpsel $r2h, #0, ^r10, ^r3, #0x0
+   r6 = icmpsel $r2h, #0, ^r9, ^r6, #0x0
+   r7 = icmpsel r2h, #0, ^r8, ^r7, #0x0
+   begin_cf 
+   if_icmp ^r17h, #0, #0xaaaafcaeb390, n=1, inv
+   jmp_exec_none #0xaaaafcaeb390
+} -> block1 block2 
+
+block1 {
+   r8 = mov1 u28, #0
+   $r0h = mov_imm #0x3
+   $r8l = and r8h, r0h
+   r9 = mov1 u29, #0
+   $r9 = convert #10, r9, #0x1
+   r10 = mov1 u29, #0
+   $r10 = convert #11, r10, #0x1
+   $r9 = icmpsel r8l, #1, r10, r9, #0x0
+   r8 = mov1 u26, #0
+   $r0h = mov_imm #0x3fff
+   r8l = and r8h, r0h
+   $r12...r15 = texture_sample r12...r14, #0, u24:u25, r5, r8l, _, xyzw, #0x0, 2d_array, slot 0
+   $r8 = convert #10, $r15, #0x1
+   $r10 = convert #11, $r15, #0x1
+   $r8 = icmpsel $r2h, #1, r10, r8, #0x0
+   $r10 = convert #10, $r14, #0x1
+   $r11 = convert #11, $r14, #0x1
+   $r10 = icmpsel $r2h, #1, r11, r10, #0x0
+   $r11 = convert #10, $r13, #0x1
+   $r17 = convert #11, $r13, #0x1
+   $r11 = icmpsel $r2h, #1, r17, r11, #0x0
+   $r17 = convert #10, $r12, #0x1
+   $r18 = convert #11, $r12, #0x1
+   $r17 = icmpsel $r2h, #1, r18, r17, #0x0
+   r18 = fmul $r15, $r4
+   $r18 = roundeven r18
+   $r8 = icmpsel $r2l, #3, r18, r8, #0x0
+   r18 = fmul $r14, $r4
+   $r18 = roundeven r18
+   $r10 = icmpsel $r2l, #3, r18, r10, #0x0
+   r18 = fmul $r13, $r4
+   $r18 = roundeven r18
+   $r11 = icmpsel $r2l, #3, r18, r11, #0x0
+   r4 = fmul $r12, r4
+   $r4 = roundeven r4
+   $r4 = icmpsel r2l, #3, r4, r17, #0x0
+   r17 = mov1 u26, #0
+   $r0h = mov_imm #0x4000
+   $r2l = and r17h, r0h
+   $r17 = mov1 u29, #0
+   $r9 = icmpsel r2l, #0, r17, r9, #0x0
+   $r8 = icmpsel $r2h, #0, r15, r8, #0x0
+   $r10 = icmpsel $r2h, #0, r14, r10, #0x0
+   $r11 = icmpsel $r2h, #0, r13, r11, #0x0
+   $r4 = icmpsel r2h, #0, r12, r4, #0x0
+   r1 = icmpsel r8, r1, r8, $r9, #0x0
+   r3 = icmpsel r10, r3, r10, $r9, #0x0
+   r6 = icmpsel r11, r6, r11, $r9, #0x0
+   r7 = icmpsel r4, r7, r4, r9, #0x0
+} -> block3  from block0
+
+block2 {
+   pop_exec #0x0, n=1
+} -> block3  from block0
+
+block3 {
+   r2 = mov_imm #0x3f000000 /* 0.500000 */
+   st_vary #0, r5
+   st_vary #1, r5
+   st_vary #2, r2
+   st_vary #3, r16
+   st_vary #4, r5
+   st_vary #5, r7
+   st_vary #6, r6
+   st_vary #7, r3
+   st_vary #8, r1
+   st_vary #9, r16
+   st_vary.last #10, r5
+   stop 
+} from block1 block2
+

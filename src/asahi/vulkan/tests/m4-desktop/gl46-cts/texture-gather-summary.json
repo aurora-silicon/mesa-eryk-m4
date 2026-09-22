@@ -1,0 +1,22 @@
+{
+  "selected": 75,
+  "recorded": 75,
+  "completed": 75,
+  "counts": {
+    "Pass": 75
+  },
+  "classifications": {
+    "unclassified": 75
+  },
+  "elapsed_seconds": 10.366603656002553,
+  "preparation_seconds": 1.609003292003763,
+  "runner_seconds": 7.512187868000183,
+  "jobs": 1,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "61afc33d1f205ff8d18ae2f67a84f1d42c24b7947068bd4f15363ec2ebdd06cf",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T003955669520Z-gl46-texture-gather",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 73.75
+}

@@ -24,3 +24,16 @@ failure and cancellation; do not automatically retry or discard it.
 The full Khronos runner plan is retained under the probe's `remote/plan/`.
 It includes additional configurations and lists (including no-default-context,
 GTF and ES coverage); completing the GL46 main list alone is not certification.
+
+## First driver fix
+
+`27306c42c7c` admits derivative-free base-level gathers in the indexed
+sampler path and native encoder for vertex and compute-lowered stages.
+All 75 `KHR-GL46.texture_gather.*` cases pass on M4. No Zink change was
+needed for the pipeline assertion caused by the rejected shader.
+
+The retained failure capture is **after** Honeykrisp rejected indexed
+sampler selection, and therefore contains the old fallback descriptor form.
+A backend-only replay still refuses that form; it cannot validate the earlier
+selection fix. The CTS group re-enters the complete compilation path and
+passes. Do not describe this original backend bundle as a passing replay.

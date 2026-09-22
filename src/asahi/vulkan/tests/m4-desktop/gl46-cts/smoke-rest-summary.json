@@ -1,0 +1,23 @@
+{
+  "selected": 28,
+  "recorded": 28,
+  "completed": 28,
+  "counts": {
+    "Pass": 18,
+    "NotSupported": 10
+  },
+  "classifications": {
+    "unclassified": 28
+  },
+  "elapsed_seconds": 6.794734011004039,
+  "preparation_seconds": 1.660158988997864,
+  "runner_seconds": 4.066053210999598,
+  "jobs": 1,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "a4647ee91618b4b905872b9678f4f954565a5d6cfc40c2d8962ef35178686765",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T004007784661Z-gl46-smoke-rest",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 64.75
+}
