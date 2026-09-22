@@ -2824,8 +2824,6 @@ hk_CmdCopyImage2(VkCommandBuffer commandBuffer,
        debug_get_bool_option("HK_M4_COMPUTE_COMPRESSED_COPY", true) &&
        src_image->planes[0].layout.compressed &&
        !dst_image->planes[0].layout.compressed &&
-       (dst_image->vk.image_type == VK_IMAGE_TYPE_2D ||
-        dst_image->vk.image_type == VK_IMAGE_TYPE_3D) &&
        src_image->vk.samples == VK_SAMPLE_COUNT_1_BIT &&
        dst_image->vk.samples == VK_SAMPLE_COUNT_1_BIT &&
        hk_native_compressed_copy_via_render(src_image, dst_image)) {
@@ -2846,8 +2844,6 @@ hk_CmdCopyImage2(VkCommandBuffer commandBuffer,
        (((src_image->vk.image_type != VK_IMAGE_TYPE_2D ||
           dst_image->vk.image_type != VK_IMAGE_TYPE_2D) &&
          !(dev->dev.chip == AGX_CHIP_G16G &&
-           src_image->vk.image_type != VK_IMAGE_TYPE_1D &&
-           dst_image->vk.image_type != VK_IMAGE_TYPE_1D &&
            hk_native_compressed_copy_via_render(src_image, dst_image))) ||
         /* Format reinterpretation copies raw texel bits, including formats
          * without a native render-target export. */

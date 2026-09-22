@@ -150,6 +150,26 @@ main(void)
             one.dstOffset.x == 11 && one.dstOffset.y == 13);
    }
 
+   /* Cross-dimensional row copies preserve layer selection and offsets. */
+   VkImageCopy2 row = layered, row_out;
+   row.extent.height = 1;
+   row.srcOffset.y = 0;
+   CHECK(hk_g17p_image_copy_slice(AGX_CHIP_G16G, VK_IMAGE_TYPE_1D,
+                                 VK_IMAGE_TYPE_2D, 3, 3, &row, 2, &row_out));
+   CHECK(row_out.srcSubresource.baseArrayLayer == 4 &&
+         row_out.dstSubresource.baseArrayLayer == 7 &&
+         row_out.dstOffset.y == 13 && row_out.extent.height == 1);
+   row.dstOffset.y = 0;
+   row.srcOffset.y = 5;
+   CHECK(hk_g17p_image_copy_slice(AGX_CHIP_G16G, VK_IMAGE_TYPE_2D,
+                                 VK_IMAGE_TYPE_1D, 3, 3, &row, 1, &row_out));
+   CHECK(row_out.srcOffset.y == 5 && row_out.dstOffset.y == 0 &&
+         row_out.srcSubresource.baseArrayLayer == 3 &&
+         row_out.dstSubresource.baseArrayLayer == 6);
+   row.extent.height = 2;
+   CHECK(!hk_g17p_image_copy_slice(AGX_CHIP_G16G, VK_IMAGE_TYPE_2D,
+                                  VK_IMAGE_TYPE_1D, 3, 3, &row, 1, &row_out));
+
    VkImageCopy2 untouched = {.sType = VK_STRUCTURE_TYPE_IMAGE_COPY_2};
    CHECK(!hk_g17p_image_copy_slice(
       AGX_CHIP_G17G, VK_IMAGE_TYPE_2D, VK_IMAGE_TYPE_2D, 3, 3,

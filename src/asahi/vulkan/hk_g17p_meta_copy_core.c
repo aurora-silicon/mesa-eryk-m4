@@ -60,8 +60,14 @@ hk_g17p_image_copy_slice(enum agx_chip chip, VkImageType src_type,
    const bool src_3d = src_type == VK_IMAGE_TYPE_3D;
    const bool dst_3d = dst_type == VK_IMAGE_TYPE_3D;
    if (!agx_chip_uses_hal200_ioto(chip) || !region || !out ||
-       (src_type != VK_IMAGE_TYPE_2D && !(chip == AGX_CHIP_G16G && src_3d)) ||
-       (dst_type != VK_IMAGE_TYPE_2D && !(chip == AGX_CHIP_G16G && dst_3d)) ||
+       (src_type != VK_IMAGE_TYPE_2D &&
+        !(chip == AGX_CHIP_G16G && (src_3d || src_type == VK_IMAGE_TYPE_1D))) ||
+       (dst_type != VK_IMAGE_TYPE_2D &&
+        !(chip == AGX_CHIP_G16G && (dst_3d || dst_type == VK_IMAGE_TYPE_1D))) ||
+       (src_type == VK_IMAGE_TYPE_1D &&
+        (region->srcOffset.y != 0 || region->extent.height != 1)) ||
+       (dst_type == VK_IMAGE_TYPE_1D &&
+        (region->dstOffset.y != 0 || region->extent.height != 1)) ||
        src_layers == 0 || src_layers != dst_layers || slice >= src_layers ||
        region->extent.depth != ((src_3d || dst_3d) ? src_layers : 1) ||
        (src_3d ? (region->srcOffset.z < 0 ||
