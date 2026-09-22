@@ -25,6 +25,8 @@
 
 #include <inttypes.h>
 
+DEBUG_GET_ONCE_BOOL_OPTION(hk_descriptor_launch_trace, "HK_G17P_LAUNCH_TRACE", false)
+
 static inline uint32_t
 align_u32(uint32_t v, uint32_t a)
 {
@@ -273,7 +275,7 @@ write_storage_image_view_desc(struct hk_descriptor_set *set,
       memcpy(packed + AGX_G17P_SAMPLED_HEAP_INDEX_OFFSET,
              &view->planes[0].storage_read_heap_index, sizeof(uint32_t));
    }
-   if (debug_get_bool_option("HK_G17P_LAUNCH_TRACE", false) && generation == 9) {
+   if (debug_get_option_hk_descriptor_launch_trace() && generation == 9) {
       fprintf(stderr,
               "G17P storage descriptor set=0x%" PRIx64
               " binding=%u elem=%u offset=%u valid=%u bytes=",

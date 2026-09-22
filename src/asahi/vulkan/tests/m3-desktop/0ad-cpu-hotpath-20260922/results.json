@@ -1,0 +1,426 @@
+[
+  {
+    "evidence": "0ad-120-cpu-hotpath-cts-a",
+    "phase": "complete",
+    "boot_id": "53736e21-c0be-4e5b-a8a1-84bb3bc0fad7",
+    "cts-results.json": [
+      {
+        "index": 0,
+        "case": "dEQP-VK.api.command_buffers.pool_reset_no_flags_res",
+        "catalog_index": 4564,
+        "boot_id": "53736e21-c0be-4e5b-a8a1-84bb3bc0fad7",
+        "argv": [
+          "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+          "--deqp-case=dEQP-VK.api.command_buffers.pool_reset_no_flags_res",
+          "--deqp-log-images=disable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-all-images=disable",
+          "--deqp-visibility=hidden",
+          "--deqp-log-filename=/root/m3-apps/0ad-120-cpu-hotpath-cts-a/case-0000/result.qpa"
+        ],
+        "status": "Pass",
+        "message": "Command Pool allocated correctly.",
+        "returncode": 0,
+        "seconds": 0.06380075799995666
+      },
+      {
+        "index": 1,
+        "case": "dEQP-VK.api.command_buffers.pool_reset_release_res",
+        "catalog_index": 4565,
+        "boot_id": "53736e21-c0be-4e5b-a8a1-84bb3bc0fad7",
+        "argv": [
+          "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+          "--deqp-case=dEQP-VK.api.command_buffers.pool_reset_release_res",
+          "--deqp-log-images=disable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-all-images=disable",
+          "--deqp-visibility=hidden",
+          "--deqp-log-filename=/root/m3-apps/0ad-120-cpu-hotpath-cts-a/case-0001/result.qpa"
+        ],
+        "status": "Pass",
+        "message": "Command Pool allocated correctly.",
+        "returncode": 0,
+        "seconds": 0.031899170000087906
+      },
+      {
+        "index": 2,
+        "case": "dEQP-VK.api.command_buffers.pool_reset_reuse",
+        "catalog_index": 4566,
+        "boot_id": "53736e21-c0be-4e5b-a8a1-84bb3bc0fad7",
+        "argv": [
+          "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+          "--deqp-case=dEQP-VK.api.command_buffers.pool_reset_reuse",
+          "--deqp-log-images=disable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-all-images=disable",
+          "--deqp-visibility=hidden",
+          "--deqp-log-filename=/root/m3-apps/0ad-120-cpu-hotpath-cts-a/case-0002/result.qpa"
+        ],
+        "status": "Pass",
+        "message": "Passed",
+        "returncode": 0,
+        "seconds": 0.06390861999989284
+      },
+      {
+        "index": 3,
+        "case": "dEQP-VK.api.command_buffers.reset_implicit",
+        "catalog_index": 4588,
+        "boot_id": "53736e21-c0be-4e5b-a8a1-84bb3bc0fad7",
+        "argv": [
+          "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+          "--deqp-case=dEQP-VK.api.command_buffers.reset_implicit",
+          "--deqp-log-images=disable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-all-images=disable",
+          "--deqp-visibility=hidden",
+          "--deqp-log-filename=/root/m3-apps/0ad-120-cpu-hotpath-cts-a/case-0003/result.qpa"
+        ],
+        "status": "Pass",
+        "message": "Buffer was reset correctly.",
+        "returncode": 0,
+        "seconds": 0.03192456300007507
+      },
+      {
+        "index": 4,
+        "case": "dEQP-VK.api.command_buffers.record_one_time_submit_primary",
+        "catalog_index": 4573,
+        "boot_id": "53736e21-c0be-4e5b-a8a1-84bb3bc0fad7",
+        "argv": [
+          "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+          "--deqp-case=dEQP-VK.api.command_buffers.record_one_time_submit_primary",
+          "--deqp-log-images=disable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-all-images=disable",
+          "--deqp-visibility=hidden",
+          "--deqp-log-filename=/root/m3-apps/0ad-120-cpu-hotpath-cts-a/case-0004/result.qpa"
+        ],
+        "status": "Pass",
+        "message": "oneTimeSubmitFlagPrimaryBufferTest succeeded",
+        "returncode": 0,
+        "seconds": 0.06420594599990181
+      },
+      {
+        "index": 5,
+        "case": "dEQP-VK.api.command_buffers.record_one_time_submit_secondary",
+        "catalog_index": 4574,
+        "boot_id": "53736e21-c0be-4e5b-a8a1-84bb3bc0fad7",
+        "argv": [
+          "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+          "--deqp-case=dEQP-VK.api.command_buffers.record_one_time_submit_secondary",
+          "--deqp-log-images=disable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-all-images=disable",
+          "--deqp-visibility=hidden",
+          "--deqp-log-filename=/root/m3-apps/0ad-120-cpu-hotpath-cts-a/case-0005/result.qpa"
+        ],
+        "status": "Pass",
+        "message": "oneTimeSubmitFlagSecondaryBufferTest succeeded",
+        "returncode": 0,
+        "seconds": 0.0641385960000207
+      },
+      {
+        "index": 6,
+        "case": "dEQP-VK.api.command_buffers.record_simul_use_secondary_one_primary",
+        "catalog_index": 4579,
+        "boot_id": "53736e21-c0be-4e5b-a8a1-84bb3bc0fad7",
+        "argv": [
+          "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+          "--deqp-case=dEQP-VK.api.command_buffers.record_simul_use_secondary_one_primary",
+          "--deqp-log-images=disable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-all-images=disable",
+          "--deqp-visibility=hidden",
+          "--deqp-log-filename=/root/m3-apps/0ad-120-cpu-hotpath-cts-a/case-0006/result.qpa"
+        ],
+        "status": "Pass",
+        "message": "Simultaneous Secondary Command Buffer Execution succeeded",
+        "returncode": 0,
+        "seconds": 0.11425046199997269
+      },
+      {
+        "index": 7,
+        "case": "dEQP-VK.api.command_buffers.record_simul_use_secondary_two_primary",
+        "catalog_index": 4580,
+        "boot_id": "53736e21-c0be-4e5b-a8a1-84bb3bc0fad7",
+        "argv": [
+          "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+          "--deqp-case=dEQP-VK.api.command_buffers.record_simul_use_secondary_two_primary",
+          "--deqp-log-images=disable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-all-images=disable",
+          "--deqp-visibility=hidden",
+          "--deqp-log-filename=/root/m3-apps/0ad-120-cpu-hotpath-cts-a/case-0007/result.qpa"
+        ],
+        "status": "Pass",
+        "message": "Simultaneous Secondary Command Buffer Execution succeeded",
+        "returncode": 0,
+        "seconds": 0.11395436899999822
+      },
+      {
+        "index": 8,
+        "case": "dEQP-VK.api.command_buffers.render_pass_continue",
+        "catalog_index": 4586,
+        "boot_id": "53736e21-c0be-4e5b-a8a1-84bb3bc0fad7",
+        "argv": [
+          "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+          "--deqp-case=dEQP-VK.api.command_buffers.render_pass_continue",
+          "--deqp-log-images=disable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-all-images=disable",
+          "--deqp-visibility=hidden",
+          "--deqp-log-filename=/root/m3-apps/0ad-120-cpu-hotpath-cts-a/case-0008/result.qpa"
+        ],
+        "status": "Pass",
+        "message": "render pass continue test passed",
+        "returncode": 0,
+        "seconds": 0.06407931000001099
+      },
+      {
+        "index": 9,
+        "case": "dEQP-VK.api.command_buffers.render_pass_continue_no_fb",
+        "catalog_index": 4587,
+        "boot_id": "53736e21-c0be-4e5b-a8a1-84bb3bc0fad7",
+        "argv": [
+          "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+          "--deqp-case=dEQP-VK.api.command_buffers.render_pass_continue_no_fb",
+          "--deqp-log-images=disable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-all-images=disable",
+          "--deqp-visibility=hidden",
+          "--deqp-log-filename=/root/m3-apps/0ad-120-cpu-hotpath-cts-a/case-0009/result.qpa"
+        ],
+        "status": "Pass",
+        "message": "render pass continue test passed",
+        "returncode": 0,
+        "seconds": 0.06381615099996907
+      },
+      {
+        "index": 10,
+        "case": "dEQP-VK.api.command_buffers.secondary_execute",
+        "catalog_index": 4589,
+        "boot_id": "53736e21-c0be-4e5b-a8a1-84bb3bc0fad7",
+        "argv": [
+          "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+          "--deqp-case=dEQP-VK.api.command_buffers.secondary_execute",
+          "--deqp-log-images=disable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-all-images=disable",
+          "--deqp-visibility=hidden",
+          "--deqp-log-filename=/root/m3-apps/0ad-120-cpu-hotpath-cts-a/case-0010/result.qpa"
+        ],
+        "status": "Pass",
+        "message": "executeSecondaryBufferTest succeeded",
+        "returncode": 0,
+        "seconds": 0.06394526400003997
+      },
+      {
+        "index": 11,
+        "case": "dEQP-VK.api.command_buffers.secondary_execute_twice",
+        "catalog_index": 4590,
+        "boot_id": "53736e21-c0be-4e5b-a8a1-84bb3bc0fad7",
+        "argv": [
+          "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+          "--deqp-case=dEQP-VK.api.command_buffers.secondary_execute_twice",
+          "--deqp-log-images=disable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-all-images=disable",
+          "--deqp-visibility=hidden",
+          "--deqp-log-filename=/root/m3-apps/0ad-120-cpu-hotpath-cts-a/case-0011/result.qpa"
+        ],
+        "status": "Pass",
+        "message": "executeSecondaryBufferTwiceTest succeeded",
+        "returncode": 0,
+        "seconds": 0.06386001900000338
+      },
+      {
+        "index": 12,
+        "case": "dEQP-VK.api.command_buffers.secondary_push_constants_2",
+        "catalog_index": 4592,
+        "boot_id": "53736e21-c0be-4e5b-a8a1-84bb3bc0fad7",
+        "argv": [
+          "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+          "--deqp-case=dEQP-VK.api.command_buffers.secondary_push_constants_2",
+          "--deqp-log-images=disable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-all-images=disable",
+          "--deqp-visibility=hidden",
+          "--deqp-log-filename=/root/m3-apps/0ad-120-cpu-hotpath-cts-a/case-0012/result.qpa"
+        ],
+        "status": "Pass",
+        "message": "Pass",
+        "returncode": 0,
+        "seconds": 0.11412320800002362
+      },
+      {
+        "index": 13,
+        "case": "dEQP-VK.api.command_buffers.secondary_push_descriptor_set_2",
+        "catalog_index": 4593,
+        "boot_id": "53736e21-c0be-4e5b-a8a1-84bb3bc0fad7",
+        "argv": [
+          "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+          "--deqp-case=dEQP-VK.api.command_buffers.secondary_push_descriptor_set_2",
+          "--deqp-log-images=disable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-all-images=disable",
+          "--deqp-visibility=hidden",
+          "--deqp-log-filename=/root/m3-apps/0ad-120-cpu-hotpath-cts-a/case-0013/result.qpa"
+        ],
+        "status": "Pass",
+        "message": "Pass",
+        "returncode": 0,
+        "seconds": 0.11425721199998407
+      },
+      {
+        "index": 14,
+        "case": "dEQP-VK.api.command_buffers.secondary_push_descriptor_set_with_template",
+        "catalog_index": 4594,
+        "boot_id": "53736e21-c0be-4e5b-a8a1-84bb3bc0fad7",
+        "argv": [
+          "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+          "--deqp-case=dEQP-VK.api.command_buffers.secondary_push_descriptor_set_with_template",
+          "--deqp-log-images=disable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-all-images=disable",
+          "--deqp-visibility=hidden",
+          "--deqp-log-filename=/root/m3-apps/0ad-120-cpu-hotpath-cts-a/case-0014/result.qpa"
+        ],
+        "status": "Pass",
+        "message": "Pass",
+        "returncode": 0,
+        "seconds": 0.11425521299997854
+      },
+      {
+        "index": 15,
+        "case": "dEQP-VK.api.command_buffers.submit_twice_primary",
+        "catalog_index": 4598,
+        "boot_id": "53736e21-c0be-4e5b-a8a1-84bb3bc0fad7",
+        "argv": [
+          "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+          "--deqp-case=dEQP-VK.api.command_buffers.submit_twice_primary",
+          "--deqp-log-images=disable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-all-images=disable",
+          "--deqp-visibility=hidden",
+          "--deqp-log-filename=/root/m3-apps/0ad-120-cpu-hotpath-cts-a/case-0015/result.qpa"
+        ],
+        "status": "Pass",
+        "message": "Submit Twice Test succeeded",
+        "returncode": 0,
+        "seconds": 0.06420040599994081
+      },
+      {
+        "index": 16,
+        "case": "dEQP-VK.api.command_buffers.submit_twice_secondary",
+        "catalog_index": 4599,
+        "boot_id": "53736e21-c0be-4e5b-a8a1-84bb3bc0fad7",
+        "argv": [
+          "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+          "--deqp-case=dEQP-VK.api.command_buffers.submit_twice_secondary",
+          "--deqp-log-images=disable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-all-images=disable",
+          "--deqp-visibility=hidden",
+          "--deqp-log-filename=/root/m3-apps/0ad-120-cpu-hotpath-cts-a/case-0016/result.qpa"
+        ],
+        "status": "Pass",
+        "message": "Submit Twice Secondary Command Buffer succeeded",
+        "returncode": 0,
+        "seconds": 0.06424264899999343
+      },
+      {
+        "index": 17,
+        "case": "dEQP-VK.api.command_buffers.trim_command_pool_secondary",
+        "catalog_index": 4604,
+        "boot_id": "53736e21-c0be-4e5b-a8a1-84bb3bc0fad7",
+        "argv": [
+          "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+          "--deqp-case=dEQP-VK.api.command_buffers.trim_command_pool_secondary",
+          "--deqp-log-images=disable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-all-images=disable",
+          "--deqp-visibility=hidden",
+          "--deqp-log-filename=/root/m3-apps/0ad-120-cpu-hotpath-cts-a/case-0017/result.qpa"
+        ],
+        "status": "Pass",
+        "message": "Pass",
+        "returncode": 0,
+        "seconds": 2.167012537000005
+      },
+      {
+        "index": 18,
+        "case": "dEQP-VK.api.command_buffers.record_many_draws_secondary_1",
+        "catalog_index": 4569,
+        "boot_id": "53736e21-c0be-4e5b-a8a1-84bb3bc0fad7",
+        "argv": [
+          "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+          "--deqp-case=dEQP-VK.api.command_buffers.record_many_draws_secondary_1",
+          "--deqp-log-images=disable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-all-images=disable",
+          "--deqp-visibility=hidden",
+          "--deqp-log-filename=/root/m3-apps/0ad-120-cpu-hotpath-cts-a/case-0018/result.qpa"
+        ],
+        "status": "Pass",
+        "message": "Pass",
+        "returncode": 0,
+        "seconds": 0.11425592299997334
+      },
+      {
+        "index": 19,
+        "case": "dEQP-VK.api.command_buffers.record_many_draws_secondary_2",
+        "catalog_index": 4570,
+        "boot_id": "53736e21-c0be-4e5b-a8a1-84bb3bc0fad7",
+        "argv": [
+          "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+          "--deqp-case=dEQP-VK.api.command_buffers.record_many_draws_secondary_2",
+          "--deqp-log-images=disable",
+          "--deqp-log-shader-sources=disable",
+          "--deqp-log-all-images=disable",
+          "--deqp-visibility=hidden",
+          "--deqp-log-filename=/root/m3-apps/0ad-120-cpu-hotpath-cts-a/case-0019/result.qpa"
+        ],
+        "status": "Pass",
+        "message": "Pass",
+        "returncode": 0,
+        "seconds": 0.16390668899998673
+      }
+    ],
+    "cts-summary.json": {
+      "start": 0,
+      "next_index": 20,
+      "count": 20,
+      "stop": null,
+      "elapsed_seconds": 4.157119231000024
+    }
+  },
+  {
+    "evidence": "0ad-120-cpu-hotpath-replay",
+    "phase": "complete",
+    "boot_id": "53736e21-c0be-4e5b-a8a1-84bb3bc0fad7",
+    "replay-result.json": {
+      "returncode": 0,
+      "timed_out": false,
+      "elapsed_seconds": 4.318398400000092,
+      "screenshot": true
+    }
+  },
+  {
+    "evidence": "0ad-120-vk-cpu-hotpath",
+    "phase": "complete",
+    "boot_id": "53736e21-c0be-4e5b-a8a1-84bb3bc0fad7",
+    "frame-summary.json": {
+      "frames": 913,
+      "seconds": 9.994210328000001,
+      "fps": 91.3528903271246,
+      "median_frame_ms": 10.901556000000312,
+      "maximum_frame_ms": 19.865021999997623,
+      "scope": "Complete frame intervals in the last ten seconds; screenshot captured afterwards"
+    },
+    "binary-identity.json": {
+      "/root/m3-gpu-tools/desktop/0ad-benchmark.py": "50b98efd999e873c56edc72588d79a5b845fc5d91712923b73b48887b894e305",
+      "/usr/bin/pyrogenesis": "25935cfeabe5c90e1846197a4da2ca7e8853d4810b56a4ec31df0f8e61139089",
+      "/opt/asahi-m3-experiments/0ad-cpu-hotpath/asahi.json": "b4b101753ea57515681138937fd5f092798db11eb6280c4448cce6ede5484bad",
+      "/opt/asahi-m3-experiments/0ad-cpu-hotpath/libvulkan_asahi.so": "b507e1fe75c8ede1811e9e7b4b472e345c3d267edf61ef770c0cf03910814692"
+    }
+  }
+]

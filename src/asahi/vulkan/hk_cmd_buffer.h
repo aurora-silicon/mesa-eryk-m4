@@ -627,6 +627,10 @@ struct hk_cmd_buffer {
       struct hk_uploader main, usc;
    } uploader;
 
+   /* Recording-only locality cache. Submission may read it but never updates
+    * it, including simultaneous-use command buffers. Cleared before BO reset. */
+   struct hk_cmd_bo *vdm_lookup_bo;
+
    /* List of all recorded control streams */
    struct list_head control_streams;
 
