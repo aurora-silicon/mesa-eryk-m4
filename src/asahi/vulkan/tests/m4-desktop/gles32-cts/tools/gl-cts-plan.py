@@ -34,6 +34,7 @@ p.add_argument('--segment-size', type=int, default=2500)
 p.add_argument('--first', type=int, default=0)
 p.add_argument('--last', type=int)
 p.add_argument('--jobs', type=int, default=4)
+p.add_argument('--live', action='store_true', help='Read the latest target runner progress alongside saved coverage')
 p.add_argument('--seconds', type=int, default=900)
 p.add_argument('--continue-compiler-aborts', action='store_true',
     help='After the reviewed AGX compile/pipeline assertion only, retain crashes and continue unrun/canceled peers under a fresh guard')
@@ -136,6 +137,22 @@ if a.mode in ('report', 'status'):
         save(a.campaign/'unique-failures.json', list(by_case.values()))
         (a.campaign/'failures.tsv').write_text('global_index\tsession\tstatus\tcase\n'+''.join(
             f"{r['global_index']}\t{r['session']}\t{r['status']}\t{r['case']}\n" for r in bad))
+    if a.live:
+        probe = subprocess.run(['ssh', '-o', 'ConnectTimeout=10', 'root@omarchy-m4', 'python3', '-'],
+            input="""from pathlib import Path
+import json
+paths = sorted(Path('/root/asahi-evidence').glob('*-gles32-plan-*'))
+if paths:
+    p = paths[-1]
+    log = p/'cts/runner.log'
+    progress = []
+    if log.exists():
+        with log.open('rb') as f:
+            f.seek(max(0, log.stat().st_size-500000))
+            progress = [x for x in f.read().decode(errors='replace').splitlines() if 'Remaining:' in x]
+    print(json.dumps(dict(evidence=p.name, progress=progress[-1:])))
+""", text=True, capture_output=True, timeout=20)
+        summary['live'] = json.loads(probe.stdout) if probe.returncode == 0 and probe.stdout.strip() else dict(error=probe.stderr.strip())
     print(json.dumps(summary, indent=2))
     sys.exit(0)
 
