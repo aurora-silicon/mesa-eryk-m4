@@ -768,6 +768,14 @@ zink_init_screen_caps(struct zink_screen *screen)
    caps->fbfetch = screen->info.have_KHR_dynamic_rendering_local_read;
 #endif
    caps->fbfetch_coherent = caps->fbfetch && screen->info.have_EXT_rasterization_order_attachment_access;
+   /* Native advanced blending does not imply coherent framebuffer fetch. */
+   caps->blend_equation_advanced = screen->info.have_EXT_blend_operation_advanced &&
+      screen->info.blend_props.advancedBlendMaxColorAttachments >= PIPE_MAX_COLOR_BUFS &&
+      screen->info.blend_props.advancedBlendIndependentBlend &&
+      (!screen->have_full_ds3 ||
+       screen->info.dynamic_state3_feats.extendedDynamicState3ColorBlendAdvanced);
+   caps->blend_equation_advanced_coherent = caps->blend_equation_advanced &&
+      screen->info.blend_feats.advancedBlendCoherentOperations;
 
    caps->memobj =
       screen->instance_info->have_KHR_external_memory_capabilities &&

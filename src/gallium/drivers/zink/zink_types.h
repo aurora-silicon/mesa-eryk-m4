@@ -369,11 +369,13 @@ struct zink_rasterizer_state {
 struct zink_blend_state {
    uint32_t hash;
    unsigned num_rts;
+   bool advanced;
    VkPipelineColorBlendAttachmentState attachments[PIPE_MAX_COLOR_BUFS];
 
    struct {
       VkBool32 enables[PIPE_MAX_COLOR_BUFS];
       VkColorBlendEquationEXT eq[PIPE_MAX_COLOR_BUFS];
+      VkColorBlendAdvancedEXT advanced[PIPE_MAX_COLOR_BUFS];
       VkColorComponentFlags wrmask[PIPE_MAX_COLOR_BUFS];
    } ds3;
 

@@ -1616,12 +1616,15 @@ void st_init_extensions(struct pipe_screen *screen,
    unsigned max_fb_fetch_rts = screen->caps.fbfetch;
    bool coherent_fb_fetch = screen->caps.fbfetch_coherent;
 
-   if (screen->caps.blend_equation_advanced)
+   if (screen->caps.blend_equation_advanced) {
       extensions->KHR_blend_equation_advanced = true;
+      extensions->KHR_blend_equation_advanced_coherent =
+         screen->caps.blend_equation_advanced_coherent;
+   }
 
    if (max_fb_fetch_rts > 0) {
       extensions->KHR_blend_equation_advanced = true;
-      extensions->KHR_blend_equation_advanced_coherent = coherent_fb_fetch;
+      extensions->KHR_blend_equation_advanced_coherent |= coherent_fb_fetch;
 
       if (max_fb_fetch_rts >=
           screen->caps.max_render_targets) {

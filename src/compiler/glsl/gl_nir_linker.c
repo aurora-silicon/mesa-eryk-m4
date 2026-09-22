@@ -1315,7 +1315,9 @@ preprocess_shader(const struct pipe_screen *screen,
    nir_shader *nir = prog->nir;
    nir_shader_gather_info(prog->nir, nir_shader_get_entrypoint(prog->nir));
 
-   if (prog->info.stage == MESA_SHADER_FRAGMENT && consts->HasFBFetch) {
+   /* Native blend state and shader emulation must not both apply the equation. */
+   if (prog->info.stage == MESA_SHADER_FRAGMENT && consts->HasFBFetch &&
+       !screen->caps.blend_equation_advanced) {
       NIR_PASS(_, prog->nir, gl_nir_lower_blend_equation_advanced,
                  exts->KHR_blend_equation_advanced_coherent);
    }

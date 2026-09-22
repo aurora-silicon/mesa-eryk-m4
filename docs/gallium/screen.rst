@@ -614,6 +614,7 @@ Capability about the features and limits of the driver/GPU.
 * ``pipe_caps.map_unsynchronized_thread_safe``: Whether mapping a buffer as unsynchronized from any thread is safe.
 * ``pipe_caps.glsl_zero_init``: Choose a default zero initialization some GLSL variables. If ``1``, then all GLSL shader variables and gl_FragColor are initialized to zero. If ``2``, then shader out variables are not initialized but function out variables are.
 * ``pipe_caps.blend_equation_advanced``: Driver supports blend equation advanced without necessarily supporting FBFETCH.
+* ``pipe_caps.blend_equation_advanced_coherent``: Advanced blend operations are coherent without requiring framebuffer fetch support. Requires ``blend_equation_advanced``.
 * ``pipe_caps.nir_atomics_as_deref``: Whether NIR atomics instructions should reference atomics as NIR derefs instead of by indices.
 * ``pipe_caps.no_clip_on_copy_tex``: Driver doesn't want x/y/width/height clipped based on src size when doing a copy texture operation (e.g.: may want out-of-bounds reads that produce 0 instead of leaving the texture content undefined)
 * ``pipe_caps.max_texture_mb``: Maximum texture size in MB (default is 1024)

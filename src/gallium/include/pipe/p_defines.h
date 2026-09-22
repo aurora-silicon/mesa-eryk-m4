@@ -1026,6 +1026,7 @@ struct pipe_caps {
    bool alpha_to_coverage_dither_control;
    bool map_unsynchronized_thread_safe;
    bool blend_equation_advanced;
+   bool blend_equation_advanced_coherent;
    bool nir_atomics_as_deref;
    bool no_clip_on_copy_tex;
    bool shader_atomic_int64;

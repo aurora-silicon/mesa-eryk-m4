@@ -242,6 +242,7 @@ EXTENSIONS = [
               features=True),
     Extension("VK_EXT_blend_operation_advanced",
               alias="blend",
+              features=True,
               properties=True,
               # TODO: we can probably support non-premul here with some work?
               conditions=["$props.advancedBlendNonPremultipliedSrcColor", "$props.advancedBlendNonPremultipliedDstColor"]),

@@ -275,6 +275,8 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
             if (state->rendering_info.colorAttachmentCount) {
                dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_COLOR_BLEND_ENABLE_EXT;
                dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_COLOR_BLEND_EQUATION_EXT;
+               if (screen->info.dynamic_state3_feats.extendedDynamicState3ColorBlendAdvanced)
+                  dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_COLOR_BLEND_ADVANCED_EXT;
                dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_COLOR_WRITE_MASK_EXT;
             }
          }
@@ -572,6 +574,8 @@ zink_create_gfx_pipeline_output(struct zink_screen *screen, struct zink_gfx_pipe
          if (state->rendering_info.colorAttachmentCount) {
             dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_COLOR_BLEND_ENABLE_EXT;
             dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_COLOR_BLEND_EQUATION_EXT;
+            if (screen->info.dynamic_state3_feats.extendedDynamicState3ColorBlendAdvanced)
+               dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_COLOR_BLEND_ADVANCED_EXT;
             dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_COLOR_WRITE_MASK_EXT;
          }
       }

@@ -515,8 +515,12 @@ emit_dynamic_state(struct zink_context *ctx, bool pipeline_changed, unsigned num
                VKCTX(CmdSetColorBlendEnableEXT)(bs->cmdbuf, 0, ctx->fb_state.nr_cbufs, ctx->gfx_pipeline_state.blend_state->ds3.enables);
             if (ctx->ds3_states & BITFIELD_BIT(ZINK_DS3_BLEND_WRITE))
                VKCTX(CmdSetColorWriteMaskEXT)(bs->cmdbuf, 0, ctx->fb_state.nr_cbufs, ctx->gfx_pipeline_state.blend_state->ds3.wrmask);
-            if (ctx->ds3_states & BITFIELD_BIT(ZINK_DS3_BLEND_EQ))
-               VKCTX(CmdSetColorBlendEquationEXT)(bs->cmdbuf, 0, ctx->fb_state.nr_cbufs, ctx->gfx_pipeline_state.blend_state->ds3.eq);
+            if (ctx->ds3_states & BITFIELD_BIT(ZINK_DS3_BLEND_EQ)) {
+               if (ctx->gfx_pipeline_state.blend_state->advanced)
+                  VKCTX(CmdSetColorBlendAdvancedEXT)(bs->cmdbuf, 0, ctx->fb_state.nr_cbufs, ctx->gfx_pipeline_state.blend_state->ds3.advanced);
+               else
+                  VKCTX(CmdSetColorBlendEquationEXT)(bs->cmdbuf, 0, ctx->fb_state.nr_cbufs, ctx->gfx_pipeline_state.blend_state->ds3.eq);
+            }
          }
          if (ctx->ds3_states & BITFIELD_BIT(ZINK_DS3_BLEND_LOGIC_ON))
             VKCTX(CmdSetLogicOpEnableEXT)(bs->cmdbuf, ctx->gfx_pipeline_state.blend_state->logicop_enable);

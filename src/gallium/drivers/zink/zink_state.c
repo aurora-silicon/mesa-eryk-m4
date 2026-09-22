@@ -30,6 +30,7 @@
 
 #include "compiler/shader_enums.h"
 #include "util/u_dual_blend.h"
+#include "util/blend.h"
 #include "util/u_memory.h"
 #include "util/u_helpers.h"
 #include "vk_format.h"
@@ -237,6 +238,29 @@ blend_op(enum pipe_blend_func func)
    UNREACHABLE("unexpected blend function");
 }
 
+static VkBlendOp
+advanced_blend_op(enum pipe_advanced_blend_mode mode)
+{
+   switch (mode) {
+   case PIPE_ADVANCED_BLEND_MULTIPLY: return VK_BLEND_OP_MULTIPLY_EXT;
+   case PIPE_ADVANCED_BLEND_SCREEN: return VK_BLEND_OP_SCREEN_EXT;
+   case PIPE_ADVANCED_BLEND_OVERLAY: return VK_BLEND_OP_OVERLAY_EXT;
+   case PIPE_ADVANCED_BLEND_DARKEN: return VK_BLEND_OP_DARKEN_EXT;
+   case PIPE_ADVANCED_BLEND_LIGHTEN: return VK_BLEND_OP_LIGHTEN_EXT;
+   case PIPE_ADVANCED_BLEND_COLORDODGE: return VK_BLEND_OP_COLORDODGE_EXT;
+   case PIPE_ADVANCED_BLEND_COLORBURN: return VK_BLEND_OP_COLORBURN_EXT;
+   case PIPE_ADVANCED_BLEND_HARDLIGHT: return VK_BLEND_OP_HARDLIGHT_EXT;
+   case PIPE_ADVANCED_BLEND_SOFTLIGHT: return VK_BLEND_OP_SOFTLIGHT_EXT;
+   case PIPE_ADVANCED_BLEND_DIFFERENCE: return VK_BLEND_OP_DIFFERENCE_EXT;
+   case PIPE_ADVANCED_BLEND_EXCLUSION: return VK_BLEND_OP_EXCLUSION_EXT;
+   case PIPE_ADVANCED_BLEND_HSL_HUE: return VK_BLEND_OP_HSL_HUE_EXT;
+   case PIPE_ADVANCED_BLEND_HSL_SATURATION: return VK_BLEND_OP_HSL_SATURATION_EXT;
+   case PIPE_ADVANCED_BLEND_HSL_COLOR: return VK_BLEND_OP_HSL_COLOR_EXT;
+   case PIPE_ADVANCED_BLEND_HSL_LUMINOSITY: return VK_BLEND_OP_HSL_LUMINOSITY_EXT;
+   default: UNREACHABLE("invalid GL advanced blend mode");
+   }
+}
+
 static VkLogicOp
 logic_op(enum pipe_logicop func)
 {
@@ -300,6 +324,7 @@ zink_create_blend_state(struct pipe_context *pctx,
    cso->alpha_to_coverage = blend_state->alpha_to_coverage;
    cso->alpha_to_one = blend_state->alpha_to_one;
    cso->num_rts = blend_state->max_rt + 1;
+   cso->advanced = blend_state->advanced_blend_func != PIPE_ADVANCED_BLEND_NONE;
 
    for (int i = 0; i < blend_state->max_rt + 1; ++i) {
       const struct pipe_rt_blend_state *rt = blend_state->rt;
@@ -318,6 +343,18 @@ zink_create_blend_state(struct pipe_context *pctx,
          att.alphaBlendOp = blend_op(rt->alpha_func);
       }
 
+      if (cso->advanced) {
+         att.blendEnable = VK_TRUE;
+         att.colorBlendOp = att.alphaBlendOp =
+            advanced_blend_op(blend_state->advanced_blend_func);
+         cso->ds3.advanced[i] = (VkColorBlendAdvancedEXT){
+            .advancedBlendOp = att.colorBlendOp,
+            .srcPremultiplied = VK_TRUE,
+            .dstPremultiplied = VK_TRUE,
+            .blendOverlap = VK_BLEND_OVERLAP_UNCORRELATED_EXT,
+         };
+      }
+
       if (rt->colormask & PIPE_MASK_R)
          att.colorWriteMask |= VK_COLOR_COMPONENT_R_BIT;
       if (rt->colormask & PIPE_MASK_G)
@@ -328,7 +365,7 @@ zink_create_blend_state(struct pipe_context *pctx,
          att.colorWriteMask |= VK_COLOR_COMPONENT_A_BIT;
 
       cso->wrmask |= (rt->colormask << i);
-      if (rt->blend_enable)
+      if (att.blendEnable)
          cso->enables |= BITFIELD_BIT(i);
 
       cso->attachments[i] = att;
