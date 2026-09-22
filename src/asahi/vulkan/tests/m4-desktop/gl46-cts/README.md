@@ -99,3 +99,26 @@ one worker. This recheck changed both the driver and concurrency; it does
 not independently attribute the original timeout to contention alone.
 Evidence: 20260922T011443181526Z-gl46-duration-recheck. Remaining copy cases
 run with two workers; all first-attempt outcomes remain recorded.
+
+## Maximum shader interfaces
+
+UVSW destinations and staging sources have different limits. The old compiler
+rejected output 128 because it treated the 256-half staging file as the output
+address space. Higher destinations now use the existing serialized COPY/UVSW
+path with a bounded six-slot staging bank; ordinary bundles retain their layout.
+21 vertex backend tests pass, including destinations through 255.
+
+Guarded CPU-checked GL probes render 31 vec4 outputs (124 components), and
+29 vec4 outputs plus eight live clip distances. The latter checks 58 draws
+with changing UBO values and every selected output:
+`20260922T024631859137Z-gl46-maximum-io-clips`, peak 63.25 C.
+These probes used the separate experimental Vulkan limit increases.
+
+The 32-vec4 GL probe remains unresolved: it compiles but stalls the fragment
+stage, including with a summing FS. Retained failures:
+`20260922T023808812411Z-gl46-maximum-io-streamed`,
+`20260922T024110212541Z-gl46-maximum-io-capture`,
+`20260922T024339307948Z-gl46-maximum-io-sum`. Each guard saved evidence and
+recovered by reboot. It exceeds the proposed Vulkan output limit once position
+is included, but Zink accepts this GL shader. Do not call the entire enlarged
+GL interface qualified on the strength of limit-query tests alone.

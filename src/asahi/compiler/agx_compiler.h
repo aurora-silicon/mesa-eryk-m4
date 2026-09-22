@@ -1061,8 +1061,10 @@ void agx_opt_compact_constants(agx_context *ctx);
 void agx_opt_promote_constants(agx_context *ctx);
 void agx_dce(agx_context *ctx, bool partial);
 void agx_pressure_schedule(agx_context *ctx);
-/* Each scalar output occupies two halves in the 256-half staging file. */
-#define AGX3_MAX_VERTEX_OUTPUTS (256u / 2)
+/* UVSW has an eight-bit immediate destination. Its staging source is a
+ * separate address space; large export streams must recycle staging slots. */
+#define AGX3_MAX_VERTEX_OUTPUTS 256u
+#define AGX3_MAX_STAGED_VERTEX_OUTPUTS (256u / 2)
 bool agx3_sink_vertex_outputs(agx_context *ctx);
 void agx_spill(agx_context *ctx, unsigned k, bool remat_only);
 void agx_repair_ssa(agx_context *ctx);

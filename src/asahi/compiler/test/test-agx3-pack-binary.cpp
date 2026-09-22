@@ -5249,10 +5249,13 @@ TEST_F(AGX3PackBinary, TerminalVertexOutputsUseStagingFileCapacity)
       for (unsigned c = 0; c < count; ++c)
          agx_st_vary(b, agx_immediate(c), agx_register(0, AGX_SIZE_32));
       agx_stop(b);
-      const auto bytes = pack(b, count <= 128);
+      const auto bytes = pack(b);
       if (count <= 128) {
          EXPECT_FALSE(bytes.empty());
          EXPECT_EQ(b->shader->agx3_staging_halfs, 2 * count);
+      } else {
+         EXPECT_FALSE(bytes.empty());
+         EXPECT_LE(b->shader->agx3_staging_halfs, 12u);
       }
    }
 }
@@ -5353,6 +5356,32 @@ TEST_F(AGX3PackBinary, WideVertexOutputsAcceptRematerializedConstants)
       agx_stop(b);
       EXPECT_FALSE(pack(b).empty());
       EXPECT_EQ(b->shader->agx3_staging_halfs, 2 * count);
+   }
+}
+
+TEST_F(AGX3PackBinary, VertexDestinationsBeyondStagingCapacity)
+{
+   for (unsigned count : {129u, 137u, 142u, 256u}) {
+      agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+      b->shader->stage = MESA_SHADER_VERTEX;
+      for (unsigned c = 0; c < count; ++c) {
+         agx_mov_imm_to(b, agx_register(0, AGX_SIZE_32), 0x3f000000 + c);
+         agx_st_vary(b, agx_immediate(c), agx_register(0, AGX_SIZE_32));
+      }
+      agx_stop(b);
+      const auto got = pack(b);
+      ASSERT_FALSE(got.empty());
+      EXPECT_LE(b->shader->agx3_staging_halfs, 12u);
+      /* Destination indices remain full-width while every source stays in
+       * the six-slot staging bank. Check the encoded upper destinations. */
+      for (unsigned c = 128; c < count; ++c) {
+         uint8_t bytes[AGX3_VARY_MAX_LENGTH], len = 0;
+         ASSERT_TRUE(agx3_vary_uvsw(AGX_ISA_ENCODING_AGX3B, 2 * (c % 6),
+                                   c, c % 6 + 1, true, 1u << (c % 6),
+                                   bytes, &len));
+         EXPECT_NE(std::search(got.begin(), got.end(), bytes, bytes + len),
+                   got.end()) << "destination=" << c;
+      }
    }
 }
 

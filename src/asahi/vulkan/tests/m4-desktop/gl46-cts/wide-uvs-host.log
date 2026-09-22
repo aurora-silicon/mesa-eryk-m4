@@ -1,0 +1,56 @@
+Running main() from ../../mesa/m4-asahi/src/gtest/src/gtest_main.cc
+Note: Google Test filter = AGX3PackBinary.*Vertex*
+[==========] Running 21 tests from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 21 tests from AGX3PackBinary
+[ RUN      ] AGX3PackBinary.SignedMulHighDiv3MatchesNativeVertexWitness
+[       OK ] AGX3PackBinary.SignedMulHighDiv3MatchesNativeVertexWitness (0 ms)
+[ RUN      ] AGX3PackBinary.VertexStagingProducerMatchesAppleAndPreservesLiveness
+[       OK ] AGX3PackBinary.VertexStagingProducerMatchesAppleAndPreservesLiveness (0 ms)
+[ RUN      ] AGX3PackBinary.VertexStagingBankAndScoreboardRoundTrip
+[       OK ] AGX3PackBinary.VertexStagingBankAndScoreboardRoundTrip (0 ms)
+[ RUN      ] AGX3PackBinary.VertexStagingAllocationDoesNotUseGprHighWater
+[       OK ] AGX3PackBinary.VertexStagingAllocationDoesNotUseGprHighWater (0 ms)
+[ RUN      ] AGX3PackBinary.StreamedVertexOutputsDrainUnrelatedSlotsBeforeCopy
+[       OK ] AGX3PackBinary.StreamedVertexOutputsDrainUnrelatedSlotsBeforeCopy (0 ms)
+[ RUN      ] AGX3PackBinary.VertexExportsAcceptGeneralGraphsButRejectInvalidOperands
+agx3_pack_binary.c:5164: no grounded AGX3 encoding for st_vary
+   st_vary #0, r0l
+agx3_pack_binary.c:5164: no grounded AGX3 encoding for st_vary
+   st_vary #256, r0
+[       OK ] AGX3PackBinary.VertexExportsAcceptGeneralGraphsButRejectInvalidOperands (0 ms)
+[ RUN      ] AGX3PackBinary.InstanceIdDoesNotPreventTerminalVertexOutputs
+[       OK ] AGX3PackBinary.InstanceIdDoesNotPreventTerminalVertexOutputs (0 ms)
+[ RUN      ] AGX3PackBinary.SixOutputVertexAddressArithmeticSurvivesRA
+[       OK ] AGX3PackBinary.SixOutputVertexAddressArithmeticSurvivesRA (0 ms)
+[ RUN      ] AGX3PackBinary.NativeHighVertexOutputIndices
+[       OK ] AGX3PackBinary.NativeHighVertexOutputIndices (0 ms)
+[ RUN      ] AGX3PackBinary.SparseVertexOutputsPreserveUndefinedHoles
+[       OK ] AGX3PackBinary.SparseVertexOutputsPreserveUndefinedHoles (0 ms)
+[ RUN      ] AGX3PackBinary.TerminalVertexOutputsUseStagingFileCapacity
+[       OK ] AGX3PackBinary.TerminalVertexOutputsUseStagingFileCapacity (0 ms)
+[ RUN      ] AGX3PackBinary.WideVertexOutputsPreserveValuesAndRecycleSlotsAfterWrites
+[       OK ] AGX3PackBinary.WideVertexOutputsPreserveValuesAndRecycleSlotsAfterWrites (0 ms)
+[ RUN      ] AGX3PackBinary.WideVertexOutputsAcceptRematerializedConstants
+[       OK ] AGX3PackBinary.WideVertexOutputsAcceptRematerializedConstants (0 ms)
+[ RUN      ] AGX3PackBinary.VertexDestinationsBeyondStagingCapacity
+[       OK ] AGX3PackBinary.VertexDestinationsBeyondStagingCapacity (1 ms)
+[ RUN      ] AGX3PackBinary.PackedVertexMemoryNativeBytes
+[       OK ] AGX3PackBinary.PackedVertexMemoryNativeBytes (0 ms)
+[ RUN      ] AGX3PackBinary.VertexTerminalOutputBlockPreservesEarlierControlFlow
+[       OK ] AGX3PackBinary.VertexTerminalOutputBlockPreservesEarlierControlFlow (0 ms)
+[ RUN      ] AGX3PackBinary.VertexOutputCannotMoveAcrossControlFlow
+[       OK ] AGX3PackBinary.VertexOutputCannotMoveAcrossControlFlow (0 ms)
+[ RUN      ] AGX3PackBinary.VertexCFGTerminalOutputBytesMatchSingleBlock
+[       OK ] AGX3PackBinary.VertexCFGTerminalOutputBytesMatchSingleBlock (0 ms)
+[ RUN      ] AGX3PackBinary.NativeEmptyVertexNeedsOnlyEnd
+[       OK ] AGX3PackBinary.NativeEmptyVertexNeedsOnlyEnd (0 ms)
+[ RUN      ] AGX3PackBinary.SparseVertexExportPreservesMemorySideEffects
+[       OK ] AGX3PackBinary.SparseVertexExportPreservesMemorySideEffects (0 ms)
+[ RUN      ] AGX3PackBinary.StreamedVertexExportsRetireBeforeRegisterReuse
+[       OK ] AGX3PackBinary.StreamedVertexExportsRetireBeforeRegisterReuse (0 ms)
+[----------] 21 tests from AGX3PackBinary (4 ms total)
+
+[----------] Global test environment tear-down
+[==========] 21 tests from 1 test suite ran. (4 ms total)
+[  PASSED  ] 21 tests.

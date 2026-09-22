@@ -3538,7 +3538,10 @@ agx3_g17p_vertex_output_count(agx_context *ctx, enum agx_isa_encoding enc,
          case AGX_OPCODE_ST_VARY:
             if (I->nr_dests != 0 || I->nr_srcs != 2 ||
                 I->src[0].type != AGX_INDEX_IMMEDIATE ||
-                I->src[0].value >= AGX3_MAX_VERTEX_OUTPUTS ||
+                /* The batched protocol gives each output a distinct staging
+                 * address. Larger destinations use the already serialized
+                 * scalar COPY/UVSW path, recycling its bounded staging bank. */
+                I->src[0].value >= AGX3_MAX_STAGED_VERTEX_OUTPUTS ||
                 outputs[I->src[0].value] ||
                 !agx3_vary_reg32(I->src[1]) ||
                 agx_channels(I->src[1]) != 1)
