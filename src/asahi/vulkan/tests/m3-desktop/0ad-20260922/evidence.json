@@ -1,0 +1,171 @@
+{
+  "scope": "Focused opt-in M3 experiments; no blanket compliance or 120 FPS claim",
+  "cts_cases": [
+    {
+      "index": 0,
+      "catalog_index": 1174708,
+      "case": "dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.combined.view_type.2d.format.r8_snorm.count_1.size.13x13",
+      "status": "Pass",
+      "message": "Result image matches reference",
+      "seconds": 0.21532286500007558
+    },
+    {
+      "index": 1,
+      "catalog_index": 1174720,
+      "case": "dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.combined.view_type.2d.format.r8_snorm.count_1.size.32x32",
+      "status": "Pass",
+      "message": "Result image matches reference",
+      "seconds": 0.21403240500001175
+    },
+    {
+      "index": 2,
+      "catalog_index": 1174812,
+      "case": "dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.combined.view_type.2d.format.r8_sscaled.count_1.size.13x13",
+      "status": "Pass",
+      "message": "Result image matches reference",
+      "seconds": 0.21429432100001122
+    },
+    {
+      "index": 3,
+      "catalog_index": 1174824,
+      "case": "dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.combined.view_type.2d.format.r8_sscaled.count_1.size.32x32",
+      "status": "Pass",
+      "message": "Result image matches reference",
+      "seconds": 0.21445145600000615
+    },
+    {
+      "index": 4,
+      "catalog_index": 1174916,
+      "case": "dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.combined.view_type.2d.format.r8_unorm.count_1.size.13x13",
+      "status": "Pass",
+      "message": "Result image matches reference",
+      "seconds": 0.2141455619999988
+    },
+    {
+      "index": 5,
+      "catalog_index": 1174928,
+      "case": "dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.combined.view_type.2d.format.r8_unorm.count_1.size.32x32",
+      "status": "Pass",
+      "message": "Result image matches reference",
+      "seconds": 0.21451105799997094
+    },
+    {
+      "index": 6,
+      "catalog_index": 1174968,
+      "case": "dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.combined.view_type.2d.format.r8_uscaled.count_1.size.13x13",
+      "status": "Pass",
+      "message": "Result image matches reference",
+      "seconds": 0.21439633600004981
+    },
+    {
+      "index": 7,
+      "catalog_index": 1174980,
+      "case": "dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.combined.view_type.2d.format.r8_uscaled.count_1.size.32x32",
+      "status": "Pass",
+      "message": "Result image matches reference",
+      "seconds": 0.21442047800007913
+    },
+    {
+      "index": 8,
+      "catalog_index": 1175800,
+      "case": "dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.combined.view_type.2d.format.r8g8b8a8_snorm.count_1.size.13x13",
+      "status": "Pass",
+      "message": "Result image matches reference",
+      "seconds": 0.21438931800003047
+    },
+    {
+      "index": 9,
+      "catalog_index": 1175812,
+      "case": "dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.combined.view_type.2d.format.r8g8b8a8_snorm.count_1.size.32x32",
+      "status": "Pass",
+      "message": "Result image matches reference",
+      "seconds": 0.21438035799997124
+    },
+    {
+      "index": 10,
+      "catalog_index": 1175904,
+      "case": "dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.combined.view_type.2d.format.r8g8b8a8_sscaled.count_1.size.13x13",
+      "status": "Pass",
+      "message": "Result image matches reference",
+      "seconds": 0.21440262700002677
+    },
+    {
+      "index": 11,
+      "catalog_index": 1175916,
+      "case": "dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.combined.view_type.2d.format.r8g8b8a8_sscaled.count_1.size.32x32",
+      "status": "Pass",
+      "message": "Result image matches reference",
+      "seconds": 0.21435321500007376
+    },
+    {
+      "index": 12,
+      "catalog_index": 1176008,
+      "case": "dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.combined.view_type.2d.format.r8g8b8a8_unorm.count_1.size.13x13",
+      "status": "Pass",
+      "message": "Result image matches reference",
+      "seconds": 0.21446284900002865
+    },
+    {
+      "index": 13,
+      "catalog_index": 1176020,
+      "case": "dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.combined.view_type.2d.format.r8g8b8a8_unorm.count_1.size.32x32",
+      "status": "Pass",
+      "message": "Result image matches reference",
+      "seconds": 0.214319072999956
+    },
+    {
+      "index": 14,
+      "catalog_index": 1176060,
+      "case": "dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.combined.view_type.2d.format.r8g8b8a8_uscaled.count_1.size.13x13",
+      "status": "Pass",
+      "message": "Result image matches reference",
+      "seconds": 0.21439296099993044
+    },
+    {
+      "index": 15,
+      "catalog_index": 1176072,
+      "case": "dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.combined.view_type.2d.format.r8g8b8a8_uscaled.count_1.size.32x32",
+      "status": "Pass",
+      "message": "Result image matches reference",
+      "seconds": 0.214362357999903
+    }
+  ],
+  "cts_identity": {
+    "boot_id": "a9bb517b-d9c2-49ab-87c6-80d3fe6c7ecb",
+    "environment": {
+      "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+      "HK_DEBUG_LOG": "1",
+      "ASAHI_M3_EXPERIMENTAL": "1",
+      "VK_DRIVER_FILES": "/opt/asahi-m3-experiments/0ad-scaled-branch/asahi.json",
+      "AGX_MESA_DEBUG": "nopromote",
+      "LD_LIBRARY_PATH": "/opt/asahi-m3-wayland/lib",
+      "M3_CTS_BASE": "/root/m3-0ad-shader-cts",
+      "M3_CTS_BINARY": "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+      "HK_M4_NATIVE_PREAMBLE": "true",
+      "AGX_NATIVE_FLOAT_PREAMBLE": "true",
+      "AGX_NATIVE_MEMORY_PREAMBLE": "true",
+      "HK_NATIVE_BRANCH_SCALED": "true",
+      "MESA_SHADER_CACHE_DISABLE": "true",
+      "M3_TEST_UNCACHED": "1",
+      "HK_G17P_LAUNCH_TRACE": "0"
+    },
+    "sha256": {
+      "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit": "36bcc144d4b3c0edc5b638f20331fbc4e1be388d89da652890af870b8e5697dc",
+      "/opt/asahi-m3-experiments/0ad-scaled-branch/asahi.json": "193249d4e292b408db2fab277ac7bada90d551cdc16831a43f2a19e1dcbaf9e0",
+      "/opt/asahi-m3-experiments/0ad-scaled-branch/libvulkan_asahi.so": "cdc4850863b326f64d72de6c2d1e3f7fa9effc7052608cbc03228e2446111433",
+      "/root/m3-gpu-tools/gpu/cts-batch.py": "5f472de3df5c062f8ef3ca2bd32b46484fdd080e395a4c87ca011766c6788a06"
+    }
+  },
+  "selection": {
+    "catalog_sha256": "72c1bb9d2f9f0425ab8a4f570d78abdc1d3a34b82173ec76b772dedc477526bf",
+    "cts_revision": "vulkan-cts-1.4.6.2:f6a29701220f34dd1407513bfe80d74ca7b392ce",
+    "selection_regex": "^dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.combined.view_type.2d.format.r8(g8b8a8)?_(u|s)(scaled|norm).count_1.size.(13x13|32x32)$"
+  },
+  "looped_replay_image_sha256": "5c77a3324153450a18d290a169b4ac565a4c651eeb19fd234d5a59d4f67d4b74",
+  "evidence": [
+    "/root/m3-apps/0ad-120-shader-cts",
+    "/root/m3-apps/0ad-120-vk-scaled-replay2",
+    "/root/m3-apps/0ad-120-vk-loop-base",
+    "/root/m3-apps/0ad-120-vk-loop-memory"
+  ]
+}

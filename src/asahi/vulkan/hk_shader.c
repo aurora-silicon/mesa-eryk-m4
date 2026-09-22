@@ -158,8 +158,11 @@ hk_physical_device_compiler_flags(const struct hk_physical_device *pdev)
       flags |= (uint64_t)debug_get_bool_option("HK_M4_NATIVE_PREAMBLE", false) << 37;
       flags |= (uint64_t)debug_get_bool_option("AGX_NATIVE_FLOAT_PREAMBLE", false) << 39;
    }
-   if (agx_chip_uses_hal200_ioto(pdev->dev.chip))
+   if (agx_chip_uses_hal200_ioto(pdev->dev.chip)) {
       flags |= (uint64_t)debug_get_bool_option("AGX_NATIVE_PRESERVE_BRANCHES", false) << 38;
+      flags |= (uint64_t)debug_get_bool_option("AGX_NATIVE_MEMORY_PREAMBLE", false) << 40;
+      flags |= (uint64_t)debug_get_bool_option("HK_NATIVE_BRANCH_SCALED", false) << 41;
+   }
    return flags;
 }
 
@@ -1598,6 +1601,15 @@ lower_scaled_sample(nir_builder *b, nir_tex_instr *tex, void *unused)
    const int handle = nir_tex_instr_src_index(tex, nir_tex_src_texture_handle);
    if (handle < 0)
       return false;
+   const bool branch = debug_get_bool_option("HK_NATIVE_BRANCH_SCALED", false);
+   nir_tex_instr *original = tex;
+   if (branch) {
+      /* The replacement crosses blocks. Clone the sample before replacing
+       * its old SSA definition; rewrite_uses_after requires one block. */
+      b->cursor = nir_before_instr(&tex->instr);
+      tex = nir_instr_as_tex(nir_instr_clone(b->shader, &tex->instr));
+      nir_builder_instr_insert(b, &tex->instr);
+   }
    b->cursor = nir_before_instr(&tex->instr);
    nir_def *desc = nir_load_from_texture_handle_agx(b, tex->src[handle].src.ssa);
    const unsigned offset = 32 +
@@ -1606,6 +1618,13 @@ lower_scaled_sample(nir_builder *b, nir_tex_instr *tex, void *unused)
       nir_iadd_imm(b, desc, offset), .align_mul = 2);
    b->cursor = nir_after_instr(&tex->instr);
    nir_def *value = tex->is_sparse ? nir_trim_vector(b, &tex->def, 4) : &tex->def;
+   if (branch) {
+      /* Ordinary native formats need none of the scaled-format arithmetic.
+       * Keep the texture operation outside control flow (implicit derivatives
+       * and sparse residency retain their original execution). */
+      nir_if *nif = nir_push_if(b, nir_ine_imm(b, kind, 0));
+      nif->control = nir_selection_control_dont_flatten;
+   }
    nir_def *converted = nir_bcsel(b, nir_ieq_imm(b, kind, 1),
       nir_i2f32(b, value), nir_u2f32(b, value));
    nir_def *scale = nir_bcsel(b, nir_ine_imm(b, nir_iand_imm(b, kind, 4), 0),
@@ -1625,14 +1644,24 @@ lower_scaled_sample(nir_builder *b, nir_tex_instr *tex, void *unused)
       normalized = nir_fround_even(b, normalized);
    converted = nir_bcsel(b, nir_ieq_imm(b, nir_iand_imm(b, kind, 3), 3),
                            normalized, converted);
-   nir_def *result = nir_bcsel(b, nir_ine_imm(b, kind, 0), converted, value);
+   nir_def *result;
+   if (branch) {
+      nir_push_else(b, NULL);
+      nir_pop_if(b, NULL);
+      result = nir_if_phi(b, converted, value);
+   } else {
+      result = nir_bcsel(b, nir_ine_imm(b, kind, 0), converted, value);
+   }
    if (tex->is_sparse)
       result = nir_vec5(b, nir_channel(b, result, 0),
                         nir_channel(b, result, 1),
                         nir_channel(b, result, 2),
                         nir_channel(b, result, 3),
                         nir_channel(b, &tex->def, 4));
-   nir_def_rewrite_uses_after(&tex->def, result);
+   if (branch)
+      nir_def_replace(&original->def, result);
+   else
+      nir_def_rewrite_uses_after(&tex->def, result);
    return true;
 }
 
@@ -2144,7 +2173,7 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
       NIR_PASS(_, nir, nir_shader_intrinsics_pass, lower_scaled_storage,
                nir_metadata_none, NULL);
       NIR_PASS(_, nir, nir_shader_tex_pass, lower_scaled_sample,
-               nir_metadata_control_flow, NULL);
+               nir_metadata_none, NULL);
    }
 
    if (agx_chip_descriptor_generation(dev->dev.chip) == 9)
