@@ -174,7 +174,8 @@ if a.mode in ('report', 'status'):
     if a.live:
         probe = subprocess.run(['ssh', '-o', 'ConnectTimeout=10', 'root@omarchy-m4', 'python3', '-'],
             input="""from pathlib import Path
-import json
+from collections import Counter
+import json, re
 paths = sorted(Path('/root/asahi-evidence').glob('*-gles32-plan-*'))
 if paths:
     p = paths[-1]
@@ -183,8 +184,15 @@ if paths:
     if log.exists():
         with log.open('rb') as f:
             f.seek(max(0, log.stat().st_size-500000))
-            progress = [x for x in f.read().decode(errors='replace').splitlines() if 'Remaining:' in x]
-    print(json.dumps(dict(evidence=p.name, progress=progress[-1:])))
+            progress = [x for x in f.read().decode(errors='replace').splitlines() if 'Duration:' in x]
+    outcomes = Counter()
+    for qpa in (p/'cts/deqp-runner').glob('c*.qpa'):
+        with qpa.open(errors='replace') as stream:
+            for line in stream:
+                match = re.search('<Result StatusCode="([^"]+)"', line)
+                if match:
+                    outcomes[match[1]] += 1
+    print(json.dumps(dict(evidence=p.name, progress=progress[-1:], qpa_outcomes=outcomes)))
 """, text=True, capture_output=True, timeout=20)
         summary['live'] = json.loads(probe.stdout) if probe.returncode == 0 and probe.stdout.strip() else dict(error=probe.stderr.strip())
     print(json.dumps(summary, indent=2))

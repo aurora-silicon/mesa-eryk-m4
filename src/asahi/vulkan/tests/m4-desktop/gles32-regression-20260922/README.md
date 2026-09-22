@@ -33,3 +33,9 @@ This full-plan development run is not a Khronos certification claim. Prior
 rare GPU incidents remain unresolved until separately investigated; launching
 a new campaign does not erase them. Controller copy here is provenance; it
 resolves paths from the workspace campaign location before use.
+
+Live monitoring: `python3 tools/gl-cts-plan.py status --campaign
+build/gles32-regression-20260922 --live` now reports individual QPA outcomes
+as well as completed50-case worker-group progress. Early groups can report
+Pass0 for over a minute while individual cases are completing. This read-only
+status improvement does not change execution, catalog selection or results.
