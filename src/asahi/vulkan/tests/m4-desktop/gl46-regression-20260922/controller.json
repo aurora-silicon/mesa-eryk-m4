@@ -1,0 +1,31 @@
+{
+  "pid": 1833654,
+  "state": "complete-with-failures",
+  "completed_segments": 42,
+  "started_utc": "2026-09-22T15:32:23.500070+00:00",
+  "segment": 41,
+  "command": [
+    "/usr/bin/python3",
+    "/home/council/dev/dirtyroom_m4/tools/gl33-cts-run.py",
+    "--api",
+    "gl46",
+    "--cases",
+    "/home/council/dev/dirtyroom_m4/build/gl46-regression-20260922/segments/0041/cases.txt",
+    "--output",
+    "/home/council/dev/dirtyroom_m4/build/gl46-regression-20260922/segments/0041/run",
+    "--name",
+    "gl46-regression-0041",
+    "--seconds",
+    "900",
+    "--jobs",
+    "1",
+    "--config",
+    "256",
+    "--environment",
+    "/home/council/dev/dirtyroom_m4/build/gl46-regression-20260922/environment.json"
+  ],
+  "report_returncode": 0,
+  "returncode": 0,
+  "retained_failure_count": 6,
+  "finished_utc": "2026-09-22T15:32:50.692197+00:00"
+}

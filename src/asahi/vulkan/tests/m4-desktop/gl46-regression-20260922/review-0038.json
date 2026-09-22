@@ -1,0 +1,127 @@
+{
+  "segment": 38,
+  "disposition": "Retain six Fail outcomes; continue unrun selections only. All six were previously NotSupported. No attribution to a particular source change yet.",
+  "guard_verdict": "pass",
+  "failures": [
+    {
+      "run": "/home/council/dev/dirtyroom_m4/build/gl46-regression-20260922/segments/0038/run",
+      "catalog_index": 19016,
+      "index": 2246,
+      "case": "KHR-GL46.sparse_texture_clamp_tests.SparseTextureClampLookupColor_texture_2d_depth_component16",
+      "boot_id": "f9d383d2-2573-417e-b6ee-b0164801ea5e",
+      "runner_status": "Fail",
+      "seconds": 0.004587078,
+      "eligibility": {
+        "case": "KHR-GL46.sparse_texture_clamp_tests.SparseTextureClampLookupColor_texture_2d_depth_component16",
+        "catalog_index": 19016,
+        "classification": "selected",
+        "rule": "Frozen GL46 main list; unchanged original global index",
+        "configuration": "64"
+      },
+      "status": "Fail",
+      "message": "TexStorage: glGetError() returned GL_INVALID_VALUE at gl4cSparseTexture2Tests.cpp:839",
+      "qpa": "deqp-runner/c39.r1.qpa",
+      "worker_exit": "exit status: 1"
+    },
+    {
+      "run": "/home/council/dev/dirtyroom_m4/build/gl46-regression-20260922/segments/0038/run",
+      "catalog_index": 19017,
+      "index": 2247,
+      "case": "KHR-GL46.sparse_texture_clamp_tests.SparseTextureClampLookupColor_texture_2d_array_depth_component16",
+      "boot_id": "f9d383d2-2573-417e-b6ee-b0164801ea5e",
+      "runner_status": "Fail",
+      "seconds": 0.002873044,
+      "eligibility": {
+        "case": "KHR-GL46.sparse_texture_clamp_tests.SparseTextureClampLookupColor_texture_2d_array_depth_component16",
+        "catalog_index": 19017,
+        "classification": "selected",
+        "rule": "Frozen GL46 main list; unchanged original global index",
+        "configuration": "64"
+      },
+      "status": "Fail",
+      "message": "TexStorage: glGetError() returned GL_INVALID_VALUE at gl4cSparseTexture2Tests.cpp:839",
+      "qpa": "deqp-runner/c33.r1.qpa",
+      "worker_exit": "exit status: 1"
+    },
+    {
+      "run": "/home/council/dev/dirtyroom_m4/build/gl46-regression-20260922/segments/0038/run",
+      "catalog_index": 19018,
+      "index": 2248,
+      "case": "KHR-GL46.sparse_texture_clamp_tests.SparseTextureClampLookupColor_texture_cube_map_depth_component16",
+      "boot_id": "f9d383d2-2573-417e-b6ee-b0164801ea5e",
+      "runner_status": "Fail",
+      "seconds": 0.004614972,
+      "eligibility": {
+        "case": "KHR-GL46.sparse_texture_clamp_tests.SparseTextureClampLookupColor_texture_cube_map_depth_component16",
+        "catalog_index": 19018,
+        "classification": "selected",
+        "rule": "Frozen GL46 main list; unchanged original global index",
+        "configuration": "64"
+      },
+      "status": "Fail",
+      "message": "TexStorage: glGetError() returned GL_INVALID_VALUE at gl4cSparseTexture2Tests.cpp:839",
+      "qpa": "deqp-runner/c26.r1.qpa",
+      "worker_exit": "exit status: 1"
+    },
+    {
+      "run": "/home/council/dev/dirtyroom_m4/build/gl46-regression-20260922/segments/0038/run",
+      "catalog_index": 19019,
+      "index": 2249,
+      "case": "KHR-GL46.sparse_texture_clamp_tests.SparseTextureClampLookupColor_texture_cube_map_array_depth_component16",
+      "boot_id": "f9d383d2-2573-417e-b6ee-b0164801ea5e",
+      "runner_status": "Fail",
+      "seconds": 0.002229504,
+      "eligibility": {
+        "case": "KHR-GL46.sparse_texture_clamp_tests.SparseTextureClampLookupColor_texture_cube_map_array_depth_component16",
+        "catalog_index": 19019,
+        "classification": "selected",
+        "rule": "Frozen GL46 main list; unchanged original global index",
+        "configuration": "64"
+      },
+      "status": "Fail",
+      "message": "TexStorage: glGetError() returned GL_INVALID_VALUE at gl4cSparseTexture2Tests.cpp:839",
+      "qpa": "deqp-runner/c13.r1.qpa",
+      "worker_exit": "exit status: 1"
+    },
+    {
+      "run": "/home/council/dev/dirtyroom_m4/build/gl46-regression-20260922/segments/0038/run",
+      "catalog_index": 19022,
+      "index": 2252,
+      "case": "KHR-GL46.sparse_texture_clamp_tests.SparseTextureClampLookupColor_texture_1d_depth_component16",
+      "boot_id": "f9d383d2-2573-417e-b6ee-b0164801ea5e",
+      "runner_status": "Fail",
+      "seconds": 0.001988612,
+      "eligibility": {
+        "case": "KHR-GL46.sparse_texture_clamp_tests.SparseTextureClampLookupColor_texture_1d_depth_component16",
+        "catalog_index": 19022,
+        "classification": "selected",
+        "rule": "Frozen GL46 main list; unchanged original global index",
+        "configuration": "64"
+      },
+      "status": "Fail",
+      "message": "TexStorage: glGetError() returned GL_INVALID_VALUE at gl4cSparseTexture2Tests.cpp:880",
+      "qpa": "deqp-runner/c45.r1.qpa",
+      "worker_exit": "exit status: 1"
+    },
+    {
+      "run": "/home/council/dev/dirtyroom_m4/build/gl46-regression-20260922/segments/0038/run",
+      "catalog_index": 19023,
+      "index": 2253,
+      "case": "KHR-GL46.sparse_texture_clamp_tests.SparseTextureClampLookupColor_texture_1d_array_depth_component16",
+      "boot_id": "f9d383d2-2573-417e-b6ee-b0164801ea5e",
+      "runner_status": "Fail",
+      "seconds": 0.002612234,
+      "eligibility": {
+        "case": "KHR-GL46.sparse_texture_clamp_tests.SparseTextureClampLookupColor_texture_1d_array_depth_component16",
+        "catalog_index": 19023,
+        "classification": "selected",
+        "rule": "Frozen GL46 main list; unchanged original global index",
+        "configuration": "64"
+      },
+      "status": "Fail",
+      "message": "TexStorage: glGetError() returned GL_INVALID_VALUE at gl4cSparseTexture2Tests.cpp:880",
+      "qpa": "deqp-runner/c28.r1.qpa",
+      "worker_exit": "exit status: 1"
+    }
+  ]
+}

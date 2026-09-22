@@ -1,0 +1,22 @@
+[
+  "python3",
+  "tools/gl33-cts-run.py",
+  "--api",
+  "gl46",
+  "--cases",
+  "build/gl46-regression-20260922/corrected-feature-cases.txt",
+  "--output",
+  "build/gl46-regression-20260922/corrected-features",
+  "--name",
+  "gl46-regression-cts-corrected",
+  "--seconds",
+  "300",
+  "--jobs",
+  "2",
+  "--config",
+  "64",
+  "--binary",
+  "/root/gl-cts-1.4.6.2/glcts-m4-sparse-clamp-0193725ec88f",
+  "--environment",
+  "build/gl46-regression-20260922/environment.json"
+]

@@ -1,0 +1,31 @@
+{
+  "pid": 1771326,
+  "state": "stopped-needs-review",
+  "completed_segments": 38,
+  "started_utc": "2026-09-22T14:37:22.915805+00:00",
+  "segment": 38,
+  "command": [
+    "/usr/bin/python3",
+    "/home/council/dev/dirtyroom_m4/tools/gl33-cts-run.py",
+    "--api",
+    "gl46",
+    "--cases",
+    "/home/council/dev/dirtyroom_m4/build/gl46-regression-20260922/segments/0038/cases.txt",
+    "--output",
+    "/home/council/dev/dirtyroom_m4/build/gl46-regression-20260922/segments/0038/run",
+    "--name",
+    "gl46-regression-0038",
+    "--seconds",
+    "900",
+    "--jobs",
+    "4",
+    "--config",
+    "64",
+    "--environment",
+    "/home/council/dev/dirtyroom_m4/build/gl46-regression-20260922/environment.json"
+  ],
+  "report_returncode": 0,
+  "error": "{'selected': 2500, 'recorded': 2500, 'completed': 2500, 'counts': {'Pass': 2491, 'NotSupported': 2, 'CompatibilityWarning': 1, 'Fail': 6}, 'classifications': {'selected': 2500}, 'elapsed_seconds': 166.32832284100004, 'preparation_seconds': 1.6065178139979253, 'runner_seconds': 163.55038532599974, 'jobs': 4, 'tests_per_group': 50, 'case_timeout_seconds': 60, 'cases_sha256': 'c6a60783db2571778405a035f5fd1eac0ff45d30afdf370f0abbcc655620d7fb', 'evidence': '/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152858142751Z-gl46-regression-0038', 'guard_verdict': 'pass', 'command_returncode': 0, 'peak_temperature_c': 98.0}",
+  "returncode": 1,
+  "finished_utc": "2026-09-22T15:31:44.881742+00:00"
+}

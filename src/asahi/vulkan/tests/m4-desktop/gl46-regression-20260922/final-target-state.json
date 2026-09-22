@@ -1,0 +1,25 @@
+{
+  "utc": "2026-09-22T15:36:38.079907+00:00",
+  "watchdog": {
+    "armed": true,
+    "timeout_seconds": 60,
+    "timeleft_seconds": 53,
+    "fed": false,
+    "mode": "idle"
+  },
+  "boot_id": "f9d383d2-2573-417e-b6ee-b0164801ea5e",
+  "display_manager": "active",
+  "autologin": "# Development machine: persistent autologin explicitly requested 2026-09-17.\n[Autologin]\nUser=e\nSession=hyprland.desktop\nRelogin=false\n",
+  "processes": [
+    {
+      "pid": 771,
+      "command": "/opt/m4-hyprland/bin/Hyprland --watchdog-fd 4 --config /usr/local/share/m4-desktop/session.lua"
+    }
+  ],
+  "hashes": {
+    "/opt/asahi-m4-port/lib/libgallium-26.1.4.so": "29e658b1e23910bbba0d46ecadc7f3bfac623d9f04d7545ccf12ef0fe4fff5b9",
+    "/opt/asahi-m4-port/lib/libvulkan_asahi.so": "6c0be3eff86b9e4238522a3b9fe424efa366da85ad52348bb51c4e1d44e9429e",
+    "/root/gl-cts-1.4.6.2/glcts": "b1b9630265dca8269fc34a3a062f801c259022055a56641bcf4d3fbbbc2a5070",
+    "/root/gl-cts-1.4.6.2/glcts-m4-sparse-clamp-0193725ec88f": "0193725ec88f5924619dadab32426a45012656162351753126d6a541cf585bc9"
+  }
+}

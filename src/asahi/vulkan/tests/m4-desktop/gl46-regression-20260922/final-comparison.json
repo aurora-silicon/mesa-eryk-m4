@@ -1,0 +1,396 @@
+{
+  "baseline": "/home/council/dev/dirtyroom_m4/mesa/m4-asahi/src/asahi/vulkan/tests/m4-desktop/gl46-cts/optional-features/reference/latest-catalog-with-cts-fix.json.gz",
+  "baseline_sha256": "5f4574d6d674d83f240993e9fb21e0140e7a419dc46434475698c76b24d29a80",
+  "baseline_counts": {
+    "Pass": 18106,
+    "NotSupported": 1607,
+    "CompatibilityWarning": 1
+  },
+  "original_cts_counts": {
+    "Pass": 18092,
+    "NotSupported": 1615,
+    "CompatibilityWarning": 1,
+    "Fail": 6
+  },
+  "corrected_selection_summary": {
+    "selected": 1914,
+    "recorded": 1914,
+    "completed": 1914,
+    "counts": {
+      "Pass": 1914
+    },
+    "classifications": {
+      "unclassified": 1914
+    },
+    "elapsed_seconds": 112.45706500799861,
+    "preparation_seconds": 1.5041233789961552,
+    "runner_seconds": 109.681285097,
+    "jobs": 2,
+    "tests_per_group": 50,
+    "case_timeout_seconds": 60,
+    "cases_sha256": "e7d46929e1b98991061dfdaeacda2aa6ed97d10f8457211aa0b01c2a70392050",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T153351320861Z-gl46-regression-cts-corrected",
+    "guard_verdict": "pass",
+    "command_returncode": 0,
+    "peak_temperature_c": 78.0
+  },
+  "latest_counts": {
+    "Pass": 18098,
+    "NotSupported": 1615,
+    "CompatibilityWarning": 1
+  },
+  "transitions": {
+    "Pass -> Pass": 18098,
+    "NotSupported -> NotSupported": 1607,
+    "Pass -> NotSupported": 8,
+    "CompatibilityWarning -> CompatibilityWarning": 1
+  },
+  "changes": [
+    {
+      "case": "KHR-GL46.sparse_texture_tests.TextureParameterQueries_texture_2d",
+      "catalog_index": 13489,
+      "before": {
+        "run": "build/gl46-zink-20260922/range3-rest",
+        "catalog_index": 13489,
+        "index": 2865,
+        "case": "KHR-GL46.sparse_texture_tests.TextureParameterQueries_texture_2d",
+        "boot_id": "72bd73c9-4ad2-452a-9035-bdf790cb0315",
+        "runner_status": "Pass",
+        "seconds": 0.005458916,
+        "eligibility": {
+          "case": "KHR-GL46.sparse_texture_tests.TextureParameterQueries_texture_2d",
+          "classification": "unclassified",
+          "rule": "bare case list"
+        },
+        "status": "Pass",
+        "message": "Pass",
+        "qpa": "deqp-runner/c20.r1.qpa",
+        "worker_exit": "exit status: 0"
+      },
+      "after": {
+        "run": "/home/council/dev/dirtyroom_m4/build/gl46-regression-20260922/segments/0033/run",
+        "catalog_index": 13489,
+        "index": 859,
+        "case": "KHR-GL46.sparse_texture_tests.TextureParameterQueries_texture_2d",
+        "boot_id": "f9d383d2-2573-417e-b6ee-b0164801ea5e",
+        "runner_status": "Skip",
+        "seconds": 0.002040189,
+        "eligibility": {
+          "case": "KHR-GL46.sparse_texture_tests.TextureParameterQueries_texture_2d",
+          "catalog_index": 13489,
+          "classification": "selected",
+          "rule": "Frozen GL46 main list; unchanged original global index",
+          "configuration": "64"
+        },
+        "status": "NotSupported",
+        "message": "Not Supported",
+        "qpa": "deqp-runner/c32.r1.qpa",
+        "worker_exit": "exit status: 0",
+        "cts_binary": "upstream-f6a2970"
+      }
+    },
+    {
+      "case": "KHR-GL46.sparse_texture_tests.TextureParameterQueries_texture_2d_array",
+      "catalog_index": 13490,
+      "before": {
+        "run": "build/gl46-zink-20260922/range3-rest2",
+        "catalog_index": 13490,
+        "index": 958,
+        "case": "KHR-GL46.sparse_texture_tests.TextureParameterQueries_texture_2d_array",
+        "boot_id": "72bd73c9-4ad2-452a-9035-bdf790cb0315",
+        "runner_status": "Pass",
+        "seconds": 0.002531213,
+        "eligibility": {
+          "case": "KHR-GL46.sparse_texture_tests.TextureParameterQueries_texture_2d_array",
+          "classification": "unclassified",
+          "rule": "bare case list"
+        },
+        "status": "Pass",
+        "message": "Pass",
+        "qpa": "deqp-runner/c28.r1.qpa",
+        "worker_exit": "exit status: 0"
+      },
+      "after": {
+        "run": "/home/council/dev/dirtyroom_m4/build/gl46-regression-20260922/segments/0033/run",
+        "catalog_index": 13490,
+        "index": 860,
+        "case": "KHR-GL46.sparse_texture_tests.TextureParameterQueries_texture_2d_array",
+        "boot_id": "f9d383d2-2573-417e-b6ee-b0164801ea5e",
+        "runner_status": "Skip",
+        "seconds": 0.00616706,
+        "eligibility": {
+          "case": "KHR-GL46.sparse_texture_tests.TextureParameterQueries_texture_2d_array",
+          "catalog_index": 13490,
+          "classification": "selected",
+          "rule": "Frozen GL46 main list; unchanged original global index",
+          "configuration": "64"
+        },
+        "status": "NotSupported",
+        "message": "Not Supported",
+        "qpa": "deqp-runner/c47.r1.qpa",
+        "worker_exit": "exit status: 0",
+        "cts_binary": "upstream-f6a2970"
+      }
+    },
+    {
+      "case": "KHR-GL46.sparse_texture_tests.TextureParameterQueries_texture_cube_map",
+      "catalog_index": 13491,
+      "before": {
+        "run": "build/gl46-zink-20260922/range3-rest2",
+        "catalog_index": 13491,
+        "index": 959,
+        "case": "KHR-GL46.sparse_texture_tests.TextureParameterQueries_texture_cube_map",
+        "boot_id": "72bd73c9-4ad2-452a-9035-bdf790cb0315",
+        "runner_status": "Pass",
+        "seconds": 0.014044577,
+        "eligibility": {
+          "case": "KHR-GL46.sparse_texture_tests.TextureParameterQueries_texture_cube_map",
+          "classification": "unclassified",
+          "rule": "bare case list"
+        },
+        "status": "Pass",
+        "message": "Pass",
+        "qpa": "deqp-runner/c17.r1.qpa",
+        "worker_exit": "exit status: 0"
+      },
+      "after": {
+        "run": "/home/council/dev/dirtyroom_m4/build/gl46-regression-20260922/segments/0033/run",
+        "catalog_index": 13491,
+        "index": 861,
+        "case": "KHR-GL46.sparse_texture_tests.TextureParameterQueries_texture_cube_map",
+        "boot_id": "f9d383d2-2573-417e-b6ee-b0164801ea5e",
+        "runner_status": "Skip",
+        "seconds": 0.007017873,
+        "eligibility": {
+          "case": "KHR-GL46.sparse_texture_tests.TextureParameterQueries_texture_cube_map",
+          "catalog_index": 13491,
+          "classification": "selected",
+          "rule": "Frozen GL46 main list; unchanged original global index",
+          "configuration": "64"
+        },
+        "status": "NotSupported",
+        "message": "Not Supported",
+        "qpa": "deqp-runner/c48.r1.qpa",
+        "worker_exit": "exit status: 0",
+        "cts_binary": "upstream-f6a2970"
+      }
+    },
+    {
+      "case": "KHR-GL46.sparse_texture_tests.TextureParameterQueries_texture_cube_map_array",
+      "catalog_index": 13492,
+      "before": {
+        "run": "build/gl46-zink-20260922/range3-rest",
+        "catalog_index": 13492,
+        "index": 2868,
+        "case": "KHR-GL46.sparse_texture_tests.TextureParameterQueries_texture_cube_map_array",
+        "boot_id": "72bd73c9-4ad2-452a-9035-bdf790cb0315",
+        "runner_status": "Pass",
+        "seconds": 0.004270358,
+        "eligibility": {
+          "case": "KHR-GL46.sparse_texture_tests.TextureParameterQueries_texture_cube_map_array",
+          "classification": "unclassified",
+          "rule": "bare case list"
+        },
+        "status": "Pass",
+        "message": "Pass",
+        "qpa": "deqp-runner/c49.r1.qpa",
+        "worker_exit": "exit status: 0"
+      },
+      "after": {
+        "run": "/home/council/dev/dirtyroom_m4/build/gl46-regression-20260922/segments/0033/run",
+        "catalog_index": 13492,
+        "index": 862,
+        "case": "KHR-GL46.sparse_texture_tests.TextureParameterQueries_texture_cube_map_array",
+        "boot_id": "f9d383d2-2573-417e-b6ee-b0164801ea5e",
+        "runner_status": "Skip",
+        "seconds": 0.012619456,
+        "eligibility": {
+          "case": "KHR-GL46.sparse_texture_tests.TextureParameterQueries_texture_cube_map_array",
+          "catalog_index": 13492,
+          "classification": "selected",
+          "rule": "Frozen GL46 main list; unchanged original global index",
+          "configuration": "64"
+        },
+        "status": "NotSupported",
+        "message": "Not Supported",
+        "qpa": "deqp-runner/c48.r1.qpa",
+        "worker_exit": "exit status: 0",
+        "cts_binary": "upstream-f6a2970"
+      }
+    },
+    {
+      "case": "KHR-GL46.sparse_texture_tests.TextureParameterQueries_texture_3d",
+      "catalog_index": 13493,
+      "before": {
+        "run": "build/gl46-zink-20260922/range3-rest2",
+        "catalog_index": 13493,
+        "index": 960,
+        "case": "KHR-GL46.sparse_texture_tests.TextureParameterQueries_texture_3d",
+        "boot_id": "72bd73c9-4ad2-452a-9035-bdf790cb0315",
+        "runner_status": "Pass",
+        "seconds": 0.001385333,
+        "eligibility": {
+          "case": "KHR-GL46.sparse_texture_tests.TextureParameterQueries_texture_3d",
+          "classification": "unclassified",
+          "rule": "bare case list"
+        },
+        "status": "Pass",
+        "message": "Pass",
+        "qpa": "deqp-runner/c13.r1.qpa",
+        "worker_exit": "exit status: 0"
+      },
+      "after": {
+        "run": "/home/council/dev/dirtyroom_m4/build/gl46-regression-20260922/segments/0033/run",
+        "catalog_index": 13493,
+        "index": 863,
+        "case": "KHR-GL46.sparse_texture_tests.TextureParameterQueries_texture_3d",
+        "boot_id": "f9d383d2-2573-417e-b6ee-b0164801ea5e",
+        "runner_status": "Skip",
+        "seconds": 0.011084568,
+        "eligibility": {
+          "case": "KHR-GL46.sparse_texture_tests.TextureParameterQueries_texture_3d",
+          "catalog_index": 13493,
+          "classification": "selected",
+          "rule": "Frozen GL46 main list; unchanged original global index",
+          "configuration": "64"
+        },
+        "status": "NotSupported",
+        "message": "Not Supported",
+        "qpa": "deqp-runner/c4.r1.qpa",
+        "worker_exit": "exit status: 0",
+        "cts_binary": "upstream-f6a2970"
+      }
+    },
+    {
+      "case": "KHR-GL46.sparse_texture_tests.TextureParameterQueries_texture_rectangle",
+      "catalog_index": 13494,
+      "before": {
+        "run": "build/gl46-zink-20260922/range3-rest2",
+        "catalog_index": 13494,
+        "index": 961,
+        "case": "KHR-GL46.sparse_texture_tests.TextureParameterQueries_texture_rectangle",
+        "boot_id": "72bd73c9-4ad2-452a-9035-bdf790cb0315",
+        "runner_status": "Pass",
+        "seconds": 0.005224365,
+        "eligibility": {
+          "case": "KHR-GL46.sparse_texture_tests.TextureParameterQueries_texture_rectangle",
+          "classification": "unclassified",
+          "rule": "bare case list"
+        },
+        "status": "Pass",
+        "message": "Pass",
+        "qpa": "deqp-runner/c24.r1.qpa",
+        "worker_exit": "exit status: 0"
+      },
+      "after": {
+        "run": "/home/council/dev/dirtyroom_m4/build/gl46-regression-20260922/segments/0033/run",
+        "catalog_index": 13494,
+        "index": 864,
+        "case": "KHR-GL46.sparse_texture_tests.TextureParameterQueries_texture_rectangle",
+        "boot_id": "f9d383d2-2573-417e-b6ee-b0164801ea5e",
+        "runner_status": "Skip",
+        "seconds": 0.020025352,
+        "eligibility": {
+          "case": "KHR-GL46.sparse_texture_tests.TextureParameterQueries_texture_rectangle",
+          "catalog_index": 13494,
+          "classification": "selected",
+          "rule": "Frozen GL46 main list; unchanged original global index",
+          "configuration": "64"
+        },
+        "status": "NotSupported",
+        "message": "Not Supported",
+        "qpa": "deqp-runner/c26.r1.qpa",
+        "worker_exit": "exit status: 0",
+        "cts_binary": "upstream-f6a2970"
+      }
+    },
+    {
+      "case": "KHR-GL46.sparse_texture_tests.TextureParameterQueries_texture_2d_multisample",
+      "catalog_index": 13495,
+      "before": {
+        "run": "build/gl46-zink-20260922/range3-rest",
+        "catalog_index": 13495,
+        "index": 2871,
+        "case": "KHR-GL46.sparse_texture_tests.TextureParameterQueries_texture_2d_multisample",
+        "boot_id": "72bd73c9-4ad2-452a-9035-bdf790cb0315",
+        "runner_status": "Pass",
+        "seconds": 0.009457729,
+        "eligibility": {
+          "case": "KHR-GL46.sparse_texture_tests.TextureParameterQueries_texture_2d_multisample",
+          "classification": "unclassified",
+          "rule": "bare case list"
+        },
+        "status": "Pass",
+        "message": "Pass",
+        "qpa": "deqp-runner/c23.r1.qpa",
+        "worker_exit": "exit status: 0"
+      },
+      "after": {
+        "run": "/home/council/dev/dirtyroom_m4/build/gl46-regression-20260922/segments/0033/run",
+        "catalog_index": 13495,
+        "index": 865,
+        "case": "KHR-GL46.sparse_texture_tests.TextureParameterQueries_texture_2d_multisample",
+        "boot_id": "f9d383d2-2573-417e-b6ee-b0164801ea5e",
+        "runner_status": "Skip",
+        "seconds": 0.020830356,
+        "eligibility": {
+          "case": "KHR-GL46.sparse_texture_tests.TextureParameterQueries_texture_2d_multisample",
+          "catalog_index": 13495,
+          "classification": "selected",
+          "rule": "Frozen GL46 main list; unchanged original global index",
+          "configuration": "64"
+        },
+        "status": "NotSupported",
+        "message": "Not Supported",
+        "qpa": "deqp-runner/c46.r1.qpa",
+        "worker_exit": "exit status: 0",
+        "cts_binary": "upstream-f6a2970"
+      }
+    },
+    {
+      "case": "KHR-GL46.sparse_texture_tests.TextureParameterQueries_texture_2d_multisample_array",
+      "catalog_index": 13496,
+      "before": {
+        "run": "build/gl46-zink-20260922/range3-rest",
+        "catalog_index": 13496,
+        "index": 2872,
+        "case": "KHR-GL46.sparse_texture_tests.TextureParameterQueries_texture_2d_multisample_array",
+        "boot_id": "72bd73c9-4ad2-452a-9035-bdf790cb0315",
+        "runner_status": "Pass",
+        "seconds": 0.014826171,
+        "eligibility": {
+          "case": "KHR-GL46.sparse_texture_tests.TextureParameterQueries_texture_2d_multisample_array",
+          "classification": "unclassified",
+          "rule": "bare case list"
+        },
+        "status": "Pass",
+        "message": "Pass",
+        "qpa": "deqp-runner/c19.r1.qpa",
+        "worker_exit": "exit status: 0"
+      },
+      "after": {
+        "run": "/home/council/dev/dirtyroom_m4/build/gl46-regression-20260922/segments/0033/run",
+        "catalog_index": 13496,
+        "index": 866,
+        "case": "KHR-GL46.sparse_texture_tests.TextureParameterQueries_texture_2d_multisample_array",
+        "boot_id": "f9d383d2-2573-417e-b6ee-b0164801ea5e",
+        "runner_status": "Skip",
+        "seconds": 0.024318729,
+        "eligibility": {
+          "case": "KHR-GL46.sparse_texture_tests.TextureParameterQueries_texture_2d_multisample_array",
+          "catalog_index": 13496,
+          "classification": "selected",
+          "rule": "Frozen GL46 main list; unchanged original global index",
+          "configuration": "64"
+        },
+        "status": "NotSupported",
+        "message": "Not Supported",
+        "qpa": "deqp-runner/c35.r1.qpa",
+        "worker_exit": "exit status: 0",
+        "cts_binary": "upstream-f6a2970"
+      }
+    }
+  ],
+  "classification": "Eight query cases deliberately return NotSupported when ARB_sparse_texture2 is exposed (gl4cSparseTextureTests.cpp:453). Six original failures match previously fixed CTS setup defects; corrected binary results are separate.",
+  "limitation": "Same installed driver throughout, two explicitly identified CTS binaries and alternate surface configurations. Development regression coverage, not certification."
+}

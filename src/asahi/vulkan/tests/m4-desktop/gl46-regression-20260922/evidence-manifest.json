@@ -1,0 +1,1292 @@
+[
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T143725184608Z-gl46-regression-0000/report.json",
+    "sha256": "dda323224ea900146303be9b8b5473cb2b21c7fb9def1678e004f57776ad4728",
+    "retained": "guards/20260922T143725184608Z-gl46-regression-0000/report.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T143725184608Z-gl46-regression-0000/remote/result.json",
+    "sha256": "8958df6ee0a1e2748faa93fccea2751b903218e9731ae3cf9e923d3d13ed7615",
+    "retained": "guards/20260922T143725184608Z-gl46-regression-0000/remote-result.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T143725184608Z-gl46-regression-0000/remote/temperatures.jsonl",
+    "sha256": "64462952b85d964fe44e076beed388a195b27f53635f554755714034561430dd",
+    "retained": "guards/20260922T143725184608Z-gl46-regression-0000/remote-temperatures.jsonl.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T143725184608Z-gl46-regression-0000/remote/kernel-live.log",
+    "sha256": "7017be25fc720fc0072560736fbaae55f138e7671e964e8afcc41830f449ef85",
+    "retained": "guards/20260922T143725184608Z-gl46-regression-0000/remote-kernel-live.log.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T143725184608Z-gl46-regression-0000/remote/cts/binary.json",
+    "sha256": "8a8c7235c6389b3b4bf7bbf49c0ba276c285c4528bf14aa141afaefab797d703",
+    "retained": "guards/20260922T143725184608Z-gl46-regression-0000/remote-cts-binary.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T143725184608Z-gl46-regression-0000/remote/cts/environment.json",
+    "sha256": "85ba0f6ca478d23feb14d205ce1ac23ae0281110b67c58fc76e6a77ef274f369",
+    "retained": "guards/20260922T143725184608Z-gl46-regression-0000/remote-cts-environment.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T143749845718Z-gl46-regression-0001/report.json",
+    "sha256": "3fe407015000203680c443dc73ede2f3967595d1377333c92656f4e7aef761a5",
+    "retained": "guards/20260922T143749845718Z-gl46-regression-0001/report.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T143749845718Z-gl46-regression-0001/remote/result.json",
+    "sha256": "358c577a70cd857562349322478db98b57b90402e09001ad41646ca38887003d",
+    "retained": "guards/20260922T143749845718Z-gl46-regression-0001/remote-result.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T143749845718Z-gl46-regression-0001/remote/temperatures.jsonl",
+    "sha256": "fc7e3f241e28d6d52d799d0d1756118bd2f8895f8549dd52bdd2bdfaa1c7746b",
+    "retained": "guards/20260922T143749845718Z-gl46-regression-0001/remote-temperatures.jsonl.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T143749845718Z-gl46-regression-0001/remote/kernel-live.log",
+    "sha256": "f055d7cc33557373d0a228f0116635adcc98469ae3d15f39048a58974d930368",
+    "retained": "guards/20260922T143749845718Z-gl46-regression-0001/remote-kernel-live.log.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T143749845718Z-gl46-regression-0001/remote/cts/binary.json",
+    "sha256": "8a8c7235c6389b3b4bf7bbf49c0ba276c285c4528bf14aa141afaefab797d703",
+    "retained": "guards/20260922T143749845718Z-gl46-regression-0001/remote-cts-binary.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T143749845718Z-gl46-regression-0001/remote/cts/environment.json",
+    "sha256": "9c0dc6085ab5f65a63026c5113be249d09689bf2fc26ca7767b77db82f927fdc",
+    "retained": "guards/20260922T143749845718Z-gl46-regression-0001/remote-cts-environment.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T143834224435Z-gl46-regression-0002/report.json",
+    "sha256": "ad04a9ebcc20baa8883a446b7acba1280eab7e5063e2222d136bb4ce4a900ac8",
+    "retained": "guards/20260922T143834224435Z-gl46-regression-0002/report.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T143834224435Z-gl46-regression-0002/remote/result.json",
+    "sha256": "52f7a581cadbd5a4768a4f0fe32206c77f6be3e6be69593cd4b001ff3fe65544",
+    "retained": "guards/20260922T143834224435Z-gl46-regression-0002/remote-result.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T143834224435Z-gl46-regression-0002/remote/temperatures.jsonl",
+    "sha256": "5fd0793000e7343106940c332595721520007d11811ccbbad36498c2e4a70731",
+    "retained": "guards/20260922T143834224435Z-gl46-regression-0002/remote-temperatures.jsonl.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T143834224435Z-gl46-regression-0002/remote/kernel-live.log",
+    "sha256": "d7487a34a2b09764fc69e827d818c85e99c5eff9d8dc20950ab1192d7ea060cb",
+    "retained": "guards/20260922T143834224435Z-gl46-regression-0002/remote-kernel-live.log.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T143834224435Z-gl46-regression-0002/remote/cts/binary.json",
+    "sha256": "8a8c7235c6389b3b4bf7bbf49c0ba276c285c4528bf14aa141afaefab797d703",
+    "retained": "guards/20260922T143834224435Z-gl46-regression-0002/remote-cts-binary.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T143834224435Z-gl46-regression-0002/remote/cts/environment.json",
+    "sha256": "0a4285151c0cf37d602e190d30d97bea1e21b6995488830a1efa285b29cbaaa7",
+    "retained": "guards/20260922T143834224435Z-gl46-regression-0002/remote-cts-environment.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T143842456435Z-gl46-regression-0003/report.json",
+    "sha256": "23e0911288a8c76ebf5d8029449bf8dd3726092d4729612e964054e703e5bbdd",
+    "retained": "guards/20260922T143842456435Z-gl46-regression-0003/report.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T143842456435Z-gl46-regression-0003/remote/result.json",
+    "sha256": "44a27b97e7b92b4266884035434cf25bcfa56cfff6151fad38fc4ac9df988574",
+    "retained": "guards/20260922T143842456435Z-gl46-regression-0003/remote-result.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T143842456435Z-gl46-regression-0003/remote/temperatures.jsonl",
+    "sha256": "f2c8ffdaa59605c1081f19a8d06d6ba49c207cc76882039bdf56137497242d6b",
+    "retained": "guards/20260922T143842456435Z-gl46-regression-0003/remote-temperatures.jsonl.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T143842456435Z-gl46-regression-0003/remote/kernel-live.log",
+    "sha256": "711d87bf0ae073e5ff263a011391f4f138a4d5a6a1cd329e1af7799c150498d4",
+    "retained": "guards/20260922T143842456435Z-gl46-regression-0003/remote-kernel-live.log.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T143842456435Z-gl46-regression-0003/remote/cts/binary.json",
+    "sha256": "8a8c7235c6389b3b4bf7bbf49c0ba276c285c4528bf14aa141afaefab797d703",
+    "retained": "guards/20260922T143842456435Z-gl46-regression-0003/remote-cts-binary.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T143842456435Z-gl46-regression-0003/remote/cts/environment.json",
+    "sha256": "db4b185acb324cf03bd92a33cb25b4f14c7f3254540a2ad6f7dc89c6ebabd105",
+    "retained": "guards/20260922T143842456435Z-gl46-regression-0003/remote-cts-environment.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T143915820410Z-gl46-regression-0004/report.json",
+    "sha256": "2534a872db43df488792ff8bc474739e550b44600189ba2aa9ed07cb26446d88",
+    "retained": "guards/20260922T143915820410Z-gl46-regression-0004/report.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T143915820410Z-gl46-regression-0004/remote/result.json",
+    "sha256": "429a34b93ef2104b3a41750f110c55ae4de443cf6f97a202a062cd21b933c94d",
+    "retained": "guards/20260922T143915820410Z-gl46-regression-0004/remote-result.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T143915820410Z-gl46-regression-0004/remote/temperatures.jsonl",
+    "sha256": "b1917bdc0f1f04fe7aa8bd3ec20d3a8fe9a9c05c852757b4987817051db15204",
+    "retained": "guards/20260922T143915820410Z-gl46-regression-0004/remote-temperatures.jsonl.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T143915820410Z-gl46-regression-0004/remote/kernel-live.log",
+    "sha256": "e21cb245295f9786a2ed3eeeb6d9c56256e553a8d3fe673f0e079114bb9f0624",
+    "retained": "guards/20260922T143915820410Z-gl46-regression-0004/remote-kernel-live.log.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T143915820410Z-gl46-regression-0004/remote/cts/binary.json",
+    "sha256": "8a8c7235c6389b3b4bf7bbf49c0ba276c285c4528bf14aa141afaefab797d703",
+    "retained": "guards/20260922T143915820410Z-gl46-regression-0004/remote-cts-binary.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T143915820410Z-gl46-regression-0004/remote/cts/environment.json",
+    "sha256": "b32dbdf28222c19d2d67507a6bb7334cc1581ee92f16992a7018183737ba0916",
+    "retained": "guards/20260922T143915820410Z-gl46-regression-0004/remote-cts-environment.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T144011462195Z-gl46-regression-0005/report.json",
+    "sha256": "f59acb279516c98f1b3efa532500f38aed08cea6b5fcc435628cda0ae1115a97",
+    "retained": "guards/20260922T144011462195Z-gl46-regression-0005/report.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T144011462195Z-gl46-regression-0005/remote/result.json",
+    "sha256": "1ee71214a2b407357251e01293fd42ffa75cc59143259afd74389bf2bc5d21dd",
+    "retained": "guards/20260922T144011462195Z-gl46-regression-0005/remote-result.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T144011462195Z-gl46-regression-0005/remote/temperatures.jsonl",
+    "sha256": "d92b4c79b1bfd1ec1dfbefe806b2babdc8433f0958cc51545b25e8b742546dfe",
+    "retained": "guards/20260922T144011462195Z-gl46-regression-0005/remote-temperatures.jsonl.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T144011462195Z-gl46-regression-0005/remote/kernel-live.log",
+    "sha256": "b240a7ebd10ae6f042e29f438b58e554c3f330b9860cd542c3bc5c14aa72b506",
+    "retained": "guards/20260922T144011462195Z-gl46-regression-0005/remote-kernel-live.log.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T144011462195Z-gl46-regression-0005/remote/cts/binary.json",
+    "sha256": "8a8c7235c6389b3b4bf7bbf49c0ba276c285c4528bf14aa141afaefab797d703",
+    "retained": "guards/20260922T144011462195Z-gl46-regression-0005/remote-cts-binary.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T144011462195Z-gl46-regression-0005/remote/cts/environment.json",
+    "sha256": "b6ce72b600f4ef2833979dc52cf485b83d41e333f7233ff7dc1b0a456c35c9ff",
+    "retained": "guards/20260922T144011462195Z-gl46-regression-0005/remote-cts-environment.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T144834276528Z-gl46-regression-0006/report.json",
+    "sha256": "ef4bc0cedafb161beef4bfa4cd2f01bd5c14343c7f81c958aaa4c52dd1f49d09",
+    "retained": "guards/20260922T144834276528Z-gl46-regression-0006/report.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T144834276528Z-gl46-regression-0006/remote/result.json",
+    "sha256": "2931bb5432e1b57e9cd9888693733cf869569eb9da02a69e92c8cd22fd98d62a",
+    "retained": "guards/20260922T144834276528Z-gl46-regression-0006/remote-result.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T144834276528Z-gl46-regression-0006/remote/temperatures.jsonl",
+    "sha256": "fb911c2ee01f36652e4e696957e9da217f9e983708a15a6ed941f464e8d2d89d",
+    "retained": "guards/20260922T144834276528Z-gl46-regression-0006/remote-temperatures.jsonl.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T144834276528Z-gl46-regression-0006/remote/kernel-live.log",
+    "sha256": "a2c64b9f8c999b35e2be7956e8dcfad7a9c3ccfe6f07ba6a0562d92a97e7f85e",
+    "retained": "guards/20260922T144834276528Z-gl46-regression-0006/remote-kernel-live.log.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T144834276528Z-gl46-regression-0006/remote/cts/binary.json",
+    "sha256": "8a8c7235c6389b3b4bf7bbf49c0ba276c285c4528bf14aa141afaefab797d703",
+    "retained": "guards/20260922T144834276528Z-gl46-regression-0006/remote-cts-binary.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T144834276528Z-gl46-regression-0006/remote/cts/environment.json",
+    "sha256": "571861433ab5201f1858b5c4080c899efc00008e09245fa29c85a4f2cc4d4fc0",
+    "retained": "guards/20260922T144834276528Z-gl46-regression-0006/remote-cts-environment.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145036478226Z-gl46-regression-0007/report.json",
+    "sha256": "de57631d22c7eea0fe876d88133e9d202dba62b889541b05f672b676255cbb57",
+    "retained": "guards/20260922T145036478226Z-gl46-regression-0007/report.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145036478226Z-gl46-regression-0007/remote/result.json",
+    "sha256": "2caf5816ce04a4c17bd32da5e7ab9e30ae1407379b7ab9c419124aa7ba6b5c1b",
+    "retained": "guards/20260922T145036478226Z-gl46-regression-0007/remote-result.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145036478226Z-gl46-regression-0007/remote/temperatures.jsonl",
+    "sha256": "9125358ed7c456df8a748f424c22286290e03c0353f5787f386e045c85cacbaa",
+    "retained": "guards/20260922T145036478226Z-gl46-regression-0007/remote-temperatures.jsonl.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145036478226Z-gl46-regression-0007/remote/kernel-live.log",
+    "sha256": "0ef863f17532db834d10af9f12ad5c480ee2cf652b00069d0d0ef8874f4784c1",
+    "retained": "guards/20260922T145036478226Z-gl46-regression-0007/remote-kernel-live.log.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145036478226Z-gl46-regression-0007/remote/cts/binary.json",
+    "sha256": "8a8c7235c6389b3b4bf7bbf49c0ba276c285c4528bf14aa141afaefab797d703",
+    "retained": "guards/20260922T145036478226Z-gl46-regression-0007/remote-cts-binary.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145036478226Z-gl46-regression-0007/remote/cts/environment.json",
+    "sha256": "109686263893a060f57f3a1e93e23ea2f818b931784030ccdb6bf124ab81b59b",
+    "retained": "guards/20260922T145036478226Z-gl46-regression-0007/remote-cts-environment.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145406664218Z-gl46-regression-0008/report.json",
+    "sha256": "bb4e51145781b0b473d097e99a3421cc3e3041899e660c11f6db137428fd4906",
+    "retained": "guards/20260922T145406664218Z-gl46-regression-0008/report.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145406664218Z-gl46-regression-0008/remote/result.json",
+    "sha256": "b21cee777d69996e2d1660e2232119d9ff0e33fd84c10283a8a8687d39ac7fa9",
+    "retained": "guards/20260922T145406664218Z-gl46-regression-0008/remote-result.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145406664218Z-gl46-regression-0008/remote/temperatures.jsonl",
+    "sha256": "ae93109ce7ae07d34da47ab3f5dd02445e1b6f8d3641afbd7f8be5972a12aa30",
+    "retained": "guards/20260922T145406664218Z-gl46-regression-0008/remote-temperatures.jsonl.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145406664218Z-gl46-regression-0008/remote/kernel-live.log",
+    "sha256": "982ea066e435c8704875b6c75e9ee0fcb906c36e7ccc28c831b7ad0cf8386ec9",
+    "retained": "guards/20260922T145406664218Z-gl46-regression-0008/remote-kernel-live.log.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145406664218Z-gl46-regression-0008/remote/cts/binary.json",
+    "sha256": "8a8c7235c6389b3b4bf7bbf49c0ba276c285c4528bf14aa141afaefab797d703",
+    "retained": "guards/20260922T145406664218Z-gl46-regression-0008/remote-cts-binary.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145406664218Z-gl46-regression-0008/remote/cts/environment.json",
+    "sha256": "b6dd68fe9d9b47848f4edaccf4cccc06c4ed9d4c48197b71793beae0257aacdb",
+    "retained": "guards/20260922T145406664218Z-gl46-regression-0008/remote-cts-environment.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145448860901Z-gl46-regression-0009/report.json",
+    "sha256": "c565549509ed6354ee8e1848a32ca33fd044acf017c15faae1a4a4aaad081c5d",
+    "retained": "guards/20260922T145448860901Z-gl46-regression-0009/report.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145448860901Z-gl46-regression-0009/remote/result.json",
+    "sha256": "f46acc430ac657d1c3820ceab921a312b99414c2a2977b8715178cc57d99c181",
+    "retained": "guards/20260922T145448860901Z-gl46-regression-0009/remote-result.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145448860901Z-gl46-regression-0009/remote/temperatures.jsonl",
+    "sha256": "0d519999fe9fc9963a06d4f73aa20c144644cd776295ff028b33ae745d827d0f",
+    "retained": "guards/20260922T145448860901Z-gl46-regression-0009/remote-temperatures.jsonl.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145448860901Z-gl46-regression-0009/remote/kernel-live.log",
+    "sha256": "dd692543f52361250486ae9749ec8d6f15a472177d4e3c2d74e05bf25917dfc2",
+    "retained": "guards/20260922T145448860901Z-gl46-regression-0009/remote-kernel-live.log.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145448860901Z-gl46-regression-0009/remote/cts/binary.json",
+    "sha256": "8a8c7235c6389b3b4bf7bbf49c0ba276c285c4528bf14aa141afaefab797d703",
+    "retained": "guards/20260922T145448860901Z-gl46-regression-0009/remote-cts-binary.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145448860901Z-gl46-regression-0009/remote/cts/environment.json",
+    "sha256": "ddabdadba6f3d4ccfec6e54b8a53aa29b388482d00cefe375c335135dfacefc3",
+    "retained": "guards/20260922T145448860901Z-gl46-regression-0009/remote-cts-environment.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145512615344Z-gl46-regression-0010/report.json",
+    "sha256": "9d9aefce864c92398b995a2f771f017c58e8475433885d268ed03937563cc246",
+    "retained": "guards/20260922T145512615344Z-gl46-regression-0010/report.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145512615344Z-gl46-regression-0010/remote/result.json",
+    "sha256": "9bc0932a455fafaf69817247661788d3613dabc1804c554638688a8fa5bbee60",
+    "retained": "guards/20260922T145512615344Z-gl46-regression-0010/remote-result.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145512615344Z-gl46-regression-0010/remote/temperatures.jsonl",
+    "sha256": "e261cebd3fe6a0c82d35bc9399e17a38cb6e345d144c97515ac8d87796d28f69",
+    "retained": "guards/20260922T145512615344Z-gl46-regression-0010/remote-temperatures.jsonl.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145512615344Z-gl46-regression-0010/remote/kernel-live.log",
+    "sha256": "ea94e7bc30affd7a309eb21de4f667580c4b8fbca45d9737635fe9a6d0f16fee",
+    "retained": "guards/20260922T145512615344Z-gl46-regression-0010/remote-kernel-live.log.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145512615344Z-gl46-regression-0010/remote/cts/binary.json",
+    "sha256": "8a8c7235c6389b3b4bf7bbf49c0ba276c285c4528bf14aa141afaefab797d703",
+    "retained": "guards/20260922T145512615344Z-gl46-regression-0010/remote-cts-binary.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145512615344Z-gl46-regression-0010/remote/cts/environment.json",
+    "sha256": "0878ec402b47964c37ef9da29ff6a1d2642cbc985efa0791c2a227ed7b58691d",
+    "retained": "guards/20260922T145512615344Z-gl46-regression-0010/remote-cts-environment.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145534469488Z-gl46-regression-0011/report.json",
+    "sha256": "d8f0870fa3290976a356526cdd689d65e5edbc97622a14d40101cc5b1e3e538e",
+    "retained": "guards/20260922T145534469488Z-gl46-regression-0011/report.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145534469488Z-gl46-regression-0011/remote/result.json",
+    "sha256": "56d4ce464d59648dbd328fc49d973bc49281f81af21f8797a4b982a1257b1fa4",
+    "retained": "guards/20260922T145534469488Z-gl46-regression-0011/remote-result.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145534469488Z-gl46-regression-0011/remote/temperatures.jsonl",
+    "sha256": "d75fe0b6f3e10c6d52ea09b13821a0d611bd867cc0a34848a63a908120c77b33",
+    "retained": "guards/20260922T145534469488Z-gl46-regression-0011/remote-temperatures.jsonl.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145534469488Z-gl46-regression-0011/remote/kernel-live.log",
+    "sha256": "bbb5284afc264a9b9bd080015366d6ebc3b515b79b14de11080ecd4bf5c6d753",
+    "retained": "guards/20260922T145534469488Z-gl46-regression-0011/remote-kernel-live.log.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145534469488Z-gl46-regression-0011/remote/cts/binary.json",
+    "sha256": "8a8c7235c6389b3b4bf7bbf49c0ba276c285c4528bf14aa141afaefab797d703",
+    "retained": "guards/20260922T145534469488Z-gl46-regression-0011/remote-cts-binary.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145534469488Z-gl46-regression-0011/remote/cts/environment.json",
+    "sha256": "3a37453d54889326c963b59c84950901c562281117cf92ebe518dd1086f2712a",
+    "retained": "guards/20260922T145534469488Z-gl46-regression-0011/remote-cts-environment.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145649886672Z-gl46-regression-0012/report.json",
+    "sha256": "fc8797bf09df5e9c5b5875d6964e9e8df67bae53f142a7559defff47f16cf8c0",
+    "retained": "guards/20260922T145649886672Z-gl46-regression-0012/report.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145649886672Z-gl46-regression-0012/remote/result.json",
+    "sha256": "440c6ffe08fb698d6d391457d1291292a7d46940a23de10b49df4f0af9ab2def",
+    "retained": "guards/20260922T145649886672Z-gl46-regression-0012/remote-result.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145649886672Z-gl46-regression-0012/remote/temperatures.jsonl",
+    "sha256": "fe9c2795c389b075da7064bbe12125821d9dae83c645c7d90cd7baf190729cb4",
+    "retained": "guards/20260922T145649886672Z-gl46-regression-0012/remote-temperatures.jsonl.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145649886672Z-gl46-regression-0012/remote/kernel-live.log",
+    "sha256": "f89781c06a444e825b0ea1b3e2944a8df1fc37c2172d7f63dd894472c4827139",
+    "retained": "guards/20260922T145649886672Z-gl46-regression-0012/remote-kernel-live.log.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145649886672Z-gl46-regression-0012/remote/cts/binary.json",
+    "sha256": "8a8c7235c6389b3b4bf7bbf49c0ba276c285c4528bf14aa141afaefab797d703",
+    "retained": "guards/20260922T145649886672Z-gl46-regression-0012/remote-cts-binary.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145649886672Z-gl46-regression-0012/remote/cts/environment.json",
+    "sha256": "05044850bb7758936589f049ed23d82e5820ff5991346d803b5764478be8a94d",
+    "retained": "guards/20260922T145649886672Z-gl46-regression-0012/remote-cts-environment.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145713058399Z-gl46-regression-0013/report.json",
+    "sha256": "2da3b1b9be84f66140e3a64a26927334aefcc3ebd6c5d569722e199d34c3d98b",
+    "retained": "guards/20260922T145713058399Z-gl46-regression-0013/report.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145713058399Z-gl46-regression-0013/remote/result.json",
+    "sha256": "0efd64f616de81b9969d42586bf91d54261ade08610388f133326eebf54c7e33",
+    "retained": "guards/20260922T145713058399Z-gl46-regression-0013/remote-result.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145713058399Z-gl46-regression-0013/remote/temperatures.jsonl",
+    "sha256": "973044b88a03dc86a43bfe86682a7f7f65f6aa92a946c97c73608dc95fa6beb0",
+    "retained": "guards/20260922T145713058399Z-gl46-regression-0013/remote-temperatures.jsonl.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145713058399Z-gl46-regression-0013/remote/kernel-live.log",
+    "sha256": "47588ad276da0a494378b2ae5945881b77dad849f924e43b7393da70922e51d9",
+    "retained": "guards/20260922T145713058399Z-gl46-regression-0013/remote-kernel-live.log.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145713058399Z-gl46-regression-0013/remote/cts/binary.json",
+    "sha256": "8a8c7235c6389b3b4bf7bbf49c0ba276c285c4528bf14aa141afaefab797d703",
+    "retained": "guards/20260922T145713058399Z-gl46-regression-0013/remote-cts-binary.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145713058399Z-gl46-regression-0013/remote/cts/environment.json",
+    "sha256": "10fcc6ba61f934844eb15c73aa68efa637925dac122294732a01a82c64be0826",
+    "retained": "guards/20260922T145713058399Z-gl46-regression-0013/remote-cts-environment.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145735648025Z-gl46-regression-0014/report.json",
+    "sha256": "2fc61c6d3392ba7885bc0c3023f40523d19b68ef9ade0bd3f9512c678c8fa892",
+    "retained": "guards/20260922T145735648025Z-gl46-regression-0014/report.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145735648025Z-gl46-regression-0014/remote/result.json",
+    "sha256": "7a64ab0a689ba34131806cf73824d28f895bc42735225a6647012f0f017ba379",
+    "retained": "guards/20260922T145735648025Z-gl46-regression-0014/remote-result.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145735648025Z-gl46-regression-0014/remote/temperatures.jsonl",
+    "sha256": "9ac448dd8d299b87125185b6f4a7f701b8993fbd9021a70e20468e51003247b7",
+    "retained": "guards/20260922T145735648025Z-gl46-regression-0014/remote-temperatures.jsonl.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145735648025Z-gl46-regression-0014/remote/kernel-live.log",
+    "sha256": "0d65625e664b02d5acc2f9ce05bc7d988be8c50511b233bb31c8a6e2dd01e06d",
+    "retained": "guards/20260922T145735648025Z-gl46-regression-0014/remote-kernel-live.log.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145735648025Z-gl46-regression-0014/remote/cts/binary.json",
+    "sha256": "8a8c7235c6389b3b4bf7bbf49c0ba276c285c4528bf14aa141afaefab797d703",
+    "retained": "guards/20260922T145735648025Z-gl46-regression-0014/remote-cts-binary.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145735648025Z-gl46-regression-0014/remote/cts/environment.json",
+    "sha256": "239b2415ca45b907d2b94ed81b8d1ec166bed2731c279a2083f920ff9a8b7f06",
+    "retained": "guards/20260922T145735648025Z-gl46-regression-0014/remote-cts-environment.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145813009042Z-gl46-regression-0015/report.json",
+    "sha256": "3dd081ca0c097d292e445095fa43f41efc4e31f8ab097e7cc2d5686ecab6aed9",
+    "retained": "guards/20260922T145813009042Z-gl46-regression-0015/report.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145813009042Z-gl46-regression-0015/remote/result.json",
+    "sha256": "dbbd2943d75fbe3f55a80153a8d8048296115886f8b867b0f73a4f36bf8b5e01",
+    "retained": "guards/20260922T145813009042Z-gl46-regression-0015/remote-result.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145813009042Z-gl46-regression-0015/remote/temperatures.jsonl",
+    "sha256": "62a011f473873456e1f6fdebe8ca789468e549b037182f8f9e01c593a033e0af",
+    "retained": "guards/20260922T145813009042Z-gl46-regression-0015/remote-temperatures.jsonl.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145813009042Z-gl46-regression-0015/remote/kernel-live.log",
+    "sha256": "d9e93ffea705c815e7e433652d565649156469198a54ab8dda96a013efee8daf",
+    "retained": "guards/20260922T145813009042Z-gl46-regression-0015/remote-kernel-live.log.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145813009042Z-gl46-regression-0015/remote/cts/binary.json",
+    "sha256": "8a8c7235c6389b3b4bf7bbf49c0ba276c285c4528bf14aa141afaefab797d703",
+    "retained": "guards/20260922T145813009042Z-gl46-regression-0015/remote-cts-binary.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145813009042Z-gl46-regression-0015/remote/cts/environment.json",
+    "sha256": "95792eaa0c8447ce40c620899cc3ff418a450615fd8f515b1cc30606691bf6d2",
+    "retained": "guards/20260922T145813009042Z-gl46-regression-0015/remote-cts-environment.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145836231244Z-gl46-regression-0016/report.json",
+    "sha256": "5354561d3c43bdd6c6020f9638f93395ea8100dab5f168da7a9495eddb3de2e4",
+    "retained": "guards/20260922T145836231244Z-gl46-regression-0016/report.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145836231244Z-gl46-regression-0016/remote/result.json",
+    "sha256": "06f95cb5337052791f04f7a489baac88c4c0fa45ec83de84804dd5e2b174ad38",
+    "retained": "guards/20260922T145836231244Z-gl46-regression-0016/remote-result.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145836231244Z-gl46-regression-0016/remote/temperatures.jsonl",
+    "sha256": "2eb413304806f03a0187f5186a2000bffc6ff3d1d332641def540f1aea575747",
+    "retained": "guards/20260922T145836231244Z-gl46-regression-0016/remote-temperatures.jsonl.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145836231244Z-gl46-regression-0016/remote/kernel-live.log",
+    "sha256": "5f979be3e2db0b6e66f6e73118376be0e3308edc218f4270c1496314d8432f9e",
+    "retained": "guards/20260922T145836231244Z-gl46-regression-0016/remote-kernel-live.log.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145836231244Z-gl46-regression-0016/remote/cts/binary.json",
+    "sha256": "8a8c7235c6389b3b4bf7bbf49c0ba276c285c4528bf14aa141afaefab797d703",
+    "retained": "guards/20260922T145836231244Z-gl46-regression-0016/remote-cts-binary.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T145836231244Z-gl46-regression-0016/remote/cts/environment.json",
+    "sha256": "8644b95d7030e5c07972865a9feb19fb485336a6d36a106d1344d607b85506a5",
+    "retained": "guards/20260922T145836231244Z-gl46-regression-0016/remote-cts-environment.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T150707562265Z-gl46-regression-0017/report.json",
+    "sha256": "be31f7ac765a72e9b536f671ff57b59fb87c1a706b0b6c3fc3aa37b1cedc38ce",
+    "retained": "guards/20260922T150707562265Z-gl46-regression-0017/report.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T150707562265Z-gl46-regression-0017/remote/result.json",
+    "sha256": "b00763a192221d7608ee189fa04d001e758405362a3f790349b468e3053029cd",
+    "retained": "guards/20260922T150707562265Z-gl46-regression-0017/remote-result.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T150707562265Z-gl46-regression-0017/remote/temperatures.jsonl",
+    "sha256": "f17c6122149232e8734421f4f1cec7e9bb76096ae6911c4aa1d5a7e923720216",
+    "retained": "guards/20260922T150707562265Z-gl46-regression-0017/remote-temperatures.jsonl.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T150707562265Z-gl46-regression-0017/remote/kernel-live.log",
+    "sha256": "f46665bbaa38462de08d3c896957d75bcdbfcf1e58841a3a1a52b3864b54394b",
+    "retained": "guards/20260922T150707562265Z-gl46-regression-0017/remote-kernel-live.log.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T150707562265Z-gl46-regression-0017/remote/cts/binary.json",
+    "sha256": "8a8c7235c6389b3b4bf7bbf49c0ba276c285c4528bf14aa141afaefab797d703",
+    "retained": "guards/20260922T150707562265Z-gl46-regression-0017/remote-cts-binary.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T150707562265Z-gl46-regression-0017/remote/cts/environment.json",
+    "sha256": "56be66dfb9eed31f100531320c713dfcf019b228b81caf64983b361e7465ba00",
+    "retained": "guards/20260922T150707562265Z-gl46-regression-0017/remote-cts-environment.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T150729457160Z-gl46-regression-0018/report.json",
+    "sha256": "8f4ef5ddae5ebaf1260fed153703b0f2c48338a9c7aaac41e8442f8e94a6caad",
+    "retained": "guards/20260922T150729457160Z-gl46-regression-0018/report.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T150729457160Z-gl46-regression-0018/remote/result.json",
+    "sha256": "891d0126c9926d6711ab5f9988231fc5af92e4a8567c04c165c062bd213529f6",
+    "retained": "guards/20260922T150729457160Z-gl46-regression-0018/remote-result.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T150729457160Z-gl46-regression-0018/remote/temperatures.jsonl",
+    "sha256": "912edfc412b6173471f15d3b444850a0c77af9a784a0ce416c9df46df68a1067",
+    "retained": "guards/20260922T150729457160Z-gl46-regression-0018/remote-temperatures.jsonl.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T150729457160Z-gl46-regression-0018/remote/kernel-live.log",
+    "sha256": "1e0b76dae0ce65379173e3c9803ac3f0105959ec56ccde80910177c9f59c29d1",
+    "retained": "guards/20260922T150729457160Z-gl46-regression-0018/remote-kernel-live.log.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T150729457160Z-gl46-regression-0018/remote/cts/binary.json",
+    "sha256": "8a8c7235c6389b3b4bf7bbf49c0ba276c285c4528bf14aa141afaefab797d703",
+    "retained": "guards/20260922T150729457160Z-gl46-regression-0018/remote-cts-binary.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T150729457160Z-gl46-regression-0018/remote/cts/environment.json",
+    "sha256": "c0dc311a78aeb7633cc39d5c5ab47a1a4ef15f07ed5b0be308c5280ca4683b3f",
+    "retained": "guards/20260922T150729457160Z-gl46-regression-0018/remote-cts-environment.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T150948589266Z-gl46-regression-0019/report.json",
+    "sha256": "8e7a0864ecb204754510f9b54e520d942e06122c0a9ab970d65ed41d981329dc",
+    "retained": "guards/20260922T150948589266Z-gl46-regression-0019/report.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T150948589266Z-gl46-regression-0019/remote/result.json",
+    "sha256": "98d58973d00d1557500321ef02edb4e8278fc1b33a90e321ff6da88ff77a1f03",
+    "retained": "guards/20260922T150948589266Z-gl46-regression-0019/remote-result.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T150948589266Z-gl46-regression-0019/remote/temperatures.jsonl",
+    "sha256": "204273d76dceae18847b11dabae4c16e5667cf05a15c741a8b6c2552e0ccffa2",
+    "retained": "guards/20260922T150948589266Z-gl46-regression-0019/remote-temperatures.jsonl.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T150948589266Z-gl46-regression-0019/remote/kernel-live.log",
+    "sha256": "59c3f49b72816894e9aec18e7c88c0983c74c4769a29a6add2c26db15c25c963",
+    "retained": "guards/20260922T150948589266Z-gl46-regression-0019/remote-kernel-live.log.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T150948589266Z-gl46-regression-0019/remote/cts/binary.json",
+    "sha256": "8a8c7235c6389b3b4bf7bbf49c0ba276c285c4528bf14aa141afaefab797d703",
+    "retained": "guards/20260922T150948589266Z-gl46-regression-0019/remote-cts-binary.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T150948589266Z-gl46-regression-0019/remote/cts/environment.json",
+    "sha256": "f2b63dacb2c03396660bdd579c31f8828279c1bd77fda2e9216b72cdf020cc77",
+    "retained": "guards/20260922T150948589266Z-gl46-regression-0019/remote-cts-environment.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T151011200134Z-gl46-regression-0020/report.json",
+    "sha256": "7c4baef0c2cb4a76360fe7a1fa4b0f47698211dd3196a2541195de0ccadb93c1",
+    "retained": "guards/20260922T151011200134Z-gl46-regression-0020/report.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T151011200134Z-gl46-regression-0020/remote/result.json",
+    "sha256": "498f6a5caed663d91fdd4983e6bcd15d3d09f92e8bc174121b5d53e1c466d55d",
+    "retained": "guards/20260922T151011200134Z-gl46-regression-0020/remote-result.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T151011200134Z-gl46-regression-0020/remote/temperatures.jsonl",
+    "sha256": "574a78fe1673d4f5087bfe753421104d0de18ce5e4869b9405dd5b14fa98821d",
+    "retained": "guards/20260922T151011200134Z-gl46-regression-0020/remote-temperatures.jsonl.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T151011200134Z-gl46-regression-0020/remote/kernel-live.log",
+    "sha256": "c9a1309fd059a903e57e661208de3e31619558e7aad3dc0113209d2f58ead3bf",
+    "retained": "guards/20260922T151011200134Z-gl46-regression-0020/remote-kernel-live.log.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T151011200134Z-gl46-regression-0020/remote/cts/binary.json",
+    "sha256": "8a8c7235c6389b3b4bf7bbf49c0ba276c285c4528bf14aa141afaefab797d703",
+    "retained": "guards/20260922T151011200134Z-gl46-regression-0020/remote-cts-binary.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T151011200134Z-gl46-regression-0020/remote/cts/environment.json",
+    "sha256": "ec368bd55547f5c679131a0d969686ba0820edc4329da253192635397c08bc9f",
+    "retained": "guards/20260922T151011200134Z-gl46-regression-0020/remote-cts-environment.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T151316727921Z-gl46-regression-0021/report.json",
+    "sha256": "f44c87842b7f86b8cbcc974c14808f53d7508ca721a00b520fbcf333ba6fa57f",
+    "retained": "guards/20260922T151316727921Z-gl46-regression-0021/report.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T151316727921Z-gl46-regression-0021/remote/result.json",
+    "sha256": "0f670d6c284d782581c76d5c5662378c9331e7c8fa4ab787ea878b3c65ffad0f",
+    "retained": "guards/20260922T151316727921Z-gl46-regression-0021/remote-result.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T151316727921Z-gl46-regression-0021/remote/temperatures.jsonl",
+    "sha256": "3c32989373306b2c7c4e53cc552d89204ec68867ad46d7cd003d08799184ce96",
+    "retained": "guards/20260922T151316727921Z-gl46-regression-0021/remote-temperatures.jsonl.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T151316727921Z-gl46-regression-0021/remote/kernel-live.log",
+    "sha256": "90dccaca7a95ff762165dcaec6684bdbb73ea68c4197175d5b65f4cbb566926a",
+    "retained": "guards/20260922T151316727921Z-gl46-regression-0021/remote-kernel-live.log.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T151316727921Z-gl46-regression-0021/remote/cts/binary.json",
+    "sha256": "8a8c7235c6389b3b4bf7bbf49c0ba276c285c4528bf14aa141afaefab797d703",
+    "retained": "guards/20260922T151316727921Z-gl46-regression-0021/remote-cts-binary.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T151316727921Z-gl46-regression-0021/remote/cts/environment.json",
+    "sha256": "1221d9fa6515d4f20bd274d0bea3ca10a1f35b095b328fca77f1961a781c5fc0",
+    "retained": "guards/20260922T151316727921Z-gl46-regression-0021/remote-cts-environment.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T151339009139Z-gl46-regression-0022/report.json",
+    "sha256": "1ef25b8ff9d09063d84a04072a8319ad8ba1289444b044246083192554dfe8f7",
+    "retained": "guards/20260922T151339009139Z-gl46-regression-0022/report.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T151339009139Z-gl46-regression-0022/remote/result.json",
+    "sha256": "e755bb375beb5e8baf083b69ac0cdc6a62d1178bb1263ea57adb6d121cec40f6",
+    "retained": "guards/20260922T151339009139Z-gl46-regression-0022/remote-result.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T151339009139Z-gl46-regression-0022/remote/temperatures.jsonl",
+    "sha256": "31fa94c90ad40c1e3d46564a9c14058f0d998bb669649e755fa603fd765e81a7",
+    "retained": "guards/20260922T151339009139Z-gl46-regression-0022/remote-temperatures.jsonl.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T151339009139Z-gl46-regression-0022/remote/kernel-live.log",
+    "sha256": "05fe47121d4016b55bbae774082fbfe490f16b71fd9bdaddc0b2b57260149e36",
+    "retained": "guards/20260922T151339009139Z-gl46-regression-0022/remote-kernel-live.log.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T151339009139Z-gl46-regression-0022/remote/cts/binary.json",
+    "sha256": "8a8c7235c6389b3b4bf7bbf49c0ba276c285c4528bf14aa141afaefab797d703",
+    "retained": "guards/20260922T151339009139Z-gl46-regression-0022/remote-cts-binary.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T151339009139Z-gl46-regression-0022/remote/cts/environment.json",
+    "sha256": "7c59466456e457527191c5fa27eb7d1ca7d7b0c88184ddb4440a406b26e5a425",
+    "retained": "guards/20260922T151339009139Z-gl46-regression-0022/remote-cts-environment.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T151409315358Z-gl46-regression-0023/report.json",
+    "sha256": "3bf885c60d8609efe2a349f8dfbf8a612073fde86298d54da5d13885bdddcd4e",
+    "retained": "guards/20260922T151409315358Z-gl46-regression-0023/report.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T151409315358Z-gl46-regression-0023/remote/result.json",
+    "sha256": "34bd1c060343ae1ecf4adc314880eb60cffef6843fde8ea3d271e71609f0288d",
+    "retained": "guards/20260922T151409315358Z-gl46-regression-0023/remote-result.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T151409315358Z-gl46-regression-0023/remote/temperatures.jsonl",
+    "sha256": "1c0b3af93cb3a2e3e304ee9021bc478342f6a00d0289f2004cdeeba940070385",
+    "retained": "guards/20260922T151409315358Z-gl46-regression-0023/remote-temperatures.jsonl.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T151409315358Z-gl46-regression-0023/remote/kernel-live.log",
+    "sha256": "9113473d790656cc82a51135c5094be0a4a289f628fc3723e3d7067f1669f957",
+    "retained": "guards/20260922T151409315358Z-gl46-regression-0023/remote-kernel-live.log.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T151409315358Z-gl46-regression-0023/remote/cts/binary.json",
+    "sha256": "8a8c7235c6389b3b4bf7bbf49c0ba276c285c4528bf14aa141afaefab797d703",
+    "retained": "guards/20260922T151409315358Z-gl46-regression-0023/remote-cts-binary.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T151409315358Z-gl46-regression-0023/remote/cts/environment.json",
+    "sha256": "b40d97af92f904b336a5e172a4e6d30a636db50f8ba15d85bb684039f66fcaf9",
+    "retained": "guards/20260922T151409315358Z-gl46-regression-0023/remote-cts-environment.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T151431645245Z-gl46-regression-0024/report.json",
+    "sha256": "0f7b8c89a59d78bc947ba1655c0ac0656986d8922e858e0946ef9bc1e1a48129",
+    "retained": "guards/20260922T151431645245Z-gl46-regression-0024/report.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T151431645245Z-gl46-regression-0024/remote/result.json",
+    "sha256": "f51be738b15694dde01ffbb11ea7e442858add98d48cf87b59b31c1cd5e34310",
+    "retained": "guards/20260922T151431645245Z-gl46-regression-0024/remote-result.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T151431645245Z-gl46-regression-0024/remote/temperatures.jsonl",
+    "sha256": "c30e783987aa938c3d886a3483b2f873393072ed7bd518bdb61ba860868ab8a5",
+    "retained": "guards/20260922T151431645245Z-gl46-regression-0024/remote-temperatures.jsonl.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T151431645245Z-gl46-regression-0024/remote/kernel-live.log",
+    "sha256": "496912cc9ede26edc7abbc70822c75ec737a3b4a5ab7e3bd7ef62b814faebb04",
+    "retained": "guards/20260922T151431645245Z-gl46-regression-0024/remote-kernel-live.log.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T151431645245Z-gl46-regression-0024/remote/cts/binary.json",
+    "sha256": "8a8c7235c6389b3b4bf7bbf49c0ba276c285c4528bf14aa141afaefab797d703",
+    "retained": "guards/20260922T151431645245Z-gl46-regression-0024/remote-cts-binary.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T151431645245Z-gl46-regression-0024/remote/cts/environment.json",
+    "sha256": "9f5001f10c5304b65b64f0186c95eec991c29917717a4cd82ebff0450856d740",
+    "retained": "guards/20260922T151431645245Z-gl46-regression-0024/remote-cts-environment.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T151457505891Z-gl46-regression-0025/report.json",
+    "sha256": "4cf3490798d4b29c018c16d411a456a11b84291a654aec4b023b0944665878f1",
+    "retained": "guards/20260922T151457505891Z-gl46-regression-0025/report.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T151457505891Z-gl46-regression-0025/remote/result.json",
+    "sha256": "7768eb409df382af336e89baa98859fa1a6636a3506b27008b8dc1ad417cf016",
+    "retained": "guards/20260922T151457505891Z-gl46-regression-0025/remote-result.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T151457505891Z-gl46-regression-0025/remote/temperatures.jsonl",
+    "sha256": "1c6eb6fdf692cdc377b864ea0b2dfe30ace799fe7f037aa9ecf8733e1e00cec4",
+    "retained": "guards/20260922T151457505891Z-gl46-regression-0025/remote-temperatures.jsonl.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T151457505891Z-gl46-regression-0025/remote/kernel-live.log",
+    "sha256": "4311a9eb086b2f0593231ccc6a3c59c94eb16f97969c147d10fa5dc1b070357a",
+    "retained": "guards/20260922T151457505891Z-gl46-regression-0025/remote-kernel-live.log.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T151457505891Z-gl46-regression-0025/remote/cts/binary.json",
+    "sha256": "8a8c7235c6389b3b4bf7bbf49c0ba276c285c4528bf14aa141afaefab797d703",
+    "retained": "guards/20260922T151457505891Z-gl46-regression-0025/remote-cts-binary.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T151457505891Z-gl46-regression-0025/remote/cts/environment.json",
+    "sha256": "6a37a72fa053e9ca72afeaa2c34a26186057d9bc07b70bd536f8ca2be0210777",
+    "retained": "guards/20260922T151457505891Z-gl46-regression-0025/remote-cts-environment.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T151514977457Z-gl46-regression-0026/report.json",
+    "sha256": "eb6f8c9a9c4c749fbe84d199cd9ef1855b93b140ffb533ca8ea23889f93e45f3",
+    "retained": "guards/20260922T151514977457Z-gl46-regression-0026/report.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T151514977457Z-gl46-regression-0026/remote/result.json",
+    "sha256": "049a8d94a765c2a24fb605c9564ad6fed6fa0fc0702db45d7173ab58a3c65144",
+    "retained": "guards/20260922T151514977457Z-gl46-regression-0026/remote-result.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T151514977457Z-gl46-regression-0026/remote/temperatures.jsonl",
+    "sha256": "d0cc090068f86b5f4c5bcf30b23481389dc9216b75f39bbabda7e76357443bfd",
+    "retained": "guards/20260922T151514977457Z-gl46-regression-0026/remote-temperatures.jsonl.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T151514977457Z-gl46-regression-0026/remote/kernel-live.log",
+    "sha256": "c0dc777ce187379b516d8560a164a5d7cffb90b44c4aa2b120a0ee75bfa49fed",
+    "retained": "guards/20260922T151514977457Z-gl46-regression-0026/remote-kernel-live.log.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T151514977457Z-gl46-regression-0026/remote/cts/binary.json",
+    "sha256": "8a8c7235c6389b3b4bf7bbf49c0ba276c285c4528bf14aa141afaefab797d703",
+    "retained": "guards/20260922T151514977457Z-gl46-regression-0026/remote-cts-binary.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T151514977457Z-gl46-regression-0026/remote/cts/environment.json",
+    "sha256": "a2700429383868dc0adf71e93db191690c02e3eff9b8a2b1c92d97e57ff71f8d",
+    "retained": "guards/20260922T151514977457Z-gl46-regression-0026/remote-cts-environment.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T151939855257Z-gl46-regression-0027/report.json",
+    "sha256": "edb8fd619755ade3d809b642b14d6fd5caeabf034e78cd869ca04f4be606a191",
+    "retained": "guards/20260922T151939855257Z-gl46-regression-0027/report.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T151939855257Z-gl46-regression-0027/remote/result.json",
+    "sha256": "a1e1b7dc71803f4ad58949af5920f39363f678085fcdb40bb555101853b38b18",
+    "retained": "guards/20260922T151939855257Z-gl46-regression-0027/remote-result.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T151939855257Z-gl46-regression-0027/remote/temperatures.jsonl",
+    "sha256": "38d4c087c7a2c959fcd9b9509a7e29aa46d73e7a43730b9b998e7b691c928c8e",
+    "retained": "guards/20260922T151939855257Z-gl46-regression-0027/remote-temperatures.jsonl.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T151939855257Z-gl46-regression-0027/remote/kernel-live.log",
+    "sha256": "f053220e566ad774c5dc69287fe53043002bd531fd7da6c1979c116f652a17e6",
+    "retained": "guards/20260922T151939855257Z-gl46-regression-0027/remote-kernel-live.log.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T151939855257Z-gl46-regression-0027/remote/cts/binary.json",
+    "sha256": "8a8c7235c6389b3b4bf7bbf49c0ba276c285c4528bf14aa141afaefab797d703",
+    "retained": "guards/20260922T151939855257Z-gl46-regression-0027/remote-cts-binary.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T151939855257Z-gl46-regression-0027/remote/cts/environment.json",
+    "sha256": "b04a9b972852055b56fcf84d2c9cc90ea26948a68fac6a931db0fe15479b45aa",
+    "retained": "guards/20260922T151939855257Z-gl46-regression-0027/remote-cts-environment.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152003954151Z-gl46-regression-0028/report.json",
+    "sha256": "4320711827510ba37193cd6a9d78642a5c26ef92e403fa22fc9030eca40629f7",
+    "retained": "guards/20260922T152003954151Z-gl46-regression-0028/report.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152003954151Z-gl46-regression-0028/remote/result.json",
+    "sha256": "6e540089912ce25c680b5b49992485790ce2930810a7ccce72025691796a2884",
+    "retained": "guards/20260922T152003954151Z-gl46-regression-0028/remote-result.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152003954151Z-gl46-regression-0028/remote/temperatures.jsonl",
+    "sha256": "70633cdd19758097475884f0aeb0032e15855df7c485499561cbd6f18e993ee6",
+    "retained": "guards/20260922T152003954151Z-gl46-regression-0028/remote-temperatures.jsonl.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152003954151Z-gl46-regression-0028/remote/kernel-live.log",
+    "sha256": "f5bb4f02cd984ee72a4bf7600abda3a4353e96bcbed7ed092e0257385f9cd6cd",
+    "retained": "guards/20260922T152003954151Z-gl46-regression-0028/remote-kernel-live.log.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152003954151Z-gl46-regression-0028/remote/cts/binary.json",
+    "sha256": "8a8c7235c6389b3b4bf7bbf49c0ba276c285c4528bf14aa141afaefab797d703",
+    "retained": "guards/20260922T152003954151Z-gl46-regression-0028/remote-cts-binary.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152003954151Z-gl46-regression-0028/remote/cts/environment.json",
+    "sha256": "8076b5a568f3247f17694617cdb21df1babb61c45ec85ea593ed8512c574dac1",
+    "retained": "guards/20260922T152003954151Z-gl46-regression-0028/remote-cts-environment.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152229068487Z-gl46-regression-0029/report.json",
+    "sha256": "cd00d75258fbbcc7d84665076a0d2b843f6406ff3112b1041bfa3232c9da3d9f",
+    "retained": "guards/20260922T152229068487Z-gl46-regression-0029/report.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152229068487Z-gl46-regression-0029/remote/result.json",
+    "sha256": "acb3275018c17ae5549b80419071224ccc52cd0c497a0940736b7ccdff6292dc",
+    "retained": "guards/20260922T152229068487Z-gl46-regression-0029/remote-result.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152229068487Z-gl46-regression-0029/remote/temperatures.jsonl",
+    "sha256": "dfbb48acae8f195768f026607c706c6c775f8698f2671bbf1fa384e4e5d5c634",
+    "retained": "guards/20260922T152229068487Z-gl46-regression-0029/remote-temperatures.jsonl.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152229068487Z-gl46-regression-0029/remote/kernel-live.log",
+    "sha256": "a94eb1e448bdc3d213f308ba8306db85f6446f366ac13214bd06236e505f2121",
+    "retained": "guards/20260922T152229068487Z-gl46-regression-0029/remote-kernel-live.log.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152229068487Z-gl46-regression-0029/remote/cts/binary.json",
+    "sha256": "8a8c7235c6389b3b4bf7bbf49c0ba276c285c4528bf14aa141afaefab797d703",
+    "retained": "guards/20260922T152229068487Z-gl46-regression-0029/remote-cts-binary.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152229068487Z-gl46-regression-0029/remote/cts/environment.json",
+    "sha256": "aaf7444911bb40619ed3a7982fd41255a7c2154f7326582bd6f34b66ffc62527",
+    "retained": "guards/20260922T152229068487Z-gl46-regression-0029/remote-cts-environment.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152252763652Z-gl46-regression-0030/report.json",
+    "sha256": "3a838fad1cdca2a5355955fc1d290553176a7445557dea504f6c79aaf4f97e88",
+    "retained": "guards/20260922T152252763652Z-gl46-regression-0030/report.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152252763652Z-gl46-regression-0030/remote/result.json",
+    "sha256": "2a3045e897204a8430c55e64b851f924d12a280807a7137198c6914a6e162c80",
+    "retained": "guards/20260922T152252763652Z-gl46-regression-0030/remote-result.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152252763652Z-gl46-regression-0030/remote/temperatures.jsonl",
+    "sha256": "b6908447c59c6af825ca29ee50512be9f01e77ac930235023d3d28c4eb424393",
+    "retained": "guards/20260922T152252763652Z-gl46-regression-0030/remote-temperatures.jsonl.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152252763652Z-gl46-regression-0030/remote/kernel-live.log",
+    "sha256": "021e14f08ada68431cd22d1831c89fc848e994f9ea01c588eaeb601ed8b9f6d0",
+    "retained": "guards/20260922T152252763652Z-gl46-regression-0030/remote-kernel-live.log.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152252763652Z-gl46-regression-0030/remote/cts/binary.json",
+    "sha256": "8a8c7235c6389b3b4bf7bbf49c0ba276c285c4528bf14aa141afaefab797d703",
+    "retained": "guards/20260922T152252763652Z-gl46-regression-0030/remote-cts-binary.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152252763652Z-gl46-regression-0030/remote/cts/environment.json",
+    "sha256": "2dc5a623642dc904cf773a71495d78989e28163810be3f8093f3481f183eb18f",
+    "retained": "guards/20260922T152252763652Z-gl46-regression-0030/remote-cts-environment.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152438092603Z-gl46-regression-0031/report.json",
+    "sha256": "52c6929c39ead8812a365d9bfa1ae803a73ead6be9a6a612484272e8654a88d2",
+    "retained": "guards/20260922T152438092603Z-gl46-regression-0031/report.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152438092603Z-gl46-regression-0031/remote/result.json",
+    "sha256": "b0784089c76b1a289636a52a6f5ac9a40caae3c074c31d141e68492e13dde02c",
+    "retained": "guards/20260922T152438092603Z-gl46-regression-0031/remote-result.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152438092603Z-gl46-regression-0031/remote/temperatures.jsonl",
+    "sha256": "0a78748ce4a55fadd51bb33073d09dbb7ba63650576f435067da50da2f9ec827",
+    "retained": "guards/20260922T152438092603Z-gl46-regression-0031/remote-temperatures.jsonl.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152438092603Z-gl46-regression-0031/remote/kernel-live.log",
+    "sha256": "df5098845866c6e18447c5b5e7b7216466f810f42bd9cfe0b8d6099998b3c934",
+    "retained": "guards/20260922T152438092603Z-gl46-regression-0031/remote-kernel-live.log.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152438092603Z-gl46-regression-0031/remote/cts/binary.json",
+    "sha256": "8a8c7235c6389b3b4bf7bbf49c0ba276c285c4528bf14aa141afaefab797d703",
+    "retained": "guards/20260922T152438092603Z-gl46-regression-0031/remote-cts-binary.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152438092603Z-gl46-regression-0031/remote/cts/environment.json",
+    "sha256": "d6f971d97ed55ca8186a3602d22caced2152ee584317a481c790903c660e7727",
+    "retained": "guards/20260922T152438092603Z-gl46-regression-0031/remote-cts-environment.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152502075923Z-gl46-regression-0032/report.json",
+    "sha256": "2c7c3190fd119d464fcdb05ec51d48bf18073219b8f057f43602388982f7e6c1",
+    "retained": "guards/20260922T152502075923Z-gl46-regression-0032/report.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152502075923Z-gl46-regression-0032/remote/result.json",
+    "sha256": "62ee40dfac02b3367befcc371047519024f8173716ef050a5c73020313d9c042",
+    "retained": "guards/20260922T152502075923Z-gl46-regression-0032/remote-result.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152502075923Z-gl46-regression-0032/remote/temperatures.jsonl",
+    "sha256": "03b8d67aed395524604da3ea7857895211589c5fe2f98c35e1783f7e4c0f21f9",
+    "retained": "guards/20260922T152502075923Z-gl46-regression-0032/remote-temperatures.jsonl.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152502075923Z-gl46-regression-0032/remote/kernel-live.log",
+    "sha256": "18bd136bba1eb528eb85436080083b5178cd97232b56c0309d515ed0c9c26985",
+    "retained": "guards/20260922T152502075923Z-gl46-regression-0032/remote-kernel-live.log.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152502075923Z-gl46-regression-0032/remote/cts/binary.json",
+    "sha256": "8a8c7235c6389b3b4bf7bbf49c0ba276c285c4528bf14aa141afaefab797d703",
+    "retained": "guards/20260922T152502075923Z-gl46-regression-0032/remote-cts-binary.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152502075923Z-gl46-regression-0032/remote/cts/environment.json",
+    "sha256": "c4508e20867b9d0a61df6e1fffb3b6433992f362647d699e2df3ded7c0339fc1",
+    "retained": "guards/20260922T152502075923Z-gl46-regression-0032/remote-cts-environment.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152606998683Z-gl46-regression-0033/report.json",
+    "sha256": "174f8a82136448365d91454244289ec4e2ad79fa71aef1441389250809b20e81",
+    "retained": "guards/20260922T152606998683Z-gl46-regression-0033/report.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152606998683Z-gl46-regression-0033/remote/result.json",
+    "sha256": "6470bd0d84b4af2b34639d4ac1a1a82f91c6c435ae5f97814bfdbed938312692",
+    "retained": "guards/20260922T152606998683Z-gl46-regression-0033/remote-result.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152606998683Z-gl46-regression-0033/remote/temperatures.jsonl",
+    "sha256": "80d563d47757a98df2a11a55ea5c2a29177e8fdd61c91c81f6577a3a197695e3",
+    "retained": "guards/20260922T152606998683Z-gl46-regression-0033/remote-temperatures.jsonl.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152606998683Z-gl46-regression-0033/remote/kernel-live.log",
+    "sha256": "22f454da9fc8e8c3ab8309d79c2fc42c4d2b784a2b228cd9137f37008e8a712e",
+    "retained": "guards/20260922T152606998683Z-gl46-regression-0033/remote-kernel-live.log.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152606998683Z-gl46-regression-0033/remote/cts/binary.json",
+    "sha256": "8a8c7235c6389b3b4bf7bbf49c0ba276c285c4528bf14aa141afaefab797d703",
+    "retained": "guards/20260922T152606998683Z-gl46-regression-0033/remote-cts-binary.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152606998683Z-gl46-regression-0033/remote/cts/environment.json",
+    "sha256": "d339fed439f85dfbf439de3aa0926a64546453da0b74b0ff6904ba20dc79235b",
+    "retained": "guards/20260922T152606998683Z-gl46-regression-0033/remote-cts-environment.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152644798013Z-gl46-regression-0034/report.json",
+    "sha256": "0663c474da2e8da49c81643df13535300a470ef7e0d874eaa64d95b8efb0a131",
+    "retained": "guards/20260922T152644798013Z-gl46-regression-0034/report.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152644798013Z-gl46-regression-0034/remote/result.json",
+    "sha256": "6ac5beaf837cdd875664716b21aa957bc74e8a0c25d9ff600cfced38ca23e5e4",
+    "retained": "guards/20260922T152644798013Z-gl46-regression-0034/remote-result.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152644798013Z-gl46-regression-0034/remote/temperatures.jsonl",
+    "sha256": "36df2af5edc8f1a5f5e9c25c682d5fa56bdff9e24ae37e9e8f84f04ffd760806",
+    "retained": "guards/20260922T152644798013Z-gl46-regression-0034/remote-temperatures.jsonl.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152644798013Z-gl46-regression-0034/remote/kernel-live.log",
+    "sha256": "79af4b0da91403170a5fb330e1366b15577041ccf543061bc17956e62819d01e",
+    "retained": "guards/20260922T152644798013Z-gl46-regression-0034/remote-kernel-live.log.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152644798013Z-gl46-regression-0034/remote/cts/binary.json",
+    "sha256": "8a8c7235c6389b3b4bf7bbf49c0ba276c285c4528bf14aa141afaefab797d703",
+    "retained": "guards/20260922T152644798013Z-gl46-regression-0034/remote-cts-binary.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152644798013Z-gl46-regression-0034/remote/cts/environment.json",
+    "sha256": "92f2fc61440e5ed69ace9e748b97bf5229ea4d7eb0e2893c891282f7f339326d",
+    "retained": "guards/20260922T152644798013Z-gl46-regression-0034/remote-cts-environment.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152713045464Z-gl46-regression-0035/report.json",
+    "sha256": "ce773d4c3d09dc6f237526a9e10ab5830b83518a842cc89beb29074d2a2c6347",
+    "retained": "guards/20260922T152713045464Z-gl46-regression-0035/report.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152713045464Z-gl46-regression-0035/remote/result.json",
+    "sha256": "3f5b7147647bfe2c4bd77942e91f87b4d82af1d516c26a651df14d5d54324d0a",
+    "retained": "guards/20260922T152713045464Z-gl46-regression-0035/remote-result.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152713045464Z-gl46-regression-0035/remote/temperatures.jsonl",
+    "sha256": "88b900fc4f99018d3018c130cc639aeea34a7d2d6c0e735066c99ef4dfd8ab4b",
+    "retained": "guards/20260922T152713045464Z-gl46-regression-0035/remote-temperatures.jsonl.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152713045464Z-gl46-regression-0035/remote/kernel-live.log",
+    "sha256": "2a402d6722ed1ee2e90e95f3cdfd6e572e8994d02df10ca4add902ab7833aea5",
+    "retained": "guards/20260922T152713045464Z-gl46-regression-0035/remote-kernel-live.log.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152713045464Z-gl46-regression-0035/remote/cts/binary.json",
+    "sha256": "8a8c7235c6389b3b4bf7bbf49c0ba276c285c4528bf14aa141afaefab797d703",
+    "retained": "guards/20260922T152713045464Z-gl46-regression-0035/remote-cts-binary.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152713045464Z-gl46-regression-0035/remote/cts/environment.json",
+    "sha256": "78d768c8401fa28cc72632128bdbeeaee2a701bf230f8168c1c17444d26a59a1",
+    "retained": "guards/20260922T152713045464Z-gl46-regression-0035/remote-cts-environment.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152739592143Z-gl46-regression-0036/report.json",
+    "sha256": "a989e431f627155ba92ef0734af454f430fb6748d6492d5a90cde45733aa8137",
+    "retained": "guards/20260922T152739592143Z-gl46-regression-0036/report.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152739592143Z-gl46-regression-0036/remote/result.json",
+    "sha256": "c1b43c37df0bf57374c347cdef47bf8eb41649220da9d6955f37b3b94c43a336",
+    "retained": "guards/20260922T152739592143Z-gl46-regression-0036/remote-result.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152739592143Z-gl46-regression-0036/remote/temperatures.jsonl",
+    "sha256": "6bd6441943dfe370fb08e1a93b28a8c3f88893404bb1b1da0c8480b68891bed6",
+    "retained": "guards/20260922T152739592143Z-gl46-regression-0036/remote-temperatures.jsonl.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152739592143Z-gl46-regression-0036/remote/kernel-live.log",
+    "sha256": "4ca7119f3a4c1b8dfc8b225ed0f8347113f273e0b576b65f5c900b81e9693ed6",
+    "retained": "guards/20260922T152739592143Z-gl46-regression-0036/remote-kernel-live.log.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152739592143Z-gl46-regression-0036/remote/cts/binary.json",
+    "sha256": "8a8c7235c6389b3b4bf7bbf49c0ba276c285c4528bf14aa141afaefab797d703",
+    "retained": "guards/20260922T152739592143Z-gl46-regression-0036/remote-cts-binary.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152739592143Z-gl46-regression-0036/remote/cts/environment.json",
+    "sha256": "02591e6e4c90921dc9e2ab2ebe913f534e488e7419efda3afc1ea74452e61376",
+    "retained": "guards/20260922T152739592143Z-gl46-regression-0036/remote-cts-environment.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152845055223Z-gl46-regression-0037/report.json",
+    "sha256": "c03bb7c49a111289e51be10162d0f380257e9f4b76ff2e2b823cd8c3137d9b2d",
+    "retained": "guards/20260922T152845055223Z-gl46-regression-0037/report.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152845055223Z-gl46-regression-0037/remote/result.json",
+    "sha256": "2fcec2e3cdc78e7b8ad62de441eefdcd18cc2391a34c6f492ddb46bfa04a4039",
+    "retained": "guards/20260922T152845055223Z-gl46-regression-0037/remote-result.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152845055223Z-gl46-regression-0037/remote/temperatures.jsonl",
+    "sha256": "675d331a5961f234b80fcaf27c65748ed9fc5f425607675d9111afd6e960343b",
+    "retained": "guards/20260922T152845055223Z-gl46-regression-0037/remote-temperatures.jsonl.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152845055223Z-gl46-regression-0037/remote/kernel-live.log",
+    "sha256": "555331df12aab8fc5e2e382db72364eff5974e7c067854328eeea9a60b35a4d3",
+    "retained": "guards/20260922T152845055223Z-gl46-regression-0037/remote-kernel-live.log.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152845055223Z-gl46-regression-0037/remote/cts/binary.json",
+    "sha256": "8a8c7235c6389b3b4bf7bbf49c0ba276c285c4528bf14aa141afaefab797d703",
+    "retained": "guards/20260922T152845055223Z-gl46-regression-0037/remote-cts-binary.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152845055223Z-gl46-regression-0037/remote/cts/environment.json",
+    "sha256": "878f2e9dad7d5441fb13b8a1b7e8c37255fe74645719bd9a0171eeba1c683ce0",
+    "retained": "guards/20260922T152845055223Z-gl46-regression-0037/remote-cts-environment.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152858142751Z-gl46-regression-0038/report.json",
+    "sha256": "fbad1db322f5aa7067b8093deeff07615bdbaccbdadab3e79113b64a87a1fd0a",
+    "retained": "guards/20260922T152858142751Z-gl46-regression-0038/report.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152858142751Z-gl46-regression-0038/remote/result.json",
+    "sha256": "8c5dc7adbe208ec2f10ecea1a24e841d5cb3551d23bfe9aeb4bc55925ae2dfd0",
+    "retained": "guards/20260922T152858142751Z-gl46-regression-0038/remote-result.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152858142751Z-gl46-regression-0038/remote/temperatures.jsonl",
+    "sha256": "c76030461cca3b37df826e7a71ede9848447ed3eab087cfe309d94d679ddd992",
+    "retained": "guards/20260922T152858142751Z-gl46-regression-0038/remote-temperatures.jsonl.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152858142751Z-gl46-regression-0038/remote/kernel-live.log",
+    "sha256": "e90883f284488fc5adc5efc8d29ea7d91ad76ec9eb68c0ffe5f6f15e8ab612b9",
+    "retained": "guards/20260922T152858142751Z-gl46-regression-0038/remote-kernel-live.log.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152858142751Z-gl46-regression-0038/remote/cts/binary.json",
+    "sha256": "8a8c7235c6389b3b4bf7bbf49c0ba276c285c4528bf14aa141afaefab797d703",
+    "retained": "guards/20260922T152858142751Z-gl46-regression-0038/remote-cts-binary.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T152858142751Z-gl46-regression-0038/remote/cts/environment.json",
+    "sha256": "95006277f1f982c3ab29637d69b43b77d62bd9e912d368c42b46e028ab776860",
+    "retained": "guards/20260922T152858142751Z-gl46-regression-0038/remote-cts-environment.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T153225749438Z-gl46-regression-0039/report.json",
+    "sha256": "7108616e90597bea182c69a0cb4d984bdb2b5854ff09652ddb0122ac311e0eb7",
+    "retained": "guards/20260922T153225749438Z-gl46-regression-0039/report.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T153225749438Z-gl46-regression-0039/remote/result.json",
+    "sha256": "07da0dd60ad11bcd12d48248e53c2e5b3f09ead4f898dc4d7828101447a6687e",
+    "retained": "guards/20260922T153225749438Z-gl46-regression-0039/remote-result.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T153225749438Z-gl46-regression-0039/remote/temperatures.jsonl",
+    "sha256": "d3ad3fa0178f8895ef7856c9aeaa55bd969098092f6de7acc389b63c011584e0",
+    "retained": "guards/20260922T153225749438Z-gl46-regression-0039/remote-temperatures.jsonl.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T153225749438Z-gl46-regression-0039/remote/kernel-live.log",
+    "sha256": "6c2bffa9d4d84fabcd99ed5d9ba73f20d0dc2c22f03014d7cd9855508712a0e5",
+    "retained": "guards/20260922T153225749438Z-gl46-regression-0039/remote-kernel-live.log.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T153225749438Z-gl46-regression-0039/remote/cts/binary.json",
+    "sha256": "8a8c7235c6389b3b4bf7bbf49c0ba276c285c4528bf14aa141afaefab797d703",
+    "retained": "guards/20260922T153225749438Z-gl46-regression-0039/remote-cts-binary.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T153225749438Z-gl46-regression-0039/remote/cts/environment.json",
+    "sha256": "1ae9a2a5c331bf858d21b8d3c4c4d4310298575c2dc122e45d5f4eeda4b665f3",
+    "retained": "guards/20260922T153225749438Z-gl46-regression-0039/remote-cts-environment.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T153239129941Z-gl46-regression-0040/report.json",
+    "sha256": "ad2a1c9fbf7154ac5e7255bcef1aab4086205e089e6ac765696dd41729e21580",
+    "retained": "guards/20260922T153239129941Z-gl46-regression-0040/report.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T153239129941Z-gl46-regression-0040/remote/result.json",
+    "sha256": "07c2efe9cd3e294551367746529a98e9c5143ce178ff3e4d640e7d4c858ca2de",
+    "retained": "guards/20260922T153239129941Z-gl46-regression-0040/remote-result.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T153239129941Z-gl46-regression-0040/remote/temperatures.jsonl",
+    "sha256": "cd4fcab30f6929cc168052703530229d0dff9e7e6461f9b128dc12eb00dcbedc",
+    "retained": "guards/20260922T153239129941Z-gl46-regression-0040/remote-temperatures.jsonl.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T153239129941Z-gl46-regression-0040/remote/kernel-live.log",
+    "sha256": "336d938d8752181a227cbf2bc3f7e3ae11134a67afcddd51813a3732b08116d6",
+    "retained": "guards/20260922T153239129941Z-gl46-regression-0040/remote-kernel-live.log.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T153239129941Z-gl46-regression-0040/remote/cts/binary.json",
+    "sha256": "8a8c7235c6389b3b4bf7bbf49c0ba276c285c4528bf14aa141afaefab797d703",
+    "retained": "guards/20260922T153239129941Z-gl46-regression-0040/remote-cts-binary.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T153239129941Z-gl46-regression-0040/remote/cts/environment.json",
+    "sha256": "77b3741ff3e7a8368a611a0f43287593a0314d61095fdabeca33b1c348543d2a",
+    "retained": "guards/20260922T153239129941Z-gl46-regression-0040/remote-cts-environment.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T153244967311Z-gl46-regression-0041/report.json",
+    "sha256": "4a202afcfb1324db23231c6e1f9a3bec9b63ac3289cdfe34f173a25271121a8c",
+    "retained": "guards/20260922T153244967311Z-gl46-regression-0041/report.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T153244967311Z-gl46-regression-0041/remote/result.json",
+    "sha256": "15cdf268515a11e7d8f4f6d6e0b5e3acf256e7a979d951856fddb38927ee0405",
+    "retained": "guards/20260922T153244967311Z-gl46-regression-0041/remote-result.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T153244967311Z-gl46-regression-0041/remote/temperatures.jsonl",
+    "sha256": "976f727429f7ea4bdfdc53de9a942fa95da4ade4f5d6382a31ad783817711232",
+    "retained": "guards/20260922T153244967311Z-gl46-regression-0041/remote-temperatures.jsonl.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T153244967311Z-gl46-regression-0041/remote/kernel-live.log",
+    "sha256": "bee0c857b60db0888cf95da99e173089a93adcbf4a49053befb6c1254ea8e7d0",
+    "retained": "guards/20260922T153244967311Z-gl46-regression-0041/remote-kernel-live.log.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T153244967311Z-gl46-regression-0041/remote/cts/binary.json",
+    "sha256": "8a8c7235c6389b3b4bf7bbf49c0ba276c285c4528bf14aa141afaefab797d703",
+    "retained": "guards/20260922T153244967311Z-gl46-regression-0041/remote-cts-binary.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T153244967311Z-gl46-regression-0041/remote/cts/environment.json",
+    "sha256": "c1167b0a7eb8792631a18c4359d5feafdc4303ce41dca1d24b11582631b600e1",
+    "retained": "guards/20260922T153244967311Z-gl46-regression-0041/remote-cts-environment.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T153351320861Z-gl46-regression-cts-corrected/report.json",
+    "sha256": "5fd3ad5a68ef2aee87e233f7c8bd407a1768def4dd5899e01d8681cddac1b075",
+    "retained": "guards/20260922T153351320861Z-gl46-regression-cts-corrected/report.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T153351320861Z-gl46-regression-cts-corrected/remote/result.json",
+    "sha256": "6dc50577890c71fbd2e803f16966f930e42d504b7106d7c8d5c212a1a52c9f2a",
+    "retained": "guards/20260922T153351320861Z-gl46-regression-cts-corrected/remote-result.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T153351320861Z-gl46-regression-cts-corrected/remote/temperatures.jsonl",
+    "sha256": "de6a35796c92b4a33f4f2f11692ca43defb4c324e4690c2e6f627b0fcdb3c45b",
+    "retained": "guards/20260922T153351320861Z-gl46-regression-cts-corrected/remote-temperatures.jsonl.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T153351320861Z-gl46-regression-cts-corrected/remote/kernel-live.log",
+    "sha256": "cd5164f16094daeeea5c18604fe98ed956943138d3159a83a8be8b55f9cedaa1",
+    "retained": "guards/20260922T153351320861Z-gl46-regression-cts-corrected/remote-kernel-live.log.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T153351320861Z-gl46-regression-cts-corrected/remote/cts/binary.json",
+    "sha256": "d0296ddee22658163411a1c53d3fd89282dc629ed214872b2b94f043e1d73a77",
+    "retained": "guards/20260922T153351320861Z-gl46-regression-cts-corrected/remote-cts-binary.json.gz"
+  },
+  {
+    "source": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T153351320861Z-gl46-regression-cts-corrected/remote/cts/environment.json",
+    "sha256": "7e3692730adbd6de09fa55add4f2b9f247c03f0576c3712ca593de1c005d8516",
+    "retained": "guards/20260922T153351320861Z-gl46-regression-cts-corrected/remote-cts-environment.json.gz"
+  }
+]
