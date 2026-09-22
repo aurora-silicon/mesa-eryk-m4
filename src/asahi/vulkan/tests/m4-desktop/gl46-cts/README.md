@@ -43,4 +43,5 @@ passes. Do not describe this original backend bundle as a passing replay.
 Range [0,5000), excluding the separately scheduled LOD case at index 866,
 completed 4,984 Pass / 15 NotSupported in 440.95 s, peak 92.0 C.
 All three inherited Mesa version override keys are absent from its recorded
-CTS environment. Remaining ranges and the isolated LOD case are pending.
+CTS environment. Range [5000,10000) completed 4,760 Pass / 240 NotSupported in 305.87 s,
+peak 108.25 C. The two later ranges and isolated LOD case remain pending.
