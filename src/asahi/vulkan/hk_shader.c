@@ -2437,6 +2437,16 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
                nir_xfb_info *xfb_info, unsigned set_count,
                struct vk_descriptor_set_layout *const *set_layouts)
 {
+   /* xfb_info may be owned by nir itself (the final VS variant). Texture
+    * lowering below can replace nir with a clone and free the original.
+    * Retain the stream-output metadata before that ownership transfer. */
+   if (xfb_info) {
+      assert(xfb_info->output_count < ARRAY_SIZE(shader->info.xfb_outputs));
+      memcpy(&shader->info.xfb_info, xfb_info,
+             nir_xfb_info_size(xfb_info->output_count));
+      typed_memcpy(shader->info.xfb_stride, nir->info.xfb_stride, 4);
+   }
+
    /* Geometry's count variant removes application side effects. Expand
     * atomic64 only after Poly split, otherwise it drops the lock release
     * while retaining the acquisition that controls the retry loop. */
@@ -2961,15 +2971,6 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
       };
       hk_agx3_g17p_vertex_program_info(dev->dev.chip, &compiler_info,
                                        &shader->agx3_vdm_state_update);
-   }
-
-   if (xfb_info) {
-      assert(xfb_info->output_count < ARRAY_SIZE(shader->info.xfb_outputs));
-
-      memcpy(&shader->info.xfb_info, xfb_info,
-             nir_xfb_info_size(xfb_info->output_count));
-
-      typed_memcpy(shader->info.xfb_stride, nir->info.xfb_stride, 4);
    }
 
    if (nir->constant_data_size > 0) {
