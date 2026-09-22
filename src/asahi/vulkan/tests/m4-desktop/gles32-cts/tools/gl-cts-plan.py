@@ -143,7 +143,7 @@ def reviewed_pending(run):
     for r in crash:
         exit_status = r.get('worker_exit','')
         if 'SIGABRT' in exit_status:
-            matches = [f.read_text(errors='replace') for f in (evidence/'cts/deqp-runner').glob('c*.r1.log')
+            matches = [f.read_text(errors='replace') for f in (evidence/'cts/deqp-runner').glob('*.r1.log')
                        if "Test case '"+r['case']+"'" in f.read_text(errors='replace')]
             assert len(matches) == 1, r
             log = matches[0]
