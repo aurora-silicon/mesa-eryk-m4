@@ -1,0 +1,22 @@
+{
+  "selected": 2,
+  "recorded": 2,
+  "completed": 2,
+  "counts": {
+    "Pass": 2
+  },
+  "classifications": {
+    "unclassified": 2
+  },
+  "elapsed_seconds": 49.521752796994406,
+  "preparation_seconds": 1.6932281640038127,
+  "runner_seconds": 46.72569681300047,
+  "jobs": 1,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "8f168ef2b1d98df8f6decb63e22322ea49d76804bcd7bfb64f6d1cf42e6b7575",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T011443181526Z-gl46-duration-recheck",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 71.25
+}

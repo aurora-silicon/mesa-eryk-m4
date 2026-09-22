@@ -89,3 +89,13 @@ the topology restriction while retaining coefficient shape checks. All 28
 GL46 shader_subroutine cases pass (12.37 s, peak 83 C). The first assertion
 and three SIGKILL peer records are retained under range3-rest. Remaining
 untouched/canceled cases continue under range3-rest2.
+
+
+range3-rest2 completes all 1,463 selected cases: 1,061 Pass / 402 NotSupported
+in 59.05 s, peak 104 C. The original LOD case at index 866 passes alone
+in 40.01 s with the unchanged 60 s case limit. The previously timed-out
+R11G11B10 3D-to-rectangle copy passes in 6.47 s after the raw copy fix with
+one worker. This recheck changed both the driver and concurrency; it does
+not independently attribute the original timeout to contention alone.
+Evidence: 20260922T011443181526Z-gl46-duration-recheck. Remaining copy cases
+run with two workers; all first-attempt outcomes remain recorded.
