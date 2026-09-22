@@ -1,0 +1,12 @@
+{
+  "source_build": "9c41de45ddf",
+  "current_mesa_head": "b2ad343ec67cc21f1193b68b1f8a3ac3fbe28e9e",
+  "cts_source": "f6a29701220f34dd1407513bfe80d74ca7b392ce",
+  "catalog_sha256": "af868d3ba8e896cea00d8b85b4ea60b2223d28d6d501778adfc4975996f27f8b",
+  "baseline_campaigns": [
+    "build/gles32-zink-20260922",
+    "build/gles32-retest-20260922",
+    "build/gles32-descriptor-fixed-20260922"
+  ],
+  "notes": "Fresh full run on the GL46-validated driver pair. Original CTS binary; the separate GL sparse-clamp correction does not affect ES tests. No inherited crash/timeout/GPU recovery review permissions."
+}

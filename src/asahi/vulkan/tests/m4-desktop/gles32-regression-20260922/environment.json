@@ -1,0 +1,22 @@
+{
+  "HK_M4_COMPRESSED_2D": "true",
+  "ASAHI_M4_EXPERIMENTAL": "1",
+  "__EGL_VENDOR_LIBRARY_FILENAMES": "/opt/asahi-m4-port/egl.json",
+  "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+  "GALLIUM_DRIVER": "zink",
+  "ASAHI_MESA_DEBUG": "",
+  "HK_M4_PREFETCH_VARIANT": "true",
+  "HK_M4_PREFETCH_UBOS": "true",
+  "HK_M4_COMPRESSION_AUDIT": "true",
+  "VK_DRIVER_FILES": "/opt/asahi-m4-port/asahi_icd.json",
+  "LIBGL_DRIVERS_PATH": "/opt/asahi-m4-port/lib/dri",
+  "LIBGL_ALWAYS_SOFTWARE": "0",
+  "HK_M4_IOTO_TEMPLATES": "true",
+  "XDG_RUNTIME_DIR": "/run/user/1000",
+  "HK_M4_PREFETCH_DESCRIPTORS": "true",
+  "HK_M4_COMPRESSED_FEEDBACK": "true",
+  "HK_M4_PLAIN_SAMPLERS": "true",
+  "LD_LIBRARY_PATH": "/opt/asahi-m4-port/lib",
+  "WAYLAND_DISPLAY": "wayland-1",
+  "DISPLAY": ":0"
+}
