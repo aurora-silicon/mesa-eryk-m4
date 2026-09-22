@@ -1624,9 +1624,11 @@ hk_queue_init(struct hk_device *dev, const VkDeviceQueueCreateInfo *pCreateInfo,
 void
 hk_queue_finish(struct hk_device *dev, struct hk_queue *queue)
 {
+   /* Drain and join the runtime submit worker while its DRM queue and
+    * timeline still exist. Sparse publication may have enabled a worker. */
+   vk_queue_finish(&queue->vk);
    drmSyncobjDestroy(dev->dev.fd, queue->drm.syncobj);
    agx_destroy_command_queue(&dev->dev, queue->drm.id);
-   vk_queue_finish(&queue->vk);
    vk_free(&dev->vk.alloc, queue);
 }
 
