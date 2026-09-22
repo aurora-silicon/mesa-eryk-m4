@@ -20,9 +20,18 @@ Qualification:
 
 - Fresh-process normal-build baseline fails, including with shader dumps.
 - The unchanged case passes in all 15 selected EGL configurations after the fix.
-- Full conversion/feedback neighboring validation is pending.
+- All 140 distinct required and forbidden copy-conversion cases pass in
+  frozen session 9 (EGL config 1), including all six original failed indices.
+  All 18 guarded batches completed; peak temperature was 55 C.
+- The original larger focused batch retained 14 Pass and two Interrupted
+  outcomes at its healthy 27-second workload deadline. Smaller selections
+  leave that evidence unchanged. The full configuration scan remains ongoing.
 
 Evidence: `build/m3-gles31-20260922/triage-copy-convert-{baseline,debug}` and
 `triage-xfb-candidate`. The candidate is `/opt/asahi-m3-cts-xfb-lifetime`.
 Tests retain 20-second case, 45-second experiment, 60-second watchdog and 95 C
 thermal bounds. Debug shader dumps are separate from normal validation runs.
+
+Neighbor evidence: `triage-xfb-copy-config1/*/run`, with result hashes in
+`validation-manifest.json`. The selected-case comparison uses the unchanged
+Khronos binary, normal compiler options, and no diagnostic tracing.
