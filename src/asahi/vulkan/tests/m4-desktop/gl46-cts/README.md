@@ -215,3 +215,33 @@ all three texture_query_lod cases pass with a 256x256 viewport. Original
 64x64/default-depth skips remain separate records. The tessellation interface
 case now reaches its next gate: transform-feedback interleaved components
 are limited to Gallium's default 64 despite Vulkan supporting 128.
+
+## Capture position before depth conversion; expose native depth control
+
+Raising Zink's interleaved XFB capacity from its generic 64-component default
+to the Vulkan-supported 128 exposes the maximum TES interface case. All
+user attributes match, but captured position.z is 0.5 instead of 0.0: Zink's
+shader fallback for missing VK_EXT_depth_clip_control runs before capture.
+
+Implement M4 depthClipControl and its dynamic state in Honeykrisp. Like the
+existing Gallium Asahi path, convert [-1,1] depth only in the hardware vertex
+or generated geometry copy shader, after software VS/TES/GS outputs and XFB.
+Reuse a root-table padding half for the dynamic coefficient; include the
+feature in shader keys. The final lowering collects partial/conditional
+position writes in a temporary before conversion, and preserves Z exactly
+when negativeOneToOne is false. Other chips retain their feature boundary.
+
+The first vec4-only lowering exposed scalar TES position stores in Vulkan
+transform-feedback tests; its assertion and canceled peers are retained.
+The corrected implementation completes **521/521 Vulkan depth-clip-control
+cases**, covering monolithic pipelines, both library modes, all four shader
+object modes, dynamic updates, and VS/TES/GS transform feedback. Runner time
+2.65 s; peak 100.75 C under the authorized thermal regulation and watchdog.
+Evidence: `20260922T033552331492Z-gl46-vk-depth-clip-control-fixed`.
+The GL transform-feedback group plus newly enabled maximum TES interface
+case completes **39/39 Pass** (`20260922T033141816684Z-gl46-xfb-clip-fixed`).
+
+Final conversion build: 422 GL clipping/cull-distance, tessellation,
+transform-feedback and fragment-depth cases complete 406 Pass /
+16 inapplicable NotSupported in 65.57 s, peak 102.75 C
+(`20260922T033631999754Z-gl46-clip-regressions`).

@@ -84,7 +84,7 @@ struct hk_root_descriptor_table {
 
          float blend_constant[4];
          uint16_t no_epilog_discard;
-         uint16_t _pad1;
+         uint16_t clip_z_coeff; /* half: 0 for [0,1], 0.5 for [-1,1] */
          uint16_t api_sample_mask;
          uint16_t samples_log2;
          uint16_t force_never_in_shader;

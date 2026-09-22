@@ -344,13 +344,16 @@ enum hk_feature_key {
    HK_FEAT_IMAGE_VIEW_MIN_LOD = BITFIELD_BIT(1),
    HK_FEAT_SAMPLER_MINMAX = BITFIELD_BIT(2),
    HK_FEAT_STRICT_SPARSE = BITFIELD_BIT(3),
+   HK_FEAT_DEPTH_CLIP_CONTROL = BITFIELD_BIT(4),
 };
 
 static enum hk_feature_key
 hk_make_feature_key(const struct vk_physical_device *pdev,
                     const struct vk_features *feats)
 {
-   return ((!feats || feats->customBorderColors) ? HK_FEAT_CUSTOM_BORDER : 0) |
+   return ((pdev->supported_features.depthClipControl &&
+            (!feats || feats->depthClipControl)) ? HK_FEAT_DEPTH_CLIP_CONTROL : 0) |
+          ((!feats || feats->customBorderColors) ? HK_FEAT_CUSTOM_BORDER : 0) |
           ((!feats || feats->minLod) ? HK_FEAT_IMAGE_VIEW_MIN_LOD : 0) |
           ((!feats || feats->samplerFilterMinmax) ? HK_FEAT_SAMPLER_MINMAX : 0) |
           ((pdev->properties.sparseResidencyNonResidentStrict &&
@@ -2242,9 +2245,71 @@ hk_nir_uses_root(const nir_shader *nir)
    return false;
 }
 
+/* Like the Gallium Asahi clip conversion, this runs only on the hardware
+ * vertex/copy variant. Software VS/TES/GS outputs and XFB stay in API space.
+ */
+static bool
+hk_lower_clip_negative_one_to_one(nir_shader *nir)
+{
+   nir_function_impl *impl = nir_shader_get_entrypoint(nir);
+   nir_builder b = nir_builder_create(impl);
+   nir_variable *temp = NULL;
+   nir_intrinsic_instr *output = NULL;
+   unsigned mask = 0;
+
+   /* TES and generated copy shaders can write position in several pieces.
+    * Collect the final value before converting Z, including conditional and
+    * partial stores, rather than assuming one vec4 store.
+    */
+   nir_foreach_block(block, impl) {
+      nir_foreach_instr_safe(instr, block) {
+         if (instr->type != nir_instr_type_intrinsic)
+            continue;
+         nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+         if (intr->intrinsic != nir_intrinsic_store_output ||
+             nir_intrinsic_io_semantics(intr).location != VARYING_SLOT_POS)
+            continue;
+
+         if (!temp) {
+            temp = nir_local_variable_create(impl, glsl_vec4_type(), "clip_position");
+            output = nir_instr_as_intrinsic(nir_instr_clone(nir, instr));
+         }
+         b.cursor = nir_before_instr(instr);
+         unsigned component = nir_intrinsic_component(intr);
+         unsigned write_mask = nir_intrinsic_write_mask(intr) << component;
+         nir_def *value = intr->src[0].ssa;
+         unsigned swizzle[4] = {0};
+         for (unsigned i = 0; i < value->num_components; ++i)
+            swizzle[component + i] = i;
+         nir_store_var(&b, temp, nir_swizzle(&b, value, swizzle, 4), write_mask);
+         mask |= write_mask;
+         nir_instr_remove(instr);
+      }
+   }
+   if (!temp)
+      return nir_no_progress(impl);
+
+   b.cursor = nir_after_impl(impl);
+   nir_def *pos = nir_load_var(&b, temp);
+   nir_def *z = nir_channel(&b, pos, 2);
+   nir_def *w = nir_channel(&b, pos, 3);
+   nir_def *c = nir_load_clip_z_coeff_agx(&b);
+   nir_def *mapped = nir_fmul_imm(&b, nir_fadd(&b, z, w), 0.5f);
+   nir_def *new_z = nir_bcsel(&b, nir_fneu_imm(&b, c, 0.0f), mapped, z);
+   output->num_components = 4;
+   nir_intrinsic_set_component(output, 0);
+   nir_intrinsic_set_write_mask(output, mask);
+   output->src[0] = nir_src_for_ssa(nir_vector_insert_imm(&b, pos, new_z, 2));
+   output->src[1] = nir_src_for_ssa(nir_imm_int(&b, 0));
+   nir_builder_instr_insert(&b, &output->instr);
+   nir_progress(true, impl, nir_metadata_control_flow);
+   nir_lower_vars_to_ssa(nir);
+   return true;
+}
+
 static void
 hk_lower_hw_vs(nir_shader *nir, struct hk_shader *shader, bool kill_psiz,
-               bool native)
+               bool native, bool depth_clip_control)
 {
    /* Point size must be clamped, excessively large points don't render
     * properly on G13.
@@ -2257,6 +2322,9 @@ hk_lower_hw_vs(nir_shader *nir, struct hk_shader *shader, bool kill_psiz,
       NIR_PASS(_, nir, nir_shader_intrinsics_pass, kill_psiz_write,
                nir_metadata_control_flow, NULL);
    }
+
+   if (depth_clip_control)
+      NIR_PASS(_, nir, hk_lower_clip_negative_one_to_one);
 
    NIR_PASS(_, nir, nir_lower_io_to_scalar, nir_var_shader_out, NULL, NULL);
    NIR_PASS(_, nir, agx_nir_lower_cull_distance_vs);
@@ -2621,7 +2689,8 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
    uint64_t outputs = nir->info.outputs_written;
    if (sw_stage == MESA_SHADER_VERTEX || sw_stage == MESA_SHADER_TESS_EVAL) {
       if (hw) {
-         hk_lower_hw_vs(nir, shader, kill_psiz, dev->dev.chip == AGX_CHIP_G16G);
+         hk_lower_hw_vs(nir, shader, kill_psiz, dev->dev.chip == AGX_CHIP_G16G,
+                        features & HK_FEAT_DEPTH_CLIP_CONTROL);
          outputs = nir->info.outputs_written;
       } else {
          NIR_PASS(_, nir, poly_nir_lower_vs_before_gs);
@@ -3016,7 +3085,8 @@ hk_compile_shader(struct hk_device *dev, struct vk_shader_compile_info *info,
       agx_preprocess_nir(pre_gs);
 
       struct hk_shader *shader = &obj->variants[HK_GS_VARIANT_RAST];
-      hk_lower_hw_vs(rast, shader, false, dev->dev.chip == AGX_CHIP_G16G);
+      hk_lower_hw_vs(rast, shader, false, dev->dev.chip == AGX_CHIP_G16G,
+                     features & HK_FEAT_DEPTH_CLIP_CONTROL);
       shader->info.gs = count_variant->info.gs;
       main_variant->info.gs = count_variant->info.gs;
 

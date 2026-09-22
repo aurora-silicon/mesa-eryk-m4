@@ -1,0 +1,22 @@
+{
+  "selected": 521,
+  "recorded": 521,
+  "completed": 521,
+  "counts": {
+    "Pass": 521
+  },
+  "classifications": {
+    "unclassified": 521
+  },
+  "elapsed_seconds": 4.6506859190049,
+  "preparation_seconds": 1.3729303080035606,
+  "runner_seconds": 2.645456616000047,
+  "jobs": 4,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "64f8f102d3e536b954c09ff7ffa15b3b104a6ea42f6493c317c0bd6ddaaa708e",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T033552331492Z-gl46-vk-depth-clip-control-fixed",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 100.75
+}

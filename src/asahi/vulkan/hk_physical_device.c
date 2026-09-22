@@ -526,7 +526,7 @@ hk_get_device_features(
       .depthBiasExact = true,
 
       /* VK_EXT_depth_clip_control */
-      .depthClipControl = false,
+      .depthClipControl = dev->chip == AGX_CHIP_G16G,
 
       /* VK_EXT_depth_clip_enable */
       .depthClipEnable = true,
@@ -568,7 +568,7 @@ hk_get_device_features(
       .extendedDynamicState3ProvokingVertexMode = true,
       .extendedDynamicState3LineRasterizationMode = true,
       .extendedDynamicState3LineStippleEnable = false,
-      .extendedDynamicState3DepthClipNegativeOneToOne = false,
+      .extendedDynamicState3DepthClipNegativeOneToOne = dev->chip == AGX_CHIP_G16G,
       .extendedDynamicState3ViewportWScalingEnable = false,
       .extendedDynamicState3ViewportSwizzle = false,
       .extendedDynamicState3CoverageToColorEnable = false,
@@ -1399,6 +1399,7 @@ hk_create_drm_physical_device(struct vk_instance *_instance,
 
    struct vk_device_extension_table supported_extensions;
    hk_get_device_extensions(instance, &supported_extensions);
+   supported_extensions.EXT_depth_clip_control = pdev->dev.chip == AGX_CHIP_G16G;
    supported_extensions.EXT_sampler_filter_minmax |= pdev->dev.chip == AGX_CHIP_G16G;
    supported_extensions.EXT_image_view_min_lod |= pdev->dev.chip == AGX_CHIP_G16G;
    supported_extensions.KHR_shader_atomic_int64 |= pdev->dev.chip == AGX_CHIP_G16G;

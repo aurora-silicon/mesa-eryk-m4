@@ -4088,6 +4088,11 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
       gfx->uses_blend_constant = uses_blend_constant(&dyn->cb);
    }
 
+   if (IS_DIRTY(VP_DEPTH_CLIP_NEGATIVE_ONE_TO_ONE)) {
+      desc->root.draw.clip_z_coeff = dyn->vp.depth_clip_negative_one_to_one ? 0x3800 : 0;
+      desc->root_dirty = true;
+   }
+
    if (IS_DIRTY(MS_SAMPLE_MASK)) {
       desc->root.draw.api_sample_mask = dyn->ms.sample_mask;
       desc->root_dirty = true;

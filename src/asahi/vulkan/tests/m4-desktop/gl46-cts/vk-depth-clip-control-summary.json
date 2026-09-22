@@ -1,0 +1,25 @@
+{
+  "selected": 521,
+  "recorded": 521,
+  "completed": 230,
+  "counts": {
+    "Pass": 226,
+    "Unrun": 288,
+    "Interrupted": 3,
+    "Crash": 4
+  },
+  "classifications": {
+    "unclassified": 521
+  },
+  "elapsed_seconds": 3.4026063210039865,
+  "preparation_seconds": 1.3610183619966847,
+  "runner_seconds": 1.430472799999734,
+  "jobs": 4,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "64f8f102d3e536b954c09ff7ffa15b3b104a6ea42f6493c317c0bd6ddaaa708e",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T033203083029Z-gl46-vk-depth-clip-control",
+  "guard_verdict": "process_failure",
+  "command_returncode": 1,
+  "peak_temperature_c": 91.75
+}

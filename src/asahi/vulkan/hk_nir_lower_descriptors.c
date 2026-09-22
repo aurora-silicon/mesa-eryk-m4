@@ -436,6 +436,14 @@ lower_uvs_index(nir_builder *b, nir_intrinsic_instr *intrin, void *data)
    case nir_intrinsic_load_shader_part_tests_zs_agx:
       return lower_sysval_to_root_table(b, intrin, draw.no_epilog_discard);
 
+   case nir_intrinsic_load_clip_z_coeff_agx: {
+      b->cursor = nir_before_instr(&intrin->instr);
+      nir_def *value = load_root(b, 1, 16,
+         nir_imm_int(b, hk_root_descriptor_offset(draw.clip_z_coeff)), 2);
+      nir_def_replace(&intrin->def, nir_f2f32(b, value));
+      return true;
+   }
+
    case nir_intrinsic_load_api_sample_mask_agx:
       return lower_sysval_to_root_table(b, intrin, draw.api_sample_mask);
 

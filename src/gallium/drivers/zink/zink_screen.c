@@ -953,6 +953,16 @@ zink_init_screen_caps(struct zink_screen *screen)
    caps->max_stream_output_buffers =
       screen->info.have_EXT_transform_feedback ?
       screen->info.tf_props.maxTransformFeedbackBuffers : 0;
+   if (screen->info.have_EXT_transform_feedback) {
+      /* The generic 64-component default can unnecessarily limit a whole
+       * shader interface even when Vulkan can capture it in one buffer.
+       * Allow a separate stream-output declaration for every component.
+       */
+      caps->max_stream_output_interleaved_components =
+         MIN3(screen->info.tf_props.maxTransformFeedbackBufferDataSize / 4,
+              screen->info.tf_props.maxTransformFeedbackStreamDataSize / 4,
+              PIPE_MAX_SO_OUTPUTS);
+   }
    caps->stream_output_pause_resume =
    caps->stream_output_interleave_buffers = screen->info.have_EXT_transform_feedback;
 
