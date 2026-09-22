@@ -307,11 +307,11 @@ hk_get_device_features(
       .shaderResourceMinLod = true,
       .sparseBinding = true,
 
-      /* We probably could advertise multisampled sparse but we don't have a use
-       * case yet and it isn't trivial.
+      /* Gang four hardware pages using the sample-aware image tile size.
+       * The 2x shape is nonstandard and is reported as such by format queries.
        */
-      .sparseResidency2Samples = false,
-      .sparseResidency4Samples = false,
+      .sparseResidency2Samples = dev->chip == AGX_CHIP_G16G,
+      .sparseResidency4Samples = dev->chip == AGX_CHIP_G16G,
       .sparseResidency8Samples = false,
       .sparseResidencyAliased = true,
       .sparseResidencyImage2D = true,

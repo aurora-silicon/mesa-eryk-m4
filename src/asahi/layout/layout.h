@@ -290,7 +290,8 @@ ail_get_twiddled_block_B(const struct ail_layout *layout, unsigned level,
 
    unsigned tile_idx = y_tile + (x_el / tile_size.width_el);
    unsigned tile_offset_el = tile_idx * tile_area_el;
-   unsigned tile_offset_B = tile_offset_el * ail_get_blocksize_B(layout);
+   unsigned tile_offset_B = tile_offset_el * ail_get_blocksize_B(layout) *
+                            layout->sample_count_sa;
 
    return ail_get_layer_level_B(layout, z_px, level) + tile_offset_B;
 }

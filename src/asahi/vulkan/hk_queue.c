@@ -1198,7 +1198,7 @@ hk_sparse_image_bind_memory(struct hk_device *device,
       /* Hardware tiles are exactly one page (16K) */
       struct ail_tile tilesize_el = layout->tilesize_el[level];
       unsigned size_B = tilesize_el.width_el * tilesize_el.height_el *
-                        ail_get_blocksize_B(layout);
+                        ail_get_blocksize_B(layout) * layout->sample_count_sa;
 
       assert(size_B == AIL_PAGESIZE && "fundamental to AGX");
 

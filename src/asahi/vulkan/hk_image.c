@@ -618,6 +618,13 @@ hk_GetPhysicalDeviceImageFormatProperties2(
       }
    }
 
+   if (pImageFormatInfo->flags & VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT) {
+      if (!pdev->vk.supported_features.sparseResidency2Samples)
+         sampleCounts &= ~VK_SAMPLE_COUNT_2_BIT;
+      if (!pdev->vk.supported_features.sparseResidency4Samples)
+         sampleCounts &= ~VK_SAMPLE_COUNT_4_BIT;
+   }
+
    /* Multisample image format properties require an attachment-capable
     * format, even for a storage-only request. Do not extend the sample mask
     * solely because a non-renderable format has storage-image support. */
@@ -805,7 +812,8 @@ hk_fill_sparse_image_fmt_props(enum pipe_format format, unsigned samples,
    return (VkSparseImageFormatProperties){
       .aspectMask = aspects,
       .flags = VK_SPARSE_IMAGE_FORMAT_SINGLE_MIPTAIL_BIT |
-               (is_3d ? VK_SPARSE_IMAGE_FORMAT_NONSTANDARD_BLOCK_SIZE_BIT : 0),
+               ((is_3d || samples == 2)
+                   ? VK_SPARSE_IMAGE_FORMAT_NONSTANDARD_BLOCK_SIZE_BIT : 0),
       .imageGranularity = granularity,
    };
 }

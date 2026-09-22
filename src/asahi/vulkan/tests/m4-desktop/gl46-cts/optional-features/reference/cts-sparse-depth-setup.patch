@@ -1,0 +1,60 @@
+diff --git a/external/openglcts/modules/gl/gl4cSparseTexture2Tests.cpp b/external/openglcts/modules/gl/gl4cSparseTexture2Tests.cpp
+index b5d2d08..99034fa 100644
+--- a/external/openglcts/modules/gl/gl4cSparseTexture2Tests.cpp
++++ b/external/openglcts/modules/gl/gl4cSparseTexture2Tests.cpp
+@@ -858,6 +858,15 @@ bool SparseTexture2CommitmentTestCase::allocateTexture(const Functions &gl, GLin
+ 
+     prepareTexture(gl, target, format, texture);
+ 
++    // Non-sparse allocations do not require sparse-format support. A format
++    // with no virtual page sizes otherwise gets zero texture dimensions.
++    if (mState.width == 0 || mState.height == 0)
++    {
++        mState.width = 64;
++        mState.height = target == GL_TEXTURE_1D || target == GL_TEXTURE_1D_ARRAY ? 1 : 64;
++        mState.depth = 2 * mState.minDepth;
++    }
++
+     // GL_TEXTURE_RECTANGLE, GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_2D_MULTISAMPLE_ARRAY can have only one level
+     if (target != GL_TEXTURE_RECTANGLE && target != GL_TEXTURE_2D_MULTISAMPLE &&
+         target != GL_TEXTURE_2D_MULTISAMPLE_ARRAY)
+diff --git a/external/openglcts/modules/gl/gl4cSparseTextureClampTests.cpp b/external/openglcts/modules/gl/gl4cSparseTextureClampTests.cpp
+index ac26832..5b873bc 100644
+--- a/external/openglcts/modules/gl/gl4cSparseTextureClampTests.cpp
++++ b/external/openglcts/modules/gl/gl4cSparseTextureClampTests.cpp
+@@ -614,6 +614,18 @@ tcu::TestNode::IterateResult SparseTextureClampLookupColorTestCase::iterate()
+             if (funcToken.name.find("sparse", 0) != std::string::npos)
+                 isSparse = true;
+ 
++            // Sparse depth formats are optional. As in SparseTexture2Lookup,
++            // do not allocate an unsupported sparse format. Still exercise
++            // ordinary textureClamp functions for the same format.
++            if (isSparse)
++            {
++                GLint pageSizes = 0;
++                m_context.getRenderContext().getFunctions().getInternalformativ(
++                    mTarget, mFormat, GL_NUM_VIRTUAL_PAGE_SIZES_ARB, 1, &pageSizes);
++                if (pageSizes == 0)
++                    continue;
++            }
++
+             mLog.str("");
+             mLog << "Testing sparse texture lookup color functions for target: " << mTarget << ", format: " << mFormat
+                  << " - ";
+@@ -683,6 +695,16 @@ bool SparseTextureClampLookupColorTestCase::writeDataToTexture(const Functions &
+     if (level > mState.levels - 1)
+         TCU_FAIL("Invalid level");
+ 
++    // Depth textures cannot be bound as storage images. Populate depth using
++    // the texture clear API, rather than binding DEPTH_COMPONENT16 as R16.
++    if (format == GL_DEPTH_COMPONENT16)
++    {
++        const GLfloat value = 0.5f + (float)level / 10;
++        gl.clearTexImage(texture, level, GL_DEPTH_COMPONENT, GL_FLOAT, &value);
++        GLU_EXPECT_NO_ERROR(gl.getError(), "glClearTexImage depth");
++        return true;
++    }
++
+     GLint width;
+     GLint height;
+     GLint depth;

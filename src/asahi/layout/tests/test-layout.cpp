@@ -20,6 +20,40 @@ TEST(Layout, M5EightSampleGeometry)
    EXPECT_EQ(rgba32f.height_el, 8u);
 }
 
+/* Sparse binds must advance by full hardware pages, including all samples,
+ * without aliasing neighbouring pages or array layers. */
+TEST(Layout, MultisampleSparseTileOffsets)
+{
+   for (unsigned samples : {1u, 2u, 4u}) {
+      for (enum pipe_format format : {PIPE_FORMAT_R8_UNORM,
+                                     PIPE_FORMAT_R8G8B8A8_UNORM,
+                                     PIPE_FORMAT_R32G32B32A32_FLOAT}) {
+         struct ail_layout layout = {
+            .width_px = 512,
+            .height_px = 512,
+            .depth_px = 2,
+            .sample_count_sa = (uint8_t)samples,
+            .levels = 1,
+            .tiling = AIL_TILING_GPU,
+            .format = format,
+         };
+         ail_make_miptree(&layout);
+         const struct ail_tile tile = layout.tilesize_el[0];
+         const unsigned columns = 512 / tile.width_el;
+         const unsigned rows = 512 / tile.height_el;
+         for (unsigned layer = 0; layer < 2; ++layer) {
+            for (unsigned y = 0; y < rows; ++y) {
+               for (unsigned x = 0; x < columns; ++x) {
+                  EXPECT_EQ(ail_get_twiddled_block_B(&layout, 0,
+                               x * tile.width_el, y * tile.height_el, layer),
+                            ((layer * rows + y) * columns + x) * AIL_PAGESIZE);
+               }
+            }
+         }
+      }
+   }
+}
+
 TEST(Cubemap, Nonmipmapped)
 {
    struct ail_layout layout = {

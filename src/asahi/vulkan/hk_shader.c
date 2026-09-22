@@ -1368,14 +1368,17 @@ lower_scaled_storage(nir_builder *b, nir_intrinsic_instr *intr, void *unused)
  * so queue rebinds do not require descriptor updates or shader recompilation.
  */
 static bool
-lower_sparse_buffer_or_ms(nir_builder *b, nir_instr *instr, UNUSED void *data)
+lower_sparse_buffer_or_ms(nir_builder *b, nir_instr *instr, void *data)
 {
+   const bool native_ms_residency = data != NULL;
    nir_def *handle, *coord, *value;
    nir_instr *clone;
    bool multisample = false;
    if (instr->type == nir_instr_type_tex) {
       nir_tex_instr *tex = nir_instr_as_tex(instr);
       multisample = tex->sampler_dim == GLSL_SAMPLER_DIM_MS;
+      if (multisample && native_ms_residency)
+         return false;
       if (!tex->is_sparse ||
           (tex->sampler_dim != GLSL_SAMPLER_DIM_BUF && !multisample))
          return false;
@@ -1394,6 +1397,8 @@ lower_sparse_buffer_or_ms(nir_builder *b, nir_instr *instr, UNUSED void *data)
       if (intr->intrinsic != nir_intrinsic_bindless_image_sparse_load)
          return false;
       multisample = nir_intrinsic_image_dim(intr) == GLSL_SAMPLER_DIM_MS;
+      if (multisample && native_ms_residency)
+         return false;
       if (nir_intrinsic_image_dim(intr) != GLSL_SAMPLER_DIM_BUF && !multisample)
          return false;
       handle = intr->src[0].ssa;
@@ -1412,7 +1417,7 @@ lower_sparse_buffer_or_ms(nir_builder *b, nir_instr *instr, UNUSED void *data)
    b->cursor = nir_before_instr(instr);
    nir_instr_insert(b->cursor, clone);
    b->cursor = nir_after_instr(clone);
-   /* No multisample sparse residency feature is exposed. Every valid MS
+   /* On unqualified chips no multisample sparse residency is exposed. Every valid MS
     * image access is therefore resident, including sparse-bound MS images
     * which must have all memory bound before use. */
    if (multisample) {
@@ -2031,7 +2036,8 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
 
    if (agx_chip_descriptor_generation(dev->dev.chip) == 9)
       NIR_PASS(_, nir, nir_shader_instructions_pass, lower_sparse_buffer_or_ms,
-               nir_metadata_none, NULL);
+               nir_metadata_none,
+               dev->dev.chip == AGX_CHIP_G16G ? dev : NULL);
 
    hk_capture_lowering(nir, "before-texture", features);
    NIR_PASS(_, nir, agx_nir_lower_texture_for_generation,

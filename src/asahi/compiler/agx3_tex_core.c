@@ -33,8 +33,7 @@ fetch_ok(enum agx_isa_encoding enc, const struct agx3_tex_fetch_desc *d)
        (d->texture_control == 8 && enc != AGX_ISA_ENCODING_AGX3B) ||
        d->texture > 15 ||
        (d->sparse && (enc != AGX_ISA_ENCODING_AGX3B ||
-                      d->width != AGX3_TEX_W32 || d->mask != 15 ||
-                      d->multisample)) ||
+                      d->width != AGX3_TEX_W32 || d->mask != 15)) ||
        (d->register_lod && (enc != AGX_ISA_ENCODING_AGX3B || d->multisample)) ||
        (d->multisample && enc != AGX_ISA_ENCODING_AGX3B) ||
        (d->three_d && (enc != AGX_ISA_ENCODING_AGX3B || d->array ||

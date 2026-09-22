@@ -53,3 +53,25 @@ Passing evidence: `20260922T050429823019Z-sparse-msaa-rebind-offset-fix`.
 Gallium SHA256 `fc29451c12342e4004c6813e57d97e69b98c130e1ca944c78e8903e15ab24be9`.
 Vulkan SHA256 `45973faf93836254d3e4fc29e2267f0deb4d6195a5e6596cf2f1f3f089742b7c`.
 Run the probe only through the watchdog/thermal experiment guard.
+
+## Sparse multisampling and LOD clamp
+
+M4 now exposes 2x/4x sparse residency. Image-format queries honor the exposed
+sample counts; 2x blocks are flagged nonstandard. Sparse tile offsets and page
+size assertions now include all samples. Native sparse MSAA reads return
+hardware residency instead of the old always-resident fallback.
+
+The final unmodified 1,806-case GL46 sparse_texture2/clamp selection records
+**1,800 Pass / 6 Fail**, no crashes/timeouts. The six depth-clamp cases fail in
+CTS setup before rendering: see `reference/cts-sparse-depth-setup.patch`.
+Do not relabel their upstream outcomes as Pass. All 74 MSAA lookup failures
+from the intermediate run pass with native status; all earlier crashes have
+completed passing rechecks. Historical results remain in the compressed files.
+
+Vulkan sparse block-shape and multisampled-binding selection: 158 Pass /
+360 NotSupported (518 recorded). The additional checkerboard probe covers
+actual missing pages, 2x/4x samples, array layers, and rebinding; see above.
+All 23 host layout tests and 292 host compiler tests pass.
+Evidence: `20260922T050521873125Z-gl46-sparse-final` (peak 85.5 C),
+`20260922T045832168156Z-gl46-sparse-native-ms`,
+`20260922T044614155393Z-sparse-msaa-vk`.
