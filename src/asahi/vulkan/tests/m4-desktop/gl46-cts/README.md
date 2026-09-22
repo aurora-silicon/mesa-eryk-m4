@@ -45,3 +45,34 @@ completed 4,984 Pass / 15 NotSupported in 440.95 s, peak 92.0 C.
 All three inherited Mesa version override keys are absent from its recorded
 CTS environment. Range [5000,10000) completed 4,760 Pass / 240 NotSupported in 305.87 s,
 peak 108.25 C. The two later ranges and isolated LOD case remain pending.
+
+
+## Additional failures and fixes
+
+Range [10000,15000) stopped after a copy-image case exceeded 60 seconds.
+The first attempt retains 272 Pass, 130 NotSupported, six Fail, one Timeout,
+three SIGKILL Crash records and two Interrupted records; 4,586 were unrun.
+The SIGKILL records occurred during coordinated termination, not an assertion.
+They need explicit rechecks, as does the timed-out case. Original indices
+remain in catalog.json. Untouched non-copy cases continue separately while
+copy cases are isolated to investigate scheduling/duration.
+
+`b3885da1600` copies XFB metadata before native sampler lowering clones and
+frees the input NIR. The final VS/TES variant previously used the freed
+metadata, producing corrupt transform-feedback results or an output_count
+assertion. The original failure and the subsequent assertion are both kept.
+With the lifetime fix, texture_view.view_classes narrows to representation
+mismatches; the same Zink on lavapipe passes. `7845f806b22` uses raw tiled
+copies for half-float, R11G11B10, and SNORM formats so NaN payloads and the
+two SNORM encodings of -1 survive. The original texture-view case now passes.
+
+Sparse 3D cases exposed a mismatch between format queries and the disabled
+sparseResidencyImage3D feature. Rejecting the format query alone does not
+satisfy GL_ARB_sparse_texture. Enabling M4's existing slice-based sparse
+mapping with explicit nonstandard 3D block sizes passes all 120 supported
+GL46 sparse 3D cases (40 further cases are NotSupported). Direct Vulkan
+sparse validation is still pending; no other chip was enabled.
+
+Combined guarded validation: 20260922T010718398173Z-gl46-view-sparse3d-fixed,
+121 Pass / 40 NotSupported, 9.83 s, peak 68.25 C. The six failing first-attempt
+cases are preserved rather than overwritten by these rechecks.
