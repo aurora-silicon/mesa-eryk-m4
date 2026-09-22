@@ -75,3 +75,68 @@ All 23 host layout tests and 292 host compiler tests pass.
 Evidence: `20260922T050521873125Z-gl46-sparse-final` (peak 85.5 C),
 `20260922T045832168156Z-gl46-sparse-native-ms`,
 `20260922T044614155393Z-sparse-msaa-vk`.
+
+
+## Matched Mesa deployment
+
+The new native-coherent blend capability changes the internal `pipe_caps`
+layout. Rebuild Gallium and its EGL/GLX/GBM consumers together, including
+`src/gbm/backends/dri/dri_gbm.so`. Updating only libgallium leaves the old GBM
+backend reading the wrong capability fields and rejecting all output buffers.
+The failed `20260922T051605541996Z-gl46-blend-native` and
+`20260922T052210560213Z-gl46-blend-native-loaders` attempts never started CTS;
+they are setup failures, not test passes. Updating the GBM backend restored
+the private headless output in `20260922T052329355178Z-gl46-blend-native-matched`.
+That run then recorded 56 Pass / 32 Fail, exposing double advanced blending
+in the GLSL shader fallback plus native Vulkan blend state.
+
+`install-mesa-library.py` now accepts `gbm`, `gbm-backend`, `egl`, and `glx`
+in addition to Vulkan/Gallium, retaining checksum-verified backups. Use it
+between guarded runs. Stage loaders with installed RUNPATHs (`$ORIGIN` for
+lib/, `$ORIGIN/..` for lib/gbm/) rather than their build-tree RUNPATHs.
+Do not treat a Gallium internal-ABI change as an independent library update.
+
+
+## Native advanced blending through Zink
+
+Zink uses Vulkan advanced blend operations and their dynamic state instead of
+GLSL framebuffer-fetch emulation when supported. A distinct Gallium coherent
+advanced-blend capability avoids claiming coherent framebuffer fetch. Skip
+GLSL blend lowering when the screen supports native advanced blend state;
+otherwise the equation is applied twice. Both pipeline and dynamic-state
+paths retain the standard GL premultiplied, uncorrelated overlap semantics.
+
+All 88 GL46 advanced-blend cases pass after the native path and lowering fix,
+including coherent enable/disable and mixed/multiply coherency sequences.
+Evidence: `20260922T052745981819Z-gl46-blend-native-validation`, peak 77 C.
+Despite the experiment name, its inherited VK_LAYER_PATH was /var/empty;
+this is an image/CTS pass, **not** evidence of loaded Vulkan validation.
+Gallium SHA256: 6c38fc9b7949a23bf8b1bc699a62b7350d0a1e8d5d85d926a02525aa75311786.
+See `advanced-blend-vulkan.md` for the separate 32,564-case Vulkan record.
+
+
+Validation-layer recheck: `20260922T053122671809Z-gl46-blend-vvl-loaded`
+explicitly uses `/usr/share/vulkan/explicit_layer.d`. Both worker logs confirm
+that libVkLayer_khronos_validation.so was loaded as an instance/device layer.
+All 88 cases pass, with no VUID/validation errors (peak 72 C). Worker logs
+are retained in `blend-vvl-worker-logs.txt.gz`.
+
+Final combined unmodified GL46 selection: **1,908 Pass / 6 Fail**, 1,914
+recorded, no NotSupported, crashes or timeouts. The failure set exactly equals
+`clamp-depth.txt`: the CTS setup defects described above. Evidence:
+`20260922T052852393960Z-gl46-all-four-optional`, peak 85.25 C, 127.19 seconds.
+This run uses the final Gallium/Vulkan pair listed above and the matching
+EGL/GLX/GBM loaders. The six original Fail outcomes remain unchanged.
+`vulkan-global-indices.json.gz` maps every Vulkan case used in this feature
+work to its original frozen global index and catalog SHA256; case indices
+in individual bare-list runner records are selection-local.
+
+
+The final-driver diagnostic recheck of all six CTS setup corrections also
+passes: `20260922T053227982821Z-gl46-clamp-depth-final-diagnostic`, peak 68.5 C.
+Only `/root/gl-cts-1.4.6.2/glcts-sparse-depth-diagnostic` contains the test
+patch; the pinned production CTS binary remains unchanged. Latest mixed-build
+main-catalog tracking after these features is 18,100 Pass / 1,607 NotSupported /
+6 CTS-setup Fail / 1 CompatibilityWarning (19,714 total). Diagnostic passes are
+not substituted into that record. Original global catalog indices are retained
+in `latest-catalog-after-features.json.gz`; prior snapshots are not overwritten.

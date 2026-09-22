@@ -1,0 +1,10 @@
+{
+  "counts": {
+    "Pass": 18100,
+    "NotSupported": 1607,
+    "CompatibilityWarning": 1,
+    "Fail": 6
+  },
+  "catalog_cases": 19714,
+  "note": "Latest unmodified CTS outcomes across builds/configurations. Diagnostic CTS results excluded. Not a single-build full-suite result."
+}

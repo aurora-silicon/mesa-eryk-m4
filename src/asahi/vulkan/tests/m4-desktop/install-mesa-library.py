@@ -7,11 +7,14 @@ import shlex
 import subprocess
 import sys
 
+LIBRARIES = {'vulkan': 'libvulkan_asahi.so', 'gallium': 'libgallium-26.1.4.so',
+             'gbm': 'libgbm.so.1.0.0', 'egl': 'libEGL_mesa.so.0.0.0',
+             'glx': 'libGLX_mesa.so.0.0.0', 'gbm-backend': 'gbm/dri_gbm.so'}
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('source', type=Path, nargs='?')
 parser.add_argument('--restore-sha256', help='Restore an existing verified target backup without retransferring the library')
 parser.add_argument('--label', required=True)
-parser.add_argument('--component', choices=('vulkan', 'gallium'), default='vulkan')
+parser.add_argument('--component', choices=tuple(LIBRARIES), default='vulkan')
 parser.add_argument('--allow-live', action='store_true',
                     help='Atomic compatible userspace update; existing processes keep their old mapping. Never use for kernel/UAPI changes.')
 args = parser.parse_args()
@@ -22,7 +25,7 @@ assert re.fullmatch(r'[a-z0-9-]+', label)
 if args.restore_sha256:
     assert re.fullmatch(r'[0-9a-f]{64}', args.restore_sha256)
     digest = args.restore_sha256
-    name = 'libvulkan_asahi.so' if args.component == 'vulkan' else 'libgallium-26.1.4.so'
+    name = LIBRARIES[args.component]
     staged = '/opt/asahi-m4-port/lib/' + name + '.before-' + digest
 else:
     source = args.source.resolve(strict=True)
@@ -35,7 +38,7 @@ assert hashlib.sha256(source.read_bytes()).hexdigest() == digest, 'staged checks
 clients = subprocess.run(['fuser', '/dev/dri/renderD128', '/dev/dri/card1'], capture_output=True)
 assert clients.returncode in (0, 1), ('fuser error', clients.stdout, clients.stderr)
 assert allow_live or clients.returncode == 1, ('GPU clients present; stop them or explicitly select compatible live userspace update', clients.stdout, clients.stderr)
-name = 'libvulkan_asahi.so' if component == 'vulkan' else 'libgallium-26.1.4.so'
+name = sys.argv[5]
 target = pathlib.Path('/opt/asahi-m4-port/lib')/name
 assert target.is_file() and not target.is_symlink(), 'expected installed regular library'
 previous = hashlib.sha256(target.read_bytes()).hexdigest()
@@ -54,4 +57,4 @@ print('Installed', digest, target, 'previous', previous)
 if allow_live:
     print('Existing processes retain their previous Mesa mapping; validate the new library in a fresh process.')
 '''
-subprocess.run(['ssh', '-o', 'ConnectTimeout=10', 'root@omarchy-m4', shlex.join(['python3', '-c', remote, staged, digest, args.component, str(int(args.allow_live))])], check=True, timeout=30)
+subprocess.run(['ssh', '-o', 'ConnectTimeout=10', 'root@omarchy-m4', shlex.join(['python3', '-c', remote, staged, digest, args.component, str(int(args.allow_live)), LIBRARIES[args.component]])], check=True, timeout=30)

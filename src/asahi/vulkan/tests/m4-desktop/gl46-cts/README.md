@@ -1,6 +1,19 @@
 # OpenGL 4.6 on Zink / M4
 
-## Latest recorded results (2026-09-22)
+## Optional-feature follow-up (2026-09-22)
+
+Shadow LOD, post-depth coverage, sparse multisampling, and native coherent
+advanced blending are now implemented. The final combined selection records
+**1,908 Pass / 6 Fail**; all six failures are CTS depth-texture setup bugs and
+pass in a separately patched diagnostic CTS binary. Original failures remain
+recorded. See [implementation and validation](optional-features/README.md).
+
+Latest mixed-build main-catalog tracking is **18,100 Pass, 1,607 NotSupported,
+6 CTS-setup Fail, 1 CompatibilityWarning**. This is not a full rerun on one
+final build. The previous snapshot and classifications below are preserved;
+updated per-case records are under `optional-features/`.
+
+## Baseline before optional-feature work (2026-09-22)
 
 All **19,714** frozen main-list cases have completed records. Latest outcomes
 across the recorded builds/configurations: **16,279 Pass, 3,434 NotSupported,

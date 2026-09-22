@@ -1,0 +1,12 @@
+{
+  "libraries": {
+    "libvulkan_asahi.so": "bbb00dd244d3aaa0d26c136460478f8ff0dfb7f4d407af94b64c621b638da7a2",
+    "libgallium-26.1.4.so": "6c38fc9b7949a23bf8b1bc699a62b7350d0a1e8d5d85d926a02525aa75311786",
+    "libEGL_mesa.so.0.0.0": "367c4353d77a86aac3e5a1c5eb0eaea57d7be8264f63faa9741ae4ed67d6c106",
+    "libGLX_mesa.so.0.0.0": "ec76501c0b69ca74ef568d598f2aed3c911a969e2aef6f2ac461f6bbe04b0ca0",
+    "libgbm.so.1.0.0": "813ec803482a6a6c96c0699c533e021abdd93a4db2d55f2052aaf7a2bbf491ce",
+    "gbm/dri_gbm.so": "5ddb4bbceb26029ffa46222ed74fd28ecfea5a963e6cd9e1f9244c855be0c093"
+  },
+  "watchdog": "{\"armed\": true, \"timeout_seconds\": 60, \"timeleft_seconds\": 58, \"fed\": false, \"mode\": \"idle\"}\n",
+  "display_manager": "active"
+}
