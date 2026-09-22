@@ -1,0 +1,17 @@
+{
+  "pid": 1614089,
+  "started_utc": "2026-09-22T12:14:04.159841+00:00",
+  "state": "stopped-needs-review",
+  "campaign": "/home/council/dev/dirtyroom_m4/build/gles32-retest-20260922",
+  "command": [
+    "/usr/bin/python3",
+    "/home/council/dev/dirtyroom_m4/tools/gl-cts-plan.py",
+    "run",
+    "--campaign",
+    "/home/council/dev/dirtyroom_m4/build/gles32-retest-20260922",
+    "--continue-batch-deadlines"
+  ],
+  "returncode": 1,
+  "report_returncode": 0,
+  "finished_utc": "2026-09-22T12:15:32.550723+00:00"
+}

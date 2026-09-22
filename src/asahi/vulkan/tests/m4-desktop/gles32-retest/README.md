@@ -22,3 +22,21 @@ continuations retain completed results and only resume unfinished cases.
 New fatal cases, GPU incidents, OOM or guard failures stop for review. Do not
 silently retry a failure. A private 1000 Hz compositor provides synthetic WSI
 pacing; the normal desktop remains active.
+
+## First new failure retained; remaining cases resumed
+
+Fresh EGL segment 0 completed 1366 Pass, 656 NotSupported, one Crash; 477
+cases had not run when scheduling stopped. The crash at global index 1116 is
+`dEQP-EGL.functional.sharing.gles2.multithread.simple.textures.copyteximage2d_texsubimage2d_render`.
+The retained core shows glibc detecting heap corruption while
+`eglTerminate -> zink_destroy_screen -> ralloc` frees the screen. This identifies
+the detection site, not the corrupting writer. No driver change or case retry
+was made. Guard verdict process_failure, peak 79.25 C, no OOM or memory-floor
+crossing, same healthy boot and idle watchdog after collection.
+
+The exact incident review retains the Crash terminal and resumes only Unrun
+cases under a new guarded preflight. `--process-crash-review FILE` checks the
+incident path, boot identity, exact crashing case set/SIGABRT, retained core
+checksum, log signature and guard/memory evidence before allowing that
+continuation. It cannot silently permit a different crash or new GPU incident.
+The core, backtrace and review are retained here for follow-up after the rerun.

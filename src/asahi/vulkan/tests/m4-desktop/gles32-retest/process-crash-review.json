@@ -1,0 +1,15 @@
+{
+  "incident_evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T121405950023Z-gles32-plan-0000-r0",
+  "boot_id": "f9d383d2-2573-417e-b6ee-b0164801ea5e",
+  "terminal_crashes": [
+    "dEQP-EGL.functional.sharing.gles2.multithread.simple.textures.copyteximage2d_texsubimage2d_render"
+  ],
+  "core_file": "/home/council/dev/dirtyroom_m4/build/gles32-retest-20260922/crash-73919.core",
+  "core_sha256": "f3083c91d9a5134e9a537b1d14b10a05478356f445ad5c27769d095ca634919c",
+  "stderr_signature": "corrupted size vs. prev_size while consolidating",
+  "reason": "Inspected SIGABRT heap-corruption core during EGL teardown (zink_destroy_screen/ralloc). Guard reports userspace process failure only, no GPU/display/thermal fault; no OOM or memory floor crossing. Preserve the Crash as terminal and continue only Unrun cases in fresh processes with the unchanged driver and watchdog/thermal preflight. This review does not establish the corrupting writer or authorize retries.",
+  "minimum_available_kib": 9262864,
+  "oom_kill_counters": [
+    0
+  ]
+}

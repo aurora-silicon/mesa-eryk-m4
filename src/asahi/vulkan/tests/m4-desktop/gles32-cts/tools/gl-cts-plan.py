@@ -47,9 +47,13 @@ p.add_argument('--continue-lod-bias-timeouts', action='store_true',
     help='Retain reviewed KHR-GLES3 texture_lod_bias_all timeouts and resume only canceled/unrun peers')
 p.add_argument('--continue-reviewed-timeout', action='append', default=[], metavar='EXACT_CASE',
     help='Explicitly reviewed per-case timeouts to retain while resuming canceled/unrun peers')
+p.add_argument('--process-crash-review', type=Path, action='append', default=[],
+    help='Exact inspected userspace-only crash with retained core; continue only unrun peers')
 p.add_argument('--recovery-review', type=Path, help='Exact manually reviewed GPU incident with successful guarded post-reboot probe')
 a = p.parse_args()
 recovery_review = json.loads(a.recovery_review.read_text()) if a.recovery_review else None
+crash_reviews = {r['incident_evidence']: r for r in
+                 (json.loads(path.read_text()) for path in a.process_crash_review)}
 if a.continue_lod_bias_timeouts:
     a.continue_reviewed_timeout.append('KHR-GLES3.texture_lod_bias.texture_lod_bias_all')
 if a.mode == 'freeze':
@@ -217,12 +221,34 @@ def reviewed_pending(run):
         save(run/'continuation-review.json', dict(reason=recovery_review['reason'],
             recovery_review=recovery_review, terminal_crashes=[], terminal_gpu_timeouts=sorted(terminal_gpu), pending=[r['case'] for r in pending]))
         return pending
-    assert (a.continue_compiler_aborts or a.continue_batch_deadlines or a.continue_reviewed_timeout) and summary['guard_verdict'] == 'process_failure', 'Needs explicit review'
+    assert (a.continue_compiler_aborts or a.continue_batch_deadlines or a.continue_reviewed_timeout or crash_reviews) and summary['guard_verdict'] == 'process_failure', 'Needs explicit review'
     evidence = Path(summary['evidence'])/'remote'
     memory = [json.loads(line) for line in (evidence/'cts/memory.jsonl').read_text().splitlines()]
     assert memory and all(m['meminfo_kib']['MemAvailable'] > 1536*1024 for m in memory)
     assert len({m['vmstat']['oom_kill'] for m in memory}) == 1
     assert not (evidence/'cts/memory-pressure.json').exists()
+    if summary['evidence'] in crash_reviews:
+        review = crash_reviews[summary['evidence']]
+        guard = json.loads((evidence/'result.json').read_text())
+        assert guard['thermal']['failure'] is None and guard['thermal']['samples'] > 0
+        assert guard['watchdog']['armed'] and guard['watchdog']['timeout_seconds'] == 60
+        assert guard['boot_id'] == review['boot_id']
+        current_boot = subprocess.check_output(['ssh', '-o', 'ConnectTimeout=10',
+            'root@omarchy-m4', 'cat /proc/sys/kernel/random/boot_id'], text=True).strip()
+        assert current_boot == review['boot_id'], 'Crash review is for another boot'
+        assert all(r['status'] in ('Pass','Fail','NotSupported','QualityWarning',
+                   'CompatibilityWarning','Unrun','Crash') for r in rows)
+        crashes = [r for r in rows if r['status'] == 'Crash']
+        assert {r['case'] for r in crashes} == set(review['terminal_crashes'])
+        assert all('SIGABRT' in r.get('worker_exit', '') for r in crashes)
+        assert digest(Path(review['core_file']).read_bytes()) == review['core_sha256']
+        logs = '\n'.join(f.read_text(errors='replace') for f in (evidence/'cts/deqp-runner').glob('*.r1.log'))
+        assert review['stderr_signature'] and review['stderr_signature'] in logs
+        pending = [r for r in rows if r['status'] == 'Unrun']
+        save(run/'continuation-review.json', dict(reason=review['reason'],
+            process_crash_review=review, terminal_crashes=review['terminal_crashes'],
+            pending=[r['case'] for r in pending]))
+        return pending
     timing_file = evidence/'cts/timing.json'
     timing = json.loads(timing_file.read_text()) if timing_file.exists() else {}
     if a.continue_batch_deadlines and timing.get('error') == "TimeoutError('deqp-runner workload deadline reached')":
@@ -278,7 +304,7 @@ for segment in catalog['segments'][a.first:a.last]:
     assert digest((base/'cases.txt').read_bytes()) == segment['sha256']
     paths = attempt_paths(base)
     if paths:
-        assert a.continue_compiler_aborts or a.continue_batch_deadlines or a.continue_reviewed_timeout, 'Refusing to overwrite an attempt'
+        assert a.continue_compiler_aborts or a.continue_batch_deadlines or a.continue_reviewed_timeout or crash_reviews, 'Refusing to overwrite an attempt'
         pending = reviewed_pending(paths[-1])
         if not pending:
             continue
