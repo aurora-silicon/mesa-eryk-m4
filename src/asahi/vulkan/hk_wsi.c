@@ -10,12 +10,38 @@
 #include "hk_entrypoints.h"
 #include "hk_queue.h"
 #include "wsi_common.h"
+#include "wsi_common_private.h"
 #include "util/os_time.h"
 #include "util/u_debug.h"
 
 #include <xf86drm.h>
 
 DEBUG_GET_ONCE_BOOL_OPTION(hk_present_timing, "HK_PRESENT_TIMING", false)
+
+VKAPI_ATTR VkResult VKAPI_CALL
+hk_AcquireNextImage2KHR(VkDevice handle, const VkAcquireNextImageInfoKHR *info,
+                      uint32_t *image_index)
+{
+   VK_FROM_HANDLE(vk_device, device, handle);
+   const bool timing = debug_get_option_hk_present_timing();
+   const uint64_t start = timing ? os_time_get_nano() : 0;
+   VkResult result = wsi_common_acquire_next_image2(
+      device->physical->wsi_device, handle, info, image_index);
+   if (timing) {
+      const uint64_t end = os_time_get_nano();
+      VK_FROM_HANDLE(wsi_swapchain, chain, info->swapchain);
+      const bool acquired = result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR;
+      const uint64_t modifier = acquired ?
+         chain->get_wsi_image(chain, *image_index)->drm_modifier : UINT64_MAX;
+      fprintf(stderr, "HK_ACQUIRE start_ns=%" PRIu64 " end_ns=%" PRIu64
+              " acquire_ns=%" PRIu64 " result=%d images=%u mode=%u blit=%u"
+              " explicit=%u modifier=%" PRIx64 "\n",
+              start, end, end - start, result, chain->image_count,
+              chain->present_mode, chain->blit.type,
+              chain->image_info.explicit_sync, modifier);
+   }
+   return result;
+}
 
 VKAPI_ATTR VkResult VKAPI_CALL
 hk_QueuePresentKHR(VkQueue handle, const VkPresentInfoKHR *info)
