@@ -1,0 +1,590 @@
+[
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/00bd278ef2872945d4c3409e33e4cd48def94884beb2d0f94a15b442b488aa27",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/00bd278ef2872945d4c3409e33e4cd48def94884beb2d0f94a15b442b488aa27"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/030e5373078091d6d9787a146bd457976eda5591c715f25ed883da16a3288431",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/030e5373078091d6d9787a146bd457976eda5591c715f25ed883da16a3288431"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/067fefcb465eac519f532a8fd6c9c5d21da5b58e9f1787e00eebcfe16375fd22",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/067fefcb465eac519f532a8fd6c9c5d21da5b58e9f1787e00eebcfe16375fd22"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/0b795367d2f3f9b2df3a1e19ba4ff42de14c18ab4cb989c5423f02708248bd71",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/0b795367d2f3f9b2df3a1e19ba4ff42de14c18ab4cb989c5423f02708248bd71"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/0c336c93b767df4f949c4c95b3ce409596e0a6d4517971e0baa6205b2cac5d33",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/0c336c93b767df4f949c4c95b3ce409596e0a6d4517971e0baa6205b2cac5d33"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/0c365e0beb5e0039a3c598fa2c645a61d59ca9373f1f345ab628b03b144da657",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/0c365e0beb5e0039a3c598fa2c645a61d59ca9373f1f345ab628b03b144da657"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/0fdb36a38a200b294075a7ff09458ef2867cf60033dcd89b4f7b3b5cc164b4bb",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/0fdb36a38a200b294075a7ff09458ef2867cf60033dcd89b4f7b3b5cc164b4bb"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/1255e5728caa26082893d7c9e1abe8ea75a36fe0adbbeaa5261dcfc1edf5da9b",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/1255e5728caa26082893d7c9e1abe8ea75a36fe0adbbeaa5261dcfc1edf5da9b"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/13a8340a966467ab2d5da26b896fc524fe0ab7db451ee5e454629a25972082b0",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/13a8340a966467ab2d5da26b896fc524fe0ab7db451ee5e454629a25972082b0"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/171d891886c2f17111d3f4d55837489c45a0d1b41b7aa6023acc9a0947233691",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/171d891886c2f17111d3f4d55837489c45a0d1b41b7aa6023acc9a0947233691"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/1c8b5807e6345629ed9a9efd4a3b771486fedaa6400f9ee1b1a1fa23b9917127",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/1c8b5807e6345629ed9a9efd4a3b771486fedaa6400f9ee1b1a1fa23b9917127"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/1fa799a5d056712f7cea77ca1a4e09ba96ffce949a779fa8e7127184c2bede26",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/1fa799a5d056712f7cea77ca1a4e09ba96ffce949a779fa8e7127184c2bede26"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/229c4a16a7b4d8fdae35bbbc28dc884636dbbd4f6c98305c009f5d856146e6b5",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/229c4a16a7b4d8fdae35bbbc28dc884636dbbd4f6c98305c009f5d856146e6b5"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/2664c6d850716f4fe0a0ee91f308da7a45d45ac617c7bb129e9033fb592b3f6d",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/2664c6d850716f4fe0a0ee91f308da7a45d45ac617c7bb129e9033fb592b3f6d"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/28a82553b2971d318969af7935a46341d908907c49d1cb18101fe1efff46419f",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/28a82553b2971d318969af7935a46341d908907c49d1cb18101fe1efff46419f"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/2d6d08ea6a9e73bf9144a3f6b00a4f59d1aea090089ca83a6fb5ed2a918106c3",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/2d6d08ea6a9e73bf9144a3f6b00a4f59d1aea090089ca83a6fb5ed2a918106c3"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/36f0308809cb6b1ac787e6fe97a4440f72e076799cc3a2d076aecde76d78b2bb",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/36f0308809cb6b1ac787e6fe97a4440f72e076799cc3a2d076aecde76d78b2bb"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/387e63e11f2f36e805d920e3f31e3f8b81346d663d7ba691d3148bbabb7926c5",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/387e63e11f2f36e805d920e3f31e3f8b81346d663d7ba691d3148bbabb7926c5"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/39a66db457b840ab54f341ef18a58fcfa1b5ff72d6659b86a3607e8dab3010e1",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/39a66db457b840ab54f341ef18a58fcfa1b5ff72d6659b86a3607e8dab3010e1"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/3a31213cbf2288d9d9cf76c5ff9771b38f8cdf5f7856791ae14c21738ef657cc",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/3a31213cbf2288d9d9cf76c5ff9771b38f8cdf5f7856791ae14c21738ef657cc"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/3a41c5f595e8d5168604f907cf61d9961068bf15e93863ba72853c8bf057a4aa",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/3a41c5f595e8d5168604f907cf61d9961068bf15e93863ba72853c8bf057a4aa"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/3d0e3c3bd5d1ead85e347e7e6b292e9c5a31849da27c4ea65eda49ec4b889366",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/3d0e3c3bd5d1ead85e347e7e6b292e9c5a31849da27c4ea65eda49ec4b889366"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/3e159f9e7905f8ede1b3cb36f3d3358b43ca0919a5df626e13741e9987bfabf7",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/3e159f9e7905f8ede1b3cb36f3d3358b43ca0919a5df626e13741e9987bfabf7"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/3f9c23b1ae355b38b1773f43214a434f315d608be50c932fa819dc2c1c5ceed7",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/3f9c23b1ae355b38b1773f43214a434f315d608be50c932fa819dc2c1c5ceed7"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/40694777e13ad98cf380dd8b10d72344090c18101a506aa5d9f3ca078d4ffebb",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/40694777e13ad98cf380dd8b10d72344090c18101a506aa5d9f3ca078d4ffebb"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/4283b14ff4f043a58f0d2a0f0980ba131414cb3dd1c3fec4bbd3793d8f7aef2f",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/4283b14ff4f043a58f0d2a0f0980ba131414cb3dd1c3fec4bbd3793d8f7aef2f"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/4549ba5d16ed702dc1a1c614c72efdc1173721489be010e3e3332f7cc46238d8",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/4549ba5d16ed702dc1a1c614c72efdc1173721489be010e3e3332f7cc46238d8"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/4652aca279cdd614eb73fc4bc82a2b9b3d1a838baaf9acab45433f3078c2fb5b",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/4652aca279cdd614eb73fc4bc82a2b9b3d1a838baaf9acab45433f3078c2fb5b"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/5334695c34c0105c77a588749f7daa1e7acd073ae418ab71ebe53e4c51cbc939",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/5334695c34c0105c77a588749f7daa1e7acd073ae418ab71ebe53e4c51cbc939"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/542866c96d6794a58f55d52c4a1c1b302d39ad4237dba16b52669ed61350f3ce",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/542866c96d6794a58f55d52c4a1c1b302d39ad4237dba16b52669ed61350f3ce"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/55035a5e01644f04a097958ca5f04d077a223d36cbac755865065e27cfa3b6e2",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/55035a5e01644f04a097958ca5f04d077a223d36cbac755865065e27cfa3b6e2"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/5537d5575dd430d7d157ca0aa539b7a9b070d1a10bf8d7d33f43d0b234d64283",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/5537d5575dd430d7d157ca0aa539b7a9b070d1a10bf8d7d33f43d0b234d64283"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/5c64ff8d6c54716dd2601129c4a52931eae7480b447865969f7ca54aa2ace52a",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/5c64ff8d6c54716dd2601129c4a52931eae7480b447865969f7ca54aa2ace52a"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/62e28a7f76424f497e0b5b8f6b5d7a4193a9515d211ca5e6d13a64542202c93d",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/62e28a7f76424f497e0b5b8f6b5d7a4193a9515d211ca5e6d13a64542202c93d"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/656be4100e5efeeb25954fa1cf758003cfb50fbaa6d75beae6f5cc40fb38b811",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/656be4100e5efeeb25954fa1cf758003cfb50fbaa6d75beae6f5cc40fb38b811"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/678ac8f30d40198bbe1ed55d0cd5d83018b47b7a9967b980da6d9b8da1653133",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/678ac8f30d40198bbe1ed55d0cd5d83018b47b7a9967b980da6d9b8da1653133"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/6835a4386ae3f2612447e2623b769f5676150f94e5caef4d0d01bb82812186da",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/6835a4386ae3f2612447e2623b769f5676150f94e5caef4d0d01bb82812186da"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/6b2b578478b8b0c37ff6ff1a092d8552cdc17d6e95c9ffe1493cdc0ee7dcf607",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/6b2b578478b8b0c37ff6ff1a092d8552cdc17d6e95c9ffe1493cdc0ee7dcf607"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/6c38aeb9e066db4c01acf365b8813b6d95aba0c0ca0898a67413a07b5e202256",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/6c38aeb9e066db4c01acf365b8813b6d95aba0c0ca0898a67413a07b5e202256"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/6d0e7c243801097e98eda5fa2a486dd1713c3dffbe8f64552b3b6c1d0ffc4b8d",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/6d0e7c243801097e98eda5fa2a486dd1713c3dffbe8f64552b3b6c1d0ffc4b8d"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/6d18835be64420c1dd5480f5ece4e0168742a123e34cf7408d61f348eef1c642",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/6d18835be64420c1dd5480f5ece4e0168742a123e34cf7408d61f348eef1c642"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/6f9a9ee582f5de2a2d2fb4637e742139ef8db13aaf6884ccfd22583cb8555c7f",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/6f9a9ee582f5de2a2d2fb4637e742139ef8db13aaf6884ccfd22583cb8555c7f"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/725814511c3e0e5468d840c65b98cd0573723650b7c1e80f8323c47edb683e93",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/725814511c3e0e5468d840c65b98cd0573723650b7c1e80f8323c47edb683e93"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/75e10eff35b71317419b489b101d76d446f893be9952c88b02770af00841bed8",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/75e10eff35b71317419b489b101d76d446f893be9952c88b02770af00841bed8"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/7e5c5c6c10842cc943e8bb804b6efbb3a9f501c243278b2f746855e0e94e7207",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/7e5c5c6c10842cc943e8bb804b6efbb3a9f501c243278b2f746855e0e94e7207"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/80e3fa91d68b1b192079edbf5163dc1660cf687bdf5bfc1c542fd6750cea77a5",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/80e3fa91d68b1b192079edbf5163dc1660cf687bdf5bfc1c542fd6750cea77a5"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/832e76eefbe1f34409f9b130d80609cea3f87f1e361cbce6cef5c39d890dc573",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/832e76eefbe1f34409f9b130d80609cea3f87f1e361cbce6cef5c39d890dc573"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/88eb57ed8222d1e79564f69b09668cdd3bac2f9492ee9612152026ed5c722016",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/88eb57ed8222d1e79564f69b09668cdd3bac2f9492ee9612152026ed5c722016"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/89188fc694a5b040e03d36c6f98db3a7c1726d1c4cba28f0dc8457b1192e9e43",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/89188fc694a5b040e03d36c6f98db3a7c1726d1c4cba28f0dc8457b1192e9e43"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/92f412df483e17c1e34a02d6acc878eaa0e7a49332000b7c6e4e5c8391bb4867",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/92f412df483e17c1e34a02d6acc878eaa0e7a49332000b7c6e4e5c8391bb4867"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/94b1a4045eb672442b3630a42f0069c3486218b3186374bd3710fc137752cba8",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/94b1a4045eb672442b3630a42f0069c3486218b3186374bd3710fc137752cba8"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/95acf02bea315c860beeb442135c9c8f620f89dd6bddef7f94b8f5c91885b2bb",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/95acf02bea315c860beeb442135c9c8f620f89dd6bddef7f94b8f5c91885b2bb"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/988ec135ddec1cbe8c4e932e38d9401e584febe714b2b469c6f698b61fc1d8e8",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/988ec135ddec1cbe8c4e932e38d9401e584febe714b2b469c6f698b61fc1d8e8"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/9ab24327be9e84c0434ca19af8442493d9d6d1c5f456088268ceade40d6a116d",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/9ab24327be9e84c0434ca19af8442493d9d6d1c5f456088268ceade40d6a116d"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/9b7e8bef53a99788e0a6012814efa2d105af3e025c73c355e95ebc64bd80cbc5",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/9b7e8bef53a99788e0a6012814efa2d105af3e025c73c355e95ebc64bd80cbc5"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/9d0e8c64a247d3300d70ce8a2309b715f6a3461a535b2711c3589587dfe63b29",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/9d0e8c64a247d3300d70ce8a2309b715f6a3461a535b2711c3589587dfe63b29"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/9f1dcb01ea6002a6ae802eb522622b4abf9c8fdebb49731fe95ada81af0e13e7",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/9f1dcb01ea6002a6ae802eb522622b4abf9c8fdebb49731fe95ada81af0e13e7"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/a29ebeda306eb4d47be8c98497bb9ab7cc94929f2457ec461ef788306cfa3ead",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/a29ebeda306eb4d47be8c98497bb9ab7cc94929f2457ec461ef788306cfa3ead"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/a78e31f3e11c74182085ee186a6dadfeadf1a38c6c6cb0fecabe81ceee212093",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/a78e31f3e11c74182085ee186a6dadfeadf1a38c6c6cb0fecabe81ceee212093"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/a9d63a1630d8ae97dba847174f558f8fcbb752e6225c3b3e487dc16d1b3a69d6",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/a9d63a1630d8ae97dba847174f558f8fcbb752e6225c3b3e487dc16d1b3a69d6"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/aef58efe9c82defff90c21850020b1e045f4ddc74ad7247cf1f1838becb48204",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/aef58efe9c82defff90c21850020b1e045f4ddc74ad7247cf1f1838becb48204"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/b08bcac7be96877c1b4da692680ad2d7942788df2311a1244a818e0b5d5deb92",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/b08bcac7be96877c1b4da692680ad2d7942788df2311a1244a818e0b5d5deb92"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/b369991f77a307a090e31bf19885f199fc57f9f9270b16d40e946a0f4060cdb2",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/b369991f77a307a090e31bf19885f199fc57f9f9270b16d40e946a0f4060cdb2"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/b3a4ff384d07582895cb4a34ba7626330145cb29caa853fa5ed533c86eea5916",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/b3a4ff384d07582895cb4a34ba7626330145cb29caa853fa5ed533c86eea5916"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/b3d0d09a67cded652eb82ab190b3301389b4bdcb42af34e87c1756ed43fc21e4",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/b3d0d09a67cded652eb82ab190b3301389b4bdcb42af34e87c1756ed43fc21e4"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/b58d70e277664b1ed69e63059ef2f4a3199c2c32c51763306bcc93659eca1210",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/b58d70e277664b1ed69e63059ef2f4a3199c2c32c51763306bcc93659eca1210"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/b5ff0a3c664f51f562a406e9ffe0e1d716d73ae85b141c09d80e759adc67f8ac",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/b5ff0a3c664f51f562a406e9ffe0e1d716d73ae85b141c09d80e759adc67f8ac"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/b63383954c7f580f1011e4b0a94256b4dd2409e1287db154a308cfc4b166b901",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/b63383954c7f580f1011e4b0a94256b4dd2409e1287db154a308cfc4b166b901"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/ba4dbb5ee7418b3f1e8af36e20604b8b38b71118b495bbfec74fc0562a9fe777",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/ba4dbb5ee7418b3f1e8af36e20604b8b38b71118b495bbfec74fc0562a9fe777"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/ba5833c9bc2001d734147257bdf18e220b26fdb981a55d1cf9abe6b6268daf62",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/ba5833c9bc2001d734147257bdf18e220b26fdb981a55d1cf9abe6b6268daf62"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/bad38488601a1e51af08b6a2235102d49293f7c8741c9703241c627874b5a3c9",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/bad38488601a1e51af08b6a2235102d49293f7c8741c9703241c627874b5a3c9"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/baef1e7e386b58361ed1002ee8c72de0c6971ad2d387188bc557f62a88d972b6",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/baef1e7e386b58361ed1002ee8c72de0c6971ad2d387188bc557f62a88d972b6"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/bf5ae084c25868321fcd58d2f9e52ab42174c7ac8ae36bb2afa31c49b5ff2f08",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/bf5ae084c25868321fcd58d2f9e52ab42174c7ac8ae36bb2afa31c49b5ff2f08"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/bf948d61dfe348f3adb0ef2c15f59a202010cb75bfaa4382c379d3213eeb2db2",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/bf948d61dfe348f3adb0ef2c15f59a202010cb75bfaa4382c379d3213eeb2db2"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/c2a9622def1a694cc69886c8c278f54267f42464f3ea990e3f84c0439f1f3e8e",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/c2a9622def1a694cc69886c8c278f54267f42464f3ea990e3f84c0439f1f3e8e"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/c4367d7a36126b3a6d03e0507fb1661bb3d1920fa10597ee6212032233246669",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/c4367d7a36126b3a6d03e0507fb1661bb3d1920fa10597ee6212032233246669"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/c66b80394116ede4754906be0fb208da5bf51cec3e3e72bef2a6eff5b0b37aa5",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/c66b80394116ede4754906be0fb208da5bf51cec3e3e72bef2a6eff5b0b37aa5"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/c845dfdebc5d248a9f71fa06baa7c403f3bc8281f45326c08aa07c973d948372",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/c845dfdebc5d248a9f71fa06baa7c403f3bc8281f45326c08aa07c973d948372"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/c8dc784c516dd62fafc07860caba83e7b40ad2255bc7431d2630ed50b9cb2c71",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/c8dc784c516dd62fafc07860caba83e7b40ad2255bc7431d2630ed50b9cb2c71"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/cf6e356c872e0076ad5bb9da41e28e8034b6f88898a47f707ba6559a84c63095",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/cf6e356c872e0076ad5bb9da41e28e8034b6f88898a47f707ba6559a84c63095"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/d7ba01f3087977d5148bcf6102607192b185027c20a456e11b28abc02c185ff4",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/d7ba01f3087977d5148bcf6102607192b185027c20a456e11b28abc02c185ff4"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/d88420850f8277c1cb0bec5edd6b9fe2e138c393a8010a2bcad9db20d9a605b9",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/d88420850f8277c1cb0bec5edd6b9fe2e138c393a8010a2bcad9db20d9a605b9"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/dbf04398359735221bd13d646982aea565ced01747686b3f79358ba910da071f",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/dbf04398359735221bd13d646982aea565ced01747686b3f79358ba910da071f"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/e140f28c5465aace2296f78bbc3a49df17327aee37aa08c52eb7a5c6a1d925c3",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/e140f28c5465aace2296f78bbc3a49df17327aee37aa08c52eb7a5c6a1d925c3"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/e35b9f12726a99de30dc4a60ed3da616e271edb5a6c1f551260c90849369a423",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/e35b9f12726a99de30dc4a60ed3da616e271edb5a6c1f551260c90849369a423"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/e5cfc0a5aae4ee93a893d3827a9723c93fe6241ab0112d94022d1455159ff4d9",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/e5cfc0a5aae4ee93a893d3827a9723c93fe6241ab0112d94022d1455159ff4d9"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/e627f0419cc6f0db58b6040535220c6b9e57830c820b13e144af6307c3fbdfbb",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/e627f0419cc6f0db58b6040535220c6b9e57830c820b13e144af6307c3fbdfbb"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/e82255aa6de89a0f33f218c172e9753c96a234b70f7dba1d9f33367403d3a176",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/e82255aa6de89a0f33f218c172e9753c96a234b70f7dba1d9f33367403d3a176"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/e8c44189a7f958cd965efa37ae6b1212cce19746ee4453da4dfe03ea8adafeac",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/e8c44189a7f958cd965efa37ae6b1212cce19746ee4453da4dfe03ea8adafeac"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/e9464de4b2339e32fcf1e21a34d3fc6ffb5dcc8a4e4337e4742b61c031c723f2",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/e9464de4b2339e32fcf1e21a34d3fc6ffb5dcc8a4e4337e4742b61c031c723f2"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/ea43a742cae547427a7fa7c408946abff1e803a68efc0516f43349fdc8501747",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/ea43a742cae547427a7fa7c408946abff1e803a68efc0516f43349fdc8501747"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/eb2576adc1c35a3ded8be62f8a2198aebdffc8a15f568383fd2736f05ee1c9de",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/eb2576adc1c35a3ded8be62f8a2198aebdffc8a15f568383fd2736f05ee1c9de"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/f14b278c88866be501f02823a4ecccb3a4812327a00e5d7c4149d2b9409c0594",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/f14b278c88866be501f02823a4ecccb3a4812327a00e5d7c4149d2b9409c0594"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/f2161c3246e891200f2f4aa3fc4879f823df22cab59fdfbac6ab7106b786635c",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/f2161c3246e891200f2f4aa3fc4879f823df22cab59fdfbac6ab7106b786635c"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/f85f7d80aa281455fe4764a06b77aa647b01a6c71ec7826f10cdfb80501bfd2d",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/f85f7d80aa281455fe4764a06b77aa647b01a6c71ec7826f10cdfb80501bfd2d"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/fbfeb1aaeb56fbe0f5539c86ffc7c62885c1005fa96d8573c7504a139e0308a3",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/fbfeb1aaeb56fbe0f5539c86ffc7c62885c1005fa96d8573c7504a139e0308a3"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/fe52228cd0802b74f6af0ce9b9c2d94b45eece9c74baa55e9872c3d0455fa478",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/fe52228cd0802b74f6af0ce9b9c2d94b45eece9c74baa55e9872c3d0455fa478"
+  },
+  {
+    "bundle": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-bundles/ff3945ab65a5f27681dda9e65fe184ffda74c58ee68b335b05d2581224d3a49a",
+    "returncode": 0,
+    "failures": [],
+    "diagnostics": "/home/council/dev/dirtyroom_m4/build/gles32-fixes-20260922/compiler-after/ff3945ab65a5f27681dda9e65fe184ffda74c58ee68b335b05d2581224d3a49a"
+  }
+]

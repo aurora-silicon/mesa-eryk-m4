@@ -3087,11 +3087,12 @@ agx_lower_agx3_fma_sources(agx_context *ctx)
    agx_foreach_instr_global_safe(ctx, I) {
       if ((I->op == AGX_OPCODE_ROUNDEVEN || I->op == AGX_OPCODE_FLOOR ||
            I->op == AGX_OPCODE_CEIL || I->op == AGX_OPCODE_TRUNC ||
+           I->op == AGX_OPCODE_DFDX || I->op == AGX_OPCODE_DFDY ||
            I->op == AGX_OPCODE_RCP || I->op == AGX_OPCODE_RSQRT ||
            I->op == AGX_OPCODE_SRSQRT || I->op == AGX_OPCODE_LOG2 || I->op == AGX_OPCODE_EXP2) &&
           I->dest[0].size == AGX_SIZE_16) {
-         /* Native unary math uses F32. Widen the input exactly and round
-          * the result to half. Integral rounding is exact in both widths;
+         /* Native unary math and derivatives use F32. Widen the input
+          * exactly and round the result to half. Integral rounding is exact in both widths;
           * approximate reciprocal/transcendental operations retain the F32
           * unit's higher internal precision before the final half rounding. */
          agx_builder before = agx_init_builder(ctx, agx_before_instr(I));
@@ -3106,6 +3107,7 @@ agx_lower_agx3_fma_sources(agx_context *ctx)
       }
       if ((I->op == AGX_OPCODE_ROUNDEVEN || I->op == AGX_OPCODE_FLOOR ||
            I->op == AGX_OPCODE_CEIL || I->op == AGX_OPCODE_TRUNC ||
+           I->op == AGX_OPCODE_DFDX || I->op == AGX_OPCODE_DFDY ||
            I->op == AGX_OPCODE_RCP || I->op == AGX_OPCODE_RSQRT ||
            I->op == AGX_OPCODE_SRSQRT || I->op == AGX_OPCODE_LOG2 ||
            I->op == AGX_OPCODE_EXP2) &&
@@ -3283,10 +3285,11 @@ agx_lower_agx3_fma_sources(agx_context *ctx)
       agx_foreach_src(I, s) {
          if (I->src[s].size != AGX_SIZE_16 ||
              I->src[s].type == AGX_INDEX_IMMEDIATE ||
-             I->src[s].type == AGX_INDEX_NULL || I->src[s].abs ||
-             I->src[s].neg)
+             I->src[s].type == AGX_INDEX_NULL)
             continue;
 
+         /* Widen signed half inputs too: FMOV applies their abs/neg
+          * before the F32 FMA, without changing its fused rounding. */
          agx_index widened = agx_temp(ctx, AGX_SIZE_32);
          agx_fmov_to(&b, widened, I->src[s]);
          I->src[s] = widened;

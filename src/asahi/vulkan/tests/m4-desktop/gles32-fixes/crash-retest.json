@@ -1,0 +1,755 @@
+{
+  "counts": {
+    "Pass": 303
+  },
+  "runs": [
+    {
+      "selected": 50,
+      "recorded": 50,
+      "completed": 50,
+      "counts": {
+        "Pass": 50
+      },
+      "classifications": {
+        "selected": 50
+      },
+      "elapsed_seconds": 7.2882527010078775,
+      "preparation_seconds": 1.5055599600018468,
+      "runner_seconds": 4.670243909000078,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "072e1cef3fbef0ed2e7e0ac088b3f7063259117c4fa6d1037b159a68cb64f508",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T112155661272Z-gles-fix-crashes-b-1-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 75.0
+    },
+    {
+      "selected": 50,
+      "recorded": 50,
+      "completed": 50,
+      "counts": {
+        "Pass": 50
+      },
+      "classifications": {
+        "selected": 50
+      },
+      "elapsed_seconds": 11.422706880999613,
+      "preparation_seconds": 1.5965379879926331,
+      "runner_seconds": 8.739250707999986,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "77d9afc530cea623498c0bafc6beb41c45a1a9b3f5748eeaaa79bc9a4d501936",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T112204587474Z-gles-fix-crashes-b-1-50",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 79.0
+    },
+    {
+      "selected": 42,
+      "recorded": 42,
+      "completed": 42,
+      "counts": {
+        "Pass": 42
+      },
+      "classifications": {
+        "selected": 42
+      },
+      "elapsed_seconds": 9.118134481002926,
+      "preparation_seconds": 1.4772350099956384,
+      "runner_seconds": 6.701353868999945,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "692accd29bafc598137b9a5359c501cc3f78e74dab0c96390c25a9c1998d49c7",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T112217529171Z-gles-fix-crashes-b-1-100",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 67.0
+    },
+    {
+      "selected": 50,
+      "recorded": 50,
+      "completed": 50,
+      "counts": {
+        "Pass": 50
+      },
+      "classifications": {
+        "selected": 50
+      },
+      "elapsed_seconds": 6.460882615996525,
+      "preparation_seconds": 1.4222763129946543,
+      "runner_seconds": 3.8603067419999206,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "4ed76bf94cfed9be6760cfdf358cf3598d70cee14ac8b464938bead56a0c73cf",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T112228110136Z-gles-fix-crashes-b-2-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 69.75
+    },
+    {
+      "selected": 16,
+      "recorded": 16,
+      "completed": 16,
+      "counts": {
+        "Pass": 16
+      },
+      "classifications": {
+        "selected": 16
+      },
+      "elapsed_seconds": 4.796600999994553,
+      "preparation_seconds": 1.5720991010020953,
+      "runner_seconds": 2.4422900289999916,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "9e5887fd4a269d97463a4bff6bad394bae0c6d3c10050526b899b27376d1de0a",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T112236214503Z-gles-fix-crashes-b-2-50",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 68.5
+    },
+    {
+      "selected": 12,
+      "recorded": 12,
+      "completed": 12,
+      "counts": {
+        "Pass": 12
+      },
+      "classifications": {
+        "selected": 12
+      },
+      "elapsed_seconds": 3.356482357994537,
+      "preparation_seconds": 1.4504561889916658,
+      "runner_seconds": 0.8236536160000014,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "36c901a0ce1f70d3a85b11875f700b8adbe3c0c470180fc0b1ffec65435495fe",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T112242497618Z-gles-fix-crashes-b-3-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 68.25
+    },
+    {
+      "selected": 3,
+      "recorded": 3,
+      "completed": 3,
+      "counts": {
+        "Pass": 3
+      },
+      "classifications": {
+        "selected": 3
+      },
+      "elapsed_seconds": 3.093848976001027,
+      "preparation_seconds": 1.515640886995243,
+      "runner_seconds": 0.21694857800002865,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "e11f3bb979351f5a49878eeccc648be2429e4561251cb3e8b3e40decb118f765",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T112247409830Z-gles-fix-crashes-b-10-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 68.0
+    },
+    {
+      "selected": 3,
+      "recorded": 3,
+      "completed": 3,
+      "counts": {
+        "Pass": 3
+      },
+      "classifications": {
+        "selected": 3
+      },
+      "elapsed_seconds": 3.426478773006238,
+      "preparation_seconds": 3.238197074009804,
+      "runner_seconds": 0.4154674620000378,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "3c5b598fff6f8f2d3e087c5c57638643911c5defb42d411938f5868766d03fbf",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T112253853881Z-gles-fix-crashes-b-12-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 68.0
+    },
+    {
+      "selected": 3,
+      "recorded": 3,
+      "completed": 3,
+      "counts": {
+        "Pass": 3
+      },
+      "classifications": {
+        "selected": 3
+      },
+      "elapsed_seconds": 2.7401362720120233,
+      "preparation_seconds": 1.4614733600028558,
+      "runner_seconds": 0.4164678829999957,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "3c5b598fff6f8f2d3e087c5c57638643911c5defb42d411938f5868766d03fbf",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T112258749571Z-gles-fix-crashes-b-13-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 68.25
+    },
+    {
+      "selected": 3,
+      "recorded": 3,
+      "completed": 3,
+      "counts": {
+        "Pass": 3
+      },
+      "classifications": {
+        "selected": 3
+      },
+      "elapsed_seconds": 2.5153747539879987,
+      "preparation_seconds": 1.3944195650110487,
+      "runner_seconds": 0.21599623700001302,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "3c5b598fff6f8f2d3e087c5c57638643911c5defb42d411938f5868766d03fbf",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T112302922838Z-gles-fix-crashes-b-14-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 68.5
+    },
+    {
+      "selected": 3,
+      "recorded": 3,
+      "completed": 3,
+      "counts": {
+        "Pass": 3
+      },
+      "classifications": {
+        "selected": 3
+      },
+      "elapsed_seconds": 2.575989364995621,
+      "preparation_seconds": 1.4787967930024024,
+      "runner_seconds": 0.2160054040000432,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "3c5b598fff6f8f2d3e087c5c57638643911c5defb42d411938f5868766d03fbf",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T112306954957Z-gles-fix-crashes-b-15-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 68.25
+    },
+    {
+      "selected": 3,
+      "recorded": 3,
+      "completed": 3,
+      "counts": {
+        "Pass": 3
+      },
+      "classifications": {
+        "selected": 3
+      },
+      "elapsed_seconds": 2.676170949009247,
+      "preparation_seconds": 1.4904566610057373,
+      "runner_seconds": 0.21690145800005212,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "e11f3bb979351f5a49878eeccc648be2429e4561251cb3e8b3e40decb118f765",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T112311066657Z-gles-fix-crashes-b-18-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 68.0
+    },
+    {
+      "selected": 3,
+      "recorded": 3,
+      "completed": 3,
+      "counts": {
+        "Pass": 3
+      },
+      "classifications": {
+        "selected": 3
+      },
+      "elapsed_seconds": 2.9479103030025726,
+      "preparation_seconds": 1.413783730007708,
+      "runner_seconds": 0.41642044600007466,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "3c5b598fff6f8f2d3e087c5c57638643911c5defb42d411938f5868766d03fbf",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T112315193261Z-gles-fix-crashes-b-20-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 67.5
+    },
+    {
+      "selected": 3,
+      "recorded": 3,
+      "completed": 3,
+      "counts": {
+        "Pass": 3
+      },
+      "classifications": {
+        "selected": 3
+      },
+      "elapsed_seconds": 2.9861821069935104,
+      "preparation_seconds": 1.606130080006551,
+      "runner_seconds": 0.4164810260000422,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "3c5b598fff6f8f2d3e087c5c57638643911c5defb42d411938f5868766d03fbf",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T112319789358Z-gles-fix-crashes-b-21-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 70.5
+    },
+    {
+      "selected": 3,
+      "recorded": 3,
+      "completed": 3,
+      "counts": {
+        "Pass": 3
+      },
+      "classifications": {
+        "selected": 3
+      },
+      "elapsed_seconds": 2.827956324996194,
+      "preparation_seconds": 1.4764967859955505,
+      "runner_seconds": 0.21602907099997992,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "e11f3bb979351f5a49878eeccc648be2429e4561251cb3e8b3e40decb118f765",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T112324314368Z-gles-fix-crashes-b-23-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 68.75
+    },
+    {
+      "selected": 3,
+      "recorded": 3,
+      "completed": 3,
+      "counts": {
+        "Pass": 3
+      },
+      "classifications": {
+        "selected": 3
+      },
+      "elapsed_seconds": 2.7430666539876256,
+      "preparation_seconds": 1.4221929639898008,
+      "runner_seconds": 0.41639403600004243,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "3c5b598fff6f8f2d3e087c5c57638643911c5defb42d411938f5868766d03fbf",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T112328597494Z-gles-fix-crashes-b-25-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 68.75
+    },
+    {
+      "selected": 3,
+      "recorded": 3,
+      "completed": 3,
+      "counts": {
+        "Pass": 3
+      },
+      "classifications": {
+        "selected": 3
+      },
+      "elapsed_seconds": 2.765185486001428,
+      "preparation_seconds": 1.5566290549904807,
+      "runner_seconds": 0.4164913189999879,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "3c5b598fff6f8f2d3e087c5c57638643911c5defb42d411938f5868766d03fbf",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T112332936965Z-gles-fix-crashes-b-26-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 69.75
+    },
+    {
+      "selected": 3,
+      "recorded": 3,
+      "completed": 3,
+      "counts": {
+        "Pass": 3
+      },
+      "classifications": {
+        "selected": 3
+      },
+      "elapsed_seconds": 2.994980988005409,
+      "preparation_seconds": 1.610583030997077,
+      "runner_seconds": 0.21489728300002753,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "e11f3bb979351f5a49878eeccc648be2429e4561251cb3e8b3e40decb118f765",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T112337351319Z-gles-fix-crashes-b-28-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 68.25
+    },
+    {
+      "selected": 3,
+      "recorded": 3,
+      "completed": 3,
+      "counts": {
+        "Pass": 3
+      },
+      "classifications": {
+        "selected": 3
+      },
+      "elapsed_seconds": 2.7524285999970743,
+      "preparation_seconds": 1.4365938489936525,
+      "runner_seconds": 0.4154640220000374,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "3c5b598fff6f8f2d3e087c5c57638643911c5defb42d411938f5868766d03fbf",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T112341824275Z-gles-fix-crashes-b-30-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 69.0
+    },
+    {
+      "selected": 3,
+      "recorded": 3,
+      "completed": 3,
+      "counts": {
+        "Pass": 3
+      },
+      "classifications": {
+        "selected": 3
+      },
+      "elapsed_seconds": 2.7545476679952117,
+      "preparation_seconds": 1.551070407993393,
+      "runner_seconds": 0.41551191700000345,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "3c5b598fff6f8f2d3e087c5c57638643911c5defb42d411938f5868766d03fbf",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T112346174964Z-gles-fix-crashes-b-31-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 69.5
+    },
+    {
+      "selected": 3,
+      "recorded": 3,
+      "completed": 3,
+      "counts": {
+        "Pass": 3
+      },
+      "classifications": {
+        "selected": 3
+      },
+      "elapsed_seconds": 2.708764134993544,
+      "preparation_seconds": 1.4841430489905179,
+      "runner_seconds": 0.21482970299996396,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "e11f3bb979351f5a49878eeccc648be2429e4561251cb3e8b3e40decb118f765",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T112350448114Z-gles-fix-crashes-b-33-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 69.25
+    },
+    {
+      "selected": 3,
+      "recorded": 3,
+      "completed": 3,
+      "counts": {
+        "Pass": 3
+      },
+      "classifications": {
+        "selected": 3
+      },
+      "elapsed_seconds": 2.540920218001702,
+      "preparation_seconds": 1.468668442001217,
+      "runner_seconds": 0.21599748699998145,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "3c5b598fff6f8f2d3e087c5c57638643911c5defb42d411938f5868766d03fbf",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T112354665536Z-gles-fix-crashes-b-35-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 69.75
+    },
+    {
+      "selected": 3,
+      "recorded": 3,
+      "completed": 3,
+      "counts": {
+        "Pass": 3
+      },
+      "classifications": {
+        "selected": 3
+      },
+      "elapsed_seconds": 2.697435669004335,
+      "preparation_seconds": 1.5164824039966334,
+      "runner_seconds": 0.4164884010000378,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "3c5b598fff6f8f2d3e087c5c57638643911c5defb42d411938f5868766d03fbf",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T112358769042Z-gles-fix-crashes-b-36-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 69.75
+    },
+    {
+      "selected": 3,
+      "recorded": 3,
+      "completed": 3,
+      "counts": {
+        "Pass": 3
+      },
+      "classifications": {
+        "selected": 3
+      },
+      "elapsed_seconds": 2.705849522986682,
+      "preparation_seconds": 1.4232695230020909,
+      "runner_seconds": 0.21608040099999926,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "e11f3bb979351f5a49878eeccc648be2429e4561251cb3e8b3e40decb118f765",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T112402934424Z-gles-fix-crashes-b-38-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 70.0
+    },
+    {
+      "selected": 3,
+      "recorded": 3,
+      "completed": 3,
+      "counts": {
+        "Pass": 3
+      },
+      "classifications": {
+        "selected": 3
+      },
+      "elapsed_seconds": 2.7826614579971647,
+      "preparation_seconds": 1.481479907000903,
+      "runner_seconds": 0.4164250300000276,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "3c5b598fff6f8f2d3e087c5c57638643911c5defb42d411938f5868766d03fbf",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T112407164001Z-gles-fix-crashes-b-40-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 69.25
+    },
+    {
+      "selected": 3,
+      "recorded": 3,
+      "completed": 3,
+      "counts": {
+        "Pass": 3
+      },
+      "classifications": {
+        "selected": 3
+      },
+      "elapsed_seconds": 2.7498159579990897,
+      "preparation_seconds": 1.396039330997155,
+      "runner_seconds": 0.41644373899998754,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "3c5b598fff6f8f2d3e087c5c57638643911c5defb42d411938f5868766d03fbf",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T112411388295Z-gles-fix-crashes-b-41-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 68.5
+    },
+    {
+      "selected": 3,
+      "recorded": 3,
+      "completed": 3,
+      "counts": {
+        "Pass": 3
+      },
+      "classifications": {
+        "selected": 3
+      },
+      "elapsed_seconds": 2.7712606959976256,
+      "preparation_seconds": 1.481905063992599,
+      "runner_seconds": 0.21707886399997278,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "e11f3bb979351f5a49878eeccc648be2429e4561251cb3e8b3e40decb118f765",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T112415654948Z-gles-fix-crashes-b-43-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 70.0
+    },
+    {
+      "selected": 3,
+      "recorded": 3,
+      "completed": 3,
+      "counts": {
+        "Pass": 3
+      },
+      "classifications": {
+        "selected": 3
+      },
+      "elapsed_seconds": 2.7377614500001073,
+      "preparation_seconds": 1.4232260110002244,
+      "runner_seconds": 0.4162417910000613,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "3c5b598fff6f8f2d3e087c5c57638643911c5defb42d411938f5868766d03fbf",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T112419890090Z-gles-fix-crashes-b-45-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 77.25
+    },
+    {
+      "selected": 3,
+      "recorded": 3,
+      "completed": 3,
+      "counts": {
+        "Pass": 3
+      },
+      "classifications": {
+        "selected": 3
+      },
+      "elapsed_seconds": 2.5528429429978132,
+      "preparation_seconds": 1.4559873639955185,
+      "runner_seconds": 0.21496979699998064,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "3c5b598fff6f8f2d3e087c5c57638643911c5defb42d411938f5868766d03fbf",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T112424126193Z-gles-fix-crashes-b-46-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 68.75
+    },
+    {
+      "selected": 3,
+      "recorded": 3,
+      "completed": 3,
+      "counts": {
+        "Pass": 3
+      },
+      "classifications": {
+        "selected": 3
+      },
+      "elapsed_seconds": 2.762391422991641,
+      "preparation_seconds": 1.4136974580032984,
+      "runner_seconds": 0.21606546700002127,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "e11f3bb979351f5a49878eeccc648be2429e4561251cb3e8b3e40decb118f765",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T112428132767Z-gles-fix-crashes-b-48-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 69.5
+    },
+    {
+      "selected": 3,
+      "recorded": 3,
+      "completed": 3,
+      "counts": {
+        "Pass": 3
+      },
+      "classifications": {
+        "selected": 3
+      },
+      "elapsed_seconds": 2.752913542994065,
+      "preparation_seconds": 1.4495394730038242,
+      "runner_seconds": 0.41655668999999307,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "3c5b598fff6f8f2d3e087c5c57638643911c5defb42d411938f5868766d03fbf",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T112432392152Z-gles-fix-crashes-b-50-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 70.0
+    },
+    {
+      "selected": 3,
+      "recorded": 3,
+      "completed": 3,
+      "counts": {
+        "Pass": 3
+      },
+      "classifications": {
+        "selected": 3
+      },
+      "elapsed_seconds": 2.547403240998392,
+      "preparation_seconds": 1.4834436029923381,
+      "runner_seconds": 0.21595990799994524,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "3c5b598fff6f8f2d3e087c5c57638643911c5defb42d411938f5868766d03fbf",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T112436680131Z-gles-fix-crashes-b-51-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 68.5
+    },
+    {
+      "selected": 3,
+      "recorded": 3,
+      "completed": 3,
+      "counts": {
+        "Pass": 3
+      },
+      "classifications": {
+        "selected": 3
+      },
+      "elapsed_seconds": 2.739163254998857,
+      "preparation_seconds": 1.5044524840050144,
+      "runner_seconds": 0.21692326599998069,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "e11f3bb979351f5a49878eeccc648be2429e4561251cb3e8b3e40decb118f765",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T112440766804Z-gles-fix-crashes-b-53-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 70.0
+    },
+    {
+      "selected": 2,
+      "recorded": 2,
+      "completed": 2,
+      "counts": {
+        "Pass": 2
+      },
+      "classifications": {
+        "selected": 2
+      },
+      "elapsed_seconds": 2.5951036699989345,
+      "preparation_seconds": 1.485448125997209,
+      "runner_seconds": 0.21595115900004203,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "ed098a61314590074f9fa05dce4cbdb3d0796383c09e4beff36e1a2c467c6eec",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T112445047897Z-gles-fix-crashes-b-55-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 68.5
+    }
+  ]
+}

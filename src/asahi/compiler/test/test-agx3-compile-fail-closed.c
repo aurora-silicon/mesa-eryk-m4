@@ -1091,7 +1091,7 @@ check_constant_array_ordering(enum agx_isa_encoding encoding, bool ordered)
  * with `no grounded AGX3 encoding for iadd`.
  */
 static bool
-check_mixed_fma_neg_compute(void)
+check_mixed_fma_neg_compute(unsigned half_modifier)
 {
    nir_builder b = nir_builder_init_simple_shader(
       MESA_SHADER_COMPUTE, &agx_nir_options, "G17P mixed FMA fneg");
@@ -1103,6 +1103,10 @@ check_mixed_fma_neg_compute(void)
    nir_def *lane = nir_u2f32(&b, nir_load_local_invocation_index(&b));
    nir_def *half = nir_f2f16(&b, nir_fadd_imm(&b, lane, 0.5f));
    nir_def *half32 = nir_f2f32(&b, half);
+   if (half_modifier & 1)
+      half32 = nir_fabs(&b, half32);
+   if (half_modifier & 2)
+      half32 = nir_fneg(&b, half32);
    nir_def *result = nir_ffma(&b, nir_fneg(&b, lane), half32,
                               nir_imm_float(&b, 1.0f));
    nir_store_shared(&b, result, nir_imm_int(&b, 0),
@@ -1467,6 +1471,14 @@ check_uniform_alu_policy(void)
 int
 main(int argc, char **argv)
 {
+   if (argc == 2 && !strcmp(argv[1], "--mixed-half-fma-only")) {
+      for (unsigned modifier = 0; modifier < 4; ++modifier) {
+         if (!check_mixed_fma_neg_compute(modifier))
+            return 1;
+      }
+      return 0;
+   }
+
    if (argc == 2 && !strcmp(argv[1], "--subgroup-multiply-only")) {
       const bool valid = check_subgroup_multiply_compute();
       fprintf(stderr, "G17P subgroup multiply compute: %s\n",
@@ -1590,7 +1602,10 @@ main(int argc, char **argv)
       return 1;
    if (!check_agx2_legacy_printf_address_accepted())
       return 1;
-   if (!check_mixed_fma_neg_compute())
+   if (!check_mixed_fma_neg_compute(0) ||
+       !check_mixed_fma_neg_compute(1) ||
+       !check_mixed_fma_neg_compute(2) ||
+       !check_mixed_fma_neg_compute(3))
       return 1;
    if (!check_subgroup_multiply_compute())
       return 1;
