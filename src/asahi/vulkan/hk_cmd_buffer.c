@@ -57,6 +57,8 @@
 /* These process options are immutable during command recording. */
 DEBUG_GET_ONCE_BOOL_OPTION(hk_m4_ioto_templates, "HK_M4_IOTO_TEMPLATES", false)
 DEBUG_GET_ONCE_BOOL_OPTION(hk_m4_program_profile, "HK_M4_PROGRAM_PROFILE", false)
+DEBUG_GET_ONCE_BOOL_OPTION(hk_m4_shader_profile, "HK_M4_SHADER_PROFILE", false)
+DEBUG_GET_ONCE_BOOL_OPTION(hk_m4_native_preamble, "HK_M4_NATIVE_PREAMBLE", false)
 
 static uint64_t
 hk_g17p_vdm_lookup(struct hk_cmd_buffer *cmd, uint64_t primary, bool bind)
@@ -65,10 +67,22 @@ hk_g17p_vdm_lookup(struct hk_cmd_buffer *cmd, uint64_t primary, bool bind)
    if (!hk_g17p_vdm_low_window_enabled(&dev->dev))
       return primary;
 
-   list_for_each_entry(struct hk_cmd_bo, bo, &cmd->uploader.main.bos, link) {
+   struct hk_cmd_bo *found = cmd->vdm_lookup_bo;
+   if (!found || primary < found->bo->va->addr ||
+       primary - found->bo->va->addr >= found->bo->size) {
+      found = NULL;
+      list_for_each_entry(struct hk_cmd_bo, bo, &cmd->uploader.main.bos, link) {
+         if (primary >= bo->bo->va->addr &&
+             primary - bo->bo->va->addr < bo->bo->size) {
+            found = bo;
+            break;
+         }
+      }
+   }
+
+   if (found) {
+      struct hk_cmd_bo *bo = found;
       const uint64_t start = bo->bo->va->addr;
-      if (primary < start || primary - start >= bo->bo->size)
-         continue;
 
       if (bind) {
          const VkResult result =
@@ -77,13 +91,13 @@ hk_g17p_vdm_lookup(struct hk_cmd_buffer *cmd, uint64_t primary, bool bind)
             vk_command_buffer_set_error(&cmd->vk, result);
             return 0;
          }
+         cmd->vdm_lookup_bo = bo;
       }
 
       const uint64_t alias = bo->g17p_vdm_alias + (primary - start);
       uint32_t compact = 0;
       if (agx_g17p_vdm_alias_compact(alias, &compact))
          return compact;
-      break;
    }
 
    mesa_loge("G17P VDM address %#" PRIx64 " has no low command-BO alias",
@@ -121,6 +135,7 @@ hk_descriptor_state_fini(struct hk_cmd_buffer *cmd,
 static void
 hk_free_resettable_cmd_buffer(struct hk_cmd_buffer *cmd)
 {
+   cmd->vdm_lookup_bo = NULL;
    struct hk_cmd_pool *pool = hk_cmd_buffer_pool(cmd);
    struct hk_device *dev = hk_cmd_pool_device(pool);
 
@@ -1285,7 +1300,7 @@ hk_g17p_basic_graphics_program_supported(struct hk_cmd_buffer *cmd,
        linked->b.size > UINT32_MAX ||
        (s->b.info.has_preamble &&
         (s->info.stage != MESA_SHADER_FRAGMENT ||
-         !debug_get_bool_option("HK_M4_NATIVE_PREAMBLE", false))) ||
+         !debug_get_option_hk_m4_native_preamble())) ||
        s->b.info.preamble_scratch_size != 0 ||
        s->b.info.texture_state_count != 0 ||
        (s->b.info.sampler_state_count != 0 &&
@@ -1699,7 +1714,7 @@ hk_upload_usc_words(struct hk_cmd_buffer *cmd, struct hk_shader *s,
 {
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
    if (s->info.stage == MESA_SHADER_FRAGMENT &&
-       debug_get_bool_option("HK_M4_SHADER_PROFILE", false)) {
+       debug_get_option_hk_m4_shader_profile()) {
       const struct agx2_stats *stats = &s->b.info.stats;
       fprintf(stderr, "HK_SHADER_PROFILE code=%08x cs=%" PRIx64 " width=%u height=%u direct=%u "
               "instrs=%u regs=%u scratch=%u loops=%u preamble=%u preamble_regs=%u\n",
@@ -2095,7 +2110,7 @@ hk_cs_init_graphics(struct hk_cmd_buffer *cmd, struct hk_cs *cs)
        !hk_g17p_vdm_compact(cmd, cs->addr))
       return;
 
-   if (debug_get_bool_option("HK_M4_SHADER_PROFILE", false))
+   if (debug_get_option_hk_m4_shader_profile())
       fprintf(stderr, "HK_SHADER_BEGIN cs=%" PRIx64 "\n",
               hk_g17p_vdm_low_window_enabled(&dev->dev)
                  ? hk_g17p_vdm_alias(cmd, cs->addr) : cs->addr);
