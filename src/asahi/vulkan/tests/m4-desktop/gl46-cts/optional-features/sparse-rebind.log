@@ -1,0 +1,6 @@
+Renderer: zink Vulkan 1.4(Apple M4 (G16G B0) (MESA_HONEYKRISP))
+PASS samples=2 phase=0 pages=64x32 layers=2
+PASS samples=2 phase=1 pages=64x32 layers=2
+PASS samples=4 phase=0 pages=64x32 layers=2
+PASS samples=4 phase=1 pages=64x32 layers=2
+PASS: sparse multisample values, residency and rebinds

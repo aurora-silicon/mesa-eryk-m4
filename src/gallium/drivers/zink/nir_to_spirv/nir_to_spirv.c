@@ -3111,7 +3111,7 @@ emit_image_deref_store(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 }
 
 static SpvId
-extract_sparse_load(struct ntv_context *ctx, SpvId result, SpvId dest_type, nir_def *def)
+extract_sparse_load(struct ntv_context *ctx, SpvId result, SpvId dest_type, nir_def *def, bool shadow)
 {
    /* Result Type must be an OpTypeStruct with two members.
     * The first member’s type must be an integer type scalar.
@@ -3122,7 +3122,7 @@ extract_sparse_load(struct ntv_context *ctx, SpvId result, SpvId dest_type, nir_
    SpvId resident = spirv_builder_emit_composite_extract(&ctx->builder, spirv_builder_type_uint(&ctx->builder, 32), result, &idx, 1);
    idx = 1;
    /* normal vec4 return */
-   if (def->num_components == 4)
+   if (!shadow)
       result = spirv_builder_emit_composite_extract(&ctx->builder, dest_type, result, &idx, 1);
    else {
       /* shadow */
@@ -3147,6 +3147,12 @@ static void
 emit_image_deref_load(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 {
    bool sparse = intr->intrinsic == nir_intrinsic_image_deref_sparse_load;
+   /* Like emit_tex, keep residency in resident_defs rather than an illegal
+    * five-component SPIR-V vector. Sparse lowering replaced all accesses to
+    * the last component with is_sparse_resident_zink.
+    */
+   if (sparse && intr->def.num_components == 5)
+      intr->def.num_components = 4;
    nir_alu_type atype;
    SpvId img_var = get_src(ctx, &intr->src[0], &atype);
    nir_deref_instr *deref = nir_src_as_deref(intr->src[0]);
@@ -3175,7 +3181,7 @@ emit_image_deref_load(struct ntv_context *ctx, nir_intrinsic_instr *intr)
       result = spirv_builder_emit_image_read(&ctx->builder, dest_type,
                                              img, coord, 0, sample, sparse, coherent);
       if (sparse)
-         result = extract_sparse_load(ctx, result, dest_type, &intr->def);
+         result = extract_sparse_load(ctx, result, dest_type, &intr->def, false);
    }
 
    if (!sparse && mediump) {
@@ -4417,7 +4423,8 @@ emit_tex_readop(struct ntv_context *ctx, nir_variable *bindless_var, SpvId load,
    }
 
    if (tex->is_sparse)
-      result = extract_sparse_load(ctx, result, actual_dest_type, &tex->def);
+      result = extract_sparse_load(ctx, result, actual_dest_type, &tex->def,
+                                   tex->is_shadow && tex->op != nir_texop_tg4);
 
    if (tex->def.bit_size != 32) {
       /* convert FP32 to FP16 */

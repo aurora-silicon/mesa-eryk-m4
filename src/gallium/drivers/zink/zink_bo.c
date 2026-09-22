@@ -1087,13 +1087,13 @@ zink_bo_commit(struct zink_context *ctx, struct zink_resource *res, unsigned lev
                ibind[i].extent.depth = u_minify(res->base.b.depth0, miptail_clamped_level);
             } else {
                // Offset
-               ibind[i].offset.x = w * gwidth;
-               ibind[i].offset.y = h * gheight;
+               ibind[i].offset.x = box->x + w * gwidth;
+               ibind[i].offset.y = box->y + h * gheight;
                if (res->base.b.array_size > 1) {
-                  ibind[i].subresource.arrayLayer = d * gdepth;
+                  ibind[i].subresource.arrayLayer = box->z + d * gdepth;
                   ibind[i].offset.z = 0;
                } else {
-                  ibind[i].offset.z = d * gdepth;
+                  ibind[i].offset.z = box->z + d * gdepth;
                }
                // Size of the page
                ibind[i].extent.width = (w == nwidth - 1) ? lastBlockExtent.width : gwidth;
@@ -1104,8 +1104,8 @@ zink_bo_commit(struct zink_context *ctx, struct zink_resource *res, unsigned lev
             /* single miptail binds use the base miptail page */
             if (!is_miptail_only) {
                va_page +=
-                  (d + (box->z / gdepth)) * (u_minify(res->base.b.width0, miptail_clamped_level) / gwidth) * (u_minify(res->base.b.height0, miptail_clamped_level) / gheight) +
-                  (h + (box->y / gheight)) * (u_minify(res->base.b.width0, miptail_clamped_level) / gwidth) +
+                  (d + (box->z / gdepth)) * DIV_ROUND_UP(u_minify(res->base.b.width0, miptail_clamped_level), gwidth) * DIV_ROUND_UP(u_minify(res->base.b.height0, miptail_clamped_level), gheight) +
+                  (h + (box->y / gheight)) * DIV_ROUND_UP(u_minify(res->base.b.width0, miptail_clamped_level), gwidth) +
                   (w + (box->x / gwidth));
             }
 
