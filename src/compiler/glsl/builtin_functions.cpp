@@ -6587,7 +6587,21 @@ builtin_builder::_acos(builtin_available_predicate avail,
    ir_variable *x = in_var(type, "x");
    MAKE_SIG(type, avail, 1, x);
 
-   body.emit(ret(sub(IMM_FP(type, M_PI_2f), asin_expr(x, 0.08132463f, -0.02363318f))));
+   /* Evaluate the same approximation without subtracting asin(x) from pi/2.
+    * Near x=1 those two values almost coincide, losing the small acos result
+    * when intermediate arithmetic is lowered to mediump.
+    */
+   ir_variable *a = body.make_temp(type, "abs_x");
+   ir_variable *r = body.make_temp(type, "positive_acos");
+   body.emit(assign(a, abs(x)));
+   body.emit(assign(r,
+      mul(sqrt(sub(IMM_FP(type, 1.0f), a)),
+          add(IMM_FP(type, M_PI_2f),
+              mul(a, add(IMM_FP(type, (M_PI_4f - 1.0f)),
+                         mul(a, add(IMM_FP(type, 0.08132463f),
+                                    mul(a, IMM_FP(type, -0.02363318f))))))))));
+   body.emit(ret(csel(less(x, IMM_FP(type, 0.0f)),
+                      sub(IMM_FP(type, M_PIf), r), r)));
 
    return sig;
 }
