@@ -19,8 +19,9 @@ int main(int argc, char **argv)
                                   !strcmp(argv[2], "--licm") ||
                                   !strcmp(argv[2], "--gcm-no-vn") ||
                                   !strcmp(argv[2], "--print-nir") ||
+                                  !strncmp(argv[2], "--binary-output=", 16) ||
                                   !strncmp(argv[2], "--uniform-one=", 14)))) {
-      fprintf(stderr, "Usage: %s BUNDLE/input.bin [--check-native-resources|--native-preamble|--gcm|--licm|--gcm-no-vn|--uniform-one=HALF]\n       %s FRONTEND.nirbin --print-nir\n", argv[0], argv[0]);
+      fprintf(stderr, "Usage: %s BUNDLE/input.bin [--check-native-resources|--native-preamble|--gcm|--licm|--gcm-no-vn|--uniform-one=HALF|--binary-output=FILE]\n       %s FRONTEND.nirbin --print-nir\n", argv[0], argv[0]);
       return 2;
    }
    FILE *f = fopen(argv[1], "rb");
@@ -60,6 +61,7 @@ int main(int argc, char **argv)
    /* Explicit diagnostic transforms replace the driver's default motion
     * pass rather than applying it twice. */
    if (argc == 3 && strncmp(argv[2], "--uniform-one=", 14) &&
+       strncmp(argv[2], "--binary-output=", 16) &&
        strcmp(argv[2], "--native-preamble"))
       setenv("AGX_CODE_MOTION", "none", 1);
    if (argc == 3 && (!strcmp(argv[2], "--gcm") || !strcmp(argv[2], "--gcm-no-vn"))) {
@@ -135,6 +137,19 @@ int main(int argc, char **argv)
       fprintf(stderr, "Compiler binary hash: %08x\n",
               _mesa_hash_data(out.binary, out.info.binary_size));
       agx2_stats_fprintf(stderr, "replay", &out.info.stats);
+      if (argc == 3 && !strncmp(argv[2], "--binary-output=", 16)) {
+         FILE *binary = fopen(argv[2] + 16, "wb");
+         if (!binary) {
+            perror(argv[2] + 16);
+            ok = false;
+         } else {
+            ok = fwrite(out.binary, 1, out.info.binary_size, binary) ==
+                 out.info.binary_size;
+            ok &= fclose(binary) == 0;
+            if (!ok)
+               fprintf(stderr, "Failed to save compiler binary\n");
+         }
+      }
    }
    free(out.binary);
    ralloc_free(nir);
