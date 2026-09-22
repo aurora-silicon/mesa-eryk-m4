@@ -1,0 +1,116 @@
+[
+  {
+    "index": 0,
+    "case": "KHR-GLES32.core.tessellation_shader.vertex.vertex_spacing_primitive_mode_quads_vs_mode_fractional_even_spacing",
+    "boot_id": "84d6165b-76e2-4a35-8ab5-e93c7b9e705f",
+    "runner_status": "Pass",
+    "seconds": 4.3627863,
+    "eligibility": {
+      "case": "KHR-GLES32.core.tessellation_shader.vertex.vertex_spacing_primitive_mode_quads_vs_mode_fractional_even_spacing",
+      "catalog_index": 158897,
+      "session": 26,
+      "session_index": 284,
+      "classification": "selected",
+      "rule": "Frozen Khronos ES32 runner plan"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 1,
+    "case": "KHR-GLES32.core.tessellation_shader.tessellation_control_to_tessellation_evaluation.gl_MaxPatchVertices_Position_PointSize_primitive_mode_isolines_vertex_ordering_ccw_vertex_spacing_fractional_even_spacing_point_mode_disabled",
+    "boot_id": "84d6165b-76e2-4a35-8ab5-e93c7b9e705f",
+    "runner_status": "Pass",
+    "seconds": 0.17725098,
+    "eligibility": {
+      "case": "KHR-GLES32.core.tessellation_shader.tessellation_control_to_tessellation_evaluation.gl_MaxPatchVertices_Position_PointSize_primitive_mode_isolines_vertex_ordering_ccw_vertex_spacing_fractional_even_spacing_point_mode_disabled",
+      "catalog_index": 158913,
+      "session": 26,
+      "session_index": 300,
+      "classification": "selected",
+      "rule": "Frozen Khronos ES32 runner plan"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 2,
+    "case": "KHR-GLES32.core.tessellation_shader.tessellation_control_to_tessellation_evaluation.gl_MaxPatchVertices_Position_PointSize_primitive_mode_isolines_vertex_ordering_cw_vertex_spacing_fractional_even_spacing_point_mode_disabled",
+    "boot_id": "84d6165b-76e2-4a35-8ab5-e93c7b9e705f",
+    "runner_status": "Pass",
+    "seconds": 0.14043681,
+    "eligibility": {
+      "case": "KHR-GLES32.core.tessellation_shader.tessellation_control_to_tessellation_evaluation.gl_MaxPatchVertices_Position_PointSize_primitive_mode_isolines_vertex_ordering_cw_vertex_spacing_fractional_even_spacing_point_mode_disabled",
+      "catalog_index": 158921,
+      "session": 26,
+      "session_index": 308,
+      "classification": "selected",
+      "rule": "Frozen Khronos ES32 runner plan"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 3,
+    "case": "KHR-GLES32.core.tessellation_shader.tessellation_shader_point_mode.points_verification",
+    "boot_id": "84d6165b-76e2-4a35-8ab5-e93c7b9e705f",
+    "runner_status": "Pass",
+    "seconds": 11.13524,
+    "eligibility": {
+      "case": "KHR-GLES32.core.tessellation_shader.tessellation_shader_point_mode.points_verification",
+      "catalog_index": 158994,
+      "session": 26,
+      "session_index": 381,
+      "classification": "selected",
+      "rule": "Frozen Khronos ES32 runner plan"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 4,
+    "case": "KHR-GLES32.core.texture_cube_map_array.sampling",
+    "boot_id": "84d6165b-76e2-4a35-8ab5-e93c7b9e705f",
+    "runner_status": "Pass",
+    "seconds": 2.2255507,
+    "eligibility": {
+      "case": "KHR-GLES32.core.texture_cube_map_array.sampling",
+      "catalog_index": 159027,
+      "session": 26,
+      "session_index": 414,
+      "classification": "selected",
+      "rule": "Frozen Khronos ES32 runner plan"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 5,
+    "case": "KHR-GLES32.core.texture_cube_map_array.color_depth_attachments",
+    "boot_id": "84d6165b-76e2-4a35-8ab5-e93c7b9e705f",
+    "runner_status": "Pass",
+    "seconds": 0.48715615,
+    "eligibility": {
+      "case": "KHR-GLES32.core.texture_cube_map_array.color_depth_attachments",
+      "catalog_index": 159028,
+      "session": 26,
+      "session_index": 415,
+      "classification": "selected",
+      "rule": "Frozen Khronos ES32 runner plan"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  }
+]

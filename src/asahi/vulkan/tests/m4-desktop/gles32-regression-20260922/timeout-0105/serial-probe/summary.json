@@ -1,0 +1,22 @@
+{
+  "selected": 6,
+  "recorded": 6,
+  "completed": 6,
+  "counts": {
+    "Pass": 6
+  },
+  "classifications": {
+    "selected": 6
+  },
+  "elapsed_seconds": 21.7824604799971,
+  "preparation_seconds": 1.51847594800347,
+  "runner_seconds": 18.89286402200014,
+  "jobs": 1,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "68fe9718e873a1426666a05c72ff32c53dcdde6556a225c81c6b3becc94811b7",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T190718085187Z-gles-fix-timeout-0105-probe-26-0",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 73.75
+}

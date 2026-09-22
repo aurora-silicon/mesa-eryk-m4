@@ -1,0 +1,27 @@
+{
+  "selected": 1130,
+  "recorded": 1130,
+  "completed": 814,
+  "counts": {
+    "Pass": 809,
+    "Crash": 3,
+    "Unrun": 314,
+    "Interrupted": 2,
+    "NotSupported": 1,
+    "Timeout": 1
+  },
+  "classifications": {
+    "selected": 1130
+  },
+  "elapsed_seconds": 81.85115903799306,
+  "preparation_seconds": 1.529518682989874,
+  "runner_seconds": 78.96049305900124,
+  "jobs": 4,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "0ad3d16aa887a9f2073bb2e1f86cfea17a3ea75be26a7056ab4518bf38e64ffc",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T190417044723Z-gles32-plan-0105-r0",
+  "guard_verdict": "process_failure",
+  "command_returncode": 1,
+  "peak_temperature_c": 106.25
+}
