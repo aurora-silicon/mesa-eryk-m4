@@ -1,0 +1,9 @@
+{
+  "incident_evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T225411658988Z-gles32-plan-0278-r0",
+  "incident_verdict": "gpu_fault",
+  "recovery_run": "/home/council/dev/dirtyroom_m4/build/gles32-regression-20260922/recovery-0278-probe/080-0000/run",
+  "new_boot": "41f12c43-a033-4c7a-9c18-8bb622c6815e",
+  "segment": 278,
+  "reason": "Retain original firmware crash, packet preparation EBUSY and non-sequential stamp update message. Sole interrupted CTS case Pass serially after reboot on identical kernel/libraries/CTS. Original unfinished attempt remains in attempts and incident evidence. Resume only unfinished coverage; no driver fix or causal attribution to active case is claimed. Exact1130-case single-worker repeat Pass1129/NS1 under its guard.",
+  "repeat_run": "/home/council/dev/dirtyroom_m4/build/gles32-regression-20260922/incident-0278-repeat/segments/0278/run"
+}

@@ -1,0 +1,22 @@
+{
+  "selected": 1,
+  "recorded": 1,
+  "completed": 1,
+  "counts": {
+    "Pass": 1
+  },
+  "classifications": {
+    "selected": 1
+  },
+  "elapsed_seconds": 3.5713854680070654,
+  "preparation_seconds": 1.6136302700033411,
+  "runner_seconds": 0.6169012529999947,
+  "jobs": 1,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "4c862d31bcf3f7a7066813d29c0b926e006dedd9812080d05aa68e25c0da56ee",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T225654443102Z-gles-fix-recovery-0278-probe-80-0",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 70.5
+}

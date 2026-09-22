@@ -204,7 +204,9 @@ def reviewed_pending(run):
     if summary['guard_verdict'] == 'pass':
         assert all(r['status'] not in ('Unrun','Interrupted','Crash','Timeout','HarnessError') for r in rows)
         return []
-    if recovery_review and summary['guard_verdict'] == 'gpu_timeout' and summary['evidence'] == recovery_review['incident_evidence']:
+    if (recovery_review and summary['guard_verdict'] in ('gpu_timeout', 'gpu_fault')
+            and summary['guard_verdict'] == recovery_review.get('incident_verdict', 'gpu_timeout')
+            and summary['evidence'] == recovery_review['incident_evidence']):
         probe_run = Path(recovery_review['recovery_run'])
         probe = json.loads((probe_run/'summary.json').read_text())
         probe_rows = json.loads((probe_run/'results.json').read_text())

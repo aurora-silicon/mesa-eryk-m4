@@ -1,0 +1,24 @@
+{
+  "selected": 1130,
+  "recorded": 1130,
+  "completed": 200,
+  "counts": {
+    "Unrun": 929,
+    "Interrupted": 1,
+    "Pass": 200
+  },
+  "classifications": {
+    "selected": 1130
+  },
+  "elapsed_seconds": 88.08951072499622,
+  "preparation_seconds": 1.6055771899991669,
+  "runner_seconds": null,
+  "jobs": 1,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "0ad3d16aa887a9f2073bb2e1f86cfea17a3ea75be26a7056ab4518bf38e64ffc",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T225411658988Z-gles32-plan-0278-r0",
+  "guard_verdict": "gpu_fault",
+  "command_returncode": 1,
+  "peak_temperature_c": 98.25
+}

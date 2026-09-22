@@ -1,0 +1,21 @@
+[
+  {
+    "index": 0,
+    "case": "KHR-GLES32.core.tessellation_shader.vertex.vertex_spacing_primitive_mode_isolines_vs_mode_fractional_even_spacing",
+    "boot_id": "41f12c43-a033-4c7a-9c18-8bb622c6815e",
+    "runner_status": "Pass",
+    "seconds": 0.24578802,
+    "eligibility": {
+      "case": "KHR-GLES32.core.tessellation_shader.vertex.vertex_spacing_primitive_mode_isolines_vs_mode_fractional_even_spacing",
+      "catalog_index": 310186,
+      "session": 80,
+      "session_index": 276,
+      "classification": "selected",
+      "rule": "Frozen Khronos ES32 runner plan"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  }
+]
