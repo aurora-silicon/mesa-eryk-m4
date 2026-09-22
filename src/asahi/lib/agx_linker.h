@@ -330,6 +330,8 @@ bool agx_nir_gather_vs_inputs(nir_shader *s,
 
 bool agx_nir_lower_vs_input_to_prolog(nir_shader *s);
 
+bool agx_nir_coalesce_fragcolor(nir_shader *s);
+
 bool agx_nir_lower_fs_output_to_epilog(nir_shader *s,
                                        struct agx_fs_epilog_link_info *out);
 bool agx_nir_lower_fs_output_to_epilog_g17p(

@@ -870,6 +870,81 @@ lower_output_to_epilog(nir_builder *b, nir_intrinsic_instr *intr, void *data)
    return true;
 }
 
+/* Zink expands legacy gl_FragColor to all eight Vulkan colour locations.
+ * Recover the broadcast ABI when every location has exactly the same full
+ * value. Exporting it once avoids reserving 64 half-registers in the main
+ * shader. The driver must honour broadcast_rt0 in its epilog remapping.
+ */
+bool
+agx_nir_coalesce_fragcolor(nir_shader *s)
+{
+   assert(s->info.stage == MESA_SHADER_FRAGMENT);
+   nir_function_impl *impl = nir_shader_get_entrypoint(s);
+   nir_intrinsic_instr *stores[8] = {0};
+   nir_intrinsic_instr *first = NULL, *last = NULL;
+   unsigned mask = 0;
+
+   nir_foreach_block(block, impl) {
+      nir_foreach_instr(instr, block) {
+         if (instr->type != nir_instr_type_intrinsic)
+            continue;
+         nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+         if (intr->intrinsic != nir_intrinsic_store_output)
+            continue;
+         nir_io_semantics sem = nir_intrinsic_io_semantics(intr);
+         if (sem.location < FRAG_RESULT_DATA0) {
+            if (sem.location == FRAG_RESULT_COLOR)
+               return false;
+            continue;
+         }
+         unsigned rt = sem.location - FRAG_RESULT_DATA0;
+         if (rt >= 8 || stores[rt] || sem.dual_source_blend_index ||
+             nir_intrinsic_component(intr) != 0 ||
+             nir_intrinsic_write_mask(intr) != 0xf ||
+             intr->src[0].ssa->num_components != 4 ||
+             !nir_src_is_const(intr->src[1]) ||
+             nir_src_as_uint(intr->src[1]) != 0)
+            return false;
+         if (first && (instr->block != first->instr.block ||
+                       intr->src[0].ssa != first->src[0].ssa ||
+                       nir_intrinsic_src_type(intr) !=
+                          nir_intrinsic_src_type(first)))
+            return false;
+         if (!first)
+            first = intr;
+         last = stores[rt] = intr;
+         mask |= BITFIELD_BIT(rt);
+      }
+   }
+   if (mask != 0xff)
+      return false;
+
+   /* Never move an export across a coverage change or another side effect.
+    * Pure ALU/constants between the stores are harmless.
+    */
+   for (nir_instr *i = nir_instr_next(&first->instr); i != &last->instr;
+        i = nir_instr_next(i)) {
+      if (i->type == nir_instr_type_alu || i->type == nir_instr_type_load_const)
+         continue;
+      bool colour_store = false;
+      for (unsigned rt = 0; rt < 8; ++rt)
+         colour_store |= i == &stores[rt]->instr;
+      if (!colour_store)
+         return false;
+   }
+
+   nir_io_semantics sem = nir_intrinsic_io_semantics(first);
+   sem.location = FRAG_RESULT_COLOR;
+   nir_intrinsic_set_io_semantics(first, sem);
+   for (unsigned rt = 0; rt < 8; ++rt) {
+      if (stores[rt] != first)
+         nir_instr_remove(&stores[rt]->instr);
+   }
+   s->info.outputs_written &= ~(UINT64_C(0xff) << FRAG_RESULT_DATA0);
+   s->info.outputs_written |= BITFIELD64_BIT(FRAG_RESULT_COLOR);
+   return nir_progress(true, impl, nir_metadata_control_flow);
+}
+
 static bool
 lower_fs_output_to_epilog(nir_shader *s, struct agx_fs_epilog_link_info *out,
                           bool g17p)
