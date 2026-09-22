@@ -1,0 +1,121 @@
+{
+  "cts_counts": {
+    "Pass": 20
+  },
+  "cts_cases": [
+    {
+      "case": "dEQP-VK.api.command_buffers.pool_reset_no_flags_res",
+      "catalog_index": 4564,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.api.command_buffers.pool_reset_release_res",
+      "catalog_index": 4565,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.api.command_buffers.pool_reset_reuse",
+      "catalog_index": 4566,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.api.command_buffers.reset_implicit",
+      "catalog_index": 4588,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.api.command_buffers.record_one_time_submit_primary",
+      "catalog_index": 4573,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.api.command_buffers.record_one_time_submit_secondary",
+      "catalog_index": 4574,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.api.command_buffers.record_simul_use_secondary_one_primary",
+      "catalog_index": 4579,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.api.command_buffers.record_simul_use_secondary_two_primary",
+      "catalog_index": 4580,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.api.command_buffers.render_pass_continue",
+      "catalog_index": 4586,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.api.command_buffers.render_pass_continue_no_fb",
+      "catalog_index": 4587,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.api.command_buffers.secondary_execute",
+      "catalog_index": 4589,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.api.command_buffers.secondary_execute_twice",
+      "catalog_index": 4590,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.api.command_buffers.secondary_push_constants_2",
+      "catalog_index": 4592,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.api.command_buffers.secondary_push_descriptor_set_2",
+      "catalog_index": 4593,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.api.command_buffers.secondary_push_descriptor_set_with_template",
+      "catalog_index": 4594,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.api.command_buffers.submit_twice_primary",
+      "catalog_index": 4598,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.api.command_buffers.submit_twice_secondary",
+      "catalog_index": 4599,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.api.command_buffers.trim_command_pool_secondary",
+      "catalog_index": 4604,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.api.command_buffers.record_many_draws_secondary_1",
+      "catalog_index": 4569,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.api.command_buffers.record_many_draws_secondary_2",
+      "catalog_index": 4570,
+      "status": "Pass"
+    }
+  ],
+  "replay": {
+    "returncode": 0,
+    "timed_out": false,
+    "elapsed_seconds": 4.268108970999947,
+    "screenshot": true
+  },
+  "live": {
+    "frames": 997,
+    "seconds": 9.995662752000001,
+    "fps": 99.7432611259832,
+    "median_frame_ms": 10.00618800000197,
+    "maximum_frame_ms": 15.010266000000883,
+    "scope": "Complete frame intervals in the last ten seconds; screenshot captured afterwards"
+  }
+}
