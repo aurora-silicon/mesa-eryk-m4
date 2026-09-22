@@ -1032,10 +1032,16 @@ zink_init_screen_caps(struct zink_screen *screen)
 
    caps->mixed_framebuffer_sizes = true;
 
-   caps->max_geometry_output_vertices =
-      screen->info.props.limits.maxGeometryOutputVertices;
-   caps->max_geometry_total_output_components =
-      screen->info.props.limits.maxGeometryTotalOutputComponents;
+   /* Limits may be nonzero even when the Vulkan geometry feature is absent.
+    * State-tracker helpers use these caps to select layered GS uploads, so
+    * expose them only when that shader stage is actually available.
+    */
+   if (screen->info.feats.features.geometryShader) {
+      caps->max_geometry_output_vertices =
+         screen->info.props.limits.maxGeometryOutputVertices;
+      caps->max_geometry_total_output_components =
+         screen->info.props.limits.maxGeometryTotalOutputComponents;
+   }
 
    caps->max_texture_gather_components = 4;
 
