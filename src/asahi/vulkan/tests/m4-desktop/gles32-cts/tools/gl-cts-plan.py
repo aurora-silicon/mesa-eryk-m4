@@ -34,6 +34,7 @@ p.add_argument('--segment-size', type=int, default=2500)
 p.add_argument('--first', type=int, default=0)
 p.add_argument('--last', type=int)
 p.add_argument('--jobs', type=int, default=4)
+p.add_argument('--run-jobs', type=int, choices=(1,4), help='Explicit execution worker cap; frozen cases/configuration indices are unchanged')
 p.add_argument('--live', action='store_true', help='Read the latest target runner progress alongside saved coverage')
 p.add_argument('--seconds', type=int, default=900)
 p.add_argument('--continue-compiler-aborts', action='store_true',
@@ -274,7 +275,7 @@ for segment in catalog['segments'][a.first:a.last]:
         cmd = [sys.executable, str(ROOT/'tools/cts-bulk.py'), '--cases', str(folder/'cases.txt'),
             '--output', str(folder/'run'), '--name', f"gles32-plan-{segment['index']:04d}-r{ordinal}",
             '--binary', catalog['binary'], '--runner', str(ROOT/'reference/deqp-runner/target/aarch64-unknown-linux-gnu/release/deqp-runner'),
-            '--jobs', str(1 if recovery_review and segment['index'] == recovery_review['segment'] else segment['jobs']), '--runner-seconds', str(a.seconds),
+            '--jobs', str(1 if recovery_review and segment['index'] == recovery_review['segment'] else min(segment['jobs'], a.run_jobs or segment['jobs'])), '--runner-seconds', str(a.seconds),
             '--case-timeout', '60', '--cpu-max-khz', '4104000', '--headless']
         for opt in options + ['--deqp-egl-display-type=x11', '--deqp-log-flush=enable']:
             cmd += ['--deqp-arg='+opt]

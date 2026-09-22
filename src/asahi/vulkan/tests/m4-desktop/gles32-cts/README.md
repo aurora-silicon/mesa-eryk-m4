@@ -145,3 +145,15 @@ faults even if interrupted cases later finish. An exact `--recovery-review`
 permits this one reviewed incident to resume; no general GPU-fault bypass.
 Remaining cases in segment 0065 use one worker; subsequent segments retain
 the original worker counts. Review/probe paths are in gpu-recovery-0065.json.
+
+Worker qualification after recovery: identical eight previously passing
+copy-conversion cases, same session-18 configuration, one test per process,
+unchanged 60-second limit and guarded environment. All 8 Pass in both runs.
+One worker: 27.807 s runner time, peak 88.75 C; four workers: 53.154 s,
+peak 106.75 C. Evidence: 20260922T094432521733Z-gles32-worker-qualification-1
+and 20260922T094504162780Z-gles32-worker-qualification-4. The test is small
+and does not prove all case groups scale this way, but supports reducing
+contention in the remaining Khronos sessions. From segment 0068 continuation
+0003 onward, `--run-jobs 1` is explicit; frozen selections, configuration
+arguments and indices stay unchanged, and each attempt records its worker
+count. Earlier failures/timeouts and the GPU incident are not erased.
