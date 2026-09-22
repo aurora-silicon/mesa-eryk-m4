@@ -48,7 +48,7 @@ p.add_argument('--env', action='append', metavar='KEY=VALUE', default=[],
                help='Recorded driver environment override passed to the remote runner')
 a = p.parse_args()
 if a.headless and a.jobs != 1 and not all(
-        c.startswith(('KHR-GL', 'KHR-NoContext.')) for c in a.cases.read_text().splitlines()):
+        c.startswith(('KHR-GL', 'KHR-Single-GLES', 'KHR-NoContext.', 'dEQP-GLES')) for c in a.cases.read_text().splitlines()):
     p.error('Parallel headless sharing is only qualified for GL CTS; WSI needs one worker per compositor')
 if a.headless_env and not a.headless:
     p.error('--headless-env requires --headless')

@@ -96,11 +96,26 @@ def run(args, check, boot, out, env, metadata, save):
     selected = out / 'runner-cases.txt'
     selected.write_text('\n'.join(cases) + '\n')
     result_dir = out / 'deqp-runner'
+    egl_only = all(case.startswith('dEQP-EGL.') for case in cases)
+    if egl_only:
+        # deqp-runner has no EGL renderer check. Check the same binary and
+        # environment in a real ES context before starting its EGL tests.
+        preflight = [str(args.binary), '--deqp-case=KHR-GLES32.info.renderer',
+            '--deqp-gl-context-type=egl', '--deqp-egl-display-type=x11',
+            '--deqp-log-filename=' + str(out/'egl-renderer.qpa')]
+        with (out/'egl-renderer.log').open('w') as log:
+            subprocess.run(preflight, cwd=args.binary.parent, env=env, stdout=log,
+                           stderr=subprocess.STDOUT, check=True, timeout=20)
+        identity = (out/'egl-renderer.qpa').read_text()
+        expected = 'Apple M4' if args.renderer == 'm4' else 'llvmpipe|lavapipe'
+        if not re.search(expected, identity) or 'StatusCode="Pass"' not in identity:
+            raise RuntimeError('EGL renderer preflight failed; inspect retained QPA')
+        check()
     argv = [str(args.deqp_runner), 'run', '--deqp', str(args.binary),
             '--caselist', str(selected), '--output', str(result_dir),
             '--jobs', str(args.jobs), '--tests-per-group', str(args.tests_per_group),
             '--timeout', str(args.case_timeout), '--first-attempt',
-            '--renderer-check', 'Apple M4' if args.renderer == 'm4' else 'llvmpipe|lavapipe',
+            *([] if egl_only else ['--renderer-check', 'Apple M4' if args.renderer == 'm4' else 'llvmpipe|lavapipe']),
             '--', '--deqp-log-images=' + ('enable' if args.log_images else 'disable'),
             '--deqp-log-shader-sources=' + ('enable' if args.log_sources else 'disable')]
     argv += getattr(args, 'deqp_arg', [])
@@ -180,7 +195,8 @@ def collect(out, cases, metadata, start, boot):
     """Offline recovery also works when a guard interrupted the wrapper."""
     allowed_cases = set(cases)
     result_dir = out / 'deqp-runner'
-    runner = json.loads((out / 'runner.json').read_text())
+    runner_path = out / 'runner.json'
+    runner = json.loads(runner_path.read_text()) if runner_path.exists() else {}
     case_timeout = runner.get('case_timeout_seconds')
     if case_timeout is None and '--timeout' in runner.get('argv', []):
         case_timeout = float(runner['argv'][runner['argv'].index('--timeout') + 1])

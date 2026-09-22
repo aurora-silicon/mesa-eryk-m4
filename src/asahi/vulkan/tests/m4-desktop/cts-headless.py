@@ -17,6 +17,7 @@ import time
 
 p = argparse.ArgumentParser(description=__doc__)
 p.add_argument('--guard-output', required=True, type=Path)
+p.add_argument('--require-x11', action='store_true', help='Wait for the private Xwayland used by EGL configuration enumeration')
 p.add_argument('--env', action='append', default=[], metavar='KEY=VALUE')
 p.add_argument('command', nargs=argparse.REMAINDER)
 a = p.parse_args()
@@ -24,8 +25,9 @@ command = a.command[1:] if a.command[:1] == ['--'] else a.command
 assert command and '--jobs' in command
 cases = Path(command[command.index('--cases')+1]).read_text()
 if command[command.index('--jobs')+1] != '1':
-    assert all(c.startswith(('KHR-GL', 'KHR-NoContext.')) for c in cases.splitlines()), 'WSI needs one worker per compositor'
-needs_x11 = '.wsi.xlib.' in cases or '.wsi.xcb.' in cases
+    assert all(c.startswith(('KHR-GL', 'KHR-Single-GLES', 'KHR-NoContext.', 'dEQP-GLES')) for c in cases.splitlines()), 'WSI needs one worker per compositor'
+needs_x11 = (a.require_x11 or '.wsi.xlib.' in cases or '.wsi.xcb.' in cases
+             or '--deqp-arg=--deqp-egl-display-type=x11' in command)
 spec = importlib.util.spec_from_file_location('fw', '/root/firmware-snapshot.py')
 fw = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(fw)
