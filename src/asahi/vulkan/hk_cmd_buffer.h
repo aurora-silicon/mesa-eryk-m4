@@ -605,6 +605,15 @@ struct hk_cmd_buffer {
    struct vk_command_buffer vk;
    struct agx3_ioto_uniform_template *uniform_templates[2];
 
+   /* Immutable native heap/query pointer uploads. Small direct-mapped cache;
+    * contents and size, never descriptor object identity, determine reuse. */
+   struct {
+      uint64_t words[4];
+      uint64_t address;
+      unsigned size;
+   } native_pointer_uploads[4];
+   uint64_t native_prefetch_eligible[2];
+
    struct {
       struct hk_graphics_state gfx;
       struct hk_compute_state cs;

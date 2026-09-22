@@ -136,6 +136,8 @@ static void
 hk_free_resettable_cmd_buffer(struct hk_cmd_buffer *cmd)
 {
    cmd->vdm_lookup_bo = NULL;
+   memset(cmd->native_pointer_uploads, 0, sizeof(cmd->native_pointer_uploads));
+   memset(cmd->native_prefetch_eligible, 0, sizeof(cmd->native_prefetch_eligible));
    struct hk_cmd_pool *pool = hk_cmd_buffer_pool(cmd);
    struct hk_device *dev = hk_cmd_pool_device(pool);
 
@@ -1362,6 +1364,26 @@ hk_g17p_basic_graphics_program_supported(struct hk_cmd_buffer *cmd,
    return s->info.stage == MESA_SHADER_FRAGMENT && varyings && tile;
 }
 
+static uint64_t
+hk_native_pointer_upload(struct hk_cmd_buffer *cmd, const uint64_t *words,
+                         unsigned size)
+{
+   assert(size && size <= 32 && !(size & 7));
+   const unsigned index = size / 8 - 1;
+   if (cmd->native_pointer_uploads[index].address &&
+       cmd->native_pointer_uploads[index].size == size &&
+       !memcmp(cmd->native_pointer_uploads[index].words, words, size))
+      return cmd->native_pointer_uploads[index].address;
+
+   const uint64_t address = hk_pool_upload(cmd, words, size, 8);
+   if (address) {
+      memcpy(cmd->native_pointer_uploads[index].words, words, size);
+      cmd->native_pointer_uploads[index].size = size;
+      cmd->native_pointer_uploads[index].address = address;
+   }
+   return address;
+}
+
 bool
 hk_g17p_graphics_uniform_ranges(
    struct hk_cmd_buffer *cmd, struct hk_shader *s,
@@ -1502,7 +1524,7 @@ hk_g17p_graphics_uniform_ranges(
        * like the per-draw graphics state. Both shader indices are zero.
        */
       const uint64_t pointers_va =
-         hk_pool_upload(cmd, pointers, sizeof(pointers), 8);
+         hk_native_pointer_upload(cmd, pointers, sizeof(pointers));
       if (!pointers_va)
          return false;
 
@@ -1550,7 +1572,8 @@ hk_g17p_graphics_uniform_ranges(
       const unsigned pointer_halfs =
          (s->info.agx3_indexed_images_valid || native_spills) ? 16 :
          statistics_uniform ? 12 : 8;
-      const uint64_t pointers_va = hk_pool_upload(cmd, pointers, pointer_halfs * 2, 8);
+      const uint64_t pointers_va =
+         hk_native_pointer_upload(cmd, pointers, pointer_halfs * 2);
       if (!pointers_va)
          return false;
       ranges[count++] = (struct agx3_ioto_uniform_range){
@@ -1559,8 +1582,8 @@ hk_g17p_graphics_uniform_ranges(
    }
 
    if (statistics_uniform && !s->info.agx3_indexed_sampler_valid && !native_spills) {
-      uint64_t pointer = hk_pool_upload(cmd, &statistics_address,
-                                        sizeof(statistics_address), 8);
+      uint64_t pointer = hk_native_pointer_upload(cmd, &statistics_address,
+                                                  sizeof(statistics_address));
       if (!pointer)
          return false;
       ranges[count++] = (struct agx3_ioto_uniform_range){
@@ -1613,7 +1636,10 @@ hk_g17p_graphics_uniform_ranges(
       }
       if (load->direct_half == load->uniform_half + 2) {
          const uint32_t eligible = direct;
-         uint64_t eligible_va = hk_pool_upload(cmd, &eligible, sizeof(eligible), 4);
+         if (!cmd->native_prefetch_eligible[eligible])
+            cmd->native_prefetch_eligible[eligible] =
+               hk_pool_upload(cmd, &eligible, sizeof(eligible), 4);
+         uint64_t eligible_va = cmd->native_prefetch_eligible[eligible];
          if (!eligible_va)
             return false;
          ranges[count++] = (struct agx3_ioto_uniform_range){
