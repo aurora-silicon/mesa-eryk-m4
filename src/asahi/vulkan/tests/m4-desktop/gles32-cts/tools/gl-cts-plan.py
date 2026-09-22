@@ -186,7 +186,7 @@ if paths:
             f.seek(max(0, log.stat().st_size-500000))
             progress = [x for x in f.read().decode(errors='replace').splitlines() if 'Duration:' in x]
     outcomes = Counter()
-    for qpa in (p/'cts/deqp-runner').glob('c*.qpa'):
+    for qpa in (p/'cts/deqp-runner').glob('*.r*.qpa'):
         with qpa.open(errors='replace') as stream:
             for line in stream:
                 match = re.search('<Result StatusCode="([^"]+)"', line)
