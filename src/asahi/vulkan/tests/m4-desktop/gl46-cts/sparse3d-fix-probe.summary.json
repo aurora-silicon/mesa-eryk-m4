@@ -1,0 +1,23 @@
+{
+  "selected": 6,
+  "recorded": 6,
+  "completed": 1,
+  "counts": {
+    "Crash": 1,
+    "Unrun": 5
+  },
+  "classifications": {
+    "unclassified": 6
+  },
+  "elapsed_seconds": 5.209982143998786,
+  "preparation_seconds": 1.5692139249949832,
+  "runner_seconds": 2.438560079999661,
+  "jobs": 1,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "ee5b524435166f8b75f0dc65d45e38a995ecbef4505a41876dbcf2f84fb8a5eb",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T010048357374Z-gl46-sparse3d-fix-probe",
+  "guard_verdict": "process_failure",
+  "command_returncode": 1,
+  "peak_temperature_c": 67.25
+}
