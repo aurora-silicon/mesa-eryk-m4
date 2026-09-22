@@ -1,0 +1,22 @@
+{
+  "selected": 1,
+  "recorded": 1,
+  "completed": 1,
+  "counts": {
+    "Pass": 1
+  },
+  "classifications": {
+    "unclassified": 1
+  },
+  "elapsed_seconds": 8.084434257005341,
+  "preparation_seconds": 1.5296585420001065,
+  "runner_seconds": 5.884667261999766,
+  "jobs": 1,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "6f14ae6799965c2b19e2c659f6f13f1d9f7e8948b7511570f95c106a8cd1a10b",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T032239651742Z-gl46-scissor-baseline",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 66.25
+}

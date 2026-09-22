@@ -1,0 +1,25 @@
+{
+  "selected": 755,
+  "recorded": 755,
+  "completed": 152,
+  "counts": {
+    "Crash": 2,
+    "Unrun": 603,
+    "Pass": 133,
+    "NotSupported": 17
+  },
+  "classifications": {
+    "unclassified": 755
+  },
+  "elapsed_seconds": 18.82119668800442,
+  "preparation_seconds": 1.5688918140003807,
+  "runner_seconds": 16.44255093599986,
+  "jobs": 2,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "69116e024ec9b7dcbd89e5c60555c02d735f4abb5cba26cd9c98ad0a8152c371",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T032119068255Z-gl46-resolve-regressions",
+  "guard_verdict": "process_failure",
+  "command_returncode": 1,
+  "peak_temperature_c": 65.25
+}

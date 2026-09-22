@@ -779,6 +779,13 @@ _tc_sync(struct threaded_context *tc, UNUSED const char *info, UNUSED const char
       } else if (!fb_has_work) {
          tc->renderpass_info_recording->data32[0] = 0;
       }
+      /* A completed resolve belongs to the pass executed above. Keeping its
+       * has_resolve bit while clearing ended would make a later resolve on
+       * the same bound framebuffer look like a duplicate and drop it.
+       */
+      tc->renderpass_info_recording->has_resolve = false;
+      for (unsigned i = 0; i < ARRAY_SIZE(tc->renderpass_info_recording->resolve); i++)
+         pipe_resource_reference(&tc->renderpass_info_recording->resolve[i], NULL);
       tc->renderpass_info_recording->ended = false;
       tc->seen_fb_state = false;
       tc->query_ended = false;

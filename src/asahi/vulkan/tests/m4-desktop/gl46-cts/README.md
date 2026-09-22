@@ -192,3 +192,26 @@ remain in the retained attempts; these rechecks span multiple builds.
 Vulkan 3D image-format queries and RGBA8 3D striped blits: 394 Pass /
 30 NotSupported, no failures, 0.82 s runner time, peak 67.25 C
 (`20260922T031854579985Z-gl46-vk-3d-format-fixed`).
+
+## Repeated named framebuffer resolve crash
+
+`PROBE_DSA=1` in gl-sample-mask-probe.c reproduces an assertion in tc_blit:
+`has_resolve` survives _tc_sync while `ended` is reset, so the next resolve
+is treated as a duplicate. Retire the completed resolve flag and resource
+references on synchronization, while preserving attachment-use metadata.
+Baseline: `20260922T031711097359Z-gl46-dsa-resolve-baseline` (SIGABRT).
+Fixed: `20260922T032346882258Z-gl46-dsa-resolve-only` (four masks pass).
+
+An initial broader reset of all ended-pass metadata regressed scissor_blit
+(zink_clear depth-use assertion), and was rejected before commit. The original
+library passes that case. Both failed and baseline attempts are retained.
+The narrower final change completes all 755 framebuffer-blit, DSA,
+multisample and sample-variable cases: 678 Pass / 76 NotSupported /
+1 CompatibilityWarning, 35.30 s, peak 69.75 C
+(`20260922T032405722078Z-gl46-resolve-regressions-fixed`).
+
+Required-core skips: all 18 fragdepth cases pass with the D24S8 FBO config;
+all three texture_query_lod cases pass with a 256x256 viewport. Original
+64x64/default-depth skips remain separate records. The tessellation interface
+case now reaches its next gate: transform-feedback interleaved components
+are limited to Gallium's default 64 despite Vulkan supporting 128.

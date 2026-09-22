@@ -26,7 +26,7 @@ int main(void){
   char fs[2048];snprintf(fs,sizeof(fs),"#version 460 core\nout vec4 color;void main(){if(gl_SampleID==0){vec2 p=gl_SamplePosition;color=vec4(1,p.x,p.y,1);}else color=vec4(0,1,0,1);gl_SampleMask[0]=%u;}",mask);
   GLuint p=glCreateProgram(),v=shader(GL_VERTEX_SHADER,vs),f=shader(GL_FRAGMENT_SHADER,fs);glAttachShader(p,v);glAttachShader(p,f);glLinkProgram(p);GLint ok;glGetProgramiv(p,GL_LINK_STATUS,&ok);CHECK(ok);glUseProgram(p);
   glBindFramebuffer(GL_FRAMEBUFFER,fb);CHECK(glCheckFramebufferStatus(GL_FRAMEBUFFER)==GL_FRAMEBUFFER_COMPLETE);glViewport(0,0,32,32);glClearColor(0,0,0,0);glClear(GL_COLOR_BUFFER_BIT);glDrawArrays(GL_TRIANGLES,0,3);
-  glBindFramebuffer(GL_READ_FRAMEBUFFER,fb);glBindFramebuffer(GL_DRAW_FRAMEBUFFER,resolve);glBlitFramebuffer(0,0,32,32,0,0,32,32,GL_COLOR_BUFFER_BIT,GL_NEAREST);glBindFramebuffer(GL_READ_FRAMEBUFFER,resolve);
+  if(getenv("PROBE_DSA"))glBlitNamedFramebuffer(fb,resolve,0,0,32,32,0,0,32,32,GL_COLOR_BUFFER_BIT,GL_NEAREST);else{glBindFramebuffer(GL_READ_FRAMEBUFFER,fb);glBindFramebuffer(GL_DRAW_FRAMEBUFFER,resolve);glBlitFramebuffer(0,0,32,32,0,0,32,32,GL_COLOR_BUFFER_BIT,GL_NEAREST);}glBindFramebuffer(GL_READ_FRAMEBUFFER,resolve);
   unsigned char a[4];glReadPixels(16,16,1,1,GL_RGBA,GL_UNSIGNED_BYTE,a);CHECK(glGetError()==0);
   printf("mask=%u rgba=%u,%u,%u,%u\n",mask,a[0],a[1],a[2],a[3]);
   if(mask==0&&(a[0]||a[1]||a[2]||a[3]))bad++;
