@@ -1253,9 +1253,12 @@ hk_g17p_smooth_varyings_supported(struct hk_cmd_buffer *cmd,
          has_primitive_id = true;
       } else if (b->slot == VARYING_SLOT_PNTC) {
          /* The rasterizer supplies point coordinates; they have no vertex
-          * UVS slot. The common linker selects POINT_COORD coefficients. */
-         if (gfx->topology != AGX_PRIMITIVE_POINTS || b->offset != 0 ||
-             b->count != 2 || !b->smooth || !b->perspective || !has_rhw)
+          * UVS slot. The common linker selects POINT_COORD coefficients.
+          * Reading them for other primitives is legal with undefined values,
+          * and must not cause command-buffer recording to fail.
+          */
+         if (b->offset != 0 || b->count != 2 || !b->smooth ||
+             !b->perspective || !has_rhw)
             return false;
       } else {
          /* Clip distances read by the fragment shader have ordinary UVS
