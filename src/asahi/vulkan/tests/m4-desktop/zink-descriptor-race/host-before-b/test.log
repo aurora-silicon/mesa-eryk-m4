@@ -1,0 +1,70 @@
+=================================================================
+==1653862==ERROR: AddressSanitizer: heap-use-after-free on address 0x7c3e6e8428c0 at pc 0x55f8ae1cce64 bp 0x7ffe0c323b20 sp 0x7ffe0c323b10
+READ of size 8 at 0x7c3e6e8428c0 thread T0
+    #0 0x55f8ae1cce63 in unsafe_free /home/council/dev/dirtyroom_m4/mesa/m4-asahi/src/util/ralloc.c:318
+    #1 0x55f8ae1cd0fb in ralloc_free /home/council/dev/dirtyroom_m4/mesa/m4-asahi/src/util/ralloc.c:264
+    #2 0x55f8ae1cca19 in main /home/council/dev/dirtyroom_m4/tools/zink-descriptor-race.c:50
+    #3 0x7fde6fa27780  (/usr/lib/libc.so.6+0x27780) (BuildId: 503200d7fda94a5dc6058d7e0694e5d1dcb2e372)
+    #4 0x7fde6fa278b8 in __libc_start_main (/usr/lib/libc.so.6+0x278b8) (BuildId: 503200d7fda94a5dc6058d7e0694e5d1dcb2e372)
+    #5 0x55f8ae1ca514 in _start (/home/council/dev/dirtyroom_m4/build/gles32-crash-fix-20260922/host-before-b/test+0x5514) (BuildId: ad1e6242ff32d51fa3b5a2da0f607249d51735ed)
+
+0x7c3e6e8428c0 is located 32 bytes inside of 64-byte region [0x7c3e6e8428a0,0x7c3e6e8428e0)
+freed by thread T8 here:
+    #0 0x7fde6ff2ae91  (/usr/lib/libasan.so.8+0x12ae91) (BuildId: b8a4241051a1621937fdc46e867ba7ecb56d96ea)
+    #1 0x55f8ae1cce45 in unsafe_free /home/council/dev/dirtyroom_m4/mesa/m4-asahi/src/util/ralloc.c:326
+    #2 0x55f8ae1cd0fb in ralloc_free /home/council/dev/dirtyroom_m4/mesa/m4-asahi/src/util/ralloc.c:264
+    #3 0x55f8ae1cbdda in descriptor_util_layout_get ../../mesa/m4-asahi/src/gallium/drivers/zink/zink_descriptors.c:153
+    #4 0x55f8ae1cc3ba in worker /home/council/dev/dirtyroom_m4/tools/zink-descriptor-race.c:30
+    #5 0x7fde6fe61858  (/usr/lib/libasan.so.8+0x61858) (BuildId: b8a4241051a1621937fdc46e867ba7ecb56d96ea)
+    #6 0x7fde6fa980a1  (/usr/lib/libc.so.6+0x980a1) (BuildId: 503200d7fda94a5dc6058d7e0694e5d1dcb2e372)
+
+previously allocated by thread T8 here:
+    #0 0x7fde6ff2c0c1 in malloc (/usr/lib/libasan.so.8+0x12c0c1) (BuildId: b8a4241051a1621937fdc46e867ba7ecb56d96ea)
+    #1 0x55f8ae1cce9c in ralloc_size /home/council/dev/dirtyroom_m4/mesa/m4-asahi/src/util/ralloc.c:118
+    #2 0x55f8ae1cd094 in rzalloc_size /home/council/dev/dirtyroom_m4/mesa/m4-asahi/src/util/ralloc.c:152
+    #3 0x55f8ae1caf2c in create_layout ../../mesa/m4-asahi/src/gallium/drivers/zink/zink_descriptors.c:118
+    #4 0x55f8ae1cbcdf in descriptor_util_layout_get ../../mesa/m4-asahi/src/gallium/drivers/zink/zink_descriptors.c:147
+    #5 0x55f8ae1cc3ba in worker /home/council/dev/dirtyroom_m4/tools/zink-descriptor-race.c:30
+    #6 0x7fde6fe61858  (/usr/lib/libasan.so.8+0x61858) (BuildId: b8a4241051a1621937fdc46e867ba7ecb56d96ea)
+    #7 0x7fde6fa980a1  (/usr/lib/libc.so.6+0x980a1) (BuildId: 503200d7fda94a5dc6058d7e0694e5d1dcb2e372)
+
+Thread T8 created by T0 here:
+    #0 0x7fde6ff226f4 in pthread_create (/usr/lib/libasan.so.8+0x1226f4) (BuildId: b8a4241051a1621937fdc46e867ba7ecb56d96ea)
+    #1 0x55f8ae1cc9be in main /home/council/dev/dirtyroom_m4/tools/zink-descriptor-race.c:47
+    #2 0x7fde6fa27780  (/usr/lib/libc.so.6+0x27780) (BuildId: 503200d7fda94a5dc6058d7e0694e5d1dcb2e372)
+    #3 0x7fde6fa278b8 in __libc_start_main (/usr/lib/libc.so.6+0x278b8) (BuildId: 503200d7fda94a5dc6058d7e0694e5d1dcb2e372)
+    #4 0x55f8ae1ca514 in _start (/home/council/dev/dirtyroom_m4/build/gles32-crash-fix-20260922/host-before-b/test+0x5514) (BuildId: ad1e6242ff32d51fa3b5a2da0f607249d51735ed)
+
+SUMMARY: AddressSanitizer: heap-use-after-free /home/council/dev/dirtyroom_m4/mesa/m4-asahi/src/util/ralloc.c:318 in unsafe_free
+Shadow bytes around the buggy address:
+  0x7c3e6e842600: fd fd fd fd fd fd fd fd fa fa fa fa 00 00 00 00
+  0x7c3e6e842680: 00 00 00 00 fa fa fa fa 00 00 00 00 00 00 00 00
+  0x7c3e6e842700: fa fa fa fa fd fd fd fd fd fd fd fd fa fa fa fa
+  0x7c3e6e842780: 00 00 00 00 00 00 00 00 fa fa fa fa 00 00 00 00
+  0x7c3e6e842800: 00 00 00 00 fa fa fa fa 00 00 00 00 00 00 00 00
+=>0x7c3e6e842880: fa fa fa fa fd fd fd fd[fd]fd fd fd fa fa fa fa
+  0x7c3e6e842900: fd fd fd fd fd fd fd fd fa fa fa fa fd fd fd fd
+  0x7c3e6e842980: fd fd fd fd fa fa fa fa fd fd fd fd fd fd fd fd
+  0x7c3e6e842a00: fa fa fa fa fd fd fd fd fd fd fd fd fa fa fa fa
+  0x7c3e6e842a80: fd fd fd fd fd fd fd fd fa fa fa fa fd fd fd fd
+  0x7c3e6e842b00: fd fd fd fd fa fa fa fa 00 00 00 00 00 00 00 00
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07 
+  Heap left redzone:       fa
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+  Left alloca redzone:     ca
+  Right alloca redzone:    cb
+==1653862==ABORTING

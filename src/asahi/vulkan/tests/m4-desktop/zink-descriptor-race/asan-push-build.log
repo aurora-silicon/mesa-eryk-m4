@@ -1,0 +1,5 @@
+ninja: Entering directory `build/mesa-m4-native-asan'
+[1/13] Generating src/git_sha1.h with a custom command
+[2/4] Compiling C object src/gallium/drivers/zink/libzink.a.p/zink_descriptors.c.o
+[3/4] Linking static target src/gallium/drivers/zink/libzink.a
+[4/4] Linking target src/gallium/targets/dri/libgallium-26.1.4.so

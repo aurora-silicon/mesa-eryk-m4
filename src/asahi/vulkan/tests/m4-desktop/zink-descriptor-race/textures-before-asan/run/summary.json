@@ -1,0 +1,22 @@
+{
+  "selected": 339,
+  "recorded": 339,
+  "completed": 339,
+  "counts": {
+    "Pass": 339
+  },
+  "classifications": {
+    "unclassified": 339
+  },
+  "elapsed_seconds": 379.0761993240012,
+  "preparation_seconds": 1.51250707199506,
+  "runner_seconds": 374.8309932510001,
+  "jobs": 1,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "02abb2a0e8ef5a379a85f1925a8c62bb47b46a3732ec4277acea6deb8de96f83",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T124119675900Z-gles-textures-before-asan",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 89.75
+}

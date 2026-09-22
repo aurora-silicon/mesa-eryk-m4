@@ -1,5 +1,14 @@
 # Full GLES rerun after the September 22 fixes
 
+This historical campaign is **STOPPED** at 48,454/326,602 completed:
+46,782 Pass, 1,662 NotSupported, one Crash, eight QualityWarning and one
+CompatibilityWarning; 278,148 Unrun. Do not resume it on a changed driver.
+The allocator race is fixed in `2da009f46e1`; see
+[descriptor race evidence](../zink-descriptor-race/README.md).
+The separate fixed-build campaign is `build/gles32-descriptor-fixed-20260922`.
+The original crash and exact-incident review below remain historical evidence;
+that continuation permission does not apply to the new campaign.
+
 The user requested a fresh full rerun. Campaign:
 `build/gles32-retest-20260922`. Original results under
 `build/gles32-zink-20260922/full` are untouched.
@@ -23,7 +32,7 @@ New fatal cases, GPU incidents, OOM or guard failures stop for review. Do not
 silently retry a failure. A private 1000 Hz compositor provides synthetic WSI
 pacing; the normal desktop remains active.
 
-## First new failure retained; remaining cases resumed
+## Historical incident continuation (subsequently stopped)
 
 Fresh EGL segment 0 completed 1366 Pass, 656 NotSupported, one Crash; 477
 cases had not run when scheduling stopped. The crash at global index 1116 is

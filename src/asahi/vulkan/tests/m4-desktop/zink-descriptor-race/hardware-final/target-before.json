@@ -1,0 +1,24 @@
+{
+  "boot_id": "f9d383d2-2573-417e-b6ee-b0164801ea5e",
+  "uptime_seconds": 7760.7,
+  "kernel": "7.1.9-dirtyroom-asahi2+",
+  "files": {
+    "/opt/asahi-m4-port/lib/libvulkan_asahi.so": "98891f7b35a025eba6271b30e1f58beb5fc03a2a4c55e52b546eb56daf47075d",
+    "/root/guarded-command.py": "86a4a3610ea901ca1ed87bc75d2f23a4ddc970bdcd106614af34375feea9b0d6",
+    "/opt/asahi-m4-port/lib/libgallium-26.1.4.so": "fd777b3abb0a4e7068305b8d3b9472d82387f5f9ce683fc131b8e873e5a02c8f",
+    "/root/run-m4-gl.py": "6842d9bb244b52e7b358b63af9548c1a08d6c6a3244da61efe1b157006df8471",
+    "/root/firmware-snapshot.py": "37fb9b9de46fddab7e71703dafdbef5e9ab9ada6bddea7409632d4e8aae69d0f",
+    "/root/g16-fault-dump.py": "c3988ddf0ad9e10e2b9736582c9ab7c59c90a62090d0e34a32db1ba46c917bf3",
+    "/lib/modules/7.1.9-dirtyroom-asahi2+/kernel/drivers/gpu/drm/asahi/asahi.ko": "4713d6fd423b20d2135cb72461aaa08f984d842b1de5c32415245009c4ac1816",
+    "/root/g16-submit-test/experiment_watchdog.py": "28600768bceb930a3528471fd7982db9247ec86c00f4a522456b70e38001e18d",
+    "/root/g16-submit-test/experiment_thermals.py": "ec637ec7ab390d0831a96e967f4f483833a06cfc1d3b2e2bdd5622e65e323d3d",
+    "/root/cts-bulk/gles-sharing-final-asan-2e2423eaffc9/cts-headless.py": "c1900a68c1702c5e3e8e4b6be0deb29a395a58313c471a1300e9be96407c0fe6",
+    "/root/cts-bulk/gles-sharing-final-asan-2e2423eaffc9/cts-sample.py": "a1d63b1b4bd8315289d21cd3600b3084114e0b964b1c7599c973d29e7f9b537a",
+    "/root/gl-cts-1.4.6.2/glcts": "b1b9630265dca8269fc34a3a062f801c259022055a56641bcf4d3fbbbc2a5070",
+    "/root/cts-bulk/gles-sharing-final-asan-2e2423eaffc9/cases.txt": "2e2423eaffc9c2d5f1764946ababd362f8175313f0af5736ea74f7ae0f426b2d",
+    "/root/cts-bulk/gles-sharing-final-asan-2e2423eaffc9/deqp-runner": "060aad45bbfbc9f1d5156cfbe950584fe86d1ec77e81b609a568bb519f4b6b85"
+  },
+  "display_status": {
+    "/sys/kernel/debug/dri/soc:display-subsystem/m4_status": "completed 269\nfailed 0\nactive_fb 42\nimported 1\nswap_total_us 3232854\nswap_max_us 22802\n"
+  }
+}

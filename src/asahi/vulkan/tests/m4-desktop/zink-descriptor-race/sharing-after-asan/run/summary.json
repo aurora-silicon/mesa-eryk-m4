@@ -1,0 +1,22 @@
+{
+  "selected": 38,
+  "recorded": 38,
+  "completed": 38,
+  "counts": {
+    "Pass": 38
+  },
+  "classifications": {
+    "unclassified": 38
+  },
+  "elapsed_seconds": 30.816366890008794,
+  "preparation_seconds": 1.4178152289969148,
+  "runner_seconds": 26.748559501999807,
+  "jobs": 1,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "2e2423eaffc9c2d5f1764946ababd362f8175313f0af5736ea74f7ae0f426b2d",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T130024546565Z-gles-sharing-after-asan",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 75.75
+}
