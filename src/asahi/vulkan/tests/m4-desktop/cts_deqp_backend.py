@@ -96,9 +96,9 @@ def run(args, check, boot, out, env, metadata, save):
     selected = out / 'runner-cases.txt'
     selected.write_text('\n'.join(cases) + '\n')
     result_dir = out / 'deqp-runner'
-    egl_only = all(case.startswith('dEQP-EGL.') for case in cases)
-    if egl_only:
-        # deqp-runner has no EGL renderer check. Check the same binary and
+    auxiliary_renderer_check = all(case.startswith(('dEQP-EGL.', 'KHR-NoContext.')) for case in cases)
+    if auxiliary_renderer_check:
+        # deqp-runner cannot check EGL or no-context packages. Check the same binary and
         # environment in a real ES context before starting its EGL tests.
         preflight = [str(args.binary), '--deqp-case=KHR-GLES32.info.renderer',
             '--deqp-gl-context-type=egl', '--deqp-egl-display-type=x11',
@@ -115,7 +115,7 @@ def run(args, check, boot, out, env, metadata, save):
             '--caselist', str(selected), '--output', str(result_dir),
             '--jobs', str(args.jobs), '--tests-per-group', str(args.tests_per_group),
             '--timeout', str(args.case_timeout), '--first-attempt',
-            *([] if egl_only else ['--renderer-check', 'Apple M4' if args.renderer == 'm4' else 'llvmpipe|lavapipe']),
+            *([] if auxiliary_renderer_check else ['--renderer-check', 'Apple M4' if args.renderer == 'm4' else 'llvmpipe|lavapipe']),
             '--', '--deqp-log-images=' + ('enable' if args.log_images else 'disable'),
             '--deqp-log-shader-sources=' + ('enable' if args.log_sources else 'disable')]
     argv += getattr(args, 'deqp_arg', [])

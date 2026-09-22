@@ -89,3 +89,10 @@ deadline error with demonstrated progress, no fatal case results, no GPU/
 display/thermal fault or memory-floor crossing. Original completed results
 and attempts remain; only Unrun/Interrupted cases resume under fresh guards
 with the unchanged 900-second segment and 60-second case limits.
+
+The no-context session at segment 0046 exposed the same deqp-runner renderer-
+check limitation as EGL: it exited before executing any case. The guarded
+same-binary/environment ES renderer preflight now also covers KHR-NoContext,
+with renderer identity QPA retained. This does not omit or bypass identity
+validation. The original setup attempt is retained in `run-setup-renderer-check`
+and evidence 20260922T085157948833Z-gles32-plan-0046-r0; its one case was Unrun.
