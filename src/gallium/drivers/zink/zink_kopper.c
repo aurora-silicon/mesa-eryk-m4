@@ -561,7 +561,12 @@ kopper_acquire(struct zink_screen *screen, struct zink_resource *res, uint64_t t
     *
     * then this is a no-op
     */
-   if (!res->obj->new_dt && res->obj->dt_idx != UINT32_MAX &&
+   /* A SUBOPTIMAL result from an asynchronous present can request a new
+    * swapchain after the next back buffer has already been acquired. Keep
+    * that buffer until its frame is presented: its contents and reported
+    * buffer age are still valid. Recreate on the next acquisition instead.
+    */
+   if (res->obj->dt_idx != UINT32_MAX &&
        (cdt->swapchain->images[res->obj->dt_idx].acquire || cdt->swapchain->images[res->obj->dt_idx].acquired))
       return VK_SUCCESS;
    VkSemaphore acquire = VK_NULL_HANDLE;

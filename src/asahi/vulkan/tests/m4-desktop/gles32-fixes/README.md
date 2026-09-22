@@ -75,3 +75,24 @@ See depth-border-group.json. Guards pass, peak 66 C. An intermediate development
 build crashed due to removing a NIR source from an unlinked clone; the clone is
 now inserted before source removal. That development attempt remains in the
 workspace evidence and is not confused with the baseline compiler crashes.
+
+## Acquired EGL buffers surviving asynchronous swapchain replacement
+
+Both remaining EGL partial-update failures were a Zink lifetime bug. The
+retained GFXReconstruct trace shows an asynchronous present returning
+SUBOPTIMAL, followed by acquisition of an old-chain image, then replacement
+of the swapchain during that same frame. A new undefined image was presented
+although EGL had reported the age of the old acquired image. Native hardware
+triggered this path; the same Zink over lavapipe did not in the reference run.
+
+Keep an already acquired image until presentation; defer the pending recreation
+to the next acquisition. Do not suppress SUBOPTIMAL or disable partial updates.
+The retained before-fix trace is diagnostic evidence, not itself a regression
+replay: it records the bad application's Vulkan sequence, which a Vulkan
+implementation cannot repair. The unmodified EGL CTS cases test the Zink fix.
+
+Both failures now Pass. All 251 selected buffer-age, partial-update and
+swap-buffers-with-damage cases finish: 149 Pass, 102 NotSupported, zero Fail.
+This includes supported resize cases. Guards Pass, peak 94 C. See egl-retest.json
+and egl-preservation.json. Gallium SHA256:
+`5b43d98b960517e4e7c649cece10d2a7c26a65158fec55c985be97fc7dc06dac`.

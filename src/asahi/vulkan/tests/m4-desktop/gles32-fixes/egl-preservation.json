@@ -1,0 +1,23 @@
+{
+  "selected": 251,
+  "recorded": 251,
+  "completed": 251,
+  "counts": {
+    "NotSupported": 102,
+    "Pass": 149
+  },
+  "classifications": {
+    "unclassified": 251
+  },
+  "elapsed_seconds": 58.339982860998134,
+  "preparation_seconds": 1.4849840460083215,
+  "runner_seconds": 55.57338014900006,
+  "jobs": 1,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "a0aef4fa8c85e586c3f4fd79dcccb336defeda6c9c8eef87e8488c6caab35d18",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115004295666Z-gles-egl-preservation",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 94.0
+}
