@@ -79,3 +79,13 @@ No other chip was enabled.
 Combined guarded validation: 20260922T010718398173Z-gl46-view-sparse3d-fixed,
 121 Pass / 40 NotSupported, 9.83 s, peak 68.25 C. The six failing first-attempt
 cases are preserved rather than overwritten by these rechecks.
+
+
+The non-copy continuation completed 2,038 Pass / 776 NotSupported before a
+new native driver rejection. shader_subroutine.globals_sampling_output_discard_function_calls
+uses a GS triangle strip with a PointCoord-reading FS. Those values are
+undefined outside points, but the program is legal. `32b25c018bf` removes
+the topology restriction while retaining coefficient shape checks. All 28
+GL46 shader_subroutine cases pass (12.37 s, peak 83 C). The first assertion
+and three SIGKILL peer records are retained under range3-rest. Remaining
+untouched/canceled cases continue under range3-rest2.
