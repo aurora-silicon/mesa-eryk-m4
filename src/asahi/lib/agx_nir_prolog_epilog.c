@@ -405,6 +405,15 @@ static bool
 lower_tests_zs_intr(nir_builder *b, nir_intrinsic_instr *intr, void *data)
 {
    bool *value = data;
+   if (!*value && intr->intrinsic == nir_intrinsic_sample_mask_agx) {
+      /* This part only kills samples; another part owns the tests. The
+       * generic lowering may express a kill as (killed, ~killed). Make its
+       * zero live intersection explicit even when killed is dynamic, so the
+       * native backend does not acquire/release the testing dependency. */
+      b->cursor = nir_before_instr(&intr->instr);
+      nir_src_rewrite(&intr->src[1], nir_imm_intN_t(b, 0, 16));
+      return true;
+   }
    if (intr->intrinsic != nir_intrinsic_load_shader_part_tests_zs_agx)
       return false;
 

@@ -1,0 +1,22 @@
+{
+  "selected": 1,
+  "recorded": 1,
+  "completed": 1,
+  "counts": {
+    "Pass": 1
+  },
+  "classifications": {
+    "unclassified": 1
+  },
+  "elapsed_seconds": 23.483497090004676,
+  "preparation_seconds": 1.5403593570008525,
+  "runner_seconds": 21.515576108999994,
+  "jobs": 1,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "08aceb8d11273a6fca7fe448dfd180f6fac06d3c25a361b99e0885e0dcbce941",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T025347600490Z-gl46-tess-ordering-isolated",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 65.25
+}

@@ -143,3 +143,24 @@ Source: https://registry.khronos.org/OpenGL/specs/gl/glspec46.core.pdf
 The retained later main-list results include the remaining copy timeout,
 compressed-1D fix/recheck, final-range failures, and continuation. These are
 separate attempts across builds, not one conformance run.
+
+## Cull-distance prolog with sample masks
+
+The GLSL reproducer renders all black only when cull distance is present.
+The discard-only prolog expressed (killed, ~killed), but the native backend
+classified its dynamic live operand as running tests and acquired/released
+the depth/stencil dependency before the main sample-mask shader. Canonicalize
+the live operand to zero when the part is explicitly not running tests.
+
+Before: `20260922T025638608557Z-gl46-sample-mask-clips` and retained compiler
+inputs in `20260922T025833829270Z-gl46-cull-mask-capture`. Without cull distance
+the same shader passes. After: `20260922T030052720433Z-gl46-cull-mask-kill-fixed`
+passes all four mask combinations. All 417 GL46 SPIR-V, cull-distance and
+sample-variable cases complete: 363 Pass / 54 NotSupported, no failures,
+11.11 s, peak 72.5 C. This includes the original SPIR-V built-in validation
+failure. No Zink or SPIR-V frontend workaround was used.
+
+The original tessellation vertex-ordering timeout passes alone in 21.52 s
+with the unchanged 60 s bound (`20260922T025347600490Z-gl46-tess-ordering-isolated`).
+The 3D framebuffer-layer failure still reproduces in isolation and remains
+open; byte readback passes while float-converting readback fails.

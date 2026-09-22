@@ -1,0 +1,23 @@
+{
+  "selected": 417,
+  "recorded": 417,
+  "completed": 417,
+  "counts": {
+    "Pass": 363,
+    "NotSupported": 54
+  },
+  "classifications": {
+    "unclassified": 417
+  },
+  "elapsed_seconds": 11.105521867000789,
+  "preparation_seconds": 1.6146551950005232,
+  "runner_seconds": 8.726024713000015,
+  "jobs": 2,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "a6b849f4d574bd9ccbbc60266f37ef37c93300158472f80721784eebf824ff87",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T030138884663Z-gl46-cull-mask-fixed",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 72.5
+}
