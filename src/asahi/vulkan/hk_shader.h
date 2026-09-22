@@ -114,6 +114,8 @@ struct hk_shader_info {
    uint8_t cull_distance_array_size;
    uint8_t set_count;
    struct hk_descriptor_prefetch descriptor_prefetch[HK_MAX_SETS];
+   struct hk_descriptor_prefetch descriptor_prefetch_compact[HK_DESCRIPTOR_PREFETCH_MAX];
+   unsigned descriptor_prefetch_compact_count;
    struct hk_ubo_prefetch ubo_prefetch[HK_UBO_PREFETCH_MAX];
    unsigned ubo_prefetch_count;
    bool ubo_prefetch_direct;

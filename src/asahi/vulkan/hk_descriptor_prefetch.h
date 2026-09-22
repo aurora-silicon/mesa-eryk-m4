@@ -9,11 +9,18 @@ struct hk_descriptor_prefetch {
    uint32_t offset_B;
    uint32_t size_B;
    uint16_t uniform_half;
+   uint16_t set;
 };
 
 bool hk_nir_prefetch_descriptors(nir_shader *nir, unsigned set_base,
                                 unsigned set_count, unsigned *uniform_end,
                                 struct hk_descriptor_prefetch *spans);
+
+#define HK_DESCRIPTOR_PREFETCH_MAX 32
+bool hk_nir_prefetch_descriptors_compact(nir_shader *nir, unsigned set_base,
+   unsigned set_count, unsigned *uniform_end,
+   struct hk_descriptor_prefetch spans[HK_DESCRIPTOR_PREFETCH_MAX],
+   unsigned *span_count);
 
 #define HK_PLAIN_SAMPLER_MAX 8
 struct hk_plain_sampler {

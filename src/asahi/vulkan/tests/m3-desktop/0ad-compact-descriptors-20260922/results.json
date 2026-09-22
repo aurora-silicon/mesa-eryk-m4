@@ -1,0 +1,190 @@
+{
+  "cts_counts": {
+    "Pass": 32
+  },
+  "cts_cases": [
+    {
+      "case": "dEQP-VK.binding_model.descriptor_copy.graphics.combined_image_sampler_0",
+      "catalog_index": 337885,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.binding_model.descriptor_copy.graphics.combined_image_sampler_1",
+      "catalog_index": 337886,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.binding_model.descriptor_copy.graphics.combined_image_sampler_2",
+      "catalog_index": 337887,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.binding_model.descriptor_copy.graphics.combined_image_sampler_4",
+      "catalog_index": 337889,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.binding_model.descriptor_copy.graphics.combined_image_sampler_5",
+      "catalog_index": 337890,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.binding_model.descriptor_copy.graphics.combined_image_sampler_array0",
+      "catalog_index": 337892,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.binding_model.descriptor_copy.graphics.combined_image_sampler_array2",
+      "catalog_index": 337894,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.binding_model.dynamic_offset.shader_reuse_differing_layout_graphics",
+      "catalog_index": 373778,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.combined_image_sampler_immutable.fragment.single_descriptor.2d",
+      "catalog_index": 388408,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.combined_image_sampler_mutable.fragment.multiple_contiguous_descriptors.2d",
+      "catalog_index": 389480,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.with_push.combined_image_sampler_immutable.fragment.multiple_contiguous_descriptors.2d",
+      "catalog_index": 396499,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind.with_template.combined_image_sampler_mutable.fragment.multiple_descriptor_sets.single_descriptor.2d",
+      "catalog_index": 404218,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind2.combined_image_sampler_immutable.fragment.multiple_descriptor_sets.descriptor_array.2d",
+      "catalog_index": 411272,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind2.combined_image_sampler_immutable.fragment.multiple_discontiguous_descriptor_sets.multiple_arbitrary_descriptors.2d",
+      "catalog_index": 411335,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind2.with_push.combined_image_sampler_immutable.fragment.multiple_discontiguous_descriptors.2d",
+      "catalog_index": 419461,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind2.with_push.combined_image_sampler_mutable.fragment.multiple_contiguous_descriptors.2d",
+      "catalog_index": 419975,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind2.with_push.combined_image_sampler_mutable.fragment.multiple_discontiguous_descriptors.2d",
+      "catalog_index": 419989,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind2.with_push_template.combined_image_sampler_immutable.fragment.multiple_discontiguous_descriptors.2d",
+      "catalog_index": 422659,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.primary_cmd_buf.bind2.with_template.combined_image_sampler_immutable.fragment.multiple_discontiguous_descriptor_sets.multiple_contiguous_descriptors.2d",
+      "catalog_index": 426010,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.secondary_cmd_buf.bind.combined_image_sampler_immutable.fragment.multiple_discontiguous_descriptor_sets.multiple_arbitrary_descriptors.2d",
+      "catalog_index": 434136,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.secondary_cmd_buf.bind.combined_image_sampler_mutable.fragment.multiple_discontiguous_descriptor_sets.multiple_contiguous_descriptors.2d",
+      "catalog_index": 435168,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.secondary_cmd_buf.bind.with_push_template.combined_image_sampler_immutable.fragment.descriptor_array.2d",
+      "catalog_index": 444159,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.secondary_cmd_buf.bind.with_push_template.combined_image_sampler_immutable.fragment.multiple_discontiguous_descriptors.2d",
+      "catalog_index": 444196,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.secondary_cmd_buf.bind.with_push_template.combined_image_sampler_mutable.fragment.multiple_arbitrary_descriptors.2d",
+      "catalog_index": 444635,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.secondary_cmd_buf.bind.with_template.combined_image_sampler_immutable.fragment.multiple_discontiguous_descriptor_sets.multiple_arbitrary_descriptors.2d",
+      "catalog_index": 447093,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.secondary_cmd_buf.bind.with_template.combined_image_sampler_immutable.fragment.multiple_discontiguous_descriptor_sets.multiple_contiguous_descriptors.2d",
+      "catalog_index": 447096,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.secondary_cmd_buf.bind.with_template.combined_image_sampler_mutable.fragment.multiple_descriptor_sets.multiple_arbitrary_descriptors.2d",
+      "catalog_index": 448073,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.secondary_cmd_buf.bind.with_template.combined_image_sampler_mutable.fragment.multiple_discontiguous_descriptor_sets.single_descriptor.2d",
+      "catalog_index": 448131,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.secondary_cmd_buf.bind2.combined_image_sampler_immutable.fragment.single_descriptor.2d",
+      "catalog_index": 454415,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.secondary_cmd_buf.bind2.combined_image_sampler_mutable.fragment.multiple_discontiguous_descriptor_sets.multiple_arbitrary_descriptors.2d",
+      "catalog_index": 455423,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.secondary_cmd_buf.bind2.with_push.combined_image_sampler_mutable.fragment.multiple_contiguous_descriptors.2d",
+      "catalog_index": 462074,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.binding_model.shader_access.secondary_cmd_buf.bind2.with_template.combined_image_sampler_immutable.fragment.multiple_descriptor_sets.descriptor_array.2d",
+      "catalog_index": 467288,
+      "status": "Pass"
+    }
+  ],
+  "replay": {
+    "returncode": 0,
+    "timed_out": false,
+    "elapsed_seconds": 4.3179543979999835,
+    "screenshot": true
+  },
+  "bitmap_sha256": "ec64e34c347316daea3738ef689e1ccc1c4a759f9b3d88a497df360a79c72a2c",
+  "wide_prefetch_live": {
+    "frames": 924,
+    "seconds": 9.998155180000001,
+    "fps": 92.41704928208564,
+    "median_frame_ms": 11.307033999998772,
+    "maximum_frame_ms": 16.93739999999977,
+    "scope": "Complete frame intervals in the last ten seconds; screenshot captured afterwards"
+  },
+  "compact_prefetch_live": {
+    "frames": 941,
+    "seconds": 9.997365748000002,
+    "fps": 94.12479484290644,
+    "median_frame_ms": 10.83453499999898,
+    "maximum_frame_ms": 16.64075100000062,
+    "scope": "Complete frame intervals in the last ten seconds; screenshot captured afterwards"
+  }
+}

@@ -1621,6 +1621,7 @@ hk_g17p_graphics_uniform_ranges(
    }
 
    static_assert(HK_MAX_SETS == 8, "descriptor prefetch range budget");
+   static_assert(HK_DESCRIPTOR_PREFETCH_MAX == 32, "compact descriptor range budget");
    static_assert(HK_UBO_PREFETCH_MAX == 128, "uniform prefetch range capacity");
    for (unsigned i = 0; i < s->info.ubo_prefetch_count; ++i) {
       const struct hk_ubo_prefetch *load = &s->info.ubo_prefetch[i];
@@ -1675,6 +1676,24 @@ hk_g17p_graphics_uniform_ranges(
       const struct hk_descriptor_state *descriptors = &cmd->state.gfx.descriptors;
       uint64_t address = descriptors->root.sets[set];
       uint32_t size = descriptors->set_sizes[set];
+      if (!address || span->offset_B > size ||
+          span->size_B > size - span->offset_B ||
+          count >= HK_AGX3_G17P_GRAPHICS_MAX_RANGES)
+         return false;
+      ranges[count++] = (struct agx3_ioto_uniform_range){
+         .start_halfs = span->uniform_half,
+         .size_halfs = span->size_B / 2,
+         .address = address + span->offset_B,
+      };
+   }
+
+   for (unsigned i = 0; i < s->info.descriptor_prefetch_compact_count; ++i) {
+      const struct hk_descriptor_prefetch *span = &s->info.descriptor_prefetch_compact[i];
+      const struct hk_descriptor_state *descriptors = &cmd->state.gfx.descriptors;
+      if (span->set >= s->info.set_count)
+         return false;
+      uint64_t address = descriptors->root.sets[span->set];
+      uint32_t size = descriptors->set_sizes[span->set];
       if (!address || span->offset_B > size ||
           span->size_B > size - span->offset_B ||
           count >= HK_AGX3_G17P_GRAPHICS_MAX_RANGES)

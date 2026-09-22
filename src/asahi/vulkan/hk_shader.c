@@ -163,6 +163,7 @@ hk_physical_device_compiler_flags(const struct hk_physical_device *pdev)
       flags |= (uint64_t)debug_get_bool_option("AGX_NATIVE_MEMORY_PREAMBLE", false) << 40;
       flags |= (uint64_t)debug_get_bool_option("HK_NATIVE_BRANCH_SCALED", false) << 41;
       flags |= (uint64_t)debug_get_bool_option("HK_NATIVE_COALESCE_BROADCAST", false) << 42;
+      flags |= (uint64_t)debug_get_bool_option("HK_NATIVE_COMPACT_DESCRIPTOR_PREFETCH", false) << 43;
    }
    return flags;
 }
@@ -2941,10 +2942,21 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
    if (agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) &&
        debug_get_bool_option("HK_M4_PREFETCH_DESCRIPTORS", false) &&
        (sw_stage == MESA_SHADER_FRAGMENT || (sw_stage == MESA_SHADER_VERTEX && hw))) {
-      NIR_PASS(_, nir, hk_nir_prefetch_descriptors, root + 4, set_count,
-               &reserved, shader->info.descriptor_prefetch);
+      if (debug_get_bool_option("HK_NATIVE_COMPACT_DESCRIPTOR_PREFETCH", false)) {
+         NIR_PASS(_, nir, hk_nir_prefetch_descriptors_compact, root + 4, set_count,
+                  &reserved, shader->info.descriptor_prefetch_compact,
+                  &shader->info.descriptor_prefetch_compact_count);
+      } else {
+         NIR_PASS(_, nir, hk_nir_prefetch_descriptors, root + 4, set_count,
+                  &reserved, shader->info.descriptor_prefetch);
+      }
       if (debug_get_bool_option("HK_M4_PREFETCH_AUDIT", false)) {
          fprintf(stderr, "M4 descriptor prefetch: stage=%u reserved=%u", sw_stage, reserved);
+         for (unsigned i = 0; i < shader->info.descriptor_prefetch_compact_count; ++i) {
+            const struct hk_descriptor_prefetch *span = &shader->info.descriptor_prefetch_compact[i];
+            fprintf(stderr, " compact-set%u+%u:%u->u%u", span->set,
+                    span->offset_B, span->size_B, span->uniform_half);
+         }
          for (unsigned set = 0; set < set_count; ++set) {
             const struct hk_descriptor_prefetch *span = &shader->info.descriptor_prefetch[set];
             if (span->size_B)
