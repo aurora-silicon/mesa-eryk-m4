@@ -2233,6 +2233,20 @@ hk_native_raw_copy_format(VkFormat format)
    /* A float sample/repack can change the shared exponent or mantissa bits.
     * Image copies must preserve the original RGB9E5 representation. */
    case VK_FORMAT_E5B9G9R9_UFLOAT_PACK32:
+   /* Float conversions may canonicalize NaN payloads, including the packed
+    * R11G11B10 encoding. Texture views can observe those original bits. */
+   case VK_FORMAT_B10G11R11_UFLOAT_PACK32:
+   case VK_FORMAT_R16_SFLOAT:
+   case VK_FORMAT_R16G16_SFLOAT:
+   case VK_FORMAT_R16G16B16A16_SFLOAT:
+   /* Both most-negative SNORM encodings sample as -1.0. Repacking loses
+    * which encoding was uploaded, which an integer/float view observes. */
+   case VK_FORMAT_R8_SNORM:
+   case VK_FORMAT_R8G8_SNORM:
+   case VK_FORMAT_R8G8B8A8_SNORM:
+   case VK_FORMAT_R16_SNORM:
+   case VK_FORMAT_R16G16_SNORM:
+   case VK_FORMAT_R16G16B16A16_SNORM:
    case VK_FORMAT_A1R5G5B5_UNORM_PACK16:
    /* The 10-bit signed packed formats have no renderable tile format (not
     * in Metal either), so a copy view in the image's own format has no
