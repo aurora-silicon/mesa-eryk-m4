@@ -2230,6 +2230,18 @@ static bool
 hk_native_raw_copy_format(VkFormat format)
 {
    switch (format) {
+   /* SNORM's two encodings of -1 must remain distinct in a byte copy.
+    * Sampling/repacking canonicalizes INT_MIN to -INT_MAX. */
+   case VK_FORMAT_R8_SNORM:
+   case VK_FORMAT_R8G8_SNORM:
+   case VK_FORMAT_R8G8B8_SNORM:
+   case VK_FORMAT_R8G8B8A8_SNORM:
+   case VK_FORMAT_B8G8R8_SNORM:
+   case VK_FORMAT_B8G8R8A8_SNORM:
+   case VK_FORMAT_R16_SNORM:
+   case VK_FORMAT_R16G16_SNORM:
+   case VK_FORMAT_R16G16B16_SNORM:
+   case VK_FORMAT_R16G16B16A16_SNORM:
    /* A float sample/repack can change the shared exponent or mantissa bits.
     * Image copies must preserve the original RGB9E5 representation. */
    case VK_FORMAT_E5B9G9R9_UFLOAT_PACK32:
@@ -2816,6 +2828,14 @@ hk_CmdCopyImage2(VkCommandBuffer commandBuffer,
    VK_FROM_HANDLE(hk_image, src_image, pCopyImageInfo->srcImage);
    VK_FROM_HANDLE(hk_image, dst_image, pCopyImageInfo->dstImage);
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
+   if (debug_get_option_hk_m4_copy_trace()) {
+      fprintf(stderr, "asahi image copy: src=%s dst=%s compressed=%u,%u regions=%u\n",
+              vk_Format_to_str(src_image->vk.format),
+              vk_Format_to_str(dst_image->vk.format),
+              src_image->planes[0].layout.compressed,
+              dst_image->planes[0].layout.compressed,
+              pCopyImageInfo->regionCount);
+   }
    /* Sample through the native compressed view, then store to ordinary
     * storage. Consecutive slice copies can share one CDM instead of paying
     * for a complete render pass per small rectangle. The common meta shader

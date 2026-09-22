@@ -24,6 +24,10 @@ Each run retained the 45-second nonrenewing guard, 60-second watchdog, five
 PMP channels sampled at 0.5 seconds and a 95 C stop. Earlier failures remain
 in the evidence; this is targeted coverage, not complete GLES conformance.
 
+Evidence paths below are relative to
+`build/m3-gles31-20260922/triage-no-attachments/`.
+
+- `final-neighbors/final`: 72 Pass, results SHA256 `b4647b62920a6bccac378a8f6af2f571533b7b54324bdf4d10aa3c0eaf9424a6`.
 - `exact/final`: 4 Pass, peak 50.50 C, results SHA256 `fd73ce4721d451339f254da55b7b31058a15fdb795b6c0a622bddb2db3da31ac`.
 - `maximum-all/final`: 1 Pass, peak 52.50 C, results SHA256 `c6d082ee2bbc2deb400c5c85ee752e53695a79b41312c72065dd1a16e378cfc0`.
 
