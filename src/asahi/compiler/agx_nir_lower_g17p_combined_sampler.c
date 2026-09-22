@@ -491,10 +491,11 @@ agx_nir_lower_g17p_indexed_samplers(nir_shader *shader)
                tex, shader->info.stage == MESA_SHADER_FRAGMENT ||
                     shader->info.stage == MESA_SHADER_COMPUTE ||
                     g17p_explicit_lod_stage(shader->info.stage));
-            /* Vertex stages have no derivatives, but explicit-LOD sampling
-             * uses the same native operation as fragment/compute stages. */
+            /* Vertex stages have no derivatives. Explicit-LOD sampling and
+             * base-level gathers use the same native forms as compute. */
             if (g17p_explicit_lod_stage(shader->info.stage) && !fetch &&
-                tex->op != nir_texop_txl && tex->op != nir_texop_txd)
+                tex->op != nir_texop_txl && tex->op != nir_texop_txd &&
+                tex->op != nir_texop_tg4)
                return false;
             if (!fetch && (!g17p_sample_shape(tex) ||
                            (tex->op != nir_texop_tex && tex->op != nir_texop_txl &&

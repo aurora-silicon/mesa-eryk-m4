@@ -5292,8 +5292,10 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                (I->lod_mode == AGX_LOD_MODE_LOD_MIN ||
                 (I->lod_mode == AGX_LOD_MODE_LOD_GRAD ||
                  I->lod_mode == AGX_LOD_MODE_LOD_GRAD_MIN));
-            const bool compute_gather = ctx->stage == MESA_SHADER_COMPUTE &&
-               I->gather != AGX_GATHER_NONE;
+            /* Gather selects the base mip level without implicit derivatives,
+             * including vertex and compute-lowered geometry/tessellation stages.
+             * The same native gather form already executes in compute. */
+            const bool gather = I->gather != AGX_GATHER_NONE;
             uint16_t sample_wait = wait;
             if (sample_wait & (sample_wait - 1)) {
                if (!agx3_retire_slots_noop(emission, enc, sample_wait))
@@ -5301,7 +5303,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                sample_wait = 0;
             }
             if ((ctx->stage != MESA_SHADER_FRAGMENT && !explicit_level &&
-                 !compute_gather) ||
+                 !gather) ||
                 !agx3_emit_texture_sample(emission, enc, I, slot, sample_wait,
                                           final, enc == AGX_ISA_ENCODING_AGX3B &&
                                              needs_quad_helpers))
