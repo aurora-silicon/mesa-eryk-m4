@@ -1,0 +1,277 @@
+{
+  "job": 2262609,
+  "dump_sha256": "cf0bb88948dcf39b6fc9d12a2eca2c7d3d9decebb687b3c80c09860e2cf59a86",
+  "gate_192900": "0x2",
+  "free_engine_mask_128d60": "0xffff",
+  "queues": {
+    "ta": {
+      "info_cursors_20_24_28": [
+        77,
+        77,
+        77
+      ],
+      "scheduler_slot_2c": "0x70",
+      "active_nodes": [
+        {
+          "index": 54,
+          "state": 1,
+          "flags_04": "0xdc0000",
+          "command_and_flags_10": "0xfffffc200423c008",
+          "sequence_28": "0xfffffc200424c000",
+          "restart_30": "0xfffffc200424c000",
+          "engine_44": 255,
+          "flags_45": "0x0",
+          "uma_class_46": 0
+        }
+      ],
+      "context": {
+        "record": "queue-context",
+        "group_00": 0,
+        "slot_01": 0,
+        "priority_03": 2,
+        "queue_weight_04": 4,
+        "weight_share_06": 200,
+        "timeslice_0a": 5880,
+        "process_weight_26": 2
+      },
+      "ring_cursors_00_30_40": [
+        74,
+        77,
+        77
+      ]
+    },
+    "fragment": {
+      "info_cursors_20_24_28": [
+        94,
+        94,
+        94
+      ],
+      "scheduler_slot_2c": "0xffffffff",
+      "active_nodes": [],
+      "context": {
+        "record": "queue-context",
+        "group_00": 0,
+        "slot_01": 0,
+        "priority_03": 2,
+        "queue_weight_04": 4,
+        "weight_share_06": 200,
+        "timeslice_0a": 5880,
+        "process_weight_26": 2
+      },
+      "ring_cursors_00_30_40": [
+        94,
+        94,
+        94
+      ]
+    },
+    "compute": {
+      "info_cursors_20_24_28": [
+        133,
+        133,
+        133
+      ],
+      "scheduler_slot_2c": "0xffffffff",
+      "active_nodes": [],
+      "context": {
+        "record": "queue-context",
+        "group_00": 0,
+        "slot_01": 0,
+        "priority_03": 2,
+        "queue_weight_04": 4,
+        "weight_share_06": 200,
+        "timeslice_0a": 5880,
+        "process_weight_26": 2
+      },
+      "ring_cursors_00_30_40": [
+        133,
+        133,
+        133
+      ]
+    }
+  },
+  "note": "Sealed fault-only sequential observations. No atomicity or completion claim.",
+  "firmware_timing": {
+    "reference_clock_khz_193b6c": 24000,
+    "maintenance_period_193b70": 1,
+    "power_sample_period_193b74": 8,
+    "maintenance_ticks_128da0": 979403,
+    "derived_timer_interval_1928e0": 1000
+  },
+  "priority_weight_totals_304": [
+    0,
+    0,
+    200,
+    0
+  ],
+  "priority_shifts_314": [
+    4294967294,
+    4294967295,
+    0,
+    1
+  ],
+  "accounting_dirty_324": 0,
+  "client_notifications": {
+    "ta": {
+      "submitted": 1,
+      "firmware_stamp": "0x0",
+      "published_stamp": "0x0",
+      "flush_requested": 0,
+      "asid": 27
+    },
+    "fragment": {
+      "submitted": 1,
+      "firmware_stamp": "0x8030b600",
+      "published_stamp": "0x8030b600",
+      "flush_requested": 0,
+      "asid": 27
+    },
+    "compute": {
+      "submitted": 9,
+      "firmware_stamp": "0x3eb19a00",
+      "published_stamp": "0x3eb19a00",
+      "flush_requested": 0,
+      "asid": 27
+    }
+  },
+  "compute_command": {
+    "va": "0xfffffc2005088000",
+    "context_0c": 27,
+    "generation_88b": 46,
+    "register_list_gpu_720": "0x70001d8020",
+    "registers": {
+      "0x1a510": "0x710a6e8000",
+      "0x1a420": "0x86fd0f0000",
+      "0x1a4d0": "0x710a6e9480",
+      "0x1a4d8": "0x710a6e9488",
+      "0x1a4e0": "0x710a6e9490",
+      "0x1a4e8": "0x710a6e9498",
+      "0x1a440": "0x154024201",
+      "0x1a458": "0x10c08860",
+      "0x101d9": "0x1c",
+      "0x1a089": "0x0",
+      "0x1a091": "0x0",
+      "0x1a059": "0x0",
+      "0x1a061": "0x0",
+      "0x1a0b9": "0x0",
+      "0x1a0c1": "0x0",
+      "0x101d1": "0x0",
+      "0xd479": "0x0",
+      "0x1a0e9": "0x8",
+      "0x107a1": "0xff0000",
+      "0xa599": "0x13200400020",
+      "0xd411": "0x200000001",
+      "0x1a540": "0x1",
+      "0x14a9": "0x1",
+      "0xa351": "0x1",
+      "0x10071": "0x10000000000"
+    },
+    "stamp_810": "0x3eb19a00",
+    "completion_ee0": [
+      "0xffffffff",
+      "0xffffffff"
+    ],
+    "timestamps_8c0": [
+      "0x0",
+      "0x0"
+    ],
+    "uma_descriptor_e00": {
+      "0x0": "0x5088000",
+      "0x4": "0xfffffc20",
+      "0x8": "0x2",
+      "0xc": "0x0",
+      "0x10": "0x2",
+      "0x14": "0xa73c000",
+      "0x18": "0x71",
+      "0x1c": "0x4000",
+      "0x20": "0x0",
+      "0x24": "0x2000",
+      "0x28": "0x0",
+      "0x2c": "0x2000",
+      "0x30": "0xa760000",
+      "0x34": "0x71",
+      "0x38": "0x0",
+      "0x3c": "0x0",
+      "0x40": "0x4",
+      "0x44": "0x0",
+      "0x48": "0x80",
+      "0x4c": "0x9000000",
+      "0x50": "0xfffffc20",
+      "0x54": "0x1",
+      "0x58": "0x0",
+      "0x5c": "0x1",
+      "0x60": "0x0",
+      "0x64": "0x0",
+      "0x68": "0x0",
+      "0x6c": "0x0",
+      "0x70": "0x0",
+      "0x74": "0x0",
+      "0x78": "0x0",
+      "0x7c": "0x0",
+      "0x80": "0x0",
+      "0x84": "0x1",
+      "0x88": "0x0",
+      "0x8c": "0x0",
+      "0x90": "0x0",
+      "0x94": "0x2",
+      "0x98": "0x0",
+      "0x9c": "0x0"
+    },
+    "uma_slot1_words": [
+      "0x800000e2041100",
+      "0x430000003000",
+      "0x2000",
+      "0x0"
+    ],
+    "mappings": {
+      "gpu_va": "0x70001d8000",
+      "bootstrap_pa": "0x100de920000",
+      "client_pa": "0x100de920000",
+      "same_physical_page": true
+    },
+    "previous": {
+      "va": "0xfffffc2001d80000",
+      "uma_descriptor_e00": {
+        "0x0": "0x1d80000",
+        "0x4": "0xfffffc20",
+        "0x8": "0x1",
+        "0xc": "0x0",
+        "0x10": "0x2",
+        "0x14": "0x2088000",
+        "0x18": "0x71",
+        "0x1c": "0x4000",
+        "0x20": "0x180",
+        "0x24": "0x2180",
+        "0x28": "0x0",
+        "0x2c": "0x2000",
+        "0x30": "0x20ac000",
+        "0x34": "0x71",
+        "0x38": "0x0",
+        "0x3c": "0x0",
+        "0x40": "0x4",
+        "0x44": "0x0",
+        "0x48": "0x80",
+        "0x4c": "0x33d4000",
+        "0x50": "0xfffffc20",
+        "0x54": "0x4",
+        "0x58": "0x0",
+        "0x5c": "0x1",
+        "0x60": "0x0",
+        "0x64": "0x0",
+        "0x68": "0x0",
+        "0x6c": "0x0",
+        "0x70": "0x0",
+        "0x74": "0x0",
+        "0x78": "0x0",
+        "0x7c": "0x0",
+        "0x80": "0x0",
+        "0x84": "0x0",
+        "0x88": "0x0",
+        "0x8c": "0x0",
+        "0x90": "0x0",
+        "0x94": "0x2",
+        "0x98": "0x0",
+        "0x9c": "0x0"
+      }
+    }
+  }
+}

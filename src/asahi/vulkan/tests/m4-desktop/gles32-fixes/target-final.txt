@@ -1,0 +1,8 @@
+{"armed": true, "timeout_seconds": 60, "timeleft_seconds": 50, "fed": false, "mode": "idle"}
+active
+771 /opt/m4-hyprland/bin/Hyprland --watchdog-fd 4 --config /usr/local/share/m4-desktop/session.lua
+98891f7b35a025eba6271b30e1f58beb5fc03a2a4c55e52b546eb56daf47075d  /opt/asahi-m4-port/lib/libvulkan_asahi.so
+5b43d98b960517e4e7c649cece10d2a7c26a65158fec55c985be97fc7dc06dac  /opt/asahi-m4-port/lib/libgallium-26.1.4.so
+f9d383d2-2573-417e-b6ee-b0164801ea5e
+4104000
+2892000

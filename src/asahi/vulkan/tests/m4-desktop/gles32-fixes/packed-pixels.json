@@ -1,0 +1,22 @@
+{
+  "selected": 2302,
+  "recorded": 2302,
+  "completed": 2302,
+  "counts": {
+    "Pass": 2302
+  },
+  "classifications": {
+    "selected": 2302
+  },
+  "elapsed_seconds": 34.70945123200363,
+  "preparation_seconds": 1.574512801002129,
+  "runner_seconds": 31.864933743000165,
+  "jobs": 1,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "d06e84b2278d94df39e5b57afe6ee7c7a16359486e970ce9039016d845415b86",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T120045728540Z-gles-packed-pixels-review",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 71.0
+}

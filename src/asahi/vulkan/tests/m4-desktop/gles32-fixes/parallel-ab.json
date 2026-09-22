@@ -1,0 +1,143 @@
+[
+  {
+    "directory": "build/gles32-fixes-20260922/parallel-ab/after-0/run",
+    "selected": 28,
+    "recorded": 28,
+    "completed": 28,
+    "counts": {
+      "Pass": 28
+    },
+    "classifications": {
+      "selected": 28
+    },
+    "elapsed_seconds": 6.996357024007011,
+    "preparation_seconds": 1.6039107949909521,
+    "runner_seconds": 4.06634147900013,
+    "jobs": 4,
+    "tests_per_group": 1,
+    "case_timeout_seconds": 60,
+    "cases_sha256": "ff9a0bce7e366461db660c09d9c0ef8f80757748817ce18f89798f64c066595e",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115541370090Z-gles-parallel-after-0",
+    "guard_verdict": "pass",
+    "command_returncode": 0,
+    "peak_temperature_c": 82.25
+  },
+  {
+    "directory": "build/gles32-fixes-20260922/parallel-ab/after-1/run",
+    "selected": 28,
+    "recorded": 28,
+    "completed": 28,
+    "counts": {
+      "Pass": 28
+    },
+    "classifications": {
+      "selected": 28
+    },
+    "elapsed_seconds": 7.097889823009609,
+    "preparation_seconds": 1.5122934300015913,
+    "runner_seconds": 4.471923395999966,
+    "jobs": 4,
+    "tests_per_group": 1,
+    "case_timeout_seconds": 60,
+    "cases_sha256": "ff9a0bce7e366461db660c09d9c0ef8f80757748817ce18f89798f64c066595e",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115549914774Z-gles-parallel-after-1",
+    "guard_verdict": "pass",
+    "command_returncode": 0,
+    "peak_temperature_c": 80.5
+  },
+  {
+    "directory": "build/gles32-fixes-20260922/parallel-ab/after-2/run",
+    "selected": 28,
+    "recorded": 28,
+    "completed": 28,
+    "counts": {
+      "Pass": 28
+    },
+    "classifications": {
+      "selected": 28
+    },
+    "elapsed_seconds": 7.69675529601227,
+    "preparation_seconds": 1.4798130420094822,
+    "runner_seconds": 4.874616994999997,
+    "jobs": 4,
+    "tests_per_group": 1,
+    "case_timeout_seconds": 60,
+    "cases_sha256": "ff9a0bce7e366461db660c09d9c0ef8f80757748817ce18f89798f64c066595e",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115558536617Z-gles-parallel-after-2",
+    "guard_verdict": "pass",
+    "command_returncode": 0,
+    "peak_temperature_c": 76.5
+  },
+  {
+    "directory": "build/gles32-fixes-20260922/parallel-ab/before-0/run",
+    "selected": 28,
+    "recorded": 28,
+    "completed": 28,
+    "counts": {
+      "Fail": 3,
+      "Pass": 25
+    },
+    "classifications": {
+      "selected": 28
+    },
+    "elapsed_seconds": 6.195084561011754,
+    "preparation_seconds": 1.713944019007613,
+    "runner_seconds": 3.456325343000117,
+    "jobs": 4,
+    "tests_per_group": 1,
+    "case_timeout_seconds": 60,
+    "cases_sha256": "ff9a0bce7e366461db660c09d9c0ef8f80757748817ce18f89798f64c066595e",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115453757557Z-gles-parallel-before-0",
+    "guard_verdict": "pass",
+    "command_returncode": 0,
+    "peak_temperature_c": 85.5
+  },
+  {
+    "directory": "build/gles32-fixes-20260922/parallel-ab/before-1/run",
+    "selected": 28,
+    "recorded": 28,
+    "completed": 28,
+    "counts": {
+      "Fail": 4,
+      "Pass": 24
+    },
+    "classifications": {
+      "selected": 28
+    },
+    "elapsed_seconds": 6.49376798600133,
+    "preparation_seconds": 1.515524059010204,
+    "runner_seconds": 3.865092422000089,
+    "jobs": 4,
+    "tests_per_group": 1,
+    "case_timeout_seconds": 60,
+    "cases_sha256": "ff9a0bce7e366461db660c09d9c0ef8f80757748817ce18f89798f64c066595e",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115501508163Z-gles-parallel-before-1",
+    "guard_verdict": "pass",
+    "command_returncode": 0,
+    "peak_temperature_c": 75.25
+  },
+  {
+    "directory": "build/gles32-fixes-20260922/parallel-ab/before-2/run",
+    "selected": 28,
+    "recorded": 28,
+    "completed": 28,
+    "counts": {
+      "Pass": 25,
+      "Fail": 3
+    },
+    "classifications": {
+      "selected": 28
+    },
+    "elapsed_seconds": 6.925556998001412,
+    "preparation_seconds": 1.5221669679885963,
+    "runner_seconds": 4.265441944000031,
+    "jobs": 4,
+    "tests_per_group": 1,
+    "case_timeout_seconds": 60,
+    "cases_sha256": "ff9a0bce7e366461db660c09d9c0ef8f80757748817ce18f89798f64c066595e",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115509562366Z-gles-parallel-before-2",
+    "guard_verdict": "pass",
+    "command_returncode": 0,
+    "peak_temperature_c": 75.0
+  }
+]

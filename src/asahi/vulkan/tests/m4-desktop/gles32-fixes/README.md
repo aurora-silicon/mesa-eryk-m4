@@ -12,7 +12,7 @@ results. No failed baseline outcome is overwritten.
 `--campaign build/gles32-zink-20260922/full --failures <baseline-failures.json>
 --output <new-directory> --status Crash` (or Fail/Timeout/GPUTimeout). It
 preserves each original case/configuration index, binary and environment,
-uses one worker and the mandatory bounded watchdog/thermal/evidence guards,
+defaults to one worker and the mandatory bounded watchdog/thermal/evidence guards,
 and stops on fatal errors for review. Every run retains source and image logs.
 
 ## Half operands in the native compiler
@@ -96,3 +96,58 @@ swap-buffers-with-damage cases finish: 149 Pass, 102 NotSupported, zero Fail.
 This includes supported resize cases. Guards Pass, peak 94 C. See egl-retest.json
 and egl-preservation.json. Gallium SHA256:
 `5b43d98b960517e4e7c649cece10d2a7c26a65158fec55c985be97fc7dc06dac`.
+
+## Final combined validation
+
+Commits: 5b6f6ebe3fb (half operands), d5fb5c438d4 (array offsets),
+7b71d55edd9 (depth borders), 55d3953fe18 (Zink acquired-image lifetime).
+No kernel changes were made in this fix batch.
+
+Every original Fail and Crash configuration/case pair now Passes with all fixes
+installed: **406/406**, comprising 103 original Fail and 303 original Crash.
+The final GL runs use four workers, with one case per process; EGL retains its
+single worker. `gl-cts-retest.py --jobs 4` reproduces this layout. Original
+configuration arguments, indices, binary, bounds and guards are retained.
+The original ledger is unchanged. See final-results.json for the index-by-index
+mapping and final-summary.json for runs and installed library hashes.
+
+The earlier serial rerun did not reproduce 89 scattered image failures. A
+controlled parallel comparison then restored only the old Gallium library,
+leaving the fixed Vulkan library installed: three runs of 28 original GLES2
+failure cases produced 10 Fail / 74 Pass. Restoring fixed Gallium produced
+84/84 Pass under the same four-worker, fresh-process arrangement. This confirms
+the Zink bug for the reproduced failures and supports, without proving for each
+case, the same explanation for the other intermittent baseline image failures.
+Raw attempts remain separate; see parallel-ab.json. The upstream candidate
+patch is also in workspace reference/mesa-snippets/zink-acquired-buffer-age-20260922/.
+
+All five original per-case timeouts Pass serially without increasing the
+60-second bound: texture_lod_bias_all about 39 seconds, tessellation vertex
+ordering about 20.4–20.7 seconds. Keep these cases out of a contended worker pool
+in future campaigns. They are substantial cases (the LOD test performs two
+128-by-128 bias sweeps), not reproduced GPU hangs.
+
+The sole-active GPUTimeout case also Passes serially in 0.067 seconds. This is
+**not a GPU-hang fix**. The decoded original fault snapshot retains matching
+published compute stamps and consumed compute queue cursors but zero command
+timestamps; the kernel correctly keeps DMA ownership when retirement is
+unproven. Do not remove that protection to make a test pass. Both original
+campaign GPU incidents remain open pending reproduction/root cause. The first
+incident had multiple active cases, so it is not attributed to one test.
+
+All 412 original abnormal case records therefore have passing focused reruns,
+but the full ES campaign remains incomplete: 85,993 configuration/case pairs
+have not run. This is not a full OpenGL ES 3.2 conformance claim. The original
+NotSupported and warning outcomes have not been reclassified in this task.
+
+The original session-53 packed-pixel group was also retested in its original
+catalog order with one worker and normal 50-case process groups: **2302/2302
+Pass** in 31.865 runner seconds, guard Pass, peak 71 C. See packed-pixels.json.
+This did not reproduce the rare kernel incident. No guards or retirement
+checks were relaxed, and no campaign cases were silently retried or replaced.
+
+Final state: normal display manager and desktop active; no CTS or private
+compositor remains. Watchdog armed, 60 seconds, idle. CPU limits restored to
+4104000/2892000 kHz. target-final.txt records the boot and installed hashes.
+Existing desktop processes retain their earlier compatible Mesa mappings;
+focused tests used fresh processes. No reboot or desktop replacement occurred.

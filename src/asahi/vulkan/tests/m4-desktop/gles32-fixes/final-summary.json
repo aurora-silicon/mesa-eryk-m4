@@ -1,0 +1,1034 @@
+{
+  "original": {
+    "Fail": 103,
+    "Crash": 303,
+    "Timeout": 5,
+    "GPUTimeout": 1
+  },
+  "retest": {
+    "Pass": 412
+  },
+  "runs": [
+    {
+      "directory": "build/gles32-fixes-20260922/final-parallel/000-0000/run",
+      "selected": 2,
+      "recorded": 2,
+      "completed": 2,
+      "counts": {
+        "Pass": 2
+      },
+      "classifications": {
+        "selected": 2
+      },
+      "elapsed_seconds": 4.573036948000663,
+      "preparation_seconds": 1.5429795829986688,
+      "runner_seconds": 1.8325072120001096,
+      "jobs": 1,
+      "tests_per_group": 1,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "ddbc600cb546c2aa0dfaa108b2b1e9d35bbcac0c1695bd3718e19cb2bc812597",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115634427706Z-gles-fix-final-parallel-0-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 68.25
+    },
+    {
+      "directory": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+      "selected": 50,
+      "recorded": 50,
+      "completed": 50,
+      "counts": {
+        "Pass": 50
+      },
+      "classifications": {
+        "selected": 50
+      },
+      "elapsed_seconds": 5.9116959370003315,
+      "preparation_seconds": 1.4581434430001536,
+      "runner_seconds": 3.047301857000093,
+      "jobs": 4,
+      "tests_per_group": 1,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "5986fa23efa87a7659e68fb0621929507fc4184af72ef6ce3bb8b462f24b13a6",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 89.25
+    },
+    {
+      "directory": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+      "selected": 50,
+      "recorded": 50,
+      "completed": 50,
+      "counts": {
+        "Pass": 50
+      },
+      "classifications": {
+        "selected": 50
+      },
+      "elapsed_seconds": 11.352141626004595,
+      "preparation_seconds": 1.5644878469902324,
+      "runner_seconds": 8.51868638499991,
+      "jobs": 4,
+      "tests_per_group": 1,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "9f97631f4514b0a604adeb82f70d36190b8a194c2215f93c13e2b113220874ad",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 95.0
+    },
+    {
+      "directory": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+      "selected": 50,
+      "recorded": 50,
+      "completed": 50,
+      "counts": {
+        "Pass": 50
+      },
+      "classifications": {
+        "selected": 50
+      },
+      "elapsed_seconds": 11.514073596001253,
+      "preparation_seconds": 1.5895053139975062,
+      "runner_seconds": 8.943849279000005,
+      "jobs": 4,
+      "tests_per_group": 1,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "ef974a01aff813b13375a4571d991082e94876951c6d39ad976e1d8fd50af0dd",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 94.0
+    },
+    {
+      "directory": "build/gles32-fixes-20260922/final-parallel/001-0150/run",
+      "selected": 20,
+      "recorded": 20,
+      "completed": 20,
+      "counts": {
+        "Pass": 20
+      },
+      "classifications": {
+        "selected": 20
+      },
+      "elapsed_seconds": 6.996763181989081,
+      "preparation_seconds": 1.4840503070008708,
+      "runner_seconds": 4.2655975099996795,
+      "jobs": 4,
+      "tests_per_group": 1,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "b4331ac8b5040e84940156f0dd47d96867b95d99c0552d3c09771796f3676330",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115714096071Z-gles-fix-final-parallel-1-150",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 87.0
+    },
+    {
+      "directory": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+      "selected": 50,
+      "recorded": 50,
+      "completed": 50,
+      "counts": {
+        "Pass": 50
+      },
+      "classifications": {
+        "selected": 50
+      },
+      "elapsed_seconds": 5.688302455004305,
+      "preparation_seconds": 1.53731037399848,
+      "runner_seconds": 2.8469033880001007,
+      "jobs": 4,
+      "tests_per_group": 1,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "9ef3759d0302ce81ec40ecb7be1440bcaf6634da88e10ccb173010539cd5dd37",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 101.0
+    },
+    {
+      "directory": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+      "selected": 50,
+      "recorded": 50,
+      "completed": 50,
+      "counts": {
+        "Pass": 50
+      },
+      "classifications": {
+        "selected": 50
+      },
+      "elapsed_seconds": 7.531333199993242,
+      "preparation_seconds": 1.501936928005307,
+      "runner_seconds": 4.673470483000074,
+      "jobs": 4,
+      "tests_per_group": 1,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "e0ec322c9120f6c6191a679c9a67e631bcf9d492c98c708723749f8069f1aeac",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 94.5
+    },
+    {
+      "directory": "build/gles32-fixes-20260922/final-parallel/002-0100/run",
+      "selected": 4,
+      "recorded": 4,
+      "completed": 4,
+      "counts": {
+        "Pass": 4
+      },
+      "classifications": {
+        "selected": 4
+      },
+      "elapsed_seconds": 3.6611635010049213,
+      "preparation_seconds": 2.649877746007405,
+      "runner_seconds": 1.024516378000044,
+      "jobs": 4,
+      "tests_per_group": 1,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "0276d7c566455c94042a74afc7a6f4579b567f1817444274c82f368e2a39da08",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115740160928Z-gles-fix-final-parallel-2-100",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 79.0
+    },
+    {
+      "directory": "build/gles32-fixes-20260922/final-parallel/003-0000/run",
+      "selected": 12,
+      "recorded": 12,
+      "completed": 12,
+      "counts": {
+        "Pass": 12
+      },
+      "classifications": {
+        "selected": 12
+      },
+      "elapsed_seconds": 3.438738999000634,
+      "preparation_seconds": 1.4600891509908251,
+      "runner_seconds": 0.823901572000068,
+      "jobs": 4,
+      "tests_per_group": 1,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "36c901a0ce1f70d3a85b11875f700b8adbe3c0c470180fc0b1ffec65435495fe",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115745327412Z-gles-fix-final-parallel-3-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 86.5
+    },
+    {
+      "directory": "build/gles32-fixes-20260922/final-parallel/004-0000/run",
+      "selected": 6,
+      "recorded": 6,
+      "completed": 6,
+      "counts": {
+        "Pass": 6
+      },
+      "classifications": {
+        "selected": 6
+      },
+      "elapsed_seconds": 5.1287566749961115,
+      "preparation_seconds": 1.5542219909984851,
+      "runner_seconds": 2.450903924999693,
+      "jobs": 4,
+      "tests_per_group": 1,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "3d697a009c41ab9680272198bf422981e1ab0d21b5f216d6c55327d92ed7edaf",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115750370730Z-gles-fix-final-parallel-4-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 77.25
+    },
+    {
+      "directory": "build/gles32-fixes-20260922/final-parallel/010-0000/run",
+      "selected": 11,
+      "recorded": 11,
+      "completed": 11,
+      "counts": {
+        "Pass": 11
+      },
+      "classifications": {
+        "selected": 11
+      },
+      "elapsed_seconds": 3.4528479979926487,
+      "preparation_seconds": 1.469775635006954,
+      "runner_seconds": 0.6167965820000063,
+      "jobs": 4,
+      "tests_per_group": 1,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "a120b85472275c7adebe9a130a0e8c1b1bf046edc5a9bb8e534788d9bde83595",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115757021800Z-gles-fix-final-parallel-10-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 78.0
+    },
+    {
+      "directory": "build/gles32-fixes-20260922/final-parallel/012-0000/run",
+      "selected": 3,
+      "recorded": 3,
+      "completed": 3,
+      "counts": {
+        "Pass": 3
+      },
+      "classifications": {
+        "selected": 3
+      },
+      "elapsed_seconds": 2.7692883089912357,
+      "preparation_seconds": 1.6228235180024058,
+      "runner_seconds": 0.21595403699984672,
+      "jobs": 4,
+      "tests_per_group": 1,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "3c5b598fff6f8f2d3e087c5c57638643911c5defb42d411938f5868766d03fbf",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115802143616Z-gles-fix-final-parallel-12-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 73.0
+    },
+    {
+      "directory": "build/gles32-fixes-20260922/final-parallel/013-0000/run",
+      "selected": 5,
+      "recorded": 5,
+      "completed": 5,
+      "counts": {
+        "Pass": 5
+      },
+      "classifications": {
+        "selected": 5
+      },
+      "elapsed_seconds": 2.9687185840011807,
+      "preparation_seconds": 1.455405893997522,
+      "runner_seconds": 0.41665510800021366,
+      "jobs": 4,
+      "tests_per_group": 1,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "2e623248ba72986641fb893c9506308e74d0dcb7763e57f0b839f8de10577562",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115806416748Z-gles-fix-final-parallel-13-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 73.0
+    },
+    {
+      "directory": "build/gles32-fixes-20260922/final-parallel/014-0000/run",
+      "selected": 3,
+      "recorded": 3,
+      "completed": 3,
+      "counts": {
+        "Pass": 3
+      },
+      "classifications": {
+        "selected": 3
+      },
+      "elapsed_seconds": 2.6907346559892176,
+      "preparation_seconds": 1.567021120004938,
+      "runner_seconds": 0.2159686549998696,
+      "jobs": 4,
+      "tests_per_group": 1,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "3c5b598fff6f8f2d3e087c5c57638643911c5defb42d411938f5868766d03fbf",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115811003972Z-gles-fix-final-parallel-14-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 72.5
+    },
+    {
+      "directory": "build/gles32-fixes-20260922/final-parallel/015-0000/run",
+      "selected": 3,
+      "recorded": 3,
+      "completed": 3,
+      "counts": {
+        "Pass": 3
+      },
+      "classifications": {
+        "selected": 3
+      },
+      "elapsed_seconds": 2.7573432529898128,
+      "preparation_seconds": 1.585695918998681,
+      "runner_seconds": 0.2160197939997488,
+      "jobs": 4,
+      "tests_per_group": 1,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "3c5b598fff6f8f2d3e087c5c57638643911c5defb42d411938f5868766d03fbf",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115815330314Z-gles-fix-final-parallel-15-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 72.5
+    },
+    {
+      "directory": "build/gles32-fixes-20260922/final-parallel/018-0000/run",
+      "selected": 13,
+      "recorded": 13,
+      "completed": 13,
+      "counts": {
+        "Pass": 13
+      },
+      "classifications": {
+        "selected": 13
+      },
+      "elapsed_seconds": 3.39583212499565,
+      "preparation_seconds": 1.5342099459958263,
+      "runner_seconds": 0.6169114639997133,
+      "jobs": 4,
+      "tests_per_group": 1,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "c5e779488a8be27417b1fbb6990df2f0dd4d3ceabd11a201abc6c4cfa41c2711",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115819667346Z-gles-fix-final-parallel-18-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 82.25
+    },
+    {
+      "directory": "build/gles32-fixes-20260922/final-parallel/020-0000/run",
+      "selected": 5,
+      "recorded": 5,
+      "completed": 5,
+      "counts": {
+        "Pass": 5
+      },
+      "classifications": {
+        "selected": 5
+      },
+      "elapsed_seconds": 3.623036407007021,
+      "preparation_seconds": 1.5210037500073668,
+      "runner_seconds": 0.41645159500012596,
+      "jobs": 4,
+      "tests_per_group": 1,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "57a4ac0942db3aa62db7c0b540a96428b66156abe88c54bac76a820005c037e1",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115824645397Z-gles-fix-final-parallel-20-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 75.75
+    },
+    {
+      "directory": "build/gles32-fixes-20260922/final-parallel/021-0000/run",
+      "selected": 3,
+      "recorded": 3,
+      "completed": 3,
+      "counts": {
+        "Pass": 3
+      },
+      "classifications": {
+        "selected": 3
+      },
+      "elapsed_seconds": 3.0827444640017347,
+      "preparation_seconds": 3.3927202930062776,
+      "runner_seconds": 0.4157418160002635,
+      "jobs": 4,
+      "tests_per_group": 1,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "3c5b598fff6f8f2d3e087c5c57638643911c5defb42d411938f5868766d03fbf",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115831702729Z-gles-fix-final-parallel-21-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 71.5
+    },
+    {
+      "directory": "build/gles32-fixes-20260922/final-parallel/023-0000/run",
+      "selected": 4,
+      "recorded": 4,
+      "completed": 4,
+      "counts": {
+        "Pass": 4
+      },
+      "classifications": {
+        "selected": 4
+      },
+      "elapsed_seconds": 3.3437817939993693,
+      "preparation_seconds": 1.4822191549901618,
+      "runner_seconds": 0.21497723099992072,
+      "jobs": 4,
+      "tests_per_group": 1,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "a03e226fbc1761e864c3a87b9b320241c4d5fca722411dfa24143f2affc03332",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115836324756Z-gles-fix-final-parallel-23-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 71.0
+    },
+    {
+      "directory": "build/gles32-fixes-20260922/final-parallel/025-0000/run",
+      "selected": 3,
+      "recorded": 3,
+      "completed": 3,
+      "counts": {
+        "Pass": 3
+      },
+      "classifications": {
+        "selected": 3
+      },
+      "elapsed_seconds": 3.0847229979990516,
+      "preparation_seconds": 1.7720069310016697,
+      "runner_seconds": 0.41519201600021916,
+      "jobs": 4,
+      "tests_per_group": 1,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "3c5b598fff6f8f2d3e087c5c57638643911c5defb42d411938f5868766d03fbf",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115841494504Z-gles-fix-final-parallel-25-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 72.75
+    },
+    {
+      "directory": "build/gles32-fixes-20260922/final-parallel/026-0000/run",
+      "selected": 3,
+      "recorded": 3,
+      "completed": 3,
+      "counts": {
+        "Pass": 3
+      },
+      "classifications": {
+        "selected": 3
+      },
+      "elapsed_seconds": 3.0225678839924512,
+      "preparation_seconds": 1.5171191190020181,
+      "runner_seconds": 0.4156151020001744,
+      "jobs": 4,
+      "tests_per_group": 1,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "3c5b598fff6f8f2d3e087c5c57638643911c5defb42d411938f5868766d03fbf",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115846150423Z-gles-fix-final-parallel-26-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 72.75
+    },
+    {
+      "directory": "build/gles32-fixes-20260922/final-parallel/028-0000/run",
+      "selected": 5,
+      "recorded": 5,
+      "completed": 5,
+      "counts": {
+        "Pass": 5
+      },
+      "classifications": {
+        "selected": 5
+      },
+      "elapsed_seconds": 3.1209333229926415,
+      "preparation_seconds": 1.5107537000003504,
+      "runner_seconds": 0.4164801010001611,
+      "jobs": 4,
+      "tests_per_group": 1,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "87042300aea6b2d0ae2eee2ee1d97f3c0060cb6cad8df6bfe4a2580804e19690",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115850729957Z-gles-fix-final-parallel-28-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 81.5
+    },
+    {
+      "directory": "build/gles32-fixes-20260922/final-parallel/030-0000/run",
+      "selected": 3,
+      "recorded": 3,
+      "completed": 3,
+      "counts": {
+        "Pass": 3
+      },
+      "classifications": {
+        "selected": 3
+      },
+      "elapsed_seconds": 2.923103959998116,
+      "preparation_seconds": 1.4857756380079081,
+      "runner_seconds": 0.41638098500015985,
+      "jobs": 4,
+      "tests_per_group": 1,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "3c5b598fff6f8f2d3e087c5c57638643911c5defb42d411938f5868766d03fbf",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115855386237Z-gles-fix-final-parallel-30-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 71.75
+    },
+    {
+      "directory": "build/gles32-fixes-20260922/final-parallel/031-0000/run",
+      "selected": 3,
+      "recorded": 3,
+      "completed": 3,
+      "counts": {
+        "Pass": 3
+      },
+      "classifications": {
+        "selected": 3
+      },
+      "elapsed_seconds": 2.9861444249982014,
+      "preparation_seconds": 1.5137122480082326,
+      "runner_seconds": 0.41617645699989225,
+      "jobs": 4,
+      "tests_per_group": 1,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "3c5b598fff6f8f2d3e087c5c57638643911c5defb42d411938f5868766d03fbf",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115859875935Z-gles-fix-final-parallel-31-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 73.5
+    },
+    {
+      "directory": "build/gles32-fixes-20260922/final-parallel/033-0000/run",
+      "selected": 4,
+      "recorded": 4,
+      "completed": 4,
+      "counts": {
+        "Pass": 4
+      },
+      "classifications": {
+        "selected": 4
+      },
+      "elapsed_seconds": 2.981245814997237,
+      "preparation_seconds": 1.5736076479952317,
+      "runner_seconds": 0.21692190800013122,
+      "jobs": 4,
+      "tests_per_group": 1,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "e20dc3d9a5b8484981bc7e43ec2add31607383e1d73b70dbfe25c1141573472b",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115904484816Z-gles-fix-final-parallel-33-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 71.75
+    },
+    {
+      "directory": "build/gles32-fixes-20260922/final-parallel/035-0000/run",
+      "selected": 3,
+      "recorded": 3,
+      "completed": 3,
+      "counts": {
+        "Pass": 3
+      },
+      "classifications": {
+        "selected": 3
+      },
+      "elapsed_seconds": 2.930549873999553,
+      "preparation_seconds": 1.4849212469998747,
+      "runner_seconds": 0.4167175710003903,
+      "jobs": 4,
+      "tests_per_group": 1,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "3c5b598fff6f8f2d3e087c5c57638643911c5defb42d411938f5868766d03fbf",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115909002247Z-gles-fix-final-parallel-35-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 71.0
+    },
+    {
+      "directory": "build/gles32-fixes-20260922/final-parallel/036-0000/run",
+      "selected": 3,
+      "recorded": 3,
+      "completed": 3,
+      "counts": {
+        "Pass": 3
+      },
+      "classifications": {
+        "selected": 3
+      },
+      "elapsed_seconds": 2.9798101040069014,
+      "preparation_seconds": 1.470572224992793,
+      "runner_seconds": 0.41663940700027524,
+      "jobs": 4,
+      "tests_per_group": 1,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "3c5b598fff6f8f2d3e087c5c57638643911c5defb42d411938f5868766d03fbf",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115913457733Z-gles-fix-final-parallel-36-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 71.25
+    },
+    {
+      "directory": "build/gles32-fixes-20260922/final-parallel/038-0000/run",
+      "selected": 5,
+      "recorded": 5,
+      "completed": 5,
+      "counts": {
+        "Pass": 5
+      },
+      "classifications": {
+        "selected": 5
+      },
+      "elapsed_seconds": 3.143454656994436,
+      "preparation_seconds": 1.6235685909923632,
+      "runner_seconds": 0.41638616000000184,
+      "jobs": 4,
+      "tests_per_group": 1,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "5d13e1c196972bdae7dd2b8ad846a5abc741aae8ab9bfcc2f1e6ef9149490caa",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115918108857Z-gles-fix-final-parallel-38-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 72.75
+    },
+    {
+      "directory": "build/gles32-fixes-20260922/final-parallel/040-0000/run",
+      "selected": 3,
+      "recorded": 3,
+      "completed": 3,
+      "counts": {
+        "Pass": 3
+      },
+      "classifications": {
+        "selected": 3
+      },
+      "elapsed_seconds": 2.9280761900008656,
+      "preparation_seconds": 1.4722065780078992,
+      "runner_seconds": 0.4154810329996508,
+      "jobs": 4,
+      "tests_per_group": 1,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "3c5b598fff6f8f2d3e087c5c57638643911c5defb42d411938f5868766d03fbf",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115922777366Z-gles-fix-final-parallel-40-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 70.75
+    },
+    {
+      "directory": "build/gles32-fixes-20260922/final-parallel/041-0000/run",
+      "selected": 3,
+      "recorded": 3,
+      "completed": 3,
+      "counts": {
+        "Pass": 3
+      },
+      "classifications": {
+        "selected": 3
+      },
+      "elapsed_seconds": 2.750197790999664,
+      "preparation_seconds": 1.5610772509971866,
+      "runner_seconds": 0.21603119500014145,
+      "jobs": 4,
+      "tests_per_group": 1,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "3c5b598fff6f8f2d3e087c5c57638643911c5defb42d411938f5868766d03fbf",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115927321566Z-gles-fix-final-parallel-41-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 71.0
+    },
+    {
+      "directory": "build/gles32-fixes-20260922/final-parallel/043-0000/run",
+      "selected": 3,
+      "recorded": 3,
+      "completed": 3,
+      "counts": {
+        "Pass": 3
+      },
+      "classifications": {
+        "selected": 3
+      },
+      "elapsed_seconds": 2.9433101629983867,
+      "preparation_seconds": 1.4788955120020546,
+      "runner_seconds": 0.21704747400008273,
+      "jobs": 4,
+      "tests_per_group": 1,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "e11f3bb979351f5a49878eeccc648be2429e4561251cb3e8b3e40decb118f765",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115931595420Z-gles-fix-final-parallel-43-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 71.0
+    },
+    {
+      "directory": "build/gles32-fixes-20260922/final-parallel/045-0000/run",
+      "selected": 3,
+      "recorded": 3,
+      "completed": 3,
+      "counts": {
+        "Pass": 3
+      },
+      "classifications": {
+        "selected": 3
+      },
+      "elapsed_seconds": 2.959456563999993,
+      "preparation_seconds": 1.5124847150000278,
+      "runner_seconds": 0.4154350220001106,
+      "jobs": 4,
+      "tests_per_group": 1,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "3c5b598fff6f8f2d3e087c5c57638643911c5defb42d411938f5868766d03fbf",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115936110969Z-gles-fix-final-parallel-45-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 71.0
+    },
+    {
+      "directory": "build/gles32-fixes-20260922/final-parallel/046-0000/run",
+      "selected": 3,
+      "recorded": 3,
+      "completed": 3,
+      "counts": {
+        "Pass": 3
+      },
+      "classifications": {
+        "selected": 3
+      },
+      "elapsed_seconds": 2.9952479589992436,
+      "preparation_seconds": 1.510061384004075,
+      "runner_seconds": 0.41426644099965415,
+      "jobs": 4,
+      "tests_per_group": 1,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "3c5b598fff6f8f2d3e087c5c57638643911c5defb42d411938f5868766d03fbf",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115940631918Z-gles-fix-final-parallel-46-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 72.5
+    },
+    {
+      "directory": "build/gles32-fixes-20260922/final-parallel/048-0000/run",
+      "selected": 3,
+      "recorded": 3,
+      "completed": 3,
+      "counts": {
+        "Pass": 3
+      },
+      "classifications": {
+        "selected": 3
+      },
+      "elapsed_seconds": 2.914639488008106,
+      "preparation_seconds": 1.4696292209991952,
+      "runner_seconds": 0.2150202879997778,
+      "jobs": 4,
+      "tests_per_group": 1,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "e11f3bb979351f5a49878eeccc648be2429e4561251cb3e8b3e40decb118f765",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115945145812Z-gles-fix-final-parallel-48-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 71.75
+    },
+    {
+      "directory": "build/gles32-fixes-20260922/final-parallel/050-0000/run",
+      "selected": 3,
+      "recorded": 3,
+      "completed": 3,
+      "counts": {
+        "Pass": 3
+      },
+      "classifications": {
+        "selected": 3
+      },
+      "elapsed_seconds": 2.7912924499978544,
+      "preparation_seconds": 1.6947354979929514,
+      "runner_seconds": 0.21613639000042895,
+      "jobs": 4,
+      "tests_per_group": 1,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "3c5b598fff6f8f2d3e087c5c57638643911c5defb42d411938f5868766d03fbf",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115949809266Z-gles-fix-final-parallel-50-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 71.0
+    },
+    {
+      "directory": "build/gles32-fixes-20260922/final-parallel/051-0000/run",
+      "selected": 3,
+      "recorded": 3,
+      "completed": 3,
+      "counts": {
+        "Pass": 3
+      },
+      "classifications": {
+        "selected": 3
+      },
+      "elapsed_seconds": 2.9352224489994114,
+      "preparation_seconds": 1.6101268700003857,
+      "runner_seconds": 0.41670026700012386,
+      "jobs": 4,
+      "tests_per_group": 1,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "3c5b598fff6f8f2d3e087c5c57638643911c5defb42d411938f5868766d03fbf",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115954258858Z-gles-fix-final-parallel-51-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 71.0
+    },
+    {
+      "directory": "build/gles32-fixes-20260922/final-parallel/053-0000/run",
+      "selected": 4,
+      "recorded": 4,
+      "completed": 4,
+      "counts": {
+        "Pass": 4
+      },
+      "classifications": {
+        "selected": 4
+      },
+      "elapsed_seconds": 2.9292526159988483,
+      "preparation_seconds": 1.4216844609909458,
+      "runner_seconds": 0.21601608699984354,
+      "jobs": 4,
+      "tests_per_group": 1,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "17c65a1873d462e2af81ae358637a34f6e9e4ae701e4becd9355701555a7aac1",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115958670252Z-gles-fix-final-parallel-53-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 70.75
+    },
+    {
+      "directory": "build/gles32-fixes-20260922/final-parallel/055-0000/run",
+      "selected": 2,
+      "recorded": 2,
+      "completed": 2,
+      "counts": {
+        "Pass": 2
+      },
+      "classifications": {
+        "selected": 2
+      },
+      "elapsed_seconds": 2.7424191730096936,
+      "preparation_seconds": 1.5212255910009844,
+      "runner_seconds": 0.21603456899993034,
+      "jobs": 4,
+      "tests_per_group": 1,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "ed098a61314590074f9fa05dce4cbdb3d0796383c09e4beff36e1a2c467c6eec",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T120003174900Z-gles-fix-final-parallel-55-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 71.25
+    },
+    {
+      "directory": "build/gles32-fixes-20260922/timeouts-a/010-0000/run",
+      "selected": 1,
+      "recorded": 1,
+      "completed": 1,
+      "counts": {
+        "Pass": 1
+      },
+      "classifications": {
+        "selected": 1
+      },
+      "elapsed_seconds": 41.773169730993686,
+      "preparation_seconds": 1.5467469449940836,
+      "runner_seconds": 39.42090184500012,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "28dd38fe6ddab7308ad18e13eaa4dd2f888007fe342314828a5a4ec5f99e72ae",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115126437494Z-gles-fix-timeouts-a-10-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 67.0
+    },
+    {
+      "directory": "build/gles32-fixes-20260922/timeouts-a/011-0000/run",
+      "selected": 1,
+      "recorded": 1,
+      "completed": 1,
+      "counts": {
+        "Pass": 1
+      },
+      "classifications": {
+        "selected": 1
+      },
+      "elapsed_seconds": 23.837992141008726,
+      "preparation_seconds": 1.4970969800051535,
+      "runner_seconds": 21.122053530000358,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "13e6df62be6608ff83961a5ef3d78332c97b1eaa975a2f5e8b1dd2b540fdbd87",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115209750996Z-gles-fix-timeouts-a-11-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 72.0
+    },
+    {
+      "directory": "build/gles32-fixes-20260922/timeouts-a/013-0000/run",
+      "selected": 1,
+      "recorded": 1,
+      "completed": 1,
+      "counts": {
+        "Pass": 1
+      },
+      "classifications": {
+        "selected": 1
+      },
+      "elapsed_seconds": 23.646567267001956,
+      "preparation_seconds": 1.5194558179937303,
+      "runner_seconds": 21.3209793420001,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "3736c9a3eb7c82443405a50110c2611e2adca48e01090a1933b07ae5ee6d96b7",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115235143968Z-gles-fix-timeouts-a-13-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 67.25
+    },
+    {
+      "directory": "build/gles32-fixes-20260922/timeouts-a/018-0000/run",
+      "selected": 1,
+      "recorded": 1,
+      "completed": 1,
+      "counts": {
+        "Pass": 1
+      },
+      "classifications": {
+        "selected": 1
+      },
+      "elapsed_seconds": 41.57313586999953,
+      "preparation_seconds": 1.5644095229945378,
+      "runner_seconds": 39.20169401300018,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "28dd38fe6ddab7308ad18e13eaa4dd2f888007fe342314828a5a4ec5f99e72ae",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115300395766Z-gles-fix-timeouts-a-18-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 67.25
+    },
+    {
+      "directory": "build/gles32-fixes-20260922/timeouts-a/019-0000/run",
+      "selected": 1,
+      "recorded": 1,
+      "completed": 1,
+      "counts": {
+        "Pass": 1
+      },
+      "classifications": {
+        "selected": 1
+      },
+      "elapsed_seconds": 23.369495170991286,
+      "preparation_seconds": 1.4859076819993788,
+      "runner_seconds": 20.904708360999848,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "13e6df62be6608ff83961a5ef3d78332c97b1eaa975a2f5e8b1dd2b540fdbd87",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115343491586Z-gles-fix-timeouts-a-19-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 67.0
+    },
+    {
+      "directory": "build/gles32-fixes-20260922/timeouts-a/053-0000/run",
+      "selected": 1,
+      "recorded": 1,
+      "completed": 1,
+      "counts": {
+        "Pass": 1
+      },
+      "classifications": {
+        "selected": 1
+      },
+      "elapsed_seconds": 2.859288959996775,
+      "preparation_seconds": 1.5750631970004179,
+      "runner_seconds": 0.21592188500017073,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "7fbd242c79d9b3187a103e0a7dfcb1ad439b3e5da7fcb46e19a6b02d3239a5a1",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115408479802Z-gles-fix-timeouts-a-53-0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 67.25
+    }
+  ],
+  "limitations": [
+    "Original 240609-result ledger is unchanged; 85993 planned configuration/case pairs remain unrun.",
+    "Passing isolated GPUTimeout case is not proof that the earlier kernel GPU hangs were repaired.",
+    "89 image failures passed in the initial serial rerun; separate before/after parallel evidence establishes the swapchain lifetime bug for a representative subset, not every original intermittent outcome."
+  ],
+  "installed_libraries": {
+    "vulkan": "98891f7b35a025eba6271b30e1f58beb5fc03a2a4c55e52b546eb56daf47075d",
+    "gallium": "5b43d98b960517e4e7c649cece10d2a7c26a65158fec55c985be97fc7dc06dac"
+  }
+}

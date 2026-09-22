@@ -19,6 +19,8 @@ p.add_argument('--output', required=True, type=Path)
 p.add_argument('--status', action='append', required=True)
 p.add_argument('--session', type=int, action='append')
 p.add_argument('--seconds', type=int, default=600)
+p.add_argument('--jobs', type=int, choices=(1, 4), default=1,
+               help='GL workers; EGL always retains its private single-worker compositor')
 p.add_argument('--env', action='append', default=[])
 p.add_argument('--renderer', choices=('m4', 'lavapipe'), default='m4')
 a = p.parse_args()
@@ -49,7 +51,8 @@ for session in sorted({r['session'] for r in rows}):
         cmd = [sys.executable, str(ROOT/'tools/cts-bulk.py'), '--cases', str(folder/'cases.txt'),
             '--output', str(folder/'run'), '--name', 'gles-fix-'+a.output.name+f'-{session}-{first}',
             '--binary', catalog['binary'], '--runner', str(ROOT/'reference/deqp-runner/target/aarch64-unknown-linux-gnu/release/deqp-runner'),
-            '--jobs', '1', '--runner-seconds', str(a.seconds), '--case-timeout', '60',
+            '--jobs', str(1 if any(r['case'].startswith('dEQP-EGL.') for r in group) else a.jobs), '--runner-seconds', str(a.seconds), '--case-timeout', '60',
+            '--tests-per-group', '1' if a.jobs > 1 else '50',
             '--cpu-max-khz', '4104000', '--headless', '--renderer', a.renderer,
             '--log-images', '--log-sources']
         for opt in catalog['sessions'][session]['options'] + ['--deqp-egl-display-type=x11', '--deqp-log-flush=enable']:

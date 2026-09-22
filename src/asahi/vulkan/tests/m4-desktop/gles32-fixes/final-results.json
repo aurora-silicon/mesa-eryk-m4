@@ -1,0 +1,4122 @@
+[
+  {
+    "global_index": 3558,
+    "case": "dEQP-EGL.functional.partial_update.odd_render_render_even_none",
+    "session": 0,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.8346742,
+    "run": "build/gles32-fixes-20260922/final-parallel/000-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115634427706Z-gles-fix-final-parallel-0-0"
+  },
+  {
+    "global_index": 3577,
+    "case": "dEQP-EGL.functional.partial_update.odd_clear_render_even_render_render",
+    "session": 0,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.85949385,
+    "run": "build/gles32-fixes-20260922/final-parallel/000-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115634427706Z-gles-fix-final-parallel-0-0"
+  },
+  {
+    "global_index": 3828,
+    "case": "dEQP-GLES2.functional.color_clear.subclears_rgb",
+    "session": 1,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 1.3806902,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 11374,
+    "case": "dEQP-GLES2.functional.shaders.matrix.mul_assign.dynamic_mediump_mat2_fragment",
+    "session": 1,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.024501706,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 11449,
+    "case": "dEQP-GLES2.functional.shaders.discard.basic_texture",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.043273125,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 11454,
+    "case": "dEQP-GLES2.functional.shaders.discard.function_texture",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.10432675,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 11459,
+    "case": "dEQP-GLES2.functional.shaders.discard.static_loop_texture",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.06579277,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 11464,
+    "case": "dEQP-GLES2.functional.shaders.discard.dynamic_loop_texture",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.05212305,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 11469,
+    "case": "dEQP-GLES2.functional.shaders.discard.function_static_loop_texture",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.05324873,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 11559,
+    "case": "dEQP-GLES2.functional.shaders.struct.uniform.sampler_fragment",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.08641184,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 11561,
+    "case": "dEQP-GLES2.functional.shaders.struct.uniform.sampler_nested_fragment",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.07991781,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 11563,
+    "case": "dEQP-GLES2.functional.shaders.struct.uniform.sampler_array_fragment",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.08806361,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 11575,
+    "case": "dEQP-GLES2.functional.shaders.builtin_variable.max_vertex_uniform_vectors_fragment",
+    "session": 1,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.020955555,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 11597,
+    "case": "dEQP-GLES2.functional.shaders.texture_functions.vertex.texture2dlod",
+    "session": 1,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.06783994,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 11871,
+    "case": "dEQP-GLES2.functional.shaders.constant_expressions.builtin_functions.common.mod_vec4_float_fragment",
+    "session": 1,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.017910741,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 13328,
+    "case": "dEQP-GLES2.functional.shaders.random.trigonometric.fragment.4",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.027747046,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 13369,
+    "case": "dEQP-GLES2.functional.shaders.random.trigonometric.fragment.45",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.048094492,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 13679,
+    "case": "dEQP-GLES2.functional.shaders.random.texture.fragment.5",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.05621328,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 13682,
+    "case": "dEQP-GLES2.functional.shaders.random.texture.fragment.8",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.085101955,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 13684,
+    "case": "dEQP-GLES2.functional.shaders.random.texture.fragment.10",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.10469119,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 13687,
+    "case": "dEQP-GLES2.functional.shaders.random.texture.fragment.13",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.06220673,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 13690,
+    "case": "dEQP-GLES2.functional.shaders.random.texture.fragment.16",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.06509783,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 13711,
+    "case": "dEQP-GLES2.functional.shaders.random.texture.fragment.37",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.072894216,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 13717,
+    "case": "dEQP-GLES2.functional.shaders.random.texture.fragment.43",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.032688864,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 13725,
+    "case": "dEQP-GLES2.functional.shaders.random.texture.fragment.51",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.09013421,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 13726,
+    "case": "dEQP-GLES2.functional.shaders.random.texture.fragment.52",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.08616632,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 13732,
+    "case": "dEQP-GLES2.functional.shaders.random.texture.fragment.58",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.06743534,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 13736,
+    "case": "dEQP-GLES2.functional.shaders.random.texture.fragment.62",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.08697192,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 13747,
+    "case": "dEQP-GLES2.functional.shaders.random.texture.fragment.73",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.04812863,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 13748,
+    "case": "dEQP-GLES2.functional.shaders.random.texture.fragment.74",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.082731806,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 13759,
+    "case": "dEQP-GLES2.functional.shaders.random.texture.fragment.85",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.082736805,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 13760,
+    "case": "dEQP-GLES2.functional.shaders.random.texture.fragment.86",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.067691736,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 13766,
+    "case": "dEQP-GLES2.functional.shaders.random.texture.fragment.92",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.119919166,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 13785,
+    "case": "dEQP-GLES2.functional.shaders.random.texture.fragment.111",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.068527736,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 13800,
+    "case": "dEQP-GLES2.functional.shaders.random.texture.fragment.126",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.07720957,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 13803,
+    "case": "dEQP-GLES2.functional.shaders.random.texture.fragment.129",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.075202614,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 13809,
+    "case": "dEQP-GLES2.functional.shaders.random.texture.fragment.135",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.123241454,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 13813,
+    "case": "dEQP-GLES2.functional.shaders.random.texture.fragment.139",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.110088825,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 13924,
+    "case": "dEQP-GLES2.functional.shaders.random.all_features.fragment.0",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.12728474,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 13928,
+    "case": "dEQP-GLES2.functional.shaders.random.all_features.fragment.4",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.09238546,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 13935,
+    "case": "dEQP-GLES2.functional.shaders.random.all_features.fragment.11",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.0832615,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 13943,
+    "case": "dEQP-GLES2.functional.shaders.random.all_features.fragment.20",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.11977772,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 13947,
+    "case": "dEQP-GLES2.functional.shaders.random.all_features.fragment.24",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.08123421,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 13962,
+    "case": "dEQP-GLES2.functional.shaders.random.all_features.fragment.39",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.12819535,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 13967,
+    "case": "dEQP-GLES2.functional.shaders.random.all_features.fragment.44",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.07588006,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 13975,
+    "case": "dEQP-GLES2.functional.shaders.random.all_features.fragment.52",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.054817736,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 13981,
+    "case": "dEQP-GLES2.functional.shaders.random.all_features.fragment.59",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.058378067,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 13986,
+    "case": "dEQP-GLES2.functional.shaders.random.all_features.fragment.64",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.085477315,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 13994,
+    "case": "dEQP-GLES2.functional.shaders.random.all_features.fragment.72",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.06179498,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 13995,
+    "case": "dEQP-GLES2.functional.shaders.random.all_features.fragment.73",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.07419352,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 14010,
+    "case": "dEQP-GLES2.functional.shaders.random.all_features.fragment.88",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.11118102,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 14014,
+    "case": "dEQP-GLES2.functional.shaders.random.all_features.fragment.92",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.06540358,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115640522536Z-gles-fix-final-parallel-1-0"
+  },
+  {
+    "global_index": 14021,
+    "case": "dEQP-GLES2.functional.shaders.random.all_features.fragment.99",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.13866505,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14032,
+    "case": "dEQP-GLES2.functional.texture.format.la88_cube_pot",
+    "session": 1,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.92462975,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14092,
+    "case": "dEQP-GLES2.functional.texture.size.cube.15x15_rgb888",
+    "session": 1,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.8090003,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14126,
+    "case": "dEQP-GLES2.functional.texture.size.cube.512x512_l8_mipmap",
+    "session": 1,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.74633336,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14171,
+    "case": "dEQP-GLES2.functional.texture.filtering.2d.nearest_linear_repeat_rgba8888_pot",
+    "session": 1,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.98767054,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14174,
+    "case": "dEQP-GLES2.functional.texture.filtering.2d.nearest_linear_repeat_l8_pot",
+    "session": 1,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.33371532,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14186,
+    "case": "dEQP-GLES2.functional.texture.filtering.2d.linear_nearest_clamp_l8_npot",
+    "session": 1,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.3673958,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14190,
+    "case": "dEQP-GLES2.functional.texture.filtering.2d.linear_nearest_repeat_l8_pot",
+    "session": 1,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.7099831,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14235,
+    "case": "dEQP-GLES2.functional.texture.filtering.2d.nearest_mipmap_linear_linear_clamp_rgba8888",
+    "session": 1,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.52470344,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14272,
+    "case": "dEQP-GLES2.functional.texture.filtering.2d.nearest_mipmap_linear_nearest_repeat_etc1",
+    "session": 1,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.8321244,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14329,
+    "case": "dEQP-GLES2.functional.texture.filtering.cube.linear_nearest_mirror_rgba4444_pot",
+    "session": 1,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.6881087,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14367,
+    "case": "dEQP-GLES2.functional.texture.filtering.cube.nearest_mipmap_linear_nearest_repeat_rgb888",
+    "session": 1,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 1.1280164,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14380,
+    "case": "dEQP-GLES2.functional.texture.filtering.cube.linear_mipmap_linear_linear_clamp_rgba8888",
+    "session": 1,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.86475307,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14385,
+    "case": "dEQP-GLES2.functional.texture.filtering.cube.linear_nearest_clamp_etc1",
+    "session": 1,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.85329163,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14508,
+    "case": "dEQP-GLES2.functional.texture.specification.basic_teximage2d.a8_cube",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.6239246,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14510,
+    "case": "dEQP-GLES2.functional.texture.specification.basic_teximage2d.l8_cube",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.8194097,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14512,
+    "case": "dEQP-GLES2.functional.texture.specification.basic_teximage2d.la88_cube",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.55153775,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14514,
+    "case": "dEQP-GLES2.functional.texture.specification.basic_teximage2d.rgb565_cube",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.20171894,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14516,
+    "case": "dEQP-GLES2.functional.texture.specification.basic_teximage2d.rgb888_cube",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.6292221,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14518,
+    "case": "dEQP-GLES2.functional.texture.specification.basic_teximage2d.rgba4444_cube",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.5165437,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14520,
+    "case": "dEQP-GLES2.functional.texture.specification.basic_teximage2d.rgba5551_cube",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.9332397,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14522,
+    "case": "dEQP-GLES2.functional.texture.specification.basic_teximage2d.rgba8888_cube",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.5642302,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14524,
+    "case": "dEQP-GLES2.functional.texture.specification.basic_teximage2d.rgba16f_cube",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.4003726,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14526,
+    "case": "dEQP-GLES2.functional.texture.specification.basic_teximage2d.rgb16f_cube",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.6874225,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14528,
+    "case": "dEQP-GLES2.functional.texture.specification.basic_teximage2d.la16f_cube",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.4775228,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14530,
+    "case": "dEQP-GLES2.functional.texture.specification.basic_teximage2d.l16f_cube",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.5775129,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14532,
+    "case": "dEQP-GLES2.functional.texture.specification.basic_teximage2d.a16f_cube",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.58894116,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14543,
+    "case": "dEQP-GLES2.functional.texture.specification.random_teximage2d.cube_0",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 1.0028365,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14544,
+    "case": "dEQP-GLES2.functional.texture.specification.random_teximage2d.cube_1",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.16723076,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14545,
+    "case": "dEQP-GLES2.functional.texture.specification.random_teximage2d.cube_2",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.4991139,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14546,
+    "case": "dEQP-GLES2.functional.texture.specification.random_teximage2d.cube_3",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.3405998,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14547,
+    "case": "dEQP-GLES2.functional.texture.specification.random_teximage2d.cube_4",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.56483126,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14548,
+    "case": "dEQP-GLES2.functional.texture.specification.random_teximage2d.cube_5",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.59495425,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14549,
+    "case": "dEQP-GLES2.functional.texture.specification.random_teximage2d.cube_6",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.53038734,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14550,
+    "case": "dEQP-GLES2.functional.texture.specification.random_teximage2d.cube_7",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.28176895,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14551,
+    "case": "dEQP-GLES2.functional.texture.specification.random_teximage2d.cube_8",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.2285937,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14552,
+    "case": "dEQP-GLES2.functional.texture.specification.random_teximage2d.cube_9",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.54207706,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14570,
+    "case": "dEQP-GLES2.functional.texture.specification.teximage2d_align.cube_l8_4_8",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.17146672,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14571,
+    "case": "dEQP-GLES2.functional.texture.specification.teximage2d_align.cube_l8_63_1",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.18948077,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14572,
+    "case": "dEQP-GLES2.functional.texture.specification.teximage2d_align.cube_l8_63_2",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.18122192,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14573,
+    "case": "dEQP-GLES2.functional.texture.specification.teximage2d_align.cube_l8_63_4",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.3115213,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14574,
+    "case": "dEQP-GLES2.functional.texture.specification.teximage2d_align.cube_l8_63_8",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.21200149,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14575,
+    "case": "dEQP-GLES2.functional.texture.specification.teximage2d_align.cube_rgba4444_51_1",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.29066327,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14576,
+    "case": "dEQP-GLES2.functional.texture.specification.teximage2d_align.cube_rgba4444_51_2",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.30329815,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14577,
+    "case": "dEQP-GLES2.functional.texture.specification.teximage2d_align.cube_rgba4444_51_4",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.13242753,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14578,
+    "case": "dEQP-GLES2.functional.texture.specification.teximage2d_align.cube_rgba4444_51_8",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.1575129,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14579,
+    "case": "dEQP-GLES2.functional.texture.specification.teximage2d_align.cube_rgb888_39_1",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.12040698,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14580,
+    "case": "dEQP-GLES2.functional.texture.specification.teximage2d_align.cube_rgb888_39_2",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.11798242,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14581,
+    "case": "dEQP-GLES2.functional.texture.specification.teximage2d_align.cube_rgb888_39_4",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.20699888,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14582,
+    "case": "dEQP-GLES2.functional.texture.specification.teximage2d_align.cube_rgb888_39_8",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.28034207,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115648065899Z-gles-fix-final-parallel-1-50"
+  },
+  {
+    "global_index": 14583,
+    "case": "dEQP-GLES2.functional.texture.specification.teximage2d_align.cube_rgba8888_47_1",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.17761189,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14584,
+    "case": "dEQP-GLES2.functional.texture.specification.teximage2d_align.cube_rgba8888_47_2",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.21875219,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14585,
+    "case": "dEQP-GLES2.functional.texture.specification.teximage2d_align.cube_rgba8888_47_4",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.18637891,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14586,
+    "case": "dEQP-GLES2.functional.texture.specification.teximage2d_align.cube_rgba8888_47_8",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.3340921,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14588,
+    "case": "dEQP-GLES2.functional.texture.specification.basic_texsubimage2d.a8_cube",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.9914268,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14590,
+    "case": "dEQP-GLES2.functional.texture.specification.basic_texsubimage2d.l8_cube",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.9842241,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14592,
+    "case": "dEQP-GLES2.functional.texture.specification.basic_texsubimage2d.la88_cube",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.9814225,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14594,
+    "case": "dEQP-GLES2.functional.texture.specification.basic_texsubimage2d.rgb565_cube",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.55805445,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14596,
+    "case": "dEQP-GLES2.functional.texture.specification.basic_texsubimage2d.rgb888_cube",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.7753384,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14598,
+    "case": "dEQP-GLES2.functional.texture.specification.basic_texsubimage2d.rgba4444_cube",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.65290177,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14600,
+    "case": "dEQP-GLES2.functional.texture.specification.basic_texsubimage2d.rgba5551_cube",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 1.0352105,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14602,
+    "case": "dEQP-GLES2.functional.texture.specification.basic_texsubimage2d.rgba8888_cube",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 1.1658273,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14604,
+    "case": "dEQP-GLES2.functional.texture.specification.basic_texsubimage2d.rgba16f_cube",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.6485832,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14606,
+    "case": "dEQP-GLES2.functional.texture.specification.basic_texsubimage2d.rgb16f_cube",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.8247104,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14608,
+    "case": "dEQP-GLES2.functional.texture.specification.basic_texsubimage2d.la16f_cube",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.9971256,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14610,
+    "case": "dEQP-GLES2.functional.texture.specification.basic_texsubimage2d.l16f_cube",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.97940314,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14612,
+    "case": "dEQP-GLES2.functional.texture.specification.basic_texsubimage2d.a16f_cube",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 1.262274,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14614,
+    "case": "dEQP-GLES2.functional.texture.specification.texsubimage2d_empty_tex.a8_cube",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.30314723,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14616,
+    "case": "dEQP-GLES2.functional.texture.specification.texsubimage2d_empty_tex.l8_cube",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.51135993,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14618,
+    "case": "dEQP-GLES2.functional.texture.specification.texsubimage2d_empty_tex.la88_cube",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.52996707,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14620,
+    "case": "dEQP-GLES2.functional.texture.specification.texsubimage2d_empty_tex.rgb565_cube",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.38633806,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14622,
+    "case": "dEQP-GLES2.functional.texture.specification.texsubimage2d_empty_tex.rgb888_cube",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.7359913,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14624,
+    "case": "dEQP-GLES2.functional.texture.specification.texsubimage2d_empty_tex.rgba4444_cube",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.59464025,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14625,
+    "case": "dEQP-GLES2.functional.texture.specification.texsubimage2d_empty_tex.rgba5551_2d",
+    "session": 1,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.22318427,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14626,
+    "case": "dEQP-GLES2.functional.texture.specification.texsubimage2d_empty_tex.rgba5551_cube",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.55208606,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14628,
+    "case": "dEQP-GLES2.functional.texture.specification.texsubimage2d_empty_tex.rgba8888_cube",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.612991,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14630,
+    "case": "dEQP-GLES2.functional.texture.specification.texsubimage2d_empty_tex.rgba16f_cube",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.4810012,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14632,
+    "case": "dEQP-GLES2.functional.texture.specification.texsubimage2d_empty_tex.rgb16f_cube",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.4011481,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14634,
+    "case": "dEQP-GLES2.functional.texture.specification.texsubimage2d_empty_tex.la16f_cube",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.4297616,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14636,
+    "case": "dEQP-GLES2.functional.texture.specification.texsubimage2d_empty_tex.l16f_cube",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.61863124,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14638,
+    "case": "dEQP-GLES2.functional.texture.specification.texsubimage2d_empty_tex.a16f_cube",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.51443285,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14659,
+    "case": "dEQP-GLES2.functional.texture.specification.texsubimage2d_align.cube_l8_1_1",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.31553832,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14660,
+    "case": "dEQP-GLES2.functional.texture.specification.texsubimage2d_align.cube_l8_1_2",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.531341,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14661,
+    "case": "dEQP-GLES2.functional.texture.specification.texsubimage2d_align.cube_l8_1_4",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.38448647,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14662,
+    "case": "dEQP-GLES2.functional.texture.specification.texsubimage2d_align.cube_l8_1_8",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.35111395,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14663,
+    "case": "dEQP-GLES2.functional.texture.specification.texsubimage2d_align.cube_l8_63_1",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.34771076,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14664,
+    "case": "dEQP-GLES2.functional.texture.specification.texsubimage2d_align.cube_l8_63_2",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.558757,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14665,
+    "case": "dEQP-GLES2.functional.texture.specification.texsubimage2d_align.cube_l8_63_4",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.58050513,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14666,
+    "case": "dEQP-GLES2.functional.texture.specification.texsubimage2d_align.cube_l8_63_8",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.4112972,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14667,
+    "case": "dEQP-GLES2.functional.texture.specification.texsubimage2d_align.cube_rgba4444_51_1",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.34064227,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14668,
+    "case": "dEQP-GLES2.functional.texture.specification.texsubimage2d_align.cube_rgba4444_51_2",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.23150651,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14669,
+    "case": "dEQP-GLES2.functional.texture.specification.texsubimage2d_align.cube_rgba4444_51_4",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.22479387,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14670,
+    "case": "dEQP-GLES2.functional.texture.specification.texsubimage2d_align.cube_rgba4444_51_8",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.18664886,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14671,
+    "case": "dEQP-GLES2.functional.texture.specification.texsubimage2d_align.cube_rgb888_39_1",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.38741365,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14672,
+    "case": "dEQP-GLES2.functional.texture.specification.texsubimage2d_align.cube_rgb888_39_2",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.22976291,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14673,
+    "case": "dEQP-GLES2.functional.texture.specification.texsubimage2d_align.cube_rgb888_39_4",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.2382103,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14674,
+    "case": "dEQP-GLES2.functional.texture.specification.texsubimage2d_align.cube_rgb888_39_8",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.33097154,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14675,
+    "case": "dEQP-GLES2.functional.texture.specification.texsubimage2d_align.cube_rgba8888_47_1",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.3319774,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14676,
+    "case": "dEQP-GLES2.functional.texture.specification.texsubimage2d_align.cube_rgba8888_47_2",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.34811214,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14677,
+    "case": "dEQP-GLES2.functional.texture.specification.texsubimage2d_align.cube_rgba8888_47_4",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.26450405,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115701042913Z-gles-fix-final-parallel-1-100"
+  },
+  {
+    "global_index": 14678,
+    "case": "dEQP-GLES2.functional.texture.specification.texsubimage2d_align.cube_rgba8888_47_8",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.23666966,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0150/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115714096071Z-gles-fix-final-parallel-1-150"
+  },
+  {
+    "global_index": 14684,
+    "case": "dEQP-GLES2.functional.texture.specification.basic_copyteximage2d.cube_alpha",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.83533436,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0150/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115714096071Z-gles-fix-final-parallel-1-150"
+  },
+  {
+    "global_index": 14685,
+    "case": "dEQP-GLES2.functional.texture.specification.basic_copyteximage2d.cube_luminance",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.4783817,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0150/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115714096071Z-gles-fix-final-parallel-1-150"
+  },
+  {
+    "global_index": 14686,
+    "case": "dEQP-GLES2.functional.texture.specification.basic_copyteximage2d.cube_luminance_alpha",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.36081386,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0150/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115714096071Z-gles-fix-final-parallel-1-150"
+  },
+  {
+    "global_index": 14687,
+    "case": "dEQP-GLES2.functional.texture.specification.basic_copyteximage2d.cube_rgb",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.5593375,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0150/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115714096071Z-gles-fix-final-parallel-1-150"
+  },
+  {
+    "global_index": 14688,
+    "case": "dEQP-GLES2.functional.texture.specification.basic_copyteximage2d.cube_rgba",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.69528955,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0150/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115714096071Z-gles-fix-final-parallel-1-150"
+  },
+  {
+    "global_index": 14694,
+    "case": "dEQP-GLES2.functional.texture.specification.basic_copytexsubimage2d.cube_alpha",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.86953163,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0150/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115714096071Z-gles-fix-final-parallel-1-150"
+  },
+  {
+    "global_index": 14695,
+    "case": "dEQP-GLES2.functional.texture.specification.basic_copytexsubimage2d.cube_luminance",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.2807833,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0150/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115714096071Z-gles-fix-final-parallel-1-150"
+  },
+  {
+    "global_index": 14696,
+    "case": "dEQP-GLES2.functional.texture.specification.basic_copytexsubimage2d.cube_luminance_alpha",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.62832624,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0150/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115714096071Z-gles-fix-final-parallel-1-150"
+  },
+  {
+    "global_index": 14697,
+    "case": "dEQP-GLES2.functional.texture.specification.basic_copytexsubimage2d.cube_rgb",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.70721114,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0150/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115714096071Z-gles-fix-final-parallel-1-150"
+  },
+  {
+    "global_index": 14698,
+    "case": "dEQP-GLES2.functional.texture.specification.basic_copytexsubimage2d.cube_rgba",
+    "session": 1,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.6435144,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0150/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115714096071Z-gles-fix-final-parallel-1-150"
+  },
+  {
+    "global_index": 14766,
+    "case": "dEQP-GLES2.functional.texture.vertex.2d.filtering.nearest_mipmap_linear_linear_clamp",
+    "session": 1,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.08400098,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0150/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115714096071Z-gles-fix-final-parallel-1-150"
+  },
+  {
+    "global_index": 14839,
+    "case": "dEQP-GLES2.functional.fragment_ops.stencil.depth_fail_replace",
+    "session": 1,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.09228081,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0150/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115714096071Z-gles-fix-final-parallel-1-150"
+  },
+  {
+    "global_index": 14866,
+    "case": "dEQP-GLES2.functional.fragment_ops.depth_stencil.stencil_depth_funcs.stencil_always_depth_lequal",
+    "session": 1,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.189114,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0150/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115714096071Z-gles-fix-final-parallel-1-150"
+  },
+  {
+    "global_index": 14877,
+    "case": "dEQP-GLES2.functional.fragment_ops.depth_stencil.stencil_depth_funcs.stencil_less_depth_gequal",
+    "session": 1,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.43755916,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0150/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115714096071Z-gles-fix-final-parallel-1-150"
+  },
+  {
+    "global_index": 14912,
+    "case": "dEQP-GLES2.functional.fragment_ops.depth_stencil.stencil_depth_funcs.stencil_greater_depth_equal",
+    "session": 1,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.21000214,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0150/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115714096071Z-gles-fix-final-parallel-1-150"
+  },
+  {
+    "global_index": 14985,
+    "case": "dEQP-GLES2.functional.fragment_ops.depth_stencil.stencil_ops.keep_incr_wrap_replace",
+    "session": 1,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.83966833,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0150/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115714096071Z-gles-fix-final-parallel-1-150"
+  },
+  {
+    "global_index": 16332,
+    "case": "dEQP-GLES2.functional.fragment_ops.blend.rgb_func_alpha_func.src.src_alpha_saturate_zero",
+    "session": 1,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.4388591,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0150/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115714096071Z-gles-fix-final-parallel-1-150"
+  },
+  {
+    "global_index": 16363,
+    "case": "dEQP-GLES2.functional.fragment_ops.blend.rgb_func_alpha_func.dst.one_src_color",
+    "session": 1,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 1.3863828,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0150/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115714096071Z-gles-fix-final-parallel-1-150"
+  },
+  {
+    "global_index": 16382,
+    "case": "dEQP-GLES2.functional.fragment_ops.blend.rgb_func_alpha_func.dst.src_color_one_minus_src_alpha",
+    "session": 1,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.3635993,
+    "run": "build/gles32-fixes-20260922/final-parallel/001-0150/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115714096071Z-gles-fix-final-parallel-1-150"
+  },
+  {
+    "global_index": 21014,
+    "case": "dEQP-GLES3.functional.color_clear.multiple_rgb",
+    "session": 2,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 1.3506761,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 21026,
+    "case": "dEQP-GLES3.functional.color_clear.masked_scissored_rgba",
+    "session": 2,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 1.088133,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 21191,
+    "case": "dEQP-GLES3.functional.buffer.write.basic_subdata.uniform_static_copy",
+    "session": 2,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.034564823,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 23583,
+    "case": "dEQP-GLES3.functional.shaders.conversions.matrix_combine.vec2_bvec2_to_mat2_fragment",
+    "session": 2,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.089111865,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 23646,
+    "case": "dEQP-GLES3.functional.shaders.conversions.matrix_combine.vec3_float_bvec2_to_mat3x2_vertex",
+    "session": 2,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.08770608,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 26080,
+    "case": "dEQP-GLES3.functional.shaders.scoping.valid.while_condition_variable_hides_global_variable_fragment",
+    "session": 2,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.07100044,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 27071,
+    "case": "dEQP-GLES3.functional.shaders.discard.basic_texture",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.043878768,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 27076,
+    "case": "dEQP-GLES3.functional.shaders.discard.function_texture",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.04562184,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 27081,
+    "case": "dEQP-GLES3.functional.shaders.discard.static_loop_texture",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.036766876,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 27086,
+    "case": "dEQP-GLES3.functional.shaders.discard.dynamic_loop_texture",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.06978688,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 27091,
+    "case": "dEQP-GLES3.functional.shaders.discard.function_static_loop_texture",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.048456777,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 28663,
+    "case": "dEQP-GLES3.functional.shaders.operator.unary_operator.pre_increment_effect.highp_uvec4_vertex",
+    "session": 2,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.04276815,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 28675,
+    "case": "dEQP-GLES3.functional.shaders.operator.unary_operator.pre_decrement_effect.highp_vec2_vertex",
+    "session": 2,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.028743804,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 28688,
+    "case": "dEQP-GLES3.functional.shaders.operator.unary_operator.pre_decrement_effect.highp_vec4_fragment",
+    "session": 2,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.021044152,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 28691,
+    "case": "dEQP-GLES3.functional.shaders.operator.unary_operator.pre_decrement_effect.mediump_int_vertex",
+    "session": 2,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.034731787,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 31160,
+    "case": "dEQP-GLES3.functional.shaders.operator.binary_operator.div_assign_effect.highp_vec2_float_fragment",
+    "session": 2,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.033805992,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 31232,
+    "case": "dEQP-GLES3.functional.shaders.operator.binary_operator.mod_assign_effect.highp_ivec4_fragment",
+    "session": 2,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.020321485,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 33613,
+    "case": "dEQP-GLES3.functional.shaders.operator.exponential.exp.highp_vec4_vertex",
+    "session": 2,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.024765423,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 33652,
+    "case": "dEQP-GLES3.functional.shaders.operator.exponential.log2.mediump_vec2_fragment",
+    "session": 2,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.019710498,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 33765,
+    "case": "dEQP-GLES3.functional.shaders.operator.common_functions.floor.highp_vec4_vertex",
+    "session": 2,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.031918705,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 34435,
+    "case": "dEQP-GLES3.functional.shaders.operator.geometric.distance.mediump_float_vertex",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.023261225,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 34436,
+    "case": "dEQP-GLES3.functional.shaders.operator.geometric.distance.mediump_float_fragment",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.02638678,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 36035,
+    "case": "dEQP-GLES3.functional.shaders.matrix.mul.uniform.lowp_mat3_mat4x3_vertex",
+    "session": 2,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.053071804,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 36098,
+    "case": "dEQP-GLES3.functional.shaders.matrix.mul.uniform.lowp_mat4x2_float_fragment",
+    "session": 2,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.029065268,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 36404,
+    "case": "dEQP-GLES3.functional.shaders.matrix.mul.dynamic.mediump_mat3x4_mat2x3_fragment",
+    "session": 2,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.035671934,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 37684,
+    "case": "dEQP-GLES3.functional.shaders.struct.uniform.sampler_fragment",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.05308522,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 37686,
+    "case": "dEQP-GLES3.functional.shaders.struct.uniform.sampler_nested_fragment",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.061101776,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 37688,
+    "case": "dEQP-GLES3.functional.shaders.struct.uniform.sampler_array_fragment",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.079051055,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 38286,
+    "case": "dEQP-GLES3.functional.shaders.texture_functions.texturegradoffset.sampler2darray_fixed_vertex",
+    "session": 2,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.12836628,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 38287,
+    "case": "dEQP-GLES3.functional.shaders.texture_functions.texturegradoffset.sampler2darray_fixed_fragment",
+    "session": 2,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.13460393,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 38288,
+    "case": "dEQP-GLES3.functional.shaders.texture_functions.texturegradoffset.sampler2darray_float_vertex",
+    "session": 2,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.06750508,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 38289,
+    "case": "dEQP-GLES3.functional.shaders.texture_functions.texturegradoffset.sampler2darray_float_fragment",
+    "session": 2,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.08118062,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 38290,
+    "case": "dEQP-GLES3.functional.shaders.texture_functions.texturegradoffset.isampler2darray_vertex",
+    "session": 2,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.06339184,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 38291,
+    "case": "dEQP-GLES3.functional.shaders.texture_functions.texturegradoffset.isampler2darray_fragment",
+    "session": 2,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.05214674,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 38292,
+    "case": "dEQP-GLES3.functional.shaders.texture_functions.texturegradoffset.usampler2darray_vertex",
+    "session": 2,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.085363805,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 38293,
+    "case": "dEQP-GLES3.functional.shaders.texture_functions.texturegradoffset.usampler2darray_fragment",
+    "session": 2,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.08020516,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 38304,
+    "case": "dEQP-GLES3.functional.shaders.texture_functions.texturegradoffset.sampler2darrayshadow_vertex",
+    "session": 2,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.04341635,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 38305,
+    "case": "dEQP-GLES3.functional.shaders.texture_functions.texturegradoffset.sampler2darrayshadow_fragment",
+    "session": 2,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.05625056,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 38610,
+    "case": "dEQP-GLES3.functional.shaders.derivate.dfdx.uniform_if.vec3_mediump",
+    "session": 2,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.029183991,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 38613,
+    "case": "dEQP-GLES3.functional.shaders.derivate.dfdx.uniform_loop.float_mediump",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.030142969,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 38615,
+    "case": "dEQP-GLES3.functional.shaders.derivate.dfdx.uniform_loop.vec2_mediump",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.035756484,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 38617,
+    "case": "dEQP-GLES3.functional.shaders.derivate.dfdx.uniform_loop.vec3_mediump",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.028564628,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 38972,
+    "case": "dEQP-GLES3.functional.shaders.derivate.fwidth.uniform_loop.float_mediump",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.038018912,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 38974,
+    "case": "dEQP-GLES3.functional.shaders.derivate.fwidth.uniform_loop.vec2_mediump",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.044584222,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 38976,
+    "case": "dEQP-GLES3.functional.shaders.derivate.fwidth.uniform_loop.vec3_mediump",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.03868127,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 38978,
+    "case": "dEQP-GLES3.functional.shaders.derivate.fwidth.uniform_loop.vec4_mediump",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.03658147,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 41215,
+    "case": "dEQP-GLES3.functional.shaders.random.basic_expression.vertex.68",
+    "session": 2,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.028543526,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 41241,
+    "case": "dEQP-GLES3.functional.shaders.random.basic_expression.vertex.94",
+    "session": 2,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.021346016,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 41247,
+    "case": "dEQP-GLES3.functional.shaders.random.basic_expression.fragment.0",
+    "session": 2,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.026200648,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 41269,
+    "case": "dEQP-GLES3.functional.shaders.random.basic_expression.fragment.22",
+    "session": 2,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.023691788,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115722678660Z-gles-fix-final-parallel-2-0"
+  },
+  {
+    "global_index": 41297,
+    "case": "dEQP-GLES3.functional.shaders.random.basic_expression.fragment.50",
+    "session": 2,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.027722592,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 41308,
+    "case": "dEQP-GLES3.functional.shaders.random.basic_expression.fragment.61",
+    "session": 2,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.04508573,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 41339,
+    "case": "dEQP-GLES3.functional.shaders.random.basic_expression.fragment.92",
+    "session": 2,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.026399186,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 42346,
+    "case": "dEQP-GLES3.functional.shaders.random.trigonometric.fragment.4",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.03754113,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 42386,
+    "case": "dEQP-GLES3.functional.shaders.random.trigonometric.fragment.45",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.03972036,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 42693,
+    "case": "dEQP-GLES3.functional.shaders.random.texture.fragment.5",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.05230988,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 42696,
+    "case": "dEQP-GLES3.functional.shaders.random.texture.fragment.8",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.0872015,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 42698,
+    "case": "dEQP-GLES3.functional.shaders.random.texture.fragment.10",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.13410218,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 42701,
+    "case": "dEQP-GLES3.functional.shaders.random.texture.fragment.13",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.06788863,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 42704,
+    "case": "dEQP-GLES3.functional.shaders.random.texture.fragment.16",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.13592982,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 42725,
+    "case": "dEQP-GLES3.functional.shaders.random.texture.fragment.37",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.114021175,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 42731,
+    "case": "dEQP-GLES3.functional.shaders.random.texture.fragment.43",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.04511304,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 42739,
+    "case": "dEQP-GLES3.functional.shaders.random.texture.fragment.51",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.12249321,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 42740,
+    "case": "dEQP-GLES3.functional.shaders.random.texture.fragment.52",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.15123886,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 42746,
+    "case": "dEQP-GLES3.functional.shaders.random.texture.fragment.58",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.06694711,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 42750,
+    "case": "dEQP-GLES3.functional.shaders.random.texture.fragment.62",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.059402663,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 42761,
+    "case": "dEQP-GLES3.functional.shaders.random.texture.fragment.73",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.1534366,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 42762,
+    "case": "dEQP-GLES3.functional.shaders.random.texture.fragment.74",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.07132095,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 42773,
+    "case": "dEQP-GLES3.functional.shaders.random.texture.fragment.85",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.054960456,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 42774,
+    "case": "dEQP-GLES3.functional.shaders.random.texture.fragment.86",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.09675117,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 42780,
+    "case": "dEQP-GLES3.functional.shaders.random.texture.fragment.92",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.14755896,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 42799,
+    "case": "dEQP-GLES3.functional.shaders.random.texture.fragment.111",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.16786581,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 42814,
+    "case": "dEQP-GLES3.functional.shaders.random.texture.fragment.126",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.12626228,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 42817,
+    "case": "dEQP-GLES3.functional.shaders.random.texture.fragment.129",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.150194,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 42823,
+    "case": "dEQP-GLES3.functional.shaders.random.texture.fragment.135",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.11280262,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 42827,
+    "case": "dEQP-GLES3.functional.shaders.random.texture.fragment.139",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.108867824,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 42908,
+    "case": "dEQP-GLES3.functional.shaders.random.all_features.fragment.0",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.10685247,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 42912,
+    "case": "dEQP-GLES3.functional.shaders.random.all_features.fragment.4",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.14514378,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 42916,
+    "case": "dEQP-GLES3.functional.shaders.random.all_features.fragment.11",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.08240698,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 42921,
+    "case": "dEQP-GLES3.functional.shaders.random.all_features.fragment.20",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.13868575,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 42923,
+    "case": "dEQP-GLES3.functional.shaders.random.all_features.fragment.24",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.079881646,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 42936,
+    "case": "dEQP-GLES3.functional.shaders.random.all_features.fragment.44",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.08595819,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 42943,
+    "case": "dEQP-GLES3.functional.shaders.random.all_features.fragment.52",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.1471464,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 42947,
+    "case": "dEQP-GLES3.functional.shaders.random.all_features.fragment.59",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.059723902,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 42955,
+    "case": "dEQP-GLES3.functional.shaders.random.all_features.fragment.73",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.10647957,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 42967,
+    "case": "dEQP-GLES3.functional.shaders.random.all_features.fragment.88",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.15996802,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 42970,
+    "case": "dEQP-GLES3.functional.shaders.random.all_features.fragment.92",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.049907953,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 42975,
+    "case": "dEQP-GLES3.functional.shaders.random.all_features.fragment.99",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.1779638,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 42987,
+    "case": "dEQP-GLES3.functional.texture.format.unsized.luminance_cube_npot",
+    "session": 2,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 1.1077873,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 58876,
+    "case": "dEQP-GLES3.functional.uniform_api.value.assigned.by_pointer.render.basic.mat2x3_row_major_both",
+    "session": 2,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.07453052,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 60929,
+    "case": "dEQP-GLES3.functional.samplers.single_cubemap.diff_wrap_t",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.41469055,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 60930,
+    "case": "dEQP-GLES3.functional.samplers.single_cubemap.diff_wrap_s",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.294423,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 60931,
+    "case": "dEQP-GLES3.functional.samplers.single_cubemap.diff_wrap_r",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.36321798,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 60932,
+    "case": "dEQP-GLES3.functional.samplers.single_cubemap.diff_min_filter",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.1691278,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 60933,
+    "case": "dEQP-GLES3.functional.samplers.single_cubemap.diff_mag_filter",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.3149224,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 60934,
+    "case": "dEQP-GLES3.functional.samplers.single_cubemap.diff_max_lod",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.3834026,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 60935,
+    "case": "dEQP-GLES3.functional.samplers.single_cubemap.diff_min_lod",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.4358334,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 60936,
+    "case": "dEQP-GLES3.functional.samplers.multi_cubemap.diff_wrap_t",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.58973783,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 60937,
+    "case": "dEQP-GLES3.functional.samplers.multi_cubemap.diff_wrap_s",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.24674548,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 60938,
+    "case": "dEQP-GLES3.functional.samplers.multi_cubemap.diff_wrap_r",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.32748714,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0050/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115729912759Z-gles-fix-final-parallel-2-50"
+  },
+  {
+    "global_index": 60939,
+    "case": "dEQP-GLES3.functional.samplers.multi_cubemap.diff_min_filter",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.6877776,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115740160928Z-gles-fix-final-parallel-2-100"
+  },
+  {
+    "global_index": 60940,
+    "case": "dEQP-GLES3.functional.samplers.multi_cubemap.diff_mag_filter",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.656666,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115740160928Z-gles-fix-final-parallel-2-100"
+  },
+  {
+    "global_index": 60941,
+    "case": "dEQP-GLES3.functional.samplers.multi_cubemap.diff_max_lod",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.67216796,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115740160928Z-gles-fix-final-parallel-2-100"
+  },
+  {
+    "global_index": 60942,
+    "case": "dEQP-GLES3.functional.samplers.multi_cubemap.diff_min_lod",
+    "session": 2,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.6623065,
+    "run": "build/gles32-fixes-20260922/final-parallel/002-0100/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115740160928Z-gles-fix-final-parallel-2-100"
+  },
+  {
+    "global_index": 65765,
+    "case": "dEQP-GLES3.functional.shaders.discard.basic_texture",
+    "session": 3,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.06257388,
+    "run": "build/gles32-fixes-20260922/final-parallel/003-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115745327412Z-gles-fix-final-parallel-3-0"
+  },
+  {
+    "global_index": 65770,
+    "case": "dEQP-GLES3.functional.shaders.discard.function_texture",
+    "session": 3,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.06637412,
+    "run": "build/gles32-fixes-20260922/final-parallel/003-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115745327412Z-gles-fix-final-parallel-3-0"
+  },
+  {
+    "global_index": 65775,
+    "case": "dEQP-GLES3.functional.shaders.discard.static_loop_texture",
+    "session": 3,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.06623613,
+    "run": "build/gles32-fixes-20260922/final-parallel/003-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115745327412Z-gles-fix-final-parallel-3-0"
+  },
+  {
+    "global_index": 65780,
+    "case": "dEQP-GLES3.functional.shaders.discard.dynamic_loop_texture",
+    "session": 3,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.055326153,
+    "run": "build/gles32-fixes-20260922/final-parallel/003-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115745327412Z-gles-fix-final-parallel-3-0"
+  },
+  {
+    "global_index": 65785,
+    "case": "dEQP-GLES3.functional.shaders.discard.function_static_loop_texture",
+    "session": 3,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.05715422,
+    "run": "build/gles32-fixes-20260922/final-parallel/003-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115745327412Z-gles-fix-final-parallel-3-0"
+  },
+  {
+    "global_index": 65858,
+    "case": "dEQP-GLES3.functional.shaders.derivate.dfdx.uniform_loop.float_mediump",
+    "session": 3,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.047944397,
+    "run": "build/gles32-fixes-20260922/final-parallel/003-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115745327412Z-gles-fix-final-parallel-3-0"
+  },
+  {
+    "global_index": 65860,
+    "case": "dEQP-GLES3.functional.shaders.derivate.dfdx.uniform_loop.vec2_mediump",
+    "session": 3,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.042427745,
+    "run": "build/gles32-fixes-20260922/final-parallel/003-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115745327412Z-gles-fix-final-parallel-3-0"
+  },
+  {
+    "global_index": 65862,
+    "case": "dEQP-GLES3.functional.shaders.derivate.dfdx.uniform_loop.vec3_mediump",
+    "session": 3,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.051169816,
+    "run": "build/gles32-fixes-20260922/final-parallel/003-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115745327412Z-gles-fix-final-parallel-3-0"
+  },
+  {
+    "global_index": 66217,
+    "case": "dEQP-GLES3.functional.shaders.derivate.fwidth.uniform_loop.float_mediump",
+    "session": 3,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.028971761,
+    "run": "build/gles32-fixes-20260922/final-parallel/003-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115745327412Z-gles-fix-final-parallel-3-0"
+  },
+  {
+    "global_index": 66219,
+    "case": "dEQP-GLES3.functional.shaders.derivate.fwidth.uniform_loop.vec2_mediump",
+    "session": 3,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.030187069,
+    "run": "build/gles32-fixes-20260922/final-parallel/003-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115745327412Z-gles-fix-final-parallel-3-0"
+  },
+  {
+    "global_index": 66221,
+    "case": "dEQP-GLES3.functional.shaders.derivate.fwidth.uniform_loop.vec3_mediump",
+    "session": 3,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.059684265,
+    "run": "build/gles32-fixes-20260922/final-parallel/003-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115745327412Z-gles-fix-final-parallel-3-0"
+  },
+  {
+    "global_index": 66223,
+    "case": "dEQP-GLES3.functional.shaders.derivate.fwidth.uniform_loop.vec4_mediump",
+    "session": 3,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.06803277,
+    "run": "build/gles32-fixes-20260922/final-parallel/003-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115745327412Z-gles-fix-final-parallel-3-0"
+  },
+  {
+    "global_index": 85196,
+    "case": "dEQP-GLES31.functional.texture.border_clamp.depth_compare_mode.depth32f_stencil8.gather_size_pot",
+    "session": 4,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.62896633,
+    "run": "build/gles32-fixes-20260922/final-parallel/004-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115750370730Z-gles-fix-final-parallel-4-0"
+  },
+  {
+    "global_index": 85197,
+    "case": "dEQP-GLES31.functional.texture.border_clamp.depth_compare_mode.depth32f_stencil8.gather_size_npot",
+    "session": 4,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.6279648,
+    "run": "build/gles32-fixes-20260922/final-parallel/004-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115750370730Z-gles-fix-final-parallel-4-0"
+  },
+  {
+    "global_index": 100364,
+    "case": "dEQP-GLES31.functional.copy_image.non_compressed.viewclass_32_bits.rgb10_a2_r32f.texture3d_to_texture2d",
+    "session": 4,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.96526724,
+    "run": "build/gles32-fixes-20260922/final-parallel/004-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115750370730Z-gles-fix-final-parallel-4-0"
+  },
+  {
+    "global_index": 100408,
+    "case": "dEQP-GLES31.functional.copy_image.non_compressed.viewclass_32_bits.rgb10_a2_r32ui.texture2d_to_texture2d_array",
+    "session": 4,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 1.0089802,
+    "run": "build/gles32-fixes-20260922/final-parallel/004-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115750370730Z-gles-fix-final-parallel-4-0"
+  },
+  {
+    "global_index": 102892,
+    "case": "dEQP-GLES31.functional.copy_image.non_compressed.viewclass_16_bits.rg8ui_rg8.texture2d_array_to_cubemap",
+    "session": 4,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 1.043391,
+    "run": "build/gles32-fixes-20260922/final-parallel/004-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115750370730Z-gles-fix-final-parallel-4-0"
+  },
+  {
+    "global_index": 107872,
+    "case": "dEQP-GLES31.functional.copy_image.mixed.viewclass_64_bits_mixed.rgba16i_r11_eac.texture2d_to_cubemap",
+    "session": 4,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 1.361743,
+    "run": "build/gles32-fixes-20260922/final-parallel/004-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115750370730Z-gles-fix-final-parallel-4-0"
+  },
+  {
+    "global_index": 115084,
+    "case": "KHR-GLES3.shaders.indexing.tmp_array.vec2_dynamic_loop_write_static_read_vertex",
+    "session": 10,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.03290663,
+    "run": "build/gles32-fixes-20260922/final-parallel/010-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115757021800Z-gles-fix-final-parallel-10-0"
+  },
+  {
+    "global_index": 115113,
+    "case": "KHR-GLES3.shaders.indexing.vector_subscript.vec2_direct_write_dynamic_subscript_read_vertex",
+    "session": 10,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.03796388,
+    "run": "build/gles32-fixes-20260922/final-parallel/010-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115757021800Z-gles-fix-final-parallel-10-0"
+  },
+  {
+    "global_index": 115167,
+    "case": "KHR-GLES3.shaders.indexing.matrix_subscript.mat2_static_loop_write_static_read_vertex",
+    "session": 10,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.033250496,
+    "run": "build/gles32-fixes-20260922/final-parallel/010-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115757021800Z-gles-fix-final-parallel-10-0"
+  },
+  {
+    "global_index": 115181,
+    "case": "KHR-GLES3.shaders.indexing.matrix_subscript.mat2x3_dynamic_loop_write_static_read_vertex",
+    "session": 10,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.030662766,
+    "run": "build/gles32-fixes-20260922/final-parallel/010-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115757021800Z-gles-fix-final-parallel-10-0"
+  },
+  {
+    "global_index": 115238,
+    "case": "KHR-GLES3.shaders.indexing.matrix_subscript.mat4x2_dynamic_write_static_read_fragment",
+    "session": 10,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.04193915,
+    "run": "build/gles32-fixes-20260922/final-parallel/010-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115757021800Z-gles-fix-final-parallel-10-0"
+  },
+  {
+    "global_index": 115245,
+    "case": "KHR-GLES3.shaders.indexing.matrix_subscript.mat4x3_static_write_static_loop_read_vertex",
+    "session": 10,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.039872605,
+    "run": "build/gles32-fixes-20260922/final-parallel/010-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115757021800Z-gles-fix-final-parallel-10-0"
+  },
+  {
+    "global_index": 115247,
+    "case": "KHR-GLES3.shaders.indexing.matrix_subscript.mat4x3_static_write_dynamic_loop_read_vertex",
+    "session": 10,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.03099734,
+    "run": "build/gles32-fixes-20260922/final-parallel/010-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115757021800Z-gles-fix-final-parallel-10-0"
+  },
+  {
+    "global_index": 115701,
+    "case": "KHR-GLES3.shaders.loops.do_while_uniform_iterations.basic_mediump_int_vertex",
+    "session": 10,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.03680811,
+    "run": "build/gles32-fixes-20260922/final-parallel/010-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115757021800Z-gles-fix-final-parallel-10-0"
+  },
+  {
+    "global_index": 116422,
+    "case": "KHR-GLES3.shaders.struct.uniform.sampler_fragment",
+    "session": 10,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.032263376,
+    "run": "build/gles32-fixes-20260922/final-parallel/010-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115757021800Z-gles-fix-final-parallel-10-0"
+  },
+  {
+    "global_index": 116424,
+    "case": "KHR-GLES3.shaders.struct.uniform.sampler_nested_fragment",
+    "session": 10,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.030742096,
+    "run": "build/gles32-fixes-20260922/final-parallel/010-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115757021800Z-gles-fix-final-parallel-10-0"
+  },
+  {
+    "global_index": 116426,
+    "case": "KHR-GLES3.shaders.struct.uniform.sampler_array_fragment",
+    "session": 10,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.045453873,
+    "run": "build/gles32-fixes-20260922/final-parallel/010-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115757021800Z-gles-fix-final-parallel-10-0"
+  },
+  {
+    "global_index": 121382,
+    "case": "KHR-GLES3.texture_lod_bias.texture_lod_bias_all",
+    "session": 10,
+    "original_status": "Timeout",
+    "retest_status": "Pass",
+    "seconds": 39.267647,
+    "run": "build/gles32-fixes-20260922/timeouts-a/010-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115126437494Z-gles-fix-timeouts-a-10-0"
+  },
+  {
+    "global_index": 124523,
+    "case": "KHR-GLES31.core.tessellation_shader.vertex.vertex_ordering",
+    "session": 11,
+    "original_status": "Timeout",
+    "retest_status": "Pass",
+    "seconds": 20.524597,
+    "run": "build/gles32-fixes-20260922/timeouts-a/011-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115209750996Z-gles-fix-timeouts-a-11-0"
+  },
+  {
+    "global_index": 125637,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_fragment",
+    "session": 12,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.030560585,
+    "run": "build/gles32-fixes-20260922/final-parallel/012-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115802143616Z-gles-fix-final-parallel-12-0"
+  },
+  {
+    "global_index": 125639,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_nested_fragment",
+    "session": 12,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.030036485,
+    "run": "build/gles32-fixes-20260922/final-parallel/012-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115802143616Z-gles-fix-final-parallel-12-0"
+  },
+  {
+    "global_index": 125641,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_array_fragment",
+    "session": 12,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.03456395,
+    "run": "build/gles32-fixes-20260922/final-parallel/012-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115802143616Z-gles-fix-final-parallel-12-0"
+  },
+  {
+    "global_index": 127030,
+    "case": "KHR-GLES32.shaders.struct.uniform.nested_struct_array_fragment",
+    "session": 13,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.034131967,
+    "run": "build/gles32-fixes-20260922/final-parallel/013-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115806416748Z-gles-fix-final-parallel-13-0"
+  },
+  {
+    "global_index": 127034,
+    "case": "KHR-GLES32.shaders.struct.uniform.loop_struct_array_fragment",
+    "session": 13,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.03824429,
+    "run": "build/gles32-fixes-20260922/final-parallel/013-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115806416748Z-gles-fix-final-parallel-13-0"
+  },
+  {
+    "global_index": 127042,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_fragment",
+    "session": 13,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.05240276,
+    "run": "build/gles32-fixes-20260922/final-parallel/013-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115806416748Z-gles-fix-final-parallel-13-0"
+  },
+  {
+    "global_index": 127044,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_nested_fragment",
+    "session": 13,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.04008768,
+    "run": "build/gles32-fixes-20260922/final-parallel/013-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115806416748Z-gles-fix-final-parallel-13-0"
+  },
+  {
+    "global_index": 127046,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_array_fragment",
+    "session": 13,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.11030896,
+    "run": "build/gles32-fixes-20260922/final-parallel/013-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115806416748Z-gles-fix-final-parallel-13-0"
+  },
+  {
+    "global_index": 127216,
+    "case": "KHR-GLES32.core.tessellation_shader.vertex.vertex_ordering",
+    "session": 13,
+    "original_status": "Timeout",
+    "retest_status": "Pass",
+    "seconds": 20.666273,
+    "run": "build/gles32-fixes-20260922/timeouts-a/013-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115235143968Z-gles-fix-timeouts-a-13-0"
+  },
+  {
+    "global_index": 128447,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_fragment",
+    "session": 14,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.03205063,
+    "run": "build/gles32-fixes-20260922/final-parallel/014-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115811003972Z-gles-fix-final-parallel-14-0"
+  },
+  {
+    "global_index": 128449,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_nested_fragment",
+    "session": 14,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.029341228,
+    "run": "build/gles32-fixes-20260922/final-parallel/014-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115811003972Z-gles-fix-final-parallel-14-0"
+  },
+  {
+    "global_index": 128451,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_array_fragment",
+    "session": 14,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.038122583,
+    "run": "build/gles32-fixes-20260922/final-parallel/014-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115811003972Z-gles-fix-final-parallel-14-0"
+  },
+  {
+    "global_index": 129852,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_fragment",
+    "session": 15,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.023686446,
+    "run": "build/gles32-fixes-20260922/final-parallel/015-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115815330314Z-gles-fix-final-parallel-15-0"
+  },
+  {
+    "global_index": 129854,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_nested_fragment",
+    "session": 15,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.021064475,
+    "run": "build/gles32-fixes-20260922/final-parallel/015-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115815330314Z-gles-fix-final-parallel-15-0"
+  },
+  {
+    "global_index": 129856,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_array_fragment",
+    "session": 15,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.031616297,
+    "run": "build/gles32-fixes-20260922/final-parallel/015-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115815330314Z-gles-fix-final-parallel-15-0"
+  },
+  {
+    "global_index": 132900,
+    "case": "KHR-GLES3.shaders.indexing.vector_subscript.vec2_direct_write_static_subscript_read_vertex",
+    "session": 18,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.030055804,
+    "run": "build/gles32-fixes-20260922/final-parallel/018-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115819667346Z-gles-fix-final-parallel-18-0"
+  },
+  {
+    "global_index": 132934,
+    "case": "KHR-GLES3.shaders.indexing.vector_subscript.vec4_direct_write_dynamic_subscript_read_vertex",
+    "session": 18,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.04513169,
+    "run": "build/gles32-fixes-20260922/final-parallel/018-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115819667346Z-gles-fix-final-parallel-18-0"
+  },
+  {
+    "global_index": 132936,
+    "case": "KHR-GLES3.shaders.indexing.vector_subscript.vec4_direct_write_static_loop_subscript_read_vertex",
+    "session": 18,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.028415453,
+    "run": "build/gles32-fixes-20260922/final-parallel/018-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115819667346Z-gles-fix-final-parallel-18-0"
+  },
+  {
+    "global_index": 132938,
+    "case": "KHR-GLES3.shaders.indexing.vector_subscript.vec4_direct_write_dynamic_loop_subscript_read_vertex",
+    "session": 18,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.02777428,
+    "run": "build/gles32-fixes-20260922/final-parallel/018-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115819667346Z-gles-fix-final-parallel-18-0"
+  },
+  {
+    "global_index": 132989,
+    "case": "KHR-GLES3.shaders.indexing.matrix_subscript.mat3x2_static_write_dynamic_loop_read_fragment",
+    "session": 18,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.024772117,
+    "run": "build/gles32-fixes-20260922/final-parallel/018-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115819667346Z-gles-fix-final-parallel-18-0"
+  },
+  {
+    "global_index": 133054,
+    "case": "KHR-GLES3.shaders.indexing.matrix_subscript.mat4_dynamic_loop_write_static_read_vertex",
+    "session": 18,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.042811483,
+    "run": "build/gles32-fixes-20260922/final-parallel/018-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115819667346Z-gles-fix-final-parallel-18-0"
+  },
+  {
+    "global_index": 133066,
+    "case": "KHR-GLES3.shaders.loops.for_constant_iterations.empty_body_vertex",
+    "session": 18,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.03594829,
+    "run": "build/gles32-fixes-20260922/final-parallel/018-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115819667346Z-gles-fix-final-parallel-18-0"
+  },
+  {
+    "global_index": 133111,
+    "case": "KHR-GLES3.shaders.loops.for_constant_iterations.nested_fragment",
+    "session": 18,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.021343218,
+    "run": "build/gles32-fixes-20260922/final-parallel/018-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115819667346Z-gles-fix-final-parallel-18-0"
+  },
+  {
+    "global_index": 133144,
+    "case": "KHR-GLES3.shaders.loops.for_uniform_iterations.single_iteration_vertex",
+    "session": 18,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.02807823,
+    "run": "build/gles32-fixes-20260922/final-parallel/018-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115819667346Z-gles-fix-final-parallel-18-0"
+  },
+  {
+    "global_index": 134211,
+    "case": "KHR-GLES3.shaders.struct.uniform.sampler_fragment",
+    "session": 18,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.030083364,
+    "run": "build/gles32-fixes-20260922/final-parallel/018-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115819667346Z-gles-fix-final-parallel-18-0"
+  },
+  {
+    "global_index": 134213,
+    "case": "KHR-GLES3.shaders.struct.uniform.sampler_nested_fragment",
+    "session": 18,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.028021969,
+    "run": "build/gles32-fixes-20260922/final-parallel/018-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115819667346Z-gles-fix-final-parallel-18-0"
+  },
+  {
+    "global_index": 134215,
+    "case": "KHR-GLES3.shaders.struct.uniform.sampler_array_fragment",
+    "session": 18,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.030460205,
+    "run": "build/gles32-fixes-20260922/final-parallel/018-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115819667346Z-gles-fix-final-parallel-18-0"
+  },
+  {
+    "global_index": 138828,
+    "case": "KHR-GLES3.cull_distance.functional_test_item_1_primitive_mode_points_max_culldist_4",
+    "session": 18,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.0426229,
+    "run": "build/gles32-fixes-20260922/final-parallel/018-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115819667346Z-gles-fix-final-parallel-18-0"
+  },
+  {
+    "global_index": 139171,
+    "case": "KHR-GLES3.texture_lod_bias.texture_lod_bias_all",
+    "session": 18,
+    "original_status": "Timeout",
+    "retest_status": "Pass",
+    "seconds": 39.04483,
+    "run": "build/gles32-fixes-20260922/timeouts-a/018-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115300395766Z-gles-fix-timeouts-a-18-0"
+  },
+  {
+    "global_index": 142312,
+    "case": "KHR-GLES31.core.tessellation_shader.vertex.vertex_ordering",
+    "session": 19,
+    "original_status": "Timeout",
+    "retest_status": "Pass",
+    "seconds": 20.387756,
+    "run": "build/gles32-fixes-20260922/timeouts-a/019-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115343491586Z-gles-fix-timeouts-a-19-0"
+  },
+  {
+    "global_index": 143413,
+    "case": "KHR-GLES32.shaders.struct.uniform.nested_struct_array_vertex",
+    "session": 20,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.041400712,
+    "run": "build/gles32-fixes-20260922/final-parallel/020-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115824645397Z-gles-fix-final-parallel-20-0"
+  },
+  {
+    "global_index": 143417,
+    "case": "KHR-GLES32.shaders.struct.uniform.loop_struct_array_vertex",
+    "session": 20,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.04034464,
+    "run": "build/gles32-fixes-20260922/final-parallel/020-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115824645397Z-gles-fix-final-parallel-20-0"
+  },
+  {
+    "global_index": 143426,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_fragment",
+    "session": 20,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.02971254,
+    "run": "build/gles32-fixes-20260922/final-parallel/020-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115824645397Z-gles-fix-final-parallel-20-0"
+  },
+  {
+    "global_index": 143428,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_nested_fragment",
+    "session": 20,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.030950615,
+    "run": "build/gles32-fixes-20260922/final-parallel/020-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115824645397Z-gles-fix-final-parallel-20-0"
+  },
+  {
+    "global_index": 143430,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_array_fragment",
+    "session": 20,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.033703882,
+    "run": "build/gles32-fixes-20260922/final-parallel/020-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115824645397Z-gles-fix-final-parallel-20-0"
+  },
+  {
+    "global_index": 144831,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_fragment",
+    "session": 21,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.043011304,
+    "run": "build/gles32-fixes-20260922/final-parallel/021-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115831702729Z-gles-fix-final-parallel-21-0"
+  },
+  {
+    "global_index": 144833,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_nested_fragment",
+    "session": 21,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.041426864,
+    "run": "build/gles32-fixes-20260922/final-parallel/021-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115831702729Z-gles-fix-final-parallel-21-0"
+  },
+  {
+    "global_index": 144835,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_array_fragment",
+    "session": 21,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.04849483,
+    "run": "build/gles32-fixes-20260922/final-parallel/021-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115831702729Z-gles-fix-final-parallel-21-0"
+  },
+  {
+    "global_index": 146855,
+    "case": "KHR-GLES3.shaders.indexing.matrix_subscript.mat2x4_static_write_dynamic_read_fragment",
+    "session": 23,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.03454482,
+    "run": "build/gles32-fixes-20260922/final-parallel/023-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115836324756Z-gles-fix-final-parallel-23-0"
+  },
+  {
+    "global_index": 148093,
+    "case": "KHR-GLES3.shaders.struct.uniform.sampler_fragment",
+    "session": 23,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.03444885,
+    "run": "build/gles32-fixes-20260922/final-parallel/023-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115836324756Z-gles-fix-final-parallel-23-0"
+  },
+  {
+    "global_index": 148095,
+    "case": "KHR-GLES3.shaders.struct.uniform.sampler_nested_fragment",
+    "session": 23,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.035981048,
+    "run": "build/gles32-fixes-20260922/final-parallel/023-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115836324756Z-gles-fix-final-parallel-23-0"
+  },
+  {
+    "global_index": 148097,
+    "case": "KHR-GLES3.shaders.struct.uniform.sampler_array_fragment",
+    "session": 23,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.03890378,
+    "run": "build/gles32-fixes-20260922/final-parallel/023-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115836324756Z-gles-fix-final-parallel-23-0"
+  },
+  {
+    "global_index": 157308,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_fragment",
+    "session": 25,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.032951668,
+    "run": "build/gles32-fixes-20260922/final-parallel/025-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115841494504Z-gles-fix-final-parallel-25-0"
+  },
+  {
+    "global_index": 157310,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_nested_fragment",
+    "session": 25,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.034502093,
+    "run": "build/gles32-fixes-20260922/final-parallel/025-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115841494504Z-gles-fix-final-parallel-25-0"
+  },
+  {
+    "global_index": 157312,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_array_fragment",
+    "session": 25,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.038397007,
+    "run": "build/gles32-fixes-20260922/final-parallel/025-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115841494504Z-gles-fix-final-parallel-25-0"
+  },
+  {
+    "global_index": 158713,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_fragment",
+    "session": 26,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.026326207,
+    "run": "build/gles32-fixes-20260922/final-parallel/026-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115846150423Z-gles-fix-final-parallel-26-0"
+  },
+  {
+    "global_index": 158715,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_nested_fragment",
+    "session": 26,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.028931241,
+    "run": "build/gles32-fixes-20260922/final-parallel/026-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115846150423Z-gles-fix-final-parallel-26-0"
+  },
+  {
+    "global_index": 158717,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_array_fragment",
+    "session": 26,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.030111844,
+    "run": "build/gles32-fixes-20260922/final-parallel/026-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115846150423Z-gles-fix-final-parallel-26-0"
+  },
+  {
+    "global_index": 160688,
+    "case": "KHR-GLES3.shaders.indexing.vector_subscript.vec3_static_subscript_write_direct_read_vertex",
+    "session": 28,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.034038167,
+    "run": "build/gles32-fixes-20260922/final-parallel/028-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115850729957Z-gles-fix-final-parallel-28-0"
+  },
+  {
+    "global_index": 160809,
+    "case": "KHR-GLES3.shaders.indexing.matrix_subscript.mat4_static_write_dynamic_read_fragment",
+    "session": 28,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.036084257,
+    "run": "build/gles32-fixes-20260922/final-parallel/028-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115850729957Z-gles-fix-final-parallel-28-0"
+  },
+  {
+    "global_index": 161975,
+    "case": "KHR-GLES3.shaders.struct.uniform.sampler_fragment",
+    "session": 28,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.032094073,
+    "run": "build/gles32-fixes-20260922/final-parallel/028-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115850729957Z-gles-fix-final-parallel-28-0"
+  },
+  {
+    "global_index": 161977,
+    "case": "KHR-GLES3.shaders.struct.uniform.sampler_nested_fragment",
+    "session": 28,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.0341327,
+    "run": "build/gles32-fixes-20260922/final-parallel/028-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115850729957Z-gles-fix-final-parallel-28-0"
+  },
+  {
+    "global_index": 161979,
+    "case": "KHR-GLES3.shaders.struct.uniform.sampler_array_fragment",
+    "session": 28,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.033932157,
+    "run": "build/gles32-fixes-20260922/final-parallel/028-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115850729957Z-gles-fix-final-parallel-28-0"
+  },
+  {
+    "global_index": 171190,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_fragment",
+    "session": 30,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.041102145,
+    "run": "build/gles32-fixes-20260922/final-parallel/030-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115855386237Z-gles-fix-final-parallel-30-0"
+  },
+  {
+    "global_index": 171192,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_nested_fragment",
+    "session": 30,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.037470624,
+    "run": "build/gles32-fixes-20260922/final-parallel/030-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115855386237Z-gles-fix-final-parallel-30-0"
+  },
+  {
+    "global_index": 171194,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_array_fragment",
+    "session": 30,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.0402576,
+    "run": "build/gles32-fixes-20260922/final-parallel/030-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115855386237Z-gles-fix-final-parallel-30-0"
+  },
+  {
+    "global_index": 172595,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_fragment",
+    "session": 31,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.03553705,
+    "run": "build/gles32-fixes-20260922/final-parallel/031-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115859875935Z-gles-fix-final-parallel-31-0"
+  },
+  {
+    "global_index": 172597,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_nested_fragment",
+    "session": 31,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.036311347,
+    "run": "build/gles32-fixes-20260922/final-parallel/031-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115859875935Z-gles-fix-final-parallel-31-0"
+  },
+  {
+    "global_index": 172599,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_array_fragment",
+    "session": 31,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.037437014,
+    "run": "build/gles32-fixes-20260922/final-parallel/031-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115859875935Z-gles-fix-final-parallel-31-0"
+  },
+  {
+    "global_index": 174614,
+    "case": "KHR-GLES3.shaders.indexing.matrix_subscript.mat2x3_static_loop_write_static_read_vertex",
+    "session": 33,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.03948062,
+    "run": "build/gles32-fixes-20260922/final-parallel/033-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115904484816Z-gles-fix-final-parallel-33-0"
+  },
+  {
+    "global_index": 175857,
+    "case": "KHR-GLES3.shaders.struct.uniform.sampler_fragment",
+    "session": 33,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.03853962,
+    "run": "build/gles32-fixes-20260922/final-parallel/033-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115904484816Z-gles-fix-final-parallel-33-0"
+  },
+  {
+    "global_index": 175859,
+    "case": "KHR-GLES3.shaders.struct.uniform.sampler_nested_fragment",
+    "session": 33,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.036122844,
+    "run": "build/gles32-fixes-20260922/final-parallel/033-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115904484816Z-gles-fix-final-parallel-33-0"
+  },
+  {
+    "global_index": 175861,
+    "case": "KHR-GLES3.shaders.struct.uniform.sampler_array_fragment",
+    "session": 33,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.048016895,
+    "run": "build/gles32-fixes-20260922/final-parallel/033-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115904484816Z-gles-fix-final-parallel-33-0"
+  },
+  {
+    "global_index": 185072,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_fragment",
+    "session": 35,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.028916458,
+    "run": "build/gles32-fixes-20260922/final-parallel/035-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115909002247Z-gles-fix-final-parallel-35-0"
+  },
+  {
+    "global_index": 185074,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_nested_fragment",
+    "session": 35,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.024793023,
+    "run": "build/gles32-fixes-20260922/final-parallel/035-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115909002247Z-gles-fix-final-parallel-35-0"
+  },
+  {
+    "global_index": 185076,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_array_fragment",
+    "session": 35,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.03271559,
+    "run": "build/gles32-fixes-20260922/final-parallel/035-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115909002247Z-gles-fix-final-parallel-35-0"
+  },
+  {
+    "global_index": 186477,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_fragment",
+    "session": 36,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.034571268,
+    "run": "build/gles32-fixes-20260922/final-parallel/036-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115913457733Z-gles-fix-final-parallel-36-0"
+  },
+  {
+    "global_index": 186479,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_nested_fragment",
+    "session": 36,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.0373532,
+    "run": "build/gles32-fixes-20260922/final-parallel/036-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115913457733Z-gles-fix-final-parallel-36-0"
+  },
+  {
+    "global_index": 186481,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_array_fragment",
+    "session": 36,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.042687897,
+    "run": "build/gles32-fixes-20260922/final-parallel/036-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115913457733Z-gles-fix-final-parallel-36-0"
+  },
+  {
+    "global_index": 188466,
+    "case": "KHR-GLES3.shaders.indexing.vector_subscript.vec4_direct_write_dynamic_loop_subscript_read_vertex",
+    "session": 38,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.046582185,
+    "run": "build/gles32-fixes-20260922/final-parallel/038-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115918108857Z-gles-fix-final-parallel-38-0"
+  },
+  {
+    "global_index": 188501,
+    "case": "KHR-GLES3.shaders.indexing.matrix_subscript.mat2x4_static_write_dynamic_read_fragment",
+    "session": 38,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.04478497,
+    "run": "build/gles32-fixes-20260922/final-parallel/038-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115918108857Z-gles-fix-final-parallel-38-0"
+  },
+  {
+    "global_index": 189739,
+    "case": "KHR-GLES3.shaders.struct.uniform.sampler_fragment",
+    "session": 38,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.04492542,
+    "run": "build/gles32-fixes-20260922/final-parallel/038-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115918108857Z-gles-fix-final-parallel-38-0"
+  },
+  {
+    "global_index": 189741,
+    "case": "KHR-GLES3.shaders.struct.uniform.sampler_nested_fragment",
+    "session": 38,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.044331186,
+    "run": "build/gles32-fixes-20260922/final-parallel/038-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115918108857Z-gles-fix-final-parallel-38-0"
+  },
+  {
+    "global_index": 189743,
+    "case": "KHR-GLES3.shaders.struct.uniform.sampler_array_fragment",
+    "session": 38,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.03661981,
+    "run": "build/gles32-fixes-20260922/final-parallel/038-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115918108857Z-gles-fix-final-parallel-38-0"
+  },
+  {
+    "global_index": 198954,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_fragment",
+    "session": 40,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.033700906,
+    "run": "build/gles32-fixes-20260922/final-parallel/040-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115922777366Z-gles-fix-final-parallel-40-0"
+  },
+  {
+    "global_index": 198956,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_nested_fragment",
+    "session": 40,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.032110214,
+    "run": "build/gles32-fixes-20260922/final-parallel/040-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115922777366Z-gles-fix-final-parallel-40-0"
+  },
+  {
+    "global_index": 198958,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_array_fragment",
+    "session": 40,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.036053583,
+    "run": "build/gles32-fixes-20260922/final-parallel/040-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115922777366Z-gles-fix-final-parallel-40-0"
+  },
+  {
+    "global_index": 200359,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_fragment",
+    "session": 41,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.034071553,
+    "run": "build/gles32-fixes-20260922/final-parallel/041-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115927321566Z-gles-fix-final-parallel-41-0"
+  },
+  {
+    "global_index": 200361,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_nested_fragment",
+    "session": 41,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.036742996,
+    "run": "build/gles32-fixes-20260922/final-parallel/041-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115927321566Z-gles-fix-final-parallel-41-0"
+  },
+  {
+    "global_index": 200363,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_array_fragment",
+    "session": 41,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.039719496,
+    "run": "build/gles32-fixes-20260922/final-parallel/041-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115927321566Z-gles-fix-final-parallel-41-0"
+  },
+  {
+    "global_index": 203621,
+    "case": "KHR-GLES3.shaders.struct.uniform.sampler_fragment",
+    "session": 43,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.028182488,
+    "run": "build/gles32-fixes-20260922/final-parallel/043-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115931595420Z-gles-fix-final-parallel-43-0"
+  },
+  {
+    "global_index": 203623,
+    "case": "KHR-GLES3.shaders.struct.uniform.sampler_nested_fragment",
+    "session": 43,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.02533096,
+    "run": "build/gles32-fixes-20260922/final-parallel/043-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115931595420Z-gles-fix-final-parallel-43-0"
+  },
+  {
+    "global_index": 203625,
+    "case": "KHR-GLES3.shaders.struct.uniform.sampler_array_fragment",
+    "session": 43,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.029626444,
+    "run": "build/gles32-fixes-20260922/final-parallel/043-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115931595420Z-gles-fix-final-parallel-43-0"
+  },
+  {
+    "global_index": 212836,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_fragment",
+    "session": 45,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.036404915,
+    "run": "build/gles32-fixes-20260922/final-parallel/045-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115936110969Z-gles-fix-final-parallel-45-0"
+  },
+  {
+    "global_index": 212838,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_nested_fragment",
+    "session": 45,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.039364494,
+    "run": "build/gles32-fixes-20260922/final-parallel/045-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115936110969Z-gles-fix-final-parallel-45-0"
+  },
+  {
+    "global_index": 212840,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_array_fragment",
+    "session": 45,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.044851847,
+    "run": "build/gles32-fixes-20260922/final-parallel/045-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115936110969Z-gles-fix-final-parallel-45-0"
+  },
+  {
+    "global_index": 214241,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_fragment",
+    "session": 46,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.03382465,
+    "run": "build/gles32-fixes-20260922/final-parallel/046-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115940631918Z-gles-fix-final-parallel-46-0"
+  },
+  {
+    "global_index": 214243,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_nested_fragment",
+    "session": 46,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.027336517,
+    "run": "build/gles32-fixes-20260922/final-parallel/046-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115940631918Z-gles-fix-final-parallel-46-0"
+  },
+  {
+    "global_index": 214245,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_array_fragment",
+    "session": 46,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.035658438,
+    "run": "build/gles32-fixes-20260922/final-parallel/046-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115940631918Z-gles-fix-final-parallel-46-0"
+  },
+  {
+    "global_index": 217503,
+    "case": "KHR-GLES3.shaders.struct.uniform.sampler_fragment",
+    "session": 48,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.026002308,
+    "run": "build/gles32-fixes-20260922/final-parallel/048-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115945145812Z-gles-fix-final-parallel-48-0"
+  },
+  {
+    "global_index": 217505,
+    "case": "KHR-GLES3.shaders.struct.uniform.sampler_nested_fragment",
+    "session": 48,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.026305862,
+    "run": "build/gles32-fixes-20260922/final-parallel/048-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115945145812Z-gles-fix-final-parallel-48-0"
+  },
+  {
+    "global_index": 217507,
+    "case": "KHR-GLES3.shaders.struct.uniform.sampler_array_fragment",
+    "session": 48,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.02878378,
+    "run": "build/gles32-fixes-20260922/final-parallel/048-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115945145812Z-gles-fix-final-parallel-48-0"
+  },
+  {
+    "global_index": 226718,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_fragment",
+    "session": 50,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.030354446,
+    "run": "build/gles32-fixes-20260922/final-parallel/050-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115949809266Z-gles-fix-final-parallel-50-0"
+  },
+  {
+    "global_index": 226720,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_nested_fragment",
+    "session": 50,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.030190188,
+    "run": "build/gles32-fixes-20260922/final-parallel/050-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115949809266Z-gles-fix-final-parallel-50-0"
+  },
+  {
+    "global_index": 226722,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_array_fragment",
+    "session": 50,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.029368952,
+    "run": "build/gles32-fixes-20260922/final-parallel/050-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115949809266Z-gles-fix-final-parallel-50-0"
+  },
+  {
+    "global_index": 228123,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_fragment",
+    "session": 51,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.02892147,
+    "run": "build/gles32-fixes-20260922/final-parallel/051-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115954258858Z-gles-fix-final-parallel-51-0"
+  },
+  {
+    "global_index": 228125,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_nested_fragment",
+    "session": 51,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.028667344,
+    "run": "build/gles32-fixes-20260922/final-parallel/051-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115954258858Z-gles-fix-final-parallel-51-0"
+  },
+  {
+    "global_index": 228127,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_array_fragment",
+    "session": 51,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.029784076,
+    "run": "build/gles32-fixes-20260922/final-parallel/051-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115954258858Z-gles-fix-final-parallel-51-0"
+  },
+  {
+    "global_index": 230044,
+    "case": "KHR-GLES3.shaders.indexing.tmp_array.vec2_dynamic_write_static_read_fragment",
+    "session": 53,
+    "original_status": "Fail",
+    "retest_status": "Pass",
+    "seconds": 0.037315063,
+    "run": "build/gles32-fixes-20260922/final-parallel/053-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115958670252Z-gles-fix-final-parallel-53-0"
+  },
+  {
+    "global_index": 231385,
+    "case": "KHR-GLES3.shaders.struct.uniform.sampler_fragment",
+    "session": 53,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.036942136,
+    "run": "build/gles32-fixes-20260922/final-parallel/053-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115958670252Z-gles-fix-final-parallel-53-0"
+  },
+  {
+    "global_index": 231387,
+    "case": "KHR-GLES3.shaders.struct.uniform.sampler_nested_fragment",
+    "session": 53,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.033441357,
+    "run": "build/gles32-fixes-20260922/final-parallel/053-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115958670252Z-gles-fix-final-parallel-53-0"
+  },
+  {
+    "global_index": 231389,
+    "case": "KHR-GLES3.shaders.struct.uniform.sampler_array_fragment",
+    "session": 53,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.04130824,
+    "run": "build/gles32-fixes-20260922/final-parallel/053-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115958670252Z-gles-fix-final-parallel-53-0"
+  },
+  {
+    "global_index": 235096,
+    "case": "KHR-GLES3.packed_pixels.pbo_rectangle.rgba32ui_format_rgba_integer",
+    "session": 53,
+    "original_status": "GPUTimeout",
+    "retest_status": "Pass",
+    "seconds": 0.066891395,
+    "run": "build/gles32-fixes-20260922/timeouts-a/053-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T115408479802Z-gles-fix-timeouts-a-53-0"
+  },
+  {
+    "global_index": 240600,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_fragment",
+    "session": 55,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.026613967,
+    "run": "build/gles32-fixes-20260922/final-parallel/055-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T120003174900Z-gles-fix-final-parallel-55-0"
+  },
+  {
+    "global_index": 240602,
+    "case": "KHR-GLES32.shaders.struct.uniform.sampler_nested_fragment",
+    "session": 55,
+    "original_status": "Crash",
+    "retest_status": "Pass",
+    "seconds": 0.02656268,
+    "run": "build/gles32-fixes-20260922/final-parallel/055-0000/run",
+    "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T120003174900Z-gles-fix-final-parallel-55-0"
+  }
+]
