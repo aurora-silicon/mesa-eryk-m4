@@ -6353,6 +6353,33 @@ TEST_F(AGX3PackBinary, ComputeImmediateLodSample)
    EXPECT_EQ(b->shader->agx3_staging_halfs, 8);
 }
 
+TEST_F(AGX3PackBinary, GatherDoesNotRequireFragmentDerivatives)
+{
+   for (auto stage : {MESA_SHADER_VERTEX, MESA_SHADER_COMPUTE,
+                      MESA_SHADER_GEOMETRY, MESA_SHADER_TESS_CTRL,
+                      MESA_SHADER_TESS_EVAL}) {
+      for (bool shadow : {false, true}) {
+         agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+         b->shader->stage = stage;
+         agx_index dest = agx_register(8, AGX_SIZE_32);
+         dest.channels_m1 = 3;
+         agx_index coord = agx_register(16, AGX_SIZE_32);
+         coord.channels_m1 = 2;
+         auto *I = agx_texture_sample_to(
+            b, dest, coord, agx_immediate(0), agx_immediate(0),
+            agx_immediate(0), agx_immediate(0),
+            shadow ? agx_register(24, AGX_SIZE_32) : agx_null(),
+            AGX_DIM_2D_ARRAY, AGX_LOD_MODE_AUTO_LOD, 15,
+            false, shadow, false, AGX_GATHER_R, false);
+         agx_stop(b);
+         EXPECT_FALSE(pack(b).empty());
+         /* An ordinary implicit-LOD sample still requires derivatives. */
+         I->gather = AGX_GATHER_NONE;
+         pack(b, /*expect_ok=*/false);
+      }
+   }
+}
+
 TEST_F(AGX3PackBinary, ComputeSampleRefusesUnqualifiedLod)
 {
    for (unsigned shape = 0; shape < 3; ++shape) {

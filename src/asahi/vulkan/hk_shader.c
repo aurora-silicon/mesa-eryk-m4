@@ -2496,8 +2496,8 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
       }
    }
 
-   /* Geometry shaders execute as compute and, like vertex shaders, sample
-    * with explicit levels only (geometry.basic.output_vary_by_texture). */
+   /* Geometry shaders execute as compute. Like vertex shaders, they can
+    * sample explicit levels/gradients or gather from the base texture level. */
    if (agx_chip_uses_hal200_ioto(dev->dev.chip) &&
        (nir->info.stage == MESA_SHADER_VERTEX ||
         nir->info.stage == MESA_SHADER_GEOMETRY ||
