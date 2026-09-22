@@ -74,3 +74,8 @@ shares a content-addressed target runner binary, rechecks its SHA-256 before
 every segment, and verifies uploaded bytes before installation. Each staged
 runner path is a symlink; the backend still records the executed binary hash.
 No driver, CTS binary, execution arguments, or protection policy changed.
+
+Updated partial checkpoint: 100,357/326,602 configuration/case pairs completed;
+97,686 Pass, 2,348 NotSupported, 70 Fail, 220 compiler Crash,
+15 QualityWarning and 18 CompatibilityWarning. The last two 2,500-case
+image-copy segments passed in full. Full suite execution remains in progress.
