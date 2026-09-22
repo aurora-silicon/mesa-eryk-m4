@@ -1172,9 +1172,13 @@ zink_init_screen_caps(struct zink_screen *screen)
 
    caps->max_shader_patch_varyings =
       screen->info.props.limits.maxTessellationControlPerPatchOutputComponents / 4;
-   /* need to reserve up to 60 of our varying components and 16 slots for streamout */
+   /* Transform feedback is inlined into the original output variables by
+    * update_so_info; it no longer allocates a duplicate set of varyings.
+    * Respect both ends of the vertex/fragment interface.
+    */
    caps->max_varyings =
-      MIN2(screen->info.props.limits.maxVertexOutputComponents / 4 / 2, 16);
+      MIN3(screen->info.props.limits.maxVertexOutputComponents / 4,
+           screen->info.props.limits.maxFragmentInputComponents / 4, 16);
 
    caps->dmabuf =
 #if defined(HAVE_LIBDRM) && (DETECT_OS_LINUX || DETECT_OS_BSD)
