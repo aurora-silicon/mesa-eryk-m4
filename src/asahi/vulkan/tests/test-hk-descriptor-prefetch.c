@@ -275,8 +275,51 @@ static void test_halfword_descriptors(bool generic, unsigned offset,
    ralloc_free(b.shader);
 }
 
+static void
+test_compact_descriptors(void)
+{
+   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT, NULL,
+                                                 "compact descriptor fields");
+   /* Two halfwords in one word, a remote word in the same set, and an
+    * identically-offset field in another set must retain distinct values. */
+   nir_intrinsic_instr *a = load(&b, 24, nir_imm_int(&b, 20), 0, 1, 16);
+   nir_intrinsic_instr *bhi = load(&b, 24, nir_imm_int(&b, 21), 0, 1, 16);
+   nir_intrinsic_instr *far = load(&b, 24, nir_imm_int(&b, 512), 0, 1, 32);
+   nir_intrinsic_instr *other = load(&b, 28, nir_imm_int(&b, 10), 0, 1, 32);
+   nir_intrinsic_instr *dynamic = load(&b, 24, nir_undef(&b, 1, 32), 0, 1, 32);
+   struct hk_descriptor_prefetch spans[HK_DESCRIPTOR_PREFETCH_MAX] = {0};
+   unsigned count = 0, end = 32;
+   assert(hk_nir_prefetch_descriptors_compact(b.shader, 24, 2, &end, spans, &count));
+   assert(count == 3 && end == 42);
+   assert(spans[0].set == 0 && spans[0].offset_B == 40 && spans[0].size_B == 4);
+   assert(spans[1].set == 0 && spans[1].offset_B == 2048 && spans[1].size_B == 4);
+   assert(spans[2].set == 1 && spans[2].offset_B == 40 && spans[2].size_B == 4);
+   assert(nir_intrinsic_base(nir_src_as_intrinsic(a->src[0])) == 32);
+   assert(nir_intrinsic_base(nir_src_as_intrinsic(bhi->src[0])) == 33);
+   assert(nir_intrinsic_base(nir_src_as_intrinsic(far->src[0])) == 36);
+   assert(nir_intrinsic_base(nir_src_as_intrinsic(other->src[0])) == 40);
+   assert(nir_src_as_intrinsic(dynamic->src[0])->intrinsic == nir_intrinsic_load_constant_agx);
+   nir_validate_shader(b.shader, "compact descriptor prefetch");
+   ralloc_free(b.shader);
+
+   b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT, NULL,
+                                      "compact prefetch limits");
+   nir_intrinsic_instr *loads[HK_DESCRIPTOR_PREFETCH_MAX + 1];
+   for (unsigned i = 0; i < ARRAY_SIZE(loads); ++i)
+      loads[i] = load(&b, 24, nir_imm_int(&b, i * 16), 0, 1, 32);
+   count = 0; end = 508;
+   assert(hk_nir_prefetch_descriptors_compact(b.shader, 24, 1, &end, spans, &count));
+   assert(count == 1 && end == 510);
+   assert(nir_src_as_intrinsic(loads[0]->src[0])->intrinsic == nir_intrinsic_load_preamble);
+   for (unsigned i = 1; i < ARRAY_SIZE(loads); ++i)
+      assert(nir_src_as_intrinsic(loads[i]->src[0])->intrinsic == nir_intrinsic_load_constant_agx);
+   nir_validate_shader(b.shader, "compact descriptor capacity fallback");
+   ralloc_free(b.shader);
+}
+
 int main(void)
 {
+   test_compact_descriptors();
    for (unsigned generic = 0; generic < 2; generic++)
       for (unsigned offset = 40; offset <= 42; offset += 2)
          for (unsigned components = 1; components <= 3; components++)

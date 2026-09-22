@@ -168,6 +168,108 @@ hk_nir_prefetch_descriptors(nir_shader *nir, unsigned set_base,
    return progress;
 }
 
+/* Gather only the words that contain actual loads. Wide descriptor layouts
+ * can put a few halfword/word fields hundreds of bytes apart. Copying that
+ * entire interval wastes both Ioto traffic and the finite uniform file. */
+bool
+hk_nir_prefetch_descriptors_compact(nir_shader *nir, unsigned set_base,
+   unsigned set_count, unsigned *uniform_end,
+   struct hk_descriptor_prefetch spans[HK_DESCRIPTOR_PREFETCH_MAX],
+   unsigned *span_count)
+{
+   unsigned count = 0;
+   nir_foreach_function_impl(impl, nir) {
+      nir_foreach_block(block, impl) {
+         nir_foreach_instr(instr, block) {
+            unsigned set;
+            uint32_t offset, size;
+            if (instr->type != nir_instr_type_intrinsic ||
+                !descriptor_load(nir_instr_as_intrinsic(instr), set_base,
+                                 set_count, &set, &offset, &size, false) ||
+                offset + size > UINT32_MAX - 3)
+               continue;
+            uint32_t begin = offset & ~3u, end = align(offset + size, 4);
+            /* Absorb overlapping/adjacent ranges, but never bridge a gap.
+             * Restart after expansion so a load can join several ranges. */
+            for (unsigned i = 0; i < count;) {
+               const struct hk_descriptor_prefetch *span = &spans[i];
+               if (span->set == set && begin <= span->offset_B + span->size_B &&
+                   end >= span->offset_B) {
+                  begin = MIN2(begin, span->offset_B);
+                  end = MAX2(end, span->offset_B + span->size_B);
+                  spans[i] = spans[--count];
+                  i = 0;
+               } else {
+                  ++i;
+               }
+            }
+            if (count < HK_DESCRIPTOR_PREFETCH_MAX) {
+               spans[count++] = (struct hk_descriptor_prefetch){
+                  .set = set, .offset_B = begin, .size_B = end - begin,
+               };
+            }
+         }
+      }
+   }
+
+   /* Stable set/byte ordering also groups adjacent source loads in Ioto. */
+   for (unsigned i = 1; i < count; ++i) {
+      struct hk_descriptor_prefetch value = spans[i];
+      unsigned j = i;
+      while (j && (spans[j - 1].set > value.set ||
+                   (spans[j - 1].set == value.set &&
+                    spans[j - 1].offset_B > value.offset_B))) {
+         spans[j] = spans[j - 1];
+         --j;
+      }
+      spans[j] = value;
+   }
+   unsigned selected = 0;
+   for (unsigned i = 0; i < count; ++i) {
+      struct hk_descriptor_prefetch span = spans[i];
+      unsigned start = align(*uniform_end, 4);
+      if (start > AGX_NUM_UNIFORMS || span.size_B / 2 > AGX_NUM_UNIFORMS - start)
+         continue;
+      span.uniform_half = start;
+      *uniform_end = start + span.size_B / 2;
+      spans[selected++] = span;
+   }
+   *span_count = selected;
+
+   bool progress = false;
+   nir_foreach_function_impl(impl, nir) {
+      bool changed = false;
+      nir_foreach_block(block, impl) {
+         nir_foreach_instr_safe(instr, block) {
+            unsigned set;
+            uint32_t offset, size;
+            if (instr->type != nir_instr_type_intrinsic)
+               continue;
+            nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+            if (!descriptor_load(intr, set_base, set_count, &set, &offset, &size, false))
+               continue;
+            for (unsigned i = 0; i < selected; ++i) {
+               const struct hk_descriptor_prefetch *span = &spans[i];
+               if (span->set != set || offset < span->offset_B ||
+                   offset - span->offset_B > span->size_B ||
+                   size > span->size_B - (offset - span->offset_B))
+                  continue;
+               nir_builder b = nir_builder_at(nir_before_instr(instr));
+               nir_def *value = nir_load_preamble(&b, intr->def.num_components,
+                  intr->def.bit_size,
+                  .base = span->uniform_half + (offset - span->offset_B) / 2);
+               nir_def_replace(&intr->def, value);
+               changed = true;
+               break;
+            }
+         }
+      }
+      nir_progress(changed, impl, nir_metadata_control_flow);
+      progress |= changed;
+   }
+   return progress;
+}
+
 /* Match descriptor-relative UBO reads, including the bounded-global form
  * emitted by hk_shader.c. No bounds check is discarded: the command encoder
  * selects the same buffer or zero page. Ordinary non-robust reads may also
