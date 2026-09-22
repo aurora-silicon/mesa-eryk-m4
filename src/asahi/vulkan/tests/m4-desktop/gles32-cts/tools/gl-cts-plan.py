@@ -99,7 +99,8 @@ if a.mode in ('report', 'status'):
             for item in json.loads((run/'results.json').read_text()):
                 record = dict(**item, segment=segment['index'], session=segment['session'],
                     global_index=item['eligibility']['catalog_index'], run=str(run))
-                attempts.append(record)
+                if record['status'] != 'Unrun':
+                    attempts.append(record)
                 if record['case'] in canceled and record['status'] == 'Crash' and 'SIGKILL' in record.get('worker_exit',''):
                     record = dict(record, status='Interrupted', original_status='Crash',
                         disposition='Peer canceled after reviewed userspace abort; original attempt retained')
