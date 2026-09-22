@@ -1,0 +1,233 @@
+{
+  "cts_counts": {
+    "Pass": 32,
+    "NotSupported": 4
+  },
+  "cts_cases": [
+    {
+      "case": "dEQP-VK.pipeline.monolithic.timestamp.basic_graphics_tests.all_commands_stage_in_render_pass",
+      "catalog_index": 1563671,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.pipeline.monolithic.timestamp.basic_graphics_tests.all_commands_stage_out_of_render_pass",
+      "catalog_index": 1563675,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.pipeline.monolithic.timestamp.basic_graphics_tests.color_attachment_output_stage_in_render_pass",
+      "catalog_index": 1563687,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.pipeline.monolithic.timestamp.basic_graphics_tests.color_attachment_output_stage_out_of_render_pass",
+      "catalog_index": 1563691,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.pipeline.monolithic.timestamp.basic_graphics_tests.fragment_shader_stage_in_render_pass",
+      "catalog_index": 1563703,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.pipeline.monolithic.timestamp.basic_graphics_tests.fragment_shader_stage_out_of_render_pass",
+      "catalog_index": 1563707,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.pipeline.monolithic.timestamp.basic_graphics_tests.vertex_shader_stage_in_render_pass",
+      "catalog_index": 1563743,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.pipeline.monolithic.timestamp.basic_graphics_tests.vertex_shader_stage_out_of_render_pass",
+      "catalog_index": 1563747,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.subpass_dependencies.external_subpass.render_size_128_128.render_passes_2",
+      "catalog_index": 2296554,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.subpass_dependencies.external_subpass.render_size_128_128.render_passes_3",
+      "catalog_index": 2296555,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.subpass_dependencies.external_subpass.render_size_128_128.render_passes_5",
+      "catalog_index": 2296556,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.subpass_dependencies.implicit_dependencies.render_passes_2",
+      "catalog_index": 2296563,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.subpass_dependencies.implicit_dependencies.render_passes_3",
+      "catalog_index": 2296564,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.subpass_dependencies.implicit_dependencies.render_passes_5",
+      "catalog_index": 2296565,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.subpass_dependencies.late_fragment_tests.render_size_128_128.subpass_count_2.d32_sfloat_s8_uint",
+      "catalog_index": 2296567,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.subpass_dependencies.late_fragment_tests.render_size_128_128.subpass_count_5.d32_sfloat_s8_uint",
+      "catalog_index": 2296571,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.subpass_dependencies.external_subpass.render_size_128_128.render_passes_2",
+      "catalog_index": 2328853,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.subpass_dependencies.external_subpass.render_size_128_128.render_passes_3",
+      "catalog_index": 2328855,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.subpass_dependencies.external_subpass.render_size_128_128.render_passes_5",
+      "catalog_index": 2328857,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.subpass_dependencies.implicit_dependencies.render_passes_2",
+      "catalog_index": 2328871,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.subpass_dependencies.implicit_dependencies.render_passes_3",
+      "catalog_index": 2328872,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.subpass_dependencies.implicit_dependencies.render_passes_5",
+      "catalog_index": 2328873,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.subpass_dependencies.late_fragment_tests.render_size_128_128.subpass_count_2.d32_sfloat_s8_uint",
+      "catalog_index": 2328875,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.subpass_dependencies.late_fragment_tests.render_size_128_128.subpass_count_5.d32_sfloat_s8_uint",
+      "catalog_index": 2328879,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.synchronization2.op.single_queue.barrier.write_clear_attachments_read_image_compute.image_128x128_r8g8b8a8_unorm",
+      "catalog_index": 2909326,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.synchronization2.op.single_queue.barrier.write_clear_attachments_read_image_compute.image_128x128_r8g8b8a8_unorm_specialized_access_flag",
+      "catalog_index": 2909327,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.synchronization2.op.single_queue.barrier.write_clear_attachments_read_image_compute_indirect.image_128x128_r8g8b8a8_unorm",
+      "catalog_index": 2909338,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.synchronization2.op.single_queue.barrier.write_clear_attachments_read_image_compute_indirect.image_128x128_r8g8b8a8_unorm_specialized_access_flag",
+      "catalog_index": 2909339,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.synchronization2.op.single_queue.barrier.write_clear_color_image_read_image_compute.image_128x128_r8g8b8a8_unorm",
+      "catalog_index": 2909431,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.synchronization2.op.single_queue.barrier.write_clear_color_image_read_image_compute.image_128x128_r8g8b8a8_unorm_specialized_access_flag",
+      "catalog_index": 2909432,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.synchronization2.op.single_queue.barrier.write_image_compute_read_image_compute.image_128x128_r8g8b8a8_unorm",
+      "catalog_index": 2910494,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.synchronization2.op.single_queue.barrier.write_image_compute_read_image_compute.image_128x128_r8g8b8a8_unorm_specialized_access_flag",
+      "catalog_index": 2910495,
+      "status": "Pass"
+    },
+    {
+      "case": "dEQP-VK.synchronization2.op.single_queue.barrier.write_image_compute_read_image_vertex.image_128x128_r8g8b8a8_unorm",
+      "catalog_index": 2910578,
+      "status": "NotSupported"
+    },
+    {
+      "case": "dEQP-VK.synchronization2.op.single_queue.barrier.write_image_compute_read_image_vertex.image_128x128_r8g8b8a8_unorm_specialized_access_flag",
+      "catalog_index": 2910579,
+      "status": "NotSupported"
+    },
+    {
+      "case": "dEQP-VK.synchronization2.op.single_queue.barrier.write_clear_attachments_read_image_fragment.image_128x128_r8g8b8a8_unorm",
+      "catalog_index": 2909350,
+      "status": "NotSupported"
+    },
+    {
+      "case": "dEQP-VK.synchronization2.op.single_queue.barrier.write_clear_attachments_read_image_fragment.image_128x128_r8g8b8a8_unorm_specialized_access_flag",
+      "catalog_index": 2909351,
+      "status": "NotSupported"
+    }
+  ],
+  "oracle": [
+    {
+      "submissions": 1000,
+      "first": {
+        "draw": 1,
+        "pixels_match": true,
+        "poison_verified": true,
+        "checksum": "8ee2a3fb543a2325"
+      },
+      "last": {
+        "draw": 1000,
+        "pixels_match": true,
+        "poison_verified": true,
+        "checksum": "8ee2a3fb543a2325"
+      }
+    },
+    {
+      "submissions": 4,
+      "first": {
+        "draw": 1,
+        "pixels_match": true,
+        "poison_verified": true,
+        "checksum": "8ee2a3fb543a2325"
+      },
+      "last": {
+        "draw": 4,
+        "pixels_match": true,
+        "poison_verified": true,
+        "checksum": "8ee2a3fb543a2325"
+      }
+    }
+  ],
+  "early_tiling": {
+    "before": 118227,
+    "after": 131978,
+    "requested": true
+  },
+  "live": {
+    "frames": 947,
+    "seconds": 9.999342172,
+    "fps": 94.70623004098954,
+    "median_frame_ms": 10.986994999999666,
+    "maximum_frame_ms": 18.802328999999673,
+    "scope": "Complete frame intervals in the last ten seconds; screenshot captured afterwards"
+  }
+}
