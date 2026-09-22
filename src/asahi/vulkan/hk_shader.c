@@ -1139,8 +1139,37 @@ has_custom_border(nir_builder *b, nir_tex_instr *tex)
                                   1, nir_type_bool1, false, false);
 }
 
+/* A shadow gather compares each unfiltered depth value separately. Recover
+ * custom border depths before comparing: two already-compared 0/1 border
+ * probes cannot distinguish a border when the reference is outside [0, 1]. */
+static nir_def *
+compare_gather(nir_builder *b, nir_tex_instr *tex, nir_def *depth,
+               bool software_sampler)
+{
+   nir_def *ref = tex->src[nir_tex_instr_src_index(tex, nir_tex_src_comparator)].src.ssa;
+   nir_def *sampler = tex->src[nir_tex_instr_src_index(tex, nir_tex_src_sampler_deref)].src.ssa;
+   nir_def *state = nir_load_sampler_descriptor_agx(b, sampler);
+   nir_def *func = nir_ubitfield_extract_imm(
+      b, nir_channel(b, state, 1), software_sampler ? HK_MINMAX_COMPARE_SHIFT : 7, 3);
+   nir_def *tests[] = {
+      nir_fge(b, depth, ref), nir_fge(b, ref, depth),
+      nir_flt(b, ref, depth), nir_flt(b, depth, ref),
+      nir_feq(b, ref, depth), nir_fneu(b, ref, depth),
+      nir_imm_true(b), nir_imm_false(b),
+   };
+   nir_def *result = nir_imm_zero(b, 4, 1);
+   for (unsigned i = 0; i < ARRAY_SIZE(tests); ++i)
+      result = nir_bcsel(b, nir_ieq_imm(b, func, i), tests[i], result);
+   return nir_b2f32(b, result);
+}
+
+struct hk_border_options {
+   bool shadow_gather;
+   bool software_sampler;
+};
+
 static bool
-lower(nir_builder *b, nir_tex_instr *tex, UNUSED void *_data)
+lower(nir_builder *b, nir_tex_instr *tex, void *_data)
 {
    if (tex->backend_flags & AGX_TEXTURE_FLAG_PLAIN_SAMPLER) {
       tex->backend_flags &= ~AGX_TEXTURE_FLAG_PLAIN_SAMPLER;
@@ -1149,8 +1178,10 @@ lower(nir_builder *b, nir_tex_instr *tex, UNUSED void *_data)
    if (!nir_tex_instr_need_sampler(tex) || nir_tex_instr_is_query(tex))
       return false;
 
-   /* XXX: this is a really weird edge case, is this even well-defined? */
-   if (tex->is_shadow)
+   const struct hk_border_options *options = _data;
+   const bool shadow_gather = tex->is_shadow && tex->op == nir_texop_tg4 &&
+                              options->shadow_gather;
+   if (tex->is_shadow && !shadow_gather)
       return false;
 
    b->cursor = nir_after_instr(&tex->instr);
@@ -1163,8 +1194,18 @@ lower(nir_builder *b, nir_tex_instr *tex, UNUSED void *_data)
    nir_push_if(b, has_custom);
    nir_def *replaced = NULL;
    {
+      nir_tex_instr *unfiltered = tex;
+      nir_def *border_1 = clamp_to_1;
+      if (shadow_gather) {
+         unfiltered = nir_instr_as_tex(nir_instr_clone(b->shader, &tex->instr));
+         nir_builder_instr_insert(b, &unfiltered->instr);
+         nir_tex_instr_remove_src(unfiltered,
+            nir_tex_instr_src_index(unfiltered, nir_tex_src_comparator));
+         unfiltered->is_shadow = unfiltered->is_new_style_shadow = false;
+         border_1 = &unfiltered->def;
+      }
       /* Sample again, this time with clamp-to-0 instead of clamp-to-1 */
-      nir_instr *clone_instr = nir_instr_clone(b->shader, &tex->instr);
+      nir_instr *clone_instr = nir_instr_clone(b->shader, &unfiltered->instr);
       nir_builder_instr_insert(b, clone_instr);
 
       nir_tex_instr *tex_0 = nir_instr_as_tex(clone_instr);
@@ -1181,8 +1222,8 @@ lower(nir_builder *b, nir_tex_instr *tex, UNUSED void *_data)
 
       /* Border arithmetic operates on colour, never the sparse residency
        * code. The two address modes touch the same mapped texels. */
-      nir_def *colour_1 = tex->is_sparse ? nir_trim_vector(b, clamp_to_1, 4)
-                                         : clamp_to_1;
+      nir_def *colour_1 = tex->is_sparse ? nir_trim_vector(b, border_1, 4)
+                                         : border_1;
       nir_def *colour_0 = tex->is_sparse ? nir_trim_vector(b, clamp_to_0, 4)
                                          : clamp_to_0;
 
@@ -1207,6 +1248,8 @@ lower(nir_builder *b, nir_tex_instr *tex, UNUSED void *_data)
          replaced = nir_bcsel(b, nir_ieq(b, colour_0, colour_1), colour_0,
                               border);
       }
+      if (shadow_gather)
+         replaced = compare_gather(b, tex, replaced, options->software_sampler);
       if (tex->is_sparse)
          replaced = nir_vec5(b, nir_channel(b, replaced, 0),
                              nir_channel(b, replaced, 1),
@@ -1223,9 +1266,10 @@ lower(nir_builder *b, nir_tex_instr *tex, UNUSED void *_data)
 }
 
 static bool
-agx_nir_lower_custom_border(nir_shader *nir)
+agx_nir_lower_custom_border(nir_shader *nir, bool shadow_gather, bool software_sampler)
 {
-   return nir_shader_tex_pass(nir, lower, nir_metadata_none, NULL);
+   struct hk_border_options options = {shadow_gather, software_sampler};
+   return nir_shader_tex_pass(nir, lower, nir_metadata_none, &options);
 }
 
 /* R64 integer storage views use native RG32 descriptors. Keep atomics in
@@ -1933,7 +1977,8 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
 
    if (((features & HK_FEAT_CUSTOM_BORDER) || agx_native_graphics(&dev->dev)) &&
        !HK_PERF(dev, NOBORDER)) {
-      NIR_PASS(_, nir, agx_nir_lower_custom_border);
+      NIR_PASS(_, nir, agx_nir_lower_custom_border,
+               dev->dev.chip == AGX_CHIP_G16G, features & HK_FEAT_IMAGE_VIEW_MIN_LOD);
    }
 
    if (dev->dev.chip == AGX_CHIP_G16G)

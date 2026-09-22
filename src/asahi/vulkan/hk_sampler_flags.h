@@ -11,4 +11,6 @@ enum hk_minmax_sampler_flags {
     * reduction mode zero at the same location. */
    HK_MINMAX_MODE_SHIFT = 22,
    HK_MINMAX_ANISOTROPY_SHIFT = 24,
+   /* Native compare function retained when min-LOD uses software state. */
+   HK_MINMAX_COMPARE_SHIFT = 29,
 };

@@ -55,3 +55,23 @@ focused rerun. Their original failures remain recorded; this is not evidence
 that a driver fix resolved them. Two EGL partial-update and two float-depth
 gather failures still reproduce on hardware, and all four Pass with the same
 Zink build over lavapipe.
+
+## Float-depth custom borders before shadow comparison
+
+The two depth32f/stencil8 shadow-gather failures are fixed in Honeykrisp.
+Custom border reconstruction previously skipped all shadow operations. A
+shadow gather must recover the raw border depth before comparing each sample;
+already-compared zero/one probes lose that distinction for references outside
+[0, 1]. The native M4 path now gathers raw depths with both border probes,
+substitutes the custom value, and applies the sampler comparison. Sparse
+residency remains separate. Other shadow operations retain their existing path.
+Sampler software state retains the comparison function for image-view min-LOD;
+that combination has not been separately hardware-qualified by these ES cases.
+
+Both failing cases and the complete 24-case depth-border comparison group Pass
+with the final library SHA256
+`98891f7b35a025eba6271b30e1f58beb5fc03a2a4c55e52b546eb56daf47075d`.
+See depth-border-group.json. Guards pass, peak 66 C. An intermediate development
+build crashed due to removing a NIR source from an unlinked clone; the clone is
+now inserted before source removal. That development attempt remains in the
+workspace evidence and is not confused with the baseline compiler crashes.

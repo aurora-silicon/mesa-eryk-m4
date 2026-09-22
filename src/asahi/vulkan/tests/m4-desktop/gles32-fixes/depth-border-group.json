@@ -1,0 +1,22 @@
+{
+  "selected": 24,
+  "recorded": 24,
+  "completed": 24,
+  "counts": {
+    "Pass": 24
+  },
+  "classifications": {
+    "unclassified": 24
+  },
+  "elapsed_seconds": 7.8933218239981215,
+  "preparation_seconds": 1.4751731319993269,
+  "runner_seconds": 5.28126136300034,
+  "jobs": 1,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "2e458fb7c974a3817c076353e5c9d18ae89accad080620bf43002efc7d72fe14",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T114833898385Z-gles-depth-border-final",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 66.0
+}
