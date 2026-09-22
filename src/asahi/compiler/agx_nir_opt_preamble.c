@@ -53,9 +53,15 @@ def_size_32(nir_def *def, unsigned *size, unsigned *align,
       *size = 512;
 }
 
+struct native_preamble_options {
+   bool float_alu;
+   bool constant_loads;
+};
+
 static bool
 native_preamble_instr(const nir_instr *instr, const void *data)
 {
+   const struct native_preamble_options *options = data;
    /* Resource loads run in the qualified Ioto loader. The appended native
     * constant program currently supports arithmetic over those uniforms;
     * leave other memory accesses and their dependent expressions per-lane. */
@@ -65,7 +71,7 @@ native_preamble_instr(const nir_instr *instr, const void *data)
       /* Qualify basic full-width arithmetic independently from comparisons,
        * rounding and narrowing, which the native constant program has not
        * yet passed. Memory accesses still stay in the Ioto resource loader. */
-      if (*(const bool *)data && alu->def.bit_size == 32) {
+      if (options->float_alu && alu->def.bit_size == 32) {
          bool full_width = true;
          for (unsigned i = 0; i < info->num_inputs; ++i)
             full_width &= alu->src[i].src.ssa->bit_size == 32;
@@ -88,8 +94,19 @@ native_preamble_instr(const nir_instr *instr, const void *data)
          if (nir_alu_type_get_base_type(info->input_types[i]) == nir_type_float)
             return false;
    }
-   return instr->type != nir_instr_type_intrinsic ||
-          nir_instr_as_intrinsic(instr)->intrinsic == nir_intrinsic_load_preamble;
+   if (instr->type != nir_instr_type_intrinsic)
+      return true;
+   const nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+   if (intr->intrinsic == nir_intrinsic_load_preamble)
+      return true;
+   /* Experimental native constant-program memory reads. NIR's preamble
+    * analysis must prove every address uniform; only explicitly speculatable
+    * constant loads may move ahead of their original control flow. Do not
+    * admit mutable storage, textures, or descriptor-state stores. */
+   return options->constant_loads &&
+          (intr->intrinsic == nir_intrinsic_load_global_constant ||
+           intr->intrinsic == nir_intrinsic_load_constant_agx) &&
+          (nir_intrinsic_access(intr) & ACCESS_CAN_SPECULATE);
 }
 
 static bool
@@ -482,12 +499,14 @@ agx_nir_opt_preamble(nir_shader *nir, unsigned *sizes, bool uniform_32bit_only)
 {
    bool progress = false;
    nir_opt_preamble_options options = preamble_options;
-   const bool native_float =
-      debug_get_bool_option("AGX_NATIVE_FLOAT_PREAMBLE", false);
+   const struct native_preamble_options native = {
+      .float_alu = debug_get_bool_option("AGX_NATIVE_FLOAT_PREAMBLE", false),
+      .constant_loads = debug_get_bool_option("AGX_NATIVE_MEMORY_PREAMBLE", false),
+   };
    if (uniform_32bit_only) {
       options.def_size = def_size_32;
       options.can_move_instr_cb = native_preamble_instr;
-      options.cb_data = &native_float;
+      options.cb_data = &native;
    }
    NIR_PASS(progress, nir, nir_opt_preamble, &options, sizes);
 
