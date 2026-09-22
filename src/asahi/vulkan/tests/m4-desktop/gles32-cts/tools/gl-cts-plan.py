@@ -31,6 +31,8 @@ p.add_argument('--data', type=Path)
 p.add_argument('--environment', type=Path)
 p.add_argument('--binary', default='/root/gl-cts-1.4.6.2/glcts')
 p.add_argument('--segment-size', type=int, default=2500)
+p.add_argument('--serial-case', action='append', default=[], metavar='EXACT_CASE',
+    help='Freeze this case into its own single-worker segment without changing global indices')
 p.add_argument('--first', type=int, default=0)
 p.add_argument('--last', type=int)
 p.add_argument('--jobs', type=int, default=4)
@@ -68,11 +70,21 @@ if a.mode == 'freeze':
         options = [x for x in args if not x.startswith('--deqp-caselist-file=')]
         sessions.append(dict(index=session, name=element.attrib['FileName'],
             source=source, sha256=digest(raw), count=len(cases), start=global_index, options=options))
-        for start in range(0, len(cases), a.segment_size):
+        # Isolate proven long cases before execution, not by retrying timeouts.
+        # Range boundaries change; configuration/case indices and order do not.
+        serial_indices = {i for i, case in enumerate(cases) if case in a.serial_case}
+        ranges = []
+        start = 0
+        while start < len(cases):
+            end = start + 1 if start in serial_indices else min(start + a.segment_size, len(cases))
+            end = min((i for i in serial_indices if start < i < end), default=end)
+            ranges.append((start, end))
+            start = end
+        for start, end in ranges:
             number = len(segments)
             folder = a.campaign/'segments'/f'{number:04d}'
             folder.mkdir(parents=True)
-            selected = cases[start:start+a.segment_size]
+            selected = cases[start:end]
             contents = ('\n'.join(selected)+'\n').encode()
             (folder/'cases.txt').write_bytes(contents)
             meta = dict(schema=1, cases_sha256=digest(contents),
@@ -84,10 +96,11 @@ if a.mode == 'freeze':
             save(folder/'cases.meta.json', meta)
             segments.append(dict(index=number, session=session, start=global_index+start,
                 count=len(selected), sha256=digest(contents),
-                jobs=1 if any(x.startswith('dEQP-EGL.') for x in selected) else a.jobs))
+                jobs=1 if start in serial_indices or any(x.startswith('dEQP-EGL.') for x in selected) else a.jobs))
         global_index += len(cases)
     save(a.campaign/'catalog.json', dict(plan_sha256=digest(a.plan.read_bytes()),
         binary=a.binary, total=global_index, sessions=sessions, segments=segments,
+        serial_cases=sorted(set(a.serial_case)),
         note='Indices identify configuration/case pairs; repeated cases in other EGL configurations are distinct.'))
     print(f'FROZEN: {global_index} configuration/case pairs, {len(sessions)} sessions, {len(segments)} segments')
     sys.exit(0)

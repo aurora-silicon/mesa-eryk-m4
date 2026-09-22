@@ -1,0 +1,10 @@
+{
+  "total": 326602,
+  "unique_cases": 123165,
+  "sessions": 87,
+  "segments": 298,
+  "serial_pairs": 62,
+  "plan_sha256": "3b044959c9db458c6c1a7daec89e7b52fb7b9fb1475eb9039d002dc62740ee1f",
+  "original_campaign": "build/gles32-zink-20260922/full",
+  "index_and_case_identity_verified": true
+}
