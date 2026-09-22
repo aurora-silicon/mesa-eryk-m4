@@ -72,8 +72,28 @@ host = 'root@omarchy-m4'
 prep = time.monotonic()
 with (a.output/'stage.log').open('w') as log:
     subprocess.run(['ssh', host, 'mkdir -p ' + shlex.quote(remote)], check=True, stdout=log, stderr=subprocess.STDOUT)
-    for source, dest in [(a.cases, 'cases.txt'), (a.runner, 'deqp-runner')]:
-        subprocess.run(['scp', str(source), host+':'+remote+'/'+dest], check=True, stdout=log, stderr=subprocess.STDOUT)
+    subprocess.run(['scp', str(a.cases), host+':'+remote+'/cases.txt'], check=True, stdout=log, stderr=subprocess.STDOUT)
+    # Segments use identical multi-megabyte runners. Keep one content-addressed
+    # target copy, verifying it on every use; the backend still records its hash.
+    runner_hash = hashlib.sha256(a.runner.read_bytes()).hexdigest()
+    cached_runner = '/root/cts-bulk/.runner-cache/' + runner_hash
+    probe = subprocess.run(['ssh', host, 'sha256sum -- ' + shlex.quote(cached_runner)],
+                           text=True, stdout=subprocess.PIPE, stderr=log)
+    if probe.returncode or probe.stdout.split()[:1] != [runner_hash]:
+        subprocess.run(['ssh', host, 'mkdir -p /root/cts-bulk/.runner-cache'],
+                       check=True, stdout=log, stderr=subprocess.STDOUT)
+        temporary = cached_runner + '.upload'
+        subprocess.run(['scp', str(a.runner), host+':'+temporary], check=True,
+                       stdout=log, stderr=subprocess.STDOUT)
+        check = subprocess.check_output(['ssh', host, 'sha256sum -- ' + shlex.quote(temporary)], text=True)
+        if check.split()[0] != runner_hash:
+            raise RuntimeError('Staged runner checksum mismatch')
+        subprocess.run(['ssh', host, 'chmod 755 ' + shlex.quote(temporary) +
+                        ' && mv -- ' + shlex.quote(temporary) + ' ' + shlex.quote(cached_runner)],
+                       check=True, stdout=log, stderr=subprocess.STDOUT)
+    subprocess.run(['ssh', host, 'ln -sfn -- ' + shlex.quote(cached_runner) + ' ' +
+                    shlex.quote(remote+'/deqp-runner')], check=True,
+                   stdout=log, stderr=subprocess.STDOUT)
     sidecar = a.cases.with_suffix('.meta.json')
     if sidecar.exists():
         subprocess.run(['scp', str(sidecar), host+':'+remote+'/cases.meta.json'], check=True, stdout=log, stderr=subprocess.STDOUT)

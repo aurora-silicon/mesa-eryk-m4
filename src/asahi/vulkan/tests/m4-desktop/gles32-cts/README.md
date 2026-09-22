@@ -67,3 +67,10 @@ The controller was briefly paused after segment 0020 to archive old
 checksum-verified rsync before removing source copies. The active staging
 directory was excluded; driver/kernel/test evidence was preserved. Archive
 and transfer log: `_provenance/target-staging-archive-20260922`.
+
+The staging archive completed successfully (8,569,226,795 source bytes) and
+the target had 5.7 GiB free before segment 0021 resumed. `cts-bulk.py` now
+shares a content-addressed target runner binary, rechecks its SHA-256 before
+every segment, and verifies uploaded bytes before installation. Each staged
+runner path is a symlink; the backend still records the executed binary hash.
+No driver, CTS binary, execution arguments, or protection policy changed.
