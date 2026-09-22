@@ -1,0 +1,63 @@
+ninja: Entering directory `/home/council/dev/dirtyroom_m4/build/mesa-m4-asahi-host'
+[1/2] Linking target src/asahi/compiler/agx3_workgroup_test
+[2/2] Linking target src/asahi/compiler/agx3_graphics_compile_test
+1/4 asahi - mesa:agx3_static_spill_core OK              0.03s
+2/4 asahi - mesa:agx3_slot_core         OK              0.02s
+3/4 asahi - mesa:agx3_workgroup         OK              0.01s
+4/4 asahi - mesa:agx3_graphics_compile  FAIL            0.01s   exit status 1
+>>> UBSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1:print_stacktrace=1 ASAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1 MESON_TEST_ITERATION=1 MALLOC_PERTURB_=197 MSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1:print_stacktrace=1 /home/council/dev/dirtyroom_m4/build/mesa-m4-asahi-host/src/asahi/compiler/agx3_graphics_compile_test
+――――――――――――――――――――――――――――――――――――― ✀  ―――――――――――――――――――――――――――――――――――――
+stderr:
+agx3_pack_binary.c:7743: no grounded AGX3 encoding for block_image_store
+   block_image_store #0, #0, ^r2, ^r0...r1, #0x0, 2d
+agx3_pack_binary.c:7743: no grounded AGX3 encoding for block_image_store
+   block_image_store #0, #0, ^r2, ^r0...r1, #0x0, 2d
+AGX3b vs-g17p-div3-mul-high: missing leading SR 0xdd rld
+AGX3b vs-g17p-div3-mul-high: accepted but binary is malformed
+AGX3b vs-g17p-half2-varying: G17P binary/resource metadata mismatch
+actual main (162 bytes, staging 12 halfs): 0cdd1006671054020100200049010040440029023c8100c229811c05800039023c81080219811c07800067004408000020005700004040000b0821441b0b27004200000400002b0d27004200000800003b0f27004200000c00004b0527004200001000005b032700420000140000571654000040480057265402204049005746540440404a005786540660404b005706550880404c005706560aa0404d000e000000
+AGX3b vs-g17p-half2-varying: accepted but binary is malformed
+AGX3b fs-flat-colour: G17P binary/resource metadata mismatch
+actual main (94 bytes, staging 0 halfs): 048f0200000000008702540006008702540c080004c2140613001f0008200000000004ff02000200000003021f00040000000000970454030250c05004c8970454020220805004c8e70654020000014e080000080702540c02000e000000
+AGX3b fs-flat-colour: accepted but binary is malformed
+AGX3b fs-discard: unexpectedly accepted
+agx3_pack_binary.c:7743: no grounded AGX3 encoding for imad
+   $r2 = imad $r0, #31, #0, shift=0
+AGX3c vs-register-multiply-minus-byte: REJECTED by agx3_pack_binary
+agx3_pack_binary.c:5501: no grounded AGX3 encoding for st_tile
+   st_tile ^r0l...r0h, #255, _, xyzw, #0x0
+AGX3c fs-flat-colour: REJECTED by agx3_pack_binary
+agx3_pack_binary.c:5501: no grounded AGX3 encoding for st_tile
+   st_tile ^r0l...r0h, #255, _, xyzw, #0x0
+AGX3c fs-interpolated-varying: REJECTED by agx3_pack_binary
+agx3_pack_binary.c:5501: no grounded AGX3 encoding for ld_tile
+   r0l...r0h = ld_tile #255, _, xyzw, #0x0
+AGX3c fs-tilebuffer-load: REJECTED by agx3_pack_binary
+agx3_pack_binary.c:5501: no grounded AGX3 encoding for st_tile
+   st_tile ^r0l...r0h, #255, _, xyzw, #0x0
+AGX3c fs-textured-triangle: REJECTED by agx3_pack_binary
+agx3_pack_binary.c:5501: no grounded AGX3 encoding for st_tile
+   st_tile ^r0l...r0h, #255, _, xyzw, #0x0
+AGX3c fs-vkcube-combined-sampler: REJECTED by agx3_pack_binary
+agx3_pack_binary.c:5501: no grounded AGX3 encoding for st_tile
+   st_tile ^r0l...r0h, #255, _, xyzw, #0x0
+AGX3c fs-descriptor-resource: REJECTED by agx3_pack_binary
+agx3_pack_binary.c:7743: no grounded AGX3 encoding for imad
+   r0 = imad ^r1l.abs, ^r2, ^r0l.abs, shift=0
+AGX3c fs-meta-rgba-upload: REJECTED by agx3_pack_binary
+agx3_pack_binary.c:5501: no grounded AGX3 encoding for st_tile
+   st_tile ^r1l...r1h, #255, _, xyzw, #0x0
+AGX3c fs-transcendentals: REJECTED by agx3_pack_binary
+agx3_pack_binary.c:7743: no grounded AGX3 encoding for sample_mask
+   sample_mask #255, #0
+――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――
+
+
+Summary of Failures:
+
+4/4 asahi - mesa:agx3_graphics_compile  FAIL            0.01s   exit status 1
+
+Ok:                3   
+Fail:              1   
+
+Full log written to /home/council/dev/dirtyroom_m4/build/mesa-m4-asahi-host/meson-logs/testlog.txt

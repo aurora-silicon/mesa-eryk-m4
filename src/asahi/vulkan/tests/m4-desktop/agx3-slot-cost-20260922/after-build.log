@@ -1,0 +1,7 @@
+ninja: Entering directory `build/mesa-m4-asahi-host'
+[1/6] Compiling C object src/asahi/compiler/agx3_slot_core_test.p/agx3_slot_core.c.o
+[2/6] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx3_slot_core.c.o
+[3/6] Linking static target src/asahi/compiler/libasahi_compiler.a
+[4/6] Compiling C object src/asahi/compiler/agx3_slot_core_test.p/test_test-agx3-slot-core.c.o
+[5/6] Linking target src/asahi/compiler/agx3_slot_core_test
+[6/6] Linking target src/asahi/compiler/agx_shader_replay

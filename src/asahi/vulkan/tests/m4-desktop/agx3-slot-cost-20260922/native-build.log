@@ -1,0 +1,19 @@
+ninja: Entering directory `build/mesa-m4-native-release'
+[1/18] Generating src/git_sha1.h with a custom command
+[2/18] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx3_slot_core.c.o
+[3/18] Compiling C object src/mesa/libmesa.a.p/main_context.c.o
+[4/18] Compiling C object src/gallium/frontends/dri/libdri.a.p/dri2.c.o
+[5/18] Compiling C object src/gallium/frontends/dri/libdri.a.p/drisw.c.o
+[6/18] Linking static target src/asahi/compiler/libasahi_compiler.a
+[7/18] Compiling C object src/gallium/frontends/dri/libdri.a.p/kopper.c.o
+[8/18] Linking static target src/gallium/frontends/dri/libdri.a
+[9/18] Compiling C object src/loader/libloader.a.p/loader.c.o
+[10/18] Linking static target src/loader/libloader.a
+[11/18] Compiling C object src/mesa/libmesa.a.p/main_version.c.o
+[12/18] Linking static target src/mesa/libmesa.a
+[13/18] Compiling C object src/asahi/lib/libasahi_lib.a.p/agx_device.c.o
+[14/18] Linking static target src/asahi/lib/libasahi_lib.a
+[15/18] Linking target src/gallium/targets/dri/libgallium-26.1.4.so
+[16/18] Compiling C object src/asahi/vulkan/libhk.a.p/hk_physical_device.c.o
+[17/18] Linking static target src/asahi/vulkan/libhk.a
+[18/18] Linking target src/asahi/vulkan/libvulkan_asahi.so

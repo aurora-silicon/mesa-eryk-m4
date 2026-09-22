@@ -1,0 +1,23 @@
+{
+  "README-compiler-comparison.md": "a96a825d7f720884efbb64f5bdda2b5625897a8f3fd90eb34f6a7e24b35732de",
+  "README.md": "1fba40888f086c80c5965e0561400d9c5fa1e9022483c15f6faaa077c8e98e29",
+  "after-build.log": "2d8945460e3b72208412de6fef6ecb3ea57d398cbb3bf5d2656e57bde63b2f3f",
+  "agx3-slot-differential.c": "573fd953bad9f0cf8d20e20ea74bb84b15b9f508c9ba1e844f1585ccd4fb416a",
+  "agx3_slot_core_before.c": "ffcfababe8ba10f62e7014583306146fd47e7c5c7fd5c9499356f867c0e41e1b",
+  "agx3_slot_core_candidate.c": "d055f26d6c7ee5590cca040f46c16802ff4a08c2d739a7b78fa5a527a19c3134",
+  "baseline-build.log": "658445be71099d3ca21477a6ab9f68e9cb4fe2d55e26f86eaa132b3e880e0d95",
+  "binary-output-build.log": "e586fd96ef86a912cdeee909306cf0a9a5881cc737a9e8aafe6d0b6912fdeecf",
+  "binary-output-error.json": "ba7b7d25a5a741fe1141426440ed7496b32342b1d53321b400c4ca55f57ade0f",
+  "compare/comparison.json": "7e9f626da69ad39e74a2209e3cb2e183e91656d87581753361e54a6c988b4888",
+  "compare-idle/comparison.json": "45156bf5ef5aa4b86e6b271a0d3051ef4839c0cf0cc4e7aefad18b5d98a8f08d",
+  "compiler-binary-compare.py": "12e77c9fe497c260624b3105a4dbb9a5fa7ba8f5bd0ca6648c4fd18c57802179",
+  "differential.log": "e845a5d549652d4557d0e5b5f82118e2fd72f6bbbe5e31a805cb446ecec89df5",
+  "graphics-baseline-comparison.json": "7fb00b4f3460fdaa167f52f4184930c1f1db5c315a75a30fb776ae56b8fa3a9e",
+  "identical-shader-binaries.tar.gz": "6df7329c58949df0da0b7f63504954fdc3fe91ec55b0fb6e3305f806138c353e",
+  "inputs.json": "f378400259977fc8064d3fb877131685f950fd1a2677aea1bd53a4dd638766e1",
+  "meson-tests.log": "51d4d252ca4aa8b872531ab5be5d69895c1c10607c0b14b7d2b446d6f4dcb5a1",
+  "native-build.log": "d8111bc51758174a3dcf925fb1eb8e44d863e094280c96eabbc5b736389fcee7",
+  "profile-before.txt": "8b8c0db5152a6b4743c70417b646fbb47eaa0cc64a4db303bd78bae879a84f23",
+  "slot-sanitizer-test.log": "d0e0457f5d3c5faa994e66965d13a52707dd72b84e749123b0da35ea528589e5",
+  "slot-test.log": "d0e0457f5d3c5faa994e66965d13a52707dd72b84e749123b0da35ea528589e5"
+}

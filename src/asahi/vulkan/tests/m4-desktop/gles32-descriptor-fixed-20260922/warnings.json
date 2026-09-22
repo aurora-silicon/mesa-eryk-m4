@@ -1,0 +1,117 @@
+[
+  {
+    "index": 985,
+    "case": "dEQP-GLES2.functional.fbo.completeness.renderable.texture.color0.srgb_alpha_unsigned_byte",
+    "boot_id": "f9d383d2-2573-417e-b6ee-b0164801ea5e",
+    "runner_status": "Warn",
+    "seconds": 0.01159297,
+    "eligibility": {
+      "case": "dEQP-GLES2.functional.fbo.completeness.renderable.texture.color0.srgb_alpha_unsigned_byte",
+      "catalog_index": 17274,
+      "session": 1,
+      "session_index": 13485,
+      "classification": "selected",
+      "rule": "Frozen Khronos ES32 runner plan"
+    },
+    "status": "QualityWarning",
+    "message": "Framebuffer object could have checked as complete but did not.",
+    "qpa": "deqp-runner/c44.r1.qpa",
+    "worker_exit": "exit status: 0",
+    "segment": 7,
+    "session": 1,
+    "global_index": 17274,
+    "run": "/home/council/dev/dirtyroom_m4/build/gles32-descriptor-fixed-20260922/segments/0007/run"
+  },
+  {
+    "index": 2064,
+    "case": "dEQP-GLES2.functional.rasterization.interpolation.basic.lines",
+    "boot_id": "f9d383d2-2573-417e-b6ee-b0164801ea5e",
+    "runner_status": "Warn",
+    "seconds": 0.068603605,
+    "eligibility": {
+      "case": "dEQP-GLES2.functional.rasterization.interpolation.basic.lines",
+      "catalog_index": 18353,
+      "session": 1,
+      "session_index": 14564,
+      "classification": "selected",
+      "rule": "Frozen Khronos ES32 runner plan"
+    },
+    "status": "QualityWarning",
+    "message": "Interpolation was calculated using projected coordinateds",
+    "qpa": "deqp-runner/c10.r1.qpa",
+    "worker_exit": "exit status: 0",
+    "segment": 7,
+    "session": 1,
+    "global_index": 18353,
+    "run": "/home/council/dev/dirtyroom_m4/build/gles32-descriptor-fixed-20260922/segments/0007/run"
+  },
+  {
+    "index": 2073,
+    "case": "dEQP-GLES2.functional.rasterization.interpolation.projected.lines",
+    "boot_id": "f9d383d2-2573-417e-b6ee-b0164801ea5e",
+    "runner_status": "Warn",
+    "seconds": 0.113082655,
+    "eligibility": {
+      "case": "dEQP-GLES2.functional.rasterization.interpolation.projected.lines",
+      "catalog_index": 18362,
+      "session": 1,
+      "session_index": 14573,
+      "classification": "selected",
+      "rule": "Frozen Khronos ES32 runner plan"
+    },
+    "status": "QualityWarning",
+    "message": "Interpolation was calculated using projected coordinateds",
+    "qpa": "deqp-runner/c6.r1.qpa",
+    "worker_exit": "exit status: 0",
+    "segment": 7,
+    "session": 1,
+    "global_index": 18362,
+    "run": "/home/council/dev/dirtyroom_m4/build/gles32-descriptor-fixed-20260922/segments/0007/run"
+  },
+  {
+    "index": 2076,
+    "case": "dEQP-GLES2.functional.rasterization.interpolation.projected.lines_wide",
+    "boot_id": "f9d383d2-2573-417e-b6ee-b0164801ea5e",
+    "runner_status": "Warn",
+    "seconds": 0.08392048,
+    "eligibility": {
+      "case": "dEQP-GLES2.functional.rasterization.interpolation.projected.lines_wide",
+      "catalog_index": 18365,
+      "session": 1,
+      "session_index": 14576,
+      "classification": "selected",
+      "rule": "Frozen Khronos ES32 runner plan"
+    },
+    "status": "QualityWarning",
+    "message": "Interpolation was calculated using projected coordinateds",
+    "qpa": "deqp-runner/c17.r1.qpa",
+    "worker_exit": "exit status: 0",
+    "segment": 7,
+    "session": 1,
+    "global_index": 18365,
+    "run": "/home/council/dev/dirtyroom_m4/build/gles32-descriptor-fixed-20260922/segments/0007/run"
+  },
+  {
+    "index": 2088,
+    "case": "dEQP-GLES2.functional.flush_finish.finish_wait",
+    "boot_id": "f9d383d2-2573-417e-b6ee-b0164801ea5e",
+    "runner_status": "Warn",
+    "seconds": 37.843426,
+    "eligibility": {
+      "case": "dEQP-GLES2.functional.flush_finish.finish_wait",
+      "catalog_index": 20877,
+      "session": 1,
+      "session_index": 17088,
+      "classification": "selected",
+      "rule": "Frozen Khronos ES32 runner plan"
+    },
+    "status": "CompatibilityWarning",
+    "message": "Suspicious performance behavior",
+    "qpa": "deqp-runner/c30.r1.qpa",
+    "worker_exit": "exit status: 0",
+    "segment": 8,
+    "session": 1,
+    "global_index": 20877,
+    "run": "/home/council/dev/dirtyroom_m4/build/gles32-descriptor-fixed-20260922/segments/0008/run"
+  }
+]

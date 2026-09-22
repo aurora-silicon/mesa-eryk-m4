@@ -1,0 +1,24 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 178  of event 'cpu-clock:u'
+# Event count (approx.): 356713424
+#
+# Overhead  Symbol                        IPC   [IPC Coverage]
+# ........  ............................  ....................
+#
+     3.37%  [.] 0x00000000000d1372        -      -            
+     2.81%  [.] 0x00000000001b6d2f        -      -            
+     2.81%  [.] 0x00000000002d924b        -      -            
+     1.69%  [.] 0x00000000001bbfcc        -      -            
+     1.12%  [.] 0x00000000000eac3f        -      -            
+     1.12%  [.] 0x0000000000114178        -      -            
+     1.12%  [.] 0x00000000001b8562        -      -            
+     1.12%  [.] 0x00000000002d243c        -      -            
+
+
+#
+# (Tip: See assembly instructions with percentage: perf annotate <symbol>)
+#

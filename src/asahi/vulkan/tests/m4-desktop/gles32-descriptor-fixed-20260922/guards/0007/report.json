@@ -1,0 +1,22 @@
+{
+  "id": "20260922T141344013363Z-gles32-plan-0007-r0",
+  "verdict": "pass",
+  "transport_returncode": 0,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T141344013363Z-gles32-plan-0007-r0",
+  "observations": {
+    "pixel_results": [],
+    "pixel_result_count": 0,
+    "thermal_samples": 63,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 91.0,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 91.0,
+      "Ta000m": 81.5,
+      "Te000m": 76.5,
+      "Te001m": 91.0,
+      "Tp000m": 84.5,
+      "Tp001m": 89.5
+    }
+  }
+}

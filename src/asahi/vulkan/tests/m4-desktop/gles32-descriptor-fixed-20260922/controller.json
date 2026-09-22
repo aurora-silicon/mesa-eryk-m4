@@ -1,0 +1,19 @@
+{
+  "pid": 1736826,
+  "started_utc": "2026-09-22T14:07:27.223728+00:00",
+  "state": "selected-segments-complete",
+  "campaign": "/home/council/dev/dirtyroom_m4/build/gles32-descriptor-fixed-20260922",
+  "command": [
+    "/usr/bin/python3",
+    "/home/council/dev/dirtyroom_m4/tools/gl-cts-plan.py",
+    "run",
+    "--campaign",
+    "/home/council/dev/dirtyroom_m4/build/gles32-descriptor-fixed-20260922",
+    "--continue-batch-deadlines",
+    "--last",
+    "9"
+  ],
+  "returncode": 0,
+  "report_returncode": 0,
+  "finished_utc": "2026-09-22T14:15:50.607508+00:00"
+}

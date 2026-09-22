@@ -1,0 +1,4 @@
+{
+  "returncode": 1,
+  "stderr": "Compiler replay: PASS (22230 bytes)\nCompiler binary hash: 7d9d2361\nreplay shader: 2507 instrs, 2240 alu, 2240 fscib, 498 ic, 21820 code size, 141 gprs, 92 uniforms, 0 scratch, 704 threads, 0 loops, 0:0 spills:fills, 53 preamble inst\nbuild/agx3-slot-cost-20260922/does-not-exist/output.bin: No such file or directory\n"
+}

@@ -1,0 +1,2 @@
+ninja: Entering directory `build/mesa-m4-asahi-host'
+[1/1] Linking target src/asahi/compiler/agx_shader_replay
