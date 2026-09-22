@@ -1,0 +1,22 @@
+{
+  "selected": 53,
+  "recorded": 53,
+  "completed": 53,
+  "counts": {
+    "Pass": 53
+  },
+  "classifications": {
+    "selected": 53
+  },
+  "elapsed_seconds": 3.981572586009861,
+  "preparation_seconds": 1.531221123994328,
+  "runner_seconds": 1.4345379119999961,
+  "jobs": 4,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "fabe46633e5f5bd83c9e5218a6039be5bcce1a4a56457368832af254e574f625",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T200536821546Z-gles32-plan-0143-r0",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 86.0
+}

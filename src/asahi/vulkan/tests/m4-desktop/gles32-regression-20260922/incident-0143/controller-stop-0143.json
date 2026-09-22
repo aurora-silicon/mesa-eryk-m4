@@ -1,0 +1,35 @@
+{
+  "pid": 2084636,
+  "state": "stopped-needs-review",
+  "completed_segments": 143,
+  "started_utc": "2026-09-22T19:11:24.630835+00:00",
+  "segment": 143,
+  "command": [
+    "/usr/bin/python3",
+    "/home/council/dev/dirtyroom_m4/tools/gl-cts-plan.py",
+    "run",
+    "--campaign",
+    "/home/council/dev/dirtyroom_m4/build/gles32-regression-20260922",
+    "--first",
+    "143",
+    "--last",
+    "144",
+    "--continue-batch-deadlines",
+    "--seconds",
+    "900"
+  ],
+  "report_returncode": 0,
+  "completed_pairs": 194700,
+  "counts": {
+    "Pass": 184796,
+    "NotSupported": 9862,
+    "QualityWarning": 15,
+    "CompatibilityWarning": 18,
+    "Fail": 8,
+    "Timeout": 1,
+    "Unrun": 131902
+  },
+  "error": "Segment 143 stopped; review retained evidence",
+  "returncode": 1,
+  "finished_utc": "2026-09-22T20:03:40.991373+00:00"
+}

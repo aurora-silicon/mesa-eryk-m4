@@ -1,0 +1,8 @@
+{
+  "incident_evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T200249331232Z-gles32-plan-0143-r0",
+  "recovery_run": "/home/council/dev/dirtyroom_m4/build/gles32-regression-20260922/recovery-0143-probe/038-0000/run",
+  "new_boot": "28e5b38a-2164-479a-8bbd-24e88008f8d4",
+  "segment": 143,
+  "reason": "Original second GPU timeout and preceding LOD-bias failure retained. Four active compiler-negative cases Pass serially after recovery; preceding failed LOD-bias case Pass serially at same settings and build. Resume only unfinished peers serially in affected segment. This authorizes coverage after verified recovery, not a claim that either GPU incident is fixed. Exact53-case four-worker repeat also Pass53 under its guard.",
+  "parallel_repeat": "/home/council/dev/dirtyroom_m4/build/gles32-regression-20260922/incident-0143-repeat/segments/0143/run"
+}

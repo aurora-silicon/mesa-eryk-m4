@@ -1,0 +1,78 @@
+[
+  {
+    "index": 0,
+    "case": "KHR-GLES3.negative_texture_lookup_functions_with_bias_tests.texture_isampler3D_bias",
+    "boot_id": "28e5b38a-2164-479a-8bbd-24e88008f8d4",
+    "runner_status": "Pass",
+    "seconds": 0.005730207,
+    "eligibility": {
+      "case": "KHR-GLES3.negative_texture_lookup_functions_with_bias_tests.texture_isampler3D_bias",
+      "catalog_index": 194708,
+      "session": 38,
+      "session_index": 6453,
+      "classification": "selected",
+      "rule": "Frozen Khronos ES32 runner plan"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 1,
+    "case": "KHR-GLES3.negative_texture_lookup_functions_with_bias_tests.texture_isamplerCube_bias",
+    "boot_id": "28e5b38a-2164-479a-8bbd-24e88008f8d4",
+    "runner_status": "Pass",
+    "seconds": 0.006181394,
+    "eligibility": {
+      "case": "KHR-GLES3.negative_texture_lookup_functions_with_bias_tests.texture_isamplerCube_bias",
+      "catalog_index": 194711,
+      "session": 38,
+      "session_index": 6456,
+      "classification": "selected",
+      "rule": "Frozen Khronos ES32 runner plan"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 2,
+    "case": "KHR-GLES3.negative_texture_lookup_functions_with_bias_tests.textureProj_sampler2D_bias",
+    "boot_id": "28e5b38a-2164-479a-8bbd-24e88008f8d4",
+    "runner_status": "Pass",
+    "seconds": 0.003467093,
+    "eligibility": {
+      "case": "KHR-GLES3.negative_texture_lookup_functions_with_bias_tests.textureProj_sampler2D_bias",
+      "catalog_index": 194717,
+      "session": 38,
+      "session_index": 6462,
+      "classification": "selected",
+      "rule": "Frozen Khronos ES32 runner plan"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 3,
+    "case": "KHR-GLES3.negative_texture_lookup_functions_with_bias_tests.textureProj_isampler3D_bias",
+    "boot_id": "28e5b38a-2164-479a-8bbd-24e88008f8d4",
+    "runner_status": "Pass",
+    "seconds": 0.16014175,
+    "eligibility": {
+      "case": "KHR-GLES3.negative_texture_lookup_functions_with_bias_tests.textureProj_isampler3D_bias",
+      "catalog_index": 194725,
+      "session": 38,
+      "session_index": 6470,
+      "classification": "selected",
+      "rule": "Frozen Khronos ES32 runner plan"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  }
+]

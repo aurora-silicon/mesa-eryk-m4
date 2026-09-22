@@ -1,0 +1,21 @@
+[
+  {
+    "index": 0,
+    "case": "KHR-GLES3.texture_lod_bias.texture_lod_bias_all",
+    "boot_id": "28e5b38a-2164-479a-8bbd-24e88008f8d4",
+    "runner_status": "Pass",
+    "seconds": 39.20102,
+    "eligibility": {
+      "case": "KHR-GLES3.texture_lod_bias.texture_lod_bias_all",
+      "catalog_index": 194699,
+      "session": 38,
+      "session_index": 6444,
+      "classification": "selected",
+      "rule": "Frozen Khronos ES32 runner plan"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/KHR-GLES3.texture_lod_bias.texture_lod_bias_all.c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  }
+]
