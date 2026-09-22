@@ -224,6 +224,16 @@ test_g17p_vertex_program_info(void)
    clip.uvs_size = 13;
    CHECK(!hk_agx3_g17p_vertex_program_info(AGX_CHIP_G16G, &clip, &program));
 
+   /* M3 uses the same clip-output descriptor range. Keep unsupported chips
+    * rejected and check the upper bound independently of ordinary varyings. */
+   for (unsigned i = 0; i < ARRAY_SIZE(targets); ++i) {
+      clip.uvs_size = 12;
+      CHECK(hk_agx3_g17p_vertex_program_info(targets[i], &clip, &program) ==
+            agx_chip_uses_g15_g16_shader_abi(targets[i]));
+      clip.uvs_size = 13;
+      CHECK(!hk_agx3_g17p_vertex_program_info(targets[i], &clip, &program));
+   }
+
    /* AIR-NT G16G position + float varying + render_target_array_index:
     * __GPU_LD_MD root.field1.field3=6, field4 absent. The packed layer word
     * follows the user output in the same 32-bit UVS stream. */

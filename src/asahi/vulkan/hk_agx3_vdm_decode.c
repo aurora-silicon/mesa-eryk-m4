@@ -127,7 +127,7 @@ hk_agx3_g17p_vertex_program_info(
         compiler_info->clip_off != compiler_info->layer_viewport_off + 1) ||
        compiler_info->uvs_size < compiler_info->clip_off ||
        compiler_info->uvs_size > compiler_info->clip_off +
-          (chip == AGX_CHIP_G16G ? 8 : 0) ||
+          (agx_chip_uses_g15_g16_shader_abi(chip) ? 8 : 0) ||
        compiler_info->position_only !=
           (compiler_info->user_size == 0 &&
            compiler_info->uvs_size == compiler_info->psiz_off) ||
