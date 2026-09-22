@@ -120,6 +120,20 @@ if a.mode in ('report', 'status'):
         save(a.campaign/'summary.json', dict(**summary, runs=runs))
         bad = [r for r in records if r['status'] not in ('Pass','NotSupported','CompatibilityWarning','QualityWarning','Unrun','Interrupted')]
         save(a.campaign/'failures.json', bad)
+        grouped = []
+        for session in catalog['sessions']:
+            selected = [r for r in records if r['session'] == session['index']]
+            statuses = Counter(r['status'] for r in selected)
+            statuses['Unrun'] += session['count'] - len(selected)
+            grouped.append(dict(session=session['index'], name=session['name'],
+                total=session['count'], options=session['options'], counts=dict(statuses)))
+        save(a.campaign/'sessions-summary.json', grouped)
+        by_case = {}
+        for record in bad:
+            entry = by_case.setdefault(record['case'], dict(case=record['case'], occurrences=[]))
+            entry['occurrences'].append(dict(global_index=record['global_index'],
+                session=record['session'], status=record['status'], run=record['run']))
+        save(a.campaign/'unique-failures.json', list(by_case.values()))
         (a.campaign/'failures.tsv').write_text('global_index\tsession\tstatus\tcase\n'+''.join(
             f"{r['global_index']}\t{r['session']}\t{r['status']}\t{r['case']}\n" for r in bad))
     print(json.dumps(summary, indent=2))
