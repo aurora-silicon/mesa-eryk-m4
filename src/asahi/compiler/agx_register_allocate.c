@@ -382,7 +382,7 @@ dest_limit(const struct ra_ctx *rctx, const agx_instr *I, unsigned d)
  */
 static unsigned
 find_best_region_to_evict(struct ra_ctx *rctx, unsigned size,
-                          BITSET_WORD *already_evicted)
+                          BITSET_WORD *already_evicted, unsigned limit)
 {
    assert(util_is_power_of_two_or_zero(size) && "precondition");
    assert((rctx->bound[RA_GPR] % size) == 0 &&
@@ -394,7 +394,7 @@ find_best_region_to_evict(struct ra_ctx *rctx, unsigned size,
    unsigned best_base = ~0;
    unsigned best_moves = invert ? 0 : ~0;
 
-   for (unsigned base = 0; base + size <= rctx->bound[RA_GPR]; base += size) {
+   for (unsigned base = 0; base + size <= limit; base += size) {
       /* The first k registers are preallocated and unevictable, so must be
        * skipped. By itself, this does not pose a problem. We are allocating n
        * registers, but this region has at most n-k free.  Since there are at
@@ -436,7 +436,28 @@ find_best_region_to_evict(struct ra_ctx *rctx, unsigned size,
        * free registers are skipped, since the recursive splitting algorithm
        * requires at least one free register.
        */
-      if (any_free && ((moves < best_moves) ^ invert)) {
+      /* A constrained value can have no free half in its legal bank while
+       * free registers exist above it. Permit a fully occupied region only
+       * when it contains whole values that can move to that upper bank.
+       * This breaks the constrained cycle without evicting another value
+       * with the same (or narrower) limit.
+       */
+      bool movable = limit < rctx->bound[RA_GPR];
+      if (movable && !any_free) {
+         for (unsigned reg = base; reg < base + size;) {
+            unsigned ssa = rctx->reg_to_ssa[reg];
+            unsigned width = rctx->ncomps[ssa];
+            if (rctx->ssa_to_reg[ssa] != reg || !width ||
+                reg + width > base + size ||
+                BITSET_TEST(rctx->tex_low128, ssa) ||
+                BITSET_TEST(rctx->low_gpr, ssa)) {
+               movable = false;
+               break;
+            }
+            reg += width;
+         }
+      }
+      if ((any_free || movable) && ((moves < best_moves) ^ invert)) {
          best_moves = moves;
          best_base = base;
       }
@@ -592,7 +613,17 @@ assign_regs_by_copying(struct ra_ctx *rctx, agx_index dest, const agx_instr *I,
       /* We need to shuffle some variables to make room. Look for a range of
        * the register file that is partially blocked.
        */
-      unsigned new_reg = find_best_region_to_evict(rctx, nr, clobbered);
+      /* Operand constraints apply after shuffles too. In particular, a
+       * sparse texture's large result can evict its own cube-array coordinate
+       * vector; moving that vector above half 127 makes PACK_SMPIR impossible.
+       */
+      unsigned move_limit = rctx->bound[RA_GPR];
+      if (BITSET_TEST(rctx->tex_low128, ssa))
+         move_limit = MIN2(move_limit, 128);
+      if (BITSET_TEST(rctx->low_gpr, ssa))
+         move_limit = MIN2(move_limit, 16);
+      unsigned new_reg =
+         find_best_region_to_evict(rctx, nr, clobbered, move_limit);
 
       /* Blocked registers need to get reassigned. Add them to the worklist. */
       for (unsigned i = 0; i < nr; ++i) {
