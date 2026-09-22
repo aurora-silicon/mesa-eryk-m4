@@ -42,6 +42,8 @@ p.add_argument('--headless', action='store_true', help='Private 1000 Hz composit
 p.add_argument('--headless-env', action='append', metavar='KEY=VALUE', default=[],
                help='Recorded environment override for the private compositor')
 p.add_argument('--deqp-arg', action='append', default=[], help='Extra CTS argument, e.g. --deqp-arg=--deqp-gl-context-type=egl')
+p.add_argument('--unset-env', action='append', default=[], metavar='KEY',
+               help='Remove an inherited variable from the CTS process environment')
 p.add_argument('--env', action='append', metavar='KEY=VALUE', default=[],
                help='Recorded driver environment override passed to the remote runner')
 a = p.parse_args()
@@ -106,6 +108,8 @@ if a.cpu_affinity:
     command += ['--cpu-affinity', a.cpu_affinity]
 for item in a.deqp_arg:
     command += ['--deqp-arg=' + item]
+for key in a.unset_env:
+    command += ['--unset-env', key]
 for item in a.env:
     command += ['--env', item]
 if a.headless:

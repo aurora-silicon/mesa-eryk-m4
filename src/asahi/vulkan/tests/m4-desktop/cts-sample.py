@@ -191,6 +191,10 @@ def batch(args):
         if not key or not key.replace('_', '').isalnum():
             raise SystemExit('invalid --env entry: ' + item)
         env[key] = value
+    for key in args.unset_env or []:
+        if not key or not key.replace('_', '').isalnum():
+            raise SystemExit('invalid --unset-env key: ' + key)
+        env.pop(key, None)
     save(out / 'environment.json', {k: v for k, v in env.items() if k.startswith(
          ('VK_', 'ASAHI_', 'AGX_', 'HK_', 'MESA_', 'LD_LIBRARY', 'WAYLAND_', 'XDG_RUNTIME', 'DISPLAY', 'XAUTHORITY', 'GALLIUM_', 'LIBGL_', '__EGL_'))})
     save(out / 'binary.json', dict(path=str(args.binary), sha256=hashlib.sha256(args.binary.read_bytes()).hexdigest()))
@@ -344,6 +348,8 @@ def main():
     b.add_argument('--capture-success', action='store_true')
     b.add_argument('--capture-before', action='store_true')
     b.add_argument('--deqp-arg', action='append', default=[], help='Extra CTS argument (use --deqp-arg=--option=value)')
+    b.add_argument('--unset-env', action='append', default=[], metavar='KEY',
+                   help='Remove an inherited environment variable after applying overrides')
     b.add_argument('--env', action='append', metavar='KEY=VALUE',
                    help='Recorded driver environment override for this bounded run')
     args = p.parse_args()

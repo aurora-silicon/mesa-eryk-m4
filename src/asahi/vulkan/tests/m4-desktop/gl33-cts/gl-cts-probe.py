@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
-"""Identify the installed Zink renderer and enumerate the GL33 CTS run plan.
+"""Identify the installed Zink renderer and enumerate a pinned GL CTS run plan.
 Target only; run with gpu-experiment.py GUARD_OUTPUT. Saves ordinary desktop
 renderer settings, binary hashes, QPA and Khronos runner's configuration plan.
 """
-import hashlib, importlib.util, json, os, subprocess, sys
+import argparse, hashlib, importlib.util, json, os, subprocess, sys
 from pathlib import Path
-out=Path(sys.argv[1]); boot=Path('/proc/sys/kernel/random/boot_id').read_text().strip()
+parser=argparse.ArgumentParser(description=__doc__)
+parser.add_argument('output',type=Path)
+parser.add_argument('case',nargs='?')
+parser.add_argument('--api',choices=['gl33','gl46'],default='gl33')
+a=parser.parse_args()
+out=a.output; boot=Path('/proc/sys/kernel/random/boot_id').read_text().strip()
 spec=importlib.util.spec_from_file_location('fw','/root/firmware-snapshot.py'); fw=importlib.util.module_from_spec(spec); spec.loader.exec_module(fw)
 fw.check_guard(out,boot)
 env=None
@@ -28,15 +33,18 @@ for p in Path('/proc').glob('[0-9]*'):
    if '-auth' in argv: env['XAUTHORITY']=argv[argv.index('-auth')+1]
  except OSError: pass
 assert env['GALLIUM_DRIVER']=='zink'
+if a.api=='gl46':
+ for key in ('MESA_GL_VERSION_OVERRIDE','MESA_GLES_VERSION_OVERRIDE','MESA_GLSL_VERSION_OVERRIDE'):
+  env.pop(key,None)
 root=Path('/root/gl-cts-1.4.6.2')
 record={k:v for k,v in env.items() if k.startswith(('GALLIUM','MESA','VK_','__EGL','LD_LIBRARY','LIBGL','ASAHI','HK_','WAYLAND','DISPLAY','XDG_RUNTIME'))}
 (out/'renderer-environment.json').write_text(json.dumps(record,indent=2)+'\n')
 (out/'binary-hashes.json').write_text(json.dumps({n:hashlib.sha256((root/n).read_bytes()).hexdigest() for n in ('glcts','cts-runner')},indent=2)+'\n')
-args=[str(root/'glcts'),'--deqp-case=KHR-GL33.info.*','--deqp-gl-context-type=egl','--deqp-egl-display-type=Wayland','--deqp-surface-width=64','--deqp-surface-height=64','--deqp-log-filename='+str(out/'info.qpa')]
+args=[str(root/'glcts'),'--deqp-case=KHR-'+a.api.upper()+'.info.*','--deqp-gl-context-type=egl','--deqp-egl-display-type=Wayland','--deqp-surface-width=64','--deqp-surface-height=64','--deqp-log-filename='+str(out/'info.qpa')]
 subprocess.run(args,cwd=root,env=env,check=True,timeout=20)
 fw.check_guard(out,boot)
-if len(sys.argv)>2:
- case=sys.argv[2]
+if a.case:
+ case=a.case
  assert case.startswith('KHR-NoContext.')
  direct=[a if not a.startswith('--deqp-case=') else '--deqp-case='+case for a in args]
  direct=[a if not a.startswith('--deqp-log-filename=') else '--deqp-log-filename='+str(out/'no-context.qpa') for a in direct]
@@ -44,9 +52,9 @@ if len(sys.argv)>2:
  print('PASS: identified Zink and completed no-default-context case')
  raise SystemExit(0)
 (out/'plan').mkdir()
-result=subprocess.run([str(root/'cts-runner'),'--type=gl33','--summary','--logdir='+str(out/'plan')],cwd=root,env=env,check=False,timeout=20)
+result=subprocess.run([str(root/'cts-runner'),'--type='+a.api,'--summary','--logdir='+str(out/'plan')],cwd=root,env=env,check=False,timeout=20)
 # --summary compares against absent result files and normally exits 1.
 assert result.returncode in (0,1)
 assert (out/'plan/cts-run-summary.xml').is_file()
 assert 'zink Vulkan' in (out/'info.qpa').read_text() and 'Apple M4' in (out/'info.qpa').read_text()
-print('PASS: GL33 renderer identity and Khronos run plan saved')
+print('PASS: '+a.api.upper()+' renderer identity and Khronos run plan saved')
