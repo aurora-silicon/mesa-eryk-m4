@@ -875,7 +875,8 @@ hk_get_device_properties(const struct agx_device *dev,
       .maxColorAttachments = HK_MAX_RTS,
       .sampledImageColorSampleCounts = color_sample_counts,
       .sampledImageIntegerSampleCounts =
-         dev->chip == AGX_CHIP_G16G ? sample_counts : other_sample_counts,
+         agx_chip_uses_g15_g16_shader_abi(dev->chip) ? sample_counts
+                                                  : other_sample_counts,
       /* G15/G16 native texture descriptors support multisampled depth/stencil.
        * Zink needs these limits to allow shader-based depth/stencil resolves.
        */
@@ -1006,7 +1007,9 @@ hk_get_device_properties(const struct agx_device *dev,
          agx_chip_uses_g15_g16_shader_abi(dev->chip),
       .filterMinmaxImageComponentMapping = agx_chip_uses_g15_g16_shader_abi(dev->chip),
       .maxTimelineSemaphoreValueDifference = UINT64_MAX,
-      .framebufferIntegerColorSampleCounts = other_sample_counts,
+      .framebufferIntegerColorSampleCounts =
+         agx_chip_uses_g15_g16_shader_abi(dev->chip) ? sample_counts
+                                                  : other_sample_counts,
 
       /* Vulkan 1.3 properties */
       .minSubgroupSize = 32,
