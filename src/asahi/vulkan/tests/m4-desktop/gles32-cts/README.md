@@ -96,3 +96,11 @@ same-binary/environment ES renderer preflight now also covers KHR-NoContext,
 with renderer identity QPA retained. This does not omit or bypass identity
 validation. The original setup attempt is retained in `run-setup-renderer-check`
 and evidence 20260922T085157948833Z-gles32-plan-0046-r0; its one case was Unrun.
+
+The preflight also covers KHR-GLES2/3/31 (explicitly unsupported by the
+runner renderer-check code) and KHR-GLESEXT (no usable renderer-info case).
+Segment 0051 stopped before any test for that runner limitation; its original
+setup evidence is preserved under `run-setup-renderer-check` and
+20260922T085356254676Z-gles32-plan-0051-r0. The 6,053 KHR-Single-GLES32
+subgroup cases are actual NotSupported outcomes because ES subgroup operations
+are not advertised; these are retained as such, not counted as passes.

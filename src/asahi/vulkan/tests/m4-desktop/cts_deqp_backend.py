@@ -96,9 +96,10 @@ def run(args, check, boot, out, env, metadata, save):
     selected = out / 'runner-cases.txt'
     selected.write_text('\n'.join(cases) + '\n')
     result_dir = out / 'deqp-runner'
-    auxiliary_renderer_check = all(case.startswith(('dEQP-EGL.', 'KHR-NoContext.')) for case in cases)
+    auxiliary_renderer_check = all(case.split('.', 1)[0] in (
+        'dEQP-EGL', 'KHR-NoContext', 'KHR-GLES2', 'KHR-GLES3', 'KHR-GLES31', 'KHR-GLESEXT') for case in cases)
     if auxiliary_renderer_check:
-        # deqp-runner cannot check EGL or no-context packages. Check the same binary and
+        # These CTS packages lack a usable renderer-info case. Check the same binary and
         # environment in a real ES context before starting its EGL tests.
         preflight = [str(args.binary), '--deqp-case=KHR-GLES32.info.renderer',
             '--deqp-gl-context-type=egl', '--deqp-egl-display-type=x11',
