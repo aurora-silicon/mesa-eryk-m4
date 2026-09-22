@@ -24,6 +24,10 @@ p.add_argument('--renderer', choices=('m4', 'lavapipe'), default='m4')
 a = p.parse_args()
 catalog = json.loads((a.campaign/'catalog.json').read_text())
 env = json.loads((a.campaign/'environment.json').read_text())
+if a.renderer == 'lavapipe':
+    env.update(VK_DRIVER_FILES='/usr/share/vulkan/icd.d/lvp_icd.json',
+               VK_ICD_FILENAMES='/usr/share/vulkan/icd.d/lvp_icd.json',
+               LIBGL_ALWAYS_SOFTWARE='1')
 env.update(dict(v.split('=', 1) for v in a.env))
 rows = [r for r in json.loads(a.failures.read_text()) if r['status'] in a.status
         and (a.session is None or r['session'] in a.session)]

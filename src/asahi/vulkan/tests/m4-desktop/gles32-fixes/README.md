@@ -38,3 +38,20 @@ now Pass, with the original CTS executable and original per-session arguments.
 All guarded runs passed; see crash-retest.json for exact evidence paths, times
 and temperatures. Vulkan library SHA256:
 `ca5a076a44714cddbe6f131e156c46e992ed9f10e89804c6e3bf4a554c2cf65c`.
+
+## Native gradient offsets
+
+All ten array textureGradOffset failures reproduced serially. The old native
+offset filter selected generic NIR offset lowering for array gradients without
+a view minimum; this adds offset/base-level-size before sampling, which is
+wrong when gradients choose a different mip. Native array offset staging is
+already implemented and witnessed. Keeping offsets for the sampler fixes all
+ten cases. All 38 failed session-2 cases and the complete 63-case ES3 gradient
+function group now Pass. Host native texture encoding tests: 6,417 checks pass.
+See array-offset-retest.json and gradient-group.json.
+
+Of the other 103 baseline image failures, 89 passed in the first serial
+focused rerun. Their original failures remain recorded; this is not evidence
+that a driver fix resolved them. Two EGL partial-update and two float-depth
+gather failures still reproduce on hardware, and all four Pass with the same
+Zink build over lavapipe.

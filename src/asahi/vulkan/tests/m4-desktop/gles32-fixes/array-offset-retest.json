@@ -1,0 +1,22 @@
+{
+  "selected": 38,
+  "recorded": 38,
+  "completed": 38,
+  "counts": {
+    "Pass": 38
+  },
+  "classifications": {
+    "selected": 38
+  },
+  "elapsed_seconds": 6.276591283996822,
+  "preparation_seconds": 1.4548131710034795,
+  "runner_seconds": 3.8605152289999296,
+  "jobs": 1,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "d6b8e691360406abb380654cb6194a70dfe7105a847cac45310189d4941bb2ef",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T113004689515Z-gles-fix-array-b-2-0",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 75.25
+}

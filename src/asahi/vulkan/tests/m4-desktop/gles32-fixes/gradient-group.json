@@ -1,0 +1,22 @@
+{
+  "selected": 63,
+  "recorded": 63,
+  "completed": 63,
+  "counts": {
+    "Pass": 63
+  },
+  "classifications": {
+    "unclassified": 63
+  },
+  "elapsed_seconds": 8.13918613900023,
+  "preparation_seconds": 1.590635200991528,
+  "runner_seconds": 5.484007904999999,
+  "jobs": 1,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "5c15820aee796309043edca484f6d9194f4e3204a6ae666985cdd02075fa9b4c",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T113147940808Z-gles-gradient-group",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 68.25
+}
