@@ -120,11 +120,13 @@ agx_optimizer_fmov(agx_context *ctx, agx_instr **defs, agx_instr *ins)
       if (src.size == AGX_SIZE_16 && def->src[0].size == AGX_SIZE_32)
          continue;
 
-      /* AGX3b ADD and transcendental/rounding encodings require full-width
+      /* AGX3b ADD/FMA and transcendental/rounding/derivative encodings require full-width
        * sources. Keep the exact widening instead of creating an unencodable
        * mixed-width operation. */
       if (ctx->key && ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
-          (ins->op == AGX_OPCODE_FADD || ins->op == AGX_OPCODE_EXP2 ||
+          (ins->op == AGX_OPCODE_FADD || ins->op == AGX_OPCODE_FFMA ||
+           ins->op == AGX_OPCODE_DFDX || ins->op == AGX_OPCODE_DFDY ||
+           ins->op == AGX_OPCODE_EXP2 ||
            ins->op == AGX_OPCODE_LOG2 || ins->op == AGX_OPCODE_FLOOR ||
            ins->op == AGX_OPCODE_CEIL || ins->op == AGX_OPCODE_TRUNC ||
            ins->op == AGX_OPCODE_ROUNDEVEN) &&
