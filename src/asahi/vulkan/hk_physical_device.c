@@ -694,10 +694,10 @@ hk_get_device_features(
    };
 
    if (agx_chip_uses_hal200_ioto(dev->chip)) {
-      /* Generated geometry draws and vertex scratch/stores retain their
-       * independent qualification boundary. Fragment storage is separately
-       * qualified on G15S, including helper suppression and atomics. */
-      const bool graphics_storage = dev->chip == AGX_CHIP_G16G;
+      /* Poly geometry/tessellation and graphics stores share the native
+       * G15S/G16G dispatch, root-uniform and generated-draw contracts. */
+      const bool graphics_storage =
+         agx_chip_uses_g15_g16_shader_abi(dev->chip);
       features->geometryShader = graphics_storage;
       features->tessellationShader = graphics_storage;
       features->sampleRateShading = agx_chip_uses_g15_g16_shader_abi(dev->chip);
@@ -708,8 +708,7 @@ hk_get_device_features(
       features->vertexPipelineStoresAndAtomics = graphics_storage;
       features->fragmentStoresAndAtomics =
          agx_chip_uses_g15_g16_shader_abi(dev->chip);
-      features->shaderTessellationAndGeometryPointSize =
-         dev->chip == AGX_CHIP_G16G;
+      features->shaderTessellationAndGeometryPointSize = graphics_storage;
       const bool sparse = dev->chip == AGX_CHIP_G16G;
       /* Native SMP residency plus live sparse texel-buffer bind metadata. */
       features->shaderResourceResidency = sparse;
