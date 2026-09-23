@@ -4281,9 +4281,11 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
       struct hk_fast_link_key_fs key = {
          .prolog.statistics = hk_stat_enabled(hk_pipeline_stat_addr(
             cmd, VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT)),
-         .prolog.statistics_uniform = dev->dev.chip == AGX_CHIP_G16G &&
+         .prolog.statistics_uniform =
+            agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) &&
             debug_get_bool_option("HK_M4_STATISTICS_UNIFORM", true),
-         .prolog.native_statistics = dev->dev.chip == AGX_CHIP_G16G &&
+         .prolog.native_statistics =
+            agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) &&
             dyn->ms.rasterization_samples == 1 &&
             debug_get_bool_option("HK_M4_NATIVE_STATISTICS", true),
 
