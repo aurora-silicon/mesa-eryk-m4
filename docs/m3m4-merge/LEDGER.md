@@ -584,3 +584,31 @@ was unchanged. No further M3 test has been started. Source review also finds
 a separate kernel 95 C critical thermal shutdown; it is a lead to check against
 recovered logs, not an established cause. Target evidence and recovery remain
 pending because the Linux and macOS SSH endpoints are offline.
+
+
+## M3 thermal interruption resolved as a classification, not a GPU repair
+
+Recovered kernel/journal evidence identifies an orderly 95 C thermal poweroff.
+The watchdog had been armed before the game; GPU retirements immediately before
+poweroff succeeded. No critical raw sample was retained, so the 81.25 C monitor
+reading 13 ms earlier does not prove a false trip. Diagnostic kernel commit
+`b32ed1749fd4` logs exact hotspot channels on critical trips without changing
+85/90/95 C limits or the 25 ms policy. Its monitor includes optional ta000m and
+preserves a threshold-crossing reading before stopping. The module was loaded
+under the verified 60 s watchdog with CPU minimum caps during replacement.
+
+Two merged native Vulkan repeats and one original-Mesa repeat complete, with
+100.19/101.24/96.98 FPS short frame samples and 74/75.25/72.75 C monitored peaks.
+The subsequent merged OpenGL repeat completes at 127.48 FPS, monitored 84.25 C;
+faster kernel readings record tp002m spikes to 89.75 and 91.25 C. These are
+application cadence samples, not scanout or a clean paired speedup measurement.
+The interrupted original run remains incomplete. The old desktop compositor
+remains in use and display acceptance is still separate from game execution.
+
+The user directs focus back to Mesa and rejects excessive throttling. A stronger
+cooling proposal was archived uninstalled. Existing thermal policy stays intact.
+M3 indexed CTS resumes at segment 188 on boot
+360e98b5-3fde-4b66-aeed-bb0e064b4b45 with its unchanged per-test watchdog and
+clock bounds; diagnostic module SHA b19fbe74ff54fbdbfe4542bb3544ac7fc8c77fa54f18acedb386e47554b1753c.
+M4 matched coverage at 97,857 records has no unexplained new failure or lost
+capability; the full default-option GLES campaign remains running.
