@@ -66,3 +66,11 @@ existing guarded runner, and accepts an explicit GBM backend path. The GL46
 frozen campaign reuses the exact baseline lists, configurations and production
 options. It is prepared separately from the default-option GLES campaigns;
 preparation is not execution.
+
+
+`m3-0ad-benchmark.py` snapshots tools/m3-desktop/0ad-benchmark.py. The new
+--environment=JSON option selects a complete per-process driver environment,
+mutually exclusive with the installed launcher; existing settings/scene remain
+unchanged. It requires the selected Vulkan mapping (and Gallium for OpenGL),
+and rejects early application exits. --mesa-prefix also selects its GBM backend.
+This helper still requires the M3 guard; syntax checks are not a game pass.

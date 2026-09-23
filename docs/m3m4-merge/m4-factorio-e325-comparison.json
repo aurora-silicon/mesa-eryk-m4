@@ -1,0 +1,497 @@
+{
+  "scope": "Adapted retained five-frame Factorio Vulkan replay, baseline/candidate/candidate/baseline with matching production prefetch and compression options. Not live application or performance qualification.",
+  "rows": [
+    {
+      "evidence": "_provenance/experiments/20260923T090833014086Z-m4-factorio-e325-abba-00-baseline",
+      "image_sha256": "12a681058bb24f962dbb8bed2a69a00e0858924cc138577884561ee27f8b2ba2",
+      "shape": [
+        1552,
+        2512,
+        4
+      ],
+      "different_pixels": 0,
+      "max_channel_error": 0,
+      "mean_channel_error": 0.0,
+      "peak_temperature_c": 62.75,
+      "replay": {
+        "started": 13749.904389244,
+        "selected_library_mapped": true,
+        "returncode": 0,
+        "ended": 13753.526654361
+      },
+      "manifest": {
+        "mode": "replay",
+        "renderer": "asahi",
+        "command": [
+          "/opt/gfxreconstruct/bin/gfxrecon-replay",
+          "--swapchain",
+          "offscreen",
+          "--memory-translation",
+          "rebind",
+          "--screenshot-dir",
+          "/root/asahi-evidence/20260923T090833014086Z-m4-factorio-e325-abba-00-baseline/vulkan-replay",
+          "--screenshot-format",
+          "png",
+          "--screenshots",
+          "5",
+          "--omit-pipeline-cache-data",
+          "--measurement-frame-range",
+          "1-6",
+          "--quit-after-measurement-range",
+          "--measurement-file",
+          "/root/asahi-evidence/20260923T090833014086Z-m4-factorio-e325-abba-00-baseline/vulkan-replay/measurements.json",
+          "/home/e/.local/share/factorio-driver/frame-architecture-20260919/menu_frames_1500_through_1504.gfxr"
+        ],
+        "environment": {
+          "AGX_COMPILER_CAPTURE_DIR": "/root/asahi-evidence/20260923T090833014086Z-m4-factorio-e325-abba-00-baseline/vulkan-replay/compiler-capture",
+          "ASAHI_M4_EXPERIMENTAL": "1",
+          "ASAHI_MESA_DEBUG": "",
+          "GALLIUM_DRIVER": "zink",
+          "GBM_BACKENDS_PATH": "/opt/asahi-m4-port/lib/gbm",
+          "HK_DEBUG_LOG": "1",
+          "HK_M4_COMPRESSED_2D": "true",
+          "HK_M4_COMPRESSED_FEEDBACK": "true",
+          "HK_M4_COMPRESSION_AUDIT": "true",
+          "HK_M4_COMPUTE_START_TIMESTAMP": "true",
+          "HK_M4_COMPUTE_TAIL_TIMESTAMP": "true",
+          "HK_M4_IOTO_TEMPLATES": "true",
+          "HK_M4_PLAIN_SAMPLERS": "true",
+          "HK_M4_PREFETCH_DESCRIPTORS": "true",
+          "HK_M4_PREFETCH_UBOS": "true",
+          "HK_M4_PREFETCH_VARIANT": "true",
+          "HK_M4_TIMESTAMP_COPIES": "true",
+          "LD_LIBRARY_PATH": "/opt/asahi-m4-port/lib",
+          "LIBGL_ALWAYS_SOFTWARE": "0",
+          "LIBGL_DRIVERS_PATH": "/opt/asahi-m4-port/lib/dri",
+          "MESA_GLES_VERSION_OVERRIDE": "3.0",
+          "MESA_GL_VERSION_OVERRIDE": "3.3",
+          "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+          "MESA_LOG_LEVEL": "debug",
+          "MESA_SHADER_CACHE_DIR": "/root/mesa-merge-cache/factorio-baseline",
+          "VK_DRIVER_FILES": "/opt/asahi-m4-port/asahi_icd.json",
+          "__EGL_VENDOR_LIBRARY_FILENAMES": "/opt/asahi-m4-port/egl.json"
+        },
+        "hashes": {
+          "/opt/asahi-m4-port/asahi_icd.json": "1b3d7c3ae21dde0d8daa3aba7d3110e94da5f568f250e8fb21d61a06f8a8defc",
+          "/opt/asahi-m4-port/lib/libvulkan_asahi.so": "6c0be3eff86b9e4238522a3b9fe424efa366da85ad52348bb51c4e1d44e9429e",
+          "/opt/gfxreconstruct/lib/libVkLayer_gfxreconstruct.so": "a7a3a43c87d297d053a22f414e80a84f36f61ed6147d5c0a256d89f12e346f38",
+          "/opt/gfxreconstruct/bin/gfxrecon-replay": "2762b7ea8611fa68d79ed666253b6c2fff878b056ae162554331e623d34c7113",
+          "/root/vulkan-trace.py": "09fa869b3fd0aff6036b239464f0abe6d89ced8c5cf671c5ad2c5faf1cca4d86",
+          "/root/firmware-snapshot.py": "37fb9b9de46fddab7e71703dafdbef5e9ab9ada6bddea7409632d4e8aae69d0f",
+          "/opt/gfxreconstruct/build-manifest.json": "21ed86cd437d1e6ddba71620f0e29843cbecdb62a8a981f13a41560d1595feb6",
+          "/opt/asahi-m4-port/lib/libgallium-26.1.4.so": "29e658b1e23910bbba0d46ecadc7f3bfac623d9f04d7545ccf12ef0fe4fff5b9",
+          "/home/e/.local/share/factorio-driver/frame-architecture-20260919/menu_frames_1500_through_1504.gfxr": "4f120990354dcb68a86185f06a50a3a863ba3726f9c77cfaea0acb8ea36b0a15"
+        },
+        "adaptations": {
+          "memory_translation": "rebind",
+          "omit_pipeline_cache": true,
+          "remove_unsupported": false,
+          "loop_frame": null,
+          "loop_count": null,
+          "shader_replacements": [],
+          "swapchain": "offscreen"
+        },
+        "seconds": 53,
+        "guard": "/root/asahi-evidence/20260923T090833014086Z-m4-factorio-e325-abba-00-baseline"
+      },
+      "evidence_sha256": {
+        "result.json": "904bef1c36deca7bbc3754c0538ffde9dcd8583d7368fbf3e3a0e7b088f21e03",
+        "manifest.json": "d0ed4c14e2d27c8ac3ca12cfc7b494d98017fffe9d25ea1e00f074650c9948f1",
+        "process-maps.txt": "6a700d2b506c1a7f85440f61660752eb4181d683f7928bed9f08b87880725158"
+      },
+      "report": {
+        "id": "20260923T090833014086Z-m4-factorio-e325-abba-00-baseline",
+        "verdict": "pass",
+        "transport_returncode": 0,
+        "evidence_fetched": true,
+        "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260923T090833014086Z-m4-factorio-e325-abba-00-baseline",
+        "observations": {
+          "pixel_results": [
+            "PASS: Vulkan replay process completed; rendering requires separate comparison"
+          ],
+          "pixel_result_count": 1,
+          "thermal_samples": 11,
+          "malformed_thermal_samples": 0,
+          "peak_temperature_c": 62.75,
+          "channel_peaks_c": {
+            "PMP aggregate die hotspot": 62.5,
+            "Ta000m": 60.5,
+            "Te000m": 60.0,
+            "Te001m": 58.0,
+            "Tp000m": 62.75,
+            "Tp001m": 58.25
+          }
+        }
+      }
+    },
+    {
+      "evidence": "_provenance/experiments/20260923T090840942650Z-m4-factorio-e325-abba-01-candidate",
+      "image_sha256": "12a681058bb24f962dbb8bed2a69a00e0858924cc138577884561ee27f8b2ba2",
+      "shape": [
+        1552,
+        2512,
+        4
+      ],
+      "different_pixels": 0,
+      "max_channel_error": 0,
+      "mean_channel_error": 0.0,
+      "peak_temperature_c": 63.0,
+      "replay": {
+        "started": 13757.67445542,
+        "selected_library_mapped": true,
+        "returncode": 0,
+        "ended": 13761.296924282
+      },
+      "manifest": {
+        "mode": "replay",
+        "renderer": "asahi",
+        "command": [
+          "/opt/gfxreconstruct/bin/gfxrecon-replay",
+          "--swapchain",
+          "offscreen",
+          "--memory-translation",
+          "rebind",
+          "--screenshot-dir",
+          "/root/asahi-evidence/20260923T090840942650Z-m4-factorio-e325-abba-01-candidate/vulkan-replay",
+          "--screenshot-format",
+          "png",
+          "--screenshots",
+          "5",
+          "--omit-pipeline-cache-data",
+          "--measurement-frame-range",
+          "1-6",
+          "--quit-after-measurement-range",
+          "--measurement-file",
+          "/root/asahi-evidence/20260923T090840942650Z-m4-factorio-e325-abba-01-candidate/vulkan-replay/measurements.json",
+          "/home/e/.local/share/factorio-driver/frame-architecture-20260919/menu_frames_1500_through_1504.gfxr"
+        ],
+        "environment": {
+          "AGX_COMPILER_CAPTURE_DIR": "/root/asahi-evidence/20260923T090840942650Z-m4-factorio-e325-abba-01-candidate/vulkan-replay/compiler-capture",
+          "ASAHI_M4_EXPERIMENTAL": "1",
+          "ASAHI_MESA_DEBUG": "",
+          "GALLIUM_DRIVER": "zink",
+          "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-e325b646b16/lib/gbm",
+          "HK_DEBUG_LOG": "1",
+          "HK_M4_COMPRESSED_2D": "true",
+          "HK_M4_COMPRESSED_FEEDBACK": "true",
+          "HK_M4_COMPRESSION_AUDIT": "true",
+          "HK_M4_COMPUTE_START_TIMESTAMP": "true",
+          "HK_M4_COMPUTE_TAIL_TIMESTAMP": "true",
+          "HK_M4_IOTO_TEMPLATES": "true",
+          "HK_M4_PLAIN_SAMPLERS": "true",
+          "HK_M4_PREFETCH_DESCRIPTORS": "true",
+          "HK_M4_PREFETCH_UBOS": "true",
+          "HK_M4_PREFETCH_VARIANT": "true",
+          "HK_M4_TIMESTAMP_COPIES": "true",
+          "LD_LIBRARY_PATH": "/opt/asahi-m3m4-e325b646b16/lib",
+          "LIBGL_ALWAYS_SOFTWARE": "0",
+          "LIBGL_DRIVERS_PATH": "/opt/asahi-m3m4-e325b646b16/lib/dri",
+          "MESA_GLES_VERSION_OVERRIDE": "3.0",
+          "MESA_GL_VERSION_OVERRIDE": "3.3",
+          "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+          "MESA_LOG_LEVEL": "debug",
+          "MESA_SHADER_CACHE_DIR": "/root/mesa-merge-cache/factorio-candidate",
+          "VK_DRIVER_FILES": "/opt/asahi-m3m4-e325b646b16/asahi.json",
+          "__EGL_VENDOR_LIBRARY_FILENAMES": "/opt/asahi-m3m4-e325b646b16/egl.json"
+        },
+        "hashes": {
+          "/opt/asahi-m3m4-e325b646b16/asahi.json": "c3306af3f4bf1bf1bf40c08ad153f69dfa2aaecfd8ee0cc81a69b546f5f389dc",
+          "/opt/asahi-m3m4-e325b646b16/lib/libvulkan_asahi.so": "f8f6eb3fcd2bbc035efd459d058df786faf596939a2c5e23e4ee6c43b8b19cdb",
+          "/opt/gfxreconstruct/lib/libVkLayer_gfxreconstruct.so": "a7a3a43c87d297d053a22f414e80a84f36f61ed6147d5c0a256d89f12e346f38",
+          "/opt/gfxreconstruct/bin/gfxrecon-replay": "2762b7ea8611fa68d79ed666253b6c2fff878b056ae162554331e623d34c7113",
+          "/root/vulkan-trace.py": "09fa869b3fd0aff6036b239464f0abe6d89ced8c5cf671c5ad2c5faf1cca4d86",
+          "/root/firmware-snapshot.py": "37fb9b9de46fddab7e71703dafdbef5e9ab9ada6bddea7409632d4e8aae69d0f",
+          "/opt/gfxreconstruct/build-manifest.json": "21ed86cd437d1e6ddba71620f0e29843cbecdb62a8a981f13a41560d1595feb6",
+          "/opt/asahi-m3m4-e325b646b16/lib/libgallium-26.1.4.so": "e4f91d6850a43f500833cc617032f5c232bc43750ca48752cd165dec7db2011e",
+          "/home/e/.local/share/factorio-driver/frame-architecture-20260919/menu_frames_1500_through_1504.gfxr": "4f120990354dcb68a86185f06a50a3a863ba3726f9c77cfaea0acb8ea36b0a15"
+        },
+        "adaptations": {
+          "memory_translation": "rebind",
+          "omit_pipeline_cache": true,
+          "remove_unsupported": false,
+          "loop_frame": null,
+          "loop_count": null,
+          "shader_replacements": [],
+          "swapchain": "offscreen"
+        },
+        "seconds": 53,
+        "guard": "/root/asahi-evidence/20260923T090840942650Z-m4-factorio-e325-abba-01-candidate"
+      },
+      "evidence_sha256": {
+        "result.json": "e59ce36826c7ba0b4666462a159dccf0b388a19d138dc6c71dfed7a9bad0d39f",
+        "manifest.json": "eb4cd4c27732bc8e5f1b79b19331a54d493fd11632a1ec0eb1d6c55c784e62b5",
+        "process-maps.txt": "946415195918d4ad0556e4ea1d2f40df18efb131e3cd1cb0c8ad4fef52022ae0"
+      },
+      "report": {
+        "id": "20260923T090840942650Z-m4-factorio-e325-abba-01-candidate",
+        "verdict": "pass",
+        "transport_returncode": 0,
+        "evidence_fetched": true,
+        "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260923T090840942650Z-m4-factorio-e325-abba-01-candidate",
+        "observations": {
+          "pixel_results": [
+            "PASS: Vulkan replay process completed; rendering requires separate comparison"
+          ],
+          "pixel_result_count": 1,
+          "thermal_samples": 11,
+          "malformed_thermal_samples": 0,
+          "peak_temperature_c": 63.0,
+          "channel_peaks_c": {
+            "PMP aggregate die hotspot": 63.0,
+            "Ta000m": 60.75,
+            "Te000m": 60.25,
+            "Te001m": 58.25,
+            "Tp000m": 63.0,
+            "Tp001m": 58.75
+          }
+        }
+      }
+    },
+    {
+      "evidence": "_provenance/experiments/20260923T090848654528Z-m4-factorio-e325-abba-02-candidate",
+      "image_sha256": "12a681058bb24f962dbb8bed2a69a00e0858924cc138577884561ee27f8b2ba2",
+      "shape": [
+        1552,
+        2512,
+        4
+      ],
+      "different_pixels": 0,
+      "max_channel_error": 0,
+      "mean_channel_error": 0.0,
+      "peak_temperature_c": 63.75,
+      "replay": {
+        "started": 13765.396995691,
+        "selected_library_mapped": true,
+        "returncode": 0,
+        "ended": 13767.616639891
+      },
+      "manifest": {
+        "mode": "replay",
+        "renderer": "asahi",
+        "command": [
+          "/opt/gfxreconstruct/bin/gfxrecon-replay",
+          "--swapchain",
+          "offscreen",
+          "--memory-translation",
+          "rebind",
+          "--screenshot-dir",
+          "/root/asahi-evidence/20260923T090848654528Z-m4-factorio-e325-abba-02-candidate/vulkan-replay",
+          "--screenshot-format",
+          "png",
+          "--screenshots",
+          "5",
+          "--omit-pipeline-cache-data",
+          "--measurement-frame-range",
+          "1-6",
+          "--quit-after-measurement-range",
+          "--measurement-file",
+          "/root/asahi-evidence/20260923T090848654528Z-m4-factorio-e325-abba-02-candidate/vulkan-replay/measurements.json",
+          "/home/e/.local/share/factorio-driver/frame-architecture-20260919/menu_frames_1500_through_1504.gfxr"
+        ],
+        "environment": {
+          "AGX_COMPILER_CAPTURE_DIR": "/root/asahi-evidence/20260923T090848654528Z-m4-factorio-e325-abba-02-candidate/vulkan-replay/compiler-capture",
+          "ASAHI_M4_EXPERIMENTAL": "1",
+          "ASAHI_MESA_DEBUG": "",
+          "GALLIUM_DRIVER": "zink",
+          "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-e325b646b16/lib/gbm",
+          "HK_DEBUG_LOG": "1",
+          "HK_M4_COMPRESSED_2D": "true",
+          "HK_M4_COMPRESSED_FEEDBACK": "true",
+          "HK_M4_COMPRESSION_AUDIT": "true",
+          "HK_M4_COMPUTE_START_TIMESTAMP": "true",
+          "HK_M4_COMPUTE_TAIL_TIMESTAMP": "true",
+          "HK_M4_IOTO_TEMPLATES": "true",
+          "HK_M4_PLAIN_SAMPLERS": "true",
+          "HK_M4_PREFETCH_DESCRIPTORS": "true",
+          "HK_M4_PREFETCH_UBOS": "true",
+          "HK_M4_PREFETCH_VARIANT": "true",
+          "HK_M4_TIMESTAMP_COPIES": "true",
+          "LD_LIBRARY_PATH": "/opt/asahi-m3m4-e325b646b16/lib",
+          "LIBGL_ALWAYS_SOFTWARE": "0",
+          "LIBGL_DRIVERS_PATH": "/opt/asahi-m3m4-e325b646b16/lib/dri",
+          "MESA_GLES_VERSION_OVERRIDE": "3.0",
+          "MESA_GL_VERSION_OVERRIDE": "3.3",
+          "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+          "MESA_LOG_LEVEL": "debug",
+          "MESA_SHADER_CACHE_DIR": "/root/mesa-merge-cache/factorio-candidate",
+          "VK_DRIVER_FILES": "/opt/asahi-m3m4-e325b646b16/asahi.json",
+          "__EGL_VENDOR_LIBRARY_FILENAMES": "/opt/asahi-m3m4-e325b646b16/egl.json"
+        },
+        "hashes": {
+          "/opt/asahi-m3m4-e325b646b16/asahi.json": "c3306af3f4bf1bf1bf40c08ad153f69dfa2aaecfd8ee0cc81a69b546f5f389dc",
+          "/opt/asahi-m3m4-e325b646b16/lib/libvulkan_asahi.so": "f8f6eb3fcd2bbc035efd459d058df786faf596939a2c5e23e4ee6c43b8b19cdb",
+          "/opt/gfxreconstruct/lib/libVkLayer_gfxreconstruct.so": "a7a3a43c87d297d053a22f414e80a84f36f61ed6147d5c0a256d89f12e346f38",
+          "/opt/gfxreconstruct/bin/gfxrecon-replay": "2762b7ea8611fa68d79ed666253b6c2fff878b056ae162554331e623d34c7113",
+          "/root/vulkan-trace.py": "09fa869b3fd0aff6036b239464f0abe6d89ced8c5cf671c5ad2c5faf1cca4d86",
+          "/root/firmware-snapshot.py": "37fb9b9de46fddab7e71703dafdbef5e9ab9ada6bddea7409632d4e8aae69d0f",
+          "/opt/gfxreconstruct/build-manifest.json": "21ed86cd437d1e6ddba71620f0e29843cbecdb62a8a981f13a41560d1595feb6",
+          "/opt/asahi-m3m4-e325b646b16/lib/libgallium-26.1.4.so": "e4f91d6850a43f500833cc617032f5c232bc43750ca48752cd165dec7db2011e",
+          "/home/e/.local/share/factorio-driver/frame-architecture-20260919/menu_frames_1500_through_1504.gfxr": "4f120990354dcb68a86185f06a50a3a863ba3726f9c77cfaea0acb8ea36b0a15"
+        },
+        "adaptations": {
+          "memory_translation": "rebind",
+          "omit_pipeline_cache": true,
+          "remove_unsupported": false,
+          "loop_frame": null,
+          "loop_count": null,
+          "shader_replacements": [],
+          "swapchain": "offscreen"
+        },
+        "seconds": 53,
+        "guard": "/root/asahi-evidence/20260923T090848654528Z-m4-factorio-e325-abba-02-candidate"
+      },
+      "evidence_sha256": {
+        "result.json": "e693a1c14299242e3f4173608648b38d30050c7efdabcac7c961ff806321aef3",
+        "manifest.json": "009e332f9788dc52d38c1957197d52c19a9d7a8fbe3abcc9b4e8ec22112bd167",
+        "process-maps.txt": "0f31958a587903c9bb1ec16a7f2d128ad54046f2dc6469a51c29602e6c40b9bd"
+      },
+      "report": {
+        "id": "20260923T090848654528Z-m4-factorio-e325-abba-02-candidate",
+        "verdict": "pass",
+        "transport_returncode": 0,
+        "evidence_fetched": true,
+        "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260923T090848654528Z-m4-factorio-e325-abba-02-candidate",
+        "observations": {
+          "pixel_results": [
+            "PASS: Vulkan replay process completed; rendering requires separate comparison"
+          ],
+          "pixel_result_count": 1,
+          "thermal_samples": 9,
+          "malformed_thermal_samples": 0,
+          "peak_temperature_c": 63.75,
+          "channel_peaks_c": {
+            "PMP aggregate die hotspot": 63.75,
+            "Ta000m": 61.0,
+            "Te000m": 60.5,
+            "Te001m": 59.25,
+            "Tp000m": 63.5,
+            "Tp001m": 59.25
+          }
+        }
+      }
+    },
+    {
+      "evidence": "_provenance/experiments/20260923T090855072445Z-m4-factorio-e325-abba-03-baseline",
+      "image_sha256": "12a681058bb24f962dbb8bed2a69a00e0858924cc138577884561ee27f8b2ba2",
+      "shape": [
+        1552,
+        2512,
+        4
+      ],
+      "different_pixels": 0,
+      "max_channel_error": 0,
+      "mean_channel_error": 0.0,
+      "peak_temperature_c": 63.75,
+      "replay": {
+        "started": 13771.828387077,
+        "selected_library_mapped": true,
+        "returncode": 0,
+        "ended": 13774.047966846
+      },
+      "manifest": {
+        "mode": "replay",
+        "renderer": "asahi",
+        "command": [
+          "/opt/gfxreconstruct/bin/gfxrecon-replay",
+          "--swapchain",
+          "offscreen",
+          "--memory-translation",
+          "rebind",
+          "--screenshot-dir",
+          "/root/asahi-evidence/20260923T090855072445Z-m4-factorio-e325-abba-03-baseline/vulkan-replay",
+          "--screenshot-format",
+          "png",
+          "--screenshots",
+          "5",
+          "--omit-pipeline-cache-data",
+          "--measurement-frame-range",
+          "1-6",
+          "--quit-after-measurement-range",
+          "--measurement-file",
+          "/root/asahi-evidence/20260923T090855072445Z-m4-factorio-e325-abba-03-baseline/vulkan-replay/measurements.json",
+          "/home/e/.local/share/factorio-driver/frame-architecture-20260919/menu_frames_1500_through_1504.gfxr"
+        ],
+        "environment": {
+          "AGX_COMPILER_CAPTURE_DIR": "/root/asahi-evidence/20260923T090855072445Z-m4-factorio-e325-abba-03-baseline/vulkan-replay/compiler-capture",
+          "ASAHI_M4_EXPERIMENTAL": "1",
+          "ASAHI_MESA_DEBUG": "",
+          "GALLIUM_DRIVER": "zink",
+          "GBM_BACKENDS_PATH": "/opt/asahi-m4-port/lib/gbm",
+          "HK_DEBUG_LOG": "1",
+          "HK_M4_COMPRESSED_2D": "true",
+          "HK_M4_COMPRESSED_FEEDBACK": "true",
+          "HK_M4_COMPRESSION_AUDIT": "true",
+          "HK_M4_COMPUTE_START_TIMESTAMP": "true",
+          "HK_M4_COMPUTE_TAIL_TIMESTAMP": "true",
+          "HK_M4_IOTO_TEMPLATES": "true",
+          "HK_M4_PLAIN_SAMPLERS": "true",
+          "HK_M4_PREFETCH_DESCRIPTORS": "true",
+          "HK_M4_PREFETCH_UBOS": "true",
+          "HK_M4_PREFETCH_VARIANT": "true",
+          "HK_M4_TIMESTAMP_COPIES": "true",
+          "LD_LIBRARY_PATH": "/opt/asahi-m4-port/lib",
+          "LIBGL_ALWAYS_SOFTWARE": "0",
+          "LIBGL_DRIVERS_PATH": "/opt/asahi-m4-port/lib/dri",
+          "MESA_GLES_VERSION_OVERRIDE": "3.0",
+          "MESA_GL_VERSION_OVERRIDE": "3.3",
+          "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+          "MESA_LOG_LEVEL": "debug",
+          "MESA_SHADER_CACHE_DIR": "/root/mesa-merge-cache/factorio-baseline",
+          "VK_DRIVER_FILES": "/opt/asahi-m4-port/asahi_icd.json",
+          "__EGL_VENDOR_LIBRARY_FILENAMES": "/opt/asahi-m4-port/egl.json"
+        },
+        "hashes": {
+          "/opt/asahi-m4-port/asahi_icd.json": "1b3d7c3ae21dde0d8daa3aba7d3110e94da5f568f250e8fb21d61a06f8a8defc",
+          "/opt/asahi-m4-port/lib/libvulkan_asahi.so": "6c0be3eff86b9e4238522a3b9fe424efa366da85ad52348bb51c4e1d44e9429e",
+          "/opt/gfxreconstruct/lib/libVkLayer_gfxreconstruct.so": "a7a3a43c87d297d053a22f414e80a84f36f61ed6147d5c0a256d89f12e346f38",
+          "/opt/gfxreconstruct/bin/gfxrecon-replay": "2762b7ea8611fa68d79ed666253b6c2fff878b056ae162554331e623d34c7113",
+          "/root/vulkan-trace.py": "09fa869b3fd0aff6036b239464f0abe6d89ced8c5cf671c5ad2c5faf1cca4d86",
+          "/root/firmware-snapshot.py": "37fb9b9de46fddab7e71703dafdbef5e9ab9ada6bddea7409632d4e8aae69d0f",
+          "/opt/gfxreconstruct/build-manifest.json": "21ed86cd437d1e6ddba71620f0e29843cbecdb62a8a981f13a41560d1595feb6",
+          "/opt/asahi-m4-port/lib/libgallium-26.1.4.so": "29e658b1e23910bbba0d46ecadc7f3bfac623d9f04d7545ccf12ef0fe4fff5b9",
+          "/home/e/.local/share/factorio-driver/frame-architecture-20260919/menu_frames_1500_through_1504.gfxr": "4f120990354dcb68a86185f06a50a3a863ba3726f9c77cfaea0acb8ea36b0a15"
+        },
+        "adaptations": {
+          "memory_translation": "rebind",
+          "omit_pipeline_cache": true,
+          "remove_unsupported": false,
+          "loop_frame": null,
+          "loop_count": null,
+          "shader_replacements": [],
+          "swapchain": "offscreen"
+        },
+        "seconds": 53,
+        "guard": "/root/asahi-evidence/20260923T090855072445Z-m4-factorio-e325-abba-03-baseline"
+      },
+      "evidence_sha256": {
+        "result.json": "c2fdfbd1da3a2752afb83e84c1b7ef8c932d8bfa4bb57f2862086250a0e30d01",
+        "manifest.json": "acb9b2c548cb30a22c8862ccc4e84d35d66336d0840f671b29ee91d8ea018185",
+        "process-maps.txt": "6edda997820396eac41f134a369f79eecb7ebee40e8632af3e5552b47cf4a965"
+      },
+      "report": {
+        "id": "20260923T090855072445Z-m4-factorio-e325-abba-03-baseline",
+        "verdict": "pass",
+        "transport_returncode": 0,
+        "evidence_fetched": true,
+        "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260923T090855072445Z-m4-factorio-e325-abba-03-baseline",
+        "observations": {
+          "pixel_results": [
+            "PASS: Vulkan replay process completed; rendering requires separate comparison"
+          ],
+          "pixel_result_count": 1,
+          "thermal_samples": 9,
+          "malformed_thermal_samples": 0,
+          "peak_temperature_c": 63.75,
+          "channel_peaks_c": {
+            "PMP aggregate die hotspot": 63.75,
+            "Ta000m": 61.25,
+            "Te000m": 61.0,
+            "Te001m": 59.0,
+            "Tp000m": 63.75,
+            "Tp001m": 59.5
+          }
+        }
+      }
+    }
+  ]
+}

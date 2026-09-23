@@ -534,3 +534,18 @@ The M3 campaign stopped at a normal segment boundary before these runs and
 resumed afterwards with unchanged inputs/environment. The normal desktop and
 game installations were not switched. M4 CTS continued independently. Full
 coverage and real application/desktop qualification remain pending.
+
+
+## Native M4 retained replay, e325
+
+Four Factorio five-frame replays in baseline/candidate/candidate/baseline order
+completed their guards with the selected Vulkan library mapped. Production
+prefetch/variant, IOTO and compression options matched between runs. Frame 5
+is byte-identical in all four at 2560x1600 (SHA256
+12a681058bb24f962dbb8bed2a69a00e0858924cc138577884561ee27f8b2ba2).
+Visual review confirms the menu's rendered factory background. Peak PMP was
+63.75 C. Offscreen swapchain, memory rebinding and omitted capture pipeline
+cache remain explicit adaptations; this is not real Factorio/desktop acceptance
+or gameplay FPS. The host campaign supervisor alone was paused while its child
+finished normally, then resumed after replay evidence was saved and broker idle.
+No active guard was suspended. Full default-option GLES coverage continues.
