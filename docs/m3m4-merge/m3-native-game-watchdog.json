@@ -1,0 +1,61 @@
+{
+  "records": [
+    {
+      "phase": "prepared",
+      "boot_id": "6a64bab3-e352-4836-a97c-1a27e3bc540a",
+      "progress_gate": {
+        "requested_draws": 0,
+        "total_limit_seconds": 43,
+        "stall_limit_seconds": 5,
+        "renew_interval_seconds": 10
+      }
+    },
+    {
+      "phase": "armed",
+      "boot_id": "6a64bab3-e352-4836-a97c-1a27e3bc540a",
+      "watchdog": {
+        "device": "/dev/watchdog0",
+        "identity": "Apple SoC Watchdog",
+        "timeout_seconds": 60,
+        "initial_timeleft_seconds": 59,
+        "periodic_keepalive": false,
+        "armed": true,
+        "ssh_broker_lease": false
+      },
+      "progress_gate": {
+        "requested_draws": 0,
+        "total_limit_seconds": 43,
+        "stall_limit_seconds": 5,
+        "renew_interval_seconds": 10
+      }
+    },
+    {
+      "phase": "thermal-policy-ready",
+      "boot_id": "6a64bab3-e352-4836-a97c-1a27e3bc540a",
+      "watchdog": {
+        "device": "/dev/watchdog0",
+        "identity": "Apple SoC Watchdog",
+        "timeout_seconds": 60,
+        "initial_timeleft_seconds": 59,
+        "periodic_keepalive": false,
+        "armed": true,
+        "ssh_broker_lease": false
+      },
+      "progress_gate": {
+        "requested_draws": 0,
+        "total_limit_seconds": 43,
+        "stall_limit_seconds": 5,
+        "renew_interval_seconds": 10
+      },
+      "initial_temperatures": {
+        "te000m": 65750.0,
+        "te001m": 70000.0,
+        "tp000m": 69250.0,
+        "tp001m": 67000.0,
+        "tp002m": 71750.0
+      }
+    }
+  ],
+  "guard_log_sha256": "9e178996edad8c779bf67468bfed4206fc921032cbd2913d20b3272f7d51c3a6",
+  "scope": "Host-received target guard log before loss of connectivity. Confirms arm order and configured timeout, not the cause or outcome of subsequent recovery."
+}

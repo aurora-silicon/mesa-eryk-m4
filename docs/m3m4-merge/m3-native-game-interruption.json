@@ -1,0 +1,7 @@
+{
+  "utc": "2026-09-23T09:23:30.381325+00:00",
+  "classification": "unexpected-failure-root-cause-pending",
+  "scope": "SSH timed out during the merged native Vulkan game; evidence fetch also failed. Do not classify it from the prior user-interrupted baseline. M3 campaign and further application checks remain stopped pending logs/recovery.",
+  "user_confirmation": "User confirms M3 went offline by itself during this separate merged Vulkan test.",
+  "policy_reminder": "Before every hardware test, arm /dev/watchdog0 first. Existing M3 and M4 guards do so; investigate why recovery did not return M3 to SSH."
+}

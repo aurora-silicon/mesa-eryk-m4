@@ -573,3 +573,14 @@ target evidence is not yet available and no GPU/thermal root cause is inferred.
 This is separate from the earlier user-confirmed interruption. Further M3
 application tests and CTS stay stopped. M4 continues its independent guarded
 campaign. The raw/compact intermediate record preserves both interruptions.
+
+
+The user confirms the second/native-Vulkan interruption occurred by itself;
+it is an unexpected failure, distinct from the earlier manual restart. It
+blocks M3 qualification. Host-received guard records confirm /dev/watchdog0
+was armed first at 60 seconds (59 seconds initially remaining), before the
+thermal-policy-ready phase and game launch. The M3 nonrenewing 43-second bound
+was unchanged. No further M3 test has been started. Source review also finds
+a separate kernel 95 C critical thermal shutdown; it is a lead to check against
+recovered logs, not an established cause. Target evidence and recovery remain
+pending because the Linux and macOS SSH endpoints are offline.
