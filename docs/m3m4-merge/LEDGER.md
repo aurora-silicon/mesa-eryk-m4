@@ -541,7 +541,7 @@ coverage and real application/desktop qualification remain pending.
 Four Factorio five-frame replays in baseline/candidate/candidate/baseline order
 completed their guards with the selected Vulkan library mapped. Production
 prefetch/variant, IOTO and compression options matched between runs. Frame 5
-is byte-identical in all four at 2560x1600 (SHA256
+is byte-identical in all four at 2512x1552 (SHA256
 12a681058bb24f962dbb8bed2a69a00e0858924cc138577884561ee27f8b2ba2).
 Visual review confirms the menu's rendered factory background. Peak PMP was
 63.75 C. Offscreen swapchain, memory rebinding and omitted capture pipeline
