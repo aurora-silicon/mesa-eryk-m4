@@ -33,3 +33,26 @@ startup validation, not menu/gameplay capture qualification.
 Input fix: omit the explicit window target, which Hyprland uses to reset pointer
 focus coordinates to (1,1), and emit separate down/up events. Guest XTEST is
 avoided; host compositor input advanced past first-run setup.
+
+
+Actual X11 pointer qualification: Hyprland cursor warps moved the compositor
+cursor but XQueryPointer still reported coordinates outside the game window.
+`bench-pointer.c` sends wlr-virtual-pointer absolute motion and button events;
+this updated XQueryPointer coordinates and selected LAN/main-menu controls.
+Build against the wlr-virtual-pointer protocol generated with wayland-scanner
+from Hyprland's protocols/wlr-virtual-pointer-unstable-v1.xml. Coordinates are
+compositor logical pixels with the combined desktop extent, not X11 root pixels.
+
+A clean reboot verified the merged Mesa mount without an overmount. Lethal
+Company v81 now reaches the actual LAN main menu. Its 31-frame 3840x2160 DX11
+capture replayed on M4 with offscreen swapchain and memory-translation none;
+readbacks at frames 1,16,31 were produced, and frame16 shows the correct menu.
+Experiment: 20260923T220705178599Z-lethal-menu-replay-qualification; peak78C.
+This was readback qualification, not scored timing or cross-device validation.
+Proprietary trace/assets remain in the local-only gpu-replay-bench repository.
+
+Live gameplay trimming with Steam running exhausted host memory and killed the
+muVM. The retained kernel OOM record identifies PID3185, not a GPU fault. A full
+stream capture also approached exhaustion, so it was stopped. Standalone LAN
+launch without Steam CEF is being evaluated with a 384MiB/10s memory stop gate.
+Gameplay is not yet qualified. No new game/capture tests have run on M3.
