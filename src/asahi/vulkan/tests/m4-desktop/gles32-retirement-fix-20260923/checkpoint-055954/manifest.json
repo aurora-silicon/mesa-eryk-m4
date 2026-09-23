@@ -1,0 +1,11 @@
+{
+  "purpose": "Complete frozen ES 3.2 regression after G16 retirement repair",
+  "kernel_source_commit": "aa0c3dcad374",
+  "module_sha256": "afc871fb4273720d8825c644cf7823a10457ed9eb16a9e9a3f47303978357956",
+  "original_catalog_file_sha256": "af868d3ba8e896cea00d8b85b4ea60b2223d28d6d501778adfc4975996f27f8b",
+  "original_results_file_sha256": "8c2f8ad844ae9eed31c53d5e83237279c817d2efbfdda90dd9074007b20c729b",
+  "same_mesa_and_cts": true,
+  "known_slow_case_policy": "single worker for each segment containing point_mode.points_verification, retaining original case timeout",
+  "bounds": "60s per case, 900s per guarded segment; reviewed workload deadlines may continue unfinished cases at same bounds",
+  "fatal_policy": "Stop on any Fail, Timeout, Crash or GPU incident; retain all evidence and review."
+}
