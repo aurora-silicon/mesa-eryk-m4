@@ -1,0 +1,26 @@
+{
+  "utc": "2026-09-23T09:58:52.329948+00:00",
+  "classification": "kernel-thermal-orderly-poweroff",
+  "kernel_event_monotonic": 246.454457,
+  "last_monitor_record": {
+    "time": 1790155253.6799092,
+    "monotonic": 246.441184812,
+    "temperatures_mc": {
+      "te000m": 75250.0,
+      "te001m": 80250.0,
+      "tp000m": 81250.0,
+      "tp001m": 76250.0,
+      "tp002m": 80750.0
+    },
+    "zone_mc": 81250
+  },
+  "all_monitor_samples": 51,
+  "monitor_peak_mc": 83750.0,
+  "evidence": {
+    "build/m3m4-merge-20260923/m3-0ad-live-e325-vulkan-01-candidate/temperatures.jsonl": "e435e156d9e5102ad764f1d48e8b30691ba167ba4e89194045f7a4bdc42819f3",
+    "build/m3m4-merge-20260923/m3-native-failure-previous-kernel.log": "2dfbdce718c76f410bb31f1d7d477431e19d1536a5e18eb253c806c4271c92fb",
+    "build/m3m4-merge-20260923/m3-native-failure-previous-tail.log": "864856d6f46781858ce295b7672e6a412e903c0d533c013410b145ef9c0ad095"
+  },
+  "finding": "Kernel m3-pmp-die critical trip initiated HARDWARE PROTECTION shutdown (Temperature too high). Journal ends with systemd poweroff. Watchdog was armed and preceding GPU retirements were successful. The exact triggering raw sample was not logged; the 0.5-second monitor does not establish a spurious trip.",
+  "next_step": "Diagnostic module preserves exact six-record hotspot values on critical trip without changing 85/90/95 C policy. Test monitor now includes optional ta000m like the kernel, logs before threshold stop, and checks the thermal-zone value. Reproduction remains bounded and watchdog protected."
+}
