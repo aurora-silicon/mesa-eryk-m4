@@ -3,10 +3,14 @@
 import argparse,json,subprocess
 from pathlib import Path
 p=argparse.ArgumentParser(description=__doc__)
-p.add_argument('output',type=Path);p.add_argument('backend',choices=['gl','vulkan']);p.add_argument('selection',choices=['baseline','candidate']);a=p.parse_args()
+p.add_argument('output',type=Path);p.add_argument('backend',choices=['gl','vulkan']);p.add_argument('selection',choices=['baseline','candidate']);p.add_argument('--launcher',action='store_true');a=p.parse_args()
 a.output.mkdir(parents=True,exist_ok=False)
 remote='/root/m3-apps/'+a.output.name
 cmd=['python3','/root/m3-gpu-tools/gpu/guard.py','--seconds','43','--keep-cpu-clocks',remote,'--','python3','/root/mesa-merge-probes/0ad-benchmark.py',remote,a.backend,'--environment=/root/mesa-merge-probes/m3-live-game-'+a.selection+'-environment.json','--prefetch','--cpu-performance','--uncapped','--no-gpu-profiler','--ten-seconds']
+if a.launcher:
+ assert a.selection=='candidate', 'Launcher uses the selected normal game environment'
+ cmd=[x for x in cmd if not x.startswith('--environment=') and x not in ('--cpu-performance','--prefetch')]
+ cmd+=['--launcher']
 if a.backend=='vulkan':cmd+=['--traditional-descriptors']
 (a.output/'command.json').write_text(json.dumps(cmd,indent=2))
 result={'guard_returncode':None,'fetch_returncode':None}

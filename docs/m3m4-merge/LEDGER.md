@@ -612,3 +612,28 @@ M3 indexed CTS resumes at segment 188 on boot
 clock bounds; diagnostic module SHA b19fbe74ff54fbdbfe4542bb3544ac7fc8c77fa54f18acedb386e47554b1753c.
 M4 matched coverage at 97,857 records has no unexplained new failure or lost
 capability; the full default-option GLES campaign remains running.
+
+
+## Normal M3 desktop and fresh image acceptance
+
+The user subsequently explicitly selected M4's provisional 110 C target and
+120 C emergency policy for M3. Kernel commit `1d067a7ce5ad` reuses M4 staged
+CPU cooling, three raw >=120 C observations at least 5 ms apart, and independent
+5 ms raw / 100 ms governor cadence; it keeps M3 sensor/topology decoding.
+The synchronized monitor retains the 95 C startup gate. Idle cadence measured
+199.94 Hz / 9.66 Hz, with normal CPU ceilings 4.056/2.748 GHz. No overheating
+experiment was performed, and no M4 SMC rail or GPU-ceiling model was imported.
+
+The screenshot helper previously reused one filename, and consecutive native
+and GL probes returned identical old PNG bytes. New capture uses a unique path
+and waits for complete PNG IEND before copying. The fresh GL and Vulkan game
+images show the complete correctly lit scene at 3024x1964. Prior ambiguous
+images remain retained; they are not candidate visual acceptance evidence.
+
+Normal M3 Plasma now uses the versioned shared prefix. A guarded full session
+restart validates active VT 1 and exact Vulkan/Gallium/EGL/GBM/backend mappings,
+with a fresh correct desktop screenshot. Firefox passes 16 pixel-checked draws
+each for WebGL 1 and WebGL 2 with the candidate Vulkan mapping. The separately
+selected normal 0 A.D. launcher also completes with candidate mappings, a fresh
+frame, and a short 122.60 FPS sample. Original prefixes and configuration
+backups are retained. Reboot validation and broad campaigns remain outstanding.

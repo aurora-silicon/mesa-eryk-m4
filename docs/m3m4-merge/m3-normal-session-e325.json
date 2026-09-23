@@ -1,0 +1,940 @@
+{
+  "scope": "M3 actual desktop/Firefox/game with e325; normal configuration selected with rollback. Full catalog remains incomplete, not a final release claim.",
+  "prefix": "/opt/asahi-m3m4-e325b646b16",
+  "thermal_kernel_commit": "1d067a7ce5ad",
+  "thermal_authorization": "User selected same provisional limits as M4 on 2026-09-23",
+  "runs": {
+    "m3-plasma-e325-normal-session": {
+      "guard": "complete",
+      "watchdog": {
+        "device": "/dev/watchdog0",
+        "identity": "Apple SoC Watchdog",
+        "timeout_seconds": 60,
+        "initial_timeleft_seconds": 59,
+        "periodic_keepalive": false,
+        "armed": true,
+        "ssh_broker_lease": false
+      },
+      "boot_id": "360e98b5-3fde-4b66-aeed-bb0e064b4b45",
+      "peak_mc": 77500.0,
+      "records": {
+        "mesa-identity.json": {
+          "library": "/opt/asahi-m3m4-e325b646b16/lib/libvulkan_asahi.so",
+          "sha256": "f8f6eb3fcd2bbc035efd459d058df786faf596939a2c5e23e4ee6c43b8b19cdb",
+          "mapped_libraries": {
+            "/opt/asahi-m3m4-e325b646b16/lib/libvulkan_asahi.so": "f8f6eb3fcd2bbc035efd459d058df786faf596939a2c5e23e4ee6c43b8b19cdb",
+            "/opt/asahi-m3m4-e325b646b16/lib/libgallium-26.1.4.so": "e4f91d6850a43f500833cc617032f5c232bc43750ca48752cd165dec7db2011e",
+            "/opt/asahi-m3m4-e325b646b16/lib/libEGL_mesa.so.0.0.0": "13edda4bf9e9e44f9466066f1933e112703b1e5fa87d71a75654c78ada4eeb25",
+            "/opt/asahi-m3m4-e325b646b16/lib/libgbm.so.1.0.0": "4e030b53f570cea944146494d24664c9b863187657a3773c0e3297d751ac1610",
+            "/opt/asahi-m3m4-e325b646b16/lib/gbm/dri_gbm.so": "37c924aee42202dcbdf11b941661935d251c8c3876fb534de4b6e2d212a5a012"
+          }
+        },
+        "plasma-result.json": {
+          "user": "eryk",
+          "renderer": "Zink on Apple M3",
+          "draw_records": 1,
+          "screenshot": "desktop.png"
+        },
+        "active-session.txt": "KWin PID=13455 session=166\nVTNr=1\nType=wayland\nActive=yes\nState=active\n",
+        "desktop.capture.json": {
+          "source": "/home/eryk/.cache/mesa-validation-dd5b6dbe7a20472b8348b0b0a2f478f9.png",
+          "started_ns": 1790158709991325687,
+          "completed_ns": 1790158710457456783,
+          "source_mtime_ns": 1790158710437695110,
+          "width": 3024,
+          "height": 1964,
+          "bytes": 2872851,
+          "sha256": "c5b61cb52c5efa52c01b5f5d98fdb3a0162735c85ad9c75bf69b2369d6a6b104",
+          "method": "Unique Spectacle output; waited for complete PNG IEND"
+        }
+      }
+    },
+    "m3-firefox-e325-webgl": {
+      "guard": "complete",
+      "watchdog": {
+        "device": "/dev/watchdog0",
+        "identity": "Apple SoC Watchdog",
+        "timeout_seconds": 60,
+        "initial_timeleft_seconds": 59,
+        "periodic_keepalive": false,
+        "armed": true,
+        "ssh_broker_lease": false
+      },
+      "boot_id": "360e98b5-3fde-4b66-aeed-bb0e064b4b45",
+      "peak_mc": 68750.0,
+      "records": {
+        "mesa-identity.json": {
+          "library": "/opt/asahi-m3m4-e325b646b16/lib/libvulkan_asahi.so",
+          "sha256": "f8f6eb3fcd2bbc035efd459d058df786faf596939a2c5e23e4ee6c43b8b19cdb"
+        },
+        "webgl-result.json": {
+          "userAgent": "Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0",
+          "tests": [
+            {
+              "api": "webgl",
+              "pass": true,
+              "version": "WebGL 1.0",
+              "renderer": "Generic Renderer",
+              "draws": [
+                {
+                  "index": 0,
+                  "expected": [
+                    31,
+                    61,
+                    127,
+                    255
+                  ],
+                  "center": [
+                    31,
+                    61,
+                    127,
+                    255
+                  ],
+                  "corner": [
+                    0,
+                    0,
+                    255,
+                    255
+                  ]
+                },
+                {
+                  "index": 1,
+                  "expected": [
+                    68,
+                    134,
+                    146,
+                    255
+                  ],
+                  "center": [
+                    68,
+                    134,
+                    146,
+                    255
+                  ],
+                  "corner": [
+                    0,
+                    0,
+                    255,
+                    255
+                  ]
+                },
+                {
+                  "index": 2,
+                  "expected": [
+                    105,
+                    207,
+                    165,
+                    255
+                  ],
+                  "center": [
+                    105,
+                    207,
+                    165,
+                    255
+                  ],
+                  "corner": [
+                    0,
+                    0,
+                    255,
+                    255
+                  ]
+                },
+                {
+                  "index": 3,
+                  "expected": [
+                    142,
+                    24,
+                    184,
+                    255
+                  ],
+                  "center": [
+                    142,
+                    24,
+                    184,
+                    255
+                  ],
+                  "corner": [
+                    0,
+                    0,
+                    255,
+                    255
+                  ]
+                },
+                {
+                  "index": 4,
+                  "expected": [
+                    179,
+                    97,
+                    203,
+                    255
+                  ],
+                  "center": [
+                    179,
+                    97,
+                    203,
+                    255
+                  ],
+                  "corner": [
+                    0,
+                    0,
+                    255,
+                    255
+                  ]
+                },
+                {
+                  "index": 5,
+                  "expected": [
+                    216,
+                    170,
+                    222,
+                    255
+                  ],
+                  "center": [
+                    216,
+                    170,
+                    222,
+                    255
+                  ],
+                  "corner": [
+                    0,
+                    0,
+                    255,
+                    255
+                  ]
+                },
+                {
+                  "index": 6,
+                  "expected": [
+                    253,
+                    243,
+                    241,
+                    255
+                  ],
+                  "center": [
+                    253,
+                    243,
+                    241,
+                    255
+                  ],
+                  "corner": [
+                    0,
+                    0,
+                    255,
+                    255
+                  ]
+                },
+                {
+                  "index": 7,
+                  "expected": [
+                    34,
+                    60,
+                    4,
+                    255
+                  ],
+                  "center": [
+                    34,
+                    60,
+                    4,
+                    255
+                  ],
+                  "corner": [
+                    0,
+                    0,
+                    255,
+                    255
+                  ]
+                },
+                {
+                  "index": 8,
+                  "expected": [
+                    71,
+                    133,
+                    23,
+                    255
+                  ],
+                  "center": [
+                    71,
+                    133,
+                    23,
+                    255
+                  ],
+                  "corner": [
+                    0,
+                    0,
+                    255,
+                    255
+                  ]
+                },
+                {
+                  "index": 9,
+                  "expected": [
+                    108,
+                    206,
+                    42,
+                    255
+                  ],
+                  "center": [
+                    108,
+                    206,
+                    42,
+                    255
+                  ],
+                  "corner": [
+                    0,
+                    0,
+                    255,
+                    255
+                  ]
+                },
+                {
+                  "index": 10,
+                  "expected": [
+                    145,
+                    23,
+                    61,
+                    255
+                  ],
+                  "center": [
+                    145,
+                    23,
+                    61,
+                    255
+                  ],
+                  "corner": [
+                    0,
+                    0,
+                    255,
+                    255
+                  ]
+                },
+                {
+                  "index": 11,
+                  "expected": [
+                    182,
+                    96,
+                    80,
+                    255
+                  ],
+                  "center": [
+                    182,
+                    96,
+                    80,
+                    255
+                  ],
+                  "corner": [
+                    0,
+                    0,
+                    255,
+                    255
+                  ]
+                },
+                {
+                  "index": 12,
+                  "expected": [
+                    219,
+                    169,
+                    99,
+                    255
+                  ],
+                  "center": [
+                    219,
+                    169,
+                    99,
+                    255
+                  ],
+                  "corner": [
+                    0,
+                    0,
+                    255,
+                    255
+                  ]
+                },
+                {
+                  "index": 13,
+                  "expected": [
+                    0,
+                    242,
+                    118,
+                    255
+                  ],
+                  "center": [
+                    0,
+                    242,
+                    118,
+                    255
+                  ],
+                  "corner": [
+                    0,
+                    0,
+                    255,
+                    255
+                  ]
+                },
+                {
+                  "index": 14,
+                  "expected": [
+                    37,
+                    59,
+                    137,
+                    255
+                  ],
+                  "center": [
+                    37,
+                    59,
+                    137,
+                    255
+                  ],
+                  "corner": [
+                    0,
+                    0,
+                    255,
+                    255
+                  ]
+                },
+                {
+                  "index": 15,
+                  "expected": [
+                    74,
+                    132,
+                    156,
+                    255
+                  ],
+                  "center": [
+                    74,
+                    132,
+                    156,
+                    255
+                  ],
+                  "corner": [
+                    0,
+                    0,
+                    255,
+                    255
+                  ]
+                }
+              ]
+            },
+            {
+              "api": "webgl2",
+              "pass": true,
+              "version": "WebGL 2.0",
+              "renderer": "Generic Renderer",
+              "draws": [
+                {
+                  "index": 0,
+                  "expected": [
+                    31,
+                    61,
+                    127,
+                    255
+                  ],
+                  "center": [
+                    31,
+                    61,
+                    127,
+                    255
+                  ],
+                  "corner": [
+                    0,
+                    0,
+                    255,
+                    255
+                  ]
+                },
+                {
+                  "index": 1,
+                  "expected": [
+                    68,
+                    134,
+                    146,
+                    255
+                  ],
+                  "center": [
+                    68,
+                    134,
+                    146,
+                    255
+                  ],
+                  "corner": [
+                    0,
+                    0,
+                    255,
+                    255
+                  ]
+                },
+                {
+                  "index": 2,
+                  "expected": [
+                    105,
+                    207,
+                    165,
+                    255
+                  ],
+                  "center": [
+                    105,
+                    207,
+                    165,
+                    255
+                  ],
+                  "corner": [
+                    0,
+                    0,
+                    255,
+                    255
+                  ]
+                },
+                {
+                  "index": 3,
+                  "expected": [
+                    142,
+                    24,
+                    184,
+                    255
+                  ],
+                  "center": [
+                    142,
+                    24,
+                    184,
+                    255
+                  ],
+                  "corner": [
+                    0,
+                    0,
+                    255,
+                    255
+                  ]
+                },
+                {
+                  "index": 4,
+                  "expected": [
+                    179,
+                    97,
+                    203,
+                    255
+                  ],
+                  "center": [
+                    179,
+                    97,
+                    203,
+                    255
+                  ],
+                  "corner": [
+                    0,
+                    0,
+                    255,
+                    255
+                  ]
+                },
+                {
+                  "index": 5,
+                  "expected": [
+                    216,
+                    170,
+                    222,
+                    255
+                  ],
+                  "center": [
+                    216,
+                    170,
+                    222,
+                    255
+                  ],
+                  "corner": [
+                    0,
+                    0,
+                    255,
+                    255
+                  ]
+                },
+                {
+                  "index": 6,
+                  "expected": [
+                    253,
+                    243,
+                    241,
+                    255
+                  ],
+                  "center": [
+                    253,
+                    243,
+                    241,
+                    255
+                  ],
+                  "corner": [
+                    0,
+                    0,
+                    255,
+                    255
+                  ]
+                },
+                {
+                  "index": 7,
+                  "expected": [
+                    34,
+                    60,
+                    4,
+                    255
+                  ],
+                  "center": [
+                    34,
+                    60,
+                    4,
+                    255
+                  ],
+                  "corner": [
+                    0,
+                    0,
+                    255,
+                    255
+                  ]
+                },
+                {
+                  "index": 8,
+                  "expected": [
+                    71,
+                    133,
+                    23,
+                    255
+                  ],
+                  "center": [
+                    71,
+                    133,
+                    23,
+                    255
+                  ],
+                  "corner": [
+                    0,
+                    0,
+                    255,
+                    255
+                  ]
+                },
+                {
+                  "index": 9,
+                  "expected": [
+                    108,
+                    206,
+                    42,
+                    255
+                  ],
+                  "center": [
+                    108,
+                    206,
+                    42,
+                    255
+                  ],
+                  "corner": [
+                    0,
+                    0,
+                    255,
+                    255
+                  ]
+                },
+                {
+                  "index": 10,
+                  "expected": [
+                    145,
+                    23,
+                    61,
+                    255
+                  ],
+                  "center": [
+                    145,
+                    23,
+                    61,
+                    255
+                  ],
+                  "corner": [
+                    0,
+                    0,
+                    255,
+                    255
+                  ]
+                },
+                {
+                  "index": 11,
+                  "expected": [
+                    182,
+                    96,
+                    80,
+                    255
+                  ],
+                  "center": [
+                    182,
+                    96,
+                    80,
+                    255
+                  ],
+                  "corner": [
+                    0,
+                    0,
+                    255,
+                    255
+                  ]
+                },
+                {
+                  "index": 12,
+                  "expected": [
+                    219,
+                    169,
+                    99,
+                    255
+                  ],
+                  "center": [
+                    219,
+                    169,
+                    99,
+                    255
+                  ],
+                  "corner": [
+                    0,
+                    0,
+                    255,
+                    255
+                  ]
+                },
+                {
+                  "index": 13,
+                  "expected": [
+                    0,
+                    242,
+                    118,
+                    255
+                  ],
+                  "center": [
+                    0,
+                    242,
+                    118,
+                    255
+                  ],
+                  "corner": [
+                    0,
+                    0,
+                    255,
+                    255
+                  ]
+                },
+                {
+                  "index": 14,
+                  "expected": [
+                    37,
+                    59,
+                    137,
+                    255
+                  ],
+                  "center": [
+                    37,
+                    59,
+                    137,
+                    255
+                  ],
+                  "corner": [
+                    0,
+                    0,
+                    255,
+                    255
+                  ]
+                },
+                {
+                  "index": 15,
+                  "expected": [
+                    74,
+                    132,
+                    156,
+                    255
+                  ],
+                  "center": [
+                    74,
+                    132,
+                    156,
+                    255
+                  ],
+                  "corner": [
+                    0,
+                    0,
+                    255,
+                    255
+                  ]
+                }
+              ]
+            }
+          ],
+          "pass": true
+        },
+        "firefox-gpu-maps.json": {
+          "14723": {
+            "command": "/usr/lib64/firefox/firefox --new-window http://127.0.0.1:43381/ ",
+            "libraries": [
+              "/opt/asahi-m3m4-e325b646b16/lib/gbm/dri_gbm.so",
+              "/opt/asahi-m3m4-e325b646b16/lib/libEGL_mesa.so.0.0.0",
+              "/opt/asahi-m3m4-e325b646b16/lib/libgallium-26.1.4.so",
+              "/opt/asahi-m3m4-e325b646b16/lib/libgbm.so.1.0.0",
+              "/opt/asahi-m3m4-e325b646b16/lib/libvulkan_asahi.so"
+            ]
+          },
+          "14831": {
+            "command": "/usr/lib64/firefox/firefox -contentproc -ipcHandle 0 -signalPipe 1 -initialChannelId {b97f02dc-bdd3-42a2-a430-49e0ae8c7364} -parentPid 14723 -greomni /usr/lib64/firefox/omni.ja -appomni /usr/lib64/firefox/browser/omni.ja -appDir /usr/lib64/firefox/browser 1 forkserver ",
+            "libraries": [
+              "/opt/asahi-m3m4-e325b646b16/lib/libgbm.so.1.0.0"
+            ]
+          },
+          "14849": {
+            "command": "/usr/lib64/firefox/firefox -contentproc -parentBuildID 20260831184948 -prefsHandle 0:35032 -prefMapHandle 1:293763 -sandboxReporter 2 -chrootClient 3 -ipcHandle 4 -initialChannelId {6017fb8e-a8e8-4f34-8939-bb234eb5cbd1} -parentPid 14723 -appDir /usr/lib64/firefox/browser 2 socket ",
+            "libraries": [
+              "/opt/asahi-m3m4-e325b646b16/lib/libgbm.so.1.0.0"
+            ]
+          },
+          "14908": {
+            "command": "/usr/lib64/firefox/firefox -contentproc -isForBrowser -prefsHandle 0:32151 -prefMapHandle 1:293763 -jsInitHandle 2:160936 -parentBuildID 20260831184948 -sandboxReporter 3 -chrootClient 4 -ipcHandle 5 -initialChannelId {8e043cdf-234b-441b-acae-af416e7baebc} -parentPid 14723 -greomni /usr/lib64/firefox/omni.ja -appomni /usr/lib64/firefox/browser/omni.ja -appDir /usr/lib64/firefox/browser 3 tab ",
+            "libraries": [
+              "/opt/asahi-m3m4-e325b646b16/lib/libgbm.so.1.0.0"
+            ]
+          },
+          "14917": {
+            "command": "/usr/lib64/firefox/firefox -contentproc -parentBuildID 20260831184948 -prefsHandle 0:35184 -prefMapHandle 1:293763 -sandboxReporter 2 -chrootClient 3 -ipcHandle 4 -initialChannelId {6d5c92fe-a8ba-4665-8613-a68395d3c5b5} -parentPid 14723 -appDir /usr/lib64/firefox/browser 4 rdd ",
+            "libraries": [
+              "/opt/asahi-m3m4-e325b646b16/lib/libgbm.so.1.0.0"
+            ]
+          },
+          "15095": {
+            "command": "/usr/lib64/firefox/firefox -contentproc -isForBrowser -prefsHandle 0:35239 -prefMapHandle 1:293763 -jsInitHandle 2:160936 -parentBuildID 20260831184948 -sandboxReporter 3 -chrootClient 4 -ipcHandle 5 -initialChannelId {0fb79ad6-636b-456b-bfb1-bf7123c5ffd1} -parentPid 14723 -greomni /usr/lib64/firefox/omni.ja -appomni /usr/lib64/firefox/browser/omni.ja -appDir /usr/lib64/firefox/browser 5 tab ",
+            "libraries": [
+              "/opt/asahi-m3m4-e325b646b16/lib/libgbm.so.1.0.0"
+            ]
+          }
+        },
+        "desktop.capture.json": {
+          "source": "/home/eryk/.cache/mesa-validation-fdfdee417f46486ca331461fb6604a42.png",
+          "started_ns": 1790158810335466752,
+          "completed_ns": 1790158810750878770,
+          "source_mtime_ns": 1790158810726136115,
+          "width": 3024,
+          "height": 1964,
+          "bytes": 1327088,
+          "sha256": "5a260ca808ef25e3f6f7e79c893faf7f469dbba8f7d1c65063fd8e1fbe70871e",
+          "method": "Unique Spectacle output; waited for complete PNG IEND"
+        }
+      }
+    },
+    "m3-0ad-e325-normal-launcher": {
+      "guard": "complete",
+      "watchdog": {
+        "device": "/dev/watchdog0",
+        "identity": "Apple SoC Watchdog",
+        "timeout_seconds": 60,
+        "initial_timeleft_seconds": 59,
+        "periodic_keepalive": false,
+        "armed": true,
+        "ssh_broker_lease": false
+      },
+      "boot_id": "360e98b5-3fde-4b66-aeed-bb0e064b4b45",
+      "peak_mc": 82750.0,
+      "records": {
+        "mapped-graphics-binaries.json": {
+          "/opt/asahi-m3m4-e325b646b16/lib/libvulkan_asahi.so": "f8f6eb3fcd2bbc035efd459d058df786faf596939a2c5e23e4ee6c43b8b19cdb",
+          "/opt/asahi-m3m4-e325b646b16/lib/libgallium-26.1.4.so": "e4f91d6850a43f500833cc617032f5c232bc43750ca48752cd165dec7db2011e",
+          "/opt/asahi-m3m4-e325b646b16/lib/libgbm.so.1.0.0": "4e030b53f570cea944146494d24664c9b863187657a3773c0e3297d751ac1610",
+          "/opt/asahi-m3m4-e325b646b16/lib/libEGL_mesa.so.0.0.0": "13edda4bf9e9e44f9466066f1933e112703b1e5fa87d71a75654c78ada4eeb25"
+        },
+        "frame-summary.json": {
+          "frames": 1226,
+          "seconds": 9.999935138,
+          "fps": 122.60079521327792,
+          "median_frame_ms": 7.792634999999493,
+          "maximum_frame_ms": 13.513750999997853,
+          "scope": "Complete frame intervals in the last ten seconds; screenshot captured afterwards"
+        },
+        "screen.capture.json": {
+          "source": "/home/eryk/.cache/mesa-validation-974cf76c069843589bbf33f4eb350588.png",
+          "started_ns": 1790158937241222428,
+          "completed_ns": 1790158937958087105,
+          "source_mtime_ns": 1790158937918647863,
+          "width": 3024,
+          "height": 1964,
+          "bytes": 12243220,
+          "sha256": "add3f593423d1c81807f40c606600006dc85b75d23b14eff65bd7da841700a33",
+          "method": "Unique Spectacle output; waited for complete PNG IEND"
+        }
+      }
+    },
+    "m3-0ad-live-e325-gl-05-fresh-capture": {
+      "guard": "complete",
+      "watchdog": {
+        "device": "/dev/watchdog0",
+        "identity": "Apple SoC Watchdog",
+        "timeout_seconds": 60,
+        "initial_timeleft_seconds": 59,
+        "periodic_keepalive": false,
+        "armed": true,
+        "ssh_broker_lease": false
+      },
+      "boot_id": "360e98b5-3fde-4b66-aeed-bb0e064b4b45",
+      "peak_mc": 79000.0,
+      "records": {
+        "mapped-graphics-binaries.json": {
+          "/opt/asahi-m3m4-e325b646b16/lib/libvulkan_asahi.so": "f8f6eb3fcd2bbc035efd459d058df786faf596939a2c5e23e4ee6c43b8b19cdb",
+          "/opt/asahi-m3m4-e325b646b16/lib/libgallium-26.1.4.so": "e4f91d6850a43f500833cc617032f5c232bc43750ca48752cd165dec7db2011e",
+          "/opt/asahi-m3m4-e325b646b16/lib/libgbm.so.1.0.0": "4e030b53f570cea944146494d24664c9b863187657a3773c0e3297d751ac1610",
+          "/opt/asahi-m3m4-e325b646b16/lib/libEGL_mesa.so.0.0.0": "13edda4bf9e9e44f9466066f1933e112703b1e5fa87d71a75654c78ada4eeb25"
+        },
+        "frame-summary.json": {
+          "frames": 1217,
+          "seconds": 9.997017434000002,
+          "fps": 121.73630865751672,
+          "median_frame_ms": 8.252566000001238,
+          "maximum_frame_ms": 13.658664999997683,
+          "scope": "Complete frame intervals in the last ten seconds; screenshot captured afterwards"
+        },
+        "screen.capture.json": {
+          "source": "/home/eryk/.cache/mesa-validation-9acb535058a440158b2b9529eb12bef5.png",
+          "started_ns": 1790158522810390959,
+          "completed_ns": 1790158523528331506,
+          "source_mtime_ns": 1790158523489195857,
+          "width": 3024,
+          "height": 1964,
+          "bytes": 12245000,
+          "sha256": "4779020e33d28f123e8746e9fad3a093a39c400edf2e869c468fec750a594f51",
+          "method": "Unique Spectacle output; waited for complete PNG IEND"
+        }
+      }
+    },
+    "m3-0ad-live-e325-vulkan-04-fresh-capture": {
+      "guard": "complete",
+      "watchdog": {
+        "device": "/dev/watchdog0",
+        "identity": "Apple SoC Watchdog",
+        "timeout_seconds": 60,
+        "initial_timeleft_seconds": 59,
+        "periodic_keepalive": false,
+        "armed": true,
+        "ssh_broker_lease": false
+      },
+      "boot_id": "360e98b5-3fde-4b66-aeed-bb0e064b4b45",
+      "peak_mc": 85000.0,
+      "records": {
+        "mapped-graphics-binaries.json": {
+          "/opt/asahi-m3m4-e325b646b16/lib/libvulkan_asahi.so": "f8f6eb3fcd2bbc035efd459d058df786faf596939a2c5e23e4ee6c43b8b19cdb"
+        },
+        "frame-summary.json": {
+          "frames": 972,
+          "seconds": 9.989225087,
+          "fps": 97.30484512406903,
+          "median_frame_ms": 10.257430500001163,
+          "maximum_frame_ms": 16.07479200000128,
+          "scope": "Complete frame intervals in the last ten seconds; screenshot captured afterwards"
+        },
+        "screen.capture.json": {
+          "source": "/home/eryk/.cache/mesa-validation-e4a893a9235c477b96fed944f12d1e30.png",
+          "started_ns": 1790158653711739679,
+          "completed_ns": 1790158654486136337,
+          "source_mtime_ns": 1790158654417448759,
+          "width": 3024,
+          "height": 1964,
+          "bytes": 12243303,
+          "sha256": "c79f32c9eb9923a8028e70c5d665acd322414e581a6ac00e6979b8d70357e35e",
+          "method": "Unique Spectacle output; waited for complete PNG IEND"
+        }
+      }
+    }
+  }
+}
