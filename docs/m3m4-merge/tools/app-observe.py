@@ -49,7 +49,7 @@ if a.mesa_environment:
     candidate = json.loads(a.mesa_environment.read_text())
     assert all(isinstance(k, str) and isinstance(v, str) for k,v in candidate.items())
     assert all(k.startswith(('VK_', 'MESA_', 'AGX_', 'GALLIUM_', 'LIBGL_',
-                             'LD_LIBRARY_', '__EGL_', 'ASAHI_', 'HK_')) for k in candidate)
+                             'LD_LIBRARY_', 'GBM_', '__EGL_', 'ASAHI_', 'HK_')) for k in candidate)
     env.update(candidate)
     prefix = Path(env['LD_LIBRARY_PATH'])
     assert prefix.is_absolute() and prefix.is_dir()
@@ -64,7 +64,7 @@ if a.capture_profile:
     (out/'capture-profile.json').write_bytes(a.capture_profile.read_bytes())
     (out/'capture-profile.report.json').write_bytes(a.capture_profile.with_suffix('.report.json').read_bytes())
     env.update(VK_LAYER_PATH=env['VK_LAYER_PATH']+':/usr/share/vulkan/explicit_layer.d',VK_INSTANCE_LAYERS=env['VK_INSTANCE_LAYERS']+':VK_LAYER_KHRONOS_profiles',VK_KHRONOS_PROFILES_PROFILE_FILE=str(a.capture_profile),VK_KHRONOS_PROFILES_SIMULATE_CAPABILITIES='SIMULATE_API_VERSION_BIT,SIMULATE_FEATURES_BIT,SIMULATE_EXTENSIONS_BIT,SIMULATE_PROPERTIES_BIT,SIMULATE_FORMATS_BIT',VK_KHRONOS_PROFILES_DEFAULT_FEATURE_VALUES='DEFAULT_FEATURE_VALUES_FALSE',VK_KHRONOS_PROFILES_EXCLUDE_DEVICE_EXTENSIONS=','.join(report['removed_reference_extensions']))
-manifest=dict(renderer=a.renderer,command=command,boot_id=boot,environment={k:v for k,v in env.items() if k.startswith(('VK_','MESA_','AGX_','GALLIUM_','LIBGL_','GFXRECON_','LD_LIBRARY_','ASAHI_'))},hashes={})
+manifest=dict(renderer=a.renderer,command=command,boot_id=boot,environment={k:v for k,v in env.items() if k.startswith(('VK_','MESA_','AGX_','GALLIUM_','LIBGL_','GBM_','__EGL_','GFXRECON_','LD_LIBRARY_','ASAHI_','HK_'))},hashes={})
 for f in [Path(command[0]),*mesa_libraries,*a.retain]:
     manifest['hashes'][str(f)]=hashlib.sha256(f.read_bytes()).hexdigest()
 for i,f in enumerate(a.retain):(out/f'config-{i}-{f.name}').write_bytes(f.read_bytes())

@@ -1,0 +1,526 @@
+{
+  "scope": "Interim and incomplete real game validation. Do not count interrupted runs as passes or infer fault causes from SSH timeouts. Earlier-boot compositor captures have stale/dim overlapping window imagery on both baseline and candidate; the post-reboot baseline is visually clean. Candidate desktop promotion remains blocked pending a fresh visual check and the native Vulkan interruption logs.",
+  "runs": [
+    {
+      "evidence": "build/m3m4-merge-20260923/m3-0ad-live-e325-gl-00-baseline",
+      "guard": {
+        "boot_id": "aa2e8dc1-6c01-47ad-b7a2-b69982bc8dda",
+        "phase": "complete",
+        "watchdog": {
+          "device": "/dev/watchdog0",
+          "identity": "Apple SoC Watchdog",
+          "timeout_seconds": 60,
+          "initial_timeleft_seconds": 59,
+          "periodic_keepalive": false,
+          "armed": true,
+          "ssh_broker_lease": false
+        },
+        "elapsed_seconds": 27.50884493600006
+      },
+      "frame_summary": {
+        "frames": 1203,
+        "seconds": 9.995187777,
+        "fps": 120.35791891456329,
+        "median_frame_ms": 8.163545000000383,
+        "maximum_frame_ms": 12.071586000001133,
+        "scope": "Complete frame intervals in the last ten seconds; screenshot captured afterwards"
+      },
+      "settings": {
+        "command": [
+          "/usr/bin/pyrogenesis",
+          "-autostart=skirmishes/acropolis_bay_2p",
+          "-autostart-player=1",
+          "-autostart-civ=1:cart",
+          "-autostart-civ=2:gaul",
+          "-autostart-seed=200002407",
+          "-autostart-aiseed=2993941790",
+          "-conf=view.scroll.mouse.detectdistance:0",
+          "-conf=view.scroll.speed:0",
+          "-conf=profiler2.autoenable:true",
+          "-conf=profiler2.gpu.enable:false",
+          "-conf=overlay.fps:true",
+          "-conf=rendererbackend:gl",
+          "-conf=adaptivefps.session:0",
+          "-conf=vsync:false"
+        ],
+        "graphics_environment": {
+          "LD_LIBRARY_PATH": "/opt/asahi-m3-0ad/lib:/opt/asahi-m3-wayland/lib",
+          "LIBGL_DRIVERS_PATH": "/opt/asahi-m3-0ad/lib/dri",
+          "__EGL_VENDOR_LIBRARY_FILENAMES": "/opt/asahi-m3-0ad/egl.json",
+          "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+          "GALLIUM_DRIVER": "zink",
+          "VK_DRIVER_FILES": "/opt/asahi-m3-0ad/asahi.json",
+          "ASAHI_M3_EXPERIMENTAL": "1",
+          "AGX_MESA_DEBUG": "nopromote",
+          "HK_DEBUG_LOG": "0",
+          "AGX_NATIVE_FLOAT_PREAMBLE": "true",
+          "HK_M4_COMPRESSED_2D": "true",
+          "HK_M4_COMPRESSED_FEEDBACK": "true",
+          "HK_NATIVE_COALESCE_BROADCAST": "true",
+          "HK_M3_EARLY_TILING": "true",
+          "GBM_BACKENDS_PATH": "/opt/asahi-m3-wayland/lib/gbm",
+          "MESA_SHADER_CACHE_DIR": "/home/eryk/.cache/mesa-merge-0ad-baseline",
+          "HK_M4_NATIVE_PREAMBLE": "true",
+          "HK_M4_PREFETCH_UBOS": "true",
+          "HK_M4_PREFETCH_VARIANT": "true",
+          "HK_M4_PLAIN_SAMPLERS": "true",
+          "HK_M4_IOTO_TEMPLATES": "true"
+        }
+      },
+      "mappings": {
+        "/opt/asahi-m3-0ad/lib/libvulkan_asahi.so": "e310049501a94b63bbd664169540a45e3a237fc2feac7dbe6276c933429a9b01",
+        "/opt/asahi-m3-0ad/lib/libgallium-26.1.4.so": "6aab0f3a098a834cc01885ab4329e43657c78131818ea71e6b1aa6f2fc7c8ed2",
+        "/opt/asahi-m3-0ad/lib/libEGL_mesa.so.0.0.0": "adbd28011381a17e653654493fdfce755fd0615d9af1c5c63a1b476e2adde32f",
+        "/opt/asahi-m3-0ad/lib/libgbm.so.1.0.0": "b6e2b3b05bb6ef990c31fa864c8a9f8ead0f0e4ce7a7b48ae46b8458cfdd91dd"
+      },
+      "peak_temperature_c": 74.5,
+      "sha256": {
+        "guard.log": "1490c051ef37c322b1a84f023b682cd4f9e14a4d5efe089103b10157694e4cd6",
+        "binary-identity.json": "37fee8d7e74e7422ca91c6f668e8e32a58e129e800eef844629360a14b39e7fa",
+        "frame-summary.json": "e26f0cd123f61e8b88993f5395c1a310499ab23be76ddad5b5f1aa05165824c7",
+        "kernel-live.log": "7b3e43ad202377c7f297beaf15d8ee7eaa75be263dd2d65afc520ed806dc1e84",
+        "mapped-graphics-binaries.json": "f6f156831f491047c155262d45ccd90346105caa19fbd9f4fc0aeab52daaccc8",
+        "result.json": "053c1c1a9d24c1f6f1a7caf52f4fa3e5d85bb81bafb652b127161abb11c7c230",
+        "screen.png": "3ddda44a17748a5e711541d04208cc1d4c64f8c7632d16a357e754854a8fa700",
+        "settings.json": "2fa31ecc627300c57548020b97ff3e9ed3a4cbe283315ba0a41e641c13902680",
+        "temperatures.jsonl": "db0a6b785f011fd2dde68c1f4b58ef04256b5b167a3e6a75f1d37de20c526ecf"
+      }
+    },
+    {
+      "evidence": "build/m3m4-merge-20260923/m3-0ad-live-e325-gl-01-candidate",
+      "guard": {
+        "boot_id": "aa2e8dc1-6c01-47ad-b7a2-b69982bc8dda",
+        "phase": "complete",
+        "watchdog": {
+          "device": "/dev/watchdog0",
+          "identity": "Apple SoC Watchdog",
+          "timeout_seconds": 60,
+          "initial_timeleft_seconds": 59,
+          "periodic_keepalive": false,
+          "armed": true,
+          "ssh_broker_lease": false
+        },
+        "elapsed_seconds": 27.517754903999958
+      },
+      "frame_summary": {
+        "frames": 1327,
+        "seconds": 9.996722965,
+        "fps": 132.7435005097193,
+        "median_frame_ms": 7.514450000002171,
+        "maximum_frame_ms": 7.951694999999148,
+        "scope": "Complete frame intervals in the last ten seconds; screenshot captured afterwards"
+      },
+      "settings": {
+        "command": [
+          "/usr/bin/pyrogenesis",
+          "-autostart=skirmishes/acropolis_bay_2p",
+          "-autostart-player=1",
+          "-autostart-civ=1:cart",
+          "-autostart-civ=2:gaul",
+          "-autostart-seed=200002407",
+          "-autostart-aiseed=2993941790",
+          "-conf=view.scroll.mouse.detectdistance:0",
+          "-conf=view.scroll.speed:0",
+          "-conf=profiler2.autoenable:true",
+          "-conf=profiler2.gpu.enable:false",
+          "-conf=overlay.fps:true",
+          "-conf=rendererbackend:gl",
+          "-conf=adaptivefps.session:0",
+          "-conf=vsync:false"
+        ],
+        "graphics_environment": {
+          "LD_LIBRARY_PATH": "/opt/asahi-m3m4-e325b646b16/lib",
+          "LIBGL_DRIVERS_PATH": "/opt/asahi-m3m4-e325b646b16/lib/dri",
+          "__EGL_VENDOR_LIBRARY_FILENAMES": "/opt/asahi-m3m4-e325b646b16/egl.json",
+          "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+          "GALLIUM_DRIVER": "zink",
+          "VK_DRIVER_FILES": "/opt/asahi-m3m4-e325b646b16/asahi.json",
+          "ASAHI_M3_EXPERIMENTAL": "1",
+          "AGX_MESA_DEBUG": "nopromote",
+          "HK_DEBUG_LOG": "0",
+          "AGX_NATIVE_FLOAT_PREAMBLE": "true",
+          "HK_M4_COMPRESSED_2D": "true",
+          "HK_M4_COMPRESSED_FEEDBACK": "true",
+          "HK_NATIVE_COALESCE_BROADCAST": "true",
+          "HK_M3_EARLY_TILING": "true",
+          "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-e325b646b16/lib/gbm",
+          "MESA_SHADER_CACHE_DIR": "/home/eryk/.cache/mesa-merge-0ad-candidate",
+          "HK_M4_NATIVE_PREAMBLE": "true",
+          "HK_M4_PREFETCH_UBOS": "true",
+          "HK_M4_PREFETCH_VARIANT": "true",
+          "HK_M4_PLAIN_SAMPLERS": "true",
+          "HK_M4_IOTO_TEMPLATES": "true"
+        }
+      },
+      "mappings": {
+        "/opt/asahi-m3m4-e325b646b16/lib/libvulkan_asahi.so": "f8f6eb3fcd2bbc035efd459d058df786faf596939a2c5e23e4ee6c43b8b19cdb",
+        "/opt/asahi-m3m4-e325b646b16/lib/libgallium-26.1.4.so": "e4f91d6850a43f500833cc617032f5c232bc43750ca48752cd165dec7db2011e",
+        "/opt/asahi-m3m4-e325b646b16/lib/libgbm.so.1.0.0": "4e030b53f570cea944146494d24664c9b863187657a3773c0e3297d751ac1610",
+        "/opt/asahi-m3m4-e325b646b16/lib/libEGL_mesa.so.0.0.0": "13edda4bf9e9e44f9466066f1933e112703b1e5fa87d71a75654c78ada4eeb25"
+      },
+      "peak_temperature_c": 87.0,
+      "sha256": {
+        "guard.log": "6b4f0cfb8c0bddcedc2eec8063c3ff21c98367dff37974aabd6f8ca283ab45e8",
+        "binary-identity.json": "d2c4287fc0b0342043044af58e1197aabb17ba41dd3077d2dc879a783227b446",
+        "frame-summary.json": "960eeddd7caefdd4f10668058a6a7ea56361adc961ed86484c09e9db5c006ee8",
+        "kernel-live.log": "ea7b3a33b558fef64a9ca4e573c000ecdd890ec7fdfca5609598a3fcb5c20b8e",
+        "mapped-graphics-binaries.json": "3ee08dd50d3a4b460b48ae9bc0c37ee376f842cc8846e42ba3d9f7a6990c2ab9",
+        "result.json": "4f5264633208c851fe6fa7adeeb73d5fe794ef0638d1247c194c5917bb546f83",
+        "screen.png": "2d7e9ee2ec9d134fba66f8ab8441f0dcd20b288a127422e0ae21ef8f7a496521",
+        "settings.json": "f464b1acdb89f1fa098fd0c4cd293f339b96577b980e75ba1e9c4734f6da7697",
+        "temperatures.jsonl": "f9b9bc23bcd27686d7fe9016e9d96ba22d232eb4a4692b3e28f8bafef36c8395"
+      }
+    },
+    {
+      "evidence": "build/m3m4-merge-20260923/m3-0ad-live-e325-gl-02-candidate",
+      "guard": {
+        "boot_id": "aa2e8dc1-6c01-47ad-b7a2-b69982bc8dda",
+        "phase": "complete",
+        "watchdog": {
+          "device": "/dev/watchdog0",
+          "identity": "Apple SoC Watchdog",
+          "timeout_seconds": 60,
+          "initial_timeleft_seconds": 59,
+          "periodic_keepalive": false,
+          "armed": true,
+          "ssh_broker_lease": false
+        },
+        "elapsed_seconds": 28.011910994999198
+      },
+      "frame_summary": {
+        "frames": 1308,
+        "seconds": 9.994502265000001,
+        "fps": 130.8719499299648,
+        "median_frame_ms": 7.5313635000000545,
+        "maximum_frame_ms": 12.62311099999991,
+        "scope": "Complete frame intervals in the last ten seconds; screenshot captured afterwards"
+      },
+      "settings": {
+        "command": [
+          "/usr/bin/pyrogenesis",
+          "-autostart=skirmishes/acropolis_bay_2p",
+          "-autostart-player=1",
+          "-autostart-civ=1:cart",
+          "-autostart-civ=2:gaul",
+          "-autostart-seed=200002407",
+          "-autostart-aiseed=2993941790",
+          "-conf=view.scroll.mouse.detectdistance:0",
+          "-conf=view.scroll.speed:0",
+          "-conf=profiler2.autoenable:true",
+          "-conf=profiler2.gpu.enable:false",
+          "-conf=overlay.fps:true",
+          "-conf=rendererbackend:gl",
+          "-conf=adaptivefps.session:0",
+          "-conf=vsync:false"
+        ],
+        "graphics_environment": {
+          "LD_LIBRARY_PATH": "/opt/asahi-m3m4-e325b646b16/lib",
+          "LIBGL_DRIVERS_PATH": "/opt/asahi-m3m4-e325b646b16/lib/dri",
+          "__EGL_VENDOR_LIBRARY_FILENAMES": "/opt/asahi-m3m4-e325b646b16/egl.json",
+          "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+          "GALLIUM_DRIVER": "zink",
+          "VK_DRIVER_FILES": "/opt/asahi-m3m4-e325b646b16/asahi.json",
+          "ASAHI_M3_EXPERIMENTAL": "1",
+          "AGX_MESA_DEBUG": "nopromote",
+          "HK_DEBUG_LOG": "0",
+          "AGX_NATIVE_FLOAT_PREAMBLE": "true",
+          "HK_M4_COMPRESSED_2D": "true",
+          "HK_M4_COMPRESSED_FEEDBACK": "true",
+          "HK_NATIVE_COALESCE_BROADCAST": "true",
+          "HK_M3_EARLY_TILING": "true",
+          "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-e325b646b16/lib/gbm",
+          "MESA_SHADER_CACHE_DIR": "/home/eryk/.cache/mesa-merge-0ad-candidate",
+          "HK_M4_NATIVE_PREAMBLE": "true",
+          "HK_M4_PREFETCH_UBOS": "true",
+          "HK_M4_PREFETCH_VARIANT": "true",
+          "HK_M4_PLAIN_SAMPLERS": "true",
+          "HK_M4_IOTO_TEMPLATES": "true"
+        }
+      },
+      "mappings": {
+        "/opt/asahi-m3m4-e325b646b16/lib/libvulkan_asahi.so": "f8f6eb3fcd2bbc035efd459d058df786faf596939a2c5e23e4ee6c43b8b19cdb",
+        "/opt/asahi-m3m4-e325b646b16/lib/libgallium-26.1.4.so": "e4f91d6850a43f500833cc617032f5c232bc43750ca48752cd165dec7db2011e",
+        "/opt/asahi-m3m4-e325b646b16/lib/libgbm.so.1.0.0": "4e030b53f570cea944146494d24664c9b863187657a3773c0e3297d751ac1610",
+        "/opt/asahi-m3m4-e325b646b16/lib/libEGL_mesa.so.0.0.0": "13edda4bf9e9e44f9466066f1933e112703b1e5fa87d71a75654c78ada4eeb25"
+      },
+      "peak_temperature_c": 84.75,
+      "sha256": {
+        "guard.log": "e5a16039929d357e88f3e04a18bd764e1814b815161e1c065b5fe0409454730e",
+        "binary-identity.json": "d2c4287fc0b0342043044af58e1197aabb17ba41dd3077d2dc879a783227b446",
+        "frame-summary.json": "a68543567c394e22dd1e74423f7250897427285f58542ca679fdfb4b6aa6d5a6",
+        "kernel-live.log": "005e07461c1e31086dfda7d63c94a75805c8dac88a39e93d09438582174553ff",
+        "mapped-graphics-binaries.json": "3ee08dd50d3a4b460b48ae9bc0c37ee376f842cc8846e42ba3d9f7a6990c2ab9",
+        "result.json": "34caf6d2b9a5d835953a0372c2053b01d77eae0cf59ed6813077438c4fd5a290",
+        "screen.png": "fbf107c81511d2092ca1f68fac038939f2d38c03e732bd43ebccbaa34635d0a4",
+        "settings.json": "f464b1acdb89f1fa098fd0c4cd293f339b96577b980e75ba1e9c4734f6da7697",
+        "temperatures.jsonl": "94d61e70e427c0effd22b3fe291fc8a98202be6b025348d6c167dab93ec39235"
+      }
+    },
+    {
+      "evidence": "build/m3m4-merge-20260923/m3-0ad-live-e325-gl-03-baseline",
+      "guard": {
+        "boot_id": "aa2e8dc1-6c01-47ad-b7a2-b69982bc8dda",
+        "phase": "thermal-policy-ready",
+        "watchdog": {
+          "device": "/dev/watchdog0",
+          "identity": "Apple SoC Watchdog",
+          "timeout_seconds": 60,
+          "initial_timeleft_seconds": 59,
+          "periodic_keepalive": false,
+          "armed": true,
+          "ssh_broker_lease": false
+        }
+      },
+      "settings": {
+        "command": [
+          "/usr/bin/pyrogenesis",
+          "-autostart=skirmishes/acropolis_bay_2p",
+          "-autostart-player=1",
+          "-autostart-civ=1:cart",
+          "-autostart-civ=2:gaul",
+          "-autostart-seed=200002407",
+          "-autostart-aiseed=2993941790",
+          "-conf=view.scroll.mouse.detectdistance:0",
+          "-conf=view.scroll.speed:0",
+          "-conf=profiler2.autoenable:true",
+          "-conf=profiler2.gpu.enable:false",
+          "-conf=overlay.fps:true",
+          "-conf=rendererbackend:gl",
+          "-conf=adaptivefps.session:0",
+          "-conf=vsync:false"
+        ],
+        "graphics_environment": {
+          "LD_LIBRARY_PATH": "/opt/asahi-m3-0ad/lib:/opt/asahi-m3-wayland/lib",
+          "LIBGL_DRIVERS_PATH": "/opt/asahi-m3-0ad/lib/dri",
+          "__EGL_VENDOR_LIBRARY_FILENAMES": "/opt/asahi-m3-0ad/egl.json",
+          "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+          "GALLIUM_DRIVER": "zink",
+          "VK_DRIVER_FILES": "/opt/asahi-m3-0ad/asahi.json",
+          "ASAHI_M3_EXPERIMENTAL": "1",
+          "AGX_MESA_DEBUG": "nopromote",
+          "HK_DEBUG_LOG": "0",
+          "AGX_NATIVE_FLOAT_PREAMBLE": "true",
+          "HK_M4_COMPRESSED_2D": "true",
+          "HK_M4_COMPRESSED_FEEDBACK": "true",
+          "HK_NATIVE_COALESCE_BROADCAST": "true",
+          "HK_M3_EARLY_TILING": "true",
+          "GBM_BACKENDS_PATH": "/opt/asahi-m3-wayland/lib/gbm",
+          "MESA_SHADER_CACHE_DIR": "/home/eryk/.cache/mesa-merge-0ad-baseline",
+          "HK_M4_NATIVE_PREAMBLE": "true",
+          "HK_M4_PREFETCH_UBOS": "true",
+          "HK_M4_PREFETCH_VARIANT": "true",
+          "HK_M4_PLAIN_SAMPLERS": "true",
+          "HK_M4_IOTO_TEMPLATES": "true"
+        }
+      },
+      "mappings": {
+        "/opt/asahi-m3-0ad/lib/libvulkan_asahi.so": "e310049501a94b63bbd664169540a45e3a237fc2feac7dbe6276c933429a9b01",
+        "/opt/asahi-m3-0ad/lib/libgallium-26.1.4.so": "6aab0f3a098a834cc01885ab4329e43657c78131818ea71e6b1aa6f2fc7c8ed2",
+        "/opt/asahi-m3-0ad/lib/libgbm.so.1.0.0": "b6e2b3b05bb6ef990c31fa864c8a9f8ead0f0e4ce7a7b48ae46b8458cfdd91dd",
+        "/opt/asahi-m3-0ad/lib/libEGL_mesa.so.0.0.0": "adbd28011381a17e653654493fdfce755fd0615d9af1c5c63a1b476e2adde32f"
+      },
+      "interruption": {
+        "utc": "2026-09-23T09:17:31.875852+00:00",
+        "status": "ssh-timeout-evidence-pending",
+        "run": "baseline old game Mesa",
+        "scope": "The host SSH command reached its 60s bound; target evidence not yet fetched. User reports booting M3. Do not infer GPU or thermal root cause from transport timeout. M3 campaign remains stopped at segment boundary; no further game runs launched.",
+        "prior_candidate_runs": [
+          "m3-0ad-live-e325-gl-01-candidate",
+          "m3-0ad-live-e325-gl-02-candidate"
+        ],
+        "classification": "user-interrupted",
+        "user_confirmation": "User reports booting M3 and confirms \"My error. :)\"",
+        "classification_utc": "2026-09-23T09:18:01.037446+00:00"
+      },
+      "peak_temperature_c": 87.75,
+      "sha256": {
+        "guard.log": "4fe4503ad03fb02c230c93461bd23a33ff4c0823f55c9f1a759d1c0b81392549",
+        "binary-identity.json": "37fee8d7e74e7422ca91c6f668e8e32a58e129e800eef844629360a14b39e7fa",
+        "kernel-live.log": "6560c2f0238deba537192c4f0362830895699dfcf5058b380047d2b6327d3515",
+        "mapped-graphics-binaries.json": "e1393690bc9ef5bf5154a0c157ab2e0f5499b8b6e95b7cbbe4818dd4adcd2938",
+        "result.json": "5fccc539af0ba0d8e32a11ff19bace497ba8f231571671a88abbdfeab3f8019c",
+        "settings.json": "2fa31ecc627300c57548020b97ff3e9ed3a4cbe283315ba0a41e641c13902680",
+        "temperatures.jsonl": "c3d9dc592dcf3c3d5086229af27a5447824f08acaf6c9459dc0598fef74545b4"
+      }
+    },
+    {
+      "evidence": "build/m3m4-merge-20260923/m3-0ad-live-e325-gl-03-r1-baseline",
+      "guard": {
+        "boot_id": "6a64bab3-e352-4836-a97c-1a27e3bc540a",
+        "phase": "complete",
+        "watchdog": {
+          "device": "/dev/watchdog0",
+          "identity": "Apple SoC Watchdog",
+          "timeout_seconds": 60,
+          "initial_timeleft_seconds": 59,
+          "periodic_keepalive": false,
+          "armed": true,
+          "ssh_broker_lease": false
+        },
+        "elapsed_seconds": 27.511766633000008
+      },
+      "frame_summary": {
+        "frames": 1208,
+        "seconds": 9.998173427000001,
+        "fps": 120.82206903290995,
+        "median_frame_ms": 8.286292500001124,
+        "maximum_frame_ms": 16.95350299999987,
+        "scope": "Complete frame intervals in the last ten seconds; screenshot captured afterwards"
+      },
+      "settings": {
+        "command": [
+          "/usr/bin/pyrogenesis",
+          "-autostart=skirmishes/acropolis_bay_2p",
+          "-autostart-player=1",
+          "-autostart-civ=1:cart",
+          "-autostart-civ=2:gaul",
+          "-autostart-seed=200002407",
+          "-autostart-aiseed=2993941790",
+          "-conf=view.scroll.mouse.detectdistance:0",
+          "-conf=view.scroll.speed:0",
+          "-conf=profiler2.autoenable:true",
+          "-conf=profiler2.gpu.enable:false",
+          "-conf=overlay.fps:true",
+          "-conf=rendererbackend:gl",
+          "-conf=adaptivefps.session:0",
+          "-conf=vsync:false"
+        ],
+        "graphics_environment": {
+          "LD_LIBRARY_PATH": "/opt/asahi-m3-0ad/lib:/opt/asahi-m3-wayland/lib",
+          "LIBGL_DRIVERS_PATH": "/opt/asahi-m3-0ad/lib/dri",
+          "__EGL_VENDOR_LIBRARY_FILENAMES": "/opt/asahi-m3-0ad/egl.json",
+          "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+          "GALLIUM_DRIVER": "zink",
+          "VK_DRIVER_FILES": "/opt/asahi-m3-0ad/asahi.json",
+          "ASAHI_M3_EXPERIMENTAL": "1",
+          "AGX_MESA_DEBUG": "nopromote",
+          "HK_DEBUG_LOG": "0",
+          "AGX_NATIVE_FLOAT_PREAMBLE": "true",
+          "HK_M4_COMPRESSED_2D": "true",
+          "HK_M4_COMPRESSED_FEEDBACK": "true",
+          "HK_NATIVE_COALESCE_BROADCAST": "true",
+          "HK_M3_EARLY_TILING": "true",
+          "GBM_BACKENDS_PATH": "/opt/asahi-m3-wayland/lib/gbm",
+          "MESA_SHADER_CACHE_DIR": "/home/eryk/.cache/mesa-merge-0ad-baseline",
+          "HK_M4_NATIVE_PREAMBLE": "true",
+          "HK_M4_PREFETCH_UBOS": "true",
+          "HK_M4_PREFETCH_VARIANT": "true",
+          "HK_M4_PLAIN_SAMPLERS": "true",
+          "HK_M4_IOTO_TEMPLATES": "true"
+        }
+      },
+      "mappings": {
+        "/opt/asahi-m3-0ad/lib/libvulkan_asahi.so": "e310049501a94b63bbd664169540a45e3a237fc2feac7dbe6276c933429a9b01",
+        "/opt/asahi-m3-0ad/lib/libgallium-26.1.4.so": "6aab0f3a098a834cc01885ab4329e43657c78131818ea71e6b1aa6f2fc7c8ed2",
+        "/opt/asahi-m3-0ad/lib/libgbm.so.1.0.0": "b6e2b3b05bb6ef990c31fa864c8a9f8ead0f0e4ce7a7b48ae46b8458cfdd91dd",
+        "/opt/asahi-m3-0ad/lib/libEGL_mesa.so.0.0.0": "adbd28011381a17e653654493fdfce755fd0615d9af1c5c63a1b476e2adde32f"
+      },
+      "peak_temperature_c": 84.75,
+      "sha256": {
+        "guard.log": "2d7d292ddce9070a90f97c20681171b394c63cd70df4679c968377b079df8e9f",
+        "binary-identity.json": "37fee8d7e74e7422ca91c6f668e8e32a58e129e800eef844629360a14b39e7fa",
+        "frame-summary.json": "d4bd27a88c05f96ce1c1fe9e5720d9fcd8485f884cba7dbf24a7409f77538904",
+        "kernel-live.log": "26bf9d4f464f3f0014e464d828acf81703ca2b85df4081b3f5d6e28ac52aa650",
+        "mapped-graphics-binaries.json": "e1393690bc9ef5bf5154a0c157ab2e0f5499b8b6e95b7cbbe4818dd4adcd2938",
+        "result.json": "8fb69188cf67595123a5a3c345baec532a4fd3afbaf4afeec221e478c8864902",
+        "screen.png": "0bb5ae44cc53a1ed7128f4c8d41f1f93ee9d01067b16529c3f4ee310037d251a",
+        "settings.json": "2fa31ecc627300c57548020b97ff3e9ed3a4cbe283315ba0a41e641c13902680",
+        "temperatures.jsonl": "6980bc2dcbf86587ce269053a4f54b7813db3163cdc7d42ec74a8a4330c94960"
+      }
+    },
+    {
+      "evidence": "build/m3m4-merge-20260923/m3-0ad-live-e325-vulkan-00-baseline",
+      "guard": {
+        "boot_id": "6a64bab3-e352-4836-a97c-1a27e3bc540a",
+        "phase": "complete",
+        "watchdog": {
+          "device": "/dev/watchdog0",
+          "identity": "Apple SoC Watchdog",
+          "timeout_seconds": 60,
+          "initial_timeleft_seconds": 59,
+          "periodic_keepalive": false,
+          "armed": true,
+          "ssh_broker_lease": false
+        },
+        "elapsed_seconds": 27.510504946999987
+      },
+      "frame_summary": {
+        "frames": 1015,
+        "seconds": 9.989403841,
+        "fps": 101.6076650974992,
+        "median_frame_ms": 9.628744000000466,
+        "maximum_frame_ms": 78.1812670000015,
+        "scope": "Complete frame intervals in the last ten seconds; screenshot captured afterwards"
+      },
+      "settings": {
+        "command": [
+          "/usr/bin/pyrogenesis",
+          "-autostart=skirmishes/acropolis_bay_2p",
+          "-autostart-player=1",
+          "-autostart-civ=1:cart",
+          "-autostart-civ=2:gaul",
+          "-autostart-seed=200002407",
+          "-autostart-aiseed=2993941790",
+          "-conf=view.scroll.mouse.detectdistance:0",
+          "-conf=view.scroll.speed:0",
+          "-conf=profiler2.autoenable:true",
+          "-conf=profiler2.gpu.enable:false",
+          "-conf=overlay.fps:true",
+          "-conf=rendererbackend:vulkan",
+          "-conf=adaptivefps.session:0",
+          "-conf=vsync:false",
+          "-conf=renderer.backend.vulkan.disabledescriptorindexing:true"
+        ],
+        "graphics_environment": {
+          "LD_LIBRARY_PATH": "/opt/asahi-m3-0ad/lib:/opt/asahi-m3-wayland/lib",
+          "LIBGL_DRIVERS_PATH": "/opt/asahi-m3-0ad/lib/dri",
+          "__EGL_VENDOR_LIBRARY_FILENAMES": "/opt/asahi-m3-0ad/egl.json",
+          "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+          "GALLIUM_DRIVER": "zink",
+          "VK_DRIVER_FILES": "/opt/asahi-m3-0ad/asahi.json",
+          "ASAHI_M3_EXPERIMENTAL": "1",
+          "AGX_MESA_DEBUG": "nopromote",
+          "HK_DEBUG_LOG": "0",
+          "AGX_NATIVE_FLOAT_PREAMBLE": "true",
+          "HK_M4_COMPRESSED_2D": "true",
+          "HK_M4_COMPRESSED_FEEDBACK": "true",
+          "HK_NATIVE_COALESCE_BROADCAST": "true",
+          "HK_M3_EARLY_TILING": "true",
+          "GBM_BACKENDS_PATH": "/opt/asahi-m3-wayland/lib/gbm",
+          "MESA_SHADER_CACHE_DIR": "/home/eryk/.cache/mesa-merge-0ad-baseline",
+          "HK_M4_NATIVE_PREAMBLE": "true",
+          "HK_M4_PREFETCH_UBOS": "true",
+          "HK_M4_PREFETCH_VARIANT": "true",
+          "HK_M4_PLAIN_SAMPLERS": "true",
+          "HK_M4_IOTO_TEMPLATES": "true"
+        }
+      },
+      "mappings": {
+        "/opt/asahi-m3-0ad/lib/libvulkan_asahi.so": "e310049501a94b63bbd664169540a45e3a237fc2feac7dbe6276c933429a9b01"
+      },
+      "peak_temperature_c": 86.25,
+      "sha256": {
+        "guard.log": "cf98d1bc912b5a46718a32c591cb0dafda420888c39cc00df28fff8986437aeb",
+        "binary-identity.json": "37fee8d7e74e7422ca91c6f668e8e32a58e129e800eef844629360a14b39e7fa",
+        "frame-summary.json": "de4369b16809cf84fb2429834cc9716def38167b7d917bdf0f6df2e2ff0e0c32",
+        "kernel-live.log": "65e9e900b4ccd99d10ffcb0fda21b884dcc511e2281d2fbd108131b82edea93e",
+        "mapped-graphics-binaries.json": "0d693110497895fc01cb17c67e7bcdfe45f486f8d816737583bf4a29f54be71d",
+        "result.json": "ab22c7374ff0e7d8726445c0215e220d31918cb93bdd009b8b930302343af3bf",
+        "screen.png": "16b8b9a1d9dd2544e7e53ecb40d3f6c39c6fbb744279cadc45bace4d32a984de",
+        "settings.json": "449098278055cac9379feb4f034934546ba3ff72c1722cd8e93f8a29cf308491",
+        "temperatures.jsonl": "46b5f68bee8851acbee10bacfc0b28eaf6c328f47b93c3e09f06d9879b773463"
+      }
+    },
+    {
+      "evidence": "build/m3m4-merge-20260923/m3-0ad-live-e325-vulkan-01-candidate",
+      "interruption": {
+        "utc": "2026-09-23T09:23:30.381325+00:00",
+        "classification": "unclassified-interruption",
+        "scope": "SSH timed out during the merged native Vulkan game; evidence fetch also failed. Do not classify it from the prior user-interrupted baseline. M3 campaign and further application checks remain stopped pending logs/recovery."
+      },
+      "sha256": {
+        "guard.log": "9e178996edad8c779bf67468bfed4206fc921032cbd2913d20b3272f7d51c3a6"
+      }
+    }
+  ]
+}

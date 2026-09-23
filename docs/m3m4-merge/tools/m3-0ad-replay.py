@@ -44,7 +44,7 @@ if not library.is_absolute():
 assert library.is_file(), library
 (out/'manifest.json').write_text(json.dumps({'command':cmd,'software':software,
     'adaptations':['offscreen swapchain','memory rebind','pipeline cache omitted'],
-    'environment':{k:v for k,v in env.items() if k.startswith(('HK_','AGX_','VK_','LD_','MESA_'))},
+    'environment':{k:v for k,v in env.items() if k.startswith(('HK_','AGX_','VK_','LD_','MESA_','LIBGL_','GALLIUM_','GBM_','__EGL_','ASAHI_'))},
     'sha256':{str(p):hashlib.sha256(p.read_bytes()).hexdigest() for p in
               (trace,Path(cmd[0]),icd,library)}},indent=2))
 governors={};child=None;klog=None;result={};mapped=False

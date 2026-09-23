@@ -549,3 +549,27 @@ cache remain explicit adaptations; this is not real Factorio/desktop acceptance
 or gameplay FPS. The host campaign supervisor alone was paused while its child
 finished normally, then resumed after replay evidence was saved and broker idle.
 No active guard was suspended. Full default-option GLES coverage continues.
+
+
+## Real M3 game checkpoint: incomplete
+
+Two merged OpenGL/Zink runs complete at 3024x1964 with actual candidate
+Vulkan/Gallium/EGL/GBM mappings and the existing game flags. Ten-second frame
+samples are 132.74 and 130.87 FPS; first old-Mesa baseline is 120.36 FPS. The
+last baseline was externally interrupted; the user confirmed restarting the
+machine. Its partial evidence stays incomplete (peak recorded 87.75 C).
+A separately recorded post-reboot baseline completes at 120.82 FPS. This boot
+change and the short samples prevent a clean paired speedup claim.
+
+Image review found old/dim overlapping compositor frames before the reboot,
+including on the original baseline. The post-reboot baseline image is clean.
+Do not claim complete visual acceptance for the merged live game until its
+fresh screenshot is reviewed; replay images remain clean and pixel-exact.
+The compositor itself is still the old Mesa installation throughout these runs.
+
+On the new boot, old-Mesa native Vulkan completes at 101.61 FPS with peak
+86.25 C. The following merged native Vulkan attempt loses SSH connectivity;
+target evidence is not yet available and no GPU/thermal root cause is inferred.
+This is separate from the earlier user-confirmed interruption. Further M3
+application tests and CTS stay stopped. M4 continues its independent guarded
+campaign. The raw/compact intermediate record preserves both interruptions.
