@@ -1,0 +1,7 @@
+{
+  "incident_evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260922T161132262747Z-gles32-plan-0022-r0",
+  "recovery_run": "/home/council/dev/dirtyroom_m4/build/gles32-regression-20260922/recovery-probe/002-0000/run",
+  "new_boot": "84d6165b-76e2-4a35-8ab5-e93c7b9e705f",
+  "segment": 22,
+  "reason": "Original GPU timeout and seven preceding image failures retained. Four active cases all Pass serially after reboot; seven failures also Pass serially, and exact2500-case parallel batch Pass2466/NS34 with unchanged driver hashes. Resume only unrun/interrupted peers with one worker for the affected segment. This permits coverage after verified recovery, not a claim that the incident is fixed."
+}

@@ -1,0 +1,22 @@
+{
+  "selected": 1,
+  "recorded": 1,
+  "completed": 1,
+  "counts": {
+    "Pass": 1
+  },
+  "classifications": {
+    "selected": 1
+  },
+  "elapsed_seconds": 44.73628197799553,
+  "preparation_seconds": 1.4992130299797282,
+  "runner_seconds": 42.00808711299942,
+  "jobs": 1,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "c77de6940e02b9d191b5795c666b56a8bde91fdf52ab6a3b163cab10646484ec",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260923T030820864542Z-gles-fix-flush-warning-recheck-1-0",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 87.0
+}

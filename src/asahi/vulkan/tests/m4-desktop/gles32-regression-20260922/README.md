@@ -1,9 +1,32 @@
-# Fresh OpenGL ES 3.2 regression, September 22
+# OpenGL ES 3.2 full regression, September 22–23
+
+The full frozen catalog is complete: all 326,602 configuration/case pairs in
+87 sessions have exact indexed results. Raw outcomes are 316,008 Pass, 10,552
+NotSupported, 15 QualityWarning, 18 CompatibilityWarning, 8 Fail, and 1
+Timeout. The eight failing cases and the timed-out case passed separate guarded
+rechecks on the unchanged driver. The one new flush/wait timing warning also
+passed its isolated recheck; its original warning remains in the raw result.
+
+Three GPU incidents remain open: two tiling job timeouts (segments 22 and 143)
+and one firmware stamp-order fault (segment 278). The affected cases and exact
+parallel/serial batches passed after guarded recovery, but that does not fix or
+explain the GPU faults. Segment 105's per-case point-mode timeout also passed
+serially, with the original 60-second bound retained. Segments 42 and 43 hit
+the 900-second workload bound; their unfinished cases passed in guarded
+continuations at the same bounds. No driver or kernel patch was deployed during
+this campaign. The mixed historical baseline is not a single full-build run.
+
+`final/` contains the full raw results, attempts, summary, comparison, failure
+list, incident list, reviews, isolated warning recheck, and an exact catalog
+coverage validation. The original incident evidence is in `incident-0022/`,
+`incident-0143/`, and `incident-0278/`. All 304 main guarded attempts stayed
+below the provisional 120 C emergency cutoff (peak 109.75 C). The target was
+left with the normal desktop active and the 60-second watchdog armed and idle.
+
+## Launch provenance
 
 User requested the full ES 3.2 run after GL46 validation. Workspace campaign
-`build/gles32-regression-20260922`, launch controller PID1846849. RUNNING at
-this launch checkpoint; consult controller.json and summary.json in the
-workspace for actual progress. Do not start concurrent hardware experiments.
+`build/gles32-regression-20260922`, launch controller PID1846849.
 
 All 326,602 configuration/case pairs, 87 sessions, 298 guarded segments.
 Frozen catalog is byte-identical to the preceding descriptor-fixed campaign;

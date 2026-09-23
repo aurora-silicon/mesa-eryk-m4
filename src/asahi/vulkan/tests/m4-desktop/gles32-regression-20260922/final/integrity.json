@@ -1,0 +1,25 @@
+{
+  "coverage": "exact",
+  "total": 326602,
+  "sessions": 87,
+  "catalog_plan_sha256": "3b044959c9db458c6c1a7daec89e7b52fb7b9fb1475eb9039d002dc62740ee1f",
+  "catalog_file_sha256": "af868d3ba8e896cea00d8b85b4ea60b2223d28d6d501778adfc4975996f27f8b",
+  "counts": {
+    "Pass": 316008,
+    "NotSupported": 10552,
+    "QualityWarning": 15,
+    "CompatibilityWarning": 18,
+    "Fail": 8,
+    "Timeout": 1
+  },
+  "attempts": 326624,
+  "runs": 304,
+  "max_peak_temperature_c": 109.75,
+  "guard_verdicts": {
+    "pass": 298,
+    "gpu_timeout": 2,
+    "process_failure": 3,
+    "gpu_fault": 1
+  },
+  "flush_warning_recheck": "Pass"
+}

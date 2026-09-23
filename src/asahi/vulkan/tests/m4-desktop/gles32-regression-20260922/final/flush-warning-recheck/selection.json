@@ -1,0 +1,25 @@
+[
+  {
+    "index": 2086,
+    "case": "dEQP-GLES2.functional.flush_finish.flush_wait",
+    "boot_id": "f9d383d2-2573-417e-b6ee-b0164801ea5e",
+    "runner_status": "Warn",
+    "seconds": 38.178986,
+    "eligibility": {
+      "case": "dEQP-GLES2.functional.flush_finish.flush_wait",
+      "catalog_index": 20875,
+      "session": 1,
+      "session_index": 17086,
+      "classification": "selected",
+      "rule": "Frozen Khronos ES32 runner plan"
+    },
+    "status": "CompatibilityWarning",
+    "message": "Suspicious performance behavior",
+    "qpa": "deqp-runner/c9.r1.qpa",
+    "worker_exit": "exit status: 0",
+    "segment": 8,
+    "session": 1,
+    "global_index": 20875,
+    "run": "/home/council/dev/dirtyroom_m4/build/gles32-regression-20260922/segments/0008/run"
+  }
+]
