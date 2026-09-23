@@ -36,3 +36,15 @@ the explicit ICD. Candidate replays therefore use a coherent EGL/Gallium/GBM
 prefix instead of retaining unrelated old loader paths. The trace's memory
 rebinding and offscreen swapchain adaptations remain explicit in evidence.
 Coverage comparison also flags newly introduced quality/compatibility warnings.
+
+
+`mesa-merge-package.py --help` describes immutable ARM64 staging. It verifies
+the Meson source directory, clean committed source and generated git SHA before
+installing without a rebuild; it hashes every regular library in the staged
+prefix. Original build products and runtime prefixes are retained.
+
+Replay helpers now save actual process mappings and require the selected
+Vulkan library. The M3 helper also requires a successful exit and saved frame;
+the image still needs a separate reference comparison. No guard or thermal
+policy changed. Historical M3 OpenGL replay faults remain a qualification
+limitation; a successful native Vulkan replay does not qualify that path.

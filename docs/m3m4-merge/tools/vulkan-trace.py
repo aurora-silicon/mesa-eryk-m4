@@ -214,11 +214,20 @@ def main():
         check()
         # Inherit the parent's log: API errors remain visible to its classifier.
         child = subprocess.Popen(command, env=env, start_new_session=True)
+        result['selected_library_mapped'] = False
         while child.poll() is None:
             check()
+            if not result['selected_library_mapped']:
+                try:
+                    mappings = Path('/proc', str(child.pid), 'maps').read_text()
+                except FileNotFoundError:
+                    mappings = ''
+                if any(line.endswith(' ' + str(library.resolve())) for line in mappings.splitlines()):
+                    (out / 'process-maps.txt').write_text(mappings)
+                    result['selected_library_mapped'] = True
             if time.monotonic() - result['started'] > a.seconds:
                 raise TimeoutError('Trace workload exceeded its bounded duration')
-            time.sleep(.2)
+            time.sleep(.2 if result['selected_library_mapped'] else .01)
         result['returncode'] = child.returncode
         check()
     except BaseException as error:
@@ -237,6 +246,8 @@ def main():
         os.sync()
     if result['returncode']:
         raise SystemExit(result['returncode'])
+    if a.mode == 'replay' and not result['selected_library_mapped']:
+        raise RuntimeError('Selected Vulkan library was not observed in replay process')
     traces = list(out.glob('*.gfxr'))
     if a.mode == 'capture' and not any(f.stat().st_size > 0 for f in traces):
         raise RuntimeError('Application exited without producing a trace')

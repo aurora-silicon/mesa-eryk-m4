@@ -475,3 +475,23 @@ with the watchdog broker idle. No active target guard was interrupted. Fresh
 full catalogs, without inherited outcomes, now run as `m3-gles31-e325` and
 `m4-gles32-e325`. Their artifact manifest hashes all seven regular shared
 libraries, including the GBM backend. Normal desktop deployment is still pending.
+
+
+## Replay preparation and content audit
+
+The e325 content audit changes exactly one of the 76 production-file hashes
+from the 581 checkpoint: the Zink advanced-blend gate described above.
+`production-dispositions-e325.json` records the new checkpoint without replacing
+the original manifest (33 M4 retained, 22 M3 adopted, 21 reconciled).
+M4's additional 85-case Vulkan contract selection completed 44 Pass /
+41 NotSupported on e325, no failures or guard incidents.
+
+Replay helpers now retain the actual replay process mappings and reject a
+missing selected Vulkan library. M3 additionally rejects a nonzero replay exit,
+inner timeout, or missing third-frame image instead of leaving that decision
+only to the caller. Syntax checks pass; updated hardware replay qualification
+is still pending the broad campaigns. The historical M3 OpenGL capture has a
+recorded replay fault, so it is not a known-good replay baseline. Retain that
+limitation; use the qualified native Vulkan traditional-descriptor capture and
+validate OpenGL separately with the real application (or a new successful
+capture/replay). Do not label the known-broken trace a merge regression.
