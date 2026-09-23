@@ -1,0 +1,30 @@
+Writing test log into /root/asahi-evidence/20260923T222522046380Z-x11-present-timeout-integration/present.qpa
+dEQP Core vulkan-cts-1.4.6.2-0-gf6a29701220f34dd1407513bfe80d74ca7b392ce (0xf6a29701) starting..
+  target implementation = 'Default'
+
+Test case 'dEQP-VK.wsi.xlib.present_id_wait.wait.single_no_timeout'..
+  Pass (Pass)
+
+Test case 'dEQP-VK.wsi.xlib.present_id_wait.wait.past_no_timeout'..
+  Pass (Pass)
+
+Test case 'dEQP-VK.wsi.xlib.present_id_wait.wait.no_frames'..
+  Pass (Pass)
+
+Test case 'dEQP-VK.wsi.xlib.present_id_wait.wait.no_frame_id'..
+  Pass (Pass)
+
+Test case 'dEQP-VK.wsi.xlib.present_id_wait.wait.future_frame'..
+  Pass (Pass)
+
+Test case 'dEQP-VK.wsi.xlib.present_id_wait.wait.two_swapchains'..
+  Pass (Pass)
+
+DONE!
+
+Test run totals:
+  Passed:        6/6 (100.0%)
+  Failed:        0/6 (0.0%)
+  Not supported: 0/6 (0.0%)
+  Warnings:      0/6 (0.0%)
+  Waived:        0/6 (0.0%)

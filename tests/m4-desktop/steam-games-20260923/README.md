@@ -73,3 +73,14 @@ condition timeout, semaphore timeout, semaphore error and presentation error.
 condition timeout, while the other four cases pass. Incremental ARM64 Vulkan
 build passes. Hardware integration validation remains pending. This fix is not
 yet claimed to repair the black gameplay scene.
+
+
+M4 integration: six dEQP-VK.wsi.xlib.present_id_wait.wait.* cases pass with
+/opt/asahi-m3m4-1114dad03d9, Vulkan library SHA256
+0954393359fd877951375cd79411d50f84125cb097a6da67be64f9061bb64c5a.
+Experiment20260923T222522046380Z-x11-present-timeout-integration, peak63.75C.
+Initial integration attempts had no X11 authorization / missing xhost, and were
+rejected by the harness rather than counted as six unsupported successes.
+The successful run temporarily permitted local root to the user's X server and
+removed that permission in finally. Normal desktop Mesa selection is unchanged;
+the candidate is installed in its own versioned prefix.

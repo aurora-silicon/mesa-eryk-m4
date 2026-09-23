@@ -1,0 +1,22 @@
+{
+  "id": "20260923T222522046380Z-x11-present-timeout-integration",
+  "verdict": "pass",
+  "transport_returncode": 0,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260923T222522046380Z-x11-present-timeout-integration",
+  "observations": {
+    "pixel_results": [],
+    "pixel_result_count": 0,
+    "thermal_samples": 13,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 63.75,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 63.75,
+      "Ta000m": 62.0,
+      "Te000m": 61.0,
+      "Te001m": 59.5,
+      "Tp000m": 63.75,
+      "Tp001m": 59.75
+    }
+  }
+}
