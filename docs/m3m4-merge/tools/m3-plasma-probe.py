@@ -38,10 +38,14 @@ try:
  library=Path(json.loads(Path(env['VK_DRIVER_FILES']).read_text())['ICD']['library_path'])
  assert library.is_absolute() and library.is_file()
  mappings=Path('/proc',pids[0],'maps').read_text()
- assert str(library) in mappings and str(library)+' (deleted)' not in mappings
- assert str(library.parent/'libgallium-26.1.4.so') in mappings
+ required_libraries=[library,library.parent/'libgallium-26.1.4.so',
+                     library.parent/'libEGL_mesa.so.0',library.parent/'libgbm.so.1',
+                     library.parent/'gbm/dri_gbm.so']
+ for required in required_libraries:
+  assert any(line.endswith(' '+str(required.resolve())) for line in mappings.splitlines()),str(required)
  (out/'compositor-maps.txt').write_text(mappings)
- (out/'mesa-identity.json').write_text(json.dumps(dict(library=str(library),sha256=hashlib.sha256(library.read_bytes()).hexdigest()),indent=2)+'\n')
+ (out/'mesa-identity.json').write_text(json.dumps(dict(library=str(library),sha256=hashlib.sha256(library.read_bytes()).hexdigest(),
+  mapped_libraries={str(p.resolve()):hashlib.sha256(p.read_bytes()).hexdigest() for p in required_libraries}),indent=2)+'\n')
  raw=dict(x.split(b'=',1) for x in Path('/proc',pids[0],'environ').read_bytes().split(b'\0') if b'=' in x)
  session=raw[b'XDG_SESSION_ID'].decode()
  properties=subprocess.check_output(['loginctl','show-session',session,'-p','Active','-p','State','-p','VTNr','-p','Type'],text=True)

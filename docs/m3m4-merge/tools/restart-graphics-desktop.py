@@ -50,13 +50,18 @@ while time.monotonic() < deadline:
         assert proc != before
         assert required <= {m['name'] for m in monitors if not m.get('disabled') and m.get('dpmsStatus') and m.get('width')}
         mappings = (proc/'maps').read_text()
-        assert str(library) in mappings
-        assert str(library)+' (deleted)' not in mappings
+        required_libraries = [library, library.parent/'libgallium-26.1.4.so',
+                              library.parent/'libEGL_mesa.so.0', library.parent/'libgbm.so.1',
+                              library.parent/'gbm/dri_gbm.so']
+        for required_library in required_libraries:
+            assert any(line.endswith(' ' + str(required_library.resolve()))
+                       for line in mappings.splitlines()), str(required_library)
         stable = stable or time.monotonic()
         if time.monotonic() - stable >= 3:
             (out/'monitors-after.json').write_text(json.dumps(monitors, indent=2)+'\n')
             (out/'compositor-maps.txt').write_text(mappings)
-            (out/'desktop.json').write_text(json.dumps(dict(pid=int(proc.name),library=str(library),sha256=expected,outputs=sorted(required)),indent=2)+'\n')
+            (out/'desktop.json').write_text(json.dumps(dict(pid=int(proc.name),library=str(library),sha256=expected,outputs=sorted(required),
+                mapped_libraries={str(p.resolve()):hashlib.sha256(p.read_bytes()).hexdigest() for p in required_libraries}),indent=2)+'\n')
             print('PASS: normal desktop restarted with verified Mesa and prior displays', flush=True)
             break
     except (AssertionError, FileNotFoundError, ProcessLookupError, subprocess.SubprocessError):

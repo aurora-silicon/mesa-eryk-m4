@@ -48,3 +48,14 @@ Vulkan library. The M3 helper also requires a successful exit and saved frame;
 the image still needs a separate reference comparison. No guard or thermal
 policy changed. Historical M3 OpenGL replay faults remain a qualification
 limitation; a successful native Vulkan replay does not qualify that path.
+
+
+Versioned desktop selection always writes GBM_BACKENDS_PATH, including on M3
+where the original fixed-prefix configuration omitted it. libgbm otherwise
+searches its compiled /opt/asahi-m3m4 backend directory after relocation.
+The desktop probes require actual candidate Vulkan, Gallium, EGL, GBM and DRI
+GBM-backend mappings; current production processes were inspected to confirm
+that these libraries are present on both desktops. Selection has not yet run.
+`install m3-game ...` separately switches the qualified game environment with
+its own rollback record, preserving all game-specific options. Run it only
+after the candidate passes replay and real application qualification.

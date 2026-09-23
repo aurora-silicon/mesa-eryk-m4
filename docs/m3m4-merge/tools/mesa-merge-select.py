@@ -2,7 +2,7 @@
 """Select a verified versioned Mesa prefix for the normal desktop, or restore.
 
 Target-side, configuration only: no GPU work, service restart or watchdog access.
-Usage: mesa-merge-select.py install m3|m4 CANDIDATE_JSON NEW_BACKUP_DIRECTORY
+Usage: mesa-merge-select.py install m3|m4|m3-game CANDIDATE_JSON NEW_BACKUP_DIRECTORY
        mesa-merge-select.py restore BACKUP_DIRECTORY
 Restart/validate the desktop separately under the machine's existing guard.
 """
@@ -31,7 +31,7 @@ if sys.argv[1]=='restore':
     print('Restored recorded desktop configuration; restart under the existing guard.')
     raise SystemExit(0)
 
-assert sys.argv[1]=='install' and sys.argv[2] in ('m3','m4')
+assert sys.argv[1]=='install' and sys.argv[2] in ('m3','m4','m3-game')
 chip=sys.argv[2];candidate=json.loads(Path(sys.argv[3]).read_text());backup=Path(sys.argv[4])
 prefix=Path(candidate['prefix']);assert prefix.is_absolute() and str(prefix).startswith('/opt/asahi-m3m4-')
 for relative,sha in candidate['libraries'].items():
@@ -41,9 +41,11 @@ for name,library in [('asahi.json','libvulkan_asahi.so'),('egl.json','libEGL_mes
     assert Path(json.loads((prefix/name).read_text())['ICD']['library_path']).resolve()==(prefix/'lib'/library).resolve()
 values=dict(LD_LIBRARY_PATH=str(prefix/'lib'),LIBGL_DRIVERS_PATH=str(prefix/'lib/dri'),
             VK_DRIVER_FILES=str(prefix/'asahi.json'),
-            __EGL_VENDOR_LIBRARY_FILENAMES=str(prefix/'egl.json'))
-paths=([Path('/root/m3-gpu-tools/desktop/graphics.env'),Path('/run/m3-gpu/graphics.env')]
-       if chip=='m3' else [Path('/etc/environment.d/90-omarchy-j713-rendering.conf')])
+            __EGL_VENDOR_LIBRARY_FILENAMES=str(prefix/'egl.json'),
+            GBM_BACKENDS_PATH=str(prefix/'lib/gbm'))
+paths={'m3':[Path('/root/m3-gpu-tools/desktop/graphics.env'),Path('/run/m3-gpu/graphics.env')],
+       'm4':[Path('/etc/environment.d/90-omarchy-j713-rendering.conf')],
+       'm3-game':[Path('/opt/asahi-m3-0ad/graphics.env')]}[chip]
 # The M3 game-specific prefix remains separate until its replay/real game gate
 # passes; select it in a separately recorded deployment, never silently here.
 backup.mkdir(parents=True,exist_ok=False)
@@ -56,9 +58,12 @@ for i,path in enumerate(paths):
         if key in values:
             line=key+'='+values[key];found.add(key)
         elif key=='VK_ICD_FILENAMES':line=key+'='+values['VK_DRIVER_FILES']
-        elif key=='GBM_BACKENDS_PATH':line=key+'='+str(prefix/'lib/gbm')
         new.append(line)
-    assert found==set(values),(path,found)
+    assert found >= set(values)-{'GBM_BACKENDS_PATH'},(path,found)
+    # Relocated libgbm still has its build-prefix backend path compiled in.
+    # M3's original install did not need this override; the versioned tree does.
+    if 'GBM_BACKENDS_PATH' not in found:
+        new.append('GBM_BACKENDS_PATH='+values['GBM_BACKENDS_PATH'])
     data=('\n'.join(new)+'\n').encode();name=f'{i:02d}-{path.name}'
     (backup/name).write_bytes(original);(backup/(name+'.selected')).write_bytes(data)
     manifest['files'].append(dict(path=str(path),backup=name,mode=stat.S_IMODE(s.st_mode),

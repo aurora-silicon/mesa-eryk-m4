@@ -19,7 +19,7 @@ for arg in sys.argv[3:]:
         candidate = json.loads(Path(arg.split('=',1)[1]).read_text())
         assert all(isinstance(k,str) and isinstance(v,str) and
                    k.startswith(('HK_', 'AGX_', 'MESA_', 'VK_', 'ASAHI_',
-                                 'LD_LIBRARY_', 'LIBGL_', 'GALLIUM_', '__EGL_'))
+                                 'LD_LIBRARY_', 'LIBGL_', 'GALLIUM_', 'GBM_', '__EGL_'))
                    for k,v in candidate.items())
         env.update(candidate)
     if arg.startswith('--env='):

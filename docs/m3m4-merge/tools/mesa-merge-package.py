@@ -37,6 +37,7 @@ manifest=dict(revision=revision,prefix=prefix,libraries=libraries,build_options=
 (a.evidence/('candidate-'+short+'.json')).write_text(json.dumps(manifest,indent=2)+'\n')
 for chip in ['m3','m4']:
  env=dict(LD_LIBRARY_PATH=prefix+'/lib',LIBGL_DRIVERS_PATH=prefix+'/lib/dri',
+          GBM_BACKENDS_PATH=prefix+'/lib/gbm',
           VK_DRIVER_FILES=prefix+'/asahi.json',__EGL_VENDOR_LIBRARY_FILENAMES=prefix+'/egl.json',
           MESA_LOADER_DRIVER_OVERRIDE='zink',GALLIUM_DRIVER='zink',AGX_MESA_DEBUG='nopromote',HK_DEBUG_LOG='0')
  env['ASAHI_'+chip.upper()+'_EXPERIMENTAL']='1'
