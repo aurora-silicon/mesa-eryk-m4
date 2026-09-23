@@ -1,0 +1,20 @@
+{
+  "purpose": "Exact frozen ES 3.2 checkpoint after G16 retirement repair",
+  "kernel_source_commit": "aa0c3dcad374",
+  "kernel_module_sha256": "afc871fb4273720d8825c644cf7823a10457ed9eb16a9e9a3f47303978357956",
+  "catalog_plan_sha256": "3b044959c9db458c6c1a7daec89e7b52fb7b9fb1475eb9039d002dc62740ee1f",
+  "baseline_results_sha256": "8c2f8ad844ae9eed31c53d5e83237279c817d2efbfdda90dd9074007b20c729b",
+  "current_results_sha256": "eb9d35c148c2bf2710a64b8aeea7a59303165c8b3cc627066b7c158347f5fa7c",
+  "recorded_pairs": 100357,
+  "last_global_index": 100356,
+  "completed_segments": 41,
+  "outcomes": {
+    "Pass": 97977,
+    "NotSupported": 2348,
+    "QualityWarning": 15,
+    "CompatibilityWarning": 17
+  },
+  "remaining": 226245,
+  "status": "Partial rerun; remaining catalog not validated",
+  "bounds": "60 seconds per case, 900 seconds per guarded segment"
+}
