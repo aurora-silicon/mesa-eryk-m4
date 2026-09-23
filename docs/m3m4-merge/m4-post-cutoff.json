@@ -1,0 +1,420 @@
+[
+  {
+    "commit": "c146cd50ff3c6f9565b8eca2983a3501e07b38ab",
+    "subject": "test: checkpoint 48454 fresh ES32 pairs and retain flush timing warning",
+    "files": [
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/SHA256SUMS",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/baseline-sources.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/checkpoint-048454/README.md",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/checkpoint-048454/comparison.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/checkpoint-048454/controller.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/checkpoint-048454/failures.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/checkpoint-048454/incidents.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/checkpoint-048454/results.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/checkpoint-048454/sessions-summary.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/checkpoint-048454/summary.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/compare.py",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/flush-wait-warning.qpa"
+    ],
+    "production_files": []
+  },
+  {
+    "commit": "0fdb13cec6c335226f45092b6220c1a702455814",
+    "subject": "test: retain ES32 GPU timeout snapshot and serial recovery evidence",
+    "files": [
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0022/comparison.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0022/controller.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0022/failures.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0022/incidents.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0022/manifest.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0022/remote-kernel-live.log.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0022/remote-result.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0022/remote-temperatures.jsonl.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0022/report.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0022/results.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0022/summary.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0022/target-before.json.gz"
+    ],
+    "production_files": []
+  },
+  {
+    "commit": "d96d7c55d401cbaa5ed220eb6e6ff9a70f35da6e",
+    "subject": "test: complete ES32 fault dump archive and seven passing rechecks",
+    "files": [
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/SHA256SUMS",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0022/README.md",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0022/failure-recheck-results.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0022/failure-recheck-summary.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0022/recovery-results.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0022/recovery-summary.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0022/remote-cts-runner.log.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0022/remote-g16-fault-devcd1-job7013074.bin.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0022/remote-g16-fault-devcd1-job7013074.bin.json.gz"
+    ],
+    "production_files": []
+  },
+  {
+    "commit": "1d3e4e60d15b8cf1c84398500b1f8dea4047811c",
+    "subject": "test: record passing parallel ES32 repeat and reviewed coverage continuation",
+    "files": [
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/SHA256SUMS",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0022/README.md",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0022/controller-stopped-0022.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0022/incident-scheduler.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0022/parallel-repeat-results.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0022/parallel-repeat-summary.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0022/recovery-review-0022.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0022/run-remaining.py"
+    ],
+    "production_files": []
+  },
+  {
+    "commit": "b3a5d13b32a6878aa791b5677beadff2a72a65ca",
+    "subject": "test: checkpoint 100357 ES32 pairs with incident history intact",
+    "files": [
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/SHA256SUMS",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/checkpoint-100357/README.md",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/checkpoint-100357/comparison.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/checkpoint-100357/controller.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/checkpoint-100357/failures.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/checkpoint-100357/incidents.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/checkpoint-100357/results.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/checkpoint-100357/sessions-summary.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/checkpoint-100357/summary.json.gz"
+    ],
+    "production_files": []
+  },
+  {
+    "commit": "7aa27102fd703134e56cd6010c8560793c81399a",
+    "subject": "tools: show individual ES CTS outcomes before worker groups finish",
+    "files": [
+      "src/asahi/vulkan/tests/m4-desktop/gles32-cts/tools/gl-cts-plan.py",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/README.md"
+    ],
+    "production_files": []
+  },
+  {
+    "commit": "92d6f9d4b1059005f2742772ea0ded70087532d0",
+    "subject": "tools: include single-case CTS files in live outcome counts",
+    "files": [
+      "src/asahi/vulkan/tests/m4-desktop/gles32-cts/tools/gl-cts-plan.py",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/SHA256SUMS"
+    ],
+    "production_files": []
+  },
+  {
+    "commit": "255cf0dc4b8012b54f37db06bc4d1a58f911bc8e",
+    "subject": "test: checkpoint 151609 ES32 pairs and bounded copy-image continuations",
+    "files": [
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/SHA256SUMS",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/checkpoint-151609/README.md",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/checkpoint-151609/comparison.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/checkpoint-151609/controller.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/checkpoint-151609/failures.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/checkpoint-151609/incidents.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/checkpoint-151609/results.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/checkpoint-151609/sessions-summary.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/checkpoint-151609/summary.json.gz"
+    ],
+    "production_files": []
+  },
+  {
+    "commit": "c7e55a1c9163e8f38477c699f82743e0d9f5514f",
+    "subject": "asahi: retain ES32 point-mode timeout and serial verification",
+    "files": [
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/SHA256SUMS",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/timeout-0105/README.md",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/timeout-0105/controller-stop-0105.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/timeout-0105/original/continuation-review.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/timeout-0105/original/cts-memory.jsonl.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/timeout-0105/original/cts-runner.log.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/timeout-0105/original/cts-timing.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/timeout-0105/original/kernel-live.log.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/timeout-0105/original/result.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/timeout-0105/original/results.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/timeout-0105/original/summary.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/timeout-0105/run-after-timeout.py",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/timeout-0105/serial-probe/cts-memory.jsonl.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/timeout-0105/serial-probe/cts-runner.log.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/timeout-0105/serial-probe/cts-timing.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/timeout-0105/serial-probe/kernel-live.log.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/timeout-0105/serial-probe/result.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/timeout-0105/serial-probe/results.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/timeout-0105/serial-probe/summary.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/timeout-0105/timeout-review-0105.json"
+    ],
+    "production_files": []
+  },
+  {
+    "commit": "f6d66afac0d75c2ec3a58f62fb76ea3f08886169",
+    "subject": "asahi: retain second ES32 tiling timeout and recovery evidence",
+    "files": [
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/SHA256SUMS",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0143/README.md",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0143/active-recheck/cts-memory.jsonl.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0143/active-recheck/cts-runner.log.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0143/active-recheck/cts-timing.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0143/active-recheck/kernel-live.log.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0143/active-recheck/result.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0143/active-recheck/results.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0143/active-recheck/summary.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0143/controller-stop-0143.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0143/failure-recheck/cts-memory.jsonl.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0143/failure-recheck/cts-runner.log.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0143/failure-recheck/cts-timing.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0143/failure-recheck/kernel-live.log.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0143/failure-recheck/result.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0143/failure-recheck/results.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0143/failure-recheck/summary.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0143/incident-0143-decoded.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0143/original/c0.r1.qpa.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0143/original/c1.r1.qpa.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0143/original/c2.r1.qpa.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0143/original/c3.r1.qpa.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0143/original/continuation-review.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0143/original/cts-memory.jsonl.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0143/original/cts-runner.log.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0143/original/g16-fault-devcd1-job2822139.bin.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0143/original/kernel-live.log.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0143/original/result.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0143/original/results.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0143/original/summary.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0143/parallel-repeat/cts-memory.jsonl.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0143/parallel-repeat/cts-runner.log.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0143/parallel-repeat/cts-timing.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0143/parallel-repeat/kernel-live.log.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0143/parallel-repeat/result.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0143/parallel-repeat/results.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0143/parallel-repeat/summary.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0143/preceding-failure/KHR-GLES3.texture_lod_bias.texture_lod_bias_all.c0.r1.qpa.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0143/preceding-failure/cts-memory.jsonl.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0143/preceding-failure/cts-runner.log.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0143/preceding-failure/cts-timing.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0143/preceding-failure/kernel-live.log.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0143/preceding-failure/result.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0143/preceding-failure/results.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0143/preceding-failure/summary.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0143/recovery-review-0143.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0143/run-after-recovery-0143.py"
+    ],
+    "production_files": []
+  },
+  {
+    "commit": "c1a75ffd3ddcb124b10d630592a8ff320ecf81d7",
+    "subject": "asahi: checkpoint ES32 regression beyond 200000 pairs",
+    "files": [
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/SHA256SUMS",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/checkpoint-200534/README.md",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/checkpoint-200534/comparison.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/checkpoint-200534/controller.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/checkpoint-200534/failures.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/checkpoint-200534/incidents.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/checkpoint-200534/results.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/checkpoint-200534/sessions-summary.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/checkpoint-200534/summary.json.gz"
+    ],
+    "production_files": []
+  },
+  {
+    "commit": "5fc6b0d374d49f721d96f1921eef264a902b7bac",
+    "subject": "asahi: align ES32 comparison with frozen checkpoint rows",
+    "files": [
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/SHA256SUMS",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/checkpoint-200534/comparison.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/compare.py"
+    ],
+    "production_files": []
+  },
+  {
+    "commit": "a2f0314d0e60fb14191d8e7a89a9fe0a573b73e6",
+    "subject": "asahi: checkpoint ES32 regression beyond 250000 pairs",
+    "files": [
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/SHA256SUMS",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/checkpoint-250227/README.md",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/checkpoint-250227/comparison.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/checkpoint-250227/controller.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/checkpoint-250227/failures.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/checkpoint-250227/incidents.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/checkpoint-250227/results.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/checkpoint-250227/sessions-summary.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/checkpoint-250227/summary.json.gz"
+    ],
+    "production_files": []
+  },
+  {
+    "commit": "f6ae18764acd09877361fca6be0419facfe7c16c",
+    "subject": "asahi: checkpoint ES32 regression beyond 300000 pairs",
+    "files": [
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/SHA256SUMS",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/checkpoint-301811/README.md",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/checkpoint-301811/comparison.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/checkpoint-301811/controller.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/checkpoint-301811/failures.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/checkpoint-301811/incidents.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/checkpoint-301811/results.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/checkpoint-301811/sessions-summary.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/checkpoint-301811/summary.json.gz"
+    ],
+    "production_files": []
+  },
+  {
+    "commit": "e7eebe4389947dd993e222ad256a0b20ed8d0c70",
+    "subject": "asahi: retain ES32 firmware stamp crash and reviewed recovery",
+    "files": [
+      "src/asahi/vulkan/tests/m4-desktop/gles32-cts/tools/gl-cts-plan.py",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/SHA256SUMS",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0278/README.md",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0278/active-recheck/cts-memory.jsonl.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0278/active-recheck/cts-runner.log.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0278/active-recheck/cts-timing.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0278/active-recheck/kernel-live.log.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0278/active-recheck/result.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0278/active-recheck/results.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0278/active-recheck/summary.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0278/batch-repeat/cts-memory.jsonl.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0278/batch-repeat/cts-runner.log.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0278/batch-repeat/cts-timing.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0278/batch-repeat/kernel-live.log.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0278/batch-repeat/result.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0278/batch-repeat/results.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0278/batch-repeat/summary.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0278/controller-stop-0278.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0278/incident-0278-decoded.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0278/original/c0.r1.qpa.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0278/original/c1.r1.qpa.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0278/original/c2.r1.qpa.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0278/original/c3.r1.qpa.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0278/original/c4.r1.qpa.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0278/original/continuation-review.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0278/original/cts-memory.jsonl.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0278/original/cts-runner.log.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0278/original/g16-fault-devcd1-job2550602.bin.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0278/original/kernel-live.log.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0278/original/result.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0278/original/results.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0278/original/summary.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0278/recovery-review-0278.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/incident-0278/run-after-recovery-0278.py"
+    ],
+    "production_files": []
+  },
+  {
+    "commit": "235f36d985097a200e36d9297ad61f6e91541e71",
+    "subject": "Archive complete OpenGL ES 3.2 regression evidence",
+    "files": [
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/README.md",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/SHA256SUMS",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/final/README.md",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/final/attempts.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/final/comparison.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/final/controller.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/final/failures.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/final/failures.tsv",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/final/flush-warning-recheck/001-0000/run/results.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/final/flush-warning-recheck/001-0000/run/summary.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/final/flush-warning-recheck/selection.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/final/incidents.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/final/integrity.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/final/recovery-review-0022.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/final/recovery-review-0143.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/final/recovery-review-0278.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/final/results.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/final/sessions-summary.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/final/summary.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/final/timeout-review-0105.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-regression-20260922/final/unique-failures.json.gz"
+    ],
+    "production_files": []
+  },
+  {
+    "commit": "3e9cf1e7923a5f1ca747fcac9989b090094c7dc1",
+    "subject": "Archive G16 high-stamp ES 3.2 boundary trial",
+    "files": [
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/README.md",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/SHA256SUMS",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/high-stamp-probe/clone.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/high-stamp-probe/installed-hashes.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/high-stamp-probe/segment-0022/remote-kernel-live.log.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/high-stamp-probe/segment-0022/remote-result.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/high-stamp-probe/segment-0022/results.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/high-stamp-probe/segment-0022/summary.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/high-stamp-probe/segment-0022/target-before.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/high-stamp-probe/segment-0105/remote-kernel-live.log.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/high-stamp-probe/segment-0105/remote-result.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/high-stamp-probe/segment-0105/results.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/high-stamp-probe/segment-0105/summary.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/high-stamp-probe/segment-0105/target-before.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/high-stamp-probe/segment-0142/remote-kernel-live.log.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/high-stamp-probe/segment-0142/remote-result.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/high-stamp-probe/segment-0142/results.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/high-stamp-probe/segment-0142/summary.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/high-stamp-probe/segment-0142/target-before.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/high-stamp-probe/segment-0143/remote-kernel-live.log.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/high-stamp-probe/segment-0143/remote-result.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/high-stamp-probe/segment-0143/results.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/high-stamp-probe/segment-0143/summary.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/high-stamp-probe/segment-0143/target-before.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/high-stamp-probe/segment-0278/remote-kernel-live.log.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/high-stamp-probe/segment-0278/remote-result.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/high-stamp-probe/segment-0278/results.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/high-stamp-probe/segment-0278/summary.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/high-stamp-probe/segment-0278/target-before.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/high-stamp-probe/summary.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/high-stamp-probe/variant.json"
+    ],
+    "production_files": []
+  },
+  {
+    "commit": "1748909ee29aaacc4700fbb6e0363c43b32836c6",
+    "subject": "Checkpoint repaired ES 3.2 past first GPU incident",
+    "files": [
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/SHA256SUMS",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/checkpoint-055954/README.md",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/checkpoint-055954/comparison.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/checkpoint-055954/installed-hashes.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/checkpoint-055954/manifest.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/checkpoint-055954/results.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/checkpoint-055954/segment-0022-results.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/checkpoint-055954/segment-0022-summary.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/checkpoint-055954/summary.json.gz"
+    ],
+    "production_files": []
+  },
+  {
+    "commit": "b28f2c66cb48fecb2ebf8423216a1588fcff0ba4",
+    "subject": "Checkpoint repaired ES 3.2 at 100357 indexed pairs",
+    "files": [
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/SHA256SUMS",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/checkpoint-100357/README.md",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/checkpoint-100357/comparison.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/checkpoint-100357/installed-hashes.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/checkpoint-100357/manifest.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/checkpoint-100357/results.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/checkpoint-100357/summary.json.gz"
+    ],
+    "production_files": []
+  },
+  {
+    "commit": "08b19ec3a2e422a7252fdfe77c185450fccf86da",
+    "subject": "Archive clean ES 3.2 handoff at 102857 pairs",
+    "files": [
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/README.md",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/SHA256SUMS",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/handoff-102857/README.md",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/handoff-102857/catalog.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/handoff-102857/clone.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/handoff-102857/comparison.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/handoff-102857/controller.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/handoff-102857/gl-cts-clone.py",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/handoff-102857/gl-cts-compare.py",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/handoff-102857/installed-hashes.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/handoff-102857/manifest.json",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/handoff-102857/results.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/handoff-102857/run-campaign.py",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/handoff-102857/segment-0041-results.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/handoff-102857/segment-0041-summary.json.gz",
+      "src/asahi/vulkan/tests/m4-desktop/gles32-retirement-fix-20260923/handoff-102857/summary.json.gz"
+    ],
+    "production_files": []
+  }
+]

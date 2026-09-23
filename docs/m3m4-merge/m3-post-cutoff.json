@@ -1,0 +1,243 @@
+[
+  {
+    "commit": "146a96154590b0845e66fd1e81e707a5dd8e654d",
+    "subject": "asahi: preserve AGX3b widening for derivatives and fused multiply-add",
+    "files": [
+      "src/asahi/compiler/agx_optimizer.c",
+      "src/asahi/compiler/test/test-optimizer.cpp"
+    ],
+    "production_files": [
+      "src/asahi/compiler/agx_optimizer.c"
+    ]
+  },
+  {
+    "commit": "f16324d56598cb7e02d93c05840e4a5478df4c96",
+    "subject": "asahi: print invalid operands without aborting rejection diagnostics",
+    "files": [
+      "src/asahi/compiler/agx_print.c"
+    ],
+    "production_files": [
+      "src/asahi/compiler/agx_print.c"
+    ]
+  },
+  {
+    "commit": "74d8fd45c64420eb03b18cb928cb2b0e5c5e5550",
+    "subject": "docs: record M3 GLES compiler crash regression evidence",
+    "files": [
+      "docs/m3-gles31-crash-fixes.md"
+    ],
+    "production_files": []
+  },
+  {
+    "commit": "cdaf409fa2cdd864faee557fed40196c9d7341de",
+    "subject": "docs: enable existing GLES1 support in the M3 EGL build",
+    "files": [
+      "docs/m3-wayland-bringup.md"
+    ],
+    "production_files": []
+  },
+  {
+    "commit": "d113463d1fd79d343299c0d2b103e40f614aaff4",
+    "subject": "hk: preserve native array gradient texel offsets",
+    "files": [
+      "docs/m3-gles31-texture-offsets.md",
+      "src/asahi/vulkan/hk_shader.c"
+    ],
+    "production_files": [
+      "src/asahi/vulkan/hk_shader.c"
+    ]
+  },
+  {
+    "commit": "5aa07efe9e1c331b3b734d4dc22d96e599fd2a94",
+    "subject": "zink: drop obsolete duplicate transform-feedback varying reservation",
+    "files": [
+      "docs/m3-gles31-varyings.md",
+      "src/gallium/drivers/zink/zink_screen.c"
+    ],
+    "production_files": [
+      "src/gallium/drivers/zink/zink_screen.c"
+    ]
+  },
+  {
+    "commit": "cc37cf1aeca7bde1a80b8b23b4ed41828172ab12",
+    "subject": "glsl: avoid cancellation in the acos builtin near one",
+    "files": [
+      "docs/m3-gles31-acos-precision.md",
+      "src/compiler/glsl/builtin_functions.cpp"
+    ],
+    "production_files": [
+      "src/compiler/glsl/builtin_functions.cpp"
+    ]
+  },
+  {
+    "commit": "bd4450e680a5d3e67ca2dd2e1e34f8d5e7b1a578",
+    "subject": "zink: report geometry limits only when the stage is supported",
+    "files": [
+      "docs/m3-gles31-pbo-uploads.md",
+      "src/gallium/drivers/zink/zink_screen.c"
+    ],
+    "production_files": [
+      "src/gallium/drivers/zink/zink_screen.c"
+    ]
+  },
+  {
+    "commit": "f66e05a46689dc3a3ed455a704524c896a05f550",
+    "subject": "hk: advertise G15S multisampled depth and stencil sampling",
+    "files": [
+      "docs/m3-gles31-msaa-depth.md",
+      "src/asahi/vulkan/hk_physical_device.c"
+    ],
+    "production_files": [
+      "src/asahi/vulkan/hk_physical_device.c"
+    ]
+  },
+  {
+    "commit": "d13fbb9bdfffa885ef177e12edf9f9e76a959170",
+    "subject": "glthread: restrict immediate-mode index unrolling to compatibility profiles",
+    "files": [
+      "docs/m3-gles31-client-index-unroll.md",
+      "src/mesa/main/glthread_draw.c"
+    ],
+    "production_files": [
+      "src/mesa/main/glthread_draw.c"
+    ]
+  },
+  {
+    "commit": "18ce05e0715534b6906205a0580d6713eed3832c",
+    "subject": "hk: report G15S integer multisample texture and framebuffer support",
+    "files": [
+      "docs/m3-gles31-msaa-integer.md",
+      "src/asahi/vulkan/hk_physical_device.c"
+    ],
+    "production_files": [
+      "src/asahi/vulkan/hk_physical_device.c"
+    ]
+  },
+  {
+    "commit": "f97fe4fb63d3d02585f6a06cb70a50a948db9670",
+    "subject": "hk: apply custom border comparisons to shadow gathers",
+    "files": [
+      "docs/m3-gles31-shadow-border.md",
+      "src/asahi/vulkan/hk_sampler.c",
+      "src/asahi/vulkan/hk_sampler_flags.h",
+      "src/asahi/vulkan/hk_shader.c"
+    ],
+    "production_files": [
+      "src/asahi/vulkan/hk_sampler.c",
+      "src/asahi/vulkan/hk_sampler_flags.h",
+      "src/asahi/vulkan/hk_shader.c"
+    ]
+  },
+  {
+    "commit": "fe9dfae6533813bb38639e2e35012dc2e8369937",
+    "subject": "hk: expose native G15 attachmentless multisampling",
+    "files": [
+      "docs/m3-gles31-no-attachments.md",
+      "src/asahi/vulkan/hk_physical_device.c"
+    ],
+    "production_files": [
+      "src/asahi/vulkan/hk_physical_device.c"
+    ]
+  },
+  {
+    "commit": "365bf208bbc6a2eb605b414ebf1d5ddd07e64b23",
+    "subject": "hk: preserve SNORM encodings in native image copies",
+    "files": [
+      "docs/m3-gles31-no-attachments.md",
+      "docs/m3-gles31-snorm-copy.md",
+      "src/asahi/vulkan/hk_cmd_meta.c"
+    ],
+    "production_files": [
+      "src/asahi/vulkan/hk_cmd_meta.c"
+    ]
+  },
+  {
+    "commit": "30f558b4af2b68bf20131b7d7c43883edbec069c",
+    "subject": "hk: accept native clip output descriptors on M3",
+    "files": [
+      "docs/m3-gles31-clip-output.md",
+      "src/asahi/vulkan/hk_agx3_vdm_decode.c",
+      "src/asahi/vulkan/tests/test-hk-agx3-vdm-decode.c"
+    ],
+    "production_files": [
+      "src/asahi/vulkan/hk_agx3_vdm_decode.c"
+    ]
+  },
+  {
+    "commit": "2ed3bac695d28a1c6d081529a9270937c404309d",
+    "subject": "docs: record full M3 cull-distance regression",
+    "files": [
+      "docs/m3-gles31-clip-output.md"
+    ],
+    "production_files": []
+  },
+  {
+    "commit": "e419a3c40c689ebdc2ecb5b64049c2046b022546",
+    "subject": "hk: preserve transform feedback metadata before replacing NIR",
+    "files": [
+      "docs/m3-gles31-xfb-lifetime.md",
+      "src/asahi/vulkan/hk_shader.c"
+    ],
+    "production_files": [
+      "src/asahi/vulkan/hk_shader.c"
+    ]
+  },
+  {
+    "commit": "ed373e168402c30e98363d641def93e8a505d772",
+    "subject": "docs: qualify M3 feedback lifetime fix with all copy conversions",
+    "files": [
+      "docs/m3-gles31-xfb-lifetime.md"
+    ],
+    "production_files": []
+  },
+  {
+    "commit": "456123efc443e3790f465a34946777a9638e61ca",
+    "subject": "asahi: lower native texture gathers in vertex shader stages",
+    "files": [
+      "src/asahi/compiler/agx3_pack_binary.c",
+      "src/asahi/compiler/agx_nir_lower_g17p_combined_sampler.c",
+      "src/asahi/compiler/test/test-agx3-pack-binary.cpp",
+      "src/asahi/vulkan/hk_shader.c"
+    ],
+    "production_files": [
+      "src/asahi/compiler/agx3_pack_binary.c",
+      "src/asahi/compiler/agx_nir_lower_g17p_combined_sampler.c",
+      "src/asahi/vulkan/hk_shader.c"
+    ]
+  },
+  {
+    "commit": "59cd35366c763573659a8f0dfcef17c373060c57",
+    "subject": "docs: record M3 vertex gather crash fix and 525 passing regressions",
+    "files": [
+      "docs/m3-gles31-vertex-gather.md"
+    ],
+    "production_files": []
+  },
+  {
+    "commit": "37377c0f27402d4313d0119e6d91e40ab155a7dc",
+    "subject": "hk: qualify fragment storage and atomics on M3",
+    "files": [
+      "docs/m3-gles31-fragment-storage.md",
+      "src/asahi/vulkan/hk_physical_device.c"
+    ],
+    "production_files": [
+      "src/asahi/vulkan/hk_physical_device.c"
+    ]
+  },
+  {
+    "commit": "206e9cf0c0e0b911c730b8bc740477b609ec17ab",
+    "subject": "docs: record fragment storage qualification and prior-skip follow-ups",
+    "files": [
+      "docs/m3-gles31-fragment-storage.md"
+    ],
+    "production_files": []
+  },
+  {
+    "commit": "a9a2aa7e00df758a1edc0836c9638af558b8b38a",
+    "subject": "docs: classify retained M3 GLES framebuffer and line warnings",
+    "files": [
+      "docs/m3-gles31-warning-triage.md"
+    ],
+    "production_files": []
+  }
+]
