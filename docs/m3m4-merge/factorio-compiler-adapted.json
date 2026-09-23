@@ -1,0 +1,660 @@
+{
+  "adaptation": "Replace capture ABI hash only after proving every hashed source identical except the nonserialized nir_lower_tex_options callback. This is an adapted host replay, not native cache interchangeability.",
+  "hashed_sources": [
+    "src/asahi/compiler/agx_compile.h",
+    "src/compiler/nir/nir_serialize.c",
+    "src/compiler/nir/nir.h",
+    "src/compiler/nir/nir_shader_compiler_options.h",
+    "src/compiler/nir/nir_intrinsics.py",
+    "src/compiler/nir/nir_opcodes.py"
+  ],
+  "old_abi": "8377900c2025165e2528b9a66fdb57d48667e07b502967ffa2d582e36ef50980",
+  "new_abi": "8f7d8be3d79a5bd57e94cec2ce74388bb2aa925945acaaa4cffdb109220b0148",
+  "results": [
+    {
+      "original": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260919T142944950168Z-factorio-parameter-engines-final-replay/remote/vulkan-replay/compiler-capture/073e0ba5bf3bf7555821dedd9d0c434522f4bf7db9948be1d7dcee22cf52c852/input.bin",
+      "original_sha256": "090b00c059bca9813ec55692eccd18ff2ceca3881523efcca23dfa9fb1a9ef4a",
+      "adapted_sha256": "773f44ece86c40dce95cab5bf7e0f16b2c0bb1a8eacd2ec2bd12512a0af5838f",
+      "executions": [
+        {
+          "returncode": 0,
+          "seconds": 0.0283272780070547
+        },
+        {
+          "returncode": 0,
+          "seconds": 0.02700773300603032
+        }
+      ],
+      "identical": true,
+      "binary_sha256": [
+        "9ac9fa3691ee9e797471a65213ae70ea81df9cfc0b94cff8352abb41f1380fea",
+        "9ac9fa3691ee9e797471a65213ae70ea81df9cfc0b94cff8352abb41f1380fea"
+      ]
+    },
+    {
+      "original": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260919T142944950168Z-factorio-parameter-engines-final-replay/remote/vulkan-replay/compiler-capture/0a22ba6298a8f1df63b6c75adff19a6a1c1b5e86f378dae3b7b891b9afc1f396/input.bin",
+      "original_sha256": "f191b427ee0ccfa3b0545ec42a82d655a86eecb82300655fcfcf9e823fb23e7f",
+      "adapted_sha256": "f4c05687fa08b42ba7b5bce534a061093cd809239a3557a9a8e5de3a052d5d19",
+      "executions": [
+        {
+          "returncode": 0,
+          "seconds": 0.004021344997454435
+        },
+        {
+          "returncode": 0,
+          "seconds": 0.004454674985026941
+        }
+      ],
+      "identical": true,
+      "binary_sha256": [
+        "6e3ca8b4f6711f1e4c04c1884ef22922d593a616fc39acdc4a0fe069e465253a",
+        "6e3ca8b4f6711f1e4c04c1884ef22922d593a616fc39acdc4a0fe069e465253a"
+      ]
+    },
+    {
+      "original": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260919T142944950168Z-factorio-parameter-engines-final-replay/remote/vulkan-replay/compiler-capture/10c74e0140aa499b73d61dc9642767be98378bb30817e94689ddb715819c7cb1/input.bin",
+      "original_sha256": "d512690f716069c4c4488a1c7f6b28be658ea36e6fc3eaa9449dd84f351a976e",
+      "adapted_sha256": "25ea78e0f3271f2b899428ae8a339b9ea3e5a72c7babadf68f3ac2a5cfd08637",
+      "executions": [
+        {
+          "returncode": 0,
+          "seconds": 0.0028480649925768375
+        },
+        {
+          "returncode": 0,
+          "seconds": 0.001762750995112583
+        }
+      ],
+      "identical": true,
+      "binary_sha256": [
+        "9ddc6155de0b82dd14083ee09c08d81086ba4265df35ab76a6da39cc8a798e8c",
+        "9ddc6155de0b82dd14083ee09c08d81086ba4265df35ab76a6da39cc8a798e8c"
+      ]
+    },
+    {
+      "original": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260919T142944950168Z-factorio-parameter-engines-final-replay/remote/vulkan-replay/compiler-capture/13cc490b24e3cf63426936a9775b6cff3465197ed0c0ecf0eb37fcfbadcc231c/input.bin",
+      "original_sha256": "14776ca28deb563818d6a74b76fdf12799e6126acea9d9c4928457c56f269f7d",
+      "adapted_sha256": "7e6c02f8858250fd7bcf10df0074c4c65ff3c5c1d404ecd93a4ca563c2d151b7",
+      "executions": [
+        {
+          "returncode": 0,
+          "seconds": 0.009406594006577507
+        },
+        {
+          "returncode": 0,
+          "seconds": 0.009943812008714303
+        }
+      ],
+      "identical": true,
+      "binary_sha256": [
+        "17e831564bc95238a211187b1810989e10f2cc8952a8b65e5fefc6f72eafbc9d",
+        "17e831564bc95238a211187b1810989e10f2cc8952a8b65e5fefc6f72eafbc9d"
+      ]
+    },
+    {
+      "original": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260919T142944950168Z-factorio-parameter-engines-final-replay/remote/vulkan-replay/compiler-capture/14054c136ba4f0336b14765529459150bda461769c05d559a073ba21d5b2ff10/input.bin",
+      "original_sha256": "6f3530165f020e80ef6c7a68228d4498c21a3ae5771fce2364a779908639d89f",
+      "adapted_sha256": "14679499d3d5bc2e47368dd53bd283f61af359a0cdbf4623b74c032fddde403d",
+      "executions": [
+        {
+          "returncode": 0,
+          "seconds": 0.004074311000294983
+        },
+        {
+          "returncode": 0,
+          "seconds": 0.0038020809879526496
+        }
+      ],
+      "identical": true,
+      "binary_sha256": [
+        "fda8583655c4a8efe566b97f23edea816e4667a2f6df815d60d63c177dbdf267",
+        "fda8583655c4a8efe566b97f23edea816e4667a2f6df815d60d63c177dbdf267"
+      ]
+    },
+    {
+      "original": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260919T142944950168Z-factorio-parameter-engines-final-replay/remote/vulkan-replay/compiler-capture/189625aefc0073a820977506532b451a84532fc480968d8688b9d3ff6dc629d5/input.bin",
+      "original_sha256": "89bc11d824ddf23b96186436677321cc93202614129a0fef7ae38ddc0edb32a7",
+      "adapted_sha256": "cc8985c27a9db25fec7cb2acec1ba2d9915a7cb69d8658e643479ff87c70ca20",
+      "executions": [
+        {
+          "returncode": 0,
+          "seconds": 0.0023058580118231475
+        },
+        {
+          "returncode": 0,
+          "seconds": 0.002285051974467933
+        }
+      ],
+      "identical": true,
+      "binary_sha256": [
+        "daff66efb847ee8386dac8631a5ecd0c648ef17475e51cf460b49f7869f21f35",
+        "daff66efb847ee8386dac8631a5ecd0c648ef17475e51cf460b49f7869f21f35"
+      ]
+    },
+    {
+      "original": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260919T142944950168Z-factorio-parameter-engines-final-replay/remote/vulkan-replay/compiler-capture/2414afb3520731a379d49d62339668f2324cf59ab18a597de955a6790c453807/input.bin",
+      "original_sha256": "701ac4e52eb2e7e6631f1e2bce08bd763ac1fe4118fff3c30a7ca8fbdda0eb9d",
+      "adapted_sha256": "1bdf4063d133d013f4a6fd4881beb25eb2478157408e9b9ddcd2bccecb6b399c",
+      "executions": [
+        {
+          "returncode": 0,
+          "seconds": 0.002561718982178718
+        },
+        {
+          "returncode": 0,
+          "seconds": 0.003381964983418584
+        }
+      ],
+      "identical": true,
+      "binary_sha256": [
+        "61664f9abcbf9ce301b97a513536b6910fb04d0a84da02163536e375484f2f75",
+        "61664f9abcbf9ce301b97a513536b6910fb04d0a84da02163536e375484f2f75"
+      ]
+    },
+    {
+      "original": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260919T142944950168Z-factorio-parameter-engines-final-replay/remote/vulkan-replay/compiler-capture/33ee387759771e271584633038816737e39a73582f4c8e72a79538d07e41f4eb/input.bin",
+      "original_sha256": "f7bc3d698c3e49bc03605b996aeeb4936bc92e72bb14ab40bf4bd89e0cdb7af5",
+      "adapted_sha256": "df7fa3dbc9b61ccaca1be0994ffc6e2527aafdc1fe49ef4e14be88c279a0b892",
+      "executions": [
+        {
+          "returncode": 0,
+          "seconds": 0.0019377860007807612
+        },
+        {
+          "returncode": 0,
+          "seconds": 0.001993918005609885
+        }
+      ],
+      "identical": true,
+      "binary_sha256": [
+        "2cabcd248169a95f5b1b02936c3d30ac392f82541fa2458b69c46bb81b9e7fab",
+        "2cabcd248169a95f5b1b02936c3d30ac392f82541fa2458b69c46bb81b9e7fab"
+      ]
+    },
+    {
+      "original": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260919T142944950168Z-factorio-parameter-engines-final-replay/remote/vulkan-replay/compiler-capture/3afbb562915a8411032af84e4ecbbc778f492b4e4937aa9b6194bb60e8f86602/input.bin",
+      "original_sha256": "32590f478e579b7d8321cde1885dba004afbb8cda406c8d262a31fa6f2b47901",
+      "adapted_sha256": "30c36ba81d0cc04fecb45ba7819380442ce5760eb6848259cb8b02ecfcf2449f",
+      "executions": [
+        {
+          "returncode": 0,
+          "seconds": 0.015910226007690653
+        },
+        {
+          "returncode": 0,
+          "seconds": 0.015572909003822133
+        }
+      ],
+      "identical": true,
+      "binary_sha256": [
+        "8d22c208263d893c28f84e912e56a9c3cbe167d3e3e2961a37a30819e01e3a77",
+        "8d22c208263d893c28f84e912e56a9c3cbe167d3e3e2961a37a30819e01e3a77"
+      ]
+    },
+    {
+      "original": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260919T142944950168Z-factorio-parameter-engines-final-replay/remote/vulkan-replay/compiler-capture/592e20d0e633d175e47c359d08743f28b94122098ff8d5a53ffd6d5c6a4a380f/input.bin",
+      "original_sha256": "493601243e63c124c1483c3209cffefd2b2d8dfb4941a2ed69bf5b7eb85af81b",
+      "adapted_sha256": "bf2f4d478931bc5171dd54b1700c5f324fd5e3cb23af55bc744819739a2dacaf",
+      "executions": [
+        {
+          "returncode": 0,
+          "seconds": 0.039173673023469746
+        },
+        {
+          "returncode": 0,
+          "seconds": 0.03728940198197961
+        }
+      ],
+      "identical": true,
+      "binary_sha256": [
+        "badb3de4745c975a38e86a8a8b2588a728f0f7eabd67738b292c7d03c574a92d",
+        "badb3de4745c975a38e86a8a8b2588a728f0f7eabd67738b292c7d03c574a92d"
+      ]
+    },
+    {
+      "original": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260919T142944950168Z-factorio-parameter-engines-final-replay/remote/vulkan-replay/compiler-capture/64a600fbcde659f9c2f424cba5389fd1fe2799b9929996a3f05c3e6c10e289c6/input.bin",
+      "original_sha256": "ccd9d3229189e5f8b9fab21a3b5074ae5486c111197b55704ee5d305598e379c",
+      "adapted_sha256": "711de6bbe18605cdccccba543773c63597f636a0b5062421ad34fd2c426f25b5",
+      "executions": [
+        {
+          "returncode": 0,
+          "seconds": 0.07835510899894871
+        },
+        {
+          "returncode": 0,
+          "seconds": 0.08391517199925147
+        }
+      ],
+      "identical": true,
+      "binary_sha256": [
+        "3d84a885e3ebf416825fc182e70b1c8b825406d7476ff241093962cdf8a47279",
+        "3d84a885e3ebf416825fc182e70b1c8b825406d7476ff241093962cdf8a47279"
+      ]
+    },
+    {
+      "original": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260919T142944950168Z-factorio-parameter-engines-final-replay/remote/vulkan-replay/compiler-capture/670dc8d5ee964262320df64819a86ae68a587c2b5b41acfcbb76c47f4e058914/input.bin",
+      "original_sha256": "947522bab7e67210cc85fe26d490a4be0eb4ccf7a47c82d2485ebd71bf15df37",
+      "adapted_sha256": "5cb1e97cea4af2f946e7394a03f9e973ccacaf235fb6b64a357522cc1aba32b8",
+      "executions": [
+        {
+          "returncode": 0,
+          "seconds": 0.003148515010252595
+        },
+        {
+          "returncode": 0,
+          "seconds": 0.002081935992464423
+        }
+      ],
+      "identical": true,
+      "binary_sha256": [
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ]
+    },
+    {
+      "original": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260919T142944950168Z-factorio-parameter-engines-final-replay/remote/vulkan-replay/compiler-capture/7779fad17e3478090d11eaaae211a01aefba05176177e2d96af8a66590f16302/input.bin",
+      "original_sha256": "a2b0e2c5136510c86b87bdba450c071cb6912f60ec8a9c81255d266986c1eabf",
+      "adapted_sha256": "37aeaf6b21170480c1aa8195fa2c2ce7e36e9ab6cec70a62ba5dba3dad9c4914",
+      "executions": [
+        {
+          "returncode": 0,
+          "seconds": 0.0015666380058974028
+        },
+        {
+          "returncode": 0,
+          "seconds": 0.0018912240047939122
+        }
+      ],
+      "identical": true,
+      "binary_sha256": [
+        "ee34f10e51a80cc4347bee95e61e9137669896b58f06dba7e5aa80ce5d7b892f",
+        "ee34f10e51a80cc4347bee95e61e9137669896b58f06dba7e5aa80ce5d7b892f"
+      ]
+    },
+    {
+      "original": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260919T142944950168Z-factorio-parameter-engines-final-replay/remote/vulkan-replay/compiler-capture/7ebf7642120979e953d5475da5dc00ac60a457fa486d9f97172aa7777fc4a7b1/input.bin",
+      "original_sha256": "fc13b23947161c329e5eed1416bfee0a78a94adf49c08fbdde772d565731c74f",
+      "adapted_sha256": "69be5cd6190f19befd542d2d1e88ce9949e08dbdd6e25b8f5b69a08372f755b0",
+      "executions": [
+        {
+          "returncode": 0,
+          "seconds": 0.004264854011125863
+        },
+        {
+          "returncode": 0,
+          "seconds": 0.0035297909926157445
+        }
+      ],
+      "identical": true,
+      "binary_sha256": [
+        "8d845af7cc59d344c7cd37f6dd79cea42c937a89c263ae51fa606ab6054695f7",
+        "8d845af7cc59d344c7cd37f6dd79cea42c937a89c263ae51fa606ab6054695f7"
+      ]
+    },
+    {
+      "original": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260919T142944950168Z-factorio-parameter-engines-final-replay/remote/vulkan-replay/compiler-capture/83c4334ebbad0055a109f364e1f77a12051f930e0f822198ed2d06fc7fa6f2a6/input.bin",
+      "original_sha256": "e0b7c62e35b953ea5852de1cf26313b676f182b9ad38144aef2787d2db6b6f0b",
+      "adapted_sha256": "7b3e0710d46e6d143f6cce7e668f8a288b9bf4bb0bfce4578dcd42683eae4bd5",
+      "executions": [
+        {
+          "returncode": 0,
+          "seconds": 0.0019971839792560786
+        },
+        {
+          "returncode": 0,
+          "seconds": 0.00252992199966684
+        }
+      ],
+      "identical": true,
+      "binary_sha256": [
+        "193d69bdc590ad41d74d2f389db3f6173cc8547106ef709dea10aad0de9d1dbc",
+        "193d69bdc590ad41d74d2f389db3f6173cc8547106ef709dea10aad0de9d1dbc"
+      ]
+    },
+    {
+      "original": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260919T142944950168Z-factorio-parameter-engines-final-replay/remote/vulkan-replay/compiler-capture/83ebcb3c6f31d72b1d346bbb395f87a41b9d6fe5e32f540a6631f099f667f06f/input.bin",
+      "original_sha256": "b4e38ce9e88f084843c4c21a5201a52669c72acc365ddb782c7fd467f0ed0a5f",
+      "adapted_sha256": "aa672452d4f406d89f70c241eba230d647c7a4d1ff2c274d9456c03624401b38",
+      "executions": [
+        {
+          "returncode": 0,
+          "seconds": 0.028805561014451087
+        },
+        {
+          "returncode": 0,
+          "seconds": 0.029547415004344657
+        }
+      ],
+      "identical": true,
+      "binary_sha256": [
+        "a56fccb9e54bbc9718f511fcf87743ec177d4ad040032ef95c4d9994d54318d1",
+        "a56fccb9e54bbc9718f511fcf87743ec177d4ad040032ef95c4d9994d54318d1"
+      ]
+    },
+    {
+      "original": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260919T142944950168Z-factorio-parameter-engines-final-replay/remote/vulkan-replay/compiler-capture/94a272a4615bf746d6286f1befe48fbc06892cba2c0b54fbe9f613b4c946f4a9/input.bin",
+      "original_sha256": "9af018f504544538fda6443b6569cd2bc42dd214468c5ee99e97168d3f9fff00",
+      "adapted_sha256": "6fd90809173b05d5499a5144f7d59f17d7157f0eeffac567031abea0b4e5ca21",
+      "executions": [
+        {
+          "returncode": 0,
+          "seconds": 0.008650664996821433
+        },
+        {
+          "returncode": 0,
+          "seconds": 0.008893783000530675
+        }
+      ],
+      "identical": true,
+      "binary_sha256": [
+        "203b5a81472d9fb7feee235456894428f43661e9e8598ac6e2cb8b0a61e76d93",
+        "203b5a81472d9fb7feee235456894428f43661e9e8598ac6e2cb8b0a61e76d93"
+      ]
+    },
+    {
+      "original": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260919T142944950168Z-factorio-parameter-engines-final-replay/remote/vulkan-replay/compiler-capture/ac532dfd99c4b2d953a21ee1f18965d7bea704abcc165a045de29e9b5f6eeec6/input.bin",
+      "original_sha256": "5ede4b1059ca7c9fb0ec0c7314fe1eceb70e5bd27b0cf4f72ac8c5924951ceff",
+      "adapted_sha256": "68801b9e41c6bad4b1919afed89aa54073b0a7bff45f61d84a0132a691e94ca4",
+      "executions": [
+        {
+          "returncode": 0,
+          "seconds": 0.009641178010497242
+        },
+        {
+          "returncode": 0,
+          "seconds": 0.008978655998362228
+        }
+      ],
+      "identical": true,
+      "binary_sha256": [
+        "6ab029488781ca8a9699f3e08bab5b6db55f41c095c1b55440cc3e242a57d87b",
+        "6ab029488781ca8a9699f3e08bab5b6db55f41c095c1b55440cc3e242a57d87b"
+      ]
+    },
+    {
+      "original": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260919T142944950168Z-factorio-parameter-engines-final-replay/remote/vulkan-replay/compiler-capture/b87c3daae92dfcd88194fc1d7c02eda41a05c29469bb4272e38dff4c3d73258d/input.bin",
+      "original_sha256": "0b4b5194f86aa4b2c7aee326f64cf14791bc5f03fce3fc8cfaf40fbac4bf6309",
+      "adapted_sha256": "4a6d6e79c555073591541792554b6bab896dc2bbe1351ea1164c2dd0d599fc2e",
+      "executions": [
+        {
+          "returncode": 0,
+          "seconds": 0.00283782699261792
+        },
+        {
+          "returncode": 0,
+          "seconds": 0.0016286699974443763
+        }
+      ],
+      "identical": true,
+      "binary_sha256": [
+        "2f16040b00fab02bb55240596aef8ed735b9652c94251e3eb3363fbf7b42e8b1",
+        "2f16040b00fab02bb55240596aef8ed735b9652c94251e3eb3363fbf7b42e8b1"
+      ]
+    },
+    {
+      "original": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260919T142944950168Z-factorio-parameter-engines-final-replay/remote/vulkan-replay/compiler-capture/bae95de2cad542cf7c87bfad272dcae2c0002acf972f866bf4fe6c442abe48ec/input.bin",
+      "original_sha256": "7dda2f90b6fbe4950497170775ca16183d2038da1dbbe8e9817893fe4f3b82a8",
+      "adapted_sha256": "4c99bbaf70df7dcb497f1df276093e31485db2e4a1536e31c327dca2670c665a",
+      "executions": [
+        {
+          "returncode": 0,
+          "seconds": 0.012399592000292614
+        },
+        {
+          "returncode": 0,
+          "seconds": 0.012707234011031687
+        }
+      ],
+      "identical": true,
+      "binary_sha256": [
+        "f5ed172173d3176542900e0625d8a3f129084bfda8a36637996038f03ca83e28",
+        "f5ed172173d3176542900e0625d8a3f129084bfda8a36637996038f03ca83e28"
+      ]
+    },
+    {
+      "original": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260919T142944950168Z-factorio-parameter-engines-final-replay/remote/vulkan-replay/compiler-capture/bd68b5773b5713e7f3fcde125e5c8fc553d997e7d4cac5b89d5c85e988bd1dfc/input.bin",
+      "original_sha256": "0f723aa0ed2881bf6be0e7af53a67b73ba18a581fe378ba3b05245f2279bb7f4",
+      "adapted_sha256": "86422853fbf1aba3b85987e14dc53cb5b7ad28328fa75c25c861420f7eee89e0",
+      "executions": [
+        {
+          "returncode": 0,
+          "seconds": 0.023858058993937448
+        },
+        {
+          "returncode": 0,
+          "seconds": 0.024071271996945143
+        }
+      ],
+      "identical": true,
+      "binary_sha256": [
+        "10d62472f71fabc290d1f4f1e95df092c0f03d51413c0aede5137efe37d8a096",
+        "10d62472f71fabc290d1f4f1e95df092c0f03d51413c0aede5137efe37d8a096"
+      ]
+    },
+    {
+      "original": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260919T142944950168Z-factorio-parameter-engines-final-replay/remote/vulkan-replay/compiler-capture/c02e1df9f8f2c0a523e029d07db99601ef6e1f5675ac08d7eaf8a7cf7cd70626/input.bin",
+      "original_sha256": "23381409382fb03826b6c6d96df9a121153062ca8b6ba6f7dbd8f65c418d1432",
+      "adapted_sha256": "fd5e5bf27b4ed1c937a156cca9d04180d11084986800597011d90f598d55677d",
+      "executions": [
+        {
+          "returncode": 0,
+          "seconds": 0.05716587099595927
+        },
+        {
+          "returncode": 0,
+          "seconds": 0.055653558985795826
+        }
+      ],
+      "identical": true,
+      "binary_sha256": [
+        "e612b0417710b84ee42284316aebba0db1c8e2055060a3bd4cb02716cd7c5f35",
+        "e612b0417710b84ee42284316aebba0db1c8e2055060a3bd4cb02716cd7c5f35"
+      ]
+    },
+    {
+      "original": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260919T142944950168Z-factorio-parameter-engines-final-replay/remote/vulkan-replay/compiler-capture/c1623c8d7926be6364843cc5a4b3475ef5609665739852f892fd204a78509e23/input.bin",
+      "original_sha256": "8995b2f2276e00aeaebf1a6b8baf1e0ff595477659d2e9aa5b28a40d8a435020",
+      "adapted_sha256": "ad382edc0c921003c646da8b20389403a1ca31138560b8d9862a823a90c77e09",
+      "executions": [
+        {
+          "returncode": 0,
+          "seconds": 0.004517118009971455
+        },
+        {
+          "returncode": 0,
+          "seconds": 0.003964182978961617
+        }
+      ],
+      "identical": true,
+      "binary_sha256": [
+        "57c7dfad1b609c72655b57cc5672cdfc104804645b2bb70fccdef7d40b09e3af",
+        "57c7dfad1b609c72655b57cc5672cdfc104804645b2bb70fccdef7d40b09e3af"
+      ]
+    },
+    {
+      "original": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260919T142944950168Z-factorio-parameter-engines-final-replay/remote/vulkan-replay/compiler-capture/dee29335c539855b4c3e97c3e44f8eda853236ab49d1009ca09756a3aa49ec00/input.bin",
+      "original_sha256": "7b9191c745ce04f988ad2862ebf5a67ccfeda71ff82c94650ad73275b257bcaf",
+      "adapted_sha256": "ff70b3c2f3493aee5ab7bfafa9776016a178040eb79bc1b5841952f9cff78a27",
+      "executions": [
+        {
+          "returncode": 0,
+          "seconds": 0.003219373000320047
+        },
+        {
+          "returncode": 0,
+          "seconds": 0.0037637120112776756
+        }
+      ],
+      "identical": true,
+      "binary_sha256": [
+        "3865354a3278c12faeefd992aa48f33ca43af1add6d74ee3af534201a5f5f2e7",
+        "3865354a3278c12faeefd992aa48f33ca43af1add6d74ee3af534201a5f5f2e7"
+      ]
+    },
+    {
+      "original": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260919T142944950168Z-factorio-parameter-engines-final-replay/remote/vulkan-replay/compiler-capture/e0ab59f4a176407f5a3533ab6a7c4700005db6842aec069e3eb5533b1154193c/input.bin",
+      "original_sha256": "3eeb487a89c44db8aadec9203581e84d0e9cd294e25c23be5ad51e2e11ba863c",
+      "adapted_sha256": "4e009cc2b8152fe68bfa5da968f58e5c612209d95b184d0e7aeeeaec93763882",
+      "executions": [
+        {
+          "returncode": 0,
+          "seconds": 0.001115207007387653
+        },
+        {
+          "returncode": 0,
+          "seconds": 0.0009477249986957759
+        }
+      ],
+      "identical": true,
+      "binary_sha256": [
+        "01b4f6bd5d6a06a7b74a8565ceb4f845afe0ae96a0ac05cf5e86066bf7b538ec",
+        "01b4f6bd5d6a06a7b74a8565ceb4f845afe0ae96a0ac05cf5e86066bf7b538ec"
+      ]
+    },
+    {
+      "original": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260919T142944950168Z-factorio-parameter-engines-final-replay/remote/vulkan-replay/compiler-capture/e7f2cd59c00407c1074899d1e002ab6aef7a52bf9800f9b6301797eb41b9eb76/input.bin",
+      "original_sha256": "63b8457d93145f7dfcaeed8f77e9ead072f49d018d47664575749e2533f1ca7b",
+      "adapted_sha256": "a5b9da37a4e51610de352ade8be096c9e9a6c299e082560bbe35b0a91c61835c",
+      "executions": [
+        {
+          "returncode": 0,
+          "seconds": 0.011968414997681975
+        },
+        {
+          "returncode": 0,
+          "seconds": 0.012979645020095631
+        }
+      ],
+      "identical": true,
+      "binary_sha256": [
+        "2551dfdfe0f58af1c5998a9270540394a9424fc37f928611aa661ba6460fef76",
+        "2551dfdfe0f58af1c5998a9270540394a9424fc37f928611aa661ba6460fef76"
+      ]
+    },
+    {
+      "original": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260919T142944950168Z-factorio-parameter-engines-final-replay/remote/vulkan-replay/compiler-capture/e8bee860c129191eed7f43b662bd5c1355ef2351b8fafc487d150f453a061e67/input.bin",
+      "original_sha256": "403440965df270116695fad31440564fd03e2aed672d01ac244ad106d4be2a78",
+      "adapted_sha256": "012d47d20d731bca6f0e8d4121a3e3f4342a37841fc9634f16d94b17a2aa947f",
+      "executions": [
+        {
+          "returncode": 0,
+          "seconds": 0.03384328601532616
+        },
+        {
+          "returncode": 0,
+          "seconds": 0.032227858988335356
+        }
+      ],
+      "identical": true,
+      "binary_sha256": [
+        "1dbdd0fab8d567a41dfbf376e57f85da1ba34806404fd05f93d01890806edcbb",
+        "1dbdd0fab8d567a41dfbf376e57f85da1ba34806404fd05f93d01890806edcbb"
+      ]
+    },
+    {
+      "original": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260919T142944950168Z-factorio-parameter-engines-final-replay/remote/vulkan-replay/compiler-capture/eb5e6bdd9c8f09fd31fa51ddd85d1e5ce72bc32b0454761f148d0d615e0cd80a/input.bin",
+      "original_sha256": "c2976ee2b7d97541576738e73f3b4fd1ab68c9124864c8cef7b27d8f36d31ad8",
+      "adapted_sha256": "3d10c7546927fde75b2e3134a92dc41fa384a35973ea4ea7fd3489f78a7564eb",
+      "executions": [
+        {
+          "returncode": 0,
+          "seconds": 0.009380889998283237
+        },
+        {
+          "returncode": 0,
+          "seconds": 0.008382563013583422
+        }
+      ],
+      "identical": true,
+      "binary_sha256": [
+        "a15a43a8a6e85f7d829b5133e3f4c0af347c1550966283a2c45f2b814accaf34",
+        "a15a43a8a6e85f7d829b5133e3f4c0af347c1550966283a2c45f2b814accaf34"
+      ]
+    },
+    {
+      "original": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260919T142944950168Z-factorio-parameter-engines-final-replay/remote/vulkan-replay/compiler-capture/ee285c4399472dd33d14ce2d60315ce9560e1664358ed1665dba894cbb75d8c7/input.bin",
+      "original_sha256": "8ea5f82c9b405d62b99697e28f17256eb3716ace78655b76459ae9c29fd587e8",
+      "adapted_sha256": "75c219b19c60f72c9710548849447c74ee1bf203fd48ed2aa3872c2f51b3554e",
+      "executions": [
+        {
+          "returncode": 0,
+          "seconds": 0.028709317004540935
+        },
+        {
+          "returncode": 0,
+          "seconds": 0.028142146999016404
+        }
+      ],
+      "identical": true,
+      "binary_sha256": [
+        "e1adda96545c58e1fc9b854bf5b27e91f7a7dd866211d251cd82ef981a88ce07",
+        "e1adda96545c58e1fc9b854bf5b27e91f7a7dd866211d251cd82ef981a88ce07"
+      ]
+    },
+    {
+      "original": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260919T142944950168Z-factorio-parameter-engines-final-replay/remote/vulkan-replay/compiler-capture/f63107680356fc95bd26ec05a458be37257348058f20d5388936b371784a7a57/input.bin",
+      "original_sha256": "59170801f74e56293e79d6be24a8a7f490fc9a0fe85750eb2316c249013548e6",
+      "adapted_sha256": "fc1a2ac19dd1719679538ac8853d5f7010b73e078312bbad4a8c39fd652ec468",
+      "executions": [
+        {
+          "returncode": 0,
+          "seconds": 0.0020978350075893104
+        },
+        {
+          "returncode": 0,
+          "seconds": 0.002294007979799062
+        }
+      ],
+      "identical": true,
+      "binary_sha256": [
+        "411f81654ca8ded8f929d232c823795aadf9c7b2cd22a77ef13c7d75d9d80090",
+        "411f81654ca8ded8f929d232c823795aadf9c7b2cd22a77ef13c7d75d9d80090"
+      ]
+    },
+    {
+      "original": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260919T142944950168Z-factorio-parameter-engines-final-replay/remote/vulkan-replay/compiler-capture/fa2ef306f0e560f765d36f5f9f55e8d9404813b557e3131d1e206108576bd27d/input.bin",
+      "original_sha256": "b7169ac91e90a9b0b74a6ded10e9580276e5d2d681693fc8cbaf5365a4c93faa",
+      "adapted_sha256": "150dc68731da6cc81494034e30ef3a522adc3680a8dcef2c8a82e96119d9aed4",
+      "executions": [
+        {
+          "returncode": 0,
+          "seconds": 0.0036203539930284023
+        },
+        {
+          "returncode": 0,
+          "seconds": 0.0033596660068724304
+        }
+      ],
+      "identical": true,
+      "binary_sha256": [
+        "961d1f5c5b2ae67c9ede1a736cbb1d312cdc2a6158e0f10a8597628c26388e55",
+        "961d1f5c5b2ae67c9ede1a736cbb1d312cdc2a6158e0f10a8597628c26388e55"
+      ]
+    },
+    {
+      "original": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260919T142944950168Z-factorio-parameter-engines-final-replay/remote/vulkan-replay/compiler-capture/fa82714d36e8cec84b46750007347b93a7be714ec00db9eb49b4c7892b7009d4/input.bin",
+      "original_sha256": "032e985dd7c63a098bb700370e27945367ca49e4a3c9c2319b74f7023052cf62",
+      "adapted_sha256": "ce9221501f7a5d4a8151c143e9c26c191f046efe1bde3175c62e2f4e1599c0e5",
+      "executions": [
+        {
+          "returncode": 0,
+          "seconds": 0.0016398610023315996
+        },
+        {
+          "returncode": 0,
+          "seconds": 0.0026089240272995085
+        }
+      ],
+      "identical": true,
+      "binary_sha256": [
+        "17d94c7139a5f9e249d3c67b5d342eff55566e59292dec88cc01fae986169909",
+        "17d94c7139a5f9e249d3c67b5d342eff55566e59292dec88cc01fae986169909"
+      ]
+    }
+  ],
+  "executables": {
+    "/home/council/dev/dirtyroom_m4/build/mesa-m4-asahi-host/src/asahi/compiler/agx_shader_replay": "168b73e53266cd636df3f5398503055d85f4e3e68302d3e57ea5810576a39cb4",
+    "/home/council/dev/dirtyroom_m4/build/mesa-m3m4-host/src/asahi/compiler/agx_shader_replay": "831a6e1ff08487ebfc81036e2ea0083b5a230220221d44f375d48ad276931e7b"
+  },
+  "status": "pass"
+}

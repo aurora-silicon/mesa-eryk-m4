@@ -1,0 +1,68 @@
+[
+  {
+    "name": "asahi - mesa:asahi-agx3-packing",
+    "candidate": "FAIL",
+    "baseline": "FAIL",
+    "note": "same failing test on frozen M4 baseline"
+  },
+  {
+    "name": "asahi - mesa:agx3_opcode_mapping",
+    "candidate": "FAIL",
+    "baseline": "FAIL",
+    "note": "same failing test on frozen M4 baseline"
+  },
+  {
+    "name": "asahi - mesa:agx3_compile_fail_closed",
+    "candidate": "FAIL",
+    "baseline": "FAIL",
+    "note": "same failing test on frozen M4 baseline"
+  },
+  {
+    "name": "asahi - mesa:agx3_multi_store",
+    "candidate": "FAIL",
+    "baseline": "FAIL",
+    "note": "same failing test on frozen M4 baseline"
+  },
+  {
+    "name": "asahi - mesa:agx3_event_wait",
+    "candidate": "FAIL",
+    "baseline": "FAIL",
+    "note": "same failing test on frozen M4 baseline"
+  },
+  {
+    "name": "asahi - mesa:agx3_funop_core",
+    "candidate": "FAIL",
+    "baseline": "FAIL",
+    "note": "same failing test on frozen M4 baseline"
+  },
+  {
+    "name": "asahi - mesa:agx3_rt_core",
+    "candidate": "FAIL",
+    "baseline": "FAIL",
+    "note": "same failing test on frozen M4 baseline"
+  },
+  {
+    "name": "asahi - mesa:agx3_graphics_compile",
+    "candidate": "FAIL",
+    "baseline": "FAIL",
+    "note": "same failing test on frozen M4 baseline"
+  },
+  {
+    "name": "asahi - mesa:agx_register_bank",
+    "candidate": "FAIL",
+    "baseline": "FAIL",
+    "note": "same failing test on frozen M4 baseline"
+  },
+  {
+    "name": "asahi - mesa:hk_minmax_control_flow",
+    "candidate": "FAIL",
+    "baseline": "FAIL",
+    "note": "same failing test on frozen M4 baseline"
+  },
+  {
+    "name": "asahi - mesa:hk_agx3_ioto_program_core",
+    "candidate": "FAIL",
+    "baseline": "OK",
+    "note": "M3 admission expectation corrected with explicit resource-value checks; recheck Pass"
+  }
+]

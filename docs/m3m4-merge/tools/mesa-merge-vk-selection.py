@@ -55,6 +55,6 @@ a.output.mkdir(parents=True, exist_ok=False)
 rows = [dict(case=cases[i], catalog_index=i, reasons=selected[i]) for i in sorted(selected)]
 raw = ('\n'.join(r['case'] for r in rows)+'\n').encode()
 (a.output/'cases.txt').write_bytes(raw)
-(a.output/'cases.meta.json').write_text(json.dumps(dict(cases_sha256=hashlib.sha256(raw).hexdigest(), cases=rows),indent=2)+'\n')
+(a.output/'cases.meta.json').write_text(json.dumps(dict(schema=1, cases_sha256=hashlib.sha256(raw).hexdigest(), cases=rows),indent=2)+'\n')
 (a.output/'selection.json').write_text(json.dumps(dict(catalog=identity,groups=manifest,count=len(rows)),indent=2)+'\n')
 print(len(rows))

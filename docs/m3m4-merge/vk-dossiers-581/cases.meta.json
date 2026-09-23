@@ -1,0 +1,2432 @@
+{
+  "cases_sha256": "407cc8060f819ac708b937b71f40c6c659b84f61d7fcbf055b25da150f5f215a",
+  "cases": [
+    {
+      "case": "dEQP-VK.api.command_buffers.allocate_many_primary",
+      "catalog_index": 4476,
+      "reasons": [
+        "command reuse"
+      ]
+    },
+    {
+      "case": "dEQP-VK.api.command_buffers.execute_large_primary",
+      "catalog_index": 4487,
+      "reasons": [
+        "command reuse"
+      ]
+    },
+    {
+      "case": "dEQP-VK.api.command_buffers.indirect_compute_dispatch_offsets_12_16",
+      "catalog_index": 4499,
+      "reasons": [
+        "command reuse"
+      ]
+    },
+    {
+      "case": "dEQP-VK.api.command_buffers.indirect_compute_dispatch_offsets_16_28",
+      "catalog_index": 4510,
+      "reasons": [
+        "command reuse"
+      ]
+    },
+    {
+      "case": "dEQP-VK.api.command_buffers.indirect_compute_dispatch_offsets_24_12",
+      "catalog_index": 4522,
+      "reasons": [
+        "command reuse"
+      ]
+    },
+    {
+      "case": "dEQP-VK.api.command_buffers.indirect_compute_dispatch_offsets_28_28",
+      "catalog_index": 4534,
+      "reasons": [
+        "command reuse"
+      ]
+    },
+    {
+      "case": "dEQP-VK.api.command_buffers.indirect_compute_dispatch_offsets_8_0",
+      "catalog_index": 4545,
+      "reasons": [
+        "command reuse"
+      ]
+    },
+    {
+      "case": "dEQP-VK.api.command_buffers.nested_render_pass_continue",
+      "catalog_index": 4557,
+      "reasons": [
+        "command reuse"
+      ]
+    },
+    {
+      "case": "dEQP-VK.api.command_buffers.record_many_draws_secondary_1",
+      "catalog_index": 4569,
+      "reasons": [
+        "command reuse"
+      ]
+    },
+    {
+      "case": "dEQP-VK.api.command_buffers.record_simul_use_secondary_two_primary",
+      "catalog_index": 4580,
+      "reasons": [
+        "command reuse"
+      ]
+    },
+    {
+      "case": "dEQP-VK.api.command_buffers.secondary_push_constants_2",
+      "catalog_index": 4592,
+      "reasons": [
+        "command reuse"
+      ]
+    },
+    {
+      "case": "dEQP-VK.api.command_buffers.trim_command_pool_secondary",
+      "catalog_index": 4604,
+      "reasons": [
+        "command reuse"
+      ]
+    },
+    {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.blit_image.all_formats.generate_mipmaps.from_base_level.layercount_6.r32g32_sint.general_optimal_nearest",
+      "catalog_index": 20388,
+      "reasons": [
+        "retained M3 regression: repair-01"
+      ]
+    },
+    {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.resolve_image.copy_with_regions_before_resolving.16_bit",
+      "catalog_index": 43204,
+      "reasons": [
+        "resolve"
+      ]
+    },
+    {
+      "case": "dEQP-VK.api.copy_and_blit.copy_commands2.resolve_image.partial.2_bit",
+      "catalog_index": 43277,
+      "reasons": [
+        "resolve"
+      ]
+    },
+    {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r16g16b16a16_sint.r32g32_sint.optimal_optimal_nearest",
+      "catalog_index": 127838,
+      "reasons": [
+        "retained M3 regression: repair-01"
+      ]
+    },
+    {
+      "case": "dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r8g8_uint.r32g32_uint.optimal_optimal_nearest",
+      "catalog_index": 154176,
+      "reasons": [
+        "retained M3 regression: repair-01"
+      ]
+    },
+    {
+      "case": "dEQP-VK.api.copy_and_blit.core.resolve_image.copy_with_regions_before_resolving.64_bit_bind_offset",
+      "catalog_index": 232133,
+      "reasons": [
+        "resolve"
+      ]
+    },
+    {
+      "case": "dEQP-VK.api.copy_and_blit.core.resolve_image.diff_layout_copy_before_resolving.32_bit_general_general",
+      "catalog_index": 232206,
+      "reasons": [
+        "resolve"
+      ]
+    },
+    {
+      "case": "dEQP-VK.api.copy_and_blit.core.resolve_image.whole_array_image.4_bit",
+      "catalog_index": 232280,
+      "reasons": [
+        "resolve"
+      ]
+    },
+    {
+      "case": "dEQP-VK.api.copy_and_blit.core.resolve_image.whole_copy_before_resolving_transfer.2_bit",
+      "catalog_index": 232353,
+      "reasons": [
+        "resolve"
+      ]
+    },
+    {
+      "case": "dEQP-VK.api.copy_and_blit.dedicated_allocation.blit_image.all_formats.generate_mipmaps.from_previous_level.layercount_6.r32g32_sint.optimal_optimal_nearest",
+      "catalog_index": 252689,
+      "reasons": [
+        "retained M3 regression: repair-01"
+      ]
+    },
+    {
+      "case": "dEQP-VK.api.copy_and_blit.dedicated_allocation.resolve_image.diff_layout_copy_before_resolving.8_bit_general_transfer_dst_optimal",
+      "catalog_index": 265942,
+      "reasons": [
+        "resolve"
+      ]
+    },
+    {
+      "case": "dEQP-VK.api.copy_and_blit.dedicated_allocation.resolve_image.with_regions.8_bit",
+      "catalog_index": 266016,
+      "reasons": [
+        "resolve"
+      ]
+    },
+    {
+      "case": "dEQP-VK.api.device_init.create_device_unsupported_features.buffer_device_address_features",
+      "catalog_index": 269254,
+      "reasons": [
+        "buffer address"
+      ]
+    },
+    {
+      "case": "dEQP-VK.api.image_clearing.core.clear_color_attachment.multiple_layers.r8g8b8_unorm_200x180_clamp_input_sample_count_2",
+      "catalog_index": 274663,
+      "reasons": [
+        "retained M3 regression: multisample"
+      ]
+    },
+    {
+      "case": "dEQP-VK.api.image_clearing.core.clear_color_attachment.multiple_layers.r8g8b8_unorm_200x180_clamp_input_sample_count_4",
+      "catalog_index": 274665,
+      "reasons": [
+        "retained M3 regression: multisample"
+      ]
+    },
+    {
+      "case": "dEQP-VK.api.image_clearing.core.clear_color_attachment.multiple_layers.r8g8b8_unorm_200x180_sample_count_2",
+      "catalog_index": 274669,
+      "reasons": [
+        "retained M3 regression: multisample"
+      ]
+    },
+    {
+      "case": "dEQP-VK.api.image_clearing.core.clear_color_attachment.multiple_layers.r8g8b8_unorm_200x180_sample_count_4",
+      "catalog_index": 274671,
+      "reasons": [
+        "retained M3 regression: multisample"
+      ]
+    },
+    {
+      "case": "dEQP-VK.api.info.image_format_properties.2d.optimal.r8g8b8_unorm",
+      "catalog_index": 321999,
+      "reasons": [
+        "retained M3 regression: multisample"
+      ]
+    },
+    {
+      "case": "dEQP-VK.binding_model.buffer_device_address.set0.depth2.baseubo.load.nostore.single.std140.vert",
+      "catalog_index": 328306,
+      "reasons": [
+        "buffer address"
+      ]
+    },
+    {
+      "case": "dEQP-VK.binding_model.buffer_device_address.set15.depth2.baseubo.load.store.multi.std140.comp",
+      "catalog_index": 328980,
+      "reasons": [
+        "buffer address"
+      ]
+    },
+    {
+      "case": "dEQP-VK.binding_model.buffer_device_address.set3.depth1.baseubo.load.store.single.scalar.frag",
+      "catalog_index": 329654,
+      "reasons": [
+        "buffer address"
+      ]
+    },
+    {
+      "case": "dEQP-VK.binding_model.buffer_device_address.set3.depth2.baseubo.load.store.single.scalar.vert",
+      "catalog_index": 330328,
+      "reasons": [
+        "buffer address"
+      ]
+    },
+    {
+      "case": "dEQP-VK.binding_model.buffer_device_address.set3.depth3.baseubo.load.store.single.std140.comp",
+      "catalog_index": 331002,
+      "reasons": [
+        "buffer address"
+      ]
+    },
+    {
+      "case": "dEQP-VK.binding_model.buffer_device_address.set31.depth2.baseubo.load.store.single.std140.frag",
+      "catalog_index": 331676,
+      "reasons": [
+        "buffer address"
+      ]
+    },
+    {
+      "case": "dEQP-VK.binding_model.buffer_device_address.set7.depth2.baseubo.load.store.single.std140.vert_offset_nonzero",
+      "catalog_index": 332351,
+      "reasons": [
+        "buffer address"
+      ]
+    },
+    {
+      "case": "dEQP-VK.binding_model.dynamic_offset.shader_reuse_differing_layout_compute",
+      "catalog_index": 373777,
+      "reasons": [
+        "dynamic UBO"
+      ]
+    },
+    {
+      "case": "dEQP-VK.binding_model.dynamic_offset.shader_reuse_differing_layout_graphics",
+      "catalog_index": 373778,
+      "reasons": [
+        "dynamic UBO"
+      ]
+    },
+    {
+      "case": "dEQP-VK.binding_model.dynamic_offset.two_pipelines",
+      "catalog_index": 373779,
+      "reasons": [
+        "dynamic UBO"
+      ]
+    },
+    {
+      "case": "dEQP-VK.binding_model.dynamic_offset.two_pipelines_different_sets",
+      "catalog_index": 373780,
+      "reasons": [
+        "dynamic UBO"
+      ]
+    },
+    {
+      "case": "dEQP-VK.binding_model.dynamic_offset.two_pipelines_pc_first",
+      "catalog_index": 373781,
+      "reasons": [
+        "dynamic UBO"
+      ]
+    },
+    {
+      "case": "dEQP-VK.binding_model.dynamic_offset.two_pipelines_pc_first_different_sets",
+      "catalog_index": 373782,
+      "reasons": [
+        "dynamic UBO"
+      ]
+    },
+    {
+      "case": "dEQP-VK.binding_model.dynamic_offset.two_pipelines_separate_offsets",
+      "catalog_index": 373784,
+      "reasons": [
+        "dynamic UBO"
+      ]
+    },
+    {
+      "case": "dEQP-VK.binding_model.dynamic_offset.two_pipelines_separate_offsets_different_sets",
+      "catalog_index": 373785,
+      "reasons": [
+        "dynamic UBO"
+      ]
+    },
+    {
+      "case": "dEQP-VK.binding_model.dynamic_offset.two_pipelines_separate_offsets_pc_first",
+      "catalog_index": 373786,
+      "reasons": [
+        "dynamic UBO"
+      ]
+    },
+    {
+      "case": "dEQP-VK.binding_model.dynamic_offset.two_pipelines_separate_offsets_pc_first_different_sets",
+      "catalog_index": 373787,
+      "reasons": [
+        "dynamic UBO"
+      ]
+    },
+    {
+      "case": "dEQP-VK.binding_model.dynamic_offset.two_pipelines_separate_offsets_pc_first_single_layout",
+      "catalog_index": 373788,
+      "reasons": [
+        "dynamic UBO"
+      ]
+    },
+    {
+      "case": "dEQP-VK.binding_model.dynamic_offset.two_pipelines_single_layout",
+      "catalog_index": 373790,
+      "reasons": [
+        "dynamic UBO"
+      ]
+    },
+    {
+      "case": "dEQP-VK.geometry.basic.output_0_and_128",
+      "catalog_index": 768795,
+      "reasons": [
+        "geometry"
+      ]
+    },
+    {
+      "case": "dEQP-VK.geometry.emit.points_emit_0_end_1",
+      "catalog_index": 768823,
+      "reasons": [
+        "geometry"
+      ]
+    },
+    {
+      "case": "dEQP-VK.geometry.input.conversion.triangles_to_points",
+      "catalog_index": 768851,
+      "reasons": [
+        "geometry"
+      ]
+    },
+    {
+      "case": "dEQP-VK.geometry.instanced.draw_4_instances_2_geometry_invocations",
+      "catalog_index": 768879,
+      "reasons": [
+        "geometry"
+      ]
+    },
+    {
+      "case": "dEQP-VK.geometry.layered.1d_array.64_1_4.secondary_cmd_buffer_inherit_framebuffer",
+      "catalog_index": 768908,
+      "reasons": [
+        "geometry"
+      ]
+    },
+    {
+      "case": "dEQP-VK.geometry.layered.3d.12_36_6.render_to_one",
+      "catalog_index": 768936,
+      "reasons": [
+        "geometry"
+      ]
+    },
+    {
+      "case": "dEQP-VK.geometry.layered.cube.64_64_6.render_to_all",
+      "catalog_index": 768964,
+      "reasons": [
+        "geometry"
+      ]
+    },
+    {
+      "case": "dEQP-VK.geometry.varying.vertex_out_1_geometry_out_2",
+      "catalog_index": 768993,
+      "reasons": [
+        "geometry"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.isampler1d_clamp_max",
+      "catalog_index": 784778,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.isampler1d_clamp_min",
+      "catalog_index": 784779,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.isampler1d_fragment",
+      "catalog_index": 784780,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.isampler1d_zero_uv_width_fragment",
+      "catalog_index": 784781,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.isampler1darray_clamp_max",
+      "catalog_index": 784782,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.isampler1darray_clamp_min",
+      "catalog_index": 784783,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.isampler1darray_fragment",
+      "catalog_index": 784784,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.isampler1darray_zero_uv_width_fragment",
+      "catalog_index": 784785,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.isampler1darraynon_zero_base_level_fragment",
+      "catalog_index": 784786,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.isampler1dnon_zero_base_level_fragment",
+      "catalog_index": 784787,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.isampler2d_clamp_max",
+      "catalog_index": 784788,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.isampler2d_clamp_min",
+      "catalog_index": 784789,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.isampler2d_fragment",
+      "catalog_index": 784790,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.isampler2d_zero_uv_width_fragment",
+      "catalog_index": 784791,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.isampler2darray_clamp_max",
+      "catalog_index": 784792,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.isampler2darray_clamp_min",
+      "catalog_index": 784793,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.isampler2darray_fragment",
+      "catalog_index": 784794,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.isampler2darray_zero_uv_width_fragment",
+      "catalog_index": 784795,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.isampler2darraynon_zero_base_level_fragment",
+      "catalog_index": 784796,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.isampler2dnon_zero_base_level_fragment",
+      "catalog_index": 784797,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.isampler3d_clamp_max",
+      "catalog_index": 784798,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.isampler3d_clamp_min",
+      "catalog_index": 784799,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.isampler3d_fragment",
+      "catalog_index": 784800,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.isampler3d_zero_uv_width_fragment",
+      "catalog_index": 784801,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.isampler3dnon_zero_base_level_fragment",
+      "catalog_index": 784802,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.isamplercube_clamp_max",
+      "catalog_index": 784803,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.isamplercube_clamp_min",
+      "catalog_index": 784804,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.isamplercube_fragment",
+      "catalog_index": 784805,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.isamplercube_zero_uv_width_fragment",
+      "catalog_index": 784806,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.isamplercubearray_clamp_max",
+      "catalog_index": 784807,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.isamplercubearray_clamp_min",
+      "catalog_index": 784808,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.isamplercubearray_fragment",
+      "catalog_index": 784809,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.isamplercubearray_zero_uv_width_fragment",
+      "catalog_index": 784810,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.isamplercubearraynon_zero_base_level_fragment",
+      "catalog_index": 784811,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.isamplercubenon_zero_base_level_fragment",
+      "catalog_index": 784812,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler1d_fixed_clamp_max",
+      "catalog_index": 784813,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler1d_fixed_clamp_min",
+      "catalog_index": 784814,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler1d_fixed_fragment",
+      "catalog_index": 784815,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler1d_fixed_zero_uv_width_fragment",
+      "catalog_index": 784816,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler1d_fixednon_zero_base_level_fragment",
+      "catalog_index": 784817,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler1d_float_clamp_max",
+      "catalog_index": 784818,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler1d_float_clamp_min",
+      "catalog_index": 784819,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler1d_float_fragment",
+      "catalog_index": 784820,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler1d_float_zero_uv_width_fragment",
+      "catalog_index": 784821,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler1d_floatnon_zero_base_level_fragment",
+      "catalog_index": 784822,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler1darray_fixed_clamp_max",
+      "catalog_index": 784823,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler1darray_fixed_clamp_min",
+      "catalog_index": 784824,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler1darray_fixed_fragment",
+      "catalog_index": 784825,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler1darray_fixed_zero_uv_width_fragment",
+      "catalog_index": 784826,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler1darray_fixednon_zero_base_level_fragment",
+      "catalog_index": 784827,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler1darray_float_clamp_max",
+      "catalog_index": 784828,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler1darray_float_clamp_min",
+      "catalog_index": 784829,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler1darray_float_fragment",
+      "catalog_index": 784830,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler1darray_float_zero_uv_width_fragment",
+      "catalog_index": 784831,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler1darray_floatnon_zero_base_level_fragment",
+      "catalog_index": 784832,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler1darrayshadow_clamp_max",
+      "catalog_index": 784833,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler1darrayshadow_clamp_min",
+      "catalog_index": 784834,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler1darrayshadow_fragment",
+      "catalog_index": 784835,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler1darrayshadow_zero_uv_width_fragment",
+      "catalog_index": 784836,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler1darrayshadownon_zero_base_level_fragment",
+      "catalog_index": 784837,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler1dshadow_clamp_max",
+      "catalog_index": 784838,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler1dshadow_clamp_min",
+      "catalog_index": 784839,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler1dshadow_fragment",
+      "catalog_index": 784840,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler1dshadow_zero_uv_width_fragment",
+      "catalog_index": 784841,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler1dshadownon_zero_base_level_fragment",
+      "catalog_index": 784842,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2d_fixed_clamp_max",
+      "catalog_index": 784843,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2d_fixed_clamp_min",
+      "catalog_index": 784844,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2d_fixed_fragment",
+      "catalog_index": 784845,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2d_fixed_nomipmap_clamp_max",
+      "catalog_index": 784846,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2d_fixed_nomipmap_clamp_min",
+      "catalog_index": 784847,
+      "reasons": [
+        "retained M3 regression: repair-01",
+        "retained M3 regression: repair-02",
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2d_fixed_nomipmap_fragment",
+      "catalog_index": 784848,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2d_fixed_nomipmap_zero_uv_width_fragment",
+      "catalog_index": 784849,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2d_fixed_nomipmapnon_zero_base_level_fragment",
+      "catalog_index": 784850,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2d_fixed_trilinear_clamp_max",
+      "catalog_index": 784851,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2d_fixed_trilinear_clamp_min",
+      "catalog_index": 784852,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2d_fixed_trilinear_fragment",
+      "catalog_index": 784853,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2d_fixed_trilinear_zero_uv_width_fragment",
+      "catalog_index": 784854,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2d_fixed_trilinearnon_zero_base_level_fragment",
+      "catalog_index": 784855,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2d_fixed_zero_uv_width_fragment",
+      "catalog_index": 784856,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2d_fixednon_zero_base_level_fragment",
+      "catalog_index": 784857,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2d_float_clamp_max",
+      "catalog_index": 784858,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2d_float_clamp_min",
+      "catalog_index": 784859,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2d_float_fragment",
+      "catalog_index": 784860,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2d_float_nomipmap_clamp_max",
+      "catalog_index": 784861,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2d_float_nomipmap_clamp_min",
+      "catalog_index": 784862,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2d_float_nomipmap_fragment",
+      "catalog_index": 784863,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2d_float_nomipmap_zero_uv_width_fragment",
+      "catalog_index": 784864,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2d_float_nomipmapnon_zero_base_level_fragment",
+      "catalog_index": 784865,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2d_float_trilinear_clamp_max",
+      "catalog_index": 784866,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2d_float_trilinear_clamp_min",
+      "catalog_index": 784867,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2d_float_trilinear_fragment",
+      "catalog_index": 784868,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2d_float_trilinear_zero_uv_width_fragment",
+      "catalog_index": 784869,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2d_float_trilinearnon_zero_base_level_fragment",
+      "catalog_index": 784870,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2d_float_zero_uv_width_fragment",
+      "catalog_index": 784871,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2d_floatnon_zero_base_level_fragment",
+      "catalog_index": 784872,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2darray_fixed_clamp_max",
+      "catalog_index": 784873,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2darray_fixed_clamp_min",
+      "catalog_index": 784874,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2darray_fixed_fragment",
+      "catalog_index": 784875,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2darray_fixed_zero_uv_width_fragment",
+      "catalog_index": 784876,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2darray_fixednon_zero_base_level_fragment",
+      "catalog_index": 784877,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2darray_float_clamp_max",
+      "catalog_index": 784878,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2darray_float_clamp_min",
+      "catalog_index": 784879,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2darray_float_fragment",
+      "catalog_index": 784880,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2darray_float_zero_uv_width_fragment",
+      "catalog_index": 784881,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2darray_floatnon_zero_base_level_fragment",
+      "catalog_index": 784882,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2darrayshadow_clamp_max",
+      "catalog_index": 784883,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2darrayshadow_clamp_min",
+      "catalog_index": 784884,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2darrayshadow_fragment",
+      "catalog_index": 784885,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2darrayshadow_zero_uv_width_fragment",
+      "catalog_index": 784886,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2darrayshadownon_zero_base_level_fragment",
+      "catalog_index": 784887,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2dshadow_clamp_max",
+      "catalog_index": 784888,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2dshadow_clamp_min",
+      "catalog_index": 784889,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2dshadow_fragment",
+      "catalog_index": 784890,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2dshadow_zero_uv_width_fragment",
+      "catalog_index": 784891,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2dshadownon_zero_base_level_fragment",
+      "catalog_index": 784892,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler3d_fixed_clamp_max",
+      "catalog_index": 784893,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler3d_fixed_clamp_min",
+      "catalog_index": 784894,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler3d_fixed_fragment",
+      "catalog_index": 784895,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler3d_fixed_zero_uv_width_fragment",
+      "catalog_index": 784896,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler3d_fixednon_zero_base_level_fragment",
+      "catalog_index": 784897,
+      "reasons": [
+        "retained M3 regression: repair-01",
+        "retained M3 regression: repair-02",
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler3d_float_clamp_max",
+      "catalog_index": 784898,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler3d_float_clamp_min",
+      "catalog_index": 784899,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler3d_float_fragment",
+      "catalog_index": 784900,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler3d_float_zero_uv_width_fragment",
+      "catalog_index": 784901,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler3d_floatnon_zero_base_level_fragment",
+      "catalog_index": 784902,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercube_fixed_clamp_max",
+      "catalog_index": 784903,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercube_fixed_clamp_min",
+      "catalog_index": 784904,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercube_fixed_fragment",
+      "catalog_index": 784905,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercube_fixed_zero_uv_width_fragment",
+      "catalog_index": 784906,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercube_fixednon_zero_base_level_fragment",
+      "catalog_index": 784907,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercube_float_clamp_max",
+      "catalog_index": 784908,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercube_float_clamp_min",
+      "catalog_index": 784909,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercube_float_fragment",
+      "catalog_index": 784910,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercube_float_zero_uv_width_fragment",
+      "catalog_index": 784911,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercube_floatnon_zero_base_level_fragment",
+      "catalog_index": 784912,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercubearray_fixed_clamp_max",
+      "catalog_index": 784913,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercubearray_fixed_clamp_min",
+      "catalog_index": 784914,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercubearray_fixed_fragment",
+      "catalog_index": 784915,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercubearray_fixed_zero_uv_width_fragment",
+      "catalog_index": 784916,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercubearray_fixednon_zero_base_level_fragment",
+      "catalog_index": 784917,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercubearray_float_clamp_max",
+      "catalog_index": 784918,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercubearray_float_clamp_min",
+      "catalog_index": 784919,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercubearray_float_fragment",
+      "catalog_index": 784920,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercubearray_float_zero_uv_width_fragment",
+      "catalog_index": 784921,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercubearray_floatnon_zero_base_level_fragment",
+      "catalog_index": 784922,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercubearrayshadow_clamp_max",
+      "catalog_index": 784923,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercubearrayshadow_clamp_min",
+      "catalog_index": 784924,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercubearrayshadow_fragment",
+      "catalog_index": 784925,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercubearrayshadow_zero_uv_width_fragment",
+      "catalog_index": 784926,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercubearrayshadownon_zero_base_level_fragment",
+      "catalog_index": 784927,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercubeshadow_clamp_max",
+      "catalog_index": 784928,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercubeshadow_clamp_min",
+      "catalog_index": 784929,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercubeshadow_fragment",
+      "catalog_index": 784930,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercubeshadow_zero_uv_width_fragment",
+      "catalog_index": 784931,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercubeshadownon_zero_base_level_fragment",
+      "catalog_index": 784932,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.usampler1d_clamp_max",
+      "catalog_index": 784933,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.usampler1d_clamp_min",
+      "catalog_index": 784934,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.usampler1d_fragment",
+      "catalog_index": 784935,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.usampler1d_zero_uv_width_fragment",
+      "catalog_index": 784936,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.usampler1darray_clamp_max",
+      "catalog_index": 784937,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.usampler1darray_clamp_min",
+      "catalog_index": 784938,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.usampler1darray_fragment",
+      "catalog_index": 784939,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.usampler1darray_zero_uv_width_fragment",
+      "catalog_index": 784940,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.usampler1darraynon_zero_base_level_fragment",
+      "catalog_index": 784941,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.usampler1dnon_zero_base_level_fragment",
+      "catalog_index": 784942,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.usampler2d_clamp_max",
+      "catalog_index": 784943,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.usampler2d_clamp_min",
+      "catalog_index": 784944,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.usampler2d_fragment",
+      "catalog_index": 784945,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.usampler2d_zero_uv_width_fragment",
+      "catalog_index": 784946,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.usampler2darray_clamp_max",
+      "catalog_index": 784947,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.usampler2darray_clamp_min",
+      "catalog_index": 784948,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.usampler2darray_fragment",
+      "catalog_index": 784949,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.usampler2darray_zero_uv_width_fragment",
+      "catalog_index": 784950,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.usampler2darraynon_zero_base_level_fragment",
+      "catalog_index": 784951,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.usampler2dnon_zero_base_level_fragment",
+      "catalog_index": 784952,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.usampler3d_clamp_max",
+      "catalog_index": 784953,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.usampler3d_clamp_min",
+      "catalog_index": 784954,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.usampler3d_fragment",
+      "catalog_index": 784955,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.usampler3d_zero_uv_width_fragment",
+      "catalog_index": 784956,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.usampler3dnon_zero_base_level_fragment",
+      "catalog_index": 784957,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.usamplercube_clamp_max",
+      "catalog_index": 784958,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.usamplercube_clamp_min",
+      "catalog_index": 784959,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.usamplercube_fragment",
+      "catalog_index": 784960,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.usamplercube_zero_uv_width_fragment",
+      "catalog_index": 784961,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.usamplercubearray_clamp_max",
+      "catalog_index": 784962,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.usamplercubearray_clamp_min",
+      "catalog_index": 784963,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.usamplercubearray_fragment",
+      "catalog_index": 784964,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.usamplercubearray_zero_uv_width_fragment",
+      "catalog_index": 784965,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.usamplercubearraynon_zero_base_level_fragment",
+      "catalog_index": 784966,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.query.texturequerylod.usamplercubenon_zero_base_level_fragment",
+      "catalog_index": 784967,
+      "reasons": [
+        "LOD query"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset.clamp_to_edge.sampler1darray_float_vertex",
+      "catalog_index": 786610,
+      "reasons": [
+        "retained M3 regression: repair-01"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset.mirrored_repeat.isampler2darray_fragment",
+      "catalog_index": 786820,
+      "reasons": [
+        "retained M3 regression: repair-01"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.texturegradoffset_pcoffset.clamp_to_border.isampler2darray_fragment",
+      "catalog_index": 787042,
+      "reasons": [
+        "retained M3 regression: repair-01",
+        "retained M3 regression: repair-02"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.textureprojgradoffset.mirrored_repeat.sampler2d_vec3_fixed_vertex",
+      "catalog_index": 790877,
+      "reasons": [
+        "retained M3 regression: repair-01"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_functions.textureprojgradoffset_pcoffset.mirrored.usampler1d_vec2_fragment",
+      "catalog_index": 791099,
+      "reasons": [
+        "retained M3 regression: repair-01"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_gather.compute.offset.implementation_offset.2d.depth32f.base_level.level_1",
+      "catalog_index": 792865,
+      "reasons": [
+        "gather and border"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_gather.compute.offset.min_required_offset.2d_array.depth32f.size_npot.compare_greater.sparse_repeat_mirrored_repeat",
+      "catalog_index": 793078,
+      "reasons": [
+        "gather and border"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_gather.compute.offset_dynamic.min_required_offset.2d.depth32f.size_npot.compare_less.sparse_repeat_mirrored_repeat",
+      "catalog_index": 793292,
+      "reasons": [
+        "gather and border"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_gather.compute.offsets.implementation_offset.2d_array.depth32f.size_pot.compare_greater.sparse_repeat_mirrored_repeat",
+      "catalog_index": 793506,
+      "reasons": [
+        "gather and border"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_gather.graphics.offset.implementation_offset.2d.depth32f.size_npot.compare_less.repeat_mirrored_repeat",
+      "catalog_index": 794259,
+      "reasons": [
+        "gather and border"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_gather.graphics.offset.implementation_offset.2d_array.rgba8.texture_swizzle.red_green_blue_alpha",
+      "catalog_index": 794473,
+      "reasons": [
+        "gather and border"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_gather.graphics.offset_dynamic.implementation_offset.2d.depth32f.filter_mode.sparse_min_linear_mipmap_linear_mag_linear",
+      "catalog_index": 794687,
+      "reasons": [
+        "gather and border"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_gather.graphics.offset_dynamic.implementation_offset.2d_array.rgba8.size_npot.sparse_mirrored_repeat_clamp_to_edge",
+      "catalog_index": 794901,
+      "reasons": [
+        "gather and border"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_gather.graphics.offset_dynamic.min_required_offset.2d_array.rgba8ui.size_pot.sparse_clamp_to_edge_repeat",
+      "catalog_index": 795114,
+      "reasons": [
+        "gather and border"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_gather.graphics.offsets.implementation_offset.2d_array.rgba8.filter_mode.min_linear_mipmap_linear_mag_linear",
+      "catalog_index": 795328,
+      "reasons": [
+        "gather and border"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_gather.graphics.offsets.min_required_offset.2d.rgba8i.size_pot.mirrored_repeat_clamp_to_edge",
+      "catalog_index": 795542,
+      "reasons": [
+        "gather and border"
+      ]
+    },
+    {
+      "case": "dEQP-VK.glsl.texture_gather.graphics.offsets.min_required_offset.2d_array.rgba8ui.texture_swizzle.zero_one_red_green",
+      "catalog_index": 795756,
+      "reasons": [
+        "gather and border"
+      ]
+    },
+    {
+      "case": "dEQP-VK.pipeline.fast_linked_library.cache.graphics_tests.vertex_stage_fragment_stage",
+      "catalog_index": 1004740,
+      "reasons": [
+        "pipeline cache"
+      ]
+    },
+    {
+      "case": "dEQP-VK.pipeline.fast_linked_library.pipeline_binary.creation_feedback.graphics_tests.vertex_stage_fragment_stage",
+      "catalog_index": 1038811,
+      "reasons": [
+        "pipeline binary"
+      ]
+    },
+    {
+      "case": "dEQP-VK.pipeline.fast_linked_library.pipeline_binary.graphics_tests.vertex_stage_geometry_stage_fragment_stage",
+      "catalog_index": 1038822,
+      "reasons": [
+        "pipeline binary"
+      ]
+    },
+    {
+      "case": "dEQP-VK.pipeline.monolithic.cache.compute_tests.compute_stage",
+      "catalog_index": 1133293,
+      "reasons": [
+        "pipeline cache"
+      ]
+    },
+    {
+      "case": "dEQP-VK.pipeline.monolithic.cache.pipeline_from_incomplete_get_data.vertex_stage_geometry_stage_fragment_stage",
+      "catalog_index": 1134065,
+      "reasons": [
+        "pipeline cache"
+      ]
+    },
+    {
+      "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.creation_feedback.graphics_tests.vertex_stage_fragment_stage_zero_out_feedback_cout",
+      "catalog_index": 1318462,
+      "reasons": [
+        "pipeline binary"
+      ]
+    },
+    {
+      "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.dedicated.not_enough_space",
+      "catalog_index": 1318473,
+      "reasons": [
+        "pipeline binary"
+      ]
+    },
+    {
+      "case": "dEQP-VK.pipeline.monolithic.pipeline_binary.graphics_tests.vertex_stage_geometry_stage_fragment_stage",
+      "catalog_index": 1318484,
+      "reasons": [
+        "pipeline binary"
+      ]
+    },
+    {
+      "case": "dEQP-VK.pipeline.monolithic.sampler.separate_stencil_usage.view_type.2d.format.d16_unorm_s8_uint.mag_reduce.comp_b_g_r_a.max",
+      "catalog_index": 1426327,
+      "reasons": [
+        "sampler reduction"
+      ]
+    },
+    {
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.1d_array.format.a8_unorm.mag_reduce.comp_identity_zero_zero_zero.max_compute",
+      "catalog_index": 1436729,
+      "reasons": [
+        "sampler reduction"
+      ]
+    },
+    {
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.b8g8r8a8_unorm.min_reduce.comp_one_r_r_r.min_compute",
+      "catalog_index": 1450409,
+      "reasons": [
+        "sampler reduction"
+      ]
+    },
+    {
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d_array.format.b8g8r8a8_sint.mag_reduce.comp_r_zero_zero_zero.max",
+      "catalog_index": 1462346,
+      "reasons": [
+        "sampler reduction"
+      ]
+    },
+    {
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.3d.format.astc_5x5x4_srgb_block_ext.mag_reduce.comp_b_g_r_a.min",
+      "catalog_index": 1477924,
+      "reasons": [
+        "sampler reduction"
+      ]
+    },
+    {
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.cube.format.a2b10g10r10_unorm_pack32.min_reduce.comp_identity_zero_zero_zero.min_compute",
+      "catalog_index": 1489997,
+      "reasons": [
+        "sampler reduction"
+      ]
+    },
+    {
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.cube_array.format.a1r5g5b5_unorm_pack16.mag_reduce.comp_r_g_b_a.max_compute",
+      "catalog_index": 1496001,
+      "reasons": [
+        "sampler reduction"
+      ]
+    },
+    {
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.cube_array.format.x8_d24_unorm_pack32.min_reduce.comp_r_zero_zero_zero.min_compute",
+      "catalog_index": 1501975,
+      "reasons": [
+        "sampler reduction"
+      ]
+    },
+    {
+      "case": "dEQP-VK.pipeline.no_queues.pipeline_binary.isect",
+      "catalog_index": 1574473,
+      "reasons": [
+        "pipeline binary"
+      ]
+    },
+    {
+      "case": "dEQP-VK.pipeline.pipeline_library.cache.pipeline_from_incomplete_get_data.vertex_stage_geometry_stage_fragment_stage",
+      "catalog_index": 1595471,
+      "reasons": [
+        "pipeline cache"
+      ]
+    },
+    {
+      "case": "dEQP-VK.pipeline.pipeline_library.extended_dynamic_state.after_pipelines.prim_restart_enable",
+      "catalog_index": 1607200,
+      "reasons": [
+        "retained M3 regression: repair-02"
+      ]
+    },
+    {
+      "case": "dEQP-VK.pipeline.pipeline_library.pipeline_binary.creation_feedback.graphics_tests.vertex_stage_geometry_stage_fragment_stage",
+      "catalog_index": 1620961,
+      "reasons": [
+        "pipeline binary"
+      ]
+    },
+    {
+      "case": "dEQP-VK.pipeline.pipeline_library.pipeline_binary.pipeline_from_get_data.vertex_stage_tessellation_control_stage_tessellation_evaluation_stage_fragment_stage",
+      "catalog_index": 1620973,
+      "reasons": [
+        "pipeline binary"
+      ]
+    },
+    {
+      "case": "dEQP-VK.pipeline.shader_object_linked_binary.cache.pipeline_from_incomplete_get_data.vertex_stage_geometry_stage_fragment_stage",
+      "catalog_index": 1701390,
+      "reasons": [
+        "pipeline cache"
+      ]
+    },
+    {
+      "case": "dEQP-VK.pipeline.shader_object_linked_spirv.bind_buffers_2.maintenance5.robustness2.triangle_list.buffers5.stride_offset_rnd543.whole_size.beyond_buffer",
+      "catalog_index": 1719354,
+      "reasons": [
+        "retained M3 regression: repair-02"
+      ]
+    },
+    {
+      "case": "dEQP-VK.pipeline.shader_object_linked_spirv.cache.pipeline_from_incomplete_get_data.vertex_stage_geometry_stage_fragment_stage",
+      "catalog_index": 1725740,
+      "reasons": [
+        "pipeline cache"
+      ]
+    },
+    {
+      "case": "dEQP-VK.pipeline.shader_object_unlinked_binary.cache.pipeline_from_incomplete_get_data.vertex_stage_geometry_stage_fragment_stage",
+      "catalog_index": 1750090,
+      "reasons": [
+        "pipeline cache"
+      ]
+    },
+    {
+      "case": "dEQP-VK.pipeline.shader_object_unlinked_spirv.cache.pipeline_from_incomplete_get_data.vertex_stage_tessellation_control_stage_tessellation_evaluation_stage_fragment_stage",
+      "catalog_index": 1786636,
+      "reasons": [
+        "pipeline cache"
+      ]
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.dedicated_allocation.formats.r32g32_sint.load.draw",
+      "catalog_index": 2283010,
+      "reasons": [
+        "retained M3 regression: repair-01"
+      ]
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.formats.r32g32_uint.input.dont_care.store.self_dep_draw_use_input_aspect",
+      "catalog_index": 2291347,
+      "reasons": [
+        "retained M3 regression: repair-01"
+      ]
+    },
+    {
+      "case": "dEQP-VK.robustness.bind_index_buffer2.offset_100.draw_indexed.oo_index",
+      "catalog_index": 2329170,
+      "reasons": [
+        "retained M3 regression: repair-02"
+      ]
+    },
+    {
+      "case": "dEQP-VK.robustness.image_robustness.bind.notemplate.rg32ui.dontunroll.nonvolatile.sampled_image.no_fmt_qual.img.samples_1.cube_array.comp",
+      "catalog_index": 2334835,
+      "reasons": [
+        "retained M3 regression: repair-01"
+      ]
+    },
+    {
+      "case": "dEQP-VK.robustness.robustness2.bind.notemplate.rg32i.dontunroll.nonvolatile.sampled_image.no_fmt_qual.img.samples_1.2d.comp",
+      "catalog_index": 2366443,
+      "reasons": [
+        "retained M3 regression: repair-01"
+      ]
+    },
+    {
+      "case": "dEQP-VK.robustness.robustness2.bind.notemplate.rgba32f.unroll.nonvolatile.sampled_image.no_fmt_qual.null_descriptor.samples_1.cube_array.comp",
+      "catalog_index": 2374941,
+      "reasons": [
+        "retained M3 regression: repair-01"
+      ]
+    },
+    {
+      "case": "dEQP-VK.robustness.robustness2.bind.template.rg32ui.unroll.nonvolatile.sampled_image.no_fmt_qual.null_descriptor.samples_1.cube.comp",
+      "catalog_index": 2388464,
+      "reasons": [
+        "retained M3 regression: repair-01"
+      ]
+    },
+    {
+      "case": "dEQP-VK.robustness.robustness2.push.template.rg32ui.dontunroll.nonvolatile.sampled_image.no_fmt_qual.null_descriptor.samples_1.1d_array.comp",
+      "catalog_index": 2423273,
+      "reasons": [
+        "retained M3 regression: repair-01"
+      ]
+    },
+    {
+      "case": "dEQP-VK.shader_object.rendering.color_attachment_count_1.extra_attachment_after_1.none.dynamic.same_color_formats.before.none.r16g16b16_sint_d16_unorm_s8_uint",
+      "catalog_index": 2452548,
+      "reasons": [
+        "retained M3 regression: repair-01"
+      ]
+    },
+    {
+      "case": "dEQP-VK.shader_object.rendering.color_attachment_count_1.none.extra_output_after_1.dynamic.same_color_formats.before.none.r32g32_sint_d16_unorm",
+      "catalog_index": 2463130,
+      "reasons": [
+        "retained M3 regression: repair-01"
+      ]
+    },
+    {
+      "case": "dEQP-VK.shader_object.rendering.color_attachment_count_1.none.extra_output_before_1.none.same_color_formats.before.none.r32g32_uint_d16_unorm",
+      "catalog_index": 2471857,
+      "reasons": [
+        "retained M3 regression: repair-01"
+      ]
+    },
+    {
+      "case": "dEQP-VK.shader_object.rendering.color_attachment_count_1.none.extra_output_before_2.static.same_color_formats.before.none.r32g32_sint_x8_d24_unorm_pack32",
+      "catalog_index": 2476215,
+      "reasons": [
+        "retained M3 regression: repair-01"
+      ]
+    },
+    {
+      "case": "dEQP-VK.shader_object.rendering.color_attachment_count_1.none.none.dynamic.same_color_formats.before.none.r32g32_uint_x8_d24_unorm_pack32",
+      "catalog_index": 2484070,
+      "reasons": [
+        "retained M3 regression: repair-01"
+      ]
+    },
+    {
+      "case": "dEQP-VK.shader_object.rendering.color_attachment_count_4.extra_attachment_after_1.none.none.random_color_formats.before.none.r16g16b16_sint_d16_unorm_s8_uint",
+      "catalog_index": 2490044,
+      "reasons": [
+        "retained M3 regression: repair-01"
+      ]
+    },
+    {
+      "case": "dEQP-VK.shader_object.rendering.color_attachment_count_4.extra_attachment_before_1.none.dynamic.same_color_formats.before.none.r16g16b16a16_sint_d16_unorm_s8_uint",
+      "catalog_index": 2502301,
+      "reasons": [
+        "retained M3 regression: repair-01"
+      ]
+    },
+    {
+      "case": "dEQP-VK.shader_object.rendering.color_attachment_count_4.extra_attachment_before_2.none.dynamic.same_color_formats.before.none.r16g16b16a16_sint_d16_unorm_s8_uint",
+      "catalog_index": 2509277,
+      "reasons": [
+        "retained M3 regression: repair-01"
+      ]
+    },
+    {
+      "case": "dEQP-VK.shader_object.rendering.color_attachment_count_4.extra_attachment_before_2.none.none.same_color_formats.before.none.r16g16b16a16_sint",
+      "catalog_index": 2512763,
+      "reasons": [
+        "retained M3 regression: repair-01"
+      ]
+    },
+    {
+      "case": "dEQP-VK.shader_object.rendering.color_attachment_count_4.extra_attachment_between_1.none.none.random_color_formats.before.gl_frag_write.r16g16b16_sint",
+      "catalog_index": 2517525,
+      "reasons": [
+        "retained M3 regression: repair-01"
+      ]
+    },
+    {
+      "case": "dEQP-VK.shader_object.rendering.color_attachment_count_4.extra_attachment_between_1.none.static.random_color_formats.before.none.r16g16b16_sint_d16_unorm",
+      "catalog_index": 2520563,
+      "reasons": [
+        "retained M3 regression: repair-01"
+      ]
+    },
+    {
+      "case": "dEQP-VK.shader_object.rendering.color_attachment_count_4.extra_attachment_between_2.none.none.random_color_formats.before.none.r16g16b16a16_sint",
+      "catalog_index": 2524971,
+      "reasons": [
+        "retained M3 regression: repair-01"
+      ]
+    },
+    {
+      "case": "dEQP-VK.sparse_resources.aligned_mip_size.2d.b10x6g10x6r10x6g10x6_422_unorm_4pack16",
+      "catalog_index": 2668379,
+      "reasons": [
+        "sparse"
+      ]
+    },
+    {
+      "case": "dEQP-VK.sparse_resources.device_group_image_sparse_binding.multiple_sparse_memory_bind.3d.rg16i.512_256_6",
+      "catalog_index": 2671104,
+      "reasons": [
+        "sparse"
+      ]
+    },
+    {
+      "case": "dEQP-VK.sparse_resources.image_block_shapes.2d.g10x6_b10x6r10x6_2plane_422_unorm_3pack16.samples_4",
+      "catalog_index": 2673829,
+      "reasons": [
+        "sparse"
+      ]
+    },
+    {
+      "case": "dEQP-VK.sparse_resources.image_sparse_binding.multiple_sparse_image_opaque_memory_bind_info.1d_array.rgba8.11_1_3",
+      "catalog_index": 2676554,
+      "reasons": [
+        "sparse"
+      ]
+    },
+    {
+      "case": "dEQP-VK.sparse_resources.image_sparse_residency.2d_array.rg16.11_137_3",
+      "catalog_index": 2679280,
+      "reasons": [
+        "sparse"
+      ]
+    },
+    {
+      "case": "dEQP-VK.sparse_resources.image_sparse_residency.mutable.2d_array.r8g8b8a8_unorm_r32_uint_r16g16_snorm",
+      "catalog_index": 2682005,
+      "reasons": [
+        "sparse"
+      ]
+    },
+    {
+      "case": "dEQP-VK.sparse_resources.shader_intrinsics.2d_array_sparse_read.r64i.128_128_8",
+      "catalog_index": 2684730,
+      "reasons": [
+        "sparse"
+      ]
+    },
+    {
+      "case": "dEQP-VK.sparse_resources.transfer_queue.2d.rgba8ui.512_256_1",
+      "catalog_index": 2687456,
+      "reasons": [
+        "sparse"
+      ]
+    },
+    {
+      "case": "dEQP-VK.synchronization.basic.timeline_semaphore.chain",
+      "catalog_index": 2816887,
+      "reasons": [
+        "timeline"
+      ]
+    },
+    {
+      "case": "dEQP-VK.synchronization.basic.timeline_semaphore.multi_queue",
+      "catalog_index": 2816888,
+      "reasons": [
+        "timeline"
+      ]
+    },
+    {
+      "case": "dEQP-VK.synchronization.basic.timeline_semaphore.one_queue",
+      "catalog_index": 2816889,
+      "reasons": [
+        "timeline"
+      ]
+    },
+    {
+      "case": "dEQP-VK.synchronization.basic.timeline_semaphore.two_threads",
+      "catalog_index": 2816890,
+      "reasons": [
+        "timeline"
+      ]
+    },
+    {
+      "case": "dEQP-VK.synchronization.basic.timeline_semaphore.wait_for_all_current_value",
+      "catalog_index": 2816891,
+      "reasons": [
+        "timeline"
+      ]
+    },
+    {
+      "case": "dEQP-VK.synchronization.basic.timeline_semaphore.wait_for_all_lesser_value",
+      "catalog_index": 2816892,
+      "reasons": [
+        "timeline"
+      ]
+    },
+    {
+      "case": "dEQP-VK.synchronization.basic.timeline_semaphore.wait_for_any_current_value",
+      "catalog_index": 2816893,
+      "reasons": [
+        "timeline"
+      ]
+    },
+    {
+      "case": "dEQP-VK.synchronization.basic.timeline_semaphore.wait_for_any_lesser_value",
+      "catalog_index": 2816894,
+      "reasons": [
+        "timeline"
+      ]
+    },
+    {
+      "case": "dEQP-VK.synchronization.cross_instance.dedicated.write_draw_indexed_indirect_read_image_compute.image_128x128_r16_uint_binary_semaphore_dma_buf",
+      "catalog_index": 2820024,
+      "reasons": [
+        "mixed synchronization"
+      ]
+    },
+    {
+      "case": "dEQP-VK.synchronization.cross_instance.suballocated.write_draw_indexed_indirect_read_image_compute.image_128x128_r16g16b16a16_uint_timeline_semaphore_zircon_handle",
+      "catalog_index": 2829998,
+      "reasons": [
+        "mixed synchronization"
+      ]
+    },
+    {
+      "case": "dEQP-VK.synchronization.op.multi_queue.binary_semaphore.write_draw_indexed_indirect_read_image_compute_indirect.image_128x128_r8g8b8a8_unorm_concurrent",
+      "catalog_index": 2839095,
+      "reasons": [
+        "mixed synchronization"
+      ]
+    },
+    {
+      "case": "dEQP-VK.synchronization.op.multi_queue.timeline_semaphore.write_draw_indirect_read_image_compute_indirect.image_128x128_r16g16b16a16_uint_exclusive",
+      "catalog_index": 2847926,
+      "reasons": [
+        "mixed synchronization"
+      ]
+    },
+    {
+      "case": "dEQP-VK.synchronization2.cross_instance.dedicated.write_draw_indexed_indirect_read_image_compute_indirect.image_128x128_r32g32b32a32_sfloat_timeline_semaphore_fd",
+      "catalog_index": 2867777,
+      "reasons": [
+        "mixed synchronization"
+      ]
+    },
+    {
+      "case": "dEQP-VK.synchronization2.cross_instance.suballocated.write_draw_indexed_indirect_read_image_compute_indirect.image_128x128_r8g8b8a8_unorm_timeline_semaphore_dma_buf",
+      "catalog_index": 2877751,
+      "reasons": [
+        "mixed synchronization"
+      ]
+    },
+    {
+      "case": "dEQP-VK.synchronization2.op.multi_queue.binary_semaphore.write_draw_indirect_read_image_compute.image_128x128_r16_uint_concurrent_maintenance9",
+      "catalog_index": 2887536,
+      "reasons": [
+        "mixed synchronization"
+      ]
+    },
+    {
+      "case": "dEQP-VK.synchronization2.op.multi_queue.intermediate_barrier_use_all.write_copy_image_read_image_compute_image_128x128_r8g8b8a8_unorm.read_image_fragment_write_draw_indexed",
+      "catalog_index": 2896706,
+      "reasons": [
+        "mixed synchronization"
+      ]
+    },
+    {
+      "case": "dEQP-VK.synchronization2.op.multi_queue.intermediate_barrier_use_all.write_draw_indirect_read_image_tess_control_image_128x128_r8g8b8a8_unorm.read_image_compute_write_blit_image",
+      "catalog_index": 2897956,
+      "reasons": [
+        "mixed synchronization"
+      ]
+    },
+    {
+      "case": "dEQP-VK.synchronization2.op.multi_queue.intermediate_barrier_use_all.write_image_tess_eval_read_image_geometry_image_128x128_r8g8b8a8_unorm.read_image_compute_write_draw_indexed_maintenance9",
+      "catalog_index": 2899625,
+      "reasons": [
+        "mixed synchronization"
+      ]
+    },
+    {
+      "case": "dEQP-VK.synchronization2.op.single_queue.binary_semaphore.write_draw_read_image_compute.image_128x128_r32g32b32a32_sfloat_specialized_access_flag",
+      "catalog_index": 2912808,
+      "reasons": [
+        "mixed synchronization"
+      ]
+    },
+    {
+      "case": "dEQP-VK.synchronization2.op.single_queue.timeline_semaphore.write_draw_read_image_compute_indirect.image_128x128_r8g8b8a8_unorm_specialized_access_flag",
+      "catalog_index": 2922644,
+      "reasons": [
+        "mixed synchronization"
+      ]
+    },
+    {
+      "case": "dEQP-VK.tessellation.common_edge.quads_equal_spacing",
+      "catalog_index": 2931810,
+      "reasons": [
+        "tessellation"
+      ]
+    },
+    {
+      "case": "dEQP-VK.tessellation.invariance.primitive_set.isolines_fractional_odd_spacing_ccw_point_mode",
+      "catalog_index": 2931967,
+      "reasons": [
+        "tessellation"
+      ]
+    },
+    {
+      "case": "dEQP-VK.tessellation.misc_draw.switch_spacing_mode_equal_spacing_to_fractional_odd_spacing_with_geom_shader_fast_lib",
+      "catalog_index": 2932124,
+      "reasons": [
+        "tessellation"
+      ]
+    },
+    {
+      "case": "dEQP-VK.tessellation.tess_io.max_in_out.32_bits_only.permutation_6.tcs_patch_writes_reads_tes_reads",
+      "catalog_index": 2932282,
+      "reasons": [
+        "tessellation"
+      ]
+    },
+    {
+      "case": "dEQP-VK.tessellation.tess_io.max_in_out.all_types.permutation_5.tcs_vert_writes_tes_na",
+      "catalog_index": 2932439,
+      "reasons": [
+        "tessellation"
+      ]
+    },
+    {
+      "case": "dEQP-VK.tessellation.tess_io.max_in_out.with_f64.permutation_5.tcs_vert_writes_reads_tes_na",
+      "catalog_index": 2932597,
+      "reasons": [
+        "tessellation"
+      ]
+    },
+    {
+      "case": "dEQP-VK.tessellation.tess_io.max_in_out.with_i64.permutation_5.tcs_patch_writes_reads_tes_reads",
+      "catalog_index": 2932754,
+      "reasons": [
+        "tessellation"
+      ]
+    },
+    {
+      "case": "dEQP-VK.tessellation.winding.upper_left_domain.hlsl_triangles_cw_yflip",
+      "catalog_index": 2932912,
+      "reasons": [
+        "tessellation"
+      ]
+    }
+  ]
+}

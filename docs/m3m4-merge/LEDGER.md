@@ -383,3 +383,38 @@ At `581916dcd95`, the repeated repaired GLES selection completed 153/153
 Pass on each machine. The archived M4 experiment helper also now reflects
 the existing workspace guard settings (CPU ceiling and provisional thermal
 policy) and display-fault classification used for these runs.
+
+
+## Native Vulkan and retained compiler replays
+
+The deterministic 346-case Vulkan dossier run on `581916dcd95` completed:
+M3 268 Pass / 78 NotSupported, M4 303 Pass / 43 NotSupported. No Fail,
+crash, timeout or GPU/guard fault. This includes all 190 native texture LOD
+queries on both, 12 dynamic-UBO cases on both, all retained M3 repair cases,
+8 geometry passes on M4 (all unsupported on M3), and separate sparse,
+tessellation, timeline, command-reuse, cache and pipeline-binary witnesses.
+`vk-dossiers-581-comparison.json` preserves each family's outcomes. The
+initial evenly-spaced reduction witnesses all required unsupported formats;
+they do not qualify sampler reduction and require a supported-format followup.
+
+M4 execution passed, but the first summary collector required an optional
+classification field absent in these M3-style records. The results and guard
+report were recovered directly from the retained experiment without rerunning
+or modifying outcomes. Optional classification now reports `unclassified`.
+Earlier local argument/schema validation attempts never armed hardware.
+
+All 32 retained Factorio compiler inputs produce identical machine code with
+M4 baseline and merged compiler. These are explicitly **adapted host replays**:
+the normal capture ABI guard correctly rejected the old fingerprint. The only
+changed fingerprint input is the nonserialized `nir_lower_tex_options` callback
+in nir.h; all other hashed sources, including serialization and shader-key
+layout, are identical. A retained script asserts those exact source identities
+before changing only bytes 12..76 (the ABI hash) in new copies. Original NIR,
+keys and captures are untouched. This does not establish cross-device cache
+compatibility, new GPU execution or a performance gain.
+
+Full frozen campaigns are now running in independent new directories:
+`m3-gles31-581` (280,532 pairs) and `m4-gles32-581` (326,602 pairs). No old
+outcomes or repair overrides were copied. New failure/guard incidents stop
+for review. Indexed baseline comparisons additionally expose Pass→NotSupported
+regressions. Completion and desktop promotion remain pending.

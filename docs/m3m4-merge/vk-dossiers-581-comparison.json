@@ -1,0 +1,153 @@
+{
+  "command reuse": {
+    "m3": {
+      "Pass": 6,
+      "NotSupported": 6
+    },
+    "m4": {
+      "Pass": 6,
+      "NotSupported": 6
+    }
+  },
+  "retained M3 regression: repair-01": {
+    "m3": {
+      "Pass": 30
+    },
+    "m4": {
+      "Pass": 30
+    }
+  },
+  "resolve": {
+    "m3": {
+      "NotSupported": 6,
+      "Pass": 2
+    },
+    "m4": {
+      "NotSupported": 6,
+      "Pass": 2
+    }
+  },
+  "buffer address": {
+    "m3": {
+      "Pass": 3,
+      "NotSupported": 5
+    },
+    "m4": {
+      "Pass": 6,
+      "NotSupported": 2
+    }
+  },
+  "retained M3 regression: multisample": {
+    "m3": {
+      "Pass": 5
+    },
+    "m4": {
+      "Pass": 5
+    }
+  },
+  "dynamic UBO": {
+    "m3": {
+      "Pass": 12
+    },
+    "m4": {
+      "Pass": 12
+    }
+  },
+  "geometry": {
+    "m3": {
+      "NotSupported": 8
+    },
+    "m4": {
+      "Pass": 8
+    }
+  },
+  "LOD query": {
+    "m3": {
+      "Pass": 190
+    },
+    "m4": {
+      "Pass": 190
+    }
+  },
+  "retained M3 regression: repair-02": {
+    "m3": {
+      "Pass": 6
+    },
+    "m4": {
+      "Pass": 6
+    }
+  },
+  "gather and border": {
+    "m3": {
+      "NotSupported": 8,
+      "Pass": 4
+    },
+    "m4": {
+      "NotSupported": 6,
+      "Pass": 6
+    }
+  },
+  "pipeline cache": {
+    "m3": {
+      "Pass": 2,
+      "NotSupported": 6
+    },
+    "m4": {
+      "Pass": 8
+    }
+  },
+  "pipeline binary": {
+    "m3": {
+      "Pass": 3,
+      "NotSupported": 5
+    },
+    "m4": {
+      "Pass": 7,
+      "NotSupported": 1
+    }
+  },
+  "sampler reduction": {
+    "m3": {
+      "NotSupported": 8
+    },
+    "m4": {
+      "NotSupported": 8
+    }
+  },
+  "sparse": {
+    "m3": {
+      "NotSupported": 8
+    },
+    "m4": {
+      "NotSupported": 4,
+      "Pass": 4
+    }
+  },
+  "timeline": {
+    "m3": {
+      "Pass": 8
+    },
+    "m4": {
+      "Pass": 8
+    }
+  },
+  "mixed synchronization": {
+    "m3": {
+      "NotSupported": 10,
+      "Pass": 2
+    },
+    "m4": {
+      "NotSupported": 8,
+      "Pass": 4
+    }
+  },
+  "tessellation": {
+    "m3": {
+      "NotSupported": 8
+    },
+    "m4": {
+      "Pass": 6,
+      "NotSupported": 2
+    }
+  }
+}
