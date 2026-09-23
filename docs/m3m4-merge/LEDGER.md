@@ -340,3 +340,46 @@ prefetch and compression flags remain off by default. Compiler-option keys
 include bits 40–43 together with all producers/consumers of the optional layout.
 The copied historical reports identify their original source revisions; none is
 claimed as execution of the merged candidate.
+
+
+## Hardware and host checkpoint, 2026-09-23
+
+Candidate `c39d8a0f5b6` was built once for ARM64 and the same Vulkan,
+Gallium, EGL, GLX and GBM libraries installed in isolated prefixes on both
+machines. Both completed compute readback and 32 poisoned offscreen draws;
+the rendered checksum was `ad5a84277c930c65` on each. Each device's full
+Vulkan profile matches its production baseline except build/cache UUIDs and
+driverInfo. Different devices retain different pipeline-cache identities.
+All 153 previously repaired M3 GLES cases/configurations passed on both
+machines, retaining their original global indices. This is focused coverage,
+not a complete new conformance run.
+
+The source/encoding verifier reproduced 508,700 scalar table values and all
+1,494 retained instruction vectors. The broader Asahi host suite exposed ten
+failures that reproduce on the untouched M4 source; their exact comparison
+is archived in `host-baseline-comparison.json`. An obsolete negative G15S
+resource-program expectation was corrected with positive resource-word
+assertions and retained unsupported-device negatives.
+
+Broader GLSL host testing exposed a real imported bug: the direct acos
+polynomial compared vector operands against scalar zero. M4 baseline's
+`general_ir_test` passed while the candidate asserted in half-vector builtin
+initialization. `581916dcd95` fixes the comparison type; all 45 GLSL IR tests,
+NIR, sampler-type and iterator tests pass. The rebuilt package also passes
+compute and 32 poisoned renders on each machine. Hardware requalification
+continues against that new immutable prefix; the first package is retained.
+
+Raw evidence is `build/m3m4-merge-20260923`, with versioned manifests,
+build logs, per-command actual library mappings, profiles, thermal/watchdog
+records and frozen selections. One initial M3 collection error missed a very
+short vulkaninfo mapping sample after successful GPU probes, so the guard
+retained recovery and the machine was deliberately rebooted. The collector
+now also accepts the loader's actual library-initialization trace. This was
+a harness incident, not a GPU fault; both attempts remain archived. An M4
+wrong-manifest baseline attempt and a missing optional provenance-field
+harness error are likewise retained alongside successful corrected runs.
+
+At `581916dcd95`, the repeated repaired GLES selection completed 153/153
+Pass on each machine. The archived M4 experiment helper also now reflects
+the existing workspace guard settings (CPU ceiling and provisional thermal
+policy) and display-fault classification used for these runs.

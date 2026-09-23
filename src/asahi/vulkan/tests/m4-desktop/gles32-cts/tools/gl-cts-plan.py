@@ -39,6 +39,8 @@ p.add_argument('--jobs', type=int, default=4)
 p.add_argument('--run-jobs', type=int, choices=(1,4), help='Explicit execution worker cap; frozen cases/configuration indices are unchanged')
 p.add_argument('--live', action='store_true', help='Read the latest target runner progress alongside saved coverage')
 p.add_argument('--seconds', type=int, default=900)
+p.add_argument('--mesa-source', type=Path, default=ROOT/'mesa/m4-asahi',
+               help='Source checkout recorded by the experiment guard')
 p.add_argument('--continue-compiler-aborts', action='store_true',
     help='After the reviewed AGX compile/pipeline assertion only, retain crashes and continue unrun/canceled peers under a fresh guard')
 p.add_argument('--continue-batch-deadlines', action='store_true',
@@ -335,6 +337,7 @@ for segment in catalog['segments'][a.first:a.last]:
             save(folder/'cases.meta.json', meta)
         options = catalog['sessions'][segment['session']]['options']
         cmd = [sys.executable, str(ROOT/'tools/cts-bulk.py'), '--cases', str(folder/'cases.txt'),
+            '--mesa-source', str(a.mesa_source),
             '--output', str(folder/'run'), '--name', f"gles32-plan-{segment['index']:04d}-r{ordinal}",
             '--binary', catalog['binary'], '--runner', str(ROOT/'reference/deqp-runner/target/aarch64-unknown-linux-gnu/release/deqp-runner'),
             '--jobs', str(1 if recovery_review and segment['index'] == recovery_review['segment'] else min(segment['jobs'], a.run_jobs or segment['jobs'])), '--runner-seconds', str(a.seconds),

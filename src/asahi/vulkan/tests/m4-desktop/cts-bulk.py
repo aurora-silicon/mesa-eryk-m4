@@ -18,6 +18,8 @@ p.add_argument('--runner', type=Path, required=True, help='ARM64 deqp-runner wit
 p.add_argument('--binary', default='/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit')
 p.add_argument('--output', type=Path, required=True)
 p.add_argument('--name', required=True)
+p.add_argument('--mesa-source', type=Path, default=ROOT/'mesa/m4-asahi',
+               help='Mesa checkout recorded by the experiment guard')
 p.add_argument('--renderer', choices=('m4', 'lavapipe'), default='m4', help='Guarded renderer for hardware/reference comparisons')
 p.add_argument('--jobs', type=int, default=1,
                help='Workers (default 1); qualify memory usage before increasing concurrency')
@@ -108,6 +110,7 @@ with (a.output/'stage.log').open('w') as log:
                        check=True, stdout=log, stderr=subprocess.STDOUT)
 preparation_seconds = time.monotonic()-prep
 command = [sys.executable, str(ROOT/'tools/gpu-experiment.py'), '--name', a.name,
+    '--mesa-source', str(a.mesa_source),
     '--hypothesis', 'Measure frozen CTS cases with grouped first-attempt execution',
     '--expect', '^CTS_BATCH_COMPLETE:', '--seconds', str(a.runner_seconds+20),
     '--cpu-max-khz', str(a.cpu_max_khz), '--',

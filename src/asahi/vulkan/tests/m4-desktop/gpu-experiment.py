@@ -23,10 +23,13 @@ def write_json(path, value):
 
 def experiment_output(directory):
     """Only logs retained by this experiment, including app-observe's child."""
-    return "\n".join(p.read_text(errors="replace") for p in (
+    output = "\n".join(p.read_text(errors="replace") for p in (
         directory / "remote" / "command.log",
         directory / "remote" / "application" / "application.log",
     ) if p.exists())
+    # muvm's PTY may prefix a result with a shell-integration OSC marker.
+    # Classify visible text while preserving the original files as evidence.
+    return re.sub(r"\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b\[[0-?]*[ -/]*[@-~]", "", output)
 
 
 def summarize_evidence(directory):
@@ -103,9 +106,11 @@ def classify(directory, facts, expected):
         return "gpu_timeout"
     if re.search(r"GPU retirement unproven|firmware crashed|Internal error:|BUG:|Kernel panic", kernels):
         return "gpu_fault"
+    if re.search(r"M4 idle callback failed|M4 kernel RPC .*failed:|native DCP flip failed", kernels):
+        return "display_fault"
     if re.search(r"compilation failed|link failed|major shader compiler error|no grounded AGX3 encoding|failed to compile or link required", stdout, re.I):
         return "shader_error"
-    if re.search(r"(?:ERROR.*VUID-|SYNC-HAZARD-)", stdout):
+    if re.search(r"(?:ERROR.*VUID-|SYNC-HAZARD-)", stdout, re.I):
         return "validation_error"
     if re.search(r"VK_ERROR_(?:DEVICE_LOST|FEATURE_NOT_PRESENT)|vkEndCommandBuffer failed|GL_INVALID_OPERATION|major api error|ZINK: blit unsupported", stdout, re.I):
         return "api_error"
@@ -131,10 +136,16 @@ def classify(directory, facts, expected):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--name", required=True)
+    parser.add_argument("--mesa-source", type=pathlib.Path, default=ROOT / "mesa/m4-asahi",
+                        help="Mesa checkout whose exact revision/patch is recorded")
+    parser.add_argument("--cpu-max-khz", type=int, default=1860000, choices=[1860000, 4104000],
+                        help="CPU ceiling the guard applies for the run (it never raises an existing lower cap)")
     parser.add_argument("--hypothesis", required=True)
     parser.add_argument("--expect", required=True, help="Required success regex in command.log or retained application.log")
     parser.add_argument("--seconds", type=int, default=40, choices=range(1, 1801), metavar="1..1800",
                         help="Runs over 40s require the qualified GPU-retirement watchdog guard")
+    parser.add_argument("--thermal-stop-mc", type=int, choices=[95000, 100000, 120000], default=120000,
+                        help="May tighten the installed independent thermal stop")
     parser.add_argument("command", nargs=argparse.REMAINDER,
                         help="Remote argv; {output} expands to the evidence directory")
     args = parser.parse_args()
@@ -151,9 +162,9 @@ def main():
     remote_output = "/root/asahi-evidence/" + run_id
     argv = [arg.replace("{output}", remote_output) for arg in argv]
     metadata = {"id": run_id, "hypothesis": args.hypothesis, "command": argv,
-                "expected_success": args.expect, "seconds": args.seconds,
+                "expected_success": args.expect, "seconds": args.seconds, "thermal_stop_mc": args.thermal_stop_mc,
                 "sources": {}}
-    for name, repo in [("mesa", ROOT / "mesa/m4-asahi"), ("kernel", ROOT / "linux/linux-asahi")]:
+    for name, repo in [("mesa", args.mesa_source), ("kernel", ROOT / "linux/linux-asahi")]:
         state, patch = source_state(repo)
         metadata["sources"][name] = state
         (output / (name + ".patch")).write_bytes(patch)
@@ -189,6 +200,7 @@ print(json.dumps(dict(boot_id=pathlib.Path('/proc/sys/kernel/random/boot_id').re
         if facts["files"].get("/root/guarded-command.py") != guard_hash:
             raise RuntimeError("Long experiment requires the matching qualified guarded-command.py")
     command = ["python3", "/root/guarded-command.py", "--seconds", str(args.seconds),
+               "--cpu-max-khz", str(args.cpu_max_khz), "--thermal-stop-mc", str(args.thermal_stop_mc),
                "--output", remote_output, "--", *argv]
     print("Evidence:", output, flush=True)
     with (output / "guard.log").open("w") as log:

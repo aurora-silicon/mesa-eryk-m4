@@ -136,7 +136,7 @@ def batch(args):
     check = lambda: module.check_guard(args.guard_output, boot)
     check()
     metadata = case_metadata(args.cases)
-    if metadata and args.renderer == 'm4' and metadata['provenance'].get('identity'):
+    if metadata and args.renderer == 'm4' and metadata.get('provenance', {}).get('identity'):
         identity = metadata['provenance']['identity']
         if os.uname().release != identity['kernel']:
             raise RuntimeError('Capability profile kernel changed; recapture and reselect')
