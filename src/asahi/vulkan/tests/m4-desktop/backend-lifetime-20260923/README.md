@@ -36,3 +36,12 @@ The retained restart script runs inside gpu-experiment.py --seconds 40;
 it terminates the existing session and verifies the actual backend mapping.
 Use the archived host installer from the workspace tools directory (it resolves
 build products relative to that workspace), not directly from this archive.
+
+## Physical reconnect confirmed
+
+The user repeated USB-C adapter unplug/replug and confirmed HDMI returned
+without a compositor restart or safe mode. SSH verified unchanged Hyprland
+PID 7946, the repaired backend mapping, both DRM connectors connected and
+USB storage negotiated at 5000 Mb/s. Disconnect/re-enumeration occurred at
+kernel times 2347.944/2358.329 seconds. This completes the real desktop check
+for this adapter, in addition to the isolated renderer lifetime reproducer.
