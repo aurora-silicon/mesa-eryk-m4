@@ -534,7 +534,7 @@ hk_CreateDevice(VkPhysicalDevice physicalDevice,
    }
 
    simple_mtx_init(&dev->sparse_residency_lock, mtx_plain);
-   if (dev->dev.chip == AGX_CHIP_G16G) {
+   if (agx_chip_uses_g15_g16_shader_abi(dev->dev.chip)) {
       const uint64_t bytes = DIV_ROUND_UP(dev->dev.main_heap_size, 16384 * 8);
       dev->sparse_residency = agx_bo_create(&dev->dev, bytes, 16384,
                                           AGX_BO_READONLY, "Sparse VA residency");
@@ -573,7 +573,7 @@ hk_CreateDevice(VkPhysicalDevice physicalDevice,
 
    /* Sparse page-table publication runs on the CPU. A sparse wait may be
     * signalled by a later host call, so it must not block the API thread. */
-   if (dev->dev.chip == AGX_CHIP_G16G)
+   if (agx_chip_uses_g15_g16_shader_abi(dev->dev.chip))
       vk_device_enable_threaded_submit(&dev->vk);
 
    vk_device_set_drm_fd(&dev->vk, dev->dev.fd);

@@ -2182,7 +2182,7 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
    if (agx_chip_descriptor_generation(dev->dev.chip) == 9)
       NIR_PASS(_, nir, nir_shader_instructions_pass, lower_sparse_buffer_or_ms,
                nir_metadata_none,
-               dev->dev.chip == AGX_CHIP_G16G ? dev : NULL);
+               agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) ? dev : NULL);
 
    hk_capture_lowering(nir, "before-texture", features);
    NIR_PASS(_, nir, agx_nir_lower_texture_for_generation,
@@ -2193,10 +2193,10 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
    const bool defer_ubo_aliases = agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) &&
       nir->info.stage == MESA_SHADER_FRAGMENT &&
       debug_get_bool_option("HK_M4_PREFETCH_UBOS", false);
-   if (dev->dev.chip == AGX_CHIP_G16G && !defer_ubo_aliases)
+   if (agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) && !defer_ubo_aliases)
       NIR_PASS(_, nir, hk_nir_lower_memory_aliases);
 
-   if (dev->dev.chip == AGX_CHIP_G16G && !defer_ubo_aliases &&
+   if (agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) && !defer_ubo_aliases &&
        (features & HK_FEAT_STRICT_SPARSE))
       NIR_PASS(_, nir, hk_nir_lower_sparse_access);
 

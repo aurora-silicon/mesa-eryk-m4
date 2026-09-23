@@ -244,7 +244,7 @@ hk_CreateBuffer(VkDevice device, const VkBufferCreateInfo *pCreateInfo,
          return result;
       }
 
-      if (dev->dev.chip == AGX_CHIP_G16G &&
+      if (agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) &&
           (buffer->vk.create_flags & VK_BUFFER_CREATE_SPARSE_BINDING_BIT)) {
          const size_t map_size = (vma_size_B / 16384) * sizeof(uint32_t);
          buffer->residency = agx_bo_create(&dev->dev, map_size, 16384,

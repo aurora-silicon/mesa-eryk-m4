@@ -1264,7 +1264,7 @@ queue_submit(struct hk_device *dev, struct hk_queue *queue,
 
       /* Publishing CPU-maintained residency must happen after the waits,
        * not merely before a kernel submission that will eventually wait. */
-      if (dev->dev.chip == AGX_CHIP_G16G) {
+      if (agx_chip_uses_g15_g16_shader_abi(dev->dev.chip)) {
          VkResult waited = vk_sync_wait_many(&dev->vk, submit->wait_count,
                                               submit->waits, 0, UINT64_MAX);
          if (waited != VK_SUCCESS)
@@ -1641,7 +1641,8 @@ hk_QueueBindSparse(VkQueue _queue, uint32_t bindInfoCount,
 {
    VK_FROM_HANDLE(vk_queue, vk_queue, _queue);
    struct hk_queue *queue = container_of(vk_queue, struct hk_queue, vk);
-   if (bindInfoCount && hk_queue_device(queue)->dev.chip == AGX_CHIP_G16G) {
+   if (bindInfoCount &&
+       agx_chip_uses_g15_g16_shader_abi(hk_queue_device(queue)->dev.chip)) {
       VkResult result = vk_queue_enable_submit_thread(&queue->vk);
       if (result != VK_SUCCESS)
          return result;

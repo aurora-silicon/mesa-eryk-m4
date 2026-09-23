@@ -1,0 +1,75 @@
+{
+  "changed_files": [
+    "docs/m3m4-merge/m3-factorio-features/README.md",
+    "docs/m3m4-merge/m3-factorio-features/statistics-results.json",
+    "src/asahi/vulkan/hk_buffer.c",
+    "src/asahi/vulkan/hk_cmd_draw.c",
+    "src/asahi/vulkan/hk_device.c",
+    "src/asahi/vulkan/hk_physical_device.c",
+    "src/asahi/vulkan/hk_queue.c",
+    "src/asahi/vulkan/hk_shader.c"
+  ],
+  "failures": [
+    {
+      "name": "asahi - mesa:asahi-agx3-packing",
+      "result": "FAIL",
+      "target": "src/asahi/genxml/asahi-agx3-packing",
+      "changed_dependencies": []
+    },
+    {
+      "name": "asahi - mesa:agx3_opcode_mapping",
+      "result": "FAIL",
+      "target": null,
+      "changed_dependencies": []
+    },
+    {
+      "name": "asahi - mesa:agx3_compile_fail_closed",
+      "result": "FAIL",
+      "target": "src/asahi/compiler/agx3_compile_fail_closed_test",
+      "changed_dependencies": []
+    },
+    {
+      "name": "asahi - mesa:agx3_multi_store",
+      "result": "FAIL",
+      "target": "src/asahi/compiler/agx3_multi_store_test",
+      "changed_dependencies": []
+    },
+    {
+      "name": "asahi - mesa:agx3_event_wait",
+      "result": "FAIL",
+      "target": "src/asahi/compiler/agx3_event_wait_test",
+      "changed_dependencies": []
+    },
+    {
+      "name": "asahi - mesa:agx3_funop_core",
+      "result": "FAIL",
+      "target": "src/asahi/compiler/agx3_funop_core_test",
+      "changed_dependencies": []
+    },
+    {
+      "name": "asahi - mesa:agx3_rt_core",
+      "result": "FAIL",
+      "target": "src/asahi/compiler/agx3_rt_core_test",
+      "changed_dependencies": []
+    },
+    {
+      "name": "asahi - mesa:agx3_graphics_compile",
+      "result": "FAIL",
+      "target": "src/asahi/compiler/agx3_graphics_compile_test",
+      "changed_dependencies": []
+    },
+    {
+      "name": "asahi - mesa:agx_register_bank",
+      "result": "FAIL",
+      "target": "src/asahi/compiler/agx_register_bank_test",
+      "changed_dependencies": []
+    },
+    {
+      "name": "asahi - mesa:hk_minmax_control_flow",
+      "result": "FAIL",
+      "target": "src/asahi/vulkan/hk_minmax_control_flow_test",
+      "changed_dependencies": []
+    }
+  ],
+  "limitation": "Dependency audit only, not a separately rebuilt parent revision. These failed test targets do not compile the changed runtime files."
+}

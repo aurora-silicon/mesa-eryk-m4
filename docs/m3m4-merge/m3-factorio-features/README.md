@@ -19,3 +19,13 @@ All 1,302 cases in the pinned `geometry.*` and `tessellation.*` groups were atte
 All three original M4 Factorio GL recordings now replay with their original GL 4.1 context request: Linux X11, Linux Wayland, Proton OpenGL. Each produced three 3840×2160 sampled images with **exact RGB equality to the reviewed M4 reference**, without context adaptation or skipped calls. Private benchmark evidence is local in `gpu-replay-bench/results/factorio-*/m3/20260923T1707*` and `20260923T170809*`. No assets belong in this public Mesa repository. Zink now derives GL 4.6/GLES 3.2 from the features; this focused qualification is not a full conformance claim.
 
 The broader host Asahi unit suite yielded 109 Pass and 10 failures. Its failing compiled targets do not depend on the runtime files changed here (dependency audit retained locally); these results are not presented as a clean unit-suite pass.
+
+## Sparse memory, layer/viewport exports and sample interlock
+
+G15S now uses the native residency/alias tables, sparse texel-buffer map, strict sparse shader lowering, and host-wait-ordered threaded sparse publication already used on G16G. Queue sparse capability is derived from the qualified feature bit, preventing inconsistent feature/queue exposure. Layer/viewport exports and geometry streams use the shared native export/Poly paths. Sample interlock is enabled; the independently unqualified pixel-interlock feature remains disabled.
+
+Focused execution: **256 Pass / 40 NotSupported** across 296 layer/viewport, geometry, interlock and sparse cases. An additional seeded sparse-group sample across formats yielded **91 Pass / 65 NotSupported** across 156 cases. There were no final correctness failures or GPU faults. The original pre-execution CTS abort from the missing sparse queue flag is preserved, together with its passing exact-case retest.
+
+The original Factorio Proton DX11 capture now creates its device with every recorded requested feature intact and completes: three sampled 4K RGB images are **pixel-identical to M4**. All three GL captures were rechecked with the sparse-enabled candidate and also remain pixel-identical. These are original workload replays, not a claim of full Vulkan/GL conformance or full sparse-format coverage. All candidates were installed separately from the normal desktop.
+
+`tools/cts-run.py` and `cts-batch.py` snapshot the workspace helpers used here. `--case-seconds 35` shortens the launch window to three seconds and uses the existing 45-second guard; the default remains 10-second cases / 30-second guard. It never renews an ordinary M3 experiment watchdog or resumes after an unreviewed fault.

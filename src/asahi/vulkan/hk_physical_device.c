@@ -310,16 +310,16 @@ hk_get_device_features(
       /* Gang four hardware pages using the sample-aware image tile size.
        * The 2x shape is nonstandard and is reported as such by format queries.
        */
-      .sparseResidency2Samples = dev->chip == AGX_CHIP_G16G,
-      .sparseResidency4Samples = dev->chip == AGX_CHIP_G16G,
+      .sparseResidency2Samples = agx_chip_uses_g15_g16_shader_abi(dev->chip),
+      .sparseResidency4Samples = agx_chip_uses_g15_g16_shader_abi(dev->chip),
       .sparseResidency8Samples = false,
       .sparseResidencyAliased = true,
       .sparseResidencyImage2D = true,
       .sparseResidencyBuffer = true,
 
-      /* M4 uses independently tiled depth slices and nonstandard 2D-shaped
+      /* G15S/G16G use independently tiled depth slices and nonstandard 2D-shaped
        * sparse blocks, matching the image layout and sparse bind path. */
-      .sparseResidencyImage3D = dev->chip == AGX_CHIP_G16G,
+      .sparseResidencyImage3D = agx_chip_uses_g15_g16_shader_abi(dev->chip),
       .variableMultisampleRate = false,
       .inheritedQueries = true,
 
@@ -384,12 +384,12 @@ hk_get_device_features(
       .vulkanMemoryModel = true,
       .vulkanMemoryModelDeviceScope = true,
       .vulkanMemoryModelAvailabilityVisibilityChains = false,
-      /* G16G exports the packed layer/viewport system value and ordinary
+      /* G15S/G16G export the packed layer/viewport system value and ordinary
        * flat varyings for the matching fragment inputs. */
       .shaderOutputViewportIndex = !agx_native_graphics(dev) ||
-         dev->chip == AGX_CHIP_G16G,
+         agx_chip_uses_g15_g16_shader_abi(dev->chip),
       .shaderOutputLayer = !agx_native_graphics(dev) ||
-         dev->chip == AGX_CHIP_G16G,
+         agx_chip_uses_g15_g16_shader_abi(dev->chip),
       .subgroupBroadcastDynamicId = true,
 
       /* Vulkan 1.3 */
@@ -642,7 +642,8 @@ hk_get_device_features(
       /* Pixel interlock still lacks exclusion across disjoint sample coverage. */
       .fragmentShaderPixelInterlock = dev->chip == AGX_CHIP_G16G &&
          debug_get_bool_option("HK_EXPERIMENTAL_INTERLOCK", false),
-      .fragmentShaderSampleInterlock = dev->chip == AGX_CHIP_G16G,
+      .fragmentShaderSampleInterlock =
+         agx_chip_uses_g15_g16_shader_abi(dev->chip),
 
       /* VK_EXT_shader_image_atomic_int64 */
       .shaderImageInt64Atomics = dev->chip == AGX_CHIP_G16G,
@@ -709,7 +710,7 @@ hk_get_device_features(
       features->fragmentStoresAndAtomics =
          agx_chip_uses_g15_g16_shader_abi(dev->chip);
       features->shaderTessellationAndGeometryPointSize = graphics_storage;
-      const bool sparse = dev->chip == AGX_CHIP_G16G;
+      const bool sparse = agx_chip_uses_g15_g16_shader_abi(dev->chip);
       /* Native SMP residency plus live sparse texel-buffer bind metadata. */
       features->shaderResourceResidency = sparse;
       features->shaderResourceMinLod = sparse;
@@ -721,7 +722,7 @@ hk_get_device_features(
       features->sparseResidencyBuffer = sparse;
       // G16G exports the view index through its qualified layered UVS path.
       features->multiview = dev->chip == AGX_CHIP_G16G;
-      features->geometryStreams = dev->chip == AGX_CHIP_G16G;
+      features->geometryStreams = graphics_storage;
       /* HAL200's native storage-image fetch is memory-safe, but its TEX
        * descriptor does not bounds-check against the Vulkan image view.
        * Hardware qualification returned adjacent in-image texels for both
@@ -1425,7 +1426,7 @@ hk_create_drm_physical_device(struct vk_instance *_instance,
       pdev->dev.chip == AGX_CHIP_G16G;
 
    supported_extensions.EXT_fragment_shader_interlock =
-      pdev->dev.chip == AGX_CHIP_G16G;
+      agx_chip_uses_g15_g16_shader_abi(pdev->dev.chip);
 
    /* Native tile blend epilogs are enabled on the qualified G16G path. */
    if (agx_native_graphics(&pdev->dev))
@@ -1434,7 +1435,7 @@ hk_create_drm_physical_device(struct vk_instance *_instance,
 
    /* The extension promises both features even to pre-1.2 applications. */
    if (agx_native_graphics(&pdev->dev) &&
-       pdev->dev.chip != AGX_CHIP_G16G)
+       !agx_chip_uses_g15_g16_shader_abi(pdev->dev.chip))
       supported_extensions.EXT_shader_viewport_index_layer = false;
 
    struct vk_features supported_features;
@@ -1497,14 +1498,11 @@ hk_create_drm_physical_device(struct vk_instance *_instance,
    assert(pdev->mem_type_count <= ARRAY_SIZE(pdev->mem_types));
 
    VkQueueFlags queue_flags =
-      VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT |
-      VK_QUEUE_SPARSE_BINDING_BIT;
-   if (agx_native_graphics(&pdev->dev) && pdev->dev.chip != AGX_CHIP_G16G) {
-      /* Graphics, compute and transfers use the native HAL200 queue path.
-       * Sparse binding still requires separate kernel support. */
-      queue_flags = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT |
-                    VK_QUEUE_TRANSFER_BIT;
-   }
+      VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT;
+   /* Queue exposure must follow the qualified sparse implementation, not a
+    * separate chip check that can disagree with sparseBinding. */
+   if (supported_features.sparseBinding)
+      queue_flags |= VK_QUEUE_SPARSE_BINDING_BIT;
 
 
    uint32_t queue_count = 1;

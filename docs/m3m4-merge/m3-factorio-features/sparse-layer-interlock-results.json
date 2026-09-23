@@ -1,0 +1,4082 @@
+{
+  "attempts": [
+    {
+      "group": "sparse-layer-interlock",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_layer.tessellation_shader_1",
+      "catalog_index": 634104,
+      "status": "Crash",
+      "message": "Process signal 9",
+      "seconds": 0.031675942999754625
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_layer.tessellation_shader_1",
+      "catalog_index": 634104,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.163912478000384
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_layer.tessellation_shader_2",
+      "catalog_index": 634105,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.16425983800036192
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_layer.tessellation_shader_256",
+      "catalog_index": 634106,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.31452062700009265
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_layer.tessellation_shader_3",
+      "catalog_index": 634107,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.16408270700048888
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_layer.tessellation_shader_4",
+      "catalog_index": 634108,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.1637104540004657
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_layer.tessellation_shader_5",
+      "catalog_index": 634109,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.16422600300029444
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_layer.tessellation_shader_6",
+      "catalog_index": 634110,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.16424662999997963
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_layer.tessellation_shader_7",
+      "catalog_index": 634111,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.16420181900048192
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_layer.tessellation_shader_8",
+      "catalog_index": 634112,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.16421406799963734
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_layer.vertex_shader_1",
+      "catalog_index": 634113,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.11409822399946279
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_layer.vertex_shader_2",
+      "catalog_index": 634114,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.1140957650004566
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_layer.vertex_shader_256",
+      "catalog_index": 634115,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.26435874799972225
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_layer.vertex_shader_3",
+      "catalog_index": 634116,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.1141296580008202
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_layer.vertex_shader_4",
+      "catalog_index": 634117,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.1141401169998062
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_layer.vertex_shader_5",
+      "catalog_index": 634118,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.11412113999995199
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_layer.vertex_shader_6",
+      "catalog_index": 634119,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.11411334800050099
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_layer.vertex_shader_7",
+      "catalog_index": 634120,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.11413211800027057
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_layer.vertex_shader_8",
+      "catalog_index": 634121,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.11410701600016182
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_viewport_index.fragment_shader_1",
+      "catalog_index": 634122,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.11406545699992421
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_viewport_index.fragment_shader_10",
+      "catalog_index": 634123,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.11419015100000252
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_viewport_index.fragment_shader_11",
+      "catalog_index": 634124,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.11417209400042339
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_viewport_index.fragment_shader_12",
+      "catalog_index": 634125,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.11407312299979822
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_viewport_index.fragment_shader_13",
+      "catalog_index": 634126,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.11411444999976084
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_viewport_index.fragment_shader_14",
+      "catalog_index": 634127,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.11411865799982479
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_viewport_index.fragment_shader_15",
+      "catalog_index": 634128,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.11409185100001196
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_viewport_index.fragment_shader_16",
+      "catalog_index": 634129,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.11413099300079921
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_viewport_index.fragment_shader_2",
+      "catalog_index": 634130,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.11413561700010177
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_viewport_index.fragment_shader_3",
+      "catalog_index": 634131,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.11406222999994498
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_viewport_index.fragment_shader_4",
+      "catalog_index": 634132,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.11409683100009715
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_viewport_index.fragment_shader_5",
+      "catalog_index": 634133,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.11406179000005068
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_viewport_index.fragment_shader_6",
+      "catalog_index": 634134,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.11411957400014217
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_viewport_index.fragment_shader_7",
+      "catalog_index": 634135,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.11413945000003878
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_viewport_index.fragment_shader_8",
+      "catalog_index": 634136,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.1141181000002689
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_viewport_index.fragment_shader_9",
+      "catalog_index": 634137,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.11409024799922918
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_viewport_index.fragment_shader_implicit",
+      "catalog_index": 634138,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.11420627699953911
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_viewport_index.tessellation_shader_1",
+      "catalog_index": 634139,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.16417101099978026
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_viewport_index.tessellation_shader_10",
+      "catalog_index": 634140,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.1641312250003466
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_viewport_index.tessellation_shader_11",
+      "catalog_index": 634141,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.1642275280000831
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_viewport_index.tessellation_shader_12",
+      "catalog_index": 634142,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.16424600399932388
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_viewport_index.tessellation_shader_13",
+      "catalog_index": 634143,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.16423633499925927
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_viewport_index.tessellation_shader_14",
+      "catalog_index": 634144,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.16418875999988813
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_viewport_index.tessellation_shader_15",
+      "catalog_index": 634145,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.16404004600008193
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_viewport_index.tessellation_shader_16",
+      "catalog_index": 634146,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.16423794500042277
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_viewport_index.tessellation_shader_2",
+      "catalog_index": 634147,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.16414401600013662
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_viewport_index.tessellation_shader_3",
+      "catalog_index": 634148,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.1641548679999687
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_viewport_index.tessellation_shader_4",
+      "catalog_index": 634149,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.16417384299984406
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_viewport_index.tessellation_shader_5",
+      "catalog_index": 634150,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.16419663499982562
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_viewport_index.tessellation_shader_6",
+      "catalog_index": 634151,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.16412109900011274
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_viewport_index.tessellation_shader_7",
+      "catalog_index": 634152,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.16429503899962583
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_viewport_index.tessellation_shader_8",
+      "catalog_index": 634153,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.1642536059998747
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0000",
+      "case": "dEQP-VK.draw.renderpass.shader_viewport_index.tessellation_shader_9",
+      "catalog_index": 634154,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.16420196699982625
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.draw.renderpass.shader_viewport_index.vertex_shader_1",
+      "catalog_index": 634155,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.16403304600044066
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.draw.renderpass.shader_viewport_index.vertex_shader_10",
+      "catalog_index": 634156,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.16423083700010466
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.draw.renderpass.shader_viewport_index.vertex_shader_11",
+      "catalog_index": 634157,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.16421100899970043
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.draw.renderpass.shader_viewport_index.vertex_shader_12",
+      "catalog_index": 634158,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.1642030530001648
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.draw.renderpass.shader_viewport_index.vertex_shader_13",
+      "catalog_index": 634159,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.1642302780001046
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.draw.renderpass.shader_viewport_index.vertex_shader_14",
+      "catalog_index": 634160,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.16415424299975712
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.draw.renderpass.shader_viewport_index.vertex_shader_15",
+      "catalog_index": 634161,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.1641388090001783
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.draw.renderpass.shader_viewport_index.vertex_shader_16",
+      "catalog_index": 634162,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.1141058069997598
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.draw.renderpass.shader_viewport_index.vertex_shader_2",
+      "catalog_index": 634163,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.1140794150005604
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.draw.renderpass.shader_viewport_index.vertex_shader_3",
+      "catalog_index": 634164,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.16424583600019105
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.draw.renderpass.shader_viewport_index.vertex_shader_4",
+      "catalog_index": 634165,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.1642502949998743
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.draw.renderpass.shader_viewport_index.vertex_shader_5",
+      "catalog_index": 634166,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.16429337299996405
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.draw.renderpass.shader_viewport_index.vertex_shader_6",
+      "catalog_index": 634167,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.16424975500012806
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.draw.renderpass.shader_viewport_index.vertex_shader_7",
+      "catalog_index": 634168,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.1641543260002436
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.draw.renderpass.shader_viewport_index.vertex_shader_8",
+      "catalog_index": 634169,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.1642276109996601
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.draw.renderpass.shader_viewport_index.vertex_shader_9",
+      "catalog_index": 634170,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.16437894799946662
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.fragment_shader_interlock.basic.discard.image.pixel_ordered.4xaa.sample_shading.32x32",
+      "catalog_index": 636885,
+      "status": "NotSupported",
+      "message": "Fragment shader pixel interlock not supported at vktFragmentShaderInterlockBasic.cpp:167",
+      "seconds": 0.03202006999981677
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.fragment_shader_interlock.basic.discard.image.pixel_unordered.4xaa.sample_shading.32x32",
+      "catalog_index": 636909,
+      "status": "NotSupported",
+      "message": "Fragment shader pixel interlock not supported at vktFragmentShaderInterlockBasic.cpp:167",
+      "seconds": 0.03202813600000809
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.fragment_shader_interlock.basic.discard.image.sample_ordered.1xaa.no_sample_shading.32x32",
+      "catalog_index": 636917,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16419046800001524
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.fragment_shader_interlock.basic.discard.image.sample_ordered.4xaa.no_sample_shading.32x32",
+      "catalog_index": 636925,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16413861799992446
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.fragment_shader_interlock.basic.discard.image.sample_ordered.4xaa.sample_shading.32x32",
+      "catalog_index": 636933,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1642397539999365
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.fragment_shader_interlock.basic.discard.image.sample_unordered.1xaa.no_sample_shading.32x32",
+      "catalog_index": 636941,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16419880200010084
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.fragment_shader_interlock.basic.discard.image.sample_unordered.4xaa.no_sample_shading.32x32",
+      "catalog_index": 636949,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16419201000007888
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.fragment_shader_interlock.basic.discard.image.sample_unordered.4xaa.sample_shading.32x32",
+      "catalog_index": 636957,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16413880799973413
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.fragment_shader_interlock.basic.discard.image.shading_rate_ordered.4xaa.sample_shading.32x32",
+      "catalog_index": 636981,
+      "status": "NotSupported",
+      "message": "Fragment shader shading rate interlock not supported at vktFragmentShaderInterlockBasic.cpp:174",
+      "seconds": 0.03195626700016874
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.fragment_shader_interlock.basic.discard.image.shading_rate_unordered.4xaa.sample_shading.32x32",
+      "catalog_index": 637005,
+      "status": "NotSupported",
+      "message": "Fragment shader shading rate interlock not supported at vktFragmentShaderInterlockBasic.cpp:174",
+      "seconds": 0.03203319499971258
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.fragment_shader_interlock.basic.discard.ssbo.pixel_ordered.4xaa.sample_shading.32x32",
+      "catalog_index": 637029,
+      "status": "NotSupported",
+      "message": "Fragment shader pixel interlock not supported at vktFragmentShaderInterlockBasic.cpp:167",
+      "seconds": 0.032048820000454725
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.fragment_shader_interlock.basic.discard.ssbo.pixel_unordered.4xaa.sample_shading.32x32",
+      "catalog_index": 637053,
+      "status": "NotSupported",
+      "message": "Fragment shader pixel interlock not supported at vktFragmentShaderInterlockBasic.cpp:167",
+      "seconds": 0.031983410000066215
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.fragment_shader_interlock.basic.discard.ssbo.sample_ordered.1xaa.no_sample_shading.32x32",
+      "catalog_index": 637061,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1641951940000581
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.fragment_shader_interlock.basic.discard.ssbo.sample_ordered.4xaa.no_sample_shading.32x32",
+      "catalog_index": 637069,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16418517800047994
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.fragment_shader_interlock.basic.discard.ssbo.sample_ordered.4xaa.sample_shading.32x32",
+      "catalog_index": 637077,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.164244962000339
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.fragment_shader_interlock.basic.discard.ssbo.sample_unordered.1xaa.no_sample_shading.32x32",
+      "catalog_index": 637085,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16424175299925992
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.fragment_shader_interlock.basic.discard.ssbo.sample_unordered.4xaa.no_sample_shading.32x32",
+      "catalog_index": 637093,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16412457400019775
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.fragment_shader_interlock.basic.discard.ssbo.sample_unordered.4xaa.sample_shading.32x32",
+      "catalog_index": 637101,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11380358999940654
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.fragment_shader_interlock.basic.discard.ssbo.shading_rate_ordered.4xaa.sample_shading.32x32",
+      "catalog_index": 637125,
+      "status": "NotSupported",
+      "message": "Fragment shader shading rate interlock not supported at vktFragmentShaderInterlockBasic.cpp:174",
+      "seconds": 0.03192375000071479
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.fragment_shader_interlock.basic.discard.ssbo.shading_rate_unordered.4xaa.sample_shading.32x32",
+      "catalog_index": 637149,
+      "status": "NotSupported",
+      "message": "Fragment shader shading rate interlock not supported at vktFragmentShaderInterlockBasic.cpp:174",
+      "seconds": 0.03200049299994134
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.fragment_shader_interlock.basic.nodiscard.image.pixel_ordered.4xaa.sample_shading.32x32",
+      "catalog_index": 637173,
+      "status": "NotSupported",
+      "message": "Fragment shader pixel interlock not supported at vktFragmentShaderInterlockBasic.cpp:167",
+      "seconds": 0.03196097500040196
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.fragment_shader_interlock.basic.nodiscard.image.pixel_unordered.4xaa.sample_shading.32x32",
+      "catalog_index": 637197,
+      "status": "NotSupported",
+      "message": "Fragment shader pixel interlock not supported at vktFragmentShaderInterlockBasic.cpp:167",
+      "seconds": 0.03196082500016928
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.fragment_shader_interlock.basic.nodiscard.image.sample_ordered.1xaa.no_sample_shading.32x32",
+      "catalog_index": 637205,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16420167700016464
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.fragment_shader_interlock.basic.nodiscard.image.sample_ordered.4xaa.no_sample_shading.32x32",
+      "catalog_index": 637213,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16383398300058616
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.fragment_shader_interlock.basic.nodiscard.image.sample_ordered.4xaa.sample_shading.32x32",
+      "catalog_index": 637221,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16427973000008933
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.fragment_shader_interlock.basic.nodiscard.image.sample_unordered.1xaa.no_sample_shading.32x32",
+      "catalog_index": 637229,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16425737800000206
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.fragment_shader_interlock.basic.nodiscard.image.sample_unordered.4xaa.no_sample_shading.32x32",
+      "catalog_index": 637237,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11410143299963238
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.fragment_shader_interlock.basic.nodiscard.image.sample_unordered.4xaa.sample_shading.32x32",
+      "catalog_index": 637245,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16377065699998639
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.fragment_shader_interlock.basic.nodiscard.image.shading_rate_ordered.4xaa.sample_shading.32x32",
+      "catalog_index": 637269,
+      "status": "NotSupported",
+      "message": "Fragment shader shading rate interlock not supported at vktFragmentShaderInterlockBasic.cpp:174",
+      "seconds": 0.031955392999407195
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.fragment_shader_interlock.basic.nodiscard.image.shading_rate_unordered.4xaa.sample_shading.32x32",
+      "catalog_index": 637293,
+      "status": "NotSupported",
+      "message": "Fragment shader shading rate interlock not supported at vktFragmentShaderInterlockBasic.cpp:174",
+      "seconds": 0.01591683800052124
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.fragment_shader_interlock.basic.nodiscard.ssbo.pixel_ordered.4xaa.sample_shading.32x32",
+      "catalog_index": 637317,
+      "status": "NotSupported",
+      "message": "Fragment shader pixel interlock not supported at vktFragmentShaderInterlockBasic.cpp:167",
+      "seconds": 0.03201021900076739
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.fragment_shader_interlock.basic.nodiscard.ssbo.pixel_unordered.4xaa.sample_shading.32x32",
+      "catalog_index": 637341,
+      "status": "NotSupported",
+      "message": "Fragment shader pixel interlock not supported at vktFragmentShaderInterlockBasic.cpp:167",
+      "seconds": 0.03195851700002095
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.fragment_shader_interlock.basic.nodiscard.ssbo.sample_ordered.1xaa.no_sample_shading.32x32",
+      "catalog_index": 637349,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16426960500029963
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.fragment_shader_interlock.basic.nodiscard.ssbo.sample_ordered.4xaa.no_sample_shading.32x32",
+      "catalog_index": 637357,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11383302400008688
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.fragment_shader_interlock.basic.nodiscard.ssbo.sample_ordered.4xaa.sample_shading.32x32",
+      "catalog_index": 637365,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16400565300045855
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.fragment_shader_interlock.basic.nodiscard.ssbo.sample_unordered.1xaa.no_sample_shading.32x32",
+      "catalog_index": 637373,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16420802799984813
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.fragment_shader_interlock.basic.nodiscard.ssbo.sample_unordered.4xaa.no_sample_shading.32x32",
+      "catalog_index": 637381,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16424829499919724
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.fragment_shader_interlock.basic.nodiscard.ssbo.sample_unordered.4xaa.sample_shading.32x32",
+      "catalog_index": 637389,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16420994399959454
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.fragment_shader_interlock.basic.nodiscard.ssbo.shading_rate_ordered.4xaa.sample_shading.32x32",
+      "catalog_index": 637413,
+      "status": "NotSupported",
+      "message": "Fragment shader shading rate interlock not supported at vktFragmentShaderInterlockBasic.cpp:174",
+      "seconds": 0.03156887299974187
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.fragment_shader_interlock.basic.nodiscard.ssbo.shading_rate_unordered.4xaa.sample_shading.32x32",
+      "catalog_index": 637437,
+      "status": "NotSupported",
+      "message": "Fragment shader shading rate interlock not supported at vktFragmentShaderInterlockBasic.cpp:174",
+      "seconds": 0.032030696000219905
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.geometry.emit.line_strip_emit_0_end_0",
+      "catalog_index": 768814,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11413899299986952
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.geometry.emit.line_strip_emit_0_end_1",
+      "catalog_index": 768815,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11397732199930033
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.geometry.emit.line_strip_emit_0_end_2",
+      "catalog_index": 768816,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11420508599985624
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.geometry.emit.line_strip_emit_1_end_1",
+      "catalog_index": 768817,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11404185599985794
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.geometry.emit.line_strip_emit_1_end_2",
+      "catalog_index": 768818,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11419602800015127
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.geometry.emit.line_strip_emit_2_end_1",
+      "catalog_index": 768819,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11398587999974552
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.geometry.emit.line_strip_emit_2_end_2",
+      "catalog_index": 768820,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1139813210002103
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0051",
+      "case": "dEQP-VK.geometry.emit.line_strip_emit_2_end_2_emit_2_end_0",
+      "catalog_index": 768821,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11415326099995582
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.geometry.emit.points_emit_0_end_0",
+      "catalog_index": 768822,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11393067900007736
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.geometry.emit.points_emit_0_end_1",
+      "catalog_index": 768823,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11434794799970405
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.geometry.emit.points_emit_0_end_2",
+      "catalog_index": 768824,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11425781400066626
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.geometry.emit.points_emit_1_end_1",
+      "catalog_index": 768825,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11423896199994488
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.geometry.emit.points_emit_1_end_2",
+      "catalog_index": 768826,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1139407199998459
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.geometry.emit.triangle_strip_emit_0_end_0",
+      "catalog_index": 768827,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.06375915599983273
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.geometry.emit.triangle_strip_emit_0_end_1",
+      "catalog_index": 768828,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.06408964099955483
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.geometry.emit.triangle_strip_emit_0_end_2",
+      "catalog_index": 768829,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1141410749996794
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.geometry.emit.triangle_strip_emit_1_end_1",
+      "catalog_index": 768830,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11423604499941575
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.geometry.emit.triangle_strip_emit_1_end_2",
+      "catalog_index": 768831,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11423392100005003
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.geometry.emit.triangle_strip_emit_2_end_1",
+      "catalog_index": 768832,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11426302099971508
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.geometry.emit.triangle_strip_emit_2_end_2",
+      "catalog_index": 768833,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11423808600011398
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.geometry.emit.triangle_strip_emit_3_end_1",
+      "catalog_index": 768834,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11419494399979158
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.geometry.emit.triangle_strip_emit_3_end_2",
+      "catalog_index": 768835,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11414442600016628
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.geometry.emit.triangle_strip_emit_3_end_2_emit_3_end_0",
+      "catalog_index": 768836,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11407883199990465
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.geometry.instanced.draw_1_instances_127_geometry_invocations",
+      "catalog_index": 768865,
+      "status": "NotSupported",
+      "message": "Unsupported limit: maxGeometryShaderInvocations &lt; 127 at vktGeometryInstancedRenderingTests.cpp:416",
+      "seconds": 0.03193505799936247
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.geometry.instanced.draw_1_instances_1_geometry_invocations",
+      "catalog_index": 768866,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.11412732499957201
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.geometry.instanced.draw_1_instances_2_geometry_invocations",
+      "catalog_index": 768867,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.11407789199984109
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.geometry.instanced.draw_1_instances_32_geometry_invocations",
+      "catalog_index": 768868,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.1141080579991467
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.geometry.instanced.draw_1_instances_64_geometry_invocations",
+      "catalog_index": 768869,
+      "status": "NotSupported",
+      "message": "Unsupported limit: maxGeometryShaderInvocations &lt; 64 at vktGeometryInstancedRenderingTests.cpp:416",
+      "seconds": 0.0318926919999285
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.geometry.instanced.draw_1_instances_8_geometry_invocations",
+      "catalog_index": 768870,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.11410647399952722
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.geometry.instanced.draw_2_instances_127_geometry_invocations",
+      "catalog_index": 768871,
+      "status": "NotSupported",
+      "message": "Unsupported limit: maxGeometryShaderInvocations &lt; 127 at vktGeometryInstancedRenderingTests.cpp:416",
+      "seconds": 0.031977533999452135
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.geometry.instanced.draw_2_instances_1_geometry_invocations",
+      "catalog_index": 768872,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.11413353399984771
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.geometry.instanced.draw_2_instances_2_geometry_invocations",
+      "catalog_index": 768873,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.11411961700014217
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.geometry.instanced.draw_2_instances_32_geometry_invocations",
+      "catalog_index": 768874,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.11404781399960484
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.geometry.instanced.draw_2_instances_64_geometry_invocations",
+      "catalog_index": 768875,
+      "status": "NotSupported",
+      "message": "Unsupported limit: maxGeometryShaderInvocations &lt; 64 at vktGeometryInstancedRenderingTests.cpp:416",
+      "seconds": 0.03197911900042527
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.geometry.instanced.draw_2_instances_8_geometry_invocations",
+      "catalog_index": 768876,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.11417185999926005
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.geometry.instanced.draw_4_instances_127_geometry_invocations",
+      "catalog_index": 768877,
+      "status": "NotSupported",
+      "message": "Unsupported limit: maxGeometryShaderInvocations &lt; 127 at vktGeometryInstancedRenderingTests.cpp:416",
+      "seconds": 0.03194264400008251
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.geometry.instanced.draw_4_instances_1_geometry_invocations",
+      "catalog_index": 768878,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.11406095700021979
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.geometry.instanced.draw_4_instances_2_geometry_invocations",
+      "catalog_index": 768879,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.11396902999968006
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.geometry.instanced.draw_4_instances_32_geometry_invocations",
+      "catalog_index": 768880,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.1140975990001607
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.geometry.instanced.draw_4_instances_64_geometry_invocations",
+      "catalog_index": 768881,
+      "status": "NotSupported",
+      "message": "Unsupported limit: maxGeometryShaderInvocations &lt; 64 at vktGeometryInstancedRenderingTests.cpp:416",
+      "seconds": 0.031921750999572396
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.geometry.instanced.draw_4_instances_8_geometry_invocations",
+      "catalog_index": 768882,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.11417723599970486
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.geometry.instanced.draw_8_instances_127_geometry_invocations",
+      "catalog_index": 768883,
+      "status": "NotSupported",
+      "message": "Unsupported limit: maxGeometryShaderInvocations &lt; 127 at vktGeometryInstancedRenderingTests.cpp:416",
+      "seconds": 0.03195689200038032
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.geometry.instanced.draw_8_instances_1_geometry_invocations",
+      "catalog_index": 768884,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.1142786039999919
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.geometry.instanced.draw_8_instances_2_geometry_invocations",
+      "catalog_index": 768885,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.11413261699999566
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.geometry.instanced.draw_8_instances_32_geometry_invocations",
+      "catalog_index": 768886,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.1141908859999603
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.geometry.instanced.draw_8_instances_64_geometry_invocations",
+      "catalog_index": 768887,
+      "status": "NotSupported",
+      "message": "Unsupported limit: maxGeometryShaderInvocations &lt; 64 at vktGeometryInstancedRenderingTests.cpp:416",
+      "seconds": 0.03204836099939712
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.geometry.instanced.draw_8_instances_8_geometry_invocations",
+      "catalog_index": 768888,
+      "status": "Pass",
+      "message": "OK",
+      "seconds": 0.1141666340008669
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.sparse_resources.buffer.index_buffer.sparse_binding",
+      "catalog_index": 2668619,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11412911799925496
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.sparse_resources.buffer.index_buffer.sparse_binding_aliased",
+      "catalog_index": 2668620,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11411501600014162
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.sparse_resources.buffer.index_buffer.sparse_residency",
+      "catalog_index": 2668621,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.114122199999656
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.sparse_resources.buffer.index_buffer.sparse_residency_aliased",
+      "catalog_index": 2668622,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11398881999957666
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.sparse_resources.buffer.indirect_buffer.sparse_binding",
+      "catalog_index": 2668627,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11407495700041181
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.sparse_resources.buffer.indirect_buffer.sparse_binding_aliased",
+      "catalog_index": 2668628,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11409824800011847
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.sparse_resources.buffer.indirect_buffer.sparse_residency",
+      "catalog_index": 2668629,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11406870600058028
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.sparse_resources.buffer.indirect_buffer.sparse_residency_aliased",
+      "catalog_index": 2668630,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11410593200071162
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.sparse_resources.buffer.indirect_dispatch.sparse_residency",
+      "catalog_index": 2668631,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11418094300006487
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.sparse_resources.buffer.memory_copy_indirect.sparse_binding",
+      "catalog_index": 2668632,
+      "status": "NotSupported",
+      "message": "VK_KHR_copy_memory_indirect device extension is not supported at vktSparseResourcesBase.cpp:309",
+      "seconds": 0.11410993200024677
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.sparse_resources.buffer.memory_copy_indirect.sparse_binding_aliased",
+      "catalog_index": 2668633,
+      "status": "NotSupported",
+      "message": "VK_KHR_copy_memory_indirect device extension is not supported at vktSparseResourcesBase.cpp:309",
+      "seconds": 0.11427624600037234
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.sparse_resources.buffer.memory_copy_indirect.sparse_residency",
+      "catalog_index": 2668634,
+      "status": "NotSupported",
+      "message": "VK_KHR_copy_memory_indirect device extension is not supported at vktSparseResourcesBase.cpp:309",
+      "seconds": 0.11428774600062752
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.sparse_resources.buffer.memory_copy_indirect.sparse_residency_aliased",
+      "catalog_index": 2668635,
+      "status": "NotSupported",
+      "message": "VK_KHR_copy_memory_indirect device extension is not supported at vktSparseResourcesBase.cpp:309",
+      "seconds": 0.11423723000007158
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.sparse_resources.buffer.misc.null_address_read",
+      "catalog_index": 2668636,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1142336040002192
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.sparse_resources.buffer.misc.null_address_read_descriptors",
+      "catalog_index": 2668637,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11425572900043335
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.sparse_resources.buffer.misc.null_address_read_descriptors_map_first",
+      "catalog_index": 2668638,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11420423599975038
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.sparse_resources.buffer.misc.null_address_read_local_inv_idx",
+      "catalog_index": 2668639,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11424643600003037
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.sparse_resources.buffer.misc.null_address_read_local_inv_idx_descriptors",
+      "catalog_index": 2668640,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11436344899993856
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.sparse_resources.buffer.misc.null_address_read_local_inv_idx_descriptors_map_first",
+      "catalog_index": 2668641,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11434219800048595
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.sparse_resources.buffer.misc.null_address_read_local_inv_idx_map_first",
+      "catalog_index": 2668642,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11421462900034385
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.sparse_resources.buffer.misc.null_address_read_map_first",
+      "catalog_index": 2668643,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11426028799996857
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.sparse_resources.buffer.misc.null_address_write",
+      "catalog_index": 2668644,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11422037800002727
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.sparse_resources.buffer.misc.null_address_write_descriptors",
+      "catalog_index": 2668645,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11417404999974679
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.sparse_resources.buffer.misc.null_address_write_descriptors_map_first",
+      "catalog_index": 2668646,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1140406049999001
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.sparse_resources.buffer.misc.null_address_write_local_inv_idx",
+      "catalog_index": 2668647,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11426645400024427
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.sparse_resources.buffer.misc.null_address_write_local_inv_idx_descriptors",
+      "catalog_index": 2668648,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11412259900043864
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.sparse_resources.buffer.misc.null_address_write_local_inv_idx_descriptors_map_first",
+      "catalog_index": 2668649,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1142538539997986
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.sparse_resources.buffer.misc.null_address_write_local_inv_idx_map_first",
+      "catalog_index": 2668650,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11427570399973774
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.sparse_resources.buffer.misc.null_address_write_map_first",
+      "catalog_index": 2668651,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11419498499981273
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.read_write.sparse_residency_non_resident_strict",
+      "catalog_index": 2668664,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11371572200005176
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_binding_aliased.buffer_size_2_10",
+      "catalog_index": 2668665,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.06369972199991025
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_binding_aliased.buffer_size_2_12",
+      "catalog_index": 2668666,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11421679399973073
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_binding_aliased.buffer_size_2_16",
+      "catalog_index": 2668667,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11375038900041545
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_binding_aliased.buffer_size_2_17",
+      "catalog_index": 2668668,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.1140651469995646
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0115",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_binding_aliased.buffer_size_2_20",
+      "catalog_index": 2668669,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11378079899986915
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_binding_aliased.buffer_size_2_24",
+      "catalog_index": 2668670,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.1639841370006252
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.buffer_size_2_10",
+      "catalog_index": 2668671,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11437083900000289
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.buffer_size_2_12",
+      "catalog_index": 2668672,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11427777100016101
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.buffer_size_2_16",
+      "catalog_index": 2668673,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.1142526049998196
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.buffer_size_2_17",
+      "catalog_index": 2668674,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11422204399968905
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.buffer_size_2_20",
+      "catalog_index": 2668675,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11411772500014195
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.buffer_size_2_24",
+      "catalog_index": 2668676,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.16431330700015678
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.non_resident_buffer_copy_src_alloc_none_1024",
+      "catalog_index": 2668677,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11436429900004441
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.non_resident_buffer_copy_src_alloc_none_16777216",
+      "catalog_index": 2668678,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.16431257899967022
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.non_resident_buffer_copy_src_alloc_none_65536",
+      "catalog_index": 2668679,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11426987200047733
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.non_resident_buffer_copy_src_alloc_partial_1024",
+      "catalog_index": 2668680,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11420481899949664
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.non_resident_buffer_copy_src_alloc_partial_16777216",
+      "catalog_index": 2668681,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.16430053699968994
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.non_resident_buffer_copy_src_alloc_partial_65536",
+      "catalog_index": 2668682,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11418969299938908
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.non_resident_buffer_fill_alloc_none_1024",
+      "catalog_index": 2668683,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11421133700059727
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.non_resident_buffer_fill_alloc_none_16777216",
+      "catalog_index": 2668684,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.1142089439999836
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.non_resident_buffer_fill_alloc_none_65536",
+      "catalog_index": 2668685,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11425627100015845
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.non_resident_buffer_fill_alloc_partial_1024",
+      "catalog_index": 2668686,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11413786699995399
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.non_resident_buffer_fill_alloc_partial_16777216",
+      "catalog_index": 2668687,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11414828400029364
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.non_resident_buffer_fill_alloc_partial_65536",
+      "catalog_index": 2668688,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11419440200006648
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.non_resident_buffer_multi_copy",
+      "catalog_index": 2668689,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11418015200069931
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.non_resident_buffer_strict_copy_dest_alloc_none_1024",
+      "catalog_index": 2668690,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11419677599951683
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.non_resident_buffer_strict_copy_dest_alloc_none_16777216",
+      "catalog_index": 2668691,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11416221800027415
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.non_resident_buffer_strict_copy_dest_alloc_none_65536",
+      "catalog_index": 2668692,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11421448499913822
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.non_resident_buffer_strict_copy_dest_alloc_partial_1024",
+      "catalog_index": 2668693,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11380159000054846
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.non_resident_buffer_strict_copy_dest_alloc_partial_16777216",
+      "catalog_index": 2668694,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.16433726500054036
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.non_resident_buffer_strict_copy_dest_alloc_partial_65536",
+      "catalog_index": 2668695,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.16436351500033197
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.non_resident_buffer_strict_copy_src_alloc_none_1024",
+      "catalog_index": 2668696,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11430728799950884
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.non_resident_buffer_strict_copy_src_alloc_none_16777216",
+      "catalog_index": 2668697,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.16422298700035753
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.non_resident_buffer_strict_copy_src_alloc_none_65536",
+      "catalog_index": 2668698,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11423121099960554
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.non_resident_buffer_strict_copy_src_alloc_partial_1024",
+      "catalog_index": 2668699,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11413411500052462
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.non_resident_buffer_strict_copy_src_alloc_partial_16777216",
+      "catalog_index": 2668700,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.16434922299958998
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.non_resident_buffer_strict_copy_src_alloc_partial_65536",
+      "catalog_index": 2668701,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11426102000041283
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.non_resident_buffer_strict_fill_alloc_none_1024",
+      "catalog_index": 2668702,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.1142518349997772
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.non_resident_buffer_strict_fill_alloc_none_16777216",
+      "catalog_index": 2668703,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11423804399964865
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.non_resident_buffer_strict_fill_alloc_none_65536",
+      "catalog_index": 2668704,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11403175499981444
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.non_resident_buffer_strict_fill_alloc_partial_1024",
+      "catalog_index": 2668705,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.1141639679999571
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.non_resident_buffer_strict_fill_alloc_partial_16777216",
+      "catalog_index": 2668706,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11380063200067525
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.non_resident_buffer_strict_fill_alloc_partial_65536",
+      "catalog_index": 2668707,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.1142606870007512
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.non_resident_buffer_strict_multi_copy",
+      "catalog_index": 2668708,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11425339499965048
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.non_resident_buffer_strict_update_alloc_none_1024",
+      "catalog_index": 2668709,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.1141809849996207
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.non_resident_buffer_strict_update_alloc_none_16777216",
+      "catalog_index": 2668710,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11400296299962065
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.non_resident_buffer_strict_update_alloc_none_65536",
+      "catalog_index": 2668711,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11422362799930852
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.non_resident_buffer_strict_update_alloc_partial_1024",
+      "catalog_index": 2668712,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11408441599996877
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.non_resident_buffer_strict_update_alloc_partial_16777216",
+      "catalog_index": 2668713,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11423458700028277
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.non_resident_buffer_strict_update_alloc_partial_65536",
+      "catalog_index": 2668714,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11428991299999325
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.non_resident_buffer_update_alloc_none_1024",
+      "catalog_index": 2668715,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11424537800030521
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.non_resident_buffer_update_alloc_none_16777216",
+      "catalog_index": 2668716,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11426560400013841
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.non_resident_buffer_update_alloc_none_65536",
+      "catalog_index": 2668717,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11389260199939599
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.non_resident_buffer_update_alloc_partial_1024",
+      "catalog_index": 2668718,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11428403799982334
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.non_resident_buffer_update_alloc_partial_16777216",
+      "catalog_index": 2668719,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11432944999978645
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.non_resident_buffer_update_alloc_partial_65536",
+      "catalog_index": 2668720,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11426281399963045
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_read_size_2_10_r32ui",
+      "catalog_index": 2668721,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11430362299961416
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_read_size_2_10_r32ui_strict",
+      "catalog_index": 2668722,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11421716899985768
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_read_size_2_10_r64ui",
+      "catalog_index": 2668723,
+      "status": "NotSupported",
+      "message": "Format not supported for storage texel buffers at vktSparseResourcesBufferSparseResidency.cpp:1233",
+      "seconds": 0.06414638400019612
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_read_size_2_10_r64ui_strict",
+      "catalog_index": 2668724,
+      "status": "NotSupported",
+      "message": "Format not supported for storage texel buffers at vktSparseResourcesBufferSparseResidency.cpp:1233",
+      "seconds": 0.06404123100037395
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_read_size_2_16_r32ui",
+      "catalog_index": 2668725,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.1141975270002149
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_read_size_2_16_r32ui_strict",
+      "catalog_index": 2668726,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11404231399956188
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_read_size_2_16_r64ui",
+      "catalog_index": 2668727,
+      "status": "NotSupported",
+      "message": "Format not supported for storage texel buffers at vktSparseResourcesBufferSparseResidency.cpp:1233",
+      "seconds": 0.0641284680004901
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_read_size_2_16_r64ui_strict",
+      "catalog_index": 2668728,
+      "status": "NotSupported",
+      "message": "Format not supported for storage texel buffers at vktSparseResourcesBufferSparseResidency.cpp:1233",
+      "seconds": 0.06364568699973461
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_read_size_2_24_r32ui",
+      "catalog_index": 2668729,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11384624999936932
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_read_size_2_24_r32ui_strict",
+      "catalog_index": 2668730,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.16446750100021745
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_read_size_2_24_r64ui",
+      "catalog_index": 2668731,
+      "status": "NotSupported",
+      "message": "Format not supported for storage texel buffers at vktSparseResourcesBufferSparseResidency.cpp:1233",
+      "seconds": 0.0641615679996903
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_read_size_2_24_r64ui_strict",
+      "catalog_index": 2668732,
+      "status": "NotSupported",
+      "message": "Format not supported for storage texel buffers at vktSparseResourcesBufferSparseResidency.cpp:1233",
+      "seconds": 0.06386314300016238
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_sparse_read_size_2_10_r32ui",
+      "catalog_index": 2668733,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11419498499981273
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_sparse_read_size_2_10_r32ui_strict",
+      "catalog_index": 2668734,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.06390486800046347
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_sparse_read_size_2_10_r64ui",
+      "catalog_index": 2668735,
+      "status": "NotSupported",
+      "message": "Format not supported for storage texel buffers at vktSparseResourcesBufferSparseResidency.cpp:1233",
+      "seconds": 0.06412617599926307
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_sparse_read_size_2_10_r64ui_strict",
+      "catalog_index": 2668736,
+      "status": "NotSupported",
+      "message": "Format not supported for storage texel buffers at vktSparseResourcesBufferSparseResidency.cpp:1233",
+      "seconds": 0.03143942599945149
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_sparse_read_size_2_16_r32ui",
+      "catalog_index": 2668737,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.06409803199949238
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_sparse_read_size_2_16_r32ui_strict",
+      "catalog_index": 2668738,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.063881601000503
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_sparse_read_size_2_16_r64ui",
+      "catalog_index": 2668739,
+      "status": "NotSupported",
+      "message": "Format not supported for storage texel buffers at vktSparseResourcesBufferSparseResidency.cpp:1233",
+      "seconds": 0.03204523699969286
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_sparse_read_size_2_16_r64ui_strict",
+      "catalog_index": 2668740,
+      "status": "NotSupported",
+      "message": "Format not supported for storage texel buffers at vktSparseResourcesBufferSparseResidency.cpp:1233",
+      "seconds": 0.06407776600008219
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_sparse_read_size_2_24_r32ui",
+      "catalog_index": 2668741,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11396201099978498
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_sparse_read_size_2_24_r32ui_strict",
+      "catalog_index": 2668742,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.1643088060000082
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_sparse_read_size_2_24_r64ui",
+      "catalog_index": 2668743,
+      "status": "NotSupported",
+      "message": "Format not supported for storage texel buffers at vktSparseResourcesBufferSparseResidency.cpp:1233",
+      "seconds": 0.06383716599975742
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_sparse_read_size_2_24_r64ui_strict",
+      "catalog_index": 2668744,
+      "status": "NotSupported",
+      "message": "Format not supported for storage texel buffers at vktSparseResourcesBufferSparseResidency.cpp:1233",
+      "seconds": 0.06407691500044166
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0189",
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.uniform_texel_buffer_read_size_2_10_r32ui",
+      "catalog_index": 2668745,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.16375955500006967
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0265",
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.uniform_texel_buffer_read_size_2_10_r32ui_strict",
+      "catalog_index": 2668746,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11391047599954618
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0265",
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.uniform_texel_buffer_read_size_2_16_r32ui",
+      "catalog_index": 2668747,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11418002800019167
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0265",
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.uniform_texel_buffer_read_size_2_16_r32ui_strict",
+      "catalog_index": 2668748,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11419590300010896
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0265",
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.uniform_texel_buffer_read_size_2_24_r32ui",
+      "catalog_index": 2668749,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11420331899989833
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0265",
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.uniform_texel_buffer_read_size_2_24_r32ui_strict",
+      "catalog_index": 2668750,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.16435830499995063
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0265",
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.uniform_texel_buffer_sparse_fetch_size_2_10_r32ui",
+      "catalog_index": 2668751,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11429316200064932
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0265",
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.uniform_texel_buffer_sparse_fetch_size_2_10_r32ui_strict",
+      "catalog_index": 2668752,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.06390811900018889
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0265",
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.uniform_texel_buffer_sparse_fetch_size_2_16_r32ui",
+      "catalog_index": 2668753,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.0641123499999594
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0265",
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.uniform_texel_buffer_sparse_fetch_size_2_16_r32ui_strict",
+      "catalog_index": 2668754,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.0640768900002513
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0265",
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.uniform_texel_buffer_sparse_fetch_size_2_24_r32ui",
+      "catalog_index": 2668755,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11433059600039996
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0265",
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.uniform_texel_buffer_sparse_fetch_size_2_24_r32ui_strict",
+      "catalog_index": 2668756,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.16432767999958742
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0265",
+      "case": "dEQP-VK.sparse_resources.buffer.transfer.rebind.buffer_size_2_16",
+      "catalog_index": 2668763,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11421869400055584
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0265",
+      "case": "dEQP-VK.sparse_resources.buffer.transfer.rebind.buffer_size_2_18",
+      "catalog_index": 2668764,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.06412003300010838
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0265",
+      "case": "dEQP-VK.sparse_resources.buffer.transfer.rebind.buffer_size_2_20",
+      "catalog_index": 2668765,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.06409768299999996
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0265",
+      "case": "dEQP-VK.sparse_resources.buffer.transfer.rebind.buffer_size_2_24",
+      "catalog_index": 2668766,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.06413096799951745
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0265",
+      "case": "dEQP-VK.sparse_resources.buffer.transfer.sparse_binding.buffer_size_2_10",
+      "catalog_index": 2668767,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.06405056299990974
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0265",
+      "case": "dEQP-VK.sparse_resources.buffer.transfer.sparse_binding.buffer_size_2_12",
+      "catalog_index": 2668768,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.06407897299959586
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0265",
+      "case": "dEQP-VK.sparse_resources.buffer.transfer.sparse_binding.buffer_size_2_16",
+      "catalog_index": 2668769,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.06405337399974087
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0265",
+      "case": "dEQP-VK.sparse_resources.buffer.transfer.sparse_binding.buffer_size_2_17",
+      "catalog_index": 2668770,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.06406843300010223
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0265",
+      "case": "dEQP-VK.sparse_resources.buffer.transfer.sparse_binding.buffer_size_2_20",
+      "catalog_index": 2668771,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.0641488000001118
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0265",
+      "case": "dEQP-VK.sparse_resources.buffer.transfer.sparse_binding.buffer_size_2_24",
+      "catalog_index": 2668772,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11426227199990535
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0265",
+      "case": "dEQP-VK.sparse_resources.buffer.transform_feedback.sparse_residency",
+      "catalog_index": 2668773,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.164120558999457
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0265",
+      "case": "dEQP-VK.sparse_resources.buffer.ubo.sparse_binding",
+      "catalog_index": 2668779,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11368964499979484
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0265",
+      "case": "dEQP-VK.sparse_resources.buffer.ubo.sparse_binding_aliased",
+      "catalog_index": 2668780,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11395709499993245
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0265",
+      "case": "dEQP-VK.sparse_resources.buffer.ubo.sparse_residency",
+      "catalog_index": 2668781,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11395572000037646
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0265",
+      "case": "dEQP-VK.sparse_resources.buffer.ubo.sparse_residency_aliased",
+      "catalog_index": 2668782,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16372287100057292
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0265",
+      "case": "dEQP-VK.sparse_resources.buffer.ubo.sparse_residency_non_resident_strict",
+      "catalog_index": 2668783,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11415492600008292
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0265",
+      "case": "dEQP-VK.sparse_resources.buffer.vertex_buffer.sparse_binding",
+      "catalog_index": 2668788,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11410264100049972
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0265",
+      "case": "dEQP-VK.sparse_resources.buffer.vertex_buffer.sparse_binding_aliased",
+      "catalog_index": 2668789,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11403994000011153
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0265",
+      "case": "dEQP-VK.sparse_resources.buffer.vertex_buffer.sparse_residency",
+      "catalog_index": 2668790,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11405202300011297
+    },
+    {
+      "group": "sparse-layer-interlock-r2",
+      "evidence": "build/m3-factorio-features/sparse-layer-interlock-r2/segment-0265",
+      "case": "dEQP-VK.sparse_resources.buffer.vertex_buffer.sparse_residency_aliased",
+      "catalog_index": 2668791,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11409359799927188
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.aligned_mip_size.2d.g8b8g8r8_422_unorm",
+      "catalog_index": 2668410,
+      "status": "NotSupported",
+      "message": "The image format does not support sparse operations at vktSparseResourcesImageAlignedMipSize.cpp:165",
+      "seconds": 0.06393611499970575
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.aligned_mip_size.2d.r16i",
+      "catalog_index": 2668419,
+      "status": "Pass",
+      "message": "Aligned mip size not enabled.",
+      "seconds": 0.06385452199992869
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.aligned_mip_size.2d.r32i",
+      "catalog_index": 2668421,
+      "status": "Pass",
+      "message": "Aligned mip size not enabled.",
+      "seconds": 0.06412051299957966
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.aligned_mip_size.2d_array.g16_b16_r16_3plane_420_unorm",
+      "catalog_index": 2668467,
+      "status": "NotSupported",
+      "message": "The image format does not support sparse operations at vktSparseResourcesImageAlignedMipSize.cpp:165",
+      "seconds": 0.06411321999985375
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.aligned_mip_size.2d_array.r64i",
+      "catalog_index": 2668493,
+      "status": "NotSupported",
+      "message": "VK_EXT_shader_image_atomic_int64 is not supported at vktTestCase.cpp:1394",
+      "seconds": 0.06392372299978888
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.aligned_mip_size.2d_array.rg32i",
+      "catalog_index": 2668503,
+      "status": "Pass",
+      "message": "Aligned mip size not enabled.",
+      "seconds": 0.06416300599994429
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.aligned_mip_size.2d_array.rgba16ui",
+      "catalog_index": 2668512,
+      "status": "Pass",
+      "message": "Aligned mip size not enabled.",
+      "seconds": 0.0638550639996538
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.aligned_mip_size.2d_array.rgba32ui",
+      "catalog_index": 2668514,
+      "status": "Pass",
+      "message": "Aligned mip size not enabled.",
+      "seconds": 0.06405004499993083
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.aligned_mip_size.3d.r16i",
+      "catalog_index": 2668521,
+      "status": "Pass",
+      "message": "Aligned mip size not enabled.",
+      "seconds": 0.06387708100010059
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.aligned_mip_size.cube.r16_snorm",
+      "catalog_index": 2668552,
+      "status": "Pass",
+      "message": "Aligned mip size not enabled.",
+      "seconds": 0.0639310740007204
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.aligned_mip_size.cube.r8ui",
+      "catalog_index": 2668562,
+      "status": "Pass",
+      "message": "Aligned mip size not enabled.",
+      "seconds": 0.06403906099967571
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.aligned_mip_size.cube.rg8i",
+      "catalog_index": 2668571,
+      "status": "Pass",
+      "message": "Aligned mip size not enabled.",
+      "seconds": 0.06388074700043944
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.buffer.index_buffer.sparse_binding_aliased",
+      "catalog_index": 2668620,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11398195200035843
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.buffer.misc.null_address_read_descriptors",
+      "catalog_index": 2668637,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11424877599984029
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.buffer.misc.null_address_read_local_inv_idx_descriptors",
+      "catalog_index": 2668640,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11425970999971469
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_binding_aliased.buffer_size_2_12",
+      "catalog_index": 2668666,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11429287700048008
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.non_resident_buffer_fill_alloc_partial_16777216",
+      "catalog_index": 2668687,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11422305099949881
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.non_resident_buffer_multi_copy",
+      "catalog_index": 2668689,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11426440099967294
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.buffer.ssbo.sparse_residency.non_resident_buffer_strict_copy_dest_alloc_none_1024",
+      "catalog_index": 2668690,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.1141909920006583
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_read_size_2_10_r32ui_strict",
+      "catalog_index": 2668722,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11424848400019982
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_read_size_2_16_r32ui_strict",
+      "catalog_index": 2668726,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11414495699955296
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.buffer.texel_buffers.sparse_residency.storage_texel_buffer_read_size_2_24_r32ui_strict",
+      "catalog_index": 2668730,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11402436199932708
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.buffer.transfer.rebind.buffer_size_2_18",
+      "catalog_index": 2668764,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11405406999983825
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.buffer.transfer.sparse_binding.buffer_size_2_10",
+      "catalog_index": 2668767,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.06414661400049226
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_block_shapes.2d.eac_r11_snorm_block.samples_1",
+      "catalog_index": 2673756,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.0639262830000007
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_block_shapes.2d.etc2_r8g8b8_srgb_block.samples_16",
+      "catalog_index": 2673777,
+      "status": "NotSupported",
+      "message": "Unsupported number of samples for sparse residency",
+      "seconds": 0.06410405399947194
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_block_shapes.2d.g16_b16_r16_3plane_420_unorm.samples_8",
+      "catalog_index": 2673880,
+      "status": "NotSupported",
+      "message": "Unsupported number of samples for sparse residency",
+      "seconds": 0.031515220000073896
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_block_shapes.2d.r16_snorm.samples_2",
+      "catalog_index": 2673983,
+      "status": "Pass",
+      "message": "Pass (residencyStandard2DMultisampleBlockShape disabled)",
+      "seconds": 0.06409778800025379
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_block_shapes.2d.rgba8i.samples_16",
+      "catalog_index": 2674127,
+      "status": "NotSupported",
+      "message": "Unsupported number of samples for sparse residency",
+      "seconds": 0.03149307700005011
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_block_shapes.2d_array.bc2_unorm_block.samples_4",
+      "catalog_index": 2674324,
+      "status": "NotSupported",
+      "message": "The image format does not support the number of samples specified at vktSparseResourcesImageBlockShapes.cpp:208",
+      "seconds": 0.0641504459999851
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_block_shapes.2d_array.bc6h_sfloat_block.samples_4",
+      "catalog_index": 2674359,
+      "status": "NotSupported",
+      "message": "The image format does not support the number of samples specified at vktSparseResourcesImageBlockShapes.cpp:208",
+      "seconds": 0.06384364799941977
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_block_shapes.2d_array.r32ui.samples_4",
+      "catalog_index": 2674624,
+      "status": "Pass",
+      "message": "Pass (residencyStandard2DMultisampleBlockShape disabled)",
+      "seconds": 0.06427180900027452
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_block_shapes.2d_array.rg16_snorm.samples_8",
+      "catalog_index": 2674665,
+      "status": "NotSupported",
+      "message": "Unsupported number of samples for sparse residency",
+      "seconds": 0.06411224499970558
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_block_shapes.cube.bc5_snorm_block.samples_1",
+      "catalog_index": 2674880,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.06413207100013096
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_block_shapes.cube_array.eac_r11_snorm_block.samples_1",
+      "catalog_index": 2674972,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.06409386999985145
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_block_shapes.cube_array.etc2_r8g8b8_srgb_block.samples_1",
+      "catalog_index": 2674976,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.06372424199980742
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_rebind.2d.r32i.128_128_1",
+      "catalog_index": 2675026,
+      "status": "NotSupported",
+      "message": "Image size is too small for partial binding at vktSparseResourcesImageRebind.cpp:333",
+      "seconds": 0.0641056619997471
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_rebind.2d.rg16ui.128_128_1",
+      "catalog_index": 2675059,
+      "status": "NotSupported",
+      "message": "Image size is too small for partial binding at vktSparseResourcesImageRebind.cpp:333",
+      "seconds": 0.06416523899952153
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_rebind.2d.rgba16_snorm.503_137_1",
+      "catalog_index": 2675084,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.06416107400036708
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_rebind.2d_array.r16ui.503_137_3",
+      "catalog_index": 2675120,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.06386008099980245
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_rebind.2d_array.r8ui.503_137_3",
+      "catalog_index": 2675144,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.06414390599911712
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_rebind.2d_array.rg16i.128_128_8",
+      "catalog_index": 2675152,
+      "status": "NotSupported",
+      "message": "Image size is too small for partial binding at vktSparseResourcesImageRebind.cpp:333",
+      "seconds": 0.0637208689995532
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_rebind.2d_array.rg32ui.503_137_3",
+      "catalog_index": 2675162,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.06414415600011125
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_rebind.2d_array.rgba16i.512_256_6",
+      "catalog_index": 2675184,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.0637596950000443
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_rebind.2d_array.rgba8.512_256_6",
+      "catalog_index": 2675196,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11423890100013523
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_rebind.cube_array.r16ui.128_128_8",
+      "catalog_index": 2675407,
+      "status": "NotSupported",
+      "message": "Image size is too small for partial binding at vktSparseResourcesImageRebind.cpp:333",
+      "seconds": 0.06394319999981235
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_rebind.cube_array.r8.256_256_6",
+      "catalog_index": 2675424,
+      "status": "NotSupported",
+      "message": "Image size is too small for partial binding at vktSparseResourcesImageRebind.cpp:333",
+      "seconds": 0.06412959600038448
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_rebind.cube_array.rgba16ui.137_137_3",
+      "catalog_index": 2675474,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.06388397399950918
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_sparse_binding.multiple_bind_sparse_info.2d.r12x4g12x4_unorm_2pack16.11_137_1",
+      "catalog_index": 2675780,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.06409624600019015
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_sparse_binding.multiple_bind_sparse_info.2d.r8_snorm.1024_128_1",
+      "catalog_index": 2675812,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11394141599976138
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_sparse_binding.multiple_bind_sparse_info.3d.rg16i.11_137_3",
+      "catalog_index": 2676116,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.0641160539998964
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_sparse_binding.multiple_bind_sparse_info.3d.rgba16_snorm.1024_128_8",
+      "catalog_index": 2676142,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11375685399980284
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_sparse_binding.multiple_sparse_image_opaque_memory_bind_info.1d.r8_snorm.11_1_1",
+      "catalog_index": 2676398,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.06411636999928305
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_sparse_binding.multiple_sparse_image_opaque_memory_bind_info.1d_array.r8ui.512_1_64",
+      "catalog_index": 2676504,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.06387753899980453
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_sparse_binding.multiple_sparse_image_opaque_memory_bind_info.2d.g8b8g8r8_422_unorm.1024_128_1",
+      "catalog_index": 2676638,
+      "status": "NotSupported",
+      "message": "Image format does not support sparse binding operations at vktSparseResourcesImageSparseBinding.cpp:209",
+      "seconds": 0.06409312100004172
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_sparse_binding.multiple_sparse_image_opaque_memory_bind_info.3d.rg8.11_137_3",
+      "catalog_index": 2677001,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.0638357529996938
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_sparse_binding.multiple_sparse_image_opaque_memory_bind_info.cube_array.r64i.137_137_3",
+      "catalog_index": 2677163,
+      "status": "NotSupported",
+      "message": "VK_EXT_shader_image_atomic_int64 is not supported at vktTestCase.cpp:1394",
+      "seconds": 0.06413503100066009
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_sparse_binding.multiple_sparse_memory_bind.1d_array.rgba32ui.11_1_3",
+      "catalog_index": 2677424,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.06412455600002431
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_sparse_binding.multiple_sparse_memory_bind.2d.r12x4_unorm_pack16.512_256_1",
+      "catalog_index": 2677524,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.06363002299985965
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_sparse_binding.multiple_sparse_memory_bind.cube.rg16i.128_128_1",
+      "catalog_index": 2677960,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.0641002459997253
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_sparse_memory_aliasing.2d.g12x4_b12x4r12x4_2plane_422_unorm_3pack16.512_256_1",
+      "catalog_index": 2678150,
+      "status": "NotSupported",
+      "message": "The image format does not support sparse operations at vktSparseResourcesImageMemoryAliasing.cpp:249",
+      "seconds": 0.06403096000030928
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_sparse_memory_aliasing.2d.g16_b16r16_2plane_444_unorm.11_37_1",
+      "catalog_index": 2678169,
+      "status": "NotSupported",
+      "message": "The image format does not support sparse operations at vktSparseResourcesImageMemoryAliasing.cpp:249",
+      "seconds": 0.0641917969996939
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_sparse_memory_aliasing.2d.rg16_snorm.11_37_1",
+      "catalog_index": 2678269,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11381338899991533
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_sparse_memory_aliasing.2d.rgba16_snorm.11_37_1",
+      "catalog_index": 2678309,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11425265099933313
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_sparse_memory_aliasing.2d_array.g8_b8r8_2plane_420_unorm.128_128_8",
+      "catalog_index": 2678415,
+      "status": "NotSupported",
+      "message": "The image format does not support sparse operations at vktSparseResourcesImageMemoryAliasing.cpp:249",
+      "seconds": 0.06414511399998446
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_sparse_memory_aliasing.2d_array.g8b8g8r8_422_unorm.512_256_6",
+      "catalog_index": 2678424,
+      "status": "NotSupported",
+      "message": "The image format does not support sparse operations at vktSparseResourcesImageMemoryAliasing.cpp:249",
+      "seconds": 0.06402999999954773
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_sparse_memory_aliasing.2d_array.r32i.128_128_8",
+      "catalog_index": 2678466,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.1141862829999809
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_sparse_memory_aliasing.2d_array.rgba16.512_256_6",
+      "catalog_index": 2678540,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.1641270070003884
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_sparse_memory_aliasing.cube.r8i.137_137_1",
+      "catalog_index": 2678747,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11429539599976124
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_sparse_memory_aliasing.cube_array.r8_snorm.128_128_8",
+      "catalog_index": 2678870,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.114256277000095
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_sparse_memory_aliasing.cube_array.rg16i.11_11_3",
+      "catalog_index": 2678889,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11400180199962051
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_sparse_memory_aliasing.cube_array.rg8.128_128_8",
+      "catalog_index": 2678906,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11424225799964915
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_sparse_residency.2d.r8i.512_256_1",
+      "catalog_index": 2679086,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11418099200000142
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_sparse_residency.cube_array.r8_snorm.137_137_3",
+      "catalog_index": 2679568,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11419109899998148
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_sparse_residency.cube_array.rgba8i.128_128_8",
+      "catalog_index": 2679630,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11417084900040209
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_sparse_residency.mutable.2d.r32g32_uint_r16g16b16a16_snorm_r32g32_sint",
+      "catalog_index": 2680343,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11422855100045126
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_sparse_residency.mutable.2d_array.r16g16_snorm_r32_sint_r8g8b8a8_uint",
+      "catalog_index": 2681106,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11411006399976031
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_sparse_residency.mutable.2d_array.r8g8b8a8_sint_r16g16_snorm_r32_sint",
+      "catalog_index": 2681759,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11426954499984276
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_sparse_residency.mutable.2d_array.r8g8b8a8_sint_r32_sint_r16g16_unorm",
+      "catalog_index": 2681783,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11428550300024654
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_sparse_residency.mutable.3d.r16g16_uint_r16g16_snorm_r8g8b8a8_snorm",
+      "catalog_index": 2682361,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11422229999971023
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_sparse_residency.mutable.3d.r32_uint_r16g16_snorm_r16g16_unorm",
+      "catalog_index": 2682654,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11419157399996038
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_sparse_residency.mutable.3d.r8g8_unorm_r8g8_sint_r16_snorm",
+      "catalog_index": 2682931,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11421175899977243
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_sparse_residency.mutable.3d.r8g8b8a8_uint_r16g16_snorm_r8g8b8a8_unorm",
+      "catalog_index": 2683107,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11421303400038596
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.image_sparse_residency.mutable.3d.r8g8b8a8_uint_r8g8b8a8_snorm_r8g8b8a8_unorm",
+      "catalog_index": 2683155,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11428571099986584
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.mipmap_sparse_residency.2d.g10x6_b10x6r10x6_2plane_444_unorm_3pack16.1024_128_1",
+      "catalog_index": 2683255,
+      "status": "NotSupported",
+      "message": "The image format does not support sparse operations at vktSparseResourcesMipmapSparseResidency.cpp:184",
+      "seconds": 0.06409016100042209
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.mipmap_sparse_residency.2d.r10x6g10x6_unorm_2pack16.11_137_1",
+      "catalog_index": 2683312,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.06387524700039648
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.mipmap_sparse_residency.2d.r8ui.1024_128_1",
+      "catalog_index": 2683359,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.1143013119999523
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.mipmap_sparse_residency.2d.rg32ui.11_137_1",
+      "catalog_index": 2683378,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.06408357999953296
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.mipmap_sparse_residency.2d.rgba32ui.11_137_1",
+      "catalog_index": 2683408,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11422371799926623
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.mipmap_sparse_residency.2d_array.g10x6_b10x6r10x6_2plane_444_unorm_3pack16.11_137_3",
+      "catalog_index": 2683442,
+      "status": "NotSupported",
+      "message": "The image format does not support sparse operations at vktSparseResourcesMipmapSparseResidency.cpp:184",
+      "seconds": 0.06387241299944435
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.mipmap_sparse_residency.2d_array.rgba32i.11_137_3",
+      "catalog_index": 2683591,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.06409828900086723
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.mipmap_sparse_residency.cube.rg16.137_137_1",
+      "catalog_index": 2683741,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.06355732199972408
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.mipmap_sparse_residency.cube.rg16i.256_256_1",
+      "catalog_index": 2683748,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11421350899945537
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.mipmap_sparse_residency.cube.rg8i.256_256_1",
+      "catalog_index": 2683766,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11390681600005337
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.mipmap_sparse_residency.cube.rgba32ui.137_137_1",
+      "catalog_index": 2683786,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11424575999990338
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.mipmap_sparse_residency.cube.rgba8.137_137_1",
+      "catalog_index": 2683789,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.1141904070000237
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0000",
+      "case": "dEQP-VK.sparse_resources.multisampled_image_sparse_binding.r32f.samples_16",
+      "catalog_index": 2683896,
+      "status": "NotSupported",
+      "message": "Using multisample images as storage is not supported at vktSparseResourcesMultisampledImageSparseBinding.cpp:172",
+      "seconds": 0.06403700300052151
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.multisampled_image_sparse_binding.r32i.samples_32",
+      "catalog_index": 2683904,
+      "status": "NotSupported",
+      "message": "Using multisample images as storage is not supported at vktSparseResourcesMultisampledImageSparseBinding.cpp:172",
+      "seconds": 0.06392814099945099
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.multisampled_image_sparse_binding.r32ui.samples_8",
+      "catalog_index": 2683913,
+      "status": "NotSupported",
+      "message": "Using multisample images as storage is not supported at vktSparseResourcesMultisampledImageSparseBinding.cpp:172",
+      "seconds": 0.06391655599963997
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.multisampled_image_sparse_binding.rgba16f.samples_32",
+      "catalog_index": 2683916,
+      "status": "NotSupported",
+      "message": "Using multisample images as storage is not supported at vktSparseResourcesMultisampledImageSparseBinding.cpp:172",
+      "seconds": 0.03180979599983402
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.multisampled_image_sparse_binding.rgba16f.samples_4",
+      "catalog_index": 2683917,
+      "status": "NotSupported",
+      "message": "Using multisample images as storage is not supported at vktSparseResourcesMultisampledImageSparseBinding.cpp:172",
+      "seconds": 0.06406649499967898
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.multisampled_image_sparse_binding.rgba32f.samples_32",
+      "catalog_index": 2683934,
+      "status": "NotSupported",
+      "message": "Using multisample images as storage is not supported at vktSparseResourcesMultisampledImageSparseBinding.cpp:172",
+      "seconds": 0.06386891500005731
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.multisampled_image_sparse_binding.rgba32f.samples_64",
+      "catalog_index": 2683936,
+      "status": "NotSupported",
+      "message": "Using multisample images as storage is not supported at vktSparseResourcesMultisampledImageSparseBinding.cpp:172",
+      "seconds": 0.0638707890002479
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.multisampled_image_sparse_binding.rgba32i.samples_32",
+      "catalog_index": 2683940,
+      "status": "NotSupported",
+      "message": "Using multisample images as storage is not supported at vktSparseResourcesMultisampledImageSparseBinding.cpp:172",
+      "seconds": 0.03181743799996184
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.multisampled_image_sparse_binding.rgba32ui.samples_2",
+      "catalog_index": 2683945,
+      "status": "NotSupported",
+      "message": "Using multisample images as storage is not supported at vktSparseResourcesMultisampledImageSparseBinding.cpp:172",
+      "seconds": 0.06387220600026922
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.multisampled_image_sparse_binding.rgba32ui.samples_32",
+      "catalog_index": 2683946,
+      "status": "NotSupported",
+      "message": "Using multisample images as storage is not supported at vktSparseResourcesMultisampledImageSparseBinding.cpp:172",
+      "seconds": 0.0640487699993173
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.multisampled_image_sparse_binding.rgba32ui.samples_4",
+      "catalog_index": 2683947,
+      "status": "NotSupported",
+      "message": "Using multisample images as storage is not supported at vktSparseResourcesMultisampledImageSparseBinding.cpp:172",
+      "seconds": 0.06390534799993475
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.multisampled_image_sparse_binding.rgba32ui.samples_8",
+      "catalog_index": 2683949,
+      "status": "NotSupported",
+      "message": "Using multisample images as storage is not supported at vktSparseResourcesMultisampledImageSparseBinding.cpp:172",
+      "seconds": 0.06386253999971814
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.multisampled_image_sparse_residency.r32f.samples_4",
+      "catalog_index": 2683964,
+      "status": "NotSupported",
+      "message": "Requested core feature is not supported: shaderStorageImageMultisample at vktTestCase.cpp:1498",
+      "seconds": 0.06383418799941865
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.multisampled_image_sparse_residency.r32i.samples_16",
+      "catalog_index": 2683966,
+      "status": "NotSupported",
+      "message": "Requested core feature is not supported: sparseResidency16Samples at vktTestCase.cpp:1498",
+      "seconds": 0.0316835590001574
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.multisampled_image_sparse_residency.rgba16f.samples_16",
+      "catalog_index": 2683974,
+      "status": "NotSupported",
+      "message": "Requested core feature is not supported: sparseResidency16Samples at vktTestCase.cpp:1498",
+      "seconds": 0.06406876999972155
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.multisampled_image_sparse_residency.rgba16f.samples_4",
+      "catalog_index": 2683976,
+      "status": "NotSupported",
+      "message": "Requested core feature is not supported: shaderStorageImageMultisample at vktTestCase.cpp:1498",
+      "seconds": 0.06389045600008103
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.multisampled_image_sparse_residency.rgba16i.samples_4",
+      "catalog_index": 2683980,
+      "status": "NotSupported",
+      "message": "Requested core feature is not supported: shaderStorageImageMultisample at vktTestCase.cpp:1498",
+      "seconds": 0.06410161999974662
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.multisampled_image_sparse_residency.rgba16ui.samples_4",
+      "catalog_index": 2683984,
+      "status": "NotSupported",
+      "message": "Requested core feature is not supported: shaderStorageImageMultisample at vktTestCase.cpp:1498",
+      "seconds": 0.06387833000007959
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.multisampled_image_sparse_residency.rgba32f.samples_2",
+      "catalog_index": 2683987,
+      "status": "NotSupported",
+      "message": "Requested core feature is not supported: shaderStorageImageMultisample at vktTestCase.cpp:1498",
+      "seconds": 0.0636831660003736
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.multisampled_image_sparse_residency.rgba32f.samples_4",
+      "catalog_index": 2683988,
+      "status": "NotSupported",
+      "message": "Requested core feature is not supported: shaderStorageImageMultisample at vktTestCase.cpp:1498",
+      "seconds": 0.06386364700028935
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.multisampled_image_sparse_residency.rgba32ui.samples_16",
+      "catalog_index": 2683994,
+      "status": "NotSupported",
+      "message": "Requested core feature is not supported: sparseResidency16Samples at vktTestCase.cpp:1498",
+      "seconds": 0.06384647999948356
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.multisampled_image_sparse_residency.rgba8i.samples_16",
+      "catalog_index": 2683998,
+      "status": "NotSupported",
+      "message": "Requested core feature is not supported: sparseResidency16Samples at vktTestCase.cpp:1498",
+      "seconds": 0.06388329000037629
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.multisampled_image_sparse_residency.rgba8i.samples_4",
+      "catalog_index": 2684000,
+      "status": "NotSupported",
+      "message": "Requested core feature is not supported: shaderStorageImageMultisample at vktTestCase.cpp:1498",
+      "seconds": 0.06364633199973468
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.multisampled_image_sparse_residency.rgba8ui.samples_8",
+      "catalog_index": 2684005,
+      "status": "NotSupported",
+      "message": "Requested core feature is not supported: sparseResidency8Samples at vktTestCase.cpp:1498",
+      "seconds": 0.03178191899951344
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.queue_bind.empty",
+      "catalog_index": 2684006,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.06387128799997299
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.queue_bind.multi_queue_signal_many",
+      "catalog_index": 2684008,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.06380152899964742
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.queue_bind.multi_queue_wait_many",
+      "catalog_index": 2684010,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.0639086410001255
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.queue_bind.multi_queue_wait_many_signal_many",
+      "catalog_index": 2684011,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.06394325899964315
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.queue_bind.multi_queue_wait_one_signal_one_other",
+      "catalog_index": 2684015,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.06369335100043827
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.queue_bind.no_dependency",
+      "catalog_index": 2684016,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.06407395499991253
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.queue_bind.no_dependency_fence",
+      "catalog_index": 2684017,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.06371665999995457
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.queue_bind.single_queue_signal_many",
+      "catalog_index": 2684018,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.0638935990000391
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.queue_bind.single_queue_signal_one",
+      "catalog_index": 2684019,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.06365958400056115
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.queue_bind.single_queue_wait_many",
+      "catalog_index": 2684020,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.06388051500016445
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.queue_bind.single_queue_wait_many_signal_many",
+      "catalog_index": 2684021,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.06370464199972048
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.queue_bind.single_queue_wait_one_signal_one",
+      "catalog_index": 2684023,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.0641200950003622
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.shader_intrinsics.2d_array_sparse_gather.g12x4_b12x4_r12x4_3plane_444_unorm_3pack16.503_137_3",
+      "catalog_index": 2684337,
+      "status": "NotSupported",
+      "message": "The image format does not support sparse operations at vktSparseResourcesShaderIntrinsicsBase.cpp:571",
+      "seconds": 0.06369547600024816
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.shader_intrinsics.2d_array_sparse_sample_explicit_lod.g10x6b10x6g10x6r10x6_422_unorm_4pack16.128_128_8",
+      "catalog_index": 2684884,
+      "status": "NotSupported",
+      "message": "The image format does not support sparse operations at vktSparseResourcesShaderIntrinsicsBase.cpp:571",
+      "seconds": 0.06391407399951277
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.shader_intrinsics.2d_array_sparse_sample_explicit_lod.rg32ui.11_37_3",
+      "catalog_index": 2685061,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11386034099996323
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.shader_intrinsics.2d_array_sparse_sample_implicit_lod.g10x6_b10x6r10x6_2plane_444_unorm_3pack16.512_256_6",
+      "catalog_index": 2685161,
+      "status": "NotSupported",
+      "message": "The image format does not support sparse operations at vktSparseResourcesShaderIntrinsicsBase.cpp:571",
+      "seconds": 0.0637506780003605
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.shader_intrinsics.2d_sparse_fetch.b10x6g10x6r10x6g10x6_422_unorm_4pack16.128_128_1",
+      "catalog_index": 2685414,
+      "status": "NotSupported",
+      "message": "The image format does not support sparse operations at vktSparseResourcesShaderIntrinsicsBase.cpp:571",
+      "seconds": 0.031554152999888174
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.shader_intrinsics.2d_sparse_fetch.g16_b16_r16_3plane_444_unorm.11_37_1",
+      "catalog_index": 2685466,
+      "status": "NotSupported",
+      "message": "The image format does not support sparse operations at vktSparseResourcesShaderIntrinsicsBase.cpp:571",
+      "seconds": 0.06389405600020837
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.shader_intrinsics.2d_sparse_fetch.r8ui.503_137_1",
+      "catalog_index": 2685590,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.1141747249994296
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.shader_intrinsics.2d_sparse_gather.g10x6_b10x6_r10x6_3plane_420_unorm_3pack16.512_256_1",
+      "catalog_index": 2685701,
+      "status": "NotSupported",
+      "message": "The image format does not support sparse operations at vktSparseResourcesShaderIntrinsicsBase.cpp:571",
+      "seconds": 0.06389055599993299
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.shader_intrinsics.2d_sparse_read.r64i.11_37_1_nontemporal",
+      "catalog_index": 2686119,
+      "status": "NotSupported",
+      "message": "VK_EXT_shader_image_atomic_int64 is not supported at vktTestCase.cpp:1394",
+      "seconds": 0.0641245719998551
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.shader_intrinsics.2d_sparse_sample_implicit_lod.r32i.128_128_1",
+      "catalog_index": 2686666,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.1136444499998106
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.shader_intrinsics.3d_sparse_fetch.r16ui.256_256_16",
+      "catalog_index": 2686822,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11408933799975784
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.shader_intrinsics.cube_sparse_read.rg8ui.137_137_1",
+      "catalog_index": 2687392,
+      "status": "Pass",
+      "message": "Passed",
+      "seconds": 0.11392091700054152
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.transfer_queue.2d.r32i.512_256_1",
+      "catalog_index": 2687445,
+      "status": "NotSupported",
+      "message": "No match found for queue requirements at vktSparseResourcesBase.cpp:173",
+      "seconds": 0.03202555999996548
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.transfer_queue.2d.r32ui.512_256_1",
+      "catalog_index": 2687446,
+      "status": "NotSupported",
+      "message": "No match found for queue requirements at vktSparseResourcesBase.cpp:173",
+      "seconds": 0.0638595800000985
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.transfer_queue.2d.rgba16f.512_256_1",
+      "catalog_index": 2687447,
+      "status": "NotSupported",
+      "message": "No match found for queue requirements at vktSparseResourcesBase.cpp:173",
+      "seconds": 0.031715076999716985
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.transfer_queue.2d.rgba16i.512_256_1",
+      "catalog_index": 2687448,
+      "status": "NotSupported",
+      "message": "No match found for queue requirements at vktSparseResourcesBase.cpp:173",
+      "seconds": 0.03201658399939333
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.transfer_queue.2d.rgba16ui.512_256_1",
+      "catalog_index": 2687449,
+      "status": "NotSupported",
+      "message": "No match found for queue requirements at vktSparseResourcesBase.cpp:173",
+      "seconds": 0.03188905499973771
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.transfer_queue.2d.rgba32f.512_256_1",
+      "catalog_index": 2687450,
+      "status": "NotSupported",
+      "message": "No match found for queue requirements at vktSparseResourcesBase.cpp:173",
+      "seconds": 0.06401158500011661
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.transfer_queue.2d.rgba32i.512_256_1",
+      "catalog_index": 2687451,
+      "status": "NotSupported",
+      "message": "No match found for queue requirements at vktSparseResourcesBase.cpp:173",
+      "seconds": 0.03151157800039073
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.transfer_queue.2d.rgba32ui.512_256_1",
+      "catalog_index": 2687452,
+      "status": "NotSupported",
+      "message": "No match found for queue requirements at vktSparseResourcesBase.cpp:173",
+      "seconds": 0.06410772199978965
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.transfer_queue.2d.rgba8.512_256_1",
+      "catalog_index": 2687453,
+      "status": "NotSupported",
+      "message": "No match found for queue requirements at vktSparseResourcesBase.cpp:173",
+      "seconds": 0.06362585699935153
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.transfer_queue.2d.rgba8_snorm.512_256_1",
+      "catalog_index": 2687454,
+      "status": "NotSupported",
+      "message": "No match found for queue requirements at vktSparseResourcesBase.cpp:173",
+      "seconds": 0.06409862000055
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.transfer_queue.2d.rgba8i.512_256_1",
+      "catalog_index": 2687455,
+      "status": "NotSupported",
+      "message": "No match found for queue requirements at vktSparseResourcesBase.cpp:173",
+      "seconds": 0.03192903099989053
+    },
+    {
+      "group": "sparse-breadth",
+      "evidence": "build/m3-factorio-features/sparse-breadth/segment-0097",
+      "case": "dEQP-VK.sparse_resources.transfer_queue.2d.rgba8ui.512_256_1",
+      "catalog_index": 2687456,
+      "status": "NotSupported",
+      "message": "No match found for queue requirements at vktSparseResourcesBase.cpp:173",
+      "seconds": 0.0320505609997781
+    }
+  ],
+  "review": "Initial candidate advertised sparseBinding without sparse queue flag. CTS aborted before execution; kernel log empty. Fixed by deriving queue flags from supported_features.sparseBinding. Exact first case then passed in r2."
+}
