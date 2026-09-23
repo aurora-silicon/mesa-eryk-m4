@@ -1,0 +1,1 @@
+["--deqp-screen-rotation=unspecified", "--deqp-surface-width=256", "--deqp-surface-height=256", "--deqp-watchdog=disable", "--deqp-gl-config-name=rgba8888d24s8ms0", "--deqp-surface-type=window"]

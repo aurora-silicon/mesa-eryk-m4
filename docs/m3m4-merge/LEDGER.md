@@ -443,3 +443,35 @@ Helper snapshots add explicit versioned-prefix selection and rollback backups,
 plus actual candidate mapping checks for desktop/app probes. Those deployment
 helpers are prepared and syntax checked; desktop deployment/qualification has
 not happened at this checkpoint. Original boot configuration remains intact.
+
+
+## Advanced blend regression fixed in e325b646b16
+
+The first broad M3 campaign stopped at three real regressions (global indices
+65674–65676): indexed blend-equation overwrites with an advanced common equation.
+Fresh serial reproduction: old M3 Mesa passes all 10 related cases; candidate
+581 passes 7 and fails 3. Zink's new native advanced-blend CSO path from M4 was
+unconditionally using advanced_blend_func, which the state tracker also fills
+for the GLSL framebuffer-fetch fallback. M3 does not expose the native Vulkan
+advanced-blend extension. Gate native CSO emission on the same Gallium capability
+used to bypass GLSL lowering; do not add a chip-ID workaround or remove a GL
+extension. M4 keeps native blending, M3 keeps its working GLSL fallback.
+
+Committed fix e325b646b16 passes all 10 cases on each machine. The full 88-case
+KHR GLES31 advanced-blend group gives M3 87 Pass / 1 NotSupported, M4 88 Pass.
+Both also pass compute and 32 poisoned renders with the newly rebuilt identical
+ARM64 package. The additional native contract group passes on M4 (see its raw
+results); M3's earlier 41 Pass / 44 NotSupported is retained separately.
+
+Two new M4 timing-calibration CompatibilityWarnings in the first broad run
+(indices 65502 and 65504) pass serially on both the baseline and candidate.
+The original warnings remain. New full campaigns run batches containing these
+calibrated performance cases with one worker; frozen coverage/configurations
+and the per-case/guard limits are unchanged.
+
+Both earlier broad campaigns are stopped and preserved. M4's host supervisor
+was paused while its current guarded child completed, then terminated only
+with the watchdog broker idle. No active target guard was interrupted. Fresh
+full catalogs, without inherited outcomes, now run as `m3-gles31-e325` and
+`m4-gles32-e325`. Their artifact manifest hashes all seven regular shared
+libraries, including the GBM backend. Normal desktop deployment is still pending.

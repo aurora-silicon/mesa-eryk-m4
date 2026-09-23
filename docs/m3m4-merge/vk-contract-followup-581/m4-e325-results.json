@@ -1,0 +1,1617 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.glsl.texture_gather.compute.basic.2d.depth32f.base_level.level_1",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Skip",
+    "seconds": 0.00217237,
+    "eligibility": {
+      "catalog_index": 792583,
+      "case": "dEQP-VK.glsl.texture_gather.compute.basic.2d.depth32f.base_level.level_1",
+      "classification": "selected",
+      "reasons": [
+        "graphics and compute gather"
+      ]
+    },
+    "status": "NotSupported",
+    "message": "Exclusive compute queue not supported. at vktTestCase.cpp:980",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.glsl.texture_gather.compute.offset.implementation_offset.2d.depth32f.filter_mode.min_linear_mag_linear",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Skip",
+    "seconds": 0.005019224,
+    "eligibility": {
+      "catalog_index": 792869,
+      "case": "dEQP-VK.glsl.texture_gather.compute.offset.implementation_offset.2d.depth32f.filter_mode.min_linear_mag_linear",
+      "classification": "selected",
+      "reasons": [
+        "graphics and compute gather"
+      ]
+    },
+    "status": "NotSupported",
+    "message": "Exclusive compute queue not supported. at vktTestCase.cpp:980",
+    "qpa": "deqp-runner/c4.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.glsl.texture_gather.compute.offset.min_required_offset.2d.depth32f.size_npot.compare_less.repeat_mirrored_repeat",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Skip",
+    "seconds": 0.01018514,
+    "eligibility": {
+      "catalog_index": 793021,
+      "case": "dEQP-VK.glsl.texture_gather.compute.offset.min_required_offset.2d.depth32f.size_npot.compare_less.repeat_mirrored_repeat",
+      "classification": "selected",
+      "reasons": [
+        "graphics and compute gather"
+      ]
+    },
+    "status": "NotSupported",
+    "message": "Exclusive compute queue not supported. at vktTestCase.cpp:980",
+    "qpa": "deqp-runner/c2.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 3,
+    "case": "dEQP-VK.glsl.texture_gather.compute.offset_dynamic.implementation_offset.2d.depth32f.size_pot.compare_greater.clamp_to_edge_repeat",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Skip",
+    "seconds": 0.002977593,
+    "eligibility": {
+      "catalog_index": 793159,
+      "case": "dEQP-VK.glsl.texture_gather.compute.offset_dynamic.implementation_offset.2d.depth32f.size_pot.compare_greater.clamp_to_edge_repeat",
+      "classification": "selected",
+      "reasons": [
+        "graphics and compute gather"
+      ]
+    },
+    "status": "NotSupported",
+    "message": "Exclusive compute queue not supported. at vktTestCase.cpp:980",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 4,
+    "case": "dEQP-VK.glsl.texture_gather.compute.offset_dynamic.min_required_offset.2d.rgba8.size_pot.clamp_to_edge_repeat",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Skip",
+    "seconds": 0.008233295,
+    "eligibility": {
+      "catalog_index": 793311,
+      "case": "dEQP-VK.glsl.texture_gather.compute.offset_dynamic.min_required_offset.2d.rgba8.size_pot.clamp_to_edge_repeat",
+      "classification": "selected",
+      "reasons": [
+        "graphics and compute gather"
+      ]
+    },
+    "status": "NotSupported",
+    "message": "Exclusive compute queue not supported. at vktTestCase.cpp:980",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 5,
+    "case": "dEQP-VK.glsl.texture_gather.compute.offsets.implementation_offset.2d.rgba8.size_pot.sparse_repeat_mirrored_repeat",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Skip",
+    "seconds": 7.4704e-05,
+    "eligibility": {
+      "catalog_index": 793450,
+      "case": "dEQP-VK.glsl.texture_gather.compute.offsets.implementation_offset.2d.rgba8.size_pot.sparse_repeat_mirrored_repeat",
+      "classification": "selected",
+      "reasons": [
+        "graphics and compute gather"
+      ]
+    },
+    "status": "NotSupported",
+    "message": "Required minTexelGatherOffset and maxTexelGatherOffset limits are not supported at vktShaderRenderTextureGatherTests.cpp:2285",
+    "qpa": "deqp-runner/c3.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 6,
+    "case": "dEQP-VK.glsl.texture_gather.graphics.basic.2d.depth32f.base_level.sparse_level_2",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Skip",
+    "seconds": 0.06831858,
+    "eligibility": {
+      "catalog_index": 793700,
+      "case": "dEQP-VK.glsl.texture_gather.graphics.basic.2d.depth32f.base_level.sparse_level_2",
+      "classification": "selected",
+      "reasons": [
+        "graphics and compute gather"
+      ]
+    },
+    "status": "NotSupported",
+    "message": "Format not supported at vktShaderRender.cpp:1738",
+    "qpa": "deqp-runner/c9.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 7,
+    "case": "dEQP-VK.glsl.texture_gather.graphics.basic.2d.rgba8.filter_mode.sparse_min_linear_mipmap_nearest_mag_linear",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Pass",
+    "seconds": 0.14418226,
+    "eligibility": {
+      "catalog_index": 793754,
+      "case": "dEQP-VK.glsl.texture_gather.graphics.basic.2d.rgba8.filter_mode.sparse_min_linear_mipmap_nearest_mag_linear",
+      "classification": "selected",
+      "reasons": [
+        "graphics and compute gather"
+      ]
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c3.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 8,
+    "case": "dEQP-VK.glsl.texture_gather.graphics.offset.implementation_offset.2d.depth32f.size_pot.compare_greater.mirrored_repeat_clamp_to_edge",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Pass",
+    "seconds": 0.13473281,
+    "eligibility": {
+      "catalog_index": 794264,
+      "case": "dEQP-VK.glsl.texture_gather.graphics.offset.implementation_offset.2d.depth32f.size_pot.compare_greater.mirrored_repeat_clamp_to_edge",
+      "classification": "selected",
+      "reasons": [
+        "graphics and compute gather"
+      ]
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c1.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 9,
+    "case": "dEQP-VK.glsl.texture_gather.graphics.offset.implementation_offset.2d.rgba8.texture_swizzle.sparse_red_green_blue_alpha",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Pass",
+    "seconds": 0.31872177,
+    "eligibility": {
+      "catalog_index": 794318,
+      "case": "dEQP-VK.glsl.texture_gather.graphics.offset.implementation_offset.2d.rgba8.texture_swizzle.sparse_red_green_blue_alpha",
+      "classification": "selected",
+      "reasons": [
+        "graphics and compute gather"
+      ]
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c5.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 10,
+    "case": "dEQP-VK.glsl.texture_gather.graphics.offset_dynamic.implementation_offset.2d.depth32f.size_npot.compare_greater.repeat_mirrored_repeat",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Pass",
+    "seconds": 0.027825288,
+    "eligibility": {
+      "catalog_index": 794693,
+      "case": "dEQP-VK.glsl.texture_gather.graphics.offset_dynamic.implementation_offset.2d.depth32f.size_npot.compare_greater.repeat_mirrored_repeat",
+      "classification": "selected",
+      "reasons": [
+        "graphics and compute gather"
+      ]
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c1.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 11,
+    "case": "dEQP-VK.glsl.texture_gather.graphics.offset_dynamic.implementation_offset.2d.rgba8.size_pot.sparse_mirrored_repeat_clamp_to_edge",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Pass",
+    "seconds": 0.18360694,
+    "eligibility": {
+      "catalog_index": 794747,
+      "case": "dEQP-VK.glsl.texture_gather.graphics.offset_dynamic.implementation_offset.2d.rgba8.size_pot.sparse_mirrored_repeat_clamp_to_edge",
+      "classification": "selected",
+      "reasons": [
+        "graphics and compute gather"
+      ]
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c9.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 12,
+    "case": "dEQP-VK.glsl.texture_gather.graphics.offsets.implementation_offset.2d.depth32f.filter_mode.min_linear_mag_linear",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Skip",
+    "seconds": 7.2244e-05,
+    "eligibility": {
+      "catalog_index": 795121,
+      "case": "dEQP-VK.glsl.texture_gather.graphics.offsets.implementation_offset.2d.depth32f.filter_mode.min_linear_mag_linear",
+      "classification": "selected",
+      "reasons": [
+        "graphics and compute gather"
+      ]
+    },
+    "status": "NotSupported",
+    "message": "Required minTexelGatherOffset and maxTexelGatherOffset limits are not supported at vktShaderRenderTextureGatherTests.cpp:2285",
+    "qpa": "deqp-runner/c5.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 13,
+    "case": "dEQP-VK.glsl.texture_gather.graphics.offsets.implementation_offset.2d.rgba8.filter_mode.sparse_min_nearest_mipmap_linear_mag_linear",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Skip",
+    "seconds": 7.7537e-05,
+    "eligibility": {
+      "catalog_index": 795175,
+      "case": "dEQP-VK.glsl.texture_gather.graphics.offsets.implementation_offset.2d.rgba8.filter_mode.sparse_min_nearest_mipmap_linear_mag_linear",
+      "classification": "selected",
+      "reasons": [
+        "graphics and compute gather"
+      ]
+    },
+    "status": "NotSupported",
+    "message": "Required minTexelGatherOffset and maxTexelGatherOffset limits are not supported at vktShaderRenderTextureGatherTests.cpp:2285",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 14,
+    "case": "dEQP-VK.glsl.texture_gather.graphics.offsets.min_required_offset.2d.depth32f.size_pot.compare_greater.repeat_mirrored_repeat",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Pass",
+    "seconds": 0.044851407,
+    "eligibility": {
+      "catalog_index": 795465,
+      "case": "dEQP-VK.glsl.texture_gather.graphics.offsets.min_required_offset.2d.depth32f.size_pot.compare_greater.repeat_mirrored_repeat",
+      "classification": "selected",
+      "reasons": [
+        "graphics and compute gather"
+      ]
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 15,
+    "case": "dEQP-VK.glsl.texture_gather.graphics.offsets.min_required_offset.2d.rgba8.texture_swizzle.zero_one_red_green",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Pass",
+    "seconds": 0.31490546,
+    "eligibility": {
+      "catalog_index": 795520,
+      "case": "dEQP-VK.glsl.texture_gather.graphics.offsets.min_required_offset.2d.rgba8.texture_swizzle.zero_one_red_green",
+      "classification": "selected",
+      "reasons": [
+        "graphics and compute gather"
+      ]
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c8.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 16,
+    "case": "dEQP-VK.pipeline.monolithic.cache.merge.vertex_stage_fragment_stage.src_empty_dst_empty",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Pass",
+    "seconds": 0.1885842,
+    "eligibility": {
+      "catalog_index": 1133300,
+      "case": "dEQP-VK.pipeline.monolithic.cache.merge.vertex_stage_fragment_stage.src_empty_dst_empty",
+      "classification": "selected",
+      "reasons": [
+        "pipeline cache merge vertex fragment"
+      ]
+    },
+    "status": "Pass",
+    "message": "Render images w/o cached pipeline match.",
+    "qpa": "deqp-runner/c2.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 17,
+    "case": "dEQP-VK.pipeline.monolithic.cache.merge.vertex_stage_fragment_stage.src_empty_miss_dst_misshit",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Pass",
+    "seconds": 0.00603409,
+    "eligibility": {
+      "catalog_index": 1133335,
+      "case": "dEQP-VK.pipeline.monolithic.cache.merge.vertex_stage_fragment_stage.src_empty_miss_dst_misshit",
+      "classification": "selected",
+      "reasons": [
+        "pipeline cache merge vertex fragment"
+      ]
+    },
+    "status": "Pass",
+    "message": "Render images w/o cached pipeline match.",
+    "qpa": "deqp-runner/c6.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 18,
+    "case": "dEQP-VK.pipeline.monolithic.cache.merge.vertex_stage_fragment_stage.src_from_data_merged_dst_misshit",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Pass",
+    "seconds": 0.008766122,
+    "eligibility": {
+      "catalog_index": 1133371,
+      "case": "dEQP-VK.pipeline.monolithic.cache.merge.vertex_stage_fragment_stage.src_from_data_merged_dst_misshit",
+      "classification": "selected",
+      "reasons": [
+        "pipeline cache merge vertex fragment"
+      ]
+    },
+    "status": "Pass",
+    "message": "Render images w/o cached pipeline match.",
+    "qpa": "deqp-runner/c5.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 19,
+    "case": "dEQP-VK.pipeline.monolithic.cache.merge.vertex_stage_fragment_stage.src_hit_hit_dst_misshit",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Pass",
+    "seconds": 0.08432704,
+    "eligibility": {
+      "catalog_index": 1133407,
+      "case": "dEQP-VK.pipeline.monolithic.cache.merge.vertex_stage_fragment_stage.src_hit_hit_dst_misshit",
+      "classification": "selected",
+      "reasons": [
+        "pipeline cache merge vertex fragment"
+      ]
+    },
+    "status": "Pass",
+    "message": "Render images w/o cached pipeline match.",
+    "qpa": "deqp-runner/c7.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 20,
+    "case": "dEQP-VK.pipeline.monolithic.cache.merge.vertex_stage_fragment_stage.src_merged_from_data_dst_misshit",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Pass",
+    "seconds": 0.21727306,
+    "eligibility": {
+      "catalog_index": 1133443,
+      "case": "dEQP-VK.pipeline.monolithic.cache.merge.vertex_stage_fragment_stage.src_merged_from_data_dst_misshit",
+      "classification": "selected",
+      "reasons": [
+        "pipeline cache merge vertex fragment"
+      ]
+    },
+    "status": "Pass",
+    "message": "Render images w/o cached pipeline match.",
+    "qpa": "deqp-runner/c3.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 21,
+    "case": "dEQP-VK.pipeline.monolithic.cache.merge.vertex_stage_fragment_stage.src_miss_empty_dst_misshit",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Pass",
+    "seconds": 0.014039967,
+    "eligibility": {
+      "catalog_index": 1133479,
+      "case": "dEQP-VK.pipeline.monolithic.cache.merge.vertex_stage_fragment_stage.src_miss_empty_dst_misshit",
+      "classification": "selected",
+      "reasons": [
+        "pipeline cache merge vertex fragment"
+      ]
+    },
+    "status": "Pass",
+    "message": "Render images w/o cached pipeline match.",
+    "qpa": "deqp-runner/c2.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 22,
+    "case": "dEQP-VK.pipeline.monolithic.cache.merge.vertex_stage_fragment_stage.src_misshit_dst_misshit",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Pass",
+    "seconds": 0.17324175,
+    "eligibility": {
+      "catalog_index": 1133515,
+      "case": "dEQP-VK.pipeline.monolithic.cache.merge.vertex_stage_fragment_stage.src_misshit_dst_misshit",
+      "classification": "selected",
+      "reasons": [
+        "pipeline cache merge vertex fragment"
+      ]
+    },
+    "status": "Pass",
+    "message": "Render images w/o cached pipeline match.",
+    "qpa": "deqp-runner/c4.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 23,
+    "case": "dEQP-VK.pipeline.monolithic.cache.merge.vertex_stage_fragment_stage.src_misshit_misshit_dst_misshit",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Pass",
+    "seconds": 0.002192972,
+    "eligibility": {
+      "catalog_index": 1133551,
+      "case": "dEQP-VK.pipeline.monolithic.cache.merge.vertex_stage_fragment_stage.src_misshit_misshit_dst_misshit",
+      "classification": "selected",
+      "reasons": [
+        "pipeline cache merge vertex fragment"
+      ]
+    },
+    "status": "Pass",
+    "message": "Render images w/o cached pipeline match.",
+    "qpa": "deqp-runner/c7.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 24,
+    "case": "dEQP-VK.pipeline.monolithic.cache.misc_tests.cache_header_test",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Pass",
+    "seconds": 0.001758344,
+    "eligibility": {
+      "catalog_index": 1134056,
+      "case": "dEQP-VK.pipeline.monolithic.cache.misc_tests.cache_header_test",
+      "classification": "selected",
+      "reasons": [
+        "invalid and concurrent pipeline caches"
+      ]
+    },
+    "status": "Pass",
+    "message": "Render images w/o cached pipeline match.",
+    "qpa": "deqp-runner/c2.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 25,
+    "case": "dEQP-VK.pipeline.monolithic.cache.misc_tests.internally_synchronized_test",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Pass",
+    "seconds": 0.15038864,
+    "eligibility": {
+      "catalog_index": 1134057,
+      "case": "dEQP-VK.pipeline.monolithic.cache.misc_tests.internally_synchronized_test",
+      "classification": "selected",
+      "reasons": [
+        "invalid and concurrent pipeline caches"
+      ]
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/c1.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 26,
+    "case": "dEQP-VK.pipeline.monolithic.cache.misc_tests.invalid_blob_test",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Pass",
+    "seconds": 0.19041482,
+    "eligibility": {
+      "catalog_index": 1134058,
+      "case": "dEQP-VK.pipeline.monolithic.cache.misc_tests.invalid_blob_test",
+      "classification": "selected",
+      "reasons": [
+        "invalid and concurrent pipeline caches"
+      ]
+    },
+    "status": "Pass",
+    "message": "Render images w/o cached pipeline match.",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 27,
+    "case": "dEQP-VK.pipeline.monolithic.cache.misc_tests.invalid_size_test",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Pass",
+    "seconds": 0.001778862,
+    "eligibility": {
+      "catalog_index": 1134059,
+      "case": "dEQP-VK.pipeline.monolithic.cache.misc_tests.invalid_size_test",
+      "classification": "selected",
+      "reasons": [
+        "invalid and concurrent pipeline caches"
+      ]
+    },
+    "status": "Pass",
+    "message": "Render images w/o cached pipeline match.",
+    "qpa": "deqp-runner/c4.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 28,
+    "case": "dEQP-VK.pipeline.monolithic.cache.misc_tests.zero_size_test",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Pass",
+    "seconds": 0.022522716,
+    "eligibility": {
+      "catalog_index": 1134060,
+      "case": "dEQP-VK.pipeline.monolithic.cache.misc_tests.zero_size_test",
+      "classification": "selected",
+      "reasons": [
+        "invalid and concurrent pipeline caches"
+      ]
+    },
+    "status": "Pass",
+    "message": "Render images w/o cached pipeline match.",
+    "qpa": "deqp-runner/c9.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 29,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.border_swizzle.d32_sfloat.0gba.custom.gather_0.no_swizzle_hint",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Skip",
+    "seconds": 5.9161e-05,
+    "eligibility": {
+      "catalog_index": 1351009,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.border_swizzle.d32_sfloat.0gba.custom.gather_0.no_swizzle_hint",
+      "classification": "selected",
+      "reasons": [
+        "custom depth gather border"
+      ]
+    },
+    "status": "NotSupported",
+    "message": "Custom border color with non-identity swizzle not supported without specifying sampler border mapping at vktPipelineSamplerBorderSwizzleTests.cpp:285",
+    "qpa": "deqp-runner/c6.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 30,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.border_swizzle.d32_sfloat.argb.custom.gather_1.no_swizzle_hint",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Skip",
+    "seconds": 8.218e-05,
+    "eligibility": {
+      "catalog_index": 1351091,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.border_swizzle.d32_sfloat.argb.custom.gather_1.no_swizzle_hint",
+      "classification": "selected",
+      "reasons": [
+        "custom depth gather border"
+      ]
+    },
+    "status": "NotSupported",
+    "message": "Custom border color with non-identity swizzle not supported without specifying sampler border mapping at vktPipelineSamplerBorderSwizzleTests.cpp:285",
+    "qpa": "deqp-runner/c6.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 31,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.border_swizzle.d32_sfloat.gbar.custom.gather_2.with_swizzle_hint",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Pass",
+    "seconds": 0.138504,
+    "eligibility": {
+      "catalog_index": 1351174,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.border_swizzle.d32_sfloat.gbar.custom.gather_2.with_swizzle_hint",
+      "classification": "selected",
+      "reasons": [
+        "custom depth gather border"
+      ]
+    },
+    "status": "Pass",
+    "message": "Ref:(1, 1, 1, 1) Threshold:(0, 0, 0, 0) Color:(1, 1, 1, 1)",
+    "qpa": "deqp-runner/c6.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 32,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.border_swizzle.d32_sfloat.r0ba.custom.no_gather.no_swizzle_hint",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Skip",
+    "seconds": 0.005854607,
+    "eligibility": {
+      "catalog_index": 1351257,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.border_swizzle.d32_sfloat.r0ba.custom.no_gather.no_swizzle_hint",
+      "classification": "selected",
+      "reasons": [
+        "custom depth gather border"
+      ]
+    },
+    "status": "NotSupported",
+    "message": "Custom border color with non-identity swizzle not supported without specifying sampler border mapping at vktPipelineSamplerBorderSwizzleTests.cpp:285",
+    "qpa": "deqp-runner/c3.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 33,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.border_swizzle.d32_sfloat.rg1a.custom.gather_0.no_swizzle_hint",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Skip",
+    "seconds": 0.005878833,
+    "eligibility": {
+      "catalog_index": 1351369,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.border_swizzle.d32_sfloat.rg1a.custom.gather_0.no_swizzle_hint",
+      "classification": "selected",
+      "reasons": [
+        "custom depth gather border"
+      ]
+    },
+    "status": "NotSupported",
+    "message": "Custom border color with non-identity swizzle not supported without specifying sampler border mapping at vktPipelineSamplerBorderSwizzleTests.cpp:285",
+    "qpa": "deqp-runner/c8.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 34,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.border_swizzle.d32_sfloat.rgb1.custom.gather_1.with_swizzle_hint",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Pass",
+    "seconds": 0.020831076,
+    "eligibility": {
+      "catalog_index": 1351452,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.border_swizzle.d32_sfloat.rgb1.custom.gather_1.with_swizzle_hint",
+      "classification": "selected",
+      "reasons": [
+        "custom depth gather border"
+      ]
+    },
+    "status": "Pass",
+    "message": "Ref:(0, 0, 0, 0) Threshold:(0, 0, 0, 0) Color:(0, 0, 0, 0)",
+    "qpa": "deqp-runner/c6.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 35,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.border_swizzle.d32_sfloat.rgbi.custom.gather_3.no_swizzle_hint",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Pass",
+    "seconds": 0.13750595,
+    "eligibility": {
+      "catalog_index": 1351535,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.border_swizzle.d32_sfloat.rgbi.custom.gather_3.no_swizzle_hint",
+      "classification": "selected",
+      "reasons": [
+        "custom depth gather border"
+      ]
+    },
+    "status": "Pass",
+    "message": "Ref:(1, 1, 1, 1) Threshold:(0, 0, 0, 0) Color:(1, 1, 1, 1)",
+    "qpa": "deqp-runner/c9.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 36,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.border_swizzle.d32_sfloat.riba.custom.no_gather.with_swizzle_hint",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Pass",
+    "seconds": 0.13519862,
+    "eligibility": {
+      "catalog_index": 1351618,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.border_swizzle.d32_sfloat.riba.custom.no_gather.with_swizzle_hint",
+      "classification": "selected",
+      "reasons": [
+        "custom depth gather border"
+      ]
+    },
+    "status": "Pass",
+    "message": "Ref:(0.460923, 0, 0, 1) Threshold:(1.4013e-44, 1.4013e-44, 1.4013e-44, 1.4013e-44) Color:(0.460923, 0, 0, 1)",
+    "qpa": "deqp-runner/c7.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 37,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_b_g_r_a.max",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Skip",
+    "seconds": 6.5996e-05,
+    "eligibility": {
+      "catalog_index": 1458210,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_b_g_r_a.max",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    "status": "NotSupported",
+    "message": "filterMinmaxImageComponentMapping is not supported (R mapping is not IDENTITY) at vktPipelineImageSamplingInstance.cpp:251",
+    "qpa": "deqp-runner/c8.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 38,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_b_g_r_a.max_compute",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Skip",
+    "seconds": 7.4329e-05,
+    "eligibility": {
+      "catalog_index": 1458211,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_b_g_r_a.max_compute",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    "status": "NotSupported",
+    "message": "filterMinmaxImageComponentMapping is not supported (R mapping is not IDENTITY) at vktPipelineImageSamplingInstance.cpp:251",
+    "qpa": "deqp-runner/c6.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 39,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_b_g_r_a.min",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Skip",
+    "seconds": 8.8096e-05,
+    "eligibility": {
+      "catalog_index": 1458212,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_b_g_r_a.min",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    "status": "NotSupported",
+    "message": "filterMinmaxImageComponentMapping is not supported (R mapping is not IDENTITY) at vktPipelineImageSamplingInstance.cpp:251",
+    "qpa": "deqp-runner/c1.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 40,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_b_g_r_a.min_compute",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Skip",
+    "seconds": 3.4684e-05,
+    "eligibility": {
+      "catalog_index": 1458213,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_b_g_r_a.min_compute",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    "status": "NotSupported",
+    "message": "filterMinmaxImageComponentMapping is not supported (R mapping is not IDENTITY) at vktPipelineImageSamplingInstance.cpp:251",
+    "qpa": "deqp-runner/c3.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 41,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_identity_zero_zero_zero.max",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Pass",
+    "seconds": 0.030502426,
+    "eligibility": {
+      "catalog_index": 1458216,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_identity_zero_zero_zero.max",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c7.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 42,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_identity_zero_zero_zero.max_compute",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Skip",
+    "seconds": 0.000477208,
+    "eligibility": {
+      "catalog_index": 1458217,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_identity_zero_zero_zero.max_compute",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    "status": "NotSupported",
+    "message": "Exclusive compute queue not supported. at vktTestCase.cpp:980",
+    "qpa": "deqp-runner/c10.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 43,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_identity_zero_zero_zero.min",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Pass",
+    "seconds": 0.011969776,
+    "eligibility": {
+      "catalog_index": 1458218,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_identity_zero_zero_zero.min",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c1.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 44,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_identity_zero_zero_zero.min_compute",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Skip",
+    "seconds": 0.002246408,
+    "eligibility": {
+      "catalog_index": 1458219,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_identity_zero_zero_zero.min_compute",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    "status": "NotSupported",
+    "message": "Exclusive compute queue not supported. at vktTestCase.cpp:980",
+    "qpa": "deqp-runner/c2.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 45,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_one_r_r_r.max",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Skip",
+    "seconds": 3.7436e-05,
+    "eligibility": {
+      "catalog_index": 1458222,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_one_r_r_r.max",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    "status": "NotSupported",
+    "message": "filterMinmaxImageComponentMapping is not supported (R mapping is not IDENTITY) at vktPipelineImageSamplingInstance.cpp:251",
+    "qpa": "deqp-runner/c5.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 46,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_one_r_r_r.max_compute",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Skip",
+    "seconds": 5.1495e-05,
+    "eligibility": {
+      "catalog_index": 1458223,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_one_r_r_r.max_compute",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    "status": "NotSupported",
+    "message": "filterMinmaxImageComponentMapping is not supported (R mapping is not IDENTITY) at vktPipelineImageSamplingInstance.cpp:251",
+    "qpa": "deqp-runner/c4.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 47,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_one_r_r_r.min",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Skip",
+    "seconds": 4.0619e-05,
+    "eligibility": {
+      "catalog_index": 1458224,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_one_r_r_r.min",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    "status": "NotSupported",
+    "message": "filterMinmaxImageComponentMapping is not supported (R mapping is not IDENTITY) at vktPipelineImageSamplingInstance.cpp:251",
+    "qpa": "deqp-runner/c3.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 48,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_one_r_r_r.min_compute",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Skip",
+    "seconds": 4.041e-06,
+    "eligibility": {
+      "catalog_index": 1458225,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_one_r_r_r.min_compute",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    "status": "NotSupported",
+    "message": "filterMinmaxImageComponentMapping is not supported (R mapping is not IDENTITY) at vktPipelineImageSamplingInstance.cpp:251",
+    "qpa": "deqp-runner/c7.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 49,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_r_g_b_a.max",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Pass",
+    "seconds": 0.03479617,
+    "eligibility": {
+      "catalog_index": 1458228,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_r_g_b_a.max",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c10.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 50,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_r_g_b_a.max_compute",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Skip",
+    "seconds": 0.000438212,
+    "eligibility": {
+      "catalog_index": 1458229,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_r_g_b_a.max_compute",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    "status": "NotSupported",
+    "message": "Exclusive compute queue not supported. at vktTestCase.cpp:980",
+    "qpa": "deqp-runner/c9.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 51,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_r_g_b_a.min",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Pass",
+    "seconds": 0.09738167,
+    "eligibility": {
+      "catalog_index": 1458230,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_r_g_b_a.min",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c8.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 52,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_r_g_b_a.min_compute",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Skip",
+    "seconds": 0.003429864,
+    "eligibility": {
+      "catalog_index": 1458231,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_r_g_b_a.min_compute",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    "status": "NotSupported",
+    "message": "Exclusive compute queue not supported. at vktTestCase.cpp:980",
+    "qpa": "deqp-runner/c7.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 53,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_r_zero_zero_zero.max",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Pass",
+    "seconds": 0.033447,
+    "eligibility": {
+      "catalog_index": 1458234,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_r_zero_zero_zero.max",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c10.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 54,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_r_zero_zero_zero.max_compute",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Skip",
+    "seconds": 0.000571428,
+    "eligibility": {
+      "catalog_index": 1458235,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_r_zero_zero_zero.max_compute",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    "status": "NotSupported",
+    "message": "Exclusive compute queue not supported. at vktTestCase.cpp:980",
+    "qpa": "deqp-runner/c8.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 55,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_r_zero_zero_zero.min",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Pass",
+    "seconds": 0.09907266,
+    "eligibility": {
+      "catalog_index": 1458236,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_r_zero_zero_zero.min",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c6.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 56,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_r_zero_zero_zero.min_compute",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Skip",
+    "seconds": 0.000527659,
+    "eligibility": {
+      "catalog_index": 1458237,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_r_zero_zero_zero.min_compute",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    "status": "NotSupported",
+    "message": "Exclusive compute queue not supported. at vktTestCase.cpp:980",
+    "qpa": "deqp-runner/c4.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 57,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_b_g_r_a.max",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Skip",
+    "seconds": 3.5327e-05,
+    "eligibility": {
+      "catalog_index": 1458244,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_b_g_r_a.max",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    "status": "NotSupported",
+    "message": "filterMinmaxImageComponentMapping is not supported (R mapping is not IDENTITY) at vktPipelineImageSamplingInstance.cpp:251",
+    "qpa": "deqp-runner/c5.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 58,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_b_g_r_a.max_compute",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Skip",
+    "seconds": 8.2453e-05,
+    "eligibility": {
+      "catalog_index": 1458245,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_b_g_r_a.max_compute",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    "status": "NotSupported",
+    "message": "filterMinmaxImageComponentMapping is not supported (R mapping is not IDENTITY) at vktPipelineImageSamplingInstance.cpp:251",
+    "qpa": "deqp-runner/c8.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 59,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_b_g_r_a.min",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Skip",
+    "seconds": 9.193e-05,
+    "eligibility": {
+      "catalog_index": 1458246,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_b_g_r_a.min",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    "status": "NotSupported",
+    "message": "filterMinmaxImageComponentMapping is not supported (R mapping is not IDENTITY) at vktPipelineImageSamplingInstance.cpp:251",
+    "qpa": "deqp-runner/c5.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 60,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_b_g_r_a.min_compute",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Skip",
+    "seconds": 3.1809e-05,
+    "eligibility": {
+      "catalog_index": 1458247,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_b_g_r_a.min_compute",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    "status": "NotSupported",
+    "message": "filterMinmaxImageComponentMapping is not supported (R mapping is not IDENTITY) at vktPipelineImageSamplingInstance.cpp:251",
+    "qpa": "deqp-runner/c5.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 61,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_identity_zero_zero_zero.max",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Pass",
+    "seconds": 0.15679096,
+    "eligibility": {
+      "catalog_index": 1458250,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_identity_zero_zero_zero.max",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 62,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_identity_zero_zero_zero.max_compute",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Skip",
+    "seconds": 0.002233241,
+    "eligibility": {
+      "catalog_index": 1458251,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_identity_zero_zero_zero.max_compute",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    "status": "NotSupported",
+    "message": "Exclusive compute queue not supported. at vktTestCase.cpp:980",
+    "qpa": "deqp-runner/c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 63,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_identity_zero_zero_zero.min",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Pass",
+    "seconds": 0.18737988,
+    "eligibility": {
+      "catalog_index": 1458252,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_identity_zero_zero_zero.min",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c1.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 64,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_identity_zero_zero_zero.min_compute",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Skip",
+    "seconds": 0.04582703,
+    "eligibility": {
+      "catalog_index": 1458253,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_identity_zero_zero_zero.min_compute",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    "status": "NotSupported",
+    "message": "Exclusive compute queue not supported. at vktTestCase.cpp:980",
+    "qpa": "deqp-runner/c7.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 65,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_one_r_r_r.max",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Skip",
+    "seconds": 8.6888e-05,
+    "eligibility": {
+      "catalog_index": 1458256,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_one_r_r_r.max",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    "status": "NotSupported",
+    "message": "filterMinmaxImageComponentMapping is not supported (R mapping is not IDENTITY) at vktPipelineImageSamplingInstance.cpp:251",
+    "qpa": "deqp-runner/c4.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 66,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_one_r_r_r.max_compute",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Skip",
+    "seconds": 6.8661e-05,
+    "eligibility": {
+      "catalog_index": 1458257,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_one_r_r_r.max_compute",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    "status": "NotSupported",
+    "message": "filterMinmaxImageComponentMapping is not supported (R mapping is not IDENTITY) at vktPipelineImageSamplingInstance.cpp:251",
+    "qpa": "deqp-runner/c3.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 67,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_one_r_r_r.min",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Skip",
+    "seconds": 3.7018e-05,
+    "eligibility": {
+      "catalog_index": 1458258,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_one_r_r_r.min",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    "status": "NotSupported",
+    "message": "filterMinmaxImageComponentMapping is not supported (R mapping is not IDENTITY) at vktPipelineImageSamplingInstance.cpp:251",
+    "qpa": "deqp-runner/c8.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 68,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_one_r_r_r.min_compute",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Skip",
+    "seconds": 5.2994e-05,
+    "eligibility": {
+      "catalog_index": 1458259,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_one_r_r_r.min_compute",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    "status": "NotSupported",
+    "message": "filterMinmaxImageComponentMapping is not supported (R mapping is not IDENTITY) at vktPipelineImageSamplingInstance.cpp:251",
+    "qpa": "deqp-runner/c9.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 69,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_r_g_b_a.max",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Pass",
+    "seconds": 0.14560094,
+    "eligibility": {
+      "catalog_index": 1458262,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_r_g_b_a.max",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c2.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 70,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_r_g_b_a.max_compute",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Skip",
+    "seconds": 0.000454814,
+    "eligibility": {
+      "catalog_index": 1458263,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_r_g_b_a.max_compute",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    "status": "NotSupported",
+    "message": "Exclusive compute queue not supported. at vktTestCase.cpp:980",
+    "qpa": "deqp-runner/c9.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 71,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_r_g_b_a.min",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Pass",
+    "seconds": 0.041691232,
+    "eligibility": {
+      "catalog_index": 1458264,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_r_g_b_a.min",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c1.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 72,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_r_g_b_a.min_compute",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Skip",
+    "seconds": 0.046425123,
+    "eligibility": {
+      "catalog_index": 1458265,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_r_g_b_a.min_compute",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    "status": "NotSupported",
+    "message": "Exclusive compute queue not supported. at vktTestCase.cpp:980",
+    "qpa": "deqp-runner/c2.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 73,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_r_zero_zero_zero.max",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Pass",
+    "seconds": 0.1075322,
+    "eligibility": {
+      "catalog_index": 1458268,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_r_zero_zero_zero.max",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c5.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 74,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_r_zero_zero_zero.max_compute",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Skip",
+    "seconds": 0.04362643,
+    "eligibility": {
+      "catalog_index": 1458269,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_r_zero_zero_zero.max_compute",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    "status": "NotSupported",
+    "message": "Exclusive compute queue not supported. at vktTestCase.cpp:980",
+    "qpa": "deqp-runner/c10.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 75,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_r_zero_zero_zero.min",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Pass",
+    "seconds": 0.065967456,
+    "eligibility": {
+      "catalog_index": 1458270,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_r_zero_zero_zero.min",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    "status": "Pass",
+    "message": "Result image matches reference",
+    "qpa": "deqp-runner/c4.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 76,
+    "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_r_zero_zero_zero.min_compute",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Skip",
+    "seconds": 0.000624612,
+    "eligibility": {
+      "catalog_index": 1458271,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_r_zero_zero_zero.min_compute",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    "status": "NotSupported",
+    "message": "Exclusive compute queue not supported. at vktTestCase.cpp:980",
+    "qpa": "deqp-runner/c9.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 77,
+    "case": "dEQP-VK.synchronization.op.single_queue.barrier.write_draw_indexed_indirect_read_image_compute.image_128x128_r8g8b8a8_unorm",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Pass",
+    "seconds": 0.07013297,
+    "eligibility": {
+      "catalog_index": 2850985,
+      "case": "dEQP-VK.synchronization.op.single_queue.barrier.write_draw_indexed_indirect_read_image_compute.image_128x128_r8g8b8a8_unorm",
+      "classification": "selected",
+      "reasons": [
+        "single queue compute graphics"
+      ]
+    },
+    "status": "Pass",
+    "message": "OK",
+    "qpa": "deqp-runner/c7.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 78,
+    "case": "dEQP-VK.synchronization.op.single_queue.barrier.write_draw_indexed_indirect_read_image_compute_indirect.image_128x128_r8g8b8a8_unorm",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Pass",
+    "seconds": 0.057363927,
+    "eligibility": {
+      "catalog_index": 2850990,
+      "case": "dEQP-VK.synchronization.op.single_queue.barrier.write_draw_indexed_indirect_read_image_compute_indirect.image_128x128_r8g8b8a8_unorm",
+      "classification": "selected",
+      "reasons": [
+        "single queue compute graphics"
+      ]
+    },
+    "status": "Pass",
+    "message": "OK",
+    "qpa": "deqp-runner/c6.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 79,
+    "case": "dEQP-VK.synchronization.op.single_queue.barrier.write_draw_indexed_read_image_compute.image_128x128_r8g8b8a8_unorm",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Pass",
+    "seconds": 0.018719967,
+    "eligibility": {
+      "catalog_index": 2851035,
+      "case": "dEQP-VK.synchronization.op.single_queue.barrier.write_draw_indexed_read_image_compute.image_128x128_r8g8b8a8_unorm",
+      "classification": "selected",
+      "reasons": [
+        "single queue compute graphics"
+      ]
+    },
+    "status": "Pass",
+    "message": "OK",
+    "qpa": "deqp-runner/c10.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 80,
+    "case": "dEQP-VK.synchronization.op.single_queue.barrier.write_draw_indexed_read_image_compute_indirect.image_128x128_r8g8b8a8_unorm",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Pass",
+    "seconds": 0.060934503,
+    "eligibility": {
+      "catalog_index": 2851040,
+      "case": "dEQP-VK.synchronization.op.single_queue.barrier.write_draw_indexed_read_image_compute_indirect.image_128x128_r8g8b8a8_unorm",
+      "classification": "selected",
+      "reasons": [
+        "single queue compute graphics"
+      ]
+    },
+    "status": "Pass",
+    "message": "OK",
+    "qpa": "deqp-runner/c3.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 81,
+    "case": "dEQP-VK.synchronization.op.single_queue.barrier.write_draw_indirect_read_image_compute.image_128x128_r8g8b8a8_unorm",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Pass",
+    "seconds": 0.017458914,
+    "eligibility": {
+      "catalog_index": 2851085,
+      "case": "dEQP-VK.synchronization.op.single_queue.barrier.write_draw_indirect_read_image_compute.image_128x128_r8g8b8a8_unorm",
+      "classification": "selected",
+      "reasons": [
+        "single queue compute graphics"
+      ]
+    },
+    "status": "Pass",
+    "message": "OK",
+    "qpa": "deqp-runner/c1.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 82,
+    "case": "dEQP-VK.synchronization.op.single_queue.barrier.write_draw_indirect_read_image_compute_indirect.image_128x128_r8g8b8a8_unorm",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Pass",
+    "seconds": 0.012610198,
+    "eligibility": {
+      "catalog_index": 2851090,
+      "case": "dEQP-VK.synchronization.op.single_queue.barrier.write_draw_indirect_read_image_compute_indirect.image_128x128_r8g8b8a8_unorm",
+      "classification": "selected",
+      "reasons": [
+        "single queue compute graphics"
+      ]
+    },
+    "status": "Pass",
+    "message": "OK",
+    "qpa": "deqp-runner/c8.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 83,
+    "case": "dEQP-VK.synchronization.op.single_queue.barrier.write_draw_read_image_compute.image_128x128_r8g8b8a8_unorm",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Pass",
+    "seconds": 0.06075861,
+    "eligibility": {
+      "catalog_index": 2851135,
+      "case": "dEQP-VK.synchronization.op.single_queue.barrier.write_draw_read_image_compute.image_128x128_r8g8b8a8_unorm",
+      "classification": "selected",
+      "reasons": [
+        "single queue compute graphics"
+      ]
+    },
+    "status": "Pass",
+    "message": "OK",
+    "qpa": "deqp-runner/c4.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 84,
+    "case": "dEQP-VK.synchronization.op.single_queue.barrier.write_draw_read_image_compute_indirect.image_128x128_r8g8b8a8_unorm",
+    "boot_id": "9d23f4ea-dc7f-453f-88dc-e3c93e9e9b90",
+    "runner_status": "Pass",
+    "seconds": 0.020193236,
+    "eligibility": {
+      "catalog_index": 2851140,
+      "case": "dEQP-VK.synchronization.op.single_queue.barrier.write_draw_read_image_compute_indirect.image_128x128_r8g8b8a8_unorm",
+      "classification": "selected",
+      "reasons": [
+        "single queue compute graphics"
+      ]
+    },
+    "status": "Pass",
+    "message": "OK",
+    "qpa": "deqp-runner/c2.r1.qpa",
+    "worker_exit": "exit status: 0"
+  }
+]
