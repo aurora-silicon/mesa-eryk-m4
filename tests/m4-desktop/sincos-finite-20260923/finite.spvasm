@@ -1,0 +1,96 @@
+; SPIR-V
+; Version: 1.6
+; Generator: Khronos Glslang Reference Front End; 11
+; Bound: 61
+; Schema: 0
+               OpCapability Shader
+               OpCapability FloatControls2
+               OpExtension "SPV_KHR_float_controls2"
+          %1 = OpExtInstImport "GLSL.std.450"
+               OpMemoryModel Logical GLSL450
+               OpEntryPoint Fragment %main "main" %gl_FragCoord %color
+               OpExecutionMode %main OriginUpperLeft
+               OpExecutionModeId %main FPFastMathDefault %float %regression_fp_mode
+               OpSource GLSL 450
+               OpName %main "main"
+               OpName %x "x"
+               OpName %gl_FragCoord "gl_FragCoord"
+               OpName %s "s"
+               OpName %c "c"
+               OpName %ok "ok"
+               OpName %color "color"
+               OpDecorate %gl_FragCoord BuiltIn FragCoord
+               OpDecorate %color Location 0
+       %void = OpTypeVoid
+          %3 = OpTypeFunction %void
+      %float = OpTypeFloat 32
+%_ptr_Function_float = OpTypePointer Function %float
+    %v4float = OpTypeVector %float 4
+%_ptr_Input_v4float = OpTypePointer Input %v4float
+%gl_FragCoord = OpVariable %_ptr_Input_v4float Input
+       %uint = OpTypeInt 32 0
+     %uint_0 = OpConstant %uint 0
+%_ptr_Input_float = OpTypePointer Input %float
+%float_0_125 = OpConstant %float 0.125
+    %float_2 = OpConstant %float 2
+       %bool = OpTypeBool
+%_ptr_Function_bool = OpTypePointer Function %bool
+    %float_1 = OpConstant %float 1
+%float_9_99999975en05 = OpConstant %float 9.99999975e-05
+%_ptr_Output_v4float = OpTypePointer Output %v4float
+      %color = OpVariable %_ptr_Output_v4float Output
+    %float_0 = OpConstant %float 0
+         %58 = OpConstantComposite %v4float %float_0 %float_1 %float_0 %float_1
+         %59 = OpConstantComposite %v4float %float_1 %float_0 %float_0 %float_1
+%regression_fp_mode = OpConstant %uint 458764
+       %main = OpFunction %void None %3
+          %5 = OpLabel
+          %x = OpVariable %_ptr_Function_float Function
+          %s = OpVariable %_ptr_Function_float Function
+          %c = OpVariable %_ptr_Function_float Function
+         %ok = OpVariable %_ptr_Function_bool Function
+         %15 = OpAccessChain %_ptr_Input_float %gl_FragCoord %uint_0
+         %16 = OpLoad %float %15
+         %18 = OpFMul %float %16 %float_0_125
+         %20 = OpFSub %float %18 %float_2
+               OpStore %x %20
+         %22 = OpLoad %float %x
+         %23 = OpExtInst %float %1 Sin %22
+               OpStore %s %23
+         %25 = OpLoad %float %x
+         %26 = OpExtInst %float %1 Cos %25
+               OpStore %c %26
+         %30 = OpLoad %float %s
+         %31 = OpIsNan %bool %30
+         %32 = OpLogicalNot %bool %31
+               OpSelectionMerge %34 None
+               OpBranchConditional %32 %33 %34
+         %33 = OpLabel
+         %35 = OpLoad %float %c
+         %36 = OpIsNan %bool %35
+         %37 = OpLogicalNot %bool %36
+               OpBranch %34
+         %34 = OpLabel
+         %38 = OpPhi %bool %32 %5 %37 %33
+               OpSelectionMerge %40 None
+               OpBranchConditional %38 %39 %40
+         %39 = OpLabel
+         %41 = OpLoad %float %s
+         %42 = OpLoad %float %s
+         %43 = OpFMul %float %41 %42
+         %44 = OpLoad %float %c
+         %45 = OpLoad %float %c
+         %46 = OpFMul %float %44 %45
+         %47 = OpFAdd %float %43 %46
+         %49 = OpFSub %float %47 %float_1
+         %50 = OpExtInst %float %1 FAbs %49
+         %52 = OpFOrdLessThan %bool %50 %float_9_99999975en05
+               OpBranch %40
+         %40 = OpLabel
+         %53 = OpPhi %bool %38 %34 %52 %39
+               OpStore %ok %53
+         %56 = OpLoad %bool %ok
+         %60 = OpSelect %v4float %56 %58 %59
+               OpStore %color %60
+               OpReturn
+               OpFunctionEnd

@@ -1,0 +1,68 @@
+{
+  "command": [
+    "env",
+    "ASAHI_M4_EXPERIMENTAL=1",
+    "VK_DRIVER_FILES=/opt/asahi-m3m4-1114dad03d9/asahi.json",
+    "LD_LIBRARY_PATH=/opt/asahi-m3m4-1114dad03d9/lib",
+    "timeout",
+    "35",
+    "/root/sincos-finite-probe"
+  ],
+  "seconds": 40,
+  "boot_id": "bb47b25f-a692-443c-b51b-0891fbba73d2",
+  "watchdog": {
+    "device": "/dev/watchdog0",
+    "identity": "Apple SoC Watchdog",
+    "timeout_seconds": 60,
+    "initial_timeleft_seconds": 59,
+    "periodic_keepalive": false,
+    "armed": true,
+    "ssh_broker_lease": true
+  },
+  "returncode": 0,
+  "thermal": {
+    "startup_limit_mc": 95000,
+    "stop_limit_mc": 120000,
+    "interval_seconds": 0.5,
+    "samples": 1,
+    "sync_interval_seconds": 5,
+    "peak_temperatures_mc": {
+      "PMP aggregate die hotspot": 83000,
+      "Ta000m": 78000,
+      "Te000m": 78000,
+      "Te001m": 80000,
+      "Tp000m": 83000,
+      "Tp001m": 80000
+    },
+    "failure": null,
+    "all_peak_temperatures_mc": {
+      "class/hwmon/hwmon0/temp1_input": 83000,
+      "class/hwmon/hwmon0/temp2_input": 78000,
+      "class/hwmon/hwmon0/temp3_input": 78000,
+      "class/hwmon/hwmon0/temp4_input": 80000,
+      "class/hwmon/hwmon0/temp5_input": 83000,
+      "class/hwmon/hwmon0/temp6_input": 80000,
+      "class/hwmon/hwmon5/temp1_input": 30899,
+      "class/hwmon/hwmon5/temp2_input": 44255,
+      "class/hwmon/hwmon5/temp3_input": 48033,
+      "class/hwmon/hwmon5/temp4_input": 50556,
+      "class/thermal/thermal_zone0/temp": 83000
+    },
+    "dedicated_gpu_sensor_verified": false,
+    "log": "temperatures.jsonl",
+    "cpu_frequency_caps": [
+      {
+        "policy": "policy0",
+        "old_min_khz": 912000,
+        "old_max_khz": 1800000,
+        "max_khz": 1800000
+      },
+      {
+        "policy": "policy1",
+        "old_min_khz": 900000,
+        "old_max_khz": 1860000,
+        "max_khz": 1860000
+      }
+    ]
+  }
+}

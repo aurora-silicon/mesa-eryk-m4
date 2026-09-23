@@ -1,0 +1,3 @@
+g17p-offscreen-triangle: device Apple M4 (G16G B0), queue 0
+g17p-offscreen-triangle: pixel 0 differs at byte 0: got 0xff, expected 0x00
+g17p-offscreen-triangle: retired 1 submissions

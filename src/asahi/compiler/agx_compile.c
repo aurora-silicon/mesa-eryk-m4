@@ -5194,7 +5194,14 @@ agx_lower_sincos_impl(struct nir_builder *b, nir_instr *instr, void *data)
        * one. Preserve the original operation's non-finite-input behavior
        * when its float controls require it (including sin/cos(infinity)). */
       if (alu->fp_math_ctrl & (nir_fp_preserve_inf | nir_fp_preserve_nan)) {
+         /* The builder defaults to fast math. This comparison deliberately
+          * has an infinite operand, so it must not inherit the assumption
+          * that both operands are finite (which can fold it to false).
+          */
+         const unsigned saved_fp_math_ctrl = b->fp_math_ctrl;
+         b->fp_math_ctrl |= nir_fp_preserve_inf | nir_fp_preserve_nan;
          nir_def *finite = nir_flt(b, nir_fabs(b, x), nir_imm_float(b, INFINITY));
+         b->fp_math_ctrl = saved_fp_math_ctrl;
          result = nir_bcsel(b, finite, result, nir_imm_float(b, NAN));
       }
       return nir_f2fN(b, result, bits);
