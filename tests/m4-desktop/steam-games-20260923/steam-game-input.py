@@ -13,6 +13,13 @@ if a.action=='move':
  expr='hl.dispatch(hl.dsp.cursor.move({x=%d,y=%d}))'%tuple(map(int,a.values))
 else:
  key='mouse:272' if a.action=='click' else a.values[0]
- expr='hl.dispatch(hl.dsp.send_shortcut({mods="",key='+json.dumps(key)+',window="activewindow"}))'
+ # An explicit window target resets pointer coordinates to (1,1).
+ # Preserve the compositor pointer and hold long enough for a game tick.
+ for state in ('down','up'):
+  expr='hl.dispatch(hl.dsp.send_key_state({mods="",key='+json.dumps(key)+',state='+json.dumps(state)+'}))'
+  r=subprocess.run(['python3','/root/steam-desktop-command.py','hyprctl','eval',expr],capture_output=True,text=True,timeout=5)
+  print(r.stdout,r.stderr,flush=True);assert r.returncode==0 and r.stdout.strip()=='ok'
+  if state=='down':time.sleep(.15)
+ raise SystemExit(0)
 r=subprocess.run(['python3','/root/steam-desktop-command.py','hyprctl','eval',expr],capture_output=True,text=True,timeout=5)
 print(r.stdout,r.stderr,flush=True);assert r.returncode==0 and r.stdout.strip()=='ok'

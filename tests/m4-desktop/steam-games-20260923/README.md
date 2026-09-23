@@ -24,3 +24,12 @@ validated on a desktop with stale PID 776 and live PID 7946 sockets.
 `steam-game-input.py` injects input through Hyprland's supported dispatcher API,
 requires an active 60-second experiment watchdog lease, and avoids guest XTEST
 requests which may stall at the microVM's X11 proxy. Input qualification pending.
+
+The normal Steam Proton Experimental path with the merged bridge reached the
+first-run brightness screen and LAN/online selector. The apparent interstitial
+wait included a roughly 30-second install-script evaluation. This remains
+startup validation, not menu/gameplay capture qualification.
+
+Input fix: omit the explicit window target, which Hyprland uses to reset pointer
+focus coordinates to (1,1), and emit separate down/up events. Guest XTEST is
+avoided; host compositor input advanced past first-run setup.
