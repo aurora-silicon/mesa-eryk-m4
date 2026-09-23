@@ -1,0 +1,215 @@
+{
+  "source": "a27cbcbe7bf",
+  "prefix": "/opt/asahi-m3m4-a27cbcbe7bf",
+  "mesa_sha256": {
+    "libvulkan_asahi.so": "43a39600c6715fcdbc88ec90f7b6dc7a8eca190bf6018601af5402ee4617d8ba",
+    "libgallium-26.1.4.so": "1dc46c801d34b234ab22370b7e555704d3dc17021a8b10f35a40090b3bb60688"
+  },
+  "matching_target_hash_evidence": [
+    "/home/council/dev/gpu-replay-bench/results/factorio-linux-x11/m3/20260923T173012469220Z-m3-factorio-linux-x11-check/benchmark.json",
+    "/home/council/dev/gpu-replay-bench/results/factorio-proton-opengl/m4/20260923T172717056766Z-bench-factorio-proton-opengl-check/benchmark.json"
+  ],
+  "regressions": [
+    {
+      "case": "firefox-seascape-zink",
+      "evidence": "/home/council/dev/gpu-replay-bench/runs/20260923T172715841532Z-m3-firefox-seascape-zink-check",
+      "m4_comparisons": [
+        {
+          "maximum_error": 0,
+          "changed_pixels": 0
+        },
+        {
+          "maximum_error": 0,
+          "changed_pixels": 0
+        },
+        {
+          "maximum_error": 0,
+          "changed_pixels": 0
+        }
+      ],
+      "hashes": {
+        "libvulkan_asahi.so": "43a39600c6715fcdbc88ec90f7b6dc7a8eca190bf6018601af5402ee4617d8ba",
+        "libgallium-26.1.4.so": "1dc46c801d34b234ab22370b7e555704d3dc17021a8b10f35a40090b3bb60688"
+      }
+    },
+    {
+      "case": "chromium-seascape-zink",
+      "evidence": "/home/council/dev/gpu-replay-bench/runs/20260923T172721849951Z-m3-chromium-seascape-zink-check",
+      "m4_comparisons": [
+        {
+          "maximum_error": 0,
+          "changed_pixels": 0
+        },
+        {
+          "maximum_error": 0,
+          "changed_pixels": 0
+        },
+        {
+          "maximum_error": 0,
+          "changed_pixels": 0
+        }
+      ],
+      "hashes": {
+        "libvulkan_asahi.so": "43a39600c6715fcdbc88ec90f7b6dc7a8eca190bf6018601af5402ee4617d8ba",
+        "libgallium-26.1.4.so": "1dc46c801d34b234ab22370b7e555704d3dc17021a8b10f35a40090b3bb60688"
+      }
+    },
+    {
+      "case": "brave-seascape-zink",
+      "evidence": "/home/council/dev/gpu-replay-bench/runs/20260923T172727538425Z-m3-brave-seascape-zink-check",
+      "m4_comparisons": [
+        {
+          "maximum_error": 0,
+          "changed_pixels": 0
+        },
+        {
+          "maximum_error": 0,
+          "changed_pixels": 0
+        },
+        {
+          "maximum_error": 0,
+          "changed_pixels": 0
+        }
+      ],
+      "hashes": {
+        "libvulkan_asahi.so": "43a39600c6715fcdbc88ec90f7b6dc7a8eca190bf6018601af5402ee4617d8ba",
+        "libgallium-26.1.4.so": "1dc46c801d34b234ab22370b7e555704d3dc17021a8b10f35a40090b3bb60688"
+      }
+    },
+    {
+      "case": "0ad-vulkan",
+      "evidence": "/home/council/dev/gpu-replay-bench/runs/20260923T172733220789Z-m3-0ad-vulkan-check",
+      "m4_comparisons": [
+        {
+          "maximum_error": 0,
+          "changed_pixels": 0
+        },
+        {
+          "maximum_error": 0,
+          "changed_pixels": 0
+        },
+        {
+          "maximum_error": 0,
+          "changed_pixels": 0
+        }
+      ],
+      "hashes": {
+        "/opt/asahi-m3m4-a27cbcbe7bf/lib/libvulkan_asahi.so": "43a39600c6715fcdbc88ec90f7b6dc7a8eca190bf6018601af5402ee4617d8ba",
+        "/root/gpu-replay-bench/bin/gfxrecon-replay": "2638790ce87293590a918e60980ca2d5b4986e00f0a8c758a3af1df45aae6e23",
+        "/root/gpu-replay-bench/workloads/0ad-vulkan/capture.gfxr": "b9002a6ff89bcc9a0bd1dcc994018363b50772f056ba8a9f61fde5662ebe2962"
+      }
+    },
+    {
+      "case": "0ad-zink",
+      "evidence": "/home/council/dev/gpu-replay-bench/runs/20260923T172739015807Z-m3-0ad-zink-check",
+      "m4_comparisons": [
+        {
+          "maximum_error": 0,
+          "changed_pixels": 0
+        },
+        {
+          "maximum_error": 0,
+          "changed_pixels": 0
+        },
+        {
+          "maximum_error": 0,
+          "changed_pixels": 0
+        }
+      ],
+      "hashes": {
+        "libvulkan_asahi.so": "43a39600c6715fcdbc88ec90f7b6dc7a8eca190bf6018601af5402ee4617d8ba",
+        "libgallium-26.1.4.so": "1dc46c801d34b234ab22370b7e555704d3dc17021a8b10f35a40090b3bb60688"
+      }
+    },
+    {
+      "case": "supertuxkart-vulkan",
+      "evidence": "/home/council/dev/gpu-replay-bench/runs/20260923T172805824636Z-m3-supertuxkart-vulkan-check",
+      "m4_comparisons": [
+        {
+          "maximum_error": 0,
+          "changed_pixels": 0
+        },
+        {
+          "maximum_error": 0,
+          "changed_pixels": 0
+        },
+        {
+          "maximum_error": 0,
+          "changed_pixels": 0
+        }
+      ],
+      "hashes": {
+        "/opt/asahi-m3m4-a27cbcbe7bf/lib/libvulkan_asahi.so": "43a39600c6715fcdbc88ec90f7b6dc7a8eca190bf6018601af5402ee4617d8ba",
+        "/root/gpu-replay-bench/bin/gfxrecon-replay": "2638790ce87293590a918e60980ca2d5b4986e00f0a8c758a3af1df45aae6e23",
+        "/root/gpu-replay-bench/workloads/supertuxkart-vulkan/capture.gfxr": "94bd0d2855ba490971ef509c14ed06fdfd4f6d6a435fa35cdddbe5f2001c2abc"
+      }
+    },
+    {
+      "case": "supertuxkart-zink",
+      "evidence": "/home/council/dev/gpu-replay-bench/runs/20260923T172810754336Z-m3-supertuxkart-zink-check",
+      "m4_comparisons": [
+        {
+          "maximum_error": 0,
+          "changed_pixels": 0
+        },
+        {
+          "maximum_error": 0,
+          "changed_pixels": 0
+        },
+        {
+          "maximum_error": 0,
+          "changed_pixels": 0
+        }
+      ],
+      "hashes": {
+        "libvulkan_asahi.so": "43a39600c6715fcdbc88ec90f7b6dc7a8eca190bf6018601af5402ee4617d8ba",
+        "libgallium-26.1.4.so": "1dc46c801d34b234ab22370b7e555704d3dc17021a8b10f35a40090b3bb60688"
+      }
+    },
+    {
+      "case": "supertux-gl20",
+      "evidence": "/home/council/dev/gpu-replay-bench/runs/20260923T172832597055Z-m3-supertux-gl20-check",
+      "m4_comparisons": [
+        {
+          "maximum_error": 0,
+          "changed_pixels": 0
+        },
+        {
+          "maximum_error": 0,
+          "changed_pixels": 0
+        },
+        {
+          "maximum_error": 0,
+          "changed_pixels": 0
+        }
+      ],
+      "hashes": {
+        "libvulkan_asahi.so": "43a39600c6715fcdbc88ec90f7b6dc7a8eca190bf6018601af5402ee4617d8ba",
+        "libgallium-26.1.4.so": "1dc46c801d34b234ab22370b7e555704d3dc17021a8b10f35a40090b3bb60688"
+      }
+    },
+    {
+      "case": "supertux-gl33",
+      "evidence": "/home/council/dev/gpu-replay-bench/runs/20260923T172835659700Z-m3-supertux-gl33-check",
+      "m4_comparisons": [
+        {
+          "maximum_error": 0,
+          "changed_pixels": 0
+        },
+        {
+          "maximum_error": 0,
+          "changed_pixels": 0
+        },
+        {
+          "maximum_error": 0,
+          "changed_pixels": 0
+        }
+      ],
+      "hashes": {
+        "libvulkan_asahi.so": "43a39600c6715fcdbc88ec90f7b6dc7a8eca190bf6018601af5402ee4617d8ba",
+        "libgallium-26.1.4.so": "1dc46c801d34b234ab22370b7e555704d3dc17021a8b10f35a40090b3bb60688"
+      }
+    }
+  ],
+  "normal_desktop": "Existing desktop configuration preserved; benchmark selects isolated prefix explicitly."
+}

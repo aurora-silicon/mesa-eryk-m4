@@ -29,3 +29,7 @@ Focused execution: **256 Pass / 40 NotSupported** across 296 layer/viewport, geo
 The original Factorio Proton DX11 capture now creates its device with every recorded requested feature intact and completes: three sampled 4K RGB images are **pixel-identical to M4**. All three GL captures were rechecked with the sparse-enabled candidate and also remain pixel-identical. These are original workload replays, not a claim of full Vulkan/GL conformance or full sparse-format coverage. All candidates were installed separately from the normal desktop.
 
 `tools/cts-run.py` and `cts-batch.py` snapshot the workspace helpers used here. `--case-seconds 35` shortens the launch window to three seconds and uses the existing 45-second guard; the default remains 10-second cases / 30-second guard. It never renews an ordinary M3 experiment watchdog or resumes after an unreviewed fault.
+
+## Committed build
+
+Full Mesa built from `a27cbcbe7bf` is installed at `/opt/asahi-m3m4-a27cbcbe7bf` on both M3 and M4. Guarded replay records verify identical Vulkan and Gallium library SHA256 values. All nine non-Factorio captures passed on this committed M3 build with exact RGB agreement against M4 at every sampled frame; the previously tolerated small 0ad/STK pixel differences are absent. All four Factorio captures were also rerun successfully with the committed build. Normal desktop configuration is preserved; the benchmark selects this isolated prefix. Timing collection is separate from these screenshot checks.
