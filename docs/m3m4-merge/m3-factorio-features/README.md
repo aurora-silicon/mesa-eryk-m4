@@ -33,3 +33,5 @@ The original Factorio Proton DX11 capture now creates its device with every reco
 ## Committed build
 
 Full Mesa built from `a27cbcbe7bf` is installed at `/opt/asahi-m3m4-a27cbcbe7bf` on both M3 and M4. Guarded replay records verify identical Vulkan and Gallium library SHA256 values. All nine non-Factorio captures passed on this committed M3 build with exact RGB agreement against M4 at every sampled frame; the previously tolerated small 0ad/STK pixel differences are absent. All four Factorio captures were also rerun successfully with the committed build. Normal desktop configuration is preserved; the benchmark selects this isolated prefix. Timing collection is separate from these screenshot checks.
+
+A final replay of the 268-case pipeline-statistics selection on the committed, fully enabled build yielded **258 Pass / 10 NotSupported**, with no faults. The ten skips require a compute-only queue family; the enabled geometry/tessellation query dependencies now pass.

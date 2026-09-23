@@ -1,0 +1,1902 @@
+{
+  "source": "a27cbcbe7bf",
+  "counts": {
+    "Pass": 258,
+    "NotSupported": 10
+  },
+  "execution": {
+    "binary": "/root/cts-1.4.6.2/deqp-vk",
+    "sha256": {
+      "/root/cts-1.4.6.2/deqp-vk": "542459f13f3378f0af79ac9062d7e7fce6cd4853ab76adda69ae50889483b7e8",
+      "/opt/asahi-m3m4-a27cbcbe7bf/lib/libvulkan_asahi.so": "43a39600c6715fcdbc88ec90f7b6dc7a8eca190bf6018601af5402ee4617d8ba",
+      "/root/m3-gpu-tools/asahi.ko": "f276b11ab10fc52e655e953b1acee28652b07799c0feb2a523e6f8791329a0a7"
+    },
+    "case_count": 268,
+    "per_case_seconds": 10,
+    "launch_window_seconds": 10,
+    "guard_limit_seconds": 30,
+    "watchdog_seconds": 60,
+    "log_images": false,
+    "remote_base": "/root/m3-factorio-final-statistics",
+    "icd": "/opt/asahi-m3m4-a27cbcbe7bf/asahi.json",
+    "stop_on_nonpass": true
+  },
+  "results": [
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.clipping_invocations.primary.32bits_cmdcopyquerypoolresults_line_strip_clear_depth_vertex",
+      "catalog_index": 2153134,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.31435986700034846
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.clipping_invocations.primary.32bits_cmdcopyquerypoolresults_point_list_vertex",
+      "catalog_index": 2153160,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11388590499973361
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.clipping_invocations.primary.32bits_cmdcopyquerypoolresults_triangle_list_with_no_color_attachments_vertex",
+      "catalog_index": 2153186,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1141046920001827
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.clipping_invocations.primary.32bits_cmdcopyquerypoolresults_triangle_strip_clear_color_vertex",
+      "catalog_index": 2153188,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11409331699996983
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.clipping_invocations.primary.32bits_dstoffset_cmdcopyquerypoolresults_triangle_strip_clear_depth_vertex",
+      "catalog_index": 2153278,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11409759300022415
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.clipping_invocations.primary.64bits_cmdcopyquerypoolresults_line_strip_clear_depth_vertex",
+      "catalog_index": 2153398,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16419346499969834
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.clipping_invocations.primary.64bits_cmdcopyquerypoolresults_triangle_list_clear_depth_vertex",
+      "catalog_index": 2153438,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16414759700001014
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.clipping_invocations.primary.64bits_dstoffset_cmdcopyquerypoolresults_line_strip_clear_depth_vertex",
+      "catalog_index": 2153486,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16420806499991158
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.clipping_invocations.primary.64bits_triangle_fan_clear_depth_vertex",
+      "catalog_index": 2153606,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1641978569996354
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.clipping_invocations.primary.64bits_triangle_list_with_no_color_attachments_vertex",
+      "catalog_index": 2153626,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16419496499929664
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.clipping_invocations.primary.64bits_triangle_strip_clear_depth_vertex",
+      "catalog_index": 2153630,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1641855059997397
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.clipping_invocations.secondary.32bits_cmdcopyquerypoolresults_line_strip_clear_color_vertex",
+      "catalog_index": 2153656,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1641556140002649
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.clipping_invocations.secondary.32bits_cmdcopyquerypoolresults_point_list_vertex",
+      "catalog_index": 2153678,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16416034000030777
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.clipping_invocations.secondary.32bits_cmdcopyquerypoolresults_triangle_fan_clear_color_vertex",
+      "catalog_index": 2153680,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16418487999999343
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.clipping_invocations.secondary.32bits_cmdcopyquerypoolresults_triangle_strip_clear_depth_vertex",
+      "catalog_index": 2153700,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16421710700069525
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.clipping_invocations.secondary.32bits_dstoffset_cmdcopyquerypoolresults_line_strip_clear_depth_vertex",
+      "catalog_index": 2153724,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16421239800001786
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.clipping_invocations.secondary.32bits_line_strip_clear_depth_vertex",
+      "catalog_index": 2153790,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16430270099954214
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.clipping_invocations.secondary.32bits_triangle_strip_clear_color_vertex",
+      "catalog_index": 2153830,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1642192500003148
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.clipping_invocations.secondary.64bits_dstoffset_cmdcopyquerypoolresults_line_strip_clear_depth_vertex",
+      "catalog_index": 2153922,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16404318700006115
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.clipping_invocations.secondary_inherited.64bits_cmdcopyquerypoolresults_line_list_vertex",
+      "catalog_index": 2154106,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16381808799997088
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.clipping_primitives.primary.32bits_cmdcopyquerypoolresults_point_list_clear_depth_vertex",
+      "catalog_index": 2154214,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16419773099914892
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.clipping_primitives.primary.32bits_cmdcopyquerypoolresults_point_list_vertex",
+      "catalog_index": 2154216,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16388158300014766
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.clipping_primitives.primary.32bits_dstoffset_cmdcopyquerypoolresults_line_list_with_no_color_attachments_vertex",
+      "catalog_index": 2154274,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16431176100013545
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.clipping_primitives.primary.32bits_dstoffset_cmdcopyquerypoolresults_triangle_strip_with_no_color_attachments_vertex",
+      "catalog_index": 2154346,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16426805800074362
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.clipping_primitives.primary.32bits_point_list_vertex",
+      "catalog_index": 2154392,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16415119700013747
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.clipping_primitives.primary.64bits_cmdcopyquerypoolresults_point_list_clear_color_vertex",
+      "catalog_index": 2154476,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1641679230006048
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.clipping_primitives.primary.64bits_cmdcopyquerypoolresults_triangle_fan_vertex",
+      "catalog_index": 2154488,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16423235699949146
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.clipping_primitives.primary.64bits_line_list_vertex",
+      "catalog_index": 2154616,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1641835059999721
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.clipping_primitives.primary.64bits_triangle_strip_with_no_color_attachments_vertex",
+      "catalog_index": 2154698,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16374742800053355
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.clipping_primitives.secondary.32bits_cmdcopyquerypoolresults_line_list_clear_depth_vertex",
+      "catalog_index": 2154702,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16428457500023796
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.clipping_primitives.secondary.32bits_cmdcopyquerypoolresults_point_list_vertex",
+      "catalog_index": 2154734,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16430365800079016
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.clipping_primitives.secondary.32bits_cmdcopyquerypoolresults_triangle_fan_clear_depth_vertex",
+      "catalog_index": 2154738,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16420664799989027
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.clipping_primitives.secondary.32bits_triangle_strip_clear_color_vertex",
+      "catalog_index": 2154886,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1641688219997377
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.clipping_primitives.secondary.64bits_dstoffset_cmdcopyquerypoolresults_line_strip_clear_color_vertex",
+      "catalog_index": 2154976,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16387399899940647
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.clipping_primitives.secondary.64bits_dstoffset_cmdcopyquerypoolresults_line_strip_vertex",
+      "catalog_index": 2154980,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16423341500012612
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.clipping_primitives.secondary.64bits_dstoffset_cmdcopyquerypoolresults_triangle_list_clear_color_vertex",
+      "catalog_index": 2155006,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16422148099991318
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.clipping_primitives.secondary.64bits_triangle_strip_clear_depth_vertex",
+      "catalog_index": 2155086,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1642376649997459
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.clipping_primitives.secondary_inherited.32bits_dstoffset_cmdcopyquerypoolresults_line_strip_vertex",
+      "catalog_index": 2155122,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16387791500073945
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.clipping_primitives.secondary_inherited.64bits_dstoffset_cmdcopyquerypoolresults_line_strip_vertex",
+      "catalog_index": 2155188,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16418438099935884
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.clipping_primitives.secondary_inherited.64bits_dstoffset_cmdcopyquerypoolresults_triangle_list_vertex",
+      "catalog_index": 2155198,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16380353000022296
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.compute_shader_invocations.32bits_cmdcopyquerypoolresults_secondary_cq",
+      "catalog_index": 2155230,
+      "status": "NotSupported",
+      "message": "No matching queue found: findQueueFamilyIndexWithCaps(requiredCaps=0x2, excludedCaps=0x1) at vktTestCase.cpp:519",
+      "seconds": 0.06402742200043576
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.compute_shader_invocations.32bits_cmdcopyquerypoolresults_secondary_inherited_cq",
+      "catalog_index": 2155232,
+      "status": "NotSupported",
+      "message": "No matching queue found: findQueueFamilyIndexWithCaps(requiredCaps=0x2, excludedCaps=0x1) at vktTestCase.cpp:519",
+      "seconds": 0.06405498200001603
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.compute_shader_invocations.32bits_cmdcopyquerypoolresults_stride_zero_primary",
+      "catalog_index": 2155233,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11406913500013616
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.compute_shader_invocations.32bits_cmdcopyquerypoolresults_stride_zero_secondary_cq",
+      "catalog_index": 2155236,
+      "status": "NotSupported",
+      "message": "No matching queue found: findQueueFamilyIndexWithCaps(requiredCaps=0x2, excludedCaps=0x1) at vktTestCase.cpp:519",
+      "seconds": 0.06418909300009545
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.compute_shader_invocations.32bits_dstoffset_cmdcopyquerypoolresults_primary_cq",
+      "catalog_index": 2155240,
+      "status": "NotSupported",
+      "message": "No matching queue found: findQueueFamilyIndexWithCaps(requiredCaps=0x2, excludedCaps=0x1) at vktTestCase.cpp:519",
+      "seconds": 0.0641383259999202
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.compute_shader_invocations.32bits_dstoffset_cmdcopyquerypoolresults_secondary_inherited",
+      "catalog_index": 2155243,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11425032199986163
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.compute_shader_invocations.32bits_dstoffset_cmdcopyquerypoolresults_stride_zero_primary",
+      "catalog_index": 2155245,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11403995000000577
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.compute_shader_invocations.32bits_dstoffset_cmdcopyquerypoolresults_stride_zero_secondary",
+      "catalog_index": 2155247,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11425244600013684
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.compute_shader_invocations.32bits_dstoffset_cmdcopyquerypoolresults_stride_zero_secondary_inherited_cq",
+      "catalog_index": 2155250,
+      "status": "NotSupported",
+      "message": "No matching queue found: findQueueFamilyIndexWithCaps(requiredCaps=0x2, excludedCaps=0x1) at vktTestCase.cpp:519",
+      "seconds": 0.06393232800019177
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.compute_shader_invocations.32bits_primary",
+      "catalog_index": 2155251,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11421151299964549
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.compute_shader_invocations.32bits_primary_cq",
+      "catalog_index": 2155252,
+      "status": "NotSupported",
+      "message": "No matching queue found: findQueueFamilyIndexWithCaps(requiredCaps=0x2, excludedCaps=0x1) at vktTestCase.cpp:519",
+      "seconds": 0.06389045999912923
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.compute_shader_invocations.32bits_secondary",
+      "catalog_index": 2155253,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1141876029996638
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.compute_shader_invocations.64bits_cmdcopyquerypoolresults_primary_cq",
+      "catalog_index": 2155258,
+      "status": "NotSupported",
+      "message": "No matching queue found: findQueueFamilyIndexWithCaps(requiredCaps=0x2, excludedCaps=0x1) at vktTestCase.cpp:519",
+      "seconds": 0.06396188799953961
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.compute_shader_invocations.64bits_cmdcopyquerypoolresults_secondary",
+      "catalog_index": 2155259,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11419703799947456
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.compute_shader_invocations.64bits_cmdcopyquerypoolresults_secondary_cq",
+      "catalog_index": 2155260,
+      "status": "NotSupported",
+      "message": "No matching queue found: findQueueFamilyIndexWithCaps(requiredCaps=0x2, excludedCaps=0x1) at vktTestCase.cpp:519",
+      "seconds": 0.0639184359997671
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.compute_shader_invocations.64bits_cmdcopyquerypoolresults_stride_zero_secondary_cq",
+      "catalog_index": 2155266,
+      "status": "NotSupported",
+      "message": "No matching queue found: findQueueFamilyIndexWithCaps(requiredCaps=0x2, excludedCaps=0x1) at vktTestCase.cpp:519",
+      "seconds": 0.06410564099951443
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.compute_shader_invocations.64bits_dstoffset_cmdcopyquerypoolresults_secondary_inherited_cq",
+      "catalog_index": 2155274,
+      "status": "NotSupported",
+      "message": "No matching queue found: findQueueFamilyIndexWithCaps(requiredCaps=0x2, excludedCaps=0x1) at vktTestCase.cpp:519",
+      "seconds": 0.06370819000039774
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.compute_shader_invocations.64bits_dstoffset_cmdcopyquerypoolresults_stride_zero_primary",
+      "catalog_index": 2155275,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11416949500016926
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.compute_shader_invocations.64bits_dstoffset_cmdcopyquerypoolresults_stride_zero_secondary_inherited",
+      "catalog_index": 2155279,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1640116680000574
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.compute_shader_invocations.64bits_secondary",
+      "catalog_index": 2155283,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11426815499999066
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.fragment_shader_invocations.primary.32bits_cmdcopyquerypoolresults_point_list",
+      "catalog_index": 2155295,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.164204855999742
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.fragment_shader_invocations.primary.32bits_cmdcopyquerypoolresults_triangle_strip",
+      "catalog_index": 2155303,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16409532800025772
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.fragment_shader_invocations.primary.32bits_line_strip_with_no_color_attachments",
+      "catalog_index": 2155334,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16382885700022598
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.fragment_shader_invocations.primary.64bits_cmdcopyquerypoolresults_triangle_fan",
+      "catalog_index": 2155357,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1642853900002592
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.fragment_shader_invocations.primary.64bits_cmdcopyquerypoolresults_triangle_list_with_no_color_attachments",
+      "catalog_index": 2155362,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1640891200004262
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.fragment_shader_invocations.primary.64bits_dstoffset_cmdcopyquerypoolresults_triangle_strip",
+      "catalog_index": 2155383,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1638437729998259
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.fragment_shader_invocations.primary.64bits_line_list_with_no_color_attachments",
+      "catalog_index": 2155390,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16413955400003033
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.fragment_shader_invocations.primary.64bits_line_strip_with_no_color_attachments",
+      "catalog_index": 2155394,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16422687399972347
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.fragment_shader_invocations.secondary.32bits_dstoffset_cmdcopyquerypoolresults_triangle_list",
+      "catalog_index": 2155423,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1642017729991494
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.fragment_shader_invocations.secondary.32bits_point_list",
+      "catalog_index": 2155431,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16430890900028317
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.fragment_shader_invocations.secondary.64bits_cmdcopyquerypoolresults_triangle_list",
+      "catalog_index": 2155443,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1642065639998691
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.fragment_shader_invocations.secondary.64bits_dstoffset_cmdcopyquerypoolresults_line_strip",
+      "catalog_index": 2155449,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16418560599959164
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.fragment_shader_invocations.secondary.64bits_dstoffset_cmdcopyquerypoolresults_point_list",
+      "catalog_index": 2155451,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1642367069998727
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.fragment_shader_invocations.secondary.64bits_line_list",
+      "catalog_index": 2155457,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16417017099956865
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.fragment_shader_invocations.secondary_inherited.32bits_cmdcopyquerypoolresults_line_list",
+      "catalog_index": 2155467,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16421089800041955
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.fragment_shader_invocations.secondary_inherited.64bits_cmdcopyquerypoolresults_line_strip",
+      "catalog_index": 2155499,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16381352999997034
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.fragment_shader_invocations.secondary_inherited.64bits_cmdcopyquerypoolresults_point_list",
+      "catalog_index": 2155501,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1642050479995305
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.fragment_shader_invocations.secondary_inherited.64bits_cmdcopyquerypoolresults_triangle_list",
+      "catalog_index": 2155503,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16419598199991015
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.fragment_shader_invocations.secondary_inherited.64bits_dstoffset_cmdcopyquerypoolresults_triangle_fan",
+      "catalog_index": 2155512,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16418325700033165
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.fragment_shader_invocations.secondary_inherited.64bits_line_strip",
+      "catalog_index": 2155519,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16374684599941247
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.host_query_reset.clipping_invocations.primary.32bits_dstoffset_cmdcopyquerypoolresults_line_list_clear_depth_vertex",
+      "catalog_index": 2156578,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16420754699993267
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.host_query_reset.clipping_invocations.primary.64bits_cmdcopyquerypoolresults_triangle_list_with_no_color_attachments_vertex",
+      "catalog_index": 2156822,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16379633899941837
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.host_query_reset.clipping_invocations.primary.64bits_dstoffset_cmdcopyquerypoolresults_triangle_list_with_no_color_attachments_vertex",
+      "catalog_index": 2156910,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16417167400049948
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.host_query_reset.clipping_invocations.primary.64bits_dstoffset_cmdcopyquerypoolresults_triangle_strip_clear_color_vertex",
+      "catalog_index": 2156912,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16391484900032083
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.host_query_reset.clipping_invocations.secondary.32bits_cmdcopyquerypoolresults_triangle_list_clear_color_vertex",
+      "catalog_index": 2157058,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1642888659998789
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.host_query_reset.clipping_invocations.secondary.32bits_dstoffset_cmdcopyquerypoolresults_triangle_fan_clear_color_vertex",
+      "catalog_index": 2157118,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16424995700072031
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.host_query_reset.clipping_invocations.secondary.64bits_triangle_list_clear_color_vertex",
+      "catalog_index": 2157388,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16392059899953892
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.host_query_reset.clipping_invocations.secondary_inherited.32bits_cmdcopyquerypoolresults_line_list_vertex",
+      "catalog_index": 2157412,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16422060700006114
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.host_query_reset.clipping_primitives.primary.64bits_dstoffset_cmdcopyquerypoolresults_triangle_strip_with_no_color_attachments_vertex",
+      "catalog_index": 2157982,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16421764800088567
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.host_query_reset.compute_shader_invocations.64bits_dstoffset_cmdcopyquerypoolresults_secondary",
+      "catalog_index": 2158625,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1141385849996368
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.host_query_reset.fragment_shader_invocations.primary.32bits_cmdcopyquerypoolresults_triangle_fan",
+      "catalog_index": 2158645,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1643049100002827
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.host_query_reset.fragment_shader_invocations.primary.32bits_dstoffset_cmdcopyquerypoolresults_point_list",
+      "catalog_index": 2158663,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16417813099997147
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.host_query_reset.fragment_shader_invocations.secondary_inherited.32bits_dstoffset_cmdcopyquerypoolresults_triangle_list",
+      "catalog_index": 2158831,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16414255400013644
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.host_query_reset.input_assembly_primitives.secondary.32bits_triangle_fan",
+      "catalog_index": 2160183,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16381583900056285
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.host_query_reset.input_assembly_primitives.secondary.64bits_cmdcopyquerypoolresults_triangle_fan_clear_color",
+      "catalog_index": 2160217,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16431055199973343
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.host_query_reset.input_assembly_primitives.secondary_inherited.32bits_cmdcopyquerypoolresults_triangle_strip",
+      "catalog_index": 2160306,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16424889199970494
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.host_query_reset.vertex_shader_invocations.primary.64bits_dstoffset_cmdcopyquerypoolresults_triangle_fan_clear_depth",
+      "catalog_index": 2160689,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1640659360000427
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.host_query_reset.vertex_shader_invocations.secondary.32bits_dstoffset_cmdcopyquerypoolresults_point_list_clear_color",
+      "catalog_index": 2160790,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11394352299976163
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.host_query_reset.vertex_shader_invocations.secondary.32bits_line_strip_clear_color",
+      "catalog_index": 2160814,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11403274300027988
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.host_query_reset.vertex_shader_invocations.secondary.64bits_dstoffset_cmdcopyquerypoolresults_line_strip",
+      "catalog_index": 2160873,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16402137799923366
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.input_assembly_primitives.primary.32bits_cmdcopyquerypoolresults_line_strip_with_no_color_attachments",
+      "catalog_index": 2161002,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1638137549998646
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.input_assembly_primitives.primary.32bits_cmdcopyquerypoolresults_point_list_with_no_color_attachments",
+      "catalog_index": 2161033,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16420477399969968
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.input_assembly_primitives.primary.32bits_dstoffset_cmdcopyquerypoolresults_line_strip",
+      "catalog_index": 2161062,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1641546130003917
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.input_assembly_primitives.primary.32bits_dstoffset_cmdcopyquerypoolresults_triangle_strip_with_no_color_attachments",
+      "catalog_index": 2161120,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16419771500022762
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.input_assembly_primitives.primary.32bits_line_list_clear_depth",
+      "catalog_index": 2161123,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1638436900002489
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.input_assembly_primitives.primary.32bits_triangle_fan_clear_color",
+      "catalog_index": 2161169,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1641836709995914
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.input_assembly_primitives.primary.64bits_cmdcopyquerypoolresults_line_list_clear_depth",
+      "catalog_index": 2161190,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16374455400000443
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.input_assembly_primitives.primary.64bits_cmdcopyquerypoolresults_line_list_with_no_color_attachments",
+      "catalog_index": 2161195,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1641875479999726
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.input_assembly_primitives.primary.64bits_dstoffset_cmdcopyquerypoolresults_line_list_clear_depth",
+      "catalog_index": 2161257,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1638485399998899
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.input_assembly_primitives.primary.64bits_triangle_list_with_no_color_attachments",
+      "catalog_index": 2161380,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16421364799953153
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.input_assembly_primitives.primary.64bits_triangle_strip",
+      "catalog_index": 2161381,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16424624800038146
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.input_assembly_primitives.secondary.32bits_cmdcopyquerypoolresults_triangle_fan",
+      "catalog_index": 2161407,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1641981319999104
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.input_assembly_primitives.secondary.32bits_dstoffset_cmdcopyquerypoolresults_triangle_list_clear_depth",
+      "catalog_index": 2161445,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16431030100011412
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.input_assembly_primitives.secondary.32bits_triangle_list_clear_depth",
+      "catalog_index": 2161478,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1642090229997848
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.input_assembly_primitives.secondary.32bits_triangle_strip_clear_depth",
+      "catalog_index": 2161484,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16422564799995598
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.input_assembly_primitives.secondary.64bits_cmdcopyquerypoolresults_line_strip_clear_depth",
+      "catalog_index": 2161496,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16431988600015757
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.input_assembly_primitives.secondary.64bits_dstoffset_cmdcopyquerypoolresults_triangle_fan",
+      "catalog_index": 2161539,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16420329599986871
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.input_assembly_primitives.secondary.64bits_triangle_list",
+      "catalog_index": 2161575,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16423299799953384
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.input_assembly_primitives.secondary_inherited.64bits_cmdcopyquerypoolresults_triangle_list",
+      "catalog_index": 2161627,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16416102899984253
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.input_assembly_primitives.secondary_inherited.64bits_point_list",
+      "catalog_index": 2161647,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16417588200056343
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.input_assembly_vertices.32bits_dstoffset_cmdcopyquerypoolresults_primary",
+      "catalog_index": 2161661,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1643054910000501
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.input_assembly_vertices.32bits_dstoffset_cmdcopyquerypoolresults_primary_clear_depth",
+      "catalog_index": 2161663,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16419825600041804
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.input_assembly_vertices.32bits_dstoffset_cmdcopyquerypoolresults_primary_with_no_color_attachments",
+      "catalog_index": 2161664,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16422254000008252
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.input_assembly_vertices.32bits_dstoffset_cmdcopyquerypoolresults_secondary_clear_depth",
+      "catalog_index": 2161667,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1641576130004978
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.input_assembly_vertices.32bits_primary_clear_depth",
+      "catalog_index": 2161671,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16418613099995127
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.input_assembly_vertices.32bits_primary_with_no_color_attachments",
+      "catalog_index": 2161672,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16416713200032973
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.input_assembly_vertices.32bits_secondary",
+      "catalog_index": 2161673,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1641640309999275
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.input_assembly_vertices.32bits_secondary_clear_depth",
+      "catalog_index": 2161675,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1641156370005774
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.input_assembly_vertices.64bits_cmdcopyquerypoolresults_primary_clear_color",
+      "catalog_index": 2161678,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.164134197999374
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.input_assembly_vertices.64bits_cmdcopyquerypoolresults_primary_with_no_color_attachments",
+      "catalog_index": 2161680,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1641462790003061
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.input_assembly_vertices.64bits_cmdcopyquerypoolresults_secondary",
+      "catalog_index": 2161681,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16381877200001327
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.input_assembly_vertices.64bits_cmdcopyquerypoolresults_secondary_inherited",
+      "catalog_index": 2161684,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.164336925000498
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.input_assembly_vertices.64bits_dstoffset_cmdcopyquerypoolresults_primary_clear_depth",
+      "catalog_index": 2161687,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16426020699964283
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.input_assembly_vertices.64bits_dstoffset_cmdcopyquerypoolresults_primary_with_no_color_attachments",
+      "catalog_index": 2161688,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16418958800022665
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.input_assembly_vertices.64bits_dstoffset_cmdcopyquerypoolresults_secondary_clear_color",
+      "catalog_index": 2161690,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16378461300064373
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.input_assembly_vertices.64bits_dstoffset_cmdcopyquerypoolresults_secondary_clear_depth",
+      "catalog_index": 2161691,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1643200930002422
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.input_assembly_vertices.64bits_primary_clear_color",
+      "catalog_index": 2161694,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1642081079999116
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.input_assembly_vertices.64bits_primary_with_no_color_attachments",
+      "catalog_index": 2161696,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1638727720001043
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.input_assembly_vertices.64bits_secondary",
+      "catalog_index": 2161697,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16422219000014593
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.input_assembly_vertices.64bits_secondary_clear_depth",
+      "catalog_index": 2161699,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16393394999977318
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.multiple_geom_stats.copy",
+      "catalog_index": 2161701,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.21425944299971889
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.multiple_geom_stats.copy_and_inheritance",
+      "catalog_index": 2161702,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16369075299917313
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.multiple_geom_stats.copy_with_availability",
+      "catalog_index": 2161703,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16417102999912458
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.multiple_geom_stats.copy_with_availability_and_inheritance",
+      "catalog_index": 2161704,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16414523900039057
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.multiple_geom_stats.get",
+      "catalog_index": 2161705,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16423908400065557
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.multiple_geom_stats.get_and_inheritance",
+      "catalog_index": 2161706,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16416571399986424
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.multiple_geom_stats.get_with_availability",
+      "catalog_index": 2161707,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16414773799988325
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.multiple_geom_stats.get_with_availability_and_inheritance",
+      "catalog_index": 2161708,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16416908800056262
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.multiple_queries.input_assembly_vertex",
+      "catalog_index": 2161709,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16414744699977746
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.multiple_queries.input_assembly_vertex_cmdcopy",
+      "catalog_index": 2161710,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16383233899978222
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.multiple_queries.input_assembly_vertex_cmdcopy_dstoffset_stride_zero",
+      "catalog_index": 2161712,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16418910500033235
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.multiple_queries.input_assembly_vertex_cmdcopy_stride_zero",
+      "catalog_index": 2161713,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1637524289999419
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.multiple_queries.input_assembly_vertex_fragment_cmdcopy",
+      "catalog_index": 2161715,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16426324999974895
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.multiple_queries.input_assembly_vertex_fragment_cmdcopy_dstoffset",
+      "catalog_index": 2161716,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16379242299990437
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.multiple_queries.input_assembly_vertex_fragment_cmdcopy_dstoffset_stride_zero",
+      "catalog_index": 2161717,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16416817299977993
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.multiple_queries.input_assembly_vertex_fragment_cmdcopy_stride_zero",
+      "catalog_index": 2161718,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16384610699969926
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.multiple_queries.input_assembly_vertex_fragment_partial",
+      "catalog_index": 2161719,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11391629700028716
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.multiple_queries.input_assembly_vertex_fragment_partial_cmdcopy",
+      "catalog_index": 2161720,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11406913399969199
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.multiple_queries.input_assembly_vertex_fragment_partial_cmdcopy_dstoffset",
+      "catalog_index": 2161721,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11411481800041656
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.multiple_queries.input_assembly_vertex_fragment_wait",
+      "catalog_index": 2161722,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11412066799948661
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.multiple_queries.input_assembly_vertex_fragment_wait_cmdcopy",
+      "catalog_index": 2161723,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11410319400056324
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.multiple_queries.input_assembly_vertex_fragment_wait_cmdcopy_dstoffset",
+      "catalog_index": 2161724,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11406934300066496
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.multiple_queries.input_assembly_vertex_fragment_wait_cmdcopy_stride_zero",
+      "catalog_index": 2161726,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11411390200009919
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.multiple_queries.input_assembly_vertex_partial",
+      "catalog_index": 2161727,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11405778399966948
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.multiple_queries.input_assembly_vertex_wait",
+      "catalog_index": 2161730,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11409765200005495
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.multiple_queries.input_assembly_vertex_wait_cmdcopy",
+      "catalog_index": 2161731,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11410352599978069
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.multiple_queries.input_assembly_vertex_wait_cmdcopy_dstoffset_stride_zero",
+      "catalog_index": 2161733,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11409390300013911
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.multiple_queries.input_assembly_vertex_wait_cmdcopy_stride_zero",
+      "catalog_index": 2161734,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11408400999971491
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.reset_after_copy.clipping_invocations.primary.32bits_dstoffset_cmdcopyquerypoolresults_line_strip_clear_depth_vertex",
+      "catalog_index": 2161842,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1141143769991686
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.reset_after_copy.clipping_invocations.primary.64bits_cmdcopyquerypoolresults_line_list_vertex",
+      "catalog_index": 2161916,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11411156799931632
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.reset_after_copy.clipping_invocations.primary.64bits_cmdcopyquerypoolresults_line_strip_clear_color_vertex",
+      "catalog_index": 2161928,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11406649099990318
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.reset_after_copy.clipping_invocations.secondary_inherited.64bits_dstoffset_cmdcopyquerypoolresults_point_list_vertex",
+      "catalog_index": 2162428,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1140834249999898
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.reset_after_copy.clipping_primitives.primary.32bits_dstoffset_cmdcopyquerypoolresults_line_strip_clear_depth_vertex",
+      "catalog_index": 2162546,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11409761000049912
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.reset_after_copy.clipping_primitives.primary.64bits_dstoffset_cmdcopyquerypoolresults_line_list_with_no_color_attachments_vertex",
+      "catalog_index": 2162718,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11408577699967282
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.reset_after_copy.clipping_primitives.primary.64bits_dstoffset_cmdcopyquerypoolresults_point_list_clear_color_vertex",
+      "catalog_index": 2162744,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11410327600060555
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.reset_after_copy.clipping_primitives.secondary.32bits_dstoffset_cmdcopyquerypoolresults_line_list_vertex",
+      "catalog_index": 2162862,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1642285649995756
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.reset_after_copy.clipping_primitives.secondary.64bits_cmdcopyquerypoolresults_line_list_clear_color_vertex",
+      "catalog_index": 2162924,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16425780800000211
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.reset_after_copy.clipping_primitives.secondary_inherited.32bits_cmdcopyquerypoolresults_triangle_fan_vertex",
+      "catalog_index": 2163068,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1642193560001033
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.reset_after_copy.clipping_primitives.secondary_inherited.32bits_dstoffset_cmdcopyquerypoolresults_triangle_fan_vertex",
+      "catalog_index": 2163090,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16414267900017876
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.reset_after_copy.clipping_primitives.secondary_inherited.64bits_dstoffset_cmdcopyquerypoolresults_line_strip_vertex",
+      "catalog_index": 2163126,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16420392199961498
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.reset_after_copy.fragment_shader_invocations.secondary_inherited.32bits_cmdcopyquerypoolresults_triangle_fan",
+      "catalog_index": 2163293,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1641475710002851
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.reset_after_copy.fragment_shader_invocations.secondary_inherited.64bits_cmdcopyquerypoolresults_point_list",
+      "catalog_index": 2163312,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16427089199987677
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.reset_after_copy.input_assembly_primitives.primary.32bits_cmdcopyquerypoolresults_line_list_clear_depth",
+      "catalog_index": 2163970,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16390089000014996
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.reset_after_copy.input_assembly_primitives.primary.32bits_cmdcopyquerypoolresults_line_strip_clear_depth",
+      "catalog_index": 2163978,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16420452300008037
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.reset_after_copy.tes_evaluation_shader_invocations.32bits_dstoffset_cmdcopyquerypoolresults_tes_evaluation_shader_invocations_clear_depth",
+      "catalog_index": 2164396,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.2137910159999592
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.reset_after_copy.tes_evaluation_shader_invocations.64bits_cmdcopyquerypoolresults_tes_evaluation_shader_invocations_secondary",
+      "catalog_index": 2164405,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.214286835999701
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.reset_after_copy.vertex_shader_invocations.primary.32bits_cmdcopyquerypoolresults_line_list_clear_color",
+      "catalog_index": 2164419,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16416925700013962
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.reset_after_copy.vertex_shader_invocations.secondary.32bits_dstoffset_cmdcopyquerypoolresults_line_strip_clear_depth",
+      "catalog_index": 2164617,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16383127400058584
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.reset_before_copy.clipping_invocations.primary.64bits_line_strip_vertex",
+      "catalog_index": 2165200,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16420639799980563
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.reset_before_copy.clipping_invocations.secondary.32bits_cmdcopyquerypoolresults_triangle_strip_clear_color_vertex",
+      "catalog_index": 2165322,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1638915809999162
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.reset_before_copy.clipping_invocations.secondary.64bits_dstoffset_cmdcopyquerypoolresults_triangle_list_vertex",
+      "catalog_index": 2165578,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16416811400085862
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.reset_before_copy.clipping_primitives.primary.32bits_cmdcopyquerypoolresults_line_list_with_no_color_attachments_vertex",
+      "catalog_index": 2165810,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16380679800022335
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.reset_before_copy.clipping_primitives.primary.32bits_dstoffset_cmdcopyquerypoolresults_triangle_strip_clear_color_vertex",
+      "catalog_index": 2165956,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1642155220006316
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.reset_before_copy.clipping_primitives.primary.64bits_dstoffset_cmdcopyquerypoolresults_triangle_strip_with_no_color_attachments_vertex",
+      "catalog_index": 2166234,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16413313799967
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.reset_before_copy.clipping_primitives.secondary.64bits_dstoffset_cmdcopyquerypoolresults_triangle_list_clear_depth_vertex",
+      "catalog_index": 2166632,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16422060700006114
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.reset_before_copy.clipping_primitives.secondary_inherited.64bits_line_strip_vertex",
+      "catalog_index": 2166834,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16388491499947122
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.reset_before_copy.fragment_shader_invocations.primary.32bits_dstoffset_cmdcopyquerypoolresults_line_list_with_no_color_attachments",
+      "catalog_index": 2166911,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16431909400034783
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.reset_before_copy.fragment_shader_invocations.primary.32bits_dstoffset_cmdcopyquerypoolresults_triangle_fan_with_no_color_attachments",
+      "catalog_index": 2166919,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16425512500063633
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.reset_before_copy.fragment_shader_invocations.primary.64bits_triangle_list_with_no_color_attachments",
+      "catalog_index": 2167003,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16421135499967932
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.reset_before_copy.fragment_shader_invocations.secondary_inherited.32bits_line_strip",
+      "catalog_index": 2167090,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16416775600009714
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.reset_before_copy.input_assembly_primitives.primary.32bits_cmdcopyquerypoolresults_triangle_list",
+      "catalog_index": 2168116,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16397613400022237
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.reset_before_copy.input_assembly_primitives.secondary.32bits_dstoffset_cmdcopyquerypoolresults_line_list",
+      "catalog_index": 2168385,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16411438799968892
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.reset_before_copy.input_assembly_primitives.secondary_inherited.32bits_cmdcopyquerypoolresults_triangle_strip",
+      "catalog_index": 2168559,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16417758900024637
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.reset_before_copy.input_assembly_primitives.secondary_inherited.64bits_dstoffset_cmdcopyquerypoolresults_line_strip",
+      "catalog_index": 2168596,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16418854799940164
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.reset_before_copy.tes_evaluation_shader_invocations.64bits_tes_evaluation_shader_invocations",
+      "catalog_index": 2168752,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.21419053399949917
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.reset_before_copy.vertex_shader_invocations.primary.32bits_cmdcopyquerypoolresults_point_list_with_no_color_attachments",
+      "catalog_index": 2168779,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16384498000024905
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.reset_before_copy.vertex_shader_invocations.primary.64bits_cmdcopyquerypoolresults_triangle_list_clear_depth",
+      "catalog_index": 2168906,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16422452300048462
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.reset_before_copy.vertex_shader_invocations.secondary.32bits_cmdcopyquerypoolresults_line_list_clear_color",
+      "catalog_index": 2169001,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1642166889996588
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.tes_evaluation_shader_invocations.32bits_cmdcopyquerypoolresults_tes_evaluation_shader_invocations_clear_color",
+      "catalog_index": 2169319,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.2141493740000442
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.tes_evaluation_shader_invocations.32bits_cmdcopyquerypoolresults_tes_evaluation_shader_invocations_secondary",
+      "catalog_index": 2169324,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.2140675070004363
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.tes_evaluation_shader_invocations.32bits_cmdcopyquerypoolresults_tes_evaluation_shader_invocations_triangles",
+      "catalog_index": 2169328,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.21425279899995076
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.tes_evaluation_shader_invocations.32bits_dstoffset_cmdcopyquerypoolresults_tes_evaluation_shader_invocations_clear_color",
+      "catalog_index": 2169332,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.2142992939998294
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.tes_evaluation_shader_invocations.32bits_dstoffset_cmdcopyquerypoolresults_tes_evaluation_shader_invocations_clear_depth",
+      "catalog_index": 2169333,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.21428737699989142
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.tes_evaluation_shader_invocations.32bits_dstoffset_cmdcopyquerypoolresults_tes_evaluation_shader_invocations_isolines",
+      "catalog_index": 2169334,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16419610600041779
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.tes_evaluation_shader_invocations.32bits_dstoffset_cmdcopyquerypoolresults_tes_evaluation_shader_invocations_quads_point_mode",
+      "catalog_index": 2169336,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.2142616929995711
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.tes_evaluation_shader_invocations.32bits_dstoffset_cmdcopyquerypoolresults_tes_evaluation_shader_invocations_secondary",
+      "catalog_index": 2169337,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.2142792949998693
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.tes_evaluation_shader_invocations.32bits_tes_evaluation_shader_invocations_quads",
+      "catalog_index": 2169348,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.21428825099974347
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.tes_evaluation_shader_invocations.32bits_tes_evaluation_shader_invocations_secondary_inherited",
+      "catalog_index": 2169353,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.214268734000143
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.tes_evaluation_shader_invocations.32bits_tes_evaluation_shader_invocations_triangles_point_mode",
+      "catalog_index": 2169355,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.21425569400071254
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.tes_evaluation_shader_invocations.64bits_cmdcopyquerypoolresults_tes_evaluation_shader_invocations_with_no_color_attachments",
+      "catalog_index": 2169369,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.21429187699959584
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.tes_evaluation_shader_invocations.64bits_dstoffset_cmdcopyquerypoolresults_tes_evaluation_shader_invocations",
+      "catalog_index": 2169370,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.2143839720001779
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.tes_evaluation_shader_invocations.64bits_dstoffset_cmdcopyquerypoolresults_tes_evaluation_shader_invocations_triangles_point_mode",
+      "catalog_index": 2169381,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.21415095700012898
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.tes_evaluation_shader_invocations.64bits_tes_evaluation_shader_invocations_clear_color",
+      "catalog_index": 2169384,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.21425286100020458
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.tes_evaluation_shader_invocations.64bits_tes_evaluation_shader_invocations_isolines",
+      "catalog_index": 2169386,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.164189420999719
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.tes_evaluation_shader_invocations.64bits_tes_evaluation_shader_invocations_quads",
+      "catalog_index": 2169387,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.21424844399916765
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.tes_evaluation_shader_invocations.64bits_tes_evaluation_shader_invocations_quads_point_mode",
+      "catalog_index": 2169388,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.2142319270005828
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.tes_evaluation_shader_invocations.64bits_tes_evaluation_shader_invocations_secondary",
+      "catalog_index": 2169389,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.21426735900058702
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.tes_evaluation_shader_invocations.64bits_tes_evaluation_shader_invocations_secondary_inherited",
+      "catalog_index": 2169392,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.21425940199969773
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.vertex_only.input_assembly_primitives.primary.32bits_cmdcopyquerypoolresults_triangle_list_clear_color",
+      "catalog_index": 2169421,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16417825499956962
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.vertex_only.input_assembly_primitives.primary.32bits_cmdcopyquerypoolresults_triangle_list_clear_depth",
+      "catalog_index": 2169422,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16417308899963245
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.vertex_only.input_assembly_primitives.primary.64bits_dstoffset_cmdcopyquerypoolresults_line_list_clear_depth",
+      "catalog_index": 2169558,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1639495919998808
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.vertex_only.input_assembly_primitives.secondary.32bits_dstoffset_cmdcopyquerypoolresults_point_list_clear_depth",
+      "catalog_index": 2169680,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16423975100042298
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.vertex_only.input_assembly_primitives.secondary.64bits_dstoffset_cmdcopyquerypoolresults_point_list_clear_depth",
+      "catalog_index": 2169770,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16423056500025268
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.vertex_only.input_assembly_primitives.secondary.64bits_dstoffset_cmdcopyquerypoolresults_triangle_fan_clear_color",
+      "catalog_index": 2169772,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16419171399957122
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.vertex_only.input_assembly_primitives.secondary_inherited.32bits_cmdcopyquerypoolresults_point_list",
+      "catalog_index": 2169820,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16386083199995483
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.vertex_only.input_assembly_primitives.secondary_inherited.32bits_dstoffset_cmdcopyquerypoolresults_line_strip",
+      "catalog_index": 2169828,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16417650599942135
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.vertex_only.input_assembly_primitives.secondary_inherited.32bits_dstoffset_cmdcopyquerypoolresults_triangle_fan",
+      "catalog_index": 2169831,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16389443299976847
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.vertex_only.input_assembly_vertices.32bits_dstoffset_cmdcopyquerypoolresults_primary_with_no_color_attachments",
+      "catalog_index": 2169887,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16418785699988803
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.vertex_only.input_assembly_vertices.32bits_dstoffset_cmdcopyquerypoolresults_secondary",
+      "catalog_index": 2169888,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16386779000004026
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.vertex_only.input_assembly_vertices.64bits_primary",
+      "catalog_index": 2169916,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16427709900017362
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.vertex_only.vertex_shader_invocations.primary.32bits_dstoffset_cmdcopyquerypoolresults_line_strip_clear_depth",
+      "catalog_index": 2169974,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16373947100055375
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.vertex_only.vertex_shader_invocations.primary.32bits_dstoffset_cmdcopyquerypoolresults_triangle_fan_with_no_color_attachments",
+      "catalog_index": 2169987,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16421033900041948
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.vertex_only.vertex_shader_invocations.primary.32bits_line_list_clear_color",
+      "catalog_index": 2170005,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16416063199994824
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.vertex_only.vertex_shader_invocations.secondary.32bits_point_list",
+      "catalog_index": 2170236,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16377697299958527
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.vertex_only.vertex_shader_invocations.secondary.32bits_triangle_strip_clear_depth",
+      "catalog_index": 2170250,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.164158736999525
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.vertex_only.vertex_shader_invocations.secondary.64bits_cmdcopyquerypoolresults_triangle_strip_clear_color",
+      "catalog_index": 2170279,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1636710189995938
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.vertex_only.vertex_shader_invocations.secondary.64bits_point_list_clear_color",
+      "catalog_index": 2170327,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16426401600074314
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.vertex_only.vertex_shader_invocations.secondary_inherited.32bits_dstoffset_cmdcopyquerypoolresults_point_list",
+      "catalog_index": 2170358,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.164230540999597
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.vertex_shader_invocations.primary.32bits_line_list",
+      "catalog_index": 2170484,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16419571499955055
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.vertex_shader_invocations.primary.32bits_point_list_with_no_color_attachments",
+      "catalog_index": 2170503,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16379615500045475
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.vertex_shader_invocations.primary.64bits_cmdcopyquerypoolresults_triangle_strip_clear_color",
+      "catalog_index": 2170557,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1642195009999341
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.vertex_shader_invocations.primary.64bits_dstoffset_cmdcopyquerypoolresults_line_list_clear_color",
+      "catalog_index": 2170565,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1638811419998092
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.vertex_shader_invocations.primary.64bits_dstoffset_cmdcopyquerypoolresults_triangle_list",
+      "catalog_index": 2170588,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.16419098200003646
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.vertex_shader_invocations.secondary.32bits_cmdcopyquerypoolresults_line_list",
+      "catalog_index": 2170644,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1639770090005186
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.vertex_shader_invocations.secondary.32bits_cmdcopyquerypoolresults_line_strip_clear_color",
+      "catalog_index": 2170651,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11392525600058434
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.vertex_shader_invocations.secondary.32bits_cmdcopyquerypoolresults_triangle_strip",
+      "catalog_index": 2170668,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11412008600018453
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.vertex_shader_invocations.secondary.32bits_line_list",
+      "catalog_index": 2170704,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11410944300041592
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.vertex_shader_invocations.secondary.32bits_triangle_fan_clear_depth",
+      "catalog_index": 2170721,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11397837399999844
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.vertex_shader_invocations.secondary.64bits_cmdcopyquerypoolresults_triangle_fan_clear_depth",
+      "catalog_index": 2170751,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11415921000025264
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.vertex_shader_invocations.secondary.64bits_dstoffset_cmdcopyquerypoolresults_point_list_clear_color",
+      "catalog_index": 2170777,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11406344900024123
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.vertex_shader_invocations.secondary.64bits_dstoffset_cmdcopyquerypoolresults_triangle_strip",
+      "catalog_index": 2170788,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.1140775929998199
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.vertex_shader_invocations.secondary.64bits_line_list_clear_depth",
+      "catalog_index": 2170796,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11412008499974036
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.vertex_shader_invocations.secondary.64bits_line_strip_clear_color",
+      "catalog_index": 2170801,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11408750800001144
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.vertex_shader_invocations.secondary.64bits_point_list_clear_color",
+      "catalog_index": 2170807,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11405878300047334
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.vertex_shader_invocations.secondary.64bits_triangle_list_clear_depth",
+      "catalog_index": 2170814,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11408994299927144
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.vertex_shader_invocations.secondary.64bits_triangle_strip_clear_depth",
+      "catalog_index": 2170820,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11408951000066736
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.vertex_shader_invocations.secondary_inherited.32bits_dstoffset_cmdcopyquerypoolresults_point_list",
+      "catalog_index": 2170838,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11405615799958468
+    },
+    {
+      "case": "dEQP-VK.query_pool.statistics_query.vertex_shader_invocations.secondary_inherited.32bits_triangle_fan",
+      "catalog_index": 2170849,
+      "status": "Pass",
+      "message": "Pass",
+      "seconds": 0.11412886000016442
+    }
+  ]
+}
