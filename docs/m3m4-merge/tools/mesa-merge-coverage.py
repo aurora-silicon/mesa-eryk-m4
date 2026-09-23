@@ -22,7 +22,7 @@ for r in rows:
   assert b['case']==r['case'] and b['session']==r['session']
   transitions[b['status']+' -> '+r['status']]+=1
  else:unmatched+=1
- if r['status'] in ('Fail','Crash','Timeout','HarnessError','ResourceError','InternalError','GPUTimeout') or (b and b['status']=='Pass' and r['status']=='NotSupported'):
+ if r['status'] in ('Fail','Crash','Timeout','HarnessError','ResourceError','InternalError','GPUTimeout') or (b and b['status']=='Pass' and r['status'] in ('NotSupported','QualityWarning','CompatibilityWarning')):
   review.append(dict(global_index=r['global_index'],case=r['case'],baseline=b['status'] if b else None,candidate=r['status'],evidence=r.get('evidence',r.get('run'))))
 report=dict(catalog_sha256=hashlib.sha256(old).hexdigest(),candidate_records=len(rows),catalog_total=json.loads(new)['total'],counts=dict(collections.Counter(r['status'] for r in rows)),unmatched_baseline=unmatched,transitions=dict(transitions),review=review)
 if a.output:a.output.write_text(json.dumps(report,indent=2)+'\n')

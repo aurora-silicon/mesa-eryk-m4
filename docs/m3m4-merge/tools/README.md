@@ -30,3 +30,9 @@ Their updated source snapshots remain with the existing m4-desktop tools.
 - Desktop/app helper snapshots accept isolated candidate paths and retain actual
   mapped-library identities. M3 0 A.D. remains on its separately qualified
   prefix until replay and real-application validation authorize switching it.
+
+`factorio-replay.py` forwards `--mesa-prefix` to `vulkan-trace.py`, alongside
+the explicit ICD. Candidate replays therefore use a coherent EGL/Gallium/GBM
+prefix instead of retaining unrelated old loader paths. The trace's memory
+rebinding and offscreen swapchain adaptations remain explicit in evidence.
+Coverage comparison also flags newly introduced quality/compatibility warnings.
