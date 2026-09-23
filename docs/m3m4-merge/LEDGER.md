@@ -637,3 +637,26 @@ each for WebGL 1 and WebGL 2 with the candidate Vulkan mapping. The separately
 selected normal 0 A.D. launcher also completes with candidate mappings, a fresh
 frame, and a short 122.60 FPS sample. Original prefixes and configuration
 backups are retained. Reboot validation and broad campaigns remain outstanding.
+
+## Factorio capability expansion — 2026-09-23
+
+After the merge, the user explicitly requested implementing the M3 features
+blocking the four original Factorio recordings. This supersedes the earlier
+M3 geometry/tessellation/vertex-storage/sparse qualification boundary for G15S.
+The changes are independent qualification commits, not a blanket union of M4
+capabilities:
+
+- `8b40537fb0e`: native pipeline statistics, including the fragment counter ABI.
+- `dbac8f31cb2`: Poly geometry/tessellation and graphics storage.
+- `a27cbcbe7bf`: native sparse residency/aliasing/publication, layer/viewport
+  exports, geometry streams and sample interlock; sparse queue exposure follows
+  the supported feature bit.
+
+See [the feature qualification record](m3-factorio-features/README.md) for exact
+CTS outcomes, retained initial failures, watchdog/thermal evidence and original
+capture replays. All 13 frozen M4 workloads have passing committed-build M3
+replays with exact sampled RGB agreement. This is workload and focused feature
+qualification, not complete Vulkan/OpenGL conformance. Pixel interlock, atomic64
+and other unrelated boundaries remain independent. Identical libraries from
+`a27cbcbe7bf` are installed in an isolated prefix on both machines; existing
+normal desktop configuration is preserved.
