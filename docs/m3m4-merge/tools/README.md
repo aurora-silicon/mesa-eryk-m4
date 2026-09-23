@@ -59,3 +59,10 @@ that these libraries are present on both desktops. Selection has not yet run.
 `install m3-game ...` separately switches the qualified game environment with
 its own rollback record, preserving all game-specific options. Run it only
 after the candidate passes replay and real application qualification.
+
+
+`gl33-cts-run.py --mesa-source CHECKOUT` forwards integration provenance to the
+existing guarded runner, and accepts an explicit GBM backend path. The GL46
+frozen campaign reuses the exact baseline lists, configurations and production
+options. It is prepared separately from the default-option GLES campaigns;
+preparation is not execution.

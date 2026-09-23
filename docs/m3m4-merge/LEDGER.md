@@ -495,3 +495,42 @@ recorded replay fault, so it is not a known-good replay baseline. Retain that
 limitation; use the qualified native Vulkan traditional-descriptor capture and
 validate OpenGL separately with the real application (or a new successful
 capture/replay). Do not label the known-broken trace a merge regression.
+
+
+## Runtime-option coverage boundaries
+
+The broad merged GLES campaigns use the candidate's normal compiler defaults
+with nopromote and no optional game optimizations. In particular, the M4 guard's
+ASAHI_MESA_DEBUG=nocompress remains in its actual CTS environment, whereas the
+prior M4 production-option campaign explicitly enabled compression and several
+prefetch/variant options. Indexed outcome comparison is a regression aid across
+these recorded configurations, not a claim of identical optimization settings.
+The normal desktop's existing options remain unchanged. A separately prepared
+full 19,736-pair M4 GL46 campaign retains the prior production option set and
+changes only package paths; it has not yet run. Original and corrected CTS
+binaries remain separate. Application qualification also preserves each target's
+actual installed game/desktop options.
+
+M3's fresh e325 full campaign retains the same two reviewed deliberate-wait
+Timeouts, at indices 20873 and 20877. Both guards completed with continuing
+retirement, >12 GiB memory available, no OOM and no GPU fault. Raw attempts and
+individual source/evidence reviews stay in their original campaign directories.
+
+
+## Native M3 application replay, e325
+
+The retained traditional-descriptor 0 A.D. Vulkan trace was replayed in
+baseline/candidate/candidate/baseline order, with the existing game's options
+(including early tiling, preambles, compression and broadcast coalescing).
+All four guards completed. Actual loaded Vulkan mappings matched each chosen
+library. Cold and warm replays produce byte-identical 3024x1964 screenshots,
+SHA256 700d54176b6db1baa31ff841aad8de2bb5250f970064fede7144eb1b5ff38552.
+Visual review confirms the scene, buildings, vegetation and HUD. Peak sampled
+PMP temperature was 69 C. Durations include setup and image capture and are
+not gameplay FPS or evidence of a speedup. Memory rebind, offscreen swapchain
+and omitted capture pipeline cache are explicit adaptations.
+
+The M3 campaign stopped at a normal segment boundary before these runs and
+resumed afterwards with unchanged inputs/environment. The normal desktop and
+game installations were not switched. M4 CTS continued independently. Full
+coverage and real application/desktop qualification remain pending.

@@ -1,0 +1,369 @@
+{
+  "scope": "Adapted native Vulkan 0 A.D. three-frame replay, baseline/candidate/candidate/baseline. Same installed game options. First pair cold cache, second warm; durations include setup and capture, not gameplay FPS.",
+  "rows": [
+    {
+      "evidence": "build/m3m4-merge-20260923/m3-0ad-vk-e325-abba-00-baseline",
+      "image_sha256": "700d54176b6db1baa31ff841aad8de2bb5250f970064fede7144eb1b5ff38552",
+      "shape": [
+        1964,
+        3024,
+        4
+      ],
+      "different_pixels": 0,
+      "max_channel_error": 0,
+      "mean_channel_error": 0.0,
+      "peak_temperature_c": 67.5,
+      "replay": {
+        "returncode": 0,
+        "timed_out": false,
+        "elapsed_seconds": 0.9117694189999384,
+        "selected_library_mapped": true,
+        "screenshot": true
+      },
+      "manifest": {
+        "command": [
+          "/opt/gfxreconstruct/bin/gfxrecon-replay",
+          "--wsi",
+          "wayland",
+          "--swapchain",
+          "offscreen",
+          "--memory-translation",
+          "rebind",
+          "--omit-pipeline-cache-data",
+          "--screenshots",
+          "3",
+          "--screenshot-dir",
+          "/root/m3-apps/m3-0ad-vk-e325-abba-00-baseline",
+          "/home/eryk/.cache/m3-0ad-captures/0ad-120-vk-traditional-capture/scene_frames_300_through_302.gfxr"
+        ],
+        "software": false,
+        "adaptations": [
+          "offscreen swapchain",
+          "memory rebind",
+          "pipeline cache omitted"
+        ],
+        "environment": {
+          "LD_LIBRARY_PATH": "/opt/asahi-m3-0ad/lib:/opt/asahi-m3-wayland/lib",
+          "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+          "VK_DRIVER_FILES": "/opt/asahi-m3-0ad/asahi.json",
+          "AGX_MESA_DEBUG": "nopromote",
+          "HK_DEBUG_LOG": "0",
+          "HK_M4_NATIVE_PREAMBLE": "true",
+          "HK_M4_PREFETCH_UBOS": "true",
+          "HK_M4_PREFETCH_VARIANT": "true",
+          "HK_M4_PLAIN_SAMPLERS": "true",
+          "HK_M4_IOTO_TEMPLATES": "true",
+          "AGX_NATIVE_FLOAT_PREAMBLE": "true",
+          "HK_M4_COMPRESSED_2D": "true",
+          "HK_M4_COMPRESSED_FEEDBACK": "true",
+          "HK_NATIVE_COALESCE_BROADCAST": "true",
+          "HK_M3_EARLY_TILING": "true",
+          "MESA_SHADER_CACHE_DIR": "/root/mesa-merge-cache/0ad-vk-baseline"
+        },
+        "sha256": {
+          "/home/eryk/.cache/m3-0ad-captures/0ad-120-vk-traditional-capture/scene_frames_300_through_302.gfxr": "4fd18279f4b152b041c3f664889d72252cbd60139f6f238bf2c115e172320412",
+          "/opt/gfxreconstruct/bin/gfxrecon-replay": "fe93683a857ae08af25631dd652c6986243c17055744101b1e19d3dc15e44d98",
+          "/opt/asahi-m3-0ad/asahi.json": "964624cdceb633cd87f3791de980b74f041f24fde8a219c38b0deecaf785ed5e",
+          "/opt/asahi-m3-0ad/lib/libvulkan_asahi.so": "e310049501a94b63bbd664169540a45e3a237fc2feac7dbe6276c933429a9b01"
+        }
+      },
+      "guard": {
+        "boot_id": "aa2e8dc1-6c01-47ad-b7a2-b69982bc8dda",
+        "phase": "complete",
+        "watchdog": {
+          "device": "/dev/watchdog0",
+          "identity": "Apple SoC Watchdog",
+          "timeout_seconds": 60,
+          "initial_timeleft_seconds": 59,
+          "periodic_keepalive": false,
+          "armed": true,
+          "ssh_broker_lease": false
+        },
+        "elapsed_seconds": 1.5009402739997313,
+        "keep_cpu_clocks": true
+      },
+      "evidence_sha256": {
+        "result.json": "19491fa754710ad388d0c6d7080892e94a5a83bb0b57f92793477a542c2c3a44",
+        "manifest.json": "fb4e2b16a05857a39cdba1a139681f2d3ee3b8e01dd4c810c2c088d0162025f9",
+        "replay-result.json": "87258d0b9910f9909e27d74b1385fa731ff497b99309c2a94e88c8c6c066d9a2",
+        "replay-maps.txt": "f68f612b1bf14206863b021f57ff008e8c9d1cac91241415840ea151676d2b0b",
+        "temperatures.jsonl": "3a0051cf296bafafad25d2e02d52ec03c691536f2c10baca389aadcbfcb00ac3",
+        "kernel-live.log": "5b3209cccf1fe43bd710daf510e7436c0f3630d27447a36240ff179e61c3559d",
+        "replay.log": "0d594b6fe151913b29a2df9917526637fea58e3edbd2494cb8839a3308efbffa"
+      }
+    },
+    {
+      "evidence": "build/m3m4-merge-20260923/m3-0ad-vk-e325-abba-01-candidate",
+      "image_sha256": "700d54176b6db1baa31ff841aad8de2bb5250f970064fede7144eb1b5ff38552",
+      "shape": [
+        1964,
+        3024,
+        4
+      ],
+      "different_pixels": 0,
+      "max_channel_error": 0,
+      "mean_channel_error": 0.0,
+      "peak_temperature_c": 69.0,
+      "replay": {
+        "returncode": 0,
+        "timed_out": false,
+        "elapsed_seconds": 0.9619005969998398,
+        "selected_library_mapped": true,
+        "screenshot": true
+      },
+      "manifest": {
+        "command": [
+          "/opt/gfxreconstruct/bin/gfxrecon-replay",
+          "--wsi",
+          "wayland",
+          "--swapchain",
+          "offscreen",
+          "--memory-translation",
+          "rebind",
+          "--omit-pipeline-cache-data",
+          "--screenshots",
+          "3",
+          "--screenshot-dir",
+          "/root/m3-apps/m3-0ad-vk-e325-abba-01-candidate",
+          "/home/eryk/.cache/m3-0ad-captures/0ad-120-vk-traditional-capture/scene_frames_300_through_302.gfxr"
+        ],
+        "software": false,
+        "adaptations": [
+          "offscreen swapchain",
+          "memory rebind",
+          "pipeline cache omitted"
+        ],
+        "environment": {
+          "LD_LIBRARY_PATH": "/opt/asahi-m3m4-e325b646b16/lib",
+          "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+          "VK_DRIVER_FILES": "/opt/asahi-m3m4-e325b646b16/asahi.json",
+          "AGX_MESA_DEBUG": "nopromote",
+          "HK_DEBUG_LOG": "0",
+          "HK_M4_NATIVE_PREAMBLE": "true",
+          "HK_M4_PREFETCH_UBOS": "true",
+          "HK_M4_PREFETCH_VARIANT": "true",
+          "HK_M4_PLAIN_SAMPLERS": "true",
+          "HK_M4_IOTO_TEMPLATES": "true",
+          "AGX_NATIVE_FLOAT_PREAMBLE": "true",
+          "HK_M4_COMPRESSED_2D": "true",
+          "HK_M4_COMPRESSED_FEEDBACK": "true",
+          "HK_NATIVE_COALESCE_BROADCAST": "true",
+          "HK_M3_EARLY_TILING": "true",
+          "MESA_SHADER_CACHE_DIR": "/root/mesa-merge-cache/0ad-vk-candidate"
+        },
+        "sha256": {
+          "/home/eryk/.cache/m3-0ad-captures/0ad-120-vk-traditional-capture/scene_frames_300_through_302.gfxr": "4fd18279f4b152b041c3f664889d72252cbd60139f6f238bf2c115e172320412",
+          "/opt/gfxreconstruct/bin/gfxrecon-replay": "fe93683a857ae08af25631dd652c6986243c17055744101b1e19d3dc15e44d98",
+          "/opt/asahi-m3m4-e325b646b16/asahi.json": "c3306af3f4bf1bf1bf40c08ad153f69dfa2aaecfd8ee0cc81a69b546f5f389dc",
+          "/opt/asahi-m3m4-e325b646b16/lib/libvulkan_asahi.so": "f8f6eb3fcd2bbc035efd459d058df786faf596939a2c5e23e4ee6c43b8b19cdb"
+        }
+      },
+      "guard": {
+        "boot_id": "aa2e8dc1-6c01-47ad-b7a2-b69982bc8dda",
+        "phase": "complete",
+        "watchdog": {
+          "device": "/dev/watchdog0",
+          "identity": "Apple SoC Watchdog",
+          "timeout_seconds": 60,
+          "initial_timeleft_seconds": 59,
+          "periodic_keepalive": false,
+          "armed": true,
+          "ssh_broker_lease": false
+        },
+        "elapsed_seconds": 1.5009270219998143,
+        "keep_cpu_clocks": true
+      },
+      "evidence_sha256": {
+        "result.json": "564008251ee7b7234700c07b5aa1bde4bd5cf4423f87ab9478bac909ca4663c8",
+        "manifest.json": "ac947bc1ad4c2637d11f0082f077f9ebafc051d35d5b28c7c7de1ab26b5e436c",
+        "replay-result.json": "4de12e0624bc32d9d18dc0b1173aa8b70eec17d8593e7c0583632219e76027b6",
+        "replay-maps.txt": "f79d6e7a5af1c3fd7cc883c1a99da12f86ce3aea649e92b072e138c6086161de",
+        "temperatures.jsonl": "7d267431fff39377192aa6d20ac199147eb120fab588eedbcfb9dcefaaff2833",
+        "kernel-live.log": "4d6d85a5ee4bbd9f4e1f8f4ece2fe86870a61499c40340e56177485183a63aea",
+        "replay.log": "8c59202229730d3de66d9bb9552c8d9356d92c32c4849095f3ef48ad52ea9cff"
+      }
+    },
+    {
+      "evidence": "build/m3m4-merge-20260923/m3-0ad-vk-e325-abba-02-candidate",
+      "image_sha256": "700d54176b6db1baa31ff841aad8de2bb5250f970064fede7144eb1b5ff38552",
+      "shape": [
+        1964,
+        3024,
+        4
+      ],
+      "different_pixels": 0,
+      "max_channel_error": 0,
+      "mean_channel_error": 0.0,
+      "peak_temperature_c": 53.25,
+      "replay": {
+        "returncode": 0,
+        "timed_out": false,
+        "elapsed_seconds": 0.411274033999689,
+        "selected_library_mapped": true,
+        "screenshot": true
+      },
+      "manifest": {
+        "command": [
+          "/opt/gfxreconstruct/bin/gfxrecon-replay",
+          "--wsi",
+          "wayland",
+          "--swapchain",
+          "offscreen",
+          "--memory-translation",
+          "rebind",
+          "--omit-pipeline-cache-data",
+          "--screenshots",
+          "3",
+          "--screenshot-dir",
+          "/root/m3-apps/m3-0ad-vk-e325-abba-02-candidate",
+          "/home/eryk/.cache/m3-0ad-captures/0ad-120-vk-traditional-capture/scene_frames_300_through_302.gfxr"
+        ],
+        "software": false,
+        "adaptations": [
+          "offscreen swapchain",
+          "memory rebind",
+          "pipeline cache omitted"
+        ],
+        "environment": {
+          "LD_LIBRARY_PATH": "/opt/asahi-m3m4-e325b646b16/lib",
+          "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+          "VK_DRIVER_FILES": "/opt/asahi-m3m4-e325b646b16/asahi.json",
+          "AGX_MESA_DEBUG": "nopromote",
+          "HK_DEBUG_LOG": "0",
+          "HK_M4_NATIVE_PREAMBLE": "true",
+          "HK_M4_PREFETCH_UBOS": "true",
+          "HK_M4_PREFETCH_VARIANT": "true",
+          "HK_M4_PLAIN_SAMPLERS": "true",
+          "HK_M4_IOTO_TEMPLATES": "true",
+          "AGX_NATIVE_FLOAT_PREAMBLE": "true",
+          "HK_M4_COMPRESSED_2D": "true",
+          "HK_M4_COMPRESSED_FEEDBACK": "true",
+          "HK_NATIVE_COALESCE_BROADCAST": "true",
+          "HK_M3_EARLY_TILING": "true",
+          "MESA_SHADER_CACHE_DIR": "/root/mesa-merge-cache/0ad-vk-candidate"
+        },
+        "sha256": {
+          "/home/eryk/.cache/m3-0ad-captures/0ad-120-vk-traditional-capture/scene_frames_300_through_302.gfxr": "4fd18279f4b152b041c3f664889d72252cbd60139f6f238bf2c115e172320412",
+          "/opt/gfxreconstruct/bin/gfxrecon-replay": "fe93683a857ae08af25631dd652c6986243c17055744101b1e19d3dc15e44d98",
+          "/opt/asahi-m3m4-e325b646b16/asahi.json": "c3306af3f4bf1bf1bf40c08ad153f69dfa2aaecfd8ee0cc81a69b546f5f389dc",
+          "/opt/asahi-m3m4-e325b646b16/lib/libvulkan_asahi.so": "f8f6eb3fcd2bbc035efd459d058df786faf596939a2c5e23e4ee6c43b8b19cdb"
+        }
+      },
+      "guard": {
+        "boot_id": "aa2e8dc1-6c01-47ad-b7a2-b69982bc8dda",
+        "phase": "complete",
+        "watchdog": {
+          "device": "/dev/watchdog0",
+          "identity": "Apple SoC Watchdog",
+          "timeout_seconds": 60,
+          "initial_timeleft_seconds": 59,
+          "periodic_keepalive": false,
+          "armed": true,
+          "ssh_broker_lease": false
+        },
+        "elapsed_seconds": 1.000689486999363,
+        "keep_cpu_clocks": true
+      },
+      "evidence_sha256": {
+        "result.json": "a92fbf19fc5b5e4a462a67188592d612d732ca7e0959dd4a998d113045640394",
+        "manifest.json": "41d66f6acd8de6cf7af536e72428c473c613fa93ca6eff9aa7c312f299a7c755",
+        "replay-result.json": "847eca6bdf2cddc085ac8a501ae3ac2e1eb614de71661f70b7afd58f0fa052cd",
+        "replay-maps.txt": "fbc4a4e13a64d3c2a496e749be9b8b94a8a25edf535ca3dd55830e2c3a7795ec",
+        "temperatures.jsonl": "5a28070c347c07e82a6c7b4d0bfad2e6579c5dda2d5f02b3aa790dc00984f733",
+        "kernel-live.log": "76bf878119928a21e78ea0e947d11369cec6d3baa973f057f61ed1ae71f52455",
+        "replay.log": "dff108968a14067070a35093d88501fbd632c248c88527421a746302e961710b"
+      }
+    },
+    {
+      "evidence": "build/m3m4-merge-20260923/m3-0ad-vk-e325-abba-03-baseline",
+      "image_sha256": "700d54176b6db1baa31ff841aad8de2bb5250f970064fede7144eb1b5ff38552",
+      "shape": [
+        1964,
+        3024,
+        4
+      ],
+      "different_pixels": 0,
+      "max_channel_error": 0,
+      "mean_channel_error": 0.0,
+      "peak_temperature_c": 57.5,
+      "replay": {
+        "returncode": 0,
+        "timed_out": false,
+        "elapsed_seconds": 0.4112718269998368,
+        "selected_library_mapped": true,
+        "screenshot": true
+      },
+      "manifest": {
+        "command": [
+          "/opt/gfxreconstruct/bin/gfxrecon-replay",
+          "--wsi",
+          "wayland",
+          "--swapchain",
+          "offscreen",
+          "--memory-translation",
+          "rebind",
+          "--omit-pipeline-cache-data",
+          "--screenshots",
+          "3",
+          "--screenshot-dir",
+          "/root/m3-apps/m3-0ad-vk-e325-abba-03-baseline",
+          "/home/eryk/.cache/m3-0ad-captures/0ad-120-vk-traditional-capture/scene_frames_300_through_302.gfxr"
+        ],
+        "software": false,
+        "adaptations": [
+          "offscreen swapchain",
+          "memory rebind",
+          "pipeline cache omitted"
+        ],
+        "environment": {
+          "LD_LIBRARY_PATH": "/opt/asahi-m3-0ad/lib:/opt/asahi-m3-wayland/lib",
+          "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+          "VK_DRIVER_FILES": "/opt/asahi-m3-0ad/asahi.json",
+          "AGX_MESA_DEBUG": "nopromote",
+          "HK_DEBUG_LOG": "0",
+          "HK_M4_NATIVE_PREAMBLE": "true",
+          "HK_M4_PREFETCH_UBOS": "true",
+          "HK_M4_PREFETCH_VARIANT": "true",
+          "HK_M4_PLAIN_SAMPLERS": "true",
+          "HK_M4_IOTO_TEMPLATES": "true",
+          "AGX_NATIVE_FLOAT_PREAMBLE": "true",
+          "HK_M4_COMPRESSED_2D": "true",
+          "HK_M4_COMPRESSED_FEEDBACK": "true",
+          "HK_NATIVE_COALESCE_BROADCAST": "true",
+          "HK_M3_EARLY_TILING": "true",
+          "MESA_SHADER_CACHE_DIR": "/root/mesa-merge-cache/0ad-vk-baseline"
+        },
+        "sha256": {
+          "/home/eryk/.cache/m3-0ad-captures/0ad-120-vk-traditional-capture/scene_frames_300_through_302.gfxr": "4fd18279f4b152b041c3f664889d72252cbd60139f6f238bf2c115e172320412",
+          "/opt/gfxreconstruct/bin/gfxrecon-replay": "fe93683a857ae08af25631dd652c6986243c17055744101b1e19d3dc15e44d98",
+          "/opt/asahi-m3-0ad/asahi.json": "964624cdceb633cd87f3791de980b74f041f24fde8a219c38b0deecaf785ed5e",
+          "/opt/asahi-m3-0ad/lib/libvulkan_asahi.so": "e310049501a94b63bbd664169540a45e3a237fc2feac7dbe6276c933429a9b01"
+        }
+      },
+      "guard": {
+        "boot_id": "aa2e8dc1-6c01-47ad-b7a2-b69982bc8dda",
+        "phase": "complete",
+        "watchdog": {
+          "device": "/dev/watchdog0",
+          "identity": "Apple SoC Watchdog",
+          "timeout_seconds": 60,
+          "initial_timeleft_seconds": 59,
+          "periodic_keepalive": false,
+          "armed": true,
+          "ssh_broker_lease": false
+        },
+        "elapsed_seconds": 1.0007024449996607,
+        "keep_cpu_clocks": true
+      },
+      "evidence_sha256": {
+        "result.json": "247446dd66805f03b31f8a47b91a7e2b55981591ff74711bb07e40b0f746fe90",
+        "manifest.json": "a5dacdb98ba489d5e661f12bf0318bb98e8364ae46a92227d070c40594364f32",
+        "replay-result.json": "cb60a5323c425d112934cedf2c2207a8c21d6be2cc6c7aa025814f4a879823da",
+        "replay-maps.txt": "24019c640e4370c31d8b97b0ab7618c114d2eba57c3b01dfe99336e9e1bd71d5",
+        "temperatures.jsonl": "a16214aca5ff53e0bd2ac20abfab660f891e9cf14afaa8d29648156c6047a8bb",
+        "kernel-live.log": "f27ae5b7478af6de98aab9f6e04dc2396060781a30d22f83b0bb51401885d5b8",
+        "replay.log": "2d0fbb4412bebe31bf1314f457920b81099a5edb84efc3c9cd24d7da74f46753"
+      }
+    }
+  ]
+}
