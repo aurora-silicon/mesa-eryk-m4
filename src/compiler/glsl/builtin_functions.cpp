@@ -6600,7 +6600,10 @@ builtin_builder::_acos(builtin_available_predicate avail,
               mul(a, add(IMM_FP(type, (M_PI_4f - 1.0f)),
                          mul(a, add(IMM_FP(type, 0.08132463f),
                                     mul(a, IMM_FP(type, -0.02363318f))))))))));
-   body.emit(ret(csel(less(x, IMM_FP(type, 0.0f)),
+   /* Comparisons require matching vector widths, unlike arithmetic which
+    * accepts a scalar constant alongside a vector operand.
+    */
+   body.emit(ret(csel(less(x, ir_constant::zero(linalloc, type)),
                       sub(IMM_FP(type, M_PIf), r), r)));
 
    return sig;
