@@ -56,3 +56,20 @@ muVM. The retained kernel OOM record identifies PID3185, not a GPU fault. A full
 stream capture also approached exhaustion, so it was stopped. Standalone LAN
 launch without Steam CEF is being evaluated with a 384MiB/10s memory stop gate.
 Gameplay is not yet qualified. No new game/capture tests have run on M3.
+
+
+X11 present-wait regression: the full Lethal recording returned DEVICE_LOST for
+many vkWaitForPresentKHR calls while rendering continued. x11_wait_for_present
+compared u_cnd_monotonic_timedwait's C11 result against POSIX ETIMEDOUT. The
+helper actually returns thrd_timedout, causing the generic error branch to run.
+Use thrd_timedout and thrd_success, matching the display/Wayland paths.
+
+Host regression probe extracts the actual function from the selected source
+revision and links Mesa's real monotonic condition-variable implementation;
+only swapchain storage and the GPU semaphore prerequisite are substituted.
+`test-x11-present-timeout.py SOURCE HOST_BUILD` passes completed presentation,
+condition timeout, semaphore timeout, semaphore error and presentation error.
+`--baseline-ref a7d898f39ba` reproduces DEVICE_LOST instead of TIMEOUT for the
+condition timeout, while the other four cases pass. Incremental ARM64 Vulkan
+build passes. Hardware integration validation remains pending. This fix is not
+yet claimed to repair the black gameplay scene.
