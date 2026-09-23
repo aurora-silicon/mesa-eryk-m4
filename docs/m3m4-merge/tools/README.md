@@ -19,3 +19,14 @@ No helper relaxes either machine's watchdog, thermal or bounded-run policy.
 M4 cts-bulk, gpu-experiment and gl-cts-plan accept --mesa-source to record
 an integration worktree instead of incorrectly labeling the M4 original.
 Their updated source snapshots remain with the existing m4-desktop tools.
+
+- `mesa-merge-coverage.py BASELINE CANDIDATE`: compare identical frozen
+  catalogs by global index, retaining warnings/timeouts and exposing capability
+  regressions. It does not modify or automatically review any outcome.
+- `mesa-merge-select.py`: verify all candidate library hashes, back up selected
+  desktop environment files, then update only Mesa paths. Restore validates
+  both fully and partially installed states and refuses unrelated user edits.
+  It performs no GPU work; subsequent restart/probes require the existing guard.
+- Desktop/app helper snapshots accept isolated candidate paths and retain actual
+  mapped-library identities. M3 0 A.D. remains on its separately qualified
+  prefix until replay and real-application validation authorize switching it.

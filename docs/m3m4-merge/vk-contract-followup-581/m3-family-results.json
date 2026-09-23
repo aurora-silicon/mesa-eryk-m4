@@ -1,0 +1,23 @@
+{
+  "graphics and compute gather": {
+    "NotSupported": 12,
+    "Pass": 4
+  },
+  "pipeline cache merge vertex fragment": {
+    "Pass": 8
+  },
+  "invalid and concurrent pipeline caches": {
+    "Pass": 5
+  },
+  "custom depth gather border": {
+    "NotSupported": 4,
+    "Pass": 4
+  },
+  "RGBA8 reduction": {
+    "NotSupported": 28,
+    "Pass": 12
+  },
+  "single queue compute graphics": {
+    "Pass": 8
+  }
+}

@@ -1,0 +1,686 @@
+{
+  "schema": 1,
+  "cases_sha256": "05b4c27509a99332d933156e292ba6f33c07d3d9fae5b4b929067a56a0c7bc29",
+  "cases": [
+    {
+      "catalog_index": 792583,
+      "case": "dEQP-VK.glsl.texture_gather.compute.basic.2d.depth32f.base_level.level_1",
+      "classification": "selected",
+      "reasons": [
+        "graphics and compute gather"
+      ]
+    },
+    {
+      "catalog_index": 792869,
+      "case": "dEQP-VK.glsl.texture_gather.compute.offset.implementation_offset.2d.depth32f.filter_mode.min_linear_mag_linear",
+      "classification": "selected",
+      "reasons": [
+        "graphics and compute gather"
+      ]
+    },
+    {
+      "catalog_index": 793021,
+      "case": "dEQP-VK.glsl.texture_gather.compute.offset.min_required_offset.2d.depth32f.size_npot.compare_less.repeat_mirrored_repeat",
+      "classification": "selected",
+      "reasons": [
+        "graphics and compute gather"
+      ]
+    },
+    {
+      "catalog_index": 793159,
+      "case": "dEQP-VK.glsl.texture_gather.compute.offset_dynamic.implementation_offset.2d.depth32f.size_pot.compare_greater.clamp_to_edge_repeat",
+      "classification": "selected",
+      "reasons": [
+        "graphics and compute gather"
+      ]
+    },
+    {
+      "catalog_index": 793311,
+      "case": "dEQP-VK.glsl.texture_gather.compute.offset_dynamic.min_required_offset.2d.rgba8.size_pot.clamp_to_edge_repeat",
+      "classification": "selected",
+      "reasons": [
+        "graphics and compute gather"
+      ]
+    },
+    {
+      "catalog_index": 793450,
+      "case": "dEQP-VK.glsl.texture_gather.compute.offsets.implementation_offset.2d.rgba8.size_pot.sparse_repeat_mirrored_repeat",
+      "classification": "selected",
+      "reasons": [
+        "graphics and compute gather"
+      ]
+    },
+    {
+      "catalog_index": 793700,
+      "case": "dEQP-VK.glsl.texture_gather.graphics.basic.2d.depth32f.base_level.sparse_level_2",
+      "classification": "selected",
+      "reasons": [
+        "graphics and compute gather"
+      ]
+    },
+    {
+      "catalog_index": 793754,
+      "case": "dEQP-VK.glsl.texture_gather.graphics.basic.2d.rgba8.filter_mode.sparse_min_linear_mipmap_nearest_mag_linear",
+      "classification": "selected",
+      "reasons": [
+        "graphics and compute gather"
+      ]
+    },
+    {
+      "catalog_index": 794264,
+      "case": "dEQP-VK.glsl.texture_gather.graphics.offset.implementation_offset.2d.depth32f.size_pot.compare_greater.mirrored_repeat_clamp_to_edge",
+      "classification": "selected",
+      "reasons": [
+        "graphics and compute gather"
+      ]
+    },
+    {
+      "catalog_index": 794318,
+      "case": "dEQP-VK.glsl.texture_gather.graphics.offset.implementation_offset.2d.rgba8.texture_swizzle.sparse_red_green_blue_alpha",
+      "classification": "selected",
+      "reasons": [
+        "graphics and compute gather"
+      ]
+    },
+    {
+      "catalog_index": 794693,
+      "case": "dEQP-VK.glsl.texture_gather.graphics.offset_dynamic.implementation_offset.2d.depth32f.size_npot.compare_greater.repeat_mirrored_repeat",
+      "classification": "selected",
+      "reasons": [
+        "graphics and compute gather"
+      ]
+    },
+    {
+      "catalog_index": 794747,
+      "case": "dEQP-VK.glsl.texture_gather.graphics.offset_dynamic.implementation_offset.2d.rgba8.size_pot.sparse_mirrored_repeat_clamp_to_edge",
+      "classification": "selected",
+      "reasons": [
+        "graphics and compute gather"
+      ]
+    },
+    {
+      "catalog_index": 795121,
+      "case": "dEQP-VK.glsl.texture_gather.graphics.offsets.implementation_offset.2d.depth32f.filter_mode.min_linear_mag_linear",
+      "classification": "selected",
+      "reasons": [
+        "graphics and compute gather"
+      ]
+    },
+    {
+      "catalog_index": 795175,
+      "case": "dEQP-VK.glsl.texture_gather.graphics.offsets.implementation_offset.2d.rgba8.filter_mode.sparse_min_nearest_mipmap_linear_mag_linear",
+      "classification": "selected",
+      "reasons": [
+        "graphics and compute gather"
+      ]
+    },
+    {
+      "catalog_index": 795465,
+      "case": "dEQP-VK.glsl.texture_gather.graphics.offsets.min_required_offset.2d.depth32f.size_pot.compare_greater.repeat_mirrored_repeat",
+      "classification": "selected",
+      "reasons": [
+        "graphics and compute gather"
+      ]
+    },
+    {
+      "catalog_index": 795520,
+      "case": "dEQP-VK.glsl.texture_gather.graphics.offsets.min_required_offset.2d.rgba8.texture_swizzle.zero_one_red_green",
+      "classification": "selected",
+      "reasons": [
+        "graphics and compute gather"
+      ]
+    },
+    {
+      "catalog_index": 1133300,
+      "case": "dEQP-VK.pipeline.monolithic.cache.merge.vertex_stage_fragment_stage.src_empty_dst_empty",
+      "classification": "selected",
+      "reasons": [
+        "pipeline cache merge vertex fragment"
+      ]
+    },
+    {
+      "catalog_index": 1133335,
+      "case": "dEQP-VK.pipeline.monolithic.cache.merge.vertex_stage_fragment_stage.src_empty_miss_dst_misshit",
+      "classification": "selected",
+      "reasons": [
+        "pipeline cache merge vertex fragment"
+      ]
+    },
+    {
+      "catalog_index": 1133371,
+      "case": "dEQP-VK.pipeline.monolithic.cache.merge.vertex_stage_fragment_stage.src_from_data_merged_dst_misshit",
+      "classification": "selected",
+      "reasons": [
+        "pipeline cache merge vertex fragment"
+      ]
+    },
+    {
+      "catalog_index": 1133407,
+      "case": "dEQP-VK.pipeline.monolithic.cache.merge.vertex_stage_fragment_stage.src_hit_hit_dst_misshit",
+      "classification": "selected",
+      "reasons": [
+        "pipeline cache merge vertex fragment"
+      ]
+    },
+    {
+      "catalog_index": 1133443,
+      "case": "dEQP-VK.pipeline.monolithic.cache.merge.vertex_stage_fragment_stage.src_merged_from_data_dst_misshit",
+      "classification": "selected",
+      "reasons": [
+        "pipeline cache merge vertex fragment"
+      ]
+    },
+    {
+      "catalog_index": 1133479,
+      "case": "dEQP-VK.pipeline.monolithic.cache.merge.vertex_stage_fragment_stage.src_miss_empty_dst_misshit",
+      "classification": "selected",
+      "reasons": [
+        "pipeline cache merge vertex fragment"
+      ]
+    },
+    {
+      "catalog_index": 1133515,
+      "case": "dEQP-VK.pipeline.monolithic.cache.merge.vertex_stage_fragment_stage.src_misshit_dst_misshit",
+      "classification": "selected",
+      "reasons": [
+        "pipeline cache merge vertex fragment"
+      ]
+    },
+    {
+      "catalog_index": 1133551,
+      "case": "dEQP-VK.pipeline.monolithic.cache.merge.vertex_stage_fragment_stage.src_misshit_misshit_dst_misshit",
+      "classification": "selected",
+      "reasons": [
+        "pipeline cache merge vertex fragment"
+      ]
+    },
+    {
+      "catalog_index": 1134056,
+      "case": "dEQP-VK.pipeline.monolithic.cache.misc_tests.cache_header_test",
+      "classification": "selected",
+      "reasons": [
+        "invalid and concurrent pipeline caches"
+      ]
+    },
+    {
+      "catalog_index": 1134057,
+      "case": "dEQP-VK.pipeline.monolithic.cache.misc_tests.internally_synchronized_test",
+      "classification": "selected",
+      "reasons": [
+        "invalid and concurrent pipeline caches"
+      ]
+    },
+    {
+      "catalog_index": 1134058,
+      "case": "dEQP-VK.pipeline.monolithic.cache.misc_tests.invalid_blob_test",
+      "classification": "selected",
+      "reasons": [
+        "invalid and concurrent pipeline caches"
+      ]
+    },
+    {
+      "catalog_index": 1134059,
+      "case": "dEQP-VK.pipeline.monolithic.cache.misc_tests.invalid_size_test",
+      "classification": "selected",
+      "reasons": [
+        "invalid and concurrent pipeline caches"
+      ]
+    },
+    {
+      "catalog_index": 1134060,
+      "case": "dEQP-VK.pipeline.monolithic.cache.misc_tests.zero_size_test",
+      "classification": "selected",
+      "reasons": [
+        "invalid and concurrent pipeline caches"
+      ]
+    },
+    {
+      "catalog_index": 1351009,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.border_swizzle.d32_sfloat.0gba.custom.gather_0.no_swizzle_hint",
+      "classification": "selected",
+      "reasons": [
+        "custom depth gather border"
+      ]
+    },
+    {
+      "catalog_index": 1351091,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.border_swizzle.d32_sfloat.argb.custom.gather_1.no_swizzle_hint",
+      "classification": "selected",
+      "reasons": [
+        "custom depth gather border"
+      ]
+    },
+    {
+      "catalog_index": 1351174,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.border_swizzle.d32_sfloat.gbar.custom.gather_2.with_swizzle_hint",
+      "classification": "selected",
+      "reasons": [
+        "custom depth gather border"
+      ]
+    },
+    {
+      "catalog_index": 1351257,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.border_swizzle.d32_sfloat.r0ba.custom.no_gather.no_swizzle_hint",
+      "classification": "selected",
+      "reasons": [
+        "custom depth gather border"
+      ]
+    },
+    {
+      "catalog_index": 1351369,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.border_swizzle.d32_sfloat.rg1a.custom.gather_0.no_swizzle_hint",
+      "classification": "selected",
+      "reasons": [
+        "custom depth gather border"
+      ]
+    },
+    {
+      "catalog_index": 1351452,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.border_swizzle.d32_sfloat.rgb1.custom.gather_1.with_swizzle_hint",
+      "classification": "selected",
+      "reasons": [
+        "custom depth gather border"
+      ]
+    },
+    {
+      "catalog_index": 1351535,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.border_swizzle.d32_sfloat.rgbi.custom.gather_3.no_swizzle_hint",
+      "classification": "selected",
+      "reasons": [
+        "custom depth gather border"
+      ]
+    },
+    {
+      "catalog_index": 1351618,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.border_swizzle.d32_sfloat.riba.custom.no_gather.with_swizzle_hint",
+      "classification": "selected",
+      "reasons": [
+        "custom depth gather border"
+      ]
+    },
+    {
+      "catalog_index": 1458210,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_b_g_r_a.max",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    {
+      "catalog_index": 1458211,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_b_g_r_a.max_compute",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    {
+      "catalog_index": 1458212,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_b_g_r_a.min",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    {
+      "catalog_index": 1458213,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_b_g_r_a.min_compute",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    {
+      "catalog_index": 1458216,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_identity_zero_zero_zero.max",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    {
+      "catalog_index": 1458217,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_identity_zero_zero_zero.max_compute",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    {
+      "catalog_index": 1458218,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_identity_zero_zero_zero.min",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    {
+      "catalog_index": 1458219,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_identity_zero_zero_zero.min_compute",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    {
+      "catalog_index": 1458222,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_one_r_r_r.max",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    {
+      "catalog_index": 1458223,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_one_r_r_r.max_compute",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    {
+      "catalog_index": 1458224,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_one_r_r_r.min",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    {
+      "catalog_index": 1458225,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_one_r_r_r.min_compute",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    {
+      "catalog_index": 1458228,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_r_g_b_a.max",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    {
+      "catalog_index": 1458229,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_r_g_b_a.max_compute",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    {
+      "catalog_index": 1458230,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_r_g_b_a.min",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    {
+      "catalog_index": 1458231,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_r_g_b_a.min_compute",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    {
+      "catalog_index": 1458234,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_r_zero_zero_zero.max",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    {
+      "catalog_index": 1458235,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_r_zero_zero_zero.max_compute",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    {
+      "catalog_index": 1458236,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_r_zero_zero_zero.min",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    {
+      "catalog_index": 1458237,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.mag_reduce.comp_r_zero_zero_zero.min_compute",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    {
+      "catalog_index": 1458244,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_b_g_r_a.max",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    {
+      "catalog_index": 1458245,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_b_g_r_a.max_compute",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    {
+      "catalog_index": 1458246,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_b_g_r_a.min",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    {
+      "catalog_index": 1458247,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_b_g_r_a.min_compute",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    {
+      "catalog_index": 1458250,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_identity_zero_zero_zero.max",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    {
+      "catalog_index": 1458251,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_identity_zero_zero_zero.max_compute",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    {
+      "catalog_index": 1458252,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_identity_zero_zero_zero.min",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    {
+      "catalog_index": 1458253,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_identity_zero_zero_zero.min_compute",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    {
+      "catalog_index": 1458256,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_one_r_r_r.max",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    {
+      "catalog_index": 1458257,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_one_r_r_r.max_compute",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    {
+      "catalog_index": 1458258,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_one_r_r_r.min",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    {
+      "catalog_index": 1458259,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_one_r_r_r.min_compute",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    {
+      "catalog_index": 1458262,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_r_g_b_a.max",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    {
+      "catalog_index": 1458263,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_r_g_b_a.max_compute",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    {
+      "catalog_index": 1458264,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_r_g_b_a.min",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    {
+      "catalog_index": 1458265,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_r_g_b_a.min_compute",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    {
+      "catalog_index": 1458268,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_r_zero_zero_zero.max",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    {
+      "catalog_index": 1458269,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_r_zero_zero_zero.max_compute",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    {
+      "catalog_index": 1458270,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_r_zero_zero_zero.min",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    {
+      "catalog_index": 1458271,
+      "case": "dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.min_reduce.comp_r_zero_zero_zero.min_compute",
+      "classification": "selected",
+      "reasons": [
+        "RGBA8 reduction"
+      ]
+    },
+    {
+      "catalog_index": 2850985,
+      "case": "dEQP-VK.synchronization.op.single_queue.barrier.write_draw_indexed_indirect_read_image_compute.image_128x128_r8g8b8a8_unorm",
+      "classification": "selected",
+      "reasons": [
+        "single queue compute graphics"
+      ]
+    },
+    {
+      "catalog_index": 2850990,
+      "case": "dEQP-VK.synchronization.op.single_queue.barrier.write_draw_indexed_indirect_read_image_compute_indirect.image_128x128_r8g8b8a8_unorm",
+      "classification": "selected",
+      "reasons": [
+        "single queue compute graphics"
+      ]
+    },
+    {
+      "catalog_index": 2851035,
+      "case": "dEQP-VK.synchronization.op.single_queue.barrier.write_draw_indexed_read_image_compute.image_128x128_r8g8b8a8_unorm",
+      "classification": "selected",
+      "reasons": [
+        "single queue compute graphics"
+      ]
+    },
+    {
+      "catalog_index": 2851040,
+      "case": "dEQP-VK.synchronization.op.single_queue.barrier.write_draw_indexed_read_image_compute_indirect.image_128x128_r8g8b8a8_unorm",
+      "classification": "selected",
+      "reasons": [
+        "single queue compute graphics"
+      ]
+    },
+    {
+      "catalog_index": 2851085,
+      "case": "dEQP-VK.synchronization.op.single_queue.barrier.write_draw_indirect_read_image_compute.image_128x128_r8g8b8a8_unorm",
+      "classification": "selected",
+      "reasons": [
+        "single queue compute graphics"
+      ]
+    },
+    {
+      "catalog_index": 2851090,
+      "case": "dEQP-VK.synchronization.op.single_queue.barrier.write_draw_indirect_read_image_compute_indirect.image_128x128_r8g8b8a8_unorm",
+      "classification": "selected",
+      "reasons": [
+        "single queue compute graphics"
+      ]
+    },
+    {
+      "catalog_index": 2851135,
+      "case": "dEQP-VK.synchronization.op.single_queue.barrier.write_draw_read_image_compute.image_128x128_r8g8b8a8_unorm",
+      "classification": "selected",
+      "reasons": [
+        "single queue compute graphics"
+      ]
+    },
+    {
+      "catalog_index": 2851140,
+      "case": "dEQP-VK.synchronization.op.single_queue.barrier.write_draw_read_image_compute_indirect.image_128x128_r8g8b8a8_unorm",
+      "classification": "selected",
+      "reasons": [
+        "single queue compute graphics"
+      ]
+    }
+  ]
+}

@@ -418,3 +418,28 @@ Full frozen campaigns are now running in independent new directories:
 outcomes or repair overrides were copied. New failure/guard incidents stop
 for review. Indexed baseline comparisons additionally expose Pass→NotSupported
 regressions. Completion and desktop promotion remain pending.
+
+
+## Extended contracts and frozen-coverage checkpoint
+
+The second M3 native selection contains 85 cases: 41 Pass / 44 NotSupported.
+It closes the initial reduction gap with 12 RGBA8 reduction passes, plus
+8 cache merges, all 5 invalid/concurrent cache tests, 4 custom depth-border
+gather passes and 8 single-queue compute/graphics ordering passes. Compute-only
+queue and unsupported component-swizzle restrictions remain explicit skips.
+M4 execution of this additional selection is pending its current campaign.
+
+The two GLES2 deliberate-wait cases again time out on M3 at 38 seconds;
+25 explicit 1200 ms waits plus calibrated rendering exceed the existing bound.
+Each attempt was stopped and reviewed separately: healthy completed outer
+guard, continuing retirement, no GPU/kernel/OOM fault, unchanged CTS source.
+They remain Timeout at global indices 20873 and 20877, matching the baseline;
+manual review records permit unrelated coverage, not a pass or a timeout waiver.
+Other completed broad coverage has no newly observed regression so far.
+
+`production-dispositions.json` records the final content hashes of the 76
+reviewed production files (34 M4 retained, 22 M3 adopted, 20 reconciled).
+Helper snapshots add explicit versioned-prefix selection and rollback backups,
+plus actual candidate mapping checks for desktop/app probes. Those deployment
+helpers are prepared and syntax checked; desktop deployment/qualification has
+not happened at this checkpoint. Original boot configuration remains intact.

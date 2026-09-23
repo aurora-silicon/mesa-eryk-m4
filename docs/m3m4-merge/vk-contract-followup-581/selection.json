@@ -1,0 +1,35 @@
+{
+  "catalog_sha256": "72c1bb9d2f9f0425ab8a4f570d78abdc1d3a34b82173ec76b772dedc477526bf",
+  "groups": {
+    "RGBA8 reduction": {
+      "pattern": "^dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.r8g8b8a8_unorm.*reduce.*\\.(min|max)(_|$)",
+      "matched": 40,
+      "selected": 40
+    },
+    "invalid and concurrent pipeline caches": {
+      "pattern": "^dEQP-VK.pipeline.monolithic.cache.misc_tests\\.",
+      "matched": 5,
+      "selected": 5
+    },
+    "pipeline cache merge vertex fragment": {
+      "pattern": "^dEQP-VK.pipeline.monolithic.cache.merge.vertex_stage_fragment_stage\\.",
+      "matched": 252,
+      "selected": 8
+    },
+    "single queue compute graphics": {
+      "pattern": "^dEQP-VK.synchronization.op.single_queue.barrier.*(write.*compute.*read.*draw|write.*draw.*read.*compute).*r8g8b8a8_unorm$",
+      "matched": 8,
+      "selected": 8
+    },
+    "graphics and compute gather": {
+      "pattern": "^dEQP-VK.glsl.texture_gather.*\\.2d\\.(rgba8|depth32f)\\.",
+      "matched": 814,
+      "selected": 16
+    },
+    "custom depth gather border": {
+      "pattern": "^dEQP-VK.pipeline.monolithic.sampler.border_swizzle.d32_sfloat\\..*custom.*gather",
+      "matched": 160,
+      "selected": 8
+    }
+  }
+}
