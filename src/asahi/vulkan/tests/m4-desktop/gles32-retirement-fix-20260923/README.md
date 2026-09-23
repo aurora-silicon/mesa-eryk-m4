@@ -2,8 +2,11 @@
 
 Kernel source commit `aa0c3dcad374` corrects signed-wrap notifier retirement,
 requires completed private UMA counters before owner reuse, and rolls back
-unpublished packet reservations. The full regression on the ordinary module is
-running in workspace campaign `build/gles32-retirement-fixed-20260923`.
+unpublished packet reservations. The ordinary module SHA256 is
+`afc871fb4273720d8825c644cf7823a10457ed9eb16a9e9a3f47303978357956`.
+The full regression is paused at 102,857/326,602 pairs after segment 41,
+with no Fail, Timeout, or Crash so far. See `handoff-102857/` for the exact
+indexed checkpoint and clean restart point. This is partial validation.
 
 The temporary boundary-test module SHA256
 `a6011f771a03f38c786eac21e232d1f4b360f48d8a5520dd80b4d3697da687f5`

@@ -1,0 +1,21 @@
+{
+  "purpose": "Frozen ES 3.2 repaired-kernel handoff after user-requested pause",
+  "kernel_source_commit": "aa0c3dcad374",
+  "kernel_module_sha256": "afc871fb4273720d8825c644cf7823a10457ed9eb16a9e9a3f47303978357956",
+  "catalog_plan_sha256": "3b044959c9db458c6c1a7daec89e7b52fb7b9fb1475eb9039d002dc62740ee1f",
+  "baseline_results_sha256": "8c2f8ad844ae9eed31c53d5e83237279c817d2efbfdda90dd9074007b20c729b",
+  "current_results_sha256": "bb3fc2d14ff5038e66b0b49df07884e96f42f4e9549122e227f14fa8ad1868e3",
+  "recorded_pairs": 102857,
+  "last_global_index": 102856,
+  "completed_segments": 42,
+  "next_segment": 42,
+  "outcomes": {
+    "Pass": 100477,
+    "NotSupported": 2348,
+    "QualityWarning": 15,
+    "CompatibilityWarning": 17
+  },
+  "remaining": 223745,
+  "status": "Paused cleanly after segment 41; remaining catalog unvalidated",
+  "bounds": "60 seconds per case, 900 seconds per guarded segment"
+}
