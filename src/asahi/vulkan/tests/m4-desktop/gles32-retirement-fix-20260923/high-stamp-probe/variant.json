@@ -1,0 +1,7 @@
+{
+  "kernel_source_commit": "aa0c3dcad374",
+  "render_stamp_initial": "0x7ffff000",
+  "production_render_stamp_initial": 0,
+  "module_sha256": "a6011f771a03f38c786eac21e232d1f4b360f48d8a5520dd80b4d3697da687f5",
+  "purpose": "Guarded high-half boundary test; restore ordinary stamp start after trial."
+}

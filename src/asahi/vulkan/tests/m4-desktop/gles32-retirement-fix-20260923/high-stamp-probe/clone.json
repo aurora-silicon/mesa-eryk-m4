@@ -1,0 +1,10 @@
+{
+  "source": "/home/council/dev/dirtyroom_m4/build/gles32-regression-20260922",
+  "created_utc": "2026-09-23T05:11:44.823875+00:00",
+  "catalog_sha256": "af868d3ba8e896cea00d8b85b4ea60b2223d28d6d501778adfc4975996f27f8b",
+  "plan_sha256": "3b044959c9db458c6c1a7daec89e7b52fb7b9fb1475eb9039d002dc62740ee1f",
+  "total": 326602,
+  "sessions": 87,
+  "segments": 298,
+  "inherits_outcomes": false
+}

@@ -1,0 +1,137 @@
+{
+  "total": 326602,
+  "completed": 4814,
+  "counts": {
+    "Pass": 4778,
+    "NotSupported": 36,
+    "Unrun": 321788
+  },
+  "attempts": 4814,
+  "elapsed_seconds": 191.2,
+  "cases_per_second": 25.18,
+  "runs": [
+    {
+      "segment": 22,
+      "directory": "build/gles32-highstamp-probe-20260923/segments/0022/run",
+      "selected": 2500,
+      "recorded": 2500,
+      "completed": 2500,
+      "counts": {
+        "Pass": 2466,
+        "NotSupported": 34
+      },
+      "classifications": {
+        "selected": 2500
+      },
+      "elapsed_seconds": 27.92723015800584,
+      "preparation_seconds": 1.7030814609897789,
+      "runner_seconds": 24.333295883999995,
+      "jobs": 4,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "777b38586797b2f2bde50a35dc2b5855b707c5fe8b21ec029dfb728603b356ea",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260923T051451534552Z-gles32-plan-0022-r0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 82.25
+    },
+    {
+      "segment": 105,
+      "directory": "build/gles32-highstamp-probe-20260923/segments/0105/run",
+      "selected": 1130,
+      "recorded": 1130,
+      "completed": 1130,
+      "counts": {
+        "Pass": 1129,
+        "NotSupported": 1
+      },
+      "classifications": {
+        "selected": 1130
+      },
+      "elapsed_seconds": 59.05290268998942,
+      "preparation_seconds": 1.6265345439896919,
+      "runner_seconds": 56.41934322099996,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "0ad3d16aa887a9f2073bb2e1f86cfea17a3ea75be26a7056ab4518bf38e64ffc",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260923T051728221386Z-gles32-plan-0105-r0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 86.25
+    },
+    {
+      "segment": 142,
+      "directory": "build/gles32-highstamp-probe-20260923/segments/0142/run",
+      "selected": 1,
+      "recorded": 1,
+      "completed": 1,
+      "counts": {
+        "Pass": 1
+      },
+      "classifications": {
+        "selected": 1
+      },
+      "elapsed_seconds": 41.68989247997524,
+      "preparation_seconds": 1.5689297529752366,
+      "runner_seconds": 39.21393828800001,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "28dd38fe6ddab7308ad18e13eaa4dd2f888007fe342314828a5a4ec5f99e72ae",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260923T051536494703Z-gles32-plan-0142-r0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 65.5
+    },
+    {
+      "segment": 143,
+      "directory": "build/gles32-highstamp-probe-20260923/segments/0143/run",
+      "selected": 53,
+      "recorded": 53,
+      "completed": 53,
+      "counts": {
+        "Pass": 53
+      },
+      "classifications": {
+        "selected": 53
+      },
+      "elapsed_seconds": 3.930617560981773,
+      "preparation_seconds": 1.6567437920020893,
+      "runner_seconds": 1.4348096980000093,
+      "jobs": 4,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "fabe46633e5f5bd83c9e5218a6039be5bcce1a4a56457368832af254e574f625",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260923T051527009337Z-gles32-plan-0143-r0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 82.25
+    },
+    {
+      "segment": 278,
+      "directory": "build/gles32-highstamp-probe-20260923/segments/0278/run",
+      "selected": 1130,
+      "recorded": 1130,
+      "completed": 1130,
+      "counts": {
+        "Pass": 1129,
+        "NotSupported": 1
+      },
+      "classifications": {
+        "selected": 1130
+      },
+      "elapsed_seconds": 58.603361603978556,
+      "preparation_seconds": 1.5356860000174493,
+      "runner_seconds": 56.00610776299999,
+      "jobs": 1,
+      "tests_per_group": 50,
+      "case_timeout_seconds": 60,
+      "cases_sha256": "0ad3d16aa887a9f2073bb2e1f86cfea17a3ea75be26a7056ab4518bf38e64ffc",
+      "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260923T051623709505Z-gles32-plan-0278-r0",
+      "guard_verdict": "pass",
+      "command_returncode": 0,
+      "peak_temperature_c": 75.0
+    }
+  ]
+}
