@@ -324,7 +324,12 @@ zink_create_blend_state(struct pipe_context *pctx,
    cso->alpha_to_coverage = blend_state->alpha_to_coverage;
    cso->alpha_to_one = blend_state->alpha_to_one;
    cso->num_rts = blend_state->max_rt + 1;
-   cso->advanced = blend_state->advanced_blend_func != PIPE_ADVANCED_BLEND_NONE;
+   /* The state tracker also sets advanced_blend_func when GLSL implements
+    * blending through framebuffer fetch. Only emit native Vulkan blend ops
+    * when the screen advertises that path, matching the GLSL lowering gate.
+    */
+   cso->advanced = pctx->screen->caps.blend_equation_advanced &&
+                   blend_state->advanced_blend_func != PIPE_ADVANCED_BLEND_NONE;
 
    for (int i = 0; i < blend_state->max_rt + 1; ++i) {
       const struct pipe_rt_blend_state *rt = blend_state->rt;
