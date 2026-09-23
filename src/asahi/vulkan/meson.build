@@ -207,6 +207,7 @@ if with_tests
     executable(
       'hk_printf_root_test',
       files('tests/test-hk-printf-root.c',
+            '../lib/agx_chip.c',
             'hk_nir_lower_descriptors.c'),
       include_directories : [
         include_directories('.', '../libagx', '../../gallium/include',
