@@ -1,0 +1,24 @@
+{
+  "id": "20260923T192310444631Z-usb-hdmi-normal-desktop-restore-v2",
+  "verdict": "pass",
+  "transport_returncode": 0,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260923T192310444631Z-usb-hdmi-normal-desktop-restore-v2",
+  "observations": {
+    "pixel_results": [
+      "PASS: normal Hyprland startup with repaired Aquamarine and both displays"
+    ],
+    "pixel_result_count": 1,
+    "thermal_samples": 13,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 64.75,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 64.75,
+      "Ta000m": 62.75,
+      "Te000m": 62.0,
+      "Te001m": 61.25,
+      "Tp000m": 64.75,
+      "Tp001m": 62.0
+    }
+  }
+}
