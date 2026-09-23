@@ -512,7 +512,7 @@ hk_get_device_features(
       .colorWriteEnable = true,
 
       /* VK_EXT_conditional_rendering */
-      .conditionalRendering = true,
+      .conditionalRendering = dev->chip != AGX_CHIP_G15S,
       .inheritedConditionalRendering = false,
 
       /* VK_EXT_custom_border_color */
@@ -1152,7 +1152,7 @@ hk_get_device_properties(const struct agx_device *dev,
       .transformFeedbackQueries = true,
       .transformFeedbackStreamsLinesTriangles = true,
       .transformFeedbackRasterizationStreamSelect = true,
-      .transformFeedbackDraw = true,
+      .transformFeedbackDraw = dev->chip != AGX_CHIP_G15S,
 
       /* VK_KHR_vertex_attribute_divisor */
       .maxVertexAttribDivisor = UINT32_MAX,
@@ -1415,6 +1415,8 @@ hk_create_drm_physical_device(struct vk_instance *_instance,
 
    struct vk_device_extension_table supported_extensions;
    hk_get_device_extensions(instance, &supported_extensions);
+   /* Predicate and byte-count submission paths are not yet qualified on G15S. */
+   supported_extensions.EXT_conditional_rendering &= pdev->dev.chip != AGX_CHIP_G15S;
    supported_extensions.EXT_depth_clip_control = pdev->dev.chip == AGX_CHIP_G16G;
    supported_extensions.EXT_post_depth_coverage = pdev->dev.chip == AGX_CHIP_G16G;
    supported_extensions.EXT_sampler_filter_minmax |= agx_chip_uses_g15_g16_shader_abi(pdev->dev.chip);
