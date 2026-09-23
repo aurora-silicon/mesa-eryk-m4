@@ -1588,7 +1588,7 @@ test_g17p_2d_robustness_scope(void)
 {
    for (unsigned store = 0; store < 2; ++store) {
       nir_shader *nir = build_cs_2d_image_access(store);
-      agx_nir_lower_texture_early_with_2d_robustness(nir, true, true);
+      agx_nir_lower_texture_early_with_2d_robustness(nir, true, true, false);
 
       unsigned loads = 0, stores = 0, sizes = 0;
       nir_foreach_block(block, nir_shader_get_entrypoint(nir)) {

@@ -2064,7 +2064,8 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
       NIR_PASS(_, nir, nir_lower_tex, &options);
    }
    NIR_PASS(_, nir, agx_nir_lower_texture_early_with_2d_robustness,
-            true /* support_lod_bias */, agx_chip_uses_hal200_ioto(dev->dev.chip));
+            true /* support_lod_bias */, agx_chip_uses_hal200_ioto(dev->dev.chip),
+            agx_chip_sampler_generation(dev->dev.chip) == AGX_SAMPLER_GENERATION_GEN4);
    if (agx_chip_uses_g15_g16_shader_abi(dev->dev.chip)) {
       /* Early lowering expands textureGatherOffsets into individual gathers.
        * Lower offsets on those new shadow gathers after projection, before

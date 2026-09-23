@@ -309,3 +309,34 @@ M3 retains 24 rendering warnings, two long-wait validation gaps, unsupported fea
 No original checkout or production prefix is changed for candidate tests. Use a new ARM64 build, matching generated host tools, isolated runtime prefixes and cold caches. Keep M3’s five-channel 95°C/45s guard and M4’s six-channel broker/120°C policy distinct. Both machines were idle with active display managers at task start.
 
 The phase order remains source/build → host semantics → minimal outputs → focused bug/dossier CTS → frozen broad selections → desktop/application validation. Optimization flags retain their original per-target defaults; do not claim new performance until measured.
+
+## First reconciliation checkpoint
+
+`d6e2ba9c7a0` compiler: all 294 AGX unit tests passed, including M3’s added
+widening and vertex-gather regressions, plus indexed graphics/compute sampler
+lowering. These are fresh host tests, not GPU results. Logs are in
+`build/m3m4-merge-20260923/{agx-tests-01,indexed-samplers-01}.log`.
+
+Reviewed overlaps: M4 already implements the gather-stage fix, gradient-offset
+preservation, early XFB metadata copy, and safe operand refusal printing. Retain
+M4's implementations and add M3's nonduplicate tests/evidence. Retain M4's
+compareEnable handling in software sampler state. M3's custom shadow-gather
+border path preserves interior hardware comparisons and normalized-depth
+clamping; keep it explicitly G15S-specific until equivalence with the M4
+implementation is demonstrated. M4's compressed 1D copy admission stays intact;
+M3 retains its narrower optional compressed-copy domain.
+
+LOD policy: both Gen4 and Gen4-HAL200 load API bias in software. Preserve Gen4's
+native biased-query operand and HAL200's reconstructed query clamp/mip result.
+The early reduction-query/tap bias filter is explicitly selected for Gen4;
+HAL200 retains its prior behavior pending numerical qualification. The generic
+NIR hook remains because it expresses this precise internal-operation exclusion.
+Gen5 hardware bias remains unchanged. This is an explicit conservative resolution
+of the plan's sampler dossier, not an inference from common texture generation.
+
+M3’s Honeykrisp CPU-present-wait removal is restricted to deviceID 0x6030.
+M4 retains its prior implicit-sync setting. New optional preamble, compact
+prefetch and compression flags remain off by default. Compiler-option keys
+include bits 40–43 together with all producers/consumers of the optional layout.
+The copied historical reports identify their original source revisions; none is
+claimed as execution of the merged candidate.

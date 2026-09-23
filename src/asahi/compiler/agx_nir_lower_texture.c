@@ -745,13 +745,14 @@ bool
 agx_nir_lower_texture_early(nir_shader *s, bool support_lod_bias)
 {
    return agx_nir_lower_texture_early_with_2d_robustness(
-      s, support_lod_bias, false);
+      s, support_lod_bias, false, false);
 }
 
 bool
 agx_nir_lower_texture_early_with_2d_robustness(nir_shader *s,
                                                bool support_lod_bias,
-                                               bool lower_2d_robustness)
+                                               bool lower_2d_robustness,
+                                               bool exclude_reduction_bias)
 {
    bool progress = false;
 
@@ -764,7 +765,7 @@ agx_nir_lower_texture_early_with_2d_robustness(nir_shader *s,
       .lower_tg4_offsets = true,
       .lower_index_to_offset = true,
       .lower_sampler_lod_bias = support_lod_bias,
-      .lower_sampler_lod_bias_filter = needs_sampler_lod_bias,
+      .lower_sampler_lod_bias_filter = exclude_reduction_bias ? needs_sampler_lod_bias : NULL,
 
       /* Unclear if/how mipmapped 1D textures work in the hardware. */
       .lower_1d = true,
