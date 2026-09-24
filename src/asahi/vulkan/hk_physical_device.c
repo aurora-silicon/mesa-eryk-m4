@@ -290,8 +290,8 @@ hk_get_device_features(
       .shaderTessellationAndGeometryPointSize = true,
       .shaderImageGatherExtended = true,
       .shaderStorageImageExtendedFormats = true,
-      /* Native per-sample reads and linear-alias writes are qualified on M4. */
-      .shaderStorageImageMultisample = dev->chip == AGX_CHIP_G16G,
+      /* Shared native per-sample reads and linear-alias writes. */
+      .shaderStorageImageMultisample = agx_chip_uses_g15_g16_shader_abi(dev->chip),
       .shaderStorageImageReadWithoutFormat = true,
       .shaderStorageImageWriteWithoutFormat = true,
       .shaderUniformBufferArrayDynamicIndexing = true,
@@ -344,8 +344,8 @@ hk_get_device_features(
       .storageBuffer8BitAccess = true,
       .uniformAndStorageBuffer8BitAccess = true,
       .storagePushConstant8 = true,
-      .shaderBufferInt64Atomics = dev->chip == AGX_CHIP_G16G,
-      .shaderSharedInt64Atomics = dev->chip == AGX_CHIP_G16G,
+      .shaderBufferInt64Atomics = agx_chip_uses_g15_g16_shader_abi(dev->chip),
+      .shaderSharedInt64Atomics = agx_chip_uses_g15_g16_shader_abi(dev->chip),
       .shaderFloat16 = true,
       .shaderInt8 = true,
       .descriptorIndexing = true,
@@ -512,7 +512,7 @@ hk_get_device_features(
       .colorWriteEnable = true,
 
       /* VK_EXT_conditional_rendering */
-      .conditionalRendering = dev->chip != AGX_CHIP_G15S,
+      .conditionalRendering = true,
       .inheritedConditionalRendering = false,
 
       /* VK_EXT_custom_border_color */
@@ -526,7 +526,7 @@ hk_get_device_features(
       .depthBiasExact = true,
 
       /* VK_EXT_depth_clip_control */
-      .depthClipControl = dev->chip == AGX_CHIP_G16G,
+      .depthClipControl = agx_chip_uses_g15_g16_shader_abi(dev->chip),
 
       /* VK_EXT_depth_clip_enable */
       .depthClipEnable = true,
@@ -564,11 +564,11 @@ hk_get_device_features(
       .extendedDynamicState3ExtraPrimitiveOverestimationSize = false,
       .extendedDynamicState3DepthClipEnable = true,
       .extendedDynamicState3SampleLocationsEnable = true,
-      .extendedDynamicState3ColorBlendAdvanced = dev->chip == AGX_CHIP_G16G,
+      .extendedDynamicState3ColorBlendAdvanced = agx_chip_uses_g15_g16_shader_abi(dev->chip),
       .extendedDynamicState3ProvokingVertexMode = true,
       .extendedDynamicState3LineRasterizationMode = true,
       .extendedDynamicState3LineStippleEnable = false,
-      .extendedDynamicState3DepthClipNegativeOneToOne = dev->chip == AGX_CHIP_G16G,
+      .extendedDynamicState3DepthClipNegativeOneToOne = agx_chip_uses_g15_g16_shader_abi(dev->chip),
       .extendedDynamicState3ViewportWScalingEnable = false,
       .extendedDynamicState3ViewportSwizzle = false,
       .extendedDynamicState3CoverageToColorEnable = false,
@@ -714,14 +714,15 @@ hk_get_device_features(
       /* Native SMP residency plus live sparse texel-buffer bind metadata. */
       features->shaderResourceResidency = sparse;
       features->shaderResourceMinLod = sparse;
-      features->advancedBlendCoherentOperations = dev->chip == AGX_CHIP_G16G;
+      features->advancedBlendCoherentOperations =
+         agx_chip_uses_g15_g16_shader_abi(dev->chip);
       features->sparseBinding = sparse;
       /* Memory dependencies retain firmware cache publication for aliases. */
       features->sparseResidencyAliased = sparse;
       features->sparseResidencyImage2D = sparse;
       features->sparseResidencyBuffer = sparse;
-      // G16G exports the view index through its qualified layered UVS path.
-      features->multiview = dev->chip == AGX_CHIP_G16G;
+      /* G15S/G16G export the view index through the shared layered UVS path. */
+      features->multiview = agx_chip_uses_g15_g16_shader_abi(dev->chip);
       features->geometryStreams = graphics_storage;
       /* HAL200's native storage-image fetch is memory-safe, but its TEX
        * descriptor does not bounds-check against the Vulkan image view.
@@ -1415,10 +1416,10 @@ hk_create_drm_physical_device(struct vk_instance *_instance,
 
    struct vk_device_extension_table supported_extensions;
    hk_get_device_extensions(instance, &supported_extensions);
-   /* Predicate and byte-count submission paths are not yet qualified on G15S. */
-   supported_extensions.EXT_conditional_rendering &= pdev->dev.chip != AGX_CHIP_G15S;
-   supported_extensions.EXT_depth_clip_control = pdev->dev.chip == AGX_CHIP_G16G;
-   supported_extensions.EXT_post_depth_coverage = pdev->dev.chip == AGX_CHIP_G16G;
+   supported_extensions.EXT_depth_clip_control =
+      agx_chip_uses_g15_g16_shader_abi(pdev->dev.chip);
+   supported_extensions.EXT_post_depth_coverage =
+      agx_chip_uses_g15_g16_shader_abi(pdev->dev.chip);
    supported_extensions.EXT_sampler_filter_minmax |= agx_chip_uses_g15_g16_shader_abi(pdev->dev.chip);
    supported_extensions.EXT_image_view_min_lod |= agx_chip_uses_g15_g16_shader_abi(pdev->dev.chip);
    supported_extensions.KHR_shader_atomic_int64 |= pdev->dev.chip == AGX_CHIP_G16G;
@@ -1428,10 +1429,10 @@ hk_create_drm_physical_device(struct vk_instance *_instance,
    supported_extensions.EXT_fragment_shader_interlock =
       agx_chip_uses_g15_g16_shader_abi(pdev->dev.chip);
 
-   /* Native tile blend epilogs are enabled on the qualified G16G path. */
+   /* G15S/G16G share the native tile blend epilogs. */
    if (agx_native_graphics(&pdev->dev))
       supported_extensions.EXT_blend_operation_advanced =
-         pdev->dev.chip == AGX_CHIP_G16G;
+         agx_chip_uses_g15_g16_shader_abi(pdev->dev.chip);
 
    /* The extension promises both features even to pre-1.2 applications. */
    if (agx_native_graphics(&pdev->dev) &&

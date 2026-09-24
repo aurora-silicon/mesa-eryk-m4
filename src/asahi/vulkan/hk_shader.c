@@ -2576,7 +2576,8 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
    /* Geometry's count variant removes application side effects. Expand
     * atomic64 only after Poly split, otherwise it drops the lock release
     * while retaining the acquisition that controls the retry loop. */
-   if (dev->dev.chip == AGX_CHIP_G16G && hk_nir_lower_atomic64(nir))
+   if (agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) &&
+       hk_nir_lower_atomic64(nir))
       agx_preprocess_nir_g17p(nir);
 
    unsigned nr_vbos = 0;
