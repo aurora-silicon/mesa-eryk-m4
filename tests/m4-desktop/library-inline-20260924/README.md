@@ -29,3 +29,12 @@ Host validation on 2026-09-24:
 The proprietary shader input remains in the private local benchmark evidence.
 `agx_shader_replay INPUT.nirbin --lower-texture-gen9` reproduces the stage
 without opening a GPU. Set `AGX_REPLAY_NIR_OUTPUT` to retain normalized output.
+
+Hardware follow-up: experiment
+`20260924T011658309288Z-frostpunk-inline-menu-render` replayed all 600 native
+application frames with the new build, original resources and no feature
+removal. Four GFXReconstruct pipeline-creation workers were used after bounded
+cold-cache segments. The 60-second watchdog was renewed by observed GPU
+retirement; all 723 thermal samples were valid, peak 107.5 C, no new GPU fault.
+The existing missing-menu-text defect remains reproduced; this validates the
+compiler change's execution, not full application rendering correctness.
