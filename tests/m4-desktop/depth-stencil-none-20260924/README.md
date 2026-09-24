@@ -36,4 +36,9 @@ regression run is not a conformance submission. Peak 67.5 C; guard passed.
 The first CTS attempt used an absent executable path and ran zero cases; it is
 retained in workspace experiment 20260924T015935682274Z-depth-none-cts.
 
-Original application replay and live application qualification remain pending.
+The unchanged short application trace now renders its missing menu text.
+The original 600-frame stream also completes and its final RGB image exactly
+matches the corrected short replay: experiment
+20260924T020428637104Z-frostpunk-original-depth-fixed, 771 thermal samples,
+peak 106.25 C, valid watchdog and no new GPU fault. Live application and true
+4K capture qualification remain separate and pending.
