@@ -468,6 +468,11 @@ op("threadgroup_barrier", (0x0068, 2, _), dests = 0, srcs = 0,
    can_eliminate = False, schedule_class = "barrier",
    agx3_mnemonic = "barrier")
 
+# Scheduler backoff. The source is a 16-bit register containing the delay.
+op("yield_agx3", _, dests = 0, srcs = 1,
+   can_eliminate = False, schedule_class = "barrier",
+   agx3_mnemonic = "yield")
+
 # Semantic AGX3 fence. IMM is enum agx3_barrier_scope; the exact scope may
 # expand to one or two barrier instructions in the AGX3 packer. This pseudo is
 # emitted only for AGX3 device keys, leaving the AGX2 barrier sequence intact.

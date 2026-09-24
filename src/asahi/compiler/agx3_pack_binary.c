@@ -4799,7 +4799,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
           * write's sources would let it overwrite the texel before the read
           * completes. G16G's separate read/write staging banks do not imply
           * ordering of the accesses themselves. */
-         e->drain =
+         e->drain = I->op == AGX_OPCODE_YIELD_AGX3 ||
             (enc == AGX_ISA_ENCODING_AGX3B && I->op == AGX_OPCODE_IMAGE_WRITE) ||
             (I->op == AGX_OPCODE_SCOPED_BARRIER_AGX3 &&
              (I->imm == AGX3_BARRIER_SCOPE_DEVICE ||
@@ -5966,6 +5966,20 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
              I->op == AGX_OPCODE_FCMP_QUAD_BALLOT) {
             if (!agx3_emit_subgroup_ballot(emission, enc, I, wait))
                AGX3_REFUSE(I);
+            continue;
+         }
+
+         if (I->op == AGX_OPCODE_YIELD_AGX3) {
+            struct agx3_encoded_yield_i16_reg y;
+            const agx_index src = I->src[0];
+            if (enc != AGX_ISA_ENCODING_AGX3B || I->nr_srcs != 1 ||
+                !agx3_src_is_register(src) || src.memory || src.abs || src.neg ||
+                src.size != AGX_SIZE_16 ||
+                !agx3_retire_slots_noop(emission, enc, wait | outstanding_here) ||
+                !agx3_pack_yield_i16_reg(enc, src.value, &y) ||
+                !agx3_append(emission, y.bytes, y.length))
+               AGX3_REFUSE(I);
+            outstanding = 0;
             continue;
          }
 

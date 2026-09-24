@@ -5007,6 +5007,32 @@ emit_if(agx_context *ctx, nir_if *nif)
    ctx->total_nesting--;
 }
 
+/* Contended global atomics can keep a retrying workgroup runnable while the
+ * lock owner needs execution time. Native YIELD supplies scheduler backoff
+ * without bounding the application's retry loop or changing its memory work.
+ * Satisfactory's luminance reduction is a small reproducible instance.
+ */
+static bool
+loop_has_global_atomic(nir_loop *loop)
+{
+   nir_foreach_block_in_cf_node(block, &loop->cf_node) {
+      nir_foreach_instr(instr, block) {
+         if (instr->type != nir_instr_type_intrinsic)
+            continue;
+         switch (nir_instr_as_intrinsic(instr)->intrinsic) {
+         case nir_intrinsic_global_atomic:
+         case nir_intrinsic_global_atomic_swap:
+         case nir_intrinsic_global_atomic_agx:
+         case nir_intrinsic_global_atomic_swap_agx:
+            return true;
+         default:
+            break;
+         }
+      }
+   }
+   return false;
+}
+
 static void
 emit_loop(agx_context *ctx, nir_loop *nloop)
 {
@@ -5038,6 +5064,9 @@ emit_loop(agx_context *ctx, nir_loop *nloop)
    agx_block *start_block = emit_cf_list(ctx, &nloop->body);
 
    _b.cursor = agx_after_block(ctx->current_block);
+   if (ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+       ctx->stage == MESA_SHADER_COMPUTE && loop_has_global_atomic(nloop))
+      agx_yield_agx3(&_b, agx_mov_imm(&_b, 16, 8));
    agx_jmp_exec_any(&_b, start_block);
    agx_pop_exec(&_b, 1);
    agx_block_add_successor(ctx->current_block, loop_header);

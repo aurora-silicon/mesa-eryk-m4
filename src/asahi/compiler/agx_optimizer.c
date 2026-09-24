@@ -781,7 +781,8 @@ agx_optimizer_forward(agx_context *ctx)
          agx_optimizer_fmov(ctx, defs, I);
 
       /* Inline immediates if we can. TODO: systematic */
-      if (I->op != AGX_OPCODE_COLLECT && I->op != AGX_OPCODE_IMAGE_LOAD &&
+      if (I->op != AGX_OPCODE_YIELD_AGX3 &&
+          I->op != AGX_OPCODE_COLLECT && I->op != AGX_OPCODE_IMAGE_LOAD &&
           I->op != AGX_OPCODE_TEXTURE_LOAD &&
           I->op != AGX_OPCODE_TEX_STATE_STORE &&
           I->op != AGX_OPCODE_SAMPLER_STATE_STORE &&

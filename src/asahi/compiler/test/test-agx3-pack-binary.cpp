@@ -2497,6 +2497,37 @@ TEST_F(AGX3PackBinary, SubgroupUnknownAxesFailClosed)
    pack(b, /*expect_ok=*/false);
 }
 
+TEST_F(AGX3PackBinary, YieldWaitsForSourceAndOutstandingLoads)
+{
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+   b->shader->stage = MESA_SHADER_COMPUTE;
+   agx_get_sr_to(b, agx_register(2, AGX_SIZE_16), AGX_SR_THREAD_INDEX_IN_THREADGROUP);
+   agx_get_sr_to(b, agx_register(4, AGX_SIZE_16), AGX_SR_SUBGROUP_INDEX_IN_THREADGROUP);
+   agx_yield_agx3(b, agx_register(2, AGX_SIZE_16));
+   agx_stop(b);
+
+   std::vector<uint8_t> want;
+   uint8_t bytes[AGX3_ALU_MAX_LENGTH], len;
+   for (unsigned i = 0; i < 2; i++) {
+      struct agx3_sr_desc sr = {};
+      sr.dest = 2 + 2 * i;
+      sr.width = AGX3_SR_W16;
+      sr.sr = i ? 6 : 13;
+      sr.slot = i + 1;
+      ASSERT_TRUE(agx3_sr_encode(AGX_ISA_ENCODING_AGX3B, &sr, bytes, &len));
+      append(want, bytes, len);
+   }
+   ASSERT_TRUE(agx3_alu_wait_nop(AGX_ISA_ENCODING_AGX3B, 3, bytes, &len));
+   append(want, bytes, len);
+   struct agx3_encoded_yield_i16_reg y;
+   ASSERT_TRUE(agx3_pack_yield_i16_reg(AGX_ISA_ENCODING_AGX3B, 2, &y));
+   append(want, y.bytes, y.length);
+   struct agx3_encoded_end end;
+   ASSERT_TRUE(agx3_pack_end(AGX_ISA_ENCODING_AGX3B, &end));
+   append(want, end.bytes, end.length);
+   EXPECT_EQ(pack(b), want);
+}
+
 TEST_F(AGX3PackBinary, ScopedMemoryBarriers)
 {
    for (int e = 0; e < 2; ++e) {
