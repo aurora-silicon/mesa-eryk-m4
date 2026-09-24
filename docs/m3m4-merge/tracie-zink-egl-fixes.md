@@ -46,7 +46,7 @@ The first version of the probe held one acquired swapchain image across
 multiple resizes without swapping; it failed on a later grow even after the
 EGL fix. The retained final probe presents that acquired image before later
 checks, while preserving the first unswapped resize that reproduces the trace
-bug. EGL permits resize completion at swap (EGL 1.5 section 3.10.1). The
+bug. [EGL permits resize completion at swap](https://registry.khronos.org/EGL/specs/eglspec.1.5.pdf). The
 no-swap observation is retained as a diagnostic, not an additional qualified
 fix or a passing test. Direct llvmpipe also behaved differently and is not
 claimed fixed by this native validation.
@@ -99,8 +99,15 @@ with original files backed up under `/root/tracie-validation/desktop-backup-e6a7
 Guarded session restarts passed: M3's active Plasma Wayland session and fresh
 screenshot; M4's normal Hyprland session with its prior displays and no safe
 mode. Both helpers verified exact loaded Vulkan/Gallium/EGL/GBM library paths
-and hashes. Existing autologin preferences were retained. No kernel rebuild
-or reboot was needed. The separate M3 game-launcher configuration was not
+and hashes. Existing autologin preferences were retained. No kernel rebuild was needed. The first, no-swap resize diagnostic returned
+a failed pixel assertion. M3's guard recorded `failed-watchdog-retained`, and
+the machine subsequently rebooted: boot ID changed from
+`67ff9486-b8a4-49b9-9bb9-01f1c3d7be7d` to
+`ab566889-62ce-4df2-b5d1-63ab03423a80`. The preceding kernel journal shows
+normal activity and no GPU fault; the timing is consistent with the guard's
+retained 60-second watchdog. This was after the 120-case campaign. The final
+resize probe and desktop validation both passed in the new boot. It must not
+be described as an uninterrupted overall session. The separate M3 game-launcher configuration was not
 changed by desktop selection.
 
 Raw captures, references, complete logs and deployment evidence remain in the
