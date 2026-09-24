@@ -1,0 +1,17 @@
+Device: Apple M4 (G16G B0); format=d16 initial-pass=unused-none
+PASS: d16 none, 1024 pixels, 0 failures
+Device: Apple M4 (G16G B0); format=d16 initial-pass=readonly
+PASS: d16 readonly, 1024 pixels, 0 failures
+Device: Apple M4 (G16G B0); format=d24 initial-pass=unused-none
+PASS: d24 none, 1024 pixels, 0 failures
+Device: Apple M4 (G16G B0); format=d24 initial-pass=readonly
+PASS: d24 readonly, 1024 pixels, 0 failures
+Device: Apple M4 (G16G B0); format=d32 initial-pass=unused-none
+PASS: d32 none, 1024 pixels, 0 failures
+Device: Apple M4 (G16G B0); format=d32 initial-pass=readonly
+PASS: d32 readonly, 1024 pixels, 0 failures
+Device: Apple M4 (G16G B0); format=s8 initial-pass=unused-none
+PASS: s8 none, 1024 pixels, 0 failures
+Device: Apple M4 (G16G B0); format=s8 initial-pass=readonly
+PASS: s8 readonly, 1024 pixels, 0 failures
+MATRIX_COMPLETE [0, 0, 0, 0, 0, 0, 0, 0]

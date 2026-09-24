@@ -1,0 +1,1923 @@
+{
+  "schema": 1,
+  "cases_sha256": "f3da532227544efee66605371f14b5e5911a9fb28ed9720c906ccccabc4c6949",
+  "provenance": {
+    "catalog": "/home/council/dev/dirtyroom_m4/build/cts-vulkan14-ordered/catalog",
+    "catalog_sha256": "72c1bb9d2f9f0425ab8a4f570d78abdc1d3a34b82173ec76b772dedc477526bf",
+    "cts_revision": "vulkan-cts-1.4.6.2:f6a29701220f34dd1407513bfe80d74ca7b392ce",
+    "method": "Existing targeted selection; catalog identities attached without reordering"
+  },
+  "cases": [
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.color_load_op_none_store_op_none",
+      "catalog_index": 2251586,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.color_load_op_none_store_op_none_resolve",
+      "catalog_index": 2251587,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.color_load_op_none_store_op_none_write_off",
+      "catalog_index": 2251588,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.color_load_op_none_store_op_store",
+      "catalog_index": 2251589,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.color_load_op_none_store_op_store_alphablend",
+      "catalog_index": 2251590,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.depth_d16_unorm_load_op_load_store_op_none",
+      "catalog_index": 2251591,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.depth_d16_unorm_load_op_none_store_op_dontcare",
+      "catalog_index": 2251592,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.depth_d16_unorm_load_op_none_store_op_none_write_off",
+      "catalog_index": 2251593,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.depth_d16_unorm_load_op_none_store_op_store",
+      "catalog_index": 2251594,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.depth_d16_unorm_s8_uint_load_op_load_store_op_none",
+      "catalog_index": 2251595,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.depth_d16_unorm_s8_uint_load_op_none_store_op_dontcare",
+      "catalog_index": 2251596,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.depth_d16_unorm_s8_uint_load_op_none_store_op_none_write_off",
+      "catalog_index": 2251597,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.depth_d16_unorm_s8_uint_load_op_none_store_op_store",
+      "catalog_index": 2251598,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.depth_d24_unorm_s8_uint_load_op_load_store_op_none",
+      "catalog_index": 2251599,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.depth_d24_unorm_s8_uint_load_op_none_store_op_dontcare",
+      "catalog_index": 2251600,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.depth_d24_unorm_s8_uint_load_op_none_store_op_none_write_off",
+      "catalog_index": 2251601,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.depth_d24_unorm_s8_uint_load_op_none_store_op_store",
+      "catalog_index": 2251602,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.depth_d32_sfloat_load_op_load_store_op_none",
+      "catalog_index": 2251603,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.depth_d32_sfloat_load_op_none_store_op_dontcare",
+      "catalog_index": 2251604,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.depth_d32_sfloat_load_op_none_store_op_none_write_off",
+      "catalog_index": 2251605,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.depth_d32_sfloat_load_op_none_store_op_store",
+      "catalog_index": 2251606,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.depth_d32_sfloat_s8_uint_load_op_load_store_op_none",
+      "catalog_index": 2251607,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.depth_d32_sfloat_s8_uint_load_op_none_store_op_dontcare",
+      "catalog_index": 2251608,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.depth_d32_sfloat_s8_uint_load_op_none_store_op_none_write_off",
+      "catalog_index": 2251609,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.depth_d32_sfloat_s8_uint_load_op_none_store_op_store",
+      "catalog_index": 2251610,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.depthstencil_d16_unorm_s8_uint_load_op_depth_load_stencil_none_store_op_depth_store_stencil_none_stencil_test_off",
+      "catalog_index": 2251611,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.depthstencil_d16_unorm_s8_uint_load_op_depth_load_stencil_none_store_op_depth_store_stencil_none_stencil_write_off",
+      "catalog_index": 2251612,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.depthstencil_d16_unorm_s8_uint_load_op_depth_none_stencil_load_store_op_depth_none_stencil_store_depth_test_off",
+      "catalog_index": 2251613,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.depthstencil_d16_unorm_s8_uint_load_op_depth_none_stencil_load_store_op_depth_none_stencil_store_depth_write_off",
+      "catalog_index": 2251614,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.depthstencil_d24_unorm_s8_uint_load_op_depth_load_stencil_none_store_op_depth_store_stencil_none_stencil_test_off",
+      "catalog_index": 2251615,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.depthstencil_d24_unorm_s8_uint_load_op_depth_load_stencil_none_store_op_depth_store_stencil_none_stencil_write_off",
+      "catalog_index": 2251616,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.depthstencil_d24_unorm_s8_uint_load_op_depth_none_stencil_load_store_op_depth_none_stencil_store_depth_test_off",
+      "catalog_index": 2251617,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.depthstencil_d24_unorm_s8_uint_load_op_depth_none_stencil_load_store_op_depth_none_stencil_store_depth_write_off",
+      "catalog_index": 2251618,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.depthstencil_d32_sfloat_s8_uint_load_op_depth_load_stencil_none_store_op_depth_store_stencil_none_stencil_test_off",
+      "catalog_index": 2251619,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.depthstencil_d32_sfloat_s8_uint_load_op_depth_load_stencil_none_store_op_depth_store_stencil_none_stencil_write_off",
+      "catalog_index": 2251620,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.depthstencil_d32_sfloat_s8_uint_load_op_depth_none_stencil_load_store_op_depth_none_stencil_store_depth_test_off",
+      "catalog_index": 2251621,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.depthstencil_d32_sfloat_s8_uint_load_op_depth_none_stencil_load_store_op_depth_none_stencil_store_depth_write_off",
+      "catalog_index": 2251622,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.stencil_d16_unorm_s8_uint_load_op_load_store_op_none",
+      "catalog_index": 2251623,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.stencil_d16_unorm_s8_uint_load_op_none_store_op_dontcare",
+      "catalog_index": 2251624,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.stencil_d16_unorm_s8_uint_load_op_none_store_op_none_write_off",
+      "catalog_index": 2251625,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.stencil_d16_unorm_s8_uint_load_op_none_store_op_store",
+      "catalog_index": 2251626,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.stencil_d24_unorm_s8_uint_load_op_load_store_op_none",
+      "catalog_index": 2251627,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.stencil_d24_unorm_s8_uint_load_op_none_store_op_dontcare",
+      "catalog_index": 2251628,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.stencil_d24_unorm_s8_uint_load_op_none_store_op_none_write_off",
+      "catalog_index": 2251629,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.stencil_d24_unorm_s8_uint_load_op_none_store_op_store",
+      "catalog_index": 2251630,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.stencil_d32_sfloat_s8_uint_load_op_load_store_op_none",
+      "catalog_index": 2251631,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.stencil_d32_sfloat_s8_uint_load_op_none_store_op_dontcare",
+      "catalog_index": 2251632,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.stencil_d32_sfloat_s8_uint_load_op_none_store_op_none_write_off",
+      "catalog_index": 2251633,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.stencil_d32_sfloat_s8_uint_load_op_none_store_op_store",
+      "catalog_index": 2251634,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.stencil_s8_uint_load_op_load_store_op_none",
+      "catalog_index": 2251635,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.stencil_s8_uint_load_op_none_store_op_dontcare",
+      "catalog_index": 2251636,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.stencil_s8_uint_load_op_none_store_op_none_write_off",
+      "catalog_index": 2251637,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.complete_secondary_cmd_buff.suballocation.load_store_op_none.stencil_s8_uint_load_op_none_store_op_store",
+      "catalog_index": 2251638,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.graphics_pipeline_library.suballocation.load_store_op_none.color_load_op_load_store_op_none",
+      "catalog_index": 2258097,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.graphics_pipeline_library.suballocation.load_store_op_none.color_load_op_none_store_op_dontcare",
+      "catalog_index": 2258098,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.color_load_op_none_store_op_none",
+      "catalog_index": 2261223,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.color_load_op_none_store_op_none_resolve",
+      "catalog_index": 2261224,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.color_load_op_none_store_op_none_write_off",
+      "catalog_index": 2261225,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.color_load_op_none_store_op_store",
+      "catalog_index": 2261226,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.color_load_op_none_store_op_store_alphablend",
+      "catalog_index": 2261227,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.depth_d16_unorm_load_op_load_store_op_none",
+      "catalog_index": 2261228,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.depth_d16_unorm_load_op_none_store_op_dontcare",
+      "catalog_index": 2261229,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.depth_d16_unorm_load_op_none_store_op_none_write_off",
+      "catalog_index": 2261230,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.depth_d16_unorm_load_op_none_store_op_store",
+      "catalog_index": 2261231,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.depth_d16_unorm_s8_uint_load_op_load_store_op_none",
+      "catalog_index": 2261232,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.depth_d16_unorm_s8_uint_load_op_none_store_op_dontcare",
+      "catalog_index": 2261233,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.depth_d16_unorm_s8_uint_load_op_none_store_op_none_write_off",
+      "catalog_index": 2261234,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.depth_d16_unorm_s8_uint_load_op_none_store_op_store",
+      "catalog_index": 2261235,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.depth_d24_unorm_s8_uint_load_op_load_store_op_none",
+      "catalog_index": 2261236,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.depth_d24_unorm_s8_uint_load_op_none_store_op_dontcare",
+      "catalog_index": 2261237,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.depth_d24_unorm_s8_uint_load_op_none_store_op_none_write_off",
+      "catalog_index": 2261238,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.depth_d24_unorm_s8_uint_load_op_none_store_op_store",
+      "catalog_index": 2261239,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.depth_d32_sfloat_load_op_load_store_op_none",
+      "catalog_index": 2261240,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.depth_d32_sfloat_load_op_none_store_op_dontcare",
+      "catalog_index": 2261241,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.depth_d32_sfloat_load_op_none_store_op_none_write_off",
+      "catalog_index": 2261242,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.depth_d32_sfloat_load_op_none_store_op_store",
+      "catalog_index": 2261243,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.depth_d32_sfloat_s8_uint_load_op_load_store_op_none",
+      "catalog_index": 2261244,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.depth_d32_sfloat_s8_uint_load_op_none_store_op_dontcare",
+      "catalog_index": 2261245,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.depth_d32_sfloat_s8_uint_load_op_none_store_op_none_write_off",
+      "catalog_index": 2261246,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.depth_d32_sfloat_s8_uint_load_op_none_store_op_store",
+      "catalog_index": 2261247,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.depthstencil_d16_unorm_s8_uint_load_op_depth_load_stencil_none_store_op_depth_store_stencil_none_stencil_test_off",
+      "catalog_index": 2261248,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.depthstencil_d16_unorm_s8_uint_load_op_depth_load_stencil_none_store_op_depth_store_stencil_none_stencil_write_off",
+      "catalog_index": 2261249,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.depthstencil_d16_unorm_s8_uint_load_op_depth_none_stencil_load_store_op_depth_none_stencil_store_depth_test_off",
+      "catalog_index": 2261250,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.depthstencil_d16_unorm_s8_uint_load_op_depth_none_stencil_load_store_op_depth_none_stencil_store_depth_write_off",
+      "catalog_index": 2261251,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.depthstencil_d24_unorm_s8_uint_load_op_depth_load_stencil_none_store_op_depth_store_stencil_none_stencil_test_off",
+      "catalog_index": 2261252,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.depthstencil_d24_unorm_s8_uint_load_op_depth_load_stencil_none_store_op_depth_store_stencil_none_stencil_write_off",
+      "catalog_index": 2261253,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.depthstencil_d24_unorm_s8_uint_load_op_depth_none_stencil_load_store_op_depth_none_stencil_store_depth_test_off",
+      "catalog_index": 2261254,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.depthstencil_d24_unorm_s8_uint_load_op_depth_none_stencil_load_store_op_depth_none_stencil_store_depth_write_off",
+      "catalog_index": 2261255,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.depthstencil_d32_sfloat_s8_uint_load_op_depth_load_stencil_none_store_op_depth_store_stencil_none_stencil_test_off",
+      "catalog_index": 2261256,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.depthstencil_d32_sfloat_s8_uint_load_op_depth_load_stencil_none_store_op_depth_store_stencil_none_stencil_write_off",
+      "catalog_index": 2261257,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.depthstencil_d32_sfloat_s8_uint_load_op_depth_none_stencil_load_store_op_depth_none_stencil_store_depth_test_off",
+      "catalog_index": 2261258,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.depthstencil_d32_sfloat_s8_uint_load_op_depth_none_stencil_load_store_op_depth_none_stencil_store_depth_write_off",
+      "catalog_index": 2261259,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.stencil_d16_unorm_s8_uint_load_op_load_store_op_none",
+      "catalog_index": 2261260,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.stencil_d16_unorm_s8_uint_load_op_none_store_op_dontcare",
+      "catalog_index": 2261261,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.stencil_d16_unorm_s8_uint_load_op_none_store_op_none_write_off",
+      "catalog_index": 2261262,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.stencil_d16_unorm_s8_uint_load_op_none_store_op_store",
+      "catalog_index": 2261263,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.stencil_d24_unorm_s8_uint_load_op_load_store_op_none",
+      "catalog_index": 2261264,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.stencil_d24_unorm_s8_uint_load_op_none_store_op_dontcare",
+      "catalog_index": 2261265,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.stencil_d24_unorm_s8_uint_load_op_none_store_op_none_write_off",
+      "catalog_index": 2261266,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.stencil_d24_unorm_s8_uint_load_op_none_store_op_store",
+      "catalog_index": 2261267,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.stencil_d32_sfloat_s8_uint_load_op_load_store_op_none",
+      "catalog_index": 2261268,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.stencil_d32_sfloat_s8_uint_load_op_none_store_op_dontcare",
+      "catalog_index": 2261269,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.stencil_d32_sfloat_s8_uint_load_op_none_store_op_none_write_off",
+      "catalog_index": 2261270,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.stencil_d32_sfloat_s8_uint_load_op_none_store_op_store",
+      "catalog_index": 2261271,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.stencil_s8_uint_load_op_load_store_op_none",
+      "catalog_index": 2261272,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.stencil_s8_uint_load_op_none_store_op_dontcare",
+      "catalog_index": 2261273,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.stencil_s8_uint_load_op_none_store_op_none_write_off",
+      "catalog_index": 2261274,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.partial_secondary_cmd_buff.suballocation.load_store_op_none.stencil_s8_uint_load_op_none_store_op_store",
+      "catalog_index": 2261275,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.color_load_op_load_store_op_none",
+      "catalog_index": 2272808,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.color_load_op_none_store_op_dontcare",
+      "catalog_index": 2272809,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.color_load_op_none_store_op_none",
+      "catalog_index": 2272810,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.color_load_op_none_store_op_none_resolve",
+      "catalog_index": 2272811,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.color_load_op_none_store_op_none_write_off",
+      "catalog_index": 2272812,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.color_load_op_none_store_op_store",
+      "catalog_index": 2272813,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.color_load_op_none_store_op_store_alphablend",
+      "catalog_index": 2272814,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.depth_d16_unorm_load_op_load_store_op_none",
+      "catalog_index": 2272815,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.depth_d16_unorm_load_op_none_store_op_dontcare",
+      "catalog_index": 2272816,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.depth_d16_unorm_load_op_none_store_op_none_write_off",
+      "catalog_index": 2272817,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.depth_d16_unorm_load_op_none_store_op_store",
+      "catalog_index": 2272818,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.depth_d16_unorm_s8_uint_load_op_load_store_op_none",
+      "catalog_index": 2272819,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.depth_d16_unorm_s8_uint_load_op_none_store_op_dontcare",
+      "catalog_index": 2272820,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.depth_d16_unorm_s8_uint_load_op_none_store_op_none_write_off",
+      "catalog_index": 2272821,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.depth_d16_unorm_s8_uint_load_op_none_store_op_store",
+      "catalog_index": 2272822,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.depth_d24_unorm_s8_uint_load_op_load_store_op_none",
+      "catalog_index": 2272823,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.depth_d24_unorm_s8_uint_load_op_none_store_op_dontcare",
+      "catalog_index": 2272824,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.depth_d24_unorm_s8_uint_load_op_none_store_op_none_write_off",
+      "catalog_index": 2272825,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.depth_d24_unorm_s8_uint_load_op_none_store_op_store",
+      "catalog_index": 2272826,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.depth_d32_sfloat_load_op_load_store_op_none",
+      "catalog_index": 2272827,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.depth_d32_sfloat_load_op_none_store_op_dontcare",
+      "catalog_index": 2272828,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.depth_d32_sfloat_load_op_none_store_op_none_write_off",
+      "catalog_index": 2272829,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.depth_d32_sfloat_load_op_none_store_op_store",
+      "catalog_index": 2272830,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.depth_d32_sfloat_s8_uint_load_op_load_store_op_none",
+      "catalog_index": 2272831,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.depth_d32_sfloat_s8_uint_load_op_none_store_op_dontcare",
+      "catalog_index": 2272832,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.depth_d32_sfloat_s8_uint_load_op_none_store_op_none_write_off",
+      "catalog_index": 2272833,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.depth_d32_sfloat_s8_uint_load_op_none_store_op_store",
+      "catalog_index": 2272834,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.depthstencil_d16_unorm_s8_uint_load_op_depth_load_stencil_none_store_op_depth_store_stencil_none_stencil_test_off",
+      "catalog_index": 2272835,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.depthstencil_d16_unorm_s8_uint_load_op_depth_load_stencil_none_store_op_depth_store_stencil_none_stencil_write_off",
+      "catalog_index": 2272836,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.depthstencil_d16_unorm_s8_uint_load_op_depth_none_stencil_load_store_op_depth_none_stencil_store_depth_test_off",
+      "catalog_index": 2272837,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.depthstencil_d16_unorm_s8_uint_load_op_depth_none_stencil_load_store_op_depth_none_stencil_store_depth_write_off",
+      "catalog_index": 2272838,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.depthstencil_d24_unorm_s8_uint_load_op_depth_load_stencil_none_store_op_depth_store_stencil_none_stencil_test_off",
+      "catalog_index": 2272839,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.depthstencil_d24_unorm_s8_uint_load_op_depth_load_stencil_none_store_op_depth_store_stencil_none_stencil_write_off",
+      "catalog_index": 2272840,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.depthstencil_d24_unorm_s8_uint_load_op_depth_none_stencil_load_store_op_depth_none_stencil_store_depth_test_off",
+      "catalog_index": 2272841,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.depthstencil_d24_unorm_s8_uint_load_op_depth_none_stencil_load_store_op_depth_none_stencil_store_depth_write_off",
+      "catalog_index": 2272842,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.depthstencil_d32_sfloat_s8_uint_load_op_depth_load_stencil_none_store_op_depth_store_stencil_none_stencil_test_off",
+      "catalog_index": 2272843,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.depthstencil_d32_sfloat_s8_uint_load_op_depth_load_stencil_none_store_op_depth_store_stencil_none_stencil_write_off",
+      "catalog_index": 2272844,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.depthstencil_d32_sfloat_s8_uint_load_op_depth_none_stencil_load_store_op_depth_none_stencil_store_depth_test_off",
+      "catalog_index": 2272845,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.depthstencil_d32_sfloat_s8_uint_load_op_depth_none_stencil_load_store_op_depth_none_stencil_store_depth_write_off",
+      "catalog_index": 2272846,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.stencil_d16_unorm_s8_uint_load_op_load_store_op_none",
+      "catalog_index": 2272847,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.stencil_d16_unorm_s8_uint_load_op_none_store_op_dontcare",
+      "catalog_index": 2272848,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.stencil_d16_unorm_s8_uint_load_op_none_store_op_none_write_off",
+      "catalog_index": 2272849,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.stencil_d16_unorm_s8_uint_load_op_none_store_op_store",
+      "catalog_index": 2272850,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.stencil_d24_unorm_s8_uint_load_op_load_store_op_none",
+      "catalog_index": 2272851,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.stencil_d24_unorm_s8_uint_load_op_none_store_op_dontcare",
+      "catalog_index": 2272852,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.stencil_d24_unorm_s8_uint_load_op_none_store_op_none_write_off",
+      "catalog_index": 2272853,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.stencil_d24_unorm_s8_uint_load_op_none_store_op_store",
+      "catalog_index": 2272854,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.stencil_d32_sfloat_s8_uint_load_op_load_store_op_none",
+      "catalog_index": 2272855,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.stencil_d32_sfloat_s8_uint_load_op_none_store_op_dontcare",
+      "catalog_index": 2272856,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.stencil_d32_sfloat_s8_uint_load_op_none_store_op_none_write_off",
+      "catalog_index": 2272857,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.stencil_d32_sfloat_s8_uint_load_op_none_store_op_store",
+      "catalog_index": 2272858,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.stencil_s8_uint_load_op_load_store_op_none",
+      "catalog_index": 2272859,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.stencil_s8_uint_load_op_none_store_op_dontcare",
+      "catalog_index": 2272860,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.stencil_s8_uint_load_op_none_store_op_none_write_off",
+      "catalog_index": 2272861,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.dynamic_rendering.primary_cmd_buff.suballocation.load_store_op_none.stencil_s8_uint_load_op_none_store_op_store",
+      "catalog_index": 2272862,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.color_load_op_load_store_op_none",
+      "catalog_index": 2293458,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.color_load_op_none_store_op_dontcare",
+      "catalog_index": 2293459,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.color_load_op_none_store_op_none",
+      "catalog_index": 2293460,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.color_load_op_none_store_op_none_resolve",
+      "catalog_index": 2293461,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.color_load_op_none_store_op_none_write_off",
+      "catalog_index": 2293462,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.color_load_op_none_store_op_store",
+      "catalog_index": 2293463,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.color_load_op_none_store_op_store_alphablend",
+      "catalog_index": 2293464,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.depth_d16_unorm_load_op_load_store_op_none",
+      "catalog_index": 2293465,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.depth_d16_unorm_load_op_none_store_op_dontcare",
+      "catalog_index": 2293466,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.depth_d16_unorm_load_op_none_store_op_none_write_off",
+      "catalog_index": 2293467,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.depth_d16_unorm_load_op_none_store_op_store",
+      "catalog_index": 2293468,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.depth_d16_unorm_s8_uint_load_op_load_store_op_none",
+      "catalog_index": 2293469,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.depth_d16_unorm_s8_uint_load_op_none_store_op_dontcare",
+      "catalog_index": 2293470,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.depth_d16_unorm_s8_uint_load_op_none_store_op_none_write_off",
+      "catalog_index": 2293471,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.depth_d16_unorm_s8_uint_load_op_none_store_op_store",
+      "catalog_index": 2293472,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.depth_d24_unorm_s8_uint_load_op_load_store_op_none",
+      "catalog_index": 2293473,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.depth_d24_unorm_s8_uint_load_op_none_store_op_dontcare",
+      "catalog_index": 2293474,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.depth_d24_unorm_s8_uint_load_op_none_store_op_none_write_off",
+      "catalog_index": 2293475,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.depth_d24_unorm_s8_uint_load_op_none_store_op_store",
+      "catalog_index": 2293476,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.depth_d32_sfloat_load_op_load_store_op_none",
+      "catalog_index": 2293477,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.depth_d32_sfloat_load_op_none_store_op_dontcare",
+      "catalog_index": 2293478,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.depth_d32_sfloat_load_op_none_store_op_none_write_off",
+      "catalog_index": 2293479,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.depth_d32_sfloat_load_op_none_store_op_store",
+      "catalog_index": 2293480,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.depth_d32_sfloat_s8_uint_load_op_load_store_op_none",
+      "catalog_index": 2293481,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.depth_d32_sfloat_s8_uint_load_op_none_store_op_dontcare",
+      "catalog_index": 2293482,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.depth_d32_sfloat_s8_uint_load_op_none_store_op_none_write_off",
+      "catalog_index": 2293483,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.depth_d32_sfloat_s8_uint_load_op_none_store_op_store",
+      "catalog_index": 2293484,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.depthstencil_d16_unorm_s8_uint_load_op_depth_load_stencil_none_store_op_depth_store_stencil_none_stencil_test_off",
+      "catalog_index": 2293485,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.depthstencil_d16_unorm_s8_uint_load_op_depth_load_stencil_none_store_op_depth_store_stencil_none_stencil_write_off",
+      "catalog_index": 2293486,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.depthstencil_d16_unorm_s8_uint_load_op_depth_none_stencil_load_store_op_depth_none_stencil_store_depth_test_off",
+      "catalog_index": 2293487,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.depthstencil_d16_unorm_s8_uint_load_op_depth_none_stencil_load_store_op_depth_none_stencil_store_depth_write_off",
+      "catalog_index": 2293488,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.depthstencil_d24_unorm_s8_uint_load_op_depth_load_stencil_none_store_op_depth_store_stencil_none_stencil_test_off",
+      "catalog_index": 2293489,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.depthstencil_d24_unorm_s8_uint_load_op_depth_load_stencil_none_store_op_depth_store_stencil_none_stencil_write_off",
+      "catalog_index": 2293490,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.depthstencil_d24_unorm_s8_uint_load_op_depth_none_stencil_load_store_op_depth_none_stencil_store_depth_test_off",
+      "catalog_index": 2293491,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.depthstencil_d24_unorm_s8_uint_load_op_depth_none_stencil_load_store_op_depth_none_stencil_store_depth_write_off",
+      "catalog_index": 2293492,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.depthstencil_d32_sfloat_s8_uint_load_op_depth_load_stencil_none_store_op_depth_store_stencil_none_stencil_test_off",
+      "catalog_index": 2293493,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.depthstencil_d32_sfloat_s8_uint_load_op_depth_load_stencil_none_store_op_depth_store_stencil_none_stencil_write_off",
+      "catalog_index": 2293494,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.depthstencil_d32_sfloat_s8_uint_load_op_depth_none_stencil_load_store_op_depth_none_stencil_store_depth_test_off",
+      "catalog_index": 2293495,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.depthstencil_d32_sfloat_s8_uint_load_op_depth_none_stencil_load_store_op_depth_none_stencil_store_depth_write_off",
+      "catalog_index": 2293496,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.stencil_d16_unorm_s8_uint_load_op_load_store_op_none",
+      "catalog_index": 2293497,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.stencil_d16_unorm_s8_uint_load_op_none_store_op_dontcare",
+      "catalog_index": 2293498,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.stencil_d16_unorm_s8_uint_load_op_none_store_op_none_write_off",
+      "catalog_index": 2293499,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.stencil_d16_unorm_s8_uint_load_op_none_store_op_store",
+      "catalog_index": 2293500,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.stencil_d24_unorm_s8_uint_load_op_load_store_op_none",
+      "catalog_index": 2293501,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.stencil_d24_unorm_s8_uint_load_op_none_store_op_dontcare",
+      "catalog_index": 2293502,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.stencil_d24_unorm_s8_uint_load_op_none_store_op_none_write_off",
+      "catalog_index": 2293503,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.stencil_d24_unorm_s8_uint_load_op_none_store_op_store",
+      "catalog_index": 2293504,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.stencil_d32_sfloat_s8_uint_load_op_load_store_op_none",
+      "catalog_index": 2293505,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.stencil_d32_sfloat_s8_uint_load_op_none_store_op_dontcare",
+      "catalog_index": 2293506,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.stencil_d32_sfloat_s8_uint_load_op_none_store_op_none_write_off",
+      "catalog_index": 2293507,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.stencil_d32_sfloat_s8_uint_load_op_none_store_op_store",
+      "catalog_index": 2293508,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.stencil_s8_uint_load_op_load_store_op_none",
+      "catalog_index": 2293509,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.stencil_s8_uint_load_op_none_store_op_dontcare",
+      "catalog_index": 2293510,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.stencil_s8_uint_load_op_none_store_op_none_write_off",
+      "catalog_index": 2293511,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass1.suballocation.load_store_op_none.stencil_s8_uint_load_op_none_store_op_store",
+      "catalog_index": 2293512,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.color_load_op_load_store_op_none",
+      "catalog_index": 2325757,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.color_load_op_none_store_op_dontcare",
+      "catalog_index": 2325758,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.color_load_op_none_store_op_none",
+      "catalog_index": 2325759,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.color_load_op_none_store_op_none_resolve",
+      "catalog_index": 2325760,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.color_load_op_none_store_op_none_write_off",
+      "catalog_index": 2325761,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.color_load_op_none_store_op_store",
+      "catalog_index": 2325762,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.color_load_op_none_store_op_store_alphablend",
+      "catalog_index": 2325763,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.depth_d16_unorm_load_op_load_store_op_none",
+      "catalog_index": 2325764,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.depth_d16_unorm_load_op_none_store_op_dontcare",
+      "catalog_index": 2325765,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.depth_d16_unorm_load_op_none_store_op_none_write_off",
+      "catalog_index": 2325766,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.depth_d16_unorm_load_op_none_store_op_store",
+      "catalog_index": 2325767,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.depth_d16_unorm_s8_uint_load_op_load_store_op_none",
+      "catalog_index": 2325768,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.depth_d16_unorm_s8_uint_load_op_none_store_op_dontcare",
+      "catalog_index": 2325769,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.depth_d16_unorm_s8_uint_load_op_none_store_op_none_write_off",
+      "catalog_index": 2325770,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.depth_d16_unorm_s8_uint_load_op_none_store_op_store",
+      "catalog_index": 2325771,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.depth_d24_unorm_s8_uint_load_op_load_store_op_none",
+      "catalog_index": 2325772,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.depth_d24_unorm_s8_uint_load_op_none_store_op_dontcare",
+      "catalog_index": 2325773,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.depth_d24_unorm_s8_uint_load_op_none_store_op_none_write_off",
+      "catalog_index": 2325774,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.depth_d24_unorm_s8_uint_load_op_none_store_op_store",
+      "catalog_index": 2325775,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.depth_d32_sfloat_load_op_load_store_op_none",
+      "catalog_index": 2325776,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.depth_d32_sfloat_load_op_none_store_op_dontcare",
+      "catalog_index": 2325777,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.depth_d32_sfloat_load_op_none_store_op_none_write_off",
+      "catalog_index": 2325778,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.depth_d32_sfloat_load_op_none_store_op_store",
+      "catalog_index": 2325779,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.depth_d32_sfloat_s8_uint_load_op_load_store_op_none",
+      "catalog_index": 2325780,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.depth_d32_sfloat_s8_uint_load_op_none_store_op_dontcare",
+      "catalog_index": 2325781,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.depth_d32_sfloat_s8_uint_load_op_none_store_op_none_write_off",
+      "catalog_index": 2325782,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.depth_d32_sfloat_s8_uint_load_op_none_store_op_store",
+      "catalog_index": 2325783,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.depthstencil_d16_unorm_s8_uint_load_op_depth_load_stencil_none_store_op_depth_store_stencil_none_stencil_test_off",
+      "catalog_index": 2325784,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.depthstencil_d16_unorm_s8_uint_load_op_depth_load_stencil_none_store_op_depth_store_stencil_none_stencil_write_off",
+      "catalog_index": 2325785,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.depthstencil_d16_unorm_s8_uint_load_op_depth_none_stencil_load_store_op_depth_none_stencil_store_depth_test_off",
+      "catalog_index": 2325786,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.depthstencil_d16_unorm_s8_uint_load_op_depth_none_stencil_load_store_op_depth_none_stencil_store_depth_write_off",
+      "catalog_index": 2325787,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.depthstencil_d24_unorm_s8_uint_load_op_depth_load_stencil_none_store_op_depth_store_stencil_none_stencil_test_off",
+      "catalog_index": 2325788,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.depthstencil_d24_unorm_s8_uint_load_op_depth_load_stencil_none_store_op_depth_store_stencil_none_stencil_write_off",
+      "catalog_index": 2325789,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.depthstencil_d24_unorm_s8_uint_load_op_depth_none_stencil_load_store_op_depth_none_stencil_store_depth_test_off",
+      "catalog_index": 2325790,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.depthstencil_d24_unorm_s8_uint_load_op_depth_none_stencil_load_store_op_depth_none_stencil_store_depth_write_off",
+      "catalog_index": 2325791,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.depthstencil_d32_sfloat_s8_uint_load_op_depth_load_stencil_none_store_op_depth_store_stencil_none_stencil_test_off",
+      "catalog_index": 2325792,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.depthstencil_d32_sfloat_s8_uint_load_op_depth_load_stencil_none_store_op_depth_store_stencil_none_stencil_write_off",
+      "catalog_index": 2325793,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.depthstencil_d32_sfloat_s8_uint_load_op_depth_none_stencil_load_store_op_depth_none_stencil_store_depth_test_off",
+      "catalog_index": 2325794,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.depthstencil_d32_sfloat_s8_uint_load_op_depth_none_stencil_load_store_op_depth_none_stencil_store_depth_write_off",
+      "catalog_index": 2325795,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.stencil_d16_unorm_s8_uint_load_op_load_store_op_none",
+      "catalog_index": 2325796,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.stencil_d16_unorm_s8_uint_load_op_none_store_op_dontcare",
+      "catalog_index": 2325797,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.stencil_d16_unorm_s8_uint_load_op_none_store_op_none_write_off",
+      "catalog_index": 2325798,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.stencil_d16_unorm_s8_uint_load_op_none_store_op_store",
+      "catalog_index": 2325799,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.stencil_d24_unorm_s8_uint_load_op_load_store_op_none",
+      "catalog_index": 2325800,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.stencil_d24_unorm_s8_uint_load_op_none_store_op_dontcare",
+      "catalog_index": 2325801,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.stencil_d24_unorm_s8_uint_load_op_none_store_op_none_write_off",
+      "catalog_index": 2325802,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.stencil_d24_unorm_s8_uint_load_op_none_store_op_store",
+      "catalog_index": 2325803,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.stencil_d32_sfloat_s8_uint_load_op_load_store_op_none",
+      "catalog_index": 2325804,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.stencil_d32_sfloat_s8_uint_load_op_none_store_op_dontcare",
+      "catalog_index": 2325805,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.stencil_d32_sfloat_s8_uint_load_op_none_store_op_none_write_off",
+      "catalog_index": 2325806,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.stencil_d32_sfloat_s8_uint_load_op_none_store_op_store",
+      "catalog_index": 2325807,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.stencil_s8_uint_load_op_load_store_op_none",
+      "catalog_index": 2325808,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.stencil_s8_uint_load_op_none_store_op_dontcare",
+      "catalog_index": 2325809,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.stencil_s8_uint_load_op_none_store_op_none_write_off",
+      "catalog_index": 2325810,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    },
+    {
+      "case": "dEQP-VK.renderpasses.renderpass2.suballocation.load_store_op_none.stencil_s8_uint_load_op_none_store_op_store",
+      "catalog_index": 2325811,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Targeted frozen-catalog cases; audit capability skips separately"
+    }
+  ]
+}

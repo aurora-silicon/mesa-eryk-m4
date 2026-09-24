@@ -1134,6 +1134,13 @@ hk_CmdBeginRendering(VkCommandBuffer commandBuffer,
    const VkRenderingAttachmentInfo *attach_s =
       pRenderingInfo->pStencilAttachment;
 
+   render->cr.depth_none = attach_z && attach_z->imageView &&
+      attach_z->loadOp == VK_ATTACHMENT_LOAD_OP_NONE &&
+      attach_z->storeOp == VK_ATTACHMENT_STORE_OP_NONE;
+   render->cr.stencil_none = attach_s && attach_s->imageView &&
+      attach_s->loadOp == VK_ATTACHMENT_LOAD_OP_NONE &&
+      attach_s->storeOp == VK_ATTACHMENT_STORE_OP_NONE;
+
    struct ail_layout *z_layout = NULL, *s_layout = NULL;
 
    if (attach_z != NULL && attach_z != VK_NULL_HANDLE && attach_z->imageView) {
@@ -5174,6 +5181,10 @@ hk_flush_gfx_state(struct hk_cmd_buffer *cmd, uint32_t draw_id,
 
    hk_flush_dynamic_state(cmd, cs, draw_id, *draw, native_index_list_path,
                           g17p_native_bind_tail_emitted);
+   if (!hk_rast_discard(cmd)) {
+      cs->depth_test_used |= dyn->ds.depth.test_enable;
+      cs->stencil_test_used |= dyn->ds.stencil.test_enable;
+   }
    return cs;
 }
 

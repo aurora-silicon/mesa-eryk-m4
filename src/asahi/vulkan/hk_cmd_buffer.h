@@ -210,6 +210,8 @@ struct hk_render_registers {
    struct agx_zls_control_packed zls_control, zls_control_partial;
    uint32_t depth_dimensions;
    bool process_empty_tiles;
+   /* NONE/NONE attachments must remain untouched when no draw uses them. */
+   bool depth_none, stencil_none;
    enum u_tristate dbias_is_int;
 
    struct {
@@ -429,6 +431,9 @@ struct hk_cs {
     * samplers (especially for GL/DX11-era engines).
     */
    bool uses_sampler_heap;
+
+   /* Accumulated across all draws, including replayed secondaries and meta. */
+   bool depth_test_used, stencil_test_used;
 
    /* Scratch requirements */
    struct {
@@ -982,6 +987,22 @@ static void
 hk_cmd_buffer_end_graphics(struct hk_cmd_buffer *cmd)
 {
    struct hk_cs *cs = cmd->current_cs.gfx;
+
+   if (cs && (cs->cr.depth_none || cs->cr.stencil_none)) {
+      agx_unpack(NULL, &cs->cr.zls_control, ZLS_CONTROL, zls);
+      /* Forced partial-render stores must not turn an unused NONE attachment
+       * into a clear. If a draw actually uses the aspect, preserve its initial
+       * contents so a read-only/conditionally writing stream also preserves
+       * memory when no samples write. Otherwise issue no load or store at all.
+       */
+      if (cs->cr.depth_none)
+         zls.z_load = zls.z_store = cs->depth_test_used;
+      if (cs->cr.stencil_none)
+         zls.s_load = zls.s_store = cs->stencil_test_used;
+      agx_pack(&cs->cr.zls_control, ZLS_CONTROL, cfg) {
+         cfg = zls;
+      }
+   }
 
    if (cs && cs->stats.cmds == 0 && hk_optimize_empty_vdm(cmd))
       cs = NULL;
