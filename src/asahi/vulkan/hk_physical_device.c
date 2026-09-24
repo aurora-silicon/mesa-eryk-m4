@@ -897,7 +897,8 @@ hk_get_device_properties(const struct agx_device *dev,
          agx_chip_uses_g15_g16_shader_abi(dev->chip) ? sample_counts
                                                   : other_sample_counts,
       .storageImageSampleCounts =
-         dev->chip == AGX_CHIP_G16G ? sample_counts : other_sample_counts,
+         agx_chip_uses_g15_g16_shader_abi(dev->chip) ? sample_counts
+                                                  : other_sample_counts,
       .maxSampleMaskWords = 1,
       .timestampComputeAndGraphics = true,
       /* FIXME: Is timestamp period actually 1? */
@@ -1171,7 +1172,8 @@ hk_get_device_properties(const struct agx_device *dev,
       .advancedBlendAllOperations = true,
    };
 
-   if (agx_native_graphics(dev) && dev->chip != AGX_CHIP_G16G) {
+   if (agx_native_graphics(dev) &&
+       !agx_chip_uses_g15_g16_shader_abi(dev->chip)) {
       properties->advancedBlendMaxColorAttachments = 0;
       properties->advancedBlendIndependentBlend = false;
       properties->advancedBlendNonPremultipliedSrcColor = false;
@@ -1422,7 +1424,8 @@ hk_create_drm_physical_device(struct vk_instance *_instance,
       agx_chip_uses_g15_g16_shader_abi(pdev->dev.chip);
    supported_extensions.EXT_sampler_filter_minmax |= agx_chip_uses_g15_g16_shader_abi(pdev->dev.chip);
    supported_extensions.EXT_image_view_min_lod |= agx_chip_uses_g15_g16_shader_abi(pdev->dev.chip);
-   supported_extensions.KHR_shader_atomic_int64 |= pdev->dev.chip == AGX_CHIP_G16G;
+   supported_extensions.KHR_shader_atomic_int64 |=
+      agx_chip_uses_g15_g16_shader_abi(pdev->dev.chip);
    supported_extensions.EXT_shader_image_atomic_int64 |=
       pdev->dev.chip == AGX_CHIP_G16G;
 
