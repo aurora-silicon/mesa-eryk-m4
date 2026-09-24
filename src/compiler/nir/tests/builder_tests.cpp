@@ -124,3 +124,58 @@ TEST_F(nir_extract_bits_test, mixed_bit_sizes)
    ASSERT_EQ(nir_src_comp_as_uint(val, 0), 0x06050403);
    ASSERT_EQ(nir_src_comp_as_uint(val, 1), 0x0a090807);
 }
+
+/* Repeated library calls inserted into an existing block must keep every
+ * caller and callee definition in a distinct SSA index slot, including phis. */
+TEST_F(nir_builder_test, inline_function_ssa_indices)
+{
+   nir_builder callee = nir_builder_init_simple_shader(
+      MESA_SHADER_COMPUTE, b->shader->options, "inline callee");
+   nir_function *func = callee.impl->function;
+   func->num_params = 1;
+   func->params = rzalloc_array(func, nir_parameter, 1);
+   func->params[0].num_components = 1;
+   func->params[0].bit_size = 32;
+   nir_def *param = nir_load_param(&callee, 0);
+   nir_if *branch = nir_push_if(&callee, nir_ilt_imm(&callee, param, 10));
+   nir_def *yes = nir_iadd_imm(&callee, param, 1);
+   nir_push_else(&callee, branch);
+   nir_def *no = nir_iadd_imm(&callee, param, 2);
+   nir_pop_if(&callee, branch);
+   nir_bindgen_return(&callee, nir_if_phi(&callee, yes, no));
+
+   nir_def *arg = nir_imm_int(b, 5);
+   nir_def *existing = nir_iadd_imm(b, arg, 100);
+   const unsigned existing_index = existing->index;
+   for (unsigned i = 0; i < 3; ++i) {
+      b->cursor = nir_before_instr(nir_def_instr(existing));
+      arg = nir_inline_function_impl(b, callee.impl, &arg, NULL);
+      ASSERT_NE(arg, nullptr);
+   }
+   b->cursor = nir_after_impl(b->impl);
+   store_test_val(arg);
+   nir_validate_shader(b->shader, "repeated inlining");
+   EXPECT_EQ(existing->index, existing_index);
+   std::vector<bool> used(b->impl->ssa_alloc, false);
+   nir_foreach_block(block, b->impl) {
+      nir_foreach_instr(instr, block) {
+         nir_def *def = nir_instr_def(instr);
+         if (def) {
+            ASSERT_LT(def->index, used.size());
+            EXPECT_FALSE(used[def->index]);
+            used[def->index] = true;
+         }
+      }
+   }
+   bool progress;
+   do {
+      progress = false;
+      NIR_PASS(progress, b->shader, nir_opt_constant_folding);
+      NIR_PASS(progress, b->shader, nir_opt_if, nir_opt_if_optimize_phi_true_false);
+      NIR_PASS(progress, b->shader, nir_opt_dead_cf);
+      NIR_PASS(progress, b->shader, nir_opt_remove_phis);
+   } while (progress);
+   ASSERT_TRUE(nir_src_is_const(stores.back()->src[1]));
+   EXPECT_EQ(nir_src_as_uint(stores.back()->src[1]), 8u);
+   ralloc_free(callee.shader);
+}

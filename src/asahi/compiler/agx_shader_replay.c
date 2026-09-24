@@ -3,6 +3,7 @@
  * Replay trusted development compiler captures, without opening a GPU. */
 #include "agx_compile.h"
 #include "agx_nir.h"
+#include "agx_nir_texture.h"
 #include "agx_replay_abi.h"
 #include "nir_serialize.h"
 #include "nir_builder.h"
@@ -19,9 +20,10 @@ int main(int argc, char **argv)
                                   !strcmp(argv[2], "--licm") ||
                                   !strcmp(argv[2], "--gcm-no-vn") ||
                                   !strcmp(argv[2], "--print-nir") ||
+                                  !strcmp(argv[2], "--lower-texture-gen9") ||
                                   !strncmp(argv[2], "--binary-output=", 16) ||
                                   !strncmp(argv[2], "--uniform-one=", 14)))) {
-      fprintf(stderr, "Usage: %s BUNDLE/input.bin [--check-native-resources|--native-preamble|--gcm|--licm|--gcm-no-vn|--uniform-one=HALF|--binary-output=FILE]\n       %s FRONTEND.nirbin --print-nir\n", argv[0], argv[0]);
+      fprintf(stderr, "Usage: %s BUNDLE/input.bin [--check-native-resources|--native-preamble|--gcm|--licm|--gcm-no-vn|--uniform-one=HALF|--binary-output=FILE]\n       %s FRONTEND.nirbin [--print-nir|--lower-texture-gen9]\n", argv[0], argv[0]);
       return 2;
    }
    FILE *f = fopen(argv[1], "rb");
@@ -35,12 +37,28 @@ int main(int argc, char **argv)
    fclose(f);
    struct blob_reader reader;
    blob_reader_init(&reader, data, size);
-   if (argc == 3 && !strcmp(argv[2], "--print-nir")) {
+   if (argc == 3 && (!strcmp(argv[2], "--print-nir") ||
+                     !strcmp(argv[2], "--lower-texture-gen9"))) {
       glsl_type_singleton_init_or_ref();
       nir_shader *nir = nir_deserialize(NULL, &agx_nir_options, &reader);
       if (!nir || reader.overrun || reader.current != reader.end) return 2;
       nir_validate_shader(nir, "retained frontend NIR");
-      nir_print_shader(nir, stdout);
+      if (!strcmp(argv[2], "--lower-texture-gen9")) {
+         NIR_PASS(_, nir, agx_nir_lower_texture_for_generation, 9);
+         nir_validate_shader(nir, "after replay texture lowering");
+         const char *output = getenv("AGX_REPLAY_NIR_OUTPUT");
+         if (output) {
+            nir_foreach_function_impl(impl, nir)
+               nir_index_ssa_defs(impl);
+            FILE *dump = fopen(output, "w");
+            if (!dump) { perror(output); return 2; }
+            nir_print_shader(nir, dump);
+            fclose(dump);
+         }
+         puts("TEXTURE_LOWERING_COMPLETE");
+      } else {
+         nir_print_shader(nir, stdout);
+      }
       ralloc_free(nir);
       glsl_type_singleton_decref();
       free(data);

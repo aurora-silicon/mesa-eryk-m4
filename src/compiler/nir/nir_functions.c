@@ -97,6 +97,14 @@ fixup_cast_deref_mode(nir_deref_instr *deref)
    }
 }
 
+static bool
+reindex_inlined_def(nir_def *def, void *data)
+{
+   nir_function_impl *caller = data;
+   def->index = caller->ssa_alloc++;
+   return true;
+}
+
 nir_def *
 nir_inline_function_impl(struct nir_builder *b,
                          const nir_function_impl *impl,
@@ -181,6 +189,17 @@ nir_inline_function_impl(struct nir_builder *b,
          }
       }
    }
+
+   /* Cloning gives the callee its own SSA index space. Allocate fresh indices
+    * only for its surviving definitions before splicing it into the caller.
+    * Re-indexing the entire caller after each library call is quadratic when
+    * lowering shaders with many texture queries.
+    */
+   nir_foreach_block(block, copy) {
+      nir_foreach_instr(instr, block)
+         nir_foreach_def(instr, reindex_inlined_def, b->impl);
+   }
+   b->impl->valid_metadata &= ~nir_metadata_live_defs;
 
    bool nest_if = function_ends_in_jump(copy);
 
