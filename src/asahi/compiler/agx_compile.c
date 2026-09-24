@@ -3235,6 +3235,19 @@ agx_lower_agx3_fma_sources(agx_context *ctx)
          continue;
 
       agx_builder b = agx_init_builder(ctx, agx_before_instr(I));
+      if (I->src[0].type == AGX_INDEX_IMMEDIATE &&
+          I->src[1].type == AGX_INDEX_IMMEDIATE) {
+         /* Native immediate FMA forms require a register multiplicand.
+          * Keep the fused operation (and signed-zero behavior) intact when
+          * copy propagation exposes two constants, as in Heaven's shaders. */
+         agx_index src = I->src[0];
+         float value = agx_minifloat_decode(src.value);
+         if (src.abs)
+            value = fabsf(value);
+         if (src.neg)
+            value = -value;
+         I->src[0] = agx_mov_imm(&b, 32, fui(value));
+      }
       if (I->dest[0].size == AGX_SIZE_16) {
          /* Native F32 FMA can round directly to half. Keep that single
           * operation and make its full-width register operands explicit. */
