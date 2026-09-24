@@ -1127,6 +1127,34 @@ check_mixed_fma_neg_compute(unsigned half_modifier)
    return valid;
 }
 
+/* Sanctuary emits saturate(reciprocal(x)). The reciprocal encoding has no
+ * saturation bit, so the optimizer must retain a separate clamp. */
+static bool
+check_saturated_reciprocal_compute(bool rsqrt)
+{
+   nir_builder b = nir_builder_init_simple_shader(
+      MESA_SHADER_COMPUTE, &agx_nir_options, "AGX3 saturated reciprocal");
+   b.shader->info.workgroup_size[0] = 1;
+   b.shader->info.workgroup_size[1] = 1;
+   b.shader->info.workgroup_size[2] = 1;
+   nir_def *input = nir_load_global(&b, 1, 32, nir_imm_int64(&b, 0x1000),
+                                    .align_mul = 4);
+   nir_def *value = rsqrt ? nir_frsq(&b, input) : nir_frcp(&b, input);
+   nir_store_global(&b, nir_fsat(&b, value), nir_imm_int64(&b, 0x2000),
+                    .align_mul = 4);
+   agx_preprocess_nir(b.shader);
+   struct agx_shader_key key = {0};
+   key.dev.encoding = AGX_ISA_ENCODING_AGX3B;
+   struct agx_shader_part part = {0};
+   const bool compiled = agx_compile_shader_nir(b.shader, &key, &part);
+   const bool valid = compiled && part.binary && part.info.binary_size > 4;
+   if (!valid)
+      fprintf(stderr, "AGX3 saturated %s compile failed\n", rsqrt ? "rsqrt" : "rcp");
+   free(part.binary);
+   ralloc_free(b.shader);
+   return valid;
+}
+
 static bool
 check_half_add_compute(void)
 {
@@ -1471,6 +1499,13 @@ check_uniform_alu_policy(void)
 int
 main(int argc, char **argv)
 {
+   if (argc == 2 && !strcmp(argv[1], "--saturated-reciprocal-only")) {
+      const bool valid = check_saturated_reciprocal_compute(false) &&
+                         check_saturated_reciprocal_compute(true);
+      fprintf(stderr, "AGX3 saturated reciprocal: %s\n", valid ? "PASS" : "FAIL");
+      return valid ? 0 : 1;
+   }
+
    if (argc == 2 && !strcmp(argv[1], "--mixed-half-fma-only")) {
       for (unsigned modifier = 0; modifier < 4; ++modifier) {
          if (!check_mixed_fma_neg_compute(modifier))
@@ -1608,6 +1643,9 @@ main(int argc, char **argv)
        !check_mixed_fma_neg_compute(3))
       return 1;
    if (!check_subgroup_multiply_compute())
+      return 1;
+   if (!check_saturated_reciprocal_compute(false) ||
+       !check_saturated_reciprocal_compute(true))
       return 1;
    if (!check_half_add_compute())
       return 1;
