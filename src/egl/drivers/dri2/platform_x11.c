@@ -574,7 +574,11 @@ dri2_query_surface(_EGLDisplay *disp, _EGLSurface *surf, EGLint attribute,
          bool changed = surf->Width != w || surf->Height != h;
          surf->Width = w;
          surf->Height = h;
-         if (changed && !dri2_dpy->swrast_not_kms)
+         /* The software-loader path also caches attachment dimensions.
+          * Updating the EGL size without invalidating its drawable leaves
+          * subsequent rendering clipped to the old framebuffer bounds.
+          */
+         if (changed)
             dri_invalidate_drawable(drawable);
       }
       break;
