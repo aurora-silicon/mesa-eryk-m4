@@ -5419,6 +5419,36 @@ agx_nir_lower_imul64(nir_shader *nir, bool lower_full)
       (void *)(uintptr_t)lower_full);
 }
 
+/* Extract signed packed bytes directly in 32-bit arithmetic before the
+ * generic 8-bit lowering introduces intermediate 16-bit conversions. */
+static bool
+agx_nir_unpack_signed_bytes(nir_builder *b, nir_alu_instr *alu, void *data)
+{
+   if (alu->op != nir_op_i2i32 || alu->src[0].src.ssa->bit_size != 8)
+      return false;
+
+   nir_scalar bytes[NIR_MAX_VEC_COMPONENTS];
+   for (unsigned c = 0; c < alu->def.num_components; ++c) {
+      bytes[c] = nir_scalar_chase_movs(
+         nir_scalar_chase_alu_src(nir_get_scalar(&alu->def, c), 0));
+      if (!nir_scalar_is_alu(bytes[c]) ||
+          nir_scalar_alu_op(bytes[c]) != nir_op_unpack_32_4x8)
+         return false;
+   }
+
+   b->cursor = nir_before_instr(&alu->instr);
+   nir_def *result[NIR_MAX_VEC_COMPONENTS];
+   for (unsigned c = 0; c < alu->def.num_components; ++c) {
+      nir_scalar word = nir_scalar_chase_alu_src(bytes[c], 0);
+      nir_def *value = nir_channel(b, word.def, word.comp);
+      result[c] = nir_ishr_imm(b, nir_ishl_imm(b, value,
+                                24 - 8 * bytes[c].comp), 24);
+   }
+   nir_def_rewrite_uses(&alu->def, nir_vec(b, result, alu->def.num_components));
+   nir_instr_remove(&alu->instr);
+   return true;
+}
+
 static bool
 agx_nir_has_alu64(const nir_shader *nir, nir_op opcode)
 {
@@ -5660,6 +5690,9 @@ agx_optimize_nir(nir_shader *nir, bool soft_fault, bool uniform_atomics,
     * normal late multiply pass cannot recognize fused backend opcodes. */
    if (byte_indices)
       NIR_PASS(_, nir, agx_nir_lower_imul64, true);
+
+   if (byte_indices)
+      NIR_PASS(_, nir, agx_nir_opt_native_integer);
 
    /* Fuse add/sub/multiplies/shifts after running opt_algebraic_late to fuse
     * isub but before shifts are lowered.
@@ -6960,6 +6993,10 @@ agx_compile_shader_nir_inner(nir_shader *nir, struct agx_shader_key *key,
       NIR_PASS(_, nir, nir_lower_indirect_derefs_to_if_else_trees,
                nir_var_function_temp, ~0);
    }
+
+   if (key->dev.encoding == AGX_ISA_ENCODING_AGX3B)
+      NIR_PASS(_, nir, nir_shader_alu_pass, agx_nir_unpack_signed_bytes,
+               nir_metadata_control_flow, NULL);
 
    /* Cleanup 8-bit math before lowering */
    bool progress;

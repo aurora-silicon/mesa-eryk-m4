@@ -347,6 +347,19 @@ lower_lea = [
     (('ilea_agx', a, b, c), ('iadd', a, ('ishl', ('i2i64', b), c))),
 ]
 
+# Signed division by a power of two is expressed by NIR as sign(x) times
+# an unsigned shifted magnitude. Native AGX3 has no cheap integer sign/abs:
+# bias negatives before an arithmetic shift, preserving truncation to zero.
+# NIR masks 32-bit shift counts, including zero and oversized constants.
+opt_native_integer = []
+for sign in [('isign', 'a@32'),
+             ('imin', ('imax', 'a@32', -1), 1),
+             ('imax', ('imin', 'a@32', 1), -1)]:
+    opt_native_integer.append(
+        (('imul', sign, ('ushr', ('iabs', a), '#b')),
+         ('ishr', ('iadd', a, ('iand', ('ishr', a, 31),
+                                  ('isub', ('ishl', 1, b), 1))), b)))
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', '--import-path', required=True)
@@ -359,6 +372,7 @@ def run():
 
     print('#include "agx_nir.h"')
 
+    print(nir_algebraic.AlgebraicPass("agx_nir_opt_native_integer", opt_native_integer).render())
     print(nir_algebraic.AlgebraicPass("agx_nir_cleanup_amul", cleanup_amul).render())
     print(nir_algebraic.AlgebraicPass("agx_nir_fuse_lea", fuse_lea).render())
     print(nir_algebraic.AlgebraicPass("agx_nir_lower_lea", lower_lea).render())
