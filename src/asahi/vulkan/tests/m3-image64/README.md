@@ -35,5 +35,17 @@ Use ASAHI_M3_EXPERIMENTAL=1, M4_ORACLE_DEVICE=M3, the candidate VK_DRIVER_FILES
 and LD_LIBRARY_PATH. Qualification used AGX_MESA_DEBUG=nopromote and
 HK_DEBUG=nocompress, matching the existing replay configuration.
 
-CTS and Satisfactory replay qualification are in progress; this initial
-checkpoint does not claim full extension conformance or game replay success.
+The frozen CTS subset covers every R64 atomic operation/dimension with normal
+image readback, plus 2D sparse images with normal/sparse reads: 748 indexed
+cases, 440 Pass / 308 NotSupported / zero failures. All skips report unsupported
+format/tiling. Catalog SHA256 and global indices are retained in
+`evidence/oracles-and-cts.tar.zst`, along with the full guarded oracle and CTS
+records. CTS peak 67.75 C. Seven relevant host suites (atomic, slot, int64,
+layout, sparse access, native descriptor and texel alignment) also pass.
+This is targeted qualification, not full extension conformance certification.
+
+The unchanged Satisfactory DX12 menu now creates its device, but its first
+replay exposed a separate M3 kernel tiler allocation failure: 128 MiB coherent
+DMA allocation exceeds the reserved CMA space. Record
+20260925T123340006470Z-m3-satisfactory-dx12-menu-check retains the fault.
+Satisfactory qualification remains in progress while that blocker is fixed.

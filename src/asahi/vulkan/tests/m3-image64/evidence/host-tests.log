@@ -1,0 +1,24 @@
+ninja: Entering directory `/home/council/dev/dirtyroom_m4/build/mesa-m3m4-host'
+[1/11] Compiling C object src/asahi/vulkan/hk_texel_alignment_test.p/hk_native_descriptor_pack.c.o
+[2/11] Compiling C object src/asahi/vulkan/hk_texel_alignment_test.p/tests_test-hk-texel-alignment.c.o
+[3/11] Linking target src/asahi/vulkan/hk_texel_alignment_test
+[4/11] Compiling C object src/asahi/compiler/libasahi_compiler.a.p/agx_nir_lower_g17p_combined_sampler.c.o
+[5/11] Linking static target src/asahi/compiler/libasahi_compiler.a
+[6/11] Linking target src/asahi/compiler/agx3_int64_test
+[7/11] Linking target src/asahi/clc/asahi_clc
+[8/11] Generating src/asahi/lib/libagx_shaders.h with a custom command
+[9/11] Compiling C object src/asahi/vulkan/hk_sparse_access_test.p/hk_nir_lower_sparse_access.c.o
+[10/11] Compiling C object src/asahi/vulkan/hk_sparse_access_test.p/tests_test-hk-sparse-access.c.o
+[11/11] Linking target src/asahi/vulkan/hk_sparse_access_test
+1/7 asahi - mesa:agx3_atomic_core     OK              0.03s
+2/7 asahi - mesa:agx3_slot_core       OK              0.03s
+3/7 asahi - mesa:agx3_int64           OK              0.02s
+4/7 asahi - mesa:hk_native_descriptor OK              0.01s
+5/7 asahi - mesa:hk_texel_alignment   OK              0.01s
+6/7 asahi - mesa:hk_sparse_access     OK              0.03s
+7/7 asahi - mesa:asahi_layout_tests   OK              0.05s
+
+Ok:                7   
+Fail:              0   
+
+Full log written to /home/council/dev/dirtyroom_m4/build/mesa-m3m4-host/meson-logs/testlog.txt

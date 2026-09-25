@@ -1,0 +1,17 @@
+{
+  "counts": {
+    "Pass": 440,
+    "NotSupported": 308
+  },
+  "not_supported": {
+    "Format unsupported for tiling at vktImageAtomicOperationTests.cpp:1006": 308
+  },
+  "peak_c": 67.75,
+  "candidate": {
+    "asahi.json": "f1e050c3c71231d6ccadf73885b7428dc202f33f2b52c4e38485879459f83a7f",
+    "lib/libvulkan_asahi.so": "2340b16958976498aeb154f7bba4081a333acd5825cdbe010316e2935e6a3f04",
+    "share/drirc.d/00-mesa-defaults.conf": "d6683107a6b77425ba3329b9fe8084e2faf7f4457f992c3dc1d410a661b620d4"
+  },
+  "mesa_commit": "d73af437822",
+  "note": "Candidate built before commit; embedded version names parent 1b3be640b75. Source changes committed at d73af437822."
+}
