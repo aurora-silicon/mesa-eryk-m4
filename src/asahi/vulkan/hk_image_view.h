@@ -24,6 +24,7 @@ struct hk_image_view {
    struct {
       uint8_t image_plane;
       uint32_t sampled_heap_index;
+      uint32_t sampled_2d_heap_index;
       uint32_t input_heap_index;
       uint32_t storage_heap_index;
       uint32_t storage_read_heap_index;

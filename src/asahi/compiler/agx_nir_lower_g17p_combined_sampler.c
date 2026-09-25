@@ -568,8 +568,14 @@ agx_nir_lower_g17p_indexed_samplers(nir_shader *shader)
             /* Descriptor offsets are 32-bit and valid sets fit far below
              * 4GiB. Add the field offset before widening so native LDDEV can
              * consume base+byte-index without a separate 64-bit base add. */
-            nir_def *offset = nir_iadd_imm(&b, image->src[0].ssa,
-                                          AGX_G17P_SAMPLED_HEAP_INDEX_OFFSET);
+            /* Keep buffer fetches on the original field: their 2D lowering
+             * has a different software tail. Only genuine 2D array samples
+             * select the array descriptor instead of a plain-2D alias. */
+            const unsigned heap_offset =
+               tex->sampler_dim == GLSL_SAMPLER_DIM_2D && tex->is_array ?
+               AGX_G17P_SAMPLED_ARRAY_HEAP_INDEX_OFFSET :
+               AGX_G17P_SAMPLED_HEAP_INDEX_OFFSET;
+            nir_def *offset = nir_iadd_imm(&b, image->src[0].ssa, heap_offset);
             nir_def *address = nir_iadd(&b, set, nir_u2u64(&b, offset));
             nir_def *texture_index = nir_load_global_constant(&b, 1, 32, address, .align_mul = 4);
             /* The software sampler index includes AGX2's reservation of 28.

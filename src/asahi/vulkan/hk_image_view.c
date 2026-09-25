@@ -203,9 +203,10 @@ format_for_plane(struct hk_image_view *view, unsigned view_plane)
 }
 
 static bool
-pack_texture(struct hk_device *dev, struct hk_image_view *view,
-             unsigned view_plane, enum hk_desc_usage usage,
-             struct hk_native_texture_descriptor *out)
+pack_texture_as(struct hk_device *dev, struct hk_image_view *view,
+                unsigned view_plane, enum hk_desc_usage usage,
+                VkImageViewType texture_type,
+                struct hk_native_texture_descriptor *out)
 {
    struct hk_image *image = container_of(view->vk.image, struct hk_image, vk);
    const uint8_t image_plane = view->planes[view_plane].image_plane;
@@ -218,7 +219,6 @@ pack_texture(struct hk_device *dev, struct hk_image_view *view,
 
    /* M4 native cube samples retain a cube descriptor and cube layer count.
     * The older cube-to-array path needs six explicit layers instead. */
-   VkImageViewType texture_type = view->vk.view_type;
    if (agx_native_graphics(&dev->dev) &&
        !(agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) &&
          (texture_type == VK_IMAGE_VIEW_TYPE_CUBE ||
@@ -410,6 +410,14 @@ pack_texture(struct hk_device *dev, struct hk_image_view *view,
 
    return hk_pack_native_texture(
       agx_chip_descriptor_generation(dev->dev.chip), out, &cfg);
+}
+
+static bool
+pack_texture(struct hk_device *dev, struct hk_image_view *view,
+             unsigned view_plane, enum hk_desc_usage usage,
+             struct hk_native_texture_descriptor *out)
+{
+   return pack_texture_as(dev, view, view_plane, usage, view->vk.view_type, out);
 }
 
 static bool
@@ -678,6 +686,23 @@ hk_image_view_init(struct hk_device *dev, struct hk_image_view *view,
             &view->planes[p].sampled_heap_index);
          if (result != VK_SUCCESS)
             return result;
+         /* D3D permits a one-layer array SRV to be read by a Texture2D
+          * shader. VKD3D relies on this even without maintenance11. Native
+          * texture instructions require a matching descriptor shape, so keep
+          * both representations instead of changing the valid array view.
+          * pack_texture_as retains the view's base layer and mip range. */
+         if (view->vk.view_type == VK_IMAGE_VIEW_TYPE_2D_ARRAY &&
+             view->vk.layer_count == 1 && view->vk.image->samples == 1) {
+            struct hk_native_texture_descriptor alias;
+            if (!pack_texture_as(dev, view, p, HK_DESC_USAGE_SAMPLED,
+                                 VK_IMAGE_VIEW_TYPE_2D, &alias))
+               return VK_ERROR_FORMAT_NOT_SUPPORTED;
+            result = hk_descriptor_table_add(
+               dev, &dev->sampled_images, &alias, 32,
+               &view->planes[p].sampled_2d_heap_index);
+            if (result != VK_SUCCESS)
+               return result;
+         }
          /* Input attachments use an array-shaped descriptor independently
           * of the application sampled view. Keep the exact native bytes in
           * the indexed heap rather than sampling through the wrong shape. */
@@ -779,6 +804,9 @@ hk_DestroyImageView(VkDevice _device, VkImageView imageView,
          if (view->planes[p].input_heap_index)
             hk_descriptor_table_remove(dev, &dev->sampled_images,
                                         view->planes[p].input_heap_index);
+         if (view->planes[p].sampled_2d_heap_index)
+            hk_descriptor_table_remove(dev, &dev->sampled_images,
+                                        view->planes[p].sampled_2d_heap_index);
          if (view->planes[p].sampled_heap_index)
             hk_descriptor_table_remove(dev, &dev->sampled_images,
                                         view->planes[p].sampled_heap_index);

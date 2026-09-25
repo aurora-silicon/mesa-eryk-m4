@@ -51,9 +51,13 @@ struct hk_sampled_image_descriptor_sw {
    uint32_t sampled_heap_index;
    /* Gen9 centre taps for filtering after the image-view minimum LOD. */
    uint16_t centre_sampler_index[2];
+   /* Array-shaped descriptor, before any plain-2D alias substitution. */
+   uint32_t sampled_array_heap_index;
 };
 static_assert(offsetof(struct hk_sampled_image_descriptor_sw, sampled_heap_index) == 36,
               "native texture heap index keeps the reserved software tail ABI");
+static_assert(offsetof(struct hk_sampled_image_descriptor_sw, sampled_array_heap_index) == 44,
+              "Array index follows the existing sampler fields");
 static_assert(sizeof(struct hk_sampled_image_descriptor_sw) ==
                  HK_SAMPLED_IMAGE_GEN9_SW_SIZE,
               "hk_sampled_image_descriptor_sw has no holes");
@@ -62,7 +66,7 @@ struct hk_sampled_image_descriptor {
    struct hk_native_texture_descriptor tex;
    struct hk_sampled_image_descriptor_sw sw;
 };
-static_assert(sizeof(struct hk_sampled_image_descriptor) == 76,
+static_assert(sizeof(struct hk_sampled_image_descriptor) == 80,
               "maximum sampled descriptor has no holes");
 
 struct hk_storage_image_descriptor {

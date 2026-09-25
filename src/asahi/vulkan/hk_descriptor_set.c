@@ -36,9 +36,8 @@ align_u32(uint32_t v, uint32_t a)
 
 /* Vulkan updates may roll over consecutive compatible bindings, including
  * empty bindings. Arrays use the descriptor stride; the next binding uses its
- * own aligned offset. In particular, Gen9 sampled descriptors are 76 bytes but
- * successive bindings start 80 bytes apart. Resolve before selecting immutable
- * samplers or dynamic-buffer indices as well as before writing descriptor data.
+ * own aligned offset, which may include padding. Resolve before selecting
+ * immutable samplers or dynamic-buffer indices and before writing data.
  */
 static void
 resolve_descriptor_element(const struct hk_descriptor_set *set,
@@ -110,6 +109,11 @@ write_sampled_image_view_desc(struct hk_descriptor_set *set,
          desc[plane].sw.sampled_heap_index = ia ?
             view->planes[plane].input_heap_index :
             view->planes[plane].sampled_heap_index;
+         desc[plane].sw.sampled_array_heap_index =
+            desc[plane].sw.sampled_heap_index;
+         if (!ia && view->planes[plane].sampled_2d_heap_index)
+            desc[plane].sw.sampled_heap_index =
+               view->planes[plane].sampled_2d_heap_index;
 
          float min_lod = MAX2(view->vk.min_lod - view->vk.base_mip_level, 0.0);
 
@@ -677,8 +681,7 @@ hk_CreateDescriptorPool(VkDevice _device,
       hk_descriptor_stride_align_for_type(pdev, pCreateInfo->pPoolSizes[i].type,
                                           type_list, &stride, &alignment);
       /* Each descriptor may occupy a separate binding, and every binding
-       * starts at its required alignment. In particular, the Gen9 sampled
-       * descriptor is 76 bytes but successive bindings start 80 bytes apart.
+       * starts at its required alignment, which may exceed its stride.
        * Reserve padding for the largest alignment present in the pool so
        * arbitrary binding order cannot exhaust a valid allocation.
        */
