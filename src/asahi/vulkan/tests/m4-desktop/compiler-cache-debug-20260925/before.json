@@ -1,0 +1,31 @@
+{
+  "experiment": "20260925T080626232950Z-compiler-debug-cache-isolation-before",
+  "uuids": {
+    "normal": "c9a898c2-ef1b-4c8e-bdac-74ac7032193e",
+    "wait": "c9a898c2-ef1b-4c8e-bdac-74ac7032193e",
+    "noopt": "c9a898c2-ef1b-4c8e-bdac-74ac7032193e",
+    "shaders": "c9a898c2-ef1b-4c8e-bdac-74ac7032193e"
+  },
+  "guard": {
+    "id": "20260925T080626232950Z-compiler-debug-cache-isolation-before",
+    "verdict": "process_failure",
+    "transport_returncode": 1,
+    "evidence_fetched": true,
+    "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260925T080626232950Z-compiler-debug-cache-isolation-before",
+    "observations": {
+      "pixel_results": [],
+      "pixel_result_count": 0,
+      "thermal_samples": 2,
+      "malformed_thermal_samples": 0,
+      "peak_temperature_c": 68.25,
+      "channel_peaks_c": {
+        "PMP aggregate die hotspot": 68.25,
+        "Ta000m": 68.25,
+        "Te000m": 65.25,
+        "Te001m": 63.25,
+        "Tp000m": 67.0,
+        "Tp001m": 63.0
+      }
+    }
+  }
+}
