@@ -1264,6 +1264,16 @@ hk_physical_device_init_pipeline_cache(struct hk_physical_device *pdev)
    const uint64_t compiler_flags = hk_physical_device_compiler_flags(pdev);
    _mesa_blake3_update(&blake3_ctx, &compiler_flags, sizeof(compiler_flags));
 
+   /* Driconf and HK_PERFTEST affect shader lowering (notably custom borders).
+    * They must partition imported binaries and the on-disk shader cache too.
+    * Otherwise changing an application workaround silently reuses old code.
+    */
+   unsigned char options_hash[BLAKE3_KEY_LEN];
+   driComputeOptionsBlake3(&instance->dri_options, options_hash);
+   _mesa_blake3_update(&blake3_ctx, options_hash, sizeof(options_hash));
+   const char *perftest = debug_get_option("HK_PERFTEST", "");
+   _mesa_blake3_update(&blake3_ctx, perftest, strlen(perftest));
+
    unsigned char blake3[BLAKE3_KEY_LEN];
    _mesa_blake3_final(&blake3_ctx, blake3);
 
@@ -1280,7 +1290,7 @@ hk_physical_device_init_pipeline_cache(struct hk_physical_device *pdev)
    assert(len == sizeof(renderer) - 2);
 
    char timestamp[BLAKE3_HEX_LEN];
-   _mesa_blake3_format(timestamp, instance->driver_build_sha);
+   _mesa_blake3_format(timestamp, blake3);
 
    const uint64_t driver_flags = hk_physical_device_compiler_flags(pdev);
    pdev->vk.disk_cache = disk_cache_create(renderer, timestamp, driver_flags);

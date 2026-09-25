@@ -1,0 +1,25 @@
+{
+  "results": {
+    "disabled": {
+      "pipeline": "296c74c521904dadb8cf364f13603bb8",
+      "shader": "296c74c521904dadb8cf364f13603bb8"
+    },
+    "enabled": {
+      "pipeline": "2b8f72f20d01fa8d2218bf5f7a4dea6f",
+      "shader": "2b8f72f20d01fa8d2218bf5f7a4dea6f"
+    },
+    "perftest": {
+      "pipeline": "d1fdf4bf9a1eba7d9c489e79a5cec738",
+      "shader": "d1fdf4bf9a1eba7d9c489e79a5cec738"
+    },
+    "repeat": {
+      "pipeline": "296c74c521904dadb8cf364f13603bb8",
+      "shader": "296c74c521904dadb8cf364f13603bb8"
+    }
+  },
+  "collision": false,
+  "sha256": {
+    "/root/gpu-replay-bench/bin/cache-options-probe": "11a872a5414403decd8cb8097e4e552d3d2747ee5c85bc4e86091cd04ac98c9a",
+    "/opt/asahi-m3m4-image64-cache-options/lib/libvulkan_asahi.so": "17b613cabb1a7948e2a2e7b9522ab2a4a395a050070b97f7b029e0b16bc70f53"
+  }
+}
