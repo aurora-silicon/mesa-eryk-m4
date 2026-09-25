@@ -301,6 +301,12 @@ struct agx_device_key {
     * kernel, but that's functionally a hardware feature.
     */
    bool soft_fault;
+
+   /* Insert G15G scheduling stalls into the finished AGX3b stream
+    * (agx_chip_needs_scheduling_stalls). Part of the key: the same IR packs
+    * to different bytes on G15G than on every other AGX3b part.
+    */
+   bool scheduling_stalls;
 };
 
 struct agx_shader_key {
