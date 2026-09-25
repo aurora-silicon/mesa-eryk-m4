@@ -464,4 +464,5 @@ void hk_nir_passthrough_gs(struct nir_builder *b, const void *key_);
 bool hk_nir_lower_minmax(nir_shader *nir, bool view_min);
 bool hk_nir_lower_sparse_access(nir_shader *nir);
 bool hk_nir_lower_memory_aliases(nir_shader *nir);
+bool hk_nir_specialize_memory_window(nir_shader *nir, uint64_t base, uint64_t size);
 bool hk_nir_lower_atomic64(nir_shader *nir);

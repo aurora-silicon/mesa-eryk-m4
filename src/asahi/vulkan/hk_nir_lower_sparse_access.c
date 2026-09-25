@@ -284,3 +284,48 @@ hk_nir_lower_memory_aliases(nir_shader *nir)
    return nir_shader_intrinsics_pass(nir, lower_memory_alias, nir_metadata_none,
                                      NULL);
 }
+
+/* The VA window geometry is immutable for a device. Keep table pointers and
+ * table entries dynamic, but expose the geometry to constant folding rather
+ * than rebuilding full 64-bit masks, offsets and bounds at every access. */
+static bool
+specialize_window(nir_builder *b, nir_intrinsic_instr *intr, void *data)
+{
+   const uint64_t *window = data;
+   if (intr->intrinsic != nir_intrinsic_load_global_constant ||
+       intr->def.bit_size != 64 || intr->def.num_components != 1)
+      return false;
+   nir_instr *address = nir_def_instr(intr->src[0].ssa);
+   if (address->type != nir_instr_type_alu)
+      return false;
+   nir_alu_instr *add = nir_instr_as_alu(address);
+   if (add->op != nir_op_iadd)
+      return false;
+   for (unsigned i = 0; i < 2; ++i) {
+      nir_intrinsic_instr *root =
+         nir_def_as_intrinsic_or_null(add->src[i].src.ssa);
+      if (!root || root->intrinsic != nir_intrinsic_load_root_agx ||
+          !nir_src_is_const(add->src[1 - i].src))
+         continue;
+      uint64_t offset = nir_src_as_uint(add->src[1 - i].src);
+      unsigned index;
+      if (offset == hk_root_descriptor_offset(sparse_va_base))
+         index = 0;
+      else if (offset == hk_root_descriptor_offset(sparse_va_size))
+         index = 1;
+      else
+         return false;
+      b->cursor = nir_before_instr(&intr->instr);
+      nir_def_replace(&intr->def, nir_imm_int64(b, window[index]));
+      return true;
+   }
+   return false;
+}
+
+bool
+hk_nir_specialize_memory_window(nir_shader *nir, uint64_t base, uint64_t size)
+{
+   uint64_t window[] = {base, size};
+   return nir_shader_intrinsics_pass(nir, specialize_window,
+                                     nir_metadata_control_flow, window);
+}

@@ -8,11 +8,14 @@
 #define CHECK(x) do { if (!(x)) { fprintf(stderr, "line %u: %s\n", __LINE__, #x); abort(); } } while (0)
 static const nir_shader_compiler_options options = {0};
 static bool alias_leaf_present;
+static bool specialize_geometry;
 static const uint64_t base = 0x20000000, size = 0x10000000, map = 0x80000000;
 
 static void
 fold(nir_shader *s)
 {
+   if (specialize_geometry)
+      hk_nir_specialize_memory_window(s, base, size);
    bool progress;
    do {
       progress = false;
@@ -259,7 +262,7 @@ check_alias_metadata(unsigned dereferences, bool alias_root)
    ralloc_free(b.shader);
 }
 
-int main(void)
+static int run_suite(void)
 {
    unsigned count = 0;
    const uint64_t addresses[] = {base, base + 16380, base + 16383, base + 32766,
@@ -312,5 +315,39 @@ int main(void)
       check_alias_metadata(depth, true);
    }
    printf("PASS: %u sparse byte/vector masks and bound/unbound atomic execution\n", count);
+   return 0;
+}
+
+int main(void)
+{
+   for (unsigned i = 0; i < 2; ++i) {
+      specialize_geometry = i;
+      run_suite();
+   }
+   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE,
+                                                  &options, "window specialization");
+   const unsigned offsets[] = {
+      hk_root_descriptor_offset(sparse_va_base),
+      hk_root_descriptor_offset(sparse_va_size),
+      hk_root_descriptor_offset(sparse_residency_map),
+      hk_root_descriptor_offset(buffer_alias_table),
+   };
+   nir_intrinsic_instr *stores[4];
+   for (unsigned i = 0; i < 4; ++i) {
+      nir_def *word = nir_load_global_constant(&b, 1, 64,
+         nir_iadd_imm(&b, nir_load_root_agx(&b), offsets[i]), .align_mul = 8);
+      stores[i] = nir_store_global(&b, word, nir_imm_int64(&b, 0x4000 + i * 8),
+                                    .align_mul = 8);
+   }
+   CHECK(hk_nir_specialize_memory_window(b.shader, 0x8000000000ull, 0x4000000000ull));
+   CHECK(nir_src_is_const(stores[0]->src[0]));
+   CHECK(nir_src_as_uint(stores[0]->src[0]) == 0x8000000000ull);
+   CHECK(nir_src_as_uint(stores[1]->src[0]) == 0x4000000000ull);
+   CHECK(!nir_src_is_const(stores[2]->src[0]));
+   CHECK(!nir_src_is_const(stores[3]->src[0]));
+   CHECK(!hk_nir_specialize_memory_window(b.shader, 0x8000000000ull, 0x4000000000ull));
+   nir_validate_shader(b.shader, "immutable geometry only");
+   ralloc_free(b.shader);
+   puts("PASS: immutable memory window specialization preserves dynamic tables");
    return 0;
 }

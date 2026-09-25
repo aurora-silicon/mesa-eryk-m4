@@ -533,6 +533,16 @@ hk_CreateDevice(VkPhysicalDevice physicalDevice,
       goto fail_fd;
    }
 
+   /* Cached shaders specialize the physical device's immutable VA geometry. */
+   const struct agx_device *physical = &hk_device_physical(dev)->dev;
+   if (dev->dev.main_heap_base != physical->main_heap_base ||
+       dev->dev.main_heap_size != physical->main_heap_size) {
+      result = vk_errorf(dev, VK_ERROR_INITIALIZATION_FAILED,
+                         "Logical device VA window differs from physical device");
+      agx_close_device(&dev->dev);
+      goto fail_fd;
+   }
+
    simple_mtx_init(&dev->sparse_residency_lock, mtx_plain);
    if (agx_chip_uses_g15_g16_shader_abi(dev->dev.chip)) {
       const uint64_t bytes = DIV_ROUND_UP(dev->dev.main_heap_size, 16384 * 8);

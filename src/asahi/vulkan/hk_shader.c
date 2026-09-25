@@ -2212,6 +2212,10 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
        (features & HK_FEAT_STRICT_SPARSE))
       NIR_PASS(_, nir, hk_nir_lower_sparse_access);
 
+   if (agx_chip_uses_g15_g16_shader_abi(dev->dev.chip))
+      NIR_PASS(_, nir, hk_nir_specialize_memory_window,
+               dev->dev.main_heap_base, dev->dev.main_heap_size);
+
    if (agx_chip_uses_hal200_ioto(dev->dev.chip))
       agx_preprocess_nir_g17p(nir);
    else
@@ -2928,6 +2932,8 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
       NIR_PASS(_, nir, hk_nir_lower_memory_aliases);
       if (features & HK_FEAT_STRICT_SPARSE)
          NIR_PASS(_, nir, hk_nir_lower_sparse_access);
+      NIR_PASS(_, nir, hk_nir_specialize_memory_window,
+               dev->dev.main_heap_base, dev->dev.main_heap_size);
       agx_preprocess_nir_g17p(nir);
       if (debug_get_bool_option("HK_M4_PREFETCH_AUDIT", false))
          fprintf(stderr, "M4 UBO prefetch: loads=%u reserved=%u\n",

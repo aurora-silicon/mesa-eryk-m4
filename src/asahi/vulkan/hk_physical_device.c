@@ -1261,6 +1261,13 @@ hk_physical_device_init_pipeline_cache(struct hk_physical_device *pdev)
                      sizeof(instance->driver_build_sha));
    hk_hash_device_generation_contract(&blake3_ctx, &pdev->dev);
 
+   /* Native sparse/alias lowering specializes this immutable geometry.
+    * Separate cached binaries when a kernel changes its user VA window. */
+   const uint64_t memory_window[] = {
+      pdev->dev.main_heap_base, pdev->dev.main_heap_size,
+   };
+   _mesa_blake3_update(&blake3_ctx, memory_window, sizeof(memory_window));
+
    const uint64_t compiler_flags = hk_physical_device_compiler_flags(pdev);
    _mesa_blake3_update(&blake3_ctx, &compiler_flags, sizeof(compiler_flags));
 
