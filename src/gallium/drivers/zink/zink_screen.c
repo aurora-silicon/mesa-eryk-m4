@@ -2966,7 +2966,9 @@ init_driver_workarounds(struct zink_screen *screen)
    case VK_DRIVER_ID_MESA_HONEYKRISP:
       /* Preserve the G15S-qualified WSI policy. The G16G baseline still uses
        * the CPU present wait pending separate synchronization qualification. */
-      if (screen->info.props.deviceID == 0x6030)
+      /* 0x8122: J613/G15G, same M3 runtime and WSI path (UNMEASURED). */
+      if (screen->info.props.deviceID == 0x6030 ||
+          screen->info.props.deviceID == 0x8122)
          screen->driver_workarounds.implicit_sync = false;
       break;
    case VK_DRIVER_ID_MESA_V3DV:

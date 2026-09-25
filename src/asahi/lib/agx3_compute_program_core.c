@@ -154,7 +154,10 @@ agx3_g17p_native_compute_launch_pack(
     * pointer descriptor/control word. The three global/local axis pairs
     * carry the grid shape; retain the older pointer control on every axis.
     */
-   if (program->chip == AGX_CHIP_G15S) {
+   /* J613/G15G runs the same RTKit-2419.140.12 (macOS 14.8.3 23J220) G15
+    * firmware family through the same M3 runtime; its launch layout is
+    * assumed identical (UNMEASURED on G15G hardware). */
+   if (agx_chip_is_m3_runtime(program->chip)) {
       if (program->launch_template.word1 != 0)
          return false;
       agx3_cmdstream_store_le32(packed, program->launch_template.word0);

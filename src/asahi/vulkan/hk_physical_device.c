@@ -1158,7 +1158,7 @@ hk_get_device_properties(const struct agx_device *dev,
       .transformFeedbackQueries = true,
       .transformFeedbackStreamsLinesTriangles = true,
       .transformFeedbackRasterizationStreamSelect = true,
-      .transformFeedbackDraw = dev->chip != AGX_CHIP_G15S,
+      .transformFeedbackDraw = !agx_chip_is_m3_runtime(dev->chip),
 
       /* VK_KHR_vertex_attribute_divisor */
       .maxVertexAttribDivisor = UINT32_MAX,
