@@ -26,5 +26,9 @@ M4 guarded checks on candidate DSO ac6623530dcd4f044235c597a569c87da95cf2cafd82d
 Install the matching drirc defaults as well as the DSO. The isolated validation
 prefix sets DRIRC_CONFIGDIR to its share/drirc.d; using old installed defaults
 correctly leaves DONT_CARE discarded. No M3 hardware execution. Live application
-validation is still pending at this checkpoint. Full captures and images stay
+validation also passes: 20260925T102949168007Z-satisfactory-vulkan-fog-load-live
+verified the exact loaded DSO and a visible lit factory with fog, without a
+capture layer. 429 thermal samples, peak110C, no fault or reboot. Original
+Engine.ini restored afterward. The already-documented native Vulkan shadow
+fallback remains necessary and is separate from this fog compatibility fix. Full captures and images stay
 in the local-only benchmark repository.
