@@ -7282,6 +7282,11 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
             ++p;
       }
    }
+   if (result && save_success) {
+      unsigned size = debug_get_num_option("AGX_COMPILER_CAPTURE_BINARY_SIZE", 0);
+      if (size && out->info.binary_size != size)
+         save_success = false;
+   }
    if ((!result || save_success) && input.size && !input.out_of_memory)
       agx_publish_capture(directory, &input, ir, result);
    if (ir) fclose(ir);

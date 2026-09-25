@@ -35,3 +35,16 @@ Evidence: dirtyroom_m4/_provenance/experiments/
 20260925T015313856192Z-satisfactory-capture-address-canonical-view.
 Full application/replay validation is recorded separately; this initial commit
 claims only the reproducer validation. M3 hardware was not touched.
+
+## Compiler capture diagnostic
+
+To isolate a known program in a large replay, combine
+`AGX_COMPILER_CAPTURE_DIR=/path/to/captures`,
+`AGX_COMPILER_CAPTURE_SUCCESS=compute` and
+`AGX_COMPILER_CAPTURE_BINARY_SIZE=5734`. Zero (the default) disables the size
+filter; it filters only successful captures and does not change compilation.
+The full replay and passing isolated program produced identical 7576-byte
+serialized inputs, BLAKE3
+`583a0720274205569d21316c4f95df9ed60d70da8ceb086193370c54703f0460`.
+Their equality ruled out a different compiled variant before isolating the
+capture/replay address flag.
