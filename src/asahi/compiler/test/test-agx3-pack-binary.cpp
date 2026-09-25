@@ -1171,6 +1171,41 @@ TEST_F(AGX3PackBinary, FaddMinifloatPreservesWaitLivenessAndCommutativity)
    }
 }
 
+TEST_F(AGX3PackBinary, MinifloatRetiresSourceAndDestinationSlots)
+{
+   const auto enc = AGX_ISA_ENCODING_AGX3B;
+   for (bool multiply : {false, true}) {
+      auto *b = builder(enc);
+      std::vector<uint8_t> want;
+      uint8_t bytes[AGX3_ALU_MAX_LENGTH], len;
+      for (unsigned i = 0; i < 3; ++i) {
+         agx_get_sr_to(b, agx_register(2 * i, AGX_SIZE_32),
+                       AGX_SR_THREAD_POSITION_IN_GRID_X);
+         struct agx3_sr_desc sr = {};
+         sr.dest = 2 * i;
+         sr.width = AGX3_SR_W32;
+         sr.sr = 23;
+         sr.slot = i + 1;
+         ASSERT_TRUE(agx3_sr_encode(enc, &sr, bytes, &len));
+         append(want, bytes, len);
+      }
+      /* Read slot 1's result and overwrite slot 3's pending destination. */
+      auto *I = agx_fadd_to(b, agx_register(4, AGX_SIZE_32),
+                           agx_register(0, AGX_SIZE_32), agx_immediate(0x20));
+      if (multiply) I->op = AGX_OPCODE_FMUL;
+      agx_stop(b);
+      ASSERT_TRUE(agx3_alu_wait_nop(enc, 5, bytes, &len));
+      append(want, bytes, len);
+      ASSERT_TRUE((multiply ? agx3_alu_fmul_minifloat : agx3_alu_fadd_minifloat)(
+         enc, 4, 0, 0x20, AGX3_ALU_HINT_NONE, 0, bytes, &len));
+      append(want, bytes, len);
+      struct agx3_encoded_end end;
+      ASSERT_TRUE(agx3_pack_end(enc, &end));
+      append(want, end.bytes, end.length);
+      EXPECT_EQ(pack(b), want);
+   }
+}
+
 TEST_F(AGX3PackBinary, FaddMinifloatModifiersAndInvalidDomains)
 {
    for (unsigned variant = 0; variant < 10; ++variant) {

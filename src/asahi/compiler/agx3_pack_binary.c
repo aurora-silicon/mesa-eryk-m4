@@ -7383,6 +7383,16 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                 reg.size != AGX_SIZE_32 || agx_channels(reg) != 1)
                AGX3_REFUSE(I);
 
+            /* Compact minifloat ALU forms encode one slot or slots 1+2.
+             * A pending source plus an asynchronous destination overwrite
+             * can require another combination. Retire all dependencies with
+             * the register-preserving scoreboard NOP before the ALU. */
+            if (wait != 3 && util_bitcount(wait) > 1) {
+               if (!agx3_retire_slots_noop(emission, enc, wait))
+                  AGX3_REFUSE(I);
+               wait = 0;
+            }
+
             bool encoded;
             if (!multiply && (I->saturate || reg.neg)) {
                encoded = agx3_alu_fadd_minifloat_mod(
